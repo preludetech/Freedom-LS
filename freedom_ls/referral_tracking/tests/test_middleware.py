@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import datetime
+
 import pytest
+import time_machine
 
 from django.contrib.auth.models import AnonymousUser
 from django.db import connection
-from django.http import HttpResponse
+from django.http import HttpRequest, HttpResponse
 from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
@@ -14,7 +17,10 @@ from django.urls import reverse
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.referral_tracking import capture
 from freedom_ls.referral_tracking.capture import (
+    CookieTouch,
     first_touch_from_request,
+    read_attribution_cookie,
+    read_cookie_touches,
     set_attribution_cookie,
 )
 from freedom_ls.referral_tracking.config import config
@@ -30,6 +36,22 @@ ROBOTS_TXT = "/robots.txt"
 COOKIE_NAME = config.REFERRAL_TRACKING_COOKIE_NAME
 
 rf = RequestFactory()
+
+
+def _request_holding_cookie_of(client: Client) -> HttpRequest:
+    request = rf.get("/")
+    request.COOKIES[COOKIE_NAME] = client.cookies[COOKIE_NAME].value
+    return request
+
+
+def _touches_in(client: Client) -> list[CookieTouch]:
+    return read_cookie_touches(_request_holding_cookie_of(client))
+
+
+def _first_touch_in(client: Client) -> dict[str, str]:
+    first_touch = read_attribution_cookie(_request_holding_cookie_of(client))
+    assert first_touch is not None
+    return first_touch
 
 
 @pytest.mark.django_db
@@ -69,7 +91,7 @@ def test_untracked_get_sets_no_cookie(mock_site_context) -> None:
 
 
 @pytest.mark.django_db
-def test_second_tracked_get_in_the_same_client_leaves_the_cookie_byte_identical(
+def test_second_tracked_get_with_the_same_key_leaves_the_cookie_byte_identical(
     mock_site_context,
 ) -> None:
     client = Client()
@@ -79,6 +101,57 @@ def test_second_tracked_get_in_the_same_client_leaves_the_cookie_byte_identical(
     client.get(ROBOTS_TXT, {"utm_source": "x"})
 
     assert client.cookies[COOKIE_NAME].value == minted_value
+
+
+@pytest.mark.django_db
+def test_second_tracked_get_with_a_different_key_appends_one_entry(
+    mock_site_context,
+) -> None:
+    client = Client()
+    client.get(ROBOTS_TXT, {"utm_source": "x"})
+
+    client.get(ROBOTS_TXT, {"utm_source": "y"})
+
+    assert [touch.utm_source for touch in _touches_in(client)] == ["y"]
+
+
+@pytest.mark.django_db
+def test_a_click_id_only_landing_leaves_the_cookie_byte_identical(
+    mock_site_context,
+) -> None:
+    client = Client()
+    first_response = client.get(ROBOTS_TXT, {"utm_source": "x"})
+    minted_value = first_response.cookies[COOKIE_NAME].value
+
+    client.get(ROBOTS_TXT, {"gclid": "abc"})
+
+    assert client.cookies[COOKIE_NAME].value == minted_value
+
+
+@pytest.mark.django_db
+def test_an_append_keeps_the_first_touch(mock_site_context) -> None:
+    client = Client()
+    client.get(ROBOTS_TXT, {"utm_source": "x"})
+
+    client.get(ROBOTS_TXT, {"utm_source": "y"})
+
+    assert _first_touch_in(client)["utm_source"] == "x"
+
+
+@pytest.mark.django_db
+def test_an_append_does_not_reset_the_expiry_to_the_full_window(
+    mock_site_context,
+) -> None:
+    client = Client()
+    with time_machine.travel(datetime.datetime(2026, 3, 1, tzinfo=datetime.UTC)):
+        client.get(ROBOTS_TXT, {"utm_source": "x"})
+    ten_days_later = datetime.datetime(2026, 3, 11, tzinfo=datetime.UTC)
+
+    with time_machine.travel(ten_days_later, tick=False):
+        response = client.get(ROBOTS_TXT, {"utm_source": "y"})
+
+    max_age = int(response.cookies[COOKIE_NAME]["max-age"])
+    assert max_age == config.REFERRAL_TRACKING_COOKIE_MAX_AGE_DAYS * 86400 - 10 * 86400
 
 
 @pytest.mark.django_db
@@ -154,7 +227,7 @@ def test_a_tracked_get_with_an_existing_valid_cookie_costs_no_query(
     mint_response = HttpResponse()
     set_attribution_cookie(mint_response, first_touch)
 
-    request = rf.get("/?utm_source=x")
+    request = rf.get("/?utm_source=y")
     request.COOKIES[COOKIE_NAME] = mint_response.cookies[COOKIE_NAME].value
     request.user = AnonymousUser()
 
@@ -175,6 +248,18 @@ def test_a_tracked_get_with_an_existing_valid_cookie_carries_vary_cookie(
 
 
 @pytest.mark.django_db
+def test_an_append_response_is_private_no_store(mock_site_context) -> None:
+    client = Client()
+    client.get(ROBOTS_TXT, {"utm_source": "x"})
+
+    response = client.get(ROBOTS_TXT, {"utm_source": "y"})
+
+    cache_control = response.headers["Cache-Control"]
+    assert "private" in cache_control
+    assert "no-store" in cache_control
+
+
+@pytest.mark.django_db
 def test_a_tracked_get_with_an_existing_valid_cookie_sets_no_cookie(
     mock_site_context,
 ) -> None:
@@ -184,6 +269,21 @@ def test_a_tracked_get_with_an_existing_valid_cookie_sets_no_cookie(
     response = client.get(ROBOTS_TXT, {"utm_source": "x"})
 
     assert COOKIE_NAME not in response.cookies
+
+
+@pytest.mark.django_db
+def test_an_append_response_that_cannot_fit_leaves_the_previous_cookie_in_place(
+    mock_site_context, monkeypatch
+) -> None:
+    client = Client()
+    client.get(ROBOTS_TXT, {"utm_source": "x"})
+    minted_value = client.cookies[COOKIE_NAME].value
+    monkeypatch.setattr(capture, "COOKIE_MAX_ENCODED_LENGTH", 10)
+
+    response = client.get(ROBOTS_TXT, {"utm_source": "y"})
+
+    assert COOKIE_NAME not in response.cookies
+    assert client.cookies[COOKIE_NAME].value == minted_value
 
 
 def test_an_untracked_get_is_not_varied_on_cookie(db) -> None:
@@ -253,14 +353,14 @@ def test_a_visitor_holding_the_cookie_is_logged_as_a_hit_and_keeps_the_first_tou
 ) -> None:
     client = Client()
     client.get(ROBOTS_TXT, {"utm_source": "newsletter"})
-    minted_cookie = client.cookies[COOKIE_NAME].value
     referral_code = ReferralCodeFactory(code="mrbeast", destination="/courses/")
     url = reverse("referral_tracking:follow_go", kwargs={"code": referral_code.code})
 
-    client.get(url)
+    client.get(url, follow=True)
 
-    assert client.cookies[COOKIE_NAME].value == minted_cookie
     assert ReferralCodeHit.objects.filter(referral_code=referral_code).exists()
+    assert [touch.referral_code for touch in _touches_in(client)] == ["mrbeast"]
+    assert _first_touch_in(client)["utm_source"] == "newsletter"
 
 
 @pytest.mark.django_db

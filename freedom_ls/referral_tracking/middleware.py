@@ -12,10 +12,12 @@ from django.utils import timezone
 from django.utils.cache import patch_cache_control, patch_vary_headers
 
 from freedom_ls.referral_tracking.capture import (
+    append_touch,
     first_touch_from_request,
     has_tracked_params,
     is_capture_suppressed,
     read_attribution_cookie,
+    read_cookie_touches,
     set_attribution_cookie,
 )
 from freedom_ls.referral_tracking.conversions import record_live_touch
@@ -31,7 +33,9 @@ class AttributionCaptureMiddleware:
     """Record tracked landings: a cookie for anonymous visitors, a row for signed-in users.
 
     An anonymous visitor's first tracked landing mints the first-party
-    attribution cookie and tallies the first touch. A signed-in user's tracked
+    attribution cookie and tallies the first touch; a later landing with a
+    different attribution key is appended to the cookie's bounded touch list,
+    with no tally and no query. A signed-in user's tracked
     landing writes an `AttributionTouch` row instead and never touches the
     cookie or the tally, so a later login cannot record the same landing twice.
 
@@ -74,6 +78,16 @@ class AttributionCaptureMiddleware:
                     occurred_at=occurred_at,
                 )
             return response
+        first_touch = read_attribution_cookie(request)
+        if first_touch is not None:
+            # A repeat of the latest key appends nothing and leaves the cookie
+            # byte-identical. When the new list cannot fit, the browser keeps
+            # the cookie it already has.
+            touches = append_touch(read_cookie_touches(request), first_touch, request)
+            if touches is not None:
+                patch_cache_control(response, private=True, no_store=True)
+                set_attribution_cookie(response, first_touch, touches=touches)
+            return response
         mint_site = self._site_to_mint_for(request)
         if mint_site is None:
             return response
@@ -94,8 +108,6 @@ class AttributionCaptureMiddleware:
     @staticmethod
     def _site_to_mint_for(request: HttpRequest) -> Site | None:
         """The site to tally a mint against, or None when this landing mints nothing."""
-        if read_attribution_cookie(request) is not None:
-            return None
         site = get_cached_site(request)
         if not isinstance(site, Site):
             # A rejected Host resolves to UnknownSite, which is not a row, so
