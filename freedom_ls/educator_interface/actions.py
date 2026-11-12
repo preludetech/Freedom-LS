@@ -1916,7 +1916,12 @@ class AddStaffMemberAction(PanelAction):
             )[: self.SEARCH_RESULT_LIMIT + 1]
         )
         context["results"] = [
-            {"pk": user.pk, "display_name": user.display_name, "email": user.email}
+            {
+                "pk": user.pk,
+                "display_name": user.display_name,
+                "email": user.email,
+                "email_below_name": user.email_below_name,
+            }
             for user in fetched[: self.SEARCH_RESULT_LIMIT]
         ]
         context["truncated"] = len(fetched) > self.SEARCH_RESULT_LIMIT

@@ -1,6 +1,6 @@
 {% comment %}
 The Add staff member dialog, one template for every step. Context: step (email,
-role, confirmation or search, the as-you-type results fragment) and form_url; search adds term, results (pk, display_name, email), truncated, needs_term, searches_pickable_only and listbox_id; email and role add dialog_title ("Add a
+role, confirmation or search, the as-you-type results fragment) and form_url; search adds term, results (pk, display_name, email, email_below_name), truncated, needs_term, searches_pickable_only and listbox_id; email and role add dialog_title ("Add a
 member", or "Add a staff member to {cohort}" when the page fixes the cohort); email adds form, role adds
 match (None for an address with no account), new_account, person (the staff member fixed by their row, or None), current_entries (the roles person holds), form, role_cards (key, display_name, description, needs_cohorts, unavailable_reason),
 preset_cohort (the cohort fixed by the page, or None), cohort_rows (pk, name, roles, checked), selected_role, offers_no_role (offer "No roles yet" first) and role_note;
@@ -73,7 +73,7 @@ scope, current_entries, after_entries, already_held and staff_member_state.
                     data-email="{{ user.email }}"
                     x-on:click="pick"
                     class="min-h-11 cursor-pointer rounded-md px-3 py-2 hover:bg-surface-2 aria-selected:bg-surface-2">
-                    <c-panel-avatar-chip :name="user.display_name" :user_id="user.pk" :secondary="user.email" size="sm" />
+                    <c-panel-avatar-chip :name="user.display_name" :user_id="user.pk" :secondary="user.email_below_name" size="sm" />
                 </li>
                 {% endfor %}
                 {% if truncated %}

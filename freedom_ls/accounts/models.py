@@ -117,6 +117,17 @@ class User(SiteAwareModelBase, TimestampedModel, AbstractBaseUser, PermissionsMi
         return display_name_for(self.first_name, self.last_name, self.email)
 
     @property
+    def email_below_name(self) -> str:
+        """The email to show on a line under the display name.
+
+        Empty for an account with no name, because its display name is already
+        the email and a second line would repeat it.
+        """
+        if self.display_name == self.email:
+            return ""
+        return self.email
+
+    @property
     def initials(self) -> str | None:
         """Return one-or-two-character initials for avatar display, or ``None``.
 

@@ -375,6 +375,21 @@ def test_the_staff_quick_view_says_when_and_by_whom_each_role_was_added(
 
 
 @pytest.mark.django_db
+def test_the_staff_quick_view_of_an_account_with_no_name_has_no_subtitle(
+    staff_client: Client,
+) -> None:
+    """An account with no name had its email as both the heading and the subtitle."""
+    organisation = OrganisationFactory()
+    member = UserFactory(first_name="", last_name="", email="nameless.member@qa.test")
+    assign_role(UserFactory(superuser=True), member, "organisation_admin", organisation)
+
+    content = _staff_quick_view(staff_client, organisation, member).content.decode()
+
+    assert 'data-quick-view-title="nameless.member@qa.test"' in content
+    assert 'data-quick-view-subtitle=""' in content
+
+
+@pytest.mark.django_db
 def test_each_staff_row_opens_its_quick_view(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     member = UserFactory()

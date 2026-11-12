@@ -5317,6 +5317,24 @@ def test_an_organisation_admin_finds_a_learner_who_is_not_staff(
 
 
 @pytest.mark.django_db
+def test_a_search_option_for_an_account_with_no_name_shows_the_email_once(
+    admin_client, organisation
+):
+    """An account with no name showed its email on the name line and again under it."""
+    learner = LearnerFactory(
+        organisation=organisation,
+        user__first_name="",
+        user__last_name="",
+        user__email="nameless.member@qa.test",
+    )
+
+    (option,) = _options(_search(admin_client, organisation, "nameless"))
+
+    assert option.get("id") == f"staff-option-{learner.user.pk}"
+    assert option.text_content().count("nameless.member@qa.test") == 1
+
+
+@pytest.mark.django_db
 def test_a_cohort_admin_search_lists_only_people_they_may_pick(
     logged_in_client, organisation
 ):
@@ -5410,7 +5428,7 @@ def test_search_results_carry_the_name_and_email_and_nothing_more(
     context = _search(admin_client, organisation, "erin").context
 
     (result,) = context["results"]
-    assert set(result) == {"pk", "display_name", "email"}
+    assert set(result) == {"pk", "display_name", "email", "email_below_name"}
 
 
 @pytest.mark.django_db

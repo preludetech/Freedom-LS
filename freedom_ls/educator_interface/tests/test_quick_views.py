@@ -146,7 +146,10 @@ class TestLearnerQuickView:
         learner = cast(
             Learner,
             LearnerFactory(
-                user=UserFactory(email="ada@example.com"), organisation=organisation
+                user=UserFactory(
+                    first_name="Ada", last_name="Lovelace", email="ada@example.com"
+                ),
+                organisation=organisation,
             ),
         )
 
