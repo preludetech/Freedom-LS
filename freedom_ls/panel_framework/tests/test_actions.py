@@ -22,6 +22,7 @@ from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,
     DeleteAction,
     EditAction,
+    FormPanelAction,
     PanelAction,
     ReasonMixin,
     changed_response,
@@ -80,7 +81,7 @@ class StubCreateAction(CreateInstanceAction):
     action_name = "create_item"
     success_events = ("itemChanged",)
 
-    def get_success_url(self, instance: Model) -> str:
+    def get_success_url(self, ctx: PanelContext, instance: Model) -> str:
         return f"/items/{instance.pk}"
 
 
@@ -505,6 +506,116 @@ def test_error_summary_does_not_count_a_form_level_error_as_a_field(
     content = response.content.decode()
     assert "These values cannot be combined." in content
     assert "to fix" not in content
+
+
+class _PlainForm(forms.Form):
+    name = forms.CharField()
+    colour = forms.CharField(required=False)
+
+
+class StubPlainFormAction(FormPanelAction):
+    label = "Plain"
+    action_name = "plain"
+    form_class = _PlainForm
+    form_title = "A plain form"
+    refresh_on_change = ("colour",)
+    saved: list[str] = []
+
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
+        self.saved.append(form.cleaned_data["name"])
+        return HttpResponse("saved")
+
+
+@pytest.mark.django_db
+def test_a_form_action_over_a_plain_form_renders_its_title_and_fields(
+    mock_site_context: Site,
+) -> None:
+    ctx = _ctx(RequestFactory().get("/"))
+
+    html = _render(StubPlainFormAction(), ctx)
+
+    assert "A plain form" in html
+    assert 'name="name"' in html
+
+
+@pytest.mark.django_db
+def test_a_form_action_over_a_plain_form_rerenders_422_with_the_error_count(
+    mock_site_context: Site,
+) -> None:
+    request = RequestFactory().post("/", {"name": ""})
+
+    response = StubPlainFormAction().handle_submit(_ctx(request))
+
+    assert response.status_code == 422
+    assert "1 field to fix" in response.content.decode()
+
+
+def test_a_form_action_over_a_plain_form_calls_form_valid_with_ctx_and_form() -> None:
+    request = RequestFactory().post("/", {"name": "Ada"})
+    StubPlainFormAction.saved.clear()
+
+    response = StubPlainFormAction().handle_submit(_ctx(request))
+
+    assert response.content == b"saved"
+    assert StubPlainFormAction.saved == ["Ada"]
+
+
+@pytest.mark.django_db
+def test_a_form_action_over_a_model_form_receives_the_instance(
+    mock_site_context: Site,
+) -> None:
+    class ModelFormAction(FormPanelAction):
+        action_name = "model"
+        form_class = _StubModelForm
+
+    item = make_stub(name="Existing")
+
+    form = ModelFormAction().get_form(_ctx(RequestFactory().get("/"), item))
+
+    assert cast(forms.ModelForm, form).instance == item
+
+
+def test_a_refresh_on_change_field_carries_the_refresh_attributes() -> None:
+    ctx = _ctx(RequestFactory().get("/"), base_url="/test")
+
+    form = StubPlainFormAction().get_form(ctx)
+
+    attrs = form.fields["colour"].widget.attrs
+    assert attrs["hx-get"] == "/test/__actions/plain"
+    assert attrs["hx-target"] == "#app-modal-body"
+    assert "hx-get" not in form.fields["name"].widget.attrs
+
+
+def test_a_get_carrying_a_refresh_field_renders_the_form_bound_without_errors() -> None:
+    ctx = _ctx(RequestFactory().get("/", {"name": "Ada", "colour": "red"}))
+
+    form = StubPlainFormAction().get_form(ctx)
+
+    assert form.is_bound
+    assert not form.errors
+
+
+def test_a_get_carrying_a_refresh_field_with_an_invalid_query_renders_unbound() -> None:
+    ctx = _ctx(RequestFactory().get("/", {"colour": "red"}))
+
+    form = StubPlainFormAction().get_form(ctx)
+
+    assert not form.is_bound
+
+
+@pytest.mark.django_db
+def test_create_action_get_success_url_receives_ctx(mock_site_context: Site) -> None:
+    class CtxUrlAction(StubCreateAction):
+        def get_success_url(self, ctx: PanelContext, instance: Model) -> str:
+            return f"{ctx.base_url}/{instance.pk}"
+
+    request = RequestFactory().post("/", {"name": "Ctx Item"})
+    request.user = make_staff_user()
+
+    response = CtxUrlAction().handle_submit(_ctx(request, None, "/here"))
+
+    item = StubModel.objects.get(name="Ctx Item")
+    assert json.loads(response["HX-Location"])["path"] == f"/here/{item.pk}"
 
 
 @pytest.mark.django_db

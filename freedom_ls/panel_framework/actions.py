@@ -238,8 +238,15 @@ class ModalPanelAction(PanelAction):
 
 
 class FormPanelAction(ModalPanelAction):
+    """An action whose dialog is a form.
+
+    Every hook reads the request through `ctx`, so an action holds no request
+    state. `form_class` is any form class or factory; a `ModelForm` class
+    also receives the page's instance.
+    """
+
     template_name = "panel_framework/modal/form.html"
-    form_class: Callable[..., forms.ModelForm]
+    form_class: Callable[..., forms.BaseForm]
     form_title: str = ""
     submit_buttons: list[dict[str, str]] = [
         {"label": "Save", "variant": "primary"},
@@ -247,57 +254,108 @@ class FormPanelAction(ModalPanelAction):
     #: Off for a form rendered inside a panel rather than a dialog: a page
     #: must not move focus to a field as it loads.
     autofocus_first_field: bool = True
+    #: Fields whose change re-renders the dialog, so later fields can depend on them.
+    refresh_on_change: tuple[str, ...] = ()
 
-    def get_form(
-        self, request: HttpRequest, instance: Model | None = None
-    ) -> forms.ModelForm:
-        data = request.POST if request.method == "POST" else None
-        form = self.form_class(data, instance=instance)
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
+        kwargs: dict[str, object] = {
+            "data": ctx.request.POST if ctx.request.method == "POST" else None
+        }
+        # form_class may be a factory function, which issubclass() rejects.
+        if isinstance(self.form_class, type) and issubclass(
+            self.form_class, forms.ModelForm
+        ):
+            kwargs["instance"] = ctx.instance
+        return kwargs
+
+    def get_form(self, ctx: PanelContext) -> forms.BaseForm:
+        """The form for this request. A GET that carries a `refresh_on_change`
+        field renders the form bound to the query when the query is valid, so
+        the dialog can react to the choice; a stale choice is not a
+        submission and earns no error."""
+        kwargs = self.get_form_kwargs(ctx)
+        form = self.form_class(**kwargs)
+        if ctx.request.method != "POST" and any(
+            name in ctx.request.GET for name in self.refresh_on_change
+        ):
+            queried = self.form_class(**{**kwargs, "data": ctx.request.GET})
+            if queried.is_valid():
+                form = queried
+        self._mark_refresh_fields(ctx, form)
         return form
 
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        """Process form submission."""
-        self._last_action_url = self.get_action_url(ctx)
-        form = self.get_form(ctx.request, ctx.instance)
-        if form.is_valid():
-            return self.form_valid(ctx.request, form)
-        return self.form_invalid(ctx.request, form)
+    def get_unbound_form(self, ctx: PanelContext) -> forms.BaseForm:
+        """A form with no data, for the dialog after a save that stays open."""
+        form = self.form_class(**{**self.get_form_kwargs(ctx), "data": None})
+        self._mark_refresh_fields(ctx, form)
+        return form
 
-    def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
-        raise NotImplementedError
+    def _mark_refresh_fields(self, ctx: PanelContext, form: forms.BaseForm) -> None:
+        """Make a change to each `refresh_on_change` field re-render the dialog
+        from the action URL with the form's values. Without JavaScript the
+        dialog keeps its generic form and the submit still works."""
+        url = self.get_action_url(ctx)
+        for name in self.refresh_on_change:
+            form.fields[name].widget.attrs.update(
+                {
+                    "hx-get": url,
+                    "hx-include": "closest form",
+                    "hx-trigger": "change",
+                    "hx-target": "#app-modal-body",
+                    "hx-swap": "innerHTML",
+                }
+            )
 
-    def form_invalid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
-        """Return 422 with re-rendered form."""
-        html = render_to_string(
-            self.template_name,
-            self._fragment_context(form, self._last_action_url),
-            request=request,
-        )
-        return HttpResponse(html, status=422)
+    def get_form_title(self, ctx: PanelContext, form: forms.BaseForm) -> str:
+        return self.form_title
 
-    def _fragment_context(
-        self, form: forms.ModelForm, action_url: str
+    def get_empty_message(self, ctx: PanelContext, form: forms.BaseForm) -> str | None:
+        """The sentence that replaces a picker with nothing to offer."""
+        return None
+
+    def get_fragment_context(
+        self, ctx: PanelContext, form: forms.BaseForm
     ) -> dict[str, object]:
         return form_fragment_context(
             form,
-            form_title=self.form_title,
-            action_url=action_url,
+            form_title=self.get_form_title(ctx, form),
+            action_url=self.get_action_url(ctx),
             submit_buttons=self.submit_buttons,
+            # A submitted form shows its errors; the empty message stands in
+            # only for the form a person has not yet filled in.
+            empty_message=None if form.is_bound else self.get_empty_message(ctx, form),
             autofocus=self.autofocus_first_field,
         )
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        """The modal fragment, holding an unbound form."""
-        return self._fragment_context(
-            self.get_form(ctx.request), self.get_action_url(ctx)
+        """The modal fragment for the form this request holds."""
+        return self.get_fragment_context(ctx, self.get_form(ctx))
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        """Process form submission."""
+        form = self.get_form(ctx)
+        if form.is_valid():
+            return self.form_valid(ctx, form)
+        return self.form_invalid(ctx, form)
+
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
+        raise NotImplementedError
+
+    def form_invalid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
+        """Re-render the dialog with the form's errors and status 422."""
+        html = render_to_string(
+            self.get_fragment_template_name(),
+            self.get_fragment_context(ctx, form),
+            request=ctx.request,
         )
+        return HttpResponse(html, status=422)
 
 
 class CreateInstanceAction(FormPanelAction):
     """Base class for actions that create a new instance via a modal form.
 
     Subclasses must define: form_class, form_title, label, action_name.
-    Subclasses must implement: get_success_url(instance).
+    Subclasses must implement: get_success_url(ctx, instance).
     """
 
     variant: str = "primary"
@@ -311,17 +369,9 @@ class CreateInstanceAction(FormPanelAction):
         {"label": "Save", "variant": "primary"},
     ]
 
-    def get_success_url(self, instance: Model) -> str:
+    def get_success_url(self, ctx: PanelContext, instance: Model) -> str:
         """Return the URL to redirect to after successful creation."""
         raise NotImplementedError
-
-    def _render_empty_form(self, request: HttpRequest, action_url: str) -> str:
-        """Re-render the modal form with an empty/unbound form."""
-        return render_to_string(
-            self.template_name,
-            self._fragment_context(self.form_class(), action_url),
-            request=request,
-        )
 
     def get_capability(self, ctx: PanelContext) -> str | None:
         if self.capability is not None:
@@ -332,15 +382,19 @@ class CreateInstanceAction(FormPanelAction):
         model: type[Model] = meta.model
         return _model_capability(model, "add")
 
-    def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
-        instance = form.save()
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
+        instance = cast(forms.ModelForm, form).save()
         events = self.get_success_events(instance)
-        if request.POST.get("action") == "save_and_add":
-            html = self._render_empty_form(request, self._last_action_url)
+        if ctx.request.POST.get("action") == "save_and_add":
+            html = render_to_string(
+                self.get_fragment_template_name(),
+                self.get_fragment_context(ctx, self.get_unbound_form(ctx)),
+                request=ctx.request,
+            )
             response = HttpResponse(html)
             response["HX-Trigger"] = build_hx_trigger(events)
             return response
-        response = navigation_response(self.get_success_url(instance))
+        response = navigation_response(self.get_success_url(ctx, instance))
         response["HX-Trigger"] = build_hx_trigger(events, close_modal=True)
         return response
 
@@ -365,19 +419,11 @@ class EditAction(FormPanelAction):
         self._instance = instance
         self.success_events = success_events
 
-    def get_form(
-        self, request: HttpRequest, instance: Model | None = None
-    ) -> forms.ModelForm:
-        instance = instance or self._instance
-        data = request.POST if request.method == "POST" else None
-        form = self.form_class(data, instance=instance)
-        return form
-
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        # The page heading is named by the section, not by str(instance), so
-        # the title a save sends back has to come from the same place.
-        self._section = ctx.config
-        return super().handle_submit(ctx)
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
+        return {
+            **super().get_form_kwargs(ctx),
+            "instance": ctx.instance or self._instance,
+        }
 
     def event_instance(self, form: forms.ModelForm) -> Model:
         """The instance the success events and the page title are about.
@@ -387,14 +433,17 @@ class EditAction(FormPanelAction):
         """
         return cast(Model, form.instance)
 
-    def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
-        form.save()
-        instance = self.event_instance(form)
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
+        model_form = cast(forms.ModelForm, form)
+        model_form.save()
+        instance = self.event_instance(model_form)
         response = HttpResponse(status=204)
+        # The page heading is named by the section, not by str(instance), so
+        # the title a save sends back has to come from the same place.
         response["HX-Trigger"] = build_hx_trigger(
             self.get_success_events(instance),
             close_modal=True,
-            title=self._section.get_instance_label(instance),
+            title=ctx.config.get_instance_label(instance),
         )
         return response
 

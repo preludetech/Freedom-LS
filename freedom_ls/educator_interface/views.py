@@ -1801,29 +1801,29 @@ class CreateCohortAction(CreateInstanceAction):
     action_name = "create_cohort"
     success_events = (COHORT_CHANGED,)
 
-    def get_form(
-        self, request: HttpRequest, instance: Model | None = None
-    ) -> forms.ModelForm:
+    def get_form(self, ctx: PanelContext) -> forms.BaseForm:
         # The organisation is not a user choice — CohortForm never exposes
         # the field — so it comes from the URL the request already resolved
         # and authorised, not from anything the form submitted. It is attached
         # here rather than in form_valid because the per-organisation
         # uniqueness constraint can only be checked while cleaning if the
         # instance already carries its organisation.
-        form = super().get_form(request, instance)
-        organisation = cast(OrganisationScopedRequest, request).organisation
-        cast(Cohort, form.instance).organisation = organisation
-        self._organisation = organisation
+        form = super().get_form(ctx)
+        organisation = cast(OrganisationScopedRequest, ctx.request).organisation
+        cast(Cohort, cast(forms.ModelForm, form).instance).organisation = organisation
         return form
 
-    def get_success_url(self, instance: Model) -> str:
-        return interface_path(self._organisation, f"cohorts/{instance.pk}")
+    def get_success_url(self, ctx: PanelContext, instance: Model) -> str:
+        organisation = cast(OrganisationScopedRequest, ctx.request).organisation
+        return interface_path(organisation, f"cohorts/{instance.pk}")
 
-    def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
         with transaction.atomic():
-            response = super().form_valid(request, form)
+            response = super().form_valid(ctx, form)
             record_cohort_entry(
-                cast(Cohort, form.instance), "cohort.created", cast(User, request.user)
+                cast(Cohort, cast(forms.ModelForm, form).instance),
+                "cohort.created",
+                cast(User, ctx.request.user),
             )
         return response
 
