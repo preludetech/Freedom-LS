@@ -754,6 +754,7 @@ def test_the_action_choices_are_grouped_under_the_fixed_headings_in_order(
         "Learners",
         "Cohort membership",
         "Course registrations",
+        "Course progress",
         "Cohorts",
         "Staff and roles",
         "Other",

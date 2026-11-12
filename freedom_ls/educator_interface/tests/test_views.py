@@ -7342,6 +7342,7 @@ def test_the_audit_log_what_filter_is_a_grouped_checklist_with_one_apply(
         "Learners",
         "Cohort membership",
         "Course registrations",
+        "Course progress",
         "Cohorts",
         "Staff and roles",
         "Other",
