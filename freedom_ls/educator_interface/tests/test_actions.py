@@ -9444,9 +9444,6 @@ def test_the_change_role_dialog_offers_only_grantable_cohort_roles_with_the_held
     assert "Change Ada Lovelace's role on Evening group?" in _text(response)
 
 
-# the refusals answer with the framework's message dialog
-
-
 def _assert_message_dialog(response, title: str, message: str) -> None:
     document = lxml.html.fromstring(response.content.decode())
     assert response.status_code == 422
