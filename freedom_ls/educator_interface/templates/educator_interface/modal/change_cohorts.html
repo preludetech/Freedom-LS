@@ -3,7 +3,7 @@ The Change cohorts dialog. Context: step (form or confirmation), staff_member,
 entry and form_url. The form step adds cohort_rows (pk, name, checked) and
 read_only (the held cohorts left as they are, each with its reason); the
 confirmation step adds cohort_ids, added and removed (prose lists),
-widening, removes_role and staff_member_state (missing, inactive or active).
+removes_role and staff_member_state (missing, inactive or active).
 {% endcomment %}
 {% if step == "form" %}
 <c-modal-header>Change cohorts for {{ staff_member.display_name }}</c-modal-header>
