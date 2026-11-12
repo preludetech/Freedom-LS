@@ -11,6 +11,7 @@ registers each model once.
 from __future__ import annotations
 
 from django.db import models
+from django.utils import timezone
 
 
 class StubModel(models.Model):
@@ -22,6 +23,10 @@ class StubModel(models.Model):
     )
     is_active = models.BooleanField(default=True)
     sat_score = models.IntegerField(null=True, blank=True, verbose_name="SAT score")
+    created_at = models.DateTimeField(default=timezone.now)
+    seen_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    seen_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         app_label = "freedom_ls_panel_framework"

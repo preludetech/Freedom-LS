@@ -7,10 +7,13 @@ that never varies per declaration, `__init__` holds what does.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from datetime import timedelta
 from typing import Literal
 
 from django.db.models import QuerySet
 from django.http import HttpRequest
+from django.utils import timezone
 
 
 class TableFilter:
@@ -42,7 +45,7 @@ class TableFilter:
         key: str,
         label: str,
         *,
-        lookup: str,
+        lookup: str = "",
         always_shown: bool = False,
         default: tuple[str, ...] = (),
     ) -> None:
@@ -110,7 +113,7 @@ class ChoiceFilter(TableFilter):
         key: str,
         label: str,
         *,
-        lookup: str,
+        lookup: str = "",
         choices: list[tuple[str, str]] | None = None,
         always_shown: bool = False,
         default: tuple[str, ...] = (),
@@ -139,11 +142,14 @@ class RelatedChoiceFilter(TableFilter):
         key: str,
         label: str,
         *,
-        lookup: str,
+        lookup: str = "",
         queryset: QuerySet | None = None,
         always_shown: bool = False,
+        default: tuple[str, ...] = (),
     ) -> None:
-        super().__init__(key, label, lookup=lookup, always_shown=always_shown)
+        super().__init__(
+            key, label, lookup=lookup, always_shown=always_shown, default=default
+        )
         self._queryset = queryset
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
@@ -168,3 +174,59 @@ class BooleanFilter(TableFilter):
         if "1" in values:
             return queryset.filter(**{self.lookup: True})
         return queryset
+
+
+class ToggleFilter(TableFilter):
+    """A single on/off switch that narrows nothing itself. It switches
+    something on that the table then reads from its own query state, where
+    `BooleanFilter` narrows the queryset by a field."""
+
+    def __init__(self, key: str, label: str) -> None:
+        super().__init__(key, label)
+
+    def get_choices(self, request: HttpRequest) -> list[tuple[str, str]]:
+        return [("1", self.label)]
+
+    def apply(
+        self, request: HttpRequest, queryset: QuerySet, values: list[str]
+    ) -> QuerySet:
+        return queryset
+
+
+class PeriodFilter(ChoiceFilter):
+    """Rows whose `field` falls in the last N calendar days, today included,
+    counted from midnight in the project's time zone: "Last 7 days" is today
+    and the six days before it."""
+
+    widget = "select"
+    multiple = False
+
+    def __init__(
+        self,
+        key: str,
+        label: str,
+        field: str,
+        presets: Mapping[str, tuple[str, int]],
+    ) -> None:
+        """`presets` maps each URL value to its `(label, days)`."""
+        super().__init__(
+            key,
+            label,
+            lookup=field,
+            choices=[(value, text) for value, (text, _days) in presets.items()],
+        )
+        self.field = field
+        self.presets = presets
+
+    def apply(
+        self, request: HttpRequest, queryset: QuerySet, values: list[str]
+    ) -> QuerySet:
+        days = [self.presets[value][1] for value in values if value in self.presets]
+        if not days:
+            # A stale or hand-edited URL value must not hide every row.
+            return queryset
+        midnight = timezone.localtime(timezone.now()).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        start = midnight - timedelta(days=days[0] - 1)
+        return queryset.filter(**{f"{self.field}__gte": start})
