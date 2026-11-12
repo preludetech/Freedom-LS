@@ -5281,6 +5281,32 @@ def test_a_cohort_admin_search_lists_only_people_they_may_pick(
 
 
 @pytest.mark.django_db
+def test_an_organisation_admin_search_on_a_cohort_offers_the_full_email_route(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation)
+
+    response = _search(admin_client, organisation, "zzz", cohort)
+
+    assert "Type their full email to add someone else." in _text(response)
+
+
+@pytest.mark.django_db
+def test_an_organisation_admin_email_field_on_a_cohort_has_no_search_limit_note(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation)
+
+    response = admin_client.get(
+        _cohort_add_staff_member_url(organisation, cohort), HTTP_HX_REQUEST="true"
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert document.cssselect("[role='combobox']")
+    assert not document.cssselect("#staff-search-help")
+
+
+@pytest.mark.django_db
 def test_a_cohort_admin_email_field_says_it_searches_staff_they_can_add(
     logged_in_client, organisation
 ):
