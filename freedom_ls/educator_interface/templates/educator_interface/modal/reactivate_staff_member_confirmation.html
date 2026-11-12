@@ -1,27 +1,17 @@
+{% extends "panel_framework/modal/confirm.html" %}
 {% comment %}
-The modal fragment a ReactivateStaffMemberAction's GET returns. Context: staff_member,
-roles (a prose list of the roles that take effect again, empty for someone with
-none), confirm_url.
+The dialog a ReactivateStaffMemberAction's GET returns. Context: staff_member,
+roles (a prose list of the roles that take effect again, empty for someone
+with none).
 {% endcomment %}
-<c-modal-header>Reactivate {{ staff_member.display_name }}?</c-modal-header>
 
-<c-modal-body>
+{% block title %}Reactivate {{ staff_member.display_name }}?{% endblock title %}
+
+{% block body %}
     {% if roles %}
         <p>These roles take effect again: {{ roles }}.</p>
     {% else %}
         <p>They have no roles here, so they can't see any cohort until you add a role.</p>
     {% endif %}
     <p>You can deactivate them again at any time.</p>
-</c-modal-body>
-
-<c-modal-footer focus_cancel="true">
-    <form hx-post="{{ confirm_url }}"
-          hx-target="#app-modal-body"
-          hx-swap="innerHTML"
-          hx-disabled-elt="find button[type='submit']">
-        <input type="hidden" name="user" value="{{ staff_member.pk }}">
-        <c-button type="submit" variant="primary" loading="true" loading_text="Reactivating…">
-            Reactivate
-        </c-button>
-    </form>
-</c-modal-footer>
+{% endblock body %}

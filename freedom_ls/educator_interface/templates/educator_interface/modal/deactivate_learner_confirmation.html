@@ -1,26 +1,15 @@
+{% extends "panel_framework/modal/confirm.html" %}
 {% comment %}
-The modal fragment a DeactivateLearnerAction's GET returns. Context: learner,
-on_default_organisation, action_url.
+The dialog a DeactivateLearnerAction's GET returns. Context: learner,
+on_default_organisation.
 {% endcomment %}
-<c-modal-header>Deactivate {{ learner.user.display_name }}?</c-modal-header>
 
-<form hx-post="{{ action_url }}"
-      hx-target="#app-modal-body"
-      hx-swap="innerHTML"
-      hx-disabled-elt="find button[type='submit']">
+{% block title %}Deactivate {{ learner.user.display_name }}?{% endblock title %}
 
-    <c-modal-body>
-        <p>{{ learner.user.display_name }} loses access to this organisation's courses.</p>
-        <p>Their cohorts, registrations and progress are kept and return when you reactivate them.</p>
-        {% if on_default_organisation %}
-            <p>If they self-register for an open course, they are reactivated.</p>
-        {% endif %}
-    </c-modal-body>
-    {% include "panel_framework/partials/reason_field.html" %}
-
-    <c-modal-footer focus_cancel="true">
-        <c-button type="submit" variant="primary" loading="true" loading_text="Deactivating…">
-            Deactivate
-        </c-button>
-    </c-modal-footer>
-</form>
+{% block body %}
+    <p>{{ learner.user.display_name }} loses access to this organisation's courses.</p>
+    <p>Their cohorts, registrations and progress are kept and return when you reactivate them.</p>
+    {% if on_default_organisation %}
+        <p>If they self-register for an open course, they are reactivated.</p>
+    {% endif %}
+{% endblock body %}

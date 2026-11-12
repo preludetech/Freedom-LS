@@ -18,6 +18,7 @@ from django.template.loader import render_to_string
 from django.test import RequestFactory
 
 from freedom_ls.panel_framework.actions import (
+    ConfirmAction,
     CreateInstanceAction,
     DeleteAction,
     EditAction,
@@ -957,7 +958,9 @@ def test_delete_action_render_explains_a_protected_instance(
     assert "cannot be deleted" in html
     assert "stub protected child" in html.lower()
     # No live delete affordance: the submit would only fail the same way.
-    assert "hx-delete" not in html
+    document = lxml.html.fromstring(html)
+    assert not document.cssselect("button[type='submit']")
+    assert document.cssselect("[data-error-summary][tabindex='-1'][role='alert']")
 
 
 @pytest.mark.django_db
@@ -976,6 +979,74 @@ def test_delete_action_handle_submit_refuses_a_protected_instance(
     assert response.status_code == 422
     assert "cannot be deleted" in response.content.decode()
     assert StubModel.objects.filter(pk=item.pk).exists()
+
+
+@pytest.mark.django_db
+def test_a_refused_delete_renders_the_reason_as_the_error_summary(
+    mock_site_context: Site,
+) -> None:
+    item = make_stub(name="refused-summary")
+    make_stub_protected_child(parent=item)
+    request = RequestFactory().post("/")
+    request.user = make_staff_user()
+
+    response = DeleteAction(success_url="/items").handle_submit(_ctx(request, item))
+
+    document = lxml.html.fromstring(response.content.decode())
+    (summary,) = document.cssselect("[data-error-summary]")
+    assert summary.get("tabindex") == "-1"
+    assert summary.get("role") == "alert"
+    assert "cannot be deleted" in summary.text_content()
+
+
+@pytest.mark.django_db
+def test_delete_action_deletes_on_post(mock_site_context: Site) -> None:
+    item = make_stub(name="post-delete")
+    request = RequestFactory().post("/")
+    request.user = make_staff_user()
+
+    response = DeleteAction(success_url="/items").handle_submit(_ctx(request, item))
+
+    assert response.status_code == 204
+    assert not StubModel.objects.filter(pk=item.pk).exists()
+
+
+class StubReasonDelete(ReasonMixin, DeleteAction):
+    pass
+
+
+@pytest.mark.django_db
+def test_a_reason_delete_carries_the_reason_to_the_context(
+    mock_site_context: Site,
+) -> None:
+    item = make_stub(name="reason-delete")
+    seen: list[str] = []
+
+    class RecordingDelete(StubReasonDelete):
+        def before_delete(self, ctx: PanelContext, instance: Model) -> None:
+            seen.append(ctx.reason)
+
+    request = RequestFactory().post("/", {"reason": " Merged "})
+    request.user = make_staff_user()
+
+    response = RecordingDelete(success_url="/items").handle_submit(_ctx(request, item))
+
+    assert response.status_code == 204
+    assert seen == ["Merged"]
+
+
+@pytest.mark.django_db
+def test_a_blocked_reason_delete_keeps_the_reason_field_out_of_the_dialog(
+    mock_site_context: Site,
+) -> None:
+    item = make_stub(name="blocked-reason-delete")
+    make_stub_protected_child(parent=item)
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+
+    html = _render(StubReasonDelete(success_url="/items"), _ctx(request, item))
+
+    assert not lxml.html.fromstring(html).cssselect("input[name='reason']")
 
 
 @pytest.mark.django_db
@@ -1017,7 +1088,7 @@ def test_a_get_of_a_delete_actions_url_returns_its_fragment(
     assert isinstance(response, HttpResponse)
     content = response.content.decode()
     assert 'id="app-modal-title"' in content
-    assert "hx-delete=" in content
+    assert "hx-post=" in content
 
 
 @pytest.mark.django_db
@@ -1042,6 +1113,156 @@ def test_the_delete_fragment_lists_cancel_then_delete_after_its_body(
         if el.text_content().strip()
     ]
     assert names[-2:] == ["Cancel", "Delete"]
+    assert document.cssselect("form footer button[type='submit']")
+
+
+# -- ConfirmAction tests -------------------------------------------------
+
+
+class StubConfirmAction(ConfirmAction):
+    label = "Archive"
+    action_name = "stub_confirm"
+    confirm_variant = "error"
+    loading_text = "Archiving…"
+    template_name = "panel_framework/test_confirm_dialog.html"
+
+    def get_hidden_fields(self, ctx: PanelContext) -> dict[str, str]:
+        return {"row": "7"}
+
+    def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
+        return {
+            "refusal": ctx.request.GET.get("refusal", ""),
+            "confirm_disabled_reason": ctx.request.GET.get("disabled", ""),
+            "page_url": ctx.request.GET.get("page_url", ""),
+        }
+
+
+class StubConfirmReasonAction(ReasonMixin, StubConfirmAction):
+    pass
+
+
+def _render_confirm(action: ConfirmAction, **query: str) -> lxml.html.HtmlElement:
+    request = RequestFactory().get("/", query)
+    request.user = make_staff_user()
+    return lxml.html.fromstring(_render(action, _ctx(request)))
+
+
+@pytest.mark.django_db
+def test_a_confirm_dialog_renders_its_title_body_and_hidden_fields(
+    mock_site_context: Site,
+) -> None:
+    document = _render_confirm(StubConfirmAction())
+
+    assert document.get_element_by_id("app-modal-title").text_content() == "Archive"
+    assert "Archive this item?" in document.text_content()
+    (hidden,) = document.cssselect("form input[type='hidden'][name='row']")
+    assert hidden.get("value") == "7"
+    assert document.cssselect("input[name='csrfmiddlewaretoken']")
+
+
+@pytest.mark.django_db
+def test_a_confirm_dialog_has_one_confirm_button_inside_a_form_wrapping_body_and_footer(
+    mock_site_context: Site,
+) -> None:
+    document = _render_confirm(StubConfirmAction())
+
+    (form,) = document.cssselect("form[hx-post='/test/__actions/stub_confirm']")
+    assert form.get("action") == "/test/__actions/stub_confirm"
+    assert form.cssselect("#stub-confirm-body")
+    assert form.cssselect("footer")
+    (confirm,) = document.cssselect("button[type='submit']")
+    assert confirm.cssselect("span")[0].text_content().strip() == "Archive"
+    assert confirm.get("data-variant") == "error"
+    assert "Archiving…" in confirm.text_content()
+
+
+@pytest.mark.django_db
+def test_a_confirm_dialog_with_a_reason_holds_the_field_inside_its_body(
+    mock_site_context: Site,
+) -> None:
+    document = _render_confirm(StubConfirmReasonAction())
+
+    (field,) = document.cssselect("form input[name='reason']")
+    body = document.cssselect("#stub-confirm-body")[0].getparent()
+    assert body in field.iterancestors()
+
+
+@pytest.mark.django_db
+def test_a_confirm_dialog_shows_a_refusal_as_an_error_notice(
+    mock_site_context: Site,
+) -> None:
+    document = _render_confirm(StubConfirmAction(), refusal="Not open any more.")
+
+    (notice,) = document.cssselect("[data-error-summary]")
+    assert notice.get("role") == "alert"
+    assert notice.get("tabindex") == "-1"
+    assert "Not open any more." in notice.text_content()
+    assert not _render_confirm(StubConfirmAction()).cssselect("[data-error-summary]")
+
+
+@pytest.mark.django_db
+def test_a_disabled_confirm_is_named_by_a_visible_reason_beside_the_footer(
+    mock_site_context: Site,
+) -> None:
+    document = _render_confirm(StubConfirmAction(), disabled="Pick one first.")
+
+    (confirm,) = document.cssselect("footer button[type='submit']")
+    assert confirm.get("disabled") is not None
+    reason = document.get_element_by_id(confirm.get("aria-describedby"))
+    assert reason.text_content() == "Pick one first."
+    assert "sr-only" not in (reason.get("class") or "")
+    assert document.cssselect("footer #confirm-disabled-reason")
+
+
+@pytest.mark.django_db
+def test_an_enabled_confirm_has_no_description_and_is_not_disabled(
+    mock_site_context: Site,
+) -> None:
+    document = _render_confirm(StubConfirmAction())
+
+    (confirm,) = document.cssselect("footer button[type='submit']")
+    assert confirm.get("disabled") is None
+    assert confirm.get("aria-describedby") is None
+
+
+@pytest.mark.django_db
+def test_a_confirm_dialog_given_a_page_url_links_close_and_cancel_back_to_it(
+    mock_site_context: Site,
+) -> None:
+    document = _render_confirm(StubConfirmAction(), page_url="/test/page")
+
+    links = [
+        el.get("href")
+        for el in document.iter("a")
+        if el.get("aria-label") == "Close" or el.text_content().strip() == "Cancel"
+    ]
+    assert links == ["/test/page", "/test/page"]
+
+
+@pytest.mark.django_db
+def test_a_confirm_dialog_without_a_page_url_closes_through_the_dialog(
+    mock_site_context: Site,
+) -> None:
+    document = _render_confirm(StubConfirmAction())
+
+    assert not document.cssselect("header a, footer a")
+    assert document.cssselect("footer button[x-on\\:click='cancel']")
+
+
+@pytest.mark.django_db
+def test_a_confirm_action_refuses_with_a_message_dialog(
+    mock_site_context: Site,
+) -> None:
+    request = RequestFactory().post("/")
+    request.user = make_staff_user()
+
+    response = StubConfirmAction().refuse(
+        _ctx(request), "Nothing changed.", title="Already done"
+    )
+
+    assert response.status_code == 422
+    assert "Already done" in response.content.decode()
+    assert "Nothing changed." in response.content.decode()
 
 
 # -- Read-only PanelAction tests ------------------------------------------
@@ -1086,7 +1307,7 @@ def test_a_form_fragment_can_leave_its_first_field_without_autofocus() -> None:
 # -- ReasonMixin tests ---------------------------------------------------
 
 
-class StubReasonAction(ReasonMixin):
+class StubReasonAction(ReasonMixin, ConfirmAction):
     label = "Archive"
     action_name = "stub_reason"
     template_name = "panel_framework/test_reason_dialog.html"

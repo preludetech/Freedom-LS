@@ -1,10 +1,10 @@
 {% comment %}
 The confirmation text. Context: error, notice, wording (sentence, skips,
 consequences), count, noun. Without wording, it falls back to the plain count.
+An error replaces the text; it is shown once, beside the footer, as the reason
+the confirm button is disabled.
 {% endcomment %}
-{% if error %}
-    <c-panel-notice tone="error">{{ error }}</c-panel-notice>
-{% else %}
+{% if not error %}
     {% if notice %}
         <c-panel-notice tone="warning">{{ notice }}</c-panel-notice>
     {% endif %}

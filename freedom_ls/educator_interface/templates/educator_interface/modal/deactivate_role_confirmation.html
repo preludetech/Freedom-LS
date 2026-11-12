@@ -1,47 +1,33 @@
+{% extends "panel_framework/modal/confirm.html" %}
 {% comment %}
-The modal fragment a DeactivateRoleAction's GET returns. Context: staff_member, entry,
-description (the role's description), full_scope (every scope name being lost, in
-prose), stays (the cohorts outside the grantor's reach, in prose, or empty), keeps
-(a prose list), is_self (the viewer is removing their own role, so the copy
-speaks to them), last_role (nothing else is left in this organisation),
-last_organisation_admin, grantor_is_site_level, target_is_site_level,
-confirm_url.
+The dialog a DeactivateRoleAction's GET returns. Context: staff_member, entry,
+description (the role's description), full_scope (every scope name being lost,
+in prose), stays (the cohorts outside the grantor's reach, in prose, or empty),
+keeps (a prose list), is_self (the viewer is removing their own role, so the
+copy speaks to them), last_role (nothing else is left in this organisation),
+last_organisation_admin, grantor_is_site_level, target_is_site_level.
 {% endcomment %}
-<c-modal-header>{% if is_self %}Deactivate your {{ entry.display_name }} role?{% else %}Deactivate {{ entry.display_name }} for {{ staff_member.display_name }}?{% endif %}</c-modal-header>
 
-<form hx-post="{{ confirm_url }}"
-      hx-target="#app-modal-body"
-      hx-swap="innerHTML"
-      hx-disabled-elt="find button[type='submit']">
-    <input type="hidden" name="user" value="{{ staff_member.pk }}">
-    <input type="hidden" name="role" value="{{ entry.role }}">
+{% block title %}{% if is_self %}Deactivate your {{ entry.display_name }} role?{% else %}Deactivate {{ entry.display_name }} for {{ staff_member.display_name }}?{% endif %}{% endblock title %}
 
-    <c-modal-body>
-        {% if target_is_site_level %}
-            <p>{% if is_self %}Your{% else %}Their{% endif %} site-level access is unaffected.{% if last_role %} {% if is_self %}You stay{% else %}They stay{% endif %} on this organisation's staff list with no roles here.{% endif %}</p>
-        {% else %}
-            <p>{% if is_self %}You{% else %}They{% endif %} lose {{ entry.display_name }} on {{ full_scope }}: {{ description }}.</p>
-        {% endif %}
-        {% if stays %}
-            <p>{{ entry.display_name }} on {{ stays }} is outside the cohorts you can give, so it stays.</p>
-        {% endif %}
-        <p>{% if is_self %}You{% else %}They{% endif %} keep {{ keeps }}.</p>
-        {% if is_self %}
-            <p>Someone who can give this role can give it back to you.</p>
-        {% else %}
-            <p>You can give the role again later.</p>
-        {% endif %}
-        {% if last_organisation_admin and grantor_is_site_level %}
-            <c-callout level="warning">
-                {{ staff_member.display_name }} is the only organisation admin. After this, nobody in the organisation can administer it until you add one.
-            </c-callout>
-        {% endif %}
-    </c-modal-body>
-    {% include "panel_framework/partials/reason_field.html" %}
-
-    <c-modal-footer focus_cancel="true">
-        <c-button type="submit" variant="primary" loading="true" loading_text="Deactivating…">
-            Deactivate
-        </c-button>
-    </c-modal-footer>
-</form>
+{% block body %}
+    {% if target_is_site_level %}
+        <p>{% if is_self %}Your{% else %}Their{% endif %} site-level access is unaffected.{% if last_role %} {% if is_self %}You stay{% else %}They stay{% endif %} on this organisation's staff list with no roles here.{% endif %}</p>
+    {% else %}
+        <p>{% if is_self %}You{% else %}They{% endif %} lose {{ entry.display_name }} on {{ full_scope }}: {{ description }}.</p>
+    {% endif %}
+    {% if stays %}
+        <p>{{ entry.display_name }} on {{ stays }} is outside the cohorts you can give, so it stays.</p>
+    {% endif %}
+    <p>{% if is_self %}You{% else %}They{% endif %} keep {{ keeps }}.</p>
+    {% if is_self %}
+        <p>Someone who can give this role can give it back to you.</p>
+    {% else %}
+        <p>You can give the role again later.</p>
+    {% endif %}
+    {% if last_organisation_admin and grantor_is_site_level %}
+        <c-panel-notice tone="warning">
+            {{ staff_member.display_name }} is the only organisation admin. After this, nobody in the organisation can administer it until you add one.
+        </c-panel-notice>
+    {% endif %}
+{% endblock body %}

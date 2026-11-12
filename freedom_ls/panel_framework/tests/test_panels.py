@@ -492,7 +492,7 @@ def test_a_delete_actions_trigger_url_returns_its_confirmation_fragment(
 
     html = _as_a_user_permitted_to_delete(path_string).content.decode()
 
-    assert f'hx-delete="{DELETE_URL}"' in html
+    assert f'hx-post="{DELETE_URL}"' in html
 
 
 def test_a_delete_action_from_a_panel_deletes_on_submit(

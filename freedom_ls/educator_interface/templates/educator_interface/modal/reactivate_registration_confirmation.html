@@ -1,25 +1,12 @@
+{% extends "panel_framework/modal/confirm.html" %}
 {% comment %}
-The modal fragment a ReactivateRegistrationAction's GET returns. Context:
-learner, registration, course, confirm_url, and refusal on a 422 re-render.
+The dialog a ReactivateRegistrationAction's GET returns. Context: learner,
+registration, course, and refusal on a 422 re-render.
 {% endcomment %}
-<c-modal-header>Reactivate {{ learner.user.display_name }}'s registration for {{ course }}?</c-modal-header>
 
-<c-modal-body>
-    {% if refusal %}
-        <p role="alert" class="rounded-md border border-error/20 bg-error/10 p-3 text-error">{{ refusal }}</p>
-    {% endif %}
+{% block title %}Reactivate {{ learner.user.display_name }}'s registration for {{ course }}?{% endblock title %}
+
+{% block body %}
     <p>They get access to {{ course }} again, with their earlier progress.</p>
     <p>You can deactivate the registration again at any time.</p>
-</c-modal-body>
-
-<c-modal-footer focus_cancel="true">
-    <form hx-post="{{ confirm_url }}"
-          hx-target="#app-modal-body"
-          hx-swap="innerHTML"
-          hx-disabled-elt="find button[type='submit']">
-        <input type="hidden" name="registration" value="{{ registration.pk }}">
-        <c-button type="submit" variant="primary" loading="true" loading_text="Reactivating…">
-            Reactivate
-        </c-button>
-    </form>
-</c-modal-footer>
+{% endblock body %}

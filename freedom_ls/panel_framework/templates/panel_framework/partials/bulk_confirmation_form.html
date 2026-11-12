@@ -1,5 +1,5 @@
 {% if confirm_disabled_reason %}
-    <p id="bulk-confirm-reason" class="sr-only">{{ confirm_disabled_reason }}</p>
+    <p id="bulk-confirm-reason" class="text-sm text-muted">{{ confirm_disabled_reason }}</p>
 {% endif %}
 {% querystring request.GET as qs %}
     <form method="post"
