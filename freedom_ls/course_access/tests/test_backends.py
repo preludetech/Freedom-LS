@@ -23,13 +23,19 @@ from freedom_ls.course_access.backends import (
     VisibilityEnforcingBackend,
 )
 from freedom_ls.course_access.loader import get_course_access_backend
+from freedom_ls.deadlines.actions import extend_deadline
 from freedom_ls.deadlines.factories import (
     CohortDeadlineOverrideFactory,
     CourseDeadlineConfigFactory,
     CoursePauseFactory,
     LearnerDeadlineOverrideFactory,
 )
-from freedom_ls.deadlines.models import AfterAccessEnded, CoursePause, DeadlineKind
+from freedom_ls.deadlines.models import (
+    AfterAccessEnded,
+    CoursePause,
+    DeadlineKind,
+    ExtensionTarget,
+)
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -478,6 +484,26 @@ def test_loader_wraps_the_deadline_backend_inside_the_visibility_backend(
 
 @pytest.mark.django_db
 class TestDeadlineEnforcingBackendGetAccess:
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_a_time_limit_extension_after_access_ended_restores_access(
+        self, mock_site_context
+    ):
+        course = _time_limited_course()
+        user = _registered_learner(course)
+        record = course_progress_record(course, user)
+        backend = _deadline_backend()
+        assert backend.get_access(user=user, course=course).can_access_content is False
+
+        extend_deadline(
+            record,
+            actor=UserFactory(),
+            reason="Was ill",
+            target_kind=ExtensionTarget.TIME_LIMIT,
+            days=200,
+        )
+
+        assert backend.get_access(user=user, course=course).can_access_content is True
+
     @time_machine.travel(AFTER_END, tick=False)
     def test_an_ended_learner_loses_content_and_every_affordance(
         self, mock_site_context

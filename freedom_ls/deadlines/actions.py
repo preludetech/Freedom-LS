@@ -16,14 +16,26 @@ from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.models import REASON_LENGTH
 from freedom_ls.base.date_display import DATE_DISPLAY_FORMAT
 from freedom_ls.comms.notify import raise_notification
-from freedom_ls.deadlines.models import CoursePause
+from freedom_ls.content_engine.models import ContentCollectionItem
+from freedom_ls.deadlines.models import (
+    MAX_EXTENSION_DAYS,
+    CoursePause,
+    DeadlineExtension,
+    ExtensionTarget,
+)
 from freedom_ls.deadlines.queries import open_pause
+from freedom_ls.deadlines.resolver import (
+    CourseDeadlines,
+    ResolvedDeadline,
+    course_deadlines,
+)
 from freedom_ls.learner_management.learner_actions import record_learner_entry
 from freedom_ls.learner_management.utils import (
     fire_webhook_event_on_commit,
     learner_webhook_payload,
 )
 from freedom_ls.learner_progress.models import CourseProgress
+from freedom_ls.learner_progress.queries import completed_collection_item_ids
 from freedom_ls.site_aware_models.time_zones import site_time_zone
 
 
@@ -275,3 +287,148 @@ def _record_resumed(
             "Your educator resumed %(course_title)s. Your deadlines moved by %(days)s."
         )
     _notify(locked, actor, "course.resumed", {"summary": summary % values})
+
+
+def extend_deadline(
+    record: CourseProgress,
+    *,
+    actor: User | None,
+    reason: str,
+    target_kind: str,
+    collection_item: ContentCollectionItem | None = None,
+    days: int | None = None,
+    requested_date: date | None = None,
+    now: datetime | None = None,
+) -> DeadlineExtension:
+    """Add days to one deadline, the course time limit or every unmet deadline of the
+    record, given as a number of days or as the date the target should fall on. Allowed
+    while paused and after access ended: a time-limit extension that lifts the access end
+    past `now` restores access."""
+    now = now or timezone.now()
+    with transaction.atomic():
+        locked = _locked(record)
+        reason = _check(locked, reason)
+        if (days is None) == (requested_date is None):
+            raise DeadlineActionError(_("Give either days or a date."))
+        if target_kind == ExtensionTarget.COURSE and requested_date is not None:
+            raise DeadlineActionError(_("Whole course takes days, not a date."))
+        if (target_kind == ExtensionTarget.COLLECTION_ITEM) != (
+            collection_item is not None
+        ):
+            raise DeadlineActionError(_("Pick an item."))
+        before = course_deadlines(locked, now=now)
+        target = _extension_target(locked, before, target_kind, collection_item)
+        if requested_date is not None and target is not None and target.due_at:
+            days = (requested_date - target.due_at.astimezone(before.zone).date()).days
+            if days < 1:
+                raise DeadlineActionError(_("Pick a date after the current deadline."))
+        if days is None or not 1 <= days <= MAX_EXTENSION_DAYS:
+            raise DeadlineActionError(
+                _("Give between 1 and %(max)d days.") % {"max": MAX_EXTENSION_DAYS}
+            )
+        extension = DeadlineExtension._base_manager.create(
+            site=locked.site,
+            course_progress=locked,
+            target_kind=target_kind,
+            collection_item=collection_item,
+            days=days,
+            requested_date=requested_date,
+            reason=reason,
+            set_by=actor,
+        )
+        after = course_deadlines(locked, now=now)
+        due_before: datetime | None = None
+        due_after: datetime | None = None
+        if target_kind == ExtensionTarget.COLLECTION_ITEM and collection_item:
+            due_before = before.items[collection_item.pk].due_at
+            due_after = after.items[collection_item.pk].due_at
+        elif target_kind == ExtensionTarget.TIME_LIMIT:
+            due_before = before.time_limit.due_at
+            due_after = after.time_limit.due_at
+        item_child = collection_item.child if collection_item else None
+        item_title = item_child.title if item_child else None
+        record_learner_entry(
+            locked.learner,
+            "deadline.extended",
+            actor,
+            reason=reason,
+            subjects=[locked.course],
+            details={
+                "course": locked.course.title,
+                "target_kind": target_kind,
+                "collection_item": item_title,
+                "days": days,
+                "due_at_before": due_before.isoformat() if due_before else None,
+                "due_at_after": due_after.isoformat() if due_after else None,
+            },
+        )
+        fire_webhook_event_on_commit(
+            "deadline.extended",
+            {
+                **_course_payload(locked),
+                "extension_id": str(extension.pk),
+                "target_kind": target_kind,
+                "collection_item_id": (
+                    str(collection_item.pk) if collection_item else None
+                ),
+                "days": days,
+                "due_at_before": due_before.isoformat() if due_before else None,
+                "due_at_after": due_after.isoformat() if due_after else None,
+                "actor_id": str(actor.pk) if actor else None,
+            },
+            locked.site,
+        )
+        values = {
+            "item": item_title,
+            "course": locked.course.title,
+            "days": _days_text(days),
+            "date": (
+                formats.date_format(
+                    due_after.astimezone(after.zone).date(), DATE_DISPLAY_FORMAT
+                )
+                if due_after
+                else ""
+            ),
+        }
+        if target_kind == ExtensionTarget.COLLECTION_ITEM:
+            summary = _(
+                "Your educator extended the deadline for %(item)s in %(course)s "
+                "to %(date)s."
+            )
+        elif target_kind == ExtensionTarget.TIME_LIMIT:
+            summary = _(
+                "Your educator extended your time limit for %(course)s to %(date)s."
+            )
+        else:
+            summary = _("Your educator moved your deadlines in %(course)s by %(days)s.")
+        _notify(locked, actor, "deadline.extended", {"summary": summary % values})
+    return extension
+
+
+def _extension_target(
+    record: CourseProgress,
+    deadlines: CourseDeadlines,
+    target_kind: str,
+    collection_item: ContentCollectionItem | None,
+) -> ResolvedDeadline | None:
+    """The deadline an extension moves, refusing a target that has none. None for the
+    whole course, which has no single deadline to read a date from."""
+    if target_kind == ExtensionTarget.COLLECTION_ITEM and collection_item:
+        item = deadlines.items.get(collection_item.pk)
+        if item is None or item.due_at is None:
+            raise DeadlineActionError(_("This item has no deadline"))
+        return item
+    if target_kind == ExtensionTarget.TIME_LIMIT:
+        if deadlines.time_limit.due_at is None:
+            raise DeadlineActionError(_("This course has no time limit"))
+        return deadlines.time_limit
+    if target_kind != ExtensionTarget.COURSE:
+        raise DeadlineActionError(_("Pick what to extend."))
+    done = completed_collection_item_ids(record)
+    has_unmet = any(
+        resolved.due_at is not None and item_id not in done
+        for item_id, resolved in deadlines.items.items()
+    )
+    if deadlines.time_limit.due_at is None and not has_unmet:
+        raise DeadlineActionError(_("This course has no deadlines to move."))
+    return None
