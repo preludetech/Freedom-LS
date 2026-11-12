@@ -19,6 +19,8 @@ Exit dialog uses x-data="examExitDialog" scoped to the top-bar area.
 All Alpine wiring uses registered method names only (CSP build — zero inline expressions).
 {% endcomment %}
 
+{% block head_title %}{{ form.title }} — {{ course.title }} — {{ site_name }}{% endblock head_title %}
+
 {% comment %}
 Page dots partial — driven by page_links context.
 Accessible/visited pages render as <a>; locked pages as non-link <span>.
