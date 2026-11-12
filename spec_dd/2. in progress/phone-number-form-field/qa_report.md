@@ -94,7 +94,7 @@ Actual: Both accepted and stored as +2782123. phonenumbers 9.0.43 metadata marks
 
 | Bug | Title | Status |
 |---|---|---|
-| B1 | Short South African mobile-range numbers are accepted as valid | **UNRESOLVED** (reason: product decision. The spec chose `is_valid_number`, which accepts these numbers; the QA plan expects them refused. Choosing between the spec and the QA plan needs a human.) |
+| B1 | Short South African mobile-range numbers are accepted as valid | **RESOLVED** (decision: keep the library's verdict, as the spec says. No stricter rule: one generic enough for every country would refuse real numbers in variable-length countries such as Austria and Germany. Test 4 steps 4 and 6 now use `82 12` and `+27 82 12`, which the library refuses.) |
 
 ## General notes
 
