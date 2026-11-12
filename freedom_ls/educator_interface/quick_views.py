@@ -22,6 +22,7 @@ from freedom_ls.educator_interface.events import (
 from freedom_ls.educator_interface.messaging import own_conversation_with
 from freedom_ls.educator_interface.paths import interface_path
 from freedom_ls.educator_interface.staff import current_role_entries
+from freedom_ls.educator_interface.user_display import email_below_name
 from freedom_ls.learner_management.models import Cohort, CohortMembership, Learner
 from freedom_ls.learner_management.queries import (
     cohort_learner_count,
@@ -65,7 +66,7 @@ class LearnerQuickView(QuickView):
         return cast(Learner, self.instance).user.display_name
 
     def get_subtitle(self) -> str:
-        return cast(Learner, self.instance).user.email_below_name
+        return email_below_name(cast(Learner, self.instance).user)
 
     def get_context_data(self) -> dict[str, object]:
         learner = cast(Learner, self.instance)
@@ -144,7 +145,7 @@ class StaffQuickView(QuickView):
         return cast("User", self.instance).display_name
 
     def get_subtitle(self) -> str:
-        return cast("User", self.instance).email_below_name
+        return email_below_name(cast("User", self.instance))
 
     def get_context_data(self) -> dict[str, object]:
         request = cast("OrganisationScopedRequest", self.request)

@@ -69,6 +69,7 @@ from freedom_ls.educator_interface.staff import (
     RoleEntry,
     current_role_entries,
 )
+from freedom_ls.educator_interface.user_display import email_below_name
 from freedom_ls.learner_management.capabilities import _active_role_assignments, can
 from freedom_ls.learner_management.learner_actions import (
     AddLearnerResult,
@@ -1922,7 +1923,7 @@ class AddStaffMemberAction(PanelAction):
                 "pk": user.pk,
                 "display_name": user.display_name,
                 "email": user.email,
-                "email_below_name": user.email_below_name,
+                "email_below_name": email_below_name(user),
             }
             for user in fetched[: self.SEARCH_RESULT_LIMIT]
         ]
