@@ -141,7 +141,7 @@ starts out sending one email per event and has its defaults changed under it lat
 - `spec_dd/1. next/user-communication/design_brief.md` (sections 3 and 4): the brief it was drawn from.
 - `spec_dd/1. next/user-communication-1-notifications-core/`: the notification layer, the category
   registry and the notification centre this spec plugs into.
-- `spec_dd/1. next/retry-sent-emails/1. spec.md`: the `OutboundEmail` transport under every email
+- `spec_dd/3. done/*_retry-sent-emails/1. spec.md`: the `OutboundEmail` transport under every email
   this spec sends, the wording for the queued-backend deployment requirement, and the housekeeping
   sweeps and cadence wording to follow.
 - `spec_dd/3. done/2026-06-15_00:19_email-styling/`: themed `base_email.html` and the branding
