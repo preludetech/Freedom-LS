@@ -6,7 +6,7 @@ allowed-tools: Read, Grep, Glob
 
 # File storage
 
-FreedomLS splits object storage into three buckets by sensitivity and six `STORAGES` aliases by
+FreedomLS splits object storage into three buckets by sensitivity and seven `STORAGES` aliases by
 what the settings layer has to say differently about each kind of file. A bucket exists only where
 the storage provider forces one; everything finer than that is a key prefix.
 
@@ -31,7 +31,7 @@ credential should reach the least. Course media is the one bucket whose read pol
 later, since it holds no personal data and is rebuildable from the content repository; keeping it
 out of the user-data bucket is what leaves that decision open.
 
-## The six aliases
+## The seven aliases
 
 | Alias | Bucket | Key prefix | Consumer |
 |---|---|---|---|
@@ -39,7 +39,8 @@ out of the user-data bucket is what leaves that decision open.
 | `certificates` | Public | `certificates/` | None yet |
 | `course_media` | Course media | none, the bucket is its own namespace | `content_engine.File.file` |
 | `reports` | User data | `cohort_reports/` | `GeneratedReport.file` |
-| `user_uploads` | User data | `user_uploads/` | None yet |
+| `user_uploads` | User data | `user_uploads/` | `QuestionAnswerFile.file` |
+| `profile_pictures` | User data | `profile_pictures/` | `User.profile_picture` |
 | `default` | Reserved, no bucket created behind it | none | Nothing, deliberately |
 
 `default` is not an option for a file field. Nothing is created behind that name and no credential
@@ -60,8 +61,8 @@ Work through this in order:
 ## Namespace your `upload_to`
 
 Two aliases sharing a bucket must produce disjoint keys, because the split into buckets is coarser
-than the split into aliases. `public` and `certificates` share a bucket; `reports` and
-`user_uploads` share a bucket. A bare `upload_to="uploads/"` looks safe in development, where every
+than the split into aliases. `public` and `certificates` share a bucket; `reports`,
+`user_uploads` and `profile_pictures` share a bucket. A bare `upload_to="uploads/"` looks safe in development, where every
 alias resolves to its own `MEDIA_ROOT` subtree, and only collides in production, where two aliases
 land in the same bucket. Give every `upload_to` a prefix scoped to its own alias
 (`organisation_logo_upload_to` returning `organisations/{pk}{ext}` is the existing pattern to
@@ -114,5 +115,5 @@ Two rules apply to features that do not exist yet but will use these aliases:
 - **Certificates.** In the public bucket, the object key is the whole access control. A
   certificate's object key must be derived from a uuid, never from anything guessable such as a
   learner id or sequence number.
-- **User uploads.** Every object under `user_uploads/` must be prefixed by the uploading user, so a
+- **User uploads and profile pictures.** Every object under `user_uploads/` or `profile_pictures/` must be prefixed by the owning user, so a
   right-to-erasure request becomes a scoped delete rather than a bucket-wide scan.
