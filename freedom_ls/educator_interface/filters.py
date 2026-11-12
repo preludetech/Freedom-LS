@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
 from functools import reduce
 from operator import or_
 from typing import TYPE_CHECKING, cast
 
 from django.db.models import Q, QuerySet
 from django.http import HttpRequest
-from django.utils import timezone
 
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.actions import audit_actions, audit_actions_by_group
@@ -41,26 +39,6 @@ if TYPE_CHECKING:
     from freedom_ls.educator_interface.views import OrganisationScopedRequest
 
 
-class ShowInactiveFilter(TableFilter):
-    """A toggle that widens a list to include inactive rows.
-
-    The table, not this filter, does the work: a filter can only narrow the
-    queryset it is given, so the table stops excluding inactive rows when this
-    toggle is set.
-    """
-
-    def __init__(self, key: str, label: str) -> None:
-        super().__init__(key, label, lookup="")
-
-    def get_choices(self, request: HttpRequest) -> list[tuple[str, str]]:
-        return [("1", self.label)]
-
-    def apply(
-        self, request: HttpRequest, queryset: QuerySet, values: list[str]
-    ) -> QuerySet:
-        return queryset
-
-
 class VisibleCourseFilter(RelatedChoiceFilter):
     """Narrows cohorts to those holding an active registration for a course
     the educator can see."""
@@ -90,7 +68,6 @@ class LearnerStatusFilter(ChoiceFilter):
         super().__init__(
             "status",
             "Status",
-            lookup="",
             choices=LearnerStatus.choices,
             default=(LearnerStatus.ACTIVE, LearnerStatus.PENDING),
             always_shown=True,
@@ -163,9 +140,7 @@ class StaffRoleFilter(ChoiceFilter):
     widget = "select"
 
     def __init__(self) -> None:
-        super().__init__(
-            "role", "Role", lookup="", default=(self.ALL,), always_shown=True
-        )
+        super().__init__("role", "Role", default=(self.ALL,), always_shown=True)
 
     def get_choices(self, request: HttpRequest) -> list[tuple[str, str]]:
         if not may_see_staff_roles(request):
@@ -216,7 +191,7 @@ class AuditActorFilter(TableFilter):
     multiple = False
 
     def __init__(self) -> None:
-        super().__init__("who", "Who", lookup="")
+        super().__init__("who", "Who")
 
     def get_choices(self, request: HttpRequest) -> list[tuple[str, str]]:
         scoped = cast("OrganisationScopedRequest", request)
@@ -258,36 +233,3 @@ class AuditActionFilter(ChoiceFilter):
             (group, [(action.code, action.label) for action in actions])
             for group, actions in audit_actions_by_group()
         ]
-
-
-class AuditPeriodFilter(ChoiceFilter):
-    """Narrows audit entries to a preset number of calendar days ending
-    today, in the project's time zone: "Last 7 days" is today and the six
-    days before it."""
-
-    widget = "select"
-    multiple = False
-    DAYS = {"today": 1, "7d": 7, "30d": 30, "90d": 90, "12m": 365}
-
-    def __init__(self) -> None:
-        super().__init__(
-            "when",
-            "When",
-            lookup="created_at",
-            choices=[
-                ("today", "Today"),
-                ("7d", "Last 7 days"),
-                ("30d", "Last 30 days"),
-                ("90d", "Last 90 days"),
-                ("12m", "Last 12 months"),
-            ],
-        )
-
-    def apply(
-        self, request: HttpRequest, queryset: QuerySet, values: list[str]
-    ) -> QuerySet:
-        midnight = timezone.localtime(timezone.now()).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
-        start = midnight - timedelta(days=self.DAYS[values[0]] - 1)
-        return queryset.filter(created_at__gte=start)

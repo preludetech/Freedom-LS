@@ -118,11 +118,9 @@ from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
 from freedom_ls.educator_interface.filters import (
     AuditActionFilter,
     AuditActorFilter,
-    AuditPeriodFilter,
     LearnerCohortFilter,
     LearnerCourseFilter,
     LearnerStatusFilter,
-    ShowInactiveFilter,
     StaffRoleFilter,
     VisibleCourseFilter,
     may_see_staff_roles,
@@ -212,7 +210,7 @@ from freedom_ls.panel_framework.actions import (
 from freedom_ls.panel_framework.bulk_actions import BulkAction
 from freedom_ls.panel_framework.config import config as panel_framework_config
 from freedom_ls.panel_framework.context import PanelContext
-from freedom_ls.panel_framework.filters import TableFilter
+from freedom_ls.panel_framework.filters import PeriodFilter, TableFilter, ToggleFilter
 from freedom_ls.panel_framework.models import RunStatus
 from freedom_ls.panel_framework.panels import (
     DataTablePanel,
@@ -479,7 +477,7 @@ class CohortDataTable(DataTable):
     @classmethod
     def get_filters(cls) -> list[TableFilter]:
         return [
-            ShowInactiveFilter("inactive", "Show inactive"),
+            ToggleFilter("inactive", "Show inactive"),
             VisibleCourseFilter(
                 "course", "Course", lookup="course_registrations__course"
             ),
@@ -492,7 +490,7 @@ class CohortDataTable(DataTable):
         # The toggle can only widen, so the table excludes inactive cohorts
         # itself whenever it offers the toggle and the toggle is unset.
         toggle = next(
-            (f for f in cls.get_filters() if isinstance(f, ShowInactiveFilter)), None
+            (f for f in cls.get_filters() if isinstance(f, ToggleFilter)), None
         )
         if toggle is not None and toggle.key not in query.filters:
             queryset = queryset.filter(is_active=True)
@@ -650,8 +648,8 @@ class LearnerDataTable(DataTable):
     def get_filters() -> list[TableFilter]:
         return [
             LearnerStatusFilter(),
-            LearnerCohortFilter("cohort", "Cohort", lookup=""),
-            LearnerCourseFilter("course", "Course", lookup=""),
+            LearnerCohortFilter("cohort", "Cohort"),
+            LearnerCourseFilter("course", "Course"),
         ]
 
     @staticmethod
@@ -926,7 +924,22 @@ class AuditLogEntryTable(DataTable):
 
     @staticmethod
     def get_filters() -> list[TableFilter]:
-        return [AuditActorFilter(), AuditActionFilter(), AuditPeriodFilter()]
+        return [
+            AuditActorFilter(),
+            AuditActionFilter(),
+            PeriodFilter(
+                "when",
+                "When",
+                "created_at",
+                {
+                    "today": ("Today", 1),
+                    "7d": ("Last 7 days", 7),
+                    "30d": ("Last 30 days", 30),
+                    "90d": ("Last 90 days", 90),
+                    "12m": ("Last 12 months", 365),
+                },
+            ),
+        ]
 
     @staticmethod
     def get_export_columns() -> list[ExportColumn]:
