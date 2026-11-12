@@ -51,6 +51,31 @@ class UserForm(forms.ModelForm):
         model = User
         fields = ["first_name", "last_name", "profile_picture"]
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        # Without a picture there is nothing to remove, so the checkbox is
+        # not rendered and a forged value is ignored.
+        if self.instance.profile_picture:
+            self.fields["remove_profile_picture"] = forms.BooleanField(
+                required=False, label="Remove profile picture"
+            )
+
+    def clean(self) -> dict[str, Any] | None:
+        cleaned_data = super().clean()
+        if cleaned_data is None:
+            return cleaned_data
+        # A file that failed validation is absent from cleaned_data; putting
+        # a value back would blank the instance of an invalid form. A new
+        # file wins over the tick. False is what a model FileField reads as
+        # "clear this field".
+        if (
+            cleaned_data.get("remove_profile_picture")
+            and "profile_picture" in cleaned_data
+            and not isinstance(cleaned_data["profile_picture"], ContentFile)
+        ):
+            cleaned_data["profile_picture"] = False
+        return cleaned_data
+
     def clean_profile_picture(self) -> File | None:
         upload = self.cleaned_data.get("profile_picture")
         if not isinstance(upload, UploadedFile):

@@ -595,3 +595,120 @@ def test_user_form_save_without_commit_raises(mock_site_context):
 
     with pytest.raises(ValueError, match="commit=False"):
         form.save(commit=False)
+
+
+def _removal_form(user, files: dict | None = None) -> UserForm:
+    return UserForm(
+        {
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "remove_profile_picture": "on",
+        },
+        files or {},
+        instance=user,
+    )
+
+
+@pytest.mark.django_db
+def test_user_form_offers_removal_only_when_a_picture_is_set(
+    mock_site_context, pathless_profile_picture_storage
+):
+    without = UserForm(instance=UserFactory())
+    with_picture = UserForm(instance=UserFactory(with_profile_picture=True))
+
+    assert "remove_profile_picture" not in without.fields
+    assert "remove_profile_picture" in with_picture.fields
+
+
+@pytest.mark.django_db
+def test_user_form_ignores_a_forged_removal_flag_without_a_picture(
+    mock_site_context,
+):
+    user = UserFactory()
+    form = _removal_form(user)
+
+    assert form.is_valid(), form.errors
+    assert "remove_profile_picture" not in form.cleaned_data
+
+
+@pytest.mark.django_db
+def test_user_form_removal_clears_the_field_and_deletes_the_file_on_commit(
+    mock_site_context,
+    pathless_profile_picture_storage,
+    django_capture_on_commit_callbacks,
+):
+    user = UserFactory(with_profile_picture=True)
+    old_name = user.profile_picture.name
+    storage = user.profile_picture.storage
+    form = _removal_form(user)
+    assert form.is_valid(), form.errors
+
+    with django_capture_on_commit_callbacks(execute=False) as callbacks:
+        form.save()
+    still_there_before_commit = storage.exists(old_name)
+    callbacks[0]()
+
+    assert User._base_manager.get(pk=user.pk).profile_picture.name == ""
+    assert still_there_before_commit is True
+    assert storage.exists(old_name) is False
+
+
+@pytest.mark.django_db
+def test_user_form_new_file_wins_over_removal(
+    mock_site_context,
+    pathless_profile_picture_storage,
+    django_capture_on_commit_callbacks,
+):
+    user = UserFactory(with_profile_picture=True)
+    old_name = user.profile_picture.name
+    storage = user.profile_picture.storage
+    form = _removal_form(
+        user, {"profile_picture": SimpleUploadedFile("me.jpg", jpeg_bytes())}
+    )
+    assert form.is_valid(), form.errors
+
+    with django_capture_on_commit_callbacks(execute=True):
+        saved = form.save()
+
+    assert str(saved.profile_picture.name).startswith(f"profile_pictures/{user.pk}/")
+    assert saved.profile_picture.name != old_name
+    assert storage.exists(saved.profile_picture.name) is True
+    assert storage.exists(old_name) is False
+
+
+@pytest.mark.django_db
+def test_user_form_removal_with_an_invalid_file_keeps_the_old_picture(
+    mock_site_context, pathless_profile_picture_storage
+):
+    user = UserFactory(with_profile_picture=True)
+    old_name = user.profile_picture.name
+    form = _removal_form(
+        user, {"profile_picture": SimpleUploadedFile("me.png", b"not an image")}
+    )
+
+    assert not form.is_valid()
+    assert form.errors["profile_picture"] == [WRONG_TYPE]
+    assert user.profile_picture.name == old_name
+    assert user.profile_picture.storage.exists(old_name) is True
+
+
+@pytest.mark.django_db
+def test_user_form_removal_keeps_the_file_when_the_save_rolls_back(
+    mock_site_context,
+    pathless_profile_picture_storage,
+    django_capture_on_commit_callbacks,
+):
+    user = UserFactory(with_profile_picture=True)
+    old_name = user.profile_picture.name
+    storage = user.profile_picture.storage
+    form = _removal_form(user)
+    assert form.is_valid(), form.errors
+
+    with (
+        django_capture_on_commit_callbacks(execute=True),
+        pytest.raises(_RollBackError),
+    ):
+        _save_then_roll_back(form)
+
+    assert storage.exists(old_name) is True
+    assert User._base_manager.get(pk=user.pk).profile_picture.name == old_name

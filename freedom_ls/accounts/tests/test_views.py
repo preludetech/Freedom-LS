@@ -1009,3 +1009,31 @@ def test_refused_picture_re_renders_with_the_error_and_the_saved_state(
     assert 'value="Grace"' in html
     assert "Ada Lovelace" in html
     assert len(_picture_srcs(html)) == 2
+
+
+@pytest.mark.django_db
+def test_removing_the_picture_shows_initials_and_drops_the_checkbox(
+    mock_site_context, pathless_profile_picture_storage
+):
+    user = UserFactory(
+        first_name="Ada", last_name="Lovelace", with_profile_picture=True
+    )
+    client = Client()
+    client.force_login(user)
+    profile_url = reverse("accounts:account_profile")
+    before = client.get(profile_url).content.decode()
+
+    response = client.post(
+        profile_url,
+        {
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "remove_profile_picture": "on",
+        },
+    )
+    after = client.get(profile_url).content.decode()
+
+    assert 'name="remove_profile_picture"' in before
+    assert (response.status_code, response.url) == (302, profile_url)
+    assert _picture_srcs(after) == []
+    assert 'name="remove_profile_picture"' not in after
