@@ -8,7 +8,7 @@
 <path d="M604.0,151.0 C644.0,151.0 644.0,151.0 684.0,151.0 L934.0,151.0 C974.0,151.0 974.0,117.0 1014.0,117.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M934.0,105.0 C974.0,105.0 974.0,117.0 1014.0,117.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M1264.0,117.0 C1304.0,117.0 1304.0,117.0 1344.0,117.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<rect x="24.0" y="92.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<rect x="24.0" y="92.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <text x="34.0" y="114.0" fill="#111827">extract_panels_framework-1-</text>
 <text x="34.0" y="129.0" fill="#111827">gather-generic-code</text>
 <rect x="354.0" y="58.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
