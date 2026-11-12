@@ -174,7 +174,12 @@ class StaffRoleFilter(ChoiceFilter):
         config = get_role_config(scoped.organisation.site.name)
         return [
             (self.ALL, "All roles"),
-            *((role, config[role].display_name) for role in STAFF_ROLES),
+            # A site that replaces the roles may leave some of these out.
+            *(
+                (role, config[role].display_name)
+                for role in STAFF_ROLES
+                if role in config
+            ),
         ]
 
     def toggled(self, values: list[str], value: str) -> list[str]:

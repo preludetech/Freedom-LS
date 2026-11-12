@@ -183,7 +183,6 @@ from freedom_ls.learner_management.queries import (
     ASSIGN_COHORT_VIEWER,
     CHANGE_COHORT,
     DELETE_COHORTMEMBERSHIP,
-    STAFF_ROLES,
     VIEW_COHORT,
     VIEW_CONVERSATION,
     VIEW_ORGANISATION_STAFF,
@@ -242,7 +241,6 @@ from freedom_ls.panel_framework.views import (
 )
 from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.reports.services import report_file_response
-from freedom_ls.role_based_permissions.loader import get_role_config
 from freedom_ls.site_aware_models.models import get_cached_site
 
 #: Session key remembering the educator's last-visited organisation, used
@@ -2581,10 +2579,8 @@ class StaffConfig(OrganisationSectionConfig, ListViewConfig):
     @classmethod
     def get_intro_context(cls, request: HttpRequest) -> dict[str, object]:
         scoped = cast(OrganisationScopedRequest, request)
-        config = get_role_config(scoped.organisation.site.name)
         staff = staff_of(scoped.organisation)
         return {
-            "roles": [config[role] for role in STAFF_ROLES],
             # One query: the first two staff pks are the viewer's alone only
             # when the viewer is the sole staff member.
             "only_staff_member_is_viewer": set(staff.values_list("pk", flat=True)[:2])

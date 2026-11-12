@@ -3172,6 +3172,28 @@ def test_the_sidebar_of_a_staff_viewer_lists_staff_alone(role_holder_client):
 
 
 @pytest.mark.django_db
+def test_the_staff_page_lists_only_the_roles_the_site_defines(
+    mock_site_context: Site, settings: SettingsWrapper, role_holder_client
+):
+    organisation = OrganisationFactory()
+    without = frozenset(
+        {"organisation_staff_viewer", "organisation_staff_roles_viewer"}
+    )
+    with custom_role_config(mock_site_context, settings, without=without):
+        client = role_holder_client(organisation, "organisation_admin")
+
+        document = _staff_document(client, organisation)
+
+    (role_filter,) = document.cssselect("select[name=staff-role]")
+    assert [option.get("value") for option in role_filter.cssselect("option")] == [
+        "all",
+        "organisation_admin",
+        "cohort_admin",
+        "cohort_viewer",
+    ]
+
+
+@pytest.mark.django_db
 def test_a_roles_viewer_sees_role_names_and_no_buttons(role_holder_client):
     organisation = OrganisationFactory()
     _hold(UserFactory(email="subject@example.com"), "organisation_admin", organisation)
