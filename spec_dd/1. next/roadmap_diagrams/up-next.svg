@@ -74,7 +74,7 @@
 <text x="364.0" y="662.0" fill="#111827">referer-first-touch</text>
 <rect x="24.0" y="594.5" width="250" height="35" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <text x="34.0" y="616.5" fill="#111827">referral-attribution-over-time</text>
-<rect x="24.0" y="647.5" width="250" height="35" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+<rect x="24.0" y="647.5" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <text x="34.0" y="669.5" fill="#111827">file-scanning</text>
 <rect x="354.0" y="761.0" width="250" height="35" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
 <text x="364.0" y="783.0" fill="#111827">multi-step-course-applications</text>
