@@ -9,7 +9,9 @@ Usage:
 The command must start with `pytest`, `python -m pytest`, `python3 -m pytest`,
 `uv run pytest` or `uv run --directory <dir> pytest`; anything else exits 2. When the
 command has an xdist `-n` option, the runner appends its own `-n <k>`, which pytest
-reads last. Setting `DS_TEST_MEMORY_GUARD=off` runs the command unchanged. `--capacity`
+reads last. A pytest attempt that crashes (an xdist worker dies, or the controller is
+killed) is retried for the tests that never finished, and the run ends in one verdict
+line. Setting `DS_TEST_MEMORY_GUARD=off` runs the command unchanged. `--capacity`
 prints how many units of `<unit-mb>` fit in free memory, at least 1.
 
 Each setting comes from its environment variable, then from `[tool.test_tiers.memory]` in
@@ -18,11 +20,15 @@ Each setting comes from its environment variable, then from `[tool.test_tiers.me
 
 from __future__ import annotations
 
+import importlib.util
+import json
+import math
 import os
 import random
 import re
 import subprocess
 import sys
+import tempfile
 import time
 import tomllib
 from collections.abc import Mapping
@@ -61,6 +67,14 @@ WORKER_FLAGS = frozenset({"-n", "--numprocesses"})
 
 DEFAULT_MEMINFO = Path("/proc/meminfo")
 DEFAULT_PSI = Path("/proc/pressure/memory")
+
+# Seconds to back off before the first and the second crash retry; later retries reuse the last.
+BACKOFF_S = (30, 60)
+
+# pytest's exit code for "tests ran and some failed", and the code this runner exits with when
+# retries ran out with tests unfinished (EX_TEMPFAIL: neither a pass nor a code defect).
+EXIT_TESTS_FAILED = 1
+EXIT_INCOMPLETE = 75
 
 # Seconds between memory polls while waiting, and between progress lines.
 POLL_INTERVAL_S = 5
@@ -297,6 +311,206 @@ def print_capacity(unit_text: str, settings: MemorySettings) -> int:
     return 0
 
 
+@dataclass
+class RunState:
+    """What the record file says about the run so far."""
+
+    collected: set[str] = field(default_factory=set)  # union over pytest attempts
+    outcomes: dict[str, str] = field(default_factory=dict)  # first outcome written wins
+    crashed_reports: int = 0  # crashed lines in the latest pytest attempt
+    session_finished: bool = False  # the latest pytest attempt wrote its finished line
+    crash_retried: bool = False  # any pytest attempt of this run crashed
+
+    def unfinished(self) -> set[str]:
+        return self.collected - self.outcomes.keys()
+
+
+def parse_record_line(line: str, is_last: bool) -> dict[str, object] | None:
+    """The event on one record line. A truncated last line (the controller died mid-write)
+    is None; a malformed line anywhere else is a real error."""
+    try:
+        event: object = json.loads(line)
+    except json.JSONDecodeError:
+        if is_last:
+            return None
+        raise
+    return event if isinstance(event, dict) else None
+
+
+def apply_event(event: dict[str, object], state: RunState) -> None:
+    kind = event.get("event")
+    nodeid = event.get("nodeid")
+    nodeids = event.get("nodeids")
+    outcome = event.get("outcome")
+    if kind == "attempt":
+        # The crash facts describe the latest pytest attempt only.
+        state.crashed_reports = 0
+        state.session_finished = False
+    elif kind == "collected" and isinstance(nodeids, list):
+        state.collected.update(str(item) for item in nodeids)
+    elif kind == "outcome" and isinstance(nodeid, str) and isinstance(outcome, str):
+        state.outcomes.setdefault(nodeid, outcome)
+    elif kind == "crashed":
+        state.crashed_reports += 1
+    elif kind == "finished":
+        state.session_finished = True
+
+
+def read_attempt(record: Path, state: RunState) -> None:
+    """Fold the record file into `state`. Reading the whole file again is safe: the
+    collected set and the first-written outcomes do not change on a second read."""
+    lines = record.read_text(encoding="utf-8").splitlines()
+    for index, line in enumerate(lines):
+        event = parse_record_line(line, is_last=index == len(lines) - 1)
+        if event is not None:
+            apply_event(event, state)
+
+
+def append_record(record: Path, event: dict[str, object]) -> None:
+    data = record.read_bytes()
+    if data and not data.endswith(b"\n"):
+        # A controller killed mid-write leaves a partial last line. Drop it, so the new
+        # line starts clean and the partial one cannot turn into a malformed middle line.
+        record.write_bytes(data[: data.rfind(b"\n") + 1])
+    with record.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(event) + "\n")
+
+
+def attempt_command(
+    argv: list[str], k: int, record: Path, only_file: Path | None
+) -> list[str]:
+    """The pytest command for one attempt: the caller's argv plus the runner's options."""
+    command = list(argv)
+    if has_worker_option(argv):
+        command += ["-n", str(k), "--max-worker-restart=0"]
+    command += ["-p", "ds_run_record", f"--ds-record={record}"]
+    if only_file is not None:
+        command.append(f"--ds-only-nodeids={only_file}")
+        # The runner and the pytest it starts share one environment when both go through
+        # `uv run`, so this answers for the child too. A subset run must not fail a
+        # coverage threshold.
+        if importlib.util.find_spec("pytest_cov") is not None:
+            command.append("--no-cov")
+    return command
+
+
+def run_attempt(argv: list[str], k: int, record: Path, only_file: Path | None) -> int:
+    """Run one pytest attempt and return its exit code."""
+    scripts_dir = str(Path(__file__).resolve().parent)
+    child_env = dict(os.environ)
+    child_env["PYTHONPATH"] = os.pathsep.join(
+        [scripts_dir, *filter(None, [child_env.get("PYTHONPATH")])]
+    )
+    command = attempt_command(argv, k, record, only_file)
+    return subprocess.run(command, env=child_env, check=False).returncode  # noqa: S603
+
+
+def write_only_file(only_file: Path | None, nodeids: set[str]) -> Path:
+    """Write the node ids to retry, one per line, reusing the file of an earlier retry."""
+    if only_file is None:
+        descriptor, name = tempfile.mkstemp(prefix="ds_only_nodeids_", suffix=".txt")
+        os.close(descriptor)
+        only_file = Path(name)
+    only_file.write_text("\n".join(sorted(nodeids)) + "\n", encoding="utf-8")
+    return only_file
+
+
+def run_with_retries(
+    argv: list[str], settings: MemorySettings, first_k: int, record: Path
+) -> int:
+    """Run pytest, retrying a crashed attempt for its unfinished tests; print the verdict."""
+    state = RunState()
+    worker_counts: list[int] = []
+    elapsed_s = 0.0
+    only_file: Path | None = None
+    k = first_k
+    only: set[str] | None = None
+    returncode = 0
+    try:
+        for attempt in range(1, settings.max_retries + 2):
+            if only is not None:
+                only_file = write_only_file(only_file, only)
+            append_record(record, {"event": "attempt", "n": attempt, "k": k})
+            worker_counts.append(k)
+            started = time.monotonic()
+            returncode = run_attempt(
+                argv, k, record, only_file if only is not None else None
+            )
+            elapsed_s += time.monotonic() - started
+            read_attempt(record, state)
+            # A session that finished on its own with tests unfinished stopped on purpose
+            # (-x, --maxfail). Only a crashed worker or a killed controller is a crash. The
+            # exit code cannot tell: `uv run` turns its child's death by signal into an
+            # ordinary exit code.
+            if state.crashed_reports == 0 and state.session_finished:
+                break
+            state.crash_retried = True
+            collection_lost = (
+                not state.collected
+            )  # the controller died before collecting
+            # A worker that died after its test's outcome was final leaves nothing to re-run.
+            if not collection_lost and not state.unfinished():
+                break
+            if attempt == settings.max_retries + 1:
+                break
+            only = None if collection_lost else state.unfinished()
+            backoff = BACKOFF_S[min(attempt - 1, len(BACKOFF_S) - 1)]
+            ceiling = max(1, math.ceil(k / 2))
+            print(
+                f"run: pytest attempt {attempt}/{settings.max_retries + 1} crashed "
+                f"({len(state.unfinished())} tests unfinished); backing off "
+                f"{backoff} s, retrying with -n {ceiling}"
+            )
+            time.sleep(scaled(backoff))
+            k = wait_for_memory(settings, ceiling, first_attempt=False)
+    finally:
+        if only_file is not None:
+            only_file.unlink(missing_ok=True)
+    label, exit_code = verdict(state, returncode)
+    print_closing_lines(state, worker_counts, elapsed_s, label)
+    if label == "PASS":
+        record.unlink(missing_ok=True)
+    return exit_code
+
+
+def verdict(state: RunState, returncode: int) -> tuple[str, int]:
+    """The `RESULT` label and the exit code for a finished run."""
+    if not state.crash_retried:
+        return ("PASS", 0) if returncode == 0 else ("FAIL", returncode)
+    # A known defect is something to fix, so a failure outranks tests left unfinished.
+    if "failed" in state.outcomes.values():
+        return "FAIL", EXIT_TESTS_FAILED
+    if state.unfinished() or not state.collected:
+        return "INCOMPLETE", EXIT_INCOMPLETE
+    return "PASS", 0
+
+
+def print_closing_lines(
+    state: RunState, worker_counts: list[int], elapsed_s: float, label: str
+) -> None:
+    outcomes = list(state.outcomes.values())
+    passed, failed, skipped = (
+        outcomes.count(name) for name in ("passed", "failed", "skipped")
+    )
+    workers = " -> ".join(str(count) for count in worker_counts)
+    print(f"run: pytest attempts {len(worker_counts)}, xdist workers {workers}")
+    print(
+        f"run: tests {len(state.collected)} collected, {len(outcomes)} finished, "
+        f"{failed} failed, {len(state.unfinished())} unfinished"
+    )
+    print(
+        f"run: summary (merged): {passed} passed, {failed} failed, "
+        f"{skipped} skipped in {elapsed_s:.1f}s"
+    )
+    print(f"run: RESULT {label}")
+
+
+def make_record_file() -> Path:
+    descriptor, name = tempfile.mkstemp(prefix="ds_run_record_", suffix=".jsonl")
+    os.close(descriptor)
+    return Path(name)
+
+
 def main() -> int:
     try:
         return run(sys.argv[1:])
@@ -324,13 +538,14 @@ def run(argv: list[str]) -> int:
         print("ram: no /proc/meminfo on this platform; running the command as given")
         return run_plain(argv)
     k = wait_for_memory(settings, settings.max_workers, first_attempt=True)
-    command = [*argv, "-n", str(k)] if has_worker_option(argv) else argv
+    record = make_record_file()
     print(
         f"ram: MemAvailable {mem_available_mb(meminfo_path())} MB, "
         f"{format_psi(psi_some_avg10(psi_path()))}, xdist workers -n {k}"
         f"{describe_sources(settings)}"
     )
-    return run_plain(command)
+    print(f"run: record {record}")
+    return run_with_retries(argv, settings, k, record)
 
 
 if __name__ == "__main__":

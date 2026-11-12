@@ -1,34 +1,66 @@
 """Tests for `claude_plugins/django-stack/scripts/run_tests.py`.
 
-The runner is started as a subprocess with `cwd=tmp_path`. `pytest` is replaced with a stub
-executable on a temporary `PATH` that logs its argv, so no real test run starts. Free memory
-comes from a fake meminfo file.
+The runner is started as a subprocess with `cwd=tmp_path`. Most tests replace `pytest` with a
+stub executable on a temporary `PATH` that logs its argv and writes the record file's
+`finished` line, so no real test run starts. The crash-recovery tests run real pytest against
+a throwaway package. Free memory comes from a fake meminfo file.
 """
 
 from __future__ import annotations
 
+import json
 import os
+import re
 import subprocess
 import sys
 import threading
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 
-from tests.stub_tools import StubTools, write_stub
+from tests.stub_tools import StubTools
 
 pytestmark = pytest.mark.dev_tooling
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "claude_plugins" / "django-stack" / "scripts" / "run_tests.py"
 
+# Logs its argv, then plays a pytest attempt: it records a `finished` line and exits with
+# $STUB_PYTEST_EXIT_CODE. When $STUB_PYTEST_CRASH_FIRST is set, its first call instead kills
+# itself by signal after writing what the value names: `uncollected` writes nothing,
+# `collected` writes the collected line and one outcome, `truncated` also leaves a partial
+# last line.
+STUB_PYTEST = r"""#!/bin/sh
+printf 'pytest %s\n' "$*" >> "$STUB_LOG_FILE"
+for arg in "$@"; do
+    case "$arg" in
+        --ds-record=*) record="${arg#--ds-record=}" ;;
+    esac
+done
+if [ -n "${STUB_PYTEST_CRASH_FIRST:-}" ] && [ "$(wc -l < "$STUB_LOG_FILE")" -eq 1 ]; then
+    if [ "$STUB_PYTEST_CRASH_FIRST" != "uncollected" ]; then
+        printf '{"event": "collected", "nodeids": ["t.py::a", "t.py::b"]}\n' >> "$record"
+        printf '{"event": "outcome", "nodeid": "t.py::a", "outcome": "passed"}\n' >> "$record"
+    fi
+    if [ "$STUB_PYTEST_CRASH_FIRST" = "truncated" ]; then
+        printf '{"event": "outc' >> "$record"
+    fi
+    kill -9 $$
+fi
+printf '{"event": "finished", "exitstatus": 0}\n' >> "$record"
+exit "${STUB_PYTEST_EXIT_CODE:-0}"
+"""
+
 
 @pytest.fixture
 def stub_tools(tmp_path: Path) -> StubTools:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
-    write_stub(bin_dir / "pytest", exit_var="STUB_PYTEST_EXIT_CODE")
+    stub = bin_dir / "pytest"
+    stub.write_text(STUB_PYTEST, encoding="utf-8")
+    stub.chmod(0o755)
     return StubTools(bin_dir=bin_dir, log_file=tmp_path / "log.txt")
 
 
@@ -39,6 +71,17 @@ def write_meminfo(tmp_path: Path, available_mb: int) -> Path:
         encoding="utf-8",
     )
     return path
+
+
+def without_unset_settings(
+    variables: dict[str, str], settings: dict[str, str | int]
+) -> dict[str, str]:
+    """`variables` minus every `DS_TEST_*` entry the test does not set itself."""
+    return {
+        name: value
+        for name, value in variables.items()
+        if not name.startswith("DS_TEST_") or name in settings
+    }
 
 
 def run_runner(
@@ -53,23 +96,37 @@ def run_runner(
         "DS_TEST_PSI_PATH": str(tmp_path / "no_such_psi"),
         **variables,
     }
-    environment = stub_tools.env(TMPDIR=str(tmp_path), **settings)
-    for name in [n for n in environment if n.startswith("DS_TEST_")]:
-        if name not in settings:
-            del environment[name]
+    child_env = without_unset_settings(
+        stub_tools.env(TMPDIR=str(tmp_path), **settings), settings
+    )
     return subprocess.run(  # noqa: S603
         [sys.executable, str(SCRIPT), *args],
         cwd=tmp_path,
-        env=environment,
+        env=child_env,
         capture_output=True,
         text=True,
         check=False,
     )
 
 
+def is_record_option(token: str) -> bool:
+    return token in ("-p", "ds_run_record") or token.startswith("--ds-record=")
+
+
+def call_tokens(logged: str) -> list[str]:
+    """One logged pytest call as tokens, without the record-plugin options the runner adds."""
+    return [token for token in logged.split() if not is_record_option(token)]
+
+
 def logged_tokens(stub_tools: StubTools) -> list[str]:
     (logged,) = stub_tools.log_lines()
-    return logged.split()
+    return call_tokens(logged)
+
+
+def runner_worker_count(stub_tools: StubTools) -> str:
+    """The value of the last `-n`, which is the one pytest reads."""
+    tokens = logged_tokens(stub_tools)
+    return tokens[len(tokens) - tokens[::-1].index("-n")]
 
 
 @pytest.mark.parametrize(
@@ -99,7 +156,7 @@ def test_worker_count_follows_free_memory(
 
     # Assert
     assert result.returncode == 0
-    assert logged_tokens(stub_tools)[-2:] == ["-n", expected_workers]
+    assert runner_worker_count(stub_tools) == expected_workers
 
 
 def test_worker_count_is_capped_by_the_cpu_count_when_memory_is_plentiful(
@@ -117,7 +174,7 @@ def test_worker_count_is_capped_by_the_cpu_count_when_memory_is_plentiful(
     )
 
     # Assert
-    assert logged_tokens(stub_tools)[-2:] == ["-n", str(os.cpu_count() or 1)]
+    assert runner_worker_count(stub_tools) == str(os.cpu_count() or 1)
 
 
 def test_ram_line_reports_available_memory_and_worker_count(
@@ -173,7 +230,13 @@ def test_command_with_an_attached_worker_option_gets_the_runner_count_appended(
     )
 
     # Assert
-    assert logged_tokens(stub_tools) == ["pytest", "-nauto", "-n", "2"]
+    assert logged_tokens(stub_tools) == [
+        "pytest",
+        "-nauto",
+        "-n",
+        "2",
+        "--max-worker-restart=0",
+    ]
 
 
 def test_runner_exits_with_the_exit_code_of_the_command(
@@ -321,7 +384,7 @@ def test_env_beats_pyproject_which_beats_the_default(
     )
 
     # Assert
-    assert logged_tokens(stub_tools)[-2:] == ["-n", expected_workers]
+    assert runner_worker_count(stub_tools) == expected_workers
     assert expected_source in result.stdout
 
 
@@ -542,7 +605,7 @@ def test_memory_too_low_for_one_worker_waits_then_runs_with_one_worker(
     assert lines[0] == "ram: waiting for memory (MemAvailable 100 MB, PSI n/a)"
     assert len(waiting_lines(result)) >= 2
     assert "ram: still short after 100 s; running with -n 1" in lines
-    assert logged_tokens(stub_tools)[-2:] == ["-n", "1"]
+    assert runner_worker_count(stub_tools) == "1"
 
 
 def test_pressure_above_the_limit_waits_even_with_plenty_of_memory(
@@ -565,7 +628,7 @@ def test_pressure_above_the_limit_waits_even_with_plenty_of_memory(
 
     # Assert
     assert "ram: waiting for memory (MemAvailable 4096 MB, PSI 25.0)" in result.stdout
-    assert logged_tokens(stub_tools)[-2:] == ["-n", "1"]
+    assert runner_worker_count(stub_tools) == "1"
 
 
 def test_pressure_under_the_limit_does_not_wait(
@@ -609,7 +672,7 @@ def test_missing_pressure_file_does_not_wait(
 
     # Assert
     assert waiting_lines(result) == []
-    assert logged_tokens(stub_tools)[-2:] == ["-n", "2"]
+    assert runner_worker_count(stub_tools) == "2"
 
 
 def test_memory_that_becomes_sufficient_ends_the_wait_with_the_sized_count(
@@ -646,4 +709,576 @@ def test_memory_that_becomes_sufficient_ends_the_wait_with_the_sized_count(
     lines = result.stdout.splitlines()
     assert "ram: waiting for memory (MemAvailable 100 MB, PSI n/a)" in lines
     assert any(line.startswith("ram: wait over after") for line in lines)
-    assert logged_tokens(stub_tools)[-2:] == ["-n", "2"]
+    assert runner_worker_count(stub_tools) == "2"
+
+
+# --- crashed pytest attempts are retried for unfinished tests; one verdict -----------------
+
+
+def closing_lines(result: subprocess.CompletedProcess[str]) -> list[str]:
+    return result.stdout.splitlines()[-4:]
+
+
+def test_run_without_a_crash_ends_with_the_four_closing_lines(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest", "-n", "auto"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+    )
+
+    # Assert
+    assert [line.split(" ", 2)[:2] for line in closing_lines(result)] == [
+        ["run:", "pytest"],
+        ["run:", "tests"],
+        ["run:", "summary"],
+        ["run:", "RESULT"],
+    ]
+
+
+def test_run_without_a_crash_prints_one_record_line_after_the_ram_line(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest", "-n", "auto"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+    )
+
+    # Assert
+    lines = result.stdout.splitlines()
+    assert lines[0].startswith("ram: ")
+    assert lines[1].startswith("run: record ")
+    assert len([line for line in lines if line.startswith("run: record ")]) == 1
+
+
+def test_record_file_is_deleted_after_a_passing_run(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+
+    # Act
+    run_runner(stub_tools, tmp_path, ["pytest"], DS_TEST_MEMINFO_PATH=str(meminfo))
+
+    # Assert
+    assert list(tmp_path.glob("ds_run_record_*.jsonl")) == []
+
+
+def test_record_file_is_kept_after_a_failing_run(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        STUB_PYTEST_EXIT_CODE=1,
+    )
+
+    # Assert
+    (kept,) = tmp_path.glob("ds_run_record_*.jsonl")
+    assert f"run: record {kept}" in result.stdout.splitlines()
+
+
+@pytest.mark.parametrize(
+    ("pytest_exit", "label"), [(0, "PASS"), (1, "FAIL"), (2, "FAIL"), (5, "FAIL")]
+)
+def test_run_without_a_crash_reports_the_verdict_for_the_pytest_exit_code(
+    stub_tools: StubTools, tmp_path: Path, pytest_exit: int, label: str
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        STUB_PYTEST_EXIT_CODE=pytest_exit,
+    )
+
+    # Assert
+    assert closing_lines(result)[-1] == f"run: RESULT {label}"
+
+
+@pytest.mark.parametrize("pytest_exit", [0, 1, 2, 5])
+def test_run_without_a_crash_exits_with_the_pytest_exit_code(
+    stub_tools: StubTools, tmp_path: Path, pytest_exit: int
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        STUB_PYTEST_EXIT_CODE=pytest_exit,
+    )
+
+    # Assert
+    assert result.returncode == pytest_exit
+
+
+def test_retry_after_a_signal_death_runs_only_the_unfinished_tests(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+
+    # Act
+    run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest", "-n", "auto"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        STUB_PYTEST_CRASH_FIRST="collected",
+    )
+
+    # Assert
+    first, retry = stub_tools.log_lines()
+    assert "--ds-only-nodeids=" not in first
+    only_options = [t for t in retry.split() if t.startswith("--ds-only-nodeids=")]
+    assert len(only_options) == 1
+
+
+def test_node_id_file_of_a_retry_is_deleted_when_the_run_ends(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+
+    # Act
+    run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        STUB_PYTEST_CRASH_FIRST="collected",
+    )
+
+    # Assert
+    assert list(tmp_path.glob("ds_only_nodeids_*.txt")) == []
+
+
+def test_retry_carries_no_cov_so_a_subset_run_cannot_fail_a_coverage_threshold(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    pytest.importorskip("pytest_cov")
+    meminfo = write_meminfo(tmp_path, 4096)
+
+    # Act
+    run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        STUB_PYTEST_CRASH_FIRST="collected",
+    )
+
+    # Assert
+    first, retry = stub_tools.log_lines()
+    assert "--no-cov" not in first.split()
+    assert "--no-cov" in retry.split()
+
+
+def test_retry_halves_the_worker_count_of_the_previous_attempt(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 10_000)
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest", "-n", "auto"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        DS_TEST_MAX_WORKERS=4,
+        STUB_PYTEST_CRASH_FIRST="collected",
+    )
+
+    # Assert
+    assert "run: pytest attempts 2, xdist workers 4 -> 2" in result.stdout.splitlines()
+
+
+def test_crash_line_names_the_attempt_the_unfinished_count_and_the_retry_workers(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 10_000)
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest", "-n", "auto"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        DS_TEST_MAX_WORKERS=4,
+        STUB_PYTEST_CRASH_FIRST="collected",
+    )
+
+    # Assert
+    assert (
+        "run: pytest attempt 1/3 crashed (1 tests unfinished); "
+        "backing off 30 s, retrying with -n 2" in result.stdout.splitlines()
+    )
+
+
+def test_controller_that_died_before_collection_is_retried_with_the_whole_command(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+
+    # Act
+    run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest", "-m", "slow"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        STUB_PYTEST_CRASH_FIRST="uncollected",
+    )
+
+    # Assert
+    first, retry = stub_tools.log_lines()
+    assert call_tokens(retry) == call_tokens(first)
+
+
+def test_partial_last_record_line_of_a_killed_controller_is_dropped_and_the_retry_runs(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        STUB_PYTEST_CRASH_FIRST="truncated",
+    )
+
+    # Assert
+    assert closing_lines(result)[0].startswith("run: pytest attempts 2,")
+
+
+def test_run_that_crashed_before_collecting_and_has_no_retries_left_is_incomplete(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        DS_TEST_MAX_RETRIES=0,
+        STUB_PYTEST_CRASH_FIRST="uncollected",
+    )
+
+    # Assert
+    assert closing_lines(result)[-1] == "run: RESULT INCOMPLETE"
+
+
+def test_incomplete_run_exits_75(stub_tools: StubTools, tmp_path: Path) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        DS_TEST_MAX_RETRIES=0,
+        STUB_PYTEST_CRASH_FIRST="uncollected",
+    )
+
+    # Assert
+    assert result.returncode == 75
+
+
+# Real pytest against a throwaway package. Plugin autoload is off, so the repository's
+# `addopts` and plugins do not apply; xdist and the coverage plugin are named explicitly.
+
+CRASH_ONCE_TESTS = """\
+import os
+import signal
+from pathlib import Path
+
+import pytest
+
+MARKER = Path(r"{marker}")
+
+
+@pytest.mark.parametrize("number", range(7))
+def test_plain(number):
+    pass
+
+
+def test_kills_its_worker_once():
+    if not MARKER.exists():
+        MARKER.touch()
+        os.kill(os.getpid(), signal.SIGKILL)
+"""
+
+KILLS_EVERY_TIME_TESTS = """\
+import os
+import signal
+
+import pytest
+
+
+@pytest.mark.parametrize("number", range(3))
+def test_plain(number):
+    pass
+
+
+def test_kills_its_worker_every_time():
+    os.kill(os.getpid(), signal.SIGKILL)
+"""
+
+GENUINE_FAILURE_TEST = """\
+
+
+def test_genuine_failure():
+    assert False
+"""
+
+FAILS_FIRST_TESTS = """\
+def test_a_fails_first():
+    assert False
+
+
+def test_b_never_runs():
+    pass
+"""
+
+REAL_RUN_ARGV = ["pytest", "-p", "xdist", "-p", "pytest_cov", "-n", "auto"]
+
+
+@dataclass
+class RealRun:
+    """The outcome of one runner invocation over a real pytest package."""
+
+    result: subprocess.CompletedProcess[str]
+    temp_dir: Path
+
+    @property
+    def lines(self) -> list[str]:
+        return self.result.stdout.splitlines()
+
+    def record_events(self) -> list[dict[str, object]]:
+        (record,) = self.temp_dir.glob("ds_run_record_*.jsonl")
+        return [json.loads(line) for line in record.read_text("utf-8").splitlines()]
+
+
+def run_real_pytest(
+    work_dir: Path, tests: str, argv: list[str], **variables: str | int
+) -> RealRun:
+    """Run the runner over a package holding `tests`, with real pytest and xdist."""
+    pytest.importorskip("xdist")
+    pytest.importorskip("pytest_cov")
+    package = work_dir / "package"
+    package.mkdir()
+    (package / "pytest.ini").write_text("[pytest]\n", encoding="utf-8")
+    (package / "test_sample.py").write_text(
+        tests.replace("{marker}", str(work_dir / "marker")), encoding="utf-8"
+    )
+    temp_dir = work_dir / "tmp"
+    temp_dir.mkdir()
+    meminfo = work_dir / "meminfo"
+    meminfo.write_text("MemAvailable:   20971520 kB\n", encoding="utf-8")
+    settings: dict[str, str | int] = {
+        "DS_TEST_TIME_SCALE": 0,
+        "DS_TEST_MAX_WORKERS": 4,
+        "DS_TEST_WAIT_TIMEOUT_S": 1,
+        "DS_TEST_MEMINFO_PATH": str(meminfo),
+        "DS_TEST_PSI_PATH": str(work_dir / "no_such_psi"),
+        **variables,
+    }
+    child_env = without_unset_settings(dict(os.environ), settings)
+    child_env.update({name: str(value) for name, value in settings.items()})
+    child_env.update(
+        {
+            "PATH": f"{Path(sys.executable).parent}{os.pathsep}{child_env['PATH']}",
+            "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
+            "TMPDIR": str(temp_dir),
+        }
+    )
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(SCRIPT), *argv],
+        cwd=package,
+        env=child_env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return RealRun(result, temp_dir)
+
+
+@pytest.fixture(scope="module")
+def crash_once_run(tmp_path_factory: pytest.TempPathFactory) -> RealRun:
+    return run_real_pytest(
+        tmp_path_factory.mktemp("crash_once"), CRASH_ONCE_TESTS, REAL_RUN_ARGV
+    )
+
+
+@pytest.fixture(scope="module")
+def crash_with_failure_run(tmp_path_factory: pytest.TempPathFactory) -> RealRun:
+    return run_real_pytest(
+        tmp_path_factory.mktemp("crash_with_failure"),
+        CRASH_ONCE_TESTS + GENUINE_FAILURE_TEST,
+        REAL_RUN_ARGV,
+    )
+
+
+@pytest.fixture(scope="module")
+def crash_every_time_run(tmp_path_factory: pytest.TempPathFactory) -> RealRun:
+    return run_real_pytest(
+        tmp_path_factory.mktemp("crash_every_time"),
+        KILLS_EVERY_TIME_TESTS,
+        REAL_RUN_ARGV,
+        DS_TEST_MAX_RETRIES=1,
+    )
+
+
+@pytest.fixture(scope="module")
+def stop_on_first_failure_run(tmp_path_factory: pytest.TempPathFactory) -> RealRun:
+    return run_real_pytest(
+        tmp_path_factory.mktemp("stop_on_first_failure"),
+        FAILS_FIRST_TESTS,
+        ["pytest", "-x", "-p", "pytest_cov"],
+    )
+
+
+def test_worker_killed_once_ends_with_result_pass(crash_once_run: RealRun) -> None:
+    assert "run: RESULT PASS" in crash_once_run.lines
+
+
+def test_worker_killed_once_exits_0(crash_once_run: RealRun) -> None:
+    assert crash_once_run.result.returncode == 0
+
+
+def test_worker_killed_once_retries_with_half_the_workers(
+    crash_once_run: RealRun,
+) -> None:
+    assert "run: pytest attempts 2, xdist workers 4 -> 2" in crash_once_run.lines
+
+
+def test_worker_killed_once_prints_a_crash_line_with_the_unfinished_count(
+    crash_once_run: RealRun,
+) -> None:
+    crash_lines = [
+        line
+        for line in crash_once_run.lines
+        if re.fullmatch(
+            r"run: pytest attempt 1/3 crashed \(\d+ tests unfinished\); "
+            r"backing off 30 s, retrying with -n 2",
+            line,
+        )
+    ]
+    assert len(crash_lines) == 1
+
+
+def test_worker_killed_once_counts_every_test_once_in_the_merged_summary(
+    crash_once_run: RealRun,
+) -> None:
+    (summary,) = [line for line in crash_once_run.lines if "summary (merged)" in line]
+    assert re.fullmatch(
+        r"run: summary \(merged\): 8 passed, 0 failed, 0 skipped in [\d.]+s", summary
+    )
+
+
+def test_worker_killed_once_leaves_no_test_unfinished(crash_once_run: RealRun) -> None:
+    assert (
+        "run: tests 8 collected, 8 finished, 0 failed, 0 unfinished"
+        in crash_once_run.lines
+    )
+
+
+def test_worker_killed_once_deletes_the_record_file(crash_once_run: RealRun) -> None:
+    assert list(crash_once_run.temp_dir.glob("ds_run_record_*.jsonl")) == []
+
+
+def test_crash_with_a_genuine_failure_ends_with_result_fail(
+    crash_with_failure_run: RealRun,
+) -> None:
+    assert "run: RESULT FAIL" in crash_with_failure_run.lines
+
+
+def test_crash_with_a_genuine_failure_exits_1(
+    crash_with_failure_run: RealRun,
+) -> None:
+    assert crash_with_failure_run.result.returncode == 1
+
+
+def test_genuine_failure_has_exactly_one_outcome_line_in_the_kept_record(
+    crash_with_failure_run: RealRun,
+) -> None:
+    outcomes = [
+        event
+        for event in crash_with_failure_run.record_events()
+        if event.get("nodeid") == "test_sample.py::test_genuine_failure"
+        and event.get("event") == "outcome"
+    ]
+    assert len(outcomes) == 1
+
+
+def test_worker_killed_every_time_ends_with_result_incomplete(
+    crash_every_time_run: RealRun,
+) -> None:
+    assert "run: RESULT INCOMPLETE" in crash_every_time_run.lines
+
+
+def test_worker_killed_every_time_exits_75(crash_every_time_run: RealRun) -> None:
+    assert crash_every_time_run.result.returncode == 75
+
+
+def test_worker_killed_every_time_names_the_attempt_out_of_the_total(
+    crash_every_time_run: RealRun,
+) -> None:
+    assert any(
+        line.startswith("run: pytest attempt 1/2 crashed")
+        for line in crash_every_time_run.lines
+    )
+
+
+def test_run_stopped_by_x_on_a_failure_ends_with_result_fail(
+    stop_on_first_failure_run: RealRun,
+) -> None:
+    assert "run: RESULT FAIL" in stop_on_first_failure_run.lines
+
+
+def test_run_stopped_by_x_on_a_failure_makes_one_pytest_attempt(
+    stop_on_first_failure_run: RealRun,
+) -> None:
+    attempts = [
+        line
+        for line in stop_on_first_failure_run.lines
+        if line.startswith("run: pytest attempts ")
+    ]
+    assert attempts[0].startswith("run: pytest attempts 1,")
