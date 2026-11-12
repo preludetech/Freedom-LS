@@ -13,6 +13,7 @@ import re
 import pytest
 from playwright.sync_api import Page, expect
 
+from freedom_ls.accounts.models import User
 from freedom_ls.accounts.tests.profile_picture_samples import jpeg_bytes, png_bytes
 from freedom_ls.accounts.validators import WRONG_TYPE
 from freedom_ls.conftest import reverse_url
@@ -29,7 +30,7 @@ PICTURE_SRC = re.compile(r"profile_pictures/\d+/[0-9a-f]{32}\.webp")
 
 
 def test_upload_a_picture_then_a_refused_file(
-    live_server, logged_in_page: Page
+    live_server, logged_in_page: Page, logged_in_user: User
 ) -> None:
     page = logged_in_page
     page.goto(reverse_url(live_server, "accounts:account_profile"))
@@ -81,6 +82,24 @@ def test_upload_a_picture_then_a_refused_file(
         "src", PICTURE_SRC
     )
     expect(header.locator("img[data-profile-picture]")).to_have_attribute(
+        "src", PICTURE_SRC
+    )
+
+    stored = User._base_manager.get(pk=logged_in_user.pk).profile_picture
+    stored.storage.delete(stored.name)
+    page.reload()
+
+    expect(main.get_by_text("AL", exact=True)).to_be_visible()
+    expect(header.get_by_text("AL", exact=True)).to_be_visible()
+    expect(page.locator("img[data-profile-picture]")).to_have_count(0)
+
+    page.get_by_label(re.compile(r"^Profile picture")).set_input_files(
+        {"name": "again.png", "mimeType": "image/png", "buffer": png_bytes()}
+    )
+    page.get_by_role("button", name="Save").click()
+
+    expect(page.get_by_text("Profile saved")).to_be_visible()
+    expect(main.locator("img[data-profile-picture]")).to_have_attribute(
         "src", PICTURE_SRC
     )
 
