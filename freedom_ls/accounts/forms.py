@@ -60,8 +60,8 @@ class UserForm(forms.ModelForm):
                 required=False, label="Remove profile picture"
             )
 
-    def clean(self) -> dict[str, Any] | None:
-        cleaned_data = super().clean()
+    def clean(self) -> dict[str, object] | None:
+        cleaned_data: dict[str, object] | None = super().clean()
         if cleaned_data is None:
             return cleaned_data
         # A file that failed validation is absent from cleaned_data; putting
