@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
+from django.contrib.sites.models import Site
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Q
+from django.db.models import Q, QuerySet
 
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
 from freedom_ls.deadlines import shifts
@@ -18,7 +19,12 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
+from freedom_ls.site_aware_models.models import (
+    SiteAwareManager,
+    SiteAwareModel,
+    TimestampedModel,
+)
+from freedom_ls.site_aware_models.time_zones import site_time_zone
 
 if TYPE_CHECKING:
     from freedom_ls.deadlines.resolver import DeadlineValue
@@ -388,6 +394,23 @@ class LearnerCourseRegistrationDeadlineConfig(
         return f"Deadline config for {self.learner_registration}"
 
 
+class CoursePauseManager(SiteAwareManager):
+    def due_for_announcement(self, now: datetime, site: Site) -> QuerySet[CoursePause]:
+        """Pauses of `site` whose planned resume day has begun and that no one has
+        announced. Filters by the given site itself: the sweep has no request for the
+        manager to read one from."""
+        today = now.astimezone(site_time_zone(site)).date()
+        return cast(
+            QuerySet[CoursePause],
+            self.filter(
+                site=site,
+                resume_announced_at__isnull=True,
+                planned_resume_on__isnull=False,
+                planned_resume_on__lte=today,
+            ),
+        )
+
+
 class CoursePause(SiteAwareModel, TimestampedModel):
     """One pause of one learner's course progress. While it is open the learner's clock is
     stopped, and the days it lasted move every unmet deadline forward."""
@@ -415,6 +438,8 @@ class CoursePause(SiteAwareModel, TimestampedModel):
         related_name="+",
     )
     resume_announced_at = models.DateTimeField(null=True, blank=True)
+
+    objects = CoursePauseManager()
 
     class Meta:
         ordering = ["-started_at"]

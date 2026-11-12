@@ -35,6 +35,7 @@ from freedom_ls.learner_management.models import CohortCourseRegistration
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
+from freedom_ls.tests.factories import SiteFactory
 
 JOHANNESBURG = ZoneInfo("Africa/Johannesburg")
 
@@ -609,3 +610,41 @@ def test_an_ended_pause_stops_counting_at_its_end():
     )
 
     assert pause.paused_days(datetime(2026, 4, 1, tzinfo=UTC), JOHANNESBURG) == 1
+
+
+@pytest.mark.django_db
+class TestDueForAnnouncement:
+    NOW = datetime(2026, 3, 10, 10, 0, tzinfo=UTC)
+
+    def test_returns_only_due_unannounced_pauses_of_the_given_site(
+        self, mock_site_context
+    ):
+        due = CoursePauseFactory(planned_resume_on=date(2026, 3, 10))
+        CoursePauseFactory(planned_resume_on=date(2026, 3, 11))
+        CoursePauseFactory(planned_resume_on=None)
+        CoursePauseFactory(
+            planned_resume_on=date(2026, 3, 1), resume_announced_at=self.NOW
+        )
+        other_site = SiteFactory()
+        CoursePauseFactory(site=other_site, planned_resume_on=date(2026, 3, 1))
+
+        found = CoursePause.objects.due_for_announcement(self.NOW, mock_site_context)
+
+        assert list(found) == [due]
+
+    def test_compares_the_date_in_the_site_zone(self, mock_site_context):
+        SiteTimeZoneConfigFactory(
+            site=mock_site_context, time_zone="Africa/Johannesburg"
+        )
+        pause = CoursePauseFactory(planned_resume_on=date(2026, 3, 11))
+        late_utc = datetime(2026, 3, 10, 23, 0, tzinfo=UTC)
+
+        assert (
+            CoursePause.objects.due_for_announcement(
+                late_utc, mock_site_context
+            ).first()
+            == pause
+        )
+        assert not CoursePause.objects.due_for_announcement(
+            datetime(2026, 3, 10, 21, 0, tzinfo=UTC), mock_site_context
+        ).exists()
