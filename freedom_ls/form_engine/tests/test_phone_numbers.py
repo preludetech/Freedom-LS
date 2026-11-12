@@ -75,7 +75,7 @@ def test_number_that_does_not_end_with_the_national_number_names_the_calling_cod
     )
 
 
-@pytest.mark.parametrize("text", ["hello", "99 123 4567"])
+@pytest.mark.parametrize("text", ["hello", "99 123 4567", "82 12"])
 def test_invalid_national_number_names_the_country_and_an_example(text: str) -> None:
     assert phone_answer_error(text, "ZA") == ZA_MESSAGE.format(text=text)
 
