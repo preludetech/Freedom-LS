@@ -12,7 +12,6 @@ from uuid import UUID
 
 from django.db.models import Count, Prefetch, QuerySet
 from django.http import HttpResponse
-from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
 
@@ -39,6 +38,11 @@ from freedom_ls.learner_management.queries import (
 )
 from freedom_ls.panel_framework.actions import PanelAction
 from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.panel_framework.lazy_panels import (
+    LOADED_PARAM,
+    LazyBodyPanel,
+    render_region,
+)
 from freedom_ls.panel_framework.panels import Panel, PanelStack
 from freedom_ls.panel_framework.views import StatusBadge
 from freedom_ls.reports.config import config as reports_config
@@ -51,7 +55,6 @@ from freedom_ls.reports.report_data import (
     CohortReportData,
     ConfusionBlock,
     QuizColumn,
-    ReportTooLargeError,
     over_limit_message,
 )
 from freedom_ls.reports.screen_cache import (
@@ -73,8 +76,6 @@ if TYPE_CHECKING:
 #: How often the downloads region asks again while a report is being generated.
 REPORT_POLL_SECONDS = 3
 DOWNLOAD_COHORT_REPORT = "freedom_ls_learner_management.download_cohort_report"
-#: The query parameter that turns a lazy panel's skeleton into its body.
-LOADED_PARAM = "loaded"
 
 PROGRESS_STATUS_TONES = {
     ProgressStatus.NOT_STARTED: "muted",
@@ -93,16 +94,6 @@ def flag_badge(flag: AtRiskFlag) -> StatusBadge:
     """The badge for an at-risk flag."""
     # A rule's severity is already a role token name, so it is the tone.
     return StatusBadge(tone=flag.severity, label=flag.label)
-
-
-def render_region(panel: Panel, status: int = 200) -> HttpResponse:
-    """A panel's refresh region on its own, the fragment a targeted swap replaces."""
-    return render(
-        panel.request,
-        panel.region_template_name or panel.template_name,
-        panel.get_context_data(),
-        status=status,
-    )
 
 
 def report_over_limit_message(cohort: Cohort) -> str:
@@ -214,43 +205,8 @@ def _pdf_url(url_kwargs: dict[str, str], ready: GeneratedReport | None) -> str:
     )
 
 
-class LazyBodyPanel(Panel):
-    """A panel whose body costs a gather: the first render is a skeleton that fetches the body.
-
-    get_loaded_context runs only on the fetch that carries loaded=1. It may
-    raise ReportTooLargeError; the region then shows the message instead of a body.
-    """
-
-    template_name = "educator_interface/panels/lazy_panel.html"
-    skeleton_shape = "text"
-    skeleton_lines = 3
-
-    @property
-    def is_loaded(self) -> bool:
-        return self.request.GET.get(LOADED_PARAM) == "1"
-
-    def get_loaded_context(self) -> dict[str, object]:
-        return {}
-
-    def get_context_data(self) -> dict[str, object]:
-        context = super().get_context_data()
-        context.update(
-            is_loaded=self.is_loaded,
-            loaded_url=f"{self.ctx.base_url}?{LOADED_PARAM}=1",
-            skeleton_shape=self.skeleton_shape,
-            skeleton_lines=self.skeleton_lines,
-        )
-        if self.is_loaded:
-            try:
-                context.update(self.get_loaded_context())
-            except ReportTooLargeError as error:
-                context["too_large_message"] = over_limit_message(
-                    error.cohort_name, error.learner_count, error.limit
-                )
-        return context
-
-
 class CohortNeedsAttentionPanel(LazyBodyPanel):
+    load_label = "Load the figures"
     model = Cohort
     title = "Needs attention"
     refresh_events = (COHORT_CHANGED,)
@@ -303,6 +259,7 @@ def _quiz_confusions(data: CohortReportData) -> list[QuizConfusionCard]:
 
 
 class CohortReportBodyPanel(LazyBodyPanel):
+    load_label = "Load the figures"
     model = Cohort
     title = "Cohort report"
     refresh_events = (COHORT_CHANGED,)
@@ -525,6 +482,7 @@ class DashboardPanel(LazyBodyPanel):
     """The organisation dashboard: the inline tiles at once, the gathered figures lazily."""
 
     title = "Reporting"
+    load_label = "Load the figures"
     template_name = "educator_interface/panels/dashboard.html"
     region_template_name = "educator_interface/panels/dashboard_region.html"
     skeleton_shape = "row"

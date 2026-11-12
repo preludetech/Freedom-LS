@@ -2,7 +2,7 @@
 The shared frame of a lazy panel's refresh region. The first render is a
 skeleton whose wrapper fetches the loaded region as soon as it loads; the
 fetch carries loaded=1 and swaps this whole region for the body. A region that
-cannot be built because the cohort is too large shows the reason in its place.
+cannot be built because its body is too large shows the reason in its place.
 A panel's region template extends this and fills loaded_body, and may fill
 skeleton_body to shape the placeholder or override region_content to wrap or
 replace the whole state switch.
@@ -10,7 +10,7 @@ replace the whole state switch.
 <div id="{{ region_id }}"{% if not is_loaded %} aria-busy="true"{% endif %}>
     {% block region_content %}
         {% if too_large_message %}
-            <p class="rounded-md bg-warning-light px-3 py-2 text-sm text-on-warning-light">{{ too_large_message }}</p>
+            <c-panel-notice tone="warning">{{ too_large_message }}</c-panel-notice>
         {% elif is_loaded %}
             {% block loaded_body %}{% endblock loaded_body %}
         {% else %}
@@ -18,7 +18,7 @@ replace the whole state switch.
                 {% block skeleton_body %}
                     <c-panel-skeleton :shape="skeleton_shape" :lines="skeleton_lines" />
                 {% endblock skeleton_body %}
-                <noscript><c-button variant="link" size="small" href="{{ loaded_url }}">Load the figures</c-button></noscript>
+                <noscript><c-button variant="link" size="small" href="{{ loaded_url }}">{{ load_label }}</c-button></noscript>
             </div>
         {% endif %}
     {% endblock region_content %}

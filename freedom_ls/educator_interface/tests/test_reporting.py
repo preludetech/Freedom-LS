@@ -1315,8 +1315,6 @@ _NEW_REPORTING_FILES = [
     "reporting.py",
     "templates/educator_interface/panels/dashboard.html",
     "templates/educator_interface/panels/dashboard_region.html",
-    "templates/educator_interface/panels/lazy_panel.html",
-    "templates/educator_interface/panels/_lazy_region.html",
     "templates/educator_interface/panels/cohort_needs_attention_region.html",
     "templates/educator_interface/panels/cohort_report_downloads.html",
     "templates/educator_interface/panels/cohort_report_downloads_region.html",
