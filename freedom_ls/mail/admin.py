@@ -57,6 +57,8 @@ class OutboundEmailAdmin(ModelAdmin):
         "last_attempt_at",
         "last_error_short",
     ]
+    # The primary key is a random UUID, so without this the list has no useful order.
+    ordering = ["-created_at"]
     list_filter = ["status", "created_at"]
     search_fields = ["message_id", "subject", "recipients"]
     # payload is left out so the stored body is never rendered.

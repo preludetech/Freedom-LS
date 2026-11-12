@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
+import time_machine
 
 from django.contrib import admin
 from django.contrib.admin.models import CHANGE, LogEntry
@@ -10,6 +13,7 @@ from django.contrib.messages import get_messages
 from django.core.mail import EmailMessage
 from django.test import Client, RequestFactory
 from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.mail.admin import OutboundEmailAdmin, resend_blocker
@@ -544,3 +548,16 @@ def test_admin_queryset_does_not_load_the_body(mock_site_context: object) -> Non
     email = model_admin.get_queryset(request).get()
 
     assert "payload" in email.get_deferred_fields()
+
+
+def test_changelist_lists_newest_email_first(superuser_client: Client) -> None:
+    """The changelist used to follow the random UUID primary key, not creation time."""
+    emails = []
+    for days_ago in (1, 3, 0, 2):
+        with time_machine.travel(timezone.now() - timedelta(days=days_ago), tick=False):
+            emails.append(OutboundEmailFactory())
+
+    response = superuser_client.get(changelist_url())
+
+    newest_first = [emails[2], emails[0], emails[3], emails[1]]
+    assert list(response.context["cl"].result_list) == newest_first
