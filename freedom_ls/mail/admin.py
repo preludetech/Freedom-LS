@@ -64,7 +64,7 @@ class OutboundEmailAdmin(ModelAdmin):
     # payload is left out so the stored body is never rendered.
     fields = [
         "message_id",
-        "recipients",
+        "recipients_display",
         "subject",
         "status",
         "attempt_count",

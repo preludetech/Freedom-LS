@@ -106,6 +106,20 @@ def test_detail_page_renders_fields_read_only(superuser_client: Client) -> None:
     assert 'name="_save"' not in content
 
 
+def test_detail_page_shows_recipients_as_plain_addresses(
+    superuser_client: Client,
+) -> None:
+    """Recipients read as comma-joined addresses, not a raw JSON array."""
+    email = OutboundEmailFactory(recipients=["a@example.test", "b@example.test"])
+
+    response = superuser_client.get(detail_url(email))
+
+    content = response.content.decode()
+    assert "a@example.test, b@example.test" in content
+    assert "&quot;a@example.test&quot;" not in content
+    assert '"a@example.test"' not in content
+
+
 def test_changelist_does_not_show_body(superuser_client: Client) -> None:
     email_with_body_marker()
 
