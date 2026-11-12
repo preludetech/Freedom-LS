@@ -80,6 +80,11 @@ class OutboundEmailAdmin(ModelAdmin):
     actions = ["resend_selected"]
     actions_detail = ["resend_email"]
 
+    class Media:
+        # The shared FLS admin stylesheet that SiteAwareModelAdmin loads; it lets
+        # changelist cards grow to fit long values on a phone.
+        css = {"all": ["site_aware_models/css/admin.css"]}
+
     def get_queryset(self, request: HttpRequest) -> QuerySet[OutboundEmail]:
         # Nothing the admin shows or resends reads the body, which can be large.
         queryset: QuerySet[OutboundEmail] = super().get_queryset(request)

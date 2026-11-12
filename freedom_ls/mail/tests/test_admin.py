@@ -575,3 +575,10 @@ def test_changelist_lists_newest_email_first(superuser_client: Client) -> None:
 
     newest_first = [emails[2], emails[0], emails[3], emails[1]]
     assert list(response.context["cl"].result_list) == newest_first
+
+
+def test_admin_loads_the_shared_admin_stylesheet() -> None:
+    """The shared stylesheet lets changelist cards grow to fit on a phone."""
+    model_admin = OutboundEmailAdmin(OutboundEmail, admin.site)
+
+    assert "site_aware_models/css/admin.css" in str(model_admin.media)
