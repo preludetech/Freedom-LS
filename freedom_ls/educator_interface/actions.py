@@ -166,7 +166,6 @@ from freedom_ls.panel_framework.actions import (
     current_page_within,
     denied_response,
     field_error_count,
-    form_fragment_context,
     join_prose,
     navigation_response,
     refusal_response,
@@ -415,16 +414,16 @@ class EditCohortAction(RequiresActiveCohortMixin, EditAction):
         response["HX-Reswap"] = "innerHTML"
         return response
 
-    def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
         old_name = str(form.initial["name"])
         with transaction.atomic():
-            response = super().form_valid(request, form)
+            response = super().form_valid(ctx, form)
             if "name" in form.changed_data:
-                cohort = cast(Cohort, form.instance)
+                cohort = cast(Cohort, cast(forms.ModelForm, form).instance)
                 record_cohort_entry(
                     cohort,
                     "cohort.renamed",
-                    cast("User", request.user),
+                    cast("User", ctx.request.user),
                     details={"old": old_name, "new": cohort.name},
                 )
         return response
@@ -451,29 +450,27 @@ class EditLearnerNameAction(EditAction):
         )
         self._learner = learner
 
-    def get_form(
-        self, request: HttpRequest, instance: Model | None = None
-    ) -> forms.ModelForm:
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
         # The page's instance is the learner; the form edits their user.
-        return super().get_form(request, self._instance)
+        return {**super().get_form_kwargs(ctx), "instance": self._instance}
 
     def event_instance(self, form: forms.ModelForm) -> Model:
         return self._learner
 
-    def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
         # The form has already bound the new names onto the user; its initial
         # data still holds the stored ones.
-        user = cast("User", form.instance)
+        user = cast("User", cast(forms.ModelForm, form).instance)
         old_name = display_name_for(
             form.initial["first_name"], form.initial["last_name"], user.email
         )
         with transaction.atomic():
-            response = super().form_valid(request, form)
+            response = super().form_valid(ctx, form)
             if {"first_name", "last_name"} & set(form.changed_data):
                 record_learner_entry(
                     self._learner,
                     "learner.renamed",
-                    cast("User", request.user),
+                    cast("User", ctx.request.user),
                     details={"old": old_name, "new": user.display_name},
                 )
         return response
@@ -607,52 +604,27 @@ class RegisterCohortForCourseAction(RequiresActiveCohortMixin, FormPanelAction):
     action_name = "register"
     blocked_phrase = "register it for a course"
     capability = "freedom_ls_learner_management.add_cohortcourseregistration"
+    form_class = CohortCourseRegistrationForm
+    refresh_on_change = ("course",)
     submit_buttons = [
         {"label": "Register", "variant": "primary", "loading_text": "Registering…"}
     ]
-    _cohort: Cohort
-    _page_url: str
 
-    def _bind(self, ctx: PanelContext) -> None:
-        self._cohort = cast(Cohort, ctx.instance)
-        self._page_url = ctx.page_url
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
+        return {**super().get_form_kwargs(ctx), "cohort": ctx.instance}
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        self._bind(ctx)
-        return super().get_context_data(ctx)
+    def get_form_title(self, ctx: PanelContext, form: forms.BaseForm) -> str:
+        return _register_title(form, str(ctx.instance))
 
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        self._bind(ctx)
-        return super().handle_submit(ctx)
-
-    def get_form(
-        self, request: HttpRequest, instance: Model | None = None
-    ) -> forms.ModelForm:
-        # On a POST, instance is the cohort, which must never reach a
-        # registration form.
-        if request.method == "POST":
-            return CohortCourseRegistrationForm(request.POST, cohort=self._cohort)
-        return _picker_on_get(
-            lambda data: CohortCourseRegistrationForm(data, cohort=self._cohort),
-            request,
-            "course",
-        )
-
-    def _fragment_context(
-        self, form: forms.ModelForm, action_url: str
-    ) -> dict[str, object]:
-        _prepare_register_dialog(self, form, action_url, str(self._cohort))
-        return super()._fragment_context(form, action_url)
-
-    def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
         register_cohort_for_course(
-            self._cohort,
+            cast(Cohort, ctx.instance),
             form.cleaned_data["course"],
-            actor=cast("User", request.user),
+            actor=cast("User", ctx.request.user),
         )
         # The courses tab, its count and the header's course stat all
         # re-render, which a panel refresh alone could not do for the header.
-        return navigation_response(self._page_url)
+        return navigation_response(ctx.page_url)
 
 
 class LearnerStateAction(ConfirmAction):
@@ -843,57 +815,34 @@ class RegisterLearnerForCourseAction(FormPanelAction):
     label = "Register for a course"
     action_name = "register_for_course"
     capability = "freedom_ls_learner_management.add_learnercourseregistration"
+    form_class = LearnerCourseRegistrationForm
+    refresh_on_change = ("course",)
     submit_buttons = [
         {"label": "Register", "variant": "primary", "loading_text": "Registering…"}
     ]
-    _learner: Learner
 
-    def _bind(self, ctx: PanelContext) -> None:
-        self._learner = cast(Learner, ctx.instance)
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
+        return {**super().get_form_kwargs(ctx), "learner": ctx.instance}
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        self._bind(ctx)
-        context = super().get_context_data(ctx)
-        context["empty_message"] = _empty_message(
-            cast(forms.BaseForm, context["form"]),
+    def get_form_title(self, ctx: PanelContext, form: forms.BaseForm) -> str:
+        return _register_title(form, cast(Learner, ctx.instance).user.display_name)
+
+    def get_empty_message(self, ctx: PanelContext, form: forms.BaseForm) -> str | None:
+        name = cast(Learner, ctx.instance).user.display_name
+        return _empty_message(
+            form,
             "course",
-            f"There is no course {self._learner.user.display_name} can be "
-            "registered for right now.",
-        )
-        return context
-
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        self._bind(ctx)
-        return super().handle_submit(ctx)
-
-    def get_form(
-        self, request: HttpRequest, instance: Model | None = None
-    ) -> forms.ModelForm:
-        # On a POST, instance is the learner, which must never reach a
-        # registration form.
-        if request.method == "POST":
-            return LearnerCourseRegistrationForm(request.POST, learner=self._learner)
-        return _picker_on_get(
-            lambda data: LearnerCourseRegistrationForm(data, learner=self._learner),
-            request,
-            "course",
+            f"There is no course {name} can be registered for right now.",
         )
 
-    def _fragment_context(
-        self, form: forms.ModelForm, action_url: str
-    ) -> dict[str, object]:
-        _prepare_register_dialog(
-            self, form, action_url, self._learner.user.display_name
-        )
-        return super()._fragment_context(form, action_url)
-
-    def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
+        learner = cast(Learner, ctx.instance)
         register_for_course(
-            self._learner,
+            learner,
             form.cleaned_data["course"],
-            actor=cast("User", request.user),
+            actor=cast("User", ctx.request.user),
         )
-        return _registration_changed_response(self._learner)
+        return _registration_changed_response(learner)
 
 
 class DeactivateRegistrationAction(EducatorReasonMixin, ConfirmAction):
@@ -1031,14 +980,8 @@ def _joinable_cohorts(ctx: PanelContext, learner: Learner) -> QuerySet[Cohort]:
     )
 
 
-def _cohort_picker(
-    ctx: PanelContext,
-    learner: Learner,
-    get_data: Mapping[str, str] | None,
-    *,
-    field_name: str = "cohort",
-) -> CohortPickerForm:
-    """The picker of cohorts to put `learner` in, bound to `get_data` on a GET.
+def _picker_cohorts(ctx: PanelContext, learner: Learner) -> QuerySet[Cohort]:
+    """The cohorts a picker for `learner` draws on.
 
     A POST picks from every cohort of the organisation the learner is not in,
     wider than the offered set, so a cohort the user may see but not add to
@@ -1046,14 +989,24 @@ def _cohort_picker(
     """
     if ctx.request.method == "POST":
         scoped = cast("OrganisationScopedRequest", ctx.request)
-        queryset = Cohort.objects.filter(organisation=scoped.organisation).exclude(
+        return Cohort.objects.filter(organisation=scoped.organisation).exclude(
             cohortmembership__learner=learner
         )
-        data: Mapping[str, str] | None = ctx.request.POST
-    else:
-        queryset = _joinable_cohorts(ctx, learner)
-        data = get_data
-    return CohortPickerForm(data, queryset=queryset, field_name=field_name)
+    return _joinable_cohorts(ctx, learner)
+
+
+def _cohort_picker(
+    ctx: PanelContext,
+    learner: Learner,
+    get_data: Mapping[str, str] | None,
+    *,
+    field_name: str = "cohort",
+) -> CohortPickerForm:
+    """The picker of cohorts to put `learner` in, bound to `get_data` on a GET."""
+    data = ctx.request.POST if ctx.request.method == "POST" else get_data
+    return CohortPickerForm(
+        data, queryset=_picker_cohorts(ctx, learner), field_name=field_name
+    )
 
 
 class MembershipAction(ModalPanelAction):
@@ -1280,36 +1233,6 @@ def _empty_message(form: forms.BaseForm, field_name: str, message: str) -> str |
     return None if queryset is not None and queryset.exists() else message
 
 
-def _refresh_on_change(form: forms.BaseForm, field_name: str, url: str) -> None:
-    """Make choosing a value re-render the dialog from `url`, so the title
-    can name the choice before anything is submitted. Without JavaScript the
-    title keeps its generic form and the submit still works."""
-    form.fields[field_name].widget.attrs.update(
-        {
-            "hx-get": url,
-            "hx-include": "closest form",
-            "hx-trigger": "change",
-            "hx-target": "#app-modal-body",
-            "hx-swap": "innerHTML",
-        }
-    )
-
-
-def _picker_on_get[F: forms.BaseForm](
-    build: Callable[[Mapping[str, str] | None], F],
-    request: HttpRequest,
-    field_name: str,
-) -> F:
-    """The picker a GET renders: bound to the choice the query names when
-    the picker offers it, else unbound. A stale choice is not a submission,
-    so it earns no error."""
-    if field_name in request.GET:
-        form = build(request.GET)
-        if form.is_valid():
-            return form
-    return build(None)
-
-
 def _picker_title[M: Model](
     form: forms.BaseForm,
     field_name: str,
@@ -1324,69 +1247,38 @@ def _picker_title[M: Model](
     return f"{unchosen}?"
 
 
-def _prepare_register_dialog(
-    action: FormPanelAction, form: forms.BaseForm, action_url: str, subject: str
-) -> None:
+def _register_title(form: forms.BaseForm, subject: str) -> str:
     """Title a register-for-a-course dialog for `subject` (a learner's or a
-    cohort's name) and make its course select re-render it."""
+    cohort's name), naming the course once one is chosen."""
 
     def chosen(course: Course) -> str:
         return f"Register {subject} for {course.title}"
 
-    action.form_title = _picker_title(
+    return _picker_title(
         form, "course", unchosen=f"Register {subject} for a course", chosen=chosen
     )
-    _refresh_on_change(form, "course", action_url)
 
 
-def _picker_fragment(
-    action: PanelAction,
-    ctx: PanelContext,
-    form: forms.BaseForm,
-    *,
-    title: str,
-    button: dict[str, str],
-    status: int = 200,
-) -> HttpResponse:
-    """The picker form's modal fragment, bound or unbound."""
-    context = form_fragment_context(
-        form,
-        form_title=title,
-        action_url=action.get_action_url(ctx),
-        submit_buttons=[button],
-    )
-    html = render_to_string(
-        "panel_framework/modal/form.html", context, request=ctx.request
-    )
-    return HttpResponse(html, status=status)
-
-
-class AddToCohortAction(ModalPanelAction):
+class AddToCohortAction(FormPanelAction):
     """Adds the learner on the page to an active cohort the user may add to."""
 
     label = "Add to cohort"
     action_name = "add_to_cohort"
     variant = "secondary"
     capability = ADD_COHORTMEMBERSHIP
-    template_name = "panel_framework/modal/form.html"
-    _BUTTON = {
-        "label": "Add to cohort",
-        "variant": "primary",
-        "loading_text": "Adding…",
-    }
+    form_class = CohortPickerForm
+    refresh_on_change = ("cohort",)
+    submit_buttons = [
+        {"label": "Add to cohort", "variant": "primary", "loading_text": "Adding…"}
+    ]
 
-    def _form(self, ctx: PanelContext) -> CohortPickerForm:
-        learner = cast(Learner, ctx.instance)
-        if ctx.request.method == "POST":
-            form = _cohort_picker(ctx, learner, None)
-        else:
-            form = _picker_on_get(
-                lambda data: _cohort_picker(ctx, learner, data), ctx.request, "cohort"
-            )
-        _refresh_on_change(form, "cohort", self.get_action_url(ctx))
-        return form
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
+        return {
+            **super().get_form_kwargs(ctx),
+            "queryset": _picker_cohorts(ctx, cast(Learner, ctx.instance)),
+        }
 
-    def _title(self, ctx: PanelContext, form: CohortPickerForm) -> str:
+    def get_form_title(self, ctx: PanelContext, form: forms.BaseForm) -> str:
         name = cast(Learner, ctx.instance).user.display_name
 
         def chosen(cohort: Cohort) -> str:
@@ -1396,32 +1288,15 @@ class AddToCohortAction(ModalPanelAction):
             form, "cohort", unchosen=f"Add {name} to a cohort", chosen=chosen
         )
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        form = self._form(ctx)
+    def get_empty_message(self, ctx: PanelContext, form: forms.BaseForm) -> str | None:
         name = cast(Learner, ctx.instance).user.display_name
-        return form_fragment_context(
+        return _empty_message(
             form,
-            form_title=self._title(ctx, form),
-            action_url=self.get_action_url(ctx),
-            submit_buttons=[self._BUTTON],
-            empty_message=_empty_message(
-                form,
-                "cohort",
-                f"{name} is already in every active cohort you can add learners to.",
-            ),
+            "cohort",
+            f"{name} is already in every active cohort you can add learners to.",
         )
 
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        form = self._form(ctx)
-        if not form.is_valid():
-            return _picker_fragment(
-                self,
-                ctx,
-                form,
-                title=self._title(ctx, form),
-                button=self._BUTTON,
-                status=422,
-            )
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
         cohort = cast(Cohort, form.cleaned_data["cohort"])
         if not can(ctx.request.user, ADD_COHORTMEMBERSHIP, cohort):
             return denied_response(ctx, self)
@@ -1432,7 +1307,7 @@ class AddToCohortAction(ModalPanelAction):
         return _membership_changed_response([str(learner.pk)], [str(cohort.pk)])
 
 
-class AddExistingLearnersAction(RequiresActiveCohortMixin, ModalPanelAction):
+class AddExistingLearnersAction(RequiresActiveCohortMixin, FormPanelAction):
     """Adds existing learners to the cohort on the page, for a user who may
     add cohort members but not create learners."""
 
@@ -1441,12 +1316,10 @@ class AddExistingLearnersAction(RequiresActiveCohortMixin, ModalPanelAction):
     blocked_phrase = "add learners to it"
     variant = "secondary"
     capability = ADD_COHORTMEMBERSHIP
-    template_name = "panel_framework/modal/form.html"
-    _BUTTON = {
-        "label": "Add learners",
-        "variant": "primary",
-        "loading_text": "Adding…",
-    }
+    form_class = LearnerPickerForm
+    submit_buttons = [
+        {"label": "Add learners", "variant": "primary", "loading_text": "Adding…"}
+    ]
 
     def is_offered(self, ctx: PanelContext) -> bool:
         scoped = cast("OrganisationScopedRequest", ctx.request)
@@ -1454,40 +1327,28 @@ class AddExistingLearnersAction(RequiresActiveCohortMixin, ModalPanelAction):
             scoped.user, ADD_LEARNER, scoped.organisation
         )
 
-    def _form(self, ctx: PanelContext) -> LearnerPickerForm:
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
         scoped = cast("OrganisationScopedRequest", ctx.request)
         cohort = cast(Cohort, ctx.instance)
-        return LearnerPickerForm(
-            ctx.request.POST if ctx.request.method == "POST" else None,
-            queryset=learners_visible_to(scoped.user, scoped.organisation)
+        return {
+            **super().get_form_kwargs(ctx),
+            "queryset": learners_visible_to(scoped.user, scoped.organisation)
             .select_related("user")
             .exclude(cohortmembership__cohort=cohort),
-        )
+        }
 
-    def _title(self, ctx: PanelContext) -> str:
+    def get_form_title(self, ctx: PanelContext, form: forms.BaseForm) -> str:
         return f"Add learners to {cast(Cohort, ctx.instance)}"
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        form = self._form(ctx)
-        return form_fragment_context(
+    def get_empty_message(self, ctx: PanelContext, form: forms.BaseForm) -> str | None:
+        return _empty_message(
             form,
-            form_title=self._title(ctx),
-            action_url=self.get_action_url(ctx),
-            submit_buttons=[self._BUTTON],
-            empty_message=_empty_message(
-                form,
-                "learners",
-                f"Everyone in your other cohorts is already in {ctx.instance}. "
-                "To add someone new, ask an organisation admin.",
-            ),
+            "learners",
+            f"Everyone in your other cohorts is already in {ctx.instance}. "
+            "To add someone new, ask an organisation admin.",
         )
 
-    def handle_active_submit(self, ctx: PanelContext) -> HttpResponse:
-        form = self._form(ctx)
-        if not form.is_valid():
-            return _picker_fragment(
-                self, ctx, form, title=self._title(ctx), button=self._BUTTON, status=422
-            )
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
         cohort = cast(Cohort, ctx.instance)
         learners = form.cleaned_data["learners"]
         with transaction.atomic():
@@ -1498,7 +1359,7 @@ class AddExistingLearnersAction(RequiresActiveCohortMixin, ModalPanelAction):
         )
 
 
-class AddLearnerAction(ModalPanelAction):
+class AddLearnerAction(FormPanelAction):
     """Adds one email address as a learner of the organisation, making a
     pending account for an unknown address, and optionally puts them in a
     cohort. Add reports the outcome in the modal with Add another beside
@@ -1509,8 +1370,8 @@ class AddLearnerAction(ModalPanelAction):
     label = "Add learner"
     action_name = "add_learner"
     capability = ADD_LEARNER
-    template_name = "panel_framework/modal/form.html"
-    _BUTTONS = [
+    form_class = AddLearnerForm
+    submit_buttons = [
         {
             "label": "Add and add another",
             "variant": "secondary",
@@ -1543,14 +1404,16 @@ class AddLearnerAction(ModalPanelAction):
             self._cohorts(ctx), pk=_uuid_from(ctx.request.GET, "cohort")
         )
 
-    def _form(
-        self, ctx: PanelContext, preset: Cohort | None, *, bound: bool = True
-    ) -> AddLearnerForm:
-        return AddLearnerForm(
-            ctx.request.POST if bound and ctx.request.method == "POST" else None,
-            cohorts=self._cohorts(ctx),
-            preset=preset,
-        )
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
+        return {
+            **super().get_form_kwargs(ctx),
+            "cohorts": self._cohorts(ctx),
+            "preset": self._preset_cohort(ctx),
+        }
+
+    def get_form_title(self, ctx: PanelContext, form: forms.BaseForm) -> str:
+        preset = self._preset_cohort(ctx)
+        return f"Add a learner to {preset}" if preset else "Add a learner"
 
     def _action_url(self, ctx: PanelContext, preset: Cohort | None) -> str:
         url = self.get_action_url(ctx)
@@ -1558,21 +1421,12 @@ class AddLearnerAction(ModalPanelAction):
             return f"{url}?cohort={preset.pk}"
         return url
 
-    def _fragment_context(
-        self,
-        ctx: PanelContext,
-        form: AddLearnerForm,
-        preset: Cohort | None,
-        status_message: str = "",
+    def get_fragment_context(
+        self, ctx: PanelContext, form: forms.BaseForm
     ) -> dict[str, object]:
         return {
-            **form_fragment_context(
-                form,
-                form_title=f"Add a learner to {preset}" if preset else "Add a learner",
-                action_url=self._action_url(ctx, preset),
-                submit_buttons=self._BUTTONS,
-            ),
-            "status_message": status_message,
+            **super().get_fragment_context(ctx, form),
+            "action_url": self._action_url(ctx, self._preset_cohort(ctx)),
         }
 
     @staticmethod
@@ -1582,26 +1436,15 @@ class AddLearnerAction(ModalPanelAction):
             sentence += f" {result.cohort_outcome.label}."
         return sentence
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
         preset = self._preset_cohort(ctx)
-        return self._fragment_context(ctx, self._form(ctx, preset), preset)
-
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        preset = self._preset_cohort(ctx)
-        form = self._form(ctx, preset)
-        if not form.is_valid():
-            html = render_to_string(
-                self.template_name,
-                self._fragment_context(ctx, form, preset),
-                request=ctx.request,
-            )
-            return HttpResponse(html, status=422)
+        add_form = cast(AddLearnerForm, form)
         cohort = cast(Cohort | None, form.cleaned_data["cohort"]) or preset
         organisation = cast("OrganisationScopedRequest", ctx.request).organisation
         try:
             result = add_learner(
                 organisation,
-                form.entry(),
+                add_form.entry(),
                 cohort,
                 actor=cast("User", ctx.request.user),
             )
@@ -1611,13 +1454,11 @@ class AddLearnerAction(ModalPanelAction):
             )
         if ctx.request.POST.get("action") == "add_another":
             html = render_to_string(
-                self.template_name,
-                self._fragment_context(
-                    ctx,
-                    self._form(ctx, preset, bound=False),
-                    preset,
-                    status_message=self._outcome_sentence(result),
-                ),
+                self.get_fragment_template_name(),
+                {
+                    **self.get_fragment_context(ctx, self.get_unbound_form(ctx)),
+                    "status_message": self._outcome_sentence(result),
+                },
                 request=ctx.request,
             )
         else:

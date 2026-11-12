@@ -139,7 +139,7 @@ class StubCreateAction(CreateInstanceAction):
         # test_panel_actions.py using its own StubCreateAction.
         return True
 
-    def get_success_url(self, instance: Model) -> str:
+    def get_success_url(self, ctx: PanelContext, instance: Model) -> str:
         # A real, reachable page under this app's own test URLconf, so a
         # browser test can follow the HX-Location this action's "Save"
         # sends and see actual content, not a 404.

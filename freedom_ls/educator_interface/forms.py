@@ -6,12 +6,11 @@ from django.db.models import QuerySet
 from django.http import QueryDict
 
 from freedom_ls.accounts.models import User
+from freedom_ls.content_engine.models import Course
 from freedom_ls.learner_management.learner_actions import LearnerEntry
 from freedom_ls.learner_management.models import (
     Cohort,
-    CohortCourseRegistration,
     Learner,
-    LearnerCourseRegistration,
 )
 from freedom_ls.learner_management.queries import (
     ORGANISATION_ROLES,
@@ -88,17 +87,11 @@ class LearnerNameForm(forms.ModelForm):
         fields = ["first_name", "last_name"]
 
 
-class CohortCourseRegistrationForm(forms.ModelForm):
-    """The course picker for registering a cohort.
+class CohortCourseRegistrationForm(forms.Form):
+    """The course picker for registering a cohort. The chosen course goes to
+    register_cohort_for_course, which owns the reuse of an inactive row."""
 
-    A ModelForm only because FormPanelAction types its form that way. Nothing
-    calls save() on it: the chosen course goes to register_cohort_for_course,
-    which owns the reuse of an inactive row.
-    """
-
-    class Meta:
-        model = CohortCourseRegistration
-        fields = ["course"]
+    course = forms.ModelChoiceField(queryset=Course.objects.none())
 
     def __init__(
         self, data: Mapping[str, str] | None = None, *, cohort: Cohort
@@ -108,17 +101,11 @@ class CohortCourseRegistrationForm(forms.ModelForm):
         course_field.queryset = registerable_courses_for(cohort)
 
 
-class LearnerCourseRegistrationForm(forms.ModelForm):
-    """The course picker for registering a learner.
+class LearnerCourseRegistrationForm(forms.Form):
+    """The course picker for registering a learner. The chosen course goes to
+    register_for_course, which owns the reuse of an inactive row."""
 
-    A ModelForm only because FormPanelAction types its form that way. Nothing
-    calls save() on it: the chosen course goes to register_for_course, which
-    owns the reuse of an inactive row.
-    """
-
-    class Meta:
-        model = LearnerCourseRegistration
-        fields = ["course"]
+    course = forms.ModelChoiceField(queryset=Course.objects.none())
 
     def __init__(
         self, data: Mapping[str, str] | None = None, *, learner: Learner
