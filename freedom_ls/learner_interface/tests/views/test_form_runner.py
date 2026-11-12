@@ -279,6 +279,34 @@ def test_answered_count_reflects_only_persisted_answers_after_page_advance(
 
 
 @pytest.mark.django_db
+def test_runner_page_title_names_the_form_and_course(mock_site_context, client):
+    """The runner page's <title> used to render empty; it now names the form and course."""
+    user = UserFactory()
+    form = _make_quiz_form()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    response = client.get(
+        reverse(
+            "learner_interface:form_fill_page",
+            kwargs={"course_slug": course.slug, "index": 1, "page_number": 1},
+        )
+    )
+
+    match = re.search(r"<title>(.*?)</title>", response.content.decode(), re.S)
+    assert match is not None
+    title = " ".join(html.unescape(match.group(1)).split())
+    assert title.startswith(f"{form.title} — {course.title}")
+
+
+@pytest.mark.django_db
 def test_answered_count_does_not_include_unsaved_page_edits(mock_site_context, client):
     """
     answered_count reflects only persisted answers. A fresh GET to page 2

@@ -225,7 +225,11 @@ required: false
 
 ### Phone question example
 
-Renders a telephone input. The number itself is not format-validated.
+Renders a country picker, preselected from the learner's browser language, beside a number box. The learner types the
+number that follows the country's calling code, and it is checked against the chosen country when they submit. A
+number typed with a leading `+` and its country code is read as international whatever the picker says. The answer
+is stored in international (E.164) form, e.g. `+27821234567`, and shown that way. Extensions are not accepted.
+There are no phone-specific YAML keys.
 
 ```yaml
 ---

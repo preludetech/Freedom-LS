@@ -32,7 +32,7 @@ assert "freedom_ls.form_engine.models" not in sys.modules, (
 
 
 @pytest.mark.parametrize(
-    "module", ["scoring", "signals", "submissions", "typed_answers"]
+    "module", ["scoring", "signals", "submissions", "typed_answers", "phone_numbers"]
 )
 def test_helper_imports_without_the_models_module(module: str) -> None:
     result = subprocess.run(  # noqa: S603

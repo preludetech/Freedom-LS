@@ -1,0 +1,40 @@
+{% load form_engine_tags %}
+{% phone_field_state as phone %}
+{{ phone.examples|json_script:phone.examples_id }}
+<div class="flex flex-col gap-3 md:flex-row"
+     x-data="phoneHint"
+     data-examples-id="{{ phone.examples_id }}">
+    <div class="md:w-2/5">
+        <label for="phone_country_{{ question.id }}">Country</label>
+        <select id="phone_country_{{ question.id }}"
+                name="phone_country_{{ question.id }}"
+                autocomplete="country"
+                x-ref="country"
+                x-on:change="pickCountry"
+                {% if read_only %}disabled{% endif %}>
+            <option value="">Choose a country</option>
+            {% for country, label in phone.choices %}
+                <option value="{{ country }}" {% if country == phone.country %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="md:flex-1">
+        <label for="question_{{ question.id }}">Phone number</label>
+        <input type="tel"
+               inputmode="tel"
+               autocomplete="tel"
+               id="question_{{ question.id }}"
+               name="question_{{ question.id }}"
+               {% if question.required %}required{% endif %}
+               {% if read_only %}disabled{% endif %}
+               {% if rejected %}aria-invalid="true"{% endif %}
+               aria-describedby="question_{{ question.id }}_hint{% if rejected %} question_{{ question.id }}_error{% endif %}"
+               value="{{ phone.number }}" />
+        <p class="text-sm text-muted"
+           id="question_{{ question.id }}_hint"
+           x-show="hasExample"
+           {% if not phone.example %}style="display: none"{% endif %}>
+            For example: <span x-text="example">{{ phone.example }}</span>
+        </p>
+    </div>
+</div>

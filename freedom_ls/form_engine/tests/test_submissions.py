@@ -17,6 +17,8 @@ from freedom_ls.form_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import FormQuestion
+from freedom_ls.form_engine.paging import unanswered_required_on_page
+from freedom_ls.form_engine.submissions import submitted_phone_country
 from freedom_ls.form_engine.typed_answers import RejectedAnswer
 
 # ``FormProgress.save_answers`` stores a row only for questions the learner
@@ -297,3 +299,111 @@ def test_valid_date_answer_round_trips(mock_site_context, date_question):
     answer = form_progress.answers.get(question=date_question)
     assert answer.text_answer == "2025-06-01"
     assert rejected == {}
+
+
+@pytest.fixture
+def phone_question(mock_site_context) -> FormQuestion:
+    form = FormFactory()
+    page = FormPageFactory(form=form, order=0)
+    question: FormQuestion = FormQuestionFactory(form_page=page, type="phone", order=0)
+    return question
+
+
+@pytest.mark.django_db
+def test_submitted_phone_country_is_the_posted_country(phone_question):
+    post = _post_data({f"phone_country_{phone_question.id}": ["ZA"]})
+
+    assert submitted_phone_country(phone_question, post) == "ZA"
+
+
+@pytest.mark.django_db
+def test_submitted_phone_country_is_empty_when_the_key_is_missing(phone_question):
+    assert submitted_phone_country(phone_question, _post_data({})) == ""
+
+
+@pytest.mark.django_db
+def test_submitted_phone_country_is_empty_for_a_value_that_is_no_country(
+    phone_question,
+):
+    post = _post_data({f"phone_country_{phone_question.id}": ["<b>"]})
+
+    assert submitted_phone_country(phone_question, post) == ""
+
+
+@pytest.mark.django_db
+def test_valid_phone_answer_is_stored_as_e164(mock_site_context, phone_question):
+    form_progress = FormProgressFactory(
+        user=UserFactory(), form=phone_question.form_page.form
+    )
+
+    rejected = form_progress.save_answers(
+        [phone_question],
+        _post_data(
+            {
+                f"question_{phone_question.id}": ["82 123 4567"],
+                f"phone_country_{phone_question.id}": ["ZA"],
+            }
+        ),
+    )
+
+    answer = form_progress.answers.get(question=phone_question)
+    assert answer.text_answer == "+27821234567"
+    assert rejected == {}
+
+
+@pytest.mark.django_db
+def test_rejected_phone_answer_comes_back_with_its_country_and_keeps_the_old_row(
+    mock_site_context, phone_question
+):
+    form_progress = FormProgressFactory(
+        user=UserFactory(), form=phone_question.form_page.form
+    )
+    field_name = f"question_{phone_question.id}"
+    country_name = f"phone_country_{phone_question.id}"
+    form_progress.save_answers(
+        [phone_question],
+        _post_data({field_name: ["+27821234567"], country_name: ["ZA"]}),
+    )
+
+    rejected = form_progress.save_answers(
+        [phone_question], _post_data({field_name: ["hello"], country_name: ["ZA"]})
+    )
+
+    assert rejected[phone_question.id] == RejectedAnswer(
+        text="hello",
+        message=(
+            'You entered "hello". Enter a valid phone number for South Africa, '
+            "like 71 123 4567."
+        ),
+        country="ZA",
+    )
+    answer = form_progress.answers.get(question=phone_question)
+    assert answer.text_answer == "+27821234567"
+
+
+@pytest.mark.django_db
+def test_country_without_a_number_stores_no_row(mock_site_context, phone_question):
+    form_progress = FormProgressFactory(
+        user=UserFactory(), form=phone_question.form_page.form
+    )
+
+    form_progress.save_answers(
+        [phone_question], _post_data({f"phone_country_{phone_question.id}": ["ZA"]})
+    )
+
+    assert form_progress.answers.count() == 0
+
+
+@pytest.mark.django_db
+def test_required_phone_question_posted_with_only_a_country_is_unanswered(
+    mock_site_context,
+):
+    form = FormFactory()
+    page = FormPageFactory(form=form, order=0)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=page, type="phone", order=0, required=True
+    )
+    form_progress = FormProgressFactory(user=UserFactory(), form=form)
+    post = _post_data({f"phone_country_{question.id}": ["ZA"]})
+
+    assert unanswered_required_on_page([question], post, form_progress) == [question]

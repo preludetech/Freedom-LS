@@ -50,7 +50,7 @@
                 {% endcomment %}
                 {% include "form_engine/inputs/text_input.html" with input_type="text" input_mode="url" %}
             {% elif question.type == "phone" %}
-                {% include "form_engine/inputs/text_input.html" with input_type="tel" input_mode="tel" %}
+                {% include "form_engine/inputs/phone_input.html" %}
             {% elif question.type == "dropdown" %}
                 {% include "form_engine/inputs/dropdown.html" %}
             {% elif question.type == "file_upload" %}

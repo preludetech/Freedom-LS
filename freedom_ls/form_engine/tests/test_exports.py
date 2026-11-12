@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import pytest
 
+from django.contrib.sites.models import Site
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
@@ -128,6 +129,14 @@ def test_off_path_question_ids_loads_the_trees_of_every_form_together(
 
     with django_assert_num_queries(len(for_one_form)):
         off_path_question_ids(three_forms)
+
+
+def test_answer_cell_of_a_phone_answer_is_its_stored_e164_text(
+    mock_site_context: Site,
+) -> None:
+    answer = _answer("phone", text_answer="+27821234567")
+
+    assert answer_cell(answer) == "+27821234567"
 
 
 def test_answer_cell_of_a_multiple_choice_answer_is_the_option_text(

@@ -6,8 +6,8 @@ One module owns the server-side check run against a submission
 `decimal_places` (`question_bounds_error`), so the parsing rules are written
 once and the three cannot drift apart.
 
-It imports `enums` and `django.utils` only — never `models`, which imports
-it. `FormQuestion` is referenced only for type-checking, under
+It imports `enums`, `phone_numbers` and `django.utils` only — never `models`,
+which imports it. `FormQuestion` is referenced only for type-checking, under
 `from __future__ import annotations` plus a `TYPE_CHECKING` block, the way
 `submissions.py` does it.
 """
@@ -27,6 +27,7 @@ from django.utils import formats
 from django.utils.dateparse import parse_date, parse_time
 
 from .enums import QuestionType
+from .phone_numbers import display_phone, phone_answer_error
 
 if TYPE_CHECKING:
     from .models import FormQuestion
@@ -38,6 +39,7 @@ class RejectedAnswer:
 
     text: str  # what the person typed, so the page can hand it back
     message: str  # what to tell them, naming the format and the value
+    country: str = ""  # the country selected beside a phone number
 
 
 def parsed_date(text: str) -> date | None:
@@ -135,7 +137,7 @@ def _bounds_error[T: (date, time, Decimal)](
     return None
 
 
-def answer_error(question: FormQuestion, text: str) -> str | None:
+def answer_error(question: FormQuestion, text: str, country: str = "") -> str | None:
     """Why `text` is not a valid answer to `question`, or None when it is."""
     if question.type == QuestionType.DATE:
         date_value = parsed_date(text)
@@ -172,8 +174,10 @@ def answer_error(question: FormQuestion, text: str) -> str | None:
             return f'You entered "{text}". Enter a valid web address.'
         return None
 
-    # phone, short_text, long_text: nothing to check. Real phone validation
-    # needs libphonenumber and a country, which is a different piece of work.
+    if question.type == QuestionType.PHONE:
+        return phone_answer_error(text, country)
+
+    # short_text, long_text: nothing to check.
     return None
 
 
@@ -241,5 +245,8 @@ def format_answer(question_type: str, text: str) -> str:
     if question_type == QuestionType.TIME:
         time_value = parsed_time(text)
         return formats.time_format(time_value) if time_value is not None else text
+
+    if question_type == QuestionType.PHONE:
+        return display_phone(text)
 
     return text

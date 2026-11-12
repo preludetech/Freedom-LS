@@ -27,4 +27,29 @@ document.addEventListener("alpine:init", () => {
             }
         },
     }));
+
+    /**
+     * Keeps the phone question's example hint on the chosen country. Reads
+     * the picker itself on start, not what the server selected: a browser
+     * that restores the form after a reload changes the picker without
+     * firing a change event.
+     */
+    Alpine.data("phoneHint", () => ({
+        examples: {},
+        example: "",
+
+        init() {
+            const data = document.getElementById(this.$root.dataset.examplesId);
+            this.examples = JSON.parse(data.textContent);
+            this.example = this.examples[this.$refs.country.value] || "";
+        },
+
+        pickCountry(event) {
+            this.example = this.examples[event.target.value] || "";
+        },
+
+        hasExample() {
+            return this.example !== "";
+        },
+    }));
 });
