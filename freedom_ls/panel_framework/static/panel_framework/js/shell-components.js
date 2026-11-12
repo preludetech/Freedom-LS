@@ -104,7 +104,7 @@ document.addEventListener("alpine:init", () => {
             this.isMobile = !this._mq.matches;
 
             // Position the docked panel below the header bar (consumed by the
-            // CSS var on the dialog). Carried over from the old sidebar.
+            // CSS var on the dialog).
             const top = this.$el.getBoundingClientRect().top;
             this.$el.style.setProperty("--sidebar-top", top + "px");
 
