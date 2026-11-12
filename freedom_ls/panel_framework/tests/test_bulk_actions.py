@@ -19,6 +19,7 @@ from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.sites.models import Site
 from django.db.models import Model, QuerySet
 from django.http import Http404, HttpRequest, HttpResponse
+from django.template.loader import render_to_string
 from django.test import RequestFactory
 
 from freedom_ls.panel_framework.bulk_actions import (
@@ -1425,3 +1426,53 @@ def test_a_runs_segment_that_is_not_last_is_a_404(mock_site_context: Site) -> No
 
 def test_the_default_confirmation_title_is_the_label_as_a_question() -> None:
     assert StubBulkAction().confirmation_title(3, {}) == "Mark processed?"
+
+
+def _render_confirmation(**extra: object) -> lxml.html.HtmlElement:
+    request = RequestFactory().post("/bulk")
+    context: dict[str, object] = {
+        "title": "Process 2?",
+        "action": StubBulkAction(),
+        "action_url": "/bulk",
+        "selection": Selection(mode="keys", keys=["a"]),
+        "count": 2,
+        "noun": "rows",
+        "error": "",
+        "notice": "",
+        "wording": None,
+        "expected_count": 2,
+        "confirm_disabled": False,
+        "confirm_disabled_reason": "",
+        "form": None,
+    }
+    context.update(extra)
+    return lxml.html.fromstring(
+        render_to_string(
+            "panel_framework/partials/bulk_confirmation.html", context, request=request
+        )
+    )
+
+
+def test_a_disabled_confirm_is_named_by_the_element_holding_its_reason(
+    mock_site_context: Site,
+) -> None:
+    document = _render_confirmation(
+        confirm_disabled=True,
+        error="Choose a destination first.",
+        confirm_disabled_reason="Choose a destination first.",
+    )
+
+    (submit,) = document.cssselect("form button[type='submit']")
+    assert submit.get("disabled") is not None
+    reason = document.get_element_by_id(submit.get("aria-describedby"))
+    assert "Choose a destination first." in reason.text_content()
+
+
+def test_a_notice_is_not_an_alert(mock_site_context: Site) -> None:
+    document = _render_confirmation(notice="The selection changed.")
+
+    (notice,) = [
+        el for el in document.iter() if "The selection changed." in (el.text or "")
+    ]
+    assert notice.getparent().get("role") is None
+    assert notice.get("role") is None

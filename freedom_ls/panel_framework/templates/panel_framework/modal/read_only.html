@@ -1,9 +1,0 @@
-{% comment %}
-A base for read-only modal fragments: a heading, a message and a Close
-button, with no form. The heading takes focus itself, since there is no form
-field to autofocus instead. Subclasses fill title and content; content is the
-body's inside, so the footer stays a sibling of the body.
-{% endcomment %}
-<c-modal-header focus_title="true">{% block title %}{% endblock title %}</c-modal-header>
-<c-modal-body>{% block content %}{% endblock content %}</c-modal-body>
-<c-modal-footer cancel="Close" />

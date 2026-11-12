@@ -1,0 +1,10 @@
+{% comment %}
+A dialog that says one thing and offers Close: a heading, a message and no
+form. Close takes initial focus, so the heading does not. Blocks `title` and
+`body` default to the context keys `title` and `message`, so a caller with
+only those needs no template of its own; a subclass overrides a block for
+richer content.
+{% endcomment %}
+<c-modal-header>{% block title %}{{ title }}{% endblock title %}</c-modal-header>
+<c-modal-body class="max-w-prose">{% block body %}<p>{{ message }}</p>{% endblock body %}</c-modal-body>
+<c-modal-footer cancel="Close" focus_cancel="true" />

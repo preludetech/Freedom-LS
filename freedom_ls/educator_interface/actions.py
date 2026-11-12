@@ -165,6 +165,7 @@ from freedom_ls.panel_framework.actions import (
     form_fragment_context,
     join_prose,
     navigation_response,
+    refusal_response,
 )
 from freedom_ls.panel_framework.bulk_actions import (
     BulkCount,
@@ -308,16 +309,18 @@ def _staff_member_param(ctx: PanelContext) -> User:
 
 
 def inactive_cohort_response(
-    request: HttpRequest, cohort: Cohort, blocked_phrase: str
+    ctx: PanelContext, cohort: Cohort, blocked_phrase: str
 ) -> HttpResponse:
     """The 422 fragment for a change aimed at an inactive cohort.
     `blocked_phrase` completes "Reactivate the cohort ... to" with what the
     refused action would have done, such as "deactivate it"."""
-    return render(
-        request,
-        "educator_interface/modal/cohort_inactive.html",
-        {"cohort": cohort, "blocked_phrase": blocked_phrase},
-        status=422,
+    return refusal_response(
+        ctx,
+        title=f"{cohort} is inactive",
+        message=(
+            "The change was not made. Reactivate the cohort from its Settings "
+            f"tab to {blocked_phrase}."
+        ),
     )
 
 
@@ -366,7 +369,7 @@ class RequiresActiveCohortMixin(PanelAction):
 
     def refuse_inactive(self, ctx: PanelContext) -> HttpResponse:
         return inactive_cohort_response(
-            ctx.request, cast(Cohort, ctx.instance), self.blocked_phrase
+            ctx, cast(Cohort, ctx.instance), self.blocked_phrase
         )
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
@@ -520,7 +523,7 @@ class DeactivateCohortAction(
         return deactivate_cohort(cohort, actor=actor, reason=reason)
 
     def refuse_unchanged(self, ctx: PanelContext, cohort: Cohort) -> HttpResponse:
-        return inactive_cohort_response(ctx.request, cohort, self.blocked_phrase)
+        return inactive_cohort_response(ctx, cohort, self.blocked_phrase)
 
 
 class ReactivateCohortAction(CohortStateAction):
@@ -536,11 +539,10 @@ class ReactivateCohortAction(CohortStateAction):
         return not cast(Cohort, ctx.instance).is_active
 
     def refuse_unchanged(self, ctx: PanelContext, cohort: Cohort) -> HttpResponse:
-        return render(
-            ctx.request,
-            "educator_interface/modal/cohort_already_active.html",
-            {"cohort": cohort},
-            status=422,
+        return refusal_response(
+            ctx,
+            title=f"{cohort} is already active",
+            message="Nothing changed. Someone else may have reactivated it already.",
         )
 
 
@@ -669,11 +671,13 @@ class LearnerStateAction(PanelAction):
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         learner = cast(Learner, ctx.instance)
         if not self.perform(learner, cast("User", ctx.request.user), ctx.reason):
-            return render(
-                ctx.request,
-                "educator_interface/modal/learner_already_in_state.html",
-                {"learner": learner, "state": self.label},
-                status=422,
+            return refusal_response(
+                ctx,
+                title=f"{learner.user.display_name} was already changed",
+                message=(
+                    "Nothing changed. Someone else may have already used "
+                    f"{self.label} on this learner."
+                ),
             )
         # The header's badge and actions change, so the page re-renders in
         # full, on the tab it was on, and no domain event is sent.
@@ -739,21 +743,24 @@ class ResendSetupEmailAction(PanelAction):
         try:
             record_and_resend_setup_email(learner, cast("User", ctx.request.user))
         except SetupEmailRecentlySent:
-            return render(
-                ctx.request,
-                "educator_interface/modal/setup_email_recently_sent.html",
-                {
-                    "learner": learner,
-                    "minutes": accounts_config.SETUP_EMAIL_RESEND_SECONDS // 60,
-                },
-                status=422,
+            minutes = accounts_config.SETUP_EMAIL_RESEND_SECONDS // 60
+            return refusal_response(
+                ctx,
+                title="Setup email sent recently",
+                message=(
+                    f"{learner.user.display_name} was sent a setup email recently. "
+                    f"Try again in {minutes} minutes."
+                ),
             )
         except AccountAlreadySetUp:
-            return render(
-                ctx.request,
-                "educator_interface/modal/account_already_set_up.html",
-                {"learner": learner},
-                status=422,
+            name = learner.user.display_name
+            return refusal_response(
+                ctx,
+                title=f"{name} has already set up their account",
+                message=(
+                    f"Nothing was sent. {name} has signed in or set a password "
+                    "since this page loaded."
+                ),
             )
         return changed_response({LEARNER_CHANGED: [str(learner.pk)]})
 
@@ -1104,7 +1111,7 @@ class MembershipAction(PanelAction):
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         learner, cohort = self._pair(ctx)
         if not cohort.is_active:
-            return inactive_cohort_response(ctx.request, cohort, self.blocked_phrase)
+            return inactive_cohort_response(ctx, cohort, self.blocked_phrase)
         self.perform(learner, cohort, cast("User", ctx.request.user), ctx.reason)
         ids = [str(learner.pk), str(cohort.pk)]
         return _membership_changed_response(ids, ids)
@@ -1231,7 +1238,7 @@ class MoveToCohortAction(MembershipAction):
         for cohort in (source, destination):
             if not cohort.is_active:
                 return inactive_cohort_response(
-                    ctx.request, cohort, "move learners into or out of it"
+                    ctx, cohort, "move learners into or out of it"
                 )
         try:
             move_between_cohorts(
@@ -1409,7 +1416,7 @@ class AddToCohortAction(PanelAction):
         if not can(ctx.request.user, ADD_COHORTMEMBERSHIP, cohort):
             return denied_response(ctx, self)
         if not cohort.is_active:
-            return inactive_cohort_response(ctx.request, cohort, "add learners to it")
+            return inactive_cohort_response(ctx, cohort, "add learners to it")
         learner = cast(Learner, ctx.instance)
         add_to_cohort(learner, cohort, actor=cast("User", ctx.request.user))
         return _membership_changed_response([str(learner.pk)], [str(cohort.pk)])
@@ -1592,7 +1599,7 @@ class AddLearnerAction(PanelAction):
             )
         except CohortUnavailableError:
             return inactive_cohort_response(
-                ctx.request, cast(Cohort, cohort), "add learners to it"
+                ctx, cast(Cohort, cohort), "add learners to it"
             )
         if ctx.request.POST.get("action") == "add_another":
             html = render_to_string(
@@ -1716,15 +1723,10 @@ def _organisation(ctx: PanelContext) -> Organisation:
 
 def _refused(ctx: PanelContext, message: str) -> HttpResponse:
     """The 422 message a staff dialog shows in place of its body."""
-    return render(
-        ctx.request,
-        "educator_interface/modal/staff_change_refused.html",
-        {"message": message},
-        status=422,
-    )
+    return refusal_response(ctx, title="This change wasn't made", message=message)
 
 
-def refusal_response(
+def role_refusal_response(
     ctx: PanelContext, action: PanelAction, refused: RoleChangeRefused, name: str
 ) -> HttpResponse:
     """What a refused role change answers with: the 403 denied fragment for
@@ -2298,7 +2300,7 @@ class AddStaffMemberAction(PanelAction):
                 if created:
                     send_account_setup_email(user, organisation.name)
         except RoleChangeRefused as refused:
-            return refusal_response(ctx, self, refused, name)
+            return role_refusal_response(ctx, self, refused, name)
         except EmailInUseOnAnotherSite:
             return self._other_site_response(ctx)
         return staff_member_changed_response(user, ctx)
@@ -2513,7 +2515,7 @@ class ChangeRoleAction(CohortRoleAction):
                 assign_role(grantor, user, new_role, cohort)
                 deactivate_role(grantor, user, assignment.role, cohort)
         except RoleChangeRefused as refused:
-            return refusal_response(ctx, self, refused, user.display_name)
+            return role_refusal_response(ctx, self, refused, user.display_name)
         return staff_member_changed_response(user, ctx)
 
 
@@ -2558,7 +2560,7 @@ class RemoveStaffFromCohortAction(ReasonMixin, CohortRoleAction):
                     reason=ctx.reason,
                 )
         except RoleChangeRefused as refused:
-            return refusal_response(ctx, self, refused, user.display_name)
+            return role_refusal_response(ctx, self, refused, user.display_name)
         return staff_member_changed_response(user, ctx)
 
 
@@ -2724,7 +2726,7 @@ class DeactivateRoleAction(EducatorReasonMixin, StaffRoleAction):
                         reason=ctx.reason,
                     )
         except RoleChangeRefused as refused:
-            return refusal_response(ctx, self, refused, user.display_name)
+            return role_refusal_response(ctx, self, refused, user.display_name)
         return staff_member_changed_response(user, ctx)
 
 
@@ -2835,7 +2837,7 @@ class ChangeCohortsAction(StaffRoleAction):
                 for cohort in plan.removed:
                     deactivate_role(grantor, user, entry.role, cohort)
         except RoleChangeRefused as refused:
-            return refusal_response(ctx, self, refused, user.display_name)
+            return role_refusal_response(ctx, self, refused, user.display_name)
         return staff_member_changed_response(user, ctx)
 
     def _confirmation(
@@ -2919,7 +2921,7 @@ class DeactivateStaffMemberAction(EducatorReasonMixin, StaffMemberStateAction):
                 reason=ctx.reason,
             )
         except RoleChangeRefused as refused:
-            return refusal_response(ctx, self, refused, user.display_name)
+            return role_refusal_response(ctx, self, refused, user.display_name)
         return staff_member_changed_response(user, ctx)
 
 
@@ -2955,7 +2957,7 @@ class ReactivateStaffMemberAction(StaffMemberStateAction):
                 row = row or ensure_staff_member(user, organisation, is_active=False)
                 set_staff_member_active(cast("User", ctx.request.user), row, True)
         except RoleChangeRefused as refused:
-            return refusal_response(ctx, self, refused, user.display_name)
+            return role_refusal_response(ctx, self, refused, user.display_name)
         return staff_member_changed_response(user, ctx)
 
 

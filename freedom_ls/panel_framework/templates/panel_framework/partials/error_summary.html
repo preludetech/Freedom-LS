@@ -1,0 +1,16 @@
+{% comment %}
+The summary above a form that failed validation. Context: form,
+field_error_count. appModal focuses it on a 422, so it keeps
+data-error-summary and tabindex="-1".
+{% endcomment %}
+{% if form.errors %}
+    <div data-error-summary
+         tabindex="-1"
+         role="alert"
+         class="rounded-md border border-error/20 bg-error/10 p-3 text-sm text-error">
+        {% if field_error_count %}
+            <p>{{ field_error_count }} field{{ field_error_count|pluralize }} to fix.</p>
+        {% endif %}
+        {{ form.non_field_errors }}
+    </div>
+{% endif %}

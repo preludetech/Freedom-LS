@@ -29,6 +29,7 @@ from freedom_ls.panel_framework.actions import (
     form_fragment_context,
     join_prose,
     navigation_response,
+    refusal_response,
 )
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.events import build_hx_trigger
@@ -1051,7 +1052,8 @@ def test_a_get_of_a_read_only_actions_url_returns_its_fragment(
     mock_site_context: Site,
 ) -> None:
     """A read-only action's fragment carries the shared modal heading, no
-    form, and focuses itself since there is no field to autofocus instead."""
+    form, and a Close button that takes focus since there is no field to
+    autofocus instead."""
     item = make_stub(name="read-only-fetch")
     action = StubReadOnlyAction()
     request = RequestFactory().get("/")
@@ -1063,7 +1065,7 @@ def test_a_get_of_a_read_only_actions_url_returns_its_fragment(
     assert isinstance(response, HttpResponse)
     content = response.content.decode()
     assert 'id="app-modal-title"' in content
-    assert 'tabindex="-1"' in content
+    assert 'tabindex="-1"' not in content
     assert "autofocus" in content
     assert "<form" not in content
 
@@ -1159,3 +1161,41 @@ def test_an_over_length_reason_is_a_422_with_the_field_re_rendered(
     (field,) = document.cssselect("form input[name='reason']")
     assert field.get("value") == too_long
     assert document.cssselect(".text-error")
+
+
+# -- refusal_response --------------------------------------------------------
+
+
+def _refusal(**kwargs: object) -> HttpResponse:
+    request = RequestFactory().post("/")
+    request.user = make_staff_user()
+    ctx = _ctx(request)
+    return refusal_response(ctx, title="Not changed", message="It was.", **kwargs)
+
+
+@pytest.mark.django_db
+def test_refusal_response_is_a_422_by_default(mock_site_context: Site) -> None:
+    assert _refusal().status_code == 422
+
+
+@pytest.mark.django_db
+def test_refusal_response_takes_the_given_status(mock_site_context: Site) -> None:
+    assert _refusal(status=409).status_code == 409
+
+
+@pytest.mark.django_db
+def test_refusal_response_renders_the_title_the_message_and_a_focused_close(
+    mock_site_context: Site,
+) -> None:
+    document = lxml.html.fromstring(_refusal().content.decode())
+
+    assert document.get_element_by_id("app-modal-title").text_content() == "Not changed"
+    assert "It was." in document.text_content()
+    close = [
+        el
+        for el in document.iter("button")
+        if el.text_content().strip() == "Close" and el.get("x-on:click") == "cancel"
+    ]
+    assert len(close) == 1
+    assert close[0].get("autofocus") is not None
+    assert document.get_element_by_id("app-modal-title").get("autofocus") is None

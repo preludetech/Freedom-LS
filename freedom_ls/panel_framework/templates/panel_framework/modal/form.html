@@ -6,11 +6,7 @@ submit did (an "add another" re-render). empty_message, when set,
 replaces the form with that sentence and a Close button.
 {% endcomment %}
 {% if empty_message %}
-<c-modal-header focus_title="true">{{ form_title }}</c-modal-header>
-<c-modal-body>
-    <p>{{ empty_message }}</p>
-</c-modal-body>
-<c-modal-footer cancel="Close" />
+{% include "panel_framework/modal/message.html" with title=form_title message=empty_message %}
 {% else %}
 <c-modal-header>{{ form_title }}</c-modal-header>
 
@@ -20,19 +16,9 @@ replaces the form with that sentence and a Close button.
       hx-disabled-elt="#app-modal-body button[type='submit']">
     <c-modal-body>
 {% if status_message %}
-    <p role="status" class="mb-4 rounded-md border border-success/20 bg-success/10 p-3 text-sm text-on-surface" data-status-message>{{ status_message }}</p>
+    <c-panel-notice tone="success" data-status-message>{{ status_message }}</c-panel-notice>
 {% endif %}
-{% if form.errors %}
-    <div data-error-summary
-         tabindex="-1"
-         role="alert"
-         class="mb-4 rounded-md border border-error/20 bg-error/10 p-3 text-sm text-error">
-        {% if field_error_count %}
-            <p>{{ field_error_count }} field{{ field_error_count|pluralize }} to fix.</p>
-        {% endif %}
-        {{ form.non_field_errors }}
-    </div>
-{% endif %}
+{% include "panel_framework/partials/error_summary.html" %}
 
     {% include "partials/form.html" %}
     </c-modal-body>

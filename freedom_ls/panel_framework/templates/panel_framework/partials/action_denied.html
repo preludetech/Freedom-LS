@@ -5,8 +5,8 @@ data-htmx-swap-error lets the htmx:beforeSwap listener swap this 403 in.
 <div data-htmx-swap-error="true">
     <c-modal-header>You can't use “{{ action_label }}” here any more</c-modal-header>
     <c-modal-body>
-    <p>Your role doesn't allow it.</p>
-    <p>{{ who_to_ask }}</p>
+        <p>Your role doesn't allow it.</p>
+        <p>{{ who_to_ask }}</p>
     </c-modal-body>
 
     <c-modal-footer cancel="Close" focus_cancel="true" />

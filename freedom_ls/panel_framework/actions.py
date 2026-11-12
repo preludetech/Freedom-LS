@@ -56,6 +56,18 @@ def changed_response(events: dict[str, list[str]]) -> HttpResponse:
     return response
 
 
+def refusal_response(
+    ctx: PanelContext, *, title: str, message: str, status: int = 422
+) -> HttpResponse:
+    """A message dialog saying a change was not made, and why."""
+    return render(
+        ctx.request,
+        "panel_framework/modal/message.html",
+        {"title": title, "message": message},
+        status=status,
+    )
+
+
 def count_phrase(count: int, singular: object, plural: object) -> str:
     """A count and a noun, singular for exactly one."""
     return f"{count} {singular if count == 1 else plural}"
