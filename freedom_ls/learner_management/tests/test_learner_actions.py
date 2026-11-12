@@ -452,12 +452,12 @@ class TestSelfRegisterAudit:
         learner = LearnerFactory()
         course = CourseFactory()
 
-        created = self_register(learner.user, learner.organisation, course)
+        returned = self_register(learner.user, learner.organisation, course)
 
         registration = LearnerCourseRegistration.objects.get(
             learner=learner, course=course
         )
-        assert created
+        assert returned == registration
         assert registration.is_active
         assert registration.self_registered
         assert AuditLogEntry.unscoped.count() == 0
@@ -467,13 +467,13 @@ class TestSelfRegisterAudit:
     ):
         registration = LearnerCourseRegistrationFactory(is_active=True)
 
-        created = self_register(
+        returned = self_register(
             registration.learner.user,
             registration.learner.organisation,
             registration.course,
         )
 
-        assert not created
+        assert returned is None
         assert AuditLogEntry.unscoped.count() == 0
 
     def test_reactivating_a_registration_writes_a_system_entry_naming_the_course(
@@ -484,10 +484,12 @@ class TestSelfRegisterAudit:
         )
         learner = registration.learner
 
-        created = self_register(learner.user, learner.organisation, registration.course)
+        returned = self_register(
+            learner.user, learner.organisation, registration.course
+        )
 
         registration.refresh_from_db()
-        assert not created
+        assert returned is None
         assert registration.is_active
         assert not registration.self_registered
         assert_entry(

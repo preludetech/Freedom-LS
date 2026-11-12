@@ -100,6 +100,8 @@ from freedom_ls.learner_progress.queries import (
 )
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.referral_tracking.conversions import record_conversion
+from freedom_ls.referral_tracking.models import ConversionKind
 from freedom_ls.site_aware_models.models import get_cached_site
 from freedom_ls.site_aware_models.time_zones import shows_time_zone_to_learners
 
@@ -1091,11 +1093,18 @@ def initiate_course_access(request, course_slug):
     # is not open to.
     if not is_course_open_to_organisation(course, organisation):
         return redirect("learner_interface:course_detail", course_slug=course.slug)
-    created = self_register(request.user, organisation, course)
+    registration = self_register(request.user, organisation, course)
     # Only a new registration. Reactivating one an admin had switched off is
     # not a second registration, and a repeat visit to this URL is not one either.
-    if created:
+    if registration is not None:
         record_course_self_registered(request, course)
+        record_conversion(
+            user=cast("User", request.user),
+            kind=ConversionKind.COURSE_REGISTRATION,
+            target=registration,
+            occurred_at=registration.registered_at,
+            target_label=course.title,
+        )
 
     # Redirect into the player. course_home is now a resume redirector, so a
     # freshly registered (0-progress) learner lands on the first course item.

@@ -310,7 +310,7 @@ def register_for_course(
     the course is not open to the learner's organisation."""
     require_course_open_to(course, learner.organisation)
     with transaction.atomic():
-        change = _ensure_registration(learner, course, self_registered=False)
+        change, _ = _ensure_registration(learner, course, self_registered=False)
         if change is None:
             return False
         record_learner_entry(
@@ -321,10 +321,10 @@ def register_for_course(
 
 def _ensure_registration(
     learner: Learner, course: Course, *, self_registered: bool
-) -> str | None:
+) -> tuple[str | None, LearnerCourseRegistration]:
     """Give the learner an active individual registration for the course and
-    name what changed: `registration.added`, `registration.reactivated`, or
-    None when an active one already existed. Runs inside the caller's
+    return what changed, `registration.added`, `registration.reactivated`, or
+    None when an active one already existed, with the registration. Runs inside the caller's
     transaction. `self_registered` only applies to a row created here:
     reactivating an admin's registration doesn't change who made it."""
     # Locked so two overlapping calls cannot each see no active
@@ -337,19 +337,21 @@ def _ensure_registration(
         defaults={"self_registered": self_registered},
     )
     if created:
-        return "registration.added"
+        return "registration.added", registration
     if registration.is_active:
-        return None
+        return None, registration
     registration.is_active = True
     registration.save(update_fields=["is_active"])
-    return "registration.reactivated"
+    return "registration.reactivated", registration
 
 
-def self_register(user: User, organisation: Organisation, course: Course) -> bool:
+def self_register(
+    user: User, organisation: Organisation, course: Course
+) -> LearnerCourseRegistration | None:
     """The learner's own registration for a course open to the organisation:
     makes them a learner of it, reactivating a deactivated one, and gives
-    them an individual registration, reactivating an inactive one. True when
-    the registration was created. The log records staff actions, so a new
+    them an individual registration, reactivating an inactive one. Returns the
+    registration when it was created, None otherwise. The log records staff actions, so a new
     self-registration writes nothing; a reactivation undoes a staff action,
     so it is written, as the system. Raises CourseNotOpenError when the
     course is not open to the organisation."""
@@ -362,10 +364,12 @@ def self_register(user: User, organisation: Organisation, course: Course) -> boo
         learner = ensure_learner(user, organisation)
         if existing is not None and not existing.is_active:
             record_learner_entry(learner, "learner.reactivated", None, details=details)
-        change = _ensure_registration(learner, course, self_registered=True)
+        change, registration = _ensure_registration(
+            learner, course, self_registered=True
+        )
         if change == "registration.reactivated":
             record_learner_entry(learner, change, None, details=details)
-    return change == "registration.added"
+    return registration if change == "registration.added" else None
 
 
 def deactivate_registration(
