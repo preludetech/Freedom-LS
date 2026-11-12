@@ -712,9 +712,6 @@ def test_memory_that_becomes_sufficient_ends_the_wait_with_the_sized_count(
     assert runner_worker_count(stub_tools) == "2"
 
 
-# --- crashed pytest attempts are retried for unfinished tests; one verdict -----------------
-
-
 def closing_lines(result: subprocess.CompletedProcess[str]) -> list[str]:
     return result.stdout.splitlines()[-4:]
 
