@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1618" height="308" viewBox="0 0 1618 308" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4b5563"/></marker></defs>
+<rect width="1618" height="308" fill="#ffffff"/>
+<text x="24" y="38" font-size="15" font-weight="bold" fill="#111827">Learner public profiles</text>
+<path d="M274.0,151.0 C314.0,151.0 314.0,151.0 354.0,151.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M604.0,151.0 C644.0,151.0 644.0,83.0 684.0,83.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M604.0,151.0 C644.0,151.0 644.0,151.0 684.0,151.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M934.0,83.0 C974.0,83.0 974.0,151.0 1014.0,151.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M1264.0,151.0 C1304.0,151.0 1304.0,151.0 1344.0,151.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M604.0,151.0 C644.0,151.0 644.0,219.0 684.0,219.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<rect x="24.0" y="126.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="34.0" y="148.0" fill="#111827">learner-public-profile-1-</text>
+<text x="34.0" y="163.0" fill="#111827">profile-picture</text>
+<rect x="354.0" y="126.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="364.0" y="148.0" fill="#111827">learner-public-profile-2-</text>
+<text x="364.0" y="163.0" fill="#111827">profile-and-page</text>
+<rect x="684.0" y="58.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="694.0" y="80.0" fill="#111827">learner-public-profile-3-</text>
+<text x="694.0" y="95.0" fill="#111827">completed-courses</text>
+<rect x="684.0" y="126.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="694.0" y="148.0" fill="#111827">learner-public-profile-4-</text>
+<text x="694.0" y="163.0" fill="#111827">certificates</text>
+<rect x="1014.0" y="133.5" width="250" height="35" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="1024.0" y="155.5" fill="#111827">learner-public-profile-5-index</text>
+<rect x="1344.0" y="126.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="1354.0" y="148.0" fill="#111827">learner-public-profile-6-</text>
+<text x="1354.0" y="163.0" fill="#111827">index-access</text>
+<rect x="684.0" y="194.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="694.0" y="216.0" fill="#111827">learner-public-profile-7-</text>
+<text x="694.0" y="231.0" fill="#111827">contact</text>
+<rect x="24.0" y="268" width="16" height="12" rx="3" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+<text x="46.0" y="278" fill="#374151">in progress</text>
+<rect x="154.3" y="268" width="16" height="12" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="176.3" y="278" fill="#374151">ready</text>
+<rect x="240.8" y="268" width="16" height="12" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+<text x="262.8" y="278" fill="#374151">needs work on main first</text>
+<rect x="466.0" y="268" width="16" height="12" rx="3" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="488.0" y="278" fill="#374151">blocked</text>
+<rect x="567.1" y="268" width="16" height="12" rx="3" fill="#ffffff" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="589.1" y="278" fill="#374151">other feature</text>
+</svg>
