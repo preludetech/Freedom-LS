@@ -102,6 +102,22 @@ def is_capture_suppressed(request: HttpRequest) -> bool:
     return getattr(request, _CAPTURE_SUPPRESSED_ATTR, False) is True
 
 
+_COOKIE_CLEAR_ATTR = "_attribution_cookie_clear_requested"
+
+
+def request_cookie_clear(request: HttpRequest) -> None:
+    """Ask the middleware to delete the attribution cookie from this response.
+
+    Called once the cookie's touches have been written to the database, so the
+    cookie does not carry them into a second flush.
+    """
+    setattr(request, _COOKIE_CLEAR_ATTR, True)
+
+
+def is_cookie_clear_requested(request: HttpRequest) -> bool:
+    return getattr(request, _COOKIE_CLEAR_ATTR, False) is True
+
+
 def sanitise(value: str, cap: int, *, lower: bool = False) -> str:
     # No unquote(): request.GET is already decoded, and decoding again would
     # corrupt a legitimate %2B or smuggle characters past this filter.
@@ -346,6 +362,30 @@ def read_cookie_touches(request: HttpRequest) -> list[CookieTouch]:
         return []
     _, touches = decoded
     return list(touches)
+
+
+def flushable_cookie_touches(request: HttpRequest) -> list[CookieTouch]:
+    """The touches the cookie holds that are worth writing, oldest first.
+
+    The frozen first touch leads, carrying its `landing_path`, followed by the
+    list entries dated between the first touch and now: a hand-edited entry
+    from the future or from before the first landing is not a real landing.
+    Touches whose seven attribution values are all blank are dropped. Empty
+    when there is no valid cookie.
+    """
+    decoded = _decode_cookie(request)
+    if decoded is None:
+        return []
+    first, entries = decoded
+    first_seen = datetime.fromisoformat(first[COOKIE_KEYS["first_seen"]])
+    first_touch = CookieTouch(
+        **{name: first.get(COOKIE_KEYS[name], "") for name in ATTRIBUTION_KEY_FIELDS},
+        occurred_at=first_seen,
+        landing_path=first.get(COOKIE_KEYS["landing_path"], ""),
+    )
+    now = timezone.now()
+    in_window = [entry for entry in entries if first_seen <= entry.occurred_at <= now]
+    return [touch for touch in [first_touch, *in_window] if any(touch.key_values)]
 
 
 def append_touch(

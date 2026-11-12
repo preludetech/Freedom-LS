@@ -23,9 +23,12 @@ from freedom_ls.referral_tracking.capture import (
     CookieTouch,
     append_touch,
     first_touch_from_request,
+    flushable_cookie_touches,
     is_capture_suppressed,
+    is_cookie_clear_requested,
     read_attribution_cookie,
     read_cookie_touches,
+    request_cookie_clear,
     sanitise,
     set_attribution_cookie,
     suppress_capture,
@@ -619,3 +622,65 @@ def test_a_worst_case_entry_that_cannot_fit_beside_the_first_touch_sets_nothing(
 
     assert was_set is False
     assert config.REFERRAL_TRACKING_COOKIE_NAME not in response.cookies
+
+
+def _flushable_payload(entries: list[dict[str, str]]) -> HttpRequest:
+    return _request_holding_payload(
+        {
+            "ts": NOW.isoformat(),
+            "rc": "A",
+            "p": "/landing/",
+            COOKIE_TOUCHES_KEY: entries,
+        }
+    )
+
+
+@time_machine.travel(NOW + datetime.timedelta(days=30), tick=False)
+def test_flushable_touches_lead_with_the_first_touch_and_its_landing_path() -> None:
+    later = (NOW + datetime.timedelta(days=2)).isoformat()
+    request = _flushable_payload([{"rc": "B", "ts": later}])
+
+    touches = flushable_cookie_touches(request)
+
+    assert [(t.referral_code, t.landing_path) for t in touches] == [
+        ("A", "/landing/"),
+        ("B", ""),
+    ]
+
+
+@time_machine.travel(NOW + datetime.timedelta(days=30), tick=False)
+def test_flushable_touches_drop_entries_outside_the_cookies_lifetime() -> None:
+    before = (NOW - datetime.timedelta(days=1)).isoformat()
+    future = (NOW + datetime.timedelta(days=60)).isoformat()
+    request = _flushable_payload([{"rc": "B", "ts": before}, {"rc": "C", "ts": future}])
+
+    touches = flushable_cookie_touches(request)
+
+    assert [t.referral_code for t in touches] == ["A"]
+
+
+@time_machine.travel(NOW + datetime.timedelta(days=30), tick=False)
+def test_flushable_touches_drop_entries_with_every_attribution_value_blank() -> None:
+    request = _flushable_payload(
+        [{"ts": (NOW + datetime.timedelta(days=2)).isoformat()}]
+    )
+
+    touches = flushable_cookie_touches(request)
+
+    assert [t.referral_code for t in touches] == ["A"]
+
+
+def test_flushable_touches_are_empty_without_a_cookie() -> None:
+    assert flushable_cookie_touches(rf.get("/")) == []
+
+
+def test_a_request_is_not_cookie_clear_requested_by_default() -> None:
+    assert not is_cookie_clear_requested(rf.get("/"))
+
+
+def test_requesting_a_cookie_clear_is_visible_on_the_request() -> None:
+    request = rf.get("/")
+
+    request_cookie_clear(request)
+
+    assert is_cookie_clear_requested(request)

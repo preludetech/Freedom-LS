@@ -5,9 +5,11 @@ TDD: these tests are written before the implementation.
 
 from __future__ import annotations
 
+import datetime
 from urllib.parse import urlparse
 
 import pytest
+import time_machine
 from allauth.account.models import EmailAddress, EmailConfirmationHMAC
 
 from django.db import DatabaseError
@@ -791,3 +793,33 @@ class TestExpressInterestConversion:
 
         assert response.status_code == 200
         assert CourseInterest.objects.filter(user=user, course=course).exists()
+
+
+@pytest.mark.django_db
+def test_an_existing_accounts_interest_names_the_touch_its_cookie_flushed_at_login(
+    mock_site_context,
+) -> None:
+    user = UserFactory()
+    EmailAddress.objects.create(
+        user=user, email=user.email, verified=True, primary=True
+    )
+    course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+    client = Client()
+    landing = datetime.datetime(2026, 3, 1, 12, 0, tzinfo=datetime.UTC)
+    with time_machine.travel(landing, tick=False):
+        client.get("/robots.txt", {"ref": "A"})
+
+    with time_machine.travel(landing + datetime.timedelta(days=2), tick=False):
+        client.post(
+            reverse("account_login"), {"login": user.email, "password": user.email}
+        )
+        client.post(
+            reverse(
+                "course_interest:express_interest",
+                kwargs={"course_slug": course.slug},
+            ),
+            HTTP_HX_REQUEST="true",
+        )
+
+    conversion = Conversion._base_manager.get(kind=ConversionKind.COURSE_INTEREST)
+    assert conversion.first_referral_code == "A"

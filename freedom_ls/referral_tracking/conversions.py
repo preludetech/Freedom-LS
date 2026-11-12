@@ -15,7 +15,11 @@ from django.db.models import Model
 from django.http import HttpRequest
 
 from freedom_ls.referral_tracking.best_effort import best_effort_write
-from freedom_ls.referral_tracking.capture import first_touch_from_request
+from freedom_ls.referral_tracking.capture import (
+    first_touch_from_request,
+    flushable_cookie_touches,
+    request_cookie_clear,
+)
 from freedom_ls.referral_tracking.config import config
 from freedom_ls.referral_tracking.counters import (
     attribution_key_hash_of,
@@ -75,6 +79,46 @@ def record_live_touch(
             **{name: landing[name] for name in ATTRIBUTION_KEY_FIELDS},
         )
     return touch
+
+
+def flush_cookie_touches(
+    *, request: HttpRequest | None, user: SiteAwareModelBase, source: TouchSource
+) -> list[AttributionTouch]:
+    """Write the attribution cookie's touches as the user's own, then clear the cookie.
+
+    A touch already written for the same moment and key is found rather than
+    written again, so flushing twice, or flushing what a live landing already
+    recorded, leaves one row each. Returns the touches written or found, or an
+    empty list when there is no request, no cookie, or the write failed.
+
+    Touches are written on `user.site` rather than the ambient site, because
+    `user_logged_in` can fire outside a request's site context, and through
+    `_base_manager` so the row lands there regardless. The clear flag is set
+    whether or not the write succeeded: a lost write stays lost, and nothing
+    retries it.
+    """
+    if request is None:
+        return []
+    cookie_touches = flushable_cookie_touches(request)
+    flushed: list[AttributionTouch] = []
+    with best_effort_write():
+        written: list[AttributionTouch] = []
+        for cookie_touch in cookie_touches:
+            touch, _ = AttributionTouch._base_manager.get_or_create(
+                site=user.site,
+                user_id=user.pk,
+                occurred_at=cookie_touch.occurred_at,
+                key_hash=cookie_touch.key_hash,
+                defaults={
+                    **cookie_touch.key_fields,
+                    "landing_path": cookie_touch.landing_path,
+                    "recorded_via": source,
+                },
+            )
+            written.append(touch)
+        flushed = written
+    request_cookie_clear(request)
+    return flushed
 
 
 def record_conversion(
