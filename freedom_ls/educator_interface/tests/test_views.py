@@ -730,7 +730,9 @@ def test_course_details_list_each_learning_outcome_on_its_own(
     )
     (panel,) = document.cssselect("section[data-panel='details']")
 
-    items = [li.text_content().strip() for li in panel.cssselect("ul li")]
+    items = [
+        li.text_content().strip() for li in panel.cssselect("ul li > span:last-child")
+    ]
     assert items == ["Read, write and speak", "Plan"]
 
 

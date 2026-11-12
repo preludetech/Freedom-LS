@@ -193,7 +193,7 @@ app's skill.
   the end padding, clear of the edge.
 - Siblings sit apart through the container (`gap-*` or `space-*`); children carry no margins.
 - A list value in a details panel sits flush with its label: the bullets line up with the label's
-  first letter (`list-inside`, no left padding).
+  first letter. Override the base `ul` margin (`ml-0`) and keep wrapped lines under the text.
 - On a phone a button is 44px tall and as wide as its label, with the small size's text and
   padding; the height is the only thing that grows.
 
