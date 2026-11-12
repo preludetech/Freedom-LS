@@ -30,6 +30,7 @@ from freedom_ls.deadlines.factories import (
     CohortDeadlineOverrideFactory,
     CourseDeadlineConfigFactory,
     CoursePauseFactory,
+    DeadlineExtensionFactory,
     LearnerDeadlineOverrideFactory,
     SiteDeadlineConfigFactory,
 )
@@ -37,6 +38,7 @@ from freedom_ls.deadlines.models import (
     CohortDeadlineOverride,
     CourseDeadlineConfig,
     CoursePause,
+    DeadlineExtension,
     DeadlineKind,
     LearnerDeadlineOverride,
     SiteDeadlineConfig,
@@ -1271,6 +1273,8 @@ def test_the_pause_inline_query_count_does_not_grow_with_pauses(
 ) -> None:
     few = _record_with_pauses(1)
     many = _record_with_pauses(8)
+    # The first render fills the content type cache, which would count against `many`.
+    _progress_page_query_count(staff_client, few)
 
     assert _progress_page_query_count(staff_client, many) == _progress_page_query_count(
         staff_client, few
@@ -1316,6 +1320,91 @@ def test_the_pause_admin_allows_no_add_or_delete(
     add = staff_client.get(reverse("admin:freedom_ls_deadlines_coursepause_add"))
     delete = staff_client.post(
         reverse("admin:freedom_ls_deadlines_coursepause_delete", args=[pause.pk]),
+        {"post": "yes"},
+    )
+
+    assert (add.status_code, delete.status_code) == (403, 403)
+
+
+@pytest.mark.django_db
+def test_effective_deadlines_marks_an_extended_deadline_with_the_days_added(
+    staff_client, mock_site_context
+) -> None:
+    record, item = _record_with_item()
+    item.due_date = date(2026, 3, 14)
+    item.save()
+    DeadlineExtensionFactory(
+        course_progress=record,
+        target_kind="collection_item",
+        collection_item=item,
+        days=5,
+    )
+
+    body = _progress_page(staff_client, record).content.decode()
+
+    assert "(+5 days)" in body
+
+
+@pytest.mark.django_db
+def test_the_detail_page_always_offers_extend_deadline(
+    staff_client, mock_site_context
+) -> None:
+    record: CourseProgress = CourseProgressFactory()
+    paused: CourseProgress = CourseProgressFactory()
+    CoursePauseFactory(course_progress=paused)
+
+    for each in (record, paused):
+        actions = _detail_actions(staff_client, each)
+        response = staff_client.get(actions["Extend deadline"])
+        assert response.url == reverse(
+            "admin:freedom_ls_learner_progress_courseprogress_extend", args=[each.pk]
+        )
+
+
+@pytest.mark.django_db
+def test_the_progress_page_lists_the_records_extensions_read_only(
+    staff_client, mock_site_context
+) -> None:
+    record: CourseProgress = CourseProgressFactory()
+    DeadlineExtensionFactory(course_progress=record, reason="Was ill")
+    response = _progress_page(staff_client, record)
+    inline = next(
+        i
+        for i in response.context["inline_admin_formsets"]
+        if i.opts.model is DeadlineExtension
+    )
+
+    assert "Was ill" in response.content.decode()
+    assert not inline.has_add_permission
+    assert not inline.has_change_permission
+    assert not inline.has_delete_permission
+
+
+@pytest.mark.django_db
+def test_the_extension_changelist_stays_under_a_query_bound_for_many_rows(
+    staff_client, mock_site_context, django_assert_max_num_queries
+) -> None:
+    for _ in range(12):
+        DeadlineExtensionFactory(set_by=UserFactory())
+    url = reverse("admin:freedom_ls_deadlines_deadlineextension_changelist")
+
+    with django_assert_max_num_queries(25):
+        response = staff_client.get(url)
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_the_extension_admin_allows_no_add_or_delete(
+    staff_client, mock_site_context
+) -> None:
+    extension: DeadlineExtension = DeadlineExtensionFactory()
+
+    add = staff_client.get(reverse("admin:freedom_ls_deadlines_deadlineextension_add"))
+    delete = staff_client.post(
+        reverse(
+            "admin:freedom_ls_deadlines_deadlineextension_delete", args=[extension.pk]
+        ),
         {"post": "yes"},
     )
 

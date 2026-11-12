@@ -11,8 +11,10 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.audit_log.models import AuditLogEntry
+from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.deadlines.factories import CoursePauseFactory
-from freedom_ls.deadlines.models import CoursePause
+from freedom_ls.deadlines.models import CoursePause, DeadlineExtension
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.tests.factories import SiteFactory
 
@@ -20,6 +22,7 @@ pytestmark = pytest.mark.django_db
 
 PAUSE_URL = "admin:freedom_ls_learner_progress_courseprogress_pause"
 RESUME_URL = "admin:freedom_ls_learner_progress_courseprogress_resume"
+EXTEND_URL = "admin:freedom_ls_learner_progress_courseprogress_extend"
 CHANGE_URL = "admin:freedom_ls_learner_progress_courseprogress_change"
 
 
@@ -173,5 +176,138 @@ def test_another_sites_record_is_a_404(
     foreign = CourseProgressFactory(site=SiteFactory(domain="other.example.com"))
 
     response = staff_client.get(reverse(url_name, args=[foreign.pk]))
+
+    assert response.status_code == 404
+
+
+def _record_with_dated_item():
+    course = CourseFactory(time_limit_days=30)
+    topic = TopicFactory(title="Reading")
+    course.items.create(child=topic, order=0)
+    item = collection_item_for(course, topic)
+    item.due_date = timezone.now().date() + timedelta(days=10)
+    item.save()
+    return CourseProgressFactory(course=course), item
+
+
+@pytest.mark.parametrize(
+    "extra", [{"days": "4"}, {"requested_date": "DATE"}], ids=["days", "date"]
+)
+def test_an_extend_post_creates_one_extension_and_redirects(
+    staff_client, mock_site_context, extra
+) -> None:
+    record, item = _record_with_dated_item()
+    if extra.get("requested_date") == "DATE":
+        extra = {"requested_date": (item.due_date + timedelta(days=4)).isoformat()}
+
+    response = staff_client.post(
+        reverse(EXTEND_URL, args=[record.pk]),
+        {
+            "target_kind": "collection_item",
+            "collection_item": str(item.pk),
+            "reason": "Ill",
+            **extra,
+        },
+    )
+
+    assert response.status_code == 302
+    assert response.url == reverse(CHANGE_URL, args=[record.pk])
+    extension = DeadlineExtension.objects.get(course_progress=record)
+    assert extension.days == 4
+    assert extension.collection_item == item
+
+
+def test_a_whole_course_post_names_the_learner_in_the_message(
+    staff_client, mock_site_context
+) -> None:
+    record, _ = _record_with_dated_item()
+
+    response = staff_client.post(
+        reverse(EXTEND_URL, args=[record.pk]),
+        {"target_kind": "course", "days": "2", "reason": "Ill"},
+    )
+
+    assert response.status_code == 302
+    texts = [str(m) for m in messages.get_messages(response.wsgi_request)]
+    assert texts == [
+        f"Moved {record.learner}'s deadlines in {record.course} by 2 days."
+    ]
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        pytest.param({"reason": "", "days": "2"}, id="blank-reason"),
+        pytest.param({"days": "2", "requested_date": "2030-01-05"}, id="both"),
+        pytest.param(
+            {"target_kind": "course", "requested_date": "2030-01-05"}, id="course-date"
+        ),
+    ],
+)
+def test_an_invalid_extend_post_rerenders_with_an_error_and_writes_nothing(
+    staff_client, mock_site_context, data
+) -> None:
+    record, _ = _record_with_dated_item()
+    payload = {"target_kind": "time_limit", "reason": "Ill", **data}
+
+    response = staff_client.post(reverse(EXTEND_URL, args=[record.pk]), payload)
+
+    assert response.status_code == 200
+    assert response.context["form"].errors
+    assert not DeadlineExtension.objects.exists()
+
+
+def test_an_extend_service_refusal_shows_as_a_form_error(
+    staff_client, mock_site_context
+) -> None:
+    record, item = _record_with_dated_item()
+    past = (item.due_date - timedelta(days=1)).isoformat()
+
+    response = staff_client.post(
+        reverse(EXTEND_URL, args=[record.pk]),
+        {
+            "target_kind": "collection_item",
+            "collection_item": str(item.pk),
+            "requested_date": past,
+            "reason": "Ill",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.context["form"].non_field_errors()
+    assert not DeadlineExtension.objects.exists()
+
+
+def test_the_extend_page_lists_each_target_with_its_current_date(
+    staff_client, mock_site_context
+) -> None:
+    record, _ = _record_with_dated_item()
+
+    response = staff_client.get(reverse(EXTEND_URL, args=[record.pk]))
+
+    assert [label for label, _ in response.context["targets"]] == [
+        "Reading",
+        "Course time limit",
+    ]
+
+
+def test_extend_requires_change_permission(view_only_client, mock_site_context) -> None:
+    record, _ = _record_with_dated_item()
+
+    response = view_only_client.post(
+        reverse(EXTEND_URL, args=[record.pk]),
+        {"target_kind": "course", "days": "2", "reason": "x"},
+    )
+
+    assert response.status_code == 403
+    assert not DeadlineExtension.objects.exists()
+
+
+def test_extend_for_another_sites_record_is_a_404(
+    staff_client, mock_site_context
+) -> None:
+    foreign = CourseProgressFactory(site=SiteFactory(domain="other.example.com"))
+
+    response = staff_client.get(reverse(EXTEND_URL, args=[foreign.pk]))
 
     assert response.status_code == 404
