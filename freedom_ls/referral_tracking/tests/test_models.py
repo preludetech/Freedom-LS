@@ -170,3 +170,8 @@ def test_a_second_conversion_on_the_same_target_raises(mock_site_context) -> Non
         ConversionFactory(
             user=conversion.user, kind=conversion.kind, target=conversion.target
         )
+
+
+def test_attribution_touch_plural_name_is_spelled_touches() -> None:
+    """The admin plural used to read "Attribution touchs" because Django only appends "s"."""
+    assert AttributionTouch._meta.verbose_name_plural == "attribution touches"
