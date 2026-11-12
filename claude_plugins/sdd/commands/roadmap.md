@@ -39,7 +39,7 @@ skill explains why).
    (or `"sdd:sdd-mechanic"` for mechanical units). Pass the exact output path and the baked-in
    inputs. Never one worker looping over the batch. Never use the `Workflow` tool for this: it
    puts a permission dialog in front of the owner, which amounts to asking whether to do the work
-   they already asked for.
+   they already asked for. The number started at once follows the memory capacity rule in point 4 of `fanout_recipe.md`.
 5. **Collect structured returns:** `ok` → done; `failed` → retry the same unit (≤2 attempts, include
    the prior error); `blocked` → supply the listed `needs` from the source, the code or another unit's
    output if they can; ask via `AskUserQuestion` only if they can't. Then re-spawn a fresh worker

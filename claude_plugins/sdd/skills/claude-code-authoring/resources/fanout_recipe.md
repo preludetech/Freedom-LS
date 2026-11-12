@@ -49,6 +49,11 @@ lives in another one.
    or `"sdd:sdd-mechanic"` for mechanical units). Pass the exact output path and baked-in inputs.
    **Never one worker looping over the whole batch**: a sibling's failure must not lose others'
    work. *(Pattern A1.)*
+   **Memory capacity.** When `Worker memory (MB)` and `Memory capacity` under `## Worktree Scripts`
+   in `.claude/sdd/config.md` (`config.local.md` wins) are both set, run
+   `<Memory capacity> <Worker memory (MB)>` and spawn at most that many workers at first; as each
+   returns, run it again and top up from the remaining units. When either is blank, or the command
+   fails or prints no integer, spawn every unit at once.
 5. **Collect structured returns** and act per `status`:
    - `ok` → done.
    - `failed` → retry the **same** unit, ≤2 attempts, including the prior error in the retry brief.

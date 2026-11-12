@@ -130,7 +130,7 @@ files exist, catches this.
 
 `sdd` reads fourteen sections here at runtime. **Worktree Scripts**: the worktree helpers
 (`protected/start_worktree.md`, `finish_worktree.md`) look here for the per-worktree setup and
-teardown scripts to run, and `/sdd:implement_plan` looks here for the `Parallel batches` count. **Rebase Hooks**: the pre-step rebase helper
+teardown scripts to run, and `/sdd:implement_plan` looks here for the `Parallel batches` count, `Memory capacity`, `Batch memory (MB)` and `Worker memory (MB)`. **Rebase Hooks**: the pre-step rebase helper
 (`protected/pre_step_rebase.md`) looks here for the rebase command and front-end check it follows
 before a feature-branch SDD step runs. **Design Hooks**: `/sdd:implement_plan` looks here for the
 design check it follows after each slice that builds a designed screen. **Test Hooks**:
@@ -164,6 +164,9 @@ parity and future settings.
    - Setup script:
    - Teardown script:
    - Parallel batches:
+   - Memory capacity:
+   - Batch memory (MB):
+   - Worker memory (MB):
 
    ## Rebase Hooks
 
@@ -248,6 +251,13 @@ parity and future settings.
    Teardown script after its work. The Setup script must not depend on gitignored files, or the
    project lists them in `.worktreeinclude`; the Teardown script must be safe to run twice.
 
+   **Memory capacity** is a command that takes a unit size in MB and prints how many units of that
+   size fit in free memory now. **Batch memory (MB)** is the size of one batch: its subagent, Setup
+   script and targeted test run. **Worker memory (MB)** is the size of one fan-out worker.
+   `/sdd:implement_plan` starts no more batches than `Memory capacity` prints for `Batch memory (MB)`,
+   and fan-out commands start no more workers than it prints for `Worker memory (MB)`. A blank
+   `Memory capacity` or a blank size means no check.
+
    A **Rebase command** value points at a file that rebases the branch onto main; the pre-step
    rebase reads it and follows its steps inline. A **Front-end check** value points at a file that
    verifies front-end pages after a rebase that changed them. Both are blank by default, meaning
@@ -325,7 +335,7 @@ parity and future settings.
    model class names and field names are the vocabulary of last resort.
 3. If it already exists, add the `## Worktree Scripts`, `## Rebase Hooks`, `## Design Hooks`, `## Test Hooks`,
    `## Plan Review Hooks`, `## Review Hooks`, `## Documentation Hooks`, `## QA Hooks`, `## QA Login`, `## QA Dev Data`,
-   `## Testing Skills`, `## PR Hooks`, `## Rule Files` and `## Vocabulary Sources` sections, and any key only if missing (including `Parallel batches` under `## Worktree Scripts`), using the blank default. Preserve every existing value,
+   `## Testing Skills`, `## PR Hooks`, `## Rule Files` and `## Vocabulary Sources` sections, and any key only if missing (including `Parallel batches`, `Memory capacity`, `Batch memory (MB)` and `Worker memory (MB)` under `## Worktree Scripts`), using the blank default. Preserve every existing value,
    comment, and ordering.
 4. Tell the user in the summary to fill in the paths and the vocabulary sources themselves.
 
@@ -350,7 +360,7 @@ in-place edits.
 2. `Skill(sdd:*)` is in `permissions.allow`, and so are the three entries from Step 1 item 2 for
    every `.sh` under `${CLAUDE_PLUGIN_ROOT}/scripts/`.
 3. `.claude/sdd/config.md` has a `## Worktree Scripts` section with the `Setup script`,
-   `Teardown script` and `Parallel batches` keys (blank values are valid).
+   `Teardown script`, `Parallel batches`, `Memory capacity`, `Batch memory (MB)` and `Worker memory (MB)` keys (blank values are valid).
 4. `.claude/sdd/config.md` has a `## Rebase Hooks` section with both `Rebase command` and
    `Front-end check` keys (blank values are valid).
 5. `.claude/sdd/config.md` has a `## Design Hooks` section with a `Design check` key (a blank value
@@ -384,7 +394,7 @@ in-place edits.
 
 Print what was done, then the outstanding actions: every Step 0 WARN, anything Step 5 flagged,
 and each worktree setting, allow entry or ignore line that was not merged.
-Point the user at `.claude/sdd/config.md` to fill in the Worktree Scripts Setup and Teardown paths and Parallel batches count,
+Point the user at `.claude/sdd/config.md` to fill in the Worktree Scripts Setup and Teardown paths, Parallel batches count and the Memory capacity command with its two sizes,
 the Rebase Hooks Rebase command and Front-end check paths, the Design Hooks Design check path, the Test Hooks Test tiers and Pre-test rebuild paths, the Plan Review Hooks and Documentation Hooks lists, the Review
 Hooks Comment standard and Test standard paths, the QA Hooks, QA Login, QA Dev Data and Testing Skills values, the PR Hooks Fetch PR
 comments path, and to list the project's Vocabulary Sources.
