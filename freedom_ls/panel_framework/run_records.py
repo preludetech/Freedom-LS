@@ -19,6 +19,8 @@ class RunRecord(Protocol):
 
     status: str
     error_message: str
+    created_at: datetime
+    site_id: int
     started_at: datetime | None
     finished_at: datetime | None
 

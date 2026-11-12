@@ -19,7 +19,7 @@ from django_tasks_db.models import DBTaskResult, get_date_max
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import DatabaseError
-from django.db.models import Q, QuerySet
+from django.db.models import Model, Q, QuerySet
 from django.utils import timezone
 
 from freedom_ls.deployment.config import config
@@ -30,8 +30,13 @@ from freedom_ls.mail.sweeps import (
     recover_stuck_outbound_email,
     requeue_due_outbound_email,
 )
-from freedom_ls.panel_framework.bulk_runs import report_finished
-from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
+from freedom_ls.panel_framework.housekeeping import (
+    ReportClosed,
+    delete_finished_records,
+    mark_orphaned_runs_failed,
+    mark_unpicked_runs_failed,
+)
+from freedom_ls.panel_framework.models import BulkActionRun
 from freedom_ls.reports.models import GeneratedReport
 
 
@@ -222,12 +227,20 @@ def mark_orphaned_running_reports_failed(max_age_seconds: int) -> OrphanReapResu
     return OrphanReapResult(marked_failed=marked_failed, left_running=left_running)
 
 
-# Learner imports and bulk action runs share the lifecycle fields the sweeps use
-# (status, created_at, started_at, finished_at, error_message), so each sweep is
-# written once and takes the model class.
-type BulkRecordModel = type[BulkActionRun] | type[LearnerImport]
+# Learner imports and bulk action runs share the lifecycle fields the framework's
+# sweeps use (status, created_at, started_at, finished_at, error_message).
+BULK_RECORD_MODELS: tuple[type[Model], ...] = (BulkActionRun, LearnerImport)
 
-BULK_RECORD_MODELS: tuple[BulkRecordModel, ...] = (BulkActionRun, LearnerImport)
+UNPICKED_OPERATOR_MESSAGE = (
+    "A bulk record was never picked up within the window of being queued, "
+    "so no worker is consuming. fls_run_housekeeping marked it failed. The "
+    "task was not requeued."
+)
+ORPHANED_OPERATOR_MESSAGE = (
+    "A bulk record was still running past the window, so the worker running "
+    "it died without finishing. fls_run_housekeeping marked it failed. The "
+    "work was not run again."
+)
 
 STALE_PREVIEW_MAX_AGE = timedelta(hours=24)
 
@@ -249,101 +262,20 @@ def delete_stale_previews() -> int:
     return deleted_per_model.get(LearnerImport._meta.label, 0)
 
 
-#: What the requester reads on a record a sweep closed. The record's page
-#: shows error_message word for word, so it carries no operator detail.
-UNPICKED_MESSAGE = "The background task did not start. Start the action again."
-ORPHANED_MESSAGE = (
-    "The background task stopped before it finished. Check what was applied "
-    "before starting it again."
-)
+def _sentry_reporter(operator_message: str, max_age_seconds: int) -> ReportClosed:
+    """A `report_closed` that sends `operator_message` to Sentry for each closed row."""
 
-
-def _close_as_failed(
-    model: BulkRecordModel,
-    records: QuerySet,
-    error_message: str,
-    operator_message: str,
-    max_age_seconds: int,
-) -> int:
-    """Close every record in `records` as FAILED, at the current time, and
-    tell a bulk action run's action, which a bare update would skip and
-    which is how the requester hears about a run they are no longer
-    watching. The operator hears through Sentry. Returns how many rows were
-    closed."""
-    closed = list(records.values_list("pk", "site_id"))
-    if not closed:
-        return 0
-    records.filter(pk__in=[pk for pk, _ in closed]).update(
-        status=RunStatus.FAILED, error_message=error_message, finished_at=timezone.now()
-    )
-    for pk, site_id in closed:
-        if model is BulkActionRun:
-            report_finished(str(pk), site_id)
+    def report(model: type[Model], pk: str, site_id: int) -> None:
         # A constant message, so every record a sweep closes groups into one
         # recurring Sentry issue. What varies per row rides on the scope.
         with sentry_sdk.new_scope() as scope:
             scope.set_extra("model", model._meta.label)
-            scope.set_extra("record_id", str(pk))
+            scope.set_extra("record_id", pk)
             scope.set_extra("site_id", str(site_id))
             scope.set_extra("max_age_seconds", str(max_age_seconds))
             sentry_sdk.capture_message(operator_message)
-    return len(closed)
 
-
-def mark_unpicked_runs_failed(model: BulkRecordModel, max_age_seconds: int) -> int:
-    """Close every QUEUED record older than max_age_seconds as FAILED.
-
-    A record still QUEUED this long after it was created means no worker ever took
-    its task. The task is not requeued; the reader starts the action again.
-    Returns how many rows were closed.
-    """
-    return _close_as_failed(
-        model,
-        model._base_manager.filter(
-            status=RunStatus.QUEUED,
-            created_at__lte=timezone.now() - timedelta(seconds=max_age_seconds),
-        ),
-        UNPICKED_MESSAGE,
-        "A bulk record was never picked up within the window of being queued, "
-        "so no worker is consuming. fls_run_housekeeping marked it failed. The "
-        "task was not requeued.",
-        max_age_seconds,
-    )
-
-
-def mark_orphaned_runs_failed(model: BulkRecordModel, max_age_seconds: int) -> int:
-    """Close every RUNNING record started over max_age_seconds ago as FAILED.
-
-    started_at is how long the worker has held the record. A NULL started_at never
-    satisfies the comparison, which is right for a record no worker has begun.
-    The work is not run again: part of it may already have been applied.
-    Returns how many rows were closed.
-    """
-    return _close_as_failed(
-        model,
-        model._base_manager.filter(
-            status=RunStatus.RUNNING,
-            started_at__lte=timezone.now() - timedelta(seconds=max_age_seconds),
-        ),
-        ORPHANED_MESSAGE,
-        "A bulk record was still running past the window, so the worker running "
-        "it died without finishing. fls_run_housekeeping marked it failed. The "
-        "work was not run again.",
-        max_age_seconds,
-    )
-
-
-def delete_finished_records(model: BulkRecordModel, days: int) -> int:
-    """Delete records that finished more than `days` days ago.
-
-    Records closed by the sweeps above carry a finished_at like any other
-    terminal record, so they are deleted here in their turn. A record that has
-    not finished has a NULL finished_at and is never matched.
-    Returns how many rows were deleted.
-    """
-    cutoff = timezone.now() - timedelta(days=days)
-    _, deleted_per_model = model._base_manager.filter(finished_at__lte=cutoff).delete()
-    return deleted_per_model.get(model._meta.label, 0)
+    return report
 
 
 # The two ways a sweep can fail without being a bug in this command: the command
@@ -461,19 +393,29 @@ def run_housekeeping_sweeps() -> HousekeepingOutcome:
             notes.append(f"Deleted {previews_deleted} unconfirmed learner import(s).")
 
     # One try per sweep and model, so a failure on one table leaves the rest run.
-    bulk_sweeps: tuple[tuple[str, str, Callable[[BulkRecordModel], int]], ...] = (
+    bulk_sweeps: tuple[tuple[str, str, Callable[[type[Model]], int]], ...] = (
         (
             "unpicked bulk record sweep",
             "Closed {count} {name}(s) never picked up by a worker.",
             lambda model: mark_unpicked_runs_failed(
-                model, config.HOUSEKEEPING_UNPICKED_TASK_MAX_AGE_SECONDS
+                model,
+                config.HOUSEKEEPING_UNPICKED_TASK_MAX_AGE_SECONDS,
+                report_closed=_sentry_reporter(
+                    UNPICKED_OPERATOR_MESSAGE,
+                    config.HOUSEKEEPING_UNPICKED_TASK_MAX_AGE_SECONDS,
+                ),
             ),
         ),
         (
             "orphaned bulk record sweep",
             "Closed {count} {name}(s) orphaned in RUNNING.",
             lambda model: mark_orphaned_runs_failed(
-                model, config.HOUSEKEEPING_ORPHANED_REPORT_MAX_AGE_SECONDS
+                model,
+                config.HOUSEKEEPING_ORPHANED_REPORT_MAX_AGE_SECONDS,
+                report_closed=_sentry_reporter(
+                    ORPHANED_OPERATOR_MESSAGE,
+                    config.HOUSEKEEPING_ORPHANED_REPORT_MAX_AGE_SECONDS,
+                ),
             ),
         ),
         (
