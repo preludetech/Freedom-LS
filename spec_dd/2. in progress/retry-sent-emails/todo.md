@@ -18,9 +18,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
-- [ ] (user) Decide what to do about QA bug: mobile outbound email changelist clips multi-line values, including Last error, because Unfold's card cells are fixed-height with overflow hidden (TDD: failing test first, then fix)
-- [ ] (user) Decide what to do about QA bug: fls_run_housekeeping always exits with a CommandError in dev because prune_db_task_results rejects the ImmediateBackend task backend (TDD: failing test first, then fix)
-- [ ] (user) Decide whether outbound email row retention measures from created_at (spec field table) or from last_attempt_at (spec section 8 and the code), then make the spec agree with itself and give the QA plan's row G a matching last_attempt_at
+- [x] (user) Decide what to do about QA bug: mobile outbound email changelist clips multi-line values, including Last error, because Unfold's card cells are fixed-height with overflow hidden (TDD: failing test first, then fix)
+- [x] (user) Decide what to do about QA bug: fls_run_housekeeping always exits with a CommandError in dev because prune_db_task_results rejects the ImmediateBackend task backend (TDD: failing test first, then fix)
+- [x] (user) Decide whether outbound email row retention measures from created_at (spec field table) or from last_attempt_at (spec section 8 and the code), then make the spec agree with itself and give the QA plan's row G a matching last_attempt_at
 
 ## 4. Documentation and pull request
 

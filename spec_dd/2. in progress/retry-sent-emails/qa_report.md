@@ -168,9 +168,9 @@ Admin pages sit outside the FLS shell, so the configured header/content/sidebar 
 |---|---|
 | B1 | **FIXED** (commit: a781fb3c5) — Outbound email changelist is in random order, newest rows not first. Re-verified: changelist and search now list newest first. |
 | B2 | **FIXED** (commit: 98c8da7bd) — Detail page shows recipients as a raw JSON array. Re-verified: row A's detail page reads `qa-row-a@example.test` as plain text ([screenshot](screenshots/page-2026-11-12T12-14-58-739Z.png)). |
-| B3 | **UNRESOLVED** — Mobile changelist clips every multi-line value, including Last error (reason: the clipping is Unfold's shared mobile card style (fixed ~45px cells, overflow hidden); fixing it means overriding admin card styling for every changelist, a UX decision) |
+| B3 | **FIXED** (commit: 2010b6424) — Mobile changelist clips every multi-line value, including Last error. OutboundEmailAdmin now loads the shared FLS admin stylesheet that lets card cells grow; a Playwright test at 375px checks no cell clips. |
 | — | **NOT RUN** — full test run after the fixes (reason: Claude Code stopped the run for low system memory before it finished; no results. The fixes passed `uv run pytest freedom_ls/mail` (217 passed). Re-run the full tier before pushing the rebased branch.) |
-| B4 | **UNRESOLVED** — fls_run_housekeeping always exits with an error in dev (reason: pre-existing on main; needs a decision whether dev should switch TASKS to a database backend or housekeeping should skip prune_db_task_results when the backend is not a database one) |
+| B4 | **FIXED** (commit: 9fb6b8f87) — fls_run_housekeeping always exits with an error in dev. Housekeeping now skips prune_db_task_results with a note when the default task backend is not a database backend; the dev run exits 0. |
 
 ## General notes
 
