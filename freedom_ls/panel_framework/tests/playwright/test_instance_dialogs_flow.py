@@ -48,6 +48,16 @@ def test_instance_dialogs_and_heading(
     page.mouse.click(5, 5)
     expect(modal).to_be_hidden()
 
+    # A confirm dialog with a typed reason closes from the footer Cancel with
+    # no discard prompt.
+    page.get_by_role("button", name="Retire Item").click()
+    dialog = page.get_by_role("dialog", name="Retire Item")
+    expect(dialog.get_by_role("button", name="Cancel")).to_be_focused()
+    dialog.get_by_label("Reason (optional):").fill("Typed but not needed")
+    dialog.get_by_role("button", name="Cancel").click()
+    expect(modal).to_be_hidden()
+    expect(page.get_by_role("dialog", name="Discard changes?")).to_be_hidden()
+
     # The instance heading updates when instanceTitleChanged fires.
     heading = page.locator("#instance-title")
     expect(heading).to_have_text("Original Name")

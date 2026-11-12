@@ -1,29 +1,17 @@
+{% extends "panel_framework/modal/confirm.html" %}
 {% comment %}
-The modal fragment an DeactivateCohortRegistrationAction's GET returns. Context:
-cohort, course, registration, losing_count, losing_phrase, keeping_names,
-confirm_url. keeping_names is empty when nobody keeps access.
+The dialog a DeactivateCohortRegistrationAction's GET returns. Context: cohort,
+course, registration, losing_count, losing_phrase, keeping_names.
+keeping_names is empty when nobody keeps access.
 {% endcomment %}
-<c-modal-header>Deactivate {{ cohort }}'s registration for {{ course }}?</c-modal-header>
 
-<form hx-post="{{ confirm_url }}"
-      hx-target="#app-modal-body"
-      hx-swap="innerHTML"
-      hx-disabled-elt="find button[type='submit']">
-    <input type="hidden" name="registration" value="{{ registration.pk }}">
+{% block title %}Deactivate {{ cohort }}'s registration for {{ course }}?{% endblock title %}
 
-    <c-modal-body>
-        <p>{{ losing_phrase }} lose{{ losing_count|pluralize:"s," }} access to {{ course }}.</p>
-        {% if keeping_names %}
-            <p>These learners keep access through another registration: {{ keeping_names }}.</p>
-        {% endif %}
-        <p>Everyone keeps their progress.</p>
-        <p>You can reactivate the registration later.</p>
-    </c-modal-body>
-    {% include "panel_framework/partials/reason_field.html" %}
-
-    <c-modal-footer focus_cancel="true">
-        <c-button type="submit" variant="primary" loading="true" loading_text="Deactivating…">
-            Deactivate
-        </c-button>
-    </c-modal-footer>
-</form>
+{% block body %}
+    <p>{{ losing_phrase }} lose{{ losing_count|pluralize:"s," }} access to {{ course }}.</p>
+    {% if keeping_names %}
+        <p>These learners keep access through another registration: {{ keeping_names }}.</p>
+    {% endif %}
+    <p>Everyone keeps their progress.</p>
+    <p>You can reactivate the registration later.</p>
+{% endblock body %}

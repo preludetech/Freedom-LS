@@ -14,7 +14,7 @@ staff_member, role, role_display_name, cohort, confirm_url.
     <c-modal-body>
         <p>{{ staff_member.display_name }} will lose {{ role_display_name }} on {{ cohort }}. Their other roles are unchanged.</p>
     </c-modal-body>
-    {% include "educator_interface/partials/reason_field.html" %}
+    {% include "panel_framework/partials/reason_field.html" %}
 
     <c-modal-footer focus_cancel="true">
         <c-button type="submit" variant="primary" loading="true" loading_text="Removing from cohort…">

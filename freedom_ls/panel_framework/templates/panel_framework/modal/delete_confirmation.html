@@ -1,35 +1,27 @@
+{% extends "panel_framework/modal/confirm.html" %}
 {% comment %}
-The modal fragment a DeleteAction's GET returns. Context: instance, noun,
-cascade_summary, blocked_reason, delete_url.
+The dialog a DeleteAction's GET returns. Context: instance, noun,
+cascade_summary and blocked_reason, which replaces the summary and the confirm
+button when a protected relation would block the delete.
 {% endcomment %}
-<c-modal-header>Delete {{ instance }}</c-modal-header>
 
-<c-modal-body>
-{% if blocked_reason %}
-    <c-panel-notice tone="error">{{ blocked_reason }}</c-panel-notice>
-{% else %}
-    <p>Deleting this {{ noun }} cannot be undone.</p>
-    {% if cascade_summary %}
-    <c-panel-notice tone="error" title="This will also delete:">
-        <ul class="list-inside list-disc">
-            {% for item in cascade_summary %}
-                <li>{{ item }}</li>
-            {% endfor %}
-        </ul>
-    </c-panel-notice>
+{% block body %}
+    {% if blocked_reason %}
+        <c-panel-notice tone="error" data-error-summary tabindex="-1">{{ blocked_reason }}</c-panel-notice>
+    {% else %}
+        <p>Deleting this {{ noun }} cannot be undone.</p>
+        {% if cascade_summary %}
+            <c-panel-notice tone="error" title="This will also delete:">
+                <ul class="list-inside list-disc">
+                    {% for item in cascade_summary %}
+                        <li>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </c-panel-notice>
+        {% endif %}
     {% endif %}
-{% endif %}
-</c-modal-body>
+{% endblock body %}
 
-<c-modal-footer focus_cancel="true">
-    {% if not blocked_reason %}
-        <form hx-delete="{{ delete_url }}"
-              hx-target="#app-modal-body"
-              hx-swap="innerHTML"
-              hx-disabled-elt="find button[type='submit']">
-            <c-button type="submit" variant="error" loading="true" loading_text="Deleting...">
-                Delete
-            </c-button>
-        </form>
-    {% endif %}
-</c-modal-footer>
+{% block reason %}{% if not blocked_reason %}{{ block.super }}{% endif %}{% endblock reason %}
+
+{% block confirm_button %}{% if not blocked_reason %}{{ block.super }}{% endif %}{% endblock confirm_button %}

@@ -377,7 +377,49 @@ class EditAction(FormPanelAction):
         return self.capability or _model_capability(self._instance, "change")
 
 
-class DeleteAction(PanelAction):
+class ConfirmAction(PanelAction):
+    """An action that asks for one decision in a dialog before it runs.
+
+    The dialog is `modal/confirm.html`: a title, a body, hidden fields and one
+    confirm button. A subclass's template extends it and fills `body`.
+    """
+
+    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+    template_name = "panel_framework/modal/confirm.html"
+    variant = "secondary"
+    #: The confirm button's label; the action's own label when empty.
+    confirm_label: str = ""
+    confirm_variant: str = "primary"
+    loading_text: str = "Saving…"
+
+    def get_title(self, ctx: PanelContext) -> str:
+        return self.label
+
+    def get_hidden_fields(self, ctx: PanelContext) -> dict[str, str]:
+        """Row parameters the submit needs, posted as hidden inputs."""
+        return {}
+
+    def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
+        """What the dialog's body says, beyond the title and the buttons."""
+        return {}
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        return {
+            **super().get_context_data(ctx),
+            "title": self.get_title(ctx),
+            "hidden_fields": self.get_hidden_fields(ctx),
+            "confirm_label": self.confirm_label or self.label,
+            "confirm_variant": self.confirm_variant,
+            "loading_text": self.loading_text,
+            **self.get_confirm_context(ctx),
+        }
+
+    def refuse(self, ctx: PanelContext, message: str, *, title: str) -> HttpResponse:
+        """A message dialog saying the change was not made, and why."""
+        return refusal_response(ctx, title=title, message=message)
+
+
+class DeleteAction(ConfirmAction):
     """Deletes the instance of whatever it is attached to, after confirmation.
 
     With a success_url, a delete navigates there and sends no domain events.
@@ -388,8 +430,9 @@ class DeleteAction(PanelAction):
     label = "Delete"
     variant = "error"
     action_name = "delete"
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
     template_name = "panel_framework/modal/delete_confirmation.html"
+    confirm_variant = "error"
+    loading_text = "Deleting…"
 
     def __init__(self, success_url: str = "", success_events: tuple[str, ...] = ()):
         self.success_url = success_url
@@ -434,39 +477,22 @@ class DeleteAction(PanelAction):
             f"still has {join_prose(dependents)}."
         )
 
-    def _confirmation_context(
-        self,
-        ctx: PanelContext,
-        instance: Model,
-        *,
-        cascade_summary: list[str],
-        blocked_reason: str,
-    ) -> dict[str, object]:
-        return {
-            "instance": instance,
-            "noun": instance._meta.verbose_name,
-            "cascade_summary": cascade_summary,
-            "blocked_reason": blocked_reason,
-            "delete_url": self.get_action_url(ctx),
-        }
-
-    def _blocked_context(
-        self, ctx: PanelContext, instance: Model, reason: str
-    ) -> dict[str, object]:
-        return self._confirmation_context(
-            ctx, instance, cascade_summary=[], blocked_reason=reason
-        )
+    def _instance(self, ctx: PanelContext) -> Model:
+        if ctx.instance is None:
+            raise ImproperlyConfigured("DeleteAction needs an instance to delete.")
+        return ctx.instance
 
     def _blocked_response(
         self, ctx: PanelContext, instance: Model, reason: str
     ) -> HttpResponse:
         """The confirmation re-rendered with `reason` in place of a live
         delete button, the way a form answers an invalid submit."""
-        html = render_to_string(
-            self.template_name,
-            self._blocked_context(ctx, instance, reason),
-            request=ctx.request,
-        )
+        context = {
+            **self.get_context_data(ctx),
+            "cascade_summary": [],
+            "blocked_reason": reason,
+        }
+        html = render_to_string(self.template_name, context, request=ctx.request)
         return HttpResponse(html, status=422)
 
     def before_delete(self, ctx: PanelContext, instance: Model) -> HttpResponse | None:
@@ -475,24 +501,24 @@ class DeleteAction(PanelAction):
         does so must not have written anything first."""
         return None
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        """The error-variant button and its confirmation modal.
+    def get_title(self, ctx: PanelContext) -> str:
+        return f"Delete {self._instance(ctx)}"
 
-        A delete that a protected relation would block renders the reason in
-        place of the cascade summary, with no live delete button.
-        """
-        instance = ctx.instance
-        if instance is None:
-            raise ImproperlyConfigured("DeleteAction needs an instance to delete.")
+    def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
+        """The cascade summary, or, for a delete that a protected relation
+        would block, the reason in its place."""
+        instance = self._instance(ctx)
+        context: dict[str, object] = {
+            "instance": instance,
+            "noun": instance._meta.verbose_name,
+            "cascade_summary": [],
+            "blocked_reason": "",
+        }
         try:
-            cascade = self.get_cascade_summary(instance)
+            context["cascade_summary"] = self.get_cascade_summary(instance)
         except ProtectedError as error:
-            return self._blocked_context(
-                ctx, instance, self.get_blocked_reason(instance, error)
-            )
-        return self._confirmation_context(
-            ctx, instance, cascade_summary=cascade, blocked_reason=""
-        )
+            context["blocked_reason"] = self.get_blocked_reason(instance, error)
+        return context
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         instance = ctx.instance

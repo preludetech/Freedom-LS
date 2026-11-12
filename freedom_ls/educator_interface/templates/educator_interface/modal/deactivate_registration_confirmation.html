@@ -1,37 +1,24 @@
+{% extends "panel_framework/modal/confirm.html" %}
 {% comment %}
-The modal fragment an DeactivateRegistrationAction's GET returns. Context:
-learner, registration, course, keeping_cohorts (a prose list of the cohorts
-the educator can see that still grant the course, empty when none does),
-keeps_access (whether any cohort, seen or not, still grants it),
-on_default_organisation, confirm_url.
+The dialog a DeactivateRegistrationAction's GET returns. Context: learner,
+registration, course, keeping_cohorts (a prose list of the cohorts the educator
+can see that still grant the course, empty when none does), keeps_access
+(whether any cohort, seen or not, still grants it), on_default_organisation.
 {% endcomment %}
-<c-modal-header>Deactivate {{ learner.user.display_name }}'s registration for {{ course }}?</c-modal-header>
 
-<form hx-post="{{ confirm_url }}"
-      hx-target="#app-modal-body"
-      hx-swap="innerHTML"
-      hx-disabled-elt="find button[type='submit']">
-    <input type="hidden" name="registration" value="{{ registration.pk }}">
+{% block title %}Deactivate {{ learner.user.display_name }}'s registration for {{ course }}?{% endblock title %}
 
-    <c-modal-body>
-        {% if keeping_cohorts %}
-            <p>They keep access through {{ keeping_cohorts }}.</p>
-        {% elif keeps_access %}
-            <p>They keep access through another cohort.</p>
-        {% else %}
-            <p>They lose access to {{ course }}.</p>
-        {% endif %}
-        <p>Progress is kept.</p>
-        <p>You can reactivate the registration later.</p>
-        {% if on_default_organisation %}
-            <p>If they self-register for this course, the registration is reactivated.</p>
-        {% endif %}
-    </c-modal-body>
-    {% include "panel_framework/partials/reason_field.html" %}
-
-    <c-modal-footer focus_cancel="true">
-        <c-button type="submit" variant="primary" loading="true" loading_text="Deactivating…">
-            Deactivate
-        </c-button>
-    </c-modal-footer>
-</form>
+{% block body %}
+    {% if keeping_cohorts %}
+        <p>They keep access through {{ keeping_cohorts }}.</p>
+    {% elif keeps_access %}
+        <p>They keep access through another cohort.</p>
+    {% else %}
+        <p>They lose access to {{ course }}.</p>
+    {% endif %}
+    <p>Progress is kept.</p>
+    <p>You can reactivate the registration later.</p>
+    {% if on_default_organisation %}
+        <p>If they self-register for this course, the registration is reactivated.</p>
+    {% endif %}
+{% endblock body %}

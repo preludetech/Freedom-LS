@@ -26,13 +26,16 @@ from django.apps import apps
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import AnonymousUser
 from django.db.models import Field, Model, QuerySet
-from django.http import HttpRequest, QueryDict
+from django.http import HttpRequest, HttpResponse, QueryDict
 from django.shortcuts import get_object_or_404
 
 from freedom_ls.panel_framework.actions import (
+    ConfirmAction,
     CreateInstanceAction,
     DeleteAction,
     PanelAction,
+    ReasonMixin,
+    changed_response,
 )
 from freedom_ls.panel_framework.bulk_actions import (
     BulkAction,
@@ -456,6 +459,20 @@ class StubDeleteAction(DeleteAction):
         return True
 
 
+class StubConfirmReasonAction(ReasonMixin, ConfirmAction):
+    """A test-only confirm dialog with a reason field, reachable by URL."""
+
+    label = "Retire Item"
+    action_name = "retire_item"
+    template_name = "panel_framework/test_reason_dialog.html"
+
+    def has_permission(self, ctx: PanelContext) -> bool:
+        return True
+
+    def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
+        return changed_response({})
+
+
 class StubReadOnlyAction(PanelAction):
     """A test-only read-only modal fragment: a heading with no form, proving
     that a PanelAction needs neither a form nor a delete confirmation to open
@@ -477,6 +494,7 @@ class StubDetailsPanel(Panel):
         return [
             StubDeleteAction(success_url="/test-panel/framework/stubs"),
             StubReadOnlyAction(),
+            StubConfirmReasonAction(),
         ]
 
 

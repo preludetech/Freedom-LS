@@ -1466,6 +1466,9 @@ def test_a_disabled_confirm_is_named_by_the_element_holding_its_reason(
     assert submit.get("disabled") is not None
     reason = document.get_element_by_id(submit.get("aria-describedby"))
     assert "Choose a destination first." in reason.text_content()
+    assert "sr-only" not in (reason.get("class") or "")
+    assert document.cssselect("footer #bulk-confirm-reason")
+    assert document.text_content().count("Choose a destination first.") == 1
 
 
 def test_a_notice_is_not_an_alert(mock_site_context: Site) -> None:
