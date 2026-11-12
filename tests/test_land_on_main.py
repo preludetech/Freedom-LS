@@ -155,7 +155,9 @@ def test_sync_on_clean_layout_reports_main_worktree(layout: Layout) -> None:
     assert f"main-worktree: {layout.main.path}" in result.stdout
 
 
-def test_sync_blocks_on_tracked_change_in_main_worktree(layout: Layout) -> None:
+def test_sync_carries_uncommitted_change_nothing_incoming_touches(
+    layout: Layout,
+) -> None:
     # Arrange
     layout.main.write_text("README.md", "edited but not committed\n")
 
@@ -163,8 +165,43 @@ def test_sync_blocks_on_tracked_change_in_main_worktree(layout: Layout) -> None:
     result = _run_script(["sync"], layout.feature.path, layout.feature.env)
 
     # Assert
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "carried: 1 uncommitted file(s) on main" in result.stdout
+    assert (layout.main.path / "README.md").read_text() == "edited but not committed\n"
+
+
+def test_land_carries_uncommitted_change_the_branch_does_not_touch(
+    layout: Layout,
+) -> None:
+    # Arrange
+    tip = add_feature_commit(layout)
+    layout.main.write_text("README.md", "edited but not committed\n")
+
+    # Act
+    result = _run_script(["land"], layout.feature.path, layout.feature.env)
+
+    # Assert
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert layout.origin_main() == tip
+    assert layout.main.rev_parse("HEAD") == tip
+    assert (layout.main.path / "README.md").read_text() == "edited but not committed\n"
+
+
+def test_land_blocks_on_uncommitted_change_to_a_file_the_branch_changes(
+    layout: Layout,
+) -> None:
+    # Arrange
+    remote_tip = layout.origin_main()
+    add_feature_commit(layout, "README.md")
+    layout.main.write_text("README.md", "edited but not committed\n")
+
+    # Act
+    result = _run_script(["land"], layout.feature.path, layout.feature.env)
+
+    # Assert
     assert result.returncode == 3
-    assert "parked:  M README.md" in result.stdout
+    assert "parked: README.md has uncommitted changes on main" in result.stdout
+    assert layout.origin_main() == remote_tip
     assert (layout.main.path / "README.md").read_text() == "edited but not committed\n"
 
 

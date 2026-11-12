@@ -14,8 +14,10 @@ Two rules hold throughout:
 - Conflicts are only ever resolved here, in the feature worktree. `main` only moves by
   fast-forward, only to a commit `origin` already holds.
 - The main worktree is never cleaned up from this command. Never run `merge --abort`, `stash`,
-  `reset` or `checkout` there. If it holds uncommitted work or an operation in progress, stop and
-  say what is parked; a human decides what it means.
+  `reset` or `checkout` there. Uncommitted work there stops this command only when it touches a
+  file the landing changes, or when an operation is in progress; then say what is parked, and a
+  human decides what it means. Any other uncommitted work on `main` is carried across the
+  fast-forward untouched and is no reason to stop or to ask.
 
 ```
 git branch --show-current
@@ -50,9 +52,11 @@ entry.
 ```
 
 The script fetches `origin/main`, finds the worktree that has `main` checked out, refuses if that
-worktree has tracked changes or a merge, rebase, cherry-pick, revert or bisect in flight, and
+worktree has a merge, rebase, cherry-pick, revert or bisect in flight, or an uncommitted change to
+a file the incoming commits change, and
 otherwise makes local `main` equal `origin/main` (pushing when it is ahead, fast-forwarding when it
-is behind). It never touches untracked files.
+is behind). It never touches untracked files, and it prints `carried: <n>` for uncommitted
+tracked files the incoming commits leave alone; those do not block and need no mention until Step 8.
 
 - exit 0 → continue.
 - any other exit → `status: blocked · reason: <the script's output, verbatim>`. Stop.
@@ -168,13 +172,15 @@ git status --porcelain
 ```
 
 Must be empty in this worktree; anything else is `status: failed` naming the files. The script's
-own post-landing check has confirmed the main worktree is clean and at the landed commit.
+own post-landing check has confirmed the main worktree is at the landed commit and that any
+uncommitted work carried across is unchanged.
 
 Report:
 
 - the landed commit and the main worktree path the script printed
 - the PR number and state from Step 7, if any
 - whether the item 3 retry rebase was needed
+- the `carried:` count, when the script printed one
 - the leftover batch worktrees removed, if any
 - that the worktree directory and the branch still exist; removing them is the `(user)` item that
   follows in `todo.md`

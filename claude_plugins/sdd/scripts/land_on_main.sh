@@ -1,14 +1,20 @@
 #!/usr/bin/env bash
 # Lands a finished feature branch on main by fast-forward, and refuses to touch a main worktree
-# that is dirty, mid-operation or diverged from origin. Run it from the feature branch's worktree.
+# that is mid-operation, diverged from origin, or holding an uncommitted change to a file the
+# landing would change. Run it from the feature branch's worktree.
 # Main only ever moves to a commit origin already holds, so a rejected push changes nothing.
 #
+# Uncommitted changes on main to files the landing leaves alone never block: a fast-forward carries
+# them across untouched, and they are reported as "carried".
+#
 # Usage: land_on_main.sh sync | land
-#   sync: fetch origin/main, check the main worktree is clean and idle, then make local main equal
-#         origin/main (push when it is ahead, fast-forward when it is behind).
+#   sync: fetch origin/main, check the main worktree is idle and nothing uncommitted there overlaps
+#         the incoming commits, then make local main equal origin/main (push when it is ahead,
+#         fast-forward when it is behind).
 #   land: sync, then fast-forward origin/main to HEAD and fast-forward local main to match.
 #
-# Exit 0: done. Exit 3: the main worktree is dirty, mid-operation or diverged; nothing was changed.
+# Exit 0: done. Exit 3: the main worktree is mid-operation, diverged or holds an overlapping
+# uncommitted change; nothing was changed.
 # Exit 6: origin rejected a push. Exit 7: the branch is behind origin/main; rebase and retry.
 # Exit 8: main did not end up where it should. Exit 64: bad arguments or preconditions.
 
@@ -74,10 +80,32 @@ if [[ -n "$main_path" ]]; then
         problems+=("parked: bisect in progress")
     fi
     # Untracked files never block: a fast-forward does not touch them, and git refuses on its own
-    # if one would be overwritten. Only tracked changes mean someone is mid-edit on main.
-    while IFS= read -r line; do
-        [[ -n "$line" ]] && problems+=("parked: $line")
-    done < <(git -C "$main_path" status --porcelain --untracked-files=no)
+    # if one would be overwritten. A tracked change blocks only when the fast-forward would change
+    # the same file; any other is carried across as it is.
+    incoming_tips=("refs/remotes/origin/$MAIN")
+    [[ "$VERB" == land ]] && incoming_tips+=(HEAD)
+    incoming=""
+    for tip in "${incoming_tips[@]}"; do
+        incoming+=$(git diff --name-only --no-renames "refs/heads/$MAIN" "$tip")$'\n'
+    done
+    carried=0
+    while IFS= read -r path; do
+        [[ -z "$path" ]] && continue
+        if grep -qxF -- "$path" <<<"$incoming"; then
+            problems+=("parked: $path has uncommitted changes on $MAIN and the landing changes it too")
+        else
+            carried=$((carried + 1))
+        fi
+    done < <(
+        {
+            git -C "$main_path" diff --name-only --no-renames
+            git -C "$main_path" diff --name-only --no-renames --cached
+        } | sort -u
+    )
+    if [[ "$carried" -gt 0 ]]; then
+        echo "carried: $carried uncommitted file(s) on $MAIN that the landing does not touch, left alone"
+    fi
+    parked_before=$(git -C "$main_path" status --porcelain --untracked-files=no)
     untracked=$(git -C "$main_path" status --porcelain --untracked-files=all | grep -c '^??' || true)
     if [[ "$untracked" -gt 0 ]]; then
         echo "untracked: $untracked file(s) on main, left alone"
@@ -171,8 +199,8 @@ if [[ -n "$main_path" ]]; then
         echo "error: $MAIN worktree is at $main_sha but origin/$MAIN is at $origin_sha"
         exit 8
     fi
-    if [[ -n "$(git -C "$main_path" status --porcelain --untracked-files=no)" ]]; then
-        echo "error: $MAIN worktree is not clean after landing"
+    if [[ "$(git -C "$main_path" status --porcelain --untracked-files=no)" != "$parked_before" ]]; then
+        echo "error: $MAIN worktree's uncommitted changes are not what they were before landing"
         exit 8
     fi
 elif git rev-parse -q --verify "refs/heads/$MAIN" >/dev/null; then
