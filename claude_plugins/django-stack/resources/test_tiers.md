@@ -28,15 +28,37 @@ runs pytest names its tier; the flags live here and nowhere else.
 
   plus `-m '<expression>'` when `[tool.test_tiers]` in `pyproject.toml` sets `markers`. That
   `-m` replaces the one in `addopts`, so tests the default run deselects still run in a tier.
-  The wrapper prints the exact line for a `tier: full` result. Coverage and its threshold run
+  The wrapper prints the exact line for a `tier: full` result. With the test runner installed,
+  that line starts with `.claude/ds/scripts/run_tests.sh`; run it as printed. Coverage and its threshold run
   wherever the project puts them: in `addopts`, or in CI only.
 
 ## How to run a tier
 
 Run `targeted` and `full` with the Bash tool's `run_in_background: true` and wait for the completion
 notification. Run one tier at a time per worktree. Run the bare command and let it finish; a full
-run can take more than ten minutes. The one hard guardrail: no `ps` or `pgrep` polling loops and no
+run can take more than ten minutes. A crash retry happens inside that one background run. The one hard guardrail: no `ps` or `pgrep` polling loops and no
 `timeout` wrapper.
+
+## Memory-aware runs
+
+The test runner, `.claude/ds/scripts/run_tests.sh`, wraps one pytest command. It sizes the xdist
+worker count to the memory that is free, and waits a bounded time when memory is short. It
+retries a crashed pytest attempt for the tests that never finished. It prints one verdict.
+
+Each setting comes from its environment variable, then from `[tool.test_tiers.memory]` in
+`pyproject.toml`, then from the default. A wrong type or an unknown key exits 2 and names the key.
+
+| Key | Env var | Default | Meaning |
+| --- | --- | --- | --- |
+| `per_worker_mb` | `DS_TEST_PER_WORKER_MB` | 1024 | Memory one xdist worker needs |
+| `reserve_mb` | `DS_TEST_RESERVE_MB` | 2048 | Memory left free for everything else |
+| `max_workers` | `DS_TEST_MAX_WORKERS` | `os.cpu_count()` | Ceiling on `-n` |
+| `psi_some_avg10_limit` | `DS_TEST_PSI_LIMIT` | 10.0 | Wait while `some avg10` in `/proc/pressure/memory` is above this |
+| `wait_timeout_s` | `DS_TEST_WAIT_TIMEOUT_S` | 600 | Longest wait before running with 1 xdist worker |
+| `max_retries` | `DS_TEST_MAX_RETRIES` | 2 | Crash retries after the first pytest attempt |
+| `oom_score_adj` | `DS_TEST_OOM_SCORE_ADJ` | 500 | Set on the pytest child; 0 skips |
+
+`DS_TEST_MEMORY_GUARD=off` runs the command unchanged: no gate, sizing, retry or extra lines.
 
 ## A single test run
 
@@ -52,12 +74,19 @@ flag applies to `pytest --co` and any other partial run.
 
 ## Reporting
 
-Report the tier that ran as `tier: none|targeted|full` and quote the final pytest summary line. The
-step is done when that line shows no failures.
+Report the tier that ran as `tier: none|targeted|full`.
+
+With the test runner, quote `run: summary (merged)` and `run: RESULT ...`, not pytest's own last
+line. The step is done at `RESULT PASS`. `RESULT INCOMPLETE` means tests were left unfinished
+after the retries: report it as blocked on memory, not as a failure to fix.
+
+Without the runner, quote the final pytest summary line. The step is done when that line shows no
+failures.
 
 ## When a targeted run or full run fails
 
 This section addresses the agent that owns the change, never a mechanic briefed only to run a tier.
 Fix the failure, then re-run only the failures with `uv run pytest --lf --no-cov` (append `-n auto`
-for a targeted or full run). Once that is green, re-run the whole tier as it first ran. The gate is
+for a targeted or full run). When the runner is installed, put `.claude/ds/scripts/run_tests.sh`
+in front of that command. Once that is green, re-run the whole tier as it first ran. The gate is
 the whole tier, not the `--lf` subset.

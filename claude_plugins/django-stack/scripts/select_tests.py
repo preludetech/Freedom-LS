@@ -77,6 +77,8 @@ RANGE_PATTERN = re.compile(r"^[A-Za-z0-9_./~^@{}-]+\.\.[A-Za-z0-9_./~^@{}-]+$")
 
 BRANCH_TEST_REASON = "branch test file; runs only with a targeted tier"
 
+RUNNER_WRAPPER = ".claude/ds/scripts/run_tests.sh"
+
 FULL_COMMAND = "uv run pytest -n auto"
 TARGETED_PREFIX = "uv run pytest -n auto --no-cov"
 
@@ -162,8 +164,14 @@ def marker_args(config: TierConfig) -> list[str]:
     return [] if config.markers is None else ["-m", shlex.quote(config.markers)]
 
 
-def full_command(config: TierConfig) -> str:
-    return " ".join([FULL_COMMAND, *marker_args(config)])
+def runner_prefix(project_root: Path) -> list[str]:
+    """The runner wrapper when the project has it. A project that has not installed it keeps
+    the bare command."""
+    return [RUNNER_WRAPPER] if (project_root / RUNNER_WRAPPER).is_file() else []
+
+
+def full_command(config: TierConfig, project_root: Path) -> str:
+    return " ".join([*runner_prefix(project_root), FULL_COMMAND, *marker_args(config)])
 
 
 def first_match(path: str, globs: tuple[str, ...]) -> str | None:
@@ -408,6 +416,7 @@ def compose_command(
     ]
     return " ".join(
         [
+            *runner_prefix(project_root),
             TARGETED_PREFIX,
             *marker_args(config),
             *ignores,
@@ -493,7 +502,7 @@ def main() -> int:
         outcome = {"none": "none", "full": "full"}.get(d.kind) or ", ".join(d.selects)
         print(f"why: {d.path} -> {outcome} ({d.reason})")
     if tier == "full":
-        print(f"command: {full_command(config)}")
+        print(f"command: {full_command(config, project_root)}")
     elif tier == "targeted":
         print(f"command: {compose_command(selected, touched, config, project_root)}")
     return 0

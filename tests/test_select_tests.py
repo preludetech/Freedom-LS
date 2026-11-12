@@ -17,6 +17,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "claude_plugins" / "django-stack" / "scripts" / "select_tests.py"
 
 FULL_COMMAND = "command: uv run pytest -n auto"
+WRAPPER = ".claude/ds/scripts/run_tests.sh"
 
 
 def apps_py(dotted_name: str, class_name: str) -> str:
@@ -1146,3 +1147,33 @@ def test_plugin_script_starts_with_its_shebang(name: str) -> None:
 
     # Assert
     assert first_line == "#!/usr/bin/env python3"
+
+
+def test_full_command_starts_with_the_runner_wrapper_when_installed(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app() | {WRAPPER: ""})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/migrations/0001_initial.py")
+
+    # Assert
+    assert lines(result.stdout, "command") == [
+        f"command: {WRAPPER} uv run pytest -n auto"
+    ]
+
+
+def test_targeted_command_starts_with_the_runner_wrapper_when_installed(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app() | {WRAPPER: ""})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/services.py")
+
+    # Assert
+    assert lines(result.stdout, "command") == [
+        f"command: {WRAPPER} uv run pytest -n auto --no-cov pkg/alpha/tests"
+    ]

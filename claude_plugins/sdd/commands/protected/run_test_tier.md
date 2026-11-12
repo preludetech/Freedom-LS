@@ -23,8 +23,11 @@ precedence). Under `## Test Hooks`, look at the `Test tiers` value:
 
 ## Step 2: Report
 
+The verdict line is the one the tier definition names for reporting. When it names none, use the
+final pytest summary line.
+
 Return the line below. Fixing a failure belongs to the caller; this helper only runs and reports.
 
 ```
-tier: none|targeted|full · summary: <the final pytest summary line, or "no tests run">
+tier: none|targeted|full · summary: <the verdict line, or "no tests run">
 ```
