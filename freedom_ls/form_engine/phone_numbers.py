@@ -38,12 +38,16 @@ def _locale(language: str) -> Locale:
     """Babel's locale for a Django language code.
 
     Django writes "en-us" where Babel wants "en_US". A language Babel does
-    not know falls back to the site's default instead of failing the page.
+    not know falls back to the site's default, and then to English, instead
+    of failing the page.
     """
-    try:
-        return Locale.parse(translation.to_locale(language))
-    except UnknownLocaleError:
-        return Locale.parse(translation.to_locale(settings.LANGUAGE_CODE))
+    for candidate in (language, settings.LANGUAGE_CODE):
+        try:
+            return Locale.parse(translation.to_locale(candidate))
+        except (UnknownLocaleError, ValueError):
+            # Unknown to Babel, or not a locale identifier at all.
+            continue
+    return Locale("en")
 
 
 def _country_name(country: str, language: str) -> str:
@@ -75,6 +79,20 @@ def country_choices() -> list[tuple[str, str]]:
     return list(_country_choices(_active_language()))
 
 
+# The ASCII plus and the full-width one, which the library reads the same way.
+_PLUS_SIGNS = "+\uff0b"
+
+
+def _has_calling_code(text: str) -> bool:
+    """Whether `text` is written with a + and a calling code.
+
+    The library starts reading at the first digit or plus sign, so "(+27) 82…"
+    and a number pasted behind an invisible direction mark both count.
+    """
+    start = next((ch for ch in text if ch.isdigit() or ch in _PLUS_SIGNS), "")
+    return start != "" and start in _PLUS_SIGNS
+
+
 def _parsed(text: str, country: str) -> PhoneNumber | None:
     """`text` as a phone number, or None when it does not parse.
 
@@ -83,7 +101,7 @@ def _parsed(text: str, country: str) -> PhoneNumber | None:
     other number the library strips a trunk prefix or calling code it finds;
     `_extra_digits_message` reports what it stripped.
     """
-    default_country = None if text.startswith("+") else country or None
+    default_country = None if _has_calling_code(text) else country or None
     try:
         return phonenumbers.parse(text, default_country)
     except NumberParseException:
@@ -92,7 +110,8 @@ def _parsed(text: str, country: str) -> PhoneNumber | None:
 
 def phone_answer_error(text: str, country: str) -> str | None:
     """Why `text`, with `country` selected, is not an acceptable phone answer."""
-    if not text.startswith("+") and not country:
+    international = _has_calling_code(text)
+    if not international and not country:
         return (
             f'You entered "{text}". Choose a country, or start the number '
             f"with + and its country code."
@@ -108,7 +127,7 @@ def phone_answer_error(text: str, country: str) -> str | None:
     # is far more often a mistake than a vanity number.
     if any(ch.isalpha() for ch in text) or not phonenumbers.is_valid_number(number):
         return _invalid_message(text, country)
-    if not text.startswith("+"):
+    if not international:
         return _extra_digits_message(text, country, number)
     return None
 
@@ -143,7 +162,7 @@ def _extra_digits_message(text: str, country: str, number: PhoneNumber) -> str |
 
 
 def _invalid_message(text: str, country: str) -> str:
-    if text.startswith("+"):
+    if _has_calling_code(text):
         return (
             f'You entered "{text}". Enter a valid phone number, starting '
             f"with + and its country code."
@@ -195,15 +214,21 @@ def e164_phone_answer(text: str, country: str) -> str:
 
 def _stored(text: str) -> PhoneNumber | None:
     """A stored answer as a phone number, or None for a legacy row (one that
-    does not parse as E.164).
+    is not written as E.164).
 
     Parsed with no country and never re-validated: a row accepted under an
-    older release of the library must keep rendering after an upgrade, and a
-    legacy row must stay readable.
+    older release of the library must keep rendering after an upgrade.
+
+    Only text that is exactly the E.164 form of what it parses to counts. The
+    library reads letters as keypad digits, so a legacy "+27 82 123 4567 (mom)"
+    parses to a different number, and a legacy row must stay readable as typed.
     """
-    if not text.startswith("+"):
+    number = _parsed(text, "")
+    if number is None:
         return None
-    return _parsed(text, "")
+    if phonenumbers.format_number(number, PhoneNumberFormat.E164) != text:
+        return None
+    return number
 
 
 def display_phone(text: str) -> str:
