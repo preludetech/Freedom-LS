@@ -243,16 +243,16 @@ Manifestations: 11.6-thread (desktop).
 
 ## Bug status
 
-- **UNRESOLVED** — Staff page stays on screen, stale, after you deactivate your own Organisation admin role (reason: the fix, commit 34b2bf5c9, was reverted in fcf574181. It put the redirect in a helper all seven staff actions share, so a cohort admin who cannot see Staff was sent to the Dashboard after every Change role or Remove from cohort on a cohort's Settings tab. The full run caught it in test_cohort_settings_staff_flow. The redirect must apply only when the actor could see Staff before the change, or only to requests made from the Staff section; fix budget exhausted this run)
+- **FIXED** (commit: d2c43b5fc) — Staff page stays on screen, stale, after you deactivate your own Organisation admin role
 - **FIXED** (commit: e55694d23) — Staff quick view leaves '(inactive)' off an inactive cohort's name
 - **FIXED** (commit: f6c3c9609) — An account with no name shows its email twice in the staff search results and the staff quick view
-- **UNRESOLVED** — The organisation's bare URL renders an empty page (reason: fix budget exhausted this run)
-- **UNRESOLVED** — Deactivate role speaks of 'They' and promises 'You can give the role again later' when the viewer is removing their own role (reason: the wording for acting on yourself is a copy decision)
-- **UNRESOLVED** — Deactivate role for a site admin says it 'takes them off this organisation's staff list', but they stay on it with 'No roles yet' (reason: needs a decision: reword the sentence, or remove a site admin's staff row when their last role goes)
-- **UNRESOLVED** — On a Staff card, someone with two roles gets two unlabelled sets of role buttons (reason: needs a design decision on how a card ties each role to its buttons)
-- **UNRESOLVED** — Learner Messages panel with a real conversation: second header with a rule, content off the panel's left edge, square bar on a rounded card (reason: needs a design decision on how the conversation thread sits inside the panel)
+- **FIXED** (commit: 621688b8f) — The organisation's bare URL renders an empty page
+- **FIXED** (commit: d2c43b5fc) — Deactivate role speaks of 'They' and promises 'You can give the role again later' when the viewer is removing their own role
+- **FIXED** (commit: d2c43b5fc) — Deactivate role for a site admin says it 'takes them off this organisation's staff list', but they stay on it with 'No roles yet'
+- **FIXED** (commit: 621688b8f) — On a Staff card, someone with two roles gets two unlabelled sets of role buttons
+- **FIXED** (commit: bc835cc74) — Learner Messages panel with a real conversation: second header with a rule, content off the panel's left edge, square bar on a rounded card
 
-- **UNRESOLVED** — full run after the fixes left tests failing (reason: freedom_ls/educator_interface/tests/playwright/test_cohort_report_layout.py::test_generating_a_report_by_keyboard_keeps_focus_inside_the_downloads_card failed in the full run and again in a 4-worker run, and passes when run alone; this branch does not touch that test or the reports app. The second full-run failure, test_cohort_settings_staff_flow.py::test_a_cohort_admin_changes_then_removes_a_viewer_and_reads_it_in_history, passes again after the revert above)
+- **FIXED** (commit: 0645a632a) — full run after the fixes left tests failing
 
 The two remaining fixes were re-driven in the browser after their commits: Manny's and Ola's quick views read 'Cohort Old (inactive)'; the nameless account shows its email once in the search results (option still 44px tall) and in the quick view, and named accounts and the learner quick view are unchanged.
 

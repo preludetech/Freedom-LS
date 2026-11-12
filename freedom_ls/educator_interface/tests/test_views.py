@@ -367,11 +367,14 @@ def test_navigation_toggle_sits_in_the_page_heading_row(staff_client: Client):
 def test_organisation_root_page_still_offers_the_navigation_toggle(
     staff_client: Client,
 ):
-    """The organisation root has no page heading of its own, which used to
-    leave a phone with no way to open the navigation."""
+    """The organisation root used to render a page with no heading of its
+    own, leaving a phone with no way to open the navigation. It now sends the
+    visitor to a section, and the page they land on offers the toggle."""
     organisation = OrganisationFactory()
 
-    document = _get_document(staff_client, _interface_url(organisation.slug, ""))
+    response = staff_client.get(_interface_url(organisation.slug, ""), follow=True)
+    assert response.status_code == 200
+    document = lxml.html.fromstring(response.content.decode())
 
     (toggle,) = document.cssselect(
         "#main-content button[aria-label='Open navigation panel']"
@@ -3214,7 +3217,8 @@ def test_a_cohort_admin_still_sees_the_dashboard(role_holder_client):
 
     response = client.get(_interface_url(organisation.slug, ""))
 
-    assert response.status_code == 200
+    assert response.status_code == 302
+    assert response["Location"] == _interface_url(organisation.slug, "dashboard")
 
 
 @pytest.mark.django_db
