@@ -6,7 +6,7 @@ Builds, on the named site:
 * one ``SiteTimeZoneConfig``: ``Africa/Johannesburg``, zone label hidden;
 * ``QA Deadlines Org`` > ``QA Deadlines Cohort`` with an active
   ``CohortCourseRegistration`` for the parts course and no cohort deadline overrides;
-* five verified learners (password = email):
+* nine verified learners (password = email):
 
   - ``qa_deadline_cohort@email.com``: cohort member, parts-course record created
     2026-03-01 10:00 UTC;
@@ -16,7 +16,19 @@ Builds, on the named site:
     registration and record are deleted and rebuilt on every run);
   - ``qa_deadline_none@email.com``: no registrations or memberships at all;
   - ``qa_deadline_restored@email.com``: individual parts-course registration, its record
-    created 100 days before now.
+    created 100 days before now;
+  - four learners with an individual parts-course registration, the record created 10 days
+    before now and "Welcome" completed 9 days before now, whose states are made through
+    the pause and extension services with the superuser as actor:
+
+    - ``qa_deadline_paused@email.com``: paused 2 days ago with a planned resume 5 days
+      from today; "What to Expect" is also completed and "Knowledge Check" holds an open
+      attempt;
+    - ``qa_deadline_paused_open@email.com``: paused 2 days ago with no planned resume;
+    - ``qa_deadline_resumed@email.com``: paused 6 days ago and resumed 3 days ago, so its
+      deadlines moved by 3 days;
+    - ``qa_deadline_extended@email.com``: two extensions on "Key Ideas" (7 and 5 days) and
+      one whole-course extension of 2 days.
 
 Every run deletes and rebuilds the deadline config rows it owns (the cohort's, the
 cohort registration's and the learners' registrations'), then produces these states:
@@ -33,9 +45,10 @@ cohort registration's and the learners' registrations'), then produces these sta
   time-limit override 30 days from now;
 * fresh / parts: no config rows, so nothing is due and nothing is closed.
 
-Every run also strips the five learners' learner deadline overrides, topic progress,
+Every run also strips the five original learners' learner deadline overrides, topic progress,
 course form attempts and form sittings, and zeroes their records' percentage, start,
-completion and resume pointer, so nothing is completed.
+completion and resume pointer, so nothing is completed. The four pause and extension learners are deleted along with
+their records and rebuilt, so their pauses and extensions are rebuilt too.
 
 The demo content must already be loaded (``content_save demo_content <SITE>``); the
 command checks the parts course's defaults and refuses to seed if they differ.
@@ -60,6 +73,11 @@ from django.utils import timezone
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import ContentCollectionItem, Course, Topic
+from freedom_ls.deadlines.actions import (
+    extend_deadline,
+    pause_course,
+    resume_course,
+)
 from freedom_ls.deadlines.models import (
     AfterAccessEnded,
     CohortCourseRegistrationDeadlineConfig,
@@ -67,6 +85,7 @@ from freedom_ls.deadlines.models import (
     CohortDeadlineOverride,
     DeadlineKind,
     DeadlineSwitch,
+    ExtensionTarget,
     LearnerCourseRegistrationDeadlineConfig,
     LearnerDeadlineOverride,
 )
@@ -107,6 +126,13 @@ SOLO_EMAIL = "qa_deadline_solo@email.com"
 FRESH_EMAIL = "qa_deadline_fresh@email.com"
 NONE_EMAIL = "qa_deadline_none@email.com"
 RESTORED_EMAIL = "qa_deadline_restored@email.com"
+PAUSED_EMAIL = "qa_deadline_paused@email.com"
+PAUSED_OPEN_EMAIL = "qa_deadline_paused_open@email.com"
+RESUMED_EMAIL = "qa_deadline_resumed@email.com"
+EXTENDED_EMAIL = "qa_deadline_extended@email.com"
+PAUSE_RECORD_AGE = timedelta(days=10)
+WELCOME_COMPLETED_AGO = timedelta(days=9)
+SEED_REASON = "QA seed"
 GRACE_WINDOW = timedelta(days=3)
 COHORT_REG_DATE = datetime(2026, 3, 1, 10, 0, tzinfo=UTC)
 SOLO_DAYS_AGO = 100
@@ -389,6 +415,18 @@ def _open_attempt(
     )
 
 
+def _complete_topic(
+    record: CourseProgress, item: ContentCollectionItem, site: Site, when: datetime
+) -> TopicProgress:
+    return TopicProgress._base_manager.create(
+        site=site,
+        course_progress=record,
+        topic=cast(Topic, item.child),
+        collection_item=item,
+        complete_time=when,
+    )
+
+
 def _wipe_enrolment(user: User) -> None:
     """Delete the user's records, then registrations and memberships (PROTECT order)."""
     click.echo(
@@ -424,14 +462,7 @@ def _seed_states(
         end_course_access=DeadlineSwitch.ON,
         after_access_ended=AfterAccessEnded.OUTLINE_AND_RESULTS,
     )
-    welcome = _item_titled(parts, "Welcome")
-    TopicProgress._base_manager.create(
-        site=site,
-        course_progress=cohort_record,
-        topic=cast(Topic, welcome.child),
-        collection_item=welcome,
-        complete_time=timezone.now(),
-    )
+    _complete_topic(cohort_record, _item_titled(parts, "Welcome"), site, timezone.now())
 
     solo_parts_registration, solo_parts_record = solo_parts
     LearnerCourseRegistrationDeadlineConfig._base_manager.create(
@@ -467,6 +498,72 @@ def _seed_states(
     _fixed_override(restored_record, site, today + timedelta(days=30))
 
 
+def _seed_pause_and_extension_states(
+    site: Site,
+    parts: Course,
+    organisation: Organisation,
+    users: dict[str, User],
+    actor: User,
+) -> dict[str, CourseProgress]:
+    """Four learners whose pauses and extensions come from the real services, with
+    explicit clocks so the states are the same age on every run."""
+    now = timezone.now()
+    today = _local_today()
+    records: dict[str, CourseProgress] = {}
+    for email, user in users.items():
+        _wipe_enrolment(user)
+        learner = _learner(user, organisation, site)
+        registration = _individual_registration(learner, parts, site)
+        record = _record_for(learner, parts, site, learner_registration=registration)
+        _set_created_at(record, now - PAUSE_RECORD_AGE)
+        _complete_topic(
+            record, _item_titled(parts, "Welcome"), site, now - WELCOME_COMPLETED_AGO
+        )
+        records[email] = record
+
+    paused = records[PAUSED_EMAIL]
+    _complete_topic(paused, _item_titled(parts, "What to Expect"), site, now)
+    _open_attempt(paused, _item_titled(parts, "Knowledge Check"), site)
+    pause_course(
+        paused,
+        actor=actor,
+        reason=SEED_REASON,
+        planned_resume_on=today + timedelta(days=5),
+        now=now - timedelta(days=2),
+    )
+    pause_course(
+        records[PAUSED_OPEN_EMAIL],
+        actor=actor,
+        reason=SEED_REASON,
+        now=now - timedelta(days=2),
+    )
+    resumed = records[RESUMED_EMAIL]
+    pause_course(resumed, actor=actor, reason=SEED_REASON, now=now - timedelta(days=6))
+    resume_course(resumed, actor=actor, reason=SEED_REASON, now=now - timedelta(days=3))
+
+    extended = records[EXTENDED_EMAIL]
+    key_ideas = _item_titled(parts, "Key Ideas")
+    for days in (7, 5):
+        extend_deadline(
+            extended,
+            actor=actor,
+            reason=SEED_REASON,
+            target_kind=ExtensionTarget.COLLECTION_ITEM,
+            collection_item=key_ideas,
+            days=days,
+            now=now,
+        )
+    extend_deadline(
+        extended,
+        actor=actor,
+        reason=SEED_REASON,
+        target_kind=ExtensionTarget.COURSE,
+        days=2,
+        now=now,
+    )
+    return records
+
+
 @click.command()
 @click.option("--site-name", default="DemoDev", help="Site the data belongs to.")
 def command(site_name: str) -> None:
@@ -476,7 +573,7 @@ def command(site_name: str) -> None:
     plain = _get_course(site, PLAIN_SLUG, site_name)
     _check_content_defaults(parts)
 
-    _ensure_user(SUPERUSER_EMAIL, site, superuser=True)
+    superuser = _ensure_user(SUPERUSER_EMAIL, site, superuser=True)
     tz_config = _ensure_time_zone(site)
     cohort_registration = _ensure_cohort_registration(site, parts)
     organisation = cohort_registration.cohort.organisation
@@ -487,11 +584,20 @@ def command(site_name: str) -> None:
     none_user = _ensure_user(NONE_EMAIL, site)
     restored_user = _ensure_user(RESTORED_EMAIL, site)
 
-    _strip_progress([cohort_user, solo_user, fresh_user, none_user, restored_user])
-    _delete_owned_configs(
-        cohort_registration,
-        [cohort_user, solo_user, fresh_user, none_user, restored_user],
-    )
+    pause_users = {
+        email: _ensure_user(email, site)
+        for email in (PAUSED_EMAIL, PAUSED_OPEN_EMAIL, RESUMED_EMAIL, EXTENDED_EMAIL)
+    }
+    seeded_users = [
+        cohort_user,
+        solo_user,
+        fresh_user,
+        none_user,
+        restored_user,
+        *pause_users.values(),
+    ]
+    _strip_progress(seeded_users)
+    _delete_owned_configs(cohort_registration, seeded_users)
     _wipe_enrolment(fresh_user)
     _wipe_enrolment(none_user)
 
@@ -542,6 +648,10 @@ def command(site_name: str) -> None:
         (restored_registration, restored_record),
     )
 
+    pause_records = _seed_pause_and_extension_states(
+        site, parts, organisation, pause_users, superuser
+    )
+
     click.echo(f"\nSite time zone: {tz_config.pk} {tz_config}")
     click.echo(
         f"Cohort {cohort_registration.cohort.pk}; "
@@ -553,8 +663,16 @@ def command(site_name: str) -> None:
         ("solo / plain", solo_plain_record),
         ("restored / parts", restored_record),
         ("fresh / parts", fresh_record),
+        *((f"{email} / parts", record) for email, record in pause_records.items()),
     ):
         click.echo(
             f"{label}: CourseProgress {record.pk} created_at {record.created_at}"
         )
+    click.echo(
+        f"{PAUSED_EMAIL}: paused 2 days ago, planned resume 5 days from today; "
+        '"What to Expect" completed, "Knowledge Check" has an open attempt\n'
+        f"{PAUSED_OPEN_EMAIL}: paused 2 days ago, no planned resume\n"
+        f"{RESUMED_EMAIL}: paused 6 days ago, resumed 3 days ago (shift 3 days)\n"
+        f'{EXTENDED_EMAIL}: "Key Ideas" extended by 7 and 5 days, whole course by 2 days'
+    )
     click.echo("All passwords equal the email address.")
