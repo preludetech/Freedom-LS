@@ -6,7 +6,9 @@ from __future__ import annotations
 
 import pytest
 from playwright.sync_api import Page, expect
+from pytest_django.live_server_helper import LiveServer
 
+from freedom_ls.accounts.models import User
 from freedom_ls.conftest import reverse_url
 from freedom_ls.form_engine.factories import FormQuestionFactory
 from freedom_ls.tests.app_guards import app_not_installed
@@ -26,8 +28,8 @@ from ..helpers import gated_course_with_form
 # transaction=True so the Playwright browser (separate connection) sees committed data
 @pytest.mark.django_db(transaction=True)
 def test_an_applicant_is_asked_for_a_country_before_a_national_number_is_accepted(
-    live_server, logged_in_page: Page, logged_in_user
-):
+    live_server: LiveServer, logged_in_page: Page, logged_in_user: User
+) -> None:
     course, form = gated_course_with_form()
     FormQuestionFactory(
         form_page=form.pages.get(order=0),
@@ -71,8 +73,8 @@ def test_an_applicant_is_asked_for_a_country_before_a_national_number_is_accepte
 # transaction=True so the Playwright browser (separate connection) sees committed data
 @pytest.mark.django_db(transaction=True)
 def test_an_applicant_whose_browser_names_a_country_finds_it_chosen(
-    live_server, logged_in_page: Page, logged_in_user
-):
+    live_server: LiveServer, logged_in_page: Page, logged_in_user: User
+) -> None:
     course, form = gated_course_with_form()
     FormQuestionFactory(
         form_page=form.pages.get(order=0),
@@ -121,8 +123,8 @@ def test_an_applicant_whose_browser_names_a_country_finds_it_chosen(
 # transaction=True so the Playwright browser (separate connection) sees committed data
 @pytest.mark.django_db(transaction=True)
 def test_the_example_hint_follows_the_chosen_country(
-    live_server, logged_in_page: Page, logged_in_user
-):
+    live_server: LiveServer, logged_in_page: Page, logged_in_user: User
+) -> None:
     course, form = gated_course_with_form()
     FormQuestionFactory(
         form_page=form.pages.get(order=0),
@@ -150,3 +152,47 @@ def test_the_example_hint_follows_the_chosen_country(
     logged_in_page.get_by_label("Country").select_option("")
 
     expect(hint).to_be_hidden()
+
+
+@pytest.mark.playwright
+@pytest.mark.browser_context_args(locale="en-ZA")
+# transaction=True so the Playwright browser (separate connection) sees committed data
+@pytest.mark.django_db(transaction=True)
+def test_the_example_hint_starts_on_the_country_the_picker_shows(
+    live_server: LiveServer, logged_in_page: Page, logged_in_user: User
+) -> None:
+    course, form = gated_course_with_form()
+    FormQuestionFactory(
+        form_page=form.pages.get(order=0),
+        type="phone",
+        order=10,
+        question="Your phone number",
+        required=False,
+    )
+    # A browser restoring the form after a reload moves the picker before the
+    # hint starts and fires no change event. Doing the same here, as the picker
+    # is parsed, does not depend on which browsers restore a select.
+    logged_in_page.add_init_script(
+        """
+        new MutationObserver(() => {
+            const picker = document.querySelector('select[name^="phone_country_"]');
+            if (picker && picker.querySelector('option[value="GB"]')) {
+                picker.value = "GB";
+            }
+        }).observe(document, { childList: true, subtree: true });
+        """
+    )
+
+    logged_in_page.goto(
+        reverse_url(
+            live_server,
+            "course_applications:apply",
+            kwargs={"course_slug": course.slug},
+        )
+    )
+
+    country = logged_in_page.get_by_label("Country")
+    expect(country.locator("option:checked")).to_have_text("United Kingdom (+44)")
+    expect(logged_in_page.get_by_text("For example:")).to_have_text(
+        "For example: 7400 123456"
+    )

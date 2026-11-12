@@ -29,9 +29,10 @@ document.addEventListener("alpine:init", () => {
     }));
 
     /**
-     * Keeps the phone question's example hint on the chosen country. The
-     * server renders the hint for the country it selected, so this only
-     * follows later changes to the picker.
+     * Keeps the phone question's example hint on the chosen country. Reads
+     * the picker itself on start, not what the server selected: a browser
+     * that restores the form after a reload changes the picker without
+     * firing a change event.
      */
     Alpine.data("phoneHint", () => ({
         examples: {},
@@ -40,7 +41,7 @@ document.addEventListener("alpine:init", () => {
         init() {
             const data = document.getElementById(this.$root.dataset.examplesId);
             this.examples = JSON.parse(data.textContent);
-            this.example = this.$root.dataset.example;
+            this.example = this.examples[this.$refs.country.value] || "";
         },
 
         pickCountry(event) {
