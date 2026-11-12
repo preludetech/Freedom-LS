@@ -32,9 +32,12 @@ from freedom_ls.deadlines.models import (
     AfterAccessEnded,
     CohortDeadlineConfig,
     CohortDeadlineOverride,
+    CoursePause,
+    DeadlineExtension,
     LearnerCourseRegistrationDeadlineConfig,
     LearnerDeadlineOverride,
 )
+from freedom_ls.deadlines.queries import open_pause
 from freedom_ls.deadlines.resolver import course_deadlines
 from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.learner_management.factories import (
@@ -227,3 +230,72 @@ def test_seed_builds_solo_feedback_override_open_attempt_and_cohort_completion(
     welcome = TopicProgress._base_manager.get(course_progress=cohort)
     assert welcome.topic.title == "Welcome"
     assert welcome.complete_time is not None
+
+
+def _item_deadline(record: CourseProgress, title: str) -> datetime | None:
+    item = next(
+        item
+        for item in record.course.viewable_collection_items()
+        if getattr(item.child, "title", None) == title
+    )
+    return course_deadlines(record).items[item.pk].due_at
+
+
+@pytest.mark.django_db
+def test_seed_pause_and_extension_states_survive_two_runs(qa_site):
+    parts = _parts_course()
+    CourseFactory(slug="functionality-demo-show-end-with-topic")
+
+    call_command("qa_create_deadlines_seed")
+    call_command("qa_create_deadlines_seed")
+
+    now = timezone.now()
+    paused = _seed_record("qa_deadline_paused@email.com", parts)
+    paused_open = open_pause(paused, now)
+    assert paused_open is not None
+    assert paused_open.planned_resume_on is not None
+    assert timedelta(days=1) < now - paused_open.started_at < timedelta(days=3)
+    assert course_deadlines(paused, now=now).pause == paused_open
+    assert paused.form_attempts.count() == 1
+    assert paused.topic_progress.count() == 2
+
+    no_resume = _seed_record("qa_deadline_paused_open@email.com", parts)
+    no_resume_pause = open_pause(no_resume, now)
+    assert no_resume_pause is not None
+    assert no_resume_pause.planned_resume_on is None
+
+    resumed = _seed_record("qa_deadline_resumed@email.com", parts)
+    assert open_pause(resumed, now) is None
+    pause = CoursePause._base_manager.get(course_progress=resumed)
+    assert pause.ended_at is not None
+    assert pause.paused_days(now, course_deadlines(resumed).zone) == 3
+
+    extended = _seed_record("qa_deadline_extended@email.com", parts)
+    assert open_pause(extended, now) is None
+    assert sorted(
+        DeadlineExtension._base_manager.filter(course_progress=extended).values_list(
+            "days", flat=True
+        )
+    ) == [2, 5, 7]
+    key_ideas_due = _item_deadline(extended, "Key Ideas")
+    assert key_ideas_due is not None
+    assert timedelta(days=27) < key_ideas_due - extended.created_at < timedelta(days=29)
+
+    for email in (
+        "qa_deadline_paused@email.com",
+        "qa_deadline_paused_open@email.com",
+        "qa_deadline_resumed@email.com",
+        "qa_deadline_extended@email.com",
+    ):
+        record = _seed_record(email, parts)
+        assert (
+            CourseProgress._base_manager.filter(
+                learner__user__email=email, course=parts
+            ).count()
+            == 1
+        )
+        assert now - record.created_at > timedelta(days=9)
+        assert record.topic_progress.filter(
+            topic__title="Welcome", complete_time__lt=now - timedelta(days=8)
+        ).exists()
+    assert CoursePause._base_manager.count() == 3
