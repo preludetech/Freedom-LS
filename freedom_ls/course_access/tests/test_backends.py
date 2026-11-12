@@ -26,9 +26,10 @@ from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.deadlines.factories import (
     CohortDeadlineOverrideFactory,
     CourseDeadlineConfigFactory,
+    CoursePauseFactory,
     LearnerDeadlineOverrideFactory,
 )
-from freedom_ls.deadlines.models import AfterAccessEnded, DeadlineKind
+from freedom_ls.deadlines.models import AfterAccessEnded, CoursePause, DeadlineKind
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -37,6 +38,7 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_management.models import LearnerCourseRegistration
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
+from freedom_ls.tests.factories import SiteFactory
 
 
 class TestCourseAccessBackend:
@@ -620,7 +622,7 @@ class TestDeadlineEnforcingBackendGetAccess:
         course = _time_limited_course(items=items)
         user = _registered_learner(course)
 
-        with django_assert_max_num_queries(18):
+        with django_assert_max_num_queries(20):
             _deadline_backend().get_access(user=user, course=course)
 
     @time_machine.travel(AFTER_END, tick=False)
@@ -671,7 +673,7 @@ class TestDeadlineEnforcingBackendGetAccessMany:
             course_progress_record(course, user, created_at=REGISTERED_AT)
             courses.append(course)
 
-        with django_assert_max_num_queries(25):
+        with django_assert_max_num_queries(27):
             _deadline_backend().get_access_many(user=user, courses=courses)
 
 
@@ -717,3 +719,182 @@ class TestDeadlineEnforcingBackendRestore:
         decision = _deadline_backend().get_access(user=user, course=course)
 
         assert decision.can_access_content is True
+
+
+PAUSE_START = datetime(2026, 3, 10, 10, 0, tzinfo=UTC)
+
+
+def _paused_learner(course: Course, **pause_fields: object) -> User:
+    user = _registered_learner(course)
+    CoursePauseFactory(
+        course_progress=course_progress_record(course, user),
+        started_at=PAUSE_START,
+        **pause_fields,
+    )
+    return user
+
+
+@pytest.mark.django_db
+class TestDeadlineEnforcingBackendPaused:
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_a_paused_learner_past_the_time_limit_reads_paused_not_ended(
+        self, mock_site_context
+    ):
+        course = _time_limited_course()
+        user = _paused_learner(course)
+
+        decision = _deadline_backend().get_access(user=user, course=course)
+
+        assert decision.can_access_content is False
+        assert decision.can_self_register is False
+        assert decision.cta_label is None
+        assert decision.cta_url is None
+        assert decision.paused_at == PAUSE_START
+        assert decision.planned_resume_at is None
+        assert decision.access_ended_at is None
+
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_a_paused_decision_names_the_planned_resume_instant(
+        self, mock_site_context
+    ):
+        course = _time_limited_course()
+        user = _paused_learner(course, planned_resume_on=date(2999, 1, 1))
+
+        decision = _deadline_backend().get_access(user=user, course=course)
+
+        assert decision.planned_resume_at is not None
+        assert decision.planned_resume_at.date() == date(2999, 1, 1)
+
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_a_completed_record_is_never_paused(self, mock_site_context):
+        course = _time_limited_course()
+        user = _paused_learner(course)
+        course_progress_record(course, user, completed_time=BEFORE_END)
+
+        decision = _deadline_backend().get_access(user=user, course=course)
+
+        assert decision.can_access_content is True
+        assert decision.paused_at is None
+
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_a_deactivated_registration_gets_the_inner_decision(
+        self, mock_site_context
+    ):
+        course = _time_limited_course()
+        user = _paused_learner(course)
+        LearnerCourseRegistration.objects.update(is_active=False)
+
+        decision = _deadline_backend().get_access(user=user, course=course)
+
+        assert decision == FreeOnlyCourseAccessBackend().get_access(
+            user=user, course=course
+        )
+
+    def test_a_passed_planned_resume_gives_the_normal_decision_and_writes_nothing(
+        self, mock_site_context
+    ):
+        course = _time_limited_course()
+        user = _paused_learner(course, planned_resume_on=date(2026, 3, 12))
+        pause_rows = list(CoursePause._base_manager.values())
+
+        with time_machine.travel(datetime(2026, 3, 11, 10, 0, tzinfo=UTC), tick=False):
+            during = _deadline_backend().get_access(user=user, course=course)
+        with time_machine.travel(datetime(2026, 3, 13, 10, 0, tzinfo=UTC), tick=False):
+            after = _deadline_backend().get_access(user=user, course=course)
+
+        assert during.paused_at == PAUSE_START
+        assert after.can_access_content is True
+        assert after.paused_at is None
+        assert list(CoursePause._base_manager.values()) == pause_rows
+
+    def test_an_ended_pause_shifts_the_access_end_instant(self, mock_site_context):
+        course = _time_limited_course()
+        user = _paused_learner(
+            course, ended_at=datetime(2026, 3, 15, 10, 0, tzinfo=UTC)
+        )
+        unpaused_end = datetime(2026, 3, 31, 10, 0, tzinfo=UTC)
+
+        with time_machine.travel(unpaused_end, tick=False):
+            decision = _deadline_backend().get_access(user=user, course=course)
+        with time_machine.travel(AFTER_END, tick=False):
+            ended = _deadline_backend().get_access(user=user, course=course)
+
+        assert decision.can_access_content is True
+        assert ended.access_ended_at is not None
+        assert ended.access_ended_at > unpaused_end
+
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_another_sites_pause_does_not_apply(self, mock_site_context):
+        course = _time_limited_course()
+        user = _registered_learner(course)
+        record = course_progress_record(course, user)
+        CoursePauseFactory(
+            course_progress=record, started_at=PAUSE_START, site=SiteFactory()
+        )
+
+        decision = _deadline_backend().get_access(user=user, course=course)
+
+        assert decision.paused_at is None
+        assert decision.access_ended_at is not None
+
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_get_access_for_request_sees_the_paused_state(self, mock_site_context):
+        course = _time_limited_course()
+        request = RequestFactory().get("/")
+        request.user = _paused_learner(course)
+
+        decision = _deadline_backend().get_access_for_request(
+            request=request, course=course
+        )
+
+        assert decision.paused_at == PAUSE_START
+
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_get_access_many_matches_get_access_for_paused_and_ended_courses(
+        self, mock_site_context
+    ):
+        paused = _time_limited_course()
+        ended = _time_limited_course()
+        user = _paused_learner(paused)
+        course_progress_record(ended, user, created_at=REGISTERED_AT)
+        courses = [paused, ended]
+        backend = _deadline_backend()
+
+        many = backend.get_access_many(user=user, courses=courses)
+
+        assert many == {
+            course.pk: backend.get_access(user=user, course=course)
+            for course in courses
+        }
+        assert many[paused.pk].paused_at == PAUSE_START
+        assert many[ended.pk].access_ended_at is not None
+
+    @time_machine.travel(AFTER_END, tick=False)
+    @pytest.mark.parametrize("items", [1, 30])
+    def test_a_paused_get_access_stays_within_the_query_cap(
+        self, mock_site_context, django_assert_max_num_queries, items
+    ):
+        course = _time_limited_course(items=items)
+        user = _paused_learner(course)
+
+        with django_assert_max_num_queries(20):
+            _deadline_backend().get_access(user=user, course=course)
+
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_get_access_many_with_paused_courses_stays_within_the_query_cap(
+        self, mock_site_context, django_assert_max_num_queries
+    ):
+        user = UserFactory()
+        courses = []
+        for _ in range(6):
+            course = _time_limited_course()
+            CoursePauseFactory(
+                course_progress=course_progress_record(
+                    course, user, created_at=REGISTERED_AT
+                ),
+                started_at=PAUSE_START,
+            )
+            courses.append(course)
+
+        with django_assert_max_num_queries(27):
+            _deadline_backend().get_access_many(user=user, courses=courses)

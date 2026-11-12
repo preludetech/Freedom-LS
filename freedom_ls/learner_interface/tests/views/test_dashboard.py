@@ -2290,7 +2290,7 @@ def test_card_shell_article_has_no_zero_padding(mock_site_context):
 # Measured with ContentType's per-process cache empty: the page looks up four
 # content types once each, and whether an earlier test already cached them
 # would otherwise decide whether this test passes.
-BYLINE_DASHBOARD_MAX_QUERIES = 64
+BYLINE_DASHBOARD_MAX_QUERIES = 66
 
 
 @pytest.mark.django_db
