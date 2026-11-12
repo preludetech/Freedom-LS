@@ -863,9 +863,6 @@ def test_another_sites_learner_override_rows_are_not_read(mock_site_context):
     assert course_deadlines(record).items[item.pk].source == DeadlineSource.CONTENT
 
 
-# --- pauses ---
-
-
 def _record_with_a_dated_topic(
     due_date: date, due_time: time | None = None
 ) -> tuple[CourseProgress, ContentCollectionItem]:
