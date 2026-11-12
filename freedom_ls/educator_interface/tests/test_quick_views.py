@@ -772,3 +772,14 @@ def test_a_quick_view_of_an_unknown_learner_answers_the_dialog(educator_client):
 
     assert response.status_code == 404
     assert "This is no longer available" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_a_malformed_pk_of_a_staff_row_404s(educator_client, mock_site_context):
+    organisation = OrganisationFactory()
+
+    response = _get_quick_view(
+        educator_client(organisation), organisation, "staff/not-a-number"
+    )
+
+    assert response.status_code == 404

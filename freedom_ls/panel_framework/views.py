@@ -328,14 +328,15 @@ class ListViewConfig(SectionConfigBase):
         reach a row through here."""
         if cls.model is None:
             raise ValueError(f"{cls.__name__} must define model")
-        # pk is a raw, visitor-supplied URL segment and these models have UUID
-        # primary keys, so anything that isn't a well-formed UUID fails in the
-        # field rather than the query: get_object_or_404 only turns
-        # DoesNotExist into Http404, and a ValidationError would escape as a
-        # 500. A guessed or mistyped URL is a missing page, not a server error.
+        # pk is a raw, visitor-supplied URL segment, so one that isn't a
+        # well-formed key fails in the field rather than the query: a UUID
+        # field raises ValidationError and an integer one ValueError.
+        # get_object_or_404 only turns DoesNotExist into Http404, so either
+        # would escape as a 500. A guessed or mistyped URL is a missing page,
+        # not a server error.
         try:
             instance = get_object_or_404(cls.model, pk=pk)
-        except ValidationError as err:
+        except (ValidationError, ValueError) as err:
             raise Http404(f"'{pk}' is not a valid identifier") from err
         cls.check_access(request, instance)
         return instance

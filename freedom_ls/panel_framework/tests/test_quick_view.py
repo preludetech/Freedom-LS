@@ -199,6 +199,14 @@ def test_a_row_with_no_page_of_its_own_opens_in_the_quick_view(
     assert f'data-entity-id="{stub.pk}"' in response.content.decode()
 
 
+def test_a_pageless_quick_view_of_a_malformed_pk_is_unavailable(
+    mock_site_context: Site,
+) -> None:
+    response = _view("pageless-quick-view-stub/not-a-number/__quick-view", htmx=True)
+
+    assert_unavailable_dialog(response)
+
+
 def test_a_pageless_quick_view_still_runs_authorise_instance(
     mock_site_context: Site,
 ) -> None:
