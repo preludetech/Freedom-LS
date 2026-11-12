@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
@@ -1169,6 +1169,24 @@ def test_effective_deadlines_says_when_the_course_is_paused(
 
     assert "Paused since " in body
     assert ", until " not in body.split("Paused since ")[1].split("</p>")[0]
+
+
+@pytest.mark.django_db
+def test_effective_deadlines_writes_the_pause_start_in_the_site_zone(
+    staff_client, mock_site_context
+) -> None:
+    """The pause start used to be written in UTC, the zone the database returns it in."""
+    SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
+    record, _ = _record_with_item()
+    CoursePauseFactory(
+        course_progress=record,
+        started_at=datetime(2026, 11, 10, 23, 34, tzinfo=UTC),
+    )
+
+    body = _progress_page(staff_client, record).content.decode()
+
+    since = body.split("Paused since ")[1].split("</p>")[0]
+    assert since.startswith("11 Nov 2026, 01:34 SAST")
 
 
 @pytest.mark.django_db
