@@ -10,6 +10,7 @@ import time_machine
 from django.contrib.auth.models import AnonymousUser
 from django.db import connection
 from django.http import HttpRequest, HttpResponse
+from django.http.response import HttpResponseBase
 from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
@@ -21,6 +22,7 @@ from freedom_ls.referral_tracking.capture import (
     first_touch_from_request,
     read_attribution_cookie,
     read_cookie_touches,
+    request_cookie_clear,
     set_attribution_cookie,
 )
 from freedom_ls.referral_tracking.config import config
@@ -468,3 +470,34 @@ def test_a_signed_in_tracked_get_costs_the_live_touch_queries(
     # The latest-touch read, then the savepoint, the insert and the release.
     with django_assert_num_queries(4):
         AttributionCaptureMiddleware(lambda request: HttpResponse())(request)
+
+
+def _clearing_view(request: HttpRequest) -> HttpResponse:
+    request_cookie_clear(request)
+    return HttpResponse()
+
+
+def _run_middleware(request: HttpRequest, view) -> HttpResponseBase:
+    request.user = AnonymousUser()
+    return AttributionCaptureMiddleware(view)(request)
+
+
+def test_a_post_that_requests_a_clear_deletes_the_cookie() -> None:
+    response = _run_middleware(rf.post("/"), _clearing_view)
+
+    cookie = response.cookies[COOKIE_NAME]
+    assert (cookie.value, cookie["path"], cookie["max-age"]) == ("", "/", 0)
+
+
+def test_a_tracked_get_that_requests_a_clear_deletes_the_cookie(
+    db, mock_site_context
+) -> None:
+    response = _run_middleware(rf.get("/?ref=A"), _clearing_view)
+
+    assert response.cookies[COOKIE_NAME]["max-age"] == 0
+
+
+def test_a_request_that_does_not_request_a_clear_gets_no_deleting_cookie() -> None:
+    response = _run_middleware(rf.post("/"), lambda request: HttpResponse())
+
+    assert COOKIE_NAME not in response.cookies

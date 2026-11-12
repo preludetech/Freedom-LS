@@ -2,17 +2,27 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+import base64
+import json
+from datetime import UTC, datetime, timedelta
 
 import pytest
 import time_machine
 
 from django.db import DatabaseError
+from django.http import HttpRequest, HttpResponse
 from django.test import RequestFactory
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.referral_tracking.capture import (
+    COOKIE_SALT,
+    COOKIE_TOUCHES_KEY,
+    is_cookie_clear_requested,
+)
+from freedom_ls.referral_tracking.config import config
 from freedom_ls.referral_tracking.conversions import (
+    flush_cookie_touches,
     record_conversion,
     record_live_touch,
 )
@@ -26,6 +36,7 @@ from freedom_ls.referral_tracking.models import (
     ConversionKind,
     TouchSource,
 )
+from freedom_ls.tests.site_context import drop_ambient_request
 
 rf = RequestFactory()
 
@@ -202,3 +213,196 @@ def test_a_failed_conversion_write_returns_none_and_is_reported(
 
     assert conversion is None
     sentry.capture_exception.assert_called_once()
+
+
+FIRST_LANDING = datetime(2026, 3, 1, 12, 0, tzinfo=UTC)
+SECOND_LANDING = FIRST_LANDING + timedelta(days=2)
+THIRD_LANDING = FIRST_LANDING + timedelta(days=4)
+FLUSH_TIME = FIRST_LANDING + timedelta(days=10)
+
+
+def _request_holding_cookie(entries: list[dict[str, str]]) -> HttpRequest:
+    payload = {
+        "ts": FIRST_LANDING.isoformat(),
+        "rc": "A",
+        "p": "/landing/",
+        COOKIE_TOUCHES_KEY: entries,
+    }
+    encoded = base64.urlsafe_b64encode(
+        json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    ).decode("ascii")
+    response = HttpResponse()
+    response.set_signed_cookie(
+        config.REFERRAL_TRACKING_COOKIE_NAME, encoded, salt=COOKIE_SALT
+    )
+    request = rf.get("/")
+    request.COOKIES[config.REFERRAL_TRACKING_COOKIE_NAME] = response.cookies[
+        config.REFERRAL_TRACKING_COOKIE_NAME
+    ].value
+    return request
+
+
+def _three_landings_request() -> HttpRequest:
+    return _request_holding_cookie(
+        [
+            {"rc": "B", "ts": SECOND_LANDING.isoformat()},
+            {"rc": "C", "ts": THIRD_LANDING.isoformat()},
+        ]
+    )
+
+
+def _flush(request, user, source=TouchSource.SIGNUP_FLUSH):
+    return flush_cookie_touches(request=request, user=user, source=source)
+
+
+@pytest.mark.django_db
+@time_machine.travel(FLUSH_TIME, tick=False)
+def test_a_flush_writes_one_touch_per_landing_at_its_time(mock_site_context) -> None:
+    user = UserFactory()
+
+    _flush(_three_landings_request(), user)
+
+    touches = AttributionTouch._base_manager.filter(user=user).order_by("occurred_at")
+    assert [(t.referral_code, t.occurred_at) for t in touches] == [
+        ("A", FIRST_LANDING),
+        ("B", SECOND_LANDING),
+        ("C", THIRD_LANDING),
+    ]
+
+
+@pytest.mark.django_db
+@time_machine.travel(FLUSH_TIME, tick=False)
+def test_a_flush_marks_the_touches_with_the_given_source(mock_site_context) -> None:
+    user = UserFactory()
+
+    _flush(_three_landings_request(), user, TouchSource.LOGIN_FLUSH)
+
+    sources = AttributionTouch._base_manager.values_list("recorded_via", flat=True)
+    assert set(sources) == {TouchSource.LOGIN_FLUSH}
+
+
+@pytest.mark.django_db
+@time_machine.travel(FLUSH_TIME, tick=False)
+def test_the_first_touch_keeps_its_landing_path_and_list_entries_have_none(
+    mock_site_context,
+) -> None:
+    user = UserFactory()
+
+    _flush(_three_landings_request(), user)
+
+    touches = AttributionTouch._base_manager.filter(user=user).order_by("occurred_at")
+    assert [t.landing_path for t in touches] == ["/landing/", "", ""]
+
+
+@pytest.mark.django_db
+@time_machine.travel(FLUSH_TIME, tick=False)
+def test_an_entry_dated_in_the_future_is_skipped(mock_site_context) -> None:
+    user = UserFactory()
+    future = (FLUSH_TIME + timedelta(days=1)).isoformat()
+
+    _flush(_request_holding_cookie([{"rc": "B", "ts": future}]), user)
+
+    assert AttributionTouch._base_manager.filter(user=user).count() == 1
+
+
+@pytest.mark.django_db
+@time_machine.travel(FLUSH_TIME, tick=False)
+def test_an_entry_dated_before_the_first_landing_is_skipped(mock_site_context) -> None:
+    user = UserFactory()
+    earlier = (FIRST_LANDING - timedelta(days=1)).isoformat()
+
+    _flush(_request_holding_cookie([{"rc": "B", "ts": earlier}]), user)
+
+    assert AttributionTouch._base_manager.filter(user=user).count() == 1
+
+
+@pytest.mark.django_db
+@time_machine.travel(FLUSH_TIME, tick=False)
+def test_a_flush_of_touches_already_written_writes_no_second_row(
+    mock_site_context,
+) -> None:
+    user = UserFactory()
+    for code, when in (
+        ("A", FIRST_LANDING),
+        ("B", SECOND_LANDING),
+        ("C", THIRD_LANDING),
+    ):
+        AttributionTouchFactory(
+            user=user, referral_code=code, utm_source="", occurred_at=when
+        )
+
+    _flush(_three_landings_request(), user)
+
+    assert AttributionTouch._base_manager.filter(user=user).count() == 3
+
+
+@pytest.mark.django_db
+def test_a_flush_without_a_request_returns_an_empty_list(mock_site_context) -> None:
+    flushed = flush_cookie_touches(
+        request=None, user=UserFactory(), source=TouchSource.LOGIN_FLUSH
+    )
+
+    assert flushed == []
+
+
+@pytest.mark.django_db
+def test_a_flush_for_a_request_without_a_cookie_writes_nothing(
+    mock_site_context,
+) -> None:
+    user = UserFactory()
+
+    _flush(rf.get("/"), user)
+
+    assert not AttributionTouch._base_manager.exists()
+
+
+@pytest.mark.django_db
+@time_machine.travel(FLUSH_TIME, tick=False)
+def test_a_flush_writes_on_the_users_site_without_an_ambient_request(
+    mock_site_context,
+) -> None:
+    user = UserFactory()
+    request = _three_landings_request()
+    drop_ambient_request()
+
+    _flush(request, user)
+
+    sites = AttributionTouch._base_manager.values_list("site", flat=True)
+    assert set(sites) == {user.site_id}
+
+
+@pytest.mark.django_db
+@time_machine.travel(FLUSH_TIME, tick=False)
+def test_a_flush_sets_the_clear_flag(mock_site_context) -> None:
+    request = _three_landings_request()
+
+    _flush(request, UserFactory())
+
+    assert is_cookie_clear_requested(request)
+
+
+@pytest.mark.django_db
+@time_machine.travel(FLUSH_TIME, tick=False)
+def test_a_failed_flush_returns_nothing(mock_site_context, mocker) -> None:
+    mocker.patch.object(
+        AttributionTouch._base_manager, "get_or_create", side_effect=DatabaseError("x")
+    )
+    mocker.patch("freedom_ls.referral_tracking.best_effort.sentry_sdk")
+
+    flushed = _flush(_three_landings_request(), UserFactory())
+
+    assert flushed == []
+
+
+@pytest.mark.django_db
+@time_machine.travel(FLUSH_TIME, tick=False)
+def test_a_failed_flush_still_sets_the_clear_flag(mock_site_context, mocker) -> None:
+    mocker.patch.object(
+        AttributionTouch._base_manager, "get_or_create", side_effect=DatabaseError("x")
+    )
+    mocker.patch("freedom_ls.referral_tracking.best_effort.sentry_sdk")
+    request = _three_landings_request()
+
+    _flush(request, UserFactory())
+
+    assert is_cookie_clear_requested(request)

@@ -17,10 +17,12 @@ from freedom_ls.referral_tracking.capture import (
     first_touch_from_request,
     has_tracked_params,
     is_capture_suppressed,
+    is_cookie_clear_requested,
     read_attribution_cookie,
     read_cookie_touches,
     set_attribution_cookie,
 )
+from freedom_ls.referral_tracking.config import config
 from freedom_ls.referral_tracking.conversions import record_live_touch
 from freedom_ls.referral_tracking.counters import (
     attribution_key_hash_of,
@@ -78,6 +80,14 @@ class AttributionCaptureMiddleware:
         self.get_response = get_response
 
     def __call__(self, request: HttpRequest) -> HttpResponseBase:
+        response = self._handle(request)
+        if is_cookie_clear_requested(request):
+            response.delete_cookie(
+                config.REFERRAL_TRACKING_COOKIE_NAME, path="/", samesite="Lax"
+            )
+        return response
+
+    def _handle(self, request: HttpRequest) -> HttpResponseBase:
         if request.method != "GET" or not has_tracked_params(request):
             return self.get_response(request)
         landing = first_touch_from_request(request)
