@@ -1,15 +1,28 @@
-<c-vars class="" />
+<c-vars cancel="Cancel" cancel_href="" cancel_click="cancel" focus_cancel="" cancel_describedby="" class="" />
 
 {% comment %}
-The footer every dialog and bottom sheet ends with. The `cancel` slot holds
-the one button that leaves without changing anything (Cancel, Close, Keep
-editing) and sits at the left; the default slot holds the actions, right
-aligned with the primary last, and wraps onto its own row below sm when it
-does not fit. Sticky so it stays in view while the dialog, which is the
-scroll container, scrolls. A dialog with only a Close button puts it in the
-`cancel` slot and leaves the default slot empty.
+The footer every dialog and bottom sheet ends with. It renders its own
+secondary button at the left, the one that leaves without changing anything:
+`cancel` is its label (Cancel, Close, Keep editing). With `cancel_href` it is
+a link back to that page, for a dialog the server renders open because
+JavaScript is off; otherwise it is a button calling the Alpine method named
+by `cancel_click`. That is `cancel` by default, which closes without the
+dirty-form guard, since pressing Cancel is a deliberate choice to drop the
+input; `keepEditing` serves the discard prompt. `cancel_click` is always a
+literal in a template, never filled from context, and `cancel_href` only
+ever receives a URL the server built. `focus_cancel` makes the button take
+initial focus and `cancel_describedby` names the element describing it. The default slot holds the actions, right aligned with the
+primary last, and wraps onto its own row below sm when it does not fit.
+Sticky so it stays in view while the dialog, which is the scroll container,
+scrolls.
 {% endcomment %}
 <footer class="panel-surface sticky bottom-0 z-10 flex items-center justify-between gap-3 border-t border-border px-6 py-4 max-sm:flex-wrap {{ class }}" {{ attrs }}>
-    <div class="shrink-0">{{ cancel }}</div>
+    <div class="shrink-0">
+        {% if cancel_href %}
+            <c-button variant="secondary" href="{{ cancel_href }}" autofocus="{{ focus_cancel }}" aria_describedby="{{ cancel_describedby }}">{{ cancel }}</c-button>
+        {% else %}
+            <c-button type="button" variant="secondary" x-on:click="{{ cancel_click }}" autofocus="{{ focus_cancel }}" aria_describedby="{{ cancel_describedby }}">{{ cancel }}</c-button>
+        {% endif %}
+    </div>
     <div class="flex min-w-0 flex-wrap items-center justify-end gap-3">{{ slot }}</div>
 </footer>

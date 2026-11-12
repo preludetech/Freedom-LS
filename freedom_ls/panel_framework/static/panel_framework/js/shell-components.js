@@ -343,6 +343,11 @@ document.addEventListener("alpine:init", () => {
                 localStorage.setItem(this._storageKey, false);
             }
         },
+        // The name the shared close control calls. A side panel holds no
+        // unsaved input to guard, so it closes straight away.
+        requestClose() {
+            this.close();
+        },
     }));
 
     // Polls its own hx-get while the tab is visible (a menu count, a header badge).

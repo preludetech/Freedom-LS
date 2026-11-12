@@ -10,9 +10,7 @@ replaces the form with that sentence and a Close button.
 <c-modal-body>
     <p>{{ empty_message }}</p>
 </c-modal-body>
-<c-modal-footer>
-    <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Close</c-button></c-slot>
-</c-modal-footer>
+<c-modal-footer cancel="Close" />
 {% else %}
 <c-modal-header>{{ form_title }}</c-modal-header>
 
@@ -40,7 +38,6 @@ replaces the form with that sentence and a Close button.
     </c-modal-body>
 
     <c-modal-footer>
-        <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Cancel</c-button></c-slot>
         {# The first submit button in tree order is what Enter triggers; this one acts as the primary Save. #}
         <button type="submit" hidden tabindex="-1" aria-hidden="true"></button>
         {% for btn in submit_buttons %}

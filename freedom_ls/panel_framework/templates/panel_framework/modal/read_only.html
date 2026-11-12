@@ -6,6 +6,4 @@ body's inside, so the footer stays a sibling of the body.
 {% endcomment %}
 <c-modal-header focus_title="true">{% block title %}{% endblock title %}</c-modal-header>
 <c-modal-body>{% block content %}{% endblock content %}</c-modal-body>
-<c-modal-footer>
-    <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Close</c-button></c-slot>
-</c-modal-footer>
+<c-modal-footer cancel="Close" />

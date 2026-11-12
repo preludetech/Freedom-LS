@@ -20,8 +20,7 @@ organisation, last_organisation_admin, grantor_is_site_level, confirm_url.
     </c-modal-body>
     {% include "panel_framework/partials/reason_field.html" %}
 
-    <c-modal-footer>
-        <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button></c-slot>
+    <c-modal-footer focus_cancel="true">
         <c-button type="submit" variant="primary" loading="true" loading_text="Deactivating…">
             Deactivate
         </c-button>

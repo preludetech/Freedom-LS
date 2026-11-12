@@ -17,13 +17,6 @@ and passes page_url: Cancel and the close control are then links back to it.
 {% include "panel_framework/partials/bulk_confirmation_message.html" %}
 </c-modal-body>
 
-<c-modal-footer>
-    <c-slot name="cancel">
-        {% if page_url %}
-            <c-button variant="secondary" href="{{ page_url }}{{ qs }}">Cancel</c-button>
-        {% else %}
-            <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
-        {% endif %}
-    </c-slot>
+<c-modal-footer cancel_href="{% if page_url %}{{ page_url }}{{ qs }}{% endif %}" focus_cancel="{% if not page_url %}true{% endif %}">
     {% include "panel_framework/partials/bulk_confirmation_form.html" %}
 </c-modal-footer>

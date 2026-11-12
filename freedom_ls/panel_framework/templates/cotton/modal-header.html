@@ -11,20 +11,5 @@ renders open because JavaScript is off.
 <c-vars focus_title="" title_id="app-modal-title" closable="true" close_href="" />
 <header class="panel-surface sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-border px-6 py-4">
     <h2 id="{{ title_id }}" class="min-w-0 wrap-anywhere text-lg font-semibold"{% if focus_title %} tabindex="-1" autofocus{% endif %}>{{ slot }}</h2>
-    {% if closable %}
-        {% if close_href %}
-            <a href="{{ close_href }}"
-               aria-label="Close"
-               class="-my-2 -mr-3 shrink-0 rounded-md p-3 text-muted no-underline transition-colors hover:bg-surface-2 hover:text-on-surface">
-                <c-icon name="close" class="size-5" />
-            </a>
-        {% else %}
-            <button type="button"
-                    x-on:click="requestClose"
-                    aria-label="Close"
-                    class="-my-2 -mr-3 shrink-0 cursor-pointer rounded-md p-3 text-muted transition-colors hover:bg-surface-2 hover:text-on-surface">
-                <c-icon name="close" class="size-5" />
-            </button>
-        {% endif %}
-    {% endif %}
+    {% if closable %}<c-panel-close-button href="{{ close_href }}" />{% endif %}
 </header>

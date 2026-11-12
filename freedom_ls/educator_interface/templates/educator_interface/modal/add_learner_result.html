@@ -11,7 +11,6 @@ form_url (the action's URL, for Add another).
     <p class="text-muted">{{ result.outcome.label }}.{% if result.cohort_outcome %} {{ result.cohort_outcome.label }}.{% endif %}</p>
 </c-modal-body>
 
-<c-modal-footer>
-    <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose">Close</c-button></c-slot>
+<c-modal-footer cancel="Close">
     <c-button variant="primary" hx-get="{{ form_url }}" hx-target="#app-modal-body" hx-swap="innerHTML">Add another</c-button>
 </c-modal-footer>

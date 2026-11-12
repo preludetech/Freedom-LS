@@ -24,8 +24,7 @@ cascade_summary, blocked_reason, delete_url.
 {% endif %}
 </c-modal-body>
 
-<c-modal-footer>
-    <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button></c-slot>
+<c-modal-footer focus_cancel="true">
     {% if not blocked_reason %}
         <form hx-delete="{{ delete_url }}"
               hx-target="#app-modal-body"

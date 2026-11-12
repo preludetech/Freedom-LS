@@ -12,6 +12,8 @@ message.
 {% endcomment %}
 <form id="composer"
       x-data="messageComposer"
+      data-discard-title="Discard your message?"
+      data-discard-body="The message you wrote hasn't been sent."
       {% if oob %}hx-swap-oob="outerHTML:#composer"{% endif %}
       method="post"
       action="{{ composer.action_url }}"

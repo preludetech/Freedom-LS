@@ -9,6 +9,7 @@
     disabled=""
     autofocus=""
     aria_label=""
+    aria_describedby=""
     dropdown=""
     class=""
     tone=""
@@ -30,6 +31,7 @@
 {% if disabled %} disabled{% endif %}
 {% if autofocus %} autofocus{% endif %}
 {% if aria_label %} aria-label="{{ aria_label }}"{% endif %}
+{% if aria_describedby %} aria-describedby="{{ aria_describedby }}"{% endif %}
 role="menuitem"
 class="{{ computed_class }} {% if tone == 'error' %}text-error{% else %}text-muted{% endif %}"
 {{ attrs }}
@@ -47,6 +49,7 @@ class="{{ computed_class }} {% if tone == 'error' %}text-error{% else %}text-mut
 {% if disabled %} disabled{% endif %}
 {% if autofocus %} autofocus{% endif %}
 {% if aria_label %} aria-label="{{ aria_label }}"{% endif %}
+{% if aria_describedby %} aria-describedby="{{ aria_describedby }}"{% endif %}
 data-variant="{{ variant }}"
 class="btn btn-{{ variant }}{% if size == 'small' %} btn-sm{% endif %} {{ class }}"
 {{ attrs }}

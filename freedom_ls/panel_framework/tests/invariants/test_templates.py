@@ -486,7 +486,7 @@ def test_the_filter_sheet_has_a_close_control() -> None:
         TEMPLATES_DIR / "panel_framework" / "partials" / "table_sheet.html"
     ).read_text()
 
-    assert 'aria-label="Close"' in sheet
+    assert "<c-panel-close-button" in sheet
     assert "bottom-sheet" in sheet
 
 

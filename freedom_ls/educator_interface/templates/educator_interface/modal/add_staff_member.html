@@ -87,7 +87,6 @@ scope, current_entries, after_entries, already_held and staff_member_state.
         {% endpartialdef %}
     </c-modal-body>
     <c-modal-footer>
-        <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Cancel</c-button></c-slot>
         <c-button type="submit" variant="primary" loading="true" loading_text="Checking...">Next</c-button>
     </c-modal-footer>
 </form>
@@ -180,7 +179,6 @@ scope, current_entries, after_entries, already_held and staff_member_state.
         {% if role_note %}<p class="text-muted">{{ role_note }}</p>{% endif %}
     </c-modal-body>
     <c-modal-footer>
-        <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Cancel</c-button></c-slot>
         <c-button type="submit" variant="primary" loading="true" loading_text="Checking...">Next</c-button>
     </c-modal-footer>
 </form>
@@ -225,7 +223,6 @@ scope, current_entries, after_entries, already_held and staff_member_state.
         {% endif %}
     </c-modal-body>
     <c-modal-footer>
-        <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Cancel</c-button></c-slot>
         <c-button type="submit" variant="primary" loading="true" loading_text="Confirming...">Confirm</c-button>
     </c-modal-footer>
 </form>
