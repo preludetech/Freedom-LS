@@ -163,6 +163,7 @@ def test_the_registry_is_built_once_per_value_of_the_setting():
     assert "invoice.sent" not in audit_actions()
 
 
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     ("code", "details", "expected"),
     [
