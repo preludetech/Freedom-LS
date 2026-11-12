@@ -82,6 +82,10 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
 - A person in a list row is `<c-panel-attention-row>`: the name `text-sm font-semibold`, the chip
   `size="sm"` with its centre on the name's first line. `<c-panel-avatar-chip size="lg">` is for a
   page header only.
+- `<c-panel-avatar-chip>` and `<c-panel-person-link>` take `picture_url`, a plain URL the caller
+  resolves and passes bound (`:picture_url="user.profile_picture_url"`; a quoted `{{ }}` turns
+  `None` into the text "None"). Empty shows the initials, which stay under the picture as the
+  fallback when the image fails to load.
 - A row of figures is `<c-panel-stat-row>`, a grid at every width (two columns on a phone), so the
   labels line up.
 - A list of records in a panel is rows that share one shape: the name in `font-medium`, the
