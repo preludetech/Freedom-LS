@@ -2639,3 +2639,127 @@ class TestReadOnlyThread:
 
         (button,) = control("/oversight/older")
         assert button.get("hx-get").startswith("/oversight/older?before=")
+
+
+def _picture_sources(response) -> list[str]:
+    return [
+        image.get("src")
+        for image in html.fromstring(response.content).cssselect(
+            "img[data-profile-picture]"
+        )
+    ]
+
+
+PARTICIPANT_PAGES = [
+    pytest.param(lambda conversation: inbox_url(), id="inbox"),
+    pytest.param(lambda conversation: recent_url(), id="messages-panel"),
+    pytest.param(thread_url, id="thread"),
+]
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("allow_policy")
+class TestParticipantPictures:
+    @pytest.mark.parametrize("page_url", PARTICIPANT_PAGES)
+    def test_the_other_participants_picture_renders(
+        self, mock_site_context, logged_in_client, page_url
+    ) -> None:
+        user = UserFactory()
+        other = UserFactory(with_profile_picture=True)
+        conversation = ConversationFactory(between=(user, other))
+        MessageFactory(conversation=conversation, sender=other)
+
+        response = logged_in_client(user).get(page_url(conversation))
+
+        assert other.profile_picture_url in _picture_sources(response)
+
+    @pytest.mark.parametrize("page_url", PARTICIPANT_PAGES)
+    def test_a_participant_without_a_picture_gets_initials_alone(
+        self, mock_site_context, logged_in_client, page_url
+    ) -> None:
+        user = UserFactory()
+        other = UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        MessageFactory(conversation=conversation, sender=other)
+
+        response = logged_in_client(user).get(page_url(conversation))
+
+        assert _picture_sources(response) == []
+        assert 'src="None"' not in response.content.decode()
+
+    @pytest.mark.parametrize("page_url", PARTICIPANT_PAGES)
+    def test_a_deleted_participant_gets_the_neutral_circle_and_no_image(
+        self, mock_site_context, logged_in_client, page_url, settings
+    ) -> None:
+        settings.MESSAGING_POLICY = f"{__name__}.ExplodingPolicy"
+        user = UserFactory()
+        other = UserFactory(with_profile_picture=True)
+        conversation = ConversationFactory(between=(user, other))
+        MessageFactory(conversation=conversation, sender=other)
+        other.delete()
+
+        response = logged_in_client(user).get(page_url(conversation))
+
+        assert response.status_code == 200
+        assert "Deleted user" in response.content.decode()
+        assert _picture_sources(response) == []
+
+    def test_the_inbox_query_count_does_not_grow_with_pictures(
+        self, mock_site_context, logged_in_client, django_assert_max_num_queries
+    ) -> None:
+        user = UserFactory()
+        MessageFactory(
+            conversation=ConversationFactory(
+                between=(user, UserFactory(with_profile_picture=True))
+            )
+        )
+        client = logged_in_client(user)
+        client.get(inbox_url())
+
+        with django_assert_max_num_queries(15) as small:
+            client.get(inbox_url())
+        for _ in range(8):
+            MessageFactory(
+                conversation=ConversationFactory(
+                    between=(user, UserFactory(with_profile_picture=True))
+                )
+            )
+        with django_assert_max_num_queries(len(small.captured_queries)):
+            client.get(inbox_url())
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("allow_policy")
+class TestRecipientPickerPictures:
+    def test_a_recipient_with_a_picture_shows_it(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        kai = UserFactory(first_name="Kai", with_profile_picture=True)
+
+        response = logged_in_client(UserFactory()).get(search_url(), {"q": "kai"})
+
+        assert _picture_sources(response) == [kai.profile_picture_url]
+
+    def test_a_recipient_without_a_picture_gets_initials_alone(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        UserFactory(first_name="Kai")
+
+        response = logged_in_client(UserFactory()).get(search_url(), {"q": "kai"})
+
+        assert _picture_sources(response) == []
+        assert 'src="None"' not in response.content.decode()
+
+    def test_the_query_count_does_not_grow_with_recipients(
+        self, mock_site_context, logged_in_client, django_assert_max_num_queries
+    ) -> None:
+        UserFactory(first_name="Kai", with_profile_picture=True)
+        client = logged_in_client(UserFactory())
+        client.get(search_url(), {"q": "kai"})
+
+        with django_assert_max_num_queries(15) as small:
+            client.get(search_url(), {"q": "kai"})
+        for _ in range(8):
+            UserFactory(first_name="Kai", with_profile_picture=True)
+        with django_assert_max_num_queries(len(small.captured_queries)):
+            client.get(search_url(), {"q": "kai"})
