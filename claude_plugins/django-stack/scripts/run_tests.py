@@ -19,9 +19,11 @@ Each setting comes from its environment variable, then from `[tool.test_tiers.me
 from __future__ import annotations
 
 import os
+import random
 import re
 import subprocess
 import sys
+import time
 import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -58,6 +60,13 @@ NUMPROCESSES_ATTACHED = re.compile(r"-n(auto|logical|\d+)")
 WORKER_FLAGS = frozenset({"-n", "--numprocesses"})
 
 DEFAULT_MEMINFO = Path("/proc/meminfo")
+DEFAULT_PSI = Path("/proc/pressure/memory")
+
+# Seconds between memory polls while waiting, and between progress lines.
+POLL_INTERVAL_S = 5
+HEARTBEAT_INTERVAL_S = 60
+# The first attempt sleeps up to this long so runners started together read different figures.
+MAX_START_JITTER_S = 5
 
 
 class ConfigError(Exception):
@@ -191,9 +200,69 @@ def mem_available_mb(meminfo: Path) -> int | None:
     return None
 
 
+def psi_path() -> Path:
+    return Path(os.environ.get("DS_TEST_PSI_PATH") or DEFAULT_PSI)
+
+
+def psi_some_avg10(path: Path) -> float | None:
+    """The `avg10` figure of the `some` line, or None when the file is missing."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return None
+    for line in text.splitlines():
+        if line.startswith("some "):
+            for field_text in line.split()[1:]:
+                name, _, value = field_text.partition("=")
+                if name == "avg10":
+                    return float(value)
+    return None
+
+
+def format_psi(psi: float | None) -> str:
+    return "PSI n/a" if psi is None else f"PSI {psi}"
+
+
+def scaled(seconds: float) -> float:
+    """`seconds` times `DS_TEST_TIME_SCALE`, which lets tests shrink every wait."""
+    return seconds * float(os.environ.get("DS_TEST_TIME_SCALE") or 1)
+
+
 def worker_fit(available_mb: int, reserve_mb: int, per_worker_mb: int) -> int:
     """How many workers fit once `reserve_mb` is left free. Zero or negative: none."""
     return (available_mb - reserve_mb) // per_worker_mb
+
+
+def wait_for_memory(settings: MemorySettings, ceiling: int, first_attempt: bool) -> int:
+    """The xdist worker count to run with, after waiting for memory when it is short."""
+    if first_attempt:
+        # Worktrees started together would otherwise all read the same free figure.
+        time.sleep(scaled(random.uniform(0, MAX_START_JITTER_S)))  # noqa: S311
+    started = time.monotonic()
+    announced_at: float | None = None
+    while True:
+        available = mem_available_mb(meminfo_path())
+        if available is None:
+            return ceiling
+        fit = worker_fit(available, settings.reserve_mb, settings.per_worker_mb)
+        psi = psi_some_avg10(psi_path())
+        if fit >= 1 and (psi is None or psi <= settings.psi_some_avg10_limit):
+            if announced_at is not None:
+                print(f"ram: wait over after {time.monotonic() - started:.0f} s")
+            return min(fit, ceiling)
+        now = time.monotonic()
+        if now - started >= scaled(settings.wait_timeout_s):
+            print(
+                f"ram: still short after {settings.wait_timeout_s} s; running with -n 1"
+            )
+            return 1
+        if announced_at is None or now - announced_at >= scaled(HEARTBEAT_INTERVAL_S):
+            announced_at = now
+            print(
+                f"ram: waiting for memory (MemAvailable {available} MB, "
+                f"{format_psi(psi)})"
+            )
+        time.sleep(scaled(POLL_INTERVAL_S))
 
 
 def has_worker_option(argv: list[str]) -> bool:
@@ -251,15 +320,14 @@ def run(argv: list[str]) -> int:
     if os.environ.get("DS_TEST_MEMORY_GUARD") == "off":
         return run_plain(argv)
     settings = load_memory_settings(Path.cwd(), os.environ)
-    available = mem_available_mb(meminfo_path())
-    if available is None:
+    if mem_available_mb(meminfo_path()) is None:
         print("ram: no /proc/meminfo on this platform; running the command as given")
         return run_plain(argv)
-    fit = worker_fit(available, settings.reserve_mb, settings.per_worker_mb)
-    k = max(1, min(fit, settings.max_workers))
+    k = wait_for_memory(settings, settings.max_workers, first_attempt=True)
     command = [*argv, "-n", str(k)] if has_worker_option(argv) else argv
     print(
-        f"ram: MemAvailable {available} MB, xdist workers -n {k}"
+        f"ram: MemAvailable {mem_available_mb(meminfo_path())} MB, "
+        f"{format_psi(psi_some_avg10(psi_path()))}, xdist workers -n {k}"
         f"{describe_sources(settings)}"
     )
     return run_plain(command)

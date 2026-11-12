@@ -10,6 +10,8 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -46,7 +48,11 @@ def run_runner(
     **variables: str | int,
 ) -> subprocess.CompletedProcess[str]:
     """Run the runner with a clean `DS_TEST_*` environment plus `variables`."""
-    settings = {"DS_TEST_TIME_SCALE": 0, **variables}
+    settings = {
+        "DS_TEST_TIME_SCALE": 0,
+        "DS_TEST_PSI_PATH": str(tmp_path / "no_such_psi"),
+        **variables,
+    }
     environment = stub_tools.env(TMPDIR=str(tmp_path), **settings)
     for name in [n for n in environment if n.startswith("DS_TEST_")]:
         if name not in settings:
@@ -129,7 +135,10 @@ def test_ram_line_reports_available_memory_and_worker_count(
     )
 
     # Assert
-    assert "ram: MemAvailable 4096 MB, xdist workers -n 2" in result.stdout.splitlines()
+    assert (
+        "ram: MemAvailable 4096 MB, PSI n/a, xdist workers -n 2"
+        in result.stdout.splitlines()
+    )
 
 
 @pytest.mark.parametrize(
@@ -333,7 +342,7 @@ def test_ram_line_names_only_settings_that_are_not_the_default(
 
     # Assert
     assert (
-        "ram: MemAvailable 4096 MB, xdist workers -n 2 (max_workers=4 from env)"
+        "ram: MemAvailable 4096 MB, PSI n/a, xdist workers -n 2 (max_workers=4 from env)"
         in result.stdout.splitlines()
     )
 
@@ -496,3 +505,145 @@ def test_capacity_without_a_unit_exits_2(stub_tools: StubTools, tmp_path: Path) 
 
     # Assert
     assert result.returncode == 2
+
+
+def write_psi(tmp_path: Path, some_avg10: float) -> Path:
+    path = tmp_path / "psi"
+    path.write_text(
+        f"some avg10={some_avg10:.2f} avg60=0.00 avg300=0.00 total=0\n"
+        "full avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def waiting_lines(result: subprocess.CompletedProcess[str]) -> list[str]:
+    return [line for line in result.stdout.splitlines() if "waiting for memory" in line]
+
+
+def test_memory_too_low_for_one_worker_waits_then_runs_with_one_worker(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 100)
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest", "-n", "auto"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        DS_TEST_WAIT_TIMEOUT_S=100,
+        DS_TEST_TIME_SCALE=0.01,
+    )
+
+    # Assert
+    lines = result.stdout.splitlines()
+    assert lines[0] == "ram: waiting for memory (MemAvailable 100 MB, PSI n/a)"
+    assert len(waiting_lines(result)) >= 2
+    assert "ram: still short after 100 s; running with -n 1" in lines
+    assert logged_tokens(stub_tools)[-2:] == ["-n", "1"]
+
+
+def test_pressure_above_the_limit_waits_even_with_plenty_of_memory(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+    psi = write_psi(tmp_path, 25.0)
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest", "-n", "auto"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        DS_TEST_PSI_PATH=str(psi),
+        DS_TEST_WAIT_TIMEOUT_S=1,
+        DS_TEST_TIME_SCALE=0.1,
+    )
+
+    # Assert
+    assert "ram: waiting for memory (MemAvailable 4096 MB, PSI 25.0)" in result.stdout
+    assert logged_tokens(stub_tools)[-2:] == ["-n", "1"]
+
+
+def test_pressure_under_the_limit_does_not_wait(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+    psi = write_psi(tmp_path, 3.0)
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest", "-n", "auto"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        DS_TEST_PSI_PATH=str(psi),
+        DS_TEST_WAIT_TIMEOUT_S=1,
+        DS_TEST_TIME_SCALE=0.1,
+    )
+
+    # Assert
+    assert waiting_lines(result) == []
+    assert "ram: MemAvailable 4096 MB, PSI 3.0, xdist workers -n 2" in result.stdout
+
+
+def test_missing_pressure_file_does_not_wait(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest", "-n", "auto"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        DS_TEST_WAIT_TIMEOUT_S=1,
+        DS_TEST_TIME_SCALE=0.1,
+    )
+
+    # Assert
+    assert waiting_lines(result) == []
+    assert logged_tokens(stub_tools)[-2:] == ["-n", "2"]
+
+
+def test_memory_that_becomes_sufficient_ends_the_wait_with_the_sized_count(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 100)
+
+    def free_memory() -> None:
+        time.sleep(0.3)
+        # Replaced atomically so the runner never reads a half-written file.
+        replacement = tmp_path / "meminfo_new"
+        replacement.write_text(
+            f"MemTotal:       99999999 kB\nMemAvailable:   {4096 * 1024} kB\n",
+            encoding="utf-8",
+        )
+        replacement.replace(meminfo)
+
+    thread = threading.Thread(target=free_memory)
+
+    # Act
+    thread.start()
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest", "-n", "auto"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        DS_TEST_WAIT_TIMEOUT_S=100,
+        DS_TEST_TIME_SCALE=0.01,
+    )
+    thread.join()
+
+    # Assert
+    lines = result.stdout.splitlines()
+    assert "ram: waiting for memory (MemAvailable 100 MB, PSI n/a)" in lines
+    assert any(line.startswith("ram: wait over after") for line in lines)
+    assert logged_tokens(stub_tools)[-2:] == ["-n", "2"]
