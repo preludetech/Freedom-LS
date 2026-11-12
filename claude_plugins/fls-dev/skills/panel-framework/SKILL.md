@@ -85,19 +85,16 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
 - A row of figures is `<c-panel-stat-row>`, a grid at every width (two columns on a phone), so the
   labels line up.
 - A list of records in a panel is rows that share one shape: the name in `font-medium`, the
-  detail under it in `text-sm text-muted` ("via Cohort A", "Individual"), the figure at the end in
+  detail under it in `text-sm text-muted` ("via Group A", "Individual"), the figure at the end in
   `tabular-nums`. Values are never joined into a sentence with dashes, and one word names a
   relation everywhere ("via", never "via" in one place and "through" in another).
-- An ordered list of content with an action on each entry (the course outline on the educator
-  course page) is a data table inside `.panel-data-table`: one `<tr>` per entry with its number,
-  title and type in cells and its action in a `<c-data-table-actions>` cell, spaced by the table's
-  own row padding. It is never a flex list with `gap-*` between rows and a button at the far end.
-- A group row (a course part, a form with more than one page) carries the row-detail chevron
-  (`size-8`, `aria-expanded`, `aria-controls` naming its child rows) beside its title, and its
-  children are the indented rows under it, open by default. An empty group shows its note as a
-  child row. A form with one page is one row, not a group.
-- A preview of the page itself (the course details) is the table's first row, with the same small
-  "Preview" button as every other row, never a button in the panel header.
+- An ordered list with an action on each entry is a data table inside `.panel-data-table`: one
+  `<tr>` per entry with its number, title and type in cells and its action in a
+  `<c-data-table-actions>` cell, spaced by the table's own row padding. It is never a flex list
+  with `gap-*` between rows and a button at the far end.
+- A group row carries the row-detail chevron (`size-8`, `aria-expanded`, `aria-controls` naming
+  its child rows) beside its title, and its children are the indented rows under it, open by
+  default. An empty group shows its note as a child row.
 
 ### Filters and sorting
 
@@ -134,18 +131,12 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
   `<c-modal-header>` and the filter sheet have.
 - `#quick-view` opens with `show()` at every width, never `showModal()`: no scrim, no inert page,
   the list behind it stays tappable. `#app-modal` is the modal; it dims and blocks the page.
-- A content preview (a topic, a form, a form page, the course details) opens in `#app-modal` at
-  the wide size (`data-modal-size="wide"`) titled "<title> (Preview)" with its type chip
-  ("Topic", "Form", "Form page", "Course details"). The title says it is a preview, so no callout
-  does. The previewed content sits in the learner's reading column (`max-w-reading mx-auto`),
-  as the learner page shows it, never the dialog's full width.
-- `#app-modal` has one wide size, for content previews only; no other dialog widens. A fragment opts
+- A preview opens in `#app-modal` at the wide size, titled "<title> (Preview)" with its type
+  chip. The title says it is a preview, so no callout does.
+- `#app-modal` has one wide size, for previews only; no other dialog widens. A fragment opts
   in by putting `data-modal-size="wide"` on its root. It changes the width (about
   `min(92vw, 64rem)` from 640px up) and the max-height (95dvh); the height, the scrolling and the
   sticky header stay the shared rule's.
-- A multi-page form previews one page at a time, each from its own outline row ("Page 2 of 3:
-  Tell us more", with its "Shown only if…" line); the form's own row previews the learner's start
-  page: title, intro and the question and page counts, with no button.
 - `#app-modal` shows that it scrolls: the scrollbar track is always visible, and a fade sits at
   the dialog's bottom edge while content lies below the fold, gone once the end is reached.
 
@@ -166,8 +157,8 @@ the selection clears. Every control stays inside the bar at 375px.
 - Changing page, sort or filters clears the selection.
 - More is a `<c-dropdown-menu>`. Without JavaScript it is a `<details>` with the same panel, rule
   and error tone, never a row of loose buttons.
-- A bulk result states counts: the headline "N learners changed", then one line per skip reason
-  ("N learners already set up"). It names only the rows that failed, never the skipped ones.
+- A bulk result states counts: the headline "N records changed", then one line per skip reason
+  ("N records already up to date"). It names only the rows that failed, never the skipped ones.
 
 ### Adding and editing records
 
@@ -228,19 +219,17 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
   and the chevron turns up while open; a group opened inside a popover draws no second box.
 - A confirmation shows as a modal over the page it came from, JavaScript on or off; body text in a
   dialog is one size.
-- A bulk result shows counts ("N learners changed", "N learners already set up") and names only
+- A bulk result shows counts ("N records changed", "N records already up to date") and names only
   failed rows.
 - The selection bar sits above the table, in the toolbar's place, at every viewport, and stays in
   view while the page scrolls.
 - The table toolbar is one row at tablet and desktop widths; the search field is the part that
   shrinks.
-- An ordered list of content with per-entry actions (the course outline) is a data table: rows
-  spaced by their cell padding only, the chevron and the small action button inside the row next
-  to its text, the course details as the first row, a multi-page form expanded into one row per
-  page.
-- A content preview dialog is titled "<title> (Preview)" with its type chip and carries no
-  "this is a preview" callout; its content sits in the reading column, not the dialog's width;
-  the dialog shows its scrollbar and a bottom fade while more content lies below.
+- An ordered list with per-entry actions is a data table: rows spaced by their cell padding only,
+  the chevron and the small action button inside the row next to its text.
+- A preview dialog is titled "<title> (Preview)" with its type chip and carries no "this is a
+  preview" callout; the dialog shows its scrollbar and a bottom fade while more content lies
+  below.
 - A sheet on a phone has rounded top corners and a header with a close control; a quick view
   leaves the page behind it undimmed and tappable, a modal dims it.
 - A dialog, sheet, table or selection bar (More menu included) stays inside the viewport at every
