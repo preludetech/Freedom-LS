@@ -20,12 +20,16 @@ Each setting comes from its environment variable, then from `[tool.test_tiers.me
 
 from __future__ import annotations
 
+import contextlib
+import ctypes
+import functools
 import importlib.util
 import json
 import math
 import os
 import random
 import re
+import signal
 import subprocess
 import sys
 import tempfile
@@ -64,6 +68,14 @@ SETTINGS: dict[str, tuple[str, type[int] | type[float], float, int | None]] = {
 NUMPROCESSES_ATTACHED = re.compile(r"-n(auto|logical|\d+)")
 
 WORKER_FLAGS = frozenset({"-n", "--numprocesses"})
+
+OOM_SCORE_FILE = Path("/proc/self/oom_score_adj")
+PR_SET_CHILD_SUBREAPER = 36
+# Real time, not `scaled`: a test run with `DS_TEST_TIME_SCALE=0` still cleans up.
+KILL_DEADLINE_S = 5
+
+# Node-id files written for retries and not yet deleted, so a signal handler can remove them.
+LIVE_NODE_ID_FILES: list[Path] = []
 
 DEFAULT_MEMINFO = Path("/proc/meminfo")
 DEFAULT_PSI = Path("/proc/pressure/memory")
@@ -394,15 +406,110 @@ def attempt_command(
     return command
 
 
-def run_attempt(argv: list[str], k: int, record: Path, only_file: Path | None) -> int:
-    """Run one pytest attempt and return its exit code."""
+def set_oom_score(value: int) -> None:
+    """Write `value` to this process's `oom_score_adj`. Runs in the pytest child before exec.
+
+    Best effort: lowering a score below the inherited one needs privileges, and an error
+    raised between fork and exec would stop the run with an opaque message.
+    """
+    with contextlib.suppress(OSError):
+        OOM_SCORE_FILE.write_text(str(value), encoding="utf-8")
+
+
+def become_subreaper() -> None:
+    """Make this process the parent of any orphaned descendant.
+
+    A browser a test launched detaches from its worker. As subreaper the runner inherits it
+    when the worker dies, so it can still be found and killed.
+    """
+    libc = ctypes.CDLL(None, use_errno=True)
+    # prctl is variadic and takes unsigned longs; a bare int would be passed as a C int.
+    libc.prctl.argtypes = [ctypes.c_int] + [ctypes.c_ulong] * 4
+    # A return of -1 is ignored: cleanup then misses detached processes and the run is
+    # otherwise unaffected.
+    libc.prctl(PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0)
+
+
+def parent_pid(stat_text: str) -> int:
+    """The parent pid from a `/proc/<n>/stat` line. The command name sits in brackets and can
+    contain spaces and `)`, so the fields start after the last `)`."""
+    return int(stat_text.rpartition(")")[2].split()[1])
+
+
+def descendants(pid: int) -> list[int]:
+    """Every process below `pid` in the process tree, read from `/proc`."""
+    children: dict[int, list[int]] = {}
+    for entry in Path("/proc").iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            parent = parent_pid((entry / "stat").read_text(encoding="utf-8"))
+        except (FileNotFoundError, ProcessLookupError):
+            continue  # it exited during the scan
+        children.setdefault(parent, []).append(int(entry.name))
+    found: list[int] = []
+    pending = [pid]
+    while pending:
+        for child in children.get(pending.pop(), []):
+            found.append(child)
+            pending.append(child)
+    return found
+
+
+def reap_children() -> None:
+    """Collect every child that has exited, so it does not stay a zombie."""
+    while True:
+        try:
+            if os.waitpid(-1, os.WNOHANG) == (0, 0):
+                return
+        except ChildProcessError:
+            return
+
+
+def kill_descendants() -> None:
+    """Kill everything below this process. The scan repeats because a process can fork
+    between one scan and its kill."""
+    deadline = time.monotonic() + KILL_DEADLINE_S
+    while (pids := descendants(os.getpid())) and time.monotonic() < deadline:
+        for pid in pids:
+            # It may have exited between the scan and the kill.
+            with contextlib.suppress(ProcessLookupError):
+                os.kill(pid, signal.SIGKILL)
+        reap_children()
+        time.sleep(0.05)
+
+
+def exit_on_signal(signum: int, _frame: object) -> None:
+    """Leave nothing behind when the runner is interrupted or terminated."""
+    kill_descendants()
+    for path in LIVE_NODE_ID_FILES:
+        path.unlink(missing_ok=True)
+    sys.exit(128 + signum)
+
+
+def run_attempt(
+    argv: list[str], k: int, record: Path, only_file: Path | None, oom_score_adj: int
+) -> int:
+    """Run one pytest attempt and return its exit code. Nothing it started outlives it."""
     scripts_dir = str(Path(__file__).resolve().parent)
     child_env = dict(os.environ)
     child_env["PYTHONPATH"] = os.pathsep.join(
         [scripts_dir, *filter(None, [child_env.get("PYTHONPATH")])]
     )
     command = attempt_command(argv, k, record, only_file)
-    return subprocess.run(command, env=child_env, check=False).returncode  # noqa: S603
+    # The runner's own score is never written: only the pytest child gets it.
+    set_score = (
+        functools.partial(set_oom_score, oom_score_adj)
+        if oom_score_adj != 0 and OOM_SCORE_FILE.exists()
+        else None
+    )
+    try:
+        process = subprocess.Popen(  # noqa: S603
+            command, env=child_env, start_new_session=True, preexec_fn=set_score
+        )
+        return process.wait()
+    finally:
+        kill_descendants()
 
 
 def write_only_file(only_file: Path | None, nodeids: set[str]) -> Path:
@@ -411,6 +518,7 @@ def write_only_file(only_file: Path | None, nodeids: set[str]) -> Path:
         descriptor, name = tempfile.mkstemp(prefix="ds_only_nodeids_", suffix=".txt")
         os.close(descriptor)
         only_file = Path(name)
+        LIVE_NODE_ID_FILES.append(only_file)
     only_file.write_text("\n".join(sorted(nodeids)) + "\n", encoding="utf-8")
     return only_file
 
@@ -434,7 +542,11 @@ def run_with_retries(
             worker_counts.append(k)
             started = time.monotonic()
             returncode = run_attempt(
-                argv, k, record, only_file if only is not None else None
+                argv,
+                k,
+                record,
+                only_file if only is not None else None,
+                settings.oom_score_adj,
             )
             elapsed_s += time.monotonic() - started
             read_attempt(record, state)
@@ -466,6 +578,7 @@ def run_with_retries(
     finally:
         if only_file is not None:
             only_file.unlink(missing_ok=True)
+            LIVE_NODE_ID_FILES.remove(only_file)
     label, exit_code = verdict(state, returncode)
     print_closing_lines(state, worker_counts, elapsed_s, label)
     if label == "PASS":
@@ -512,6 +625,10 @@ def make_record_file() -> Path:
 
 
 def main() -> int:
+    if sys.platform == "linux":
+        become_subreaper()
+    signal.signal(signal.SIGINT, exit_on_signal)
+    signal.signal(signal.SIGTERM, exit_on_signal)
     try:
         return run(sys.argv[1:])
     except (ConfigError, tomllib.TOMLDecodeError) as error:

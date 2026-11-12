@@ -11,10 +11,12 @@ from __future__ import annotations
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
 import threading
 import time
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -1279,3 +1281,240 @@ def test_run_stopped_by_x_on_a_failure_makes_one_pytest_attempt(
         if line.startswith("run: pytest attempts ")
     ]
     assert attempts[0].startswith("run: pytest attempts 1,")
+
+
+# A pytest stand-in for the process-hygiene tests. It writes the oom_score_adj it inherited to
+# $STUB_SCORE_FILE and its parent's pid (the runner) to $STUB_PARENT_FILE, then does what
+# $STUB_MODE names: `finish` records a finished session and exits; `hold` waits until
+# $STUB_RELEASE_FILE exists; `sleep` sleeps; `detach` starts a detached `sleep 300`, writes its
+# pid to $STUB_CHILD_FILE and finishes; `retry_sleeps` crashes on its first call and sleeps on
+# its second.
+STUB_HYGIENE_PYTEST = r"""#!/bin/sh
+for arg in "$@"; do
+    case "$arg" in
+        --ds-record=*) record="${arg#--ds-record=}" ;;
+    esac
+done
+cat /proc/self/oom_score_adj > "$STUB_SCORE_FILE"
+echo $PPID > "$STUB_PARENT_FILE"
+finish() {
+    printf '{"event": "finished", "exitstatus": 0}\n' >> "$record"
+    exit 0
+}
+case "$STUB_MODE" in
+    finish) finish ;;
+    hold)
+        while [ ! -e "$STUB_RELEASE_FILE" ]; do sleep 0.05; done
+        finish
+        ;;
+    sleep)
+        echo $$ > "$STUB_CHILD_FILE"
+        exec sleep 300
+        ;;
+    detach)
+        python3 -c 'import subprocess, sys; open(sys.argv[1], "w").write(str(subprocess.Popen(["sleep", "300"], start_new_session=True).pid))' "$STUB_CHILD_FILE"
+        finish
+        ;;
+    retry_sleeps)
+        if [ ! -e "$STUB_FIRST_DONE_FILE" ]; then
+            touch "$STUB_FIRST_DONE_FILE"
+            printf '{"event": "collected", "nodeids": ["t.py::a", "t.py::b"]}\n' >> "$record"
+            printf '{"event": "outcome", "nodeid": "t.py::a", "outcome": "passed"}\n' >> "$record"
+            kill -9 $$
+        fi
+        echo $$ > "$STUB_CHILD_FILE"
+        exec sleep 300
+        ;;
+esac
+"""
+
+WAIT_LIMIT_S = 20
+
+
+def process_is_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
+
+
+def wait_for_file(path: Path) -> str:
+    deadline = time.monotonic() + WAIT_LIMIT_S
+    while time.monotonic() < deadline:
+        if path.exists() and path.read_text(encoding="utf-8").strip():
+            return path.read_text(encoding="utf-8").strip()
+        time.sleep(0.02)
+    raise AssertionError(f"{path} was not written within {WAIT_LIMIT_S} s")
+
+
+@dataclass
+class HygieneRun:
+    """A runner started with the hygiene stub; its files live in `tmp_path`."""
+
+    tmp_path: Path
+    process: subprocess.Popen[str]
+
+    def file(self, name: str) -> Path:
+        return self.tmp_path / name
+
+
+@pytest.fixture
+def start_hygiene_run(
+    stub_tools: StubTools, tmp_path: Path
+) -> Iterator[Callable[..., HygieneRun]]:
+    """Start the runner on the hygiene stub. Teardown kills the runner and the pid the stub
+    recorded, so a failed assertion leaves no `sleep 300` behind."""
+    started: list[subprocess.Popen[str]] = []
+    stub = stub_tools.bin_dir / "pytest"
+    stub.write_text(STUB_HYGIENE_PYTEST, encoding="utf-8")
+    stub.chmod(0o755)
+
+    def start(mode: str, **variables: str | int) -> HygieneRun:
+        settings = {
+            "DS_TEST_TIME_SCALE": 0,
+            "DS_TEST_PSI_PATH": str(tmp_path / "no_such_psi"),
+            "DS_TEST_MEMINFO_PATH": str(write_meminfo(tmp_path, 4096)),
+            "DS_TEST_MAX_WORKERS": 2,
+            "STUB_MODE": mode,
+            "STUB_SCORE_FILE": str(tmp_path / "score.txt"),
+            "STUB_PARENT_FILE": str(tmp_path / "parent.txt"),
+            "STUB_CHILD_FILE": str(tmp_path / "child.txt"),
+            "STUB_RELEASE_FILE": str(tmp_path / "release"),
+            "STUB_FIRST_DONE_FILE": str(tmp_path / "first_done"),
+            **variables,
+        }
+        runner_environment = without_unset_settings(
+            stub_tools.env(TMPDIR=str(tmp_path), **settings), settings
+        )
+        process = subprocess.Popen(  # noqa: S603
+            [sys.executable, str(SCRIPT), "pytest"],
+            cwd=tmp_path,
+            env=runner_environment,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        started.append(process)
+        return HygieneRun(tmp_path=tmp_path, process=process)
+
+    yield start
+
+    for process in started:
+        process.kill()
+        process.communicate()
+    recorded = tmp_path / "child.txt"
+    if recorded.exists() and recorded.read_text(encoding="utf-8").strip():
+        pid = int(recorded.read_text(encoding="utf-8"))
+        if process_is_alive(pid):
+            os.kill(pid, signal.SIGKILL)
+
+
+def inherited_score() -> int:
+    return int(Path("/proc/self/oom_score_adj").read_text(encoding="utf-8"))
+
+
+def child_score(run: HygieneRun) -> int:
+    run.process.communicate(timeout=WAIT_LIMIT_S)
+    return int(run.file("score.txt").read_text(encoding="utf-8"))
+
+
+def test_pytest_child_gets_the_default_oom_score_of_500(
+    start_hygiene_run: Callable[..., HygieneRun],
+) -> None:
+    run = start_hygiene_run("finish")
+
+    assert child_score(run) == 500
+
+
+def test_pytest_child_gets_the_oom_score_from_the_environment(
+    start_hygiene_run: Callable[..., HygieneRun],
+) -> None:
+    run = start_hygiene_run("finish", DS_TEST_OOM_SCORE_ADJ=700)
+
+    assert child_score(run) == 700
+
+
+def test_runner_keeps_the_oom_score_it_started_with(
+    start_hygiene_run: Callable[..., HygieneRun],
+) -> None:
+    # Arrange
+    run = start_hygiene_run("hold")
+    runner_pid = int(wait_for_file(run.file("parent.txt")))
+
+    # Act
+    runner_score = int(
+        Path(f"/proc/{runner_pid}/oom_score_adj").read_text(encoding="utf-8")
+    )
+    run.file("release").touch()
+    run.process.communicate(timeout=WAIT_LIMIT_S)
+
+    # Assert
+    assert runner_score == inherited_score()
+
+
+def test_oom_score_adj_of_zero_leaves_the_child_with_the_score_of_the_runner(
+    start_hygiene_run: Callable[..., HygieneRun],
+) -> None:
+    run = start_hygiene_run("finish", DS_TEST_OOM_SCORE_ADJ=0)
+
+    assert child_score(run) == inherited_score()
+
+
+def test_process_a_test_detached_is_gone_after_the_runner_exits(
+    start_hygiene_run: Callable[..., HygieneRun],
+) -> None:
+    # Arrange
+    run = start_hygiene_run("detach")
+
+    # Act
+    run.process.communicate(timeout=WAIT_LIMIT_S)
+    detached_pid = int(run.file("child.txt").read_text(encoding="utf-8"))
+
+    # Assert
+    assert not process_is_alive(detached_pid)
+
+
+def test_sigterm_makes_the_runner_exit_143(
+    start_hygiene_run: Callable[..., HygieneRun],
+) -> None:
+    # Arrange
+    run = start_hygiene_run("sleep")
+    wait_for_file(run.file("child.txt"))
+
+    # Act
+    run.process.terminate()
+    run.process.communicate(timeout=WAIT_LIMIT_S)
+
+    # Assert
+    assert run.process.returncode == 143
+
+
+def test_sigterm_kills_the_pytest_process(
+    start_hygiene_run: Callable[..., HygieneRun],
+) -> None:
+    # Arrange
+    run = start_hygiene_run("sleep")
+    pytest_pid = int(wait_for_file(run.file("child.txt")))
+
+    # Act
+    run.process.terminate()
+    run.process.communicate(timeout=WAIT_LIMIT_S)
+
+    # Assert
+    assert not process_is_alive(pytest_pid)
+
+
+def test_sigterm_during_a_retry_leaves_no_node_id_file(
+    start_hygiene_run: Callable[..., HygieneRun], tmp_path: Path
+) -> None:
+    # Arrange
+    run = start_hygiene_run("retry_sleeps")
+    wait_for_file(run.file("child.txt"))
+
+    # Act
+    run.process.terminate()
+    run.process.communicate(timeout=WAIT_LIMIT_S)
+
+    # Assert
+    assert list(tmp_path.glob("ds_only_nodeids_*.txt")) == []
