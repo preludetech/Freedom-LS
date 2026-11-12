@@ -209,6 +209,7 @@ class AttributionTouch(SiteAwareModel):
         ]
         # recorded_at breaks ties so two touches at one instant sort the same way every time.
         ordering = ["-occurred_at", "-recorded_at"]
+        verbose_name_plural = "attribution touches"
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         # `SiteAwareModel` uses a UUID PK with `default=uuid.uuid4`, so
