@@ -3,8 +3,27 @@
 from __future__ import annotations
 
 import lxml.html
+import pytest
 
 from ..cotton_helpers import render_cotton
+
+
+@pytest.mark.parametrize("href", ["", ' href="/people/42"'])
+def test_picture_url_reaches_the_avatar_chip(href: str) -> None:
+    html = render_cotton(
+        f'<c-panel-person-link name="Thandi Mokoena" user_id="42"{href} '
+        'picture_url="/media/me.webp" />'
+    )
+
+    (image,) = lxml.html.fromstring(html).cssselect("img[data-profile-picture]")
+
+    assert image.get("src") == "/media/me.webp"
+
+
+def test_without_a_picture_url_the_chip_has_no_image() -> None:
+    html = render_cotton('<c-panel-person-link name="Thandi Mokoena" user_id="42" />')
+
+    assert not lxml.html.fromstring(html).cssselect("img")
 
 
 def test_with_an_href_the_chip_and_name_are_one_row_style_link() -> None:

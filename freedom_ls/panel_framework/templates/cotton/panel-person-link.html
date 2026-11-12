@@ -1,4 +1,4 @@
-<c-vars name="" user_id="" secondary="" href="" quick_view_url="" hx_nav="" class="" />
+<c-vars name="" user_id="" secondary="" href="" quick_view_url="" hx_nav="" class="" picture_url="" />
 
 {% load panel_tags %}
 
@@ -18,6 +18,8 @@ Attributes:
                   the #quick-view drawer; at least 44px square below md.
   hx_nav          On: the link navigates with HTMX into #main-content, as the
                   data-table link cell does. Read through the `flag` filter.
+  picture_url     Profile picture URL for the avatar chip (default none:
+                  initials). Pass it bound (`:picture_url="..."`).
 
 The `trigger` slot replaces the quick-view trigger with the caller's own
 control, for a row whose trigger has to be a <button>.
@@ -31,9 +33,9 @@ control, for a row whose trigger has to be a <button>.
                hx-target="#main-content"
                hx-push-url="true"
                hx-swap="outerHTML"
-           {% endif %}><c-panel-avatar-chip name="{{ name }}" user_id="{{ user_id }}" secondary="{{ secondary }}" /></a>
+           {% endif %}><c-panel-avatar-chip name="{{ name }}" user_id="{{ user_id }}" secondary="{{ secondary }}" :picture_url="picture_url" /></a>
     {% else %}
-        <span class="min-w-0 font-bold text-on-surface"><c-panel-avatar-chip name="{{ name }}" user_id="{{ user_id }}" secondary="{{ secondary }}" /></span>
+        <span class="min-w-0 font-bold text-on-surface"><c-panel-avatar-chip name="{{ name }}" user_id="{{ user_id }}" secondary="{{ secondary }}" :picture_url="picture_url" /></span>
     {% endif %}
     {% if trigger %}
         {{ trigger }}

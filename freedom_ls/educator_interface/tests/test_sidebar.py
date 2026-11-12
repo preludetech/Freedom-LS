@@ -248,3 +248,50 @@ def test_sidebar_has_no_messages_item(
     labels = [link.text_content().strip() for link in nav.cssselect("ul > li > a")]
 
     assert "Messages" not in labels
+
+
+def _sidebar_user_blocks(
+    client: Client, organisation_slug: str
+) -> tuple[list[lxml.html.HtmlElement], str]:
+    response = client.get(
+        reverse(
+            "educator_interface:interface",
+            kwargs={"organisation_slug": organisation_slug, "path_string": "cohorts"},
+        )
+    )
+    page = response.content.decode()
+    return lxml.html.fromstring(page).cssselect("#sidebar-user"), page
+
+
+@pytest.mark.django_db
+def test_the_user_block_shows_the_picture_of_a_user_who_has_one(
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
+    organisation = OrganisationFactory()
+    user = UserFactory(staff=True, with_profile_picture=True)
+    assign_object_role(user, organisation, "organisation_admin")
+
+    blocks, _page = _sidebar_user_blocks(logged_in_client(user), organisation.slug)
+
+    sources = [
+        image.get("src")
+        for block in blocks
+        for image in block.cssselect("img[data-profile-picture]")
+    ]
+    assert blocks
+    assert sources == [user.profile_picture_url] * len(blocks)
+
+
+@pytest.mark.django_db
+def test_the_user_block_shows_initials_alone_for_a_user_without_a_picture(
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
+    organisation = OrganisationFactory()
+    user = UserFactory(staff=True, first_name="Ada", last_name="Lovelace")
+    assign_object_role(user, organisation, "organisation_admin")
+
+    blocks, page = _sidebar_user_blocks(logged_in_client(user), organisation.slug)
+
+    assert blocks
+    assert not [image for block in blocks for image in block.cssselect("img")]
+    assert 'src="None"' not in page
