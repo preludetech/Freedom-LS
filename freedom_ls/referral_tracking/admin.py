@@ -1,14 +1,16 @@
 """Admins for the referral-tracking models.
 
-`SignupAttribution` and `FirstTouchCount` are read-only. `ReferralCode` is
+`SignupAttribution`, `AttributionTouch`, `Conversion` and `FirstTouchCount` are read-only. `ReferralCode` is
 writable, with a copy button on its two absolute URLs and a bulk deactivate
 action. `ReferralCodeHit` is read-only, like the first two.
 """
 
 from __future__ import annotations
 
+from unfold.contrib.filters.admin import TextFilter
+
 from django.contrib import admin
-from django.db.models import Model, QuerySet
+from django.db.models import Model, Q, QuerySet
 from django.http import HttpRequest
 from django.urls import NoReverseMatch
 from django.utils.html import format_html
@@ -21,6 +23,8 @@ from freedom_ls.referral_tracking.codes import (
 )
 from freedom_ls.referral_tracking.forms import ReferralCodeForm
 from freedom_ls.referral_tracking.models import (
+    AttributionTouch,
+    Conversion,
     Door,
     FirstTouchCount,
     ReferralCode,
@@ -28,6 +32,8 @@ from freedom_ls.referral_tracking.models import (
     SignupAttribution,
 )
 from freedom_ls.referral_tracking.resources import (
+    AttributionTouchResource,
+    ConversionResource,
     FirstTouchCountResource,
     ReferralCodeHitResource,
     ReferralCodeResource,
@@ -79,6 +85,98 @@ class SignupAttributionAdmin(SiteAwareExportModelAdmin):
 
 
 USER_ERASURE_CASCADE_MODELS.add(SignupAttribution)
+
+
+@admin.register(AttributionTouch)
+class AttributionTouchAdmin(SiteAwareExportModelAdmin):
+    date_hierarchy = "occurred_at"
+    list_display = [
+        "user",
+        "advert_code",
+        "referral_code",
+        "utm_source",
+        "utm_campaign",
+        "occurred_at",
+        "recorded_via",
+    ]
+    list_select_related = ["user"]
+    list_filter = ["recorded_via"]
+    search_fields = ["user__email"]
+    readonly_fields = _readonly_field_names(AttributionTouch)
+    resource_classes = [AttributionTouchResource]
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_change_permission(
+        self, request: HttpRequest, obj: AttributionTouch | None = None
+    ) -> bool:
+        return False
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: AttributionTouch | None = None
+    ) -> bool:
+        return False
+
+
+class CodeInPlayFilter(TextFilter):
+    """Conversions whose first or last referral code is the entered code."""
+
+    title = "code in play"
+    parameter_name = "code_in_play"
+
+    def queryset(
+        self, request: HttpRequest, queryset: QuerySet[Conversion]
+    ) -> QuerySet[Conversion]:
+        code = self.value()
+        if not code:
+            return queryset
+        return queryset.filter(
+            Q(first_referral_code__iexact=code) | Q(last_referral_code__iexact=code)
+        )
+
+
+@admin.register(Conversion)
+class ConversionAdmin(SiteAwareExportModelAdmin):
+    date_hierarchy = "occurred_at"
+    list_display = [
+        "user",
+        "kind",
+        "target_label",
+        "first_referral_code",
+        "last_referral_code",
+        "occurred_at",
+    ]
+    list_select_related = ["user"]
+    list_filter = ["kind", CodeInPlayFilter]
+    list_filter_submit = True
+    search_fields = ["user__email"]
+    # `content_type` and `object_id` are left out: rendering either would
+    # resolve the generic target, one query per row. `target_label` is the
+    # frozen copy of what the target was called.
+    readonly_fields = [
+        name
+        for name in _readonly_field_names(Conversion)
+        if name not in ("content_type", "object_id")
+    ]
+    resource_classes = [ConversionResource]
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_change_permission(
+        self, request: HttpRequest, obj: Conversion | None = None
+    ) -> bool:
+        return False
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: Conversion | None = None
+    ) -> bool:
+        return False
+
+
+USER_ERASURE_CASCADE_MODELS.add(AttributionTouch)
+USER_ERASURE_CASCADE_MODELS.add(Conversion)
 
 
 @admin.register(FirstTouchCount)

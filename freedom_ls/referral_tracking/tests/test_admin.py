@@ -22,12 +22,17 @@ from freedom_ls.referral_tracking.codes import (
     GENERATED_CODE_LENGTH,
 )
 from freedom_ls.referral_tracking.factories import (
+    AttributionTouchFactory,
+    ConversionFactory,
     FirstTouchCountFactory,
     ReferralCodeFactory,
     ReferralCodeHitFactory,
     SignupAttributionFactory,
 )
 from freedom_ls.referral_tracking.models import (
+    AttributionTouch,
+    Conversion,
+    ConversionKind,
     FirstTouchCount,
     ReferralCode,
     SignupAttribution,
@@ -39,7 +44,12 @@ APP_LABEL = "freedom_ls_referral_tracking"
 def _grant_view_permissions(user: User) -> None:
     permissions = Permission.objects.filter(
         content_type__app_label=APP_LABEL,
-        codename__in=["view_signupattribution", "view_firsttouchcount"],
+        codename__in=[
+            "view_signupattribution",
+            "view_firsttouchcount",
+            "view_attributiontouch",
+            "view_conversion",
+        ],
     )
     user.user_permissions.add(*permissions)
 
@@ -492,3 +502,127 @@ def test_referral_code_hit_admin_delete_returns_403(
     )
 
     assert response.status_code == 403
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("model_name", ["attributiontouch", "conversion"])
+def test_touch_and_conversion_add_returns_403(staff_client, model_name):
+    response = staff_client.get(reverse(f"admin:{APP_LABEL}_{model_name}_add"))
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_attribution_touch_change_does_not_persist_modification(
+    staff_client, mock_site_context
+):
+    touch = AttributionTouchFactory(utm_campaign="spring-sale")
+    url = reverse(f"admin:{APP_LABEL}_attributiontouch_change", args=[touch.pk])
+
+    response = staff_client.post(url, {"utm_campaign": "tampered"})
+
+    touch.refresh_from_db()
+    assert touch.utm_campaign == "spring-sale"
+    assert response.status_code != 302
+
+
+@pytest.mark.django_db
+def test_conversion_change_does_not_persist_modification(
+    staff_client, mock_site_context
+):
+    conversion = ConversionFactory(first_referral_code="ALPHA")
+    url = reverse(f"admin:{APP_LABEL}_conversion_change", args=[conversion.pk])
+
+    response = staff_client.post(url, {"first_referral_code": "tampered"})
+
+    conversion.refresh_from_db()
+    assert conversion.first_referral_code == "ALPHA"
+    assert response.status_code != 302
+
+
+@pytest.mark.django_db
+def test_attribution_touch_delete_keeps_row(staff_client, mock_site_context):
+    touch = AttributionTouchFactory()
+    url = reverse(f"admin:{APP_LABEL}_attributiontouch_delete", args=[touch.pk])
+
+    response = staff_client.post(url, {"post": "yes"})
+
+    assert AttributionTouch.objects.filter(pk=touch.pk).exists()
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_conversion_delete_keeps_row(staff_client, mock_site_context):
+    conversion = ConversionFactory()
+    url = reverse(f"admin:{APP_LABEL}_conversion_delete", args=[conversion.pk])
+
+    response = staff_client.post(url, {"post": "yes"})
+
+    assert Conversion.objects.filter(pk=conversion.pk).exists()
+    assert response.status_code == 403
+
+
+def _conversion_changelist_pks(client: Client, query: str) -> set[str]:
+    response = client.get(reverse(f"admin:{APP_LABEL}_conversion_changelist") + query)
+    assert response.status_code == 200
+    return {str(row.pk) for row in response.context["cl"].result_list}
+
+
+@pytest.mark.django_db
+def test_code_in_play_filter_matches_the_first_code(staff_client, mock_site_context):
+    match = ConversionFactory(first_referral_code="ALPHA")
+    ConversionFactory(first_referral_code="OTHER", last_referral_code="OTHER")
+
+    pks = _conversion_changelist_pks(staff_client, "?code_in_play=ALPHA")
+
+    assert pks == {str(match.pk)}
+
+
+@pytest.mark.django_db
+def test_code_in_play_filter_matches_the_last_code(staff_client, mock_site_context):
+    match = ConversionFactory(first_referral_code="OTHER", last_referral_code="ALPHA")
+    ConversionFactory(first_referral_code="OTHER", last_referral_code="OTHER")
+
+    pks = _conversion_changelist_pks(staff_client, "?code_in_play=ALPHA")
+
+    assert pks == {str(match.pk)}
+
+
+@pytest.mark.django_db
+def test_code_in_play_filter_is_case_insensitive(staff_client, mock_site_context):
+    match = ConversionFactory(first_referral_code="Alpha")
+
+    pks = _conversion_changelist_pks(staff_client, "?code_in_play=aLPHA")
+
+    assert pks == {str(match.pk)}
+
+
+@pytest.mark.django_db
+def test_code_in_play_filter_excludes_a_partial_match(staff_client, mock_site_context):
+    ConversionFactory(first_referral_code="ALPHABET")
+
+    pks = _conversion_changelist_pks(staff_client, "?code_in_play=ALPHA")
+
+    assert pks == set()
+
+
+@pytest.mark.django_db
+def test_kind_filter_keeps_only_that_kind(staff_client, mock_site_context):
+    match = ConversionFactory(kind=ConversionKind.COURSE_INTEREST)
+    ConversionFactory(kind=ConversionKind.ACCOUNT_SIGNUP)
+
+    pks = _conversion_changelist_pks(staff_client, "?kind__exact=course_interest")
+
+    assert pks == {str(match.pk)}
+
+
+@pytest.mark.django_db
+def test_conversion_changelist_issues_no_target_query(
+    staff_client, mock_site_context, django_assert_max_num_queries
+):
+    ConversionFactory.create_batch(5)
+    url = reverse(f"admin:{APP_LABEL}_conversion_changelist")
+
+    with django_assert_max_num_queries(15):
+        response = staff_client.get(url)
+
+    assert response.status_code == 200

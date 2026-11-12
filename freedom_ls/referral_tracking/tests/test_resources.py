@@ -16,6 +16,8 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.referral_tracking.factories import (
+    AttributionTouchFactory,
+    ConversionFactory,
     FirstTouchCountFactory,
     ReferralCodeFactory,
     ReferralCodeHitFactory,
@@ -46,6 +48,8 @@ def staff_client(mock_site_context, db):
             "view_firsttouchcount",
             "view_referralcode",
             "view_referralcodehit",
+            "view_attributiontouch",
+            "view_conversion",
         ],
     )
     user.user_permissions.add(*permissions)
@@ -297,3 +301,116 @@ def test_referral_code_hit_resource_writes_referral_code_through_a_foreign_key_w
         ReferralCodeHitResource.fields["referral_code"].widget, ForeignKeyWidget
     )
     assert "site" not in ReferralCodeResource.fields
+
+
+CONVERSION_COLUMNS = [
+    "id",
+    "user",
+    "kind",
+    "target_label",
+    "occurred_at",
+    "first_referral_code",
+    "first_touch__occurred_at",
+    "last_referral_code",
+    "last_touch__occurred_at",
+    "window_days",
+]
+
+
+@pytest.mark.django_db
+def test_conversion_export_holds_exactly_the_listed_columns(staff_client):
+    row = ConversionFactory()
+
+    response = _export_selected(staff_client, "conversion", [str(row.pk)])
+
+    header, _ = _rows(response)
+    assert header == CONVERSION_COLUMNS
+
+
+@pytest.mark.django_db
+def test_conversion_export_writes_user_as_email(staff_client):
+    row = ConversionFactory()
+
+    response = _export_selected(staff_client, "conversion", [str(row.pk)])
+
+    header, (values,) = _rows(response)
+    assert values[header.index("user")] == row.user.email
+
+
+@pytest.mark.django_db
+def test_conversion_export_writes_the_touch_timestamps(staff_client):
+    first = AttributionTouchFactory(referral_code="ALPHA")
+    last = AttributionTouchFactory(user=first.user, referral_code="BETA")
+    row = ConversionFactory(
+        user=first.user,
+        first_touch=first,
+        last_touch=last,
+        first_referral_code="ALPHA",
+        last_referral_code="BETA",
+    )
+
+    response = _export_selected(staff_client, "conversion", [str(row.pk)])
+
+    header, (values,) = _rows(response)
+    assert values[header.index("first_touch__occurred_at")] == (
+        first.occurred_at.isoformat()
+    )
+    assert values[header.index("last_touch__occurred_at")] == (
+        last.occurred_at.isoformat()
+    )
+
+
+@pytest.mark.django_db
+def test_conversion_export_leaves_touch_timestamps_empty_without_touches(
+    staff_client,
+):
+    row = ConversionFactory()
+
+    response = _export_selected(staff_client, "conversion", [str(row.pk)])
+
+    header, (values,) = _rows(response)
+    assert values[header.index("first_touch__occurred_at")] == ""
+
+
+@pytest.mark.django_db
+def test_conversion_export_escapes_a_formula_looking_code(staff_client):
+    row = ConversionFactory(first_referral_code='=HYPERLINK("http://x","y")')
+
+    response = _export_selected(staff_client, "conversion", [str(row.pk)])
+
+    header, (values,) = _rows(response)
+    assert values[header.index("first_referral_code")].startswith("'=")
+
+
+@pytest.mark.django_db
+def test_conversion_export_after_filtering_holds_only_matching_rows(staff_client):
+    kept = ConversionFactory(first_referral_code="ALPHA")
+    ConversionFactory(first_referral_code="OTHER")
+
+    response = staff_client.get(
+        reverse(f"admin:{APP_LABEL}_conversion_export") + "?code_in_play=ALPHA"
+    )
+
+    _, rows = _rows(response)
+    assert len(rows) == 1
+    assert str(kept.pk) in rows[0]
+
+
+@pytest.mark.django_db
+def test_touch_export_writes_user_as_email(staff_client):
+    row = AttributionTouchFactory()
+
+    response = _export_selected(staff_client, "attributiontouch", [str(row.pk)])
+
+    header, (values,) = _rows(response)
+    assert values[header.index("user")] == row.user.email
+
+
+@pytest.mark.django_db
+def test_touch_export_escapes_a_formula_looking_code(staff_client):
+    row = AttributionTouchFactory(referral_code="=1+1")
+
+    response = _export_selected(staff_client, "attributiontouch", [str(row.pk)])
+
+    header, (values,) = _rows(response)
+    assert values[header.index("referral_code")] == "'=1+1"
