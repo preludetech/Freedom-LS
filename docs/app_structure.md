@@ -103,6 +103,7 @@ flowchart TB
     course_interest --> api
     course_interest --> content_engine
     course_interest --> course_access
+    course_interest --> referral_tracking
     course_interest --> site_aware_models
     course_recommendations --> accounts
     course_recommendations --> content_engine
@@ -315,7 +316,7 @@ flowchart TB
 | content_engine | base, content_base, form_engine, icons, markdown_rendering, organisations, site_aware_models | — |
 | course_access | accounts, base, content_engine, deadlines, learner_management, learner_progress | course_applications |
 | course_applications | accounts, api, base, content_engine, course_access, form_engine, learner_management, mail, site_aware_models | learner_progress |
-| course_interest | accounts, api, content_engine, course_access, site_aware_models | learner_management |
+| course_interest | accounts, api, content_engine, course_access, referral_tracking, site_aware_models | learner_management |
 | course_recommendations | accounts, content_engine, learner_management, site_aware_models | — |
 | deadlines | accounts, base, content_engine, learner_management, learner_progress, organisations, site_aware_models | — |
 | deployment | base, content_engine, learner_management, mail, organisations, panel_framework, reports | accounts |

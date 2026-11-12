@@ -10,6 +10,7 @@ class ReferralTrackingSettings(AppSettings):
     REFERRAL_TRACKING_INACTIVE_DESTINATION: str
     REFERRAL_TRACKING_HIT_LOG_LIMIT: int
     REFERRAL_TRACKING_HIT_LOG_WINDOW_SECONDS: int
+    REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS: int
 
     declared_settings = {
         "REFERRAL_TRACKING_COOKIE_NAME": Setting(default="fls_attribution"),
@@ -20,6 +21,8 @@ class ReferralTrackingSettings(AppSettings):
         # window. Set the limit to 0 to log every hit instead.
         "REFERRAL_TRACKING_HIT_LOG_LIMIT": Setting(default=30),
         "REFERRAL_TRACKING_HIT_LOG_WINDOW_SECONDS": Setting(default=3600),
+        # How far back a conversion looks for the touches in play.
+        "REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS": Setting(default=90),
     }
 
 
