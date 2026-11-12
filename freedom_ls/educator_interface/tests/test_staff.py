@@ -109,6 +109,20 @@ class TestRoleEntryScope:
 
         assert _entry("cohort_admin", *cohorts).full_scope == "Alpha, Bravo, Charlie"
 
+    def test_the_full_scope_marks_an_inactive_cohort(
+        self, mock_site_context: Site
+    ) -> None:
+        """The quick view lists full_scope, and it left "(inactive)" off an
+        inactive cohort's name."""
+        organisation = OrganisationFactory()
+        active = CohortFactory(organisation=organisation, name="Alpha")
+        inactive = CohortFactory(organisation=organisation, name="Old", is_active=False)
+
+        assert (
+            _entry("cohort_viewer", active, inactive).full_scope
+            == "Alpha, Old (inactive)"
+        )
+
 
 @pytest.mark.django_db
 class TestMemberRoleEntries:

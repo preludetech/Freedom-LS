@@ -26,6 +26,10 @@ ORGANISATION_SCOPE = "Whole organisation"
 _NAMED_COHORTS = 2
 
 
+def _cohort_label(cohort: Cohort) -> str:
+    return cohort.name if cohort.is_active else f"{cohort.name} (inactive)"
+
+
 @dataclass(frozen=True)
 class RoleEntry:
     """One role a staff member holds in the organisation: its scope, and the
@@ -45,9 +49,7 @@ class RoleEntry:
     def scope(self) -> str:
         if self.target == "organisation":
             return ORGANISATION_SCOPE
-        names = [
-            c.name if c.is_active else f"{c.name} (inactive)" for c in self.cohorts
-        ]
+        names = [_cohort_label(c) for c in self.cohorts]
         if len(names) <= _NAMED_COHORTS:
             return ", ".join(names)
         shown = ", ".join(names[:_NAMED_COHORTS])
@@ -58,7 +60,7 @@ class RoleEntry:
         """Every cohort name, for a tooltip beside the shortened scope."""
         if self.target == "organisation":
             return ORGANISATION_SCOPE
-        return ", ".join(c.name for c in self.cohorts)
+        return ", ".join(_cohort_label(c) for c in self.cohorts)
 
 
 def staff_role_entries(user: User, site: Site) -> list[RoleEntry]:
