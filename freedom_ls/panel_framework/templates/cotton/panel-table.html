@@ -1,0 +1,31 @@
+<c-vars caption="" cards="" capped="" class="" />
+
+{% comment %}
+A static table in the data table's look: a visually hidden caption, the
+data table's header style, and a scroll region that can take keyboard focus
+and is named from the caption. It has no query state: no sort, filter or
+selection. Use <c-data-table> for a list a user sorts, filters or selects from.
+
+Attributes:
+  caption  The table's name, for the caption and the region's label.
+  cards    Set to also render the `card_rows` slot as a card list below md and
+           hide the table there. The slot holds <c-panel-table-card> rows.
+  capped   Set to cap the region's height and keep the header row in view while
+           the rows scroll; for a block that can hold more than about ten rows.
+           The sticky header fill is --panel-table-head (default: the surface).
+  class    Extra classes for the scroll region.
+Other attributes (a data-* hook, say) land on the <table>.
+Slots: `head` holds the header <tr>, the default slot holds the body rows.
+{% endcomment %}
+<div role="region" tabindex="0" aria-label="{{ caption }}"{% if capped %} data-capped{% endif %} class="relative overflow-x-auto{% if cards %} hidden md:block{% endif %}{% if capped %} max-h-96 overflow-y-auto{% endif %} {{ class }}">
+    <table {{ attrs }} class="[&_thead]:border-b [&_thead]:border-border [&_thead]:bg-transparent [&_thead_th]:font-mono [&_thead_th]:text-xs [&_thead_th]:font-bold [&_thead_th]:uppercase [&_thead_th]:tracking-wide{% if capped %} [&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-10 [&_thead_th]:bg-[var(--panel-table-head,var(--color-surface))]{% endif %}">
+        <caption class="sr-only">{{ caption }}</caption>
+        <thead>{{ head }}</thead>
+        <tbody>{{ slot }}</tbody>
+    </table>
+</div>
+{% if cards %}
+    <div role="region" tabindex="0" aria-label="{{ caption }}" class="{% if capped %}max-h-96 overflow-y-auto {% endif %}md:hidden {{ class }}">
+        <ul data-row-cards class="ml-0 list-none space-y-0 divide-y divide-border">{{ card_rows }}</ul>
+    </div>
+{% endif %}

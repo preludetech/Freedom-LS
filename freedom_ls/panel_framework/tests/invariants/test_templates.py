@@ -470,6 +470,25 @@ def test_no_control_link_is_hand_styled() -> None:
     assert offenders == []
 
 
+def test_no_template_hand_writes_a_table_outside_the_table_components() -> None:
+    """A static table is `<c-panel-table>` and a list a user sorts or filters
+    is `<c-data-table>`: both give the table its caption, header style and a
+    focusable scroll region, so a hand-written `<table>` drifts from them."""
+    table_components = {"data-table.html", "panel-table.html"}
+    offenders: list[str] = []
+    for root in (TEMPLATES_DIR, EDUCATOR_TEMPLATES_DIR):
+        for path in sorted(root.rglob("*.html")):
+            if path.name in table_components:
+                continue
+            source = re.sub(
+                r"{% comment %}.*?{% endcomment %}", "", path.read_text(), flags=re.S
+            )
+            if re.search(r"<table\b", source):
+                offenders.append(str(path.relative_to(root)))
+
+    assert offenders == []
+
+
 def test_every_framework_action_trigger_is_small() -> None:
     """The framework renders every action trigger (page header, panel
     footer, empty state, row) at the small size; only a dialog's footer

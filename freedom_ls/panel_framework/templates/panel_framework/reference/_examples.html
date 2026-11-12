@@ -355,6 +355,41 @@ somewhere on the page to land.
     </section>
 
     <section class="space-y-6">
+        <h2>Table</h2>
+
+        <div id="table-default">
+            <p class="text-sm text-muted">Use for a short static table with no sorting, filtering or selection.</p>
+            <c-panel-table caption="Generated reports">
+                <c-slot name="head"><tr><th scope="col">Generated</th><th scope="col">By</th></tr></c-slot>
+                <tr><td>12 Nov 2026</td><td>Thandi Mokoena</td></tr>
+                <tr><td>5 Nov 2026</td><td>Sipho Nkosi</td></tr>
+            </c-panel-table>
+        </div>
+
+        <div id="table-cards">
+            <p class="text-sm text-muted">Use when a phone should get each row as a card with its values labelled.</p>
+            <c-panel-table caption="Import rows" cards="true">
+                <c-slot name="head"><tr><th scope="col">Email</th><th scope="col">Line</th></tr></c-slot>
+                <tr><td>thandi@example.com</td><td>2</td></tr>
+                <tr><td>sipho@example.com</td><td>3</td></tr>
+                <c-slot name="card_rows">
+                    <c-panel-table-card primary="thandi@example.com"><c-panel-card-field label="Line">2</c-panel-card-field></c-panel-table-card>
+                    <c-panel-table-card primary="sipho@example.com"><c-panel-card-field label="Line">3</c-panel-card-field></c-panel-table-card>
+                </c-slot>
+            </c-panel-table>
+        </div>
+
+        <div id="table-capped">
+            <p class="text-sm text-muted">Use for a block that can hold more than about ten rows: the height is capped and the header stays in view.</p>
+            <c-panel-table caption="Error rows" capped="true">
+                <c-slot name="head"><tr><th scope="col">Line</th><th scope="col">Reason</th></tr></c-slot>
+                <tr><td>2</td><td>Not a valid email address.</td></tr>
+                <tr><td>3</td><td>Not a valid email address.</td></tr>
+            </c-panel-table>
+        </div>
+    </section>
+
+    <section class="space-y-6">
         <h2>Callout</h2>
 
         <div id="callout-info">

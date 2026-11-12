@@ -51,6 +51,7 @@ COMPONENT_NAMES = [
     "applied-filter",
     "empty-state",
     "skeleton",
+    "table",
     "callout",
 ]
 

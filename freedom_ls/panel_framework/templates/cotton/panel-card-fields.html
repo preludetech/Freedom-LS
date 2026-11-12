@@ -1,0 +1,6 @@
+{% comment %}
+The label/value list under a card's first line. A table row that becomes a
+card below md labels every value with its column heading, since the heading
+row is not on screen. Holds <c-panel-card-field> pairs.
+{% endcomment %}
+<dl class="mt-1 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 text-sm">{{ slot }}</dl>

@@ -907,12 +907,10 @@ class TestCohortReportBody:
         captions = []
         for table in tables:
             (caption,) = table.cssselect("caption")
-            assert caption.get("id")
-            assert table.get("aria-labelledby") == caption.get("id")
             scroll_region = table.getparent()
             assert scroll_region.get("role") == "region"
             assert scroll_region.get("tabindex") == "0"
-            assert scroll_region.get("aria-labelledby") == caption.get("id")
+            assert scroll_region.get("aria-label") == caption.text_content().strip()
             captions.append(caption.text_content().strip())
         assert captions == ["Astronomy", "Astronomy (continued)", "Orbit Quiz"]
 

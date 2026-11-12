@@ -11,7 +11,7 @@ from collections.abc import Callable, Iterator, Sequence
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
-from urllib.parse import quote
+from urllib.parse import parse_qsl, quote, urlsplit
 from uuid import uuid4
 
 import lxml.html
@@ -6096,12 +6096,34 @@ def test_the_preview_pages_fifty_rows_at_a_time_and_keeps_the_label_filter(
     first = _get_document(import_world.client, f"{preview_url}?label=error")
     second = _get_document(import_world.client, f"{preview_url}?label=error&page=2")
 
-    next_link = first.cssselect("a[rel='next']")[0]
+    next_link = next(
+        link for link in first.cssselect("a") if link.text_content().strip() == "Next"
+    )
     assert (
         len(first.cssselect("[data-import-rows] tbody tr")),
         len(second.cssselect("[data-import-rows] tbody tr")),
-        next_link.get("href"),
-    ) == (50, 1, "?label=error&page=2")
+        sorted(parse_qsl(urlsplit(next_link.get("href")).query)),
+    ) == (50, 1, [("label", "error"), ("page", "2")])
+
+
+@pytest.mark.django_db
+def test_an_htmx_page_request_for_the_preview_returns_only_the_rows_card(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, *_numbered_lines(2, 51)
+    )
+    preview_url = _import_url(
+        import_world.organisation, "learner_import_preview", learner_import
+    )
+
+    response = import_world.client.get(
+        f"{preview_url}?label=error&page=2", headers={"HX-Request": "true"}
+    )
+
+    page = lxml.html.fromstring(response.content.decode())
+    assert len(page.cssselect("[data-import-rows] tbody tr")) == 1
+    assert not page.cssselect("[data-label-filter]")
 
 
 @pytest.mark.django_db
