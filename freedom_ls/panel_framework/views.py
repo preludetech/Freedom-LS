@@ -1067,7 +1067,7 @@ def _handle_action(
 
     if request.method in ("POST", "DELETE"):
         return action.handle_submit(ctx)
-    return render(request, action.template_name, action.get_context_data(ctx))
+    return action.render_fragment(ctx)
 
 
 _FRAGMENT_SEGMENTS = frozenset({"__actions", "__runs", "__quick-view"})

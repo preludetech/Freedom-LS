@@ -1197,7 +1197,7 @@ def test_the_bulk_confirm_button_takes_its_variant_and_loading_text_from_the_act
     document = lxml.html.fromstring(response.content.decode())
     (confirm,) = document.cssselect("form button[type=submit]")
     assert confirm.get("data-variant") == "primary"
-    assert "Saving..." in confirm.text_content()
+    assert "Saving…" in confirm.text_content()
     assert document.cssselect("#app-modal-title")[0].text_content().strip() == (
         "Mark processed?"
     )

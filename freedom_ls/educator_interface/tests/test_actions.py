@@ -2475,7 +2475,54 @@ def test_stale_move_dialog_for_a_departed_member_gives_the_reason_and_no_form(
         response.status_code,
         len(document.cssselect("form")),
         "is no longer a member of" in response.content.decode(),
-    ) == (200, 0, True)
+    ) == (422, 0, True)
+
+
+@pytest.mark.django_db
+def test_the_move_refusal_for_a_departed_member_is_a_message_dialog_with_close(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation)
+    name = learner.user.display_name
+    CohortMembership.objects.filter(learner=learner, cohort=source).delete()
+    CohortFactory(organisation=organisation)
+
+    response = staff_client.get(
+        _move_url_from_learner(organisation, learner, source), HTTP_HX_REQUEST="true"
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert response.status_code == 422
+    assert document.cssselect("#app-modal-title")[0].text_content().strip() == (
+        f"{name} is no longer in {source}"
+    )
+    assert f"{name} is no longer a member of {source}" in " ".join(
+        document.text_content().split()
+    )
+    assert [b.text_content().strip() for b in document.cssselect("footer button")] == [
+        "Close"
+    ]
+
+
+@pytest.mark.django_db
+def test_the_disabled_move_states_its_reason_and_names_it_with_aria_describedby(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation)
+    CohortFactory(organisation=organisation)
+
+    response = staff_client.get(
+        _move_url_from_learner(organisation, learner, source), HTTP_HX_REQUEST="true"
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    (move,) = document.cssselect("form button[type='submit']")
+    (reason,) = document.cssselect("footer #move-disabled-reason")
+    assert move.get("disabled") is not None
+    assert move.get("aria-describedby") == "move-disabled-reason"
+    assert reason.text_content().strip() == "Choose a cohort to move them to."
 
 
 @pytest.mark.django_db

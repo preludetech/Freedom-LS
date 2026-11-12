@@ -159,9 +159,19 @@ class PanelAction:
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         return self.get_trigger_context(ctx)
 
+    def render_fragment(self, ctx: PanelContext) -> HttpResponse:
+        """The response to a GET: the action's template with its context. An
+        action that can refuse the dialog before it opens overrides this."""
+        return render(ctx.request, self.template_name, self.get_context_data(ctx))
+
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         """Process action submission. Override in subclasses."""
         raise NotImplementedError
+
+
+def field_error_count(form: forms.BaseForm) -> int:
+    """How many fields of a bound form carry an error."""
+    return sum(1 for name in form.errors if name != NON_FIELD_ERRORS)
 
 
 def form_fragment_context(
@@ -190,7 +200,7 @@ def form_fragment_context(
         fields[0].field.widget.attrs["autofocus"] = True
     return {
         "form": form,
-        "field_error_count": sum(1 for name in form.errors if name != NON_FIELD_ERRORS),
+        "field_error_count": field_error_count(form),
         "form_title": form_title,
         "form_url": form_url,
         "submit_buttons": submit_buttons,
@@ -211,8 +221,13 @@ def denied_response(ctx: PanelContext, action: PanelAction) -> HttpResponse:
     )
 
 
-class FormPanelAction(PanelAction):
+class ModalPanelAction(PanelAction):
+    """An action whose button opens its fragment in the app modal."""
+
     trigger_template_name = "panel_framework/partials/modal_trigger.html"
+
+
+class FormPanelAction(ModalPanelAction):
     template_name = "panel_framework/modal/form.html"
     form_class: Callable[..., forms.ModelForm]
     form_title: str = ""
@@ -377,14 +392,13 @@ class EditAction(FormPanelAction):
         return self.capability or _model_capability(self._instance, "change")
 
 
-class ConfirmAction(PanelAction):
+class ConfirmAction(ModalPanelAction):
     """An action that asks for one decision in a dialog before it runs.
 
     The dialog is `modal/confirm.html`: a title, a body, hidden fields and one
     confirm button. A subclass's template extends it and fills `body`.
     """
 
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
     template_name = "panel_framework/modal/confirm.html"
     variant = "secondary"
     #: The confirm button's label; the action's own label when empty.

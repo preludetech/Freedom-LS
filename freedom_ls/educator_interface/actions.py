@@ -157,6 +157,7 @@ from freedom_ls.panel_framework.actions import (
     DeleteAction,
     EditAction,
     FormPanelAction,
+    ModalPanelAction,
     PanelAction,
     ReasonMixin,
     changed_response,
@@ -164,6 +165,7 @@ from freedom_ls.panel_framework.actions import (
     count_phrase,
     current_page_within,
     denied_response,
+    field_error_count,
     form_fragment_context,
     join_prose,
     navigation_response,
@@ -606,7 +608,7 @@ class RegisterCohortForCourseAction(RequiresActiveCohortMixin, FormPanelAction):
     blocked_phrase = "register it for a course"
     capability = "freedom_ls_learner_management.add_cohortcourseregistration"
     submit_buttons = [
-        {"label": "Register", "variant": "primary", "loading_text": "Registering..."}
+        {"label": "Register", "variant": "primary", "loading_text": "Registering…"}
     ]
     _cohort: Cohort
     _page_url: str
@@ -842,7 +844,7 @@ class RegisterLearnerForCourseAction(FormPanelAction):
     action_name = "register_for_course"
     capability = "freedom_ls_learner_management.add_learnercourseregistration"
     submit_buttons = [
-        {"label": "Register", "variant": "primary", "loading_text": "Registering..."}
+        {"label": "Register", "variant": "primary", "loading_text": "Registering…"}
     ]
     _learner: Learner
 
@@ -1052,7 +1054,7 @@ def _cohort_picker(
     return CohortPickerForm(data, queryset=queryset, field_name=field_name)
 
 
-class MembershipAction(PanelAction):
+class MembershipAction(ModalPanelAction):
     """A change to one learner's membership of one cohort, after confirmation.
 
     The action resolves on the learner page, where the cohort travels as a
@@ -1064,7 +1066,6 @@ class MembershipAction(PanelAction):
     blocked_phrase: str
     variant = "secondary"
     renders_in_footer = False
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
 
     def perform(
         self, learner: Learner, cohort: Cohort, actor: User, reason: str = ""
@@ -1158,12 +1159,29 @@ class MoveToCohortAction(MembershipAction):
         get_data = ctx.request.GET if "destination" in ctx.request.GET else None
         return _cohort_picker(ctx, learner, get_data, field_name="destination")
 
+    def _not_a_member_response(
+        self, ctx: PanelContext, learner: Learner, source: Cohort
+    ) -> HttpResponse:
+        name = learner.user.display_name
+        return refusal_response(
+            ctx,
+            title=f"{name} is no longer in {source}",
+            message=f"Nothing changed. {name} is no longer a member of {source}, "
+            "so they cannot be moved from it.",
+        )
+
+    def _is_member(self, learner: Learner, source: Cohort) -> bool:
+        return CohortMembership.objects.filter(learner=learner, cohort=source).exists()
+
+    def render_fragment(self, ctx: PanelContext) -> HttpResponse:
+        learner, source = self._pair(ctx)
+        if not self._is_member(learner, source):
+            return self._not_a_member_response(ctx, learner, source)
+        return super().render_fragment(ctx)
+
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         learner, source = self._pair(ctx)
         context = super().get_context_data(ctx)
-        if not CohortMembership.objects.filter(learner=learner, cohort=source).exists():
-            context.update({"learner": learner, "cohort": source, "not_a_member": True})
-            return context
         if not _joinable_cohorts(ctx, learner).exists():
             name = learner.user.display_name
             context.update(
@@ -1216,13 +1234,8 @@ class MoveToCohortAction(MembershipAction):
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         learner, source = self._pair(ctx)
-        if not CohortMembership.objects.filter(learner=learner, cohort=source).exists():
-            return render(
-                ctx.request,
-                self.template_name,
-                self.get_context_data(ctx),
-                status=422,
-            )
+        if not self._is_member(learner, source):
+            return self._not_a_member_response(ctx, learner, source)
         form = self._picker(ctx, learner)
         if not form.is_valid():
             return self._refusal(ctx, choice_error("cohort")["invalid_choice"])
@@ -1244,13 +1257,15 @@ class MoveToCohortAction(MembershipAction):
         return _membership_changed_response(ids, ids)
 
     def _refusal(self, ctx: PanelContext, reason: str) -> HttpResponse:
+        learner, source = self._pair(ctx)
+        if not self._is_member(learner, source):
+            return self._not_a_member_response(ctx, learner, source)
         context = self.get_context_data(ctx)
-        if context.get("empty_message") or context.get("not_a_member"):
+        if context.get("empty_message"):
             return render(ctx.request, self.template_name, context, status=422)
         context["refusal"] = reason
         # The re-rendered select offers what the fresh dialog offered.
         form = cast(CohortPickerForm, context["form"])
-        learner, _ = self._pair(ctx)
         cast(
             forms.ModelChoiceField, form.fields["destination"]
         ).queryset = _joinable_cohorts(ctx, learner)
@@ -1344,19 +1359,18 @@ def _picker_fragment(
     return HttpResponse(html, status=status)
 
 
-class AddToCohortAction(PanelAction):
+class AddToCohortAction(ModalPanelAction):
     """Adds the learner on the page to an active cohort the user may add to."""
 
     label = "Add to cohort"
     action_name = "add_to_cohort"
     variant = "secondary"
     capability = ADD_COHORTMEMBERSHIP
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
     template_name = "panel_framework/modal/form.html"
     _BUTTON = {
         "label": "Add to cohort",
         "variant": "primary",
-        "loading_text": "Adding...",
+        "loading_text": "Adding…",
     }
 
     def _form(self, ctx: PanelContext) -> CohortPickerForm:
@@ -1416,7 +1430,7 @@ class AddToCohortAction(PanelAction):
         return _membership_changed_response([str(learner.pk)], [str(cohort.pk)])
 
 
-class AddExistingLearnersAction(RequiresActiveCohortMixin, PanelAction):
+class AddExistingLearnersAction(RequiresActiveCohortMixin, ModalPanelAction):
     """Adds existing learners to the cohort on the page, for a user who may
     add cohort members but not create learners."""
 
@@ -1425,12 +1439,11 @@ class AddExistingLearnersAction(RequiresActiveCohortMixin, PanelAction):
     blocked_phrase = "add learners to it"
     variant = "secondary"
     capability = ADD_COHORTMEMBERSHIP
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
     template_name = "panel_framework/modal/form.html"
     _BUTTON = {
         "label": "Add learners",
         "variant": "primary",
-        "loading_text": "Adding...",
+        "loading_text": "Adding…",
     }
 
     def is_offered(self, ctx: PanelContext) -> bool:
@@ -1483,7 +1496,7 @@ class AddExistingLearnersAction(RequiresActiveCohortMixin, PanelAction):
         )
 
 
-class AddLearnerAction(PanelAction):
+class AddLearnerAction(ModalPanelAction):
     """Adds one email address as a learner of the organisation, making a
     pending account for an unknown address, and optionally puts them in a
     cohort. Add reports the outcome in the modal with Add another beside
@@ -1494,7 +1507,6 @@ class AddLearnerAction(PanelAction):
     label = "Add learner"
     action_name = "add_learner"
     capability = ADD_LEARNER
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
     template_name = "panel_framework/modal/form.html"
     _BUTTONS = [
         {
@@ -1502,9 +1514,9 @@ class AddLearnerAction(PanelAction):
             "variant": "secondary",
             "name": "action",
             "value": "add_another",
-            "loading_text": "Adding...",
+            "loading_text": "Adding…",
         },
-        {"label": "Add", "variant": "primary", "loading_text": "Adding..."},
+        {"label": "Add", "variant": "primary", "loading_text": "Adding…"},
     ]
     _ADDED = (AddOutcome.CREATED, AddOutcome.JOINED, AddOutcome.REACTIVATED)
 
@@ -1805,7 +1817,7 @@ def _entries_after(
     return [held[key] for key in STAFF_ROLES if key in held]
 
 
-class AddStaffMemberAction(PanelAction):
+class AddStaffMemberAction(ModalPanelAction):
     """Gives an existing account a staff role, in a dialog of steps: look up
     the address, choose the role, confirm. Nothing is written until the
     confirmation is submitted."""
@@ -1813,7 +1825,6 @@ class AddStaffMemberAction(PanelAction):
     label = "Add staff member"
     action_name = "add_staff_member"
     capability = ADD_STAFF_MEMBER
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
     template_name = "educator_interface/modal/add_staff_member.html"
     #: Every role this dialog could offer. A role missing from the grantor's
     #: grantable roles counts as withheld only when it is in here.
@@ -1854,6 +1865,7 @@ class AddStaffMemberAction(PanelAction):
             "step": "email",
             "dialog_title": self._dialog_title(ctx),
             "form": form,
+            "field_error_count": field_error_count(form),
             "form_url": self.get_action_url(ctx),
             "search_url": self.get_action_url(ctx),
             "listbox_id": SEARCH_LISTBOX_ID,
@@ -2028,6 +2040,7 @@ class AddStaffMemberAction(PanelAction):
             "person": person,
             "current_entries": role_entries_shown_to(ctx.request, entries),
             "form": form,
+            "field_error_count": field_error_count(form),
             "form_url": self.get_action_url(ctx),
             "role_cards": self._role_cards(ctx, entries),
             "preset_cohort": self._preset(ctx),
@@ -2378,7 +2391,7 @@ class AddStaffMemberToCohortAction(AddStaffMemberAction):
         return cast(Cohort, ctx.instance)
 
 
-class CohortRoleAction(PanelAction):
+class CohortRoleAction(ModalPanelAction):
     """An action on one person's one cohort role on this cohort, named by the
     `user` and `role` parameters. The assignment is re-read on every request;
     one that is gone or inactive is a 404 that the action route answers with
@@ -2386,7 +2399,6 @@ class CohortRoleAction(PanelAction):
 
     variant = "secondary"
     renders_in_footer = False
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
 
     def permission_object(self, ctx: PanelContext) -> Model | None:
         return ctx.instance
@@ -2558,7 +2570,7 @@ class RemoveStaffFromCohortAction(EducatorReasonMixin, CohortRoleAction):
         return staff_member_changed_response(user, ctx)
 
 
-class StaffRoleAction(PanelAction):
+class StaffRoleAction(ModalPanelAction):
     """An action on one role entry of one staff member, named by the `user` and
     `role` parameters. Renders per entry, never in the header. The target
     is re-read on every request through staff_of, so a staff member who has
@@ -2567,7 +2579,6 @@ class StaffRoleAction(PanelAction):
 
     variant = "secondary"
     renders_in_footer = False
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
 
     def has_permission(self, ctx: PanelContext) -> bool:
         return has_grantable_roles(ctx)
