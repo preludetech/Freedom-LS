@@ -24,6 +24,7 @@ SEMANTIC_ICON_NAMES: set[str] = {
     "rate_limit",
     "maintenance",
     "not_started",
+    "paused",
     # Actions
     "check",
     "check_all",

@@ -4,6 +4,8 @@
 FLS_WEBHOOK_EVENT_TYPES = [
     ("user.signed_up", "User signed up"),
     ("course.completed", "Course completed"),
+    ("course.paused", "Course paused"),
+    ("course.resumed", "Course resumed"),
     ("registration.added", "Learner registered for course"),
     ("registration.reactivated", "Learner course registration reactivated"),
     ("registration.deactivated", "Learner course registration deactivated"),
@@ -17,7 +19,7 @@ FLS_WEBHOOK_EVENT_TYPES = [
     ("cohort_membership.removed", "Learner removed from cohort"),
 ]
 
-_REGISTRATION_SAMPLE: dict[str, str | bool | None] = {
+_REGISTRATION_SAMPLE: dict[str, str | int | bool | None] = {
     "user_id": "sample-uuid-1234",
     "user_email": "test@example.com",
     "course_id": "sample-course-uuid",
@@ -27,28 +29,39 @@ _REGISTRATION_SAMPLE: dict[str, str | bool | None] = {
     "course_progress_id": "sample-course-progress-uuid",
 }
 
-_COHORT_REGISTRATION_SAMPLE: dict[str, str | bool | None] = {
+_COHORT_REGISTRATION_SAMPLE: dict[str, str | int | bool | None] = {
     "organisation_id": "sample-organisation-uuid",
     "cohort_id": "sample-cohort-uuid",
     "course_id": "sample-course-uuid",
     "course_title": "Sample Course",
 }
 
-_LEARNER_SAMPLE: dict[str, str | bool | None] = {
+_LEARNER_SAMPLE: dict[str, str | int | bool | None] = {
     "user_id": "sample-uuid-1234",
     "user_email": "test@example.com",
     "organisation_id": "sample-organisation-uuid",
     "learner_id": "sample-learner-uuid",
 }
 
-_COHORT_MEMBERSHIP_SAMPLE: dict[str, str | bool | None] = {
+_COHORT_MEMBERSHIP_SAMPLE: dict[str, str | int | bool | None] = {
     **_LEARNER_SAMPLE,
     "cohort_id": "sample-cohort-uuid",
     "cohort_name": "Sample Cohort",
     "move_id": None,
 }
 
-WEBHOOK_EVENT_TYPE_SAMPLES: dict[str, dict[str, str | bool | None]] = {
+_COURSE_PAUSE_SAMPLE: dict[str, str | int | bool | None] = {
+    **_LEARNER_SAMPLE,
+    "course_id": "sample-course-uuid",
+    "course_title": "Sample Course",
+    "course_progress_id": "sample-course-progress-uuid",
+    "pause_id": "sample-pause-uuid",
+    "paused_at": "2026-01-01T12:00:00Z",
+    "planned_resume_at": "2026-01-08T00:00:00Z",
+    "actor_id": "sample-actor-uuid",
+}
+
+WEBHOOK_EVENT_TYPE_SAMPLES: dict[str, dict[str, str | int | bool | None]] = {
     "user.signed_up": {
         "user_id": "sample-uuid-1234",
         "user_email": "test@example.com",
@@ -63,6 +76,13 @@ WEBHOOK_EVENT_TYPE_SAMPLES: dict[str, dict[str, str | bool | None]] = {
         "completed_time": "2026-01-01T12:00:00Z",
         "organisation_id": "sample-organisation-uuid",
         "course_progress_id": "sample-course-progress-uuid",
+    },
+    "course.paused": dict(_COURSE_PAUSE_SAMPLE),
+    "course.resumed": {
+        **_COURSE_PAUSE_SAMPLE,
+        "resumed_at": "2026-01-08T00:00:00Z",
+        "shift_days": 7,
+        "planned": True,
     },
     "registration.added": dict(_REGISTRATION_SAMPLE),
     "registration.reactivated": dict(_REGISTRATION_SAMPLE),

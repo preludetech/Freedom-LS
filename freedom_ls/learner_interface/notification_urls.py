@@ -16,3 +16,9 @@ if TYPE_CHECKING:
 
 def course_home_url(course: Course) -> str:
     return reverse("learner_interface:course_home", kwargs={"course_slug": course.slug})
+
+
+def course_detail_url(course: Course) -> str:
+    return reverse(
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+    )

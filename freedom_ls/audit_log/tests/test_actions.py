@@ -161,3 +161,18 @@ def test_the_registry_is_built_once_per_value_of_the_setting():
 
     assert extended is not audit_actions()
     assert "invoice.sent" not in audit_actions()
+
+
+@pytest.mark.parametrize(
+    ("code", "details", "expected"),
+    [
+        ("course.paused", {"planned_resume_on": "2026-03-20"}, "Until 2026-03-20"),
+        ("course.paused", {"planned_resume_on": None}, "No planned resume"),
+        ("course.resumed", {"shift_days": 1}, "Deadlines moved by 1 day"),
+        ("course.resumed", {"shift_days": 4}, "Deadlines moved by 4 days"),
+    ],
+)
+def test_course_progress_actions_describe_their_details(code, details, expected):
+    entry = AuditLogEntryFactory.build(action=code, details=details)
+
+    assert get_audit_action(code).describe(entry) == expected
