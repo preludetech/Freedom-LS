@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import threading
 import time
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
@@ -14,8 +14,8 @@ from allauth.account.models import EmailAddress
 
 from django.contrib.sessions.backends.db import SessionStore
 from django.core import signing
-from django.db import IntegrityError, connection
-from django.test import RequestFactory
+from django.db import DatabaseError, IntegrityError, connection
+from django.test import Client, RequestFactory
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import EmailAddressFactory, UserFactory
@@ -45,6 +45,13 @@ from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 from freedom_ls.form_engine.factories import FormProgressFactory
 from freedom_ls.form_engine.models import FormProgress
+from freedom_ls.referral_tracking.config import config as referral_config
+from freedom_ls.referral_tracking.models import (
+    AttributionTouch,
+    Conversion,
+    ConversionKind,
+    TouchSource,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -913,3 +920,132 @@ def test_update_applicant_email_on_a_claimed_applicant_writes_nothing(
         0,
         "taken@example.com",
     )
+
+
+LANDING = datetime.now(UTC) - timedelta(days=5)
+APPLIED = LANDING + timedelta(days=2)
+
+
+def _request_after_landing_on(code: str):
+    """A request carrying the attribution cookie a visit to `?ref=<code>` sets."""
+    client = Client()
+    with time_machine.travel(LANDING, tick=False):
+        client.get("/robots.txt", {"ref": code})
+    request = RequestFactory().get("/")
+    # A new account announces itself, which queues an analytics event in the session.
+    request.session = SessionStore()
+    request.COOKIES[referral_config.REFERRAL_TRACKING_COOKIE_NAME] = client.cookies[
+        referral_config.REFERRAL_TRACKING_COOKIE_NAME
+    ].value
+    return request
+
+
+def _application_made_at_applied_time(email: str):
+    with time_machine.travel(APPLIED, tick=False):
+        return _anonymous_application_for(email)
+
+
+def _claim(request, application):
+    return attach_claimed_application(request, application, link_version=0)
+
+
+def _application_conversions():
+    return Conversion._base_manager.filter(kind=ConversionKind.COURSE_APPLICATION)
+
+
+def test_a_claim_creating_an_account_converts_once_dated_at_the_application(
+    mock_site_context,
+):
+    application = _application_made_at_applied_time("new@example.com")
+
+    _claim(_request_after_landing_on("A"), application)
+
+    conversion = _application_conversions().get()
+    assert (
+        conversion.target_label,
+        conversion.occurred_at,
+        conversion.first_referral_code,
+        conversion.last_referral_code,
+    ) == (application.course.title, application.created_at, "A", "A")
+
+
+def test_a_claim_creating_an_account_also_converts_the_signup(mock_site_context):
+    application = _application_made_at_applied_time("new@example.com")
+
+    _claim(_request_after_landing_on("A"), application)
+
+    assert set(Conversion._base_manager.values_list("kind", flat=True)) == {
+        ConversionKind.COURSE_APPLICATION,
+        ConversionKind.ACCOUNT_SIGNUP,
+    }
+
+
+def test_a_claim_creating_an_account_flushes_the_cookie_as_signup_flush(
+    mock_site_context,
+):
+    application = _application_made_at_applied_time("new@example.com")
+
+    _claim(_request_after_landing_on("A"), application)
+
+    assert list(
+        AttributionTouch._base_manager.values_list("recorded_via", flat=True)
+    ) == [TouchSource.SIGNUP_FLUSH]
+
+
+def test_a_claim_onto_a_verified_account_flushes_the_cookie_as_login_flush(
+    account_with_user,
+):
+    application = _application_made_at_applied_time("taken@example.com")
+
+    _claim(_request_after_landing_on("A"), application)
+
+    assert list(
+        AttributionTouch._base_manager.values_list("recorded_via", flat=True)
+    ) == [TouchSource.LOGIN_FLUSH]
+
+
+def test_a_claim_onto_a_verified_account_converts_with_the_cookie_touch_in_play(
+    account_with_user,
+):
+    application = _application_made_at_applied_time("taken@example.com")
+
+    _claim(_request_after_landing_on("A"), application)
+
+    assert _application_conversions().get().first_referral_code == "A"
+
+
+def test_a_second_click_on_a_used_claim_link_converts_nothing_more(
+    account_with_user,
+):
+    application = _application_made_at_applied_time("taken@example.com")
+    _claim(_request_after_landing_on("A"), application)
+
+    _claim(_request_after_landing_on("A"), application)
+
+    assert _application_conversions().count() == 1
+
+
+def test_a_claim_kept_out_by_the_accounts_submission_converts_nothing(
+    account_with_user,
+):
+    application = _application_made_at_applied_time("taken@example.com")
+    CourseApplicationFactory(user=account_with_user, course=application.course)
+
+    _claim(_request_after_landing_on("A"), application)
+
+    assert _application_conversions().count() == 0
+
+
+def test_a_failed_conversion_write_leaves_the_claim_committed(
+    account_with_user, mocker
+):
+    application = _application_made_at_applied_time("taken@example.com")
+    mocker.patch.object(
+        Conversion._base_manager, "get_or_create", side_effect=DatabaseError("boom")
+    )
+    mocker.patch("freedom_ls.referral_tracking.best_effort.sentry_sdk")
+
+    outcome = _claim(_request_after_landing_on("A"), application)
+
+    application.refresh_from_db()
+    assert (outcome is not None, application.user) == (True, account_with_user)

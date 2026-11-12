@@ -21,7 +21,10 @@ from freedom_ls.course_applications.anonymous_session import (
     forget_all_anonymous_applicants,
     remembered_anonymous_applicants,
 )
-from freedom_ls.course_applications.claims import attach_to_user
+from freedom_ls.course_applications.claims import (
+    attach_to_user,
+    convert_attached_application,
+)
 from freedom_ls.course_applications.erasure import erase_anonymous_applicant
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 from freedom_ls.form_engine.models import (
@@ -30,6 +33,7 @@ from freedom_ls.form_engine.models import (
     QuestionAnswerFile,
 )
 from freedom_ls.form_engine.session_access import forget_all_anonymous_form_progress
+from freedom_ls.referral_tracking.models import TouchSource
 
 # Saves of only these fields change nothing the API shows, so they move nothing.
 # The claim email's sent stamp is written on every send.
@@ -173,6 +177,13 @@ def adopt_anonymous_applications_on_login(
             # the course.
             course_title = applicant.course.title
             result = attach_to_user(application, applicant, user)
+            if result.application.pk == application.pk:
+                convert_attached_application(
+                    request=request,
+                    user=user,
+                    application=application,
+                    source=TouchSource.LOGIN_FLUSH,
+                )
             # fail_silently: a login from the shell or a test client has no
             # messages storage.
             if result.application.pk != application.pk:
