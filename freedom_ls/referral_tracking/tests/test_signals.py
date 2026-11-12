@@ -176,7 +176,7 @@ def failing_attribution_write(mocker):
     mocker.patch.object(
         SignupAttribution.objects, "create", side_effect=DatabaseError("boom")
     )
-    return mocker.patch("freedom_ls.referral_tracking.signals.sentry_sdk")
+    return mocker.patch("freedom_ls.referral_tracking.best_effort.sentry_sdk")
 
 
 def test_a_failed_attribution_write_does_not_fail_the_signup(

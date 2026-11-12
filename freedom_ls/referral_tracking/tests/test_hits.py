@@ -134,7 +134,7 @@ def test_a_database_error_is_reported_and_swallowed(mock_site_context, mocker) -
     mocker.patch.object(
         ReferralCodeHit._base_manager, "create", side_effect=DatabaseError("boom")
     )
-    sentry = mocker.patch("freedom_ls.referral_tracking.hits.sentry_sdk")
+    sentry = mocker.patch("freedom_ls.referral_tracking.best_effort.sentry_sdk")
 
     record_hit(referral_code, Door.GO, request)
 

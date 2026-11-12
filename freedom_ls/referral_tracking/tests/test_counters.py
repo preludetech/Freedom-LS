@@ -6,11 +6,13 @@ import pytest
 
 from freedom_ls.referral_tracking.counters import (
     attribution_key_hash,
+    attribution_key_hash_of,
+    attribution_key_values,
     create_or_increment_first_touch,
     increment_first_touch,
 )
 from freedom_ls.referral_tracking.factories import FirstTouchCountFactory
-from freedom_ls.referral_tracking.models import FirstTouchCount
+from freedom_ls.referral_tracking.models import ATTRIBUTION_KEY_FIELDS, FirstTouchCount
 
 
 def _key_fields(**overrides: str) -> dict[str, str]:
@@ -284,3 +286,20 @@ def test_a_novel_key_on_a_capped_out_day_costs_two_queries_and_no_count(
             key_hash=_key_hash(utm_source="three"),
             **_key_fields(utm_source="three"),
         )
+
+
+def test_attribution_key_values_returns_the_seven_values_in_field_order() -> None:
+    fields = {name: f"value-{name}" for name in ATTRIBUTION_KEY_FIELDS}
+    fields["landing_path"] = "/ignored/"
+
+    assert attribution_key_values(fields) == tuple(
+        f"value-{name}" for name in ATTRIBUTION_KEY_FIELDS
+    )
+
+
+def test_attribution_key_hash_of_equals_the_hash_over_the_values() -> None:
+    fields = {name: f"value-{name}" for name in ATTRIBUTION_KEY_FIELDS}
+
+    assert attribution_key_hash_of(fields) == attribution_key_hash(
+        *attribution_key_values(fields)
+    )

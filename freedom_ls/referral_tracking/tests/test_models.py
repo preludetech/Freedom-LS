@@ -11,6 +11,7 @@ from django.db.models import ProtectedError
 
 from freedom_ls.referral_tracking.counters import attribution_key_hash
 from freedom_ls.referral_tracking.factories import (
+    AttributionTouchFactory,
     FirstTouchCountFactory,
     ReferralCodeFactory,
     ReferralCodeHitFactory,
@@ -98,3 +99,27 @@ def test_referral_code_hit_str_names_the_code_not_its_id(mock_site_context) -> N
     hit = ReferralCodeHitFactory(referral_code=ReferralCodeFactory(code="mrbeast"))
 
     assert str(hit).startswith("mrbeast via")
+
+
+@pytest.mark.django_db
+def test_updating_an_existing_attribution_touch_raises(mock_site_context) -> None:
+    touch = AttributionTouchFactory()
+
+    touch.referral_code = "other"
+
+    with pytest.raises(ValueError, match="append-only"):
+        touch.save()
+
+
+@pytest.mark.django_db
+def test_a_second_touch_with_the_same_site_user_time_and_key_raises(
+    mock_site_context,
+) -> None:
+    touch = AttributionTouchFactory()
+
+    with pytest.raises(IntegrityError):
+        AttributionTouchFactory(
+            user=touch.user,
+            occurred_at=touch.occurred_at,
+            utm_source=touch.utm_source,
+        )
