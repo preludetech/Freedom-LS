@@ -30,6 +30,7 @@ from freedom_ls.educator_interface.reporting import (
     over_limit_message,
     progress_status_badge,
 )
+from freedom_ls.educator_interface.tests.helpers import organisation_admin_viewer
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -1355,3 +1356,19 @@ def test_the_attention_card_names_a_nameless_learner_by_their_email(logged_in_cl
 
     (row,) = region.cssselect("li")
     assert [a.text_content() for a in row.cssselect("a")] == ["nameless@example.com"]
+
+
+@pytest.mark.django_db
+def test_the_cohort_report_body_names_a_learner_with_initials_alone() -> None:
+    cohort = _seeded_report_cohort()
+    for membership in cohort.cohortmembership_set.select_related("learner__user"):
+        UserFactory._meta.model.objects.filter(pk=membership.learner.user_id).update(
+            profile_picture="profile_pictures/x.webp"
+        )
+    client = Client()
+    client.force_login(organisation_admin_viewer(cohort.organisation))
+
+    region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+    assert region.cssselect("tbody a")
+    assert region.cssselect("img[data-profile-picture]") == []

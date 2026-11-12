@@ -21,6 +21,11 @@ from freedom_ls.educator_interface.messaging import (
     oversight_conversations_for,
     own_conversation_with,
 )
+from freedom_ls.educator_interface.tests.helpers import (
+    get_interface_page,
+    organisation_admin_viewer,
+    profile_picture_sources,
+)
 from freedom_ls.learner_management.factories import (
     CohortFactory,
     CohortMembershipFactory,
@@ -204,3 +209,35 @@ class TestOversightConversationsFor:
                 newer_educator,
                 older_educator,
             ]
+
+
+@pytest.fixture
+def _messaging_on(settings) -> None:
+    settings.MESSAGING_ENABLED = True
+
+
+def _learner_messages(organisation: Organisation, person: User) -> str:
+    learner = cast(Learner, LearnerFactory(organisation=organisation, user=person))
+    viewer = organisation_admin_viewer(organisation)
+    conversation = ConversationFactory(between=(viewer, person))
+    MessageFactory(conversation=conversation, sender=person)
+    return get_interface_page(
+        organisation, f"learners/{learner.pk}/__tabs/messages", viewer
+    )
+
+
+@pytest.mark.usefixtures("_messaging_on")
+def test_a_person_with_a_picture_shows_it() -> None:
+    person = cast(User, UserFactory(with_profile_picture=True))
+
+    content = _learner_messages(OrganisationFactory(), person)
+
+    assert person.profile_picture_url in profile_picture_sources(content)
+
+
+@pytest.mark.usefixtures("_messaging_on")
+def test_a_person_without_a_picture_shows_initials_alone() -> None:
+    content = _learner_messages(OrganisationFactory(), cast(User, UserFactory()))
+
+    assert profile_picture_sources(content) == []
+    assert 'src="None"' not in content

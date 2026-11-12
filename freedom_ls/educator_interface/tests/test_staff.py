@@ -19,6 +19,12 @@ from freedom_ls.educator_interface.staff import (
     RoleEntry,
     staff_role_entries,
 )
+from freedom_ls.educator_interface.tests.helpers import (
+    get_interface_page,
+    organisation_admin_viewer,
+    page_after_adding_rows,
+    profile_picture_sources,
+)
 from freedom_ls.learner_management.factories import (
     CohortFactory,
     delete_cohort_leaving_role_rows,
@@ -370,3 +376,55 @@ def test_row_action_buttons_are_small_and_sit_in_an_actions_wrapper(
     assert all(
         "gap-2" in button.getparent().get("class", "").split() for button in buttons
     )
+
+
+def _staff_table(organisation: Organisation, person: User) -> str:
+    assign_role(UserFactory(superuser=True), person, "organisation_admin", organisation)
+    return get_interface_page(
+        organisation, "staff", organisation_admin_viewer(organisation)
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("mock_site_context")
+def test_a_person_with_a_picture_shows_it() -> None:
+    person = UserFactory(with_profile_picture=True)
+
+    content = _staff_table(OrganisationFactory(), person)
+
+    assert person.profile_picture_url in profile_picture_sources(content)
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("mock_site_context")
+def test_a_person_without_a_picture_shows_initials_alone() -> None:
+    content = _staff_table(OrganisationFactory(), UserFactory())
+
+    assert profile_picture_sources(content) == []
+    assert 'src="None"' not in content
+
+
+def _add_staff_rows(organisation: Organisation, count: int) -> None:
+    grantor = UserFactory(superuser=True)
+    for _ in range(count):
+        assign_role(
+            grantor,
+            UserFactory(with_profile_picture=True),
+            "organisation_admin",
+            organisation,
+        )
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("mock_site_context")
+def test_more_staff_rows_with_pictures_cost_no_more_queries(
+    django_assert_max_num_queries,
+) -> None:
+    content = page_after_adding_rows(
+        OrganisationFactory(),
+        "staff",
+        _add_staff_rows,
+        django_assert_max_num_queries,
+    )
+
+    assert len(profile_picture_sources(content)) >= 5

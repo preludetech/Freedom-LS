@@ -69,6 +69,12 @@ from freedom_ls.educator_interface.learner_import import (
     run_learner_import,
 )
 from freedom_ls.educator_interface.messaging import OwnConversation
+from freedom_ls.educator_interface.tests.helpers import (
+    get_interface_page,
+    organisation_admin_viewer,
+    page_after_adding_rows,
+    profile_picture_sources,
+)
 from freedom_ls.educator_interface.tests.interface_walk import (
     WalkedPanel,
     walk_interface,
@@ -8150,3 +8156,109 @@ def test_a_user_with_no_role_cannot_open_the_course_details_preview(
     )
 
     assert response.status_code == 404
+
+
+# Profile pictures on the learners table, course registrations table, cohort settings panel and audit log.
+
+PictureSurface = Callable[[Organisation, User], str]
+
+
+def _learners_table(organisation: Organisation, person: User) -> str:
+    LearnerFactory(organisation=organisation, user=person)
+    return get_interface_page(
+        organisation, "learners", organisation_admin_viewer(organisation)
+    )
+
+
+def _registrations_table(organisation: Organisation, person: User) -> str:
+    course = CourseFactory()
+    learner = LearnerFactory(organisation=organisation, user=person)
+    LearnerCourseRegistrationFactory(learner=learner, course=course, is_active=True)
+    return get_interface_page(
+        organisation,
+        f"courses/{course.pk}/__panels/learners",
+        organisation_admin_viewer(organisation),
+    )
+
+
+def _cohort_settings(organisation: Organisation, person: User) -> str:
+    cohort = CohortFactory(organisation=organisation)
+    assign_role(UserFactory(superuser=True), person, "cohort_admin", cohort)
+    return get_interface_page(
+        organisation,
+        f"cohorts/{cohort.pk}/__tabs/settings",
+        organisation_admin_viewer(organisation),
+    )
+
+
+PICTURE_SURFACES = [
+    pytest.param(_learners_table, id="learners-table"),
+    pytest.param(_registrations_table, id="course-registrations-table"),
+    pytest.param(_cohort_settings, id="cohort-settings"),
+]
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("mock_site_context")
+@pytest.mark.parametrize("surface", PICTURE_SURFACES)
+def test_a_person_with_a_picture_shows_it(surface: PictureSurface) -> None:
+    person = cast(User, UserFactory(with_profile_picture=True))
+
+    content = surface(OrganisationFactory(), person)
+
+    assert person.profile_picture_url in profile_picture_sources(content)
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("mock_site_context")
+@pytest.mark.parametrize("surface", PICTURE_SURFACES)
+def test_a_person_without_a_picture_shows_initials_alone(
+    surface: PictureSurface,
+) -> None:
+    content = surface(OrganisationFactory(), cast(User, UserFactory()))
+
+    assert profile_picture_sources(content) == []
+    assert 'src="None"' not in content
+
+
+def _add_learner_rows(organisation: Organisation, count: int) -> None:
+    for _ in range(count):
+        LearnerFactory(
+            organisation=organisation, user=UserFactory(with_profile_picture=True)
+        )
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("mock_site_context")
+def test_more_learner_rows_with_pictures_cost_no_more_queries(
+    django_assert_max_num_queries,
+) -> None:
+    content = page_after_adding_rows(
+        OrganisationFactory(),
+        "learners",
+        _add_learner_rows,
+        django_assert_max_num_queries,
+    )
+
+    assert len(profile_picture_sources(content)) >= 5
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("mock_site_context")
+def test_the_audit_log_names_a_person_with_initials_alone() -> None:
+    organisation = OrganisationFactory()
+    person = cast(User, UserFactory(with_profile_picture=True))
+    AuditLogEntryFactory(
+        organisation=organisation,
+        actor=person,
+        actor_label=person.display_name,
+        target=person,
+        target_label=person.display_name,
+    )
+
+    content = get_interface_page(
+        organisation, "audit-log", organisation_admin_viewer(organisation)
+    )
+
+    assert person.display_name in content
+    assert profile_picture_sources(content) == []
