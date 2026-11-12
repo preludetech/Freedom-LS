@@ -3462,6 +3462,22 @@ def test_confirming_no_role_creates_the_row_audits_and_fires_staff_changed(
 
 
 @pytest.mark.django_db
+def test_adding_a_role_holder_who_has_no_row_with_no_role_is_422_before_confirming(
+    admin_client, organisation
+):
+    user = _staff_member_holding(
+        "cohort_admin", _cohort(organisation), first_name="Ada", last_name="Lovelace"
+    )
+    StaffMember.objects.filter(user=user).delete()
+
+    response = _submit_role(admin_client, organisation, user.email, "")
+
+    assert response.status_code == 422
+    assert "Use Reactivate staff member instead." in _text(response)
+    assert not StaffMember.objects.filter(user=user).exists()
+
+
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     ("is_active", "reason"),
     [

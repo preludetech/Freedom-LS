@@ -117,6 +117,7 @@ from freedom_ls.learner_management.queries import (
     courses_gaining_access,
     courses_losing_access,
     courses_lost_by_any,
+    has_staff_assignments,
     import_into_cohort_in_progress,
     learners_keeping_access_count,
     learners_permitted_for,
@@ -2144,7 +2145,9 @@ class AddStaffMemberAction(PanelAction):
     ) -> HttpResponse:
         """Add `email` to the staff with no role: refused up front for
         someone already on the staff, so the person sees why before a
-        confirm step."""
+        confirm step. Someone who holds roles here with no StaffMember row
+        is listed as inactive, and is refused as inactive: a new active row
+        would switch those roles on without naming them."""
         organisation = _organisation(ctx)
         names = (
             (
@@ -2154,10 +2157,17 @@ class AddStaffMemberAction(PanelAction):
             if user is None
             else ("", "")
         )
+        state = staff_member_state(user, organisation)
         existing = {
             "active": RefusalReason.ALREADY_STAFF,
             "inactive": RefusalReason.INACTIVE_STAFF_MEMBER,
-        }.get(staff_member_state(user, organisation))
+        }.get(state)
+        if (
+            user is not None
+            and state == "missing"
+            and has_staff_assignments(user, organisation)
+        ):
+            existing = RefusalReason.INACTIVE_STAFF_MEMBER
         if existing is not None:
             return _refused(
                 ctx,

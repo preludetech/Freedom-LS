@@ -1138,6 +1138,12 @@ def staff_assignments(organisation: Organisation) -> QuerySet[ObjectRoleAssignme
     ) | _active_role_assignments(Cohort, roles).filter(object_id__in=cohort_keys)
 
 
+def has_staff_assignments(user: User, organisation: Organisation) -> bool:
+    """Whether `user` holds any active staff role in the organisation,
+    whether or not a StaffMember row lets it count."""
+    return staff_assignments(organisation).filter(user=user).exists()
+
+
 def staff_of(organisation: Organisation) -> QuerySet[User]:
     """Everyone on the organisation's staff: the users with a StaffMember
     row here, active or not, together with everyone holding a staff role

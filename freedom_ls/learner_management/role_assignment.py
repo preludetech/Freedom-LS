@@ -30,6 +30,7 @@ from freedom_ls.learner_management.queries import (
     STAFF_ROLES,
     active_organisation_admins,
     cohorts_visible_to,
+    has_staff_assignments,
     site_level_admins,
 )
 from freedom_ls.learner_management.utils import get_or_create_staff_member
@@ -290,7 +291,9 @@ def add_staff_member(
     """Put `user` on the organisation's staff with no role, on the actor's
     behalf. Only someone who may add staff here can do it; an account on
     another site never belongs here; an existing row, active or inactive,
-    is refused so the caller can say which."""
+    is refused so the caller can say which. Someone who holds roles here
+    with no row is refused as inactive: those roles count for nothing until
+    a row exists, and only reactivating them shows which roles come back."""
     if not can(actor, ADD_STAFF_MEMBER, organisation):
         raise RoleChangeRefused(RefusalReason.NOT_PERMITTED)
     if user.site_id != organisation.site_id:
@@ -305,6 +308,9 @@ def add_staff_member(
                 if staff_member.is_active
                 else RefusalReason.INACTIVE_STAFF_MEMBER
             )
+        if has_staff_assignments(user, organisation):
+            # Raising here rolls the new row back.
+            raise RoleChangeRefused(RefusalReason.INACTIVE_STAFF_MEMBER)
         record_entry(
             action="staff_member.added",
             actor=actor,

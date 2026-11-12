@@ -859,6 +859,23 @@ class TestAddStaffMember:
         assert exc_info.value.reason == reason
         assert AuditLogEntry.unscoped.filter(action="staff_member.added").count() == 0
 
+    def test_a_role_holder_with_no_row_is_refused_as_inactive(
+        self, mock_site_context: Site
+    ) -> None:
+        organisation = OrganisationFactory()
+        admin = self._admin(organisation)
+        user = UserFactory()
+        assign_object_role(
+            user, CohortFactory(organisation=organisation), "cohort_admin"
+        )
+        StaffMember.objects.filter(user=user).delete()
+
+        with pytest.raises(RoleChangeRefused) as exc_info:
+            add_staff_member(admin, user, organisation)
+
+        assert exc_info.value.reason == RefusalReason.INACTIVE_STAFF_MEMBER
+        assert not StaffMember.objects.filter(user=user).exists()
+
     def test_an_inactive_account_is_refused(self, mock_site_context: Site) -> None:
         organisation = OrganisationFactory()
         admin = self._admin(organisation)
