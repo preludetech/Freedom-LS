@@ -1760,8 +1760,34 @@ def _staff_member_name(user: User | None, email: str) -> str:
     return email if user is None else user.display_name
 
 
-def staff_member_changed_response(user: User) -> HttpResponse:
-    return changed_response({STAFF_CHANGED: [str(user.pk)]})
+def staff_member_changed_response(user: User, request: HttpRequest) -> HttpResponse:
+    """The changed response, redirecting the actor off the Staff section when
+    the change took their access to it away (their own role removed), so they
+    do not stay on a page that now 404s. They land on the first section they
+    can still see, or the educator root when none shows."""
+    from freedom_ls.educator_interface.views import StaffConfig, interface_config
+    from freedom_ls.panel_framework.views import first_visible_section
+
+    response = changed_response({STAFF_CHANGED: [str(user.pk)]})
+    # Visibility answers cached earlier in this request predate the change.
+    for cached in ("works_with_cohorts", "may_see_staff_roles"):
+        vars(request).pop(cached, None)
+    if StaffConfig.is_visible(request) and StaffConfig.is_available(request):
+        return response
+    landing = first_visible_section(interface_config, request)
+    if landing is None:
+        response["HX-Redirect"] = reverse("educator_interface:root")
+    else:
+        response["HX-Redirect"] = reverse(
+            "educator_interface:interface",
+            kwargs={
+                "organisation_slug": cast(
+                    "OrganisationScopedRequest", request
+                ).organisation.slug,
+                "path_string": landing.url_name,
+            },
+        )
+    return response
 
 
 def staff_member_state(user: User | None, organisation: Organisation) -> str:
@@ -2288,7 +2314,7 @@ class AddStaffMemberAction(PanelAction):
             return refusal_response(ctx, self, refused, name)
         except EmailInUseOnAnotherSite:
             return self._other_site_response(ctx)
-        return staff_member_changed_response(user)
+        return staff_member_changed_response(user, ctx.request)
 
 
 class AddRoleAction(AddStaffMemberAction):
@@ -2501,7 +2527,7 @@ class ChangeRoleAction(CohortRoleAction):
                 deactivate_role(grantor, user, assignment.role, cohort)
         except RoleChangeRefused as refused:
             return refusal_response(ctx, self, refused, user.display_name)
-        return staff_member_changed_response(user)
+        return staff_member_changed_response(user, ctx.request)
 
 
 class RemoveStaffFromCohortAction(ReasonMixin, CohortRoleAction):
@@ -2546,7 +2572,7 @@ class RemoveStaffFromCohortAction(ReasonMixin, CohortRoleAction):
                 )
         except RoleChangeRefused as refused:
             return refusal_response(ctx, self, refused, user.display_name)
-        return staff_member_changed_response(user)
+        return staff_member_changed_response(user, ctx.request)
 
 
 class StaffRoleAction(PanelAction):
@@ -2702,7 +2728,7 @@ class DeactivateRoleAction(ReasonMixin, StaffRoleAction):
                     )
         except RoleChangeRefused as refused:
             return refusal_response(ctx, self, refused, user.display_name)
-        return staff_member_changed_response(user)
+        return staff_member_changed_response(user, ctx.request)
 
 
 class CohortChange(NamedTuple):
@@ -2813,7 +2839,7 @@ class ChangeCohortsAction(StaffRoleAction):
                     deactivate_role(grantor, user, entry.role, cohort)
         except RoleChangeRefused as refused:
             return refusal_response(ctx, self, refused, user.display_name)
-        return staff_member_changed_response(user)
+        return staff_member_changed_response(user, ctx.request)
 
     def _confirmation(
         self,
@@ -2897,7 +2923,7 @@ class DeactivateStaffMemberAction(ReasonMixin, StaffMemberStateAction):
             )
         except RoleChangeRefused as refused:
             return refusal_response(ctx, self, refused, user.display_name)
-        return staff_member_changed_response(user)
+        return staff_member_changed_response(user, ctx.request)
 
 
 class ReactivateStaffMemberAction(StaffMemberStateAction):
@@ -2933,7 +2959,7 @@ class ReactivateStaffMemberAction(StaffMemberStateAction):
                 set_staff_member_active(cast("User", ctx.request.user), row, True)
         except RoleChangeRefused as refused:
             return refusal_response(ctx, self, refused, user.display_name)
-        return staff_member_changed_response(user)
+        return staff_member_changed_response(user, ctx.request)
 
 
 BULK_ACTIONS: dict[tuple[str, str], type[EducatorBulkAction]] = {}

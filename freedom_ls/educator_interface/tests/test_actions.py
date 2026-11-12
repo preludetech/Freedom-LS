@@ -4209,6 +4209,36 @@ def test_deactivating_a_viewer_role_deactivates_the_organisation_assignment(
     assert _active_roles(user) == set()
 
 
+@pytest.mark.django_db
+def test_deactivating_your_own_organisation_admin_role_sends_you_to_a_section_you_can_still_see(
+    logged_in_client, organisation
+):
+    """Removing the role that granted the Staff section used to leave the
+    actor on a Staff page that now 404s. The response redirects to the first
+    section they can still see."""
+    cohort = _cohort(organisation)
+    client, actor = _holder_client(logged_in_client, organisation)
+    assign_role(UserFactory(superuser=True), actor, "cohort_viewer", cohort)
+    _holder_client(logged_in_client, organisation)
+
+    response = _remove(client, organisation, actor, "organisation_admin")
+
+    assert response.status_code == 204
+    assert response["HX-Redirect"] == _interface_url(organisation.slug, "dashboard")
+    assert _active_roles(actor) == {("cohort_viewer", str(cohort.pk))}
+
+
+@pytest.mark.django_db
+def test_deactivating_someone_elses_role_keeps_the_actor_on_the_staff_page(
+    admin_client, organisation
+):
+    user = _staff_member_holding("organisation_staff_viewer", organisation)
+
+    response = _remove(admin_client, organisation, user, "organisation_staff_viewer")
+
+    assert "HX-Redirect" not in response
+
+
 def _remove_role_url(organisation: Organisation) -> str:
     return _interface_url(organisation.slug, "staff/__actions/deactivate_role")
 
