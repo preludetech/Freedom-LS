@@ -97,12 +97,9 @@ def test_generating_a_report_by_keyboard_keeps_focus_inside_the_downloads_card(
     page.keyboard.press("Enter")
 
     expect(page.get_by_role("link", name=re.compile("^Download"))).to_be_visible()
-    card = page.locator(
-        "section[data-panel=downloads]",
-        has=page.get_by_role("heading", name="Downloads"),
-    )
-    assert page.evaluate("document.activeElement === document.body") is False
-    assert card.evaluate("(card) => card.contains(document.activeElement)") is True
+    # Focus returns after the request ends, a tick after the swap, so wait
+    # for it rather than reading document.activeElement once.
+    expect(generate).to_be_focused()
 
 
 def test_report_tab_with_generated_reports_does_not_scroll_the_page_sideways(
