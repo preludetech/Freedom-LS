@@ -53,3 +53,29 @@ def test_formula_triggers_are_exactly_the_known_set() -> None:
 )
 def test_escape_csv_formula_expected_results(value: str, expected: str) -> None:
     assert escape_csv_formula(value) == expected
+
+
+@pytest.mark.parametrize("value", ["+2782123", "+27821234567", "+123456789012345"])
+def test_escape_csv_formula_leaves_an_e164_phone_number_alone(value: str) -> None:
+    assert escape_csv_formula(value) == value
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "+123456",
+        "+1234567890123456",
+        "+27 82 123 4567",
+        "+27 82 CALL ME",
+        "+27821234567+1",
+        "+27821234567\n",
+        " +27821234567",
+        "\uff0b27821234567",
+        "+\uff12\uff17821234567",
+        "-27821234567",
+    ],
+)
+def test_escape_csv_formula_escapes_a_plus_cell_that_is_not_exactly_e164(
+    value: str,
+) -> None:
+    assert escape_csv_formula(value) == f"'{value}"
