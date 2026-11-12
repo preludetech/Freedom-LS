@@ -1857,7 +1857,7 @@ class CourseDetailsPanel(InstanceDetailsPanel):
             if name == "learning_outcomes":
                 # One item per outcome: an outcome can hold a comma.
                 row["value"] = format_html(
-                    '<ul class="list-disc pl-5">{}</ul>',
+                    '<ul class="list-inside list-disc">{}</ul>',
                     format_html_join(
                         "",
                         "<li>{}</li>",
