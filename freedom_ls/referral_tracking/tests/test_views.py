@@ -211,7 +211,7 @@ def test_a_database_error_recording_the_hit_still_redirects(
     mocker.patch.object(
         ReferralCodeHit._base_manager, "create", side_effect=DatabaseError("boom")
     )
-    mocker.patch("freedom_ls.referral_tracking.hits.sentry_sdk")
+    mocker.patch("freedom_ls.referral_tracking.best_effort.sentry_sdk")
 
     response = Client().get("/go/mrbeast")
 

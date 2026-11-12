@@ -155,6 +155,80 @@ class Door(models.TextChoices):
     D = "d", "/d/"
 
 
+class TouchSource(models.TextChoices):
+    LIVE = "live", "Live"
+    SIGNUP_FLUSH = "signup_flush", "Signup flush"
+    LOGIN_FLUSH = "login_flush", "Login flush"
+
+
+class AttributionTouch(SiteAwareModel):
+    """Append-only record of one tracked landing by a known account.
+
+    Keyed on `user`, not `Learner`: attribution belongs to the account, and a
+    signup happens before any `Learner` row exists. A live touch is written the
+    moment a signed-in user lands; a flushed one is written later from the
+    cookie, so `occurred_at` is when the landing happened and `recorded_at`
+    is when the row was written. `recorded_via` tells a reader how far to trust
+    the ordering. Holds no IP, user agent, referer, raw query or click
+    identifier.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="attribution_touches",
+    )
+    advert_code = models.CharField(blank=True, max_length=CAPS["advert_code"])
+    referral_code = models.CharField(blank=True, max_length=CAPS["referral_code"])
+    utm_source = models.CharField(blank=True, max_length=CAPS["utm_source"])
+    utm_medium = models.CharField(blank=True, max_length=CAPS["utm_medium"])
+    utm_campaign = models.CharField(blank=True, max_length=CAPS["utm_campaign"])
+    utm_content = models.CharField(blank=True, max_length=CAPS["utm_content"])
+    utm_term = models.CharField(blank=True, max_length=CAPS["utm_term"])
+    # Set on a live touch and a flushed first touch; blank on a flushed list entry.
+    landing_path = models.CharField(blank=True, max_length=CAPS["landing_path"])
+    occurred_at = models.DateTimeField(db_index=True)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+    recorded_via = models.CharField(max_length=16, choices=TouchSource)
+    key_hash = models.CharField(max_length=64)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site", "user", "occurred_at", "key_hash"],
+                name="unique_attribution_touch",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["site", "user", "occurred_at"]),
+            models.Index(fields=["site", "referral_code"]),
+            # A cursor for a changed-since conversions feed.
+            models.Index(fields=["site", "recorded_at"]),
+        ]
+        # recorded_at breaks ties so two touches at one instant sort the same way every time.
+        ordering = ["-occurred_at", "-recorded_at"]
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        # `SiteAwareModel` uses a UUID PK with `default=uuid.uuid4`, so
+        # `self.pk` is set as soon as the instance is constructed — before
+        # the row exists in the DB. We therefore need `_state.adding` to
+        # distinguish "first-time insert" from "update an existing row".
+        # Note: this guard only covers ``.save()``. ``QuerySet.update()`` and
+        # ``bulk_update()`` bypass it silently — the admin is registered as
+        # fully read-only as the second layer of defence.
+        if self.pk is not None and self._state.adding is False:
+            raise ValueError(
+                "AttributionTouch records are append-only and cannot be updated"
+            )
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return (
+            f"{self.user_id} via {self.utm_source}/{self.referral_code} "
+            f"at {self.occurred_at:%Y-%m-%d}"
+        )
+
+
 class ReferralCode(SiteAwareModel):
     """A per-site code a builder hands to a partner, printed on a board or dropped in an email.
 

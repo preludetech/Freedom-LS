@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import pytest
 
+from django.contrib.auth.models import AnonymousUser
 from django.db import connection
 from django.http import HttpResponse
 from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.referral_tracking import capture
 from freedom_ls.referral_tracking.capture import (
     first_touch_from_request,
@@ -18,7 +20,11 @@ from freedom_ls.referral_tracking.capture import (
 from freedom_ls.referral_tracking.config import config
 from freedom_ls.referral_tracking.factories import ReferralCodeFactory
 from freedom_ls.referral_tracking.middleware import AttributionCaptureMiddleware
-from freedom_ls.referral_tracking.models import FirstTouchCount, ReferralCodeHit
+from freedom_ls.referral_tracking.models import (
+    AttributionTouch,
+    FirstTouchCount,
+    ReferralCodeHit,
+)
 
 ROBOTS_TXT = "/robots.txt"
 COOKIE_NAME = config.REFERRAL_TRACKING_COOKIE_NAME
@@ -150,6 +156,7 @@ def test_a_tracked_get_with_an_existing_valid_cookie_costs_no_query(
 
     request = rf.get("/?utm_source=x")
     request.COOKIES[COOKIE_NAME] = mint_response.cookies[COOKIE_NAME].value
+    request.user = AnonymousUser()
 
     with django_assert_num_queries(0):
         AttributionCaptureMiddleware(lambda request: HttpResponse())(request)
@@ -279,3 +286,73 @@ def test_a_landing_with_ref_costs_the_same_queries_as_one_without_it(
         Client().get(ROBOTS_TXT, {"utm_source": "with-ref", "ref": "anything"})
 
     assert len(with_ref) == len(without_ref)
+
+
+@pytest.fixture
+def signed_in_client(mock_site_context) -> Client:
+    client = Client()
+    client.force_login(UserFactory())
+    return client
+
+
+@pytest.mark.django_db
+def test_a_signed_in_tracked_get_writes_one_touch(signed_in_client) -> None:
+    signed_in_client.get(ROBOTS_TXT, {"ref": "A"})
+
+    assert AttributionTouch._base_manager.get().referral_code == "A"
+
+
+@pytest.mark.django_db
+def test_a_signed_in_tracked_get_sets_no_cookie(signed_in_client) -> None:
+    response = signed_in_client.get(ROBOTS_TXT, {"ref": "A"})
+
+    assert COOKIE_NAME not in response.cookies
+
+
+@pytest.mark.django_db
+def test_a_signed_in_tracked_get_mints_no_cookie_and_tallies_nothing(
+    signed_in_client,
+) -> None:
+    signed_in_client.get(ROBOTS_TXT, {"ref": "A"})
+
+    assert COOKIE_NAME not in signed_in_client.cookies
+    assert not FirstTouchCount.objects.exists()
+
+
+@pytest.mark.django_db
+def test_a_signed_in_tracked_get_carries_vary_cookie(signed_in_client) -> None:
+    response = signed_in_client.get(ROBOTS_TXT, {"ref": "A"})
+
+    assert response.headers["Vary"] == "Cookie"
+
+
+@pytest.mark.django_db
+def test_an_untracked_signed_in_get_writes_nothing(signed_in_client) -> None:
+    signed_in_client.get(ROBOTS_TXT)
+
+    assert not AttributionTouch._base_manager.exists()
+
+
+@pytest.mark.django_db
+def test_a_view_that_raises_writes_no_touch(mock_site_context, site) -> None:
+    request = rf.get("/?ref=A")
+    request.user = UserFactory()
+
+    def failing_view(request):
+        raise RuntimeError("boom")
+
+    with pytest.raises(RuntimeError):
+        AttributionCaptureMiddleware(failing_view)(request)
+
+    assert not AttributionTouch._base_manager.exists()
+
+
+def test_a_signed_in_tracked_get_costs_the_live_touch_queries(
+    db, mock_site_context, django_assert_num_queries
+) -> None:
+    request = rf.get("/?ref=A")
+    request.user = UserFactory()
+
+    # The latest-touch read, then the savepoint, the insert and the release.
+    with django_assert_num_queries(4):
+        AttributionCaptureMiddleware(lambda request: HttpResponse())(request)

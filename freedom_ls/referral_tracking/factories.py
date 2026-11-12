@@ -12,11 +12,13 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.referral_tracking.counters import attribution_key_hash
 from freedom_ls.referral_tracking.models import (
     ATTRIBUTION_KEY_FIELDS,
+    AttributionTouch,
     Door,
     FirstTouchCount,
     ReferralCode,
     ReferralCodeHit,
     SignupAttribution,
+    TouchSource,
 )
 from freedom_ls.site_aware_models.factories import SiteAwareFactory
 
@@ -59,6 +61,33 @@ class FirstTouchCountFactory(SiteAwareFactory):
     utm_content = ""
     utm_term = ""
     count = 1
+    key_hash = factory.LazyAttribute(
+        lambda obj: attribution_key_hash(
+            *(getattr(obj, name) for name in ATTRIBUTION_KEY_FIELDS)
+        )
+    )
+
+
+class AttributionTouchFactory(SiteAwareFactory):
+    """Factory for AttributionTouch.
+
+    Every attribution-key field is declared explicitly, for the same reason as
+    on `FirstTouchCountFactory`: `key_hash` hashes exactly what a written touch does.
+    """
+
+    class Meta:
+        model = AttributionTouch
+
+    user = factory.SubFactory(UserFactory)
+    advert_code = ""
+    referral_code = ""
+    utm_source = factory.Sequence(lambda n: f"source{n}")
+    utm_medium = ""
+    utm_campaign = ""
+    utm_content = ""
+    utm_term = ""
+    occurred_at = factory.LazyFunction(timezone.now)
+    recorded_via = TouchSource.LIVE
     key_hash = factory.LazyAttribute(
         lambda obj: attribution_key_hash(
             *(getattr(obj, name) for name in ATTRIBUTION_KEY_FIELDS)
