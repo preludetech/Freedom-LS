@@ -113,10 +113,6 @@ def test_related_choice_filter_drops_pk_outside_scope() -> None:
     assert validated == [str(in_scope.pk)]
 
 
-# ---------------------------------------------------------------------------
-# ToggleFilter and PeriodFilter, and the state every filter kind shares
-# ---------------------------------------------------------------------------
-
 _PRESETS = {
     "today": ("Today", 1),
     "7d": ("Last 7 days", 7),
