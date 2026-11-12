@@ -9,28 +9,42 @@ with a next chosen for the purpose instead.
 
 from __future__ import annotations
 
+from typing import cast
+
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
+from freedom_ls.accounts.models import User
 from freedom_ls.accounts.utils import acquisition_auth_url, redirect_to_auth
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_access.analytics_events import record_interest_expressed
 from freedom_ls.course_access.visibility import raise_404_if_unavailable
 from freedom_ls.course_interest.models import CourseInterest
+from freedom_ls.referral_tracking.conversions import record_conversion
+from freedom_ls.referral_tracking.models import ConversionKind
 
 _CTA_TEMPLATE = "course_interest/partials/express_interest_cta.html"
 _PENDING_INTEREST_SESSION_KEY = "course_interest_pending_slug"
 
 
 def _express_interest(request: HttpRequest, course: Course) -> None:
-    """Record the interest, and tell GA4 only when the row is new, so a repeat
-    click sends nothing."""
-    _, created = CourseInterest.objects.get_or_create(user=request.user, course=course)
+    """Record the interest, and tell GA4 and the referral conversion log only when
+    the row is new, so a repeat click sends nothing."""
+    interest, created = CourseInterest.objects.get_or_create(
+        user=request.user, course=course
+    )
     if created:
         record_interest_expressed(request, course)
+        record_conversion(
+            user=cast(User, request.user),
+            kind=ConversionKind.COURSE_INTEREST,
+            target=interest,
+            occurred_at=interest.created_at,
+            target_label=course.title,
+        )
 
 
 @require_POST

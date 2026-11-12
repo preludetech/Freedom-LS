@@ -1,4 +1,4 @@
-"""Writing attribution touches for signed-in users.
+"""Writing attribution touches and conversions.
 
 Every entry point is best-effort: a database failure is reported and the
 caller carries on, because these writes ride on requests that must succeed.
@@ -9,11 +9,14 @@ from __future__ import annotations
 from datetime import datetime
 
 from django.contrib.auth.base_user import AbstractBaseUser
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
+from django.db.models import Model
 from django.http import HttpRequest
 
 from freedom_ls.referral_tracking.best_effort import best_effort_write
 from freedom_ls.referral_tracking.capture import first_touch_from_request
+from freedom_ls.referral_tracking.config import config
 from freedom_ls.referral_tracking.counters import (
     attribution_key_hash_of,
     attribution_key_values,
@@ -21,8 +24,12 @@ from freedom_ls.referral_tracking.counters import (
 from freedom_ls.referral_tracking.models import (
     ATTRIBUTION_KEY_FIELDS,
     AttributionTouch,
+    Conversion,
+    ConversionKind,
     TouchSource,
 )
+from freedom_ls.referral_tracking.resolution import touches_in_play
+from freedom_ls.site_aware_models.models import SiteAwareModelBase
 
 
 def record_live_touch(
@@ -68,3 +75,43 @@ def record_live_touch(
             **{name: landing[name] for name in ATTRIBUTION_KEY_FIELDS},
         )
     return touch
+
+
+def record_conversion(
+    *,
+    user: SiteAwareModelBase,
+    kind: ConversionKind,
+    target: Model,
+    occurred_at: datetime,
+    target_label: str,
+) -> Conversion | None:
+    """Write the conversion for `target`, freezing the touches in play at `occurred_at`.
+
+    A second call for the same target finds the existing row and writes
+    nothing, so a caller that fires twice records once. Returns `None` when
+    the write fails.
+
+    The row is written on the user's own site, through `_base_manager`: a shell
+    script or background job has no request to resolve a site from.
+    """
+    conversion = None
+    with best_effort_write():
+        site = user.site
+        first, last = touches_in_play(user=user, site=site, when=occurred_at)
+        conversion, _ = Conversion._base_manager.get_or_create(
+            site=site,
+            kind=kind,
+            content_type=ContentType.objects.get_for_model(target),
+            object_id=str(target.pk),
+            defaults={
+                "user_id": user.pk,
+                "occurred_at": occurred_at,
+                "target_label": target_label,
+                "window_days": config.REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS,
+                "first_touch": first,
+                "last_touch": last,
+                "first_referral_code": first.referral_code if first else "",
+                "last_referral_code": last.referral_code if last else "",
+            },
+        )
+    return conversion

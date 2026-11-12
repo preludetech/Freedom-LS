@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 import pytest
 from allauth.account.models import EmailAddress, EmailConfirmationHMAC
 
+from django.db import DatabaseError
 from django.test import Client, override_settings
 from django.urls import reverse
 
@@ -21,6 +22,7 @@ from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.course_interest.factories import CourseInterestFactory
 from freedom_ls.course_interest.models import CourseInterest
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
+from freedom_ls.referral_tracking.models import Conversion, ConversionKind
 
 # ---------------------------------------------------------------------------
 # express_interest view
@@ -721,3 +723,71 @@ def test_signup_arm_records_interest_only_for_the_stashed_course(mock_site_conte
     user = User.objects.get(email=email)
     assert CourseInterest.objects.filter(user=user, course=clicked).exists()
     assert not CourseInterest.objects.filter(user=user, course=other).exists()
+
+
+@pytest.mark.django_db
+class TestExpressInterestConversion:
+    """Expressing interest records one referral conversion for the new row."""
+
+    def _post(self, client, course):
+        return client.post(_express_interest_url(course.slug), HTTP_HX_REQUEST="true")
+
+    def test_new_interest_writes_one_course_interest_conversion(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+        client.force_login(user)
+
+        self._post(client, course)
+
+        conversion = Conversion._base_manager.get(user=user)
+        interest = CourseInterest.objects.get(user=user, course=course)
+        assert conversion.kind == ConversionKind.COURSE_INTEREST
+        assert conversion.target == interest
+        assert conversion.occurred_at == interest.created_at
+        assert conversion.target_label == course.title
+
+    def test_repeat_click_writes_no_second_conversion(self, client, mock_site_context):
+        user = UserFactory()
+        course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+        CourseInterestFactory(user=user, course=course)
+        client.force_login(user)
+
+        self._post(client, course)
+
+        assert not Conversion._base_manager.exists()
+
+    def test_tracked_landing_before_the_click_freezes_its_code(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+        client.force_login(user)
+        client.get("/robots.txt", {"ref": "A"})
+
+        self._post(client, course)
+
+        conversion = Conversion._base_manager.get(user=user)
+        assert (conversion.first_referral_code, conversion.last_referral_code) == (
+            "A",
+            "A",
+        )
+
+    def test_failed_conversion_write_leaves_the_interest_and_a_success(
+        self, client, mock_site_context, mocker
+    ):
+        user = UserFactory()
+        course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+        client.force_login(user)
+        mocker.patch.object(
+            Conversion._base_manager,
+            "get_or_create",
+            side_effect=DatabaseError("boom"),
+        )
+        mocker.patch("freedom_ls.referral_tracking.best_effort.sentry_sdk")
+
+        response = self._post(client, course)
+
+        assert response.status_code == 200
+        assert CourseInterest.objects.filter(user=user, course=course).exists()

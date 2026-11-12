@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 from django.conf import settings
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.functions import Lower
@@ -227,6 +229,90 @@ class AttributionTouch(SiteAwareModel):
             f"{self.user_id} via {self.utm_source}/{self.referral_code} "
             f"at {self.occurred_at:%Y-%m-%d}"
         )
+
+
+class ConversionKind(models.TextChoices):
+    ACCOUNT_SIGNUP = "account_signup", "Account signup"
+    COURSE_APPLICATION = "course_application", "Course application"
+    COURSE_INTEREST = "course_interest", "Course interest"
+    COURSE_REGISTRATION = "course_registration", "Course registration"
+
+
+class Conversion(SiteAwareModel):
+    """Append-only record of one conversion and the referral codes in play when it happened.
+
+    Keyed on `user`, not `Learner`: a conversion belongs to the account, and an
+    `account_signup` one exists before any `Learner` row. The target is a
+    generic foreign key with a text `object_id`, because this app cannot
+    import the target models or assume their primary key type. The codes and
+    `target_label` are frozen copies, so the row still reads correctly after the
+    target or a touch is gone.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="referral_conversions",
+    )
+    kind = models.CharField(max_length=32, choices=ConversionKind)
+    content_type = models.ForeignKey(
+        ContentType, on_delete=models.CASCADE, null=True, blank=True
+    )
+    object_id = models.CharField(max_length=255, blank=True)
+    target = GenericForeignKey("content_type", "object_id")
+    target_label = models.CharField(blank=True, max_length=255)
+    occurred_at = models.DateTimeField(db_index=True)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+    window_days = models.PositiveSmallIntegerField()
+    # RESTRICT, not PROTECT: deleting a user cascades to both the touches and
+    # the conversions, and PROTECT would raise there and block account erasure.
+    # A touch a conversion rests on still cannot be deleted on its own.
+    first_touch = models.ForeignKey(
+        AttributionTouch,
+        on_delete=models.RESTRICT,
+        null=True,
+        blank=True,
+        related_name="conversions_as_first",
+    )
+    last_touch = models.ForeignKey(
+        AttributionTouch,
+        on_delete=models.RESTRICT,
+        null=True,
+        blank=True,
+        related_name="conversions_as_last",
+    )
+    first_referral_code = models.CharField(blank=True, max_length=CAPS["referral_code"])
+    last_referral_code = models.CharField(blank=True, max_length=CAPS["referral_code"])
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site", "kind", "content_type", "object_id"],
+                name="unique_conversion_per_target",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["content_type", "object_id"]),
+            models.Index(fields=["site", "kind", "occurred_at"]),
+            # A cursor for a changed-since conversions feed.
+            models.Index(fields=["site", "recorded_at"]),
+        ]
+        ordering = ["-occurred_at"]
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        # `SiteAwareModel` uses a UUID PK with `default=uuid.uuid4`, so
+        # `self.pk` is set as soon as the instance is constructed — before
+        # the row exists in the DB. We therefore need `_state.adding` to
+        # distinguish "first-time insert" from "update an existing row".
+        # Note: this guard only covers ``.save()``. ``QuerySet.update()`` and
+        # ``bulk_update()`` bypass it silently — the admin is registered as
+        # fully read-only as the second layer of defence.
+        if self.pk is not None and self._state.adding is False:
+            raise ValueError("Conversion records are append-only and cannot be updated")
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f"{self.kind} by {self.user_id} at {self.occurred_at:%Y-%m-%d}"
 
 
 class ReferralCode(SiteAwareModel):
