@@ -10,17 +10,16 @@ once the page re-renders.
         <span aria-hidden="true"><c-icon name="success" class="size-16 text-success" /></span>
         <h2 tabindex="-1" autofocus class="mt-3 font-display text-xl font-semibold">Added {{ added_count }} learner{{ added_count|pluralize }}.{% if not_added_count %} {{ not_added_count }} row{{ not_added_count|pluralize }} {{ not_added_count|pluralize:"was,were" }} not added.{% endif %}</h2>
         <p class="mt-1 text-sm text-muted">{{ learner_import.file_name }}{% if learner_import.finished_at %} &middot; completed {% local_time learner_import.finished_at %}{% endif %}</p>
-        <ul class="mt-4 ml-0 list-none space-y-0 divide-y divide-border text-sm">
+        <c-panel-list class="mt-4">
             {% for item in label_counts %}
-                <li class="flex items-center justify-between gap-3 py-2">
-                    <span class="flex items-center gap-2">{% if item.label == "error" %}<span aria-hidden="true"><c-icon name="error" class="size-4 text-error" /></span>{% endif %}{{ item.name }}</span>
-                    <span class="tabular-nums">{{ item.count }}</span>
-                </li>
+                <c-panel-list-row :title="item.name" :figure="item.count">
+                    {% if item.label == "error" %}<span aria-hidden="true"><c-icon name="error" class="size-4 text-error" /></span>{% endif %}
+                </c-panel-list-row>
             {% endfor %}
             {% if new_account_count %}
-                <li class="py-2">{{ new_account_count }} setup email{{ new_account_count|pluralize }} {{ new_account_count|pluralize:"was,were" }} sent.</li>
+                <li class="py-3">{{ new_account_count }} setup email{{ new_account_count|pluralize }} {{ new_account_count|pluralize:"was,were" }} sent.</li>
             {% endif %}
-        </ul>
+        </c-panel-list>
     {% else %}
         <span aria-hidden="true"><c-icon name="error" class="size-16 text-error" /></span>
         <h2 tabindex="-1" autofocus class="mt-3 font-display text-xl font-semibold">Stopped after {{ learner_import.processed_count }} of {{ learner_import.row_count }} rows</h2>

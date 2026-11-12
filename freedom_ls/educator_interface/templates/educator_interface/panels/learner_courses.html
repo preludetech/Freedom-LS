@@ -20,14 +20,13 @@
                             {% if detail.completed_items %}
                                 <details class="text-sm">
                                     <summary class="cursor-pointer font-medium">Completed items ({{ detail.completed_items|length }})</summary>
-                                    <ul class="list-none ml-0 mt-2 flex flex-col gap-1">
+                                    <c-panel-list class="mt-2">
                                         {% for item in detail.completed_items %}
-                                            <li class="flex flex-wrap justify-between gap-x-4">
-                                                <span>{{ item.title }}</span>
+                                            <c-panel-list-row :title="item.title" class="py-2">
                                                 <span class="text-muted"><c-date :value="item.completed_at" /></span>
-                                            </li>
+                                            </c-panel-list-row>
                                         {% endfor %}
-                                    </ul>
+                                    </c-panel-list>
                                 </details>
                             {% endif %}
                             {% for quiz in detail.quiz_results %}

@@ -1,22 +1,21 @@
 {% comment %}
-The error rows of an import in an error-tinted block: the download of every
+The error rows of an import in a warning notice: the download of every
 error row, then a table from md and a card list below it, capped at the
 first IMPORT_RESULT_ERROR_ROWS, in a height-capped region that scrolls so
 a long list does not stretch the page. Context: error_rows (row and reason pairs),
-error_count, errors_url. Optional: heading_count, which adds the heading and
+error_count, errors_url. Optional: heading_count, which adds the title and
 the fix-or-continue line above the rows; upload_url, which adds the "Upload
 a corrected file" link beside the download.
 {% endcomment %}
-<section {% if heading_count %}aria-labelledby="import-errors-title"{% endif %} data-error-block class="rounded-lg border border-error bg-error-light p-4 text-on-error-light sm:p-6">
+<c-panel-notice tone="warning" title="{% if heading_count %}{{ heading_count }} row{{ heading_count|pluralize }} with errors will not be added.{% endif %}" data-error-block>
     {% if heading_count %}
-        <h2 id="import-errors-title" class="flex items-center gap-2 font-display text-lg font-semibold"><span aria-hidden="true"><c-icon name="warning" class="size-5" /></span>{{ heading_count }} row{{ heading_count|pluralize }} with errors will not be added.</h2>
-        <p class="mt-1 text-sm">Fix them in your file and upload it again, or add the other rows now.</p>
+        <p class="mt-1">Fix them in your file and upload it again, or add the other rows now.</p>
     {% endif %}
     <div class="{% if heading_count %}mt-4 {% endif %}flex flex-col gap-2 sm:flex-row">
         <c-button variant="secondary" href="{{ errors_url }}" icon_left="download" size="small" class="min-h-11 md:min-h-0" data-error-download>Download errors</c-button>
         {% if upload_url %}<c-button variant="secondary" href="{{ upload_url }}" size="small" class="min-h-11 md:min-h-0" data-error-reupload>Upload a corrected file</c-button>{% endif %}
     </div>
-    <c-panel-table caption="Error rows" cards="true" capped="true" class="mt-4 [--panel-table-head:var(--color-error-light)]" data-error-rows="true">
+    <c-panel-table caption="Error rows" cards="true" capped="true" class="mt-4" data-error-rows="true">
         <c-slot name="head"><tr><th scope="col">Line</th><th scope="col">Email</th><th scope="col">Reason</th></tr></c-slot>
         {% for item in error_rows %}
             <tr>
@@ -35,6 +34,6 @@ a corrected file" link beside the download.
         </c-slot>
     </c-panel-table>
     {% if error_count > error_rows|length %}
-        <p class="mt-2 text-sm">Showing the first {{ error_rows|length }} of {{ error_count }}. Download the error rows to see them all.</p>
+        <p class="mt-2">Showing the first {{ error_rows|length }} of {{ error_count }}. Download the error rows to see them all.</p>
     {% endif %}
-</section>
+</c-panel-notice>

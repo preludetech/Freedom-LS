@@ -52,6 +52,8 @@ COMPONENT_NAMES = [
     "empty-state",
     "skeleton",
     "table",
+    "list",
+    "heading",
     "callout",
 ]
 

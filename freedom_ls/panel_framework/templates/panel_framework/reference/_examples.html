@@ -333,6 +333,11 @@ somewhere on the page to land.
                 <c-button variant="primary">Add learner</c-button>
             </c-panel-empty-state>
         </div>
+
+        <div id="empty-state-compact">
+            <p class="text-sm text-muted">Use for a section inside a panel: a muted line, no icon.</p>
+            <c-panel-empty-state size="compact" message="No reports yet." />
+        </div>
     </section>
 
     <section class="space-y-6">
@@ -386,6 +391,25 @@ somewhere on the page to land.
                 <tr><td>2</td><td>Not a valid email address.</td></tr>
                 <tr><td>3</td><td>Not a valid email address.</td></tr>
             </c-panel-table>
+        </div>
+    </section>
+
+    <section class="space-y-6">
+        <h2>List and heading</h2>
+
+        <div id="list-default">
+            <p class="text-sm text-muted">Rows of records inside a panel: the title, a muted detail under it, trailing controls, then the figure at the end. With <code>href</code> the whole row is one link.</p>
+            <c-panel-list>
+                <c-panel-list-row title="Introduction to Python" detail="via Cohort A" figure="80%" href="#" />
+                <c-panel-list-row title="Data analysis" detail="Individual">
+                    <c-panel-status-badge tone="success" label="Active" />
+                </c-panel-list-row>
+            </c-panel-list>
+        </div>
+
+        <div id="heading-default">
+            <p class="text-sm text-muted">The heading of a section inside a panel or quick view.</p>
+            <c-panel-heading>Staff</c-panel-heading>
         </div>
     </section>
 
