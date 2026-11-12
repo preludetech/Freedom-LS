@@ -28,6 +28,7 @@ from freedom_ls.panel_framework.views import (
     _resolve_path,
     build_breadcrumbs,
     build_menu_items,
+    first_visible_section,
     panel_framework_view,
 )
 
@@ -825,6 +826,35 @@ class TestSectionVisibility:
             GatedListConfig.view_capability = "stubs.view_gated"
 
         assert GatedListConfig.asked == []
+
+    def test_the_first_visible_section_skips_one_the_request_may_not_see(
+        self, mock_site_context: Site
+    ) -> None:
+        GatedListConfig.reset(answer=False, scope=make_stub())
+
+        section = first_visible_section(GATED_CONFIG, make_request("stub-base"))
+
+        assert section is StubBaseConfig
+
+    def test_the_first_visible_section_is_the_first_the_request_may_see(
+        self, mock_site_context: Site
+    ) -> None:
+        GatedListConfig.reset(answer=True, scope=make_stub())
+
+        section = first_visible_section(GATED_CONFIG, make_request("stub-base"))
+
+        assert section is GatedListConfig
+
+    def test_there_is_no_first_visible_section_when_none_shows(
+        self, mock_site_context: Site
+    ) -> None:
+        GatedListConfig.reset(answer=False, scope=make_stub())
+
+        section = first_visible_section(
+            [NavGroup("Gated", [GatedListConfig])], make_request("gated")
+        )
+
+        assert section is None
 
 
 class TestListWithoutInstancePages:

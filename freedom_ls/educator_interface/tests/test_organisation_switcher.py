@@ -108,6 +108,31 @@ class TestSwitchOnAListPage:
 
         assert "Org B" in _switcher(response)
 
+    def test_switching_to_an_organisation_without_the_section_lands_on_one_it_shows(
+        self, logged_in_client
+    ):
+        organisation_a = OrganisationFactory(name="Org A")
+        organisation_b = OrganisationFactory(name="Org B")
+        educator = UserFactory(staff=True)
+        assign_object_role(educator, organisation_a, "organisation_admin")
+        assign_object_role(educator, organisation_b, "organisation_staff_viewer")
+        client = logged_in_client(educator)
+
+        response = _switch(client, _interface_url(organisation_b.slug, "cohorts"))
+
+        assert response.status_code == 200
+        assert response["HX-Push-Url"] == _interface_url(organisation_b.slug, "staff")
+
+    def test_a_hidden_section_is_still_a_404_without_a_switch(self, logged_in_client):
+        organisation = OrganisationFactory()
+        educator = UserFactory(staff=True)
+        assign_object_role(educator, organisation, "organisation_staff_viewer")
+        client = logged_in_client(educator)
+
+        response = client.get(_interface_url(organisation.slug, "cohorts"))
+
+        assert response.status_code == 404
+
     def test_switcher_links_keep_the_visitor_on_the_same_section(
         self, logged_in_client
     ):

@@ -442,6 +442,17 @@ def sections_by_url_name(config: list[NavGroup]) -> dict[str, SectionConfig]:
     return sections
 
 
+def first_visible_section(
+    config: list[NavGroup], request: HttpRequest
+) -> SectionConfig | None:
+    """The first section the menu shows `request`, or None when it shows none."""
+    for group in config:
+        for section in group.sections:
+            if section.is_visible(request) and section.is_available(request):
+                return section
+    return None
+
+
 @dataclass(frozen=True)
 class _ResolvedAction:
     action: PanelAction | BulkAction

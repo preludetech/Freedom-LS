@@ -236,6 +236,7 @@ from freedom_ls.panel_framework.views import (
     SectionConfigBase,
     StatusBadge,
     build_menu_items,
+    first_visible_section,
     panel_framework_view,
     sections_by_url_name,
 )
@@ -2696,10 +2697,16 @@ def interface_root(request: HttpRequest) -> HttpResponse:
     ) or accessible.first()  # accessible is ordered by name
     if organisation is None:
         raise Http404
+    # Which sections show depends on the viewer's roles in this organisation:
+    # someone who sees the staff list and nothing else has no Dashboard.
+    _attach_organisation(request, organisation.slug)
+    section = first_visible_section(interface_config, request)
+    if section is None:
+        raise Http404
     return redirect(
         "educator_interface:interface",
         organisation_slug=organisation.slug,
-        path_string="dashboard",
+        path_string=section.url_name,
     )
 
 
@@ -3293,8 +3300,21 @@ def interface(
         request.session[LAST_ORGANISATION_SESSION_KEY] = organisation.slug
 
     is_switch = request.headers.get("X-Organisation-Switch") == "true"
+    landed_elsewhere = False
     if is_switch:
         scoped_request.panel_announcement = f"Now viewing {organisation.name}"
+        # The switcher links to the section the visitor is on, which their
+        # roles in this organisation may not show. They land on one it does.
+        asked = sections_by_url_name(interface_config).get(path_string.split("/", 1)[0])
+        if asked is not None and not (
+            asked.is_visible(scoped_request) and asked.is_available(scoped_request)
+        ):
+            landing = first_visible_section(interface_config, scoped_request)
+            if landing is None:
+                raise Http404
+            path_string = landing.url_name
+            scoped_request.path_string = path_string
+            landed_elsewhere = True
 
     try:
         response = panel_framework_view(
@@ -3339,4 +3359,9 @@ def interface(
             kwargs={"organisation_slug": organisation.slug, "path_string": section},
         )
 
+    if landed_elsewhere:
+        response["HX-Push-Url"] = reverse(
+            "educator_interface:interface",
+            kwargs={"organisation_slug": organisation.slug, "path_string": path_string},
+        )
     return response

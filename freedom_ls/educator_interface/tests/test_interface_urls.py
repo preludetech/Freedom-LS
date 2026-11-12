@@ -52,6 +52,22 @@ class TestInterfaceRoot:
 
         assert response.status_code == 404
 
+    @pytest.mark.parametrize(
+        "role", ["organisation_staff_viewer", "organisation_staff_roles_viewer"]
+    )
+    def test_someone_who_sees_staff_alone_is_sent_to_the_staff_section(
+        self, logged_in_client, role
+    ):
+        user = UserFactory(staff=True)
+        organisation = OrganisationFactory()
+        assign_object_role(user, organisation, role)
+        client = logged_in_client(user)
+
+        response = client.get(reverse("educator_interface:root"))
+
+        assert response.status_code == 302
+        assert response["Location"] == _interface_url(organisation.slug, "staff")
+
     def test_falls_back_to_first_accessible_when_nothing_remembered(
         self, logged_in_client: Callable[[AbstractBaseUser], Client]
     ) -> None:
