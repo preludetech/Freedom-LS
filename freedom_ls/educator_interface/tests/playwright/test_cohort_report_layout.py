@@ -32,6 +32,8 @@ from freedom_ls.tests.playwright_helpers import (
 
 from .helpers import interface_url
 
+REPORT_BUILD_TIMEOUT_MS = 30_000
+
 # transaction=True so the live server's own DB connection sees the fixture
 # data this test's connection committed.
 pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
@@ -96,7 +98,11 @@ def test_generating_a_report_by_keyboard_keeps_focus_inside_the_downloads_card(
     generate.focus()
     page.keyboard.press("Enter")
 
-    expect(page.get_by_role("link", name=re.compile("^Download"))).to_be_visible()
+    # The report is built for real; under parallel test runs that takes
+    # longer than the default wait.
+    expect(page.get_by_role("link", name=re.compile("^Download"))).to_be_visible(
+        timeout=REPORT_BUILD_TIMEOUT_MS
+    )
     # Focus returns after the request ends, a tick after the swap, so wait
     # for it rather than reading document.activeElement once.
     expect(generate).to_be_focused()
