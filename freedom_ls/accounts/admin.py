@@ -129,7 +129,10 @@ class UserAdmin(SiteAwareExportModelAdmin):
     search_fields = ["email", "first_name", "last_name"]
     list_filter = ["is_staff", "is_superuser", "is_active"]
     ordering = ["email"]
-    readonly_fields = ["last_login"]
+    # The picture is read-only because the account page is the only path that
+    # validates and re-encodes an upload, so the admin must not be a second
+    # way to store a file.
+    readonly_fields = ["last_login", "profile_picture"]
     inlines = [LegalConsentInline]
 
     add_fieldsets = (
@@ -161,7 +164,10 @@ class UserAdmin(SiteAwareExportModelAdmin):
 
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        ("Personal info", {"fields": ("first_name", "last_name")}),
+        (
+            "Personal info",
+            {"fields": ("first_name", "last_name", "profile_picture")},
+        ),
         (
             "Permissions",
             {

@@ -177,3 +177,19 @@ def test_last_login_is_empty_for_a_user_who_never_logged_in(staff_client):
 def test_resource_has_no_credential_or_permission_fields():
     for name in ("password", "is_superuser", "groups", "user_permissions"):
         assert name not in UserResource.fields
+
+
+def test_export_fields_do_not_name_the_profile_picture():
+    assert "profile_picture" not in USER_EXPORT_FIELDS
+    assert "profile_picture" not in UserResource.fields
+
+
+@pytest.mark.django_db
+def test_export_of_a_user_with_a_picture_has_no_storage_key(staff_client):
+    user = UserFactory(with_profile_picture=True)
+
+    response = _export_user(staff_client, user)
+
+    body = response.content.decode("utf-8-sig")
+    assert "profile_picture" not in body
+    assert user.profile_picture.name not in body
