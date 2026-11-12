@@ -2572,6 +2572,15 @@ class StaffRoleAction(PanelAction):
                 return entry
         raise Http404("The staff member does not hold this role")
 
+    def _readable(self, ctx: PanelContext, entry: RoleEntry) -> list[Cohort]:
+        """The entry's cohorts the viewer may read: all of them for someone
+        who may see staff roles, else the ones within their reach, which
+        that cohort's own Staff list already shows them."""
+        if may_see_staff_roles(ctx.request):
+            return list(entry.cohorts)
+        reach = self._reach(ctx, entry.role)
+        return [cohort for cohort in entry.cohorts if cohort in reach]
+
 
 class DeactivateRoleAction(ReasonMixin, StaffRoleAction):
     """Takes one role entry off a staff member: on the organisation, or on every
@@ -2621,9 +2630,12 @@ class DeactivateRoleAction(ReasonMixin, StaffRoleAction):
         user = _staff_member_param(ctx)
         entries = self._entries(ctx, user)
         entry = self._entry(ctx, entries)
+        # A role the viewer cannot act on answers as one the person does not
+        # hold, so the response never confirms who holds it.
+        if entry.role not in actionable_roles(ctx.request, [entry]):
+            raise Http404("This role is not the grantor's to deactivate")
         removed, staying = self._split(ctx, entry)
-        if entry.target == "cohort" and not removed:
-            raise Http404("No cohort of this role is within the grantor's reach")
+        shows_roles = may_see_staff_roles(ctx.request)
         description = get_role_config(site.name)[entry.role].description.rstrip(".")
         context = super().get_context_data(ctx)
         context.update(
@@ -2636,12 +2648,18 @@ class DeactivateRoleAction(ReasonMixin, StaffRoleAction):
                     if entry.target == "organisation"
                     else join_prose([cohort.name for cohort in removed])
                 ),
-                "stays": join_prose([cohort.name for cohort in staying]),
-                "keeps": self._kept(ctx, user, entry, entries),
+                "stays": (
+                    join_prose([cohort.name for cohort in staying])
+                    if shows_roles
+                    else ""
+                ),
+                "keeps": self._kept(
+                    ctx, user, entry, role_entries_shown_to(ctx.request, entries)
+                ),
                 "last_organisation_admin": entry.role == "organisation_admin"
                 and is_last_organisation_admin(organisation, user),
                 "grantor_is_site_level": is_site_level_admin(grantor, site),
-                "target_is_site_level": is_site_level_admin(user, site),
+                "target_is_site_level": shows_roles and is_site_level_admin(user, site),
                 "confirm_url": self.get_action_url(ctx),
             }
         )
@@ -2740,7 +2758,7 @@ class ChangeCohortsAction(StaffRoleAction):
                 f"{cohort.name} (inactive)"
                 if not cohort.is_active
                 else f"{cohort.name} (outside the cohorts you can give)"
-                for cohort in entry.cohorts
+                for cohort in self._readable(ctx, entry)
                 if cohort not in offered
             ],
         }
@@ -2803,7 +2821,7 @@ class ChangeCohortsAction(StaffRoleAction):
                 "added": join_prose([cohort.name for cohort in plan.added]),
                 "removed": join_prose([cohort.name for cohort in plan.removed]),
                 "removes_role": not plan.added
-                and len(plan.removed) == len(entry.cohorts),
+                and len(plan.removed) == len(self._readable(ctx, entry)),
                 "staff_member_state": staff_member_state(user, organisation),
             },
         )

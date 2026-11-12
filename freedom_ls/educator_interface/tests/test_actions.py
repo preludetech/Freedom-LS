@@ -8771,6 +8771,80 @@ def test_the_add_role_dialog_shows_a_roles_viewer_every_role(
 
 
 @pytest.mark.django_db
+def test_the_deactivate_role_dialog_shows_a_names_only_viewer_the_roles_on_their_cohorts_alone(
+    logged_in_client, organisation, viewing_cohort_admin, colleague_with_roles_elsewhere
+):
+    response = _remove_dialog(
+        logged_in_client(viewing_cohort_admin),
+        organisation,
+        colleague_with_roles_elsewhere,
+        "cohort_viewer",
+    )
+
+    text = _text(response)
+    assert "They lose Cohort viewer on Own group" in text
+    assert "Far group" not in text
+    assert "Organisation staff viewer" not in text
+
+
+@pytest.mark.django_db
+def test_the_deactivate_role_dialog_shows_a_roles_viewer_every_role_kept(
+    admin_client, organisation, cohort_admin_setup, colleague_with_roles_elsewhere
+):
+    response = _remove_dialog(
+        admin_client, organisation, colleague_with_roles_elsewhere, "cohort_viewer"
+    )
+
+    assert "Organisation staff viewer on Whole organisation" in _text(response)
+
+
+@pytest.mark.django_db
+def test_the_deactivate_role_dialog_is_404_for_a_role_the_viewer_cannot_give(
+    logged_in_client, organisation, viewing_cohort_admin, colleague_with_roles_elsewhere
+):
+    response = _remove_dialog(
+        logged_in_client(viewing_cohort_admin),
+        organisation,
+        colleague_with_roles_elsewhere,
+        "organisation_staff_viewer",
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_the_change_cohorts_dialog_hides_cohorts_out_of_reach_from_a_names_only_viewer(
+    logged_in_client, organisation, viewing_cohort_admin, colleague_with_roles_elsewhere
+):
+    response = _change_dialog(
+        logged_in_client(viewing_cohort_admin),
+        organisation,
+        colleague_with_roles_elsewhere,
+    )
+
+    text = _text(response)
+    assert "Own group" in text
+    assert "Far group" not in text
+
+
+@pytest.mark.django_db
+def test_the_change_cohorts_confirm_step_reads_as_a_deactivation_to_a_names_only_viewer(
+    logged_in_client, organisation, viewing_cohort_admin, colleague_with_roles_elsewhere
+):
+    response = _change(
+        logged_in_client(viewing_cohort_admin),
+        organisation,
+        colleague_with_roles_elsewhere,
+        [],
+        confirmed=False,
+    )
+
+    text = _text(response)
+    assert "Deactivate Cohort viewer for" in text
+    assert "Far group" not in text
+
+
+@pytest.mark.django_db
 def test_add_role_answers_403_for_a_cohort_the_cohort_admin_cannot_give(
     logged_in_client, organisation, cohort_admin_setup, viewing_cohort_admin
 ):
