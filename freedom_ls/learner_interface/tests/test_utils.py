@@ -29,6 +29,7 @@ from freedom_ls.deadlines.resolver import (
 )
 from freedom_ls.learner_interface.tests.helpers import (
     learner_override,
+    set_due_date,
     topic_completion,
 )
 from freedom_ls.learner_interface.utils import (
@@ -38,6 +39,7 @@ from freedom_ls.learner_interface.utils import (
     COURSE_DEADLINE_TITLE,
     FAILED,
     IN_PROGRESS,
+    PAUSED,
     READY,
     DeadlineTier,
     card_deadline_line,
@@ -739,6 +741,101 @@ def test_access_ended_outline_leaves_a_part_without_complete_children_unlinked(
     )
 
     assert part_row["url"] is None
+
+
+@pytest.mark.django_db
+def test_paused_outline_marks_unfinished_rows_paused_and_keeps_complete_urls(
+    mock_site_context,
+):
+    user, course, record = _ended_outline_course()
+
+    part_row, lone_row = get_course_index(
+        user,
+        course,
+        can_access_content=False,
+        course_progress=record,
+        paused=True,
+    )
+
+    done_row, todo_row = part_row["children"]
+    assert (done_row["status"], todo_row["status"]) == (COMPLETE, PAUSED)
+    assert done_row["url"] is not None
+    assert todo_row["url"] is None
+    assert (lone_row["status"], lone_row["url"]) == (BLOCKED, None)
+
+
+@pytest.mark.django_db
+def test_paused_part_reads_paused_and_links_its_first_complete_child(
+    mock_site_context,
+):
+    user, course, record = _ended_outline_course()
+
+    part_row, _lone_row = get_course_index(
+        user,
+        course,
+        can_access_content=False,
+        course_progress=record,
+        paused=True,
+    )
+
+    assert part_row["status"] == PAUSED
+    assert part_row["url"] == part_row["children"][0]["url"]
+
+
+@pytest.mark.django_db
+def test_paused_rows_carry_no_deadline_keys(mock_site_context):
+    user, course, record = _ended_outline_course()
+    set_due_date(course, course.viewable_items()[1], due_date=date(2026, 5, 1))
+
+    part_row, _lone_row = get_course_index(
+        user,
+        course,
+        can_access_content=False,
+        course_progress=record,
+        course_deadlines=course_deadlines(record),
+        deadline_policy=_policy(close_items=True),
+        paused=True,
+    )
+
+    _done_row, todo_row = part_row["children"]
+    assert todo_row["due_at"] is None
+    assert todo_row["closes_at"] is None
+    assert todo_row["deadline_tier"] is None
+
+
+@pytest.mark.django_db
+def test_paused_outline_keeps_a_row_sequential_unlock_withholds_blocked(
+    mock_site_context,
+):
+    user = UserFactory()
+    course = CourseFactory()
+    first, second, third = TopicFactory(), TopicFactory(), TopicFactory()
+    for order, topic in enumerate((first, second, third)):
+        course.items.create(child=topic, order=order)
+    record = course_progress_record(course, user)
+
+    rows = get_course_index(
+        user,
+        course,
+        can_access_content=False,
+        course_progress=record,
+        paused=True,
+    )
+
+    assert [row["status"] for row in rows] == [PAUSED, BLOCKED, BLOCKED]
+
+
+@pytest.mark.parametrize(
+    ("child_statuses", "expected"),
+    [
+        ([PAUSED, COMPLETE], PAUSED),
+        ([PAUSED, BLOCKED], PAUSED),
+        ([PAUSED, READY], READY),
+        ([PAUSED, CLOSED], PAUSED),
+    ],
+)
+def test_derive_part_status_reads_paused_when_nothing_is_open(child_statuses, expected):
+    assert derive_part_status(child_statuses) == expected
 
 
 @pytest.mark.django_db

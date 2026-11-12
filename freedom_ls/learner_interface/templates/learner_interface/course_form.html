@@ -49,6 +49,7 @@
             {% include "learner_interface/partials/exam_previous_attempts.html" %}
 
             {% comment %}=== CTA ==={% endcomment %}
+            {% if not paused %}
             <c-player-footer :previous_url="previous_url">
                 {% for button in buttons %}
                     {% if button.action == "continue" %}
@@ -89,6 +90,7 @@
                     {% endif %}
                 {% endfor %}
             </c-player-footer>
+            {% endif %}
         </div>
     </c-page>
 {% endblock %}

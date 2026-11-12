@@ -5,7 +5,10 @@
     date. A row shows one deadline, so the close date stays off it. hide_deadlines keeps all
     deadline information off an outline that shows only status: no date, no "Closed", no tier
     icon. deadline_tier is set exactly when the row has a deadline and is not complete.{% endcomment %}
-    {% if child.deadline_tier and not hide_deadlines %}
+    {% if child.status == "PAUSED" %}
+        {% comment %}A status, not a deadline, so it shows even where hide_deadlines hides dates.{% endcomment %}
+        <c-chip variant="muted" size="xs" class="shrink-0" data-testid="outline-row-paused"><c-icon name="paused" class="size-3" /> Paused</c-chip>
+    {% elif child.deadline_tier and not hide_deadlines %}
         <span class="shrink-0 inline-flex items-center gap-1 text-xs" data-testid="outline-row-date">
             <c-deadline-label tier="{{ child.deadline_tier }}" layout="minimal"><span class="whitespace-nowrap">{% include "learner_interface/partials/deadline_labels.html#tier-date" with date_format="short" %}</span></c-deadline-label>
         </span>
@@ -14,7 +17,7 @@
 
 {% partialdef content-icon %}
     {% comment %} Type icon, coloured by status; status also announced via sr-only text. {% endcomment %}
-    <span class="shrink-0 {% if child.status == "BLOCKED" %}text-muted/50{% elif child.status == "COMPLETE" %}text-success{% elif child.status == "FAILED" %}text-error{% elif child.status == "CLOSED" %}text-muted{% elif child.status == "READY" or child.status == "IN_PROGRESS" %}text-primary{% else %}text-muted{% endif %}">
+    <span class="shrink-0 {% if child.status == "BLOCKED" %}text-muted/50{% elif child.status == "COMPLETE" %}text-success{% elif child.status == "FAILED" %}text-error{% elif child.status == "CLOSED" or child.status == "PAUSED" %}text-muted{% elif child.status == "READY" or child.status == "IN_PROGRESS" %}text-primary{% else %}text-muted{% endif %}">
         {% if child.type == "TOPIC" %}
             <c-icon name="topic" class="size-4" />
         {% elif child.type == "FORM" %}
@@ -22,7 +25,7 @@
         {% elif child.type == "COURSE_PART" %}
             <c-icon name="folder" class="size-4" />
         {% endif %}
-        <span class="sr-only">{% if child.status == "BLOCKED" %}Locked{% elif child.status == "READY" %}Not started{% elif child.status == "IN_PROGRESS" %}In progress{% elif child.status == "COMPLETE" %}Completed{% elif child.status == "FAILED" %}Needs retry{% elif child.status == "CLOSED" %}Closed{% endif %}</span>
+        <span class="sr-only">{% if child.status == "BLOCKED" %}Locked{% elif child.status == "READY" %}Not started{% elif child.status == "IN_PROGRESS" %}In progress{% elif child.status == "COMPLETE" %}Completed{% elif child.status == "FAILED" %}Needs retry{% elif child.status == "CLOSED" %}Closed{% elif child.status == "PAUSED" %}Paused{% endif %}</span>
     </span>
 {% endpartialdef %}
 
