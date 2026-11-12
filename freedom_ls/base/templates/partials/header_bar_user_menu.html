@@ -3,16 +3,30 @@
                  aria_label="Open user menu for {{ user.display_name }}"
                  menu_label="User menu">
     <c-slot name="trigger">
-        <span class="inline-flex h-10 w-10 items-center justify-center
-                     rounded-full bg-header-action text-on-header-action
-                     font-semibold text-base leading-none select-none"
-              aria-hidden="true">
-            {% if user.initials %}
-                {{ user.initials }}
-            {% else %}
-                <c-icon name="user" class="size-5" />
-            {% endif %}
-        </span>
+        {% comment %}
+            The initials stay under the picture: they are what shows when the image fails to load.
+            bg-surface on the image keeps them from showing through transparent pixels.
+        {% endcomment %}
+        {% with picture_url=user.profile_picture_url %}
+            <span class="relative inline-flex h-10 w-10 items-center justify-center overflow-hidden
+                         rounded-full bg-header-action text-on-header-action
+                         font-semibold text-base leading-none select-none"
+                  aria-hidden="true">
+                {% if user.initials %}
+                    {{ user.initials }}
+                {% else %}
+                    <c-icon name="user" class="size-5" />
+                {% endif %}
+                {% if picture_url %}
+                    <img data-profile-picture
+                         src="{{ picture_url }}"
+                         alt=""
+                         width="40"
+                         height="40"
+                         class="absolute inset-0 size-full bg-surface object-cover" />
+                {% endif %}
+            </span>
+        {% endwith %}
     </c-slot>
 
     <c-button dropdown="true" href="{% url 'accounts:account_profile' %}">

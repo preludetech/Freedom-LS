@@ -8,6 +8,8 @@ real context processors, so these tests also cover the settings wiring.
 
 from __future__ import annotations
 
+from html.parser import HTMLParser
+
 import pytest
 from allauth.core.context import request_context
 
@@ -23,6 +25,18 @@ from freedom_ls.role_based_permissions.utils import assign_object_role
 
 EDUCATOR_LINK_TEXT = "Educator Interface"
 ADMIN_LINK_TEXT = "Admin Panel"
+
+
+class _ImageCollector(HTMLParser):
+    """Collects the attributes of every `<img data-profile-picture>` it sees."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.images: list[dict[str, str | None]] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag == "img" and any(name == "data-profile-picture" for name, _ in attrs):
+            self.images.append(dict(attrs))
 
 
 def _render_menu(user: AbstractBaseUser) -> str:
@@ -108,3 +122,31 @@ class TestAnonymousHeader:
 
         assert 'href="/accounts/login/?next=%2Fsome%2Fpath%2F"' in rendered
         assert 'href="/accounts/signup/?next=%2Fsome%2Fpath%2F"' in rendered
+
+
+@pytest.mark.django_db
+class TestProfilePicture:
+    def test_a_user_with_a_picture_gets_the_image_over_the_initials(
+        self, mock_site_context
+    ):
+        user = UserFactory(
+            with_profile_picture=True, first_name="Mary", last_name="Jane"
+        )
+
+        rendered = _render_menu(user)
+        parser = _ImageCollector()
+        parser.feed(rendered)
+
+        assert len(parser.images) == 1
+        image = parser.images[0]
+        assert image["src"] == user.profile_picture_url
+        assert image["alt"] == ""
+        assert image["width"] == "40"
+        assert image["height"] == "40"
+        assert "MJ" in rendered
+
+    def test_a_user_without_a_picture_gets_no_image(self, mock_site_context):
+        rendered = _render_menu(UserFactory())
+
+        assert "<img" not in rendered
+        assert 'src="None"' not in rendered

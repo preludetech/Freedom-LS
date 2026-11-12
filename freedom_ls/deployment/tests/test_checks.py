@@ -120,6 +120,7 @@ def test_sensitive_alias_check_is_registered_via_app_ready() -> None:
         "public": _s3_entry("shared-bucket", "https://s3.example.com"),
         "course_media": _fs_entry(),
         "user_uploads": _fs_entry(),
+        "profile_pictures": _fs_entry(),
         "certificates": _fs_entry(),
         "reports": _fs_entry(),
     },
@@ -139,6 +140,7 @@ def test_media_alias_matching_default_s3_identity_returns_error() -> None:
     STORAGES={
         "default": _fs_entry("/data/shared"),
         "user_uploads": _fs_entry("/data/shared"),
+        "profile_pictures": _s3_entry("fls-profile-pictures", "https://s3.example.com"),
         "public": _s3_entry("bucket-public"),
         "course_media": _s3_entry("bucket-course-media"),
         "certificates": _s3_entry("bucket-certificates"),
@@ -167,6 +169,7 @@ def test_fs_alias_matching_default_is_reported_once_as_local_disk() -> None:
         "public": _s3_entry("fls-public", "https://s3.example.com"),
         "course_media": _s3_entry("fls-course-media", "https://s3.example.com"),
         "user_uploads": _s3_entry("fls-user-uploads", "https://s3.example.com"),
+        "profile_pictures": _s3_entry("fls-profile-pictures", "https://s3.example.com"),
         "certificates": _s3_entry("fls-certificates", "https://s3.example.com"),
         "reports": _s3_entry("fls-reports", "https://s3.example.com"),
     },
@@ -184,6 +187,7 @@ def test_media_aliases_with_distinct_buckets_return_no_errors() -> None:
         "public": _s3_entry("fls-public", "https://s3.example.com"),
         "course_media": _s3_entry("fls-course-media", "https://s3.example.com"),
         "user_uploads": _s3_entry("fls-user-uploads", "https://s3.example.com"),
+        "profile_pictures": _s3_entry("fls-profile-pictures", "https://s3.example.com"),
         "certificates": _UNCOMPARABLE_ENTRY,
         "reports": _s3_entry("fls-reports", "https://s3.example.com"),
     },
@@ -200,6 +204,7 @@ def test_media_alias_on_uncomparable_backend_returns_no_errors() -> None:
         "default": _fs_entry(),
         "course_media": _fs_entry(),
         "user_uploads": _fs_entry(),
+        "profile_pictures": _fs_entry(),
         "certificates": _fs_entry(),
         "reports": _fs_entry(),
     },
@@ -222,6 +227,7 @@ def test_undeclared_media_alias_returns_error_instead_of_raising() -> None:
         "public": _s3_entry("fls-default", "https://s3.example.com"),
         "course_media": _s3_entry("fls-course-media", "https://s3.example.com"),
         "user_uploads": _fs_entry(),
+        "profile_pictures": _fs_entry(),
         "certificates": _s3_entry("fls-default", "https://s3.example.com"),
         "reports": _fs_entry(),
     },
@@ -229,7 +235,7 @@ def test_undeclared_media_alias_returns_error_instead_of_raising() -> None:
 )
 def test_multiple_offending_aliases_each_produce_their_own_error() -> None:
     # Both failure modes at once: 'public' and 'certificates' collide with
-    # 'default', while 'user_uploads' and 'reports' fell back to local disk with
+    # 'default', while 'user_uploads', 'profile_pictures' and 'reports' fell back to local disk with
     # 'default' on S3. Every offending alias is reported once, by whichever
     # check owns its failure, each naming its own per-bucket variable — so an
     # operator's first --deploy lists the whole job.
@@ -237,13 +243,21 @@ def test_multiple_offending_aliases_each_produce_their_own_error() -> None:
     errors += check_media_aliases_not_on_local_disk()
 
     reported = _hints_by_alias(
-        errors, ("public", "certificates", "user_uploads", "reports")
+        errors,
+        ("public", "certificates", "user_uploads", "profile_pictures", "reports"),
     )
-    assert len(errors) == 4
-    assert set(reported) == {"public", "certificates", "user_uploads", "reports"}
+    assert len(errors) == 5
+    assert set(reported) == {
+        "public",
+        "certificates",
+        "user_uploads",
+        "profile_pictures",
+        "reports",
+    }
     assert "AWS_S3_PUBLIC_BUCKET_NAME" in reported["public"]
     assert "AWS_S3_CERTIFICATES_BUCKET_NAME" in reported["certificates"]
     assert "AWS_S3_USER_UPLOADS_BUCKET_NAME" in reported["user_uploads"]
+    assert "AWS_S3_PROFILE_PICTURES_BUCKET_NAME" in reported["profile_pictures"]
     assert "AWS_S3_GENERATED_BUCKET_NAME" in reported["reports"]
 
 
@@ -268,6 +282,7 @@ def test_intended_production_configuration_returns_no_errors(
         "public": _s3_entry("fls-public", "https://s3.example.com"),
         "course_media": _s3_entry("fls-course-media", "https://s3.example.com"),
         "user_uploads": _s3_entry("fls-user-data", "https://s3.example.com"),
+        "profile_pictures": _s3_entry("fls-profile-data", "https://s3.example.com"),
         "certificates": _s3_entry("fls-public", "https://s3.example.com"),
         "reports": _fs_entry(),
     },
@@ -296,6 +311,7 @@ def test_fs_alias_with_s3_default_and_debug_false_returns_error() -> None:
         "public": _s3_entry("fls-public", "https://s3.example.com"),
         "course_media": _s3_entry("fls-course-media", "https://s3.example.com"),
         "user_uploads": _s3_entry("fls-user-data", "https://s3.example.com"),
+        "profile_pictures": _s3_entry("fls-profile-data", "https://s3.example.com"),
         "certificates": _s3_entry("fls-public", "https://s3.example.com"),
         "reports": _fs_entry(),
     },
@@ -314,6 +330,7 @@ def test_fs_alias_with_s3_default_and_debug_true_returns_no_errors() -> None:
         "public": _fs_entry(),
         "course_media": _fs_entry(),
         "user_uploads": _fs_entry(),
+        "profile_pictures": _fs_entry(),
         "certificates": _fs_entry(),
         "reports": _fs_entry(),
     },
@@ -321,15 +338,22 @@ def test_fs_alias_with_s3_default_and_debug_true_returns_no_errors() -> None:
 )
 def test_every_alias_on_local_disk_reports_each_alias_once() -> None:
     # A downstream project's first --deploy with no AWS_* variable set. Each of
-    # the five media aliases is reported once, and no alias is reported twice
+    # the six media aliases is reported once, and no alias is reported twice
     # for being both local disk and identical to 'default'.
     assert check_media_aliases_not_shared_with_default() == []
 
     errors = check_media_aliases_not_on_local_disk()
 
-    assert len(errors) == 5
+    assert len(errors) == 6
     assert {error.id for error in errors} == {"freedom_ls_deployment.E002"}
-    for alias in ("public", "course_media", "user_uploads", "certificates", "reports"):
+    for alias in (
+        "public",
+        "course_media",
+        "user_uploads",
+        "profile_pictures",
+        "certificates",
+        "reports",
+    ):
         assert sum(alias in error.msg for error in errors) == 1
 
 
@@ -342,6 +366,7 @@ def test_local_disk_check_is_registered_via_app_ready() -> None:
         "default": _s3_entry("fls-default", "https://s3.example.com"),
         "course_media": _fs_entry(),
         "user_uploads": _fs_entry(),
+        "profile_pictures": _fs_entry(),
         "certificates": _fs_entry(),
         "reports": _fs_entry(),
     },
@@ -352,7 +377,7 @@ def test_local_disk_check_skips_an_undeclared_alias() -> None:
     # the alias rather than let InvalidStorageError escape or duplicate it.
     errors = check_media_aliases_not_on_local_disk()
 
-    assert len(errors) == 4
+    assert len(errors) == 5
     assert all("public" not in error.msg for error in errors)
 
 
@@ -440,6 +465,7 @@ def test_hand_built_storages_matching_no_variable_returns_no_errors(
             "public": _s3_entry("hand-built-public"),
             "course_media": _s3_entry("hand-built-course-media"),
             "user_uploads": _s3_entry("hand-built-user-data"),
+            "profile_pictures": _s3_entry("hand-built-profile-data"),
             "certificates": _s3_entry("hand-built-public"),
             "reports": _s3_entry("hand-built-user-data"),
         }
@@ -457,7 +483,7 @@ def test_signing_check_is_registered_via_app_ready() -> None:
 def test_shared_querystring_auth_off_reports_every_private_alias(
     production_env: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The shared form reaches all five media aliases. A project upgrading from
+    """The shared form reaches all six media aliases. A project upgrading from
     the single-bucket layout carries it forward and turns report PDFs naming
     learners into permanently public URLs."""
     monkeypatch.setenv("AWS_QUERYSTRING_AUTH", "false")
@@ -467,9 +493,11 @@ def test_shared_querystring_auth_off_reports_every_private_alias(
 
     assert {error.id for error in errors} == {"freedom_ls_deployment.E004"}
     assert set(
-        _hints_by_alias(errors, ("course_media", "user_uploads", "reports"))
-    ) == {"course_media", "user_uploads", "reports"}
-    assert len(errors) == 3
+        _hints_by_alias(
+            errors, ("course_media", "user_uploads", "profile_pictures", "reports")
+        )
+    ) == {"course_media", "user_uploads", "profile_pictures", "reports"}
+    assert len(errors) == 4
 
 
 def test_anonymously_readable_aliases_may_serve_unsigned(production_env: None) -> None:
@@ -499,6 +527,7 @@ def test_a_media_alias_on_local_disk_is_not_reported_as_unsigned() -> None:
             "public": _fs_entry(),
             "course_media": _fs_entry(),
             "user_uploads": _fs_entry(),
+            "profile_pictures": _fs_entry(),
             "certificates": _fs_entry(),
             "reports": _fs_entry(),
         }

@@ -1,10 +1,19 @@
 """Factories for accounts models."""
 
+import base64
+
 import factory
 from allauth.account.models import EmailAddress
 
+from django.core.files.base import ContentFile
+
 from freedom_ls.accounts.models import LegalConsent, SiteSignupPolicy, User
 from freedom_ls.site_aware_models.factories import SiteAwareFactory
+
+#: A valid 1x1 WebP, small enough to inline.
+_TINY_WEBP = base64.b64decode(
+    "UklGRjwAAABXRUJQVlA4IDAAAADQAQCdASoBAAEAAUAmJaACdLoB+AADsAD+8ut//NgVzXPv9//S4P0uD9Lg/9KQAAA="  # pragma: allowlist secret
+)
 
 
 class UserFactory(SiteAwareFactory):
@@ -15,6 +24,7 @@ class UserFactory(SiteAwareFactory):
     Traits:
         staff: Sets is_staff=True.
         superuser: Sets both is_staff=True and is_superuser=True.
+        with_profile_picture: Stores a small valid WebP as the profile picture.
     """
 
     class Meta:
@@ -37,6 +47,11 @@ class UserFactory(SiteAwareFactory):
     class Params:
         staff = factory.Trait(is_staff=True)
         superuser = factory.Trait(is_staff=True, is_superuser=True)
+        with_profile_picture = factory.Trait(
+            profile_picture=factory.django.FileField(
+                from_func=lambda: ContentFile(_TINY_WEBP, name="picture.webp")
+            )
+        )
 
 
 class SiteSignupPolicyFactory(SiteAwareFactory):

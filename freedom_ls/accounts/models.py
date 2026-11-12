@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unicodedata
 from typing import Any
+from uuid import uuid4
 
 from django.conf import settings
 from django.contrib.auth.models import (
@@ -10,10 +11,12 @@ from django.contrib.auth.models import (
     PermissionsMixin,
 )
 from django.contrib.sites.models import Site
+from django.core.files.storage import Storage
 from django.db import models
 from django.db.models.functions import Upper
 
 from freedom_ls.base.initials import two_or_one
+from freedom_ls.base.storage import storage_for_alias
 from freedom_ls.site_aware_models.models import (
     SiteAwareModel,
     SiteAwareModelBase,
@@ -75,6 +78,22 @@ def display_name_for(first_name: str, last_name: str, email: str) -> str:
     return first or last or email
 
 
+def get_profile_picture_storage() -> Storage:
+    """The fixed `profile_pictures` alias; no setting names it, so it names itself."""
+    return storage_for_alias("profile_pictures", "STORAGES['profile_pictures']")
+
+
+def profile_picture_upload_to(instance: User, filename: str) -> str:
+    """A new key for every upload, under the user's own prefix.
+
+    The uploader's filename is ignored: the stored bytes are always the WebP
+    FLS encoded. A fresh uuid per upload means a replaced picture never shares
+    a URL with the one before it, and the user prefix gives an erasure request
+    one subtree to sweep.
+    """
+    return f"profile_pictures/{instance.pk}/{uuid4().hex}.webp"
+
+
 class User(SiteAwareModelBase, TimestampedModel, AbstractBaseUser, PermissionsMixin):
     # Deliberately an integer pk, not a UUID: User is the one object whose identity
     # appears in a URL as a small sequential number. Permission checks are keyed on
@@ -87,6 +106,12 @@ class User(SiteAwareModelBase, TimestampedModel, AbstractBaseUser, PermissionsMi
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
+
+    profile_picture = models.FileField(
+        blank=True,
+        storage=get_profile_picture_storage,
+        upload_to=profile_picture_upload_to,
+    )
 
     USERNAME_FIELD = "email"
 
@@ -106,6 +131,17 @@ class User(SiteAwareModelBase, TimestampedModel, AbstractBaseUser, PermissionsMi
     REQUIRED_FIELDS = []
 
     objects: models.Manager = UserManager()
+
+    @property
+    def profile_picture_url(self) -> str | None:
+        """The picture's URL, minted now, or None without a picture.
+
+        Reads no request state, so it works for any viewer and outside a request.
+        On S3 the URL is signed locally; nothing here calls the bucket.
+        """
+        if not self.profile_picture:
+            return None
+        return self.profile_picture.url
 
     @property
     def username(self) -> str:

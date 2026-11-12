@@ -317,6 +317,7 @@ STORAGES: dict[str, dict[str, object]] = {
         "BACKEND": "django.core.files.storage.FileSystemStorage"
     },
     "user_uploads": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "profile_pictures": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     REPORTS_STORAGE_ALIAS: {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "certificates": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
 }

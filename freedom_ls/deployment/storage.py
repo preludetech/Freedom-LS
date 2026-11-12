@@ -6,28 +6,36 @@ from django.core.exceptions import ImproperlyConfigured
 
 from freedom_ls.base.env import env_bool, env_int, env_str, first_set_name
 
-#: The media aliases whose name is fixed, because no setting names them:
-#: user_uploads holds QuestionAnswerFile.file, and certificates has no consumer
-#: yet. The other three are named by ORGANISATION_LOGO_STORAGE_ALIAS,
-#: CONTENT_MEDIA_STORAGE_ALIAS and REPORTS_STORAGE_ALIAS, so they arrive as
-#: arguments rather than as constants here.
-FIXED_ALIAS_PURPOSES: dict[str, str] = {
-    "user_uploads": "USER_UPLOADS",
-    "certificates": "CERTIFICATES",
-}
-
 LOGO_PURPOSE = "PUBLIC"
 CONTENT_MEDIA_PURPOSE = "COURSE_MEDIA"
 USER_UPLOADS_PURPOSE = "USER_UPLOADS"
 CERTIFICATES_PURPOSE = "CERTIFICATES"
+PROFILE_PICTURES_PURPOSE = "PROFILE_PICTURES"
 REPORTS_PURPOSE = "GENERATED"
 DEFAULT_PURPOSE = "DEFAULT"
 
+#: The media aliases whose name is fixed, because no setting names them:
+#: user_uploads holds QuestionAnswerFile.file, profile_pictures holds
+#: User.profile_picture, and certificates has no consumer yet. The other three
+#: are named by ORGANISATION_LOGO_STORAGE_ALIAS, CONTENT_MEDIA_STORAGE_ALIAS and
+#: REPORTS_STORAGE_ALIAS, so they arrive as arguments rather than as constants
+#: here.
+FIXED_ALIAS_PURPOSES: dict[str, str] = {
+    "user_uploads": USER_UPLOADS_PURPOSE,
+    "certificates": CERTIFICATES_PURPOSE,
+    "profile_pictures": PROFILE_PICTURES_PURPOSE,
+}
+
 #: Purposes whose objects must never be reachable without a signature. Keyed by
-#: purpose rather than by alias, as everything below is, because three of the five
+#: purpose rather than by alias, as everything below is, because three of the six
 #: alias names are settings a downstream project can change.
 SIGNED_URL_PURPOSES: frozenset[str] = frozenset(
-    {CONTENT_MEDIA_PURPOSE, USER_UPLOADS_PURPOSE, REPORTS_PURPOSE}
+    {
+        CONTENT_MEDIA_PURPOSE,
+        USER_UPLOADS_PURPOSE,
+        REPORTS_PURPOSE,
+        PROFILE_PICTURES_PURPOSE,
+    }
 )
 
 _OBJECT_PARAMETERS: dict[str, dict[str, str]] = {
@@ -52,7 +60,7 @@ def media_alias_purposes(
     content_media_alias: str = "course_media",
     reports_alias: str = "reports",
 ) -> dict[str, str]:
-    """The five media aliases and their purposes, each under its configured name.
+    """The six media aliases and their purposes, each under its configured name.
 
     The defaults match the declared defaults of the three settings that name these
     aliases, so a caller with no opinion gets the standard layout.
