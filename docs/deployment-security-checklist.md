@@ -47,6 +47,7 @@ listed here.
 - [ ] Certificate chain is complete
 - [ ] OCSP stapling is enabled
 - [ ] If behind a reverse proxy (Nginx, Cloudflare, ALB), set `SECURE_PROXY_SSL_HEADER` in Django settings to avoid redirect loops
+- [ ] The reverse proxy or web server allows a request body of at least 10 MB on the account page (`/accounts/profile/`), the size limit of a profile picture upload. Nginx's default `client_max_body_size` is 1 MB and rejects it with a 413
 - [ ] SMTP submission uses TLS (`EMAIL_USE_TLS=True`), so mail credentials and message bodies do not cross the network in the clear
 
 ## 4. HSTS Rollout
@@ -191,10 +192,15 @@ hardcode credentials.
 ### AWS / S3 Storage
 
 FLS resolves storage per bucket purpose, not per project. `PURPOSE` is one of `PUBLIC`,
-`COURSE_MEDIA`, `USER_UPLOADS`, `GENERATED`, `CERTIFICATES`, `DEFAULT`, one per `STORAGES` alias.
-Every variable below is optional. An unset per-bucket variable falls through to the shared column,
+`COURSE_MEDIA`, `USER_UPLOADS`, `PROFILE_PICTURES`, `GENERATED`, `CERTIFICATES`, `DEFAULT`, one per
+`STORAGES` alias. Every variable below is optional except `AWS_S3_PROFILE_PICTURES_BUCKET_NAME`. An unset per-bucket variable falls through to the shared column,
 and an unset bucket name falls through to local filesystem storage — which `check --deploy` reports
 as an error outside `DEBUG`, so it is a development convenience rather than a production mode.
+
+`AWS_S3_PROFILE_PICTURES_BUCKET_NAME` is required. It names the private user-data bucket, the same
+one `USER_UPLOADS` and `GENERATED` use; profile pictures sit under the `profile_pictures/` prefix.
+Left unset, the alias falls back to `AWS_STORAGE_BUCKET_NAME`, and `check --deploy` reports that as
+`freedom_ls_deployment.E003`.
 
 | Property | Shared variable | Per-bucket override |
 |---|---|---|
@@ -223,7 +229,7 @@ files the way its contents need.
 | `freedom_ls_deployment.E001` | An alias that resolves to the same bucket as `default`. |
 | `freedom_ls_deployment.E002` | An alias that reached no bucket at all and fell back to local disk while `DEBUG` is off — what a misspelled per-bucket variable produces once the shared `AWS_STORAGE_BUCKET_NAME` is left unset. |
 | `freedom_ls_deployment.E003` | An alias that took its bucket from the shared `AWS_STORAGE_BUCKET_NAME` because its own variable is unset. E001 cannot see this one: with `AWS_S3_DEFAULT_BUCKET_NAME` naming a bucket of its own, an alias that fell through matches nothing it compares against. |
-| `freedom_ls_deployment.E004` | An alias holding private files — course media, user uploads, cohort reports — resolving with querystring auth off, so its URLs are unsigned and never expire. The shared `AWS_QUERYSTRING_AUTH` reaches every media alias, which is how a project upgrading from the single-bucket layout carries public serving forward onto learner data. |
+| `freedom_ls_deployment.E004` | An alias holding private files — course media, user uploads, profile pictures, cohort reports — resolving with querystring auth off, so its URLs are unsigned and never expire. The shared `AWS_QUERYSTRING_AUTH` reaches every media alias, which is how a project upgrading from the single-bucket layout carries public serving forward onto learner data. |
 
 They carry separate ids so that a deployment serving media from local disk deliberately can silence
 E002 through `SILENCED_SYSTEM_CHECKS` without also giving up the other three.
