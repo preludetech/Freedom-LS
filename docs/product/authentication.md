@@ -1,6 +1,6 @@
 # Authentication
 
-_Last updated: 2026-11-05_
+_Last updated: 2026-11-12_
 
 ## Summary
 
@@ -15,7 +15,7 @@ _Last updated: 2026-11-05_
 
 Users are scoped to a site, so the same email address can exist as two separate accounts on two different sites. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md).
 
-Email is the login identifier; there are no username fields, and addresses are stored normalised. First and last name are editable by the user from their profile page and are optional unless the site's signup policy requires them.
+Email is the login identifier; there are no username fields, and addresses are stored normalised. First and last name are editable by the user from their profile page and are optional unless the site's signup policy requires them. Users can also upload, replace and remove a profile picture there. It shows wherever their avatar appears, in the header, in messaging and in the educator interface, and a user without one shows their initials. See [security and data handling](./security-and-data-handling.md) for how pictures are stored.
 
 ## Registration
 
