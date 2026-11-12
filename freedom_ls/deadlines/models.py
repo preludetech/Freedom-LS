@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import TYPE_CHECKING
+from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -9,6 +10,7 @@ from django.db import models
 from django.db.models import Q
 
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
+from freedom_ls.deadlines import shifts
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
@@ -384,3 +386,73 @@ class LearnerCourseRegistrationDeadlineConfig(
 
     def __str__(self) -> str:
         return f"Deadline config for {self.learner_registration}"
+
+
+class CoursePause(SiteAwareModel, TimestampedModel):
+    """One pause of one learner's course progress. While it is open the learner's clock is
+    stopped, and the days it lasted move every unmet deadline forward."""
+
+    course_progress = models.ForeignKey(
+        CourseProgress, on_delete=models.CASCADE, related_name="pauses"
+    )
+    started_at = models.DateTimeField()
+    planned_resume_on = models.DateField(null=True, blank=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+    reason = models.TextField()
+    ended_reason = models.TextField(blank=True)
+    started_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    ended_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    resume_announced_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-started_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["course_progress"],
+                condition=Q(ended_at__isnull=True),
+                name="one_unended_pause_per_course_progress",
+            ),
+            models.CheckConstraint(
+                condition=Q(ended_at__isnull=True)
+                | Q(ended_at__gte=models.F("started_at")),
+                name="course_pause_ends_after_it_starts",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        record = self.course_progress
+        return f"{record.learner} on {record.course}, paused {self.started_at:%Y-%m-%d}"
+
+    def planned_resume_instant(self, tz: ZoneInfo) -> datetime | None:
+        """Midnight starting the planned resume day, in the site zone."""
+        if self.planned_resume_on is None:
+            return None
+        return datetime.combine(self.planned_resume_on, time.min, tzinfo=tz)
+
+    def end_instant(self, tz: ZoneInfo) -> datetime | None:
+        """The earlier of the recorded end and the planned resume instant. None while
+        neither is set."""
+        planned = self.planned_resume_instant(tz)
+        ends = [i for i in (self.ended_at, planned) if i is not None]
+        return min(ends) if ends else None
+
+    def is_open(self, now: datetime, tz: ZoneInfo) -> bool:
+        end = self.end_instant(tz)
+        return end is None or end > now
+
+    def paused_days(self, now: datetime, tz: ZoneInfo) -> int:
+        """Whole days this pause has lasted by `now`; an open pause counts up to `now`."""
+        end = self.end_instant(tz)
+        return shifts.paused_days(self.started_at, min(end, now) if end else now)

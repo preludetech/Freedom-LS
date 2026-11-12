@@ -42,6 +42,7 @@ TIMESTAMPED_MODELS = frozenset(
         "freedom_ls_deadlines.CohortDeadlineConfig",
         "freedom_ls_deadlines.CohortDeadlineOverride",
         "freedom_ls_deadlines.CourseDeadlineConfig",
+        "freedom_ls_deadlines.CoursePause",
         "freedom_ls_deadlines.LearnerCourseRegistrationDeadlineConfig",
         "freedom_ls_deadlines.LearnerDeadlineOverride",
         "freedom_ls_deadlines.OrganisationDeadlineConfig",

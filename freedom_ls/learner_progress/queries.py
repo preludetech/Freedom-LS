@@ -122,6 +122,42 @@ def completed_form_item_ids_by_course_progress(
     }
 
 
+def completion_instants(
+    course_progress_ids: Iterable[UUID],
+) -> dict[tuple[UUID, UUID], datetime]:
+    """When each placement was finished, keyed by (course progress id, collection item id).
+
+    A topic is finished at its `complete_time`. A form is finished at the earliest completed
+    sitting that `attempt_completes_form` accepts, so a failed sitting leaves it unmet and a
+    later pass does not move the instant. Placements not finished are absent."""
+    ids = list(course_progress_ids)
+    instants: dict[tuple[UUID, UUID], datetime] = {}
+    topic_rows = TopicProgress._base_manager.filter(
+        course_progress_id__in=ids,
+        collection_item__isnull=False,
+        complete_time__isnull=False,
+    ).values_list("course_progress_id", "collection_item_id", "complete_time")
+    for course_progress_id, collection_item_id, complete_time in topic_rows:
+        if complete_time is not None:
+            instants[(course_progress_id, collection_item_id)] = complete_time
+
+    attempts = CourseFormAttempt._base_manager.filter(
+        course_progress_id__in=ids,
+        collection_item__isnull=False,
+        form_progress__completed_time__isnull=False,
+    ).select_related("form_progress__form")
+    for attempt in attempts:
+        if not attempt_completes_form(attempt.form_progress):
+            continue
+        completed_time = attempt.form_progress.completed_time
+        if completed_time is None or attempt.collection_item_id is None:
+            continue
+        key = (attempt.course_progress_id, attempt.collection_item_id)
+        if key not in instants or completed_time < instants[key]:
+            instants[key] = completed_time
+    return instants
+
+
 def completed_collection_item_ids(record: CourseProgress) -> set[UUID]:
     """The placements one record has finished, topics and forms together.
 
