@@ -73,6 +73,10 @@ Name the specific problem, suggest a specific fix, in plain language. Explain an
 - A confirm dialog states what is true now and what the action changes. The person confirming
   reads the before and the after. A role confirm states the role's description and scope and
   nothing else: no paragraph of help.
+- Every sentence in a confirm is true after the action. A sentence that describes the result
+  matches what the action does, and no sentence promises something the change takes away.
+- A confirm addresses the person as "you" when they act on themselves: "Deactivate your
+  Organisation admin role?", "You lose…", "You keep…".
 - A button in the middle of a multi-step dialog says "Next". The final button of a confirm step
   says "Confirm", or names the change when the noun is always true. A button names what the
   person does, never the system's step ("Look up"), and never a noun that may be untrue for this
@@ -95,6 +99,9 @@ This is how it sounds in FLS.
 
 ✅ A Staff page that opens with its heading, search and filters
 ❌ A Staff page that opens with a paragraph explaining what staff are
+
+✅ Removing your own Organisation admin: "You lose Organisation admin… Someone who can give this role can give it back to you."
+❌ Removing your own Organisation admin: "They lose Organisation admin… You can give the role again later."
 
 ✅ "Deactivate role" beside its role, and "Deactivate staff member" in the row's last column
 ❌ "Deactivate role" and "Deactivate" in the same row
@@ -139,3 +146,8 @@ opens the add dialog.
 
 **Empty state (no courses):**
 > No courses yet. Drop some Markdown files into your content directory and add a course.md to get started. [See the docs →]
+
+## Visual checklist
+
+- A confirm dialog says "you" when the person acts on themselves, and every sentence in it holds
+  after the action: nothing it describes differs from the result, nothing it promises is lost by it.

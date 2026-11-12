@@ -54,6 +54,9 @@ Components live in `freedom_ls/panel_framework/templates/cotton/`: `data-table`,
 - A table row's buttons sit in columns by what they act on. A button for one item in a cell sits
   in its own column, on the same line as its item; the buttons that act on the whole row take the
   last column. One cell never stacks both kinds.
+- On a card, a button for one item sits under that item, inside the item's block; the card never
+  gathers every item's buttons under one shared label. Where the same label repeats for several
+  items, each button's accessible name names its item ("Deactivate Organisation admin").
 - A table whose columns do not fit its own container shows as cards, never behind a sideways
   scroll. The table declares it (`cards_when_narrow`) and the switch reads the container's width,
   not the viewport's, so it also holds beside an open quick view.
@@ -89,6 +92,9 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
   heading for a different job.
 - `<c-panel-card>` looks the same flush or not: the header draws no rule. Flush only drops the
   body padding. A panel never adds its own rule, border or uppercase sub-heading inside the card.
+- A part built for its own page and embedded in a panel (a conversation thread) drops its own
+  header, sits on the panel's padding, and a bar along the card's bottom edge follows the card's
+  rounded corners.
 - Inside a panel, space separates items. A list of people or records is rows in a grid with a gap,
   one column per kind of content (person, role, buttons), so the columns line up.
 
@@ -286,5 +292,9 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
   each option and no line between them; an empty result list draws nothing.
 - A table row's per-item buttons sit on their item's line in their own column, and the
   whole-row buttons sit in the last column.
+- On a card, each item's buttons sit under that item; no card lists every item's buttons together
+  under one label.
+- Content embedded in a panel shows no second header or rule, starts on the panel's left padding,
+  and a bottom bar keeps the card's rounded corners.
 - A row the viewer cannot act on shows its fields and an empty buttons column, with no
   explanatory note or link in its place.
