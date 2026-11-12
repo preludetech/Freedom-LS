@@ -26,6 +26,13 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (user) Decide how the Staff table fits at 768 and with the quick view open (cards at 768 as the QA plan says, or a narrower table), then fix it so every button stays in view — resolved: cards wherever the table's container is too narrow (768, and 1280 beside the quick view)
 - [x] (user) Decide whether a cohort viewer's forged Change role POST on a cohort Settings tab should answer 403 (QA plan) or 404 (current, tab hidden), then align the spec, QA plan and tests — resolved: 404 stays; spec, plan and QA plan say so
 - [x] (user) Decide what to do about QA bug: on a phone the cohort tab strip opens scrolled away from the active Settings tab — resolved: the strip scrolls the active tab into view
+- [ ] (user) Decide what to do about QA bug: Staff page stays on screen, stale, after you deactivate your own Organisation admin role; the first fix was reverted because it redirected cohort admins off the cohort Settings tab (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: the organisation's bare URL (/educator/organisations/<slug>/) renders an empty page (TDD: failing test first, then fix)
+- [ ] (user) Decide how Deactivate role should read when the viewer is removing their own role ('They lose…', 'You can give the role again later'), then change the dialog copy (TDD: failing test first, then fix)
+- [ ] (user) Decide whether deactivating a site admin's last role removes them from the staff list or the dialog stops saying it 'takes them off this organisation's staff list', then align the dialog and the behaviour (TDD: failing test first, then fix)
+- [ ] (user) Decide how a Staff card ties each role to its Deactivate role and Change cohorts buttons when someone holds two roles, then build it and name the role in each button's accessible name (TDD: failing test first, then fix)
+- [ ] (user) Decide how a conversation thread sits inside the learner Messages panel (second header and its rule, left edge, the 'Replies are closed' bar against the rounded card), then fix it (TDD: failing test first, then fix)
+- [ ] (user) Fix the tests the full run after the QA fixes left failing: freedom_ls/educator_interface/tests/playwright/test_cohort_report_layout.py::test_generating_a_report_by_keyboard_keeps_focus_inside_the_downloads_card (fails under parallel runs, passes alone)
 
 ## 4. Documentation and pull request
 
