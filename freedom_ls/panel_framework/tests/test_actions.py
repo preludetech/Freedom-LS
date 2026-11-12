@@ -12,8 +12,8 @@ import pytest
 from django import forms
 from django.contrib.sites.models import Site
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied
-from django.db.models import Model
-from django.http import HttpRequest, HttpResponse
+from django.db.models import Model, QuerySet
+from django.http import Http404, HttpRequest, HttpResponse
 from django.template.loader import render_to_string
 from django.test import RequestFactory
 
@@ -195,6 +195,62 @@ def test_an_unavailable_row_action_has_no_url(mock_site_context: Site) -> None:
         PanelWithRowAction(_ctx(request, item)).get_context_data()["row_action_urls"]
         == {}
     )
+
+
+class StubScopedRowAction(StubRowAction):
+    row_param = "item"
+
+    def get_row_queryset(self, ctx: PanelContext) -> QuerySet[Model]:
+        return cast(QuerySet[Model], StubModel.objects.filter(is_active=True))
+
+
+def _row_ctx(method: str, data: dict[str, str]) -> PanelContext:
+    factory = RequestFactory()
+    request = factory.post("/", data) if method == "POST" else factory.get("/", data)
+    return _ctx(request)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("method", ["GET", "POST"])
+def test_get_row_object_returns_the_row_the_parameter_names(
+    mock_site_context: Site, method: str
+) -> None:
+    item = make_stub()
+
+    row = StubScopedRowAction().get_row_object(_row_ctx(method, {"item": str(item.pk)}))
+
+    assert row == item
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("data", [{}, {"item": "not-a-number"}])
+def test_get_row_object_is_a_404_for_a_missing_or_malformed_parameter(
+    mock_site_context: Site, data: dict[str, str]
+) -> None:
+    make_stub()
+
+    with pytest.raises(Http404):
+        StubScopedRowAction().get_row_object(_row_ctx("GET", data))
+
+
+@pytest.mark.django_db
+def test_get_row_object_is_a_404_for_a_row_outside_the_queryset(
+    mock_site_context: Site,
+) -> None:
+    item = make_stub(is_active=False)
+
+    with pytest.raises(Http404):
+        StubScopedRowAction().get_row_object(_row_ctx("GET", {"item": str(item.pk)}))
+
+
+def test_get_row_object_without_a_row_param_is_misconfigured() -> None:
+    with pytest.raises(ImproperlyConfigured):
+        StubRowAction().get_row_object(_row_ctx("GET", {"item": "1"}))
+
+
+def test_get_row_queryset_has_no_default() -> None:
+    with pytest.raises(NotImplementedError):
+        StubRowAction().get_row_queryset(_row_ctx("GET", {}))
 
 
 def test_navigation_response_closes_the_modal_and_relocates_the_main_content() -> None:
