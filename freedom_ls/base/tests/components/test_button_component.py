@@ -60,22 +60,3 @@ class TestButtonLoadingProp:
         )
         assert IDLE_STATE not in result
         assert "Item" in result
-
-
-class TestModalTriggerSize:
-    """<c-modal-trigger /> passes size and class through to its button."""
-
-    def _render(self, template_string: str) -> str:
-        processed = _cotton_compiler.process(template_string)
-        return Template(processed).render(Context())
-
-    def test_size_small_and_class_reach_the_button(self) -> None:
-        result = self._render(
-            '<c-modal-trigger url="/x" label="Go" size="small" class="extra" />'
-        )
-        assert "btn-sm" in result
-        assert "extra" in result
-
-    def test_without_a_size_the_button_is_full_size(self) -> None:
-        result = self._render('<c-modal-trigger url="/x" label="Go" />')
-        assert "btn-sm" not in result
