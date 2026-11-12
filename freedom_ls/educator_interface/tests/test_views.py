@@ -4660,6 +4660,28 @@ class TestLearnerMessagesTab:
         assert "for me" in text
         assert "for them" not in text
 
+    def test_the_thread_inside_the_panel_draws_no_header_of_its_own(
+        self, msg_client_for
+    ):
+        """The panel's Messages title heads the conversation, so the thread
+        adds no second header (avatar, name and a rule under them), and it
+        keeps the card's padding and rounded corners."""
+        organisation = OrganisationFactory()
+        educator = _msg_educator(organisation)
+        learner = _msg_learner(organisation)
+        conversation = _msg_conversation(educator, learner.user)
+        MessageFactory(conversation=conversation, sender=learner.user, body="hi")
+
+        document = _tab_document(msg_client_for(educator), learner)
+
+        (panel,) = document.xpath("//section[@data-panel='conversation']")
+        (pane,) = panel.xpath(".//section[@x-data='conversationThread']")
+        assert not pane.xpath(".//header")
+        assert not pane.xpath(".//h1 | .//h2 | .//h3")
+        classes = pane.get("class").split()
+        assert "rounded-b-lg" in classes
+        assert "sm:[&_[role=log]]:px-6" in classes
+
     def test_a_learner_with_no_conversation_shows_a_prompt_and_a_composer_posting_to_the_tab(
         self, msg_client_for
     ):

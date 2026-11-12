@@ -1,13 +1,13 @@
 {% extends "panel_framework/panels/panel.html" %}
 {% comment %}
 The educator's own conversation with the learner. A conversation shows as
-the thread pane, sized to fit the card with an h2 so the page keeps its one
-h1. Before the first message the panel says so above the composer that
+the thread pane, sized to fit the card and embedded: the panel's Messages
+title is its heading, so the pane draws no header of its own. Before the first message the panel says so above the composer that
 starts the conversation.
 {% endcomment %}
 {% block panel_body %}
     {% if conversation %}
-        {% include "comms/partials/thread.html" with pane_height="h-[65dvh]" heading_tag="h2" %}
+        {% include "comms/partials/thread.html" with pane_height="h-[65dvh]" embedded=True %}
     {% else %}
         <p class="m-0 px-4 pb-4 text-muted sm:px-6">No messages with {{ learner.user.display_name }} yet.</p>
         {% if composer %}{% include "comms/partials/composer.html" %}{% endif %}
