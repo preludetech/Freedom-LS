@@ -45,13 +45,14 @@ Lead the subject with the spec directory name, as every SDD commit does — e.g.
 
 Both are ignored when the index already has staged changes (see Step 2).
 
-## Step 1: Safety
+## Step 1: Note the branch
 
 ```
 git branch --show-current
 ```
 
-If the branch is `main` or `master`, stop and tell the user. Do not commit.
+Any branch is fine, `main` and `master` included: commit where the work is. Do not stop, switch
+branches or ask.
 
 ## Step 2: Decide what to stage
 
@@ -83,7 +84,8 @@ Never stage environment files, credential files, or key material, whatever the a
 ## Step 3: Write the message
 
 Base it on `git diff --cached --name-only`, `git diff --cached --stat`, and the name of the spec
-directory under `spec_dd/2. in progress/`.
+directory under `spec_dd/2. in progress/`. With no in-progress spec for this work (common on
+`main`), lead with the area the files belong to instead, e.g. `sdd: …`.
 
 - One subject line, imperative, lowercase after the first word, under about 72 characters.
 - A body only when the change spans several unrelated concerns, and then at most three lines.
