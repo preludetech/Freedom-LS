@@ -24,6 +24,7 @@ from freedom_ls.base.env import env_bool, env_float
 from freedom_ls.base.notification_categories import FLS_NOTIFICATION_CATEGORIES
 from freedom_ls.base.theming import FREEDOM_LS_PACKAGE_DIR, configure_theme
 from freedom_ls.base.webhook_event_types import FLS_WEBHOOK_EVENT_TYPES
+from freedom_ls.deployment.storage import PROFILE_PICTURES_PURPOSE, media_csp_sources
 from freedom_ls.google_tag.google_ads import parse_conversion_labels
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -553,6 +554,10 @@ MESSAGING_ENABLED = False
 # events it posts; analytics-ipv6.tiktokw.us is the same pixel's IPv6
 # collection host. Any further host a live Pixel Helper trace shows is added
 # here with a sentence explaining what it does.
+#
+# media_csp_sources(PROFILE_PICTURES_PURPOSE) adds the profile-picture bucket's
+# host to img-src, because avatars load straight from the bucket; it adds
+# nothing while pictures sit on local disk.
 SECURE_CSP_REPORT_ONLY = {
     "default-src": [CSP.SELF],
     "script-src": [
@@ -581,6 +586,7 @@ SECURE_CSP_REPORT_ONLY = {
         "https://www.google.com",
         "https://www.google.co.za",
         "https://www.facebook.com",
+        *media_csp_sources(PROFILE_PICTURES_PURPOSE),
     ],
     "connect-src": [
         CSP.SELF,

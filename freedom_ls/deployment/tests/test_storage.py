@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import pytest
 from botocore.config import Config
@@ -11,13 +12,16 @@ from django.core.exceptions import ImproperlyConfigured
 from django.core.files.base import ContentFile
 from django.core.files.storage import storages
 from django.db.models import FileField
+from django.utils.module_loading import import_string
 
 from config.settings_base import MEDIA_ROOT as WORKING_TREE_MEDIA_ROOT
 from freedom_ls.content_engine.factories import FileFactory
 from freedom_ls.deployment.storage import (
+    _alias_entry,
     bucket_name_for,
     build_s3_media_storage,
     build_storages,
+    media_csp_sources,
 )
 from freedom_ls.deployment.tests.helpers import (
     EXPECTED_ALIASES,
@@ -626,3 +630,84 @@ def test_no_filesystem_backed_alias_pins_a_location() -> None:
 
     assert locations
     assert set(locations.values()) == {None}
+
+
+_SHARED_S3_VARIABLES = (
+    "AWS_STORAGE_BUCKET_NAME",
+    "AWS_S3_CUSTOM_DOMAIN",
+    "AWS_S3_ENDPOINT_URL",
+    "AWS_S3_PROFILE_PICTURES_CUSTOM_DOMAIN",
+    "AWS_S3_PROFILE_PICTURES_ENDPOINT_URL",
+)
+
+
+@pytest.fixture
+def clean_s3_env(monkeypatch: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
+    for name in _SHARED_S3_VARIABLES:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("AWS_S3_PROFILE_PICTURES_BUCKET_NAME", "fls-pictures")
+    return monkeypatch
+
+
+def test_csp_sources_are_empty_without_a_bucket(
+    clean_s3_env: pytest.MonkeyPatch,
+) -> None:
+    clean_s3_env.delenv("AWS_S3_PROFILE_PICTURES_BUCKET_NAME")
+
+    assert media_csp_sources("PROFILE_PICTURES") == []
+
+
+@pytest.mark.parametrize(
+    "variable",
+    ["AWS_S3_PROFILE_PICTURES_CUSTOM_DOMAIN", "AWS_S3_CUSTOM_DOMAIN"],
+)
+def test_csp_sources_name_the_custom_domain(
+    clean_s3_env: pytest.MonkeyPatch, variable: str
+) -> None:
+    clean_s3_env.setenv(variable, "pictures.example.test")
+
+    assert media_csp_sources("PROFILE_PICTURES") == ["https://pictures.example.test"]
+
+
+def test_csp_sources_name_the_endpoint_and_the_bucket_subdomain_without_wildcards(
+    clean_s3_env: pytest.MonkeyPatch,
+) -> None:
+    clean_s3_env.setenv("AWS_S3_ENDPOINT_URL", "https://acct.r2.example.test")
+
+    sources = media_csp_sources("PROFILE_PICTURES")
+
+    assert sources == [
+        "https://acct.r2.example.test",
+        "https://fls-pictures.acct.r2.example.test",
+    ]
+    assert not any("*" in source for source in sources)
+
+
+def test_csp_sources_are_empty_for_a_bucket_with_no_endpoint_or_domain(
+    clean_s3_env: pytest.MonkeyPatch,
+) -> None:
+    assert media_csp_sources("PROFILE_PICTURES") == []
+
+
+@pytest.mark.parametrize(
+    ("variable", "value"),
+    [
+        ("AWS_S3_PROFILE_PICTURES_CUSTOM_DOMAIN", "pictures.example.test"),
+        ("AWS_S3_ENDPOINT_URL", "https://acct.r2.example.test"),
+    ],
+)
+def test_minted_url_origin_is_one_of_the_csp_sources(
+    clean_s3_env: pytest.MonkeyPatch, variable: str, value: str
+) -> None:
+    clean_s3_env.setenv(variable, value)
+    clean_s3_env.setenv("AWS_S3_ACCESS_KEY_ID", "AKIA_TEST")
+    clean_s3_env.setenv(
+        "AWS_S3_SECRET_ACCESS_KEY", "secret"
+    )  # pragma: allowlist secret
+    entry = _alias_entry("PROFILE_PICTURES")
+    backend = import_string(str(entry["BACKEND"]))(**_options_of(entry))
+
+    url = backend.url("profile_pictures/1/a.webp")
+
+    parts = urlsplit(url)
+    assert f"{parts.scheme}://{parts.netloc}" in media_csp_sources("PROFILE_PICTURES")
