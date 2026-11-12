@@ -1,26 +1,38 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from functools import partial
 from typing import cast
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from unfold.admin import ModelAdmin, TabularInline
+from unfold.contrib.filters.admin import (
+    AutocompleteSelectFilter,
+    RelatedDropdownFilter,
+)
+from unfold.dataclasses import UnfoldAction
+from unfold.decorators import action as unfold_action
 
 from django import forms
 from django.contrib import admin
 from django.contrib.admin.utils import unquote
+from django.contrib.sites.models import Site
 from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.db import models
 from django.db.models import BaseConstraint, Model
 from django.forms import BaseInlineFormSet
 from django.forms.formsets import DELETION_FIELD_NAME
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponseRedirect
+from django.shortcuts import redirect
+from django.urls import URLPattern, path, reverse
+from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 from django.utils.safestring import SafeString
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
+from freedom_ls.deadlines.admin_views import pause_view, resume_view
 from freedom_ls.deadlines.consequences import access_end_instant
 from freedom_ls.deadlines.loader import get_deadline_policy
 from freedom_ls.deadlines.models import (
@@ -41,6 +53,7 @@ from freedom_ls.deadlines.queries import (
     ContentDefaults,
     canonical_beneath,
     content_default_for,
+    open_pause,
 )
 from freedom_ls.deadlines.resolver import (
     DeadlineSource,
@@ -55,6 +68,7 @@ from freedom_ls.learner_management.admin import CohortCourseRegistrationAdmin
 from freedom_ls.learner_progress.admin import CourseProgressAdmin
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
+from freedom_ls.site_aware_models.admin_filters import InclusiveRangeDateTimeFilter
 from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
 from freedom_ls.site_aware_models.time_zones import site_time_zone, site_zone_text
 
@@ -449,6 +463,129 @@ def effective_deadline_policy(
     )
 
 
+class CoursePauseInline(TabularInline):
+    """A record's pauses, newest first. Read-only: a pause is started and ended through the
+    pause and resume pages, which write the audit entry and the webhook with it."""
+
+    model = CoursePause
+    exclude = ["site"]
+    extra = 0
+    fields = [
+        "started_at",
+        "planned_resume_on",
+        "ended_at",
+        "state",
+        "paused_days_text",
+        "reason",
+        "started_by",
+        "ended_by",
+    ]
+    readonly_fields = fields
+    verbose_name = "pause"
+
+    def has_add_permission(self, request: HttpRequest, obj: object = None) -> bool:
+        return False
+
+    def has_change_permission(self, request: HttpRequest, obj: object = None) -> bool:
+        return False
+
+    def has_delete_permission(self, request: HttpRequest, obj: object = None) -> bool:
+        return False
+
+    def get_queryset(self, request: HttpRequest) -> models.QuerySet[CoursePause]:
+        rows: models.QuerySet[CoursePause] = super().get_queryset(request)
+        return rows.select_related(
+            "site",
+            "started_by",
+            "ended_by",
+            "course_progress__learner__user",
+            "course_progress__learner__organisation",
+            "course_progress__course",
+        ).order_by("-started_at")
+
+    @admin.display(description="State")
+    def state(self, obj: CoursePause) -> str:
+        return (
+            "Paused"
+            if obj.is_open(timezone.now(), site_time_zone(obj.site))
+            else "Ended"
+        )
+
+    @admin.display(description="Paused days")
+    def paused_days_text(self, obj: CoursePause) -> int:
+        return obj.paused_days(timezone.now(), site_time_zone(obj.site))
+
+
+class PauseStateFilter(admin.SimpleListFilter):
+    """Paused or ended, by the same rule the learner pages use: a pause whose planned
+    resume day has begun is ended even before anything writes its end."""
+
+    title = "state"
+    parameter_name = "state"
+
+    def lookups(
+        self, request: HttpRequest, model_admin: admin.ModelAdmin
+    ) -> list[tuple[str, str]]:
+        return [("paused", "Paused"), ("ended", "Ended")]
+
+    def queryset(
+        self, request: HttpRequest, queryset: models.QuerySet[CoursePause]
+    ) -> models.QuerySet[CoursePause]:
+        if self.value() not in {"paused", "ended"}:
+            return queryset
+        today = (
+            timezone.now()
+            .astimezone(site_time_zone(Site.objects.get_current(request)))
+            .date()
+        )
+        is_open = models.Q(ended_at__isnull=True) & (
+            models.Q(planned_resume_on__isnull=True)
+            | models.Q(planned_resume_on__gt=today)
+        )
+        return queryset.filter(is_open if self.value() == "paused" else ~is_open)
+
+
+@admin.register(CoursePause)
+class CoursePauseAdmin(SiteAwareModelAdmin):
+    """Every pause on the site, for finding who is paused and who paused them."""
+
+    list_display = [
+        "course_progress",
+        "started_at",
+        "planned_resume_on",
+        "ended_at",
+        "started_by",
+        "ended_by",
+    ]
+    list_filter = [
+        ("course_progress__course", AutocompleteSelectFilter),
+        PauseStateFilter,
+        ("started_by", RelatedDropdownFilter),
+        ("started_at", InclusiveRangeDateTimeFilter),
+    ]
+    list_filter_submit = True
+    list_select_related = (
+        "course_progress__learner__user",
+        "course_progress__course",
+        "started_by",
+        "ended_by",
+    )
+    search_fields = (
+        "course_progress__learner__user__email",
+        "course_progress__learner__user__first_name",
+        "course_progress__learner__user__last_name",
+    )
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_change_permission(self, request: HttpRequest, obj: object = None) -> bool:
+        return False
+
+    def has_delete_permission(self, request: HttpRequest, obj: object = None) -> bool:
+        return False
+
+
 # This change page belongs to an app below this one in docs/app_structure.md, so the override
 # inline is added from here rather than imported there. The seam adds rather than replaces.
 CohortCourseRegistrationAdmin.inlines = [
@@ -462,6 +599,7 @@ CohortCourseRegistrationAdmin.inlines = [
 CourseProgressAdmin.inlines = [
     *CourseProgressAdmin.inlines,
     LearnerDeadlineOverrideInline,
+    CoursePauseInline,
 ]
 setattr(CourseProgressAdmin, "effective_deadlines", effective_deadlines)  # noqa: B010
 setattr(  # noqa: B010
@@ -486,6 +624,79 @@ setattr(  # noqa: B010
             {"fields": ("effective_deadlines", "effective_deadline_policy")},
         ),
     ),
+)
+
+
+PAUSE_URL_NAME = "freedom_ls_learner_progress_courseprogress_pause"
+RESUME_URL_NAME = "freedom_ls_learner_progress_courseprogress_resume"
+
+
+@unfold_action(
+    description="Pause course", url_path="pause-course-action", permissions=["change"]
+)
+def pause_course_action(
+    model_admin: ModelAdmin, request: HttpRequest, object_id: str
+) -> HttpResponseRedirect:
+    return redirect(reverse(f"admin:{PAUSE_URL_NAME}", args=[object_id]))
+
+
+@unfold_action(
+    description="Resume course", url_path="resume-course-action", permissions=["change"]
+)
+def resume_course_action(
+    model_admin: ModelAdmin, request: HttpRequest, object_id: str
+) -> HttpResponseRedirect:
+    return redirect(reverse(f"admin:{RESUME_URL_NAME}", args=[object_id]))
+
+
+# The wrappers call the implementation they replace by name: zero-argument super() has no
+# class cell in a function defined outside the class body.
+_courseprogress_get_urls = CourseProgressAdmin.get_urls
+_courseprogress_get_actions_detail = CourseProgressAdmin.get_actions_detail
+
+
+def _get_urls(self: CourseProgressAdmin) -> list[URLPattern]:
+    return [
+        path(
+            "<path:object_id>/pause/",
+            self.admin_site.admin_view(partial(pause_view, model_admin=self)),
+            name=PAUSE_URL_NAME,
+        ),
+        path(
+            "<path:object_id>/resume/",
+            self.admin_site.admin_view(partial(resume_view, model_admin=self)),
+            name=RESUME_URL_NAME,
+        ),
+        *list(_courseprogress_get_urls(self)),
+    ]
+
+
+def _get_actions_detail(
+    self: CourseProgressAdmin, request: HttpRequest, object_id: str
+) -> list[UnfoldAction]:
+    actions: list[UnfoldAction] = _courseprogress_get_actions_detail(
+        self, request, object_id
+    )
+    record = self.get_object(request, unquote(object_id))
+    if record is None:
+        return actions
+    paused = open_pause(record, timezone.now()) is not None
+    hidden = "resume_course_action" if not paused else "pause_course_action"
+    return [a for a in actions if not a.action_name.endswith(hidden)]
+
+
+setattr(CourseProgressAdmin, "pause_course_action", pause_course_action)  # noqa: B010
+setattr(CourseProgressAdmin, "resume_course_action", resume_course_action)  # noqa: B010
+setattr(CourseProgressAdmin, "get_urls", _get_urls)  # noqa: B010
+setattr(CourseProgressAdmin, "get_actions_detail", _get_actions_detail)  # noqa: B010
+setattr(  # noqa: B010
+    CourseProgressAdmin,
+    "actions_detail",
+    [
+        *getattr(CourseProgressAdmin, "actions_detail", []),
+        "pause_course_action",
+        "resume_course_action",
+    ],
 )
 
 

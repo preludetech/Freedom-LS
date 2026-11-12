@@ -36,6 +36,7 @@ from freedom_ls.deadlines.factories import (
 from freedom_ls.deadlines.models import (
     CohortDeadlineOverride,
     CourseDeadlineConfig,
+    CoursePause,
     DeadlineKind,
     LearnerDeadlineOverride,
     SiteDeadlineConfig,
@@ -1173,3 +1174,149 @@ def test_effective_deadlines_names_the_planned_resume_of_a_paused_course(
     body = _progress_page(staff_client, record).content.decode()
 
     assert ", until " in body.split("Paused since ")[1].split("</p>")[0]
+
+
+def _detail_actions(client: Client, record: CourseProgress) -> dict[str, str]:
+    """Title to URL of each action the detail page offers."""
+    response = _progress_page(client, record)
+    return {a["title"]: a["path"] for a in response.context["actions_detail"]}
+
+
+@pytest.mark.django_db
+def test_the_detail_page_offers_pause_and_not_resume_for_an_unpaused_record(
+    staff_client, mock_site_context
+) -> None:
+    record: CourseProgress = CourseProgressFactory()
+
+    actions = _detail_actions(staff_client, record)
+
+    assert "Pause course" in actions
+    assert "Resume course" not in actions
+
+
+@pytest.mark.django_db
+def test_the_detail_page_offers_resume_and_not_pause_for_a_paused_record(
+    staff_client, mock_site_context
+) -> None:
+    record: CourseProgress = CourseProgressFactory()
+    CoursePauseFactory(course_progress=record)
+
+    actions = _detail_actions(staff_client, record)
+
+    assert "Resume course" in actions
+    assert "Pause course" not in actions
+
+
+@pytest.mark.django_db
+def test_the_pause_action_redirects_to_the_pause_page(
+    staff_client, mock_site_context
+) -> None:
+    record: CourseProgress = CourseProgressFactory()
+    actions = _detail_actions(staff_client, record)
+
+    response = staff_client.get(actions["Pause course"])
+
+    assert response.url == reverse(
+        "admin:freedom_ls_learner_progress_courseprogress_pause", args=[record.pk]
+    )
+
+
+@pytest.mark.django_db
+def test_the_progress_page_lists_the_records_pauses_in_the_inline(
+    staff_client, mock_site_context
+) -> None:
+    record: CourseProgress = CourseProgressFactory()
+    CoursePauseFactory(course_progress=record, reason="Medical leave")
+
+    response = _progress_page(staff_client, record)
+
+    assert "Medical leave" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_the_pause_inline_offers_no_way_to_add_change_or_delete(
+    staff_client, mock_site_context
+) -> None:
+    record: CourseProgress = CourseProgressFactory()
+    CoursePauseFactory(course_progress=record)
+    response = _progress_page(staff_client, record)
+    inline = next(
+        i
+        for i in response.context["inline_admin_formsets"]
+        if i.opts.model is CoursePause
+    )
+
+    assert not inline.has_add_permission
+    assert not inline.has_change_permission
+    assert not inline.has_delete_permission
+
+
+def _record_with_pauses(count: int) -> CourseProgress:
+    record: CourseProgress = CourseProgressFactory()
+    start = timezone.now() - timedelta(days=count * 3)
+    for index in range(count):
+        CoursePauseFactory(
+            course_progress=record,
+            started_at=start + timedelta(days=index * 3),
+            ended_at=start + timedelta(days=index * 3 + 1),
+            started_by=UserFactory(),
+            ended_by=UserFactory(),
+        )
+    return record
+
+
+@pytest.mark.django_db
+def test_the_pause_inline_query_count_does_not_grow_with_pauses(
+    staff_client, mock_site_context
+) -> None:
+    few = _record_with_pauses(1)
+    many = _record_with_pauses(8)
+
+    assert _progress_page_query_count(staff_client, many) == _progress_page_query_count(
+        staff_client, few
+    )
+
+
+@pytest.mark.django_db
+def test_the_pause_changelist_stays_under_a_query_bound_for_many_rows(
+    staff_client, mock_site_context, django_assert_max_num_queries
+) -> None:
+    for _ in range(12):
+        CoursePauseFactory(started_by=UserFactory())
+    url = reverse("admin:freedom_ls_deadlines_coursepause_changelist")
+
+    with django_assert_max_num_queries(25):
+        response = staff_client.get(url)
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("state", "expected"), [("paused", ["open"]), ("ended", ["ended"])]
+)
+def test_the_pause_changelist_filters_by_state(
+    staff_client, mock_site_context, state, expected
+) -> None:
+    CoursePauseFactory(reason="open")
+    CoursePauseFactory(reason="ended", ended_at=timezone.now())
+    url = reverse("admin:freedom_ls_deadlines_coursepause_changelist")
+
+    response = staff_client.get(url, {"state": state})
+
+    assert [p.reason for p in response.context["cl"].result_list] == expected
+
+
+@pytest.mark.django_db
+def test_the_pause_admin_allows_no_add_or_delete(
+    staff_client, mock_site_context
+) -> None:
+    pause: CoursePause = CoursePauseFactory()
+
+    add = staff_client.get(reverse("admin:freedom_ls_deadlines_coursepause_add"))
+    delete = staff_client.post(
+        reverse("admin:freedom_ls_deadlines_coursepause_delete", args=[pause.pk]),
+        {"post": "yes"},
+    )
+
+    assert (add.status_code, delete.status_code) == (403, 403)
