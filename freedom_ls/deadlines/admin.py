@@ -38,6 +38,7 @@ from freedom_ls.deadlines.forms import CollectionItemChoiceField
 from freedom_ls.deadlines.loader import get_deadline_policy
 from freedom_ls.deadlines.models import (
     CONFIG_FIELDS,
+    LIMIT_FIELDS,
     SWITCH_FIELDS,
     CohortCourseRegistrationDeadlineConfig,
     CohortDeadlineConfig,
@@ -423,9 +424,11 @@ def effective_deadlines(model_admin: ModelAdmin, record: CourseProgress) -> Safe
     )
 
 
-def _policy_value_text(value: bool | timedelta | str) -> str:
+def _policy_value_text(field: str, value: bool | int | timedelta | str) -> str:
     if isinstance(value, bool):
         return "On" if value else "Off"
+    if isinstance(value, int):
+        return "No limit" if value == 0 and field in LIMIT_FIELDS else str(value)
     if isinstance(value, timedelta):
         return str(value)
     return value.replace("_", " ").capitalize()
@@ -441,7 +444,11 @@ def effective_deadline_policy(
         return format_html("{}", "")
     policy = get_deadline_policy().resolve(record)
     lines = [
-        (field, _policy_value_text(getattr(policy, field)), policy.sources[field])
+        (
+            field,
+            _policy_value_text(field, getattr(policy, field)),
+            policy.sources[field],
+        )
         for field in CONFIG_FIELDS
     ]
     ends_at = access_end_instant(course_deadlines(record).time_limit, policy)

@@ -26,6 +26,7 @@ from freedom_ls.deadlines.actions import (
 from freedom_ls.deadlines.factories import (
     CoursePauseFactory,
     DeadlineExtensionFactory,
+    SiteDeadlineConfigFactory,
 )
 from freedom_ls.deadlines.models import (
     MAX_EXTENSION_DAYS,
@@ -271,6 +272,21 @@ class TestPauseCourse:
             pk=record.learner_registration_id
         ).is_active
         assert _events("registration.deactivated") == []
+
+    def test_succeeds_whatever_the_pause_limits_and_switch_say(self, mock_site_context):
+        SiteDeadlineConfigFactory(
+            learners_may_pause="off", max_pauses=1, max_pause_days=1
+        )
+        record = CourseProgressFactory()
+        CoursePauseFactory(
+            course_progress=record,
+            started_at=datetime(2026, 1, 1, tzinfo=UTC),
+            ended_at=datetime(2026, 2, 1, tzinfo=UTC),
+        )
+
+        pause = pause_course(record, actor=UserFactory(), reason="Away", now=NOW)
+
+        assert pause.ended_at is None
 
     def test_closes_and_announces_a_passed_planned_pause_then_starts_a_new_one(
         self, mock_site_context, django_capture_on_commit_callbacks

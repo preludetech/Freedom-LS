@@ -243,8 +243,15 @@ SWITCH_FIELDS: tuple[str, ...] = (
     "close_items",
     "end_course_access",
     "notify_educators",
+    "learners_may_pause",
 )
-CONFIG_FIELDS: tuple[str, ...] = (*SWITCH_FIELDS, "grace_window", "after_access_ended")
+LIMIT_FIELDS: tuple[str, ...] = ("max_pauses", "max_pause_days")
+CONFIG_FIELDS: tuple[str, ...] = (
+    *SWITCH_FIELDS,
+    "grace_window",
+    "after_access_ended",
+    *LIMIT_FIELDS,
+)
 
 
 def _switch_field(help_text: str) -> models.CharField:
@@ -257,7 +264,7 @@ def _switch_field(help_text: str) -> models.CharField:
 
 
 class DeadlineConfigFields(models.Model):
-    """The six settings a layer may set. Abstract: each layer keeps its own table."""
+    """The settings a layer may set. Abstract: each layer keeps its own table."""
 
     mark_overdue = _switch_field(
         "Show the missed-deadline marker on items past their deadline."
@@ -271,6 +278,7 @@ class DeadlineConfigFields(models.Model):
     notify_educators = _switch_field(
         "Record that educators should be told about missed deadlines."
     )
+    learners_may_pause = _switch_field("Let learners pause this course themselves.")
     grace_window = models.DurationField(
         null=True,
         blank=True,
@@ -287,6 +295,16 @@ class DeadlineConfigFields(models.Model):
             "What a learner can still open once their access has ended. "
             '"Inherit" uses the next layer up.'
         ),
+    )
+    max_pauses = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Empty uses the next layer up; 0 means no limit.",
+    )
+    max_pause_days = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Empty uses the next layer up; 0 means no limit.",
     )
 
     class Meta:

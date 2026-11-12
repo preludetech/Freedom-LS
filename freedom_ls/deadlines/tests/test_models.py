@@ -453,7 +453,11 @@ def test_config_row_defaults_to_inherit_everywhere(
 ) -> None:
     row = config_factory()
 
-    assert [getattr(row, name) for name in SWITCH_FIELDS] == ["inherit"] * 4
+    assert [getattr(row, name) for name in SWITCH_FIELDS] == ["inherit"] * len(
+        SWITCH_FIELDS
+    )
+    assert row.max_pauses is None
+    assert row.max_pause_days is None
     assert row.after_access_ended == "inherit"
     assert row.grace_window is None
 
