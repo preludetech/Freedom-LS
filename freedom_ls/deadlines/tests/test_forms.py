@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date
 
 import pytest
+from unfold.widgets import UnfoldAdminRadioSelectWidget
 
 from django.http import QueryDict
 
@@ -127,3 +128,23 @@ def test_an_item_with_a_non_item_target_is_refused(record_with_item) -> None:
     )
 
     assert "collection_item" in form.errors
+
+
+def test_the_action_form_inputs_carry_the_admin_input_classes(record_with_item) -> None:
+    """The reason, date, days and picker inputs used to render as bare, borderless
+    controls inside the admin card."""
+    record, _ = record_with_item
+    pause = PauseCourseForm()
+    extend = ExtendDeadlineForm(record)
+
+    def classes(form, name: str) -> str:
+        return str(form.fields[name].widget.attrs.get("class", ""))
+
+    assert "border" in classes(pause, "reason")
+    assert "border" in classes(pause, "planned_resume_on")
+    assert pause.fields["planned_resume_on"].widget.input_type == "date"
+    assert "border" in classes(extend, "days")
+    assert "border" in classes(extend, "requested_date")
+    assert extend.fields["requested_date"].widget.input_type == "date"
+    assert "border" in classes(extend, "collection_item")
+    assert isinstance(extend.fields["target_kind"].widget, UnfoldAdminRadioSelectWidget)

@@ -4,6 +4,14 @@ from __future__ import annotations
 
 from typing import cast
 
+from unfold.widgets import (
+    INPUT_CLASSES,
+    UnfoldAdminIntegerFieldWidget,
+    UnfoldAdminRadioSelectWidget,
+    UnfoldAdminSelectWidget,
+    UnfoldAdminTextareaWidget,
+)
+
 from django import forms
 from django.http import QueryDict
 
@@ -11,6 +19,11 @@ from freedom_ls.audit_log.models import REASON_LENGTH
 from freedom_ls.content_engine.models import ContentCollectionItem
 from freedom_ls.deadlines.models import MAX_EXTENSION_DAYS, ExtensionTarget
 from freedom_ls.learner_progress.models import CourseProgress
+
+
+def _date_widget() -> forms.DateInput:
+    """A native date picker styled like Unfold's other admin inputs."""
+    return forms.DateInput(attrs={"type": "date", "class": " ".join(INPUT_CLASSES)})
 
 
 class CollectionItemChoiceField(forms.ModelChoiceField):
@@ -22,13 +35,13 @@ class CollectionItemChoiceField(forms.ModelChoiceField):
 
 
 class ReasonForm(forms.Form):
-    reason = forms.CharField(max_length=REASON_LENGTH, widget=forms.Textarea)
+    reason = forms.CharField(max_length=REASON_LENGTH, widget=UnfoldAdminTextareaWidget)
 
 
 class PauseCourseForm(ReasonForm):
     planned_resume_on = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={"type": "date"}),
+        widget=_date_widget(),
         help_text=(
             "Leave empty to pause until you resume it. Deadlines move by the whole "
             "days paused, rounded up."
@@ -50,22 +63,24 @@ class ExtendDeadlineForm(ReasonForm):
             (ExtensionTarget.TIME_LIMIT, "Course time limit"),
             (ExtensionTarget.COURSE, "Whole course"),
         ],
-        widget=forms.RadioSelect,
+        widget=UnfoldAdminRadioSelectWidget,
     )
     collection_item = CollectionItemChoiceField(
         queryset=ContentCollectionItem.objects.none(),
         required=False,
+        widget=UnfoldAdminSelectWidget,
         help_text="Only for One item.",
     )
     days = forms.IntegerField(
         required=False,
         min_value=1,
         max_value=MAX_EXTENSION_DAYS,
+        widget=UnfoldAdminIntegerFieldWidget,
         help_text="Give days or a date, not both.",
     )
     requested_date = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={"type": "date"}),
+        widget=_date_widget(),
         help_text="The date the deadline should fall on. Not for Whole course.",
     )
     field_order = [
