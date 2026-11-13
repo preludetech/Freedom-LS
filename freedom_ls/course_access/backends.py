@@ -605,7 +605,7 @@ def _paused(
         can_self_register=False,
         can_access_content=False,
         paused_at=pause.started_at,
-        planned_resume_at=pause.planned_resume_instant(tz),
+        planned_resume_at=pause.planned_resume_day_instant(tz),
     )
 
 

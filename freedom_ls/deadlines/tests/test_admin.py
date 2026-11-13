@@ -1204,6 +1204,25 @@ def test_effective_deadlines_names_the_planned_resume_of_a_paused_course(
     assert ", until " in body.split("Paused since ")[1].split("</p>")[0]
 
 
+@pytest.mark.django_db
+def test_effective_deadlines_writes_the_planned_resume_as_a_date_without_a_time(
+    staff_client, mock_site_context
+) -> None:
+    """The planned resume is a day, but it used to read as its midnight, "18 Nov 2026, 00:00 SAST"."""
+    SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
+    record, _ = _record_with_item()
+    CoursePauseFactory(
+        course_progress=record,
+        started_at=datetime(2026, 11, 10, 23, 34, tzinfo=UTC),
+        planned_resume_on=date(2999, 11, 18),
+    )
+
+    body = _progress_page(staff_client, record).content.decode()
+
+    line = body.split("Paused since ")[1].split("</p>")[0]
+    assert line.endswith(", until 18 Nov 2999")
+
+
 def _detail_actions(client: Client, record: CourseProgress) -> dict[str, str]:
     """Title to URL of each action the detail page offers."""
     response = _progress_page(client, record)
