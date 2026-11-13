@@ -91,8 +91,9 @@ class UserForm(forms.ModelForm):
             # The superseded file is deleted when this save commits, so an
             # unsaved form has nothing to hang that on.
             raise ValueError("UserForm.save() does not support commit=False.")
-        superseded = self._stored_profile_picture_name()
-        user: UserModel = super().save()
+        with transaction.atomic():
+            superseded = self._lock_and_read_stored_profile_picture_name()
+            user: UserModel = super().save()
         if superseded and superseded != user.profile_picture.name:
             storage = user.profile_picture.storage
             # Deferred to commit: a save that rolls back keeps the row
@@ -100,16 +101,22 @@ class UserForm(forms.ModelForm):
             transaction.on_commit(lambda: storage.delete(superseded))
         return user
 
-    def _stored_profile_picture_name(self) -> str:
-        """The picture name the database holds now.
+    def _lock_and_read_stored_profile_picture_name(self) -> str:
+        """The picture name the database holds now, with the row locked.
 
-        Read from the database, not the instance: validation has already
-        written the new file onto the instance by the time save() runs.
-        Through the base manager, because `objects` filters to the
-        request's site.
+        The lock makes two saves of the same account run one after the
+        other, so the second reads the file the first wrote and deletes
+        it. Read without a lock, both would read the same old name and
+        one new file would be left with nothing pointing at it.
+
+        Read from the database, not from the form: validation has already
+        put the new file on the instance, and the name the form started
+        with is stale once another save commits. Through the base manager,
+        because `objects` filters to the request's site.
         """
         stored = (
-            User._base_manager.filter(pk=self.instance.pk)
+            User._base_manager.select_for_update()
+            .filter(pk=self.instance.pk)
             .values_list("profile_picture", flat=True)
             .first()
         )

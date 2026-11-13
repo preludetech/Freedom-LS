@@ -9,6 +9,7 @@ import pytest
 from allauth.account.models import EmailAddress
 
 from django.contrib.auth.models import update_last_login
+from django.core.files.base import ContentFile
 from django.db import transaction
 
 from freedom_ls.accounts.factories import UserFactory
@@ -152,15 +153,55 @@ class TestProfilePictureDeletion:
         assert storage.exists(name)
         assert User._base_manager.filter(pk=pk).exists()
 
-    def test_deleting_a_user_without_a_picture_does_nothing(
+    def test_deleting_a_user_removes_every_file_under_their_prefix(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ):
+        user = UserFactory(with_profile_picture=True)
+        storage = user.profile_picture.storage
+        stray = storage.save(
+            f"profile_pictures/{user.pk}/stray.webp", ContentFile(b"left behind")
+        )
+
+        with django_capture_on_commit_callbacks(execute=True):
+            user.delete()
+
+        assert not storage.exists(stray)
+
+    def test_deleting_a_user_without_a_current_picture_still_sweeps_the_prefix(
         self, mock_site_context, django_capture_on_commit_callbacks
     ):
         user = UserFactory()
+        storage = User._meta.get_field("profile_picture").storage
+        stray = storage.save(
+            f"profile_pictures/{user.pk}/stray.webp", ContentFile(b"left behind")
+        )
 
-        with django_capture_on_commit_callbacks(execute=True) as callbacks:
+        with django_capture_on_commit_callbacks(execute=True):
             user.delete()
 
-        assert callbacks == []
+        assert not storage.exists(stray)
+
+    def test_deleting_a_user_leaves_other_users_pictures(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ):
+        user = UserFactory(with_profile_picture=True)
+        other = UserFactory(with_profile_picture=True)
+
+        with django_capture_on_commit_callbacks(execute=True):
+            user.delete()
+
+        assert other.profile_picture.storage.exists(other.profile_picture.name)
+
+    def test_deleting_a_user_who_never_had_a_picture_does_not_fail(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ):
+        user = UserFactory()
+        pk = user.pk
+
+        with django_capture_on_commit_callbacks(execute=True):
+            user.delete()
+
+        assert not User._base_manager.filter(pk=pk).exists()
 
     def test_a_deactivated_user_keeps_the_picture(
         self, mock_site_context, django_capture_on_commit_callbacks

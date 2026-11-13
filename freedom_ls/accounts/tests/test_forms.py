@@ -13,8 +13,9 @@ from PIL import Image
 from django import forms
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.db import transaction
+from django.db import connection, transaction
 from django.test import Client
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
@@ -535,6 +536,22 @@ def test_user_form_deletes_the_superseded_picture_on_commit_not_before(
     assert still_there_before_commit is True
     assert storage.exists(old_name) is False
     assert storage.exists(saved.profile_picture.name) is True
+
+
+@pytest.mark.django_db
+def test_user_form_reads_the_superseded_picture_under_a_row_lock(
+    mock_site_context, pathless_profile_picture_storage
+):
+    """Two saves at once must run one after the other, or each deletes the
+    same old file and one new file is left with nothing pointing at it."""
+    user = UserFactory(with_profile_picture=True)
+    form = _picture_form(user, jpeg_bytes())
+    assert form.is_valid(), form.errors
+
+    with CaptureQueriesContext(connection) as queries:
+        form.save()
+
+    assert any("FOR UPDATE" in query["sql"] for query in queries.captured_queries)
 
 
 class _RollBackError(Exception):

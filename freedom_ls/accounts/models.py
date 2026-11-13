@@ -99,7 +99,12 @@ def profile_picture_upload_to(instance: User, filename: str) -> str:
             "Save the user before giving it a profile picture; an unsaved user "
             "has no pk to put the picture under."
         )
-    return f"profile_pictures/{instance.pk}/{uuid4().hex}.webp"
+    return f"{profile_picture_prefix(instance.pk)}/{uuid4().hex}.webp"
+
+
+def profile_picture_prefix(user_pk: int) -> str:
+    """The folder that holds every picture file stored for one user."""
+    return f"profile_pictures/{user_pk}"
 
 
 class User(SiteAwareModelBase, TimestampedModel, AbstractBaseUser, PermissionsMixin):
