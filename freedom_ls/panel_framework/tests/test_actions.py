@@ -1244,6 +1244,70 @@ def test_delete_action_deletes_on_post(mock_site_context: Site) -> None:
     assert not StubModel.objects.filter(pk=item.pk).exists()
 
 
+class StubRecordingDelete(DeleteAction):
+    """Records every cascade collection, which walks every related row."""
+
+    def __init__(self, known_reason: str = "") -> None:
+        super().__init__(success_url="/items")
+        self.known_reason = known_reason
+        self.collected: list[Model] = []
+
+    def get_cascade_summary(self, instance: Model) -> list[str]:
+        self.collected.append(instance)
+        return super().get_cascade_summary(instance)
+
+    def get_known_blocked_reason(self, ctx: PanelContext, instance: Model) -> str:
+        return self.known_reason
+
+
+@pytest.mark.django_db
+def test_a_delete_refused_by_a_protected_row_does_not_collect_the_cascade_again(
+    mock_site_context: Site,
+) -> None:
+    item = make_stub(name="protected-no-recollect")
+    make_stub_protected_child(parent=item)
+    action = StubRecordingDelete()
+    request = RequestFactory().post("/")
+    request.user = make_staff_user()
+
+    response = action.handle_submit(_ctx(request, item))
+
+    assert response.status_code == 422
+    assert action.collected == []
+
+
+@pytest.mark.django_db
+def test_a_delete_with_a_known_blocked_reason_shows_it_without_collecting(
+    mock_site_context: Site,
+) -> None:
+    item = make_stub(name="known-reason")
+    make_stub_child(parent=item)
+    action = StubRecordingDelete(known_reason="This item is still in use.")
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+
+    document = lxml.html.fromstring(_render(action, _ctx(request, item)))
+
+    (summary,) = document.cssselect("[data-error-summary]")
+    assert "This item is still in use." in summary.text_content()
+    assert not document.cssselect("button[type='submit']")
+    assert action.collected == []
+
+
+@pytest.mark.django_db
+def test_a_delete_with_no_known_blocked_reason_lists_its_cascade(
+    mock_site_context: Site,
+) -> None:
+    item = make_stub(name="no-known-reason")
+    make_stub_child(parent=item)
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+
+    html = _render(StubRecordingDelete(), _ctx(request, item))
+
+    assert "1 stub child" in html.lower()
+
+
 class StubReasonDelete(ReasonMixin, DeleteAction):
     pass
 

@@ -533,7 +533,8 @@ class ConfirmAction(ModalPanelAction):
         """What the dialog's body says, beyond the title and the buttons."""
         return {}
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+    def _dialog_context(self, ctx: PanelContext) -> dict[str, object]:
+        """The dialog around the body: its title, hidden fields and button."""
         return {
             **super().get_context_data(ctx),
             "title": self.get_title(ctx),
@@ -541,8 +542,10 @@ class ConfirmAction(ModalPanelAction):
             "confirm_label": self.confirm_label or self.label,
             "confirm_variant": self.confirm_variant,
             "loading_text": self.loading_text,
-            **self.get_confirm_context(ctx),
         }
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        return {**self._dialog_context(ctx), **self.get_confirm_context(ctx)}
 
     def refuse(self, ctx: PanelContext, message: str, *, title: str) -> HttpResponse:
         """A message dialog saying the change was not made, and why."""
@@ -616,11 +619,11 @@ class DeleteAction(ConfirmAction):
         self, ctx: PanelContext, instance: Model, reason: str
     ) -> HttpResponse:
         """The confirmation re-rendered with `reason` in place of a live
-        delete button, the way a form answers an invalid submit."""
+        delete button, the way a form answers an invalid submit. The reason
+        is already known, so nothing collects the cascade for it."""
         context = {
-            **self.get_context_data(ctx),
-            "cascade_summary": [],
-            "blocked_reason": reason,
+            **self._dialog_context(ctx),
+            **self._body_context(instance, reason),
         }
         html = render_to_string(self.template_name, context, request=ctx.request)
         return HttpResponse(html, status=422)
@@ -634,16 +637,29 @@ class DeleteAction(ConfirmAction):
     def get_title(self, ctx: PanelContext) -> str:
         return f"Delete {self._instance(ctx)}"
 
-    def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
-        """The cascade summary, or, for a delete that a protected relation
-        would block, the reason in its place."""
-        instance = self._instance(ctx)
-        context: dict[str, object] = {
+    def get_known_blocked_reason(self, ctx: PanelContext, instance: Model) -> str:
+        """Why this delete is refused, when that is known without collecting
+        the cascade, which loads every row the delete would remove. Empty
+        when nothing is known to block it."""
+        return ""
+
+    def _body_context(self, instance: Model, blocked_reason: str) -> dict[str, object]:
+        return {
             "instance": instance,
             "noun": instance._meta.verbose_name,
             "cascade_summary": [],
-            "blocked_reason": "",
+            "blocked_reason": blocked_reason,
         }
+
+    def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
+        """The cascade summary, or, for a delete that is known to be refused
+        or that a protected relation would block, the reason in its place."""
+        instance = self._instance(ctx)
+        context = self._body_context(
+            instance, self.get_known_blocked_reason(ctx, instance)
+        )
+        if context["blocked_reason"]:
+            return context
         try:
             context["cascade_summary"] = self.get_cascade_summary(instance)
         except ProtectedError as error:

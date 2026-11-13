@@ -547,16 +547,8 @@ class DeleteEmptyCohortAction(EducatorReasonMixin, DeleteAction):
     def get_title(self, ctx: PanelContext) -> str:
         return f"{super().get_title(ctx)}?"
 
-    def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
-        cohort = cast(Cohort, ctx.instance)
-        reason = cohort_not_empty_sentence(cohort)
-        if reason:
-            return {
-                **super().get_confirm_context(ctx),
-                "cascade_summary": [],
-                "blocked_reason": reason,
-            }
-        return super().get_confirm_context(ctx)
+    def get_known_blocked_reason(self, ctx: PanelContext, instance: Model) -> str:
+        return cohort_not_empty_sentence(cast(Cohort, instance))
 
     def before_delete(self, ctx: PanelContext, instance: Model) -> HttpResponse | None:
         # Lock the cohort so a membership added between this check and the
