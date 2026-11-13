@@ -96,17 +96,22 @@ function focusTriggerOrMain(trigger) {
 }
 
 // Writes the dirty form's own discard wording into a host's discard prompt,
-// as text and never HTML, and leaves the prompt's defaults when the form
-// names none. Shared by appModal and quickView.
+// as text and never HTML, and puts the prompt's defaults back when the form
+// names none: the prompt outlives each form, so the last form's wording would
+// otherwise stay. Shared by appModal and quickView.
 function fillDiscardPrompt(prompt, form) {
-    const title = prompt.querySelector("[data-discard-title]");
-    const body = prompt.querySelector("[data-discard-body]");
-    if (title && form && form.dataset.discardTitle) {
-        title.textContent = form.dataset.discardTitle;
-    }
-    if (body && form && form.dataset.discardBody) {
-        body.textContent = form.dataset.discardBody;
-    }
+    const wording = form ? form.dataset : {};
+    const parts = [
+        [prompt.querySelector("[data-discard-title]"), wording.discardTitle],
+        [prompt.querySelector("[data-discard-body]"), wording.discardBody],
+    ];
+    parts.forEach(([element, text]) => {
+        if (!element) return;
+        if (element.dataset.discardDefault === undefined) {
+            element.dataset.discardDefault = element.textContent;
+        }
+        element.textContent = text || element.dataset.discardDefault;
+    });
 }
 
 // Tracks whether the first form inside a container differs from what it held
