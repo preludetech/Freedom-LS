@@ -300,31 +300,66 @@ somewhere on the page to land.
         <h2>Toolbar</h2>
 
         <div id="toolbar-default">
-            <p class="text-sm text-muted">Use above a list or table with no filter applied yet.</p>
+            <p class="text-sm text-muted">Use above a table: the search form, then each filter as a popover. The "Clear all" link and the actions sit at the end of the row.</p>
             <c-panel-toolbar>
-                <c-slot name="search"><c-panel-search-field name="q" label="Search learners" placeholder="Search by name" /></c-slot>
-                <c-slot name="filters"><c-panel-filter-toggle label="Inactive" /></c-slot>
-                <c-slot name="actions"><c-button variant="secondary">Export</c-button></c-slot>
+                <c-slot name="search">
+                    <form method="get" class="md:w-auto md:min-w-40 md:max-w-72 md:flex-1">
+                        <c-panel-search-field name="q" label="Search learners" label_hidden="true" placeholder="Search by name" />
+                    </form>
+                </c-slot>
+                <c-slot name="filters">
+                    <c-panel-filter-toggle label="Status">
+                        <div class="surface bg-surface absolute z-10 mt-1 min-w-40 space-y-1 p-2">
+                            <a href="#toolbar-default" class="flex items-center gap-2 whitespace-nowrap rounded-md px-2 py-1 text-on-surface no-underline hover:bg-surface-2">Inactive</a>
+                        </div>
+                    </c-panel-filter-toggle>
+                </c-slot>
+                <c-slot name="actions"><c-button variant="secondary" size="small" class="ml-auto">Export</c-button></c-slot>
             </c-panel-toolbar>
         </div>
 
         <div id="toolbar-applied">
-            <p class="text-sm text-muted">Use once a filter is applied, so "Clear all" and the applied chip appear.</p>
-            <c-panel-toolbar clear_all_href="#toolbar-applied">
-                <c-slot name="search"><c-panel-search-field name="q-applied" label="Search learners" label_hidden="true" placeholder="Search by name" /></c-slot>
-                <c-slot name="filters"><c-panel-filter-toggle label="Inactive" pressed="true" /></c-slot>
-                <c-slot name="applied"><c-panel-applied-filter label="Status: Inactive" /></c-slot>
+            <p class="text-sm text-muted">Use once a filter is applied: the toggle's summary names the applied value and carries a remove link. Below md the applied chips move to the mobile row.</p>
+            <c-panel-toolbar sheet_key="toolbar-applied-sheet">
+                <c-slot name="search">
+                    <form method="get" class="md:w-auto md:min-w-40 md:max-w-72 md:flex-1">
+                        <c-panel-search-field name="q-applied" label="Search learners" label_hidden="true" placeholder="Search by name" />
+                    </form>
+                </c-slot>
+                <c-slot name="filters">
+                    <c-panel-filter-toggle>
+                        <c-slot name="summary">
+                            <c-panel-applied-filter label="Status: Inactive" disclosure="true" remove_href="#toolbar-applied" />
+                        </c-slot>
+                        <div class="surface bg-surface absolute z-10 mt-1 min-w-40 space-y-1 p-2">
+                            <a href="#toolbar-applied" class="flex items-center gap-2 whitespace-nowrap rounded-md px-2 py-1 text-on-surface no-underline hover:bg-surface-2">Inactive</a>
+                        </div>
+                    </c-panel-filter-toggle>
+                    <c-button variant="link" size="small" class="shrink-0 whitespace-nowrap" href="#toolbar-applied">Clear all</c-button>
+                </c-slot>
+                <c-slot name="mobile">
+                    <c-panel-applied-filter label="Status: Inactive" remove_href="#toolbar-applied" />
+                </c-slot>
             </c-panel-toolbar>
         </div>
 
         <div class="flex flex-wrap gap-3">
-            <div id="filter-toggle-pressed">
-                <p class="text-sm text-muted">Use when the facet is currently applied.</p>
-                <c-panel-filter-toggle label="Inactive" pressed="true" />
+            <div id="filter-toggle-applied">
+                <p class="text-sm text-muted">Use when the filter is applied: the summary slot names the value.</p>
+                <c-panel-filter-toggle>
+                    <c-slot name="summary"><c-panel-applied-filter label="Status: Inactive" disclosure="true" /></c-slot>
+                    <div class="surface bg-surface absolute z-10 mt-1 min-w-40 space-y-1 p-2">
+                        <a href="#filter-toggle-applied" class="flex items-center gap-2 whitespace-nowrap rounded-md px-2 py-1 text-on-surface no-underline hover:bg-surface-2">Inactive</a>
+                    </div>
+                </c-panel-filter-toggle>
             </div>
-            <div id="filter-toggle-unpressed">
-                <p class="text-sm text-muted">Use when the facet is available but not applied.</p>
-                <c-panel-filter-toggle label="Inactive" />
+            <div id="filter-toggle-unapplied">
+                <p class="text-sm text-muted">Use when the filter is available but not applied.</p>
+                <c-panel-filter-toggle label="Status">
+                    <div class="surface bg-surface absolute z-10 mt-1 min-w-40 space-y-1 p-2">
+                        <a href="#filter-toggle-unapplied" class="flex items-center gap-2 whitespace-nowrap rounded-md px-2 py-1 text-on-surface no-underline hover:bg-surface-2">Inactive</a>
+                    </div>
+                </c-panel-filter-toggle>
             </div>
         </div>
 
@@ -339,8 +374,8 @@ somewhere on the page to land.
         </div>
 
         <div id="applied-filter-default">
-            <p class="text-sm text-muted">Use for one active filter's chip inside a toolbar's applied slot.</p>
-            <c-panel-applied-filter label="Status: Inactive" />
+            <p class="text-sm text-muted">Use for one active filter's chip, with a remove link that works without JavaScript.</p>
+            <c-panel-applied-filter label="Status: Inactive" remove_href="#applied-filter-default" />
         </div>
     </section>
 

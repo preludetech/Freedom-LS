@@ -1,39 +1,47 @@
-<c-vars clear_all_href="" />
+<c-vars layout="row" bound_class="" sheet_key="" />
 
 {% comment %}
-Toolbar — the row above a list or table holding its search, filters and
-actions, plus the chips naming which filters are applied.
+Toolbar — the row above a table holding its search and filters, with a
+second row below md.
 
 Attributes:
-  clear_all_href  Set only when a filter is applied: renders a "Clear all"
-                  link after the applied chips (default none).
+  layout       "row" (default): from md the search, filters and actions share
+               one bordered, padded row; below md that row gives way to the
+               mobile row. "reserve": no controls, but from lg the row keeps
+               the height and rule of "row", so something that replaces the
+               toolbar does not move the content below. "none": a bare
+               wrapper.
+  bound_class  An Alpine expression bound to the wrapper's class (default
+               none).
+  sheet_key    Makes the mobile row an Alpine sidePanel, so a button in it
+               can open the dialog it holds. The key is the sidePanel's
+               storage key. Default none: a plain row.
 
-Named slots: search, filters, actions (each skipped when empty or
-whitespace-only) and applied. The root is a plain <div>, not
-role="toolbar": these are ordinary form controls, not a widget that manages
-its own keyboard navigation. From md the search, filters and actions share
-one row, with the actions right-aligned; below md the search takes the
-full width, since the flex-col layout stretches its block-level children.
+Named slots: search (a form, the first child of the row), filters and actions
+(both shown from md up, the actions pushed to the end by their own
+ml-auto) and mobile (the row shown below md, skipped when empty or
+whitespace-only). The wrapper is a plain <div>, not role="toolbar": these are
+ordinary controls, not a widget that manages its own keyboard navigation.
 
 Usage:
-  <c-panel-toolbar clear_all_href="?">
-    <c-slot name="search"><c-panel-search-field name="q" label="Search" /></c-slot>
-    <c-slot name="filters"><c-panel-filter-toggle label="Inactive" /></c-slot>
-    <c-slot name="actions"><c-button>Export</c-button></c-slot>
-    <c-slot name="applied"><c-panel-applied-filter label="Status: Inactive" /></c-slot>
+  <c-panel-toolbar sheet_key="learners-sheet">
+    <c-slot name="search"><form>...</form></c-slot>
+    <c-slot name="filters"><c-panel-filter-toggle label="Status">...</c-panel-filter-toggle></c-slot>
+    <c-slot name="actions"><c-button class="ml-auto">Export CSV</c-button></c-slot>
+    <c-slot name="mobile"><c-panel-applied-filter label="Status: Inactive" /></c-slot>
   </c-panel-toolbar>
 {% endcomment %}
 
-<div class="space-y-3" {{ attrs }}>
-    <div class="flex flex-col gap-3 md:flex-row md:items-center">
-        {{ search }}
+<div class="{% if layout == 'row' %}md:flex md:flex-wrap md:items-center md:gap-2 md:border-b md:border-border md:px-6 md:py-3 lg:min-h-16.75{% elif layout == 'reserve' %}lg:min-h-16.75 lg:border-b lg:border-border{% endif %}"{% if bound_class %} x-bind:class="{{ bound_class }}"{% endif %} {{ attrs }}>
+    {{ search }}
+    <div class="hidden md:contents">
         {{ filters }}
-        {% if actions.strip %}<div class="md:ml-auto">{{ actions }}</div>{% endif %}
+        {{ actions }}
     </div>
-    {% if applied.strip or clear_all_href %}
-        <div class="flex flex-wrap items-center gap-2">
-            {{ applied }}
-            {% if clear_all_href %}<c-button variant="link" size="small" href="{{ clear_all_href }}">Clear all</c-button>{% endif %}
+    {% if mobile.strip %}
+        <div class="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3 md:hidden"
+             {% if sheet_key %}x-data="sidePanel" data-storage-key="{{ sheet_key }}" data-mobile-only="true"{% endif %}>
+            {{ mobile }}
         </div>
     {% endif %}
 </div>

@@ -63,6 +63,19 @@ work with JavaScript off.
         {% endfor %}
     </div>
 {% endpartialdef %}
+{% partialdef filter-popover %}
+    {% comment %}
+    The body of one filter's popover: a checklist for a grouped filter,
+    otherwise a link per choice.
+    {% endcomment %}
+    {% if entry.filter.widget == "grouped_checklist" %}
+        {% partial grouped-checklist %}
+    {% else %}
+        {% with choices=entry.choices %}
+            {% partial filter-choices %}
+        {% endwith %}
+    {% endif %}
+{% endpartialdef %}
 {% comment %}
 With bulk actions, toolbarClass returns hidden! while the selection bar
 shows, so the bar takes the toolbar's row at every width; important, so it
@@ -73,102 +86,74 @@ matches the bar, so the table's top does not move when one replaces the other.
 A bulk table with no controls keeps that row height from lg for the same
 reason, and is nothing below lg.
 {% endcomment %}
-<div class="{% if searchable or toolbar or sortable_columns or exports %}md:flex md:flex-wrap md:items-center md:gap-2 md:border-b md:border-border md:px-6 md:py-3 lg:min-h-16.75{% elif bulk_actions %}lg:min-h-16.75 lg:border-b lg:border-border{% endif %}"{% if bulk_actions %} x-bind:class="toolbarClass"{% endif %}>
-    {% if searchable %}
-        <form id="{{ query.key }}-search"
-              method="get"
-              action="{{ page_url }}"
-              hx-get="{{ base_url }}"
-              hx-trigger="submit, input changed delay:300ms from:#{{ query.key }}-q, search from:#{{ query.key }}-q"
-              hx-sync="this:replace"
-              hx-target="#{{ region_id }}"
-              hx-swap="outerHTML"
-              class="w-full px-4 pt-3 sm:px-6 md:w-auto md:min-w-40 md:max-w-72 md:flex-1 md:p-0 {% if toolbar or sortable_columns %}pb-0{% else %}border-b border-border pb-3 md:border-0{% endif %}">
-            {% for name, value in hidden_inputs %}
-                <input type="hidden" name="{{ name }}" value="{{ value }}">
-            {% endfor %}
-            <c-panel-search-field name="{{ query.key }}-q" id="{{ query.key }}-q"
-                                  value="{{ query.search }}" label="Search" label_hidden="true"
-                                  placeholder="Search..." hx-preserve />
-        </form>
-    {% endif %}
+<c-panel-toolbar layout="{% if searchable or toolbar or sortable_columns or exports %}row{% elif bulk_actions %}reserve{% else %}none{% endif %}"
+                 bound_class="{% if bulk_actions %}toolbarClass{% endif %}"
+                 sheet_key="{% if toolbar %}{{ query.key }}-sheet{% endif %}">
+    <c-slot name="search">
+        {% if searchable %}
+            <form id="{{ query.key }}-search"
+                  method="get"
+                  action="{{ page_url }}"
+                  hx-get="{{ base_url }}"
+                  hx-trigger="submit, input changed delay:300ms from:#{{ query.key }}-q, search from:#{{ query.key }}-q"
+                  hx-sync="this:replace"
+                  hx-target="#{{ region_id }}"
+                  hx-swap="outerHTML"
+                  class="w-full px-4 pt-3 sm:px-6 md:w-auto md:min-w-40 md:max-w-72 md:flex-1 md:p-0 {% if toolbar or sortable_columns %}pb-0{% else %}border-b border-border pb-3 md:border-0{% endif %}">
+                {% for name, value in hidden_inputs %}
+                    <input type="hidden" name="{{ name }}" value="{{ value }}">
+                {% endfor %}
+                <c-panel-search-field name="{{ query.key }}-q" id="{{ query.key }}-q"
+                                      value="{{ query.search }}" label="Search" label_hidden="true"
+                                      placeholder="Search..." hx-preserve />
+            </form>
+        {% endif %}
+    </c-slot>
 
-    {% comment %}
-    Below md this wrapper is a plain block and the mobile row further down
-    takes over. At md and up the desktop controls use display: contents so
-    they sit in the wrapper's flex row beside the search form.
-    {% endcomment %}
-    <div class="hidden md:contents">
+    <c-slot name="filters">
         {% for entry in toolbar %}
             {% if entry.shown %}
-                <details class="group relative shrink-0">
-                    <summary class="list-none marker:hidden [&::-webkit-details-marker]:hidden">
-                        {% if entry.values %}
-                            <c-chip variant="secondary" class="cursor-pointer">
-                                {{ entry.chip_text }}
-                                {% if not entry.filter.default %}
-                                    {% querystring request.GET entry.remove_changes as remove_qs %}
-                                    <a href="{{ page_url }}{{ remove_qs }}"
-                                       hx-get="{{ base_url }}{{ remove_qs }}"
-                                       hx-target="#{{ region_id }}"
-                                       hx-swap="outerHTML"
-                                       aria-label="Remove {{ entry.filter.label }} filter"
-                                       class="inline-flex text-current no-underline hover:text-primary">
-                                        <c-icon name="close" class="size-3" />
-                                    </a>
-                                {% endif %}
-                                <c-icon name="dropdown" class="size-3 transition-transform group-open:rotate-180" />
-                            </c-chip>
-                        {% else %}
-                            <c-chip variant="secondary" class="cursor-pointer">
-                                {{ entry.filter.label }}
-                                <c-icon name="dropdown" class="size-3 transition-transform group-open:rotate-180" />
-                            </c-chip>
-                        {% endif %}
-                    </summary>
-                    {% if entry.filter.widget == "grouped_checklist" %}
-                        {% partial grouped-checklist %}
-                    {% else %}
-                        {% with choices=entry.choices %}
-                            {% partial filter-choices %}
-                        {% endwith %}
-                    {% endif %}
-                </details>
+                {% if entry.values %}
+                    <c-panel-filter-toggle>
+                        <c-slot name="summary">
+                            {% if entry.filter.default %}
+                                <c-panel-applied-filter label="{{ entry.chip_text }}" disclosure="true" />
+                            {% else %}
+                                {% querystring request.GET entry.remove_changes as remove_qs %}
+                                <c-panel-applied-filter label="{{ entry.chip_text }}" disclosure="true"
+                                                        remove_href="{{ page_url }}{{ remove_qs }}"
+                                                        remove_label="Remove {{ entry.filter.label }} filter"
+                                                        hx-get="{{ base_url }}{{ remove_qs }}"
+                                                        hx-target="#{{ region_id }}"
+                                                        hx-swap="outerHTML" />
+                            {% endif %}
+                        </c-slot>
+                        {% partial filter-popover %}
+                    </c-panel-filter-toggle>
+                {% else %}
+                    <c-panel-filter-toggle label="{{ entry.filter.label }}">
+                        {% partial filter-popover %}
+                    </c-panel-filter-toggle>
+                {% endif %}
             {% endif %}
         {% endfor %}
 
         {% if add_filter %}
-            <details class="group/add relative shrink-0">
-                <summary class="list-none marker:hidden [&::-webkit-details-marker]:hidden">
-                    <c-chip variant="secondary" class="cursor-pointer">
-                        Add filter
-                        <c-icon name="dropdown" class="size-3 transition-transform group-open/add:rotate-180" />
-                    </c-chip>
-                </summary>
+            <c-panel-filter-toggle variant="add" label="Add filter">
                 <div class="surface bg-surface absolute z-10 mt-1 min-w-40 space-y-2 p-2">
                     {% comment %}
                     A filter opened from here sits inside this popover, so its
                     choices render in flow rather than as a second popover.
                     {% endcomment %}
                     {% for entry in add_filter %}
-                        <details class="group">
-                            <summary class="list-none marker:hidden [&::-webkit-details-marker]:hidden flex cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-1 hover:bg-surface-2">
-                                {{ entry.filter.label }}
-                                <c-icon name="dropdown" class="size-3 text-muted transition-transform group-open:rotate-180" />
-                            </summary>
+                        <c-panel-filter-toggle variant="nested" label="{{ entry.filter.label }}">
                             {% with nested=True %}
-                                {% if entry.filter.widget == "grouped_checklist" %}
-                                    {% partial grouped-checklist %}
-                                {% else %}
-                                    {% with choices=entry.choices %}
-                                        {% partial filter-choices %}
-                                    {% endwith %}
-                                {% endif %}
+                                {% partial filter-popover %}
                             {% endwith %}
-                        </details>
+                        </c-panel-filter-toggle>
                     {% endfor %}
                 </div>
-            </details>
+            </c-panel-filter-toggle>
         {% endif %}
 
         {% if any_filter_set %}
@@ -179,35 +164,30 @@ reason, and is nothing below lg.
                       hx-target="#{{ region_id }}"
                       hx-swap="outerHTML">Clear all</c-button>
         {% endif %}
+    </c-slot>
 
+    <c-slot name="actions">
         {% if exports %}
             {% querystring request.GET export_changes as export_qs %}
             <c-button variant="secondary" size="small" icon_left="download" class="ml-auto shrink-0 whitespace-nowrap" href="{{ base_url }}{{ export_qs }}">Export CSV</c-button>
         {% endif %}
-    </div>
+    </c-slot>
 
-    {% if toolbar or sortable_columns or exports %}
-        {# The sidePanel controller drives the filter sheet, which only a table with filters renders; Sort is a dropdown menu. #}
-        <div class="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3 md:hidden"
-             {% if toolbar %}x-data="sidePanel"
-             data-storage-key="{{ query.key }}-sheet"
-             data-mobile-only="true"{% endif %}>
+    <c-slot name="mobile">
+        {% if toolbar or sortable_columns or exports %}
             {% for entry in toolbar %}
                 {% if entry.values %}
-                    <c-chip variant="secondary">
-                        {{ entry.chip_text }}
-                        {% if not entry.filter.default %}
-                            {% querystring request.GET entry.remove_changes as remove_qs %}
-                            <a href="{{ page_url }}{{ remove_qs }}"
-                               hx-get="{{ base_url }}{{ remove_qs }}"
-                               hx-target="#{{ region_id }}"
-                               hx-swap="outerHTML"
-                               aria-label="Remove {{ entry.filter.label }} filter"
-                               class="inline-flex text-current no-underline hover:text-primary">
-                                <c-icon name="close" class="size-3" />
-                            </a>
-                        {% endif %}
-                    </c-chip>
+                    {% if entry.filter.default %}
+                        <c-panel-applied-filter label="{{ entry.chip_text }}" />
+                    {% else %}
+                        {% querystring request.GET entry.remove_changes as remove_qs %}
+                        <c-panel-applied-filter label="{{ entry.chip_text }}"
+                                                remove_href="{{ page_url }}{{ remove_qs }}"
+                                                remove_label="Remove {{ entry.filter.label }} filter"
+                                                hx-get="{{ base_url }}{{ remove_qs }}"
+                                                hx-target="#{{ region_id }}"
+                                                hx-swap="outerHTML" />
+                    {% endif %}
                 {% endif %}
             {% endfor %}
 
@@ -250,6 +230,6 @@ reason, and is nothing below lg.
             {% if toolbar %}
                 {% include "panel_framework/partials/table_sheet.html" %}
             {% endif %}
-        </div>
-    {% endif %}
-</div>
+        {% endif %}
+    </c-slot>
+</c-panel-toolbar>
