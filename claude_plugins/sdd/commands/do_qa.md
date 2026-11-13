@@ -804,7 +804,11 @@ These six categories, and nothing else:
 
 ### If there is nothing to add, add nothing
 
-A clean run adds nothing: omit `add:` and pass only the `tick:`. The report is where observations go.
+A clean run adds nothing: omit `add:`. The report is where observations go.
+
+A clean run also leaves `/sdd:qa_fix` nothing to do. When the section holds no unticked `(user)`
+item for it to work through and `todo.md` has an unticked `/sdd:qa_fix` item, pass a second
+`tick:` with that line verbatim. A checklist without the item gets only the first `tick:`.
 
 ### The section argument
 

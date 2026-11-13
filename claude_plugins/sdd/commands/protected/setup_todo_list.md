@@ -76,7 +76,8 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 - [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 <QA item>
-- [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
+- [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
+- [ ] (user) Review the code and the QA report
 
 ## 4. Documentation and pull request
 
