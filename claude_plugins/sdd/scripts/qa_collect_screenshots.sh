@@ -1,11 +1,12 @@
 #!/bin/bash
 # qa_collect_screenshots.sh — Move screenshots from the shared output dir into the spec dir.
-# Usage: qa_collect_screenshots.sh <spec-dir> <source-dir>
+# Usage: qa_collect_screenshots.sh <spec-dir> <source-dir> [<subfolder>]
 #
 # Takes the QA run's spec directory as $1 and the screenshot source directory as $2,
 # relative to the project root. Both must resolve to a path strictly inside the project.
-# Moves every file from <source-dir> into <spec-dir>/screenshots/, then removes the
-# now-empty source directory so it does not accumulate across runs.
+# Moves every file from <source-dir> into <spec-dir>/screenshots/, or into
+# <spec-dir>/screenshots/<subfolder>/ when $3 is given, then removes the now-empty
+# source directory so it does not accumulate across runs.
 
 set -euo pipefail
 
@@ -79,6 +80,15 @@ if ! inside_project "$SRC_DIR"; then
 fi
 
 DEST_DIR="${SPEC_DIR}/screenshots"
+
+# The subfolder is a plain name, so it can only ever add one level under screenshots/.
+if [ "$#" -ge 3 ]; then
+  if [[ ! "$3" =~ ^[A-Za-z0-9_-]+$ ]]; then
+    echo "Error: subfolder must be a plain name of letters, digits, _ or -: '$3'" >&2
+    exit 1
+  fi
+  DEST_DIR="${DEST_DIR}/$3"
+fi
 
 mkdir -p "$DEST_DIR"
 

@@ -3,7 +3,8 @@
 # Usage: ./qa_cleanup.sh <spec-dir>
 #
 # Takes the QA run's spec directory as $1, relative to the project root, and
-# removes the qa_report.md and screenshots/ directory it holds, so the next run
+# removes the qa_report.md and screenshots/ directory it holds (with its
+# screenshots/<subfolder>/ directories), so the next run
 # starts clean.
 
 set -euo pipefail
@@ -58,23 +59,31 @@ if [ -f "${SPEC_DIR}/qa_report.md" ]; then
   echo "Removed ${SPEC_DIR}/qa_report.md"
 fi
 
-# Remove the screenshots directory file-by-file, then rmdir it. The recursive
+# Remove a screenshots directory file-by-file, then rmdir it. The recursive
 # force-delete form is blocked by the security-guard hook by design, and a
-# per-file loop keeps the blast radius visible.
-SHOTS_DIR="${SPEC_DIR}/screenshots"
-if [ -d "$SHOTS_DIR" ]; then
+# per-file loop keeps the blast radius visible. Subfolders (screenshots/fixed/)
+# go one level deep, through the same loop; anything deeper is left in place.
+remove_shots_dir() {
+  local dir="$1" depth="$2" f
   shopt -s nullglob dotglob
-  for f in "$SHOTS_DIR"/*; do
+  for f in "$dir"/*; do
     if [ -f "$f" ]; then
       rm -f "$f"
+    elif [ -d "$f" ] && [ ! -L "$f" ] && [ "$depth" -eq 0 ]; then
+      remove_shots_dir "$f" 1
     else
-      echo "Warning: leaving non-regular entry in place: $f" >&2
+      echo "Warning: leaving entry in place: $f" >&2
     fi
   done
   shopt -u nullglob dotglob
-  if rmdir "$SHOTS_DIR" 2>/dev/null; then
-    echo "Removed ${SHOTS_DIR}/"
+  if rmdir "$dir" 2>/dev/null; then
+    echo "Removed ${dir}/"
   else
-    echo "Warning: ${SHOTS_DIR}/ not empty after cleanup; left in place" >&2
+    echo "Warning: ${dir}/ not empty after cleanup; left in place" >&2
   fi
+}
+
+SHOTS_DIR="${SPEC_DIR}/screenshots"
+if [ -d "$SHOTS_DIR" ]; then
+  remove_shots_dir "$SHOTS_DIR" 0
 fi
