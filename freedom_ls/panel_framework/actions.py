@@ -16,7 +16,7 @@ from django.core.exceptions import (
 from django.db import transaction
 from django.db.models import Model, QuerySet
 from django.db.models.deletion import ProtectedError
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 
@@ -208,7 +208,10 @@ class PanelAction:
 
     def render_fragment(self, ctx: PanelContext) -> HttpResponse:
         """The response to a GET: the action's template with its context. An
-        action that can refuse the dialog before it opens overrides this."""
+        action that can refuse the dialog before it opens overrides this. An
+        action with no template only takes a POST."""
+        if self.template_name is None:
+            return HttpResponseNotAllowed(["POST"])
         return render(
             ctx.request, self.get_fragment_template_name(), self.get_context_data(ctx)
         )
@@ -216,8 +219,8 @@ class PanelAction:
     def get_fragment_template_name(self) -> str:
         if self.template_name is None:
             raise ImproperlyConfigured(
-                f"{type(self).__name__} has no template_name, so it cannot render "
-                "a fragment on GET."
+                f"{type(self).__name__} has no template_name, so it has no "
+                "fragment to render."
             )
         return self.template_name
 
@@ -419,6 +422,13 @@ class CreateInstanceAction(FormPanelAction):
     def get_success_url(self, ctx: PanelContext, instance: Model) -> str:
         """Return the URL to redirect to after successful creation."""
         raise NotImplementedError
+
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
+        """The form never takes the page's instance: on an instance page it
+        would open filled in with that object and save over it."""
+        kwargs = super().get_form_kwargs(ctx)
+        kwargs.pop("instance", None)
+        return kwargs
 
     def get_capability(self, ctx: PanelContext) -> str | None:
         if self.capability is not None:

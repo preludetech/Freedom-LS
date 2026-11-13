@@ -273,6 +273,16 @@ class TestReportTab:
         assert GeneratedReport.objects.filter(cohort=cohort).count() == 1
         assert "Generating…" in region.text_content()
 
+    def test_a_get_of_the_action_is_not_allowed(self, logged_in_client):
+        cohort = CohortFactory()
+        client = logged_in_client(_org_admin(cohort.organisation))
+        url = _downloads_url(cohort.organisation.slug, cohort.pk)
+
+        response = client.get(f"{url}/__actions/generate_report")
+
+        assert response.status_code == 405
+        assert GeneratedReport.objects.filter(cohort=cohort).count() == 0
+
     def test_posting_again_while_one_is_in_flight_returns_the_same_region_without_a_second_report(
         self, logged_in_client
     ):
