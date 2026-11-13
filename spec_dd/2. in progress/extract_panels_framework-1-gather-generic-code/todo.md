@@ -25,6 +25,8 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (user) Decide what a bulk dialog's disabled confirm says beside it before a picker choice is made (e.g. Add to cohort with no cohort chosen), then show it and name it with aria-describedby
 - [x] (user) Decide whether to keep `freedom_ls/qa_helpers/management/commands/qa_create_dev_org_baseline.py` (written by the QA data helper to seed the dev organisation; uncommitted), then commit or delete it
 - [x] (user) Decide whether the learner import error section is an error notice (as the QA plan says) or stays a warning notice so its role=alert does not announce the whole error table, then align the template or the QA plan
+- [ ] (user) Decide whether main's course outline table (`educator_interface/templates/educator_interface/panels/course_content.html`) stays exempt from the hand-written-table invariant (`HAND_WRITTEN_TABLE_EXEMPTIONS` in `panel_framework/tests/invariants/test_templates.py`, added during the rebase), or moves onto `<c-panel-table>`/`<c-data-table>`
+- [ ] (user) Delete the local backup branch `extract_panels_framework-1-rebase-wip` (partial rebase progress) once you are happy with the rebase onto main
 
 ## 4. Documentation and pull request
 
