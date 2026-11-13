@@ -158,6 +158,8 @@ def test_the_toggle_is_read_under_whatever_key_the_table_declares_it(
     inactive = CohortFactory(organisation=organisation, name="B", is_active=False)
 
     class RenamedToggleCohortDataTable(CohortDataTable):
+        inactive_toggle_key = "all"
+
         @classmethod
         def get_filters(cls) -> list[TableFilter]:
             return [ToggleFilter("all", "Show all")]
@@ -174,6 +176,28 @@ def test_the_toggle_is_read_under_whatever_key_the_table_declares_it(
     ) == [
         active,
         inactive,
+    ]
+
+
+@pytest.mark.django_db
+def test_another_toggle_listed_first_does_not_stand_in_for_show_inactive(
+    site_aware_request: RequestFactory,
+):
+    organisation = OrganisationFactory()
+    request = _educator_request(site_aware_request, organisation)
+    active = CohortFactory(organisation=organisation, name="A")
+    CohortFactory(organisation=organisation, name="B", is_active=False)
+
+    class TwoToggleCohortDataTable(CohortDataTable):
+        @classmethod
+        def get_filters(cls) -> list[TableFilter]:
+            return [ToggleFilter("mine", "Only mine"), *super().get_filters()]
+
+    query = TableQuery(key="cohorts", filters={"mine": ["1"]})
+    queryset = TwoToggleCohortDataTable.get_queryset(request)
+
+    assert list(TwoToggleCohortDataTable.filter_queryset(request, queryset, query)) == [
+        active
     ]
 
 

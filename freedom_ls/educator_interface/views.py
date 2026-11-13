@@ -422,6 +422,8 @@ class CohortDataTable(DataTable):
     empty_no_results = "No cohorts match these filters."
     search_fields = ["name"]
     default_sort = "name"
+    #: The key of the toggle that widens the table to inactive cohorts.
+    inactive_toggle_key = "inactive"
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
@@ -486,7 +488,7 @@ class CohortDataTable(DataTable):
     @classmethod
     def get_filters(cls) -> list[TableFilter]:
         return [
-            ToggleFilter("inactive", "Show inactive"),
+            ToggleFilter(cls.inactive_toggle_key, "Show inactive"),
             VisibleCourseFilter(
                 "course", "Course", lookup="course_registrations__course"
             ),
@@ -497,11 +499,13 @@ class CohortDataTable(DataTable):
         cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
     ) -> QuerySet:
         # The toggle can only widen, so the table excludes inactive cohorts
-        # itself whenever it offers the toggle and the toggle is unset.
-        toggle = next(
-            (f for f in cls.get_filters() if isinstance(f, ToggleFilter)), None
+        # itself whenever it offers the toggle and the toggle is unset. Another
+        # toggle on the table is not this one, so the match is by key.
+        offers_toggle = any(
+            isinstance(f, ToggleFilter) and f.key == cls.inactive_toggle_key
+            for f in cls.get_filters()
         )
-        if toggle is not None and toggle.key not in query.filters:
+        if offers_toggle and cls.inactive_toggle_key not in query.filters:
             queryset = queryset.filter(is_active=True)
         return super().filter_queryset(request, queryset, query)
 
@@ -3126,8 +3130,9 @@ def learner_import_preview(
     for row in page_obj:
         row.tone = PREVIEW_LABEL_TONES[row.preview_label]
     template = "educator_interface/learner_import_preview.html"
-    if request.headers.get("HX-Request") == "true":
-        # A page link swaps in only the rows card.
+    if request.headers.get("HX-Target") == "import-rows":
+        # A page link swaps in only the rows card. Any other htmx request (a
+        # redirect followed here, a navigation link) needs the whole page.
         template = f"{template}#rows"
     return _import_page(
         request,

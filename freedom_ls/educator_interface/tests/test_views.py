@@ -6118,12 +6118,34 @@ def test_an_htmx_page_request_for_the_preview_returns_only_the_rows_card(
     )
 
     response = import_world.client.get(
-        f"{preview_url}?label=error&page=2", headers={"HX-Request": "true"}
+        f"{preview_url}?label=error&page=2",
+        headers={"HX-Request": "true", "HX-Target": "import-rows"},
     )
 
     page = lxml.html.fromstring(response.content.decode())
     assert len(page.cssselect("[data-import-rows] tbody tr")) == 1
     assert not page.cssselect("[data-label-filter]")
+
+
+@pytest.mark.django_db
+def test_an_htmx_request_for_the_preview_from_elsewhere_returns_the_whole_preview(
+    import_world: SimpleNamespace,
+):
+    """htmx following a redirect here, or a navigation link, swaps the main
+    content, so it needs the tiles and the confirm form as well as the rows."""
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, *_numbered_lines(2, 3)
+    )
+    preview_url = _import_url(
+        import_world.organisation, "learner_import_preview", learner_import
+    )
+
+    response = import_world.client.get(
+        preview_url, headers={"HX-Request": "true", "HX-Target": "main-content"}
+    )
+
+    page = lxml.html.fromstring(response.content.decode())
+    assert page.cssselect("[data-label-filter]")
 
 
 @pytest.mark.django_db
