@@ -63,13 +63,14 @@ memory lives at `.claude/agent-memory/sdd-qa-data-helper/`. `qa-bugfixer` (Sonne
 QA-reported bug TDD-style (failing test, fix, targeted tier, commit), using the skills under
 `## Testing Skills` in `.claude/sdd/config.md`.
 
-### Skills (4)
+### Skills (5)
 `claude-code-authoring` (+4 resources: `subagents`, `model_tiering`, `fanout_recipe`, `interactive_cli`) —
 how Claude Code commands/skills/agents actually behave (targets 2.1.x); `git-worktree-setup` — the generic
 bare-repo/worktree mechanics;
 `update-claude-project-settings` — audits `.claude/settings.json` and promotes useful permissions from
 `.claude/settings.local.json`; `planning-references-in-code` — keeps spec, plan, slice, batch, QA-bug and
-`spec_dd/` references out of code comments, docstrings and test names.
+`spec_dd/` references out of code comments, docstrings and test names; `outstanding-items` — puts
+everything outstanding from the user into the spec's `todo.md`, so the chat never holds the only copy.
 
 ### Scripts (9 files)
 `upstream_change_scan.sh`, `land_on_main.sh`, `design_screenshots.sh` (+ `design_screenshots.py`) — the
