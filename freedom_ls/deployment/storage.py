@@ -120,29 +120,49 @@ def _property_name(purpose: str, prop: str, shared: str) -> str:
     return first_set_name(f"AWS_S3_{purpose}_{prop}", shared) or shared
 
 
+def custom_domain_for(purpose: str) -> str | None:
+    """The custom domain `purpose`'s URLs are minted on, if any.
+
+    A purpose that must sign its URLs reads only its own variable. On a
+    custom domain django-storages mints unsigned URLs unless a CloudFront
+    signer is configured, so the shared AWS_S3_CUSTOM_DOMAIN, set for the
+    public logos, would quietly make private files public.
+    """
+    own = f"AWS_S3_{purpose}_CUSTOM_DOMAIN"
+    if purpose in SIGNED_URL_PURPOSES:
+        return env_str(own)
+    return env_str(_property_name(purpose, "CUSTOM_DOMAIN", "AWS_S3_CUSTOM_DOMAIN"))
+
+
 def media_csp_sources(purpose: str) -> list[str]:
     """The origins a browser loads `purpose`'s objects from; empty on local disk.
 
-    Reads the same custom domain or endpoint `_alias_entry` hands the storage,
-    so the policy and the URLs the storage mints cannot name different hosts.
+    Reads the same custom domain, endpoint and region `_alias_entry` hands
+    the storage, so the policy and the URLs the storage mints cannot name
+    different hosts.
     """
     bucket, _from_shared = bucket_name_for(purpose)
     if not bucket:
         return []
-    custom_domain = env_str(
-        _property_name(purpose, "CUSTOM_DOMAIN", "AWS_S3_CUSTOM_DOMAIN")
-    )
+    custom_domain = custom_domain_for(purpose)
     if custom_domain:
         return [f"https://{custom_domain}"]
     endpoint = env_str(_property_name(purpose, "ENDPOINT_URL", "AWS_S3_ENDPOINT_URL"))
     if not endpoint:
-        return []
-    host = urlsplit(endpoint).netloc
+        # Plain AWS: boto3 puts the bucket in a subdomain of the global host,
+        # or of the regional one when a region is named.
+        sources = [f"https://{bucket}.s3.amazonaws.com"]
+        region = env_str(_property_name(purpose, "REGION_NAME", "AWS_S3_REGION_NAME"))
+        if region and region != "auto":
+            sources.append(f"https://{bucket}.s3.{region}.amazonaws.com")
+        return sources
+    parts = urlsplit(endpoint)
+    scheme, host = parts.scheme or "https", parts.netloc
     # A signed URL puts the bucket in the path or in a subdomain of the
     # endpoint, depending on the addressing style the client picks. The
     # subdomain is named, never wildcarded: a wildcard would allow every
     # other bucket on a shared endpoint host.
-    return [f"https://{host}", f"https://{bucket}.{host}"]
+    return [f"{scheme}://{host}", f"{scheme}://{bucket}.{host}"]
 
 
 def _alias_entry(purpose: str) -> dict[str, object]:
@@ -170,9 +190,7 @@ def _alias_entry(purpose: str) -> dict[str, object]:
         region_name=env_str(
             _property_name(purpose, "REGION_NAME", "AWS_S3_REGION_NAME")
         ),
-        custom_domain=env_str(
-            _property_name(purpose, "CUSTOM_DOMAIN", "AWS_S3_CUSTOM_DOMAIN")
-        ),
+        custom_domain=custom_domain_for(purpose),
         querystring_auth=env_bool(
             _property_name(purpose, "QUERYSTRING_AUTH", "AWS_QUERYSTRING_AUTH"), True
         ),

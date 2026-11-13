@@ -521,6 +521,22 @@ def test_one_private_alias_opting_out_is_reported_on_its_own(
     assert "AWS_S3_GENERATED_QUERYSTRING_AUTH" in errors[0].hint
 
 
+def test_a_private_alias_on_a_custom_domain_is_reported_as_unsigned(
+    production_env: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """django-storages mints an unsigned URL for a custom domain unless a
+    CloudFront signer is configured, whatever querystring_auth says."""
+    monkeypatch.setenv("AWS_S3_PROFILE_PICTURES_CUSTOM_DOMAIN", "pictures.example.test")
+
+    with override_settings(STORAGES=_storages_from_env()):
+        errors = check_private_media_aliases_sign_their_urls()
+
+    assert [error.id for error in errors] == ["freedom_ls_deployment.E004"]
+    assert "profile_pictures" in errors[0].msg
+    assert errors[0].hint is not None
+    assert "AWS_S3_PROFILE_PICTURES_CUSTOM_DOMAIN" in errors[0].hint
+
+
 def test_a_media_alias_on_local_disk_is_not_reported_as_unsigned() -> None:
     """Local disk has no signing to lose. E002 owns that whole class."""
     with override_settings(

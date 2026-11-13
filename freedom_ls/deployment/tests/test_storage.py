@@ -638,6 +638,8 @@ _SHARED_S3_VARIABLES = (
     "AWS_S3_ENDPOINT_URL",
     "AWS_S3_PROFILE_PICTURES_CUSTOM_DOMAIN",
     "AWS_S3_PROFILE_PICTURES_ENDPOINT_URL",
+    "AWS_S3_REGION_NAME",
+    "AWS_S3_PROFILE_PICTURES_REGION_NAME",
 )
 
 
@@ -657,16 +659,34 @@ def test_csp_sources_are_empty_without_a_bucket(
     assert media_csp_sources("PROFILE_PICTURES") == []
 
 
-@pytest.mark.parametrize(
-    "variable",
-    ["AWS_S3_PROFILE_PICTURES_CUSTOM_DOMAIN", "AWS_S3_CUSTOM_DOMAIN"],
-)
-def test_csp_sources_name_the_custom_domain(
-    clean_s3_env: pytest.MonkeyPatch, variable: str
+def test_csp_sources_name_the_purposes_own_custom_domain(
+    clean_s3_env: pytest.MonkeyPatch,
 ) -> None:
-    clean_s3_env.setenv(variable, "pictures.example.test")
+    clean_s3_env.setenv(
+        "AWS_S3_PROFILE_PICTURES_CUSTOM_DOMAIN", "pictures.example.test"
+    )
 
     assert media_csp_sources("PROFILE_PICTURES") == ["https://pictures.example.test"]
+
+
+def test_csp_sources_ignore_the_shared_custom_domain_for_a_signed_purpose(
+    clean_s3_env: pytest.MonkeyPatch,
+) -> None:
+    clean_s3_env.setenv("AWS_S3_CUSTOM_DOMAIN", "cdn.example.test")
+    clean_s3_env.setenv("AWS_S3_ENDPOINT_URL", "https://acct.r2.example.test")
+
+    assert "https://cdn.example.test" not in media_csp_sources("PROFILE_PICTURES")
+
+
+def test_csp_sources_keep_the_endpoints_own_scheme(
+    clean_s3_env: pytest.MonkeyPatch,
+) -> None:
+    clean_s3_env.setenv("AWS_S3_ENDPOINT_URL", "http://localhost:9000")
+
+    assert media_csp_sources("PROFILE_PICTURES") == [
+        "http://localhost:9000",
+        "http://fls-pictures.localhost:9000",
+    ]
 
 
 def test_csp_sources_name_the_endpoint_and_the_bucket_subdomain_without_wildcards(
@@ -683,10 +703,26 @@ def test_csp_sources_name_the_endpoint_and_the_bucket_subdomain_without_wildcard
     assert not any("*" in source for source in sources)
 
 
-def test_csp_sources_are_empty_for_a_bucket_with_no_endpoint_or_domain(
+def test_csp_sources_name_the_aws_bucket_host_with_no_endpoint_or_domain(
     clean_s3_env: pytest.MonkeyPatch,
 ) -> None:
-    assert media_csp_sources("PROFILE_PICTURES") == []
+    clean_s3_env.delenv("AWS_S3_REGION_NAME", raising=False)
+    clean_s3_env.delenv("AWS_S3_PROFILE_PICTURES_REGION_NAME", raising=False)
+
+    assert media_csp_sources("PROFILE_PICTURES") == [
+        "https://fls-pictures.s3.amazonaws.com"
+    ]
+
+
+def test_csp_sources_add_the_regional_aws_host_when_a_region_is_set(
+    clean_s3_env: pytest.MonkeyPatch,
+) -> None:
+    clean_s3_env.setenv("AWS_S3_REGION_NAME", "eu-west-1")
+
+    assert media_csp_sources("PROFILE_PICTURES") == [
+        "https://fls-pictures.s3.amazonaws.com",
+        "https://fls-pictures.s3.eu-west-1.amazonaws.com",
+    ]
 
 
 @pytest.mark.parametrize(
@@ -694,6 +730,7 @@ def test_csp_sources_are_empty_for_a_bucket_with_no_endpoint_or_domain(
     [
         ("AWS_S3_PROFILE_PICTURES_CUSTOM_DOMAIN", "pictures.example.test"),
         ("AWS_S3_ENDPOINT_URL", "https://acct.r2.example.test"),
+        ("AWS_S3_REGION_NAME", "eu-west-1"),
     ],
 )
 def test_minted_url_origin_is_one_of_the_csp_sources(
@@ -711,3 +748,43 @@ def test_minted_url_origin_is_one_of_the_csp_sources(
 
     parts = urlsplit(url)
     assert f"{parts.scheme}://{parts.netloc}" in media_csp_sources("PROFILE_PICTURES")
+
+
+@pytest.mark.parametrize(
+    "alias", ["course_media", "user_uploads", "profile_pictures", "reports"]
+)
+def test_shared_custom_domain_does_not_reach_a_signed_alias(
+    production_env: None, monkeypatch: pytest.MonkeyPatch, alias: str
+) -> None:
+    """A custom domain makes django-storages mint unsigned URLs, so the shared
+    one, set for the public logos, must not reach a private alias."""
+    monkeypatch.setenv("AWS_S3_CUSTOM_DOMAIN", "cdn.example.test")
+
+    storages = build_storages(staticfiles={"BACKEND": "some.backend"})
+
+    assert "custom_domain" not in _options_of(storages[alias])
+
+
+def test_shared_custom_domain_still_reaches_an_unsigned_alias(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AWS_S3_PUBLIC_BUCKET_NAME", "fls-public")
+    monkeypatch.delenv("AWS_S3_PUBLIC_CUSTOM_DOMAIN", raising=False)
+    monkeypatch.setenv("AWS_S3_CUSTOM_DOMAIN", "cdn.example.test")
+
+    storages = build_storages(staticfiles={"BACKEND": "some.backend"})
+
+    assert _options_of(storages["public"])["custom_domain"] == "cdn.example.test"
+
+
+def test_a_signed_alias_takes_its_own_custom_domain(
+    production_env: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AWS_S3_PROFILE_PICTURES_CUSTOM_DOMAIN", "pictures.example.test")
+
+    storages = build_storages(staticfiles={"BACKEND": "some.backend"})
+
+    assert (
+        _options_of(storages["profile_pictures"])["custom_domain"]
+        == "pictures.example.test"
+    )

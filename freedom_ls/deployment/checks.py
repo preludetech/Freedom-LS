@@ -314,7 +314,12 @@ def check_private_media_aliases_sign_their_urls(
             storage = storages[alias]
         except InvalidStorageError:
             continue
-        if not isinstance(storage, S3Storage) or storage.querystring_auth:
+        if not isinstance(storage, S3Storage):
+            continue
+        if storage.custom_domain and not storage.cloudfront_signer:
+            errors.append(_custom_domain_serves_unsigned(alias, purpose))
+            continue
+        if storage.querystring_auth:
             continue
         errors.append(
             Error(
@@ -331,6 +336,19 @@ def check_private_media_aliases_sign_their_urls(
             )
         )
     return errors
+
+
+def _custom_domain_serves_unsigned(alias: str, purpose: str) -> Error:
+    return Error(
+        f"Storage alias {alias!r} serves its files from a custom domain with no "
+        f"CloudFront signer, so its URLs are unsigned and never expire. Files "
+        f"meant for {alias!r} would be readable by anyone who is handed one.",
+        hint=(
+            f"Unset AWS_S3_{purpose}_CUSTOM_DOMAIN so {alias!r} mints signed "
+            f"bucket URLs, or configure a CloudFront signer for it."
+        ),
+        id="freedom_ls_deployment.E004",
+    )
 
 
 @register(Tags.caches, deploy=True)
