@@ -161,4 +161,4 @@ Done when the hook has returned `ok`, `failed`, `blocked` or `paused`; any of th
 
 ## Step 6: Final report
 
-Report the QA report path, the bug counts per lane, the `Decide` items filed, and the next human step from `todo.md`. Anything the report leaves for the user is already a `todo.md` line (Step 4, the QA hook, or the `sdd:outstanding-items` skill for anything raised since); the report names it and points there. A QA hook that returned `failed`, `blocked` or `paused` is reported with its reason; the implementation commits are already on the branch, and `/sdd:do_qa` is the command that continues.
+Report the QA report path, the bug counts per lane, the `Decide` items filed (`/sdd:qa_fix` works through them), and the next human step from `todo.md`. Anything the report leaves for the user is already a `todo.md` line (Step 4, the QA hook, or the `sdd:outstanding-items` skill for anything raised since); the report names it and points there. A QA hook that returned `failed`, `blocked` or `paused` is reported with its reason; the implementation commits are already on the branch, and `/sdd:do_qa` is the command that continues.

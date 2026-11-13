@@ -17,6 +17,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
 - [x] (user) Decide what to do about QA bug: component reference page has no panel-notice examples (TDD: failing test first, then fix)
 - [x] (user) Decide what to do about QA bug: learners table mixes '—' (Cohorts) and '-' (Courses, learner_courses.html) for empty cells (TDD: failing test first, then fix)

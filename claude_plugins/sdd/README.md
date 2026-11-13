@@ -12,10 +12,10 @@ Manifest name: `sdd`. Namespace: `/sdd:*`, `Skill(sdd:*)`.
 
 ## What's inside (counted from disk)
 
-### Commands (15 files)
+### Commands (16 files)
 Flat under `commands/`: `README` (the workflow guide), `init`, `roadmap`, `register_design`, `start`,
 `spec_from_idea`, `spec_review`, `plan_from_spec`, `implement_plan`, `document`, `commit_quickly`,
-`make_pr_quickly`, `finish_worktree`, `address_pr_review`, `do_qa`.
+`make_pr_quickly`, `finish_worktree`, `address_pr_review`, `do_qa`, `qa_fix`.
 
 `/sdd:document` invokes the skills the project lists under `## Documentation Hooks` in
 `.claude/sdd/config.md`, in order, in hook mode, then executes the documentation items in `todo.md` and opens the pull request. Each hook is a skill that commits
@@ -31,6 +31,10 @@ under `## QA Hooks` into the checklist as the QA step, or a by-hand item when th
 key when the browser server, port finder or a dev-server command is blank. It makes no data of its
 own: it delegates to `sdd:qa-data-helper` or runs a `## QA Dev Data` command, and lists each change
 in the report.
+
+`/sdd:qa_fix` works through the `(user)` items a QA run left in `todo.md`. It researches each one,
+asks for one decision at a time, has `sdd:qa-bugfixer` make each code fix test-first, runs the full
+tier, and ticks what it closed. `/sdd:start` writes it into the checklist after the QA step.
 
 `/sdd:roadmap` owns the spec roadmap, `spec_dd/1. next/roadmap.md`: what is up next, then one
 section per feature listing its specs (in progress, ready or blocked), an SVG dependency diagram
