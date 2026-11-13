@@ -76,6 +76,17 @@ def test_instance_dialogs_and_heading(
     )
     assert page.title() == "Renamed again — Scope — Site"
 
+    # The header re-requests itself when a header refresh event reaches the
+    # body, so a change made elsewhere shows without a reload.
+    subtitle = page.locator("#instance-header").get_by_text("Subtitle of Original Name")
+    expect(subtitle).to_be_visible()
+    StubModel.objects.filter(pk=stub.pk).update(name="Changed Elsewhere")
+    page.evaluate("document.body.dispatchEvent(new CustomEvent('itemChanged'))")
+    expect(
+        page.locator("#instance-header").get_by_text("Subtitle of Changed Elsewhere")
+    ).to_be_visible()
+    StubModel.objects.filter(pk=stub.pk).update(name="Original Name")
+
     # A long title with no spaces does not widen the page.
     page.set_viewport_size(_NARROW_VIEWPORT)
     page.goto(f"{base}/{long_stub.pk}")

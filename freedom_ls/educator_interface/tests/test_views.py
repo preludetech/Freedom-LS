@@ -667,8 +667,8 @@ def test_the_learner_header_refreshes_on_learner_changed(staff_client: Client):
         staff_client, _interface_url(organisation.slug, f"learners/{learner.pk}")
     )
 
-    (refresher,) = document.cssselect("#instance-header [data-header-refresh-events]")
-    assert refresher.get("data-header-refresh-events") == LEARNER_CHANGED
+    (refresher,) = document.cssselect("#instance-header [data-refresh-events]")
+    assert refresher.get("data-refresh-events") == LEARNER_CHANGED
 
 
 @pytest.mark.django_db
@@ -1087,8 +1087,8 @@ def test_cohort_header_refreshes_its_counts_when_the_cohort_changes(
 
     document = _cohort_page(staff_client, cohort)
 
-    (refresher,) = document.cssselect("#instance-header [data-header-refresh-events]")
-    assert refresher.get("data-header-refresh-events") == COHORT_CHANGED
+    (refresher,) = document.cssselect("#instance-header [data-refresh-events]")
+    assert refresher.get("data-refresh-events") == COHORT_CHANGED
 
 
 @pytest.mark.django_db

@@ -12,8 +12,8 @@ a corrected file" link beside the download.
         <p class="mt-1">Fix them in your file and upload it again, or add the other rows now.</p>
     {% endif %}
     <div class="{% if heading_count %}mt-4 {% endif %}flex flex-col gap-2 sm:flex-row">
-        <c-button variant="secondary" href="{{ errors_url }}" icon_left="download" size="small" class="min-h-11 md:min-h-0" data-error-download>Download errors</c-button>
-        {% if upload_url %}<c-button variant="secondary" href="{{ upload_url }}" size="small" class="min-h-11 md:min-h-0" data-error-reupload>Upload a corrected file</c-button>{% endif %}
+        <c-button variant="secondary" href="{{ errors_url }}" icon_left="download" size="small" data-error-download>Download errors</c-button>
+        {% if upload_url %}<c-button variant="secondary" href="{{ upload_url }}" size="small" data-error-reupload>Upload a corrected file</c-button>{% endif %}
     </div>
     <c-panel-table caption="Error rows" cards="true" capped="true" class="mt-4" data-error-rows="true">
         <c-slot name="head"><tr><th scope="col">Line</th><th scope="col">Email</th><th scope="col">Reason</th></tr></c-slot>
