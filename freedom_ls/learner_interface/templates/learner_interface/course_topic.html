@@ -15,6 +15,8 @@
                 {{ topic.rendered_content }}
             </c-markdown-container>
 
+            {% comment %}A paused learner reads a finished topic and goes no further from here.{% endcomment %}
+            {% if not paused %}
             <c-player-footer :previous_url="previous_url" class="mx-auto max-w-reading">
                 {% comment %}Nothing grants this learner the course, so there is no record to
                 mark against — the plain Next below carries them on instead.{% endcomment %}
@@ -52,6 +54,7 @@
                     {% endif %}
                 {% endif %}
             </c-player-footer>
+            {% endif %}
         </div>
     </c-page>
 {% endblock %}

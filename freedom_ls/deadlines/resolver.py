@@ -5,11 +5,12 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from enum import StrEnum
-from typing import NamedTuple, Protocol
+from typing import TYPE_CHECKING, NamedTuple, Protocol
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from django.contrib.contenttypes.models import ContentType
+from django.utils import timezone
 
 from freedom_ls.content_engine.models import (
     ContentCollectionItem,
@@ -19,11 +20,21 @@ from freedom_ls.content_engine.models import (
 )
 from freedom_ls.deadlines.models import (
     CohortDeadlineOverride,
+    DeadlineExtension,
     DeadlineKind,
+    ExtensionTarget,
     LearnerDeadlineOverride,
+)
+from freedom_ls.deadlines.shifts import (
+    ShiftSources,
+    shift_for_collection_item,
+    shift_for_time_limit,
 )
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.site_aware_models.time_zones import site_time_zone
+
+if TYPE_CHECKING:
+    from freedom_ls.deadlines.models import CoursePause
 
 
 class DeadlineSource(StrEnum):
@@ -82,19 +93,25 @@ class DeadlineLayer(NamedTuple):
 class ResolvedDeadline:
     due_at: datetime | None
     source: DeadlineSource | None
+    # Whole days the pauses moved `due_at` forward.
+    shift_days: int = 0
 
 
 NO_DEADLINE = ResolvedDeadline(due_at=None, source=None)
 
 
 def due_instant(
-    value: DeadlineValue, registration_date: date, tz: ZoneInfo
+    value: DeadlineValue,
+    registration_date: date,
+    tz: ZoneInfo,
+    shift_days: int = 0,
 ) -> datetime | None:
     """The instant a value falls due for a learner registered on registration_date.
 
     Relative offsets are added to the local date, not to an instant, so a DST change between
     registration and the due day still lands on the local end of day. A value without a time
-    is due at the last microsecond of its day."""
+    is due at the last microsecond of its day. `shift_days` is added to the local date the same
+    way, so a shift keeps the time of day across a DST change."""
     if value.kind == DeadlineKind.NONE:
         return None
     if value.kind == DeadlineKind.FIXED:
@@ -105,19 +122,24 @@ def due_instant(
         if value.due_days_after_registration is None:
             raise ValueError("A relative deadline carries a number of days.")
         day = registration_date + timedelta(days=value.due_days_after_registration)
+    day += timedelta(days=shift_days)
     at = value.due_time if value.due_time is not None else time.max
     return datetime.combine(day, at, tzinfo=tz)
 
 
 def resolve_deadline(
-    layers: Sequence[DeadlineLayer], registration_date: date, tz: ZoneInfo
+    layers: Sequence[DeadlineLayer],
+    registration_date: date,
+    tz: ZoneInfo,
+    shift_days: int = 0,
 ) -> ResolvedDeadline:
     """Most specific layer first; the first layer holding a value wins outright."""
     for layer in layers:
         if layer.value is not None:
             return ResolvedDeadline(
-                due_at=due_instant(layer.value, registration_date, tz),
+                due_at=due_instant(layer.value, registration_date, tz, shift_days),
                 source=layer.source,
+                shift_days=(shift_days if layer.value.kind != DeadlineKind.NONE else 0),
             )
     return NO_DEADLINE
 
@@ -138,6 +160,8 @@ class CourseDeadlines:
     # The site zone every instant above was built in, kept so a reader of these
     # deadlines can ask "is that today?" without a second zone lookup.
     zone: ZoneInfo
+    # The record's open pause, when it has one.
+    pause: CoursePause | None = None
 
 
 class DeadlineOverrideRow(Protocol):
@@ -266,20 +290,40 @@ def content_defaults_for_course(course_id: UUID) -> Mapping[UUID, DeadlineValue 
     return _defaults_by_course({course_id})[course_id].items
 
 
-def course_deadlines(course_progress: CourseProgress) -> CourseDeadlines:
-    return course_deadlines_for([course_progress])[course_progress.pk]
+def course_deadlines(
+    course_progress: CourseProgress,
+    *,
+    now: datetime | None = None,
+    items: bool = True,
+    pauses: Mapping[UUID, list[CoursePause]] | None = None,
+) -> CourseDeadlines:
+    return course_deadlines_for([course_progress], now=now, items=items, pauses=pauses)[
+        course_progress.pk
+    ]
 
 
 def course_deadlines_for(
     course_progress_records: Iterable[CourseProgress],
+    *,
+    now: datetime | None = None,
+    items: bool = True,
+    pauses: Mapping[UUID, list[CoursePause]] | None = None,
 ) -> dict[UUID, CourseDeadlines]:
     """Every record's resolved deadlines, keyed by record id.
 
     A fixed number of queries whatever the number of records or collection items. The site
-    zone is read once; every record a request hands in belongs to the request's site."""
+    zone is read once; every record a request hands in belongs to the request's site.
+
+    `now` is resolved once and decides which pauses are open. `pauses` is what a caller
+    already read with `pauses_for`. With `items=False` the per-item deadlines and the reads
+    that only they need are skipped, and `items` comes back empty."""
+    from freedom_ls.deadlines.queries import open_pauses_for, pauses_for
+    from freedom_ls.learner_progress.queries import completion_instants
+
     records = list(course_progress_records)
     if not records:
         return {}
+    now = now if now is not None else timezone.now()
     tz = site_time_zone(records[0].site)
     defaults = _defaults_by_course({record.course_id for record in records})
     cohort_rows: LayerRows = {
@@ -299,24 +343,66 @@ def course_deadlines_for(
         )
     }
 
+    if pauses is None:
+        pauses = pauses_for(records)
+    open_by_record = open_pauses_for(records, now, pauses)
+    extensions_by_record: dict[UUID, list[DeadlineExtension]] = defaultdict(list)
+    for extension in DeadlineExtension._base_manager.filter(
+        site_id__in={record.site_id for record in records},
+        course_progress_id__in=[record.pk for record in records],
+    ):
+        extensions_by_record[extension.course_progress_id].append(extension)
+    # Only a pause or a whole-course extension is skipped by a completed item, so only a
+    # record with one needs the completion instants and the common page pays no read.
+    shifted_ids = [
+        record.pk
+        for record in records
+        if pauses.get(record.pk)
+        or any(
+            extension.target_kind == ExtensionTarget.COURSE
+            for extension in extensions_by_record.get(record.pk, [])
+        )
+    ]
+    completed = completion_instants(shifted_ids) if items and shifted_ids else {}
+
     result: dict[UUID, CourseDeadlines] = {}
     for record in records:
         registered_on = registration_date_of(record, tz)
         course_defaults = defaults[record.course_id]
-        items = {
-            item_id: resolve_deadline(
-                _layers(record, item_id, content, cohort_rows, learner_rows),
-                registered_on,
-                tz,
-            )
-            for item_id, content in course_defaults.items.items()
-        }
+        sources = ShiftSources(
+            pauses=pauses.get(record.pk, []),
+            extensions=extensions_by_record.get(record.pk, []),
+            completed_at={
+                item_id: instant
+                for (progress_id, item_id), instant in completed.items()
+                if progress_id == record.pk
+            },
+        )
+        resolved_items = (
+            {
+                item_id: resolve_deadline(
+                    _layers(record, item_id, content, cohort_rows, learner_rows),
+                    registered_on,
+                    tz,
+                    shift_for_collection_item(sources, item_id, now, tz),
+                )
+                for item_id, content in course_defaults.items.items()
+            }
+            if items
+            else {}
+        )
         time_limit = resolve_deadline(
             _layers(
                 record, None, course_defaults.time_limit, cohort_rows, learner_rows
             ),
             registered_on,
             tz,
+            shift_for_time_limit(sources, now, tz),
         )
-        result[record.pk] = CourseDeadlines(items=items, time_limit=time_limit, zone=tz)
+        result[record.pk] = CourseDeadlines(
+            items=resolved_items,
+            time_limit=time_limit,
+            zone=tz,
+            pause=open_by_record.get(record.pk),
+        )
     return result

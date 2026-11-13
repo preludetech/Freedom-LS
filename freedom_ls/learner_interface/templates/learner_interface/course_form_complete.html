@@ -32,6 +32,8 @@
                         <p class="text-muted">
                             {% if access_ended %}
                                 You needed {{ form.quiz_pass_percentage }}% to pass. Your access to this course has ended.
+                            {% elif paused %}
+                                You needed {{ form.quiz_pass_percentage }}% to pass.
                             {% elif item_closed %}
                                 You needed {{ form.quiz_pass_percentage }}% to pass. This quiz has closed, so it can't be retaken.
                             {% else %}
@@ -251,9 +253,10 @@
         leaves Return to course.
         A learner whose access ended gets no footer: retrying, the next item and
         the finish page are all shut to them, and the outline, where the policy
-        keeps it, is the way around.
+        keeps it, is the way around. A paused learner gets none either: a pause freezes
+        retries and moves nothing on.
         {% endcomment %}
-        {% if not access_ended %}
+        {% if not access_ended and not paused %}
             <c-player-footer :previous_url="previous_url" class="mt-8">
                 {% if quiz_verdict == "failed" and not item_closed %}
                     <c-button href="{{ retry_url }}" icon_left="retry" size="small">

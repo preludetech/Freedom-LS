@@ -15,7 +15,7 @@ from freedom_ls.deadlines.factories import (
     SiteDeadlineConfigFactory,
 )
 from freedom_ls.deadlines.loader import get_deadline_policy
-from freedom_ls.deadlines.models import CONFIG_FIELDS, SWITCH_FIELDS
+from freedom_ls.deadlines.models import CONFIG_FIELDS, LIMIT_FIELDS, SWITCH_FIELDS
 from freedom_ls.deadlines.policy import ResolvedDeadlinePolicy
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -103,6 +103,9 @@ SET_VALUES: dict[str, object] = {
     "notify_educators": "on",
     "grace_window": timedelta(days=2),
     "after_access_ended": "nothing",
+    "learners_may_pause": "on",
+    "max_pauses": 3,
+    "max_pause_days": 30,
 }
 EXPECTED: dict[str, object] = {
     "mark_overdue": False,
@@ -111,6 +114,9 @@ EXPECTED: dict[str, object] = {
     "notify_educators": True,
     "grace_window": timedelta(days=2),
     "after_access_ended": "nothing",
+    "learners_may_pause": True,
+    "max_pauses": 3,
+    "max_pause_days": 30,
 }
 
 
@@ -200,6 +206,65 @@ def test_an_explicit_zero_grace_window_beats_a_nonzero_one_above(
 
     assert policy.grace_window == timedelta(0)
     assert policy.sources["grace_window"] == "cohort"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("field", LIMIT_FIELDS)
+def test_a_lower_zero_limit_beats_a_higher_number(mock_site_context, field) -> None:
+    record = _cohort_record()
+    _cohort_row(record, {field: 0})
+    _site_row(record, {field: 5})
+
+    policy = _resolve(record)
+
+    assert getattr(policy, field) == 0
+    assert policy.sources[field] == "cohort"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("field", LIMIT_FIELDS)
+def test_an_unset_limit_inherits_from_the_next_layer_up(
+    mock_site_context, field
+) -> None:
+    record = _cohort_record()
+    _cohort_row(record, {field: None})
+    _site_row(record, {field: 5})
+
+    policy = _resolve(record)
+
+    assert getattr(policy, field) == 5
+    assert policy.sources[field] == "site"
+
+
+@pytest.mark.django_db
+def test_the_pause_settings_default_to_no_pausing_and_no_limits(
+    mock_site_context,
+) -> None:
+    policy = _resolve(_cohort_record())
+
+    assert (policy.learners_may_pause, policy.max_pauses, policy.max_pause_days) == (
+        False,
+        0,
+        0,
+    )
+
+
+def test_a_policy_built_without_the_pause_settings_still_works() -> None:
+    policy = ResolvedDeadlinePolicy(
+        mark_overdue=True,
+        close_items=False,
+        end_course_access=False,
+        notify_educators=False,
+        grace_window=timedelta(0),
+        after_access_ended="outline_and_results",
+        sources={},
+    )
+
+    assert (policy.learners_may_pause, policy.max_pauses, policy.max_pause_days) == (
+        False,
+        0,
+        0,
+    )
 
 
 @pytest.mark.django_db

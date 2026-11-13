@@ -1,6 +1,10 @@
 """Factories for deadlines models."""
 
+from datetime import timedelta
+
 import factory
+
+from django.utils import timezone
 
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.deadlines.models import (
@@ -8,7 +12,10 @@ from freedom_ls.deadlines.models import (
     CohortDeadlineConfig,
     CohortDeadlineOverride,
     CourseDeadlineConfig,
+    CoursePause,
+    DeadlineExtension,
     DeadlineKind,
+    ExtensionTarget,
     LearnerCourseRegistrationDeadlineConfig,
     LearnerDeadlineOverride,
     OrganisationDeadlineConfig,
@@ -94,3 +101,26 @@ class LearnerCourseRegistrationDeadlineConfigFactory(SiteAwareFactory):
         model = LearnerCourseRegistrationDeadlineConfig
 
     learner_registration = factory.SubFactory(LearnerCourseRegistrationFactory)
+
+
+class CoursePauseFactory(SiteAwareFactory):
+    """An open pause that began an hour ago."""
+
+    class Meta:
+        model = CoursePause
+
+    course_progress = factory.SubFactory(CourseProgressFactory)
+    started_at = factory.LazyFunction(lambda: timezone.now() - timedelta(hours=1))
+    reason = "Learner on leave."
+
+
+class DeadlineExtensionFactory(SiteAwareFactory):
+    """A seven-day extension of the time limit."""
+
+    class Meta:
+        model = DeadlineExtension
+
+    course_progress = factory.SubFactory(CourseProgressFactory)
+    target_kind = ExtensionTarget.TIME_LIMIT
+    days = 7
+    reason = "Learner was ill."

@@ -85,6 +85,9 @@ action a project adds through `AUDIT_LOG_EXTRA_ACTIONS` lands under "Other".
 | `registration.added` | Learner registered for course | Course registrations | learner | | `course` |
 | `registration.reactivated` | Learner course registration reactivated | Course registrations | learner | | `course`; `self_service`, when a self-registration did it |
 | `registration.deactivated` | Learner course registration deactivated | Course registrations | learner | | `course` |
+| `course.paused` | Course paused | Course progress | learner | the course | `planned_resume_on`, when a planned resume was set |
+| `course.resumed` | Course resumed | Course progress | learner | the course | `shift_days` |
+| `deadline.extended` | Deadline extended | Course progress | learner | the course | `target_kind`, `collection_item`, `days` |
 | `cohort.created` | Cohort created | Cohorts | cohort | | |
 | `cohort.renamed` | Cohort renamed | Cohorts | cohort | | `old`, `new` |
 | `cohort.deactivated` | Cohort deactivated | Cohorts | cohort | | |

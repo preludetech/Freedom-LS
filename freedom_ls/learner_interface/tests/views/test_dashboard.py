@@ -31,7 +31,10 @@ from freedom_ls.course_access.backends import (
 )
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
-from freedom_ls.deadlines.factories import CourseDeadlineConfigFactory
+from freedom_ls.deadlines.factories import (
+    CourseDeadlineConfigFactory,
+    CoursePauseFactory,
+)
 from freedom_ls.deadlines.models import CourseDeadlineConfig, DeadlineKind
 from freedom_ls.learner_interface.tests.helpers import (
     cohort_override,
@@ -2290,7 +2293,7 @@ def test_card_shell_article_has_no_zero_padding(mock_site_context):
 # Measured with ContentType's per-process cache empty: the page looks up four
 # content types once each, and whether an earlier test already cached them
 # would otherwise decide whether this test passes.
-BYLINE_DASHBOARD_MAX_QUERIES = 64
+BYLINE_DASHBOARD_MAX_QUERIES = 67
 
 
 @pytest.mark.django_db
@@ -2613,3 +2616,92 @@ def test_card_text_says_neither_due_nor_overdue(deadline_card):
 
     assert "Due" not in text
     assert "Overdue" not in text
+
+
+@pytest.fixture
+def paused_card(deadline_card):
+    """The deadline card course with an overdue topic, paused with a planned resume."""
+    course, topics, user, record, client = deadline_card
+    set_due_date(course, topics[0], due_date=datetime.date(2026, 3, 2))
+    CoursePauseFactory(
+        course_progress=record,
+        started_at=datetime.datetime(2026, 8, 31, 10, 0, tzinfo=UTC),
+        planned_resume_on=datetime.date(2026, 12, 12),
+    )
+    return course, user, client
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_paused_card_says_paused_until_the_planned_resume(paused_card):
+    _course, _user, client = paused_card
+
+    card = _first_card_grid(_dashboard_html(client))
+
+    text = " ".join(re.sub(r"<[^>]+>", " ", card).split())
+    assert 'data-testid="course-status-paused"' in card
+    assert "Paused until 12 Dec" in text
+    assert "Paused until 12 Dec," not in text
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_paused_card_without_a_planned_resume_says_paused(deadline_card):
+    _course, _topics, _user, record, client = deadline_card
+    CoursePauseFactory(
+        course_progress=record,
+        started_at=datetime.datetime(2026, 8, 31, 10, 0, tzinfo=UTC),
+    )
+
+    card = _first_card_grid(_dashboard_html(client))
+
+    assert 'data-testid="course-status-paused"' in card
+    assert "Paused until" not in card
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_paused_card_links_to_the_detail_page_with_no_next_up_or_deadline(
+    paused_card,
+):
+    course, _user, client = paused_card
+
+    card = _first_card_grid(_dashboard_html(client))
+
+    detail = reverse("learner_interface:course_detail", args=[course.slug])
+    home = reverse("learner_interface:course_home", args=[course.slug])
+    assert f'href="{detail}"' in card
+    assert f'href="{home}"' not in card
+    assert "Next up" not in card
+    assert "Missed deadline" not in card
+    assert "Deadline" not in card
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_paused_compact_row_says_paused_and_drops_next_up(paused_card):
+    _course, _user, client = paused_card
+
+    rows = _row_lists(_dashboard_html(client))
+
+    assert 'data-testid="course-status-paused"' in rows
+    assert "Next up" not in rows
+    assert "Missed deadline" not in rows
+
+
+@pytest.mark.django_db
+def test_dashboard_query_count_holds_with_a_paused_course_among_several(
+    mock_site_context, django_assert_max_num_queries, logged_in_client
+):
+    user = UserFactory()
+    for _ in range(10):
+        LearnerCourseRegistrationFactory(learner__user=user, course=CourseFactory())
+    CoursePauseFactory(
+        course_progress=course_progress_record(Course.objects.first(), user)
+    )
+    client = logged_in_client(user)
+
+    with django_assert_max_num_queries(IN_PROGRESS_MAX_QUERIES):
+        response = client.get(reverse("learner_interface:dashboard"))
+
+    assert 'data-testid="course-status-paused"' in response.content.decode()

@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
+from datetime import datetime
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from freedom_ls.deadlines.models import (
     CohortDeadlineOverride,
+    CoursePause,
     LearnerDeadlineOverride,
 )
 from freedom_ls.deadlines.resolver import (
@@ -18,6 +21,8 @@ from freedom_ls.deadlines.resolver import (
     content_layer_value,
     time_limit_value,
 )
+from freedom_ls.learner_progress.models import CourseProgress
+from freedom_ls.site_aware_models.time_zones import site_time_zone
 
 ContentDefaults = Mapping[UUID, DeadlineValue | None]
 
@@ -91,3 +96,54 @@ def canonical_beneath(
         if layer.value is not None:
             return layer.value.canonical()
     return ""
+
+
+def pauses_for(records: Iterable[CourseProgress]) -> dict[UUID, list[CoursePause]]:
+    """Every pause of the given records, open and ended, newest first, in one query.
+
+    Read through the base manager with the records' sites, because the services and the
+    housekeeping sweep run with no request to supply a site. Records with no pause are
+    absent from the result."""
+    records = list(records)
+    by_record: dict[UUID, list[CoursePause]] = {}
+    if not records:
+        return by_record
+    rows = CoursePause._base_manager.filter(
+        site_id__in={record.site_id for record in records},
+        course_progress_id__in=[record.pk for record in records],
+    )
+    for pause in rows:
+        by_record.setdefault(pause.course_progress_id, []).append(pause)
+    return by_record
+
+
+def open_pauses_for(
+    records: Iterable[CourseProgress],
+    now: datetime,
+    pauses: Mapping[UUID, list[CoursePause]] | None = None,
+) -> dict[UUID, CoursePause]:
+    """The open pause of each paused record, keyed by record id.
+
+    `pauses` is what a caller already read with `pauses_for`, so the state costs no query."""
+    records = list(records)
+    if pauses is None:
+        pauses = pauses_for(records)
+    open_by_record: dict[UUID, CoursePause] = {}
+    zones: dict[int, ZoneInfo] = {}
+    for record in records:
+        if record.site_id not in zones:
+            zones[record.site_id] = site_time_zone(record.site)
+        tz = zones[record.site_id]
+        for pause in pauses.get(record.pk, []):
+            if pause.is_open(now, tz):
+                open_by_record[record.pk] = pause
+                break
+    return open_by_record
+
+
+def open_pause(
+    record: CourseProgress,
+    now: datetime,
+    pauses: Mapping[UUID, list[CoursePause]] | None = None,
+) -> CoursePause | None:
+    return open_pauses_for([record], now, pauses).get(record.pk)

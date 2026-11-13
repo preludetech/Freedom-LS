@@ -20,6 +20,7 @@ NOUNS = frozenset(
         "staff_member",
         "user",
         "course",
+        "deadline",
         "bulk_action",
         "import",
         "conversation",
@@ -46,6 +47,9 @@ VERBS = frozenset(
         "viewed",
         "issued",
         "revoked",
+        "paused",
+        "resumed",
+        "extended",
         "exported",
     }
 )
@@ -64,6 +68,8 @@ NOUN_GROUPS = {
     "registration": "Course registrations",
     "cohort": "Cohorts",
     "cohort_registration": "Cohorts",
+    "course": "Course progress",
+    "deadline": "Course progress",
     "role": "Staff and roles",
     "staff_member": "Staff and roles",
 }

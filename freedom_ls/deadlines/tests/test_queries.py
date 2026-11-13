@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime, time, timedelta
 
 import pytest
+
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
@@ -15,17 +18,23 @@ from freedom_ls.content_engine.models import ContentCollectionItem, Course
 from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.deadlines.factories import (
     CohortDeadlineOverrideFactory,
+    CoursePauseFactory,
+    DeadlineExtensionFactory,
     LearnerDeadlineOverrideFactory,
 )
 from freedom_ls.deadlines.models import (
     CohortDeadlineOverride,
     DeadlineKind,
+    ExtensionTarget,
     LearnerDeadlineOverride,
 )
 from freedom_ls.deadlines.queries import (
     canonical_beneath,
     content_default_for,
     layers_beneath,
+    open_pause,
+    open_pauses_for,
+    pauses_for,
 )
 from freedom_ls.deadlines.resolver import (
     DeadlineLayer,
@@ -39,7 +48,9 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
 )
 from freedom_ls.learner_progress.factories import CourseProgressFactory
+from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
+from freedom_ls.tests.factories import SiteFactory
 
 
 def _item_override(**item_columns: object) -> CohortDeadlineOverride:
@@ -125,6 +136,20 @@ def test_canonical_beneath_an_item_row_is_the_default_in_canonical_form(
     override = _item_override(due_date=date(2026, 3, 20), due_time=time(9, 0))
 
     assert canonical_beneath(override) == "fixed:2026-03-20T09:00"
+
+
+@pytest.mark.django_db
+def test_an_extension_leaves_canonical_beneath_unchanged(mock_site_context):
+    override, _ = _learner_override(on_cohort=False)
+    before = canonical_beneath(override)
+
+    DeadlineExtensionFactory(
+        course_progress=override.course_progress,
+        target_kind=ExtensionTarget.COLLECTION_ITEM,
+        collection_item=override.collection_item,
+    )
+
+    assert canonical_beneath(override) == before == "relative:14"
 
 
 @pytest.mark.django_db
@@ -367,3 +392,86 @@ def test_content_defaults_for_course_keys_by_child_row_and_ignores_another_cours
     assert content_defaults_for_course(course_a.pk) == {
         row.pk: DeadlineValue(DeadlineKind.RELATIVE, due_days_after_registration=3)
     }
+
+
+def _record() -> CourseProgress:
+    record: CourseProgress = CourseProgressFactory()
+    return record
+
+
+NOW = datetime(2026, 3, 20, 12, 0, tzinfo=UTC)
+
+
+@pytest.mark.django_db
+def test_pauses_for_reads_open_and_ended_pauses_of_every_record(mock_site_context):
+    first, second = _record(), _record()
+    ended = CoursePauseFactory(
+        course_progress=first,
+        started_at=NOW - timedelta(days=9),
+        ended_at=NOW - timedelta(days=8),
+    )
+    open_one = CoursePauseFactory(course_progress=first, started_at=NOW)
+    other = CoursePauseFactory(course_progress=second, started_at=NOW)
+
+    result = pauses_for([first, second])
+
+    assert result[first.pk] == [open_one, ended]
+    assert result[second.pk] == [other]
+
+
+@pytest.mark.django_db
+def test_pauses_for_costs_one_query_whatever_the_number_of_records(
+    mock_site_context, django_assert_num_queries
+):
+    records = [_record() for _ in range(4)]
+    for record in records:
+        CoursePauseFactory(course_progress=record)
+
+    with django_assert_num_queries(1):
+        pauses_for(records)
+
+
+@pytest.mark.django_db
+def test_pauses_for_ignores_another_sites_pause(mock_site_context):
+    record = _record()
+    CoursePauseFactory(course_progress=record, site=SiteFactory())
+
+    assert pauses_for([record]) == {}
+
+
+@pytest.mark.django_db
+def test_open_pause_returns_the_unended_pause(mock_site_context):
+    record = _record()
+    CoursePauseFactory(
+        course_progress=record,
+        started_at=NOW - timedelta(days=9),
+        ended_at=NOW - timedelta(days=8),
+    )
+    open_one = CoursePauseFactory(course_progress=record, started_at=NOW)
+
+    assert open_pause(record, NOW) == open_one
+
+
+@pytest.mark.django_db
+def test_open_pause_is_none_once_the_planned_resume_has_passed(mock_site_context):
+    record = _record()
+    CoursePauseFactory(
+        course_progress=record,
+        started_at=NOW - timedelta(days=5),
+        planned_resume_on=(NOW - timedelta(days=2)).date(),
+    )
+
+    assert open_pause(record, NOW) is None
+
+
+@pytest.mark.django_db
+def test_open_pauses_for_reads_no_pause_rows_when_given_them(mock_site_context):
+    record = _record()
+    pause = CoursePauseFactory(course_progress=record, started_at=NOW)
+    rows = pauses_for([record])
+
+    with CaptureQueriesContext(connection) as queries:
+        result = open_pauses_for([record], NOW, pauses=rows)
+
+    assert result == {record.pk: pause}
+    assert not [q for q in queries if "coursepause" in q["sql"]]

@@ -1,0 +1,15 @@
+{% extends "admin/base_site.html" %}
+{% load unfold %}
+
+{% block content %}
+    {% if targets %}
+        {% component "unfold/components/card.html" %}
+            <ul id="extendable-targets">
+                {% for label, date in targets %}
+                    <li>{{ label }}: {{ date }}</li>
+                {% endfor %}
+            </ul>
+        {% endcomponent %}
+    {% endif %}
+    {% include "admin/deadlines/_action_form.html" with button_label="Extend deadline" %}
+{% endblock %}

@@ -71,7 +71,18 @@
                                 {% endif %}
                             </div>
                         {% endif %}
-                        {% if access_ended_at %}
+                        {% if paused_at %}
+                            <div data-testid="course-paused-callout">
+                            <c-callout level="info">
+                                {% if planned_resume_on %}
+                                    Your educator paused this course. It resumes on <c-date :value="planned_resume_on" />. Your progress is saved.
+                                {% else %}
+                                    Your educator paused this course. Your progress is saved. You can continue when they resume it.
+                                {% endif %}
+                                Your deadlines move by the time paused.
+                            </c-callout>
+                            </div>
+                        {% elif access_ended_at %}
                             <c-callout level="warning">
                                 Your access to this course ended on {% local_time access_ended_at %}. Your progress is saved. Ask your educator to restore it.
                             </c-callout>

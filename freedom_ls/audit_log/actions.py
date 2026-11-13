@@ -19,6 +19,7 @@ AUDIT_ACTION_GROUPS: tuple[str, ...] = (
     "Learners",
     "Cohort membership",
     "Course registrations",
+    "Course progress",
     "Cohorts",
     "Staff and roles",
     "Other",
@@ -65,6 +66,25 @@ def _describe_course(entry: AuditLogEntry) -> str:
     if entry.details.get("self_service"):
         return f"{course} (self-registered)"
     return course
+
+
+def _describe_paused(entry: AuditLogEntry) -> str:
+    planned = entry.details.get("planned_resume_on")
+    return f"Until {planned}" if planned else "No planned resume"
+
+
+def _describe_resumed(entry: AuditLogEntry) -> str:
+    days = int(str(entry.details.get("shift_days", 0)))
+    return f"Deadlines moved by {days} {'day' if days == 1 else 'days'}"
+
+
+def _describe_extended(entry: AuditLogEntry) -> str:
+    target = entry.details.get("collection_item")
+    if not target:
+        kind = entry.details.get("target_kind")
+        target = "Course time limit" if kind == "time_limit" else "Whole course"
+    days = int(str(entry.details.get("days", 0)))
+    return f"{target} +{days} {'day' if days == 1 else 'days'}"
 
 
 def _describe_move(entry: AuditLogEntry) -> str:
@@ -166,6 +186,24 @@ FLS_AUDIT_ACTIONS: tuple[AuditAction, ...] = (
         "Learner course registration deactivated",
         _describe_course,
         group="Course registrations",
+    ),
+    AuditAction(
+        "course.paused",
+        "Course paused",
+        _describe_paused,
+        group="Course progress",
+    ),
+    AuditAction(
+        "course.resumed",
+        "Course resumed",
+        _describe_resumed,
+        group="Course progress",
+    ),
+    AuditAction(
+        "deadline.extended",
+        "Deadline extended",
+        _describe_extended,
+        group="Course progress",
     ),
     AuditAction("cohort.created", "Cohort created", group="Cohorts"),
     AuditAction("cohort.renamed", "Cohort renamed", _describe_rename, group="Cohorts"),

@@ -1,6 +1,9 @@
 from django.utils.translation import gettext_lazy as _
 
-from freedom_ls.base.notification_categories import NotificationCategory
+from freedom_ls.base.notification_categories import (
+    FLS_NOTIFICATION_CATEGORIES,
+    NotificationCategory,
+)
 
 
 def test_a_category_built_without_a_colour_has_none() -> None:
@@ -13,3 +16,17 @@ def test_a_category_built_without_a_colour_has_none() -> None:
     )
 
     assert category.colour is None
+
+
+def test_each_course_progress_category_keeps_its_own_row_per_event() -> None:
+    categories = {category.key: category for category in FLS_NOTIFICATION_CATEGORIES}
+
+    assert (
+        categories["course.paused"].rollup,
+        categories["course.resumed"].rollup,
+        categories["deadline.extended"].rollup,
+    ) == (
+        False,
+        False,
+        False,
+    )

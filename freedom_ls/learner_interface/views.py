@@ -282,9 +282,9 @@ def _annotate_registered_courses(
     (0%) or in_progress (>0%).
     """
     records = course_progress_by_course_for(user, courses)
-    deadlines_by_record = course_deadlines_for(records.values())
-    policies_by_record = get_deadline_policy().resolve_for(list(records.values()))
     now = timezone.now()
+    deadlines_by_record = course_deadlines_for(records.values(), now=now)
+    policies_by_record = get_deadline_policy().resolve_for(list(records.values()))
     decisions = backend.get_access_many(user=user, courses=courses)
     for course in courses:
         setattr(course, "is_registered", True)  # noqa: B010
@@ -304,6 +304,10 @@ def _annotate_registered_courses(
         # progress, so a finished item would read as missed: no deadlines then.
         course_decision = decisions[course.pk]
         setattr(course, "access_ended_at", course_decision.access_ended_at)  # noqa: B010
+        setattr(course, "paused_at", course_decision.paused_at)  # noqa: B010
+        setattr(  # noqa: B010
+            course, "planned_resume_on", course_decision.planned_resume_on
+        )
         record = records.get(course.pk)
         _annotate_next_up(
             course,
@@ -719,10 +723,14 @@ def _deadline_policy_or_none(
 
 
 def _deadlines_or_none(
-    course_progress: CourseProgress | None,
+    course_progress: CourseProgress | None, now: datetime | None = None
 ) -> CourseDeadlines | None:
-    """The record's resolved deadlines, or None when nothing grants the course."""
-    return course_deadlines(course_progress) if course_progress is not None else None
+    """The record's resolved deadlines at ``now``, or None when nothing grants the course."""
+    return (
+        course_deadlines(course_progress, now=now)
+        if course_progress is not None
+        else None
+    )
 
 
 def _requested_panel(
@@ -807,6 +815,8 @@ def all_courses(request: HttpRequest) -> HttpResponse:
         if entry.status in in_player:
             decision = decisions[course.pk]
             setattr(course, "access_ended_at", decision.access_ended_at)  # noqa: B010
+            setattr(course, "paused_at", decision.paused_at)  # noqa: B010
+            setattr(course, "planned_resume_on", decision.planned_resume_on)  # noqa: B010
             # The listing resolved the record already; the catalogue shows no
             # deadline line, so none are resolved here.
             _annotate_next_up(
@@ -877,6 +887,7 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
         else None
     )
     shows_ended_outline = _shows_ended_outline(decision)
+    paused = decision.paused_at is not None
     # Deadlines are resolved so a closed item reads Closed here as it does in the
     # player; the template shows none of their dates, which belong to the player.
     # Only an open row can close, so the lookups are skipped where no row is open:
@@ -903,13 +914,14 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
             course_deadlines=course_deadlines,
             deadline_policy=deadline_policy,
             access_ended_outline=shows_ended_outline,
+            paused=paused,
         )
     )
     start_url: str | None
     cta_label: str | None
     access_ended = decision.access_ended_at is not None
-    if access_ended:
-        # An ended learner is offered nothing to start, continue or register for.
+    if access_ended or paused:
+        # An ended or paused learner is offered nothing to start, continue or register for.
         start_url = None
         cta_label = None
     elif is_registered:
@@ -987,6 +999,8 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
             "start_url": start_url,
             "cta_label": cta_label,
             "access_ended_at": decision.access_ended_at,
+            "paused_at": decision.paused_at,
+            "planned_resume_on": decision.planned_resume_on,
             **_time_zone_context(request),
             # Acquisition-funnel copy is access-type-specific and comes from the
             # backend decision (not the CTA-state helpers above), so it is correct
@@ -1129,10 +1143,19 @@ def _course_access_redirect(
 
     The same gate for every route that serves or accepts a course item: the access
     backend decides whether this learner may see content at all. A learner whose access
-    ended is turned away too, except from the routes ``_ended_route_redirect`` leaves open.
+    ended is turned away too, except from the routes ``_ended_route_redirect`` leaves open,
+    and so is a learner whose course is paused, except from those
+    ``_paused_route_redirect`` leaves open.
     """
     if decision.can_access_content:
         return None
+    if decision.paused_at is not None:
+        return _paused_route_redirect(
+            course,
+            route=route,
+            collection_item=collection_item,
+            course_progress=course_progress,
+        )
     if decision.access_ended_at is None:
         return redirect("learner_interface:course_detail", course_slug=course.slug)
     return _ended_route_redirect(
@@ -1163,7 +1186,7 @@ def _is_closed_for_learner(
     record's policy, with no course index built."""
     if course_progress is None:
         return False
-    resolved = course_deadlines(course_progress).items.get(collection_item.pk)
+    resolved = course_deadlines(course_progress, now=now).items.get(collection_item.pk)
     if resolved is None:
         return False
     return is_closed(
@@ -1202,6 +1225,35 @@ def _ended_route_redirect(
     if (
         route is PlayerRoute.ITEM
         and _shows_ended_outline(decision)
+        and collection_item is not None
+        and _is_complete_for_learner(course_progress, collection_item)
+    ):
+        return None
+    return redirect("learner_interface:course_detail", course_slug=course.slug)
+
+
+def _paused_route_redirect(
+    course: Course,
+    *,
+    route: PlayerRoute,
+    collection_item: ContentCollectionItem | None,
+    course_progress: CourseProgress | None,
+) -> HttpResponseRedirect | None:
+    """What a paused learner may still reach, else a redirect to the detail page.
+
+    A pause freezes work in flight, so nothing that writes stays open: no submit, no
+    finish, no unfinished item. A finished item and the results of a completed attempt
+    stay readable.
+    """
+    if (
+        route is PlayerRoute.FORM_RESULTS
+        and course_progress is not None
+        and collection_item is not None
+        and completed_attempts(course_progress, collection_item).exists()
+    ):
+        return None
+    if (
+        route is PlayerRoute.ITEM
         and collection_item is not None
         and _is_complete_for_learner(course_progress, collection_item)
     ):
@@ -1287,14 +1339,27 @@ def _player_course_index(
     course_progress: CourseProgress | None,
     *,
     access_ended_outline: bool = False,
+    paused: bool = False,
 ) -> PlayerCourseIndex:
     """The outline the player gates and chrome both read, with deadlines resolved from the
     record so every gate sees blocking and closing as the learner's table of contents does.
 
     ``access_ended_outline`` is for a learner whose access ended but who keeps the outline:
-    only finished items stay linked."""
+    only finished items stay linked. ``paused`` is for a learner whose course is paused:
+    the same, with every other row marked paused and no deadline or policy resolved."""
     now = timezone.now()
-    course_deadlines = _deadlines_or_none(course_progress)
+    if paused:
+        rows = get_course_index(
+            user=user,
+            course=course,
+            current_index=index,
+            can_access_content=False,
+            course_progress=course_progress,
+            now=now,
+            paused=True,
+        )
+        return PlayerCourseIndex(rows, None, None, now)
+    course_deadlines = _deadlines_or_none(course_progress, now)
     deadline_policy = _deadline_policy_or_none(course_progress)
     rows = get_course_index(
         user=user,
@@ -1401,7 +1466,7 @@ def view_course_item(request, course_slug, index):
         # by the decision alone, so nothing is fetched for them.
         course_progress=(
             course_progress_for(cast("User", request.user), course)
-            if decision.access_ended_at is not None
+            if decision.access_ended_at is not None or decision.paused_at is not None
             else None
         ),
     )
@@ -1409,12 +1474,18 @@ def view_course_item(request, course_slug, index):
         return no_access
     current_item = current_collection_item.child
     viewable_items = [item.child for item in viewable_collection_items]
+    paused = decision.paused_at is not None
 
     # The record every write below lands in, minted from the registration if it
     # is missing. This is the self-healing path: a registration made before
     # course progress records existed gets one the first time the learner opens
-    # the course, which is why no backfill is needed.
-    course_progress = _ensure_player_course_progress(request.user, course)
+    # the course, which is why no backfill is needed. A paused learner's record
+    # exists already and nothing is written to it.
+    course_progress = (
+        course_progress_for(cast("User", request.user), course)
+        if paused
+        else _ensure_player_course_progress(request.user, course)
+    )
 
     # Sequential-unlock gate. Built here rather than inside _player_chrome_context
     # so the decision is made before anything is written, then handed on to the
@@ -1425,6 +1496,7 @@ def view_course_item(request, course_slug, index):
         index,
         course_progress,
         access_ended_outline=_shows_ended_outline(decision),
+        paused=paused,
     )
     course_index = player_index.rows
     blocked = _blocked_item_redirect(
@@ -1440,7 +1512,7 @@ def view_course_item(request, course_slug, index):
             "learner_interface:view_course_item",
             kwargs={"course_slug": course_slug, "index": index + 1},
         )
-        if index < total
+        if index < total and not paused
         else None
     )
     previous_url = (
@@ -1448,7 +1520,7 @@ def view_course_item(request, course_slug, index):
             "learner_interface:view_course_item",
             kwargs={"course_slug": course_slug, "index": index - 1},
         )
-        if index > 1
+        if index > 1 and not paused
         else None
     )
 
@@ -1467,6 +1539,7 @@ def view_course_item(request, course_slug, index):
         course_index=player_index,
         course_progress=course_progress,
         access_ended_outline=_shows_ended_outline(decision),
+        paused=paused,
     )
 
     entry = current_entry(course_index)
@@ -1492,7 +1565,7 @@ def view_course_item(request, course_slug, index):
     # last_accessed_time is written here rather than by auto_now, so a
     # background percentage recalculation never looks like a visit. started_at
     # is stamped once, on first content access, and never re-stamped.
-    if course_progress is not None:
+    if course_progress is not None and not paused:
         now = timezone.now()
         course_progress.last_accessed_item = current_collection_item
         course_progress.last_accessed_time = now
@@ -1518,6 +1591,7 @@ def view_course_item(request, course_slug, index):
             player_context=player_context,
             collection_item=current_collection_item,
             course_progress=course_progress,
+            paused=paused,
         )
 
     if isinstance(current_item, Form):
@@ -1532,6 +1606,7 @@ def view_course_item(request, course_slug, index):
             player_context=player_context,
             collection_item=current_collection_item,
             course_progress=course_progress,
+            paused=paused,
         )
 
     raise Http404("Unsupported course item type.")
@@ -1567,6 +1642,7 @@ def _player_chrome_context(
     course_index: PlayerCourseIndex | None = None,
     course_progress: CourseProgress | None | Unresolved = UNRESOLVED,
     access_ended_outline: bool = False,
+    paused: bool = False,
 ) -> dict:
     """Build the shared player-chrome context (TOC, breadcrumb, header, title).
 
@@ -1577,8 +1653,9 @@ def _player_chrome_context(
     means "there is no record", and is not the same as leaving it out.
 
     ``access_ended_outline`` shapes the outline it builds for a learner whose access
-    ended but who keeps the outline; it also withholds the next-deadline card. When
-    ``course_index`` is passed in, it is built by the caller with that same flag.
+    ended but who keeps the outline; it also withholds the next-deadline card. ``paused``
+    does the same for a learner whose course is paused. When ``course_index`` is passed
+    in, it is built by the caller with those same flags.
     """
     user = request.user
     if viewable_items is None:
@@ -1617,13 +1694,14 @@ def _player_chrome_context(
             index,
             course_progress,
             access_ended_outline=access_ended_outline,
+            paused=paused,
         )
 
     rows = course_index.rows
     course_complete = (
         course_progress is not None and course_progress.completed_time is not None
     )
-    if access_ended_outline or course_complete:
+    if access_ended_outline or paused or course_complete:
         # Neither carries a deadline on the dashboard either.
         next_deadline = None
     else:
@@ -1647,6 +1725,7 @@ def _player_chrome_context(
         "course_organisation": course_organisation,
         "item_title": current_item.title,
         "index": index,
+        "paused": paused,
         **_time_zone_context(request),
     }
 
@@ -1662,9 +1741,15 @@ def view_topic(
     *,
     collection_item: ContentCollectionItem,
     course_progress: CourseProgress | None,
+    paused: bool = False,
 ):
     topic_progress = None
-    if course_progress is not None:
+    if course_progress is not None and paused:
+        # Reading a finished topic during a pause writes nothing, not even a touch.
+        topic_progress = TopicProgress.objects.filter(
+            course_progress=course_progress, collection_item=collection_item
+        ).first()
+    elif course_progress is not None:
         topic_progress, created = TopicProgress.objects.get_or_create(
             course_progress=course_progress,
             collection_item=collection_item,
@@ -1674,6 +1759,8 @@ def view_topic(
             topic_progress.save()
 
     if request.method == "POST" and "mark_complete" in request.POST:
+        if paused:
+            return redirect("learner_interface:course_detail", course_slug=course.slug)
         if topic_progress is None:
             raise Http404("No course progress record to record this completion in.")
         # The first completion is the one that counts; a re-post keeps its time.
@@ -1716,6 +1803,7 @@ def view_form(
     *,
     collection_item: ContentCollectionItem,
     course_progress: CourseProgress | None,
+    paused: bool = False,
 ):
     """Show the front page of the form"""
 
@@ -1724,7 +1812,8 @@ def view_form(
     if course_progress is not None:
         # Finalise any stale incomplete attempt for submit-on-exit forms before
         # reading progress state. No-op for save-on-exit forms.
-        finalise_stale_incomplete(course_progress, collection_item)
+        if not paused:
+            finalise_stale_incomplete(course_progress, collection_item)
 
         # The learner's open attempt at this placement, if they have one. Not
         # created here -- the start screen reads, form_start writes.
@@ -1748,11 +1837,15 @@ def view_form(
         )
 
     # Determine which buttons to show
-    buttons = form_start_page_buttons(
-        form=form,
-        incomplete_form_progress=incomplete_form_progress,
-        completed_form_progress=completed_form_progress,
-        is_last_item=is_last_item,
+    buttons = (
+        []
+        if paused
+        else form_start_page_buttons(
+            form=form,
+            incomplete_form_progress=incomplete_form_progress,
+            completed_form_progress=completed_form_progress,
+            is_last_item=is_last_item,
+        )
     )
 
     context = {
@@ -2036,6 +2129,7 @@ def course_form_complete(request, course_slug, index):
         return no_access
     access_ended = decision.access_ended_at is not None
     keeps_outline = _shows_ended_outline(decision)
+    paused = decision.paused_at is not None
 
     # Get the most recent completed attempt at this placement
     form_progress = (
@@ -2092,6 +2186,7 @@ def course_form_complete(request, course_slug, index):
         ),
         course_progress=course_progress,
         access_ended_outline=keeps_outline,
+        paused=paused,
     )
     course_index = chrome["course_index"]
     # A closed form refuses a new sitting, so its results offer no retry. Read off
@@ -2104,7 +2199,9 @@ def course_form_complete(request, course_slug, index):
     total_viewable_items = len(viewable_collection_items)
     is_last_item = index >= total_viewable_items
     next_url: str | None
-    if is_last_item:
+    if paused:
+        next_url = None
+    elif is_last_item:
         # Last item - go to course finish page
         next_url = reverse(
             "learner_interface:course_finish", kwargs={"course_slug": course_slug}
@@ -2133,7 +2230,7 @@ def course_form_complete(request, course_slug, index):
             "learner_interface:view_course_item",
             kwargs={"course_slug": course_slug, "index": index - 1},
         )
-        if index > 1 and not access_ended
+        if index > 1 and not access_ended and not paused
         else None
     )
     if item_closed:
@@ -2152,6 +2249,7 @@ def course_form_complete(request, course_slug, index):
         "previous_url": previous_url,
         "retry_url": retry_url,
         "access_ended": access_ended,
+        "paused": paused,
         "item_closed": item_closed,
         "hide_outline_panel": access_ended and not keeps_outline,
         **chrome,

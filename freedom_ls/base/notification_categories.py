@@ -46,6 +46,33 @@ FLS_NOTIFICATION_CATEGORIES: list[NotificationCategory] = [
         url_builder="freedom_ls.learner_interface.notification_urls.course_home_url",
     ),
     NotificationCategory(
+        key="course.paused",
+        label=_("Course paused"),
+        icon="paused",
+        message=_(
+            "Your educator paused %(course_title)s. %(resume_text)s Your progress is saved."
+        ),
+        url_builder="freedom_ls.learner_interface.notification_urls.course_detail_url",
+        colour=NotificationColour.INFO,
+    ),
+    NotificationCategory(
+        key="course.resumed",
+        label=_("Course resumed"),
+        icon="course",
+        message=_("%(summary)s"),
+        url_builder="freedom_ls.learner_interface.notification_urls.course_detail_url",
+        colour=NotificationColour.SUCCESS,
+    ),
+    NotificationCategory(
+        key="deadline.extended",
+        label=_("Deadline extended"),
+        icon="deadline",
+        message=_("%(summary)s"),
+        url_builder="freedom_ls.learner_interface.notification_urls.course_detail_url",
+        colour=NotificationColour.INFO,
+        rollup=False,
+    ),
+    NotificationCategory(
         key="bulk_action.finished",
         label=_("Bulk action"),
         icon="check_all",

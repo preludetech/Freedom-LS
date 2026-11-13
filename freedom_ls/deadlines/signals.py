@@ -19,7 +19,11 @@ from freedom_ls.content_engine.models import (
     CoursePartChildDueDate,
 )
 from freedom_ls.content_engine.signals import collection_items_synced
-from freedom_ls.deadlines.models import CohortDeadlineOverride, LearnerDeadlineOverride
+from freedom_ls.deadlines.models import (
+    CohortDeadlineOverride,
+    DeadlineExtension,
+    LearnerDeadlineOverride,
+)
 
 
 @receiver(collection_items_synced)
@@ -65,30 +69,40 @@ def carry_over_deadline_overrides(
             ]
             if len(stale) != 1:
                 continue
-            for model, parent in _CARRIED_PARENTS:
-                already_on_new_row = model._base_manager.filter(
-                    collection_item=new_row
-                ).values(parent)
-                model._base_manager.filter(site=site, collection_item=stale[0]).exclude(
-                    **{f"{parent}__in": already_on_new_row}
-                ).update(collection_item=new_row)
+            for model, parent, unique_per_parent in _CARRIED_PARENTS:
+                stale_rows = model._base_manager.filter(
+                    site=site, collection_item=stale[0]
+                )
+                if unique_per_parent:
+                    already_on_new_row = model._base_manager.filter(
+                        collection_item=new_row
+                    ).values(parent)
+                    stale_rows = stale_rows.exclude(
+                        **{f"{parent}__in": already_on_new_row}
+                    )
+                stale_rows.update(collection_item=new_row)
 
 
 # Each model whose rows follow a moved child, with the field that names whose row it is,
-# which the unique constraints pair with the collection item. CoursePartChildDueDate is a
-# content_engine model, carried here because this receiver already owns the move.
+# which the unique constraints pair with the collection item, and whether the model holds at
+# most one row per parent and item. A model that does not (stacked extensions) never clashes,
+# so every stale row moves. CoursePartChildDueDate is a content_engine model, carried here
+# because this receiver already owns the move.
 _CARRIED_PARENTS: tuple[
     tuple[
         type[CohortDeadlineOverride]
         | type[LearnerDeadlineOverride]
+        | type[DeadlineExtension]
         | type[CoursePartChildDueDate],
         str,
+        bool,
     ],
     ...,
 ] = (
-    (CohortDeadlineOverride, "cohort_registration"),
-    (LearnerDeadlineOverride, "course_progress"),
-    (CoursePartChildDueDate, "part_collection_item"),
+    (CohortDeadlineOverride, "cohort_registration", True),
+    (LearnerDeadlineOverride, "course_progress", True),
+    (DeadlineExtension, "course_progress", False),
+    (CoursePartChildDueDate, "part_collection_item", True),
 )
 
 

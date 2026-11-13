@@ -36,6 +36,13 @@ def test_the_default_defaults_produce_no_error() -> None:
         _defaults(grace_window=3),
         _defaults(after_access_ended="inherit"),
         _defaults(after_access_ended="everything"),
+        _without("max_pauses"),
+        _without("learners_may_pause"),
+        _defaults(max_pauses=-1),
+        _defaults(max_pause_days=1.5),
+        _defaults(max_pause_days="3"),
+        _defaults(max_pauses=True),
+        _defaults(max_pause_days=None),
     ],
 )
 def test_invalid_defaults_produce_an_error(defaults) -> None:
@@ -43,6 +50,13 @@ def test_invalid_defaults_produce_an_error(defaults) -> None:
         errors = check_policy_defaults(None)
 
     assert {error.id for error in errors} == {"freedom_ls_deadlines.E001"}
+
+
+def test_zero_is_a_valid_default_limit() -> None:
+    with override_settings(
+        DEADLINE_POLICY_DEFAULTS=_defaults(max_pauses=0, max_pause_days=0)
+    ):
+        assert check_policy_defaults(None) == []
 
 
 def test_each_failing_condition_gets_its_own_error() -> None:

@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
+import time_machine
 
 from django.db.models import OuterRef
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import Course
+from freedom_ls.content_engine.models import ContentCollectionItem, Course
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -22,14 +23,20 @@ from freedom_ls.learner_management.models import (
     Learner,
     LearnerCourseRegistration,
 )
-from freedom_ls.learner_progress.factories import CourseProgressFactory
+from freedom_ls.learner_progress.factories import (
+    CourseFormAttemptFactory,
+    CourseProgressFactory,
+    TopicProgressFactory,
+)
 from freedom_ls.learner_progress.queries import (
     LearnerRegistrationProgress,
+    completion_instants,
     course_progress_by_course_for,
     course_progress_for,
     registrations_with_progress_for_learner,
     started_course_exists,
 )
+from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 
 # The bulk resolver must agree with the single-course one, course for course.
@@ -622,3 +629,67 @@ def test_started_course_exists_reads_a_record_minted_by_a_cohort_registration(
 
     # Assert
     assert started is True
+
+
+@pytest.mark.django_db
+def test_completion_instants_reads_a_topics_complete_time(mock_site_context):
+    done = datetime(2026, 3, 5, 9, 0, tzinfo=UTC)
+    progress = TopicProgressFactory(complete_time=done)
+    TopicProgressFactory(course_progress=progress.course_progress, complete_time=None)
+
+    result = completion_instants([progress.course_progress_id])
+
+    assert result == {(progress.course_progress_id, progress.collection_item_id): done}
+
+
+@pytest.mark.django_db
+def test_completion_instants_reads_a_surveys_first_completed_attempt(mock_site_context):
+    first = datetime(2026, 3, 5, 9, 0, tzinfo=UTC)
+    attempt = CourseFormAttemptFactory(form_progress__completed_time=first)
+    CourseFormAttemptFactory(
+        course_progress=attempt.course_progress,
+        collection_item=attempt.collection_item,
+        form_progress__form=attempt.form_progress.form,
+        form_progress__completed_time=first + timedelta(days=2),
+    )
+
+    result = completion_instants([attempt.course_progress_id])
+
+    assert result == {(attempt.course_progress_id, attempt.collection_item_id): first}
+
+
+@pytest.mark.django_db
+def test_completion_instants_skips_an_attempt_still_open(mock_site_context):
+    attempt = CourseFormAttemptFactory()
+
+    assert completion_instants([attempt.course_progress_id]) == {}
+
+
+@pytest.mark.django_db
+def test_completion_instants_uses_the_earliest_passing_attempt_of_a_quiz(
+    mock_site_context, course_with_scored_quiz, sit_quiz
+):
+    course, form, question, right, wrong = course_with_scored_quiz()
+    record = course_progress_record(course, UserFactory())
+    with time_machine.travel(datetime(2026, 3, 1, tzinfo=UTC), tick=False):
+        sit_quiz(record, form, question, wrong)
+    with time_machine.travel(datetime(2026, 3, 2, tzinfo=UTC), tick=False):
+        sit_quiz(record, form, question, right)
+    with time_machine.travel(datetime(2026, 3, 3, tzinfo=UTC), tick=False):
+        sit_quiz(record, form, question, right)
+    item = ContentCollectionItem.objects.get(collection_id=course.pk, child_id=form.pk)
+
+    result = completion_instants([record.pk])
+
+    assert result == {(record.pk, item.pk): datetime(2026, 3, 2, tzinfo=UTC)}
+
+
+@pytest.mark.django_db
+def test_completion_instants_leaves_out_a_quiz_that_was_only_failed(
+    mock_site_context, course_with_scored_quiz, sit_quiz
+):
+    course, form, question, _, wrong = course_with_scored_quiz()
+    record = course_progress_record(course, UserFactory())
+    sit_quiz(record, form, question, wrong)
+
+    assert completion_instants([record.pk]) == {}
