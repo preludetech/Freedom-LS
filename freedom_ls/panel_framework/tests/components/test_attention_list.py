@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 
+import lxml.html
+
 from ..cotton_helpers import render_cotton
 
 
@@ -116,3 +118,29 @@ def test_no_trigger_markup_without_a_trigger_slot() -> None:
     )
 
     assert "<button" not in html
+
+
+def test_a_quick_view_url_adds_one_trigger_beside_the_row() -> None:
+    html = render_cotton(
+        '<c-panel-attention-row subject="Thandi Mokoena" href="/learners/42/" user_id="42" '
+        'quick_view_url="/learners/42/__quick-view" />'
+    )
+
+    root = lxml.html.fromstring(html)
+    triggers = root.xpath('.//a[@aria-controls="quick-view"]')
+
+    assert len(triggers) == 1
+    assert triggers[0].get("hx-get") == "/learners/42/__quick-view"
+    assert triggers[0].get("aria-label") == "Quick view: Thandi Mokoena"
+
+
+def test_a_person_row_links_the_chip_and_name_together_with_the_reason_inside() -> None:
+    html = render_cotton(
+        '<c-panel-attention-row subject="Thandi Mokoena" href="/learners/42/" '
+        'user_id="42" reason="4 days idle" />'
+    )
+
+    link = lxml.html.fromstring(html).xpath('.//a[@href="/learners/42/"]')[0]
+
+    assert "Thandi Mokoena" in link.text_content()
+    assert "4 days idle" in link.text_content()

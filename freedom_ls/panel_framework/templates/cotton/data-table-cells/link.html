@@ -23,9 +23,5 @@ no link, since an empty link has no accessible name.
            hx-push-url="true"
            hx-swap="outerHTML"
        {% endif %}>{{ cell_text }}</a>{% if column.quick_view %}
-    <c-quick-view-trigger href="{{ resolved_url }}" url="{{ resolved_url }}/__quick-view"
-                          aria-label="Quick view: {{ cell_text }}"
-                          class="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted no-underline transition-colors hover:bg-surface-2 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring md:-my-2 md:size-8">
-        <c-icon name="quick_view" class="size-4" />
-    </c-quick-view-trigger></span>{% endif %}
+    {% include "panel_framework/partials/quick_view_button.html" with href=resolved_url url=resolved_url|add:"/__quick-view" label=cell_text only %}</span>{% endif %}
 {% endif %}

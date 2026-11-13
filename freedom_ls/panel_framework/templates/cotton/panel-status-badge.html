@@ -1,4 +1,4 @@
-<c-vars tone="muted" label="" />
+<c-vars tone="muted" label="" badge="" />
 
 {% load panel_tags %}
 
@@ -12,9 +12,11 @@ Attributes:
          filter).
   label  The status text, shown as given. The badge owns no domain words:
          callers pass sentence case ("Active", "Stalled", …).
+  badge  An object with `tone` and `label` (a `StatusBadge`), in place of the
+         two attributes. Given, it wins over them.
 
 `forced-colors:border` keeps the badge legible under Windows High Contrast,
 where the tinted background is suppressed and only a border remains.
 {% endcomment %}
 
-<c-chip variant="{{ tone|tone }}" size="xs" class="forced-colors:border" data-tone="{{ tone|tone }}" :attrs="attrs">{{ label }}</c-chip>
+{% with badge_tone=badge.tone|default:tone badge_label=badge.label|default:label %}<c-chip variant="{{ badge_tone|tone }}" size="xs" class="forced-colors:border" data-tone="{{ badge_tone|tone }}" :attrs="attrs">{{ badge_label }}</c-chip>{% endwith %}

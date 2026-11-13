@@ -9,9 +9,7 @@ column.attr names the row's learner; empty means the row is the learner.
 {% endcomment %}
 {% with learner=object|getattr_str:column.attr %}
     {% resolve_url_path_template learner 'educator_interface:interface' 'learners/{pk}' as resolved_url %}
-    <c-panel-person-link name="{{ learner.user.display_name }}"
-                         user_id="{{ learner.user.pk }}"
-                         secondary="{% if learner.user.first_name or learner.user.last_name %}{{ learner.user.email }}{% endif %}"
+    <c-panel-person-link :user="learner.user"
                          href="{{ resolved_url }}"
                          quick_view_url="{{ resolved_url }}/__quick-view"
                          hx_nav="true" />

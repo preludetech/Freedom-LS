@@ -34,6 +34,7 @@ from freedom_ls.learner_progress.queries import (
     registrations_with_progress_for_learner,
 )
 from freedom_ls.panel_framework.quick_view import QuickView
+from freedom_ls.panel_framework.views import StatusBadge
 
 if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
@@ -56,6 +57,21 @@ def visible_registrations_with_progress(
         for registration in registrations_with_progress_for_learner(learner)
         if registration.cohort is None or registration.cohort.pk in visible_cohort_ids
     ]
+
+
+def _learner_status_badge(learner: Learner) -> StatusBadge:
+    """The learner's status badge. views.py imports this module, so it is
+    imported when called."""
+    from freedom_ls.educator_interface.views import learner_status_badge
+
+    return learner_status_badge(learner)
+
+
+def _active_status_badge(is_active: bool) -> StatusBadge:
+    """The Active/Inactive badge, imported when called for the same reason."""
+    from freedom_ls.educator_interface.views import active_status_badge
+
+    return active_status_badge(is_active)
 
 
 class LearnerQuickView(QuickView):
@@ -83,6 +99,7 @@ class LearnerQuickView(QuickView):
         registrations = visible_registrations_with_progress(learner, request)
         context: dict[str, object] = {
             "learner": learner,
+            "status_badge": _learner_status_badge(learner),
             "memberships": memberships,
             "registrations": registrations,
             "last_active": last_active,
@@ -124,6 +141,7 @@ class CohortQuickView(QuickView):
         cohort = cast(Cohort, self.instance)
         return {
             "cohort": cohort,
+            "status_badge": _active_status_badge(cohort.is_active),
             "learner_count": cohort_learner_count(cohort),
             "courses": [
                 registration.course

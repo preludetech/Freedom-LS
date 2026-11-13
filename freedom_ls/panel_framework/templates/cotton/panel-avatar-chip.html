@@ -1,4 +1,4 @@
-<c-vars name="" user_id="" initials="" secondary="" size="md" name_hidden="" />
+<c-vars user="" name="" user_id="" initials="" secondary="" size="md" name_hidden="" fallback_icon="" />
 
 {% load panel_tags %}
 
@@ -7,13 +7,21 @@ Avatar chip — an initials circle beside a name, e.g. a learner row's leading
 element.
 
 Attributes:
-  name         Display name, and the accessible name (required).
-  user_id      Picks the colour slot, via the `avatar_slot` filter
-                (required).
+  user         A user object. The name, the id and the second line come from
+               it through `person_display`: the second line is the email, and
+               only when the user has a first or last name. Given, it
+               replaces `name`, `user_id` and `secondary`.
+  name         Display name, and the accessible name, for a caller with no
+               user object (the audit log keeps a name after its user is
+               gone).
+  user_id      Picks the colour slot, via the `avatar_slot` filter.
   initials     Overrides the initials derived from `name` (default none:
                derive from the first and last words, uppercased; one word
                gives one letter, an empty name gives none).
   secondary    Email or role, second line, text-muted (default none).
+  fallback_icon  A semantic icon name. With no user and no id, a neutral
+               circle holding that icon replaces the initials (default
+               none: the initials circle).
   size         "md" (default, table rows), "sm" (a person in a list row
                beside other text) or "lg" (profile header).
   name_hidden  Off (default). On: the name and second line are not
@@ -38,7 +46,11 @@ it. A theme recolours the set by redefining these properties or shadowing
 this component.
 {% endcomment %}
 
-<style>@layer components {
+{% person_display user as person %}
+{% with person_name=person.name|default:name person_secondary=person.secondary|default:secondary person_id=person.id|default:user_id %}
+<div class="{% if name_hidden|flag %}flex gap-3{% else %}grid grid-cols-[auto_minmax(0,1fr)] gap-x-3{% endif %} {% if size == "sm" %}items-start{% else %}items-center{% endif %}" {{ attrs }}>
+    {% if person_id or not fallback_icon %}
+        <style>@layer components {
     .panel-avatar-1 { background-color: color-mix(in oklab, var(--color-primary) 22%, var(--color-surface)); }
     .panel-avatar-2 { background-color: color-mix(in oklab, var(--color-secondary) 22%, var(--color-surface)); }
     .panel-avatar-3 { background-color: color-mix(in oklab, var(--color-accent) 25%, var(--color-surface)); }
@@ -46,14 +58,18 @@ this component.
     .panel-avatar-5 { background-color: color-mix(in oklab, var(--color-primary) 42%, var(--color-surface)); }
     .panel-avatar-6 { background-color: color-mix(in oklab, var(--color-secondary) 42%, var(--color-surface)); }
 }</style>
-
-<div class="{% if name_hidden|flag %}flex{% else %}grid grid-cols-[auto_minmax(0,1fr)] gap-x-3{% endif %} items-center" {{ attrs }}>
-    <span aria-hidden="true" class="panel-avatar-{{ user_id|avatar_slot }} flex shrink-0 items-center justify-center rounded-full font-semibold text-on-surface {% if size == "lg" %}size-13 text-lg{% elif size == "sm" %}size-6 text-[0.625rem]{% else %}size-8 text-xs{% endif %}">{% firstof initials name|initials %}</span>
+        <span aria-hidden="true" class="panel-avatar-{{ person_id|avatar_slot }} flex shrink-0 items-center justify-center rounded-full font-semibold text-on-surface {% if size == "lg" %}size-13 text-lg{% elif size == "sm" %}size-6 text-[0.625rem]{% else %}size-8 text-xs{% endif %}">{% firstof initials person_name|initials %}</span>
+    {% else %}
+        <span class="grid shrink-0 place-items-center rounded-full bg-surface-2 text-muted {% if size == "lg" %}size-13{% elif size == "sm" %}size-6{% else %}size-8{% endif %}">
+            {% if name_hidden|flag %}<c-icon :name="fallback_icon" class="size-4" :aria_label="person_name" />{% else %}<span aria-hidden="true"><c-icon :name="fallback_icon" class="size-4" /></span>{% endif %}
+        </span>
+    {% endif %}
     {% if not name_hidden|flag %}
         <span class="min-w-0">
-            <span class="block truncate">{{ name }}</span>
-            {% if secondary %}<span class="block truncate text-sm font-normal text-muted">{{ secondary }}</span>{% endif %}
+            <span class="block truncate">{{ person_name }}</span>
+            {% if person_secondary %}<span class="block truncate text-sm font-normal text-muted">{{ person_secondary }}</span>{% endif %}
         </span>
         {% if badges %}<span class="col-start-2 mt-1 flex flex-wrap gap-1 font-normal">{{ badges }}</span>{% endif %}
     {% endif %}
 </div>
+{% endwith %}

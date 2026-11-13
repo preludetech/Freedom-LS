@@ -70,6 +70,17 @@ from freedom_ls.reports.tests.test_views import (
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
 
+def _visible_text(element: lxml.html.HtmlElement) -> str:
+    """An element's text as a reader sees it: no <style> or aria-hidden content, whitespace collapsed."""
+    return " ".join(
+        "".join(
+            element.xpath(
+                ".//text()[not(ancestor::style)][not(ancestor::*[@aria-hidden='true'])]"
+            )
+        ).split()
+    )
+
+
 @pytest.fixture(autouse=True)
 def _site_context(mock_site_context):
     """Every test here builds site-aware objects and assigns roles."""
@@ -661,7 +672,7 @@ class TestNeedsAttentionCard:
         )
 
         (row,) = region.cssselect("li")
-        assert [a.text_content() for a in row.cssselect("a")] == ["Cy Cook"]
+        assert [_visible_text(a) for a in row.cssselect("a")] == ["Cy Cook"]
         assert (
             row.cssselect("a")[0]
             .get("href")
@@ -1350,4 +1361,4 @@ def test_the_attention_card_names_a_nameless_learner_by_their_email(logged_in_cl
     )
 
     (row,) = region.cssselect("li")
-    assert [a.text_content() for a in row.cssselect("a")] == ["nameless@example.com"]
+    assert [_visible_text(a) for a in row.cssselect("a")] == ["nameless@example.com"]

@@ -219,11 +219,14 @@ from freedom_ls.panel_framework.panels import (
     TabSet,
 )
 from freedom_ls.panel_framework.tables import (
+    BadgeColumn,
     Column,
     DataTable,
     ExportColumn,
+    RelatedListColumn,
     TableQuery,
 )
+from freedom_ls.panel_framework.templatetags.data_table_tags import getattr_str
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
     InstanceView,
@@ -335,17 +338,6 @@ class OrganisationSectionConfig(SectionConfigBase):
 # instance, other actions (eg: send_email)
 
 
-@dataclass
-class RelationLinkColumn(Column):
-    """A cell listing every related object in `relation_set`, each linked
-    through `url_name`/`url_path_template` (inherited from `Column`) and
-    resolved against `link_object_attr`."""
-
-    relation_set: str = ""
-    link_object_attr: str = ""
-    link_text_attr: str = ""
-
-
 def _interface_link(
     header: str,
     text_attr: str,
@@ -388,14 +380,34 @@ def _learner_column(attr: str = "") -> Column:
     )
 
 
+def _active_status_column(header: str, attr: str) -> BadgeColumn:
+    """An Active/Inactive badge column for the `is_active` flag at `attr`."""
+    return BadgeColumn(
+        header=header,
+        template_name="cotton/data-table-cells/badge.html",
+        badge=lambda row: active_status_badge(bool(getattr_str(row, attr))),
+    )
+
+
+def _cohort_links_column(relation_set: str) -> RelatedListColumn:
+    """The Cohorts column: each related cohort, linked to its page."""
+    return RelatedListColumn(
+        header="Cohorts",
+        template_name="cotton/data-table-cells/related_list.html",
+        relation_set=relation_set,
+        link_object_attr="cohort",
+        item_text_attr="cohort.name",
+        url_name="educator_interface:interface",
+        url_path_template="cohorts/{pk}",
+        htmx_nav=True,
+        layout="inline",
+    )
+
+
 def _registration_columns() -> list[Column]:
     """The Status/Registered columns the three registration tables share."""
     return [
-        Column(
-            header="Status",
-            template_name="educator_interface/data-table-cells/active_status.html",
-            attr="is_active",
-        ),
+        _active_status_column("Status", "is_active"),
         Column(
             header="Registered",
             template_name="cotton/data-table-cells/datetime.html",
@@ -445,20 +457,18 @@ class CohortDataTable(DataTable):
                 card="primary",
                 quick_view=True,
             ),
-            Column(
-                header="Status",
-                template_name="educator_interface/data-table-cells/active_status.html",
-                attr="is_active",
-            ),
+            _active_status_column("Status", "is_active"),
             Column(
                 header="Learners",
-                template_name="educator_interface/data-table-cells/learner_count.html",
+                template_name="cotton/data-table-cells/text.html",
                 attr="learner_count",
                 sortable=True,
             ),
-            Column(
+            RelatedListColumn(
                 header="Courses",
-                template_name="educator_interface/data-table-cells/cohort_courses.html",
+                template_name="cotton/data-table-cells/related_list.html",
+                relation_set="course_registrations.all",
+                item_text_attr="course.title",
             ),
             Column(
                 header="Created",
@@ -614,28 +624,22 @@ class LearnerDataTable(DataTable):
     def get_columns() -> list[Column]:
         return [
             _learner_column(),
-            Column(
+            BadgeColumn(
                 header="Status",
-                template_name="educator_interface/data-table-cells/learner_status.html",
+                template_name="cotton/data-table-cells/badge.html",
+                badge=lambda row: learner_status_badge(cast(Learner, row)),
             ),
-            RelationLinkColumn(
-                header="Cohorts",
-                template_name="educator_interface/data-table-cells/cohort_links.html",
-                relation_set="cohortmembership_set.all",
-                link_object_attr="cohort",
-                link_text_attr="cohort.name",
-                url_name="educator_interface:interface",
-                url_path_template="cohorts/{pk}",
-            ),
+            _cohort_links_column("cohortmembership_set.all"),
             Column(
                 header="Courses",
                 template_name="educator_interface/data-table-cells/learner_courses.html",
             ),
             Column(
                 header="Last active",
-                template_name="educator_interface/data-table-cells/learner_last_active.html",
+                template_name="cotton/data-table-cells/date.html",
                 attr="last_active",
                 sortable=True,
+                empty_text="Never",
             ),
         ]
 
@@ -700,7 +704,7 @@ class CohortLearnerDataTable(LearnerDataTable):
             *LearnerDataTable.get_columns(),
             Column(
                 header="",
-                template_name="educator_interface/data-table-cells/cohort_member_actions.html",
+                template_name="educator_interface/data-table-cells/membership_actions.html",
                 card="secondary",
             ),
         ]
@@ -714,7 +718,9 @@ class LearnerDetailsPanel(Panel):
 
     def get_context_data(self) -> dict[str, object]:
         context = super().get_context_data()
-        context["learner"] = cast(Learner, self.instance)
+        learner = cast(Learner, self.instance)
+        context["learner"] = learner
+        context["status_badge"] = learner_status_badge(learner)
         return context
 
 
@@ -747,13 +753,16 @@ class LearnerCohortsPanel(DataTablePanel):
         request = cast(OrganisationScopedRequest, self.request)
         context = super().get_context_data()
         # A grant on only some of the learner's cohorts shows Remove on
-        # those rows alone.
-        context["manageable_cohort_ids"] = set(
+        # those rows alone, and an inactive cohort offers nothing.
+        context["membership_param"] = "cohort"
+        context["membership_row_ids"] = set(
             cohorts_visible_to(
                 request.user,
                 request.organisation,
                 capability=DELETE_COHORTMEMBERSHIP,
-            ).values_list("pk", flat=True)
+            )
+            .filter(is_active=True)
+            .values_list("pk", flat=True)
         )
         return context
 
@@ -767,6 +776,10 @@ class RegistrationRow:
     via: str
     is_active: bool
     registration: LearnerCourseRegistration | CohortCourseRegistration
+
+    @property
+    def badge(self) -> StatusBadge:
+        return active_status_badge(self.is_active)
 
     @property
     def is_individual(self) -> bool:
@@ -1452,7 +1465,7 @@ def learner_status_badge(learner: Learner) -> StatusBadge:
 
 
 def active_status_badge(is_active: bool) -> StatusBadge:
-    """The badge for an `is_active` flag, matching `<c-active-status-badge>`."""
+    """The badge for an `is_active` flag, shown by `<c-panel-status-badge>`."""
     if is_active:
         return StatusBadge("success", "Active")
     return StatusBadge("muted", "Inactive")
@@ -1476,6 +1489,7 @@ class CohortDetailsPanel(Panel):
         cohort = cast(Cohort, self.instance)
         context = super().get_context_data()
         context["cohort"] = cohort
+        context["status_badge"] = active_status_badge(cohort.is_active)
         counts = cohort_counts(cohort)
         context["cohort_learner_count"] = counts.learners
         context["cohort_course_count"] = counts.courses
@@ -1528,7 +1542,12 @@ class CohortLearnersPanel(DataTablePanel):
 
     def get_context_data(self) -> dict[str, object]:
         context = super().get_context_data()
-        context["cohort_is_active"] = cast(Cohort, self.instance).is_active
+        # None offers the actions on every learner row; an inactive cohort
+        # offers none.
+        context["membership_param"] = "learner"
+        context["membership_row_ids"] = (
+            None if cast(Cohort, self.instance).is_active else set()
+        )
         return context
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
@@ -2002,15 +2021,7 @@ class CourseDataTable(DataTable):
                 attr="cohort_count",
                 card="md_only",
             ),
-            RelationLinkColumn(
-                header="Cohorts",
-                template_name="educator_interface/data-table-cells/cohort_links.html",
-                relation_set="cohort_registrations.all",
-                link_object_attr="cohort",
-                link_text_attr="cohort.name",
-                url_name="educator_interface:interface",
-                url_path_template="cohorts/{pk}",
-            ),
+            _cohort_links_column("cohort_registrations.all"),
         ]
 
 
@@ -2362,11 +2373,7 @@ class CourseCohortRegistrationDataTable(DataTable):
             _interface_link(
                 "Cohort", "cohort.name", "cohorts/{cohort.pk}", card="primary"
             ),
-            Column(
-                header="Cohort status",
-                template_name="educator_interface/data-table-cells/active_status.html",
-                attr="cohort.is_active",
-            ),
+            _active_status_column("Cohort status", "cohort.is_active"),
             *_registration_columns(),
         ]
 

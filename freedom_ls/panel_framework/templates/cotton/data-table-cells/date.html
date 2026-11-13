@@ -1,0 +1,6 @@
+{% load data_table_tags %}
+{% comment %}
+A date column: the row's `column.attr` rendered through <c-date>. A row with
+no value shows `column.empty_text`, or "-" when that is blank.
+{% endcomment %}
+{% with value=object|getattr_str:column.attr %}{% if value %}<c-date :value="value" />{% else %}{{ column.empty_text|default:"-" }}{% endif %}{% endwith %}

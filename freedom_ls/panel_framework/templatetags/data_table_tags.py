@@ -55,3 +55,13 @@ def link_cell_text(obj: object, text_attr: str, fallback_text_attr: str = "") ->
     if is_blank(text) and fallback_text_attr:
         return getattr_str(obj, fallback_text_attr)
     return text
+
+
+@register.simple_tag
+def column_badge(obj: object, column: object) -> object:
+    """The badge a `BadgeColumn` shows for a row, or None for no badge.
+
+    Usage: {% column_badge object column as badge %}
+    """
+    badge = getattr(column, "badge", None)
+    return badge(obj) if callable(badge) else None

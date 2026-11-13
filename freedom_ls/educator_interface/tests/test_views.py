@@ -7220,46 +7220,6 @@ def test_active_status_badge_has_one_label_and_tone_per_state(
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize(
-    ("state", "label", "tone"),
-    [
-        ("active", "Active", "success"),
-        ("pending", "Pending", "info"),
-        ("inactive", "Inactive", "muted"),
-    ],
-)
-def test_learner_status_cell_renders_the_badge_tone_for_the_state(
-    mock_site_context, state: str, label: str, tone: str
-):
-    rendered = render_to_string(
-        "educator_interface/data-table-cells/learner_status.html",
-        {"object": _learner_in_state(state)},
-    )
-
-    (badge,) = lxml.html.fromstring(rendered).cssselect("[data-tone]")
-    assert (badge.text_content().strip(), badge.get("data-tone")) == (label, tone)
-
-
-@pytest.mark.parametrize(
-    ("is_active", "label", "tone"),
-    [(True, "Active", "success"), (False, "Inactive", "muted")],
-)
-def test_active_status_cell_renders_the_badge_tone_for_the_state(
-    is_active: bool, label: str, tone: str
-):
-    rendered = render_to_string(
-        "educator_interface/data-table-cells/active_status.html",
-        {
-            "object": SimpleNamespace(is_active=is_active),
-            "column": SimpleNamespace(attr="is_active"),
-        },
-    )
-
-    (badge,) = lxml.html.fromstring(rendered).cssselect("[data-tone]")
-    assert (badge.text_content().strip(), badge.get("data-tone")) == (label, tone)
-
-
-@pytest.mark.django_db
 def test_the_history_tab_names_a_nameless_actor_by_their_email(staff_client: Client):
     learner = LearnerFactory(organisation=OrganisationFactory())
     actor = UserFactory(first_name="", last_name="", email="nameless@example.com")
