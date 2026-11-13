@@ -18,10 +18,10 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
-- [ ] (user) Decide what to do about QA bug: component reference page has no panel-notice examples (TDD: failing test first, then fix)
-- [ ] (user) Decide what to do about QA bug: learners table mixes '—' (Cohorts) and '-' (Courses, learner_courses.html) for empty cells (TDD: failing test first, then fix)
-- [ ] (user) Decide what a disabled bulk confirm's reason says when no selected row qualifies (e.g. Resend setup email with only set-up learners), then show it beside the button and name it with aria-describedby
-- [ ] (user) Decide whether the learner import error section is an error notice (as the QA plan says) or stays a warning notice so its role=alert does not announce the whole error table, then align the template or the QA plan
+- [x] (user) Decide what to do about QA bug: component reference page has no panel-notice examples (TDD: failing test first, then fix)
+- [x] (user) Decide what to do about QA bug: learners table mixes '—' (Cohorts) and '-' (Courses, learner_courses.html) for empty cells (TDD: failing test first, then fix)
+- [x] (user) Decide what a disabled bulk confirm's reason says when no selected row qualifies (e.g. Resend setup email with only set-up learners), then show it beside the button and name it with aria-describedby
+- [x] (user) Decide whether the learner import error section is an error notice (as the QA plan says) or stays a warning notice so its role=alert does not announce the whole error table, then align the template or the QA plan
 
 ## 4. Documentation and pull request
 
