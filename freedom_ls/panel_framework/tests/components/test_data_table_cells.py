@@ -132,3 +132,144 @@ def test_related_list_links_each_item_when_the_column_has_a_url() -> None:
         "/test-panel/framework/stubs/2",
     ]
     assert root.xpath('.//a[@aria-controls="quick-view"]') == []
+
+
+@dataclass
+class _Named:
+    name: str = ""
+    fallback: str = ""
+    pk: int = 5
+    count: object = None
+    when: object = None
+
+
+def _link_column(
+    htmx_nav: bool = False,
+    quick_view: bool = False,
+    fallback_text_attr: str = "",
+) -> Column:
+    return Column(
+        header="Name",
+        template_name="cotton/data-table-cells/link.html",
+        text_attr="name",
+        fallback_text_attr=fallback_text_attr,
+        url_name="panel_framework_test:framework",
+        url_path_template="stubs/{pk}",
+        htmx_nav=htmx_nav,
+        quick_view=quick_view,
+    )
+
+
+def test_datetime_cell_renders_the_value_as_a_time_element() -> None:
+    column = Column(header="When", template_name="x", attr="when")
+    row = _Named(when=datetime.datetime(2026, 11, 3, 14, 30, tzinfo=datetime.UTC))
+
+    root = lxml.html.fromstring(_render("datetime.html", row, column))
+
+    assert root.tag == "time"
+    assert root.get("datetime").startswith("2026-11-03T14:30")
+
+
+def test_datetime_cell_without_a_value_shows_a_dash() -> None:
+    column = Column(header="When", template_name="x", attr="when")
+
+    assert _render("datetime.html", _Named(), column).strip() == "-"
+
+
+def test_text_cell_renders_the_attribute() -> None:
+    column = Column(header="Name", template_name="x", attr="name")
+
+    assert _render("text.html", _Named(name="Alpha"), column).strip() == "Alpha"
+
+
+def test_text_cell_renders_a_zero() -> None:
+    column = Column(header="Count", template_name="x", attr="count")
+
+    assert _render("text.html", _Named(count=0), column).strip() == "0"
+
+
+def test_text_cell_without_a_value_shows_a_dash() -> None:
+    column = Column(header="Name", template_name="x", attr="name")
+
+    assert _render("text.html", _Named(name=""), column).strip() == "-"
+
+
+def test_text_cell_escapes_the_value() -> None:
+    column = Column(header="Name", template_name="x", attr="name")
+
+    html = _render("text.html", _Named(name="<b>x</b>"), column)
+
+    assert "<b>" not in html
+    assert "&lt;b&gt;" in html
+
+
+def test_link_cell_links_the_text_to_the_resolved_page() -> None:
+    root = lxml.html.fromstring(
+        _render("link.html", _Named(name="Alpha"), _link_column())
+    )
+
+    assert root.tag == "a"
+    assert root.get("href") == "/test-panel/framework/stubs/5"
+    assert root.text_content() == "Alpha"
+    assert root.get("hx-get") is None
+
+
+def test_link_cell_with_htmx_nav_swaps_the_main_content() -> None:
+    root = lxml.html.fromstring(
+        _render("link.html", _Named(name="Alpha"), _link_column(htmx_nav=True))
+    )
+
+    assert root.get("hx-get") == "/test-panel/framework/stubs/5"
+    assert root.get("hx-target") == "#main-content"
+    assert root.get("hx-push-url") == "true"
+
+
+def test_link_cell_falls_back_to_the_fallback_text_when_the_name_is_blank() -> None:
+    column = _link_column(fallback_text_attr="fallback")
+
+    root = lxml.html.fromstring(
+        _render("link.html", _Named(name="  ", fallback="Unnamed"), column)
+    )
+
+    assert root.text_content() == "Unnamed"
+
+
+def test_link_cell_with_no_text_is_a_dash_and_not_a_link() -> None:
+    html = _render("link.html", _Named(name=""), _link_column())
+
+    assert html.strip() == "-"
+    assert "<a" not in html
+
+
+def test_link_cell_in_a_secondary_line_is_not_bold() -> None:
+    row = _Named(name="Alpha")
+    column = _link_column()
+
+    primary = lxml.html.fromstring(_render("link.html", row, column))
+    secondary = lxml.html.fromstring(
+        render_to_string(
+            "cotton/data-table-cells/link.html",
+            {"object": row, "column": column, "in_secondary_line": True},
+        )
+    )
+
+    assert "font-bold" in primary.get("class")
+    assert "font-bold" not in secondary.get("class")
+
+
+def test_link_cell_with_quick_view_adds_a_trigger_labelled_by_the_name() -> None:
+    root = lxml.html.fromstring(
+        _render("link.html", _Named(name="Alpha"), _link_column(quick_view=True))
+    )
+
+    (trigger,) = root.xpath('.//*[@aria-controls="quick-view"]')
+    assert trigger.get("aria-label") == "Quick view: Alpha"
+    assert next(a.get("href") for a in root.findall(".//a")) == (
+        "/test-panel/framework/stubs/5"
+    )
+
+
+def test_link_cell_without_quick_view_has_no_trigger() -> None:
+    html = _render("link.html", _Named(name="Alpha"), _link_column())
+
+    assert "quick-view" not in html
