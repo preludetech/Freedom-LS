@@ -14,6 +14,7 @@ import re
 import sys
 from collections import Counter
 from collections.abc import Iterator
+from html.parser import HTMLParser
 
 import pytest
 import pytest_django.fixtures
@@ -71,6 +72,44 @@ class _FakeDebugToolbarModule:
 def test_examples_partial_renders_with_no_queries(django_assert_num_queries) -> None:
     with django_assert_num_queries(0):
         render_to_string("panel_framework/reference/_examples.html", EXAMPLE_CONTEXT)
+
+
+class _SidePanelDialogs(HTMLParser):
+    """Records, per `x-data="sidePanel"` element, whether a `<dialog>` sits inside it."""
+
+    VOID = {"input", "br", "hr", "img", "meta", "link"}
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.stack: list[tuple[str, int | None]] = []
+        self.has_dialog: list[bool] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in self.VOID:
+            return
+        index: int | None = None
+        if dict(attrs).get("x-data") == "sidePanel":
+            index = len(self.has_dialog)
+            self.has_dialog.append(False)
+        if tag == "dialog":
+            for _, open_index in self.stack:
+                if open_index is not None:
+                    self.has_dialog[open_index] = True
+        self.stack.append((tag, index))
+
+    def handle_endtag(self, tag: str) -> None:
+        while self.stack:
+            open_tag, _ = self.stack.pop()
+            if open_tag == tag:
+                break
+
+
+def test_every_side_panel_in_the_examples_holds_a_dialog() -> None:
+    """A sidePanel with no <dialog> throws in its init on the reference page."""
+    html = render_to_string("panel_framework/reference/_examples.html", EXAMPLE_CONTEXT)
+    parser = _SidePanelDialogs()
+    parser.feed(html)
+    assert False not in parser.has_dialog
 
 
 def test_examples_partial_has_no_duplicate_ids() -> None:
