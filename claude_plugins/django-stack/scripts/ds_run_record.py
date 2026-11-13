@@ -70,6 +70,14 @@ class Recorder:
             self._collected_written = True
             self._write({"event": "collected", "nodeids": list(ids)})
 
+    @pytest.hookimpl(optionalhook=True)
+    def pytest_testnodedown(self, node: object, error: object | None) -> None:
+        # A worker that dies while collecting or idle has no test assigned, so xdist builds no
+        # crash report for it and the session would otherwise look as if it ended normally.
+        # A worker that shut down cleanly has no error.
+        if error is not None:
+            self._write({"event": "crashed"})
+
     def pytest_collection_finish(self, session: pytest.Session) -> None:
         # A distributing controller collects nothing; its workers report through the hook
         # above. xdist registers `dsession` only when it distributes: a `--dist` mode with no

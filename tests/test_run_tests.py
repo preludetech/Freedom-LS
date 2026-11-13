@@ -1076,6 +1076,25 @@ def test_b_never_runs():
     pass
 """
 
+WORKER_DIES_COLLECTING_TESTS = """\
+import os
+import signal
+from pathlib import Path
+
+import pytest
+
+MARKER = Path(r"{marker}")
+
+if os.environ.get("PYTEST_XDIST_WORKER") == "gw1" and not MARKER.exists():
+    MARKER.touch()
+    os.kill(os.getpid(), signal.SIGKILL)
+
+
+@pytest.mark.parametrize("number", range(8))
+def test_plain(number):
+    pass
+"""
+
 REAL_RUN_ARGV = ["pytest", "-p", "xdist", "-p", "pytest_cov", "-n", "auto"]
 
 
@@ -1174,6 +1193,15 @@ def stop_on_first_failure_run(tmp_path_factory: pytest.TempPathFactory) -> RealR
     )
 
 
+@pytest.fixture(scope="module")
+def worker_dies_collecting_run(tmp_path_factory: pytest.TempPathFactory) -> RealRun:
+    return run_real_pytest(
+        tmp_path_factory.mktemp("worker_dies_collecting"),
+        WORKER_DIES_COLLECTING_TESTS,
+        REAL_RUN_ARGV,
+    )
+
+
 def test_worker_killed_once_ends_with_result_pass(crash_once_run: RealRun) -> None:
     assert "run: RESULT PASS" in crash_once_run.lines
 
@@ -1263,6 +1291,24 @@ def test_worker_killed_every_time_names_the_attempt_out_of_the_total(
     assert any(
         line.startswith("run: pytest attempt 1/2 crashed")
         for line in crash_every_time_run.lines
+    )
+
+
+def test_worker_killed_while_collecting_is_retried(
+    worker_dies_collecting_run: RealRun,
+) -> None:
+    assert (
+        "run: pytest attempts 2, xdist workers 4 -> 2"
+        in worker_dies_collecting_run.lines
+    )
+
+
+def test_worker_killed_while_collecting_leaves_no_test_unfinished(
+    worker_dies_collecting_run: RealRun,
+) -> None:
+    assert (
+        "run: tests 8 collected, 8 finished, 0 failed, 0 unfinished"
+        in worker_dies_collecting_run.lines
     )
 
 
