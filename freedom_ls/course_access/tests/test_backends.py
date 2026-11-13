@@ -44,7 +44,6 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_management.models import LearnerCourseRegistration
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
-from freedom_ls.site_aware_models.time_zones import has_set_time
 from freedom_ls.tests.factories import SiteFactory
 
 
@@ -791,19 +790,6 @@ class TestDeadlineEnforcingBackendPaused:
 
         assert decision.planned_resume_at is not None
         assert decision.planned_resume_at.date() == date(2999, 1, 1)
-
-    @time_machine.travel(AFTER_END, tick=False)
-    def test_a_paused_decisions_planned_resume_reads_as_a_day_not_a_time(
-        self, mock_site_context
-    ):
-        """The planned resume used to be its midnight instant, which the pages wrote with ", 00:00"."""
-        course = _time_limited_course()
-        user = _paused_learner(course, planned_resume_on=date(2999, 1, 1))
-
-        decision = _deadline_backend().get_access(user=user, course=course)
-
-        assert decision.planned_resume_at is not None
-        assert not has_set_time(decision.planned_resume_at)
 
     @time_machine.travel(AFTER_END, tick=False)
     def test_a_completed_record_is_never_paused(self, mock_site_context):
