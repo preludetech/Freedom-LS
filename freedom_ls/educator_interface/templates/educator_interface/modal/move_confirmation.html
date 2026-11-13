@@ -15,7 +15,7 @@ empty_message (with form_title) replaces the form when there is no cohort to mov
 <form hx-post="{{ action_url }}"
       hx-target="#app-modal-body"
       hx-swap="innerHTML"
-      hx-disabled-elt="find button[type='submit']">
+      hx-disabled-elt="#app-modal-body button[type='submit']">
     <c-modal-body>
         {% if refusal %}
             <c-panel-notice tone="error" data-error-summary tabindex="-1">{{ refusal }}</c-panel-notice>
