@@ -8,6 +8,7 @@ a throwaway package. Free memory comes from a fake meminfo file.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import re
@@ -19,6 +20,7 @@ import time
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 
@@ -1711,3 +1713,28 @@ def test_sigterm_during_a_retry_leaves_no_node_id_file(
 
     # Assert
     assert list(tmp_path.glob("ds_only_nodeids_*.txt")) == []
+
+
+def load_runner_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
+    spec = importlib.util.spec_from_file_location("run_tests_under_test", SCRIPT)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    # The dataclasses in the script look their own module up while it is being executed.
+    monkeypatch.setitem(sys.modules, spec.name, module)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_process_scan_finds_nothing_on_a_platform_without_proc(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # Arrange
+    module = load_runner_module(monkeypatch)
+    monkeypatch.setattr(module, "PROC_DIR", tmp_path / "no_proc")
+
+    # Act
+    found = module.descendants(os.getpid())
+
+    # Assert
+    assert found == []

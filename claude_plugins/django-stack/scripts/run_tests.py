@@ -71,6 +71,7 @@ NUMPROCESSES_ATTACHED = re.compile(r"-n(auto|logical|\d+)")
 
 WORKER_FLAGS = frozenset({"-n", "--numprocesses"})
 
+PROC_DIR = Path("/proc")
 OOM_SCORE_FILE = Path("/proc/self/oom_score_adj")
 PR_SET_CHILD_SUBREAPER = 36
 # Real time, not `scaled`: a test run with `DS_TEST_TIME_SCALE=0` still cleans up.
@@ -486,7 +487,12 @@ def parent_pid(stat_text: str) -> int:
 def descendants(pid: int) -> list[int]:
     """Every process below `pid` in the process tree, read from `/proc`."""
     children: dict[int, list[int]] = {}
-    for entry in Path("/proc").iterdir():
+    try:
+        entries = list(PROC_DIR.iterdir())
+    except FileNotFoundError:
+        # No /proc on this platform. The signal handler still has to exit cleanly.
+        return []
+    for entry in entries:
         if not entry.name.isdigit():
             continue
         try:
