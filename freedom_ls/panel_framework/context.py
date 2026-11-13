@@ -8,6 +8,10 @@ from typing import TYPE_CHECKING
 from django.db.models import Model
 from django.http import HttpRequest
 
+__all__ = [
+    "PanelContext",
+]
+
 if TYPE_CHECKING:
     # Under TYPE_CHECKING only: views.py imports context.py, so a runtime
     # import the other way round would cycle.

@@ -16,6 +16,11 @@ from __future__ import annotations
 
 from freedom_ls.base.app_settings import AppSettings, Setting
 
+__all__ = [
+    "PanelFrameworkConfig",
+    "config",
+]
+
 
 class PanelFrameworkConfig(AppSettings):
     BULK_BACKGROUND_THRESHOLD: int

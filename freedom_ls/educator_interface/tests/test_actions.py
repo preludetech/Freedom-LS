@@ -102,7 +102,6 @@ from freedom_ls.panel_framework.bulk_runs import (
 )
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
-from freedom_ls.panel_framework.tasks import _run_bulk_action_task
 from freedom_ls.role_based_permissions.exceptions import (
     RefusalReason,
     RoleChangeRefused,
@@ -8183,6 +8182,15 @@ def _notifications_for(run: BulkActionRun) -> list[tuple[int, str]]:
     ]
 
 
+def _run_in_background(run: BulkActionRun, site: Site) -> None:
+    """Run as the background task does: a finished run is reported back."""
+    run_bulk_action(
+        str(run.pk),
+        site.pk,
+        on_finished=lambda closed: report_finished(str(closed.pk), closed.site_id),
+    )
+
+
 @pytest.mark.django_db
 def test_the_task_tells_the_requester_the_run_finished(
     mock_site_context: Site, django_capture_on_commit_callbacks
@@ -8190,7 +8198,7 @@ def test_the_task_tells_the_requester_the_run_finished(
     run = _run_over(_learner(), GONE)
 
     with django_capture_on_commit_callbacks(execute=True):
-        _run_bulk_action_task.func(str(run.pk), mock_site_context.pk)
+        _run_in_background(run, mock_site_context)
 
     assert _notifications_for(run) == [
         (run.requested_by_id, "Deactivate finished: 1 learner changed, 1 skipped.")
@@ -8211,7 +8219,7 @@ def test_the_task_tells_the_requester_where_a_failed_run_stopped(
         django_capture_on_commit_callbacks(execute=True),
         pytest.raises(RuntimeError),
     ):
-        _run_bulk_action_task.func(str(run.pk), mock_site_context.pk)
+        _run_in_background(run, mock_site_context)
 
     assert _notifications_for(run) == [
         (run.requested_by_id, "Deactivate stopped after 0 of 1 learner.")

@@ -13,6 +13,12 @@ from django.utils import timezone
 
 from freedom_ls.panel_framework.models import RunStatus
 
+__all__ = [
+    "RunRecord",
+    "claim_run",
+    "record_run",
+]
+
 
 class RunRecord(Protocol):
     """A model row with the lifecycle fields `record_run` writes."""
