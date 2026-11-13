@@ -217,6 +217,14 @@ class BulkAction:
             return None
         return self.form_class(data)
 
+    def picker_prompt(self, form: forms.Form) -> str:
+        """Beside the disabled confirm while `form` has no valid choice:
+        what to choose, worded from its first field's label."""
+        name, field = next(iter(form.fields.items()))
+        noun = str(field.label or name.replace("_", " ")).lower()
+        article = "an" if noun[:1] in "aeiou" else "a"
+        return f"Choose {article} {noun} first."
+
     def has_permission(self, request: HttpRequest) -> bool:
         return True
 

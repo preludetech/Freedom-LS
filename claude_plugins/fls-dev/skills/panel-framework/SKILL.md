@@ -157,7 +157,8 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
   Lists, consequences, notices and errors in the body take no `text-sm`.
 - A confirm dialog states what is true now and what the action changes, naming the records it
   touches. A disabled action shows its reason beside the control, and
-  the control names it with `aria-describedby`.
+  the control names it with `aria-describedby`. A bulk confirm waiting on its picker gives
+  "Choose a <field label> first." as that reason, worded from the picker field's label.
 - A list of options in a dialog (radio choices, search results) is separated by space. An option
   draws no border of its own and options have no dividers between them; the group's own container
   is the one box.
@@ -260,6 +261,8 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
   and the chevron turns up while open; a group opened inside a popover draws no second box.
 - A confirmation shows as a modal over the page it came from, JavaScript on or off; body text in a
   dialog is one size.
+- A disabled confirm has its reason beside it; a bulk picker dialog with nothing chosen reads
+  "Choose a cohort first." (or the picker's own field).
 - A bulk result shows counts ("N records changed", "N records already up to date") and names only
   failed rows.
 - The selection bar sits above the table, in the toolbar's place, at every viewport, and stays in

@@ -7072,6 +7072,81 @@ def test_refresh_without_a_cohort_answers_422_with_confirm_disabled(
     assert document.cssselect("button[disabled]")
 
 
+def _disabled_confirm_reason(response) -> str:
+    document = lxml.html.fromstring(response.content.decode())
+    [reason] = document.cssselect("#bulk-confirm-reason")
+    [confirm_form] = [
+        form
+        for form in document.cssselect("form")
+        if form.cssselect("input[name='confirmed']")
+    ]
+    [button] = confirm_form.cssselect("button[type='submit']")
+    assert button.get("disabled") is not None
+    assert button.get("aria-describedby") == "bulk-confirm-reason"
+    return " ".join(reason.text_content().split())
+
+
+@pytest.mark.django_db
+def test_a_bulk_picker_with_no_cohort_chosen_says_to_choose_one(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = _bulk_learner(organisation=organisation)
+
+    response = _bulk_cohort_post(staff_client, organisation, "add_to_cohort", [learner])
+
+    assert response.status_code == 200
+    assert _disabled_confirm_reason(response) == "Choose a cohort first."
+
+
+@pytest.mark.django_db
+def test_a_bulk_picker_refreshed_without_a_cohort_says_to_choose_one(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = _bulk_learner(organisation=organisation)
+
+    response = _bulk_cohort_post(
+        staff_client, organisation, "add_to_cohort", [learner], refresh="1"
+    )
+
+    assert response.status_code == 422
+    assert _disabled_confirm_reason(response) == "Choose a cohort first."
+
+
+@pytest.mark.django_db
+def test_a_bulk_picker_with_no_course_chosen_says_to_choose_one(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = _bulk_learner(organisation=organisation)
+
+    response = _bulk_post(staff_client, organisation, "register_for_course", [learner])
+
+    assert _disabled_confirm_reason(response) == "Choose a course first."
+
+
+@pytest.mark.django_db
+def test_a_bulk_picker_with_a_cohort_chosen_gives_no_disabled_reason(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    learner = _bulk_learner(organisation=organisation)
+
+    response = _bulk_cohort_post(
+        staff_client,
+        organisation,
+        "add_to_cohort",
+        [learner],
+        refresh="1",
+        cohort=str(cohort.pk),
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert not document.cssselect("#bulk-confirm-reason")
+
+
 @pytest.mark.django_db
 def test_without_javascript_a_picked_cohort_can_be_confirmed(
     staff_client: Client,
