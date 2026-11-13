@@ -33,8 +33,9 @@ own: it delegates to `sdd:qa-data-helper` or runs a `## QA Dev Data` command, an
 in the report.
 
 `/sdd:qa_fix` works through the `(user)` items a QA run left in `todo.md`. It researches each one,
-asks for one decision at a time, has `sdd:qa-bugfixer` make each code fix test-first, runs the full
-tier, and ticks what it closed. `/sdd:start` writes it into the checklist after the QA step.
+asks for one decision at a time, has `sdd:qa-bugfixer` make each code fix test-first, screenshots
+each fix that changes what a page shows into `screenshots/fixed/` and looks at it before calling it
+fixed, runs the full tier, and ticks what it closed. `/sdd:start` writes it into the checklist after the QA step.
 
 `/sdd:roadmap` owns the spec roadmap, `spec_dd/1. next/roadmap.md`: what is up next, then one
 section per feature listing its specs (in progress, ready or blocked), an SVG dependency diagram
@@ -81,7 +82,8 @@ everything outstanding from the user into the spec's `todo.md`, so the chat neve
 rebase upstream scan, the close-out landing and design screenshots. The QA scripts, allow-listed at
 `claude_plugins/sdd/scripts/`: `qa_cleanup.sh`, `qa_collect_screenshots.sh`, `compress_screenshots.sh`
 (+ `compress_screenshots.py`) and `delete_sdd_work_files.sh`. `qa_collect_screenshots.sh` takes the
-spec directory and the screenshot source directory, and refuses either unless it is inside the project.
+spec directory, the screenshot source directory and an optional subfolder name (`fixed` for
+`qa_fix`), and refuses a directory outside the project or a subfolder that is not a plain name.
 
 ### Resources (9)
 `agent_memory_guidelines` — how agents treat memory; `launcher_editing` — how to edit `claude.sh`
