@@ -27,18 +27,48 @@ components; `Skill(fls-dev:frontend-styling)` owns the theme tokens.
 - `actions.py`: `PanelAction` is a button and what submitting it does; `FormPanelAction`,
   `CreateInstanceAction`, `EditAction` and `DeleteAction` build on it. `renders_in_footer` places
   an action in the panel footer or inline; `submit_buttons` names a form's buttons.
+  `ConfirmAction` is the confirm dialog (`confirm_label`, `confirm_variant`, `loading_text`, the
+  hooks `get_title`, `get_hidden_fields`, `get_confirm_context`); `DeleteAction` extends it.
+  `ReasonMixin` adds the reason dialog: a `ReasonForm` (`forms.py`, `reason_form_class`) whose field
+  `modal/confirm.html` renders in the body, validated in `handle_submit`. `refusal_response(ctx,
+  *, title, message, status=422)` renders a refusal in `modal/message.html`, and
+  `ConfirmAction.refuse` calls it. `row_param` names the parameter a row-scoped action reads, and
+  `get_row_object(ctx)` looks that row up in `get_row_queryset(ctx)` (404 when absent). The form
+  hooks take `ctx`, and the action's URL is `action_url` in every fragment.
 - `filters.py`: declared table filters, applied on top of search and sort, in `PanelAction`'s shape.
+  `ToggleFilter` widens the table's own queryset when set (`BooleanFilter` narrows);
+  `PeriodFilter(key, label, field, presets)` filters `field` to calendar days ending today, each
+  preset a `(label, days)`.
 - `quick_view.py`: `QuickView` feeds the drawer one row of a list opens.
 - `bulk_actions.py`: row selection and the action that runs once over the selected rows.
+  `PermittedBulkAction[ActorT]` is the base a host subclasses: it takes the scope from
+  `scope_for_request` (no default) and words each skip reason in both tenses
+  (`confirmation_skip_line`, `result_line`). `register_bulk_action` and `bulk_actions_for_table`
+  are the registry; registration order is the selection bar's order.
+- `lazy_panels.py` and `errors.py`: `LazyBodyPanel` renders its body on request (`load_label` is
+  the no-JavaScript link text), and a body that raises `PanelBodyTooLargeError` shows its message
+  in the region.
+- `housekeeping.py`: the sweeps over `BulkActionRun`, `mark_unpicked_runs_failed`,
+  `mark_orphaned_runs_failed` and `delete_finished_records`, or `sweep_run_records` for all three.
+  The framework schedules none of them: the host does.
+- `static/panel_framework/js/`: `alpine-components.js` and `shell-components.js` (`sidePanel`,
+  `refreshTimer`, `visibilityPoller`). A host loads both.
+- Public names: a framework module lists what a host may import in `__all__`; `tasks`, `checks`,
+  `field_display` and `templatetags` are private.
 
 Components live in `freedom_ls/panel_framework/templates/cotton/`: `data-table`,
-`data-table-actions`, `data-table-cells/{text,link,datetime}`, `modal-header`, `modal-footer` and the
+`data-table-card`, `data-table-actions`, `data-table-cells/{text,link,datetime,date,badge,related_list}`,
+`modal-header`, `modal-body`, `modal-footer`, `modal-trigger`, `quick-view-trigger` and the
 `panel-*` set (`panel-page-header`, `panel-toolbar`, `panel-search-field`, `panel-filter-toggle`,
-`panel-applied-filter`, `panel-empty-state`, `panel-person-link`, `panel-avatar-chip`,
+`panel-applied-filter`, `panel-notice`, `panel-close-button`, `panel-table`, `panel-table-card`,
+`panel-list`, `panel-list-row`, `panel-heading`, `panel-empty-state`, `panel-person-link`, `panel-avatar-chip`,
 `panel-attention-list`, `panel-attention-row`, `panel-stat-row`, `panel-stat-tile`,
 `panel-status-badge`, `panel-definition-list`, `panel-definition-row`, `panel-card`,
 `panel-progress-bar`, `panel-skeleton`). The page chrome is in
-`templates/panel_framework/partials/`: `table_toolbar`, `table_footer`, `table_selection_bar` (the bulk-action bar), `table_sheet`, `table_empty`, `quick_view_host`, `modal_host`, `sidebar_nav`, `breadcrumbs`.
+`templates/panel_framework/partials/`: `table_toolbar`, `table_footer`, `table_selection_bar` (the bulk-action bar), `table_sheet`,
+`table_empty`, `quick_view_host`, `modal_host`, `discard_prompt`, `reason_field`, `error_summary`,
+`sidebar_nav`, `breadcrumbs`. The dialogs are `templates/panel_framework/modal/`: `confirm.html`,
+`delete_confirmation.html`, `form.html` and `message.html`.
 `ls freedom_ls/panel_framework/templates/cotton/` is the current list.
 
 ## How it looks and behaves
@@ -148,17 +178,32 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
   dialog (`panel_framework/modal/message.html`) ends in a Close footer like every other. The
   discard prompt (`panel_framework/partials/discard_prompt.html`) puts its body in `<c-modal-body>`
   and ends in the same footer.
-- A dialog ends in `<c-modal-footer>`: it renders its own Cancel at the left (`cancel`, `cancel_href`, `cancel_click`, `focus_cancel`), the actions in the
-  default slot at the right, the primary last; three or more group at the right.
-  `<c-button-group>` is for buttons outside a dialog.
+- A dialog takes one of three shapes. `modal/confirm.html` is one `<form>` holding the body, the
+  reason field when `reason_form` is set, and a footer with one confirm button; a subclass keeps
+  only its title, body and hidden fields. `modal/message.html` states something and ends in a
+  Close the footer focuses (refusals, "unavailable", empty messages). `modal/form.html` is a
+  multi-field form. A multi-step dialog keeps its own template but still uses `<c-modal-body>`,
+  `partials/error_summary.html` and `<c-panel-notice>`.
+- A dialog ends in `<c-modal-footer>`: it renders its own Cancel at the left (`cancel`,
+  `cancel_href`, `cancel_click`, `focus_cancel`), the actions in the default slot at the right, the
+  primary last; three or more group at the right. No template writes a Cancel button or a `cancel`
+  slot. `<c-button-group>` is for buttons outside a dialog.
+- A footer's Cancel or Close calls `cancel()`: it drops the input and never asks to discard. Only
+  the header close control and Esc call `requestClose()`, which goes through the dirty-form
+  guard.
+- A notice inside a dialog or panel is `<c-panel-notice tone title>` (`info`, `warning`, `error`,
+  `success`), never `<c-callout>` or a hand-built `bg-error/10` box. The close control is
+  `<c-panel-close-button>`.
+- Tone follows the effect. A confirm that deletes a row (Delete, Remove) is `error`; one that
+  flips `is_active` (Deactivate, Reactivate) is `primary`, as the bulk actions are.
 - A confirmation is a modal in `#app-modal`, never a page of its own. Without JavaScript the
   confirmation URL renders the page it came from with the same modal chrome open over it, its
   Cancel a link back to that page.
 - Body text in a dialog is one size, the base size; only the title in `<c-modal-header>` differs.
   Lists, consequences, notices and errors in the body take no `text-sm`.
 - A confirm dialog states what is true now and what the action changes, naming the records it
-  touches. A disabled action shows its reason beside the control, and
-  the control names it with `aria-describedby`. A bulk confirm waiting on its picker gives
+  touches. A disabled action shows its reason beside the control, and the control names it with
+  `aria-describedby`. A bulk confirm waiting on its picker gives
   "Choose a <field label> first." as that reason, worded from the picker field's label.
 - A list of options in a dialog (radio choices, search results) is separated by space. An option
   draws no border of its own and options have no dividers between them; the group's own container
@@ -167,6 +212,8 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
   takes the results' place below it. An empty result list renders nothing.
 - The modal host and the side panel clip horizontal overflow and the title wraps, so a dialog
   stays inside the viewport at every width, 375px included, title and every button included.
+- A dialog's loading text ends in the ellipsis character "…", and its `hx-disabled-elt` is
+  `find button[type='submit']`.
 - Every sheet and dialog shares one chrome: on a phone it rises from the bottom with rounded top
   corners (`bottom-sheet` / `bottom-sheet-bare`) and opens with a header holding the title and a
   close control (`aria-label="Close"`, `<c-icon name="close">`), as `#quick-view`,
@@ -238,7 +285,26 @@ QA looks: `test_no_control_link_is_hand_styled`, `test_every_anchor_with_visible
 `test_every_framework_action_trigger_is_small`, `test_every_dialog_ends_in_the_modal_footer_not_a_button_group`,
 `test_the_modal_host_and_the_side_panel_clip_horizontal_overflow`, `test_the_filter_sheet_has_a_close_control`,
 `test_the_quick_view_is_never_modal`, `test_the_base_select_rule_draws_its_own_chevron_inside_the_end_padding`,
-`test_no_panel_component_uses_raw_colours`. Run that file after any change to a panel template.
+`test_no_panel_component_uses_raw_colours`. For dialogs it also has
+`test_every_dialog_is_a_header_a_body_and_a_footer`, `test_no_dialog_footer_sits_inside_the_body`,
+`test_no_dialog_pads_its_own_body`, `test_every_dialog_renders_one_modal_footer_outside_its_body`
+(one footer per step, none in a template that extends one),
+`test_no_dialog_template_hand_writes_what_a_component_owns` (no Cancel button, `text-sm`,
+`px-6 py-4`, `bg-error/10` or `<c-callout>`), `test_every_dialog_loading_text_ends_in_the_ellipsis_character`,
+`test_every_dialog_disables_only_its_own_submit_buttons`,
+`test_no_dialog_form_with_a_find_selector_holds_an_element_that_issues_its_own_request`,
+`test_no_educator_module_sets_the_modal_trigger_template_by_hand`,
+`test_no_template_hand_writes_a_table_outside_the_table_components`,
+`test_no_button_hand_writes_a_touch_height` and `test_every_expand_chevron_turns_when_its_control_opens`.
+Run that file after any change to a panel template.
+
+Three more files sit beside it in `tests/invariants/`:
+
+- `test_reason_mixin.py`: every `ReasonMixin` subclass submits through the mixin's `handle_submit`.
+- `test_alpine_registration.py`: every `x-data` name a framework template uses is registered by
+  `Alpine.data` in `alpine-components.js` or `shell-components.js`, unless the host supplies it.
+- `test_public_names.py`: a file outside the framework imports only names a framework module lists
+  in `__all__` (and no private module), and every `__all__` entry exists.
 
 ## Visual checklist
 
