@@ -47,6 +47,10 @@ from freedom_ls.content_engine.models import (
     File,
     Topic,
 )
+from freedom_ls.content_engine.moved_children import (
+    carry_placement_due_dates,
+    moved_children,
+)
 from freedom_ls.content_engine.prices import KIND_FIELDS
 from freedom_ls.content_engine.schema import Child
 from freedom_ls.content_engine.schema import Course as CourseSchema
@@ -1252,8 +1256,14 @@ def save_content_to_db(path, site_name):
         part_collection_item__collection_id__in=loaded_course_ids,
     ).exclude(pk__in=kept).delete()
 
+    moved = moved_children(site, written)
+    carry_placement_due_dates(site, moved)
     collection_items_synced.send(
-        sender=ContentCollectionItem, site=site, created=created, written=written
+        sender=ContentCollectionItem,
+        site=site,
+        created=created,
+        written=written,
+        moved=moved,
     )
 
     click.echo(f"✓ Successfully saved all content for site: {site_name}")

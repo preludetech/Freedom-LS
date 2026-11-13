@@ -9,7 +9,7 @@ import pytest
 from freedom_ls.content_engine.management.commands.content_save import (
     save_content_to_db,
 )
-from freedom_ls.content_engine.models import ContentCollectionItem
+from freedom_ls.content_engine.models import ContentCollectionItem, CoursePart
 from freedom_ls.content_engine.signals import collection_items_synced
 
 COURSE_UUID = "71000000-0000-0000-0000-000000000001"
@@ -85,3 +85,21 @@ def test_a_reload_writes_the_rows_but_creates_none(
     second = receiver.calls[1]
     assert second["created"] == []
     assert len(second["written"]) == 4
+
+
+@pytest.mark.django_db
+def test_signal_names_the_children_a_load_moved(
+    site, mock_site_context, tmp_path, receiver
+):
+    _write_two_part_course(tmp_path)
+    save_content_to_db(tmp_path, site.name)
+    old_row = ContentCollectionItem.objects.get(course_part__title="01. One")
+    (tmp_path / "01. One" / "topic.md").rename(tmp_path / "02. Two" / "moved.md")
+
+    save_content_to_db(tmp_path / "02. Two", site.name)
+
+    assert receiver.calls[0]["moved"] == []
+    [move] = receiver.calls[1]["moved"]
+    assert move.stale == old_row
+    assert move.new_row.collection_id == CoursePart.objects.get(title="02. Two").pk
+    assert move.new_row.child_id == old_row.child_id
