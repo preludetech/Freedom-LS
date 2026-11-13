@@ -209,7 +209,7 @@ Left unset, the alias falls back to `AWS_STORAGE_BUCKET_NAME`, and `check --depl
 | Secret key | `AWS_S3_SECRET_ACCESS_KEY` | `AWS_S3_<PURPOSE>_SECRET_ACCESS_KEY` |
 | Endpoint URL | `AWS_S3_ENDPOINT_URL` | `AWS_S3_<PURPOSE>_ENDPOINT_URL` |
 | Region | `AWS_S3_REGION_NAME` (default `auto` for R2) | `AWS_S3_<PURPOSE>_REGION_NAME` |
-| Custom domain | `AWS_S3_CUSTOM_DOMAIN` (public and certificates only) | `AWS_S3_<PURPOSE>_CUSTOM_DOMAIN` |
+| Custom domain | `AWS_S3_CUSTOM_DOMAIN` (not read by `PROFILE_PICTURES`) | `AWS_S3_<PURPOSE>_CUSTOM_DOMAIN` |
 | Querystring auth | `AWS_QUERYSTRING_AUTH` | `AWS_S3_<PURPOSE>_QUERYSTRING_AUTH` |
 | Querystring expire | `AWS_QUERYSTRING_EXPIRE` | `AWS_S3_<PURPOSE>_QUERYSTRING_EXPIRE` |
 
@@ -229,7 +229,7 @@ files the way its contents need.
 | `freedom_ls_deployment.E001` | An alias that resolves to the same bucket as `default`. |
 | `freedom_ls_deployment.E002` | An alias that reached no bucket at all and fell back to local disk while `DEBUG` is off — what a misspelled per-bucket variable produces once the shared `AWS_STORAGE_BUCKET_NAME` is left unset. |
 | `freedom_ls_deployment.E003` | An alias that took its bucket from the shared `AWS_STORAGE_BUCKET_NAME` because its own variable is unset. E001 cannot see this one: with `AWS_S3_DEFAULT_BUCKET_NAME` naming a bucket of its own, an alias that fell through matches nothing it compares against. |
-| `freedom_ls_deployment.E004` | An alias holding private files — course media, user uploads, profile pictures, cohort reports — resolving with querystring auth off, so its URLs are unsigned and never expire. The shared `AWS_QUERYSTRING_AUTH` reaches every media alias, which is how a project upgrading from the single-bucket layout carries public serving forward onto learner data. A private alias on a custom domain is reported too: django-storages mints unsigned URLs for a custom domain unless a CloudFront signer is configured, so the shared `AWS_S3_CUSTOM_DOMAIN` never reaches a private alias and its own `AWS_S3_<PURPOSE>_CUSTOM_DOMAIN` trips this check. |
+| `freedom_ls_deployment.E004` | An alias holding private files — course media, user uploads, profile pictures, cohort reports — resolving with querystring auth off, so its URLs are unsigned and never expire. The shared `AWS_QUERYSTRING_AUTH` reaches every media alias, which is how a project upgrading from the single-bucket layout carries public serving forward onto learner data. The profile-pictures alias on a custom domain is reported too: django-storages mints unsigned URLs for a custom domain unless a CloudFront signer is configured, so the shared `AWS_S3_CUSTOM_DOMAIN` never reaches that alias and `AWS_S3_PROFILE_PICTURES_CUSTOM_DOMAIN` trips this check. |
 
 They carry separate ids so that a deployment serving media from local disk deliberately can silence
 E002 through `SILENCED_SYSTEM_CHECKS` without also giving up the other three.

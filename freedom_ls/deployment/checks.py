@@ -304,7 +304,10 @@ def check_private_media_aliases_sign_their_urls(
     Only S3-backed aliases are considered. Local disk has no signing to lose, and
     E002 already owns that whole class.
     """
-    from freedom_ls.deployment.storage import SIGNED_URL_PURPOSES
+    from freedom_ls.deployment.storage import (
+        OWN_CUSTOM_DOMAIN_ONLY_PURPOSES,
+        SIGNED_URL_PURPOSES,
+    )
 
     errors: list[CheckMessage] = []
     for alias, purpose in _configured_media_aliases().items():
@@ -316,7 +319,11 @@ def check_private_media_aliases_sign_their_urls(
             continue
         if not isinstance(storage, S3Storage):
             continue
-        if storage.custom_domain and not storage.cloudfront_signer:
+        if (
+            purpose in OWN_CUSTOM_DOMAIN_ONLY_PURPOSES
+            and storage.custom_domain
+            and not storage.cloudfront_signer
+        ):
             errors.append(_custom_domain_serves_unsigned(alias, purpose))
             continue
         if storage.querystring_auth:

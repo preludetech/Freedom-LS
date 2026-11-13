@@ -51,6 +51,10 @@ _OBJECT_PARAMETERS: dict[str, dict[str, str]] = {
 #: which is also why it gets max-age=86400 rather than an immutable header.
 #: CERTIFICATES is deliberately absent: a uuid-keyed certificate is written once
 #: and must never be clobbered.
+# Signed purposes the shared AWS_S3_CUSTOM_DOMAIN never reaches, and that
+# E004 reports when given a custom domain of their own.
+OWN_CUSTOM_DOMAIN_ONLY_PURPOSES: frozenset[str] = frozenset({PROFILE_PICTURES_PURPOSE})
+
 _OVERWRITE_PURPOSES: frozenset[str] = frozenset({LOGO_PURPOSE})
 
 _FILE_SYSTEM_BACKEND = "django.core.files.storage.FileSystemStorage"
@@ -123,14 +127,13 @@ def _property_name(purpose: str, prop: str, shared: str) -> str:
 def custom_domain_for(purpose: str) -> str | None:
     """The custom domain `purpose`'s URLs are minted on, if any.
 
-    A purpose that must sign its URLs reads only its own variable. On a
-    custom domain django-storages mints unsigned URLs unless a CloudFront
-    signer is configured, so the shared AWS_S3_CUSTOM_DOMAIN, set for the
-    public logos, would quietly make private files public.
+    A purpose in OWN_CUSTOM_DOMAIN_ONLY_PURPOSES reads only its own
+    variable. On a custom domain django-storages mints unsigned URLs unless
+    a CloudFront signer is configured, so the shared AWS_S3_CUSTOM_DOMAIN,
+    set for the public logos, would quietly make those files public.
     """
-    own = f"AWS_S3_{purpose}_CUSTOM_DOMAIN"
-    if purpose in SIGNED_URL_PURPOSES:
-        return env_str(own)
+    if purpose in OWN_CUSTOM_DOMAIN_ONLY_PURPOSES:
+        return env_str(f"AWS_S3_{purpose}_CUSTOM_DOMAIN")
     return env_str(_property_name(purpose, "CUSTOM_DOMAIN", "AWS_S3_CUSTOM_DOMAIN"))
 
 

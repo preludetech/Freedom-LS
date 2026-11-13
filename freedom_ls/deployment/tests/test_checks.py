@@ -537,6 +537,15 @@ def test_a_private_alias_on_a_custom_domain_is_reported_as_unsigned(
     assert "AWS_S3_PROFILE_PICTURES_CUSTOM_DOMAIN" in errors[0].hint
 
 
+def test_other_private_aliases_on_a_custom_domain_are_not_reported(
+    production_env: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AWS_S3_CUSTOM_DOMAIN", "cdn.example.test")
+
+    with override_settings(STORAGES=_storages_from_env()):
+        assert check_private_media_aliases_sign_their_urls() == []
+
+
 def test_a_media_alias_on_local_disk_is_not_reported_as_unsigned() -> None:
     """Local disk has no signing to lose. E002 owns that whole class."""
     with override_settings(

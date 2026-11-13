@@ -750,19 +750,27 @@ def test_minted_url_origin_is_one_of_the_csp_sources(
     assert f"{parts.scheme}://{parts.netloc}" in media_csp_sources("PROFILE_PICTURES")
 
 
-@pytest.mark.parametrize(
-    "alias", ["course_media", "user_uploads", "profile_pictures", "reports"]
-)
-def test_shared_custom_domain_does_not_reach_a_signed_alias(
-    production_env: None, monkeypatch: pytest.MonkeyPatch, alias: str
+def test_shared_custom_domain_does_not_reach_profile_pictures(
+    production_env: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A custom domain makes django-storages mint unsigned URLs, so the shared
-    one, set for the public logos, must not reach a private alias."""
+    one, set for the public logos, must not reach the profile pictures."""
     monkeypatch.setenv("AWS_S3_CUSTOM_DOMAIN", "cdn.example.test")
 
     storages = build_storages(staticfiles={"BACKEND": "some.backend"})
 
-    assert "custom_domain" not in _options_of(storages[alias])
+    assert "custom_domain" not in _options_of(storages["profile_pictures"])
+
+
+@pytest.mark.parametrize("alias", ["course_media", "user_uploads", "reports"])
+def test_shared_custom_domain_still_reaches_the_other_private_aliases(
+    production_env: None, monkeypatch: pytest.MonkeyPatch, alias: str
+) -> None:
+    monkeypatch.setenv("AWS_S3_CUSTOM_DOMAIN", "cdn.example.test")
+
+    storages = build_storages(staticfiles={"BACKEND": "some.backend"})
+
+    assert _options_of(storages[alias])["custom_domain"] == "cdn.example.test"
 
 
 def test_shared_custom_domain_still_reaches_an_unsigned_alias(
