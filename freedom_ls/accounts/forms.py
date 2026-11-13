@@ -15,6 +15,7 @@ from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from django.http import HttpRequest
+from django.utils.datastructures import MultiValueDict
 from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.site_aware_models.models import get_cached_site
@@ -51,8 +52,14 @@ class UserForm(forms.ModelForm):
         model = User
         fields = ["first_name", "last_name", "profile_picture"]
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        data: Mapping[str, str] | None = None,
+        files: MultiValueDict[str, UploadedFile] | None = None,
+        *,
+        instance: UserModel,
+    ) -> None:
+        super().__init__(data, files, instance=instance)
         # Without a picture there is nothing to remove, so the checkbox is
         # not rendered and a forged value is ignored.
         if self.instance.profile_picture:
@@ -67,11 +74,13 @@ class UserForm(forms.ModelForm):
         # A file that failed validation is absent from cleaned_data; putting
         # a value back would blank the instance of an invalid form. A new
         # file wins over the tick. False is what a model FileField reads as
-        # "clear this field".
+        # "clear this field". Whether a file arrived is read from the request,
+        # not from the type clean_profile_picture happens to return.
+        uploaded = self.files.get(self.add_prefix("profile_picture"))
         if (
             cleaned_data.get("remove_profile_picture")
             and "profile_picture" in cleaned_data
-            and not isinstance(cleaned_data["profile_picture"], ContentFile)
+            and not isinstance(uploaded, UploadedFile)
         ):
             cleaned_data["profile_picture"] = False
         return cleaned_data

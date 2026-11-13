@@ -94,7 +94,7 @@ def pathless_logo_storage(tmp_path, monkeypatch) -> PathlessFileSystemStorage:
 
 @pytest.fixture
 def pathless_profile_picture_storage(
-    tmp_path, monkeypatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> PathlessFileSystemStorage:
     """Put a storage double whose `.path()` raises behind `User.profile_picture`."""
     from django.contrib.auth import get_user_model
