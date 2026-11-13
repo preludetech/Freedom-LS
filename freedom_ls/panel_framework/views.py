@@ -749,7 +749,8 @@ class _BulkConfirmation:
     #: never disagree on a mixed selection. None means every row changes.
     changed_count: int | None = None
     #: Shown beside the disabled confirm button when no selected row would
-    #: change. An `error` takes its place.
+    #: change, or when the action's form has no valid choice yet. An `error`
+    #: takes its place.
     disabled_reason: str = ""
 
     def context(self) -> dict[str, object]:
@@ -1011,6 +1012,7 @@ def _handle_bulk_action(
                     confirm_disabled=True,
                     form=picker,
                     title=f"{action.label}?",
+                    disabled_reason=action.picker_prompt(picker),
                 ),
             )
 
