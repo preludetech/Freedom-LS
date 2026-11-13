@@ -658,8 +658,10 @@ def test_every_dialog_loading_text_ends_in_the_ellipsis_character() -> None:
 
 
 # `find` matches the first element only, so a form with several submit
-# buttons names all of them through the modal body instead.
-MULTI_SUBMIT_DIALOGS = {"form.html"}
+# buttons names all of them through the modal body instead. The same goes for
+# a form holding an element that issues its own request, because that element
+# inherits the form's selector and `find` would look inside it.
+MULTI_SUBMIT_DIALOGS = {"form.html", "move_confirmation.html"}
 
 
 def test_every_dialog_disables_only_its_own_submit_buttons() -> None:
@@ -670,6 +672,28 @@ def test_every_dialog_disables_only_its_own_submit_buttons() -> None:
         for match in re.findall(r'hx-disabled-elt="[^"]*"', path.read_text())
         if match != "hx-disabled-elt=\"find button[type='submit']\""
     ]
+
+    assert offenders == []
+
+
+def test_no_dialog_form_with_a_find_selector_holds_an_element_that_issues_its_own_request() -> (
+    None
+):
+    """An element inside a form inherits the form's hx-disabled-elt, and `find`
+    resolves relative to that element, so a select that issues its own request
+    logged "returned no matches" in the console."""
+    offenders: list[str] = []
+    for path in DIALOG_BODIES:
+        for form in lxml.html.fragment_fromstring(
+            path.read_text(), create_parent="div"
+        ).iter("form"):
+            if not (form.get("hx-disabled-elt") or "").startswith("find "):
+                continue
+            offenders.extend(
+                f"{path.name}: <{child.tag} id={child.get('id')}>"
+                for child in form.iterdescendants()
+                if child.get("hx-get") or child.get("hx-post")
+            )
 
     assert offenders == []
 
