@@ -223,6 +223,21 @@ def test_get_row_object_returns_the_row_the_parameter_names(
 
 
 @pytest.mark.django_db
+def test_get_row_object_reads_the_row_once_per_request(
+    mock_site_context: Site, django_assert_max_num_queries
+) -> None:
+    item = make_stub()
+    action = StubScopedRowAction()
+    ctx = _row_ctx("GET", {"item": str(item.pk)})
+    action.get_row_object(ctx)
+
+    with django_assert_max_num_queries(0):
+        row = action.get_row_object(ctx)
+
+    assert row == item
+
+
+@pytest.mark.django_db
 @pytest.mark.parametrize("data", [{}, {"item": "not-a-number"}])
 def test_get_row_object_is_a_404_for_a_missing_or_malformed_parameter(
     mock_site_context: Site, data: dict[str, str]
