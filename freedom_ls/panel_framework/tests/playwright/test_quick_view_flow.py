@@ -430,3 +430,36 @@ def test_unsent_draft_asks_before_the_drawer_is_left(
     expect(prompt).to_be_visible()
     prompt.get_by_role("button", name="Discard").click()
     expect(quick_view).to_be_hidden()
+
+
+def test_a_form_without_discard_wording_gets_the_default_after_one_with_its_own(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    make_stub(name="Alpha")
+    make_stub(name="Plain")
+    content = page.locator("[data-stub-quick-view]")
+    prompt = page.locator("#quick-view [data-discard-prompt]")
+    note = page.get_by_label("Note")
+    page.set_viewport_size(QA_VIEWPORTS[2])
+    page.goto(f"{live_server.url}{_LIST_PATH}")
+
+    # The first form words the prompt its own way.
+    _trigger(page, "Alpha").click()
+    expect(content).to_have_text("Alpha")
+    note.fill("half a thought")
+    _trigger(page, "Plain").click()
+    expect(prompt.get_by_text("Discard your message?")).to_be_visible()
+    prompt.get_by_role("button", name="Discard").click()
+    expect(content).to_have_text("Plain")
+
+    # The next form names no wording, so the prompt reads its defaults again.
+    note.fill("another thought")
+    page.keyboard.press("Escape")
+    expect(prompt.get_by_text("Discard changes?")).to_be_visible()
+    expect(
+        prompt.get_by_text("The changes you made haven't been saved.")
+    ).to_be_visible()
+    expect(prompt.get_by_text("Discard your message?")).to_be_hidden()
