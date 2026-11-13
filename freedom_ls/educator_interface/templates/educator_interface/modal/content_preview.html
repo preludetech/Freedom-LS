@@ -26,7 +26,7 @@ meets first when it has several.
 
 <div data-modal-size="wide">
     <c-modal-header focus_title="true">{% if preview_page %}{{ preview_title }} (Preview) <c-chip size="xs">Form page</c-chip>{% else %}{{ child.title }} (Preview) <c-chip size="xs">{% if child.content_type == "FORM" %}Form{% else %}Topic{% endif %}</c-chip>{% endif %}</c-modal-header>
-    <div class="px-6 py-4">
+    <c-modal-body>
         <div class="mx-auto flex w-full max-w-reading flex-col gap-6">
             {% if child.content_type == "FORM" %}
                 {% if preview_page %}
@@ -46,5 +46,8 @@ meets first when it has several.
                 <c-markdown-container width="full">{{ child.rendered_content }}</c-markdown-container>
             {% endif %}
         </div>
-    </div>
+    </c-modal-body>
+    <c-modal-footer>
+        <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Close</c-button></c-slot>
+    </c-modal-footer>
 </div>
