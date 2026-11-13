@@ -1,6 +1,6 @@
 # Configuration and Extension
 
-_Last updated: 2026-11-12_
+_Last updated: 2026-11-13_
 
 ## Summary
 
@@ -83,7 +83,7 @@ See [learner experience](./learner-experience.md) for the learner-facing effect 
 
 ## Deadline Policy
 
-What a missed deadline leads to follows the same pattern. `DEADLINE_POLICY_DEFAULTS` sets the deployment-wide default, beneath the per-site, organisation, course, cohort and registration settings administrators choose in the admin; see [admin interface](./admin-interface.md#deadline-policy). The shipped default only shows the Missed deadline mark: nothing closes and no access ends. `DEADLINE_POLICY` lets a deployment point at a policy of its own to replace how those settings are combined.
+What a missed deadline leads to follows the same pattern. `DEADLINE_POLICY_DEFAULTS` sets the deployment-wide default, beneath the per-site, organisation, course, cohort and registration settings administrators choose in the admin; see [admin interface](./admin-interface.md#deadline-policy). The shipped default only shows the Missed deadline mark: nothing closes and no access ends. The same settings say whether learners may pause their own course and set limits on pausing; by default learners may not and there are no limits, and none of this is enforced yet ([roadmap](./roadmap.md#deadlines)). `DEADLINE_POLICY` lets a deployment point at a policy of its own to replace how those settings are combined.
 
 ## Preview Overrides (Dev and Staging Only)
 

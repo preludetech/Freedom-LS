@@ -1,12 +1,12 @@
 # Roadmap
 
-_Last updated: 2026-11-05_
+_Last updated: 2026-11-13_
 
 ## Summary
 
 - This is the canonical home for features that are planned, partially built, or not started. Other product docs link here rather than restating half-built status.
 - **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (organisation and cohort roles are managed in the educator interface; site admin is still assigned by a developer, and records edited directly in the Django admin are not logged), notifications (in-app bell and notification centre built, off by default; email and most events not built), direct messaging (one-to-one conversations built, off by default; moderation, email, real-time delivery, group messaging and help requests from the course player not built), xAPI (non-functional stub), site-aware user groups (drafted, disabled), registration rules (HR attributes and rules that register learners built; rules that recommend, educator-interface screens and CSV import not built).
-- **Not built:** 2FA/MFA, educator-interface management of deadline overrides and the deadline policy, notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, the deliberately deferred organisation capabilities, and the deliberately deferred cohort report capabilities.
+- **Not built:** 2FA/MFA, educator-interface management of deadlines (overrides, pausing, extending and the deadline policy), notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, the deliberately deferred organisation capabilities, and the deliberately deferred cohort report capabilities.
 - Shipped features are documented in their own product docs; this one covers only what is incomplete.
 
 ## Organisation Deferrals
@@ -71,7 +71,7 @@ Not built:
 
 **Status: In-app notifications built; delivery and most events not built.**
 
-FLS has an in-app bell and notification centre, off by default, described in [notifications](./notifications.md). One thing raises a notification: a learner being registered for a course by someone else. [Direct messages](./messaging.md) do not; the Messages button's unread count is their signal. Still missing: email or any other delivery channel, notification preferences, digests, and notifications for course launch, removal from an organisation, deadlines and cohort events. Beyond the bell, FLS sends only the transactional emails for verification and password reset.
+FLS has an in-app bell and notification centre, off by default, described in [notifications](./notifications.md). Notifications are raised when a learner is registered for a course by someone else, when a background bulk action finishes, and when staff pause a learner's course, resume it or extend a deadline. [Direct messages](./messaging.md) do not; the Messages button's unread count is their signal. Still missing: email or any other delivery channel, notification preferences, digests, and notifications for course launch, removal from an organisation, approaching or missed deadlines, and cohort events. Beyond the bell, FLS sends only the transactional emails for verification and password reset.
 
 ## Direct Messaging
 
@@ -132,19 +132,21 @@ A site-scoped equivalent of Django's groups is written but commented out, so gro
 
 ## Educator Interface Gaps
 
-**Status: Deadline overrides and the deadline policy cannot be managed in the educator interface.**
+**Status: Deadline overrides, pausing, extending and the deadline policy cannot be managed in the educator interface.**
 
-Deadline overrides, which set or remove a due date or course time limit for a cohort course registration or a single learner, and the [deadline policy](#deadlines) must be managed in the Django admin by an administrator. See [admin interface](./admin-interface.md#deadline-overrides) for where this is done today.
+Deadline overrides, which set or remove a due date or course time limit for a cohort course registration or a single learner, and the [deadline policy](#deadlines) must be managed in the Django admin by an administrator, as must pausing a learner's course and extending a learner's deadlines. See [admin interface](./admin-interface.md#deadline-overrides) for where this is done today.
 
 ## Deadlines
 
-**Status: Due dates, course time limits, the overdue mark and an administrator-set consequence policy are built; reminders, pause and educator-interface screens are not.**
+**Status: Due dates, course time limits, the overdue mark, an administrator-set consequence policy, and staff pausing and extending in the Django admin are built; reminders, learner-initiated pause and extension, and educator-interface screens are not.**
 
-Authors can give topics and forms a due date and courses a time limit, and administrators can override them. Administrators also set a deadline policy in the Django admin that can switch the Missed deadline mark off, close incomplete items after a grace window, and end course access once the time limit and a grace window have passed; see [admin interface](./admin-interface.md#deadline-policy). Closing and ending are off by default. Learners see the outcome described in [learner experience](./learner-experience.md#deadlines). Not built:
+Authors can give topics and forms a due date and courses a time limit, and administrators can override them. Administrators also set a deadline policy in the Django admin that can switch the Missed deadline mark off, close incomplete items after a grace window, and end course access once the time limit and a grace window have passed; see [admin interface](./admin-interface.md#deadline-policy). Closing and ending are off by default. Administrators can also pause a learner's course and extend a learner's deadlines; see [admin interface](./admin-interface.md#pausing-and-extending). Learners see the outcome described in [learner experience](./learner-experience.md#deadlines). Not built:
 
 - **Reminders** — no notification, email or webhook is sent as a date approaches or passes. The policy's notify-educators setting can be saved but does nothing yet.
-- **Extension requests and pause** — a deadline override is the only way to move a date. Learners cannot request an extension, and nobody can pause a course.
-- **Educator-interface screens** — due dates, overrides and the policy are managed in the Django admin only; see [Educator Interface Gaps](#educator-interface-gaps).
+- **Learner self-pause and pause limits** — learners cannot pause their own course. The policy can hold a "learners may pause" setting and limits on the number and length of pauses, but nothing enforces them yet, and staff pauses are not bound by them.
+- **Extension requests** — learners cannot ask for an extension. Only staff extend a deadline, one learner at a time; there is no bulk extension across learners and no way to revoke an extension.
+- **Planned-resume announcement** — a pause with a planned resume date ends on that date by itself and the learner's deadlines move, but nothing announces it on the day: the "resumed" notification and webhook are sent only when staff later pause that course again. A scheduled job to announce it is not built.
+- **Educator-interface screens** — due dates, overrides, pauses, extensions and the policy are managed in the Django admin only; see [Educator Interface Gaps](#educator-interface-gaps).
 - **Overdue, closed and ended in educator views** — the "needs attention" lists and [cohort reports](./reports.md) do not flag these learners.
 
 ## Enforcing Content Security Policy

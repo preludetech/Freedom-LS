@@ -1,6 +1,6 @@
 # Educator Interface
 
-_Last updated: 2026-11-11_
+_Last updated: 2026-11-13_
 
 ## Summary
 
@@ -14,7 +14,7 @@ _Last updated: 2026-11-11_
 - Site and organisation admins see who changed what and when, on learner and cohort pages and in an Audit log, and a cohort admin sees it on the cohorts they administer. See [History](#history).
 - A cohort's progress report shows on screen, with a PDF to download. See [Reports](#reports).
 - Access is granted by role: site admin, organisation admin, organisation staff viewer, organisation staff and roles viewer, cohort admin or cohort viewer. See [Access control](#access-control).
-- **Limits:** educators cannot see or set deadlines, and moving or deleting in bulk and updating existing learners from a file are not built. See [Limits](#limits).
+- **Limits:** educators cannot see or set deadlines, or pause or extend a learner's course, and moving or deleting in bulk and updating existing learners from a file are not built. See [Limits](#limits).
 
 ## Dashboard
 
@@ -152,7 +152,7 @@ Admins can give only roles at or below their own. A change that gives someone ac
 
 ![A cohort's History tab listing when, who, what, target and details for each change](screenshots/educator_history.png)
 
-The educator interface records who changed what, and when, for the actions educators take here: learner changes, cohort membership and course registrations, cohort changes, and staff roles and deactivations. The record shows as a **History** tab on a learner's page and on a cohort's page. A move between cohorts appears on the learner and on both cohorts. Each entry is one line showing when, who and what, with any description, reason and, for a bulk change, the entries it made opening beneath it; the cohort tab also names the person each row is about. A History tab sorts on its columns and filters by who, what and when, as the Audit log does. Deleting a cohort also records each role that went with it, and the learner's History tab shows each time an admin opened one of the learner's conversations. Changes with no user behind them show as "System".
+The educator interface records who changed what, and when, for the actions educators take here: learner changes, cohort membership and course registrations, cohort changes, and staff roles and deactivations. Pausing a learner's course, resuming it and extending its deadlines are done in the Django admin, but are recorded too, on the learner's History tab and in the Audit log. The record shows as a **History** tab on a learner's page and on a cohort's page. A move between cohorts appears on the learner and on both cohorts. Each entry is one line showing when, who and what, with any description, reason and, for a bulk change, the entries it made opening beneath it; the cohort tab also names the person each row is about. A History tab sorts on its columns and filters by who, what and when, as the Audit log does. Deleting a cohort also records each role that went with it, and the learner's History tab shows each time an admin opened one of the learner's conversations. Changes with no user behind them show as "System".
 
 ### Reasons
 
@@ -166,7 +166,7 @@ Confirming a removal or deactivation (removing a learner from a cohort, deactiva
 
 The Audit log, under Administration, lists the current organisation's entries, newest first, sorted by any column and filtered by who, by what and by when, and names the person each row is about. The Audit log and both History tabs export to CSV with their current filters, and each export is itself recorded in the Audit log. Only site admins and organisation admins see the Audit log and a learner's History tab. A cohort admin also sees the History tab of a cohort they administer. Cohort viewers see neither.
 
-Not recorded: anything before the feature was installed (there is no backfill), records edited directly in the Django admin, and logins. The log has no search, and entries cannot be edited or undone. For how long entries are kept and how they are protected, see [security and data handling](./security-and-data-handling.md#audit-log-built).
+Not recorded: anything before the feature was installed (there is no backfill), logins, and records edited directly in the Django admin, apart from pausing, resuming and extending a learner's course. The log has no search, and entries cannot be edited or undone. For how long entries are kept and how they are protected, see [security and data handling](./security-and-data-handling.md#audit-log-built).
 
 ## Reports
 
@@ -212,7 +212,7 @@ These are not available in the educator interface:
 - **Email changes**: a learner's email is changed in the [Django admin](./admin-interface.md#learner-rosters).
 - **Deleting a learner**: learners are deactivated, never deleted, here.
 - **Site admin**: the role is not assigned or deactivated from the educator interface, nor from the Django admin.
-- **Deadlines**: due dates, time limits, deadline overrides and overdue status are not shown or set here, and overdue learners do not appear in needs-attention lists. Overrides are set in the Django admin; see [admin interface](./admin-interface.md#deadline-overrides).
+- **Deadlines**: due dates, time limits, deadline overrides and overdue status are not shown or set here, and overdue learners do not appear in needs-attention lists. Overrides, pauses and extensions are set in the Django admin; see [admin interface](./admin-interface.md#deadline-overrides).
 - **Dark mode**: neither theme has one.
 
 Educators cannot send email to learners from FLS, and there is no group or broadcast messaging; see [messaging](./messaging.md#not-built). Remaining gaps are in the [roadmap](./roadmap.md).

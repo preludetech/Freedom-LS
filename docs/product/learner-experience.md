@@ -1,6 +1,6 @@
 # Learner Experience
 
-_Last updated: 2026-11-12_
+_Last updated: 2026-11-13_
 
 ## Summary
 
@@ -15,7 +15,7 @@ _Last updated: 2026-11-12_
 - Multi-page forms, quiz feedback (pass/fail, score, optional reveal of incorrect answers), and a course finish page are all built in.
 - A form, whether an application form or one in a course, can show a page, a question or a block of text only to learners whose earlier answers call for it. A learner sees and is counted against only what applies to them. See [Multi-Page Forms](#multi-page-forms).
 - A form question can ask for text, a number, a date, a time, an email address, a URL, a phone number, a file upload, or a choice made from radio buttons, checkboxes or a dropdown. An answer that does not fit its question's type is refused at submission, with the reason shown on the question itself, rather than stored as typed.
-- A registered learner sees each deadline as upcoming, due today, missed or closed, in the course player and on the dashboard card; the course detail page shows only the course's time limit as a length, the same for everyone. By default nothing is enforced, but staff can switch the mark off, close incomplete items after their deadline, and end course access after the time limit, each after an optional grace window, while the learner's progress is kept. See [Deadlines](#deadlines).
+- A registered learner sees each deadline as upcoming, due today, missed or closed, in the course player and on the dashboard card; the course detail page shows only the course's time limit as a length, the same for everyone. By default nothing is enforced, but staff can switch the mark off, close incomplete items after their deadline, and end course access after the time limit, each after an optional grace window, while the learner's progress is kept. Staff can also pause a learner's course and extend a learner's deadlines. See [Deadlines](#deadlines).
 - Where a learner is studying through an organisation, that organisation's logo — or an initials monogram — and its name appear as a small, secondary mark in the course player. The site's own branding stays primary throughout.
 - A course can belong to particular organisations, and only their learners see it unless it is public. Where a course has one organisation, the dashboard, the all-courses list and the course page name it, so same-titled versions of a course can be told apart. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
 - Failures — a dead link, a refused permission, a form the site could not verify, too many attempts — show a branded, themed error page that carries its real HTTP status code and a route back into the app, rather than a generic framework fallback.
@@ -313,6 +313,8 @@ Dates show in the learner's own time zone, taken from their browser; a site can 
 
 ![Course detail page after the learner's access has ended](screenshots/learner_course_access_ended.png)
 
-Closing and ending never remove progress or the registration, and staff restore access by overriding the time limit. No reminder is sent when a deadline passes, and a learner cannot request an extension. The [educator interface](./educator-interface.md) shows no overdue, closed or ended items, and Needs attention and reports do not count them. See [roadmap](./roadmap.md#deadlines).
+**Pausing and extensions.** Staff can pause a learner's course, with a planned resume date if they set one, and can extend a learner's deadlines; see [admin interface](./admin-interface.md#pausing-and-extending). A paused learner sees the course as paused, until the resume date when there is one, on the dashboard, the all-courses list and the course detail page. They can open only the items they already completed and their results. Their progress and any attempt in progress are kept, and no deadline passes, closes or ends while the course is paused. When the pause ends, the course time limit and every deadline not yet met move later by the whole days paused. An extension adds days to one item's deadline, to the time limit, or to every unmet deadline, and extensions stack. A learner cannot pause their own course or request an extension.
+
+Closing and ending never remove progress or the registration, and staff restore access by overriding or extending the time limit. No reminder is sent when a deadline passes. The [educator interface](./educator-interface.md) shows no overdue, closed or ended items, and Needs attention and reports do not count them. See [roadmap](./roadmap.md#deadlines).
 
 Authors set due dates and time limits as described in [content editing workflow](./content-editing-workflow.md#course-frontmatter-options); administrators override them and set the site time zone as described in [admin interface](./admin-interface.md#deadline-overrides).
