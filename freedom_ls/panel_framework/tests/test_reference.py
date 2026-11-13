@@ -55,6 +55,7 @@ COMPONENT_NAMES = [
     "table",
     "list",
     "heading",
+    "notice",
     "callout",
 ]
 
@@ -152,6 +153,14 @@ def test_every_component_has_at_least_one_example_id(
     client.force_login(make_staff_user())
     response = client.get("/test-panel/components/")
     assert f'id="{component_name}-' in response.content.decode()
+
+
+@pytest.mark.parametrize("tone", ["info", "warning", "error", "success"])
+def test_reference_shows_a_notice_in_each_tone(tone: str) -> None:
+    """The reference page had no example of `c-panel-notice` in any tone."""
+    html = render_to_string("panel_framework/reference/_examples.html", EXAMPLE_CONTEXT)
+    assert f'id="notice-{tone}"' in html
+    assert f"border-{tone}/20 bg-{tone}/10" in html
 
 
 def test_component_reference_does_not_resolve_without_debug(

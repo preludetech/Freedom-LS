@@ -469,6 +469,29 @@ somewhere on the page to land.
     </section>
 
     <section class="space-y-6">
+        <h2>Notice</h2>
+
+        <div id="notice-info">
+            <p class="text-sm text-muted">A compact boxed sentence inside a panel or dialog. <code>tone</code> is <code>info</code> (default), <code>warning</code>, <code>error</code> or <code>success</code>; <code>title</code> adds a bold first line.</p>
+            <c-panel-notice tone="info" title="Heads up">Changes apply to new enrolments only.</c-panel-notice>
+        </div>
+
+        <div id="notice-warning">
+            <c-panel-notice tone="warning" title="Check before continuing">This cohort has learners still in progress.</c-panel-notice>
+        </div>
+
+        <div id="notice-error">
+            <p class="text-sm text-muted">An <code>error</code> notice is an alert, so a screen reader announces it when it appears.</p>
+            <c-panel-notice tone="error" title="Could not save">The name is already taken.</c-panel-notice>
+        </div>
+
+        <div id="notice-success">
+            <p class="text-sm text-muted">A <code>success</code> notice is a status, announced the same way.</p>
+            <c-panel-notice tone="success">Changes saved.</c-panel-notice>
+        </div>
+    </section>
+
+    <section class="space-y-6">
         <h2>Callout</h2>
 
         <div id="callout-info">
