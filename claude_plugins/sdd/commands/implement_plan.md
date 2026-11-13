@@ -144,7 +144,9 @@ Delegate to `sdd:sdd-mechanic`: invoke the helper at `claude_plugins/sdd/command
 - `tick:` the unticked item that names this command. With a suffix, that is the item that also names the suffix. Without one, it is `"Run `/sdd:implement_plan` to execute the implementation plan"`.
 - one `add:"<section>|user|Decide what to do about design miss: <miss> (screenshots: <paths>)"` per surviving design miss, where `<section>` is the heading text, without the `##`, of the section holding the ticked item (`3. Implementation and QA` in the current layout, `7. Implementation` in older checklists).
 
-With no surviving design misses there is nothing to add.
+- one `add:"<section>|user|<what to do, and what follows>"` per other item the run leaves outstanding for the user, as the `sdd:outstanding-items` skill defines it. Read the Step 3 summary for them: review leftovers, unmet criteria, failing or unrun tests, plan deviations that need their decision, files a helper created for them to keep or delete.
+
+With no surviving design misses and nothing outstanding there is nothing to add.
 
 ## Step 5: Run QA
 
@@ -159,4 +161,4 @@ Done when the hook has returned `ok`, `failed`, `blocked` or `paused`; any of th
 
 ## Step 6: Final report
 
-Report the QA report path, the bug counts per lane, the `Decide` items filed, and the next human step from `todo.md`. A QA hook that returned `failed`, `blocked` or `paused` is reported with its reason; the implementation commits are already on the branch, and `/sdd:do_qa` is the command that continues.
+Report the QA report path, the bug counts per lane, the `Decide` items filed, and the next human step from `todo.md`. Anything the report leaves for the user is already a `todo.md` line (Step 4, the QA hook, or the `sdd:outstanding-items` skill for anything raised since); the report names it and points there. A QA hook that returned `failed`, `blocked` or `paused` is reported with its reason; the implementation commits are already on the branch, and `/sdd:do_qa` is the command that continues.
