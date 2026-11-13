@@ -3,6 +3,10 @@ from __future__ import annotations
 from django.db.models import Model
 from django.http import HttpRequest
 
+__all__ = [
+    "QuickView",
+]
+
 
 class QuickView:
     """Feeds the drawer opened for one row of a `ListViewConfig`'s table.

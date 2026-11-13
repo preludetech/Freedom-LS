@@ -12,6 +12,12 @@ from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.site_aware_models.models import SiteAwareModel
 
+__all__ = [
+    "BulkActionRun",
+    "RunStatus",
+    "scope_lookup",
+]
+
 
 class RunStatus(models.TextChoices):
     """The lifecycle of a unit of work that may outlive the request that

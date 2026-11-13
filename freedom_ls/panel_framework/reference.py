@@ -13,6 +13,10 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 
+__all__ = [
+    "component_reference",
+]
+
 # Two rows for `#attention-list-default`, so the divider between rows is
 # visible. Their `href`/`action_href` are fragments on the page itself
 # (`#attention-row-target` / `#attention-row-action`), which lets the

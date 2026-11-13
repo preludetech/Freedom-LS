@@ -5,6 +5,7 @@ from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from functools import cached_property
+from operator import attrgetter
 from typing import ClassVar, Literal, NamedTuple, cast
 from uuid import UUID, uuid4
 
@@ -226,7 +227,6 @@ from freedom_ls.panel_framework.tables import (
     RelatedListColumn,
     TableQuery,
 )
-from freedom_ls.panel_framework.templatetags.data_table_tags import getattr_str
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
     InstanceView,
@@ -385,7 +385,7 @@ def _active_status_column(header: str, attr: str) -> BadgeColumn:
     return BadgeColumn(
         header=header,
         template_name="cotton/data-table-cells/badge.html",
-        badge=lambda row: active_status_badge(bool(getattr_str(row, attr))),
+        badge=lambda row: active_status_badge(bool(attrgetter(attr)(row))),
     )
 
 
