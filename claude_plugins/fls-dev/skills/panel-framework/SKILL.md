@@ -28,13 +28,20 @@ components; `Skill(fls-dev:frontend-styling)` owns the theme tokens.
   `CreateInstanceAction`, `EditAction` and `DeleteAction` build on it. `renders_in_footer` places
   an action in the panel footer or inline; `submit_buttons` names a form's buttons.
   `ConfirmAction` is the confirm dialog (`confirm_label`, `confirm_variant`, `loading_text`, the
-  hooks `get_title`, `get_hidden_fields`, `get_confirm_context`); `DeleteAction` extends it.
-  `ReasonMixin` adds the reason dialog: a `ReasonForm` (`forms.py`, `reason_form_class`) whose field
-  `modal/confirm.html` renders in the body, validated in `handle_submit`. `refusal_response(ctx,
-  *, title, message, status=422)` renders a refusal in `modal/message.html`, and
-  `ConfirmAction.refuse` calls it. `row_param` names the parameter a row-scoped action reads, and
-  `get_row_object(ctx)` looks that row up in `get_row_queryset(ctx)` (404 when absent). The form
-  hooks take `ctx`, and the action's URL is `action_url` in every fragment.
+  hooks `get_title`, `get_hidden_fields`, `get_confirm_context`); `DeleteAction` extends it, and
+  its `get_known_blocked_reason(ctx, instance)` returns a refusal known without collecting the
+  cascade. `ReasonMixin` adds the reason dialog: a `ReasonForm` (`forms.py`, `reason_form_class`)
+  whose field `modal/confirm.html` renders in the body, validated in `handle_submit`. A host
+  sets `reason_max_length` on its `ReasonForm` subclass to the length its own store takes.
+  `refusal_response(ctx, *, title, message, status=422)` renders a refusal in
+  `modal/message.html`, and `ConfirmAction.refuse` calls it. `row_param` names the parameter a
+  row-scoped action reads, and `get_row_object(ctx)` looks that row up in `get_row_queryset(ctx)`
+  (404 when absent), once per request; `get_hidden_fields` posts it back by default. The form
+  hooks take `ctx`, and the action's URL is `action_url` in every fragment. A GET to an action
+  with no `template_name` answers 405. `CreateInstanceAction`'s form never takes the page's
+  instance.
+- `context.py`: `PanelContext`. `ctx.once(key, load)` reads a value once per request; the key
+  names everything the value depends on, because every context of the request shares the store.
 - `filters.py`: declared table filters, applied on top of search and sort, in `PanelAction`'s shape.
   `ToggleFilter` widens the table's own queryset when set (`BooleanFilter` narrows);
   `PeriodFilter(key, label, field, presets)` filters `field` to calendar days ending today, each

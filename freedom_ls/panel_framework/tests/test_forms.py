@@ -34,3 +34,12 @@ def test_the_reason_field_is_optional_and_stripped() -> None:
 def test_a_reason_over_the_limit_is_invalid() -> None:
     assert ReasonForm({"reason": "x" * REASON_LENGTH}).is_valid()
     assert not ReasonForm({"reason": "x" * (REASON_LENGTH + 1)}).is_valid()
+
+
+def test_a_subclass_can_set_the_longest_reason_it_takes() -> None:
+    class ShortReasonForm(ReasonForm):
+        reason_max_length = 10
+
+    assert ShortReasonForm({"reason": "x" * 10}).is_valid()
+    assert not ShortReasonForm({"reason": "x" * 11}).is_valid()
+    assert ShortReasonForm().fields["reason"].widget.attrs["maxlength"] == "10"
