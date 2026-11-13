@@ -47,6 +47,10 @@ from freedom_ls.content_engine.models import (
     File,
     Topic,
 )
+from freedom_ls.content_engine.moved_children import (
+    carry_placement_due_dates,
+    moved_children,
+)
 from freedom_ls.content_engine.prices import KIND_FIELDS
 from freedom_ls.content_engine.schema import Child
 from freedom_ls.content_engine.schema import Course as CourseSchema
@@ -60,8 +64,6 @@ from freedom_ls.content_engine.validate import (
     resolve_author_path,
     split_yaml_documents,
     validate,
-    validate_children_lists,
-    validate_due_date_placements,
 )
 from freedom_ls.form_engine import schema as form_schema
 from freedom_ls.form_engine.models import (
@@ -964,16 +966,6 @@ def save_content_to_db(path, site_name):
         if file_path in content_files:
             all_parsed.extend(parse_single_file(file_path))
 
-    # Every placement error at once, before anything is written, so one load reports
-    # all of them and leaves nothing behind: the rows roll back with the transaction,
-    # but a file already sent to storage does not.
-    placement_errors = [
-        *validate_children_lists(all_parsed),
-        *validate_due_date_placements(all_parsed),
-    ]
-    if placement_errors:
-        raise ValueError("\n".join(placement_errors))
-
     # Save non-content files (images, documents, etc.) to the database
     for file_path in all_files:
         if file_path not in content_files:
@@ -1252,8 +1244,14 @@ def save_content_to_db(path, site_name):
         part_collection_item__collection_id__in=loaded_course_ids,
     ).exclude(pk__in=kept).delete()
 
+    moved = moved_children(site, written)
+    carry_placement_due_dates(site, moved)
     collection_items_synced.send(
-        sender=ContentCollectionItem, site=site, created=created, written=written
+        sender=ContentCollectionItem,
+        site=site,
+        created=created,
+        written=written,
+        moved=moved,
     )
 
     click.echo(f"✓ Successfully saved all content for site: {site_name}")

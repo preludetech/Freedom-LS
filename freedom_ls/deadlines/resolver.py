@@ -172,12 +172,15 @@ def content_layer_value(
     )
 
 
-def _defaults_by_course(course_ids: set[UUID]) -> dict[UUID, _CourseDefaults]:
-    """Four queries whatever the number of courses or rows: the course-level rows, the
-    part-level rows beneath them, the values the courses' part placements give those rows,
-    and the courses' time limits. Rows whose child is a part are containers, not items, so
-    they carry no value. A part placed in several of the courses has its rows in each of
-    them, each with that course's placement value when it sets one."""
+def _item_defaults_by_course(
+    course_ids: set[UUID],
+) -> dict[UUID, dict[UUID, DeadlineValue | None]]:
+    """A value per viewable row of each course, keyed by row id. Three queries whatever the
+    number of courses or rows: the course-level rows, the part-level rows beneath them, and
+    the values the courses' part placements give those rows. Rows whose child is a part are
+    containers, not items, so they carry no value. A part placed in several of the courses
+    has its rows in each of them, each with that course's placement value when it sets
+    one."""
     course_type = ContentType.objects.get_for_model(Course)
     part_type = ContentType.objects.get_for_model(CoursePart)
     top_rows = list(
@@ -186,21 +189,18 @@ def _defaults_by_course(course_ids: set[UUID]) -> dict[UUID, _CourseDefaults]:
         )
     )
     courses_of_part: dict[UUID, list[UUID]] = defaultdict(list)
+    # The course each part placement belongs to, so a value keyed by the placement is
+    # credited to that course alone.
+    course_of_part_placement: dict[UUID, UUID] = {}
     for row in top_rows:
         if row.child_type_id == part_type.pk:
             courses_of_part[row.child_id].append(row.collection_id)
+            course_of_part_placement[row.pk] = row.collection_id
     part_rows = list(
         ContentCollectionItem.objects.filter(
             collection_type=part_type, collection_id__in=courses_of_part
         )
     )
-    # The course each part placement belongs to, so a value keyed by the placement is
-    # credited to that course alone.
-    course_of_part_placement = {
-        row.pk: row.collection_id
-        for row in top_rows
-        if row.child_type_id == part_type.pk
-    }
     placement_values: dict[tuple[UUID, UUID], DeadlineValue | None] = {}
     for placement_value in CoursePartChildDueDate.objects.filter(
         part_collection_item_id__in=course_of_part_placement.keys()
@@ -209,15 +209,9 @@ def _defaults_by_course(course_ids: set[UUID]) -> dict[UUID, _CourseDefaults]:
         placement_values[(course_id, placement_value.collection_item_id)] = (
             content_layer_value(placement_value)
         )
-    time_limit_days = dict(
-        Course.objects.filter(pk__in=course_ids).values_list("pk", "time_limit_days")
-    )
 
-    defaults = {
-        course_id: _CourseDefaults(
-            items={}, time_limit=time_limit_value(time_limit_days.get(course_id))
-        )
-        for course_id in course_ids
+    items: dict[UUID, dict[UUID, DeadlineValue | None]] = {
+        course_id: {} for course_id in course_ids
     }
     for row in top_rows + part_rows:
         if row.child_type_id == part_type.pk:
@@ -229,10 +223,23 @@ def _defaults_by_course(course_ids: set[UUID]) -> dict[UUID, _CourseDefaults]:
         )
         value = content_layer_value(row)
         for course_id in placed_in:
-            defaults[course_id].items[row.pk] = placement_values.get(
-                (course_id, row.pk), value
-            )
-    return defaults
+            items[course_id][row.pk] = placement_values.get((course_id, row.pk), value)
+    return items
+
+
+def _defaults_by_course(course_ids: set[UUID]) -> dict[UUID, _CourseDefaults]:
+    """Each course's item values and its time limit, in four queries."""
+    items = _item_defaults_by_course(course_ids)
+    time_limit_days = dict(
+        Course.objects.filter(pk__in=course_ids).values_list("pk", "time_limit_days")
+    )
+    return {
+        course_id: _CourseDefaults(
+            items=items[course_id],
+            time_limit=time_limit_value(time_limit_days.get(course_id)),
+        )
+        for course_id in course_ids
+    }
 
 
 def _layer(source: DeadlineSource, row: DeadlineOverrideRow | None) -> DeadlineLayer:
@@ -263,7 +270,7 @@ def content_defaults_for_course(course_id: UUID) -> Mapping[UUID, DeadlineValue 
     row's own value, or the value the course's placement of the row's part gives it. The
     one reading of a content default, shared with the admin so it never drifts from what
     a learner is resolved."""
-    return _defaults_by_course({course_id})[course_id].items
+    return _item_defaults_by_course({course_id})[course_id]
 
 
 def course_deadlines(course_progress: CourseProgress) -> CourseDeadlines:

@@ -28,6 +28,7 @@ from freedom_ls.deadlines.resolver import (
     DeadlineSource,
     DeadlineValue,
     ResolvedDeadline,
+    content_defaults_for_course,
     course_deadlines,
     course_deadlines_for,
     due_instant,
@@ -850,3 +851,28 @@ def test_another_sites_learner_override_rows_are_not_read(mock_site_context):
     )
 
     assert course_deadlines(record).items[item.pk].source == DeadlineSource.CONTENT
+
+
+@pytest.mark.django_db
+def test_the_content_defaults_read_three_queries_and_skip_the_time_limit(
+    mock_site_context, django_assert_num_queries
+) -> None:
+    """The rows beneath the course, the part rows and the placement values: the course's
+    time limit is no content default, so it is not read."""
+    course: Course = CourseFactory(time_limit_days=30)
+    part = CoursePartFactory()
+    placement = course.items.create(child=part, order=0)
+    row = part.items.create(child=TopicFactory(), order=0)
+    CoursePartChildDueDateFactory(
+        part_collection_item=placement,
+        collection_item=row,
+        due_days_after_registration=3,
+    )
+    content_defaults_for_course(course.pk)
+
+    with django_assert_num_queries(3):
+        defaults = content_defaults_for_course(course.pk)
+
+    assert defaults[row.pk] == DeadlineValue(
+        DeadlineKind.RELATIVE, due_days_after_registration=3
+    )
