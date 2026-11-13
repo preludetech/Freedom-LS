@@ -524,6 +524,33 @@ def test_create_action_save_and_add_another_returns_empty_form_and_trigger(
 
 
 @pytest.mark.django_db
+def test_a_create_action_on_an_instance_page_opens_an_empty_form(
+    mock_site_context: Site,
+) -> None:
+    page_object = make_stub(name="Page object")
+
+    form = StubCreateAction().get_form(_ctx(RequestFactory().get("/"), page_object))
+
+    assert cast(forms.ModelForm, form).instance.pk is None
+
+
+@pytest.mark.django_db
+def test_a_create_action_on_an_instance_page_leaves_the_page_object_alone(
+    mock_site_context: Site,
+) -> None:
+    page_object = make_stub(name="Page object")
+    request = RequestFactory().post("/", {"name": "New Item"})
+    request.user = make_staff_user()
+
+    StubCreateAction().handle_submit(_ctx(request, page_object, "/items"))
+
+    assert sorted(StubModel.objects.values_list("name", flat=True)) == [
+        "New Item",
+        "Page object",
+    ]
+
+
+@pytest.mark.django_db
 def test_create_action_duplicate_name_returns_422(mock_site_context: Site) -> None:
     """Duplicate name within site returns 422 with validation error."""
     make_stub(name="Existing")
@@ -934,13 +961,21 @@ def test_the_form_fragment_posts_to_the_actions_url(mock_site_context: Site) -> 
     assert form.get("hx-post") == action.get_action_url(ctx)
 
 
-def test_a_get_of_an_action_with_no_template_name_names_the_action_class() -> None:
+def test_a_get_of_an_action_with_no_template_name_is_not_allowed() -> None:
     request = RequestFactory().get("/")
     RecordingCapabilityConfig.reset(answer=True)
     resolved = _ResolvedAction(StubAction(), _ctx(request))
 
+    response = _handle_action(request, resolved)
+
+    assert isinstance(response, HttpResponse)
+    assert response.status_code == 405
+    assert response["Allow"] == "POST"
+
+
+def test_an_action_with_no_template_name_has_no_fragment_template() -> None:
     with pytest.raises(ImproperlyConfigured, match="StubAction"):
-        _handle_action(request, resolved)
+        StubAction().get_fragment_template_name()
 
 
 @pytest.mark.django_db
