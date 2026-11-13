@@ -1,19 +1,35 @@
-<c-vars label="" />
+<c-vars label="" remove_href="" remove_label="" disclosure="" />
+
+{% load panel_tags %}
 
 {% comment %}
-Applied filter — a chip naming one active filter, with its own remove
-button, in a toolbar's applied slot.
+Applied filter — a chip naming one filter, with an optional remove link.
 
 Attributes:
-  label  The filter's display text, e.g. "Status: Inactive" (required).
-         Also names the remove button's accessible name, "Remove filter:
-         <label>".
+  label         The chip's text, e.g. "Status: Inactive" (required).
+  remove_href   Renders a remove link after the label. A real link, so it
+                works with JavaScript off. Unset: no remove control, for a
+                filter that cannot be retracted.
+  remove_label  The remove link's accessible name. Default: "Remove filter:
+                <label>".
+  disclosure    On: the chip is the summary of a filter's popover, so it
+                takes the pointer cursor and ends in a chevron that turns
+                when the enclosing group is open. Read through the `flag`
+                filter.
 
-{{ attrs }} lands on the remove button, so a caller can wire hx-delete to
-retract the filter.
+{{ attrs }} lands on the remove link, so a caller can add hx-get, hx-target
+and hx-swap to retract the filter without a full page load.
 {% endcomment %}
 
-<span class="chip chip-muted">
+<c-chip variant="secondary" class="{% if disclosure|flag %}cursor-pointer{% endif %}">
     {{ label }}
-    <button type="button" aria-label="Remove filter: {{ label }}" class="text-muted hover:text-on-surface focus:outline-none focus:ring-2 focus:ring-primary rounded-full" {{ attrs }}><span aria-hidden="true"><c-icon name="close" class="size-3" /></span></button>
-</span>
+    {% if remove_href %}
+        <a href="{{ remove_href }}"
+           aria-label="{% if remove_label %}{{ remove_label }}{% else %}Remove filter: {{ label }}{% endif %}"
+           class="inline-flex text-current no-underline hover:text-primary"
+           {{ attrs }}>
+            <c-icon name="close" class="size-3" />
+        </a>
+    {% endif %}
+    {% if disclosure|flag %}<c-icon name="dropdown" class="size-3 transition-transform group-open:rotate-180" />{% endif %}
+</c-chip>

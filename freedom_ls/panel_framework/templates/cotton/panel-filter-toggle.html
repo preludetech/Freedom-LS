@@ -1,22 +1,54 @@
-<c-vars label="" pressed="" />
-
-{% load panel_tags %}
+<c-vars label="" variant="" />
 
 {% comment %}
-Filter toggle — a pressed/unpressed button for one facet filter, in a
-toolbar's filters slot.
+Filter toggle — one filter's popover in a toolbar: a <details> whose summary
+is a chip and whose body is the filter's choices. It opens and closes with
+no JavaScript.
 
 Attributes:
-  label    The button's visible text (required).
-  pressed  Off (default): unpressed, aria-pressed="false". On: pressed,
-           aria-pressed="true", with a leading decorative check icon.
-           Read through the `flag` filter, so "False", "false", "0",
-           "none" and an empty string all count as off.
+  label    The summary chip's text (required unless the summary slot is
+           given).
+  variant  "" (default): a chip-summary popover that floats under the
+           toolbar. "add": the same with its own group name, so the
+           chevron of the filters nested inside does not turn with it.
+           "nested": a full-width row summary for a filter inside another
+           popover.
 
-Pressed differs by more than colour, since colour alone fails a
-colour-blind or forced-colours reader: a check icon appears, and under
-forced colours the pressed state switches to the Highlight/HighlightText
-system colours while the unpressed border switches to ButtonBorder.
+Named slot: summary, the summary's content in place of the label chip, e.g. a
+<c-panel-applied-filter disclosure="true"> naming the applied values. The
+default slot is the popover body.
 {% endcomment %}
 
-<button type="button" aria-pressed="{% if pressed|flag %}true{% else %}false{% endif %}" class="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1 text-sm aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-on-primary forced-colors:border-[ButtonBorder] aria-pressed:forced-colors:bg-[Highlight] aria-pressed:forced-colors:text-[HighlightText] aria-pressed:forced-color-adjust-none" {{ attrs }}>{% if pressed|flag %}<span aria-hidden="true"><c-icon name="check" class="size-4" /></span>{% endif %}{{ label }}</button>
+{% if variant == "nested" %}
+    <details class="group">
+        <summary class="list-none marker:hidden [&::-webkit-details-marker]:hidden flex cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-1 hover:bg-surface-2">
+            {{ label }}
+            <c-icon name="dropdown" class="size-3 text-muted transition-transform group-open:rotate-180" />
+        </summary>
+        {{ slot }}
+    </details>
+{% elif variant == "add" %}
+    <details class="group/add relative shrink-0">
+        <summary class="list-none marker:hidden [&::-webkit-details-marker]:hidden">
+            <c-chip variant="secondary" class="cursor-pointer">
+                {{ label }}
+                <c-icon name="dropdown" class="size-3 transition-transform group-open/add:rotate-180" />
+            </c-chip>
+        </summary>
+        {{ slot }}
+    </details>
+{% else %}
+    <details class="group relative shrink-0">
+        <summary class="list-none marker:hidden [&::-webkit-details-marker]:hidden">
+            {% if summary.strip %}
+                {{ summary }}
+            {% else %}
+                <c-chip variant="secondary" class="cursor-pointer">
+                    {{ label }}
+                    <c-icon name="dropdown" class="size-3 transition-transform group-open:rotate-180" />
+                </c-chip>
+            {% endif %}
+        </summary>
+        {{ slot }}
+    </details>
+{% endif %}
