@@ -83,7 +83,7 @@ def _notify(
     )
 
 
-def _days_text(days: int) -> str:
+def days_text(days: int) -> str:
     return ngettext("%(count)d day", "%(count)d days", days) % {"count": days}
 
 
@@ -279,7 +279,7 @@ def _record_resumed(
         },
         locked.site,
     )
-    values = {"course_title": title, "days": _days_text(shift_days)}
+    values = {"course_title": title, "days": days_text(shift_days)}
     if planned:
         summary = _("%(course_title)s has resumed. Your deadlines moved by %(days)s.")
     else:
@@ -381,7 +381,7 @@ def extend_deadline(
         values = {
             "item": item_title,
             "course": locked.course.title,
-            "days": _days_text(days),
+            "days": days_text(days),
             "date": (
                 formats.date_format(
                     due_after.astimezone(after.zone).date(), DATE_DISPLAY_FORMAT

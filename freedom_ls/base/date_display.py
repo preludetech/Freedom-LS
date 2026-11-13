@@ -23,6 +23,13 @@ def display_date(value: date) -> str:
     return formats.date_format(value, DATE_DISPLAY_FORMAT)
 
 
+def display_short_date(value: date) -> str:
+    """A date as a day and month, "3 Nov", keeping the year when it is not this year."""
+    if value.year == timezone.localdate().year:
+        return formats.date_format(value, SHORT_DATE_DISPLAY_FORMAT)
+    return formats.date_format(value, DATE_DISPLAY_FORMAT)
+
+
 def display_time(value: datetime) -> str:
     return formats.time_format(_in_current_zone(value), TIME_DISPLAY_FORMAT)
 

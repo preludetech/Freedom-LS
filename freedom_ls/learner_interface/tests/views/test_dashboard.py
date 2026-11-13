@@ -2638,8 +2638,10 @@ def test_paused_card_says_paused_until_the_planned_resume(paused_card):
 
     card = _first_card_grid(_dashboard_html(client))
 
+    text = " ".join(re.sub(r"<[^>]+>", " ", card).split())
     assert 'data-testid="course-status-paused"' in card
-    assert "Paused until 12 Dec" in " ".join(re.sub(r"<[^>]+>", " ", card).split())
+    assert "Paused until 12 Dec" in text
+    assert "Paused until 12 Dec," not in text
 
 
 @pytest.mark.django_db

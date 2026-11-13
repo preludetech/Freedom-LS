@@ -776,20 +776,17 @@ class TestDeadlineEnforcingBackendPaused:
         assert decision.cta_label is None
         assert decision.cta_url is None
         assert decision.paused_at == PAUSE_START
-        assert decision.planned_resume_at is None
+        assert decision.planned_resume_on is None
         assert decision.access_ended_at is None
 
     @time_machine.travel(AFTER_END, tick=False)
-    def test_a_paused_decision_names_the_planned_resume_instant(
-        self, mock_site_context
-    ):
+    def test_a_paused_decision_names_the_planned_resume_day(self, mock_site_context):
         course = _time_limited_course()
         user = _paused_learner(course, planned_resume_on=date(2999, 1, 1))
 
         decision = _deadline_backend().get_access(user=user, course=course)
 
-        assert decision.planned_resume_at is not None
-        assert decision.planned_resume_at.date() == date(2999, 1, 1)
+        assert decision.planned_resume_on == date(2999, 1, 1)
 
     @time_machine.travel(AFTER_END, tick=False)
     def test_a_completed_record_is_never_paused(self, mock_site_context):

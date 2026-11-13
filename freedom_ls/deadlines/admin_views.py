@@ -12,13 +12,13 @@ from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils import formats, timezone
-from django.utils.translation import ngettext
 
 from freedom_ls.accounts.models import User
 from freedom_ls.base.date_display import DATE_DISPLAY_FORMAT
 from freedom_ls.content_engine.models import ContentCollectionItem
 from freedom_ls.deadlines.actions import (
     DeadlineActionError,
+    days_text,
     extend_deadline,
     pause_course,
     resume_course,
@@ -58,10 +58,6 @@ def _change_url(record: CourseProgress) -> str:
     return reverse(
         "admin:freedom_ls_learner_progress_courseprogress_change", args=[record.pk]
     )
-
-
-def _days_text(days: int) -> str:
-    return ngettext("%(count)d day", "%(count)d days", days) % {"count": days}
 
 
 def pause_view(
@@ -116,7 +112,7 @@ def resume_view(
         else:
             if resumed is None:
                 return _not_paused(request, model_admin, record)
-            days = _days_text(resumed.paused_days(now, tz))
+            days = days_text(resumed.paused_days(now, tz))
             model_admin.message_user(
                 request, f"Resumed {learner} on {course}. Deadlines moved by {days}."
             )
@@ -126,7 +122,7 @@ def resume_view(
     )
     intro = (
         f"Paused since {since}. Resuming moves the time limit and every unmet "
-        f"deadline forward by {_days_text(pause.paused_days(now, tz))}."
+        f"deadline forward by {days_text(pause.paused_days(now, tz))}."
     )
     return TemplateResponse(
         request,
@@ -167,7 +163,7 @@ def _extended_message(
 ) -> str:
     learner, course = record.learner, record.course
     if target_kind == ExtensionTarget.COURSE:
-        return f"Moved {learner}'s deadlines in {course} by {_days_text(days)}."
+        return f"Moved {learner}'s deadlines in {course} by {days_text(days)}."
     deadlines = course_deadlines(record)
     if item is not None:
         target = item.child.title if item.child is not None else str(item.pk)
@@ -175,7 +171,7 @@ def _extended_message(
     else:
         target, due_at = "the course time limit", deadlines.time_limit.due_at
     return (
-        f"Extended {target} for {learner} by {_days_text(days)}. "
+        f"Extended {target} for {learner} by {days_text(days)}. "
         f"Its deadline is now {site_zone_text(due_at) if due_at else 'none'}."
     )
 

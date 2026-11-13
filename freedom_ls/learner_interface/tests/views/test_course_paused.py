@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime
+import re
 
 import pytest
 import time_machine
@@ -295,7 +296,10 @@ def test_the_detail_page_of_a_paused_learner_shows_the_callout_and_no_cta_or_rea
     assert response.context["start_url"] is None
     assert response.context["cta_label"] is None
     assert response.context["paused_at"] is not None
-    assert (response.context["planned_resume_at"] is not None) is planned
+    assert (response.context["planned_resume_on"] is not None) is planned
+    text = " ".join(re.sub(r"<[^>]+>", " ", html).split())
+    assert ("It resumes on 5 Jan 2099 ." in text) is planned
+    assert "5 Jan 2099," not in text
     assert 'data-testid="course-paused-callout"' in html
     assert "Your deadlines move by the time paused." in html
     assert "private staff reason" not in html

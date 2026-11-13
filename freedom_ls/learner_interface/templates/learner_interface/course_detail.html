@@ -74,8 +74,8 @@
                         {% if paused_at %}
                             <div data-testid="course-paused-callout">
                             <c-callout level="info">
-                                {% if planned_resume_at %}
-                                    Your educator paused this course. It resumes on {% local_time planned_resume_at %}. Your progress is saved.
+                                {% if planned_resume_on %}
+                                    Your educator paused this course. It resumes on <c-date :value="planned_resume_on" />. Your progress is saved.
                                 {% else %}
                                     Your educator paused this course. Your progress is saved. You can continue when they resume it.
                                 {% endif %}

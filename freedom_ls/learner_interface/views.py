@@ -306,7 +306,7 @@ def _annotate_registered_courses(
         setattr(course, "access_ended_at", course_decision.access_ended_at)  # noqa: B010
         setattr(course, "paused_at", course_decision.paused_at)  # noqa: B010
         setattr(  # noqa: B010
-            course, "planned_resume_at", course_decision.planned_resume_at
+            course, "planned_resume_on", course_decision.planned_resume_on
         )
         record = records.get(course.pk)
         _annotate_next_up(
@@ -816,7 +816,7 @@ def all_courses(request: HttpRequest) -> HttpResponse:
             decision = decisions[course.pk]
             setattr(course, "access_ended_at", decision.access_ended_at)  # noqa: B010
             setattr(course, "paused_at", decision.paused_at)  # noqa: B010
-            setattr(course, "planned_resume_at", decision.planned_resume_at)  # noqa: B010
+            setattr(course, "planned_resume_on", decision.planned_resume_on)  # noqa: B010
             # The listing resolved the record already; the catalogue shows no
             # deadline line, so none are resolved here.
             _annotate_next_up(
@@ -1000,7 +1000,7 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
             "cta_label": cta_label,
             "access_ended_at": decision.access_ended_at,
             "paused_at": decision.paused_at,
-            "planned_resume_at": decision.planned_resume_at,
+            "planned_resume_on": decision.planned_resume_on,
             **_time_zone_context(request),
             # Acquisition-funnel copy is access-type-specific and comes from the
             # backend decision (not the CTA-state helpers above), so it is correct

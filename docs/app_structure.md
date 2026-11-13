@@ -90,7 +90,6 @@ flowchart TB
     course_access --> deadlines
     course_access --> learner_management
     course_access --> learner_progress
-    course_access --> site_aware_models
     course_applications --> accounts
     course_applications --> api
     course_applications --> base
@@ -316,7 +315,7 @@ flowchart TB
 | comms | accounts, base, site_aware_models | content_engine, learner_management, organisations, role_based_permissions |
 | content_base | markdown_rendering, site_aware_models | content_engine |
 | content_engine | base, content_base, form_engine, icons, markdown_rendering, organisations, site_aware_models | — |
-| course_access | accounts, base, content_engine, deadlines, learner_management, learner_progress, site_aware_models | course_applications |
+| course_access | accounts, base, content_engine, deadlines, learner_management, learner_progress | course_applications |
 | course_applications | accounts, api, base, content_engine, course_access, form_engine, learner_management, mail, site_aware_models | learner_progress |
 | course_interest | accounts, api, content_engine, course_access, site_aware_models | learner_management |
 | course_recommendations | accounts, content_engine, learner_management, site_aware_models | — |

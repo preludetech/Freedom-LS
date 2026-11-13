@@ -9,7 +9,12 @@ from django.utils.safestring import SafeString, mark_safe
 from django.utils.timesince import timesince
 from django.utils.translation import ngettext
 
-from freedom_ls.base.date_display import display_date, display_datetime, display_time
+from freedom_ls.base.date_display import (
+    display_date,
+    display_datetime,
+    display_short_date,
+    display_time,
+)
 
 register = template.Library()
 
@@ -110,6 +115,15 @@ def display_date_filter(value: date | None) -> str:
     Usage: aria-label="Generated {{ report.finished_at|display_date }}"
     """
     return display_date(value) if value else ""
+
+
+@register.filter(name="display_short_date")
+def display_short_date_filter(value: date | None) -> str:
+    """
+    A date as a day and month, "3 Nov", with the year when it is not this year. Use
+    <c-date short> in markup; this filter is for the places a component cannot go.
+    """
+    return display_short_date(value) if value else ""
 
 
 @register.filter(name="display_datetime")
