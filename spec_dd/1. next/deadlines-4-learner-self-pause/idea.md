@@ -17,6 +17,14 @@ planned resume date. The learner sees what is left of their allowance before the
 This spec adds the learner-facing control and its checks. The pause itself, its effect on dates and
 the limit settings are spec 3's.
 
+Built by spec 3, which this spec calls: `pause_course(record, *, actor, reason,
+planned_resume_on=None)` and `resume_course(record, *, actor, reason)` in
+`freedom_ls/deadlines/actions.py`, passing the learner as `actor`. They raise `DeadlineActionError`
+for invalid input. The policy fields `learners_may_pause`, `max_pauses` and `max_pause_days` are
+stored and resolved but not enforced: `pause_course` does not read them, so this spec enforces
+them (`0` means no limit, null inherits). `CourseDeadlines.pause` is the open pause, for the
+paused state and the planned resume date.
+
 ## Why
 
 A learner who needs a break should not have to ask someone and wait. Pausing is the most wanted
@@ -55,8 +63,8 @@ within clear limits avoids that. FLS takes no payment, so there is nothing to ch
 - **Where the pause control sits** on course detail and whether it needs a confirmation step,
   inside the HTMX conventions in `fls-dev:template`.
 - **How the remaining allowance is worded** when limits are not set at the learner's layer.
-- **Whether a learner sees a staff-made pause's reason**, as spec 3's records settle what they
-  hold.
+- **Whether a learner sees a staff-made pause's reason.** Spec 3 keeps the reason staff-only: no
+  payload, notification or learner copy carries it. Showing it would change that.
 - **How a paused course reads on the dashboard card** within `CourseListingEntry`, beside the
   access-ended state spec 2 settles.
 

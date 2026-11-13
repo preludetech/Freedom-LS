@@ -14,7 +14,11 @@ Extending also works in bulk, over many selected learners, through the bulk-oper
 Every action is gated by a new capability and writes an audit log entry, and the learner is told
 when staff act on them.
 
-This spec builds on spec 3 (overrides, extensions and the pause records), on
+This spec builds on spec 3 (overrides, extensions and the pause records), whose services in
+`freedom_ls/deadlines/actions.py` it calls from the educator screens, passing the educator as
+`actor`: `pause_course`, `resume_course` and `extend_deadline`. Bulk extension across learners and
+revoking an extension are this spec's; spec 3 has neither. The services already write the audit
+entry, fire the webhook and notify the learner, so the screens add none of those. It also builds on
 `educator-interface-8-bulk-operations` (multi-select bulk actions on the learner table) and on
 `educator-interface-11-audit-log` (the model and its vocabulary).
 
@@ -72,8 +76,6 @@ deadlines out on purpose, so the panels, capabilities and audit entries are all 
   is optional everywhere.
 - **How an override made here is recorded** (actor, reason, and whether it follows later edits to
   the default), as spec 1 settles it.
-- **The shape of the pause and extension records** and how a resume computes the shift, as spec 3
-  settles it.
 - **The bulk-action target when learners have several registrations** for one course, and how a
   bulk run reports learners it skipped. Only code reading and spec 8's framework answer these.
 

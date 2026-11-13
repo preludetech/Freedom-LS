@@ -43,8 +43,9 @@ out of it on purpose.
   `educator-interface-10-reporting-dashboards` defines, extended with their own statuses. They
   map onto its badge vocabulary and do not create a second one.
 - **Effective deadlines only.** The lists use the dates spec 1's resolver returns, after
-  overrides, extensions and the policy's grace window. A completed item is never overdue. Once spec 3 has
-  landed, the resolver stops the clock for a paused learner, so a paused learner is not overdue.
+  overrides, extensions and the policy's grace window. A completed item is never overdue. Spec 3 has
+  landed: the resolver stops the clock for a paused learner, so a paused learner is not overdue.
+  `CourseDeadlines.pause` holds the open pause, so a list can show a paused learner as paused.
 - **Show an as-of time.** Wherever a view might not be live (a gathered report, a cache), it
   says when it was computed, with the time zone. Whether a surface is live or gathered is spec 10's
   decision for it, and this spec follows.
