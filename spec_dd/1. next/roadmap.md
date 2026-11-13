@@ -131,10 +131,10 @@ Notifications and direct messaging between learners and educators. Parent: `user
 
 Due dates and course time limits, with consequences, pause, reminders and at-risk views. Parent: `deadlines`.
 
-- `deadlines-3-extensions-and-pause` — **in progress** — In the admin, staff extend a learner's deadlines and pause or resume their course. The clock stops and dates shift, with webhooks.
-- `deadlines-4-learner-self-pause` — **blocked** by `deadlines-3-extensions-and-pause` — Learners pause and resume their own course within the policy's limits, giving a reason.
-- `deadlines-5-reminders` — **blocked** by `deadlines-3-extensions-and-pause` — A housekeeping sweep sends learners reminders, educators rolled-up overdue notices, and fires a `deadline.missed` webhook.
-- `deadlines-6-educator-management` — **blocked** by `deadlines-3-extensions-and-pause` — In the educator interface, staff set deadlines, extend them (also in bulk), and pause or resume courses. Every change is audit-logged.
+- `deadlines-3-extensions-and-pause` — **done** — In the admin, staff extend a learner's deadlines and pause or resume their course. The clock stops and dates shift, with webhooks.
+- `deadlines-4-learner-self-pause` — **ready** — Learners pause and resume their own course within the policy's limits, giving a reason.
+- `deadlines-5-reminders` — **ready** — A housekeeping sweep sends learners reminders, educators rolled-up overdue notices, and fires a `deadline.missed` webhook.
+- `deadlines-6-educator-management` — **ready** — In the educator interface, staff set deadlines, extend them (also in bulk), and pause or resume courses. Every change is audit-logged.
 - `deadlines-7-educator-at-risk` — **ready** — Overdue and due-soon learners appear in Needs attention and on the dashboard, and the cohort report gets an at-risk rule.
 - `design_learner-upcoming-deadlines` — **ready** — Learners see every deadline still to meet, across all their courses, on one page grouped by when each falls.
 
@@ -149,8 +149,11 @@ Due dates and course time limits, with consequences, pause, reminders and at-ris
 - Decided: pause stops the clock and nothing opens while paused. Learners self-pause with no approval. Once a time limit ends access, only staff can restore it. Policy lives in the Django admin.
 - Assumed: a deadline attaches to the placement (`ContentCollectionItem`). The start is `CourseProgress.created_at`. The most permissive deadline wins. Ending access leaves `is_active` alone.
 - Assumed notifications: staff pauses and extensions notify the learner; self-pauses don't. Reminders stay in-app until `user-communication-2-notification-email` lands.
+- Resolved by `deadlines-3-extensions-and-pause`:
+  - Records: `CoursePause` (one open per course progress record, with a reason, optional planned resume date and the resume fields) and `DeadlineExtension` (`days` on a collection item, the time limit or the whole course). Staff act on the course progress record through `pause_course`, `resume_course`, `announce_planned_resume` and `extend_deadline` in `freedom_ls/deadlines/actions.py`.
+  - Shift rule: whole days, rounded up, added to the deadline's local date. It is computed when read, never stored, and an open pause counts up to now. It applies to an item only if the item was unmet when the shift began. Extensions stack by addition.
+  - Pause limits (`learners_may_pause`, `max_pauses`, `max_pause_days`) are stored and resolved in the policy but enforced by nobody yet (`deadlines-4-learner-self-pause`).
 - Open questions:
-  - the pause and extension records (`deadlines-3-extensions-and-pause`);
   - reminder offsets and the educator rollup (`deadlines-5-reminders`);
   - the due-soon window (`deadlines-7-educator-at-risk`).
 - Out of scope: recertification, retakes, line-manager escalation, score penalties, SMS, calendar export.

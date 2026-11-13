@@ -13,7 +13,11 @@ deadline policy's "notify educators" consequence is on. It fires a `deadline.mis
 each missed deadline, and fires the webhook for a pause that ends on its planned resume date.
 
 This spec builds on spec 3, which gives it the effective-date resolver (spec 1), the policy
-(spec 2) and the pause and extension records.
+(spec 2) and the pause and extension records. From spec 3 it calls
+`announce_planned_resume(pause)` in `freedom_ls/deadlines/actions.py` for each pause whose planned
+resume has passed, found with `CoursePause.objects.due_for_announcement(now, site)`; it closes the
+pause, writes the audit entry, fires `course.resumed` and notifies the learner, once, and returns
+whether it announced. It reads `CourseDeadlines.pause` to skip a paused record.
 
 ## Why
 
