@@ -9,6 +9,9 @@ import pytest
 from freedom_ls.mail import settings_defaults
 
 
+# A downstream project's own settings_prod may keep SMTP as its default, so only
+# FLS's settings make this promise.
+@pytest.mark.fls_internal
 def test_prod_settings_queue_email_when_no_backend_is_set(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
