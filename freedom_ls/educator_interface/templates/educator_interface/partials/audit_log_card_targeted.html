@@ -5,7 +5,6 @@ follows Who, naming the object the entry is about.
 {% endcomment %}
 {% block card_target %}
     {% if object.target_label %}
-        <dt class="font-mono text-xs font-bold uppercase tracking-wide text-muted">Target</dt>
-        <dd class="min-w-0 break-words">{% include "educator_interface/data-table-cells/audit_target.html" %}</dd>
+        <c-panel-definition-row label="Target">{% include "educator_interface/data-table-cells/audit_target.html" %}</c-panel-definition-row>
     {% endif %}
 {% endblock %}

@@ -3,9 +3,9 @@
 {% comment %}
 One row of a <c-panel-table> with `cards` set, as the card shown below md: the
 row's main value on top, then its other values labelled. The slot holds
-<c-panel-card-field> pairs; a pair left out of the slot is left off the card.
+<c-panel-definition-row> pairs; a pair left out of the slot is left off the card.
 {% endcomment %}
 <li class="px-4 py-3 sm:px-6">
     <p class="min-w-0 break-words font-bold">{{ primary }}</p>
-    <c-panel-card-fields>{{ slot }}</c-panel-card-fields>
+    <c-panel-definition-list layout="inline" class="mt-1">{{ slot }}</c-panel-definition-list>
 </li>

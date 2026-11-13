@@ -3,15 +3,11 @@ One Audit log entry as a card below md: what happened on the first line, then
 each value labelled with its column header, since the table headings aren't
 on screen to say who did it, when, and to what. A table whose rows can be
 about different objects uses audit_log_card_targeted.html, which adds the
-Target. The labels share audit_row_detail.html's style and label width, so
-the description, reason and run entries the card opens line up beneath them.
-Every value is user-derived text, so nothing here is marked safe.
+Target. Every value is user-derived text, so nothing here is marked safe.
 {% endcomment %}
 <p class="font-bold break-words">{{ object.label }}</p>
-<dl class="mt-1 grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1 text-sm">
-    <dt class="font-mono text-xs font-bold uppercase tracking-wide text-muted">When</dt>
-    <dd class="min-w-0"><c-datetime :value="object.created_at" /></dd>
-    <dt class="font-mono text-xs font-bold uppercase tracking-wide text-muted">Who</dt>
-    <dd class="min-w-0 break-words">{% include "educator_interface/data-table-cells/audit_who.html" %}</dd>
+<c-panel-definition-list layout="inline" class="mt-1">
+    <c-panel-definition-row label="When"><c-datetime :value="object.created_at" /></c-panel-definition-row>
+    <c-panel-definition-row label="Who">{% include "educator_interface/data-table-cells/audit_who.html" %}</c-panel-definition-row>
     {% block card_target %}{% endblock %}
-</dl>
+</c-panel-definition-list>

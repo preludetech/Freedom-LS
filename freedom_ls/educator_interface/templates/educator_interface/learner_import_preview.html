@@ -11,21 +11,13 @@
     <div>
         <c-panel-stat-row>
             {% for item in label_counts %}
-                <a data-label-filter href="{{ preview_url }}?label={{ item.label }}" aria-label="{{ item.name }}: {{ item.count }}"
-                   {% if item.label == label %}aria-current="true"{% endif %}
-                   class="block h-full rounded-lg no-underline {% if item.label == label %}ring-2 ring-primary{% endif %}">
-                    {% if item.label == "error" and item.count %}
-                        <div class="h-full min-h-11 rounded-lg border border-error bg-surface px-4 py-3 text-error">
-                            <c-panel-stat-tile label="{{ item.name }}" variant="plain">
-                                <c-slot name="value_content"><span class="inline-flex items-center gap-1 text-error"><span aria-hidden="true"><c-icon name="error" class="size-5" /></span>{{ item.count }}</span></c-slot>
-                            </c-panel-stat-tile>
-                        </div>
-                    {% else %}
-                        <div class="h-full min-h-11 rounded-lg border border-border bg-surface px-4 py-3">
-                            <c-panel-stat-tile label="{{ item.name }}" value="{{ item.count }}" variant="plain" />
-                        </div>
-                    {% endif %}
-                </a>
+                {% if item.label == "error" and item.count %}
+                    <c-panel-stat-tile data-label-filter error="true" label="{{ item.name }}" href="{{ preview_url }}?label={{ item.label }}" selected="{% if item.label == label %}true{% endif %}" aria-label="{{ item.name }}: {{ item.count }}">
+                        <c-slot name="value_content"><span class="inline-flex items-center gap-1 text-error"><span aria-hidden="true"><c-icon name="error" class="size-5" /></span>{{ item.count }}</span></c-slot>
+                    </c-panel-stat-tile>
+                {% else %}
+                    <c-panel-stat-tile data-label-filter label="{{ item.name }}" :value="item.count" href="{{ preview_url }}?label={{ item.label }}" selected="{% if item.label == label %}true{% endif %}" aria-label="{{ item.name }}: {{ item.count }}" />
+                {% endif %}
             {% endfor %}
         </c-panel-stat-row>
         {% if label %}<p class="mt-2 text-sm"><c-button variant="link" size="small" href="{{ preview_url }}">Clear filter</c-button></p>{% endif %}
@@ -63,16 +55,16 @@
             <c-slot name="card_rows">
                 {% for row in page_obj %}
                     <c-panel-table-card primary="{{ row.email }}">
-                        <c-panel-card-field label="Line">{{ row.line_number }}</c-panel-card-field>
-                        <c-panel-card-field label="Label"><c-panel-status-badge tone="{{ row.tone }}" label="{{ row.get_preview_label_display }}" /></c-panel-card-field>
+                        <c-panel-definition-row label="Line">{{ row.line_number }}</c-panel-definition-row>
+                        <c-panel-definition-row label="Label"><c-panel-status-badge tone="{{ row.tone }}" label="{{ row.get_preview_label_display }}" /></c-panel-definition-row>
                         {% if row.preview_reason %}
-                            <c-panel-card-field label="Reason">{{ row.preview_reason }}</c-panel-card-field>
+                            <c-panel-definition-row label="Reason">{{ row.preview_reason }}</c-panel-definition-row>
                         {% endif %}
                         {% if row.first_name or row.last_name %}
-                            <c-panel-card-field label="Name">{{ row.first_name }} {{ row.last_name }}</c-panel-card-field>
+                            <c-panel-definition-row label="Name">{{ row.first_name }} {{ row.last_name }}</c-panel-definition-row>
                         {% endif %}
                         {% if learner_import.cohort or row.cohort_name %}
-                            <c-panel-card-field label="Cohort">{% firstof learner_import.cohort.name row.cohort_name %}</c-panel-card-field>
+                            <c-panel-definition-row label="Cohort">{% firstof learner_import.cohort.name row.cohort_name %}</c-panel-definition-row>
                         {% endif %}
                     </c-panel-table-card>
                 {% endfor %}

@@ -86,7 +86,7 @@ def test_import_a_file_with_errors_then_download_the_error_rows(
     error_tile = page.get_by_role("link", name="Error: 1")
     tile_colour, count_colour = error_tile.evaluate(
         """el => [
-            getComputedStyle(el.querySelector('.border-error')).color,
+            getComputedStyle(el).color,
             getComputedStyle(el.querySelector("dd span")).color,
         ]"""
     )

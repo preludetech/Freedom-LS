@@ -57,11 +57,11 @@ keeps an empty slot the toggle's width so every card's first line aligns.
                 </div>
             {% endif %}
             {% if secondary_columns %}
-                <c-panel-card-fields>
+                <c-panel-definition-list layout="inline" class="mt-1">
                     {% for column in secondary_columns %}
-                        <c-panel-card-field :label="column.header">{% include column.template_name with object=row.object column=column in_secondary_line=True %}</c-panel-card-field>
+                        <c-panel-definition-row :label="column.header">{% include column.template_name with object=row.object column=column in_secondary_line=True %}</c-panel-definition-row>
                     {% endfor %}
-                </c-panel-card-fields>
+                </c-panel-definition-list>
             {% endif %}
         {% endif %}
         {% if row_detail_template_name and row.has_row_detail %}

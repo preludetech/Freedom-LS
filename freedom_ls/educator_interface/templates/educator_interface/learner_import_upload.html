@@ -66,8 +66,8 @@
                     <c-slot name="card_rows">
                         {% for row in format_rows %}
                             <c-panel-table-card primary="{{ row.name }}">
-                                <c-panel-card-field label="Required">{{ row.requirement }}</c-panel-card-field>
-                                <c-panel-card-field label="Format">{{ row.description }}<span class="mt-0.5 block break-all font-mono text-xs text-muted">{{ row.example }}</span></c-panel-card-field>
+                                <c-panel-definition-row label="Required">{{ row.requirement }}</c-panel-definition-row>
+                                <c-panel-definition-row label="Format">{{ row.description }}<span class="mt-0.5 block break-all font-mono text-xs text-muted">{{ row.example }}</span></c-panel-definition-row>
                             </c-panel-table-card>
                         {% endfor %}
                     </c-slot>

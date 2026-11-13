@@ -18,11 +18,7 @@ cohorts, inline, is_organisation_admin; when loaded, figures.
         <div class="space-y-6">
             <c-panel-stat-row>
                 <c-panel-stat-tile label="Learners" :value="inline.learner_count" sub="Across {{ inline.cohort_count }} cohort{{ inline.cohort_count|pluralize }}" />
-                <c-panel-stat-tile label="Cohorts" :value="inline.cohort_count">
-                    <c-slot name="value_content">
-                        <a href="{% url 'educator_interface:interface' organisation_slug=request.organisation.slug path_string='cohorts' %}" aria-label="{{ inline.cohort_count }} cohort{{ inline.cohort_count|pluralize }}" class="text-on-surface no-underline hover:text-primary">{{ inline.cohort_count }}</a>
-                    </c-slot>
-                </c-panel-stat-tile>
+                <c-panel-stat-tile label="Cohorts" :value="inline.cohort_count" href="{% url 'educator_interface:interface' organisation_slug=request.organisation.slug path_string='cohorts' %}" aria-label="{{ inline.cohort_count }} cohort{{ inline.cohort_count|pluralize }}" />
                 {% if is_loaded %}
                     <c-panel-stat-tile label="Average progress" value="{% if figures.average_progress is None %}—{% endif %}">
                         {% if figures.average_progress is not None %}

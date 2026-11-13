@@ -27,8 +27,8 @@ a corrected file" link beside the download.
         <c-slot name="card_rows">
             {% for item in error_rows %}
                 <c-panel-table-card primary="{{ item.row.email }}">
-                    <c-panel-card-field label="Line">{{ item.row.line_number }}</c-panel-card-field>
-                    <c-panel-card-field label="Reason">{{ item.reason }}</c-panel-card-field>
+                    <c-panel-definition-row label="Line">{{ item.row.line_number }}</c-panel-definition-row>
+                    <c-panel-definition-row label="Reason">{{ item.reason }}</c-panel-definition-row>
                 </c-panel-table-card>
             {% endfor %}
         </c-slot>
