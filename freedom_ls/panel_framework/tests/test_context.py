@@ -78,3 +78,67 @@ def test_scope_object_falls_back_to_scope_with_no_instance() -> None:
     )
 
     assert ctx.scope_object() is scope
+
+
+def _context() -> PanelContext:
+    return PanelContext(
+        request=RequestFactory().get("/cohorts/1"),
+        instance=None,
+        base_url="cohorts/1",
+        name="",
+        config=SectionConfigBase,
+    )
+
+
+def test_once_loads_a_value_the_first_time_and_returns_it_after() -> None:
+    ctx = _context()
+    loads: list[str] = []
+
+    def load() -> str:
+        loads.append("loaded")
+        return "row"
+
+    values = [ctx.once("row", load), ctx.once("row", load)]
+
+    assert values == ["row", "row"]
+    assert loads == ["loaded"]
+
+
+def test_once_keeps_a_none_it_loaded() -> None:
+    ctx = _context()
+    loads: list[str] = []
+
+    def load() -> None:
+        loads.append("loaded")
+
+    ctx.once("absent", load)
+    ctx.once("absent", load)
+
+    assert loads == ["loaded"]
+
+
+def test_once_keeps_each_key_apart() -> None:
+    ctx = _context()
+
+    assert (ctx.once("a", lambda: 1), ctx.once("b", lambda: 2)) == (1, 2)
+
+
+def test_a_replaced_context_reads_what_the_original_loaded() -> None:
+    ctx = _context()
+    ctx.once("row", lambda: "first")
+
+    replaced = dataclasses.replace(ctx, reason="Merged")
+
+    assert replaced.once("row", lambda: "second") == "first"
+
+
+def test_a_load_that_raises_is_tried_again() -> None:
+    ctx = _context()
+
+    def missing() -> str:
+        raise LookupError
+
+    with pytest.raises(LookupError):
+        ctx.once("row", missing)
+
+    assert ctx.once("row", lambda: "found") == "found"

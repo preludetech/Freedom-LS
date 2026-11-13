@@ -149,18 +149,22 @@ class PanelAction:
         raise NotImplementedError
 
     def get_row_object(self, ctx: PanelContext) -> Model:
-        """The row `row_param` names, from `get_row_queryset`. A missing,
-        malformed or out-of-scope value is a 404."""
+        """The row `row_param` names, from `get_row_queryset`, read once per
+        request. A missing, malformed or out-of-scope value is a 404."""
         if self.row_param is None:
             raise ImproperlyConfigured(f"{type(self).__name__} sets no row_param.")
         params = ctx.request.POST if ctx.request.method == "POST" else ctx.request.GET
-        # A value the pk field cannot parse is the same miss as an unknown one.
-        try:
-            return get_object_or_404(
-                self.get_row_queryset(ctx), pk=params.get(self.row_param, "")
-            )
-        except (ValueError, ValidationError):
-            raise Http404 from None
+        value = params.get(self.row_param, "")
+
+        def load() -> Model:
+            # A value the pk field cannot parse is the same miss as an
+            # unknown one.
+            try:
+                return get_object_or_404(self.get_row_queryset(ctx), pk=value)
+            except (ValueError, ValidationError):
+                raise Http404 from None
+
+        return ctx.once((type(self), ctx.base_url, self.row_param, value), load)
 
     def get_capability(self, ctx: PanelContext) -> str | None:
         return self.capability

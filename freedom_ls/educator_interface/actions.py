@@ -1023,11 +1023,15 @@ class MembershipAction(ModalPanelAction):
     def _pair(self, ctx: PanelContext) -> tuple[Learner, Cohort]:
         if isinstance(ctx.instance, Cohort):
             scoped = cast("OrganisationScopedRequest", ctx.request)
-            learner = get_object_or_404(
-                learners_visible_to(
-                    scoped.user, scoped.organisation, include_inactive=True
+            learner_pk = _uuid_from(_action_params(ctx.request), "learner")
+            learner = ctx.once(
+                (MembershipAction, "learner", learner_pk),
+                lambda: get_object_or_404(
+                    learners_visible_to(
+                        scoped.user, scoped.organisation, include_inactive=True
+                    ),
+                    pk=learner_pk,
                 ),
-                pk=_uuid_from(_action_params(ctx.request), "learner"),
             )
             return learner, ctx.instance
         return cast(Learner, ctx.instance), self._cohort(ctx)
@@ -1386,8 +1390,10 @@ class AddLearnerAction(FormPanelAction):
             return ctx.instance
         if "cohort" not in ctx.request.GET:
             return None
-        return get_object_or_404(
-            self._cohorts(ctx), pk=_uuid_from(ctx.request.GET, "cohort")
+        cohort_pk = _uuid_from(ctx.request.GET, "cohort")
+        return ctx.once(
+            (AddLearnerAction, "preset_cohort", cohort_pk),
+            lambda: get_object_or_404(self._cohorts(ctx), pk=cohort_pk),
         )
 
     def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:

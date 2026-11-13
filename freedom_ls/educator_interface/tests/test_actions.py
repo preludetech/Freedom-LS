@@ -33,6 +33,7 @@ from freedom_ls.content_engine.models import Course, CourseAudience, CourseVisib
 from freedom_ls.educator_interface import actions as actions_module
 from freedom_ls.educator_interface.actions import (
     REFUSAL_MESSAGES,
+    AddLearnerAction,
     AddStaffMemberToCohortAction,
     AddToCohortBulkAction,
     CohortCourseBulkAction,
@@ -41,6 +42,7 @@ from freedom_ls.educator_interface.actions import (
     DeactivateRegistrationBulkAction,
     RegisterCohortForCourseBulkAction,
     RegisterForCourseBulkAction,
+    RemoveFromCohortAction,
     RemoveFromCohortBulkAction,
     RequiresActiveCohortMixin,
     cohort_not_empty_sentence,
@@ -9746,3 +9748,52 @@ def test_a_refused_role_change_is_a_message_dialog(
         "This change wasn't made",
         "You can't change your own roles. Ask another organisation admin.",
     )
+
+
+# one lookup per request
+#
+# A dialog's hooks each ask for the same row, so the second ask must not go
+# back to the database.
+
+
+def _superuser_get_ctx(
+    organisation: Organisation, instance: Cohort | None, data: dict[str, str]
+) -> PanelContext:
+    request = RequestFactory().get("/", data)
+    request.user = UserFactory(superuser=True)
+    request.organisation = organisation
+    return PanelContext(
+        request=request, instance=instance, base_url="/", name="", config=CohortConfig
+    )
+
+
+@pytest.mark.django_db
+def test_the_add_learner_dialog_reads_its_preset_cohort_once(
+    organisation: Organisation, django_assert_max_num_queries
+):
+    cohort = _cohort(organisation)
+    action = AddLearnerAction()
+    ctx = _superuser_get_ctx(organisation, None, {"cohort": str(cohort.pk)})
+    action._preset_cohort(ctx)
+
+    with django_assert_max_num_queries(0):
+        preset = action._preset_cohort(ctx)
+
+    assert preset == cohort
+
+
+@pytest.mark.django_db
+def test_a_membership_dialog_on_a_cohort_page_reads_its_learner_once(
+    organisation: Organisation, django_assert_max_num_queries
+):
+    cohort = _cohort(organisation)
+    learner = LearnerFactory(organisation=organisation)
+    CohortMembershipFactory(cohort=cohort, learner=learner)
+    action = RemoveFromCohortAction()
+    ctx = _superuser_get_ctx(organisation, cohort, {"learner": str(learner.pk)})
+    action._pair(ctx)
+
+    with django_assert_max_num_queries(0):
+        pair = action._pair(ctx)
+
+    assert pair == (learner, cohort)
