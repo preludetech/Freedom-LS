@@ -530,8 +530,11 @@ class ConfirmAction(ModalPanelAction):
         return self.label
 
     def get_hidden_fields(self, ctx: PanelContext) -> dict[str, str]:
-        """Row parameters the submit needs, posted as hidden inputs."""
-        return {}
+        """Row parameters the submit needs, posted as hidden inputs: the row
+        `row_param` names, for a row-scoped action."""
+        if self.row_param is None:
+            return {}
+        return {self.row_param: str(self.get_row_object(ctx).pk)}
 
     def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
         """What the dialog's body says, beyond the title and the buttons."""

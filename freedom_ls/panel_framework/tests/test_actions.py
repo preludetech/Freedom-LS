@@ -1450,6 +1450,32 @@ class StubConfirmReasonAction(ReasonMixin, StubConfirmAction):
     pass
 
 
+class StubRowConfirmAction(ConfirmAction):
+    label = "Archive"
+    action_name = "stub_row_confirm"
+    row_param = "item"
+
+    def get_row_queryset(self, ctx: PanelContext) -> QuerySet[Model]:
+        return cast(QuerySet[Model], StubModel.objects.all())
+
+
+@pytest.mark.django_db
+def test_a_row_confirm_posts_its_row_back_as_a_hidden_field(
+    mock_site_context: Site,
+) -> None:
+    item = make_stub()
+    ctx = _row_ctx("GET", {"item": str(item.pk)})
+
+    assert StubRowConfirmAction().get_hidden_fields(ctx) == {"item": str(item.pk)}
+
+
+def test_a_confirm_with_no_row_has_no_hidden_fields() -> None:
+    class PageConfirmAction(ConfirmAction):
+        label = "Archive"
+
+    assert PageConfirmAction().get_hidden_fields(_row_ctx("GET", {})) == {}
+
+
 def _render_confirm(action: ConfirmAction, **query: str) -> lxml.html.HtmlElement:
     request = RequestFactory().get("/", query)
     request.user = make_staff_user()
