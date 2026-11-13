@@ -521,6 +521,11 @@ class StubTabSet(TabSet):
 
 class StubInstanceView(InstanceView):
     panel = StubTabSet
+    header_refresh_events = ("itemChanged",)
+
+    def get_subtitle(self) -> str:
+        self.instance.refresh_from_db()
+        return f"Subtitle of {self.instance}"
 
 
 class StubQuickView(QuickView):

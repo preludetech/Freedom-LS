@@ -498,6 +498,23 @@ def test_every_framework_action_trigger_is_small() -> None:
         assert 'size="small"' in (partials / name).read_text(), name
 
 
+def test_no_button_hand_writes_a_touch_height() -> None:
+    """The interface button rule already gives every `.btn` 44px on a phone,
+    so a button never carries `min-h-11` itself. Dropdown menu items are not
+    `.btn`, so they keep theirs."""
+    offenders = []
+    for root in (TEMPLATES_DIR, EDUCATOR_TEMPLATES_DIR):
+        for path in sorted(root.rglob("*.html")):
+            source = path.read_text()
+            for tag in re.findall(r"<c-button\b[^>]*>", source):
+                if "min-h-11" in tag and "dropdown=" not in tag:
+                    offenders.append(f"{path.name}: {tag[:80]}")
+            for trigger in re.findall(r'trigger_class="btn[^"]*"', source):
+                if "min-h-11" in trigger:
+                    offenders.append(f"{path.name}: {trigger}")
+    assert offenders == []
+
+
 def test_the_filter_sheet_has_a_close_control() -> None:
     """A sheet opens with a header holding the title and a close control,
     as the quick view does, so how to dismiss it is never in doubt."""

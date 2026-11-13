@@ -976,26 +976,24 @@ document.addEventListener("alpine:init", () => {
         },
     });
 
-    // List-view table auto-refresh (panel_framework/partials/list_refresh.html).
-    // Re-fetches the list's table region when a create action's HX-Trigger
-    // event fires. The request carries the address bar's query, which holds
-    // every table's live state, so the list stays on the reader's page,
-    // sort, search and filters.
-    Alpine.data("listRefresh", () => ({
+    // Re-requests a region when a named event reaches the body
+    // (panel_framework/partials/list_refresh.html and the instance header).
+    // data-refresh-events: space-separated event names. data-url: the
+    // address to request; the address bar's query string is appended, since
+    // it holds every table's live state, so a list stays on the reader's
+    // page, sort, search and filters. Without data-url the request goes to
+    // the address bar's own path and query, so an instance page keeps its
+    // active tab. data-target and data-select are selectors, data-swap an
+    // htmx swap style (outerHTML by default). The host sits inside or beside
+    // the region it refreshes.
+    Alpine.data("eventRefresh", () => ({
         _handlers: [],
         init() {
-            const url = this.$el.dataset.refreshUrl;
-            const target = this.$el.dataset.refreshTarget;
             const events = (this.$el.dataset.refreshEvents || "")
                 .split(/\s+/)
                 .filter(Boolean);
             events.forEach((eventName) => {
-                const handler = () => {
-                    htmx.ajax("GET", url + window.location.search, {
-                        target: "#" + target,
-                        swap: "outerHTML",
-                    });
-                };
+                const handler = () => this.refresh();
                 document.body.addEventListener(eventName, handler);
                 this._handlers.push([eventName, handler]);
             });
@@ -1004,38 +1002,16 @@ document.addEventListener("alpine:init", () => {
             this._handlers.forEach(([eventName, handler]) => {
                 document.body.removeEventListener(eventName, handler);
             });
+            this._handlers = [];
         },
-    }));
-
-    // Instance-page header auto-refresh (panel_framework/views/_instance_view_base.html).
-    // The header's stats and tab counts sit outside every panel, so a panel's
-    // own refresh never reaches them. Re-fetch the current page targeting
-    // #instance-header, which the server answers with the header alone; the
-    // address bar follows tab clicks, so the active tab is kept. The
-    // component sits inside the header, so the swap replaces it with a fresh
-    // one.
-    Alpine.data("headerRefresh", () => ({
-        _handlers: [],
-        init() {
-            const events = (this.$el.dataset.headerRefreshEvents || "")
-                .split(/\s+/)
-                .filter(Boolean);
-            events.forEach((eventName) => {
-                const handler = () => {
-                    htmx.ajax("GET", window.location.pathname + window.location.search, {
-                        target: "#instance-header",
-                        select: "#instance-header",
-                        swap: "outerHTML",
-                    });
-                };
-                document.body.addEventListener(eventName, handler);
-                this._handlers.push([eventName, handler]);
-            });
-        },
-        destroy() {
-            this._handlers.forEach(([eventName, handler]) => {
-                document.body.removeEventListener(eventName, handler);
-            });
+        refresh() {
+            const { url, target, select, swap } = this.$el.dataset;
+            const requestUrl = url
+                ? url + window.location.search
+                : window.location.pathname + window.location.search;
+            const options = { target, swap: swap || "outerHTML" };
+            if (select) options.select = select;
+            htmx.ajax("GET", requestUrl, options);
         },
     }));
 

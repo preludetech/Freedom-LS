@@ -217,10 +217,10 @@ reason, and is nothing below lg.
             {% endcomment %}
             <div class="flex shrink-0 items-center gap-2">
             {% if toolbar %}
-                <c-button type="button" variant="secondary" size="small" icon_left="filter" class="min-h-11" x-on:click="toggle">Filter</c-button>
+                <c-button type="button" variant="secondary" size="small" icon_left="filter" x-on:click="toggle">Filter</c-button>
             {% endif %}
             {% if sortable_columns %}
-                <c-dropdown-menu aria_label="Sort" menu_label="Sort by" trigger_class="btn btn-secondary btn-sm min-h-11" panel_class="fixed w-56">
+                <c-dropdown-menu aria_label="Sort" menu_label="Sort by" trigger_class="btn btn-secondary btn-sm" panel_class="fixed w-56">
                     <c-slot name="trigger">
                         <span aria-hidden="true" class="inline-flex"><c-icon name="sort_neutral" class="size-5" /></span>
                         Sort
@@ -244,7 +244,7 @@ reason, and is nothing below lg.
 
             {% if exports %}
                 {% querystring request.GET export_changes as export_qs %}
-                <c-button variant="secondary" size="small" icon_left="download" class="min-h-11" href="{{ base_url }}{{ export_qs }}">Export CSV</c-button>
+                <c-button variant="secondary" size="small" icon_left="download" href="{{ base_url }}{{ export_qs }}">Export CSV</c-button>
             {% endif %}
 
             {% if toolbar %}

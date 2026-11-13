@@ -312,9 +312,9 @@ def test_the_refresh_wiring_targets_the_list_panels_region(
 
     html = fetch("stubs").content.decode()
 
-    assert html.count('x-data="listRefresh"') == 1
+    assert html.count('x-data="eventRefresh"') == 1
     assert 'data-refresh-events="itemChanged"' in html
-    assert f'data-refresh-target="{LIST_REGION_ID}"' in html
+    assert f'data-target="#{LIST_REGION_ID}"' in html
     assert f'id="{LIST_REGION_ID}"' in html
 
 
@@ -324,7 +324,7 @@ def test_the_refresh_host_takes_no_space_in_the_page_flow(
     html = fetch("stubs").content.decode()
 
     document = lxml.html.fromstring(html)
-    (refresh_host,) = document.cssselect('[x-data="listRefresh"]')
+    (refresh_host,) = document.cssselect('[x-data="eventRefresh"]')
     assert "hidden" in refresh_host.get("class", "").split()
 
 
@@ -343,7 +343,7 @@ def test_the_refresh_host_is_empty_and_the_create_action_sits_in_the_header(
     html = fetch("stubs").content.decode()
 
     refresh_host = re.search(
-        r'<div x-data="listRefresh"[^>]*>(.*?)</div>', html, re.DOTALL
+        r'<div x-data="eventRefresh"[^>]*>(.*?)</div>', html, re.DOTALL
     )
     assert refresh_host is not None
     assert refresh_host.group(1).strip() == ""

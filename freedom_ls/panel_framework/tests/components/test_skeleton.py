@@ -33,3 +33,13 @@ def test_row_shape_renders_two_line_markers() -> None:
     html = render_cotton('<c-panel-skeleton shape="row" />')
 
     assert html.count("data-skeleton-line") == 2
+
+
+def test_text_lines_are_spaced_by_the_containers_gap_not_a_margin_on_each_line() -> (
+    None
+):
+    html = render_cotton('<c-panel-skeleton shape="text" lines="3" />')
+
+    assert "flex-col" in html
+    assert "gap-2" in html
+    assert "mb-2" not in html
