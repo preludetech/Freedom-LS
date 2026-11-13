@@ -45,6 +45,11 @@ The test runner, `.claude/ds/scripts/run_tests.sh`, wraps one pytest command. It
 worker count to the memory that is free, and waits a bounded time when memory is short. It
 retries a crashed pytest attempt for the tests that never finished. It prints one verdict.
 
+A number the command gives with `-n` is a ceiling on the worker count, and `-n 0` stays serial.
+A pytest that exits before its session starts (a usage error, a `conftest.py` that fails to
+import) is not retried: its exit code passes through as `RESULT FAIL`. A test whose worker dies
+while running it in every pytest attempt, of two or more, is counted as failed.
+
 Each setting comes from its environment variable, then from `[tool.test_tiers.memory]` in
 `pyproject.toml`, then from the default. A wrong type or an unknown key exits 2 and names the key.
 
@@ -78,7 +83,8 @@ Report the tier that ran as `tier: none|targeted|full`.
 
 With the test runner, quote `run: summary (merged)` and `run: RESULT ...`, not pytest's own last
 line. The step is done at `RESULT PASS`. `RESULT INCOMPLETE` means tests were left unfinished
-after the retries: report it as blocked on memory, not as a failure to fix.
+after the retries: report it as blocked on memory, not as a failure to fix. `RESULT FAIL` is a
+failure to fix, including a test counted as failed because it crashed its worker every time.
 
 Without the runner, quote the final pytest summary line. The step is done when that line shows no
 failures.
