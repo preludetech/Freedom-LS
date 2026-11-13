@@ -318,10 +318,18 @@ document.addEventListener("alpine:init", () => {
                 return;
             }
             if (event.detail.xhr.status === 422) {
-                const target =
-                    this._body.querySelector("[data-error-summary]") ||
-                    this._body.querySelector('[aria-invalid="true"]');
-                if (target) target.focus();
+                // htmx focuses the fragment's [autofocus] element (a dialog's
+                // Cancel) in its settle phase, after this handler, so the
+                // error target is focused once the swap has settled.
+                const focusError = () => {
+                    const target =
+                        this._body.querySelector("[data-error-summary]") ||
+                        this._body.querySelector('[aria-invalid="true"]');
+                    if (target) target.focus();
+                };
+                this._body.addEventListener("htmx:afterSettle", focusError, {
+                    once: true,
+                });
                 return;
             }
             const field = this._body.querySelector("[autofocus]");
