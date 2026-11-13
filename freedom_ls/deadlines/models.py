@@ -484,13 +484,6 @@ class CoursePause(SiteAwareModel, TimestampedModel):
             return None
         return datetime.combine(self.planned_resume_on, time.min, tzinfo=tz)
 
-    def planned_resume_day_instant(self, tz: ZoneInfo) -> datetime | None:
-        """The planned resume day as a date-only instant: the last microsecond of that day in
-        the site zone, which the time formatters write as a date with no time."""
-        if self.planned_resume_on is None:
-            return None
-        return datetime.combine(self.planned_resume_on, time.max, tzinfo=tz)
-
     def end_instant(self, tz: ZoneInfo) -> datetime | None:
         """The earlier of the recorded end and the planned resume instant. None while
         neither is set."""
