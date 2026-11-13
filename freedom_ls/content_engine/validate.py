@@ -734,8 +734,9 @@ class _ParsedByPath:
                     parsed = parse_single_file(key)
                 except ValueError:
                     parsed = []
+                # The last document wins, as it does in __init__ and in the loader.
                 for item in parsed:
-                    self._items.setdefault(content_key(item.file_path), item)
+                    self._items[content_key(item.file_path)] = item
         return self._items.get(key)
 
     def children_of(self, part: CoursePart) -> list[Path]:
