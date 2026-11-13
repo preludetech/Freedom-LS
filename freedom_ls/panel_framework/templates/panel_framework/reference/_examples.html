@@ -76,6 +76,14 @@ somewhere on the page to land.
             </c-panel-stat-row>
         </div>
 
+        <div id="stat-tile-link">
+            <p class="text-sm text-muted">Use <code>href</code> when the figure opens the list it counts; <code>selected</code> marks the tile whose list is showing.</p>
+            <c-panel-stat-row>
+                <c-panel-stat-tile label="Cohorts" value="3" href="#stat-tile-link" />
+                <c-panel-stat-tile label="Errors" value="2" href="#stat-tile-link" selected="true" />
+            </c-panel-stat-row>
+        </div>
+
         <div id="stat-tile-with-progress">
             <p class="text-sm text-muted">Use when the counted figure is itself a percentage, e.g. an "Average progress" tile.</p>
             <c-panel-stat-tile label="Average progress" value="68%">
@@ -252,6 +260,14 @@ somewhere on the page to land.
             </c-panel-definition-list>
         </div>
 
+        <div id="definition-list-inline">
+            <p class="text-sm text-muted">Use <code>layout="inline"</code> for a dense list where each label sits beside its value, such as a table row shown as a card.</p>
+            <c-panel-definition-list layout="inline">
+                <c-panel-definition-row label="Name">Thandi Mokoena</c-panel-definition-row>
+                <c-panel-definition-row label="Email">thandi@example.com</c-panel-definition-row>
+            </c-panel-definition-list>
+        </div>
+
         <div id="definition-list-2">
             <p class="text-sm text-muted">Use for a short set of fields, two to a row from md.</p>
             <c-panel-definition-list columns="2">
@@ -382,8 +398,8 @@ somewhere on the page to land.
                 <tr><td>thandi@example.com</td><td>2</td></tr>
                 <tr><td>sipho@example.com</td><td>3</td></tr>
                 <c-slot name="card_rows">
-                    <c-panel-table-card primary="thandi@example.com"><c-panel-card-field label="Line">2</c-panel-card-field></c-panel-table-card>
-                    <c-panel-table-card primary="sipho@example.com"><c-panel-card-field label="Line">3</c-panel-card-field></c-panel-table-card>
+                    <c-panel-table-card primary="thandi@example.com"><c-panel-definition-row label="Line">2</c-panel-definition-row></c-panel-table-card>
+                    <c-panel-table-card primary="sipho@example.com"><c-panel-definition-row label="Line">3</c-panel-definition-row></c-panel-table-card>
                 </c-slot>
             </c-panel-table>
         </div>

@@ -20,6 +20,7 @@ from ..stub_panels import (
     StubBulkAction,
     StubCardDataTable,
     StubClassifyingBulkAction,
+    StubDataTablePanel,
     StubDetailDataTable,
     StubDetailTablePanel,
     StubDiscardBulkAction,
@@ -434,3 +435,17 @@ def test_the_bar_sticks_above_the_table_at_every_width(
     assert "sticky" in classes
     assert not {"fixed", "bottom-0", "lg:static"} & set(classes)
     assert document.cssselect("[data-selection-bar-space]") == []
+
+
+def test_a_card_lists_its_secondary_values_in_an_inline_definition_list(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="row-a", kind="a")
+
+    document = _render(StubDataTablePanel)
+
+    (card,) = document.cssselect("ul li.panel-data-table-card")
+    assert [dt.text_content() for dt in card.cssselect("dl > div > dt")] == ["Kind"]
+    assert [dd.text_content().strip() for dd in card.cssselect("dl > div > dd")] == [
+        "Alpha"
+    ]

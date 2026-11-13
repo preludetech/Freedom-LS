@@ -19,7 +19,7 @@ WITH_CARDS = """
     <tr><td>a@example.com</td><td>2</td></tr>
     <c-slot name="card_rows">
         <c-panel-table-card primary="a@example.com">
-            <c-panel-card-field label="Line">2</c-panel-card-field>
+            <c-panel-definition-row label="Line">2</c-panel-definition-row>
         </c-panel-table-card>
     </c-slot>
 </c-panel-table>

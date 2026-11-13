@@ -166,7 +166,7 @@ def test_the_cohorts_tile_link_is_named_by_what_it_counts(
     response = logged_in_client(user).get(_dashboard_url(organisation))
 
     document = lxml.html.fromstring(response.content.decode())
-    (link,) = document.xpath("//dl[dt='Cohorts']//a")
+    (link,) = document.xpath("//a[.//dl[dt='Cohorts']]")
     assert link.get("aria-label") == "2 cohorts"
 
 

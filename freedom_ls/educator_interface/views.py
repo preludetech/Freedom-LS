@@ -710,18 +710,18 @@ class CohortLearnerDataTable(LearnerDataTable):
         ]
 
 
-class LearnerDetailsPanel(Panel):
+class LearnerDetailsPanel(InstanceDetailsPanel):
     model = Learner
-    title = "Details"
-    template_name = "educator_interface/panels/learner_details.html"
     refresh_events = (LEARNER_CHANGED,)
 
-    def get_context_data(self) -> dict[str, object]:
-        context = super().get_context_data()
+    def get_rows(self) -> list[dict[str, object]]:
         learner = cast(Learner, self.instance)
-        context["learner"] = learner
-        context["status_badge"] = learner_status_badge(learner)
-        return context
+        return [
+            self.detail_row("Name", learner.user.display_name),
+            self.detail_row("Email", learner.user.email),
+            self.detail_row("Status", learner_status_badge(learner), "badge"),
+            self.detail_row("Date added", learner.created_at, "date"),
+        ]
 
 
 class LearnerCohortsPanel(DataTablePanel):
@@ -1479,21 +1479,20 @@ def inactive_badge(is_active: bool) -> StatusBadge | None:
     return StatusBadge("muted", "Inactive")
 
 
-class CohortDetailsPanel(Panel):
+class CohortDetailsPanel(InstanceDetailsPanel):
     model = Cohort
-    title = "Details"
-    template_name = "educator_interface/panels/cohort_details.html"
     refresh_events = (COHORT_CHANGED,)
 
-    def get_context_data(self) -> dict[str, object]:
+    def get_rows(self) -> list[dict[str, object]]:
         cohort = cast(Cohort, self.instance)
-        context = super().get_context_data()
-        context["cohort"] = cohort
-        context["status_badge"] = active_status_badge(cohort.is_active)
         counts = cohort_counts(cohort)
-        context["cohort_learner_count"] = counts.learners
-        context["cohort_course_count"] = counts.courses
-        return context
+        return [
+            self.detail_row("Name", cohort.name),
+            self.detail_row("Status", active_status_badge(cohort.is_active), "badge"),
+            self.detail_row("Created", cohort.created_at, "date"),
+            self.detail_row("Learners", counts.learners),
+            self.detail_row("Courses", counts.courses),
+        ]
 
 
 class CohortCourseRegistrationDataTable(DataTable):
