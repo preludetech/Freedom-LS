@@ -27,7 +27,6 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_management.learner_actions import LearnerEntry
 from freedom_ls.learner_management.models import Cohort, Learner
 from freedom_ls.learner_management.queries import registerable_courses_for
-from freedom_ls.panel_framework.forms import REASON_LENGTH
 
 
 @pytest.mark.django_db
@@ -245,8 +244,16 @@ def test_change_role_form_rejects_a_role_outside_its_choices():
     assert "new_role" in form.errors
 
 
-def test_the_dialog_reason_length_matches_the_audit_log_column() -> None:
-    assert REASON_LENGTH == AUDIT_REASON_LENGTH
+def test_the_educator_reason_form_takes_what_the_audit_log_column_holds() -> None:
+    assert EducatorReasonForm({"reason": "x" * AUDIT_REASON_LENGTH}).is_valid()
+
+
+def test_the_educator_reason_form_refuses_more_than_the_audit_log_column_holds() -> (
+    None
+):
+    form = EducatorReasonForm({"reason": "x" * (AUDIT_REASON_LENGTH + 1)})
+
+    assert "reason" in form.errors
 
 
 def test_the_educator_reason_form_shows_the_history_help_text() -> None:

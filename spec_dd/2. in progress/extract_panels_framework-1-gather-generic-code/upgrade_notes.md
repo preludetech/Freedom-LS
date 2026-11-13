@@ -48,8 +48,8 @@ Code that subclasses or calls `panel_framework`:
   `row_detail_template` and `empty_state_template` become `card_template_name`,
   `row_detail_template_name` and `empty_state_template_name`. `Column(template=...)` becomes
   `Column(template_name=...)`, and in templates `column.template` becomes `column.template_name`.
-- **`PanelAction.template_name` defaults to `None`.** An action with no `template_name` raises
-  `ImproperlyConfigured` on GET. Set a `template_name` on any action that renders a fragment.
+- **`PanelAction.template_name` defaults to `None`.** An action with no `template_name` answers a
+  GET with 405. Set a `template_name` on any action that renders a fragment.
 - **Form action hooks take `ctx`.** `FormPanelAction.form_valid(ctx, form)`,
   `form_invalid(ctx, form)`, `get_form_title(ctx, form)` and `get_empty_message(ctx, form)`, and
   `CreateInstanceAction.get_success_url(ctx, instance)`, replace the `request`-based signatures.
@@ -61,6 +61,7 @@ Code that subclasses or calls `panel_framework`:
   `get_row_object(ctx)`, which returns 404 for a missing, malformed or out-of-scope value.
 - **`ReasonMixin`** lives in `freedom_ls.panel_framework.actions`. Its reason field template is
   `panel_framework/partials/reason_field.html` (was `educator_interface/partials/reason_field.html`).
+  A `ReasonForm` subclass sets `reason_max_length` to the length of the column it stores reasons in.
 - **Filters:** `ShowInactiveFilter` and `AuditPeriodFilter` are gone. Use
   `freedom_ls.panel_framework.filters.ToggleFilter` and `PeriodFilter`.
 - **Alpine:** `listRefresh` and `headerRefresh` are replaced by `eventRefresh`. `sidePanel` and

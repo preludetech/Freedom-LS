@@ -6,6 +6,7 @@ from django.db.models import QuerySet
 from django.http import QueryDict
 
 from freedom_ls.accounts.models import User
+from freedom_ls.audit_log.models import REASON_LENGTH as AUDIT_REASON_LENGTH
 from freedom_ls.content_engine.models import Course
 from freedom_ls.learner_management.learner_actions import LearnerEntry
 from freedom_ls.learner_management.models import (
@@ -289,3 +290,5 @@ class EducatorReasonForm(ReasonForm):
     sees the reason."""
 
     reason_help_text = "Only staff can see this. It is shown in the history."
+    # The audit log's own limit, so a reason the dialog accepts always fits.
+    reason_max_length = AUDIT_REASON_LENGTH

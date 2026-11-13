@@ -46,9 +46,8 @@ def record_entry(
     """Write one entry. Opens no transaction: the caller's decides whether the
     row survives, so a rolled-back change leaves no entry. Raises ValueError
     for an unknown action or a reason longer than REASON_LENGTH, so a caller
-    that skipped the dialog's form (panel_framework.forms.ReasonForm, which has
-    its own REASON_LENGTH that must not exceed this one) fails before the
-    insert rather than in it."""
+    that skipped the dialog's form (whose limit is this REASON_LENGTH) fails
+    before the insert rather than in it."""
     validate_action(action)
     reason = reason.strip()
     if len(reason) > REASON_LENGTH:
