@@ -1,3 +1,5 @@
+import io
+
 import pytest
 from PIL import Image
 
@@ -80,5 +82,11 @@ def test_decompression_bomb_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     ],
     ids=["12mp-jpeg", "48mp-jpeg", "png", "webp", "mpo"],
 )
-def test_accepted_upload_returns_its_bytes(data: bytes) -> None:
-    assert validate_profile_picture(_upload(data)) == data
+def test_accepted_upload_returns_the_decoded_image(data: bytes) -> None:
+    with Image.open(io.BytesIO(data)) as original:
+        expected_format = original.format
+
+    with validate_profile_picture(_upload(data)) as img:
+        assert img.format == expected_format
+        # Already decoded: reading a pixel needs no further load.
+        assert img.im is not None

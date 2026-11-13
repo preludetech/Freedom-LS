@@ -35,13 +35,17 @@ def _too_large(size: int) -> ValidationError:
     )
 
 
-def validate_profile_picture(file: UploadedFile) -> bytes:
-    """Return the upload's bytes once every check has passed.
+def validate_profile_picture(file: UploadedFile) -> Image.Image:
+    """Return the upload decoded, once every check has passed.
 
     The checks run cheapest first, so nothing large is read or decoded
     before it is refused: declared size, a bounded read, the header, then
     the full decode. No message carries the uploader's filename or
     Pillow's own text.
+
+    The decoded image is returned so ``encode_profile_picture`` works on
+    these pixels instead of decoding the upload a second time. The caller
+    closes it.
     """
     if (file.size or 0) > MAX_BYTES:
         raise _too_large(file.size or 0)
@@ -78,4 +82,4 @@ def validate_profile_picture(file: UploadedFile) -> bytes:
             raise ValidationError(WRONG_TYPE) from err
         except DECODE_FAILURES as err:
             raise ValidationError(UNREADABLE) from err
-    return raw
+    return img

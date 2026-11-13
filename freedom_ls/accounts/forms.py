@@ -81,7 +81,8 @@ class UserForm(forms.ModelForm):
         if not isinstance(upload, UploadedFile):
             # No new file: the field hands back what the user already has.
             return upload
-        encoded = encode_profile_picture(validate_profile_picture(upload))
+        with validate_profile_picture(upload) as img:
+            encoded = encode_profile_picture(img)
         # Storage only ever receives the re-encoded WebP. The name is a
         # placeholder; the upload_to callable picks the key.
         return ContentFile(encoded, name="profile_picture.webp")
