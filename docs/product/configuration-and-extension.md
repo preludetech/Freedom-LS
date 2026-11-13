@@ -1,6 +1,6 @@
 # Configuration and Extension
 
-_Last updated: 2026-11-12_
+_Last updated: 2026-11-13_
 
 ## Summary
 
@@ -162,6 +162,8 @@ A deployment that has a good reason to accept one of these can silence it indivi
 | `REFERRAL_TRACKING_INACTIVE_DESTINATION` | Where a deactivated referral code sends visitors when it has no fallback destination of its own; defaults to `/`. See [referral codes](./referral-codes.md). |
 | `REFERRAL_TRACKING_HIT_LOG_LIMIT` | How many hits on one referral code one address may write to the hit log per window; defaults to 30. See [referral codes](./referral-codes.md). |
 | `REFERRAL_TRACKING_HIT_LOG_WINDOW_SECONDS` | The window that limit is counted over; defaults to 3600 seconds. See [referral codes](./referral-codes.md). |
+| `REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS` | How far back a conversion looks for the campaign touches it credits; defaults to 90 days. See [signup attribution](./signup-attribution.md). |
+| `REFERRAL_TRACKING_MAX_COOKIE_TOUCHES` | How many later landings the attribution cookie keeps beside the first touch; defaults to 10. See [signup attribution](./signup-attribution.md). |
 | `NOTIFICATIONS_ENABLED` | Shows the notification bell to signed-in users; off by default. See [notifications](./notifications.md). |
 | `NOTIFICATION_CATEGORIES` | The kinds of notification FLS can raise; a project can add its own. See [notifications](./notifications.md). |
 | `MESSAGING_ENABLED` | Turns direct messaging on; off by default. See [messaging](./messaging.md). |
