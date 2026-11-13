@@ -6662,6 +6662,58 @@ def test_bulk_deactivate_confirmation_says_what_changes_and_what_is_skipped(
 
 
 @pytest.mark.django_db
+def test_bulk_confirm_with_every_learner_skipped_names_why_it_is_disabled(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    inactive = [
+        _bulk_learner(organisation=organisation, is_active=False) for _ in range(2)
+    ]
+
+    response = _bulk_post(staff_client, organisation, "deactivate", inactive)
+
+    document = lxml.html.fromstring(response.content.decode())
+    [reason] = document.cssselect("#bulk-confirm-reason")
+    assert (
+        " ".join(reason.text_content().split())
+        == "Nothing to change: all 2 selected learners will be skipped."
+    )
+    [button] = document.cssselect("button[type='submit']")
+    assert button.get("disabled") is not None
+    assert button.get("aria-describedby") == "bulk-confirm-reason"
+
+
+@pytest.mark.django_db
+def test_bulk_confirm_with_the_one_learner_skipped_names_why_it_is_disabled(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    inactive = _bulk_learner(organisation=organisation, is_active=False)
+
+    response = _bulk_post(staff_client, organisation, "deactivate", [inactive])
+
+    assert "Nothing to change: the 1 selected learner will be skipped." in _bulk_text(
+        response
+    )
+
+
+@pytest.mark.django_db
+def test_bulk_confirm_with_a_learner_to_change_gives_no_disabled_reason(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    active = _bulk_learner(organisation=organisation)
+    inactive = _bulk_learner(organisation=organisation, is_active=False)
+
+    response = _bulk_post(staff_client, organisation, "deactivate", [active, inactive])
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert not document.cssselect("#bulk-confirm-reason")
+    [button] = document.cssselect("button[type='submit']")
+    assert button.get("disabled") is None
+
+
+@pytest.mark.django_db
 def test_bulk_deactivate_changes_the_learners_and_summarises_the_run(
     staff_client: Client,
 ):

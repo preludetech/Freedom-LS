@@ -748,6 +748,9 @@ class _BulkConfirmation:
     #: classified. The title counts these, as the sentence does, so the two
     #: never disagree on a mixed selection. None means every row changes.
     changed_count: int | None = None
+    #: Shown beside the disabled confirm button when no selected row would
+    #: change. An `error` takes its place.
+    disabled_reason: str = ""
 
     def context(self) -> dict[str, object]:
         title_count = self.count if self.changed_count is None else self.changed_count
@@ -764,7 +767,7 @@ class _BulkConfirmation:
             "notice": self.notice,
             "expected_count": self.expected_count,
             "confirm_disabled": self.confirm_disabled or bool(self.error),
-            "confirm_disabled_reason": self.error,
+            "confirm_disabled_reason": self.error or self.disabled_reason,
             "form": self.form,
         }
 
@@ -896,6 +899,15 @@ def _confirmation_response(
         )
         return HttpResponse(html, status=confirmation.status)
     return confirmation
+
+
+def _nothing_to_change_reason(model: type[Model], count: int) -> str:
+    """Why a confirmation whose every selected row would be skipped offers
+    no confirm: the skip lines above it say which reasons apply."""
+    selected = count_noun(model, count).replace(" ", " selected ", 1)
+    if count == 1:
+        return f"Nothing to change: the {selected} will be skipped."
+    return f"Nothing to change: all {selected} will be skipped."
 
 
 def _background_wording(queryset: QuerySet, count: int) -> ConfirmationWording:
@@ -1036,6 +1048,11 @@ def _handle_bulk_action(
             form=picker,
             cleaned_data=cleaned_data,
             changed_count=changed_count,
+            disabled_reason=(
+                _nothing_to_change_reason(queryset.model, count)
+                if changed_count == 0 and count
+                else ""
+            ),
         )
 
     if not confirmed:
