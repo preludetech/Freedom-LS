@@ -37,6 +37,9 @@ SCRIPT = REPO_ROOT / "claude_plugins" / "django-stack" / "scripts" / "run_tests.
 # pytest does on a usage error.
 STUB_PYTEST = r"""#!/bin/sh
 printf 'pytest %s\n' "$*" >> "$STUB_LOG_FILE"
+if [ -n "${STUB_PYTEST_SAYS:-}" ]; then
+    printf '%s\n' "$STUB_PYTEST_SAYS"
+fi
 for arg in "$@"; do
     case "$arg" in
         --ds-record=*) record="${arg#--ds-record=}" ;;
@@ -800,6 +803,29 @@ def test_run_without_a_crash_prints_one_record_line_after_the_ram_line(
     assert lines[0].startswith("ram: ")
     assert lines[1].startswith("run: record ")
     assert len([line for line in lines if line.startswith("run: record ")]) == 1
+
+
+def test_runner_lines_printed_before_pytest_starts_come_before_its_output_in_a_pipe(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        STUB_PYTEST_SAYS="pytest output",
+    )
+
+    # Assert
+    assert [line.split(" ", 1)[0] for line in result.stdout.splitlines()[:3]] == [
+        "ram:",
+        "run:",
+        "pytest",
+    ]
 
 
 def test_record_file_is_deleted_after_a_passing_run(

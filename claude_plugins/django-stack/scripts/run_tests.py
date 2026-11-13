@@ -25,6 +25,7 @@ import contextlib
 import ctypes
 import functools
 import importlib.util
+import io
 import json
 import math
 import os
@@ -693,6 +694,10 @@ def make_record_file() -> Path:
 
 
 def main() -> int:
+    # pytest writes straight to the same pipe or file. Without this the runner's lines sit
+    # in a block buffer and come out after pytest's output, or only at exit.
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(line_buffering=True)
     if sys.platform == "linux":
         become_subreaper()
     signal.signal(signal.SIGINT, exit_on_signal)
