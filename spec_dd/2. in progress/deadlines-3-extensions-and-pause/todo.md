@@ -24,10 +24,10 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 4. Documentation and pull request
 
-- [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
-- [ ] (cmd) Add the three audit codes (course.paused, course.resumed, deadline.extended) and the "Course progress" group to freedom_ls/audit_log/README.md, from the spec's Documentation and downstream section
-- [ ] (cmd) Add the Terminology terms, the CoursePause and DeadlineExtension models, and the new noun (deadline), verbs (paused, resumed, extended) and group (Course progress) to the Changes section of claude_plugins/fls-dev/skills/domain-glossary/SKILL.md, from the spec's Terminology and Documentation and downstream sections
-- [ ] (cmd) Update the Deadlines section of spec_dd/1. next/roadmap.md (record shapes and shift rule resolved) and name pause_course, resume_course, announce_planned_resume, extend_deadline, CourseDeadlines.pause and the limit fields in the ideas of deadlines specs 4 to 7, from the spec's Documentation and downstream section
+- [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [x] (cmd) Add the three audit codes (course.paused, course.resumed, deadline.extended) and the "Course progress" group to freedom_ls/audit_log/README.md, from the spec's Documentation and downstream section
+- [x] (cmd) Add the Terminology terms, the CoursePause and DeadlineExtension models, and the new noun (deadline), verbs (paused, resumed, extended) and group (Course progress) to the Changes section of claude_plugins/fls-dev/skills/domain-glossary/SKILL.md, from the spec's Terminology and Documentation and downstream sections
+- [x] (cmd) Update the Deadlines section of spec_dd/1. next/roadmap.md (record shapes and shift rule resolved) and name pause_course, resume_course, announce_planned_resume, extend_deadline, CourseDeadlines.pause and the limit fields in the ideas of deadlines specs 4 to 7, from the spec's Documentation and downstream section
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
