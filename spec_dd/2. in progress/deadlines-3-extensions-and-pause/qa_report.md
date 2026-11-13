@@ -127,8 +127,8 @@ The configured region selectors matched nothing on the admin and learner pages, 
 
 - **FIXED** (commit: 56bc9b73a) — Admin "Paused since" line writes the pause start in UTC. Re-verified: "Paused since 11 Nov 2026, 01:49 SAST".
 - **FIXED** (commit: e847ac0b6) — Pause, resume and extend admin forms render bare unstyled inputs. Re-verified: every field has a 1px Unfold border ([screenshot](screenshots/page-fix-b2-extend-desktop.png)).
-- **UNRESOLVED** — Planned-resume date shown with a midnight time (reason: the fix in 9e60ef1d7 failed re-verification and was reverted in 98be9b00d. It moved the access decision's planned-resume instant to the last microsecond of the day, so the card, row and admin read as dates, but the course detail callout then read "It resumes on 18 Nov 2026, 23:59." It also changed what that field on the access decision means. The fix belongs where the planned-resume day is formatted for display.)
-- **UNRESOLVED** — Admin effective deadlines read "(+1 days)" (reason: fix budget exhausted this run).
+- **FIXED** (commit: 5ba2f8d75) — Planned-resume date shown with a midnight time. The access decision now carries the planned resume day (`planned_resume_on`) rather than its midnight instant, and the card, row, callout and admin pause line format it as a date. Covered by view and admin tests; not re-checked in a browser.
+- **FIXED** (commit: 5ba2f8d75) — Admin effective deadlines read "(+1 days)". `_deadline_line` uses the shared `days_text` helper. Covered by an admin test; not re-checked in a browser.
 - **UNRESOLVED** — full run after the fixes left tests failing (reason: `freedom_ls/audit_log/tests/test_actions.py::test_course_progress_actions_describe_their_details`, all 7 cases, `TypeError: 'Mock' object is not iterable` under `-n 4`; all 7 pass alone, and the same 7 failed once during implementation. Another test on the same worker appears to leave a Mock in the audit action registry, so this is an order-dependent isolation defect, not the QA fixes. Run: 7 failed, 13019 passed.)
 
 ## General notes
