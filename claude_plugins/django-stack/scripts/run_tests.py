@@ -332,6 +332,8 @@ class RunState:
     crashed_reports: int = 0  # crashed lines in the latest pytest attempt
     session_finished: bool = False  # the latest pytest attempt wrote its finished line
     crash_retried: bool = False  # any pytest attempt of this run crashed
+    # The latest pytest attempt exited on its own without starting a session.
+    exited_before_session: bool = False
 
     def unfinished(self) -> set[str]:
         return self.collected - self.outcomes.keys()
@@ -512,6 +514,15 @@ def run_attempt(
         kill_descendants()
 
 
+def died_by_signal(returncode: int) -> bool:
+    """Whether an exit code means the process was killed by a signal.
+
+    A direct child reports a negative code. `uv run` and a shell report 128 plus the signal
+    number. pytest's own exit codes are 0 to 5.
+    """
+    return returncode < 0 or returncode > 128
+
+
 def write_only_file(only_file: Path | None, nodeids: set[str]) -> Path:
     """Write the node ids to retry, one per line, reusing the file of an earlier retry."""
     if only_file is None:
@@ -551,10 +562,14 @@ def run_with_retries(
             elapsed_s += time.monotonic() - started
             read_attempt(record, state)
             # A session that finished on its own with tests unfinished stopped on purpose
-            # (-x, --maxfail). Only a crashed worker or a killed controller is a crash. The
-            # exit code cannot tell: `uv run` turns its child's death by signal into an
-            # ordinary exit code.
-            if state.crashed_reports == 0 and state.session_finished:
+            # (-x, --maxfail). Only a crashed worker or a killed controller is a crash.
+            controller_killed = not state.session_finished and died_by_signal(
+                returncode
+            )
+            if state.crashed_reports == 0 and not controller_killed:
+                # No session and no signal: pytest gave up before one started (a usage
+                # error, a conftest that fails to import, --help). Retrying cannot help.
+                state.exited_before_session = not state.session_finished
                 break
             state.crash_retried = True
             collection_lost = (
@@ -588,6 +603,8 @@ def run_with_retries(
 
 def verdict(state: RunState, returncode: int) -> tuple[str, int]:
     """The `RESULT` label and the exit code for a finished run."""
+    if state.exited_before_session and returncode != 0:
+        return "FAIL", returncode
     if not state.crash_retried:
         return ("PASS", 0) if returncode == 0 else ("FAIL", returncode)
     # A known defect is something to fix, so a failure outranks tests left unfinished.

@@ -33,7 +33,8 @@ SCRIPT = REPO_ROOT / "claude_plugins" / "django-stack" / "scripts" / "run_tests.
 # $STUB_PYTEST_EXIT_CODE. When $STUB_PYTEST_CRASH_FIRST is set, its first call instead kills
 # itself by signal after writing what the value names: `uncollected` writes nothing,
 # `collected` writes the collected line and one outcome, `truncated` also leaves a partial
-# last line.
+# last line. When $STUB_PYTEST_NO_SESSION is set it exits without the `finished` line, as
+# pytest does on a usage error.
 STUB_PYTEST = r"""#!/bin/sh
 printf 'pytest %s\n' "$*" >> "$STUB_LOG_FILE"
 for arg in "$@"; do
@@ -51,7 +52,9 @@ if [ -n "${STUB_PYTEST_CRASH_FIRST:-}" ] && [ "$(wc -l < "$STUB_LOG_FILE")" -eq 
     fi
     kill -9 $$
 fi
-printf '{"event": "finished", "exitstatus": 0}\n' >> "$record"
+if [ -z "${STUB_PYTEST_NO_SESSION:-}" ]; then
+    printf '{"event": "finished", "exitstatus": 0}\n' >> "$record"
+fi
 exit "${STUB_PYTEST_EXIT_CODE:-0}"
 """
 
@@ -835,6 +838,67 @@ def test_run_without_a_crash_exits_with_the_pytest_exit_code(
 
     # Assert
     assert result.returncode == pytest_exit
+
+
+def test_pytest_that_exits_before_a_session_starts_is_not_retried(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+
+    # Act
+    run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest", "--no-such-option"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        STUB_PYTEST_NO_SESSION=1,
+        STUB_PYTEST_EXIT_CODE=4,
+    )
+
+    # Assert
+    assert len(stub_tools.log_lines()) == 1
+
+
+@pytest.mark.parametrize(("pytest_exit", "label"), [(4, "FAIL"), (0, "PASS")])
+def test_pytest_that_exits_before_a_session_starts_gets_the_verdict_for_its_exit_code(
+    stub_tools: StubTools, tmp_path: Path, pytest_exit: int, label: str
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        STUB_PYTEST_NO_SESSION=1,
+        STUB_PYTEST_EXIT_CODE=pytest_exit,
+    )
+
+    # Assert
+    assert closing_lines(result)[-1] == f"run: RESULT {label}"
+
+
+def test_pytest_that_exits_before_a_session_starts_passes_its_exit_code_through(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        STUB_PYTEST_NO_SESSION=1,
+        STUB_PYTEST_EXIT_CODE=4,
+    )
+
+    # Assert
+    assert result.returncode == 4
 
 
 def test_retry_after_a_signal_death_runs_only_the_unfinished_tests(
