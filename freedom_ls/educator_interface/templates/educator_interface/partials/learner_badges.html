@@ -7,10 +7,10 @@ the same wherever the learner appears.
 {% endcomment %}
 {% progress_status_badge completion_percentage as status_badge %}
 <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-    <c-panel-status-badge :tone="status_badge.tone" :label="status_badge.label" />
+    <c-panel-status-badge :badge="status_badge" />
     {% for flag in flags %}
         {% flag_badge flag as badge %}
-        <c-panel-status-badge :tone="badge.tone" :label="badge.label" />
+        <c-panel-status-badge :badge="badge" />
         <span class="text-muted">{{ flag.reason }}</span>
     {% endfor %}
 </div>

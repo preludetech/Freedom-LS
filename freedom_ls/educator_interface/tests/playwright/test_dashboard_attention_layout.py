@@ -48,9 +48,10 @@ def test_attention_row_avatar_stays_level_with_the_name_on_a_multi_line_row(
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
         page.goto(dashboard_url)
-        name = page.get_by_role("link", name="Thandi Mokoena")
-        expect(name).to_be_visible()
-        row = page.locator("li", has=name).last
+        link = page.get_by_role("link", name="Thandi Mokoena", exact=True)
+        expect(link).to_be_visible()
+        name = link.get_by_text("Thandi Mokoena", exact=True)
+        row = page.locator("li", has=link).last
         avatar = row.locator("[class*='panel-avatar-']").first
         name_box = name.bounding_box()
         avatar_box = avatar.bounding_box()

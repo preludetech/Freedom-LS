@@ -5,7 +5,7 @@
         <c-panel-list>
             {% for row in rows %}
                 <c-panel-list-row :title="row.course.title" :detail="row.via" data-testid="registration-row">
-                    <c-active-status-badge :active="row.is_active" />
+                    <c-panel-status-badge :badge="row.badge" />
                     {% if row.is_individual and row.is_active and row_action_urls.deactivate_registration %}
                         <c-modal-trigger url="{{ row_action_urls.deactivate_registration }}?registration={{ row.registration.pk }}" label="Deactivate" variant="secondary" size="small" />
                     {% endif %}

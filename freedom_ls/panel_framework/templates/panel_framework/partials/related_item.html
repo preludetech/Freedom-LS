@@ -1,0 +1,3 @@
+{% load data_table_tags panel_tags %}{% if url_name %}{% with link_object=item|getattr_str:link_object_attr %}{% resolve_url_path_template link_object url_name url_path_template as resolved_url %}<a href="{{ resolved_url }}"
+       {% if htmx_nav|flag %}hx-get="{{ resolved_url }}" hx-target="#main-content" hx-push-url="true" hx-swap="outerHTML"{% endif %}
+       class="font-bold text-on-surface no-underline hover:text-primary">{{ item|getattr_str:text_attr }}</a>{% endwith %}{% else %}{{ item|getattr_str:text_attr }}{% endif %}{% if layout == "inline" and not forloop.last %}, {% endif %}

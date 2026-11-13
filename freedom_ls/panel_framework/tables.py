@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from django.core.paginator import Page, Paginator
 from django.db.models import Model, Q, QuerySet
@@ -12,6 +12,9 @@ from django.utils.functional import SimpleLazyObject
 from freedom_ls.base.csv_safety import escape_csv_formula
 from freedom_ls.panel_framework.filters import TableFilter
 from freedom_ls.panel_framework.templatetags.data_table_tags import getattr_str
+
+if TYPE_CHECKING:
+    from freedom_ls.panel_framework.views import StatusBadge
 
 
 @dataclass(frozen=True)
@@ -187,6 +190,9 @@ class Column:
     header_class: str = ""
     cell_class: str = ""
     card: Literal["primary", "secondary", "md_only"] = "secondary"
+    #: What the date and related-list cells show when the row has no value
+    #: (the cell's own default when blank).
+    empty_text: str = ""
 
     def __post_init__(self) -> None:
         if self.sortable and not self.sort_field:
@@ -196,6 +202,30 @@ class Column:
     def is_link(self) -> bool:
         """Whether the cell opens the row's page: only the link cell reads a URL."""
         return bool(self.url_name or self.url_path_template)
+
+
+@dataclass
+class BadgeColumn(Column):
+    """A column of status badges: `badge` reads a row's badge, or `None` for a
+    row that shows nothing."""
+
+    badge: Callable[[Model], StatusBadge | None] = lambda row: None
+
+
+@dataclass
+class RelatedListColumn(Column):
+    """A column listing every related object in `relation_set`.
+
+    Each item shows `item_text_attr` (read off the item). With
+    `url_name`/`url_path_template` set, each item links to the object
+    `link_object_attr` names on the item (the item itself when blank).
+    `layout` is "list" (one item per line) or "inline" (comma-separated).
+    """
+
+    relation_set: str = ""
+    item_text_attr: str = ""
+    link_object_attr: str = ""
+    layout: Literal["list", "inline"] = "list"
 
 
 @dataclass(frozen=True)

@@ -1,4 +1,5 @@
 {% extends "panel_framework/panels/panel.html" %}
+{% load educator_tags %}
 
 {% block panel_body %}
     {% if details %}
@@ -51,7 +52,7 @@
                                                 <td>{% if attempt.percentage is not None %}{{ attempt.percentage }}%{% endif %}</td>
                                                 <td class="whitespace-nowrap">{% if quiz.pass_percentage is not None %}{{ quiz.pass_percentage }}%{% else %}No pass mark{% endif %}</td>
                                                 <td class="whitespace-nowrap">
-                                                    {% if attempt.passed is True %}<c-panel-status-badge tone="success" label="Passed" />{% elif attempt.passed is False %}<c-panel-status-badge tone="error" label="Failed" />{% endif %}
+                                                    {% if attempt.passed is not None %}{% passed_badge attempt.passed as verdict %}<c-panel-status-badge :badge="verdict" />{% endif %}
                                                     {% if forloop.last %}<span class="text-muted">Latest</span>{% endif %}
                                                 </td>
                                             </tr>

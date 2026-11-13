@@ -1,9 +1,0 @@
-{% if object.course_registrations.all %}
-    <ul class="list-none ml-0 space-y-1">
-        {% for registration in object.course_registrations.all %}
-            <li class="py-0">{{ registration.course.title }}</li>
-        {% endfor %}
-    </ul>
-{% else %}
-    -
-{% endif %}

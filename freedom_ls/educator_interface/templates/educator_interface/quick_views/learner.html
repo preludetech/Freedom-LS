@@ -1,4 +1,3 @@
-{% load panel_tags educator_tags %}
 
 {% comment %}
 The learner's name and email are the drawer's heading and subtitle, so the
@@ -6,7 +5,7 @@ rows start at their status.
 {% endcomment %}
 <c-panel-definition-list columns="2">
     <c-panel-definition-row label="Status">
-        {% learner_status_badge learner as badge %}<c-panel-status-badge tone="{{ badge.tone }}" label="{{ badge.label }}" />
+        <c-panel-status-badge :badge="status_badge" />
     </c-panel-definition-row>
     <c-panel-definition-row label="Last active">
         {% comment %}
@@ -16,11 +15,7 @@ rows start at their status.
         {% if last_active %}{{ last_active }}{% else %}Never{% endif %}
     </c-panel-definition-row>
     <c-panel-definition-row label="Cohorts" class="col-span-2">
-        {% for membership in memberships %}
-            <a href="{% resolve_url_path_template membership.cohort 'educator_interface:interface' 'cohorts/{pk}' %}" class="font-bold text-on-surface no-underline hover:text-primary">{{ membership.cohort.name }}</a>{% if not forloop.last %}, {% endif %}
-        {% empty %}
-            &mdash;
-        {% endfor %}
+        {% include "panel_framework/partials/related_list.html" with items=memberships layout="inline" text_attr="cohort.name" link_object_attr="cohort" url_name="educator_interface:interface" url_path_template="cohorts/{pk}" request=request only %}
     </c-panel-definition-row>
     <c-panel-definition-row label="Course registrations" class="col-span-2">
         {% if registrations %}

@@ -2,6 +2,7 @@ import math
 import re
 import uuid
 import zlib
+from dataclasses import dataclass
 
 from django import template
 from django.template.loader import render_to_string
@@ -165,3 +166,32 @@ def resolve_url_path_template(
     request = context.get("request")
     extra_url_kwargs: dict[str, str] = getattr(request, "panel_url_kwargs", {})
     return reverse(url_name, kwargs={"path_string": path_string, **extra_url_kwargs})
+
+
+@dataclass(frozen=True)
+class PersonDisplay:
+    """How a person reads in a list: the name, the line under it, and the
+    id that picks their avatar colour."""
+
+    name: str
+    secondary: str
+    id: str
+
+
+@register.simple_tag
+def person_display(user: object) -> PersonDisplay:
+    """The one rule for showing a user as a person, for
+    `{% person_display user as person %}`.
+
+    The email is the secondary line only when the user has a first or last
+    name; a user shown by their email alone would repeat it. A missing user
+    gives an empty display.
+    """
+    if user is None or user == "":
+        return PersonDisplay(name="", secondary="", id="")
+    has_name = bool(getattr(user, "first_name", "") or getattr(user, "last_name", ""))
+    return PersonDisplay(
+        name=str(getattr(user, "display_name", "")),
+        secondary=str(getattr(user, "email", "")) if has_name else "",
+        id=str(getattr(user, "pk", "")),
+    )

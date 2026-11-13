@@ -1,0 +1,6 @@
+{% load data_table_tags %}
+{% comment %}
+A status badge column: the `BadgeColumn`'s `badge` callable reads the row's
+badge (a tone and a label). A row with no badge shows nothing.
+{% endcomment %}
+{% column_badge object column as badge %}{% if badge %}<c-panel-status-badge :badge="badge" />{% endif %}

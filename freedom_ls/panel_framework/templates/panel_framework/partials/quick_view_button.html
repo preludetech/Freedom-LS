@@ -1,0 +1,16 @@
+{% comment %}
+The small icon trigger that opens a row in the #quick-view drawer. It is at
+least 44px square below md, where it sits on a card tapped with a finger.
+
+Context:
+  href         The row's full page, which a modified click still reaches.
+  url          The quick view URL the drawer loads.
+  label        The row's name; the trigger reads "Quick view: <label>".
+  extra_class  Extra classes for the trigger (default none), e.g. `relative z-10`
+               to lift it above a stretched row link.
+{% endcomment %}
+<c-quick-view-trigger href="{{ href }}" url="{{ url }}"
+                      aria-label="Quick view: {{ label }}"
+                      class="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted no-underline transition-colors hover:bg-surface-2 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring md:-my-2 md:size-8 {{ extra_class }}">
+    <c-icon name="quick_view" class="size-4" />
+</c-quick-view-trigger>

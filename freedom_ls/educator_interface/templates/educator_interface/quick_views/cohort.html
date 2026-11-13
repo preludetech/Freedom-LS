@@ -1,15 +1,9 @@
 <c-panel-definition-list columns="2">
     <c-panel-definition-row label="Status">
-        <c-active-status-badge :active="cohort.is_active" />
+        <c-panel-status-badge :badge="status_badge" />
     </c-panel-definition-row>
     <c-panel-definition-row label="Learners">{{ learner_count }}</c-panel-definition-row>
     <c-panel-definition-row label="Courses" class="col-span-2">
-        <ul class="list-none ml-0 space-y-1">
-            {% for course in courses %}
-                <li class="py-0">{{ course.title }}</li>
-            {% empty %}
-                <li class="py-0">&mdash;</li>
-            {% endfor %}
-        </ul>
+        {% include "panel_framework/partials/related_list.html" with items=courses text_attr="title" only %}
     </c-panel-definition-row>
 </c-panel-definition-list>

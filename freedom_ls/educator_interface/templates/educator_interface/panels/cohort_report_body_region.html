@@ -74,7 +74,7 @@ with incorrect answers), refresh_url.
                                         {% if not table.continued %}
                                             <td>
                                                 {% progress_status_badge row.completion_percentage as status_badge %}
-                                                <c-panel-status-badge :tone="status_badge.tone" :label="status_badge.label" />
+                                                <c-panel-status-badge :badge="status_badge" />
                                             </td>
                                             <td class="min-w-40">
                                                 <c-panel-progress-bar :percentage="row.completion_percentage" label="{{ row.full_name }} completion" />
@@ -89,7 +89,7 @@ with incorrect answers), refresh_url.
                                                     <span aria-hidden="true" class="text-muted">—</span><span class="sr-only">Not attempted</span>
                                                 {% else %}
                                                     <span class="tabular-nums">{% if result.latest_percentage is not None %}{{ result.latest_percentage }}%{% elif result.latest_score is not None and result.latest_max_score is not None %}{{ result.latest_score }}/{{ result.latest_max_score }}{% endif %}</span>
-                                                    {% if result.passed is True %}<c-panel-status-badge tone="success" label="Passed" />{% elif result.passed is False %}<c-panel-status-badge tone="error" label="Failed" />{% endif %}
+                                                    {% if result.passed is not None %}{% passed_badge result.passed as verdict %}<c-panel-status-badge :badge="verdict" />{% endif %}
                                                     <span class="text-muted">×{{ result.attempt_count }}</span>
                                                 {% endif %}
                                             </td>
