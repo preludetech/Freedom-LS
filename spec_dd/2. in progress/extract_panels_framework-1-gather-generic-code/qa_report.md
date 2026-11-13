@@ -191,10 +191,10 @@ Manifestations: 10.4 (desktop).
 | B1 | Picker dialogs log an hx-disabled-elt console error when the select changes | **FIXED** (commit: edca1f785) — re-verified: no console error on the Move dialog's select change |
 | B2 | Refused delete does not move focus to its error box | **FIXED** (commit: 07d4f4f8b) — re-verified: focus lands on the error notice after a stale delete |
 | B3 | Component reference page throws in sidePanel.init from the applied-filter toolbar example | **FIXED** (commit: 1fe57ea5e) — re-verified: the reference page loads with no errors |
-| B4 | Component reference page has no notice examples | **UNRESOLVED** (reason: fix budget exhausted this run) |
-| B5 | Learners table mixes '—' and '-' for empty cells | **UNRESOLVED** (reason: fix budget exhausted this run) |
-| B6 | Disabled bulk confirm shows no reason when no selected row qualifies | **UNRESOLVED** (reason: the reason text a selection where no row qualifies should show is a copy decision; the spec only defines the reason for `error`) |
-| B7 | Import error section is an amber warning notice, not an error notice | **UNRESOLVED** (reason: tone choice — error notice per the QA plan vs warning to avoid role=alert announcing the whole table — is a product/accessibility decision) |
+| B4 | Component reference page has no notice examples | **FIXED** (commit: 9ad76e556) — a Notice section shows each tone |
+| B5 | Learners table mixes '—' and '-' for empty cells | **FIXED** (commit: b4ee8d4a2) — the empty Courses cell reads '—' |
+| B6 | Disabled bulk confirm shows no reason when no selected row qualifies | **FIXED** (commit: d9e61e610) — decided: "Nothing to change: all N selected <noun> will be skipped." beside the button, named by aria-describedby |
+| B7 | Import error section is an amber warning notice, not an error notice | **RESOLVED** — decided: it stays a warning (the import can still proceed; an error notice's alert would read the whole table aloud); the QA plan's Test 10.4 now says so. No code change. |
 
 ## General notes
 
@@ -210,4 +210,4 @@ Manifestations: 10.4 (desktop).
   - 9.5: no cohort larger than the report limit exists in demodev, and lowering the limit needs a settings change and server restart.
 - Filter URL parameters are table-prefixed (`cohorts-inactive=1`, `audit_log-when=7d`).
 
-status: ok · reason: 7 bugs — 3 fixed, 4 unresolved; report rendered, screenshots verified
+status: ok · reason: 7 bugs — 6 fixed, 1 resolved by aligning the QA plan; report rendered, screenshots verified
