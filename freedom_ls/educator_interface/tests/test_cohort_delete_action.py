@@ -334,6 +334,27 @@ def test_deleting_a_cohort_holding_only_dormant_rows_answers_422_and_keeps_it(
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("method", ["get", "delete"])
+def test_a_non_empty_cohort_is_refused_without_collecting_what_a_delete_would_remove(
+    cohort_holding_only_dormant_rows: Cohort,
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+    method: str,
+) -> None:
+    """The collector walks every membership and registration of the cohort,
+    which a refusal with a known reason has no use for."""
+    cohort = cohort_holding_only_dormant_rows
+    client = logged_in_client(UserFactory(superuser=True))
+
+    with mock.patch.object(
+        DeleteEmptyCohortAction, "get_cascade_summary"
+    ) as get_cascade_summary:
+        response = getattr(client, method)(_delete_url(client, cohort))
+
+    assert cohort_not_empty_sentence(cohort) in html.unescape(response.content.decode())
+    get_cascade_summary.assert_not_called()
+
+
+@pytest.mark.django_db
 def test_a_delete_of_a_cohort_that_gained_a_member_answers_422_and_keeps_it(
     mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
 ) -> None:
