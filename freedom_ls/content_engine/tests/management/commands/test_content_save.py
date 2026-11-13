@@ -16,7 +16,9 @@ import pytest
 import yaml
 from PIL import Image
 
+from django.contrib.sites.models import Site
 from django.core.files.base import ContentFile
+from django.core.management import call_command
 from django.db import IntegrityError
 from django.test import override_settings
 
@@ -63,6 +65,7 @@ from freedom_ls.tests.images import (
     photographic_jpeg_bytes,
     png_bytes,
 )
+from freedom_ls.tests.site_context import drop_ambient_request
 
 # Loading ARTICLE markdown files from a content repo.
 
@@ -3220,6 +3223,12 @@ def _write_course_with_dated_entries(course_dir: Path, entries: dict[str, str]) 
     )
 
 
+def _run_content_save(course_dir: Path, site: Site) -> None:
+    """The whole command, which validates before it writes anything."""
+    drop_ambient_request()
+    call_command("content_save", str(course_dir), site.name)
+
+
 _ACTIVITY_FILE = "---\ncontent_type: ACTIVITY\ntitle: An Activity\n---\nBody\n"
 _ARTICLE_FILE = "---\ncontent_type: ARTICLE\ntitle: An Article\npublished_on: 2026-01-02\n---\nBody\n"
 _PART_FILE = "---\ncontent_type: COURSE_PART\ntitle: A Part\n---\n"
@@ -3242,7 +3251,7 @@ def test_a_due_key_on_a_non_topic_non_form_entry_fails_the_load_and_writes_nothi
         _write_course_with_dated_entries(course_dir, {filename: text})
 
         with pytest.raises(ValueError, match="Invalid due date placement") as exc_info:
-            save_content_to_db(course_dir, site.name)
+            _run_content_save(course_dir, site)
 
     assert filename in str(exc_info.value)
     assert ContentCollectionItem.objects.count() == 0
@@ -3259,7 +3268,7 @@ def test_two_bad_entries_fail_the_load_with_one_error_listing_both(
         )
 
         with pytest.raises(ValueError, match="Invalid due date placement") as exc_info:
-            save_content_to_db(course_dir, site.name)
+            _run_content_save(course_dir, site)
 
     assert "activity.md" in str(exc_info.value)
     assert "article.md" in str(exc_info.value)
@@ -3450,7 +3459,7 @@ def test_a_broken_nested_list_sends_nothing_to_storage(
         (course_dir / "picture.png").write_bytes(b"")
 
         with pytest.raises(ValueError, match="Invalid due date placement"):
-            save_content_to_db(course_dir, site.name)
+            _run_content_save(course_dir, site)
 
     assert sent == []
 
@@ -3495,7 +3504,7 @@ def test_a_broken_nested_list_fails_the_load_naming_the_path(
         _write_nested_course(course_dir, nested)
 
         with pytest.raises(ValueError, match="Invalid due date placement") as excinfo:
-            save_content_to_db(course_dir, site.name)
+            _run_content_save(course_dir, site)
 
     assert problem in str(excinfo.value)
     assert CoursePartChildDueDate.objects.count() == 0
@@ -3514,7 +3523,7 @@ def test_a_course_placing_the_same_part_twice_fails_the_load(site, mock_site_con
         )
 
         with pytest.raises(ValueError, match="Invalid children list") as excinfo:
-            save_content_to_db(course_dir, site.name)
+            _run_content_save(course_dir, site)
 
     assert "this child is named twice" in str(excinfo.value)
     assert "children[1]" in str(excinfo.value)
