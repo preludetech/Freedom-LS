@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Literal, cast
 from django import forms
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import AnonymousUser
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import transaction
 from django.db.models import Model, QuerySet
 from django.http import HttpRequest, QueryDict
@@ -219,10 +219,17 @@ class BulkAction:
 
     def picker_prompt(self, form: forms.Form) -> str:
         """Beside the disabled confirm while `form` has no valid choice:
-        what to choose, worded from its first field's label."""
+        what to choose, worded from its first field's label. The article is
+        "an" before a, e, i and o only, since most labels in u ("user",
+        "unit") take "a"; an action whose label reads otherwise overrides
+        this."""
+        if not form.fields:
+            raise ImproperlyConfigured(
+                f"{type(self).__name__}'s form has no fields to choose from."
+            )
         name, field = next(iter(form.fields.items()))
         noun = str(field.label or name.replace("_", " ")).lower()
-        article = "an" if noun[:1] in "aeiou" else "a"
+        article = "an" if noun[:1] in "aeio" else "a"
         return f"Choose {article} {noun} first."
 
     def has_permission(self, request: HttpRequest) -> bool:

@@ -17,6 +17,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.contrib.messages import get_messages
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.sites.models import Site
+from django.core.exceptions import ImproperlyConfigured
 from django.db.models import Model, QuerySet
 from django.http import Http404, HttpRequest, HttpResponse
 from django.template.loader import render_to_string
@@ -218,6 +219,33 @@ class _PickerBulkAction(StubBulkAction):
 
     def confirmation_title(self, count: int, cleaned_data: dict[str, object]) -> str:
         return f"Move to {cleaned_data['target']}?"
+
+
+def _labelled_picker(label: str) -> forms.Form:
+    class Picker(forms.Form):
+        target = forms.CharField(label=label)
+
+    return Picker()
+
+
+@pytest.mark.parametrize(
+    ("label", "prompt"),
+    [
+        ("Cohort", "Choose a cohort first."),
+        ("Organisation", "Choose an organisation first."),
+        ("User", "Choose a user first."),
+        ("Unit", "Choose a unit first."),
+    ],
+)
+def test_the_picker_prompt_words_its_article_from_the_field_label(
+    label: str, prompt: str
+) -> None:
+    assert _PickerBulkAction().picker_prompt(_labelled_picker(label)) == prompt
+
+
+def test_the_picker_prompt_for_a_form_with_no_fields_names_the_action() -> None:
+    with pytest.raises(ImproperlyConfigured, match="_PickerBulkAction"):
+        _PickerBulkAction().picker_prompt(forms.Form())
 
 
 def test_empty_selection_with_a_form_action_renders_the_error_instead_of_crashing(
