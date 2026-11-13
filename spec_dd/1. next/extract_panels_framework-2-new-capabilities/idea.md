@@ -29,6 +29,13 @@ Playwright where it has Alpine behaviour) and an entry on the component referenc
      opens and closes it, a chevron control carries the accessible expanded state, and the detail is
      keyboard reachable. Without the option, nothing changes. Choosing how the detail loads (inline
      with the row, or fetched on first open) is open below.
+   - Nested child rows: the course outline
+     (`educator_interface/templates/educator_interface/panels/course_content.html`) hand-writes its
+     `<table>` and is exempt from `test_no_template_hand_writes_a_table_outside_the_table_components`
+     (`HAND_WRITTEN_TABLE_EXEMPTIONS` in `freedom_ls/panel_framework/tests/invariants/test_templates.py`).
+     Its rows form a tree: a group row's chevron shows and hides further table rows, not a detail
+     block. Decide whether expandable rows also cover nested child rows. If they do, the outline moves
+     onto `<c-data-table>` and its exemption is removed.
    - Compact: a density option that tightens row height and padding for log-style tables, set per
      table and compatible with the mobile card layout.
 
