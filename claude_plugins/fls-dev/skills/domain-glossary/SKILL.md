@@ -67,11 +67,19 @@ children. Do not add a third sense. To be unambiguous, say **collection item** f
 | `CohortMembership` | `models.py` | One learner's membership of a cohort, keyed `(learner, cohort)`. **Not** a registration — a membership grants access via the cohort's registrations. Its `clean()` enforces that the learner and the cohort share an organisation. |
 | `CohortDeadlineOverride` | `freedom_ls/deadlines/models.py` | A **deadline override** set for every learner registered for a course through one cohort. Keyed `(cohort_registration, collection_item)`; a null `collection_item` overrides the course time limit. Records `set_by` and `replaced_value`. |
 | `LearnerDeadlineOverride` | `freedom_ls/deadlines/models.py` | A **deadline override** set for one learner's `CourseProgress`. Beats a `CohortDeadlineOverride` and the content default. A cohort move mints a new `CourseProgress`, so the old record's overrides stay behind. |
+| `CoursePause` | `freedom_ls/deadlines/models.py` | One pause of one `CourseProgress`. Fields: `started_at`, `planned_resume_on`, `ended_at`, `reason`, `ended_reason`, `started_by`, `ended_by`. Open while `ended_at` is null; at most one is open per record. While it is open the learner's clock is stopped, and the days it lasted move every unmet deadline forward. |
+| `DeadlineExtension` | `freedom_ls/deadlines/models.py` | One addition of `days` to one `CourseProgress`'s deadlines, aimed by `target_kind`. Rows stack by addition. Not a `LearnerDeadlineOverride`, which replaces a value. Records `reason` and `set_by`. |
 | `SiteTimeZoneConfig` | `freedom_ls/site_aware_models/models.py` | One row per site naming the time zone its dates are read in, and whether learners see the zone. No row means the default zone. |
 | **registration date** | `CourseProgress.created_at` | The date a relative deadline counts from, read in the site time zone. |
 | **content default** | `CoursePartChildDueDate`, `ContentCollectionItem.due_date` / `due_time` / `due_days_after_registration` / `no_due_date`, `Course.time_limit_days` | The deadline the course author set. The lowest layer. For a child of a part, the course's part placement value (`CoursePartChildDueDate`) when it sets one, else the child's own row. A row holds the placement value from its `children:` entry, or the child file's value when the entry sets no due key. A value replaces the one below it whole; keys are never merged. |
 | **deadline override** | `CohortDeadlineOverride`, `LearnerDeadlineOverride` | A deadline an admin set over the content default. |
 | **time limit end** | `course_deadlines(record).time_limit` | When the course time limit runs out for one learner: registration date plus `time_limit_days`, at the end of that day. |
+| **shift** | `CourseDeadlines` in `freedom_ls/deadlines/resolver.py` | The whole days a resolved deadline is moved forward by the pauses and extensions that apply to it. Computed when read, never stored. Learner copy says "moved by N days". |
+| **paused days** | `CoursePause` | The length of one pause in whole days, rounded up. An open pause counts up to now. |
+| **planned resume** | `CoursePause.planned_resume_on` | A date. The pause ends at 00:00 of that day in the site time zone. |
+| **paused** | `CourseProgress` with an open `CoursePause` | The state of a `CourseProgress` with an open pause. Not the sign-in lockout's "paused" in `accounts/lockout.html`. |
+| **unmet deadline** | `CourseDeadlines` | The resolved deadline of a collection item that is incomplete when read, and the time limit while the course is incomplete. |
+| **target kind** | `DeadlineExtension.target_kind` | `collection_item`, `time_limit` or `course` (every unmet deadline and the time limit). |
 | **overdue** | `is_overdue` in `freedom_ls/deadlines/resolver.py` | An incomplete item past its due instant. Deadlines are shown and flagged, never enforced. Learner-facing copy says "Deadline" and "Missed deadline", never "Due" or "Overdue". |
 | `RecommendedCourse` | `freedom_ls/course_recommendations/models.py` | A course recommended to a learner. Still keyed on `User`, not `Learner` — it is a recommendation, not an enrolment. |
 | `is_registered_for_course` | `learner_management/utils.py` | The access check. Every `COURSE_ACCESS_BACKEND` delegates to it. |
@@ -195,7 +203,7 @@ fails a code that steps outside this section.
 
 The noun is a glossary noun in snake_case: `learner`, `cohort`, `cohort_membership`, `registration`
 (a `LearnerCourseRegistration`), `cohort_registration`, `role`, `staff_member` (a `StaffMember`),
-`user`, `course`, `bulk_action`, `import`, `conversation`, `api_key` (an `ApiKey`), `audit_log` (the log the `AuditLogEntry` rows make up). The verb comes from this list and nowhere else:
+`user`, `course`, `bulk_action`, `import`, `conversation`, `api_key` (an `ApiKey`), `deadline` (a deadline extension), `audit_log` (the log the `AuditLogEntry` rows make up). The verb comes from this list and nowhere else:
 
 | Verb | Means | Not |
 | --- | --- | --- |
@@ -208,8 +216,13 @@ The noun is a glossary noun in snake_case: `learner`, `cohort`, `cohort_membersh
 | `viewed` | Something was read, not changed: `conversation.viewed`, a conversation opened under oversight. Only for a read worth auditing. | `opened`, `accessed`, `read` |
 | `issued` | An API key was created and its key text shown once: `api_key.issued`. | `generated`, `minted` |
 | `revoked` | An API key was ended for good: `api_key.revoked`. One-way and never cleared, unlike `deactivated`, which a `reactivated` undoes. | `deactivated`, `cancelled`, `disabled` |
+| `paused` / `resumed` | A `CoursePause` opened / ended on a `CourseProgress`: `course.paused`, `course.resumed`. | `suspended`, `unsuspended`, `held` |
+| `extended` | Days were added to a learner's deadlines by a `DeadlineExtension`: `deadline.extended`. | `postponed`, `moved` |
 | `exported` | A copy of records left the system as a file: `audit_log.exported`. | `downloaded` |
 | `moved`, `renamed`, `resent`, `completed`, `committed`, `signed_up` | As read. `user.signed_up` is an account being created at signup — never `user.registered`, since registration means course access. A verb may carry the thing it acted on when the noun alone would mislead: `learner.setup_email_resent`. | |
+
+The audit log groups codes by the noun's family in the "What" filter. `course.paused`,
+`course.resumed` and `deadline.extended` sit in the **Course progress** group.
 
 The words a person reads follow the same verbs:
 
@@ -244,6 +257,7 @@ Do not give these a second meaning.
 | **learner** | `Learner`, the `(user, organisation)` association row — and also the everyday English word for the person. | In prose either is fine. As an identifier, `learner` means the model; write `learner.user` / `learner__user` when you mean the account. |
 | **role**, bare **title** | Reserved, not in use. `role` is a permission role (`assign_object_role`), and a bare `title` is a content title. | `JobTitle` / `job_title` for what a learner does at work. |
 | **start date** | `organisation_start_date` is the hire date: when the learner started at the organisation, not at a course. | For a course, `started_at` on `CourseProgress`. |
+| **suspend** | Retired. Pausing a learner's course is a `CoursePause`; the verbs are `paused` and `resumed`. | pause, `CoursePause` |
 
 ---
 
