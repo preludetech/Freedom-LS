@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Mapping
 from datetime import date
 
 from django.contrib.sites.models import Site
@@ -10,7 +11,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import F
 
 from freedom_ls.referral_tracking.config import config
-from freedom_ls.referral_tracking.models import FirstTouchCount
+from freedom_ls.referral_tracking.models import ATTRIBUTION_KEY_FIELDS, FirstTouchCount
 
 KEY_SEPARATOR = "\x1f"
 OVERFLOW_SENTINEL = "\x00overflow"
@@ -18,6 +19,15 @@ OVERFLOW_SENTINEL = "\x00overflow"
 
 def attribution_key_hash(*values: str) -> str:
     return hashlib.sha256(KEY_SEPARATOR.join(values).encode("utf-8")).hexdigest()
+
+
+def attribution_key_values(fields: Mapping[str, str]) -> tuple[str, ...]:
+    """The seven attribution-key values of `fields`, in `ATTRIBUTION_KEY_FIELDS` order."""
+    return tuple(fields[name] for name in ATTRIBUTION_KEY_FIELDS)
+
+
+def attribution_key_hash_of(fields: Mapping[str, str]) -> str:
+    return attribution_key_hash(*attribution_key_values(fields))
 
 
 def increment_first_touch(

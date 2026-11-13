@@ -6,17 +6,22 @@ The only place this app imports from `accounts` — `UserFactory` for the
 
 import factory
 
+from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.referral_tracking.counters import attribution_key_hash
 from freedom_ls.referral_tracking.models import (
     ATTRIBUTION_KEY_FIELDS,
+    AttributionTouch,
+    Conversion,
+    ConversionKind,
     Door,
     FirstTouchCount,
     ReferralCode,
     ReferralCodeHit,
     SignupAttribution,
+    TouchSource,
 )
 from freedom_ls.site_aware_models.factories import SiteAwareFactory
 
@@ -64,6 +69,56 @@ class FirstTouchCountFactory(SiteAwareFactory):
             *(getattr(obj, name) for name in ATTRIBUTION_KEY_FIELDS)
         )
     )
+
+
+class AttributionTouchFactory(SiteAwareFactory):
+    """Factory for AttributionTouch.
+
+    Every attribution-key field is declared explicitly, for the same reason as
+    on `FirstTouchCountFactory`: `key_hash` hashes exactly what a written touch does.
+    """
+
+    class Meta:
+        model = AttributionTouch
+
+    user = factory.SubFactory(UserFactory)
+    advert_code = ""
+    referral_code = ""
+    utm_source = factory.Sequence(lambda n: f"source{n}")
+    utm_medium = ""
+    utm_campaign = ""
+    utm_content = ""
+    utm_term = ""
+    occurred_at = factory.LazyFunction(timezone.now)
+    recorded_via = TouchSource.LIVE
+    key_hash = factory.LazyAttribute(
+        lambda obj: attribution_key_hash(
+            *(getattr(obj, name) for name in ATTRIBUTION_KEY_FIELDS)
+        )
+    )
+
+
+class ConversionFactory(SiteAwareFactory):
+    """Factory for Conversion.
+
+    `target` is a factory parameter, the object the conversion is about; it
+    defaults to the owning user. The row stores it as `content_type` and `object_id`.
+    """
+
+    class Meta:
+        model = Conversion
+        exclude = ("target",)
+
+    user = factory.SubFactory(UserFactory)
+    target = factory.SelfAttribute("user")
+    kind = ConversionKind.ACCOUNT_SIGNUP
+    content_type = factory.LazyAttribute(
+        lambda obj: ContentType.objects.get_for_model(obj.target)
+    )
+    object_id = factory.LazyAttribute(lambda obj: str(obj.target.pk))
+    target_label = "Account signup"
+    occurred_at = factory.LazyFunction(timezone.now)
+    window_days = 90
 
 
 class ReferralCodeFactory(SiteAwareFactory):

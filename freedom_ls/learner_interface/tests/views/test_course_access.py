@@ -20,6 +20,7 @@ from unittest.mock import patch
 import pytest
 import time_machine
 
+from django.db import DatabaseError
 from django.test import Client, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -46,6 +47,7 @@ from freedom_ls.form_engine.factories import (
     FormQuestionFactory,
 )
 from freedom_ls.form_engine.models import FormStrategy
+from freedom_ls.referral_tracking.models import Conversion, ConversionKind
 from freedom_ls.tests.app_guards import app_not_installed
 
 if app_not_installed("freedom_ls.course_applications"):
@@ -1020,6 +1022,78 @@ def test_initiate_access_gated_course_records_no_course_registered_event(
     )
 
     assert "google_analytics_events" not in client.session
+
+
+@pytest.mark.django_db
+def test_self_registering_writes_one_conversion_for_the_registration(
+    mock_site_context, logged_in_client, course_with_topic
+):
+    course = course_with_topic(access_type="free")
+    user = UserFactory()
+
+    _initiate_access(logged_in_client(user), course)
+
+    registration = LearnerCourseRegistration.objects.get(
+        learner__user=user, course=course
+    )
+    conversion = Conversion._base_manager.get(user=user)
+    assert conversion.kind == ConversionKind.COURSE_REGISTRATION
+    assert conversion.target == registration
+    assert conversion.occurred_at == registration.registered_at
+    assert conversion.target_label == course.title
+
+
+@pytest.mark.django_db
+def test_reactivating_a_registration_writes_no_conversion(
+    mock_site_context, logged_in_client, course_with_topic
+):
+    course = course_with_topic(access_type="free")
+    learner = LearnerFactory(organisation=get_default_organisation(mock_site_context))
+    LearnerCourseRegistrationFactory(learner=learner, course=course, is_active=False)
+
+    _initiate_access(logged_in_client(learner.user), course)
+
+    assert not Conversion._base_manager.exists()
+
+
+@pytest.mark.django_db
+def test_a_visit_with_an_active_registration_writes_no_conversion(
+    mock_site_context, logged_in_client, course_with_topic
+):
+    course = course_with_topic(access_type="free")
+    learner = LearnerFactory(organisation=get_default_organisation(mock_site_context))
+    LearnerCourseRegistrationFactory(learner=learner, course=course, is_active=True)
+
+    _initiate_access(logged_in_client(learner.user), course)
+
+    assert not Conversion._base_manager.exists()
+
+
+@pytest.mark.django_db
+def test_a_failing_conversion_write_leaves_the_registration_and_redirect(
+    mock_site_context, logged_in_client, course_with_topic, mocker
+):
+    """Patches `Conversion._base_manager.get_or_create` to raise `DatabaseError`."""
+    course = course_with_topic(access_type="free")
+    user = UserFactory()
+    mocker.patch.object(
+        Conversion._base_manager, "get_or_create", side_effect=DatabaseError("boom")
+    )
+    mocker.patch("freedom_ls.referral_tracking.best_effort.sentry_sdk")
+
+    response = logged_in_client(user).post(
+        reverse(
+            "learner_interface:initiate_course_access",
+            kwargs={"course_slug": course.slug},
+        )
+    )
+
+    assert response["Location"] == reverse(
+        "learner_interface:course_home", kwargs={"course_slug": course.slug}
+    )
+    assert LearnerCourseRegistration.objects.filter(
+        learner__user=user, course=course
+    ).exists()
 
 
 # ---------------------------------------------------------------------------

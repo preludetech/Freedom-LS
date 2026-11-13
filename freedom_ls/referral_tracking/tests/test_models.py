@@ -7,10 +7,13 @@ import pytest
 
 from django.contrib.sites.models import Site
 from django.db import IntegrityError
-from django.db.models import ProtectedError
+from django.db.models import ProtectedError, RestrictedError
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.referral_tracking.counters import attribution_key_hash
 from freedom_ls.referral_tracking.factories import (
+    AttributionTouchFactory,
+    ConversionFactory,
     FirstTouchCountFactory,
     ReferralCodeFactory,
     ReferralCodeHitFactory,
@@ -18,6 +21,8 @@ from freedom_ls.referral_tracking.factories import (
 )
 from freedom_ls.referral_tracking.models import (
     ATTRIBUTION_KEY_FIELDS,
+    AttributionTouch,
+    Conversion,
     ReferralCode,
     SignupAttribution,
 )
@@ -98,3 +103,75 @@ def test_referral_code_hit_str_names_the_code_not_its_id(mock_site_context) -> N
     hit = ReferralCodeHitFactory(referral_code=ReferralCodeFactory(code="mrbeast"))
 
     assert str(hit).startswith("mrbeast via")
+
+
+@pytest.mark.django_db
+def test_updating_an_existing_attribution_touch_raises(mock_site_context) -> None:
+    touch = AttributionTouchFactory()
+
+    touch.referral_code = "other"
+
+    with pytest.raises(ValueError, match="append-only"):
+        touch.save()
+
+
+@pytest.mark.django_db
+def test_a_second_touch_with_the_same_site_user_time_and_key_raises(
+    mock_site_context,
+) -> None:
+    touch = AttributionTouchFactory()
+
+    with pytest.raises(IntegrityError):
+        AttributionTouchFactory(
+            user=touch.user,
+            occurred_at=touch.occurred_at,
+            utm_source=touch.utm_source,
+        )
+
+
+@pytest.mark.django_db
+def test_updating_an_existing_conversion_raises(mock_site_context) -> None:
+    conversion = ConversionFactory()
+
+    conversion.target_label = "Other"
+
+    with pytest.raises(ValueError, match="append-only"):
+        conversion.save()
+
+
+@pytest.mark.django_db
+def test_deleting_the_user_removes_the_conversion_and_its_touches(
+    mock_site_context,
+) -> None:
+    user = UserFactory()
+    touch = AttributionTouchFactory(user=user, referral_code="A")
+    ConversionFactory(user=user, first_touch=touch, last_touch=touch)
+
+    user.delete()
+
+    assert not Conversion._base_manager.exists()
+    assert not AttributionTouch._base_manager.exists()
+
+
+@pytest.mark.django_db
+def test_deleting_a_touch_a_conversion_rests_on_raises(mock_site_context) -> None:
+    touch = AttributionTouchFactory(referral_code="A")
+    ConversionFactory(user=touch.user, first_touch=touch, last_touch=touch)
+
+    with pytest.raises(RestrictedError):
+        touch.delete()
+
+
+@pytest.mark.django_db
+def test_a_second_conversion_on_the_same_target_raises(mock_site_context) -> None:
+    conversion = ConversionFactory()
+
+    with pytest.raises(IntegrityError):
+        ConversionFactory(
+            user=conversion.user, kind=conversion.kind, target=conversion.target
+        )
+
+
+def test_attribution_touch_plural_name_is_spelled_touches() -> None:
+    """The admin plural used to read "Attribution touchs" because Django only appends "s"."""
+    assert AttributionTouch._meta.verbose_name_plural == "attribution touches"

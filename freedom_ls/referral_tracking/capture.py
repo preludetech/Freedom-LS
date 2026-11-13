@@ -5,7 +5,9 @@ from __future__ import annotations
 import base64
 import json
 import unicodedata
-from datetime import datetime
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.contrib.auth.base_user import AbstractBaseUser
@@ -14,7 +16,15 @@ from django.http.response import HttpResponseBase
 from django.utils import timezone
 
 from freedom_ls.referral_tracking.config import config
-from freedom_ls.referral_tracking.models import CAPS, SignupAttribution
+from freedom_ls.referral_tracking.counters import (
+    attribution_key_hash_of,
+    attribution_key_values,
+)
+from freedom_ls.referral_tracking.models import (
+    ATTRIBUTION_KEY_FIELDS,
+    CAPS,
+    SignupAttribution,
+)
 
 TRACKED_PARAMS = (
     "advert_code",
@@ -51,6 +61,11 @@ COOKIE_KEYS: dict[str, str] = {
     "first_seen": "ts",
 }
 
+# The later landings the cookie remembers beside the first touch. Kept out of
+# COOKIE_KEYS: `t` is taken there by utm_term, and downstream projects build
+# model fields from COOKIE_KEYS, so a new entry would break them.
+COOKIE_TOUCHES_KEY = "tl"
+
 # Browsers hold a cookie to 4096 bytes of name plus value. The signer appends
 # a timestamp and signature of about 55 bytes and the default name is 16, so
 # the encoded payload itself gets a little under 3.9KB.
@@ -85,6 +100,22 @@ def suppress_capture(request: HttpRequest) -> None:
 
 def is_capture_suppressed(request: HttpRequest) -> bool:
     return getattr(request, _CAPTURE_SUPPRESSED_ATTR, False) is True
+
+
+_COOKIE_CLEAR_ATTR = "_attribution_cookie_clear_requested"
+
+
+def request_cookie_clear(request: HttpRequest) -> None:
+    """Ask the middleware to delete the attribution cookie from this response.
+
+    Called once the cookie's touches have been written to the database, so the
+    cookie does not carry them into a second flush.
+    """
+    setattr(request, _COOKIE_CLEAR_ATTR, True)
+
+
+def is_cookie_clear_requested(request: HttpRequest) -> bool:
+    return getattr(request, _COOKIE_CLEAR_ATTR, False) is True
 
 
 def sanitise(value: str, cap: int, *, lower: bool = False) -> str:
@@ -130,11 +161,60 @@ def first_touch_from_request(request: HttpRequest) -> dict[str, str]:
     return first_touch
 
 
+@dataclass(frozen=True)
+class CookieTouch:
+    """One landing the cookie remembers: the attribution key and when it happened.
+
+    `landing_path` is set only for the frozen first touch; list entries leave
+    it blank to keep the cookie small.
+    """
+
+    advert_code: str
+    utm_source: str
+    utm_medium: str
+    utm_campaign: str
+    utm_content: str
+    utm_term: str
+    referral_code: str
+    occurred_at: datetime
+    landing_path: str = ""
+
+    @property
+    def key_fields(self) -> dict[str, str]:
+        return {name: getattr(self, name) for name in ATTRIBUTION_KEY_FIELDS}
+
+    @property
+    def key_values(self) -> tuple[str, ...]:
+        return attribution_key_values(self.key_fields)
+
+    @property
+    def key_hash(self) -> str:
+        return attribution_key_hash_of(self.key_fields)
+
+
 def _cookie_max_age() -> int:
     return config.REFERRAL_TRACKING_COOKIE_MAX_AGE_DAYS * 86400
 
 
-def _encode_payload(payload: dict[str, str]) -> str:
+def _parse_cookie_time(text: str) -> datetime | None:
+    """The aware time `text` holds, or None when it is unparseable or naive.
+
+    A naive time would raise `TypeError` the first time it is compared with
+    `timezone.now()`, which could happen inside a signal receiver.
+    """
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.utcoffset() is None:
+        return None
+    return parsed
+
+
+_PayloadValue = str | list[dict[str, str]]
+
+
+def _encode_payload(payload: Mapping[str, _PayloadValue]) -> str:
     # ensure_ascii=False keeps a CJK character at 3 bytes rather than the 6 of
     # its \uXXXX escape; the value is base64 either way, so it stays token-safe.
     return base64.urlsafe_b64encode(
@@ -142,31 +222,59 @@ def _encode_payload(payload: dict[str, str]) -> str:
     ).decode("ascii")
 
 
+def _touch_entry_payload(touch: CookieTouch) -> dict[str, str]:
+    entry = {
+        COOKIE_KEYS[name]: value for name, value in touch.key_fields.items() if value
+    }
+    entry[COOKIE_KEYS["first_seen"]] = touch.occurred_at.isoformat()
+    return entry
+
+
 def set_attribution_cookie(
-    response: HttpResponseBase, first_touch: dict[str, str]
+    response: HttpResponseBase,
+    first_touch: dict[str, str],
+    *,
+    touches: Sequence[CookieTouch] = (),
 ) -> bool:
     """Set the cookie and return True, or return False when it cannot fit.
 
     A browser drops an oversize cookie without saying so, and a visitor whose
     cookie never sticks would be minted and tallied again on every landing.
-    The fields that are not part of the attribution key are dropped in order
-    of value until the payload fits; a payload that still does not fit is not
-    set at all, and the caller must not count it as a first touch.
+    The fields that are not part of the attribution key are dropped from the
+    first touch in order of value until the payload fits; then list entries
+    go, oldest first, but never the newest. A payload that still does not fit
+    is not set at all, and the caller must not count it as a first touch.
+
+    Expiry is counted from the first touch, not from now, so appending to the
+    list never extends how long the cookie lives. A cookie at exactly the
+    limit gets a `max_age` of 0, which the browser treats as expiry.
     """
-    payload = {COOKIE_KEYS[name]: value for name, value in first_touch.items() if value}
-    encoded = _encode_payload(payload)
+    payload: dict[str, _PayloadValue] = {
+        COOKIE_KEYS[name]: value for name, value in first_touch.items() if value
+    }
+    entries = [_touch_entry_payload(touch) for touch in touches]
+
+    def encode() -> str:
+        if entries:
+            payload[COOKIE_TOUCHES_KEY] = entries
+        return _encode_payload(payload)
+
+    encoded = encode()
     for name in COOKIE_DROP_ORDER:
         if len(encoded) <= COOKIE_MAX_ENCODED_LENGTH:
             break
         payload.pop(COOKIE_KEYS[name], None)
-        encoded = _encode_payload(payload)
+        encoded = encode()
+    while len(encoded) > COOKIE_MAX_ENCODED_LENGTH and len(entries) > 1:
+        entries.pop(0)
+        encoded = encode()
     if len(encoded) > COOKIE_MAX_ENCODED_LENGTH:
         return False
     response.set_signed_cookie(
         config.REFERRAL_TRACKING_COOKIE_NAME,
         encoded,
         salt=COOKIE_SALT,
-        max_age=_cookie_max_age(),
+        max_age=_remaining_max_age(first_touch["first_seen"]),
         httponly=True,
         samesite="Lax",
         secure=settings.SESSION_COOKIE_SECURE,
@@ -174,8 +282,31 @@ def set_attribution_cookie(
     return True
 
 
-def read_attribution_cookie(request: HttpRequest) -> dict[str, str] | None:
-    """The first touch the cookie carries, or None for absent, expired, forged or unparseable."""
+def _remaining_max_age(first_seen: str) -> int:
+    first_seen_at = _parse_cookie_time(first_seen) or timezone.now()
+    elapsed = int((timezone.now() - first_seen_at).total_seconds())
+    return max(0, _cookie_max_age() - elapsed)
+
+
+_DecodedCookie = tuple[dict[str, str], list[CookieTouch]]
+_DECODED_ATTR = "_attribution_cookie_decoded"
+
+
+def _decode_cookie(request: HttpRequest) -> _DecodedCookie | None:
+    """The validated cookie contents, decoded once per request.
+
+    Readers copy what they take from here, so one caller changing the dict it
+    gets back cannot change what the next reader sees.
+    """
+    if hasattr(request, _DECODED_ATTR):
+        decoded: _DecodedCookie | None = getattr(request, _DECODED_ATTR)
+        return decoded
+    decoded = _decode_cookie_uncached(request)
+    setattr(request, _DECODED_ATTR, decoded)
+    return decoded
+
+
+def _decode_cookie_uncached(request: HttpRequest) -> _DecodedCookie | None:
     encoded = request.get_signed_cookie(
         config.REFERRAL_TRACKING_COOKIE_NAME,
         default=None,
@@ -192,24 +323,133 @@ def read_attribution_cookie(request: HttpRequest) -> dict[str, str] | None:
         return None
     if not _is_first_touch_payload(payload):
         return None
-    return {name: payload.get(short, "") for name, short in COOKIE_KEYS.items()}
+    first_seen = datetime.fromisoformat(payload[COOKIE_KEYS["first_seen"]])
+    # Signing is re-done on every re-set, so the signature's age alone would
+    # let a cookie that keeps being appended to outlive its first touch.
+    if timezone.now() - first_seen > timedelta(
+        days=config.REFERRAL_TRACKING_COOKIE_MAX_AGE_DAYS
+    ):
+        return None
+    first = {key: value for key, value in payload.items() if key != COOKIE_TOUCHES_KEY}
+    touches = [
+        _touch_from_entry(entry) for entry in payload.get(COOKIE_TOUCHES_KEY, [])
+    ]
+    return first, touches
+
+
+def _touch_from_entry(entry: dict[str, str]) -> CookieTouch:
+    short_to_name = {short: name for name, short in COOKIE_KEYS.items()}
+    fields = {short_to_name[short]: value for short, value in entry.items()}
+    return CookieTouch(
+        **{name: fields.get(name, "") for name in ATTRIBUTION_KEY_FIELDS},
+        occurred_at=datetime.fromisoformat(entry[COOKIE_KEYS["first_seen"]]),
+    )
+
+
+def read_attribution_cookie(request: HttpRequest) -> dict[str, str] | None:
+    """The first touch the cookie carries, or None for absent, expired, forged or unparseable."""
+    decoded = _decode_cookie(request)
+    if decoded is None:
+        return None
+    first, _ = decoded
+    return {name: first.get(short, "") for name, short in COOKIE_KEYS.items()}
+
+
+def read_cookie_touches(request: HttpRequest) -> list[CookieTouch]:
+    """The later landings the cookie carries, oldest first; empty when there are none."""
+    decoded = _decode_cookie(request)
+    if decoded is None:
+        return []
+    _, touches = decoded
+    return list(touches)
+
+
+def flushable_cookie_touches(request: HttpRequest) -> list[CookieTouch]:
+    """The touches the cookie holds that are worth writing, oldest first.
+
+    The frozen first touch leads, carrying its `landing_path`, followed by the
+    list entries dated between the first touch and now: a hand-edited entry
+    from the future or from before the first landing is not a real landing.
+    Touches whose seven attribution values are all blank are dropped. Empty
+    when there is no valid cookie.
+    """
+    decoded = _decode_cookie(request)
+    if decoded is None:
+        return []
+    first, entries = decoded
+    first_seen = datetime.fromisoformat(first[COOKIE_KEYS["first_seen"]])
+    first_touch = CookieTouch(
+        **{name: first.get(COOKIE_KEYS[name], "") for name in ATTRIBUTION_KEY_FIELDS},
+        occurred_at=first_seen,
+        landing_path=first.get(COOKIE_KEYS["landing_path"], ""),
+    )
+    now = timezone.now()
+    in_window = [entry for entry in entries if first_seen <= entry.occurred_at <= now]
+    return [touch for touch in [first_touch, *in_window] if any(touch.key_values)]
+
+
+def append_touch(
+    touches: Sequence[CookieTouch],
+    first_touch: dict[str, str],
+    request: HttpRequest,
+) -> list[CookieTouch] | None:
+    """The touch list with this landing added, or None when it adds nothing.
+
+    A landing adds nothing when every attribution field is blank (a click id
+    alone) or when it repeats the latest key. `first_touch` is the cookie's
+    frozen first touch, which stands in as the latest key while the list is
+    empty. The list is bounded: the oldest entry is evicted first.
+    """
+    landing = first_touch_from_request(request)
+    landing_values = attribution_key_values(landing)
+    if not any(landing_values):
+        return None
+    latest_values = (
+        touches[-1].key_values if touches else attribution_key_values(first_touch)
+    )
+    if landing_values == latest_values:
+        return None
+    entry = CookieTouch(
+        **{name: landing[name] for name in ATTRIBUTION_KEY_FIELDS},
+        occurred_at=datetime.fromisoformat(landing["first_seen"]),
+    )
+    return [*touches, entry][-config.REFERRAL_TRACKING_MAX_COOKIE_TOUCHES :]
+
+
+def _is_touch_list(value: object) -> bool:
+    """A list of dicts keyed by the attribution short keys or `ts`, all str, with a parseable `ts`."""
+    if not isinstance(value, list):
+        return False
+    allowed = {COOKIE_KEYS[name] for name in ATTRIBUTION_KEY_FIELDS}
+    allowed.add(COOKIE_KEYS["first_seen"])
+    for entry in value:
+        if not isinstance(entry, dict):
+            return False
+        if any(
+            key not in allowed or not isinstance(item, str)
+            for key, item in entry.items()
+        ):
+            return False
+        time_text = entry.get(COOKIE_KEYS["first_seen"])
+        if time_text is None or _parse_cookie_time(time_text) is None:
+            return False
+    return True
 
 
 def _is_first_touch_payload(payload: object) -> bool:
-    """A JSON object whose keys are all short keys, whose values are all str, and whose
-    landing time parses."""
+    """A JSON object whose keys are all short keys, whose values are all str
+    (except the touch list), and whose landing time parses."""
     if not isinstance(payload, dict):
         return False
     known = set(COOKIE_KEYS.values())
-    if any(
-        key not in known or not isinstance(value, str) for key, value in payload.items()
-    ):
-        return False
-    try:
-        datetime.fromisoformat(payload.get("ts", ""))
-    except ValueError:
-        return False
-    return True
+    for key, value in payload.items():
+        if key == COOKIE_TOUCHES_KEY:
+            if not _is_touch_list(value):
+                return False
+        elif key not in known or not isinstance(value, str):
+            return False
+    first_seen = payload.get(COOKIE_KEYS["first_seen"])
+    return isinstance(first_seen, str) and _parse_cookie_time(first_seen) is not None
 
 
 def record_signup_attribution(

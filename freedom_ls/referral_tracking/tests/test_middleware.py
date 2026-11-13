@@ -2,28 +2,58 @@
 
 from __future__ import annotations
 
-import pytest
+import datetime
 
+import pytest
+import time_machine
+
+from django.contrib.auth.models import AnonymousUser
 from django.db import connection
-from django.http import HttpResponse
+from django.http import HttpRequest, HttpResponse
+from django.http.response import HttpResponseBase
 from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.referral_tracking import capture
 from freedom_ls.referral_tracking.capture import (
+    CookieTouch,
     first_touch_from_request,
+    read_attribution_cookie,
+    read_cookie_touches,
+    request_cookie_clear,
     set_attribution_cookie,
 )
 from freedom_ls.referral_tracking.config import config
 from freedom_ls.referral_tracking.factories import ReferralCodeFactory
 from freedom_ls.referral_tracking.middleware import AttributionCaptureMiddleware
-from freedom_ls.referral_tracking.models import FirstTouchCount, ReferralCodeHit
+from freedom_ls.referral_tracking.models import (
+    AttributionTouch,
+    FirstTouchCount,
+    ReferralCodeHit,
+)
 
 ROBOTS_TXT = "/robots.txt"
 COOKIE_NAME = config.REFERRAL_TRACKING_COOKIE_NAME
 
 rf = RequestFactory()
+
+
+def _request_holding_cookie_of(client: Client) -> HttpRequest:
+    request = rf.get("/")
+    request.COOKIES[COOKIE_NAME] = client.cookies[COOKIE_NAME].value
+    return request
+
+
+def _touches_in(client: Client) -> list[CookieTouch]:
+    return read_cookie_touches(_request_holding_cookie_of(client))
+
+
+def _first_touch_in(client: Client) -> dict[str, str]:
+    first_touch = read_attribution_cookie(_request_holding_cookie_of(client))
+    assert first_touch is not None
+    return first_touch
 
 
 @pytest.mark.django_db
@@ -63,7 +93,7 @@ def test_untracked_get_sets_no_cookie(mock_site_context) -> None:
 
 
 @pytest.mark.django_db
-def test_second_tracked_get_in_the_same_client_leaves_the_cookie_byte_identical(
+def test_second_tracked_get_with_the_same_key_leaves_the_cookie_byte_identical(
     mock_site_context,
 ) -> None:
     client = Client()
@@ -73,6 +103,57 @@ def test_second_tracked_get_in_the_same_client_leaves_the_cookie_byte_identical(
     client.get(ROBOTS_TXT, {"utm_source": "x"})
 
     assert client.cookies[COOKIE_NAME].value == minted_value
+
+
+@pytest.mark.django_db
+def test_second_tracked_get_with_a_different_key_appends_one_entry(
+    mock_site_context,
+) -> None:
+    client = Client()
+    client.get(ROBOTS_TXT, {"utm_source": "x"})
+
+    client.get(ROBOTS_TXT, {"utm_source": "y"})
+
+    assert [touch.utm_source for touch in _touches_in(client)] == ["y"]
+
+
+@pytest.mark.django_db
+def test_a_click_id_only_landing_leaves_the_cookie_byte_identical(
+    mock_site_context,
+) -> None:
+    client = Client()
+    first_response = client.get(ROBOTS_TXT, {"utm_source": "x"})
+    minted_value = first_response.cookies[COOKIE_NAME].value
+
+    client.get(ROBOTS_TXT, {"gclid": "abc"})
+
+    assert client.cookies[COOKIE_NAME].value == minted_value
+
+
+@pytest.mark.django_db
+def test_an_append_keeps_the_first_touch(mock_site_context) -> None:
+    client = Client()
+    client.get(ROBOTS_TXT, {"utm_source": "x"})
+
+    client.get(ROBOTS_TXT, {"utm_source": "y"})
+
+    assert _first_touch_in(client)["utm_source"] == "x"
+
+
+@pytest.mark.django_db
+def test_an_append_does_not_reset_the_expiry_to_the_full_window(
+    mock_site_context,
+) -> None:
+    client = Client()
+    with time_machine.travel(datetime.datetime(2026, 3, 1, tzinfo=datetime.UTC)):
+        client.get(ROBOTS_TXT, {"utm_source": "x"})
+    ten_days_later = datetime.datetime(2026, 3, 11, tzinfo=datetime.UTC)
+
+    with time_machine.travel(ten_days_later, tick=False):
+        response = client.get(ROBOTS_TXT, {"utm_source": "y"})
+
+    max_age = int(response.cookies[COOKIE_NAME]["max-age"])
+    assert max_age == config.REFERRAL_TRACKING_COOKIE_MAX_AGE_DAYS * 86400 - 10 * 86400
 
 
 @pytest.mark.django_db
@@ -148,8 +229,9 @@ def test_a_tracked_get_with_an_existing_valid_cookie_costs_no_query(
     mint_response = HttpResponse()
     set_attribution_cookie(mint_response, first_touch)
 
-    request = rf.get("/?utm_source=x")
+    request = rf.get("/?utm_source=y")
     request.COOKIES[COOKIE_NAME] = mint_response.cookies[COOKIE_NAME].value
+    request.user = AnonymousUser()
 
     with django_assert_num_queries(0):
         AttributionCaptureMiddleware(lambda request: HttpResponse())(request)
@@ -168,6 +250,18 @@ def test_a_tracked_get_with_an_existing_valid_cookie_carries_vary_cookie(
 
 
 @pytest.mark.django_db
+def test_an_append_response_is_private_no_store(mock_site_context) -> None:
+    client = Client()
+    client.get(ROBOTS_TXT, {"utm_source": "x"})
+
+    response = client.get(ROBOTS_TXT, {"utm_source": "y"})
+
+    cache_control = response.headers["Cache-Control"]
+    assert "private" in cache_control
+    assert "no-store" in cache_control
+
+
+@pytest.mark.django_db
 def test_a_tracked_get_with_an_existing_valid_cookie_sets_no_cookie(
     mock_site_context,
 ) -> None:
@@ -177,6 +271,21 @@ def test_a_tracked_get_with_an_existing_valid_cookie_sets_no_cookie(
     response = client.get(ROBOTS_TXT, {"utm_source": "x"})
 
     assert COOKIE_NAME not in response.cookies
+
+
+@pytest.mark.django_db
+def test_an_append_response_that_cannot_fit_leaves_the_previous_cookie_in_place(
+    mock_site_context, monkeypatch
+) -> None:
+    client = Client()
+    client.get(ROBOTS_TXT, {"utm_source": "x"})
+    minted_value = client.cookies[COOKIE_NAME].value
+    monkeypatch.setattr(capture, "COOKIE_MAX_ENCODED_LENGTH", 10)
+
+    response = client.get(ROBOTS_TXT, {"utm_source": "y"})
+
+    assert COOKIE_NAME not in response.cookies
+    assert client.cookies[COOKIE_NAME].value == minted_value
 
 
 def test_an_untracked_get_is_not_varied_on_cookie(db) -> None:
@@ -246,14 +355,14 @@ def test_a_visitor_holding_the_cookie_is_logged_as_a_hit_and_keeps_the_first_tou
 ) -> None:
     client = Client()
     client.get(ROBOTS_TXT, {"utm_source": "newsletter"})
-    minted_cookie = client.cookies[COOKIE_NAME].value
     referral_code = ReferralCodeFactory(code="mrbeast", destination="/courses/")
     url = reverse("referral_tracking:follow_go", kwargs={"code": referral_code.code})
 
-    client.get(url)
+    client.get(url, follow=True)
 
-    assert client.cookies[COOKIE_NAME].value == minted_cookie
     assert ReferralCodeHit.objects.filter(referral_code=referral_code).exists()
+    assert [touch.referral_code for touch in _touches_in(client)] == ["mrbeast"]
+    assert _first_touch_in(client)["utm_source"] == "newsletter"
 
 
 @pytest.mark.django_db
@@ -279,3 +388,116 @@ def test_a_landing_with_ref_costs_the_same_queries_as_one_without_it(
         Client().get(ROBOTS_TXT, {"utm_source": "with-ref", "ref": "anything"})
 
     assert len(with_ref) == len(without_ref)
+
+
+@pytest.fixture
+def signed_in_client(mock_site_context) -> Client:
+    client = Client()
+    client.force_login(UserFactory())
+    return client
+
+
+@pytest.mark.django_db
+def test_a_signed_in_tracked_get_writes_one_touch(signed_in_client) -> None:
+    signed_in_client.get(ROBOTS_TXT, {"ref": "A"})
+
+    assert AttributionTouch._base_manager.get().referral_code == "A"
+
+
+@pytest.mark.django_db
+def test_a_signed_in_tracked_get_sets_no_cookie(signed_in_client) -> None:
+    response = signed_in_client.get(ROBOTS_TXT, {"ref": "A"})
+
+    assert COOKIE_NAME not in response.cookies
+
+
+@pytest.mark.django_db
+def test_a_signed_in_tracked_get_mints_no_cookie_and_tallies_nothing(
+    signed_in_client,
+) -> None:
+    signed_in_client.get(ROBOTS_TXT, {"ref": "A"})
+
+    assert COOKIE_NAME not in signed_in_client.cookies
+    assert not FirstTouchCount.objects.exists()
+
+
+@pytest.mark.django_db
+def test_a_signed_in_tracked_get_carries_vary_cookie(signed_in_client) -> None:
+    response = signed_in_client.get(ROBOTS_TXT, {"ref": "A"})
+
+    assert response.headers["Vary"] == "Cookie"
+
+
+@pytest.mark.django_db
+def test_an_untracked_signed_in_get_writes_nothing(signed_in_client) -> None:
+    signed_in_client.get(ROBOTS_TXT)
+
+    assert not AttributionTouch._base_manager.exists()
+
+
+@pytest.mark.django_db
+def test_a_signed_in_referral_redirect_writes_no_touch(signed_in_client) -> None:
+    referral_code = ReferralCodeFactory(code="mrbeast", destination="/courses/")
+    url = reverse("referral_tracking:follow_go", kwargs={"code": referral_code.code})
+
+    signed_in_client.get(url, {"utm_source": "x"})
+
+    assert not AttributionTouch._base_manager.exists()
+
+
+@pytest.mark.django_db
+def test_a_signed_in_tracked_get_whose_view_raises_still_writes_the_touch(
+    mock_site_context, site
+) -> None:
+    request = rf.get("/?ref=A")
+    request.user = UserFactory()
+
+    def failing_view(request):
+        raise RuntimeError("boom")
+
+    with pytest.raises(RuntimeError):
+        AttributionCaptureMiddleware(failing_view)(request)
+
+    assert AttributionTouch._base_manager.count() == 1
+
+
+def test_a_signed_in_tracked_get_costs_the_live_touch_queries(
+    db, mock_site_context, django_assert_num_queries
+) -> None:
+    request = rf.get("/?ref=A")
+    request.user = UserFactory()
+
+    # The latest-touch read, then the savepoint, the insert and the release.
+    with django_assert_num_queries(4):
+        AttributionCaptureMiddleware(lambda request: HttpResponse())(request)
+
+
+def _clearing_view(request: HttpRequest) -> HttpResponse:
+    request_cookie_clear(request)
+    return HttpResponse()
+
+
+def _run_middleware(request: HttpRequest, view) -> HttpResponseBase:
+    request.user = AnonymousUser()
+    return AttributionCaptureMiddleware(view)(request)
+
+
+def test_a_post_that_requests_a_clear_deletes_the_cookie() -> None:
+    response = _run_middleware(rf.post("/"), _clearing_view)
+
+    cookie = response.cookies[COOKIE_NAME]
+    assert (cookie.value, cookie["path"], cookie["max-age"]) == ("", "/", 0)
+
+
+def test_a_tracked_get_that_requests_a_clear_deletes_the_cookie(
+    db, mock_site_context
+) -> None:
+    response = _run_middleware(rf.get("/?ref=A"), _clearing_view)
+
+    assert response.cookies[COOKIE_NAME]["max-age"] == 0
+
+
+def test_a_request_that_does_not_request_a_clear_gets_no_deleting_cookie() -> None:
+    response = _run_middleware(rf.post("/"), lambda request: HttpResponse())
+
+    assert COOKIE_NAME not in response.cookies

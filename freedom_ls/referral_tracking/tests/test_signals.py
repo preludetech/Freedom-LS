@@ -7,16 +7,28 @@ direct-call path that bypasses the view.
 
 from __future__ import annotations
 
+import datetime
+
 import pytest
 import time_machine
 from allauth.account.models import EmailAddress, EmailConfirmationHMAC
 
+from django.contrib.auth import get_user_model
 from django.core import mail
 from django.db import DatabaseError
 from django.test import Client
 from django.urls import reverse
 
-from freedom_ls.referral_tracking.models import SignupAttribution
+from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.referral_tracking.config import config
+from freedom_ls.referral_tracking.factories import AttributionTouchFactory
+from freedom_ls.referral_tracking.models import (
+    AttributionTouch,
+    Conversion,
+    ConversionKind,
+    SignupAttribution,
+    TouchSource,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -176,7 +188,7 @@ def failing_attribution_write(mocker):
     mocker.patch.object(
         SignupAttribution.objects, "create", side_effect=DatabaseError("boom")
     )
-    return mocker.patch("freedom_ls.referral_tracking.signals.sentry_sdk")
+    return mocker.patch("freedom_ls.referral_tracking.best_effort.sentry_sdk")
 
 
 def test_a_failed_attribution_write_does_not_fail_the_signup(
@@ -211,3 +223,162 @@ def test_a_failed_attribution_write_is_reported_to_sentry(
     Client().post(reverse("account_signup"), _signup_payload("sentry@example.com"))
 
     failing_attribution_write.capture_exception.assert_called_once()
+
+
+DAY_ONE = datetime.datetime(2026, 3, 1, 12, 0, tzinfo=datetime.UTC)
+DAY_THREE = DAY_ONE + datetime.timedelta(days=2)
+DAY_FIVE = DAY_ONE + datetime.timedelta(days=4)
+SIGNUP_TIME = DAY_ONE + datetime.timedelta(days=6)
+COOKIE_NAME = config.REFERRAL_TRACKING_COOKIE_NAME
+
+
+def _land(client: Client, when: datetime.datetime, **params: str) -> None:
+    with time_machine.travel(when, tick=False):
+        client.get("/robots.txt", params)
+
+
+def _client_with_three_landings() -> Client:
+    client = Client()
+    _land(client, DAY_ONE, ref="A")
+    _land(client, DAY_THREE, ref="B")
+    _land(client, DAY_FIVE, utm_source="newsletter")
+    return client
+
+
+def _sign_up(client: Client, email: str, when: datetime.datetime = SIGNUP_TIME):
+    with time_machine.travel(when, tick=False):
+        return client.post(reverse("account_signup"), _signup_payload(email))
+
+
+def test_a_signup_after_three_landings_writes_three_signup_flush_touches(
+    mock_site_context,
+) -> None:
+    client = _client_with_three_landings()
+
+    _sign_up(client, "three@example.com")
+
+    touches = AttributionTouch._base_manager.order_by("occurred_at")
+    assert [(t.occurred_at, t.recorded_via) for t in touches] == [
+        (DAY_ONE, TouchSource.SIGNUP_FLUSH),
+        (DAY_THREE, TouchSource.SIGNUP_FLUSH),
+        (DAY_FIVE, TouchSource.SIGNUP_FLUSH),
+    ]
+
+
+def test_a_signup_writes_one_account_signup_conversion_freezing_the_coded_touches(
+    mock_site_context,
+) -> None:
+    client = _client_with_three_landings()
+
+    _sign_up(client, "convert@example.com")
+
+    conversion = Conversion._base_manager.get(kind=ConversionKind.ACCOUNT_SIGNUP)
+    assert (conversion.first_referral_code, conversion.last_referral_code) == (
+        "A",
+        "B",
+    )
+
+
+def test_the_signup_response_deletes_the_attribution_cookie(mock_site_context) -> None:
+    client = _client_with_three_landings()
+
+    response = _sign_up(client, "cleared@example.com")
+
+    assert response.cookies[COOKIE_NAME]["max-age"] == 0
+
+
+def test_a_signup_whose_touches_are_already_written_writes_no_duplicate(
+    mock_site_context,
+) -> None:
+    client = _client_with_three_landings()
+    user = UserFactory()
+    for code, source, when in (
+        ("A", "", DAY_ONE),
+        ("B", "", DAY_THREE),
+        ("", "newsletter", DAY_FIVE),
+    ):
+        AttributionTouchFactory(
+            user=user, referral_code=code, utm_source=source, occurred_at=when
+        )
+
+    _sign_up(client, "seeded@example.com")
+
+    # The seeded rows belong to a different user, so the new account gets its
+    # own three and nothing is written twice for it.
+    new_user = get_user_model().objects.get(email="seeded@example.com")
+    assert AttributionTouch._base_manager.filter(user=new_user).count() == 3
+
+
+def test_a_login_with_the_cookie_after_signup_flush_writes_no_duplicate(
+    mock_site_context,
+) -> None:
+    client = _client_with_three_landings()
+    _sign_up(client, "again@example.com")
+    user = get_user_model().objects.get(email="again@example.com")
+    EmailAddress.objects.filter(user=user).update(verified=True)
+    client.cookies[COOKIE_NAME] = (
+        _client_with_three_landings().cookies[COOKIE_NAME].value
+    )
+
+    with time_machine.travel(SIGNUP_TIME, tick=False):
+        client.post(
+            reverse("account_login"),
+            {
+                "login": "again@example.com",
+                "password": "TestPass123!xyz",  # pragma: allowlist secret
+            },
+        )
+
+    assert AttributionTouch._base_manager.filter(user=user).count() == 3
+
+
+def test_a_login_with_a_cookie_writes_login_flush_touches(mock_site_context) -> None:
+    user = UserFactory()
+    EmailAddress.objects.create(
+        user=user, email=user.email, verified=True, primary=True
+    )
+    client = _client_with_three_landings()
+
+    with time_machine.travel(SIGNUP_TIME, tick=False):
+        client.post(
+            reverse("account_login"), {"login": user.email, "password": user.email}
+        )
+
+    sources = AttributionTouch._base_manager.filter(user=user).values_list(
+        "recorded_via", flat=True
+    )
+    assert set(sources) == {TouchSource.LOGIN_FLUSH}
+
+
+def test_a_failed_conversion_write_does_not_fail_the_signup(
+    mock_site_context, mocker
+) -> None:
+    mocker.patch.object(
+        Conversion._base_manager, "get_or_create", side_effect=DatabaseError("boom")
+    )
+    mocker.patch("freedom_ls.referral_tracking.best_effort.sentry_sdk")
+
+    response = Client().post(
+        reverse("account_signup"), _signup_payload("conversionfail@example.com")
+    )
+
+    assert response.status_code == 302
+    assert get_user_model().objects.filter(email="conversionfail@example.com").exists()
+
+
+def test_two_landings_weeks_apart_then_signup_freeze_the_first_and_last_codes(
+    mock_site_context,
+) -> None:
+    client = Client()
+    _land(client, DAY_ONE, ref="A")
+    three_weeks_on = DAY_ONE + datetime.timedelta(days=21)
+    _land(client, three_weeks_on, ref="B")
+
+    _sign_up(client, "journey@example.com", three_weeks_on)
+
+    conversion = Conversion._base_manager.get(kind=ConversionKind.ACCOUNT_SIGNUP)
+    assert AttributionTouch._base_manager.count() == 2
+    assert (conversion.first_referral_code, conversion.last_referral_code) == (
+        "A",
+        "B",
+    )

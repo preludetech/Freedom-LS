@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from freedom_ls.referral_tracking.config import config
+from freedom_ls.referral_tracking.config import ReferralTrackingSettings, config
 
 
 def test_cookie_name_defaults_when_project_sets_nothing(settings) -> None:
@@ -51,3 +51,17 @@ def test_inactive_destination_reads_the_projects_value(settings) -> None:
     settings.REFERRAL_TRACKING_INACTIVE_DESTINATION = "/courses/"
 
     assert config.REFERRAL_TRACKING_INACTIVE_DESTINATION == "/courses/"
+
+
+def test_attribution_window_days_is_a_declared_setting() -> None:
+    assert (
+        "REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS"
+        in ReferralTrackingSettings.declared_settings
+    )
+
+
+def test_max_cookie_touches_is_a_declared_setting() -> None:
+    assert (
+        "REFERRAL_TRACKING_MAX_COOKIE_TOUCHES"
+        in ReferralTrackingSettings.declared_settings
+    )

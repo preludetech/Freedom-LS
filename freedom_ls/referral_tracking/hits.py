@@ -8,13 +8,13 @@ import sentry_sdk
 
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
-from django.db import DatabaseError, transaction
 from django.db.models import F
 from django.http import HttpRequest
 from django.utils import timezone
 from django.utils.crypto import salted_hmac
 
 from freedom_ls.accounts.utils import get_client_ip
+from freedom_ls.referral_tracking.best_effort import best_effort_write
 from freedom_ls.referral_tracking.config import config
 from freedom_ls.referral_tracking.models import Door, ReferralCode, ReferralCodeHit
 
@@ -114,19 +114,16 @@ def is_hit_log_throttled(referral_code: ReferralCode, request: HttpRequest) -> b
 
 def record_hit(referral_code: ReferralCode, door: Door, request: HttpRequest) -> None:
     machine_fetch = is_machine_fetch(request)
-    try:
-        if is_hit_log_throttled(referral_code, request):
-            return
-        with transaction.atomic():
-            ReferralCodeHit._base_manager.create(
-                site_id=referral_code.site_id,
-                referral_code=referral_code,
-                door=door,
-                is_machine_fetch=machine_fetch,
+    if is_hit_log_throttled(referral_code, request):
+        return
+    with best_effort_write():
+        ReferralCodeHit._base_manager.create(
+            site_id=referral_code.site_id,
+            referral_code=referral_code,
+            door=door,
+            is_machine_fetch=machine_fetch,
+        )
+        if not machine_fetch:
+            ReferralCode._base_manager.filter(pk=referral_code.pk).update(
+                hit_count=F("hit_count") + 1, last_hit_at=timezone.now()
             )
-            if not machine_fetch:
-                ReferralCode._base_manager.filter(pk=referral_code.pk).update(
-                    hit_count=F("hit_count") + 1, last_hit_at=timezone.now()
-                )
-    except DatabaseError as exc:
-        sentry_sdk.capture_exception(exc)

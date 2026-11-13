@@ -20,7 +20,7 @@ from django.contrib.sessions.backends.db import SessionStore
 from django.core import mail
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.db import connection
+from django.db import DatabaseError, connection
 from django.test import Client, RequestFactory, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
@@ -37,6 +37,8 @@ from freedom_ls.accounts.models import LegalConsent, User
 from freedom_ls.accounts.tests._auth_page_helpers import _next_param
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
+from freedom_ls.referral_tracking.factories import AttributionTouchFactory
+from freedom_ls.referral_tracking.models import Conversion, ConversionKind, TouchSource
 from freedom_ls.tests.app_guards import app_not_installed
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.images import png_bytes
@@ -4825,3 +4827,105 @@ def test_reposting_a_new_address_another_post_already_stored_sends_nothing(
         _post_details(client, course, email="new@example.com")
 
     assert mail.outbox == []
+
+
+@pytest.mark.django_db
+class TestApplyConversion:
+    """Starting an application records one referral conversion for the new row."""
+
+    def test_starting_an_application_writes_one_course_application_conversion(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        course = CourseFactory()
+        client.force_login(user)
+
+        client.post(_apply_url(course))
+
+        conversion = Conversion._base_manager.get(user=user)
+        app = CourseApplication.objects.get(user=user, course=course)
+        assert conversion.kind == ConversionKind.COURSE_APPLICATION
+        assert conversion.target == app
+        assert conversion.occurred_at == app.created_at
+        assert conversion.target_label == course.title
+
+    def test_visit_with_an_existing_application_writes_no_conversion(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        course = CourseFactory()
+        CourseApplicationFactory(user=user, course=course)
+        client.force_login(user)
+
+        client.post(_apply_url(course))
+
+        assert not Conversion._base_manager.exists()
+
+    def test_anonymous_start_writes_no_conversion(self, client, gated_course):
+        _post_details(client, gated_course)
+
+        client.post(_apply_url(gated_course))
+
+        assert not Conversion._base_manager.exists()
+
+    def test_tracked_landing_on_a_form_course_freezes_its_code(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+        user = UserFactory()
+        client.force_login(user)
+
+        client.get(_apply_url(course), {"ref": "A"})
+
+        conversion = Conversion._base_manager.get(user=user)
+        assert (conversion.first_referral_code, conversion.last_referral_code) == (
+            "A",
+            "A",
+        )
+
+    def test_first_and_last_codes_come_from_the_earliest_and_latest_touches(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        course = CourseFactory()
+        AttributionTouchFactory(
+            user=user,
+            referral_code="A",
+            occurred_at=timezone.now() - timedelta(days=21),
+            recorded_via=TouchSource.SIGNUP_FLUSH,
+        )
+        AttributionTouchFactory(
+            user=user,
+            referral_code="B",
+            occurred_at=timezone.now() - timedelta(days=1),
+            recorded_via=TouchSource.SIGNUP_FLUSH,
+        )
+        client.force_login(user)
+
+        client.post(_apply_url(course))
+
+        conversion = Conversion._base_manager.get(user=user)
+        assert (conversion.first_referral_code, conversion.last_referral_code) == (
+            "A",
+            "B",
+        )
+
+    def test_failed_conversion_write_leaves_the_application_and_the_redirect(
+        self, client, mock_site_context, mocker
+    ):
+        user = UserFactory()
+        course = CourseFactory()
+        client.force_login(user)
+        mocker.patch.object(
+            Conversion._base_manager,
+            "get_or_create",
+            side_effect=DatabaseError("boom"),
+        )
+        mocker.patch("freedom_ls.referral_tracking.best_effort.sentry_sdk")
+
+        response = client.post(_apply_url(course))
+
+        app = CourseApplication.objects.get(user=user, course=course)
+        assert response["Location"] == reverse(
+            "course_applications:status", kwargs={"pk": app.pk}
+        )
