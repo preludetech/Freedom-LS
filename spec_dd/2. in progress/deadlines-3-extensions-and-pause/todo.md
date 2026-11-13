@@ -18,8 +18,8 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
-- [ ] (user) Decide what to do about QA bug: planned-resume date shown with a midnight time on the dashboard card, all-courses row, course detail callout and admin pause line (TDD: failing test first, then fix)
-- [ ] (user) Decide what to do about QA bug: admin effective deadlines read '(+1 days)' for a one-day shift (TDD: failing test first, then fix)
+- [x] (user) Decide what to do about QA bug: planned-resume date shown with a midnight time on the dashboard card, all-courses row, course detail callout and admin pause line (TDD: failing test first, then fix)
+- [x] (user) Decide what to do about QA bug: admin effective deadlines read '(+1 days)' for a one-day shift (TDD: failing test first, then fix)
 - [ ] (user) Fix the tests the full run after the QA fixes left failing: freedom_ls/audit_log/tests/test_actions.py::test_course_progress_actions_describe_their_details (7 cases, 'Mock' object is not iterable under -n 4; pass alone)
 
 ## 4. Documentation and pull request
