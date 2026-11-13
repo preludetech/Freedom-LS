@@ -334,9 +334,26 @@ class RunState:
     crash_retried: bool = False  # any pytest attempt of this run crashed
     # The latest pytest attempt exited on its own without starting a session.
     exited_before_session: bool = False
+    attempt: int = 0  # the number of the latest pytest attempt
+    # Node id -> the pytest attempts in which its worker died while running it.
+    crashes: dict[str, set[int]] = field(default_factory=dict)
 
     def unfinished(self) -> set[str]:
         return self.collected - self.outcomes.keys()
+
+    def crashed_every_attempt(self) -> set[str]:
+        """Tests whose worker died while running them in every pytest attempt.
+
+        One attempt proves nothing. A test that takes its worker down again after the
+        retries have halved the worker count is treated as broken, not as short of memory.
+        """
+        if self.attempt < 2:
+            return set()
+        return {
+            nodeid
+            for nodeid, attempts in self.crashes.items()
+            if len(attempts) == self.attempt and nodeid not in self.outcomes
+        }
 
 
 def parse_record_line(line: str, is_last: bool) -> dict[str, object] | None:
@@ -360,12 +377,17 @@ def apply_event(event: dict[str, object], state: RunState) -> None:
         # The crash facts describe the latest pytest attempt only.
         state.crashed_reports = 0
         state.session_finished = False
+        number = event.get("n")
+        if isinstance(number, int):
+            state.attempt = number
     elif kind == "collected" and isinstance(nodeids, list):
         state.collected.update(str(item) for item in nodeids)
     elif kind == "outcome" and isinstance(nodeid, str) and isinstance(outcome, str):
         state.outcomes.setdefault(nodeid, outcome)
     elif kind == "crashed":
         state.crashed_reports += 1
+        if isinstance(nodeid, str):
+            state.crashes.setdefault(nodeid, set()).add(state.attempt)
     elif kind == "finished":
         state.session_finished = True
 
@@ -594,6 +616,13 @@ def run_with_retries(
         if only_file is not None:
             only_file.unlink(missing_ok=True)
             LIVE_NODE_ID_FILES.remove(only_file)
+    repeat_crashers = state.crashed_every_attempt()
+    if repeat_crashers:
+        state.outcomes.update(dict.fromkeys(repeat_crashers, "failed"))
+        print(
+            "run: tests that crashed their xdist worker in every pytest attempt: "
+            f"{len(repeat_crashers)} (counted as failed)"
+        )
     label, exit_code = verdict(state, returncode)
     print_closing_lines(state, worker_counts, elapsed_s, label)
     if label == "PASS":

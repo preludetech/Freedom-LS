@@ -1339,14 +1339,34 @@ def test_genuine_failure_has_exactly_one_outcome_line_in_the_kept_record(
     assert len(outcomes) == 1
 
 
-def test_worker_killed_every_time_ends_with_result_incomplete(
+def test_worker_killed_by_the_same_test_every_time_ends_with_result_fail(
     crash_every_time_run: RealRun,
 ) -> None:
-    assert "run: RESULT INCOMPLETE" in crash_every_time_run.lines
+    assert "run: RESULT FAIL" in crash_every_time_run.lines
 
 
-def test_worker_killed_every_time_exits_75(crash_every_time_run: RealRun) -> None:
-    assert crash_every_time_run.result.returncode == 75
+def test_worker_killed_by_the_same_test_every_time_exits_1(
+    crash_every_time_run: RealRun,
+) -> None:
+    assert crash_every_time_run.result.returncode == 1
+
+
+def test_worker_killed_by_the_same_test_every_time_counts_that_test_as_failed(
+    crash_every_time_run: RealRun,
+) -> None:
+    assert (
+        "run: tests 4 collected, 4 finished, 1 failed, 0 unfinished"
+        in crash_every_time_run.lines
+    )
+
+
+def test_worker_killed_by_the_same_test_every_time_says_how_many_tests_did_it(
+    crash_every_time_run: RealRun,
+) -> None:
+    assert (
+        "run: tests that crashed their xdist worker in every pytest attempt: 1 "
+        "(counted as failed)" in crash_every_time_run.lines
+    )
 
 
 def test_worker_killed_every_time_names_the_attempt_out_of_the_total(
