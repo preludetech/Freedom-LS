@@ -1,9 +1,11 @@
-<c-vars value="" />
+<c-vars value="" short="" />
 {% comment %}
 A date as FLS writes one: "3 Nov 2026", in the current time zone. Renders "-" without a value.
+With short, the day and month only, "3 Nov", keeping the year when it is not this year.
 The format lives in freedom_ls/base/date_display.py; for a deadline shown in the viewer's own
 zone, use {% local_time %} instead.
 
 Usage: <c-date :value="learner.created_at" />
+       <c-date :value="pause.planned_resume_on" short />
 {% endcomment %}
-{% load fls_base_filters %}{% if value %}<time datetime="{{ value|date:'Y-m-d' }}">{{ value|display_date }}</time>{% else %}-{% endif %}
+{% load fls_base_filters %}{% if value %}<time datetime="{{ value|date:'Y-m-d' }}">{% if short %}{{ value|display_short_date }}{% else %}{{ value|display_date }}{% endif %}</time>{% else %}-{% endif %}

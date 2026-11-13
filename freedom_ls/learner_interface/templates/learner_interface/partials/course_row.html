@@ -41,7 +41,7 @@ frees the horizontal space that clipped "Details" off narrow viewports.
 Required context: course (listing_status, slug, accent_slot_key, icon,
 icon_fallback, title, progress_percentage, next_up_url, next_up_title,
 missed_deadline, next_deadline, access_ends_at, access_ended_at, paused_at,
-planned_resume_at, access_badge, current_price,
+planned_resume_on, access_badge, current_price,
 card_organisation), user and
 show_time_zone_to_learners.
 {% endcomment %}
@@ -64,7 +64,7 @@ show_time_zone_to_learners.
         {% include "learner_interface/partials/course_row_eyebrow_left.html" with organisation=course.card_organisation %}
         <div class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
             {% if course.paused_at %}
-                {% include "learner_interface/partials/course_status_eyebrow.html" with status="paused" planned_resume_at=course.planned_resume_at with_icon=True as_chip=True %}
+                {% include "learner_interface/partials/course_status_eyebrow.html" with status="paused" planned_resume_on=course.planned_resume_on with_icon=True as_chip=True %}
             {% elif course.listing_status != "not_registered" and not course.access_ended_at %}
                 {% include "learner_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True as_chip=True %}
             {% elif not user.is_authenticated and course.access_badge %}

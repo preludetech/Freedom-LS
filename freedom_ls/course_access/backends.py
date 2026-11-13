@@ -27,9 +27,8 @@ from freedom_ls.learner_management.utils import is_registered_for_course
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from datetime import datetime
+    from datetime import date, datetime
     from uuid import UUID
-    from zoneinfo import ZoneInfo
 
     from django.contrib.auth.models import AnonymousUser
     from django.db.models import QuerySet
@@ -76,10 +75,10 @@ class CourseAccessDecision:
     access_ended_at: datetime | None = None
     after_access_ended: str | None = None
     # Set only for a registered learner whose record has an open pause: when it began and
-    # the instant it is planned to end, if one was given. Content is withdrawn then and
+    # the day it is planned to end, if one was given. Content is withdrawn then and
     # access_ended_at is None, because a pause stops the clock instead of ending access.
     paused_at: datetime | None = None
-    planned_resume_at: datetime | None = None
+    planned_resume_on: date | None = None
 
 
 @dataclass(frozen=True)
@@ -594,7 +593,7 @@ def _ended_or_none(
 
 
 def _paused(
-    inner_decision: CourseAccessDecision, pause: CoursePause, tz: ZoneInfo
+    inner_decision: CourseAccessDecision, pause: CoursePause
 ) -> CourseAccessDecision:
     """The inner decision with content withdrawn because the record is paused. The funnel
     copy stays, as it does for an ended decision."""
@@ -605,7 +604,7 @@ def _paused(
         can_self_register=False,
         can_access_content=False,
         paused_at=pause.started_at,
-        planned_resume_at=pause.planned_resume_instant(tz),
+        planned_resume_on=pause.planned_resume_on,
     )
 
 
@@ -636,7 +635,6 @@ class DeadlineEnforcingBackend(CourseAccessBackend):
         from freedom_ls.deadlines.queries import open_pause, pauses_for
         from freedom_ls.deadlines.resolver import course_deadlines
         from freedom_ls.learner_progress.queries import course_progress_for
-        from freedom_ls.site_aware_models.time_zones import site_time_zone
 
         if not inner_decision.can_access_content:
             return None
@@ -648,7 +646,7 @@ class DeadlineEnforcingBackend(CourseAccessBackend):
         pauses = pauses_for([record])
         pause = open_pause(record, now, pauses=pauses)
         if pause is not None:
-            return _paused(inner_decision, pause, site_time_zone(record.site))
+            return _paused(inner_decision, pause)
         policy = get_deadline_policy().resolve(record)
         # Nothing can end, so the time limit is not read.
         if not policy.end_course_access:
@@ -691,7 +689,6 @@ class DeadlineEnforcingBackend(CourseAccessBackend):
         from freedom_ls.deadlines.queries import open_pauses_for, pauses_for
         from freedom_ls.deadlines.resolver import course_deadlines_for
         from freedom_ls.learner_progress.queries import course_progress_by_course_for
-        from freedom_ls.site_aware_models.time_zones import site_time_zone
 
         decisions = self._inner.get_access_many(user=user, courses=courses)
         if not user.is_authenticated:
@@ -711,7 +708,7 @@ class DeadlineEnforcingBackend(CourseAccessBackend):
             pause = open_by_record.get(record.pk)
             if pause is not None:
                 decisions[record.course_id] = _paused(
-                    decisions[record.course_id], pause, site_time_zone(record.site)
+                    decisions[record.course_id], pause
                 )
         unpaused = [r for r in records.values() if r.pk not in open_by_record]
         policies = get_deadline_policy().resolve_for(unpaused)

@@ -1159,6 +1159,25 @@ def test_effective_deadlines_marks_a_shifted_deadline_with_the_days_it_moved(
 
 
 @pytest.mark.django_db
+def test_effective_deadlines_writes_a_one_day_shift_in_the_singular(
+    staff_client, mock_site_context
+) -> None:
+    record, item = _record_with_item()
+    item.due_date = date(2026, 3, 14)
+    item.save()
+    CoursePauseFactory(
+        course_progress=record,
+        started_at=timezone.now() - timedelta(hours=23),
+        ended_at=timezone.now() - timedelta(hours=1),
+    )
+
+    body = _progress_page(staff_client, record).content.decode()
+
+    assert "(+1 day)" in body
+    assert "(+1 days)" not in body
+
+
+@pytest.mark.django_db
 def test_effective_deadlines_says_when_the_course_is_paused(
     staff_client, mock_site_context
 ) -> None:
@@ -1193,15 +1212,15 @@ def test_effective_deadlines_writes_the_pause_start_in_the_site_zone(
 def test_effective_deadlines_names_the_planned_resume_of_a_paused_course(
     staff_client, mock_site_context
 ) -> None:
+    SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
     record, _ = _record_with_item()
-    CoursePauseFactory(
-        course_progress=record,
-        planned_resume_on=(timezone.now() + timedelta(days=5)).date(),
-    )
+    CoursePauseFactory(course_progress=record, planned_resume_on=date(2999, 1, 5))
 
     body = _progress_page(staff_client, record).content.decode()
 
-    assert ", until " in body.split("Paused since ")[1].split("</p>")[0]
+    assert (
+        body.split("Paused since ")[1].split("</p>")[0].endswith(", until 5 Jan 2999")
+    )
 
 
 def _detail_actions(client: Client, record: CourseProgress) -> dict[str, str]:

@@ -31,7 +31,9 @@ from django.utils.html import format_html, format_html_join
 from django.utils.safestring import SafeString
 
 from freedom_ls.accounts.models import User
+from freedom_ls.base.date_display import display_date
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
+from freedom_ls.deadlines.actions import days_text
 from freedom_ls.deadlines.admin_views import extend_view, pause_view, resume_view
 from freedom_ls.deadlines.consequences import access_end_instant
 from freedom_ls.deadlines.forms import CollectionItemChoiceField
@@ -383,17 +385,17 @@ def _deadline_line(label: str, resolved: ResolvedDeadline) -> tuple[str, str, st
     source = SOURCE_LABELS[resolved.source] if resolved.source is not None else ""
     text = site_zone_text(resolved.due_at) if resolved.due_at else ""
     if resolved.shift_days:
-        text += f" (+{resolved.shift_days} days)"
+        text += f" (+{days_text(resolved.shift_days)})"
     return (label, text, source)
 
 
 def _paused_line(pause: CoursePause | None, tz: ZoneInfo) -> SafeString:
     if pause is None:
         return format_html("{}", "")
-    until = pause.end_instant(tz)
     text = f"Paused since {site_zone_text(pause.started_at.astimezone(tz))}"
-    if until is not None:
-        text += f", until {site_zone_text(until)}"
+    # The pause shown is the open one, so it ends on its planned resume day, a date.
+    if pause.planned_resume_on is not None:
+        text += f", until {display_date(pause.planned_resume_on)}"
     return format_html("<p>{}</p>", text)
 
 

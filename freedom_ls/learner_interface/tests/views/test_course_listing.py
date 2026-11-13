@@ -2275,8 +2275,10 @@ def test_all_courses_row_says_paused_until_the_planned_resume(
         planned_resume_on=datetime.date(2026, 12, 12),
     )
 
+    text = " ".join(re.sub(r"<[^>]+>", " ", html).split())
     assert 'data-testid="course-status-paused"' in html
-    assert "Paused until 12 Dec" in " ".join(re.sub(r"<[^>]+>", " ", html).split())
+    assert "Paused until 12 Dec" in text
+    assert "Paused until 12 Dec," not in text
 
 
 @pytest.mark.django_db
