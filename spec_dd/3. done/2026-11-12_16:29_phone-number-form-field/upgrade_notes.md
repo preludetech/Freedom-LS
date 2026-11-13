@@ -26,6 +26,12 @@ refuses a number that is not valid for the chosen country. New answers are store
 Phone answers stored before this change are not converted. They display and export as typed, and
 are validated only if the learner submits that question again.
 
+`freedom_ls.base.csv_safety.escape_csv_formula` no longer escapes a phone number in E.164 form: a
+value that is `+` followed by 7 to 15 ASCII digits and nothing else comes back unchanged, with no
+leading `'`. Every other value that starts with a formula trigger is escaped as before. A project
+that calls `escape_csv_formula` in its own CSV export and tests the escaping of a `+27821234567`
+style value must expect it unescaped.
+
 ## Manual steps
 
 - Run `uv sync` to install `phonenumberslite` (new dependency, `>=9.0.43`). Keeping it current keeps
