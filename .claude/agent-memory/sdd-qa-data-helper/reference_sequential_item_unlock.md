@@ -32,3 +32,14 @@ Lightbox image topic for QA: `content-widgets-demo-reference` item 2 "Media"
 
 See [[reference_course_player_learner_command]] and [[reference_completing_a_course]]
 for the resume-pointer (`last_accessed_item` GenericFK) and missing-site gotchas.
+
+## start_form -> /detail/ redirect = no registration (not sequential gating)
+`form_start` redirects to `course_detail` when the access decision has
+`can_access_content=False` and no `access_ended_at`, i.e. the learner has no
+`LearnerCourseRegistration` (model is `learner_management.LearnerCourseRegistration`,
+FKs `learner`/`course`; `UserCourseRegistration` no longer exists). Superuser
+demodev@email.com is NOT exempt. A sequential block redirects elsewhere. Fix used for
+`functionality-demo-show-end-with-quiz` item 2: `LearnerCourseRegistrationFactory`
+(registration signal creates CourseProgress on commit) + `TopicProgressFactory` for
+item 1, then set `complete_time` and `.save()`. Any HTTP_HOST works in dev
+(FORCE_SITE_NAME=DemoDev).
