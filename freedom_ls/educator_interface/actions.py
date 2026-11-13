@@ -753,9 +753,6 @@ class DeactivateCohortRegistrationAction(
     def _registration(self, ctx: PanelContext) -> CohortCourseRegistration:
         return cast(CohortCourseRegistration, self.get_row_object(ctx))
 
-    def get_hidden_fields(self, ctx: PanelContext) -> dict[str, str]:
-        return {"registration": str(self._registration(ctx).pk)}
-
     def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
         cohort = cast(Cohort, ctx.instance)
         registration = self._registration(ctx)
@@ -851,9 +848,6 @@ class DeactivateRegistrationAction(EducatorReasonMixin, ConfirmAction):
     def _registration(self, ctx: PanelContext) -> LearnerCourseRegistration:
         return cast(LearnerCourseRegistration, self.get_row_object(ctx))
 
-    def get_hidden_fields(self, ctx: PanelContext) -> dict[str, str]:
-        return {"registration": str(self._registration(ctx).pk)}
-
     def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
         learner = cast(Learner, ctx.instance)
         registration = self._registration(ctx)
@@ -912,9 +906,6 @@ class ReactivateRegistrationAction(ConfirmAction):
 
     def _registration(self, ctx: PanelContext) -> LearnerCourseRegistration:
         return cast(LearnerCourseRegistration, self.get_row_object(ctx))
-
-    def get_hidden_fields(self, ctx: PanelContext) -> dict[str, str]:
-        return {"registration": str(self._registration(ctx).pk)}
 
     def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
         registration = self._registration(ctx)
@@ -2725,9 +2716,6 @@ class StaffMemberStateAction(StaffRowMixin, ConfirmAction):
 
     renders_in_footer = False
     capability = CHANGE_STAFF_MEMBER
-
-    def get_hidden_fields(self, ctx: PanelContext) -> dict[str, str]:
-        return {"user": _action_params(ctx.request).get("user", "")}
 
     def permission_object(self, ctx: PanelContext) -> Model | None:
         return _organisation(ctx)
