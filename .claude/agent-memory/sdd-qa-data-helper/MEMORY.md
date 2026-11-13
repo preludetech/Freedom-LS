@@ -490,3 +490,5 @@ files it as a bug. Verify it by diffing `values("id","progress_percentage","comp
 - [reference_bulk_threshold_learners.md](reference_bulk_threshold_learners.md) — 210 extra active demodev learners qa_bulk_001..210 to exceed BULK_BACKGROUND_THRESHOLD; script + footer check
 - [reference_staff_admin_scenario_leftovers.md](reference_staff_admin_scenario_leftovers.md) — staff-admin seed leaves browser-added grants/staff rows behind; reset diff recipe; Cohort W sole-admin script (Wanda)
 - [reference_profile_picture_messaging_scenario.md](reference_profile_picture_messaging_scenario.md) — qa_create_profile_picture_messaging_scenario: Lena learner + admin cohort_admin cohort + 1 message; also does the demodev@ StaffMember/site_admin/org_admin baseline grants; User has no get_full_name (use display_name)
+
+- Dev TIME_ZONE is UTC, so `timezone.localdate()` can lag the Africa/Johannesburg site date by a day (after 22:00 UTC). When a request says "today" in the site zone, compute it with `datetime.now(ZoneInfo('Africa/Johannesburg')).date()`.
