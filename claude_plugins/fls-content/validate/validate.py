@@ -776,6 +776,21 @@ def _shown_relative_to(path: Path, directory: Path) -> str:
     return str(path.relative_to(base)) if path.is_relative_to(base) else str(path)
 
 
+# A child named twice in one children: list, top-level or nested.
+_NAMED_TWICE = {"problem": "this child is named twice", "fix": "Name each child once."}
+
+
+def _repeated_indices(paths: Sequence[Path]) -> set[int]:
+    """The positions whose path already appeared earlier in the list."""
+    seen: set[Path] = set()
+    repeated: set[int] = set()
+    for index, path in enumerate(paths):
+        if path in seen:
+            repeated.add(index)
+        seen.add(path)
+    return repeated
+
+
 class _ParsedByPath:
     """The parsed items by resolved key, reaching outside the validated path when an entry
     does. A course may place a part from a sibling directory; validating the course's
@@ -858,10 +873,15 @@ def _nested_list_errors(
         _shown_relative_to(p, target.file_path.parent) for p in part_children
     )
     errors: list[str] = []
-    seen: set[Path] = set()
-    for nested_index, nested in enumerate(entry.children or []):
+    nested_entries = entry.children or []
+    resolved_paths = [
+        resolve_author_path(target.file_path, nested.path) for nested in nested_entries
+    ]
+    repeated = _repeated_indices(resolved_paths)
+    for nested_index, (nested, resolved) in enumerate(
+        zip(nested_entries, resolved_paths, strict=True)
+    ):
         nested_field = f"{field}[{nested_index}]"
-        resolved = resolve_author_path(target.file_path, nested.path)
         child = by_path.get(resolved)
         if resolved not in known:
             errors.append(
@@ -884,16 +904,8 @@ def _nested_list_errors(
                     fix="Name the part's topics and forms.",
                 )
             )
-        elif resolved in seen:
-            errors.append(
-                error(
-                    nested_field,
-                    str(nested.path),
-                    problem="this child is named twice",
-                    fix="Name each child once.",
-                )
-            )
-        seen.add(resolved)
+        elif nested_index in repeated:
+            errors.append(error(nested_field, str(nested.path), **_NAMED_TWICE))
     return errors
 
 
@@ -908,22 +920,21 @@ def validate_children_lists(all_parsed: Sequence[BaseBaseContentModel]) -> list[
     for item in all_parsed:
         if not isinstance(item, (Course, CoursePart)):
             continue
-        seen: set[Path] = set()
-        for index, entry in enumerate(item.children or []):
-            resolved = resolve_author_path(item.file_path, entry.path)
-            if resolved in seen:
-                errors.append(
-                    _reference_error(
-                        item.file_path,
-                        item.content_type,
-                        f"children[{index}]",
-                        str(entry.path),
-                        problem="this child is named twice",
-                        fix="Name each child once.",
-                        header="Invalid children list",
-                    )
-                )
-            seen.add(resolved)
+        entries = item.children or []
+        repeated = _repeated_indices(
+            [resolve_author_path(item.file_path, entry.path) for entry in entries]
+        )
+        errors.extend(
+            _reference_error(
+                item.file_path,
+                item.content_type,
+                f"children[{index}]",
+                str(entries[index].path),
+                **_NAMED_TWICE,
+                header="Invalid children list",
+            )
+            for index in sorted(repeated)
+        )
     return errors
 
 
