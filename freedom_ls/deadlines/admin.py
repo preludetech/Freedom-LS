@@ -251,15 +251,16 @@ class DeadlineOverrideInline(TabularInline):
         formset.content_defaults = self.placement_defaults(self.parent_course(request))
         return formset
 
-    def placement_defaults(self, course: Course | None) -> ContentDefaults:
+    def placement_defaults(self, course: Course | None) -> ContentDefaults | None:
         """The course's content defaults, read on first use by whichever caller comes
         first, so a column rendered before the formset is built still reads them once
         rather than once per row. Every row on the page is in the parent's course, so the
-        first caller's course is the page's. Empty with no course, as on the add page."""
+        first caller's course is the page's. None with no course, as on the add page, so
+        each row reads its own course rather than finding no defaults."""
+        if course is None:
+            return None
         if self.content_defaults is None:
-            self.content_defaults = (
-                content_defaults_for_course(course.pk) if course is not None else {}
-            )
+            self.content_defaults = content_defaults_for_course(course.pk)
         return self.content_defaults
 
     def formfield_for_foreignkey(

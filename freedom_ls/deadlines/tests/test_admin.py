@@ -38,6 +38,7 @@ from freedom_ls.deadlines.models import (
     LearnerDeadlineOverride,
     SiteDeadlineConfig,
 )
+from freedom_ls.deadlines.resolver import DeadlineValue
 from freedom_ls.learner_management.factories import CohortCourseRegistrationFactory
 from freedom_ls.learner_management.models import CohortCourseRegistration
 from freedom_ls.learner_progress.factories import CourseProgressFactory
@@ -1124,3 +1125,20 @@ def test_a_negative_grace_window_is_a_field_error_on_every_config_admin(
     assert response.context["adminform"].form.errors["grace_window"] == [
         "The grace window cannot be negative."
     ]
+
+
+@pytest.mark.django_db
+def test_no_course_leaves_the_content_defaults_unread(mock_site_context) -> None:
+    """With no course there is nothing to read, so the defaults stay unfetched and a row
+    falls back to its own course, rather than reading an empty mapping as 'this course has
+    no defaults'."""
+    registration, _, row = _registration_with_part_row(placement_days=3)
+    inline = CohortDeadlineOverrideInline(CohortCourseRegistration, admin.site)
+
+    assert inline.placement_defaults(None) is None
+    defaults = inline.placement_defaults(registration.course)
+
+    assert defaults is not None
+    assert defaults[row.pk] == DeadlineValue(
+        DeadlineKind.RELATIVE, due_days_after_registration=3
+    )
