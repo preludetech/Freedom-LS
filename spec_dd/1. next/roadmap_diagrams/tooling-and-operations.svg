@@ -11,8 +11,10 @@
 <rect x="684.0" y="58.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <text x="694.0" y="80.0" fill="#111827">forced-site-name-for-host-</text>
 <text x="694.0" y="95.0" fill="#111827">based-site-lookup</text>
-<rect x="24.0" y="126.0" width="250" height="35" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
-<text x="34.0" y="148.0" fill="#111827">mega-qa</text>
+<rect x="24.0" y="126.0" width="250" height="35" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+<text x="34.0" y="148.0" fill="#111827">claude-ram-usage</text>
+<rect x="354.0" y="126.0" width="250" height="35" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+<text x="364.0" y="148.0" fill="#111827">mega-qa</text>
 <rect x="24.0" y="185" width="16" height="12" rx="3" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <text x="46.0" y="195" fill="#374151">in progress</text>
 <rect x="154.3" y="185" width="16" height="12" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
