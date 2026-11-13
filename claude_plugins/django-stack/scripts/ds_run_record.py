@@ -50,9 +50,8 @@ def pytest_collection_modifyitems(
 class Recorder:
     """Appends one JSON line per event and flushes it, so a killed run loses nothing written."""
 
-    def __init__(self, handle: TextIO, uses_xdist: bool) -> None:
+    def __init__(self, handle: TextIO) -> None:
         self._handle = handle
-        self._uses_xdist = uses_xdist
         self._collected_written = False
         self._final: set[str] = set()
         self._worst: dict[str, str] = {}
@@ -72,8 +71,12 @@ class Recorder:
             self._write({"event": "collected", "nodeids": list(ids)})
 
     def pytest_collection_finish(self, session: pytest.Session) -> None:
-        # Under xdist the controller collects nothing; its workers report through the hook above.
-        if self._uses_xdist or self._collected_written:
+        # A distributing controller collects nothing; its workers report through the hook
+        # above. xdist registers `dsession` only when it distributes: a `--dist` mode with no
+        # workers runs in this process and collects here.
+        if self._collected_written or session.config.pluginmanager.hasplugin(
+            "dsession"
+        ):
             return
         self._collected_written = True
         self._write(
@@ -109,8 +112,5 @@ def pytest_configure(config: pytest.Config) -> None:
     # A process with `workerinput` is an xdist worker: the controller sees every report, so
     # recording there too would write each outcome twice.
     if record_path and not hasattr(config, "workerinput"):
-        uses_xdist = getattr(config.option, "dist", "no") != "no"
         handle = open(record_path, "a", encoding="utf-8")  # noqa: SIM115 - closed at session finish
-        config.pluginmanager.register(
-            Recorder(handle, uses_xdist), "ds_run_record_recorder"
-        )
+        config.pluginmanager.register(Recorder(handle), "ds_run_record_recorder")

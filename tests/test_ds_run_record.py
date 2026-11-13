@@ -59,6 +59,8 @@ ALL_NODEIDS = [
 ]
 
 XDIST = ["-p", "xdist", "-n", "2"]
+# A distribution mode with no workers: xdist is loaded and does not distribute.
+XDIST_WITHOUT_WORKERS = ["-p", "xdist", "--dist", "loadfile"]
 
 
 def run_pytest(project: Path, *args: str) -> tuple[list[dict[str, object]], str]:
@@ -117,7 +119,11 @@ def test_each_test_gets_one_outcome_line(
     assert matching == [expected]
 
 
-@pytest.mark.parametrize("extra", [[], XDIST], ids=["no_xdist", "xdist"])
+@pytest.mark.parametrize(
+    "extra",
+    [[], XDIST, XDIST_WITHOUT_WORKERS],
+    ids=["no_xdist", "xdist", "xdist_without_workers"],
+)
 def test_collected_line_lists_every_nodeid_once(
     tmp_path: Path, extra: list[str]
 ) -> None:
