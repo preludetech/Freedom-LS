@@ -18,6 +18,7 @@ changed_settings:
   - STORAGES  # hard: a hand-built dict must declare 'profile_pictures' or the process fails at model import
   - AWS_S3_PROFILE_PICTURES_BUCKET_NAME  # hard: check --deploy reports freedom_ls_deployment.E003 (or E002) without it
   - SECURE_CSP_REPORT_ONLY  # optional: only a project that defines its own CSP dict
+  - AWS_S3_CUSTOM_DOMAIN  # hard for a deployment that set it: private aliases no longer read it, and their own CUSTOM_DOMAIN trips E004
 requires_package_upgrade: false
 changed_packages: []
 requires_npm_install: false
@@ -45,8 +46,15 @@ through a new fixed storage alias, `profile_pictures`, as 400×400 WebP files un
   and `GENERATED` use. When the alias falls back to the shared `AWS_STORAGE_BUCKET_NAME`,
   `manage.py check --deploy` reports `freedom_ls_deployment.E003`. When no bucket is set at all and
   `DEBUG` is off, it reports `freedom_ls_deployment.E002`. The same per-purpose variables as the
-  other aliases apply (`AWS_S3_PROFILE_PICTURES_ENDPOINT_URL`, `..._CUSTOM_DOMAIN` and so on), each
-  falling back to its shared `AWS_S3_*` value.
+  other aliases apply (`AWS_S3_PROFILE_PICTURES_ENDPOINT_URL`, `..._REGION_NAME` and so on), each
+  falling back to its shared `AWS_S3_*` value. The custom domain is the exception; see below.
+- **The shared `AWS_S3_CUSTOM_DOMAIN` no longer reaches a private alias.** django-storages mints
+  unsigned, never-expiring URLs on a custom domain unless a CloudFront signer is configured. The
+  shared value now reaches only `public` and `certificates`; `course_media`, `user_uploads`,
+  `profile_pictures` and `reports` ignore it and serve signed bucket URLs. A deployment that set
+  `AWS_S3_CUSTOM_DOMAIN` to front its private buckets sees those URLs change host. Setting
+  `AWS_S3_<PURPOSE>_CUSTOM_DOMAIN` on a private alias is now reported by `check --deploy` as
+  `freedom_ls_deployment.E004`.
 
 ## Manual steps
 
