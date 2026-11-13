@@ -9,9 +9,10 @@ Usage:
 The command must start with `pytest`, `python -m pytest`, `python3 -m pytest`,
 `uv run pytest` or `uv run --directory <dir> pytest`; anything else exits 2. When the
 command has an xdist `-n` option, the runner appends its own `-n <k>`, which pytest
-reads last. A pytest attempt that crashes (an xdist worker dies, or the controller is
-killed) is retried for the tests that never finished, and the run ends in one verdict
-line. Setting `DS_TEST_MEMORY_GUARD=off` runs the command unchanged. `--capacity`
+reads last. A number the command gives is a ceiling on `k`, and `-n 0` stays serial.
+A pytest attempt that crashes (an xdist worker dies, or the controller is killed) is
+retried for the tests that never finished, and the run ends in one verdict line. A
+pytest that exits before its session starts (a usage error) is not retried. Setting `DS_TEST_MEMORY_GUARD=off` runs the command unchanged. `--capacity`
 prints how many units of `<unit-mb>` fit in free memory, at least 1.
 
 Each setting comes from its environment variable, then from `[tool.test_tiers.memory]` in
@@ -291,14 +292,35 @@ def wait_for_memory(settings: MemorySettings, ceiling: int, first_attempt: bool)
         time.sleep(scaled(POLL_INTERVAL_S))
 
 
-def has_worker_option(argv: list[str]) -> bool:
-    """True for `-n <x>`, `-n<x>`, `--numprocesses <x>` and `--numprocesses=<x>`."""
-    return any(
-        arg in WORKER_FLAGS
-        or NUMPROCESSES_ATTACHED.fullmatch(arg) is not None
-        or arg.startswith("--numprocesses=")
-        for arg in argv
-    )
+def requested_workers(argv: list[str]) -> str | None:
+    """The worker count the command asks xdist for, or None when it has no worker option.
+
+    Reads `-n <x>`, `-n<x>`, `--numprocesses <x>` and `--numprocesses=<x>`. The last one
+    wins, as it does for pytest.
+    """
+    value: str | None = None
+    for index, arg in enumerate(argv):
+        attached = NUMPROCESSES_ATTACHED.fullmatch(arg)
+        if arg in WORKER_FLAGS:
+            value = argv[index + 1] if index + 1 < len(argv) else ""
+        elif attached is not None:
+            value = attached.group(1)
+        elif arg.startswith("--numprocesses="):
+            value = arg.partition("=")[2]
+    return value
+
+
+def distributes(argv: list[str]) -> bool:
+    """Whether the command runs its tests on xdist workers. `-n 0` asks for none."""
+    return requested_workers(argv) not in (None, "0")
+
+
+def worker_ceiling(argv: list[str], max_workers: int) -> int:
+    """The most workers a run may use: a count the command names is never exceeded."""
+    requested = requested_workers(argv)
+    if requested is not None and requested.isascii() and requested.isdigit():
+        return max(1, min(max_workers, int(requested)))
+    return max_workers
 
 
 def describe_sources(settings: MemorySettings) -> str:
@@ -417,7 +439,7 @@ def attempt_command(
 ) -> list[str]:
     """The pytest command for one attempt: the caller's argv plus the runner's options."""
     command = list(argv)
-    if has_worker_option(argv):
+    if distributes(argv):
         command += ["-n", str(k), "--max-worker-restart=0"]
     command += ["-p", "ds_run_record", f"--ds-record={record}"]
     if only_file is not None:
@@ -700,7 +722,8 @@ def run(argv: list[str]) -> int:
     if mem_available_mb(meminfo_path()) is None:
         print("ram: no /proc/meminfo on this platform; running the command as given")
         return run_plain(argv)
-    k = wait_for_memory(settings, settings.max_workers, first_attempt=True)
+    ceiling = worker_ceiling(argv, settings.max_workers)
+    k = wait_for_memory(settings, ceiling, first_attempt=True)
     record = make_record_file()
     print(
         f"ram: MemAvailable {mem_available_mb(meminfo_path())} MB, "

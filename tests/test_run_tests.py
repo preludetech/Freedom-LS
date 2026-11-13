@@ -205,9 +205,16 @@ def test_ram_line_reports_available_memory_and_worker_count(
 
 @pytest.mark.parametrize(
     "argv",
-    [["pytest", "tests/a.py"], ["pytest", "-x", "--no-cov"]],
+    [
+        ["pytest", "tests/a.py"],
+        ["pytest", "-x", "--no-cov"],
+        ["pytest", "-n", "0"],
+        ["pytest", "-n0"],
+        ["pytest", "--numprocesses=0"],
+        ["pytest", "-n", "auto", "-n", "0"],
+    ],
 )
-def test_command_without_a_worker_option_gets_none(
+def test_command_that_asks_for_no_workers_gets_no_worker_option(
     stub_tools: StubTools, tmp_path: Path, argv: list[str]
 ) -> None:
     # Arrange
@@ -218,6 +225,36 @@ def test_command_without_a_worker_option_gets_none(
 
     # Assert
     assert logged_tokens(stub_tools) == argv
+
+
+@pytest.mark.parametrize(
+    ("argv", "expected_workers"),
+    [
+        (["pytest", "-n", "2"], "2"),
+        (["pytest", "-n2"], "2"),
+        (["pytest", "--numprocesses", "2"], "2"),
+        (["pytest", "--numprocesses=2"], "2"),
+        (["pytest", "-n", "auto", "-n", "2"], "2"),
+        (["pytest", "-n", "8"], "4"),
+    ],
+)
+def test_worker_count_the_command_names_is_a_ceiling(
+    stub_tools: StubTools, tmp_path: Path, argv: list[str], expected_workers: str
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 20_000)
+
+    # Act
+    run_runner(
+        stub_tools,
+        tmp_path,
+        argv,
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        DS_TEST_MAX_WORKERS=4,
+    )
+
+    # Assert
+    assert runner_worker_count(stub_tools) == expected_workers
 
 
 def test_command_with_an_attached_worker_option_gets_the_runner_count_appended(
