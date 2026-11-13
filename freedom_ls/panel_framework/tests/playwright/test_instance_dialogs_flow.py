@@ -105,3 +105,25 @@ def test_instance_dialogs_and_heading(
     expect(modal).to_be_hidden()
     expect(page).to_have_url(f"{base}")
     assert not StubModel.objects.filter(pk=stub.pk).exists()
+
+
+def test_refused_delete_moves_focus_to_its_error_notice(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    """A delete refused on submit re-renders the dialog with an error notice,
+    and focus must land on that notice. It used to fall back to the Cancel
+    button, whose autofocus the swap re-applied after the refusal handler."""
+    stub = make_stub(name="Refused")
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/{stub.pk}/__tabs/details")
+
+    page.get_by_role("button", name="Delete Refused", exact=True).click()
+    dialog = page.locator("#app-modal")
+    expect(dialog.get_by_role("button", name="Cancel")).to_be_focused()
+
+    dialog.get_by_role("button", name="Delete Refused", exact=True).click()
+    notice = dialog.locator("[data-error-summary]")
+    expect(notice).to_contain_text("It still has 1 learner.")
+    expect(notice).to_be_focused()

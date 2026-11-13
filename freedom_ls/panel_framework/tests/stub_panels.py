@@ -459,6 +459,17 @@ class StubDeleteAction(DeleteAction):
         return True
 
 
+class StubRefusedDeleteAction(StubDeleteAction):
+    """A delete that is always refused on submit, as if a dependent row had
+    appeared since the dialog opened."""
+
+    label = "Delete Refused"
+    action_name = "delete_refused"
+
+    def before_delete(self, ctx: PanelContext, instance: Model) -> HttpResponse:
+        return self._blocked_response(ctx, instance, "It still has 1 learner.")
+
+
 class StubConfirmReasonAction(ReasonMixin, ConfirmAction):
     """A test-only confirm dialog with a reason field, reachable by URL."""
 
@@ -493,6 +504,7 @@ class StubDetailsPanel(Panel):
     def get_actions(self) -> list[PanelAction]:
         return [
             StubDeleteAction(success_url="/test-panel/framework/stubs"),
+            StubRefusedDeleteAction(success_url="/test-panel/framework/stubs"),
             StubReadOnlyAction(),
             StubConfirmReasonAction(),
         ]
