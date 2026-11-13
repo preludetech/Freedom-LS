@@ -8,7 +8,7 @@ Run from the FLS `main` worktree. Integrate each completed FLS spec into every c
 
 Inputs from the caller: `$ARGUMENTS`, optional project paths. When given, the run covers only the listed projects whose path matches one of them.
 
-This command runs at **depth 0**, following `claude_plugins/sdd/skills/claude-code-authoring/resources/fanout_recipe.md`. The run is long and the operator answers once and leaves, so every question is **front-loaded** into Step 3, before any project changes. After Step 3 the run asks only the borderline size question in `## Failure handling`, the seeding question for a project that first gets a QA cell from a spec that landed mid-run (Step 5), and the single `/sdd:roadmap` confirmation in `## End of run`. The Permissions section lists the commands that still prompt by design, and Step 3 shows which cells hit them.
+This command runs at **depth 0**, following `claude_plugins/sdd/skills/claude-code-authoring/resources/fanout_recipe.md`. The run is long and the operator answers once and leaves, so every question is **front-loaded** into Step 3, before any project changes. After Step 3 the run asks only the borderline size question in `## Failure handling` and the single `/sdd:roadmap` confirmation in `## End of run`. The Permissions section lists the commands that still prompt by design, and Step 3 shows which cells hit them.
 
 ## Rules
 
@@ -135,16 +135,15 @@ Print, in this order:
 1. One block per project: path, branch, submodule SHA, baseline source and result (`lazy`, `recorded <date>: N failing` or `resumed: N failing`), pending count.
 2. The skipped projects with their reasons.
 3. A matrix with one row per spec: name, completion date, the six flags from its `upgrade_notes.md` frontmatter (`requires_migrations`, `requires_template_review`, `requires_settings_change`, `requires_package_upgrade`, `requires_npm_install`, `requires_tailwind_rebuild`) or `no notes`, and per project `overrides: <paths>` for the paths in `changed_template_paths` that the project overrides, or `-`.
-4. A **will prompt** line per project naming the cells that will stop on a permission prompt and why: `migrate` for `requires_migrations` (or `no notes`), `npm install` for `requires_npm_install`, `seed` for a QA cell whose project may be seeded, and `push` at the end under a push policy. Add one line saying writes into a project prompt unless this session runs in `acceptEdits` mode.
+4. A **will prompt** line per project naming the cells that will stop on a permission prompt and why: `migrate` for `requires_migrations` (or `no notes`), `npm install` for `requires_npm_install`, `seed` for a QA cell, and `push` at the end under a push policy. Add one line saying writes into a project prompt unless this session runs in `acceptEdits` mode.
 
 Then ask, recommended option first, up to four questions per `AskUserQuestion`, in this order:
 
 1. Confirm the plan: yes, or stop.
 2. Push policy: push each project's branch at the end, or leave unpushed.
-3. One question per project with a QA cell pending, meaning a pending spec whose done directory holds a `3*. frontend_qa.md`: may its dev database be seeded, yes or no (no makes that project's QA `skipped`).
-4. One question per matched workaround, as `## Workaround removal` describes.
-5. One question per pull-in card, as `## Pull-in scan` describes.
-6. Any `needs` a `blocked` scan worker listed that the code and the other units' files cannot answer.
+3. One question per matched workaround, as `## Workaround removal` describes.
+4. One question per pull-in card, as `## Pull-in scan` describes.
+5. Any `needs` a `blocked` scan worker listed that the code and the other units' files cannot answer.
 
 Ask item 1 alone first; a stop ends the run before the rest are asked. There is no per-spec confirmation. An unanswered question takes its stated default and is recorded for the report's assumed-defaults section. Write every answer as it arrives to `.sdd-work/update_concrete_answers.md`, one `<question id> | <answer> | answered` or `assumed` line each, and on a resumed run ask only the questions that file lacks. Nothing is written to any project before the confirmation.
 
@@ -181,7 +180,7 @@ The cell result file is `.sdd-work/update_concrete_<project>_<spec>.md`. These a
 
 A cell whose spec has a `3*. frontend_qa.md` in `spec_dd/3. done/<spec-dir>/` runs that plan against the concrete project. The cell's `qa:` value is one of `pass`, `skipped: <reason>` or `bug: see stop card`.
 
-**Skip first.** The cell's QA is `skipped: seeding declined` when the operator answered no to seeding this project's dev database in Step 3. Go straight to the cell's commit.
+**Seeding.** The project's dev database is always seeded for its QA walks. Never ask: it is a disposable development database, and the adapted plan's seed list only adds data.
 
 **Project settings file.** Once per project with a QA cell, before its first one, run:
 
@@ -353,7 +352,7 @@ An unanswered question counts as option 3.
 
 ## Step 5: After the last spec
 
-**Late specs first.** A run takes hours, and specs keep landing on FLS `main` meanwhile. The final sync moves the pointer to `origin/main`, and the next run's Step 2 lists only specs after the pointer, so a spec that landed mid-run and is not integrated now never gets its own cell: no migrate, no settings check, no QA walk. Before item 0, run `git fetch origin main` and Step 2's spec query again. Each new spec joins the run's list and goes through Step 4 for every project that is not parked or skipped, as any other spec does: its own flags, environment step, gate and QA walk. Read its upgrade notes and write its spec diff file first. It takes the Step 3 answers already recorded. A seeding question this project was never asked is asked now, the one exception to the front-loading rule; the workaround and pull-in scans do not re-run. Repeat until a fetch finds no new spec, then continue with item 0.
+**Late specs first.** A run takes hours, and specs keep landing on FLS `main` meanwhile. The final sync moves the pointer to `origin/main`, and the next run's Step 2 lists only specs after the pointer, so a spec that landed mid-run and is not integrated now never gets its own cell: no migrate, no settings check, no QA walk. Before item 0, run `git fetch origin main` and Step 2's spec query again. Each new spec joins the run's list and goes through Step 4 for every project that is not parked or skipped, as any other spec does: its own flags, environment step, gate and QA walk. Read its upgrade notes and write its spec diff file first. It takes the Step 3 answers already recorded; the workaround and pull-in scans do not re-run. Repeat until a fetch finds no new spec, then continue with item 0.
 
 For each project, in this order:
 
