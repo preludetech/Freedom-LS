@@ -26,11 +26,12 @@ from django.forms.formsets import DELETION_FIELD_NAME
 from django.http import HttpRequest, HttpResponseRedirect
 from django.shortcuts import redirect
 from django.urls import URLPattern, path, reverse
-from django.utils import timezone
+from django.utils import formats, timezone
 from django.utils.html import format_html, format_html_join
 from django.utils.safestring import SafeString
 
 from freedom_ls.accounts.models import User
+from freedom_ls.base.date_display import DATE_DISPLAY_FORMAT
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
 from freedom_ls.deadlines.admin_views import extend_view, pause_view, resume_view
 from freedom_ls.deadlines.consequences import access_end_instant
@@ -393,7 +394,16 @@ def _paused_line(pause: CoursePause | None, tz: ZoneInfo) -> SafeString:
     until = pause.end_instant(tz)
     text = f"Paused since {site_zone_text(pause.started_at.astimezone(tz))}"
     if until is not None:
-        text += f", until {site_zone_text(until)}"
+        if (
+            pause.planned_resume_on is not None
+            and until == pause.planned_resume_instant(tz)
+        ):
+            until_text = formats.date_format(
+                pause.planned_resume_on, DATE_DISPLAY_FORMAT
+            )
+        else:
+            until_text = site_zone_text(until)
+        text += f", until {until_text}"
     return format_html("<p>{}</p>", text)
 
 
