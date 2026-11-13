@@ -144,9 +144,10 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
 
 - Every dialog is three sibling components and nothing else at the top level:
   `<c-modal-header>`, `<c-modal-body>`, `<c-modal-footer>`. The body owns the padding and the gap
-  between its blocks; the footer is never inside the body or another padded element. A read-only
-  dialog (`panel_framework/modal/read_only.html`) ends in a Close footer like every other. The
-  discard prompt in the modal host uses the same three components.
+  between its blocks; the footer is never inside the body or another padded element. A message
+  dialog (`panel_framework/modal/message.html`) ends in a Close footer like every other. The
+  discard prompt (`panel_framework/partials/discard_prompt.html`) puts its body in `<c-modal-body>`
+  and ends in the same footer.
 - A dialog ends in `<c-modal-footer>`: it renders its own Cancel at the left (`cancel`, `cancel_href`, `cancel_click`, `focus_cancel`), the actions in the
   default slot at the right, the primary last; three or more group at the right.
   `<c-button-group>` is for buttons outside a dialog.

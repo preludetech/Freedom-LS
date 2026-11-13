@@ -74,6 +74,7 @@ __all__ = [
     "StatusBadge",
     "build_breadcrumbs",
     "build_menu_items",
+    "first_visible_section",
     "panel_framework_view",
     "sections_by_url_name",
 ]

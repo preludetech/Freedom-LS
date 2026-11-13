@@ -32,5 +32,5 @@ def test_every_reason_action_submits_through_the_mixin() -> None:
         if cls.handle_submit is not ReasonMixin.handle_submit
     ]
 
-    assert len(found) == 8
+    assert len(found) == 9
     assert bypassing == []

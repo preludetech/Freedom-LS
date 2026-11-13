@@ -15,9 +15,7 @@ new_role_display_name.
     <input type="hidden" name="role" value="{{ role }}">
     <c-modal-body>
         {% if form.errors %}
-        <div data-error-summary tabindex="-1" role="alert" class="rounded-md border border-error/20 bg-error/10 p-3 text-error">
-            {{ form.new_role.errors }}
-        </div>
+        <c-panel-notice tone="error" data-error-summary tabindex="-1">{{ form.new_role.errors }}</c-panel-notice>
         {% endif %}
         <fieldset class="space-y-2">
             <legend class="mb-2 font-semibold">Role</legend>
@@ -34,7 +32,7 @@ new_role_display_name.
         <c-button type="submit" variant="primary" loading="true" loading_text="Checking…">Change role</c-button>
     </c-modal-footer>
 </form>
-{% else %}
+{% elif step == "confirmation" %}
 <c-modal-header>Change {{ staff_member.display_name }}'s role on {{ cohort }}?</c-modal-header>
 <form hx-post="{{ action_url }}"
       hx-target="#app-modal-body"

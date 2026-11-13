@@ -365,15 +365,18 @@ DIALOG_PART_EXEMPTIONS: dict[str, str] = {
 }
 MODAL_BODY_BLOCK = re.compile(r"<c-modal-body\b.*?</c-modal-body>", re.DOTALL)
 HAND_PADDED_BODY = re.compile(r'<div class="[^"]*\bpx-6\b[^"]*"')
+EXTENDS_FRAMEWORK_DIALOG = re.compile(
+    r'\{% extends "(panel_framework/modal/[a-z_]+\.html)" %\}'
+)
 
 
 def _dialog_parts_source(path: Path) -> str:
-    """The template's text, with message.html's parts counted for its children."""
+    """The template's text, with the parts of the framework dialog it extends
+    (message.html, confirm.html) counted for it."""
     text = path.read_text()
-    if '{% extends "panel_framework/modal/message.html" %}' in text:
-        text += (
-            TEMPLATES_DIR / "panel_framework" / "modal" / "message.html"
-        ).read_text()
+    parent = EXTENDS_FRAMEWORK_DIALOG.search(text)
+    if parent:
+        text += _dialog_parts_source(TEMPLATES_DIR / parent.group(1))
     return text
 
 
@@ -468,6 +471,15 @@ def test_no_control_link_is_hand_styled() -> None:
     assert offenders == []
 
 
+# Templates that write their own <table>, each with its reason.
+HAND_WRITTEN_TABLE_EXEMPTIONS: dict[str, str] = {
+    "panels/course_content.html": (
+        "the course outline is a tree whose rows expand and collapse, which "
+        "neither table component offers"
+    ),
+}
+
+
 def test_no_template_hand_writes_a_table_outside_the_table_components() -> None:
     """A static table is `<c-panel-table>` and a list a user sorts or filters
     is `<c-data-table>`: both give the table its caption, header style and a
@@ -477,6 +489,8 @@ def test_no_template_hand_writes_a_table_outside_the_table_components() -> None:
     for root in (TEMPLATES_DIR, EDUCATOR_TEMPLATES_DIR):
         for path in sorted(root.rglob("*.html")):
             if path.name in table_components:
+                continue
+            if str(path.relative_to(root)) in HAND_WRITTEN_TABLE_EXEMPTIONS:
                 continue
             source = re.sub(
                 r"{% comment %}.*?{% endcomment %}", "", path.read_text(), flags=re.S
@@ -661,7 +675,7 @@ def test_every_dialog_loading_text_ends_in_the_ellipsis_character() -> None:
 # buttons names all of them through the modal body instead. The same goes for
 # a form holding an element that issues its own request, because that element
 # inherits the form's selector and `find` would look inside it.
-MULTI_SUBMIT_DIALOGS = {"form.html", "move_confirmation.html"}
+MULTI_SUBMIT_DIALOGS = {"form.html", "move_confirmation.html", "add_staff_member.html"}
 
 
 def test_every_dialog_disables_only_its_own_submit_buttons() -> None:
