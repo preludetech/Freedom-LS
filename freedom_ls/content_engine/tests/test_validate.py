@@ -1008,6 +1008,33 @@ def test_a_due_date_on_an_activity_outside_the_directory_fails(tmp_path: Path) -
     assert "a due date on a ACTIVITY placement" in errors[0]
 
 
+def _multi_document_file(path: Path) -> Path:
+    """A YAML file whose first document is a form page and whose last is a part."""
+    return _write_widget_file(
+        path,
+        "---\ncontent_type: FORM_PAGE\ntitle: A Page\n"
+        "---\ncontent_type: COURSE_PART\ntitle: A Part\n",
+    )
+
+
+def test_a_multi_document_file_reads_the_same_inside_and_outside_the_directory(
+    tmp_path: Path,
+) -> None:
+    """The loader keeps a file's last document, so the validator reads that one whether
+    the file was parsed in this run or read from disk for the entry."""
+    _multi_document_file(tmp_path / "inside" / "multi.yaml")
+    _course_with_entries(tmp_path / "inside" / "course.md", ["multi.yaml"])
+    _multi_document_file(tmp_path / "shared" / "multi.yaml")
+    _course_with_entries(tmp_path / "outside" / "course.md", ["../shared/multi.yaml"])
+
+    inside = _placement_errors(tmp_path / "inside")
+    outside = _placement_errors(tmp_path / "outside")
+
+    assert len(inside) == len(outside) == 1
+    assert "a due date on a COURSE_PART placement" in inside[0]
+    assert "a due date on a COURSE_PART placement" in outside[0]
+
+
 def _broken_topic(path: Path) -> Path:
     return _write_widget_file(path, "---\ncontent_type: TOPIC\n---\nNo title.\n")
 
