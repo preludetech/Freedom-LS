@@ -90,7 +90,15 @@ def profile_picture_upload_to(instance: User, filename: str) -> str:
     FLS encoded. A fresh uuid per upload means a replaced picture never shares
     a URL with the one before it, and the user prefix gives an erasure request
     one subtree to sweep.
+
+    Django calls this before the INSERT, so an unsaved user has no prefix
+    yet: save the user first, then the picture.
     """
+    if instance.pk is None:
+        raise ValueError(
+            "Save the user before giving it a profile picture; an unsaved user "
+            "has no pk to put the picture under."
+        )
     return f"profile_pictures/{instance.pk}/{uuid4().hex}.webp"
 
 

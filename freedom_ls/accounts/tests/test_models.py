@@ -191,6 +191,15 @@ class TestProfilePicture:
             user, "a.png"
         )
 
+    def test_upload_to_refuses_an_unsaved_user(self, mock_site_context):
+        with pytest.raises(ValueError, match="saved"):
+            profile_picture_upload_to(UserFactory.build(), "a.png")
+
+    def test_factory_picture_sits_under_the_users_own_prefix(self, mock_site_context):
+        user = UserFactory(with_profile_picture=True)
+
+        assert user.profile_picture.name.startswith(f"profile_pictures/{user.pk}/")
+
     def test_url_is_none_without_a_picture(self, mock_site_context):
         assert UserFactory().profile_picture_url is None
 

@@ -24,7 +24,8 @@ class UserFactory(SiteAwareFactory):
     Traits:
         staff: Sets is_staff=True.
         superuser: Sets both is_staff=True and is_superuser=True.
-        with_profile_picture: Stores a small valid WebP as the profile picture.
+        with_profile_picture: Pass True to store a small valid WebP as the
+            profile picture, once the user is saved.
     """
 
     class Meta:
@@ -47,11 +48,14 @@ class UserFactory(SiteAwareFactory):
     class Params:
         staff = factory.Trait(is_staff=True)
         superuser = factory.Trait(is_staff=True, is_superuser=True)
-        with_profile_picture = factory.Trait(
-            profile_picture=factory.django.FileField(
-                from_func=lambda: ContentFile(_TINY_WEBP, name="picture.webp")
-            )
-        )
+
+    @factory.post_generation
+    def with_profile_picture(
+        self: User, create: bool, extracted: bool | None, **kwargs: object
+    ) -> None:
+        """Store the picture after the INSERT, so its key carries the user's pk."""
+        if create and extracted:
+            self.profile_picture.save("picture.webp", ContentFile(_TINY_WEBP))
 
 
 class SiteSignupPolicyFactory(SiteAwareFactory):
