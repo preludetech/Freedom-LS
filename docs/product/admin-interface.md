@@ -1,6 +1,6 @@
 # Admin Interface
 
-_Last updated: 2026-11-12_
+_Last updated: 2026-11-13_
 
 ## Summary
 
@@ -10,6 +10,7 @@ _Last updated: 2026-11-12_
 - An organisation's learners are curated in the admin and only there: an administrator associates a user with an organisation before or independently of any enrolment, and deactivates a learner. Deactivation is soft — it switches off that person's access to the organisation's courses without touching their memberships, registrations, or progress — and a learner cannot be deleted outright.
 - A learner's page gathers their cohorts, their course registrations and their progress through each course, with the topics and forms behind any one course a click away.
 - An administrator can override a due date or a course time limit for a cohort's course registration or for a single learner, including removing it. Each override records who set it and why, and is flagged when the content's own value has changed since. See [Deadline Overrides](#deadline-overrides).
+- An administrator can pause and resume a learner's course, and extend a learner's deadlines by a number of days or to a date. An extension adds to the deadline rather than replacing it. See [Pausing and extending](#pausing-and-extending).
 - An administrator sets a deadline policy per site, organisation, course, cohort or registration: whether the Missed deadline mark shows, whether items close and course access ends after a grace window, and what a learner whose access has ended can still see. See [Deadline policy](#deadline-policy).
 - A course registration that has recorded progress cannot be deleted, and nor can a cohort whose registrations have. Deactivating a registration or removing a cohort member withdraws access without touching the progress.
 - Authored content — courses, course parts, topics, activities, files, and forms — cannot be deleted through the admin at all, inlines included. Adding and changing stay available. Articles are the one exception: they can be deleted.
@@ -88,6 +89,17 @@ Course authors set due dates and time limits in the course content; see [content
 
 Overrides change a due date or time limit for particular people. They do not send reminders, and what happens once a deadline has passed is set by the policy below.
 
+### Pausing and extending
+
+A learner's course progress page also lets an administrator pause that learner's course or extend their deadlines.
+
+- **Pause and resume.** A pause needs a reason and may have a planned resume date; without one, the course stays paused until an administrator resumes it. While it is paused the learner cannot carry on and no deadline passes. When it ends, the learner's unmet deadlines and time limit move later by the days paused.
+- **Extend.** An extension moves one item's deadline, the course time limit, or every unmet deadline in the course later, by a number of days or to a given date. Unlike an override, extensions stack and add to whatever deadline applies, including an overridden one.
+- **History.** The page lists the record's pauses and extensions read-only, with who made each and why, and its current deadlines include them.
+- A course the learner has finished cannot be paused or extended.
+
+Each pause, resume and extension is written to the learner's [history](./educator-interface.md#history), [notifies the learner](./notifications.md) and sends a [webhook](./webhooks.md). What the learner sees is in [learner experience](./learner-experience.md#deadlines).
+
 ### Deadline policy
 
 A deadline policy decides what a missed deadline leads to. Administrators set it for a site, an organisation, a course, a cohort, a cohort's course registration, or one learner's course registration, and each setting can inherit from the broader level.
@@ -96,6 +108,7 @@ A deadline policy decides what a missed deadline leads to. Administrators set it
 - **Closing items.** Whether incomplete items close once a grace window after their deadline has passed.
 - **Ending access.** Whether course access ends once the same grace window after the time limit has passed, and what the learner can still see of the course afterwards.
 - **Notify educators.** The setting can be saved, but nothing is sent yet; see [roadmap](./roadmap.md#deadlines).
+- **Learner pausing.** Whether learners may pause their own course, how many times, and for how many days in total. These can be saved and inherited like the others, but learners cannot pause themselves yet and nothing enforces the limits.
 
 A learner's course progress page shows the policy that applies to them and which level set each value. With no policy set anywhere, nothing closes and no access ends; the deployment-wide default is described in [configuration and extension](./configuration-and-extension.md#deadline-policy). What learners see is covered in [learner experience](./learner-experience.md#deadlines).
 
