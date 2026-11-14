@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1948" height="353" viewBox="0 0 1948 353" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4b5563"/></marker></defs>
+<rect width="1948" height="353" fill="#ffffff"/>
+<text x="24" y="38" font-size="15" font-weight="bold" fill="#111827">Educator interface code layout</text>
+<path d="M274.0,90.5 C314.0,90.5 314.0,173.5 354.0,173.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,173.5 C314.0,173.5 314.0,173.5 354.0,173.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,256.5 C314.0,256.5 314.0,173.5 354.0,173.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M604.0,173.5 C644.0,173.5 644.0,161.5 684.0,161.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M604.0,173.5 C644.0,173.5 644.0,93.5 684.0,93.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M604.0,173.5 C644.0,173.5 644.0,253.5 684.0,253.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M604.0,173.5 C644.0,173.5 644.0,207.5 684.0,207.5 L934.0,207.5 C974.0,207.5 974.0,173.5 1014.0,173.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M934.0,161.5 C974.0,161.5 974.0,173.5 1014.0,173.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M1264.0,173.5 C1304.0,173.5 1304.0,173.5 1344.0,173.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M934.0,93.5 C974.0,93.5 974.0,127.5 1014.0,127.5 L1264.0,127.5 C1304.0,127.5 1304.0,127.5 1344.0,127.5 L1594.0,127.5 C1634.0,127.5 1634.0,173.5 1674.0,173.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M934.0,253.5 C974.0,253.5 974.0,219.5 1014.0,219.5 L1264.0,219.5 C1304.0,219.5 1304.0,219.5 1344.0,219.5 L1594.0,219.5 C1634.0,219.5 1634.0,173.5 1674.0,173.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M1594.0,173.5 C1634.0,173.5 1634.0,173.5 1674.0,173.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<rect x="354.0" y="148.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="364.0" y="170.5" fill="#111827">educator-interface-refactor-1-</text>
+<text x="364.0" y="185.5" fill="#111827">scaffolding-and-common</text>
+<rect x="684.0" y="136.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="694.0" y="158.5" fill="#111827">educator-interface-refactor-2-</text>
+<text x="694.0" y="173.5" fill="#111827">dashboard-and-audit-log</text>
+<rect x="684.0" y="68.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="694.0" y="90.5" fill="#111827">educator-interface-refactor-3-</text>
+<text x="694.0" y="105.5" fill="#111827">staff</text>
+<rect x="684.0" y="228.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="694.0" y="250.5" fill="#111827">educator-interface-refactor-4-</text>
+<text x="694.0" y="265.5" fill="#111827">course</text>
+<rect x="1014.0" y="148.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="1024.0" y="170.5" fill="#111827">educator-interface-refactor-5-</text>
+<text x="1024.0" y="185.5" fill="#111827">learner</text>
+<rect x="1344.0" y="148.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="1354.0" y="170.5" fill="#111827">educator-interface-refactor-6-</text>
+<text x="1354.0" y="185.5" fill="#111827">cohort</text>
+<rect x="1674.0" y="148.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="1684.0" y="170.5" fill="#111827">educator-interface-refactor-7-</text>
+<text x="1684.0" y="185.5" fill="#111827">cleanup</text>
+<rect x="24.0" y="58.0" width="250" height="65" rx="6" fill="#ffffff" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="34.0" y="80.0" fill="#111827">extract_panels_framework-1-</text>
+<text x="34.0" y="95.0" fill="#111827">gather-generic-code</text>
+<text x="34.0" y="110.0" fill="#6b7280" font-style="italic">Panel framework extraction</text>
+<rect x="24.0" y="141.0" width="250" height="65" rx="6" fill="#ffffff" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="34.0" y="163.0" fill="#111827">learner-public-profile-1-</text>
+<text x="34.0" y="178.0" fill="#111827">profile-picture</text>
+<text x="34.0" y="193.0" fill="#6b7280" font-style="italic">Learner public profiles</text>
+<rect x="24.0" y="224.0" width="250" height="65" rx="6" fill="#ffffff" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="34.0" y="246.0" fill="#111827">test-organisation-and-hygene-</text>
+<text x="34.0" y="261.0" fill="#111827">2-sdd-review-and-boy-scout</text>
+<text x="34.0" y="276.0" fill="#6b7280" font-style="italic">Test organisation and hygiene</text>
+<rect x="24.0" y="313" width="16" height="12" rx="3" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+<text x="46.0" y="323" fill="#374151">in progress</text>
+<rect x="154.3" y="313" width="16" height="12" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="176.3" y="323" fill="#374151">ready</text>
+<rect x="240.8" y="313" width="16" height="12" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+<text x="262.8" y="323" fill="#374151">needs work on main first</text>
+<rect x="466.0" y="313" width="16" height="12" rx="3" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="488.0" y="323" fill="#374151">blocked</text>
+<rect x="567.1" y="313" width="16" height="12" rx="3" fill="#ffffff" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="589.1" y="323" fill="#374151">other feature</text>
+</svg>

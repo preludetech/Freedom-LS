@@ -14,6 +14,8 @@
 <text x="34.0" y="148.0" fill="#111827">educator-interface-dark-mode</text>
 <rect x="354.0" y="126.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <text x="364.0" y="148.0" fill="#111827">audit-log-coverage-gaps</text>
+<rect x="684.0" y="126.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="694.0" y="148.0" fill="#111827">educator-interface-more polish</text>
 <rect x="24.0" y="185" width="16" height="12" rx="3" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <text x="46.0" y="195" fill="#374151">in progress</text>
 <rect x="154.3" y="185" width="16" height="12" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
