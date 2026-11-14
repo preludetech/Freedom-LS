@@ -233,10 +233,8 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
   in by putting `data-modal-size="wide"` on its root. It changes the width (about
   `min(92vw, 64rem)` from 640px up) and the max-height (95dvh); the height, the scrolling and the
   sticky header stay the shared rule's.
-- `#app-modal` shows that it scrolls: a dialog taller than the viewport shows its scrollbar
-  track, and a fade sits at the dialog's bottom edge while content lies below the fold, gone once
-  the end is reached. A dialog that fits reserves no scrollbar gutter, so its header and footer
-  rules run the full dialog width.
+- `#app-modal` shows that it scrolls: the scrollbar track is always visible, and a fade sits at
+  the dialog's bottom edge while content lies below the fold, gone once the end is reached.
 
 ### Selection bar
 
