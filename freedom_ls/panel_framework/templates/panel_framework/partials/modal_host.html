@@ -25,11 +25,11 @@ editing" brings the form back with everything typed into it.
         max-width: 100vw;
         /* dvh so the cap follows the on-screen keyboard. */
         max-height: min(90dvh, 100%);
-        /* `scroll`, not `auto`, so the track shows wherever the platform
-         * draws classic scrollbars, and the gutter stays put as content
-         * loads: the dialog says that it scrolls before anyone tries. */
-        overflow-y: scroll;
-        scrollbar-gutter: stable;
+        /* `auto`: a dialog that fits reserves no scrollbar strip, so its
+         * header and footer rules run the full width and the content's
+         * padding is the same on both sides. One taller than the viewport
+         * scrolls and shows its track, and the fade below says more follows. */
+        overflow-y: auto;
         overflow-x: hidden;
     }
     /* Opened by the server (a bulk confirmation with JavaScript off), the
