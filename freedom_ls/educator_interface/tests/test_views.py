@@ -1831,6 +1831,40 @@ def test_the_registrations_card_names_the_cohort_of_a_cohort_registration(
 
 
 @pytest.mark.django_db
+def test_a_registration_row_without_an_action_keeps_an_empty_action_slot(
+    staff_client: Client,
+):
+    """A cohort registration has no button, and its badge sat in the button column.
+
+    Every row keeps a fixed-width action slot after the badge, empty when the
+    viewer cannot act on the row, so the badges share one column.
+    """
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    cohort = CohortFactory(organisation=organisation)
+    CohortMembershipFactory(learner=learner, cohort=cohort)
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=CourseFactory(title="Algebra")
+    )
+    LearnerCourseRegistrationFactory(
+        learner=learner, course=CourseFactory(title="Geometry")
+    )
+
+    document = _learner_page(staff_client, learner, "overview")
+
+    rows = document.cssselect("[data-testid='registration-row']")
+    assert len(rows) == 2
+    slots = [row.cssselect("[data-testid='registration-action-slot']") for row in rows]
+    assert all(len(slot) == 1 for slot in slots)
+    cohort_row_slot = next(
+        slot[0]
+        for row, slot in zip(rows, slots, strict=True)
+        if "via" in row.text_content()
+    )
+    assert cohort_row_slot.text_content().strip() == ""
+
+
+@pytest.mark.django_db
 def test_the_registrations_list_shows_no_list_markers(staff_client: Client):
     """The theme bullets and indents bare lists, so the card's rows sat 24px in."""
     learner = LearnerFactory(organisation=OrganisationFactory())
