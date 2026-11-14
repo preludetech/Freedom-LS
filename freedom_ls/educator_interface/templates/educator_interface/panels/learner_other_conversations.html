@@ -16,11 +16,13 @@ modal. Context: oversight_rows ((conversation, educator) pairs).
                             hx-swap="innerHTML"
                             hx-disabled-elt="this"
                             aria-haspopup="dialog"
-                            class="-mx-3 flex w-[calc(100%+1.5rem)] items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-surface-2">
-                        {% include "comms/partials/participant_avatar.html" with other=educator %}
-                        <span class="min-w-0 flex-1">
-                            <span class="block truncate">{% if educator %}{{ educator.display_name }}{% else %}Deleted user{% endif %}</span>
-                            {% if conversation.last_message_body %}<span class="block truncate text-sm text-muted">{{ conversation.last_message_body }}</span>{% endif %}
+                            class="-mx-3 flex w-[calc(100%+1.5rem)] items-start gap-3 rounded-md px-3 py-2 text-left hover:bg-surface-2">
+                        <span class="min-w-0 flex-1 text-sm font-semibold text-on-surface">
+                            {% if educator %}
+                                <c-panel-avatar-chip size="sm" name="{{ educator.display_name }}" user_id="{{ educator.pk }}" secondary="{{ conversation.last_message_body }}" />
+                            {% else %}
+                                <c-panel-avatar-chip size="sm" name="Deleted user" fallback_icon="user" secondary="{{ conversation.last_message_body }}" />
+                            {% endif %}
                         </span>
                         {% if conversation.last_message_at %}<time datetime="{{ conversation.last_message_at|date:'c' }}" class="shrink-0 text-sm text-muted">{{ conversation.last_message_at|relative_time }}</time>{% endif %}
                     </button>

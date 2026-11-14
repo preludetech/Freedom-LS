@@ -1305,6 +1305,44 @@ def test_the_settings_tab_names_each_staff_member_and_their_role(
 
 
 @pytest.mark.django_db
+def test_the_settings_tab_staff_names_are_small_semibold_beside_a_small_avatar(
+    mock_site_context, logged_in_client
+):
+    """A staff member is the small person row. The name used to render at the
+    base size and regular weight beside a medium avatar."""
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(
+        user__first_name="Ada", user__last_name="Lovelace", organisation=organisation
+    ).user
+    assign_role(grantor, educator, "cohort_admin", cohort)
+    admin = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, admin, "organisation_admin", organisation)
+
+    document = _get_document(
+        logged_in_client(admin), _settings_url(organisation, cohort)
+    )
+
+    (name,) = [
+        n
+        for n in _staff_section(document).cssselect("span.truncate")
+        if n.text_content().strip() == "Ada Lovelace"
+    ]
+    classes = " ".join(
+        " ".join(
+            a.get("class", "")
+            for a in [name, *name.iterancestors("span", "div")]
+            if a.getparent() is not None and a.tag != "li"
+        ).split()
+    )
+    assert "text-sm" in classes
+    assert "font-semibold" in classes
+    assert _staff_section(document).cssselect("span.size-6")
+    assert not _staff_section(document).cssselect("span.size-8")
+
+
+@pytest.mark.django_db
 def test_the_settings_tab_shows_a_nameless_staff_members_email_as_stored(
     mock_site_context, logged_in_client
 ):
@@ -4804,6 +4842,41 @@ class TestLearnerMessagesTab:
         assert "my own words" not in text
         assert "peer words" not in text
         assert "Peer Person" not in text
+
+    def test_the_conversation_row_is_a_small_person_row_in_one_button(
+        self, msg_client_for
+    ):
+        """The other educator is a small semibold name beside a small avatar.
+        It used to render at the base size and regular weight beside a medium
+        avatar."""
+        organisation = OrganisationFactory()
+        admin = _msg_educator(organisation)
+        colleague = _msg_educator(organisation)
+        learner = _msg_learner(organisation)
+        theirs = _msg_conversation(colleague, learner.user)
+        MessageFactory(conversation=theirs, sender=colleague, body="colleague words")
+
+        document = _tab_document(msg_client_for(admin), learner)
+
+        (section,) = document.xpath("//section[@data-panel='others']")
+        (button,) = section.cssselect("li button")
+        (name,) = [
+            n
+            for n in button.cssselect("span.truncate")
+            if n.text_content().strip() == colleague.display_name
+        ]
+        classes = " ".join(
+            " ".join(
+                a.get("class", "")
+                for a in [name, *name.iterancestors("span", "div")]
+                if a.getparent() is not None and a.tag != "li"
+            ).split()
+        )
+        assert "text-sm" in classes
+        assert "font-semibold" in classes
+        assert button.cssselect("span.size-6")
+        assert not button.cssselect("span.size-8")
+        assert "colleague words" in button.text_content()
 
     def test_a_site_admin_sees_the_list(self, msg_client_for, mock_site_context):
         organisation = OrganisationFactory()

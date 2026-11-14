@@ -16,8 +16,8 @@ unavailable), add_staff (the action, or None).
     {% if educators %}
         <ul class="m-0 grid list-none grid-cols-1 gap-y-4 p-0 md:grid-cols-[minmax(12rem,1fr)_auto_auto] md:gap-x-6">
             {% for educator in educators %}
-                <li class="grid grid-cols-1 items-center gap-2 md:col-span-3 md:grid-cols-subgrid">
-                    <c-panel-avatar-chip name="{{ educator.user.display_name }}" user_id="{{ educator.user.pk }}" secondary="{% if educator.user.first_name or educator.user.last_name %}{{ educator.user.email }}{% endif %}" class="min-w-0" />
+                <li class="grid grid-cols-1 items-start gap-2 md:col-span-3 md:grid-cols-subgrid">
+                    <c-panel-person-link size="sm" name="{{ educator.user.display_name }}" user_id="{{ educator.user.pk }}" secondary="{% if educator.user.first_name or educator.user.last_name %}{{ educator.user.email }}{% endif %}" class="min-w-0" />
                     <span class="text-sm text-muted">{{ educator.display_name }}</span>
                     <div class="text-sm">
                         {% if educator.target == "cohort" and remove_from_cohort_url and educator.role in grantable %}
