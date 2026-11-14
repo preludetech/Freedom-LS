@@ -1,23 +1,19 @@
 {% comment %}
-The confirmation text. Context: error, notice, wording (sentence, skips,
+The confirmation text. Context: error, notice, wording (sentence, skip_lines,
 consequences), count, noun. Without wording, it falls back to the plain count.
+An error replaces the text; it is shown once, beside the footer, as the reason
+the confirm button is disabled.
 {% endcomment %}
-{% if error %}
-    <div class="bg-error/10 border border-error/20 rounded-md p-3">
-        <p class="text-on-surface">{{ error }}</p>
-    </div>
-{% else %}
+{% if not error %}
     {% if notice %}
-        <div class="bg-error/10 border border-error/20 rounded-md p-3 mb-3">
-            <p class="text-on-surface">{{ notice }}</p>
-        </div>
+        <c-panel-notice tone="warning">{{ notice }}</c-panel-notice>
     {% endif %}
     {% if wording %}
         <p>{{ wording.sentence }}</p>
-        {% if wording.skips %}
+        {% if wording.skip_lines %}
             <ul class="mt-2 list-disc pl-5">
-                {% for skip in wording.skips %}
-                    <li>{{ skip.count }} {% if skip.count == 1 %}is{% else %}are{% endif %} {{ skip.reason }} and will be skipped.</li>
+                {% for line in wording.skip_lines %}
+                    <li>{{ line }}</li>
                 {% endfor %}
             </ul>
         {% endif %}

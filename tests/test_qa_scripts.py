@@ -80,3 +80,46 @@ def test_absolute_spec_dir_outside_the_project_is_refused(
     assert result.returncode == 1
     assert "must be inside CLAUDE_PROJECT_DIR" in result.stderr
     assert (outside / "qa_report.md").exists()
+
+
+def test_collect_into_a_subfolder_moves_screenshots_under_screenshots(
+    project: Path,
+) -> None:
+    source = project / "qa-screenshots"
+    source.mkdir()
+    (source / "a.png").write_bytes(b"png")
+
+    result = run_script(COLLECT, project, project, SPEC_REL, "qa-screenshots", "fixed")
+
+    assert result.returncode == 0, result.stderr
+    assert (project / SPEC_REL / "screenshots" / "fixed" / "a.png").exists()
+    assert not source.exists()
+
+
+@pytest.mark.parametrize("subfolder", ["../escape", "a/b", ".", ""])
+def test_collect_refuses_a_subfolder_that_is_not_a_plain_name(
+    project: Path, subfolder: str
+) -> None:
+    source = project / "qa-screenshots"
+    source.mkdir()
+    (source / "a.png").write_bytes(b"png")
+
+    result = run_script(
+        COLLECT, project, project, SPEC_REL, "qa-screenshots", subfolder
+    )
+
+    assert result.returncode == 1
+    assert "subfolder" in result.stderr
+    assert (source / "a.png").exists()
+
+
+def test_cleanup_removes_the_screenshot_subfolders(project: Path) -> None:
+    spec = project / SPEC_REL
+    (spec / "screenshots" / "fixed").mkdir(parents=True)
+    (spec / "screenshots" / "a.png").write_bytes(b"png")
+    (spec / "screenshots" / "fixed" / "b.png").write_bytes(b"png")
+
+    result = run_script(CLEANUP, project, project, SPEC_REL)
+
+    assert result.returncode == 0, result.stderr
+    assert not (spec / "screenshots").exists()

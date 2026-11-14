@@ -166,7 +166,7 @@ def test_the_cohorts_tile_link_is_named_by_what_it_counts(
     response = logged_in_client(user).get(_dashboard_url(organisation))
 
     document = lxml.html.fromstring(response.content.decode())
-    (link,) = document.xpath("//dl[dt='Cohorts']//a")
+    (link,) = document.xpath("//a[.//dl[dt='Cohorts']]")
     assert link.get("aria-label") == "2 cohorts"
 
 
@@ -224,7 +224,7 @@ def test_the_attention_tile_counts_every_flagged_learner_beyond_the_list_cap(
     document = lxml.html.fromstring(response.content.decode())
     assert ATTENTION_LIST_MAX == 12
     assert _tiles(response)["Learners needing attention"] == "15"
-    assert len(document.xpath("//button[@aria-controls='quick-view']")) == 12
+    assert len(document.xpath("//a[@aria-controls='quick-view']")) == 12
     assert "Showing 12 of 15 learners flagged." in response.content.decode()
 
 
@@ -469,9 +469,9 @@ def test_an_attention_row_has_one_learner_link_and_a_named_quick_view_trigger(
     response = _load_region(logged_in_client(user), organisation)
 
     document = lxml.html.fromstring(response.content.decode())
-    (row,) = document.xpath("//li[.//button[@aria-controls='quick-view']]")
-    (button,) = row.xpath(".//button[@aria-controls='quick-view']")
-    assert len(row.xpath(f".//a[@href='{learner_path}']")) == 1
+    (row,) = document.xpath("//li[.//a[@aria-controls='quick-view']]")
+    (button,) = row.xpath(".//a[@aria-controls='quick-view']")
+    assert len(row.xpath(f".//a[@href='{learner_path}'][not(@aria-controls)]")) == 1
     assert button.get("aria-label") == "Quick view: Learner Alpha"
     assert button.get("hx-get") == f"{learner_path}/__quick-view"
 
@@ -497,7 +497,7 @@ def test_an_attention_row_names_each_flagged_cohorts_active_courses_without_an_i
     response = _load_region(logged_in_client(user), organisation)
 
     document = lxml.html.fromstring(response.content.decode())
-    (row,) = document.xpath("//li[.//button[@aria-controls='quick-view']]")
+    (row,) = document.xpath("//li[.//a[@aria-controls='quick-view']]")
     (cohort_item,) = row.xpath(".//li[a[contains(., 'Night class')]]")
     (cohort_link,) = cohort_item.xpath("./a")
     assert cohort_link.text_content().strip() == "Night class"
@@ -524,7 +524,7 @@ def test_an_attention_rows_cohort_list_shows_no_list_markers(
     response = _load_region(logged_in_client(user), organisation)
 
     document = lxml.html.fromstring(response.content.decode())
-    (cohort_list,) = document.xpath("//li[.//button[@aria-controls='quick-view']]//ul")
+    (cohort_list,) = document.xpath("//li[.//a[@aria-controls='quick-view']]//ul")
     assert "list-none" in cohort_list.get("class").split()
 
 

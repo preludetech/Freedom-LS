@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 
 import lxml.html
 import pytest
@@ -74,7 +75,7 @@ def test_column_derives_sort_field() -> None:
 def test_a_column_with_a_url_is_a_link() -> None:
     column = Column(
         header="Name",
-        template="cotton/data-table-cells/link.html",
+        template_name="cotton/data-table-cells/link.html",
         text_attr="name",
         url_name="panel_framework_test:framework",
         url_path_template="stubs/{pk}",
@@ -85,7 +86,7 @@ def test_a_column_with_a_url_is_a_link() -> None:
 
 def test_a_column_with_no_url_is_not_a_link() -> None:
     column = Column(
-        header="Name", template="cotton/data-table-cells/text.html", attr="name"
+        header="Name", template_name="cotton/data-table-cells/text.html", attr="name"
     )
 
     assert column.is_link is False
@@ -1063,7 +1064,7 @@ def test_a_sort_keeps_the_default_ordering_behind_it_and_ends_on_pk(
             return [
                 Column(
                     header="SAT score",
-                    template="cotton/data-table-cells/text.html",
+                    template_name="cotton/data-table-cells/text.html",
                     attr="sat_score",
                     sortable=True,
                 )
@@ -1107,7 +1108,7 @@ class _DefaultSortedDataTable(StubDataTable):
             *StubDataTable.get_columns(),
             Column(
                 header="SAT score",
-                template="cotton/data-table-cells/text.html",
+                template_name="cotton/data-table-cells/text.html",
                 attr="sat_score",
                 sortable=True,
             ),
@@ -1459,7 +1460,7 @@ def test_removing_a_filter_without_a_default_drops_its_parameter() -> None:
 
 
 class _EmptyStateDataTable(StubDataTable):
-    empty_state_template = "panel_framework/test_empty_state.html"
+    empty_state_template_name = "panel_framework/test_empty_state.html"
 
 
 class _EmptyStateTablePanel(DataTablePanel):
@@ -1616,7 +1617,10 @@ def test_get_context_marks_each_row_with_the_has_row_detail_predicate(
         ("row-a", True),
         ("row-b", False),
     ]
-    assert context["row_detail_template"] == StubDetailDataTable.row_detail_template
+    assert (
+        context["row_detail_template_name"]
+        == StubDetailDataTable.row_detail_template_name
+    )
 
 
 def test_get_context_has_no_row_detail_for_a_plain_table(
@@ -1638,7 +1642,7 @@ def test_get_context_has_no_row_detail_for_a_plain_table(
     rows = context["rows"]
     assert isinstance(rows, list)
     assert [row["has_row_detail"] for row in rows] == [False]
-    assert context["row_detail_template"] is None
+    assert context["row_detail_template_name"] is None
 
 
 class _OverriddenExportPanel(StubDataTablePanel):
@@ -1769,3 +1773,447 @@ def test_a_list_config_without_overrides_exports_the_lists_rows(
     assert (
         response["Content-Disposition"] == f'attachment; filename="stubs-{today}.csv"'
     )
+
+
+APPLIED_FILTER: list[str] = [
+    'div [class="md:flex md:flex-wrap md:items-center md:gap-2 md:border-b md:border-border '
+    'md:px-6 md:py-3 lg:min-h-16.75" x-bind:class="toolbarClass"]',
+    'form [action="/test-panel/framework/stubs/N/__tabs/default" class="w-full px-4 pt-3 sm:px-6 '
+    'md:w-auto md:min-w-40 md:max-w-72 md:flex-1 md:p-0 pb-0" '
+    'hx-get="/test-panel/framework/stubs/N/__tabs/default" hx-swap="outerHTML" '
+    'hx-sync="this:replace" hx-target="#stub-table" hx-trigger="submit, input changed delay:300ms '
+    'from:#stub-q, search from:#stub-q" id="stub-search" method="get"]',
+    'input [name="stub-sort" type="hidden" value="name"]',
+    'input [name="stub-kind" type="hidden" value="a"]',
+    "div []",
+    'label [class="sr-only" for="stub-q"] Search',
+    'div [class="relative"]',
+    'span [aria-hidden="true" class="pointer-events-none absolute inset-y-0 left-0 flex '
+    'items-center pl-3 text-muted"]',
+    'svg [aria-hidden="true" class="inline size-4" data-icon="search" height="24" viewbox="0 0 24 '
+    '24" width="24" xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="m21 21l-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607" '
+    'fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" '
+    'stroke-width="1.5"]',
+    'input [class="pl-9 max-md:min-h-11" hx-preserve="" id="stub-q" name="stub-q" '
+    'placeholder="Search..." type="search" value=""]',
+    'div [class="hidden md:contents"]',
+    'details [class="group relative shrink-0"]',
+    'summary [class="list-none marker:hidden [&::-webkit-details-marker]:hidden"]',
+    'span [class="cursor-pointer chip chip-secondary"] Kind: Alpha',
+    'a [aria-label="Remove Kind filter" class="inline-flex text-current no-underline '
+    'hover:text-primary" href="/test-panel/framework/stubs/N/__tabs/default?stub-sort=name" '
+    'hx-get="/test-panel/framework/stubs/N/__tabs/default?stub-sort=name" hx-swap="outerHTML" '
+    'hx-target="#stub-table"]',
+    'svg [aria-hidden="true" class="inline size-3" data-icon="close" height="24" viewbox="0 0 24 '
+    '24" width="24" xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="M6 18L18 6M6 6l12 12" fill="none" stroke="currentColor" stroke-linecap="round" '
+    'stroke-linejoin="round" stroke-width="1.5"]',
+    'svg [aria-hidden="true" class="inline size-3 transition-transform group-open:rotate-180" '
+    'data-icon="dropdown" height="24" viewbox="0 0 24 24" width="24" '
+    'xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="m19.5 8.25l-7.5 7.5l-7.5-7.5" fill="none" stroke="currentColor" '
+    'stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"]',
+    'div [class="mt-1 min-w-40 space-y-1 surface bg-surface absolute z-10 p-2"]',
+    'a [class="flex items-center gap-2 whitespace-nowrap rounded-md px-2 py-1 text-on-surface '
+    'no-underline hover:bg-surface-2" '
+    'href="/test-panel/framework/stubs/N/__tabs/default?stub-sort=name" '
+    'hx-get="/test-panel/framework/stubs/N/__tabs/default?stub-sort=name" hx-swap="outerHTML" '
+    'hx-target="#stub-table"]',
+    'span [class="size-4 shrink-0"]',
+    "text: Alpha",
+    'svg [aria-hidden="true" class="inline size-4" data-icon="check" height="24" viewbox="0 0 24 '
+    '24" width="24" xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="m4.5 12.75l6 6l9-13.5" fill="none" stroke="currentColor" stroke-linecap="round" '
+    'stroke-linejoin="round" stroke-width="1.5"]',
+    'a [class="flex items-center gap-2 whitespace-nowrap rounded-md px-2 py-1 text-on-surface '
+    'no-underline hover:bg-surface-2" '
+    'href="/test-panel/framework/stubs/N/__tabs/default?stub-kind=a&stub-kind=b&stub-sort=name" '
+    'hx-get="/test-panel/framework/stubs/N/__tabs/default?stub-kind=a&stub-kind=b&stub-sort=name" '
+    'hx-swap="outerHTML" hx-target="#stub-table"]',
+    'span [class="size-4 shrink-0"]',
+    "text: Beta",
+    'details [class="group/add relative shrink-0"]',
+    'summary [class="list-none marker:hidden [&::-webkit-details-marker]:hidden"]',
+    'span [class="cursor-pointer chip chip-secondary"] Add filter',
+    'svg [aria-hidden="true" class="inline size-3 transition-transform group-open/add:rotate-180" '
+    'data-icon="dropdown" height="24" viewbox="0 0 24 24" width="24" '
+    'xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="m19.5 8.25l-7.5 7.5l-7.5-7.5" fill="none" stroke="currentColor" '
+    'stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"]',
+    'div [class="surface bg-surface absolute z-10 mt-1 min-w-40 space-y-2 p-2"]',
+    'details [class="group"]',
+    'summary [class="list-none marker:hidden [&::-webkit-details-marker]:hidden flex '
+    'cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-1 hover:bg-surface-2"] '
+    "Active only",
+    'svg [aria-hidden="true" class="inline size-3 text-muted transition-transform '
+    'group-open:rotate-180" data-icon="dropdown" height="24" viewbox="0 0 24 24" width="24" '
+    'xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="m19.5 8.25l-7.5 7.5l-7.5-7.5" fill="none" stroke="currentColor" '
+    'stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"]',
+    'div [class="mt-1 min-w-40 space-y-1 ps-2"]',
+    'a [class="flex items-center gap-2 whitespace-nowrap rounded-md px-2 py-1 text-on-surface '
+    'no-underline hover:bg-surface-2" '
+    'href="/test-panel/framework/stubs/N/__tabs/default?stub-kind=a&stub-sort=name&stub-active=1" '
+    'hx-get="/test-panel/framework/stubs/N/__tabs/default?stub-kind=a&stub-sort=name&stub-active=1" '
+    'hx-swap="outerHTML" hx-target="#stub-table"]',
+    'span [class="size-4 shrink-0"]',
+    "text: Active only",
+    'a [class="btn btn-link btn-sm shrink-0 whitespace-nowrap" data-variant="link" '
+    'href="/test-panel/framework/stubs/N/__tabs/default?stub-sort=name" '
+    'hx-get="/test-panel/framework/stubs/N/__tabs/default?stub-sort=name" hx-swap="outerHTML" '
+    'hx-target="#stub-table"] Clear all',
+    'a [class="btn btn-secondary btn-sm ml-auto shrink-0 whitespace-nowrap" '
+    'data-variant="secondary" '
+    'href="/test-panel/framework/stubs/N/__tabs/default?stub-kind=a&stub-sort=name&stub-export=csv"]',
+    'span [aria-hidden="true" class="inline-flex"]',
+    "text: Export CSV",
+    'svg [aria-hidden="true" class="inline size-5" data-icon="download" height="24" viewbox="0 0 '
+    '24 24" width="24" xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12L12 '
+    '16.5m0 0L7.5 12m4.5 4.5V3" fill="none" stroke="currentColor" stroke-linecap="round" '
+    'stroke-linejoin="round" stroke-width="1.5"]',
+    'div [class="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3 md:hidden" '
+    'data-mobile-only="true" data-storage-key="stub-sheet" x-data="sidePanel"]',
+    'span [class="chip chip-secondary"] Kind: Alpha',
+    'a [aria-label="Remove Kind filter" class="inline-flex text-current no-underline '
+    'hover:text-primary" href="/test-panel/framework/stubs/N/__tabs/default?stub-sort=name" '
+    'hx-get="/test-panel/framework/stubs/N/__tabs/default?stub-sort=name" hx-swap="outerHTML" '
+    'hx-target="#stub-table"]',
+    'svg [aria-hidden="true" class="inline size-3" data-icon="close" height="24" viewbox="0 0 24 '
+    '24" width="24" xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="M6 18L18 6M6 6l12 12" fill="none" stroke="currentColor" stroke-linecap="round" '
+    'stroke-linejoin="round" stroke-width="1.5"]',
+    'div [class="flex shrink-0 items-center gap-2"]',
+    'button [class="btn btn-secondary btn-sm" data-variant="secondary" type="button" '
+    'x-on:click="toggle"]',
+    'span [aria-hidden="true" class="inline-flex"]',
+    "text: Filter",
+    'svg [aria-hidden="true" class="inline size-5" data-icon="filter" height="24" viewbox="0 0 24 '
+    '24" width="24" xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="M12 3c2.755 0 5.455.232 8.083.678c.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 '
+    "1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 "
+    "21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 "
+    '5.818V4.774c0-.54.384-1.006.917-1.096A48.3 48.3 0 0 1 12 3" fill="none" '
+    'stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"]',
+    'div [class="relative inline-block" x-data="dropdownMenu"]',
+    'button [aria-haspopup="menu" aria-label="Sort" class="group/menu btn btn-secondary btn-sm" '
+    'type="button" x-bind:aria-expanded="open" x-on:click="toggle" '
+    'x-on:keydown.arrow-down.prevent="openFromTrigger" '
+    'x-on:keydown.arrow-up.prevent="openFromTrigger" x-ref="menuButton"]',
+    'span [aria-hidden="true" class="inline-flex"]',
+    "text: Sort",
+    'svg [aria-hidden="true" class="inline size-5" data-icon="sort_neutral" height="24" '
+    'viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="M3 4.5h14.25M3 9h9.75M3 13.5h9.75m4.5-4.5v12m0 0l-3.75-3.75M17.25 21L21 17.25" '
+    'fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" '
+    'stroke-width="1.5"]',
+    'div [class="dropdown-panel fixed w-56 bg-surface border border-border rounded-md shadow-lg '
+    'z-[9999]" style="display: none" x-cloak="" x-on:click.away="close" '
+    'x-on:keydown.arrow-down.prevent="focusNextItem" '
+    'x-on:keydown.arrow-up.prevent="focusPreviousItem" x-on:keydown.end.prevent="focusLastItem" '
+    'x-on:keydown.escape.window.capture="onEscape" x-on:keydown.home.prevent="focusFirstItem" '
+    'x-on:scroll.window="closeOnScroll" x-ref="menuPanel" x-show="open" '
+    'x-transition:enter="transition ease-out duration-100" x-transition:enter-end="transform '
+    'opacity-100 scale-100" x-transition:enter-start="transform opacity-0 scale-95" '
+    'x-transition:leave="transition ease-in duration-75" x-transition:leave-end="transform '
+    'opacity-0 scale-95" x-transition:leave-start="transform opacity-100 scale-100"]',
+    'div [aria-label="Sort by" class="py-1 space-y-1" role="menu"]',
+    'a [aria-current="true" class="block w-full text-left px-4 py-2 text-sm hover:bg-surface-2 '
+    "transition-colors no-underline cursor-pointer flex min-h-11 items-center justify-between "
+    'text-on-surface font-semibold text-muted" '
+    'href="/test-panel/framework/stubs/N/__tabs/default?stub-kind=a&stub-sort=-name" '
+    'hx-get="/test-panel/framework/stubs/N/__tabs/default?stub-kind=a&stub-sort=-name" '
+    'hx-swap="outerHTML" hx-target="#stub-table" role="menuitem"] Name',
+    'span [aria-hidden="true"]',
+    'svg [aria-hidden="true" class="inline size-5 ml-2" data-icon="sort_asc" height="24" '
+    'viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="m4.5 15.75l7.5-7.5l7.5 7.5" fill="none" stroke="currentColor" '
+    'stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"]',
+    'a [class="btn btn-secondary btn-sm" data-variant="secondary" '
+    'href="/test-panel/framework/stubs/N/__tabs/default?stub-kind=a&stub-sort=name&stub-export=csv"]',
+    'span [aria-hidden="true" class="inline-flex"]',
+    "text: Export CSV",
+    'svg [aria-hidden="true" class="inline size-5" data-icon="download" height="24" viewbox="0 0 '
+    '24 24" width="24" xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12L12 '
+    '16.5m0 0L7.5 12m4.5 4.5V3" fill="none" stroke="currentColor" stroke-linecap="round" '
+    'stroke-linejoin="round" stroke-width="1.5"]',
+    'dialog [aria-label="Filter" class="side-panel-dialog modal-backdrop-host bg-transparent '
+    'md:hidden" data-variant="bottom-sheet" id="stub-sheet" x-ref="panelDialog"]',
+    'div [class="side-panel-body bg-surface bottom-sheet overflow-y-auto overscroll-contain"]',
+    'form [action="/test-panel/framework/stubs/N/__tabs/default" class="flex flex-col gap-4 p-4" '
+    'hx-get="/test-panel/framework/stubs/N/__tabs/default" hx-swap="outerHTML" '
+    'hx-target="#stub-table" method="get"]',
+    'div [class="flex items-center gap-1"]',
+    'h2 [class="flex-1 min-w-0 text-lg font-semibold"] Filter',
+    'a [class="btn btn-link btn-sm min-w-11" data-variant="link" '
+    'href="/test-panel/framework/stubs/N/__tabs/default?stub-sort=name" '
+    'hx-get="/test-panel/framework/stubs/N/__tabs/default?stub-sort=name" hx-swap="outerHTML" '
+    'hx-target="#stub-table"] Reset',
+    'button [aria-label="Close" class="-my-2 -me-3 flex size-11 shrink-0 cursor-pointer '
+    "items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 "
+    'hover:text-on-surface" type="button" x-on:click="requestClose"]',
+    'svg [aria-hidden="true" class="inline size-5" data-icon="close" height="24" viewbox="0 0 24 '
+    '24" width="24" xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="M6 18L18 6M6 6l12 12" fill="none" stroke="currentColor" stroke-linecap="round" '
+    'stroke-linejoin="round" stroke-width="1.5"]',
+    'fieldset [class="space-y-2 border-0 p-0"]',
+    'legend [class="px-0 text-xs font-semibold uppercase tracking-wide text-muted"] Kind',
+    'div [class="flex flex-wrap gap-2"]',
+    'label [class="relative inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-full '
+    "border border-border px-3 py-1 text-sm has-[:checked]:border-primary "
+    'has-[:checked]:bg-primary has-[:checked]:text-on-primary"]',
+    'input [checked="checked" class="sr-only" name="stub-kind" type="checkbox" value="a"]',
+    "text: Alpha",
+    'label [class="relative inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-full '
+    "border border-border px-3 py-1 text-sm has-[:checked]:border-primary "
+    'has-[:checked]:bg-primary has-[:checked]:text-on-primary"]',
+    'input [class="sr-only" name="stub-kind" type="checkbox" value="b"]',
+    "text: Beta",
+    'fieldset [class="space-y-2 border-0 p-0"]',
+    'legend [class="px-0 text-xs font-semibold uppercase tracking-wide text-muted"] Active only',
+    'div [class="flex flex-wrap gap-2"]',
+    'label [class="relative inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-full '
+    "border border-border px-3 py-1 text-sm has-[:checked]:border-primary "
+    'has-[:checked]:bg-primary has-[:checked]:text-on-primary"]',
+    'input [class="sr-only" name="stub-active" type="checkbox" value="1"]',
+    "text: Active only",
+    'footer [class="panel-surface sticky bottom-0 z-10 flex items-center justify-between gap-3 '
+    'border-t border-border px-6 py-4 max-sm:flex-wrap mt-auto -mx-4 -mb-4"]',
+    'div [class="shrink-0"]',
+    'button [class="btn btn-secondary" data-variant="secondary" type="button" x-on:click="close"] '
+    "Cancel",
+    'div [class="flex min-w-0 flex-wrap items-center justify-end gap-3"]',
+    'button [class="btn btn-primary" data-variant="primary" type="submit"] Show results',
+    "style [] @media (scripting: none) { #stub-sheet { display: block; position: static; opacity: "
+    "1; transform: none; } }",
+]
+
+NO_FILTER_APPLIED: list[str] = [
+    'div [class="md:flex md:flex-wrap md:items-center md:gap-2 md:border-b md:border-border '
+    'md:px-6 md:py-3 lg:min-h-16.75" x-bind:class="toolbarClass"]',
+    'form [action="/test-panel/framework/stubs/N/__tabs/default" class="w-full px-4 pt-3 sm:px-6 '
+    'md:w-auto md:min-w-40 md:max-w-72 md:flex-1 md:p-0 pb-0" '
+    'hx-get="/test-panel/framework/stubs/N/__tabs/default" hx-swap="outerHTML" '
+    'hx-sync="this:replace" hx-target="#stub-table" hx-trigger="submit, input changed delay:300ms '
+    'from:#stub-q, search from:#stub-q" id="stub-search" method="get"]',
+    "div []",
+    'label [class="sr-only" for="stub-q"] Search',
+    'div [class="relative"]',
+    'span [aria-hidden="true" class="pointer-events-none absolute inset-y-0 left-0 flex '
+    'items-center pl-3 text-muted"]',
+    'svg [aria-hidden="true" class="inline size-4" data-icon="search" height="24" viewbox="0 0 24 '
+    '24" width="24" xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="m21 21l-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607" '
+    'fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" '
+    'stroke-width="1.5"]',
+    'input [class="pl-9 max-md:min-h-11" hx-preserve="" id="stub-q" name="stub-q" '
+    'placeholder="Search..." type="search" value=""]',
+    'div [class="hidden md:contents"]',
+    'details [class="group relative shrink-0"]',
+    'summary [class="list-none marker:hidden [&::-webkit-details-marker]:hidden"]',
+    'span [class="cursor-pointer chip chip-secondary"] Kind',
+    'svg [aria-hidden="true" class="inline size-3 transition-transform group-open:rotate-180" '
+    'data-icon="dropdown" height="24" viewbox="0 0 24 24" width="24" '
+    'xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="m19.5 8.25l-7.5 7.5l-7.5-7.5" fill="none" stroke="currentColor" '
+    'stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"]',
+    'div [class="mt-1 min-w-40 space-y-1 surface bg-surface absolute z-10 p-2"]',
+    'a [class="flex items-center gap-2 whitespace-nowrap rounded-md px-2 py-1 text-on-surface '
+    'no-underline hover:bg-surface-2" '
+    'href="/test-panel/framework/stubs/N/__tabs/default?stub-kind=a" '
+    'hx-get="/test-panel/framework/stubs/N/__tabs/default?stub-kind=a" hx-swap="outerHTML" '
+    'hx-target="#stub-table"]',
+    'span [class="size-4 shrink-0"]',
+    "text: Alpha",
+    'a [class="flex items-center gap-2 whitespace-nowrap rounded-md px-2 py-1 text-on-surface '
+    'no-underline hover:bg-surface-2" '
+    'href="/test-panel/framework/stubs/N/__tabs/default?stub-kind=b" '
+    'hx-get="/test-panel/framework/stubs/N/__tabs/default?stub-kind=b" hx-swap="outerHTML" '
+    'hx-target="#stub-table"]',
+    'span [class="size-4 shrink-0"]',
+    "text: Beta",
+    'details [class="group/add relative shrink-0"]',
+    'summary [class="list-none marker:hidden [&::-webkit-details-marker]:hidden"]',
+    'span [class="cursor-pointer chip chip-secondary"] Add filter',
+    'svg [aria-hidden="true" class="inline size-3 transition-transform group-open/add:rotate-180" '
+    'data-icon="dropdown" height="24" viewbox="0 0 24 24" width="24" '
+    'xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="m19.5 8.25l-7.5 7.5l-7.5-7.5" fill="none" stroke="currentColor" '
+    'stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"]',
+    'div [class="surface bg-surface absolute z-10 mt-1 min-w-40 space-y-2 p-2"]',
+    'details [class="group"]',
+    'summary [class="list-none marker:hidden [&::-webkit-details-marker]:hidden flex '
+    'cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-1 hover:bg-surface-2"] '
+    "Active only",
+    'svg [aria-hidden="true" class="inline size-3 text-muted transition-transform '
+    'group-open:rotate-180" data-icon="dropdown" height="24" viewbox="0 0 24 24" width="24" '
+    'xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="m19.5 8.25l-7.5 7.5l-7.5-7.5" fill="none" stroke="currentColor" '
+    'stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"]',
+    'div [class="mt-1 min-w-40 space-y-1 ps-2"]',
+    'a [class="flex items-center gap-2 whitespace-nowrap rounded-md px-2 py-1 text-on-surface '
+    'no-underline hover:bg-surface-2" '
+    'href="/test-panel/framework/stubs/N/__tabs/default?stub-active=1" '
+    'hx-get="/test-panel/framework/stubs/N/__tabs/default?stub-active=1" hx-swap="outerHTML" '
+    'hx-target="#stub-table"]',
+    'span [class="size-4 shrink-0"]',
+    "text: Active only",
+    'a [class="btn btn-secondary btn-sm ml-auto shrink-0 whitespace-nowrap" '
+    'data-variant="secondary" '
+    'href="/test-panel/framework/stubs/N/__tabs/default?stub-export=csv"]',
+    'span [aria-hidden="true" class="inline-flex"]',
+    "text: Export CSV",
+    'svg [aria-hidden="true" class="inline size-5" data-icon="download" height="24" viewbox="0 0 '
+    '24 24" width="24" xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12L12 '
+    '16.5m0 0L7.5 12m4.5 4.5V3" fill="none" stroke="currentColor" stroke-linecap="round" '
+    'stroke-linejoin="round" stroke-width="1.5"]',
+    'div [class="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3 md:hidden" '
+    'data-mobile-only="true" data-storage-key="stub-sheet" x-data="sidePanel"]',
+    'div [class="flex shrink-0 items-center gap-2"]',
+    'button [class="btn btn-secondary btn-sm" data-variant="secondary" type="button" '
+    'x-on:click="toggle"]',
+    'span [aria-hidden="true" class="inline-flex"]',
+    "text: Filter",
+    'svg [aria-hidden="true" class="inline size-5" data-icon="filter" height="24" viewbox="0 0 24 '
+    '24" width="24" xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="M12 3c2.755 0 5.455.232 8.083.678c.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 '
+    "1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 "
+    "21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 "
+    '5.818V4.774c0-.54.384-1.006.917-1.096A48.3 48.3 0 0 1 12 3" fill="none" '
+    'stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"]',
+    'div [class="relative inline-block" x-data="dropdownMenu"]',
+    'button [aria-haspopup="menu" aria-label="Sort" class="group/menu btn btn-secondary btn-sm" '
+    'type="button" x-bind:aria-expanded="open" x-on:click="toggle" '
+    'x-on:keydown.arrow-down.prevent="openFromTrigger" '
+    'x-on:keydown.arrow-up.prevent="openFromTrigger" x-ref="menuButton"]',
+    'span [aria-hidden="true" class="inline-flex"]',
+    "text: Sort",
+    'svg [aria-hidden="true" class="inline size-5" data-icon="sort_neutral" height="24" '
+    'viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="M3 4.5h14.25M3 9h9.75M3 13.5h9.75m4.5-4.5v12m0 0l-3.75-3.75M17.25 21L21 17.25" '
+    'fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" '
+    'stroke-width="1.5"]',
+    'div [class="dropdown-panel fixed w-56 bg-surface border border-border rounded-md shadow-lg '
+    'z-[9999]" style="display: none" x-cloak="" x-on:click.away="close" '
+    'x-on:keydown.arrow-down.prevent="focusNextItem" '
+    'x-on:keydown.arrow-up.prevent="focusPreviousItem" x-on:keydown.end.prevent="focusLastItem" '
+    'x-on:keydown.escape.window.capture="onEscape" x-on:keydown.home.prevent="focusFirstItem" '
+    'x-on:scroll.window="closeOnScroll" x-ref="menuPanel" x-show="open" '
+    'x-transition:enter="transition ease-out duration-100" x-transition:enter-end="transform '
+    'opacity-100 scale-100" x-transition:enter-start="transform opacity-0 scale-95" '
+    'x-transition:leave="transition ease-in duration-75" x-transition:leave-end="transform '
+    'opacity-0 scale-95" x-transition:leave-start="transform opacity-100 scale-100"]',
+    'div [aria-label="Sort by" class="py-1 space-y-1" role="menu"]',
+    'a [aria-current="true" class="block w-full text-left px-4 py-2 text-sm hover:bg-surface-2 '
+    "transition-colors no-underline cursor-pointer flex min-h-11 items-center justify-between "
+    'text-on-surface font-semibold text-muted" '
+    'href="/test-panel/framework/stubs/N/__tabs/default?stub-sort=-name" '
+    'hx-get="/test-panel/framework/stubs/N/__tabs/default?stub-sort=-name" hx-swap="outerHTML" '
+    'hx-target="#stub-table" role="menuitem"] Name',
+    'span [aria-hidden="true"]',
+    'svg [aria-hidden="true" class="inline size-5 ml-2" data-icon="sort_asc" height="24" '
+    'viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="m4.5 15.75l7.5-7.5l7.5 7.5" fill="none" stroke="currentColor" '
+    'stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"]',
+    'a [class="btn btn-secondary btn-sm" data-variant="secondary" '
+    'href="/test-panel/framework/stubs/N/__tabs/default?stub-export=csv"]',
+    'span [aria-hidden="true" class="inline-flex"]',
+    "text: Export CSV",
+    'svg [aria-hidden="true" class="inline size-5" data-icon="download" height="24" viewbox="0 0 '
+    '24 24" width="24" xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12L12 '
+    '16.5m0 0L7.5 12m4.5 4.5V3" fill="none" stroke="currentColor" stroke-linecap="round" '
+    'stroke-linejoin="round" stroke-width="1.5"]',
+    'dialog [aria-label="Filter" class="side-panel-dialog modal-backdrop-host bg-transparent '
+    'md:hidden" data-variant="bottom-sheet" id="stub-sheet" x-ref="panelDialog"]',
+    'div [class="side-panel-body bg-surface bottom-sheet overflow-y-auto overscroll-contain"]',
+    'form [action="/test-panel/framework/stubs/N/__tabs/default" class="flex flex-col gap-4 p-4" '
+    'hx-get="/test-panel/framework/stubs/N/__tabs/default" hx-swap="outerHTML" '
+    'hx-target="#stub-table" method="get"]',
+    'div [class="flex items-center gap-1"]',
+    'h2 [class="flex-1 min-w-0 text-lg font-semibold"] Filter',
+    'a [class="btn btn-link btn-sm min-w-11" data-variant="link" '
+    'href="/test-panel/framework/stubs/N/__tabs/default?" '
+    'hx-get="/test-panel/framework/stubs/N/__tabs/default?" hx-swap="outerHTML" '
+    'hx-target="#stub-table"] Reset',
+    'button [aria-label="Close" class="-my-2 -me-3 flex size-11 shrink-0 cursor-pointer '
+    "items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 "
+    'hover:text-on-surface" type="button" x-on:click="requestClose"]',
+    'svg [aria-hidden="true" class="inline size-5" data-icon="close" height="24" viewbox="0 0 24 '
+    '24" width="24" xmlns="http://www.w3.org/2000/svg"]',
+    'path [d="M6 18L18 6M6 6l12 12" fill="none" stroke="currentColor" stroke-linecap="round" '
+    'stroke-linejoin="round" stroke-width="1.5"]',
+    'fieldset [class="space-y-2 border-0 p-0"]',
+    'legend [class="px-0 text-xs font-semibold uppercase tracking-wide text-muted"] Kind',
+    'div [class="flex flex-wrap gap-2"]',
+    'label [class="relative inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-full '
+    "border border-border px-3 py-1 text-sm has-[:checked]:border-primary "
+    'has-[:checked]:bg-primary has-[:checked]:text-on-primary"]',
+    'input [class="sr-only" name="stub-kind" type="checkbox" value="a"]',
+    "text: Alpha",
+    'label [class="relative inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-full '
+    "border border-border px-3 py-1 text-sm has-[:checked]:border-primary "
+    'has-[:checked]:bg-primary has-[:checked]:text-on-primary"]',
+    'input [class="sr-only" name="stub-kind" type="checkbox" value="b"]',
+    "text: Beta",
+    'fieldset [class="space-y-2 border-0 p-0"]',
+    'legend [class="px-0 text-xs font-semibold uppercase tracking-wide text-muted"] Active only',
+    'div [class="flex flex-wrap gap-2"]',
+    'label [class="relative inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-full '
+    "border border-border px-3 py-1 text-sm has-[:checked]:border-primary "
+    'has-[:checked]:bg-primary has-[:checked]:text-on-primary"]',
+    'input [class="sr-only" name="stub-active" type="checkbox" value="1"]',
+    "text: Active only",
+    'footer [class="panel-surface sticky bottom-0 z-10 flex items-center justify-between gap-3 '
+    'border-t border-border px-6 py-4 max-sm:flex-wrap mt-auto -mx-4 -mb-4"]',
+    'div [class="shrink-0"]',
+    'button [class="btn btn-secondary" data-variant="secondary" type="button" x-on:click="close"] '
+    "Cancel",
+    'div [class="flex min-w-0 flex-wrap items-center justify-end gap-3"]',
+    'button [class="btn btn-primary" data-variant="primary" type="submit"] Show results',
+    "style [] @media (scripting: none) { #stub-sheet { display: block; position: static; opacity: "
+    "1; transform: none; } }",
+]
+
+
+def _normalised_toolbar(html: str) -> list[str]:
+    """One entry per element of the toolbar, and per run of text after one: tag,
+    sorted attributes and the element's own text, with row ids made constant."""
+    document = lxml.html.fromstring(html)
+    (search_form,) = document.cssselect("form#stub-search")
+    toolbar = search_form.getparent()
+    entries: list[str] = []
+    for element in toolbar.iter():
+        if not isinstance(element.tag, str):
+            continue
+        attributes = " ".join(
+            f'{name}="{" ".join(value.split())}"'
+            for name, value in sorted(element.attrib.items())
+        )
+        text = re.sub(r"\s+", " ", element.text or "").strip()
+        entries.append(f"{element.tag} [{attributes}] {text}".strip())
+        tail = re.sub(r"\s+", " ", element.tail or "").strip()
+        if tail and element is not toolbar:
+            entries.append(f"text: {tail}")
+    return [re.sub(r"stubs/\d+/", "stubs/N/", entry) for entry in entries]
+
+
+def _toolbar_for(query: dict[str, str]) -> list[str]:
+    stub = make_stub(name="row-x", kind="a")
+    html = fetch(f"stubs/{stub.pk}/__tabs/default", data=query).content.decode()
+    return _normalised_toolbar(html)
+
+
+def test_the_toolbar_with_a_filter_applied_renders_the_same_controls_in_order(
+    mock_site_context: Site,
+) -> None:
+    assert _toolbar_for({"stub-kind": "a", "stub-sort": "name"}) == APPLIED_FILTER
+
+
+def test_the_toolbar_with_no_filter_applied_renders_the_same_controls_in_order(
+    mock_site_context: Site,
+) -> None:
+    assert _toolbar_for({}) == NO_FILTER_APPLIED

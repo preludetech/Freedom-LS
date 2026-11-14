@@ -6,6 +6,7 @@ import pytest
 
 from django.http import QueryDict
 
+from freedom_ls.audit_log.models import REASON_LENGTH as AUDIT_REASON_LENGTH
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.educator_interface.forms import (
@@ -14,6 +15,7 @@ from freedom_ls.educator_interface.forms import (
     ChangeRoleForm,
     CohortCourseRegistrationForm,
     CohortSetForm,
+    EducatorReasonForm,
     LearnerPickerForm,
     choice_error,
 )
@@ -240,3 +242,22 @@ def test_change_role_form_rejects_a_role_outside_its_choices():
 
     assert not form.is_valid()
     assert "new_role" in form.errors
+
+
+def test_the_educator_reason_form_takes_what_the_audit_log_column_holds() -> None:
+    assert EducatorReasonForm({"reason": "x" * AUDIT_REASON_LENGTH}).is_valid()
+
+
+def test_the_educator_reason_form_refuses_more_than_the_audit_log_column_holds() -> (
+    None
+):
+    form = EducatorReasonForm({"reason": "x" * (AUDIT_REASON_LENGTH + 1)})
+
+    assert "reason" in form.errors
+
+
+def test_the_educator_reason_form_shows_the_history_help_text() -> None:
+    field = EducatorReasonForm().fields["reason"]
+
+    assert field.label == "Reason (optional)"
+    assert field.help_text == "Only staff can see this. It is shown in the history."

@@ -95,6 +95,25 @@ function focusTriggerOrMain(trigger) {
     if (main) main.focus();
 }
 
+// Writes the dirty form's own discard wording into a host's discard prompt,
+// as text and never HTML, and puts the prompt's defaults back when the form
+// names none: the prompt outlives each form, so the last form's wording would
+// otherwise stay. Shared by appModal and quickView.
+function fillDiscardPrompt(prompt, form) {
+    const wording = form ? form.dataset : {};
+    const parts = [
+        [prompt.querySelector("[data-discard-title]"), wording.discardTitle],
+        [prompt.querySelector("[data-discard-body]"), wording.discardBody],
+    ];
+    parts.forEach(([element, text]) => {
+        if (!element) return;
+        if (element.dataset.discardDefault === undefined) {
+            element.dataset.discardDefault = element.textContent;
+        }
+        element.textContent = text || element.dataset.discardDefault;
+    });
+}
+
 // Tracks whether the first form inside a container differs from what it held
 // at the last snapshot(), so a field edited and then changed back reads clean.
 // Both FormData objects come from the same form element, so their entries()
@@ -205,12 +224,24 @@ document.addEventListener("alpine:init", () => {
 
             // The native "cancel" event fires for both Esc and requestClose(),
             // so this is the single place a dirty form can hold the dialog
-            // open. A second Esc pressed before any other user activation
-            // cannot be cancelled under the CloseWatcher rules browsers apply
-            // to <dialog>: the dialog closes and the typed input is lost.
-            // Nothing in this handler can prevent that.
+            // open for requestClose(); Esc is handled by the keydown
+            // listener below, because a second uncancelled Esc would close
+            // the dialog despite this handler.
             trackListener(this._handlers, this._dialog, "cancel", (event) => {
                 if (!this.dirty) return;
+                event.preventDefault();
+                this._showDiscardPrompt();
+            });
+
+            // Chromium does not let a page cancel a dialog's close request
+            // twice without a user activation in between, so the guard above
+            // alone lets a second Esc close the dialog. Handling the key
+            // itself, and preventing its default, means no close request is
+            // ever made for a dirty form.
+            trackListener(this._handlers, document, "keydown", (event) => {
+                if (event.key !== "Escape" || event.defaultPrevented) return;
+                if (!this._dialog.open || !this.dirty) return;
+                if (document.querySelector("dialog[open]:modal") !== this._dialog) return;
                 event.preventDefault();
                 this._showDiscardPrompt();
             });
@@ -278,7 +309,8 @@ document.addEventListener("alpine:init", () => {
         keepEditing() {
             this._hideDiscardPrompt();
             const form = this._body.querySelector("form");
-            const field = form && form.querySelector("input, select, textarea");
+            const field =
+                form && form.querySelector("input:not([type=hidden]), select, textarea");
             if (field) field.focus();
         },
         // The only caller of close() from a button: the prompt has already
@@ -304,10 +336,18 @@ document.addEventListener("alpine:init", () => {
                 return;
             }
             if (event.detail.xhr.status === 422) {
-                const target =
-                    this._body.querySelector("[data-error-summary]") ||
-                    this._body.querySelector('[aria-invalid="true"]');
-                if (target) target.focus();
+                // htmx focuses the fragment's [autofocus] element (a dialog's
+                // Cancel) in its settle phase, after this handler, so the
+                // error target is focused once the swap has settled.
+                const focusError = () => {
+                    const target =
+                        this._body.querySelector("[data-error-summary]") ||
+                        this._body.querySelector('[aria-invalid="true"]');
+                    if (target) target.focus();
+                };
+                this._body.addEventListener("htmx:afterSettle", focusError, {
+                    once: true,
+                });
                 return;
             }
             const field = this._body.querySelector("[autofocus]");
@@ -332,8 +372,9 @@ document.addEventListener("alpine:init", () => {
         // The prompt takes the fragment's place, and the dialog's
         // accessible name moves to the prompt's heading with it.
         _showDiscardPrompt() {
-            const prompt = this._dialog.querySelector("[data-modal-discard-prompt]");
+            const prompt = this._dialog.querySelector("[data-discard-prompt]");
             if (!prompt) return;
+            fillDiscardPrompt(prompt, this._body.querySelector("form"));
             this._body.hidden = true;
             prompt.hidden = false;
             this._dialog.setAttribute("aria-labelledby", "app-modal-discard-title");
@@ -341,7 +382,7 @@ document.addEventListener("alpine:init", () => {
             if (keepEditingButton) keepEditingButton.focus();
         },
         _hideDiscardPrompt() {
-            const prompt = this._dialog.querySelector("[data-modal-discard-prompt]");
+            const prompt = this._dialog.querySelector("[data-discard-prompt]");
             if (prompt) prompt.hidden = true;
             this._body.hidden = false;
             this._dialog.setAttribute("aria-labelledby", "app-modal-title");
@@ -381,7 +422,7 @@ document.addEventListener("alpine:init", () => {
             );
             this._errorTemplate = this._qvDialog.querySelector("[data-quick-view-error]");
             this._discardPrompt = this._qvDialog.querySelector(
-                "[data-quick-view-discard-prompt]",
+                "[data-discard-prompt]",
             );
             // Hidden inputs (the composer's draft flag and send key) are
             // rewritten by scripts and by every send; only fields a person
@@ -530,15 +571,15 @@ document.addEventListener("alpine:init", () => {
         requestClose() {
             this._requestClose();
         },
-        // Brings the draft back in place of the discard prompt.
-        keepDraft() {
+        // Brings the form back in place of the discard prompt.
+        keepEditing() {
             this._hideDiscardPrompt();
             const field = this._qvBody.querySelector("textarea, input:not([type=hidden]), select");
             if (field) field.focus();
         },
-        // The prompt has already confirmed the loss of the draft, so the
+        // The prompt has already confirmed the loss of the input, so the
         // action it held runs without the guard.
-        discardDraft() {
+        discard() {
             const action = this._pendingAction;
             this._hideDiscardPrompt();
             this._qvDirty = false;
@@ -670,6 +711,7 @@ document.addEventListener("alpine:init", () => {
                 return;
             }
             this._pendingAction = pendingAction;
+            fillDiscardPrompt(this._discardPrompt, this._qvBody.querySelector("form"));
             this._qvBody.hidden = true;
             this._discardPrompt.hidden = false;
             const keepButton = this._discardPrompt.querySelector("[autofocus]");
@@ -960,26 +1002,24 @@ document.addEventListener("alpine:init", () => {
         },
     });
 
-    // List-view table auto-refresh (panel_framework/partials/list_refresh.html).
-    // Re-fetches the list's table region when a create action's HX-Trigger
-    // event fires. The request carries the address bar's query, which holds
-    // every table's live state, so the list stays on the reader's page,
-    // sort, search and filters.
-    Alpine.data("listRefresh", () => ({
+    // Re-requests a region when a named event reaches the body
+    // (panel_framework/partials/list_refresh.html and the instance header).
+    // data-refresh-events: space-separated event names. data-url: the
+    // address to request; the address bar's query string is appended, since
+    // it holds every table's live state, so a list stays on the reader's
+    // page, sort, search and filters. Without data-url the request goes to
+    // the address bar's own path and query, so an instance page keeps its
+    // active tab. data-target and data-select are selectors, data-swap an
+    // htmx swap style (outerHTML by default). The host sits inside or beside
+    // the region it refreshes.
+    Alpine.data("eventRefresh", () => ({
         _handlers: [],
         init() {
-            const url = this.$el.dataset.refreshUrl;
-            const target = this.$el.dataset.refreshTarget;
             const events = (this.$el.dataset.refreshEvents || "")
                 .split(/\s+/)
                 .filter(Boolean);
             events.forEach((eventName) => {
-                const handler = () => {
-                    htmx.ajax("GET", url + window.location.search, {
-                        target: "#" + target,
-                        swap: "outerHTML",
-                    });
-                };
+                const handler = () => this.refresh();
                 document.body.addEventListener(eventName, handler);
                 this._handlers.push([eventName, handler]);
             });
@@ -988,38 +1028,16 @@ document.addEventListener("alpine:init", () => {
             this._handlers.forEach(([eventName, handler]) => {
                 document.body.removeEventListener(eventName, handler);
             });
+            this._handlers = [];
         },
-    }));
-
-    // Instance-page header auto-refresh (panel_framework/views/_instance_view_base.html).
-    // The header's stats and tab counts sit outside every panel, so a panel's
-    // own refresh never reaches them. Re-fetch the current page targeting
-    // #instance-header, which the server answers with the header alone; the
-    // address bar follows tab clicks, so the active tab is kept. The
-    // component sits inside the header, so the swap replaces it with a fresh
-    // one.
-    Alpine.data("headerRefresh", () => ({
-        _handlers: [],
-        init() {
-            const events = (this.$el.dataset.headerRefreshEvents || "")
-                .split(/\s+/)
-                .filter(Boolean);
-            events.forEach((eventName) => {
-                const handler = () => {
-                    htmx.ajax("GET", window.location.pathname + window.location.search, {
-                        target: "#instance-header",
-                        select: "#instance-header",
-                        swap: "outerHTML",
-                    });
-                };
-                document.body.addEventListener(eventName, handler);
-                this._handlers.push([eventName, handler]);
-            });
-        },
-        destroy() {
-            this._handlers.forEach(([eventName, handler]) => {
-                document.body.removeEventListener(eventName, handler);
-            });
+        refresh() {
+            const { url, target, select, swap } = this.$el.dataset;
+            const requestUrl = url
+                ? url + window.location.search
+                : window.location.pathname + window.location.search;
+            const options = { target, swap: swap || "outerHTML" };
+            if (select) options.select = select;
+            htmx.ajax("GET", requestUrl, options);
         },
     }));
 

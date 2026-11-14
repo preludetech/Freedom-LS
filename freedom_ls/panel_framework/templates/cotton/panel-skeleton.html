@@ -16,7 +16,7 @@ Attributes:
          "tile" and "row".
 {% endcomment %}
 
-<div aria-hidden="true" class="animate-pulse motion-reduce:animate-none" {{ attrs }}>
+<div aria-hidden="true" class="animate-pulse motion-reduce:animate-none{% if shape != "tile" and shape != "row" %} flex flex-col gap-2{% endif %}" {{ attrs }}>
     {% if shape == "tile" %}
         <div data-skeleton-line class="rounded-lg border border-border h-24 bg-surface-2"></div>
     {% elif shape == "row" %}
@@ -28,6 +28,6 @@ Attributes:
             </div>
         </div>
     {% else %}
-        {% for _ in lines|times %}<div data-skeleton-line class="h-4 rounded bg-surface-2 mb-2 last:mb-0"></div>{% endfor %}
+        {% for _ in lines|times %}<div data-skeleton-line class="h-4 rounded bg-surface-2"></div>{% endfor %}
     {% endif %}
 </div>

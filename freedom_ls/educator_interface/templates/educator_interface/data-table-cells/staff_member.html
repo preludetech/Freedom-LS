@@ -10,7 +10,7 @@ The badges sit under the name and email, in the person link's badges slot:
 organisation membership, "Account inactive" for an inactive user, and "Also a
 learner" for an active Learner row in the same organisation.
 {% endcomment %}
-<c-panel-person-link name="{{ object.display_name }}" user_id="{{ object.pk }}" secondary="{% if object.first_name or object.last_name %}{{ object.email }}{% endif %}" quick_view_url="{% if shows_roles %}{{ staff_url }}/{{ object.pk }}/__quick-view{% endif %}" class="min-w-0 md:max-w-56">
+<c-panel-person-link :user="object" quick_view_url="{% if shows_roles %}{{ staff_url }}/{{ object.pk }}/__quick-view{% endif %}" class="min-w-0 md:max-w-56">
     {% if object.pk == viewer.pk or object.is_inactive or not object.is_active or object.learner_rows %}
         <c-slot name="badges">
             {% if object.pk == viewer.pk %}<c-panel-status-badge tone="info" label="You" />{% endif %}

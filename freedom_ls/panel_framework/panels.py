@@ -7,11 +7,12 @@ built fresh for one request from a `PanelContext`, and it is what renders.
 
 from __future__ import annotations
 
+import datetime
 import re
 from collections.abc import Callable
 from dataclasses import replace
 from functools import cached_property
-from typing import TypedDict, cast
+from typing import Literal, TypedDict, cast
 
 from django import forms
 from django.core.exceptions import ImproperlyConfigured
@@ -29,6 +30,14 @@ from freedom_ls.panel_framework.field_display import (
     lookup_field,
 )
 from freedom_ls.panel_framework.tables import DataTable, TableQuery
+
+__all__ = [
+    "DataTablePanel",
+    "InstanceDetailsPanel",
+    "Panel",
+    "PanelStack",
+    "TabSet",
+]
 
 #: How many permitted, non-destructive bulk actions the selection bar shows
 #: as buttons. Every other action goes under More.
@@ -390,7 +399,7 @@ class DataTablePanel(Panel):
         columns = self.data_table.get_columns()
         context["table_colspan"] = (
             len(columns)
-            + (1 if self.data_table.row_detail_template else 0)
+            + (1 if self.data_table.row_detail_template_name else 0)
             + (1 if context["bulk_actions"] else 0)
         )
         context["noun"] = self.noun(self.request)
@@ -447,23 +456,36 @@ class InstanceDetailsPanel(Panel):
             )
         ]
 
+    @staticmethod
+    def detail_row(
+        label: str,
+        value: object,
+        kind: Literal["text", "boolean", "date", "badge"] = "text",
+    ) -> dict[str, object]:
+        """One label/value row. `kind` picks how the template draws `value`:
+        "badge" takes a `StatusBadge`, "date" a date or datetime, "boolean" a
+        bool, and "text" anything already formatted for display."""
+        return {"label": label, "value": value, "kind": kind}
+
     def get_rows(self) -> list[dict[str, object]]:
         instance = self._bound_instance()
         model = self.model or type(instance)
         rows: list[dict[str, object]] = []
         for name in self.fields:
             field, value = lookup_field(name, instance)
+            label = label_for_field(name, model)
+            if isinstance(value, datetime.date):
+                rows.append(self.detail_row(label, value, "date"))
+                continue
             display = (
                 display_for_value(value, self.empty_value_display)
                 if field is None
                 else display_for_field(value, field, self.empty_value_display)
             )
             rows.append(
-                {
-                    "label": label_for_field(name, model),
-                    "value": display,
-                    "is_boolean": isinstance(display, bool),
-                }
+                self.detail_row(
+                    label, display, "boolean" if isinstance(display, bool) else "text"
+                )
             )
         return rows
 

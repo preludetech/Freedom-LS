@@ -1,9 +1,10 @@
 {% comment %}
 This is only used in the tests: a quick-view consumer template, the way a
 real one (e.g. the learner or cohort drawer) would print its own fields.
+The row named "Plain" has a form with no discard wording of its own.
 {% endcomment %}
 <p data-stub-quick-view>{{ quick_view.instance.name }}</p>
-<form>
+<form {% if quick_view.instance.name != "Plain" %}data-discard-title="Discard your message?" data-discard-body="The message you wrote hasn't been sent."{% endif %}>
     <label for="stub-note">Note</label>
     <textarea id="stub-note" name="note"></textarea>
 </form>

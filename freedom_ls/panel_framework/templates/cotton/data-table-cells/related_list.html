@@ -1,0 +1,9 @@
+{% load data_table_tags %}
+{% comment %}
+A `RelatedListColumn`: every object in the row's relation, through the
+related-list partial (one item per line or comma-separated, linked when the
+column has a url).
+{% endcomment %}
+{% with items=object|getattr_str:column.relation_set %}
+    {% include "panel_framework/partials/related_list.html" with items=items layout=column.layout text_attr=column.item_text_attr link_object_attr=column.link_object_attr url_name=column.url_name url_path_template=column.url_path_template htmx_nav=column.htmx_nav request=request only %}
+{% endwith %}

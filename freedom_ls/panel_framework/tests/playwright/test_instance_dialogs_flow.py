@@ -35,9 +35,9 @@ def test_instance_dialogs_and_heading(
 
     page.goto(f"{base}/{stub.pk}/__tabs/details")
 
-    # A read-only fragment focuses its heading on open.
+    # A message dialog focuses its Close button on open.
     page.get_by_role("button", name="View Info").click()
-    expect(page.get_by_role("heading", name="Stub Info")).to_be_focused()
+    expect(modal.locator("footer button[x-on\\:click=cancel]")).to_be_focused()
 
     # A click in the dialog's own padding leaves it open.
     modal.click(position={"x": 5, "y": 5})
@@ -47,6 +47,30 @@ def test_instance_dialogs_and_heading(
     # dialog, so the click lands on its ::backdrop.
     page.mouse.click(5, 5)
     expect(modal).to_be_hidden()
+
+    # A confirm dialog with a typed reason closes from the footer Cancel with
+    # no discard prompt.
+    page.get_by_role("button", name="Retire Item").click()
+    dialog = page.get_by_role("dialog", name="Retire Item")
+    expect(dialog.get_by_role("button", name="Cancel")).to_be_focused()
+    reason = dialog.get_by_label("Reason (optional):")
+    reason.fill("Typed but not needed")
+
+    # Esc asks to discard; "Keep editing" puts focus back in the field, and
+    # every further Esc asks again instead of closing the dialog.
+    page.keyboard.press("Escape")
+    expect(page.get_by_role("dialog", name="Discard changes?")).to_be_visible()
+    page.get_by_role("button", name="Keep editing").click()
+    expect(reason).to_have_value("Typed but not needed")
+    expect(reason).to_be_focused()
+    page.keyboard.press("Escape")
+    expect(page.get_by_role("dialog", name="Discard changes?")).to_be_visible()
+    page.get_by_role("button", name="Keep editing").click()
+    expect(reason).to_be_focused()
+
+    dialog.get_by_role("button", name="Cancel").click()
+    expect(modal).to_be_hidden()
+    expect(page.get_by_role("dialog", name="Discard changes?")).to_be_hidden()
 
     # The instance heading updates when instanceTitleChanged fires.
     heading = page.locator("#instance-title")
@@ -66,6 +90,17 @@ def test_instance_dialogs_and_heading(
     )
     assert page.title() == "Renamed again — Scope — Site"
 
+    # The header re-requests itself when a header refresh event reaches the
+    # body, so a change made elsewhere shows without a reload.
+    subtitle = page.locator("#instance-header").get_by_text("Subtitle of Original Name")
+    expect(subtitle).to_be_visible()
+    StubModel.objects.filter(pk=stub.pk).update(name="Changed Elsewhere")
+    page.evaluate("document.body.dispatchEvent(new CustomEvent('itemChanged'))")
+    expect(
+        page.locator("#instance-header").get_by_text("Subtitle of Changed Elsewhere")
+    ).to_be_visible()
+    StubModel.objects.filter(pk=stub.pk).update(name="Original Name")
+
     # A long title with no spaces does not widen the page.
     page.set_viewport_size(_NARROW_VIEWPORT)
     page.goto(f"{base}/{long_stub.pk}")
@@ -84,3 +119,25 @@ def test_instance_dialogs_and_heading(
     expect(modal).to_be_hidden()
     expect(page).to_have_url(f"{base}")
     assert not StubModel.objects.filter(pk=stub.pk).exists()
+
+
+def test_refused_delete_moves_focus_to_its_error_notice(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    """A delete refused on submit re-renders the dialog with an error notice,
+    and focus must land on that notice. It used to fall back to the Cancel
+    button, whose autofocus the swap re-applied after the refusal handler."""
+    stub = make_stub(name="Refused")
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/{stub.pk}/__tabs/details")
+
+    page.get_by_role("button", name="Delete Refused", exact=True).click()
+    dialog = page.locator("#app-modal")
+    expect(dialog.get_by_role("button", name="Cancel")).to_be_focused()
+
+    dialog.get_by_role("button", name="Delete Refused", exact=True).click()
+    notice = dialog.locator("[data-error-summary]")
+    expect(notice).to_contain_text("It still has 1 learner.")
+    expect(notice).to_be_focused()

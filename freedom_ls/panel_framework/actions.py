@@ -3,20 +3,47 @@ from __future__ import annotations
 import json
 from collections import Counter
 from collections.abc import Callable
+from dataclasses import replace
 from typing import cast
 from urllib.parse import urlsplit
 
 from django import forms
-from django.core.exceptions import NON_FIELD_ERRORS, ImproperlyConfigured
+from django.core.exceptions import (
+    NON_FIELD_ERRORS,
+    ImproperlyConfigured,
+    ValidationError,
+)
 from django.db import transaction
-from django.db.models import Model
+from django.db.models import Model, QuerySet
 from django.db.models.deletion import ProtectedError
-from django.http import HttpRequest, HttpResponse
-from django.shortcuts import render
+from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed
+from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.events import build_hx_trigger
+from freedom_ls.panel_framework.forms import ReasonForm
+
+__all__ = [
+    "ConfirmAction",
+    "CreateInstanceAction",
+    "DeleteAction",
+    "EditAction",
+    "FormPanelAction",
+    "ModalPanelAction",
+    "PanelAction",
+    "ReasonMixin",
+    "changed_response",
+    "count_noun",
+    "count_phrase",
+    "current_page_within",
+    "denied_response",
+    "field_error_count",
+    "form_fragment_context",
+    "join_prose",
+    "navigation_response",
+    "refusal_response",
+]
 
 
 def _model_capability(model: type[Model] | Model, verb: str) -> str:
@@ -54,6 +81,18 @@ def changed_response(events: dict[str, list[str]]) -> HttpResponse:
     return response
 
 
+def refusal_response(
+    ctx: PanelContext, *, title: str, message: str, status: int = 422
+) -> HttpResponse:
+    """A message dialog saying a change was not made, and why."""
+    return render(
+        ctx.request,
+        "panel_framework/modal/message.html",
+        {"title": title, "message": message},
+        status=status,
+    )
+
+
 def count_phrase(count: int, singular: object, plural: object) -> str:
     """A count and a noun, singular for exactly one."""
     return f"{count} {singular if count == 1 else plural}"
@@ -87,8 +126,8 @@ class PanelAction:
     #: never form- or cascade-related.
     trigger_template_name: str = "panel_framework/partials/action_button.html"
     #: The action's fragment, rendered only by _handle_action on GET, from
-    #: get_context_data(ctx).
-    template_name: str = "panel_framework/partials/action_button.html"
+    #: get_context_data(ctx). An action that only takes a POST leaves it None.
+    template_name: str | None = None
     #: The capability this action asks about, or None to allow it whenever
     #: the config lets the action render at all.
     capability: str | None = None
@@ -100,6 +139,32 @@ class PanelAction:
     #: but its trigger renders per row (the panel exposes its URL through
     #: `row_action_urls`) rather than in the panel's footer.
     renders_in_footer: bool = True
+    #: The request parameter naming the row a row-scoped action acts on.
+    row_param: str | None = None
+
+    def get_row_queryset(self, ctx: PanelContext) -> QuerySet[Model]:
+        """The rows this action may act on, already narrowed to what the
+        request may reach. It has no default: a row action must state its
+        scope, so the lookup never runs against an unscoped manager."""
+        raise NotImplementedError
+
+    def get_row_object(self, ctx: PanelContext) -> Model:
+        """The row `row_param` names, from `get_row_queryset`, read once per
+        request. A missing, malformed or out-of-scope value is a 404."""
+        if self.row_param is None:
+            raise ImproperlyConfigured(f"{type(self).__name__} sets no row_param.")
+        params = ctx.request.POST if ctx.request.method == "POST" else ctx.request.GET
+        value = params.get(self.row_param, "")
+
+        def load() -> Model:
+            # A value the pk field cannot parse is the same miss as an
+            # unknown one.
+            try:
+                return get_object_or_404(self.get_row_queryset(ctx), pk=value)
+            except (ValueError, ValidationError):
+                raise Http404 from None
+
+        return ctx.once((type(self), ctx.base_url, self.row_param, value), load)
 
     def get_capability(self, ctx: PanelContext) -> str | None:
         return self.capability
@@ -145,16 +210,39 @@ class PanelAction:
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         return self.get_trigger_context(ctx)
 
+    def render_fragment(self, ctx: PanelContext) -> HttpResponse:
+        """The response to a GET: the action's template with its context. An
+        action that can refuse the dialog before it opens overrides this. An
+        action with no template only takes a POST."""
+        if self.template_name is None:
+            return HttpResponseNotAllowed(["POST"])
+        return render(
+            ctx.request, self.get_fragment_template_name(), self.get_context_data(ctx)
+        )
+
+    def get_fragment_template_name(self) -> str:
+        if self.template_name is None:
+            raise ImproperlyConfigured(
+                f"{type(self).__name__} has no template_name, so it has no "
+                "fragment to render."
+            )
+        return self.template_name
+
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         """Process action submission. Override in subclasses."""
         raise NotImplementedError
+
+
+def field_error_count(form: forms.BaseForm) -> int:
+    """How many fields of a bound form carry an error."""
+    return sum(1 for name in form.errors if name != NON_FIELD_ERRORS)
 
 
 def form_fragment_context(
     form: forms.BaseForm,
     *,
     form_title: str,
-    form_url: str,
+    action_url: str,
     submit_buttons: list[dict[str, str]],
     empty_message: str | None = None,
     autofocus: bool = True,
@@ -176,9 +264,9 @@ def form_fragment_context(
         fields[0].field.widget.attrs["autofocus"] = True
     return {
         "form": form,
-        "field_error_count": sum(1 for name in form.errors if name != NON_FIELD_ERRORS),
+        "field_error_count": field_error_count(form),
         "form_title": form_title,
-        "form_url": form_url,
+        "action_url": action_url,
         "submit_buttons": submit_buttons,
         "empty_message": empty_message,
     }
@@ -197,10 +285,22 @@ def denied_response(ctx: PanelContext, action: PanelAction) -> HttpResponse:
     )
 
 
-class FormPanelAction(PanelAction):
+class ModalPanelAction(PanelAction):
+    """An action whose button opens its fragment in the app modal."""
+
     trigger_template_name = "panel_framework/partials/modal_trigger.html"
+
+
+class FormPanelAction(ModalPanelAction):
+    """An action whose dialog is a form.
+
+    Every hook reads the request through `ctx`, so an action holds no request
+    state. `form_class` is any form class or factory; a `ModelForm` class
+    also receives the page's instance.
+    """
+
     template_name = "panel_framework/modal/form.html"
-    form_class: Callable[..., forms.ModelForm]
+    form_class: Callable[..., forms.BaseForm]
     form_title: str = ""
     submit_buttons: list[dict[str, str]] = [
         {"label": "Save", "variant": "primary"},
@@ -208,57 +308,108 @@ class FormPanelAction(PanelAction):
     #: Off for a form rendered inside a panel rather than a dialog: a page
     #: must not move focus to a field as it loads.
     autofocus_first_field: bool = True
+    #: Fields whose change re-renders the dialog, so later fields can depend on them.
+    refresh_on_change: tuple[str, ...] = ()
 
-    def get_form(
-        self, request: HttpRequest, instance: Model | None = None
-    ) -> forms.ModelForm:
-        data = request.POST if request.method == "POST" else None
-        form = self.form_class(data, instance=instance)
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
+        kwargs: dict[str, object] = {
+            "data": ctx.request.POST if ctx.request.method == "POST" else None
+        }
+        # form_class may be a factory function, which issubclass() rejects.
+        if isinstance(self.form_class, type) and issubclass(
+            self.form_class, forms.ModelForm
+        ):
+            kwargs["instance"] = ctx.instance
+        return kwargs
+
+    def get_form(self, ctx: PanelContext) -> forms.BaseForm:
+        """The form for this request. A GET that carries a `refresh_on_change`
+        field renders the form bound to the query when the query is valid, so
+        the dialog can react to the choice; a stale choice is not a
+        submission and earns no error."""
+        kwargs = self.get_form_kwargs(ctx)
+        form = self.form_class(**kwargs)
+        if ctx.request.method != "POST" and any(
+            name in ctx.request.GET for name in self.refresh_on_change
+        ):
+            queried = self.form_class(**{**kwargs, "data": ctx.request.GET})
+            if queried.is_valid():
+                form = queried
+        self._mark_refresh_fields(ctx, form)
         return form
 
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        """Process form submission."""
-        self._last_form_url = self.get_action_url(ctx)
-        form = self.get_form(ctx.request, ctx.instance)
-        if form.is_valid():
-            return self.form_valid(ctx.request, form)
-        return self.form_invalid(ctx.request, form)
+    def get_unbound_form(self, ctx: PanelContext) -> forms.BaseForm:
+        """A form with no data, for the dialog after a save that stays open."""
+        form = self.form_class(**{**self.get_form_kwargs(ctx), "data": None})
+        self._mark_refresh_fields(ctx, form)
+        return form
 
-    def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
-        raise NotImplementedError
+    def _mark_refresh_fields(self, ctx: PanelContext, form: forms.BaseForm) -> None:
+        """Make a change to each `refresh_on_change` field re-render the dialog
+        from the action URL with the form's values. Without JavaScript the
+        dialog keeps its generic form and the submit still works."""
+        url = self.get_action_url(ctx)
+        for name in self.refresh_on_change:
+            form.fields[name].widget.attrs.update(
+                {
+                    "hx-get": url,
+                    "hx-include": "closest form",
+                    "hx-trigger": "change",
+                    "hx-target": "#app-modal-body",
+                    "hx-swap": "innerHTML",
+                }
+            )
 
-    def form_invalid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
-        """Return 422 with re-rendered form."""
-        html = render_to_string(
-            self.template_name,
-            self._fragment_context(form, self._last_form_url),
-            request=request,
-        )
-        return HttpResponse(html, status=422)
+    def get_form_title(self, ctx: PanelContext, form: forms.BaseForm) -> str:
+        return self.form_title
 
-    def _fragment_context(
-        self, form: forms.ModelForm, form_url: str
+    def get_empty_message(self, ctx: PanelContext, form: forms.BaseForm) -> str | None:
+        """The sentence that replaces a picker with nothing to offer."""
+        return None
+
+    def get_fragment_context(
+        self, ctx: PanelContext, form: forms.BaseForm
     ) -> dict[str, object]:
         return form_fragment_context(
             form,
-            form_title=self.form_title,
-            form_url=form_url,
+            form_title=self.get_form_title(ctx, form),
+            action_url=self.get_action_url(ctx),
             submit_buttons=self.submit_buttons,
+            # A submitted form shows its errors; the empty message stands in
+            # only for the form a person has not yet filled in.
+            empty_message=None if form.is_bound else self.get_empty_message(ctx, form),
             autofocus=self.autofocus_first_field,
         )
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        """The modal fragment, holding an unbound form."""
-        return self._fragment_context(
-            self.get_form(ctx.request), self.get_action_url(ctx)
+        """The modal fragment for the form this request holds."""
+        return self.get_fragment_context(ctx, self.get_form(ctx))
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        """Process form submission."""
+        form = self.get_form(ctx)
+        if form.is_valid():
+            return self.form_valid(ctx, form)
+        return self.form_invalid(ctx, form)
+
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
+        raise NotImplementedError
+
+    def form_invalid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
+        """Re-render the dialog with the form's errors and status 422."""
+        html = render_to_string(
+            self.get_fragment_template_name(),
+            self.get_fragment_context(ctx, form),
+            request=ctx.request,
         )
+        return HttpResponse(html, status=422)
 
 
 class CreateInstanceAction(FormPanelAction):
     """Base class for actions that create a new instance via a modal form.
 
     Subclasses must define: form_class, form_title, label, action_name.
-    Subclasses must implement: get_success_url(instance).
+    Subclasses must implement: get_success_url(ctx, instance).
     """
 
     variant: str = "primary"
@@ -272,17 +423,16 @@ class CreateInstanceAction(FormPanelAction):
         {"label": "Save", "variant": "primary"},
     ]
 
-    def get_success_url(self, instance: Model) -> str:
+    def get_success_url(self, ctx: PanelContext, instance: Model) -> str:
         """Return the URL to redirect to after successful creation."""
         raise NotImplementedError
 
-    def _render_empty_form(self, request: HttpRequest, form_url: str) -> str:
-        """Re-render the modal form with an empty/unbound form."""
-        return render_to_string(
-            self.template_name,
-            self._fragment_context(self.form_class(), form_url),
-            request=request,
-        )
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
+        """The form never takes the page's instance: on an instance page it
+        would open filled in with that object and save over it."""
+        kwargs = super().get_form_kwargs(ctx)
+        kwargs.pop("instance", None)
+        return kwargs
 
     def get_capability(self, ctx: PanelContext) -> str | None:
         if self.capability is not None:
@@ -293,15 +443,19 @@ class CreateInstanceAction(FormPanelAction):
         model: type[Model] = meta.model
         return _model_capability(model, "add")
 
-    def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
-        instance = form.save()
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
+        instance = cast(forms.ModelForm, form).save()
         events = self.get_success_events(instance)
-        if request.POST.get("action") == "save_and_add":
-            html = self._render_empty_form(request, self._last_form_url)
+        if ctx.request.POST.get("action") == "save_and_add":
+            html = render_to_string(
+                self.get_fragment_template_name(),
+                self.get_fragment_context(ctx, self.get_unbound_form(ctx)),
+                request=ctx.request,
+            )
             response = HttpResponse(html)
             response["HX-Trigger"] = build_hx_trigger(events)
             return response
-        response = navigation_response(self.get_success_url(instance))
+        response = navigation_response(self.get_success_url(ctx, instance))
         response["HX-Trigger"] = build_hx_trigger(events, close_modal=True)
         return response
 
@@ -326,19 +480,11 @@ class EditAction(FormPanelAction):
         self._instance = instance
         self.success_events = success_events
 
-    def get_form(
-        self, request: HttpRequest, instance: Model | None = None
-    ) -> forms.ModelForm:
-        instance = instance or self._instance
-        data = request.POST if request.method == "POST" else None
-        form = self.form_class(data, instance=instance)
-        return form
-
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        # The page heading is named by the section, not by str(instance), so
-        # the title a save sends back has to come from the same place.
-        self._section = ctx.config
-        return super().handle_submit(ctx)
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
+        return {
+            **super().get_form_kwargs(ctx),
+            "instance": ctx.instance or self._instance,
+        }
 
     def event_instance(self, form: forms.ModelForm) -> Model:
         """The instance the success events and the page title are about.
@@ -348,14 +494,17 @@ class EditAction(FormPanelAction):
         """
         return cast(Model, form.instance)
 
-    def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
-        form.save()
-        instance = self.event_instance(form)
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
+        model_form = cast(forms.ModelForm, form)
+        model_form.save()
+        instance = self.event_instance(model_form)
         response = HttpResponse(status=204)
+        # The page heading is named by the section, not by str(instance), so
+        # the title a save sends back has to come from the same place.
         response["HX-Trigger"] = build_hx_trigger(
             self.get_success_events(instance),
             close_modal=True,
-            title=self._section.get_instance_label(instance),
+            title=ctx.config.get_instance_label(instance),
         )
         return response
 
@@ -363,7 +512,54 @@ class EditAction(FormPanelAction):
         return self.capability or _model_capability(self._instance, "change")
 
 
-class DeleteAction(PanelAction):
+class ConfirmAction(ModalPanelAction):
+    """An action that asks for one decision in a dialog before it runs.
+
+    The dialog is `modal/confirm.html`: a title, a body, hidden fields and one
+    confirm button. A subclass's template extends it and fills `body`.
+    """
+
+    template_name = "panel_framework/modal/confirm.html"
+    variant = "secondary"
+    #: The confirm button's label; the action's own label when empty.
+    confirm_label: str = ""
+    confirm_variant: str = "primary"
+    loading_text: str = "Saving…"
+
+    def get_title(self, ctx: PanelContext) -> str:
+        return self.label
+
+    def get_hidden_fields(self, ctx: PanelContext) -> dict[str, str]:
+        """Row parameters the submit needs, posted as hidden inputs: the row
+        `row_param` names, for a row-scoped action."""
+        if self.row_param is None:
+            return {}
+        return {self.row_param: str(self.get_row_object(ctx).pk)}
+
+    def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
+        """What the dialog's body says, beyond the title and the buttons."""
+        return {}
+
+    def _dialog_context(self, ctx: PanelContext) -> dict[str, object]:
+        """The dialog around the body: its title, hidden fields and button."""
+        return {
+            **super().get_context_data(ctx),
+            "title": self.get_title(ctx),
+            "hidden_fields": self.get_hidden_fields(ctx),
+            "confirm_label": self.confirm_label or self.label,
+            "confirm_variant": self.confirm_variant,
+            "loading_text": self.loading_text,
+        }
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        return {**self._dialog_context(ctx), **self.get_confirm_context(ctx)}
+
+    def refuse(self, ctx: PanelContext, message: str, *, title: str) -> HttpResponse:
+        """A message dialog saying the change was not made, and why."""
+        return refusal_response(ctx, title=title, message=message)
+
+
+class DeleteAction(ConfirmAction):
     """Deletes the instance of whatever it is attached to, after confirmation.
 
     With a success_url, a delete navigates there and sends no domain events.
@@ -374,8 +570,9 @@ class DeleteAction(PanelAction):
     label = "Delete"
     variant = "error"
     action_name = "delete"
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
     template_name = "panel_framework/modal/delete_confirmation.html"
+    confirm_variant = "error"
+    loading_text = "Deleting…"
 
     def __init__(self, success_url: str = "", success_events: tuple[str, ...] = ()):
         self.success_url = success_url
@@ -420,39 +617,22 @@ class DeleteAction(PanelAction):
             f"still has {join_prose(dependents)}."
         )
 
-    def _confirmation_context(
-        self,
-        ctx: PanelContext,
-        instance: Model,
-        *,
-        cascade_summary: list[str],
-        blocked_reason: str,
-    ) -> dict[str, object]:
-        return {
-            "instance": instance,
-            "noun": instance._meta.verbose_name,
-            "cascade_summary": cascade_summary,
-            "blocked_reason": blocked_reason,
-            "delete_url": self.get_action_url(ctx),
-        }
-
-    def _blocked_context(
-        self, ctx: PanelContext, instance: Model, reason: str
-    ) -> dict[str, object]:
-        return self._confirmation_context(
-            ctx, instance, cascade_summary=[], blocked_reason=reason
-        )
+    def _instance(self, ctx: PanelContext) -> Model:
+        if ctx.instance is None:
+            raise ImproperlyConfigured("DeleteAction needs an instance to delete.")
+        return ctx.instance
 
     def _blocked_response(
         self, ctx: PanelContext, instance: Model, reason: str
     ) -> HttpResponse:
         """The confirmation re-rendered with `reason` in place of a live
-        delete button, the way a form answers an invalid submit."""
-        html = render_to_string(
-            self.template_name,
-            self._blocked_context(ctx, instance, reason),
-            request=ctx.request,
-        )
+        delete button, the way a form answers an invalid submit. The reason
+        is already known, so nothing collects the cascade for it."""
+        context = {
+            **self._dialog_context(ctx),
+            **self._body_context(instance, reason),
+        }
+        html = render_to_string(self.template_name, context, request=ctx.request)
         return HttpResponse(html, status=422)
 
     def before_delete(self, ctx: PanelContext, instance: Model) -> HttpResponse | None:
@@ -461,24 +641,37 @@ class DeleteAction(PanelAction):
         does so must not have written anything first."""
         return None
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        """The error-variant button and its confirmation modal.
+    def get_title(self, ctx: PanelContext) -> str:
+        return f"Delete {self._instance(ctx)}"
 
-        A delete that a protected relation would block renders the reason in
-        place of the cascade summary, with no live delete button.
-        """
-        instance = ctx.instance
-        if instance is None:
-            raise ImproperlyConfigured("DeleteAction needs an instance to delete.")
-        try:
-            cascade = self.get_cascade_summary(instance)
-        except ProtectedError as error:
-            return self._blocked_context(
-                ctx, instance, self.get_blocked_reason(instance, error)
-            )
-        return self._confirmation_context(
-            ctx, instance, cascade_summary=cascade, blocked_reason=""
+    def get_known_blocked_reason(self, ctx: PanelContext, instance: Model) -> str:
+        """Why this delete is refused, when that is known without collecting
+        the cascade, which loads every row the delete would remove. Empty
+        when nothing is known to block it."""
+        return ""
+
+    def _body_context(self, instance: Model, blocked_reason: str) -> dict[str, object]:
+        return {
+            "instance": instance,
+            "noun": instance._meta.verbose_name,
+            "cascade_summary": [],
+            "blocked_reason": blocked_reason,
+        }
+
+    def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
+        """The cascade summary, or, for a delete that is known to be refused
+        or that a protected relation would block, the reason in its place."""
+        instance = self._instance(ctx)
+        context = self._body_context(
+            instance, self.get_known_blocked_reason(ctx, instance)
         )
+        if context["blocked_reason"]:
+            return context
+        try:
+            context["cascade_summary"] = self.get_cascade_summary(instance)
+        except ProtectedError as error:
+            context["blocked_reason"] = self.get_blocked_reason(instance, error)
+        return context
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         instance = ctx.instance
@@ -522,3 +715,36 @@ class DeleteAction(PanelAction):
 
     def has_permission(self, ctx: PanelContext) -> bool:
         return ctx.instance is not None and super().has_permission(ctx)
+
+
+class ReasonMixin(PanelAction):
+    """A confirm dialog that takes an optional reason, which the submit reads
+    from `ctx.reason`. List it first in the bases, as RequiresActiveCohortMixin
+    is, so the reason is validated before any other submit handling. An
+    action with its own submit overrides handle_confirmed_submit, never
+    handle_submit, and one that builds its own context calls
+    super().get_context_data so the reason field is in it."""
+
+    reason_form_class: type[ReasonForm] = ReasonForm
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        context = super().get_context_data(ctx)
+        context.setdefault("reason_form", self.reason_form_class())
+        return context
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        form = self.reason_form_class(ctx.request.POST)
+        if not form.is_valid():
+            context = {**self.get_context_data(ctx), "reason_form": form}
+            html = render_to_string(
+                self.get_fragment_template_name(), context, request=ctx.request
+            )
+            return HttpResponse(html, status=422)
+        return self.handle_confirmed_submit(
+            replace(ctx, reason=str(form.cleaned_data["reason"]))
+        )
+
+    def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
+        """The submit once the reason is valid and on `ctx`: the next
+        handle_submit in the MRO."""
+        return super().handle_submit(ctx)

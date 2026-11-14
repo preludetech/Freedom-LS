@@ -2,7 +2,7 @@
 The modal body an AddLearnerAction's valid POST returns when Add was
 pressed. Context: result (an AddLearnerResult), added (whether the person
 is now a learner here), cohort (the Cohort they were added to, or None),
-form_url (the action's URL, for Add another).
+action_url (the action's URL, for Add another).
 {% endcomment %}
 <c-modal-header focus_title="true">{% if not added %}Not added{% elif cohort %}Added to {{ cohort }}{% else %}Learner added{% endif %}</c-modal-header>
 
@@ -11,7 +11,6 @@ form_url (the action's URL, for Add another).
     <p class="text-muted">{{ result.outcome.label }}.{% if result.cohort_outcome %} {{ result.cohort_outcome.label }}.{% endif %}</p>
 </c-modal-body>
 
-<c-modal-footer>
-    <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose">Close</c-button></c-slot>
-    <c-button variant="primary" hx-get="{{ form_url }}" hx-target="#app-modal-body" hx-swap="innerHTML">Add another</c-button>
+<c-modal-footer cancel="Close">
+    <c-button variant="primary" hx-get="{{ action_url }}" hx-target="#app-modal-body" hx-swap="innerHTML">Add another</c-button>
 </c-modal-footer>

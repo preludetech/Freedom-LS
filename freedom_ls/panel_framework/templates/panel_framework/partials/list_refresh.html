@@ -4,8 +4,9 @@ action fires its created-event (HX-Trigger). Lives outside that region so it
 survives the region's outerHTML swap. Carries no visible content of its own —
 the list view's actions render in its page header instead.
 {% endcomment %}
-<div x-data="listRefresh"
+<div x-data="eventRefresh"
      class="hidden"
      data-refresh-events="{{ refresh_events }}"
-     data-refresh-url="{{ refresh_url }}"
-     data-refresh-target="{{ refresh_target }}"></div>
+     data-url="{{ refresh_url }}"
+     data-target="#{{ refresh_target }}"
+     data-swap="outerHTML"></div>

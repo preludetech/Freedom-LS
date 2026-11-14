@@ -82,7 +82,7 @@ def test_messaging_a_learner_from_the_quick_view(
         )
     quick_view = page.locator("#quick-view")
     box = quick_view.get_by_label("Message to Kai Ngata")
-    prompt = page.locator("[data-quick-view-discard-prompt]")
+    prompt = page.locator("#quick-view [data-discard-prompt]")
     open_link = quick_view.get_by_role("link", name="Open conversation")
 
     page.goto(_learners_url(live_server, organisation.slug))

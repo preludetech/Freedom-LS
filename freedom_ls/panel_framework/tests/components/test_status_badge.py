@@ -34,3 +34,25 @@ def test_caller_attribute_lands_on_the_chip() -> None:
     )
 
     assert 'data-testid="status"' in html
+
+
+class _Badge:
+    tone = "warning"
+    label = "Pending"
+
+
+def test_a_badge_object_supplies_the_tone_and_the_label() -> None:
+    html = render_cotton("<c-panel-status-badge :badge='badge' />", badge=_Badge())
+
+    assert "chip-warning" in html
+    assert "Pending" in html
+
+
+def test_a_badge_object_wins_over_separate_attributes() -> None:
+    html = render_cotton(
+        '<c-panel-status-badge :badge="badge" tone="success" label="Active" />',
+        badge=_Badge(),
+    )
+
+    assert "chip-warning" in html
+    assert "Active" not in html

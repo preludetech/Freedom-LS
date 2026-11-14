@@ -16,7 +16,7 @@ meets first when it has several.
             <h3 class="text-lg font-semibold">{{ entry.page.title }}</h3>
         {% endif %}
         {% if entry.page.condition_option %}
-            <p class="text-sm text-muted">Shown only if {{ entry.condition_question }} is answered {{ entry.page.condition_option.text }}</p>
+            <p class="text-muted">Shown only if {{ entry.condition_question }} is answered {{ entry.page.condition_option.text }}</p>
         {% endif %}
         {% with page_children=entry.page_children %}
             {% include "form_engine/partials/page_children.html" %}
@@ -47,7 +47,5 @@ meets first when it has several.
             {% endif %}
         </div>
     </c-modal-body>
-    <c-modal-footer>
-        <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Close</c-button></c-slot>
-    </c-modal-footer>
+    <c-modal-footer cancel="Close" />
 </div>

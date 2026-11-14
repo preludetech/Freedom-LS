@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from collections.abc import Callable, Hashable
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, cast
 
 from django.db.models import Model
 from django.http import HttpRequest
+
+__all__ = [
+    "PanelContext",
+]
 
 if TYPE_CHECKING:
     # Under TYPE_CHECKING only: views.py imports context.py, so a runtime
@@ -40,6 +45,20 @@ class PanelContext:
     # The reason a confirm dialog posted, set by the action that validated
     # it; empty for an action that takes none.
     reason: str = ""
+    # What `once` has loaded during this request. A context built with
+    # `dataclasses.replace` shares it, so a key names everything its value
+    # depends on.
+    loaded: dict[Hashable, object] = field(
+        default_factory=dict, compare=False, repr=False
+    )
+
+    def once[T](self, key: Hashable, load: Callable[[], T]) -> T:
+        """The value `load` returns, read once per request under `key`: a
+        dialog's hooks each ask for the same row, and only the first ask
+        reaches the database. A `load` that raises stores nothing."""
+        if key not in self.loaded:
+            self.loaded[key] = load()
+        return cast(T, self.loaded[key])
 
     def scope_object(self) -> Model | None:
         """The object a permission check runs against: the bound instance,

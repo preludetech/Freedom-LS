@@ -33,6 +33,7 @@ from freedom_ls.content_engine.models import Course, CourseAudience, CourseVisib
 from freedom_ls.educator_interface import actions as actions_module
 from freedom_ls.educator_interface.actions import (
     REFUSAL_MESSAGES,
+    AddLearnerAction,
     AddStaffMemberToCohortAction,
     AddToCohortBulkAction,
     CohortCourseBulkAction,
@@ -41,6 +42,7 @@ from freedom_ls.educator_interface.actions import (
     DeactivateRegistrationBulkAction,
     RegisterCohortForCourseBulkAction,
     RegisterForCourseBulkAction,
+    RemoveFromCohortAction,
     RemoveFromCohortBulkAction,
     RequiresActiveCohortMixin,
     cohort_not_empty_sentence,
@@ -88,6 +90,7 @@ from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.panel_framework.bulk_actions import (
+    BULK_ACTIONS,
     BulkCount,
     BulkOutcome,
     BulkResult,
@@ -101,7 +104,6 @@ from freedom_ls.panel_framework.bulk_runs import (
 )
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
-from freedom_ls.panel_framework.tasks import _run_bulk_action_task
 from freedom_ls.role_based_permissions.exceptions import (
     RefusalReason,
     RoleChangeRefused,
@@ -2475,7 +2477,54 @@ def test_stale_move_dialog_for_a_departed_member_gives_the_reason_and_no_form(
         response.status_code,
         len(document.cssselect("form")),
         "is no longer a member of" in response.content.decode(),
-    ) == (200, 0, True)
+    ) == (422, 0, True)
+
+
+@pytest.mark.django_db
+def test_the_move_refusal_for_a_departed_member_is_a_message_dialog_with_close(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation)
+    name = learner.user.display_name
+    CohortMembership.objects.filter(learner=learner, cohort=source).delete()
+    CohortFactory(organisation=organisation)
+
+    response = staff_client.get(
+        _move_url_from_learner(organisation, learner, source), HTTP_HX_REQUEST="true"
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert response.status_code == 422
+    assert document.cssselect("#app-modal-title")[0].text_content().strip() == (
+        f"{name} is no longer in {source}"
+    )
+    assert f"{name} is no longer a member of {source}" in " ".join(
+        document.text_content().split()
+    )
+    assert [b.text_content().strip() for b in document.cssselect("footer button")] == [
+        "Close"
+    ]
+
+
+@pytest.mark.django_db
+def test_the_disabled_move_states_its_reason_and_names_it_with_aria_describedby(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation)
+    CohortFactory(organisation=organisation)
+
+    response = staff_client.get(
+        _move_url_from_learner(organisation, learner, source), HTTP_HX_REQUEST="true"
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    (move,) = document.cssselect("form button[type='submit']")
+    (reason,) = document.cssselect("footer #move-disabled-reason")
+    assert move.get("disabled") is not None
+    assert move.get("aria-describedby") == "move-disabled-reason"
+    assert reason.text_content().strip() == "Choose a cohort to move them to."
 
 
 @pytest.mark.django_db
@@ -6615,6 +6664,58 @@ def test_bulk_deactivate_confirmation_says_what_changes_and_what_is_skipped(
 
 
 @pytest.mark.django_db
+def test_bulk_confirm_with_every_learner_skipped_names_why_it_is_disabled(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    inactive = [
+        _bulk_learner(organisation=organisation, is_active=False) for _ in range(2)
+    ]
+
+    response = _bulk_post(staff_client, organisation, "deactivate", inactive)
+
+    document = lxml.html.fromstring(response.content.decode())
+    [reason] = document.cssselect("#bulk-confirm-reason")
+    assert (
+        " ".join(reason.text_content().split())
+        == "Nothing to change: all 2 selected learners will be skipped."
+    )
+    [button] = document.cssselect("button[type='submit']")
+    assert button.get("disabled") is not None
+    assert button.get("aria-describedby") == "bulk-confirm-reason"
+
+
+@pytest.mark.django_db
+def test_bulk_confirm_with_the_one_learner_skipped_names_why_it_is_disabled(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    inactive = _bulk_learner(organisation=organisation, is_active=False)
+
+    response = _bulk_post(staff_client, organisation, "deactivate", [inactive])
+
+    assert "Nothing to change: the 1 selected learner will be skipped." in _bulk_text(
+        response
+    )
+
+
+@pytest.mark.django_db
+def test_bulk_confirm_with_a_learner_to_change_gives_no_disabled_reason(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    active = _bulk_learner(organisation=organisation)
+    inactive = _bulk_learner(organisation=organisation, is_active=False)
+
+    response = _bulk_post(staff_client, organisation, "deactivate", [active, inactive])
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert not document.cssselect("#bulk-confirm-reason")
+    [button] = document.cssselect("button[type='submit']")
+    assert button.get("disabled") is None
+
+
+@pytest.mark.django_db
 def test_bulk_deactivate_changes_the_learners_and_summarises_the_run(
     staff_client: Client,
 ):
@@ -6971,6 +7072,81 @@ def test_refresh_without_a_cohort_answers_422_with_confirm_disabled(
     document = lxml.html.fromstring(response.content.decode())
     assert response.status_code == 422
     assert document.cssselect("button[disabled]")
+
+
+def _disabled_confirm_reason(response) -> str:
+    document = lxml.html.fromstring(response.content.decode())
+    [reason] = document.cssselect("#bulk-confirm-reason")
+    [confirm_form] = [
+        form
+        for form in document.cssselect("form")
+        if form.cssselect("input[name='confirmed']")
+    ]
+    [button] = confirm_form.cssselect("button[type='submit']")
+    assert button.get("disabled") is not None
+    assert button.get("aria-describedby") == "bulk-confirm-reason"
+    return " ".join(reason.text_content().split())
+
+
+@pytest.mark.django_db
+def test_a_bulk_picker_with_no_cohort_chosen_says_to_choose_one(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = _bulk_learner(organisation=organisation)
+
+    response = _bulk_cohort_post(staff_client, organisation, "add_to_cohort", [learner])
+
+    assert response.status_code == 200
+    assert _disabled_confirm_reason(response) == "Choose a cohort first."
+
+
+@pytest.mark.django_db
+def test_a_bulk_picker_refreshed_without_a_cohort_says_to_choose_one(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = _bulk_learner(organisation=organisation)
+
+    response = _bulk_cohort_post(
+        staff_client, organisation, "add_to_cohort", [learner], refresh="1"
+    )
+
+    assert response.status_code == 422
+    assert _disabled_confirm_reason(response) == "Choose a cohort first."
+
+
+@pytest.mark.django_db
+def test_a_bulk_picker_with_no_course_chosen_says_to_choose_one(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = _bulk_learner(organisation=organisation)
+
+    response = _bulk_post(staff_client, organisation, "register_for_course", [learner])
+
+    assert _disabled_confirm_reason(response) == "Choose a course first."
+
+
+@pytest.mark.django_db
+def test_a_bulk_picker_with_a_cohort_chosen_gives_no_disabled_reason(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    learner = _bulk_learner(organisation=organisation)
+
+    response = _bulk_cohort_post(
+        staff_client,
+        organisation,
+        "add_to_cohort",
+        [learner],
+        refresh="1",
+        cohort=str(cohort.pk),
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert not document.cssselect("#bulk-confirm-reason")
 
 
 @pytest.mark.django_db
@@ -8135,6 +8311,15 @@ def _notifications_for(run: BulkActionRun) -> list[tuple[int, str]]:
     ]
 
 
+def _run_in_background(run: BulkActionRun, site: Site) -> None:
+    """Run as the background task does: a finished run is reported back."""
+    run_bulk_action(
+        str(run.pk),
+        site.pk,
+        on_finished=lambda closed: report_finished(str(closed.pk), closed.site_id),
+    )
+
+
 @pytest.mark.django_db
 def test_the_task_tells_the_requester_the_run_finished(
     mock_site_context: Site, django_capture_on_commit_callbacks
@@ -8142,7 +8327,7 @@ def test_the_task_tells_the_requester_the_run_finished(
     run = _run_over(_learner(), GONE)
 
     with django_capture_on_commit_callbacks(execute=True):
-        _run_bulk_action_task.func(str(run.pk), mock_site_context.pk)
+        _run_in_background(run, mock_site_context)
 
     assert _notifications_for(run) == [
         (run.requested_by_id, "Deactivate finished: 1 learner changed, 1 skipped.")
@@ -8163,7 +8348,7 @@ def test_the_task_tells_the_requester_where_a_failed_run_stopped(
         django_capture_on_commit_callbacks(execute=True),
         pytest.raises(RuntimeError),
     ):
-        _run_bulk_action_task.func(str(run.pk), mock_site_context.pk)
+        _run_in_background(run, mock_site_context)
 
     assert _notifications_for(run) == [
         (run.requested_by_id, "Deactivate stopped after 0 of 1 learner.")
@@ -8301,7 +8486,7 @@ _BULK_ACTION_WEIGHTS: dict[str, tuple[str, str, str]] = {
 
 
 def test_every_bulk_action_has_an_expected_weight_and_loading_text():
-    registered = {cls.__name__ for cls in actions_module.BULK_ACTIONS.values()}
+    registered = {cls.__name__ for cls in BULK_ACTIONS.values()}
 
     assert registered == set(_BULK_ACTION_WEIGHTS)
 
@@ -8309,9 +8494,7 @@ def test_every_bulk_action_has_an_expected_weight_and_loading_text():
 @pytest.mark.parametrize("class_name", sorted(_BULK_ACTION_WEIGHTS))
 def test_bulk_action_trigger_confirm_variant_and_loading_text(class_name: str):
     (action_class,) = [
-        cls
-        for cls in actions_module.BULK_ACTIONS.values()
-        if cls.__name__ == class_name
+        cls for cls in BULK_ACTIONS.values() if cls.__name__ == class_name
     ]
 
     assert (
@@ -8327,9 +8510,7 @@ def test_bulk_action_confirmation_title_is_a_question_naming_the_count(
     class_name: str, count: int
 ):
     (action_class,) = [
-        cls
-        for cls in actions_module.BULK_ACTIONS.values()
-        if cls.__name__ == class_name
+        cls for cls in BULK_ACTIONS.values() if cls.__name__ == class_name
     ]
     cleaned_data: dict[str, object] = {
         "cohort": Cohort(name="Cohort A"),
@@ -9442,3 +9623,177 @@ def test_the_change_role_dialog_offers_only_grantable_cohort_roles_with_the_held
     }
     assert radios == {"cohort_viewer": True, "cohort_admin": False}
     assert "Change Ada Lovelace's role on Evening group?" in _text(response)
+
+
+def _assert_message_dialog(response, title: str, message: str) -> None:
+    document = lxml.html.fromstring(response.content.decode())
+    assert response.status_code == 422
+    assert document.get_element_by_id("app-modal-title").text_content() == title
+    assert message in _text(response)
+    (close,) = [
+        el for el in document.iter("button") if el.text_content().strip() == "Close"
+    ]
+    assert close.get("autofocus") is not None
+
+
+@pytest.mark.django_db
+def test_an_inactive_cohort_refusal_is_a_message_dialog(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort = _cohort_with_courses(organisation, 1, is_active=False)
+
+    response = _post(
+        staff_client, _cohort_url(organisation, cohort, "/__actions/deactivate")
+    )
+
+    _assert_message_dialog(
+        response,
+        f"{cohort} is inactive",
+        "The change was not made. Reactivate the cohort from its Settings tab to "
+        "deactivate it.",
+    )
+
+
+@pytest.mark.django_db
+def test_an_already_active_cohort_refusal_is_a_message_dialog(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort = _cohort_with_courses(organisation, 1)
+
+    response = _post(
+        staff_client, _cohort_url(organisation, cohort, "/__actions/reactivate")
+    )
+
+    _assert_message_dialog(
+        response,
+        f"{cohort} is already active",
+        "Nothing changed. Someone else may have reactivated it already.",
+    )
+
+
+@pytest.mark.django_db
+def test_an_already_changed_learner_refusal_is_a_message_dialog(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation, is_active=True)
+
+    response = _post(
+        staff_client, _learner_state_url(organisation, learner, "reactivate")
+    )
+
+    _assert_message_dialog(
+        response,
+        f"{learner.user.display_name} was already changed",
+        "Nothing changed. Someone else may have already used Reactivate on this "
+        "learner.",
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+def test_a_recently_sent_setup_email_refusal_is_a_message_dialog(
+    staff_client: Client, django_capture_on_commit_callbacks
+):
+    organisation = OrganisationFactory()
+    learner = _pending_learner(organisation)
+    with django_capture_on_commit_callbacks(execute=True):
+        _post(staff_client, _resend_url(organisation, learner))
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = _post(staff_client, _resend_url(organisation, learner))
+
+    minutes = config.SETUP_EMAIL_RESEND_SECONDS // 60
+    _assert_message_dialog(
+        response,
+        "Setup email sent recently",
+        f"{learner.user.display_name} was sent a setup email recently. "
+        f"Try again in {minutes} minutes.",
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+def test_an_already_set_up_account_refusal_is_a_message_dialog(
+    staff_client: Client, django_capture_on_commit_callbacks
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = _post(staff_client, _resend_url(organisation, learner))
+
+    name = learner.user.display_name
+    _assert_message_dialog(
+        response,
+        f"{name} has already set up their account",
+        f"Nothing was sent. {name} has signed in or set a password since this "
+        "page loaded.",
+    )
+
+
+@pytest.mark.django_db
+def test_a_refused_role_change_is_a_message_dialog(
+    admin_client, organisation, monkeypatch
+):
+    UserFactory(email="ada@example.com")
+
+    def refuse(*args: object, **kwargs: object) -> None:
+        raise RoleChangeRefused(RefusalReason.SELF)
+
+    monkeypatch.setattr("freedom_ls.educator_interface.actions.assign_role", refuse)
+
+    response = _confirm(
+        admin_client, organisation, "ada@example.com", "organisation_admin"
+    )
+
+    _assert_message_dialog(
+        response,
+        "This change wasn't made",
+        "You can't change your own roles. Ask another organisation admin.",
+    )
+
+
+# one lookup per request
+#
+# A dialog's hooks each ask for the same row, so the second ask must not go
+# back to the database.
+
+
+def _superuser_get_ctx(
+    organisation: Organisation, instance: Cohort | None, data: dict[str, str]
+) -> PanelContext:
+    request = RequestFactory().get("/", data)
+    request.user = UserFactory(superuser=True)
+    request.organisation = organisation
+    return PanelContext(
+        request=request, instance=instance, base_url="/", name="", config=CohortConfig
+    )
+
+
+@pytest.mark.django_db
+def test_the_add_learner_dialog_reads_its_preset_cohort_once(
+    organisation: Organisation, django_assert_max_num_queries
+):
+    cohort = _cohort(organisation)
+    action = AddLearnerAction()
+    ctx = _superuser_get_ctx(organisation, None, {"cohort": str(cohort.pk)})
+    action._preset_cohort(ctx)
+
+    with django_assert_max_num_queries(0):
+        preset = action._preset_cohort(ctx)
+
+    assert preset == cohort
+
+
+@pytest.mark.django_db
+def test_a_membership_dialog_on_a_cohort_page_reads_its_learner_once(
+    organisation: Organisation, django_assert_max_num_queries
+):
+    cohort = _cohort(organisation)
+    learner = LearnerFactory(organisation=organisation)
+    CohortMembershipFactory(cohort=cohort, learner=learner)
+    action = RemoveFromCohortAction()
+    ctx = _superuser_get_ctx(organisation, cohort, {"learner": str(learner.pk)})
+    action._pair(ctx)
+
+    with django_assert_max_num_queries(0):
+        pair = action._pair(ctx)
+
+    assert pair == (learner, cohort)

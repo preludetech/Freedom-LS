@@ -70,6 +70,16 @@ by hand.
 How the QA command handles skipped tests, missing test data or the bugs it finds is its own
 business: read its documentation and check `qa_report.md` for the outcome.
 
+### Decide and fix
+
+Run `/sdd:qa_fix` when QA leaves `(user)` items in `todo.md`: a bug that turns on a decision, a fix
+that failed, a file to keep or delete. It researches each item, asks you for one decision at a
+time with a recommendation, then makes the fixes test-first, runs the full tier, ticks what it
+closed and commits. An item you answer "Leave for later" stays unticked. A decision about how a
+page looks, behaves or reads goes through `sdd:capture-feedback` on the way. A fix that changes
+what a page shows counts as fixed only once a screenshot shows it; the screenshots land in
+`<spec-dir>/screenshots/fixed/`. A fix that changes nothing on screen is proven by its test alone.
+
 Feedback you give on the QA report, a screenshot or a page goes through `sdd:capture-feedback`
 (`/sdd:capture_feedback` by hand) before the fix, so the rule lands in one of the files `## Rule
 Files` in `.claude/sdd/config.md` names. It also rewrites the passages of the spec, plan and QA

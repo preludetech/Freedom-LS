@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Literal, cast
 from django import forms
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import AnonymousUser
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import transaction
 from django.db.models import Model, QuerySet
 from django.http import HttpRequest, QueryDict
@@ -19,6 +19,23 @@ from freedom_ls.panel_framework.actions import count_phrase
 from freedom_ls.panel_framework.config import config
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
+
+__all__ = [
+    "BULK_ACTIONS",
+    "BackgroundRun",
+    "BulkAction",
+    "BulkCount",
+    "BulkOutcome",
+    "BulkResult",
+    "BulkResultEntry",
+    "ConfirmationWording",
+    "PermittedBulkAction",
+    "RecordedBulkAction",
+    "bulk_actions_for_table",
+    "count_outcomes",
+    "register_bulk_action",
+    "run_apply",
+]
 
 if TYPE_CHECKING:
     from freedom_ls.panel_framework.panels import DataTablePanel
@@ -53,13 +70,14 @@ class ConfirmationWording:
 
     Each skip reason is a predicate that follows "is" or "are" ("already
     processed", "already in the cohort"), so the same reason gives both the
-    confirmation line "3 are already processed and will be skipped." and,
-    through `BulkAction.result_line`, the result line "3 were already
-    processed."
+    confirmation line "3 are already processed and will be skipped." through
+    `BulkAction.confirmation_skip_line` and, through `BulkAction.result_line`,
+    the result line "3 were already processed." `skip_lines` holds the
+    finished confirmation lines.
     """
 
     sentence: str
-    skips: list[BulkCount] = field(default_factory=list)
+    skip_lines: list[str] = field(default_factory=list)
     consequences: list[str] = field(default_factory=list)
 
 
@@ -199,6 +217,21 @@ class BulkAction:
             return None
         return self.form_class(data)
 
+    def picker_prompt(self, form: forms.Form) -> str:
+        """Beside the disabled confirm while `form` has no valid choice:
+        what to choose, worded from its first field's label. The article is
+        "an" before a, e, i and o only, since most labels in u ("user",
+        "unit") take "a"; an action whose label reads otherwise overrides
+        this."""
+        if not form.fields:
+            raise ImproperlyConfigured(
+                f"{type(self).__name__}'s form has no fields to choose from."
+            )
+        name, field = next(iter(form.fields.items()))
+        noun = str(field.label or name.replace("_", " ")).lower()
+        article = "an" if noun[:1] in "aeio" else "a"
+        return f"Choose {article} {noun} first."
+
     def has_permission(self, request: HttpRequest) -> bool:
         return True
 
@@ -258,8 +291,13 @@ class BulkAction:
             skips = [item for item in counts if item.status != "changed"]
         return ConfirmationWording(
             sentence=f"This will affect {count} {model._meta.verbose_name_plural}.",
-            skips=skips,
+            skip_lines=[self.confirmation_skip_line(item) for item in skips],
         )
+
+    def confirmation_skip_line(self, item: BulkCount) -> str:
+        """The confirmation's line for one skip reason, in the present tense:
+        the twin of `result_line`."""
+        return f"{count_phrase(item.count, 'is', 'are')} {item.reason} and will be skipped."
 
     def result_line(self, item: BulkCount) -> str:
         """The sentence a result shows for one skipped or failed count. A
@@ -358,6 +396,166 @@ class RecordedBulkAction(BulkAction):
             _run_bulk_action_task.enqueue(str(run.pk), run.site_id)
             return BackgroundRun(status_url=f"{ctx.base_url}/__runs/{run.pk}")
         return run_bulk_action(str(run.pk), run.site_id)
+
+
+class PermittedBulkAction[ActorT: AbstractBaseUser](RecordedBulkAction):
+    """A bulk action that changes only the rows its user may change.
+
+    `permitted` decides which objects the user may change; it is read once
+    per preview and once per run, so the preview and the run agree and the
+    cost does not grow with the selection. Subclasses fill in the hooks; the
+    defaults suit an action with no target picker.
+    """
+
+    capability: str
+    #: The skip reason when `perform` reports nothing changed.
+    unchanged_reason: str = ""
+    #: The pks `permitted` returned, set by `prepare`.
+    permitted_ids: frozenset[object] = frozenset()
+
+    def scope_for_request(self, request: HttpRequest) -> Model | None:
+        """What the request is scoped to, which `permitted` narrows by. No
+        default: an action that is unscoped on purpose returns None itself."""
+        raise NotImplementedError
+
+    def permitted(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        scope: Model | None,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> QuerySet:
+        """`queryset` narrowed to the objects the user may act on."""
+        raise NotImplementedError
+
+    def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
+        """The reason this permitted object would be skipped, from its
+        current state; None when it would change."""
+        return None
+
+    def prepare(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        scope: Model | None,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> None:
+        self.permitted_ids = frozenset(
+            self.permitted(user, scope, queryset, cleaned_data).values_list(
+                "pk", flat=True
+            )
+        )
+
+    def perform(
+        self, obj: Model, cleaned_data: dict[str, object], actor: ActorT
+    ) -> bool:
+        """Call the service; False when it reports nothing changed."""
+        raise NotImplementedError
+
+    def not_permitted_reason(self) -> str:
+        return (
+            f"{self.noun_model._meta.verbose_name_plural} "
+            "you don't have permission to change"
+        )
+
+    def classify_all(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> dict[str, BulkOutcome] | None:
+        self.prepare(
+            request.user, self.scope_for_request(request), queryset, cleaned_data
+        )
+        outcomes: dict[str, BulkOutcome] = {}
+        for obj in self.with_related(queryset):
+            if obj.pk not in self.permitted_ids:
+                outcomes[str(obj.pk)] = BulkOutcome(
+                    "skipped", self.not_permitted_reason()
+                )
+            elif (reason := self.skip_reason(obj, cleaned_data)) is not None:
+                outcomes[str(obj.pk)] = BulkOutcome("skipped", reason)
+            else:
+                outcomes[str(obj.pk)] = BulkOutcome("changed")
+        return outcomes
+
+    def changed_count(self, classified: dict[str, BulkOutcome] | None) -> int:
+        counts = count_outcomes(classified or {})
+        return sum(item.count for item in counts if item.status == "changed")
+
+    def changed_keys(self, classified: dict[str, BulkOutcome] | None) -> list[str]:
+        return [
+            key
+            for key, outcome in (classified or {}).items()
+            if outcome.status == "changed"
+        ]
+
+    def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
+        """The confirmation sentence for the `count` objects that will change."""
+        raise NotImplementedError
+
+    def confirmation_title(self, count: int, cleaned_data: dict[str, object]) -> str:
+        """The sentence, asked: every dialog's heading is its sentence with
+        a question mark, so wording lives in one place."""
+        return self.sentence(count, cleaned_data).removesuffix(".") + "?"
+
+    def consequences(
+        self,
+        queryset: QuerySet,
+        classified: dict[str, BulkOutcome] | None,
+        cleaned_data: dict[str, object],
+    ) -> list[str]:
+        """What the change means beyond itself, one line each. None by default."""
+        return []
+
+    def confirmation_wording(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet,
+        classified: dict[str, BulkOutcome] | None,
+        cleaned_data: dict[str, object],
+    ) -> ConfirmationWording:
+        wording = super().confirmation_wording(
+            request, queryset, classified, cleaned_data
+        )
+        return ConfirmationWording(
+            sentence=self.sentence(self.changed_count(classified), cleaned_data),
+            skip_lines=wording.skip_lines,
+            consequences=self.consequences(queryset, classified, cleaned_data),
+        )
+
+    def apply(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        obj: Model,
+        cleaned_data: dict[str, object],
+    ) -> BulkOutcome:
+        if obj.pk not in self.permitted_ids:
+            return BulkOutcome("skipped", self.not_permitted_reason())
+        if self.perform(obj, cleaned_data, cast("ActorT", user)):
+            return BulkOutcome("changed")
+        # The service said nothing changed, so the reason the preview gave
+        # applies here too.
+        return BulkOutcome("skipped", self.unchanged_reason)
+
+
+BULK_ACTIONS: dict[tuple[str, str], type[PermittedBulkAction]] = {}
+
+
+def register_bulk_action[ActionT: type[PermittedBulkAction]](cls: ActionT) -> ActionT:
+    """Class decorator: file the action under its table and name, in
+    registration order, which is the order the action bar lists them. A
+    second registration of the same table and name replaces the first."""
+    BULK_ACTIONS[(cls.table_key, cls.action_name)] = cls
+    return cls
+
+
+def bulk_actions_for_table(table_key: str) -> list[PermittedBulkAction]:
+    return [
+        action_class()
+        for (key, _name), action_class in BULK_ACTIONS.items()
+        if key == table_key
+    ]
 
 
 def run_apply(

@@ -11,7 +11,5 @@ backdrop click and never asks about unsaved changes.
             {% include "content_engine/partials/course_details_body.html" %}
         </div>
     </c-modal-body>
-    <c-modal-footer>
-        <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Close</c-button></c-slot>
-    </c-modal-footer>
+    <c-modal-footer cancel="Close" />
 </div>

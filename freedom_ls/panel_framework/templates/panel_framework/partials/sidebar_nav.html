@@ -23,7 +23,7 @@ inheriting the link's push: a poll must not change the address bar.
                        class="group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-on-surface no-underline transition-colors hover:bg-surface-2 aria-[current]:bg-surface-2 aria-[current]:text-primary aria-[current]:font-semibold aria-[current]:shadow-[inset_2px_0_0_var(--color-primary)]">
                         {% if item.icon %}<span class="shrink-0 text-muted group-hover:text-on-surface group-aria-[current]:text-primary"><c-icon :name="item.icon" class="size-4" /></span>{% endif %}
                         <span>{{ item.label }}</span>
-                        {% if item.count_url %}<span id="menu-count-{{ item.url_name }}-{{ item.scope_key }}" hx-preserve x-data="refreshTimer" data-poll-seconds="{{ item.count_poll_seconds }}" hx-get="{{ item.count_url }}" hx-trigger="load, refresh, conversationChanged from:body" hx-target="this" hx-swap="innerHTML" hx-push-url="false" class="ml-auto font-mono text-xs text-muted tabular-nums"></span>
+                        {% if item.count_url %}<span id="menu-count-{{ item.url_name }}-{{ item.scope_key }}" hx-preserve x-data="refreshTimer" data-poll-seconds="{{ item.count_poll_seconds }}" hx-get="{{ item.count_url }}" hx-trigger="load, refresh{% for event in item.count_events %}, {{ event }} from:body{% endfor %}" hx-target="this" hx-swap="innerHTML" hx-push-url="false" class="ml-auto font-mono text-xs text-muted tabular-nums"></span>
                         {% elif item.count is not None %}<span class="ml-auto font-mono text-xs text-muted tabular-nums">{{ item.count }}</span>{% endif %}
                     </a>
                 </li>

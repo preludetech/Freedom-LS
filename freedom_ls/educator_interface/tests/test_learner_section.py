@@ -893,3 +893,22 @@ def test_a_nameless_learners_page_names_them_by_email_in_its_document_title(
 
     document = lxml.html.fromstring(response.content.decode())
     assert "nameless@example.com" in document.xpath("//title")[0].text_content()
+
+
+@pytest.mark.django_db
+def test_learners_list_empty_cohorts_and_courses_cells_read_the_same_em_dash(
+    educator_client,
+):
+    """A learner with no cohort and no registration used to show an em dash in
+    Cohorts but a plain hyphen in Courses."""
+    organisation = OrganisationFactory()
+    _make_learner(organisation=organisation)
+
+    response = educator_client(organisation).get(_learners_url(organisation.slug))
+
+    document = lxml.html.fromstring(response.content.decode())
+    dashes = document.xpath("//td//span[@role='img'][@aria-label='None']")
+    assert len(dashes) >= 2
+    assert {dash.text_content().strip() for dash in dashes} == {"—"}
+    for cell in document.xpath("//tbody//td"):
+        assert cell.text_content().strip() != "-"

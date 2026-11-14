@@ -15,6 +15,7 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
+from freedom_ls.panel_framework.errors import PanelBodyTooLargeError
 from freedom_ls.reports.statuses import ProgressStatus
 
 ATTENTION_LIST_MAX = 12
@@ -30,7 +31,7 @@ def over_limit_message(cohort_name: str, learner_count: int, limit: int) -> str:
     )
 
 
-class ReportTooLargeError(Exception):
+class ReportTooLargeError(PanelBodyTooLargeError):
     """Raised when a cohort has more members than `config.REPORTS_MAX_LEARNERS`.
 
     Its message is the one every screen shows, including a failed PDF's

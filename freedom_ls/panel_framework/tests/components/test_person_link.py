@@ -80,3 +80,36 @@ def test_without_badges_no_badge_line_renders() -> None:
     html = render_cotton('<c-panel-person-link name="Thandi Mokoena" user_id="42" />')
 
     assert "pl-11" not in html
+
+
+class _User:
+    first_name = "Thandi"
+    last_name = "Mokoena"
+    email = "thandi@example.com"
+    pk = 42
+    display_name = "Thandi Mokoena"
+
+
+def test_a_user_gives_the_name_the_email_and_the_trigger_label() -> None:
+    html = render_cotton(
+        '<c-panel-person-link :user="user" href="/people/42" '
+        'quick_view_url="/people/42/__quick-view" />',
+        user=_User(),
+    )
+
+    root = lxml.html.fromstring(html)
+
+    assert "Thandi Mokoena" in root.text_content()
+    assert "thandi@example.com" in root.text_content()
+    trigger = root.xpath('.//a[@aria-controls="quick-view"]')[0]
+    assert trigger.get("aria-label") == "Quick view: Thandi Mokoena"
+
+
+def test_the_small_size_sets_the_link_text_small() -> None:
+    html = render_cotton(
+        '<c-panel-person-link name="Thandi Mokoena" user_id="42" href="/people/42" size="sm" />'
+    )
+
+    link = lxml.html.fromstring(html).findall(".//a")[0]
+
+    assert "text-sm" in link.get("class", "")

@@ -70,6 +70,17 @@ from freedom_ls.reports.tests.test_views import (
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
 
+def _visible_text(element: lxml.html.HtmlElement) -> str:
+    """An element's text as a reader sees it: no <style> or aria-hidden content, whitespace collapsed."""
+    return " ".join(
+        "".join(
+            element.xpath(
+                ".//text()[not(ancestor::style)][not(ancestor::*[@aria-hidden='true'])]"
+            )
+        ).split()
+    )
+
+
 @pytest.fixture(autouse=True)
 def _site_context(mock_site_context):
     """Every test here builds site-aware objects and assigns roles."""
@@ -261,6 +272,16 @@ class TestReportTab:
         assert response.status_code == 200
         assert GeneratedReport.objects.filter(cohort=cohort).count() == 1
         assert "Generating…" in region.text_content()
+
+    def test_a_get_of_the_action_is_not_allowed(self, logged_in_client):
+        cohort = CohortFactory()
+        client = logged_in_client(_org_admin(cohort.organisation))
+        url = _downloads_url(cohort.organisation.slug, cohort.pk)
+
+        response = client.get(f"{url}/__actions/generate_report")
+
+        assert response.status_code == 405
+        assert GeneratedReport.objects.filter(cohort=cohort).count() == 0
 
     def test_posting_again_while_one_is_in_flight_returns_the_same_region_without_a_second_report(
         self, logged_in_client
@@ -661,7 +682,7 @@ class TestNeedsAttentionCard:
         )
 
         (row,) = region.cssselect("li")
-        assert [a.text_content() for a in row.cssselect("a")] == ["Cy Cook"]
+        assert [_visible_text(a) for a in row.cssselect("a")] == ["Cy Cook"]
         assert (
             row.cssselect("a")[0]
             .get("href")
@@ -907,12 +928,10 @@ class TestCohortReportBody:
         captions = []
         for table in tables:
             (caption,) = table.cssselect("caption")
-            assert caption.get("id")
-            assert table.get("aria-labelledby") == caption.get("id")
             scroll_region = table.getparent()
             assert scroll_region.get("role") == "region"
             assert scroll_region.get("tabindex") == "0"
-            assert scroll_region.get("aria-labelledby") == caption.get("id")
+            assert scroll_region.get("aria-label") == caption.text_content().strip()
             captions.append(caption.text_content().strip())
         assert captions == ["Astronomy", "Astronomy (continued)", "Orbit Quiz"]
 
@@ -1315,8 +1334,6 @@ _NEW_REPORTING_FILES = [
     "reporting.py",
     "templates/educator_interface/panels/dashboard.html",
     "templates/educator_interface/panels/dashboard_region.html",
-    "templates/educator_interface/panels/lazy_panel.html",
-    "templates/educator_interface/panels/_lazy_region.html",
     "templates/educator_interface/panels/cohort_needs_attention_region.html",
     "templates/educator_interface/panels/cohort_report_downloads.html",
     "templates/educator_interface/panels/cohort_report_downloads_region.html",
@@ -1354,4 +1371,4 @@ def test_the_attention_card_names_a_nameless_learner_by_their_email(logged_in_cl
     )
 
     (row,) = region.cssselect("li")
-    assert [a.text_content() for a in row.cssselect("a")] == ["nameless@example.com"]
+    assert [_visible_text(a) for a in row.cssselect("a")] == ["nameless@example.com"]

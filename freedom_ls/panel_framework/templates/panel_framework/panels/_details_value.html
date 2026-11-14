@@ -1,1 +1,1 @@
-{% if row.is_boolean %}<c-icon name="{% if row.value %}boolean_true{% else %}boolean_false{% endif %}" aria_label="{% if row.value %}Yes{% else %}No{% endif %}" class="size-5" />{% else %}{{ row.value }}{% endif %}
+{% if row.kind == "boolean" %}<c-icon name="{% if row.value %}boolean_true{% else %}boolean_false{% endif %}" aria_label="{% if row.value %}Yes{% else %}No{% endif %}" class="size-5" />{% elif row.kind == "badge" %}<c-panel-status-badge :badge="row.value" />{% elif row.kind == "date" %}<c-date :value="row.value" />{% else %}{{ row.value }}{% endif %}

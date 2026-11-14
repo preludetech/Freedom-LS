@@ -124,38 +124,19 @@ where the page ends.
            class="flex size-9 shrink-0 items-center justify-center rounded-md text-muted no-underline transition-colors hover:bg-surface-2 hover:text-on-surface">
             <c-icon name="open_page" class="size-5" />
         </a>
-        <button type="button"
-                x-on:click="requestClose"
-                aria-label="Close"
-                class="-me-2 flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 hover:text-on-surface">
-            <c-icon name="close" class="size-5" />
-        </button>
+        <c-panel-close-button />
     </header>
     <div class="flex-1 overflow-y-auto px-6 py-5">
         <h2 id="quick-view-title" tabindex="-1" class="focus:outline-none text-lg font-semibold wrap-anywhere">
         </h2>
         <p id="quick-view-subtitle" class="mt-0.5 text-sm text-muted wrap-anywhere empty:hidden">
         </p>
-        <div data-quick-view-discard-prompt hidden class="mt-5">
-            <h3 class="text-base font-semibold">Discard your message?</h3>
-            <p>The message you wrote hasn't been sent.</p>
-            <c-button-group variant="right" class="mt-3 flex-wrap">
-                <c-button variant="secondary" x-on:click="keepDraft" autofocus>Keep editing</c-button>
-                <c-button variant="error" x-on:click="discardDraft">Discard</c-button>
-            </c-button-group>
-        </div>
+        {% include "panel_framework/partials/discard_prompt.html" with title_id="quick-view-discard-title" prompt_class="mt-5 -mx-6 -mb-5" %}
         <div id="quick-view-body" class="mt-5" data-htmx-owns-errors>
         </div>
     </div>
     <template data-quick-view-skeleton>
-        <div class="space-y-3" aria-hidden="true">
-            <div class="h-4 w-2/3 animate-pulse rounded bg-surface-2">
-            </div>
-            <div class="h-4 w-1/2 animate-pulse rounded bg-surface-2">
-            </div>
-            <div class="h-4 w-5/6 animate-pulse rounded bg-surface-2">
-            </div>
-        </div>
+        <c-panel-skeleton shape="text" lines="3" />
     </template>
     <template data-quick-view-error>
         <div>

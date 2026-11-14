@@ -6,13 +6,14 @@
         <c-panel-card title="Upload a CSV file">
             <p class="text-sm text-muted">Add up to {{ max_rows }} learners at once, {{ max_file_size }} per file. Nothing is created until you review the preview and confirm.</p>
             {% if form.errors %}
-                <div role="alert" tabindex="-1" autofocus class="mt-4 rounded-r-lg border-l-4 border-error bg-error-light p-4 text-on-error-light">
-                    <p class="flex items-center gap-2 font-semibold"><span aria-hidden="true"><c-icon name="error" class="size-5" /></span>The file could not be uploaded.</p>
-                    <ul class="mt-2 list-disc pl-5">
-                        {% for field_errors in form.errors.values %}
-                            {% for error in field_errors %}<li>{{ error }}</li>{% endfor %}
-                        {% endfor %}
-                    </ul>
+                <div class="mt-4">
+                    <c-panel-notice tone="error" title="The file could not be uploaded." tabindex="-1" autofocus>
+                        <ul class="mt-2 list-disc pl-5">
+                            {% for field_errors in form.errors.values %}
+                                {% for error in field_errors %}<li>{{ error }}</li>{% endfor %}
+                            {% endfor %}
+                        </ul>
+                    </c-panel-notice>
                 </div>
             {% endif %}
             <form method="post" enctype="multipart/form-data" class="mt-4 space-y-4">
@@ -41,45 +42,36 @@
                 {% if cohort %}
                     <p class="text-sm">Every learner in the file is added to <strong>{{ cohort.name }}</strong>. The <code>cohort</code> column is ignored.</p>
                 {% endif %}
-                <c-button type="submit" class="min-h-11 md:min-h-0 w-full sm:w-auto">Upload and preview</c-button>
+                <c-button type="submit" size="small" class="w-full sm:w-auto">Upload and preview</c-button>
             </form>
         </c-panel-card>
         {% comment %}Below md the card header wraps so the Download template button drops under the description instead of squeezing it into a narrow column.{% endcomment %}
         <div class="max-md:[&_header]:flex-wrap">
             <c-panel-card title="File format" description="One learner per row. The first row must contain these column headers.">
                 <c-slot name="header_action">
-                    <c-button variant="secondary" size="small" class="min-h-11 md:min-h-0" href="{{ template_url }}" icon_left="download" download>Download template</c-button>
+                    <c-button variant="secondary" size="small" href="{{ template_url }}" icon_left="download" download>Download template</c-button>
                 </c-slot>
-                <table data-format-table class="hidden w-full text-left text-sm sm:table">
-                    <thead>
-                        <tr class="text-xs uppercase tracking-wide text-muted">
-                            <th scope="col" class="py-2 pr-3 font-medium">Column</th>
-                            <th scope="col" class="py-2 pr-3 font-medium">Required</th>
-                            <th scope="col" class="py-2 font-medium">Format</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in format_rows %}
-                            <tr class="border-t border-border">
-                                <td class="py-2 pr-3 align-top break-words"><code>{{ row.name }}</code></td>
-                                <td class="py-2 pr-3 align-top {% if row.requirement == "Required" %}font-semibold{% else %}text-muted{% endif %}">{{ row.requirement }}</td>
-                                <td class="py-2 align-top">
-                                    {{ row.description }}
-                                    <span class="mt-0.5 block break-all font-mono text-xs text-muted">{{ row.example }}</span>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                <ul data-row-cards class="ml-0 list-none space-y-0 divide-y divide-border sm:hidden">
+                <c-panel-table caption="File format" cards="true" data-format-table="true">
+                    <c-slot name="head"><tr><th scope="col">Column</th><th scope="col">Required</th><th scope="col">Format</th></tr></c-slot>
                     {% for row in format_rows %}
-                        <li class="py-3">
-                            <p class="flex items-center justify-between gap-3"><code>{{ row.name }}</code><span class="text-sm {% if row.requirement == "Required" %}font-semibold{% else %}text-muted{% endif %}">{{ row.requirement }}</span></p>
-                            <p class="mt-1 text-sm">{{ row.description }}</p>
-                            <p class="mt-0.5 break-all font-mono text-xs text-muted">{{ row.example }}</p>
-                        </li>
+                        <tr>
+                            <td class="align-top break-words"><code>{{ row.name }}</code></td>
+                            <td class="align-top {% if row.requirement == "Required" %}font-semibold{% else %}text-muted{% endif %}">{{ row.requirement }}</td>
+                            <td class="align-top">
+                                {{ row.description }}
+                                <span class="mt-0.5 block break-all font-mono text-xs text-muted">{{ row.example }}</span>
+                            </td>
+                        </tr>
                     {% endfor %}
-                </ul>
+                    <c-slot name="card_rows">
+                        {% for row in format_rows %}
+                            <c-panel-table-card primary="{{ row.name }}">
+                                <c-panel-definition-row label="Required">{{ row.requirement }}</c-panel-definition-row>
+                                <c-panel-definition-row label="Format">{{ row.description }}<span class="mt-0.5 block break-all font-mono text-xs text-muted">{{ row.example }}</span></c-panel-definition-row>
+                            </c-panel-table-card>
+                        {% endfor %}
+                    </c-slot>
+                </c-panel-table>
             </c-panel-card>
         </div>
     </div>

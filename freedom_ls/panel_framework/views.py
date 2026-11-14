@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import re
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Protocol
@@ -59,6 +60,24 @@ from freedom_ls.panel_framework.models import BulkActionRun, RunStatus, scope_lo
 from freedom_ls.panel_framework.panels import DataTablePanel, Panel, TabSet
 from freedom_ls.panel_framework.quick_view import QuickView
 from freedom_ls.panel_framework.tables import DataTable
+
+__all__ = [
+    "BaseViewConfig",
+    "HeaderStat",
+    "InstanceView",
+    "ListViewConfig",
+    "ListViewPanel",
+    "NavGroup",
+    "ObjectViewConfig",
+    "SectionConfig",
+    "SectionConfigBase",
+    "StatusBadge",
+    "build_breadcrumbs",
+    "build_menu_items",
+    "first_visible_section",
+    "panel_framework_view",
+    "sections_by_url_name",
+]
 
 
 @dataclass(frozen=True)
@@ -185,6 +204,15 @@ class SectionConfigBase:
     def get_menu_count_poll_seconds(cls) -> int:
         """Seconds between polls of `get_menu_count_url`."""
         return 60
+
+    @classmethod
+    def get_menu_count_events(cls) -> tuple[str, ...]:
+        """Names of events on `<body>` that make the polled count reload.
+
+        The count reloads on page load and on its poll; each name here adds
+        a reload when that event fires. A name is letters, digits, `-`, `_`
+        or `:`."""
+        return ()
 
     @classmethod
     def get_instance_label(cls, instance: Model) -> str:
@@ -721,6 +749,10 @@ class _BulkConfirmation:
     #: classified. The title counts these, as the sentence does, so the two
     #: never disagree on a mixed selection. None means every row changes.
     changed_count: int | None = None
+    #: Shown beside the disabled confirm button when no selected row would
+    #: change, or when the action's form has no valid choice yet. An `error`
+    #: takes its place.
+    disabled_reason: str = ""
 
     def context(self) -> dict[str, object]:
         title_count = self.count if self.changed_count is None else self.changed_count
@@ -736,7 +768,8 @@ class _BulkConfirmation:
             "wording": self.wording,
             "notice": self.notice,
             "expected_count": self.expected_count,
-            "confirm_disabled": self.confirm_disabled,
+            "confirm_disabled": self.confirm_disabled or bool(self.error),
+            "confirm_disabled_reason": self.error or self.disabled_reason,
             "form": self.form,
         }
 
@@ -870,6 +903,15 @@ def _confirmation_response(
     return confirmation
 
 
+def _nothing_to_change_reason(model: type[Model], count: int) -> str:
+    """Why a confirmation whose every selected row would be skipped offers
+    no confirm: the skip lines above it say which reasons apply."""
+    selected = count_noun(model, count).replace(" ", " selected ", 1)
+    if count == 1:
+        return f"Nothing to change: the {selected} will be skipped."
+    return f"Nothing to change: all {selected} will be skipped."
+
+
 def _background_wording(queryset: QuerySet, count: int) -> ConfirmationWording:
     """The confirmation for a run too large to preview: the total, and where
     the skips will be reported."""
@@ -971,6 +1013,7 @@ def _handle_bulk_action(
                     confirm_disabled=True,
                     form=picker,
                     title=f"{action.label}?",
+                    disabled_reason=action.picker_prompt(picker),
                 ),
             )
 
@@ -1008,6 +1051,11 @@ def _handle_bulk_action(
             form=picker,
             cleaned_data=cleaned_data,
             changed_count=changed_count,
+            disabled_reason=(
+                _nothing_to_change_reason(queryset.model, count)
+                if changed_count == 0 and count
+                else ""
+            ),
         )
 
     if not confirmed:
@@ -1056,7 +1104,7 @@ def _handle_action(
 
     if request.method in ("POST", "DELETE"):
         return action.handle_submit(ctx)
-    return render(request, action.template_name, action.get_context_data(ctx))
+    return action.render_fragment(ctx)
 
 
 _FRAGMENT_SEGMENTS = frozenset({"__actions", "__runs", "__quick-view"})
@@ -1400,6 +1448,21 @@ def _respond(
     )
 
 
+_COUNT_EVENT_NAME = re.compile(r"[A-Za-z0-9_:-]+")
+
+
+def _menu_count_events(section: SectionConfig) -> tuple[str, ...]:
+    events = section.get_menu_count_events()
+    for event in events:
+        if not _COUNT_EVENT_NAME.fullmatch(event):
+            raise ImproperlyConfigured(
+                f"{section.__name__}.get_menu_count_events() returned {event!r}. "
+                "An event name holds only letters, digits, '-', '_' and ':', "
+                "because anything else would add modifiers to the htmx trigger."
+            )
+    return events
+
+
 def build_menu_items(
     config: list[NavGroup],
     url_name: str,
@@ -1441,6 +1504,7 @@ def build_menu_items(
                     "scope_key": "-".join(extra_url_kwargs.values()),
                     "count_url": section.get_menu_count_url(request),
                     "count_poll_seconds": section.get_menu_count_poll_seconds(),
+                    "count_events": _menu_count_events(section),
                     "active": is_active,
                     "aria_current": aria_current,
                 }

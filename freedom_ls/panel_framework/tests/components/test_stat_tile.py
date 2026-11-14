@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 
+import lxml.html
 import pytest
 
 from ..cotton_helpers import render_cotton
@@ -134,3 +135,57 @@ def test_value_content_slot_replaces_the_value_text() -> None:
 
     assert '<a href="/cohorts">3 cohorts</a>' in html
     assert ">3</dd>" not in html
+
+
+def test_href_makes_the_whole_tile_one_link() -> None:
+    document = lxml.html.fromstring(
+        "<div>"
+        + render_cotton(
+            '<c-panel-stat-tile label="Cohorts" value="3" href="/cohorts" aria-label="3 cohorts" />'
+        )
+        + "</div>"
+    )
+
+    (link,) = document.cssselect("a")
+    assert link.get("href") == "/cohorts"
+    assert link.get("aria-label") == "3 cohorts"
+    assert link.cssselect("dl dt")[0].text_content() == "Cohorts"
+    assert link.get("aria-current") is None
+
+
+def test_selected_marks_the_linked_tile_as_current() -> None:
+    document = lxml.html.fromstring(
+        "<div>"
+        + render_cotton(
+            '<c-panel-stat-tile label="Errors" value="2" href="/x" selected="true" />'
+        )
+        + "</div>"
+    )
+
+    (link,) = document.cssselect("a")
+    assert link.get("aria-current") == "true"
+
+
+def test_a_tile_without_href_renders_no_link() -> None:
+    html = render_cotton(
+        '<c-panel-stat-tile label="Learners" value="42" selected="true" />'
+    )
+
+    assert "<a " not in html
+    assert "aria-current" not in html
+
+
+def test_error_colours_the_linked_tile() -> None:
+    document = lxml.html.fromstring(
+        "<div>"
+        + render_cotton(
+            '<c-panel-stat-tile label="Errors" value="2" href="/x" error="true" />'
+        )
+        + "</div>"
+    )
+
+    (link,) = document.cssselect("a")
+    classes = link.get("class", "").split()
+    assert "border-error" in classes
+    assert "text-error" in classes
+    assert "border-border" not in classes

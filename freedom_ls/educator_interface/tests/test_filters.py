@@ -8,7 +8,7 @@ from typing import cast
 import pytest
 import time_machine
 
-from django.http import HttpRequest
+from django.http import HttpRequest, QueryDict
 from django.test import RequestFactory
 
 from freedom_ls.accounts.factories import UserFactory
@@ -19,15 +19,17 @@ from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.educator_interface.filters import (
     AuditActionFilter,
     AuditActorFilter,
-    AuditPeriodFilter,
     LearnerCohortFilter,
     LearnerCourseFilter,
     LearnerStatusFilter,
-    ShowInactiveFilter,
     StaffRoleFilter,
     VisibleCourseFilter,
 )
-from freedom_ls.educator_interface.views import CohortDataTable, StaffDataTable
+from freedom_ls.educator_interface.views import (
+    AuditLogEntryTable,
+    CohortDataTable,
+    StaffDataTable,
+)
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -38,7 +40,7 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_management.models import Cohort, Learner
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.panel_framework.filters import TableFilter
+from freedom_ls.panel_framework.filters import TableFilter, ToggleFilter
 from freedom_ls.panel_framework.tables import TableQuery
 
 
@@ -60,25 +62,6 @@ def _educator_request(site_aware_request: RequestFactory, organisation):
 def _any_request():
     """For a filter whose apply() reads nothing from the request."""
     return RequestFactory().get("/")
-
-
-@pytest.mark.django_db
-def test_show_inactive_filter_returns_its_queryset_unchanged():
-    CohortFactory(is_active=False)
-    queryset = Cohort.objects.all()
-
-    result = ShowInactiveFilter("inactive", "Show inactive").apply(
-        _any_request(), queryset, ["1"]
-    )
-
-    assert result is queryset
-
-
-@pytest.mark.django_db
-def test_show_inactive_filter_offers_one_choice_labelled_with_its_label():
-    filter_ = ShowInactiveFilter("inactive", "Show inactive")
-
-    assert filter_.get_choices(RequestFactory().get("/")) == [("1", "Show inactive")]
 
 
 @pytest.mark.django_db
@@ -146,7 +129,7 @@ def test_the_cohort_table_hides_inactive_cohorts_while_its_toggle_is_unset(
 def test_a_cohort_table_without_the_toggle_keeps_inactive_cohorts(
     site_aware_request: RequestFactory,
 ):
-    """Only ShowInactiveFilter narrows the table: another filter list, with
+    """Only the toggle narrows the table: another filter list, with
     nothing on the page to widen it again, must not hide rows."""
     organisation = OrganisationFactory()
     request = _educator_request(site_aware_request, organisation)
@@ -175,9 +158,11 @@ def test_the_toggle_is_read_under_whatever_key_the_table_declares_it(
     inactive = CohortFactory(organisation=organisation, name="B", is_active=False)
 
     class RenamedToggleCohortDataTable(CohortDataTable):
+        inactive_toggle_key = "all"
+
         @classmethod
         def get_filters(cls) -> list[TableFilter]:
-            return [ShowInactiveFilter("all", "Show all")]
+            return [ToggleFilter("all", "Show all")]
 
     unset = TableQuery(key="cohorts")
     on = TableQuery(key="cohorts", filters={"all": ["1"]})
@@ -191,6 +176,28 @@ def test_the_toggle_is_read_under_whatever_key_the_table_declares_it(
     ) == [
         active,
         inactive,
+    ]
+
+
+@pytest.mark.django_db
+def test_another_toggle_listed_first_does_not_stand_in_for_show_inactive(
+    site_aware_request: RequestFactory,
+):
+    organisation = OrganisationFactory()
+    request = _educator_request(site_aware_request, organisation)
+    active = CohortFactory(organisation=organisation, name="A")
+    CohortFactory(organisation=organisation, name="B", is_active=False)
+
+    class TwoToggleCohortDataTable(CohortDataTable):
+        @classmethod
+        def get_filters(cls) -> list[TableFilter]:
+            return [ToggleFilter("mine", "Only mine"), *super().get_filters()]
+
+    query = TableQuery(key="cohorts", filters={"mine": ["1"]})
+    queryset = TwoToggleCohortDataTable.get_queryset(request)
+
+    assert list(TwoToggleCohortDataTable.filter_queryset(request, queryset, query)) == [
+        active
     ]
 
 
@@ -672,77 +679,6 @@ def test_the_action_choices_include_a_downstream_extra_action(audit_request, set
 
 
 @pytest.mark.django_db
-def test_the_period_filter_offers_five_presets_and_no_default():
-    period = AuditPeriodFilter()
-
-    assert [value for value, _ in period.choices] == [
-        "today",
-        "7d",
-        "30d",
-        "90d",
-        "12m",
-    ]
-    assert period.default == ()
-    assert period.toggled(["7d"], "30d") == ["30d"]
-
-
-@pytest.mark.django_db
-def test_two_period_values_in_the_query_string_keep_only_the_first():
-    kept = AuditPeriodFilter().validate(["today", "12m"], RequestFactory().get("/"))
-
-    assert kept == ["today"]
-
-
-def _entry_at(organisation, moment: datetime) -> AuditLogEntry:
-    with time_machine.travel(moment, tick=False):
-        return cast(AuditLogEntry, AuditLogEntryFactory(target=organisation))
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize(
-    ("preset", "days"),
-    [("today", 1), ("7d", 7), ("30d", 30), ("90d", 90), ("12m", 365)],
-)
-def test_each_period_preset_covers_that_many_calendar_days_ending_today(
-    audit_request, preset: str, days: int
-):
-    """ "Last 7 days" is today and the six days before it, so the window
-    starts at local midnight `days - 1` days ago."""
-    request, organisation = audit_request
-    now = datetime(2026, 10, 24, 15, 30, tzinfo=UTC)
-    days_back = days - 1
-    inside = _entry_at(
-        organisation,
-        datetime(2026, 10, 24, 0, 0, tzinfo=UTC) - timedelta(days=days_back),
-    )
-    _entry_at(
-        organisation,
-        datetime(2026, 10, 23, 23, 59, 59, tzinfo=UTC) - timedelta(days=days_back),
-    )
-
-    with time_machine.travel(now, tick=False):
-        result = _entry_pks(request, AuditPeriodFilter(), [preset])
-
-    assert result == {inside.pk}
-
-
-@pytest.mark.django_db
-def test_the_period_midnight_is_midnight_in_the_project_time_zone(
-    audit_request, settings
-):
-    settings.TIME_ZONE = "Africa/Johannesburg"
-    request, organisation = audit_request
-    # Johannesburg is UTC+2, so local midnight on the 24th is 22:00 UTC on the 23rd.
-    before = _entry_at(organisation, datetime(2026, 10, 23, 21, 59, tzinfo=UTC))
-    after = _entry_at(organisation, datetime(2026, 10, 23, 22, 0, tzinfo=UTC))
-
-    with time_machine.travel(datetime(2026, 10, 24, 10, 0, tzinfo=UTC), tick=False):
-        result = _entry_pks(request, AuditPeriodFilter(), ["today"])
-
-    assert (before.pk in result, after.pk in result) == (False, True)
-
-
-@pytest.mark.django_db
 def test_the_action_choices_are_grouped_under_the_fixed_headings_in_order(
     audit_request,
 ):
@@ -762,3 +698,39 @@ def test_the_action_choices_are_grouped_under_the_fixed_headings_in_order(
         "Learner moved between cohorts"
     )
     assert AuditActionFilter.widget == "grouped_checklist"
+
+
+@pytest.mark.django_db
+def test_the_cohort_table_widens_to_inactive_cohorts_on_the_inactive_parameter(
+    site_aware_request: RequestFactory,
+):
+    organisation = OrganisationFactory()
+    request = _educator_request(site_aware_request, organisation)
+    active = CohortFactory(organisation=organisation, name="A")
+    inactive = CohortFactory(organisation=organisation, name="B", is_active=False)
+    request.GET = QueryDict("cohorts-inactive=1")
+
+    query = CohortDataTable.parse_query(request, "cohorts")
+    rows = CohortDataTable.filter_queryset(
+        request, CohortDataTable.get_queryset(request), query
+    )
+
+    assert list(rows) == [active, inactive]
+
+
+@pytest.mark.django_db
+def test_the_audit_log_filters_on_the_when_parameter(audit_request):
+    request, organisation = audit_request
+    recent = AuditLogEntryFactory(target=organisation)
+    with time_machine.travel(datetime.now(UTC) - timedelta(days=30), tick=False):
+        AuditLogEntryFactory(target=organisation)
+    request.GET = QueryDict("audit-when=7d")
+
+    query = AuditLogEntryTable.parse_query(request, "audit")
+    rows = AuditLogEntryTable.filter_queryset(
+        request,
+        AuditLogEntry.objects.filter(organisation=organisation),
+        query,
+    )
+
+    assert list(rows) == [recent]

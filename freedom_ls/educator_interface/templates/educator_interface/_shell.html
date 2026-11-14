@@ -52,11 +52,7 @@ the last card.
     {% endcomment %}
     <div id="sidebar-user" class="mt-auto -mx-4 -mb-6 flex min-w-0 items-center gap-2 border-t border-border px-4 py-4 lg:-mx-6 lg:px-6">
         <div class="min-w-0 flex-1 text-sm font-semibold">
-            {% if request.user.display_name == request.user.email %}
-                <c-panel-avatar-chip :name="request.user.display_name" :initials="request.user.initials" :user_id="request.user.pk" />
-            {% else %}
-                <c-panel-avatar-chip :name="request.user.display_name" :initials="request.user.initials" :user_id="request.user.pk" :secondary="request.user.email" />
-            {% endif %}
+            <c-panel-avatar-chip :user="request.user" :initials="request.user.initials" />
         </div>
         <a href="{% url 'accounts:account_profile' %}"
            aria-label="Account settings"

@@ -1,4 +1,5 @@
 {% extends "panel_framework/panels/panel.html" %}
+{% load educator_tags %}
 
 {% block panel_body %}
     {% if details %}
@@ -20,48 +21,43 @@
                             {% if detail.completed_items %}
                                 <details class="text-sm">
                                     <summary class="cursor-pointer font-medium">Completed items ({{ detail.completed_items|length }})</summary>
-                                    <ul class="list-none ml-0 mt-2 flex flex-col gap-1">
+                                    <c-panel-list class="mt-2">
                                         {% for item in detail.completed_items %}
-                                            <li class="flex flex-wrap justify-between gap-x-4">
-                                                <span>{{ item.title }}</span>
+                                            <c-panel-list-row :title="item.title" class="py-2">
                                                 <span class="text-muted"><c-date :value="item.completed_at" /></span>
-                                            </li>
+                                            </c-panel-list-row>
                                         {% endfor %}
-                                    </ul>
+                                    </c-panel-list>
                                 </details>
                             {% endif %}
                             {% for quiz in detail.quiz_results %}
                                 <div class="flex flex-col gap-1">
                                     <h4 class="text-sm font-medium">{{ quiz.title }}</h4>
-                                    <div class="relative overflow-x-auto">
-                                        <table class="w-full text-sm">
-                                            <thead>
-                                                <tr class="text-left text-muted">
-                                                    <th scope="col" class="pr-4 font-medium">Attempt</th>
-                                                    <th scope="col" class="pr-4 font-medium">Completed</th>
-                                                    <th scope="col" class="pr-4 font-medium">Score</th>
-                                                    <th scope="col" class="pr-4 font-medium">Percentage</th>
-                                                    <th scope="col" class="pr-4 font-medium">Pass mark</th>
-                                                    <th scope="col" class="font-medium">Result</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {% for attempt in quiz.attempts %}
-                                                    <tr>
-                                                        <td class="pr-4">{{ attempt.attempt_number }}</td>
-                                                        <td class="pr-4 whitespace-nowrap"><c-date :value="attempt.completed_at" /></td>
-                                                        <td class="pr-4">{% if attempt.score is not None and attempt.max_score is not None %}{{ attempt.score }}/{{ attempt.max_score }}{% endif %}</td>
-                                                        <td class="pr-4">{% if attempt.percentage is not None %}{{ attempt.percentage }}%{% endif %}</td>
-                                                        <td class="pr-4 whitespace-nowrap">{% if quiz.pass_percentage is not None %}{{ quiz.pass_percentage }}%{% else %}No pass mark{% endif %}</td>
-                                                        <td class="whitespace-nowrap">
-                                                            {% if attempt.passed is True %}<c-panel-status-badge tone="success" label="Passed" />{% elif attempt.passed is False %}<c-panel-status-badge tone="error" label="Failed" />{% endif %}
-                                                            {% if forloop.last %}<span class="text-muted">Latest</span>{% endif %}
-                                                        </td>
-                                                    </tr>
-                                                {% endfor %}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                    <c-panel-table caption="{{ quiz.title }} attempts">
+                                        <c-slot name="head">
+                                            <tr>
+                                                <th scope="col">Attempt</th>
+                                                <th scope="col">Completed</th>
+                                                <th scope="col">Score</th>
+                                                <th scope="col">Percentage</th>
+                                                <th scope="col">Pass mark</th>
+                                                <th scope="col">Result</th>
+                                            </tr>
+                                        </c-slot>
+                                        {% for attempt in quiz.attempts %}
+                                            <tr>
+                                                <td>{{ attempt.attempt_number }}</td>
+                                                <td class="whitespace-nowrap"><c-date :value="attempt.completed_at" /></td>
+                                                <td>{% if attempt.score is not None and attempt.max_score is not None %}{{ attempt.score }}/{{ attempt.max_score }}{% endif %}</td>
+                                                <td>{% if attempt.percentage is not None %}{{ attempt.percentage }}%{% endif %}</td>
+                                                <td class="whitespace-nowrap">{% if quiz.pass_percentage is not None %}{{ quiz.pass_percentage }}%{% else %}No pass mark{% endif %}</td>
+                                                <td class="whitespace-nowrap">
+                                                    {% if attempt.passed is not None %}{% passed_badge attempt.passed as verdict %}<c-panel-status-badge :badge="verdict" />{% endif %}
+                                                    {% if forloop.last %}<span class="text-muted">Latest</span>{% endif %}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </c-panel-table>
                                 </div>
                             {% endfor %}
                         </div>

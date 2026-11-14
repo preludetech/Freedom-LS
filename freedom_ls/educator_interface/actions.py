@@ -56,10 +56,10 @@ from freedom_ls.educator_interface.forms import (
     CohortCourseRegistrationForm,
     CohortPickerForm,
     CohortSetForm,
+    EducatorReasonForm,
     LearnerCourseRegistrationForm,
     LearnerNameForm,
     LearnerPickerForm,
-    ReasonForm,
     StaffEmailForm,
     choice_error,
 )
@@ -153,25 +153,29 @@ from freedom_ls.learner_progress.utils import move_progress_preview
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.panel_framework.actions import (
+    ConfirmAction,
     DeleteAction,
     EditAction,
     FormPanelAction,
+    ModalPanelAction,
     PanelAction,
+    ReasonMixin,
     changed_response,
     count_noun,
     count_phrase,
     current_page_within,
     denied_response,
-    form_fragment_context,
+    field_error_count,
     join_prose,
     navigation_response,
+    refusal_response,
 )
 from freedom_ls.panel_framework.bulk_actions import (
     BulkCount,
     BulkOutcome,
-    ConfirmationWording,
+    PermittedBulkAction,
     RecordedBulkAction,
-    count_outcomes,
+    register_bulk_action,
 )
 from freedom_ls.panel_framework.bulk_runs import run_summary
 from freedom_ls.panel_framework.context import PanelContext
@@ -291,33 +295,19 @@ def _action_params(request: HttpRequest) -> Mapping[str, str]:
     return request.POST if request.method == "POST" else request.GET
 
 
-def _uuid_param(request: HttpRequest, name: str) -> UUID:
-    """A UUID the action's trigger sent along. A missing or malformed value is
-    a 404."""
-    return _uuid_from(_action_params(request), name)
-
-
-def _staff_member_param(ctx: PanelContext) -> User:
-    """The staff member named by the action's `user` parameter. A
-    missing, malformed or non-staff value is a 404."""
-    try:
-        pk = int(_action_params(ctx.request).get("user", ""))
-    except ValueError:
-        raise Http404("No such user") from None
-    return get_object_or_404(staff_of(_organisation(ctx)), pk=pk)
-
-
 def inactive_cohort_response(
-    request: HttpRequest, cohort: Cohort, blocked_phrase: str
+    ctx: PanelContext, cohort: Cohort, blocked_phrase: str
 ) -> HttpResponse:
     """The 422 fragment for a change aimed at an inactive cohort.
     `blocked_phrase` completes "Reactivate the cohort ... to" with what the
     refused action would have done, such as "deactivate it"."""
-    return render(
-        request,
-        "educator_interface/modal/cohort_inactive.html",
-        {"cohort": cohort, "blocked_phrase": blocked_phrase},
-        status=422,
+    return refusal_response(
+        ctx,
+        title=f"{cohort} is inactive",
+        message=(
+            "The change was not made. Reactivate the cohort from its Settings "
+            f"tab to {blocked_phrase}."
+        ),
     )
 
 
@@ -366,7 +356,7 @@ class RequiresActiveCohortMixin(PanelAction):
 
     def refuse_inactive(self, ctx: PanelContext) -> HttpResponse:
         return inactive_cohort_response(
-            ctx.request, cast(Cohort, ctx.instance), self.blocked_phrase
+            ctx, cast(Cohort, ctx.instance), self.blocked_phrase
         )
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
@@ -382,33 +372,10 @@ class RequiresActiveCohortMixin(PanelAction):
         return super().handle_submit(ctx)
 
 
-class ReasonMixin(PanelAction):
-    """A confirm dialog that takes an optional reason, which the submit reads
-    from `ctx.reason`. List it first in the bases, as RequiresActiveCohortMixin
-    is, so the reason is validated before any other submit handling. An
-    action with its own submit overrides handle_confirmed_submit, never
-    handle_submit, and one that builds its own context calls
-    super().get_context_data so the reason field is in it."""
+class EducatorReasonMixin(ReasonMixin):
+    """A reason dialog that words its field the educator way."""
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        context = super().get_context_data(ctx)
-        context.setdefault("reason_form", ReasonForm())
-        return context
-
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        form = ReasonForm(ctx.request.POST)
-        if not form.is_valid():
-            context = {**self.get_context_data(ctx), "reason_form": form}
-            html = render_to_string(self.template_name, context, request=ctx.request)
-            return HttpResponse(html, status=422)
-        return self.handle_confirmed_submit(
-            replace(ctx, reason=str(form.cleaned_data["reason"]))
-        )
-
-    def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
-        """The submit once the reason is valid and on `ctx`: the next
-        handle_submit in the MRO."""
-        return super().handle_submit(ctx)
+    reason_form_class = EducatorReasonForm
 
 
 class EditCohortAction(RequiresActiveCohortMixin, EditAction):
@@ -431,16 +398,16 @@ class EditCohortAction(RequiresActiveCohortMixin, EditAction):
         response["HX-Reswap"] = "innerHTML"
         return response
 
-    def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
         old_name = str(form.initial["name"])
         with transaction.atomic():
-            response = super().form_valid(request, form)
+            response = super().form_valid(ctx, form)
             if "name" in form.changed_data:
-                cohort = cast(Cohort, form.instance)
+                cohort = cast(Cohort, cast(forms.ModelForm, form).instance)
                 record_cohort_entry(
                     cohort,
                     "cohort.renamed",
-                    cast("User", request.user),
+                    cast("User", ctx.request.user),
                     details={"old": old_name, "new": cohort.name},
                 )
         return response
@@ -467,53 +434,50 @@ class EditLearnerNameAction(EditAction):
         )
         self._learner = learner
 
-    def get_form(
-        self, request: HttpRequest, instance: Model | None = None
-    ) -> forms.ModelForm:
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
         # The page's instance is the learner; the form edits their user.
-        return super().get_form(request, self._instance)
+        return {**super().get_form_kwargs(ctx), "instance": self._instance}
 
     def event_instance(self, form: forms.ModelForm) -> Model:
         return self._learner
 
-    def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
         # The form has already bound the new names onto the user; its initial
         # data still holds the stored ones.
-        user = cast("User", form.instance)
+        user = cast("User", cast(forms.ModelForm, form).instance)
         old_name = display_name_for(
             form.initial["first_name"], form.initial["last_name"], user.email
         )
         with transaction.atomic():
-            response = super().form_valid(request, form)
+            response = super().form_valid(ctx, form)
             if {"first_name", "last_name"} & set(form.changed_data):
                 record_learner_entry(
                     self._learner,
                     "learner.renamed",
-                    cast("User", request.user),
+                    cast("User", ctx.request.user),
                     details={"old": old_name, "new": user.display_name},
                 )
         return response
 
 
-class CohortStateAction(PanelAction):
+class CohortStateAction(ConfirmAction):
     """Moves a cohort to `target_state`, after confirmation."""
 
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
-    variant = "secondary"
     capability = "freedom_ls_learner_management.change_cohort"
     target_state: bool
 
     def perform(self, cohort: Cohort, *, actor: User, reason: str) -> bool:
         raise NotImplementedError
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+    def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
         cohort = cast(Cohort, ctx.instance)
-        context = super().get_context_data(ctx)
-        context["cohort"] = cohort
-        context["cohort_course_count"] = cohort_course_count(cohort)
-        context["not_empty_sentence"] = cohort_not_empty_sentence(cohort)
-        context["is_empty"] = not context["not_empty_sentence"]
-        return context
+        not_empty_sentence = cohort_not_empty_sentence(cohort)
+        return {
+            "cohort": cohort,
+            "cohort_course_count": cohort_course_count(cohort),
+            "not_empty_sentence": not_empty_sentence,
+            "is_empty": not not_empty_sentence,
+        }
 
     def refuse_unchanged(self, ctx: PanelContext, cohort: Cohort) -> HttpResponse:
         """The 422 for a cohort already in `target_state`."""
@@ -530,24 +494,28 @@ class CohortStateAction(PanelAction):
         return navigation_response(current_page_within(ctx.request, ctx.page_url))
 
 
-class DeactivateCohortAction(ReasonMixin, RequiresActiveCohortMixin, CohortStateAction):
+class DeactivateCohortAction(
+    EducatorReasonMixin, RequiresActiveCohortMixin, CohortStateAction
+):
     label = "Deactivate"
     action_name = "deactivate"
     blocked_phrase = "deactivate it"
     target_state = False
+    loading_text = "Deactivating…"
     template_name = "educator_interface/modal/deactivate_confirmation.html"
 
     def perform(self, cohort: Cohort, *, actor: User, reason: str) -> bool:
         return deactivate_cohort(cohort, actor=actor, reason=reason)
 
     def refuse_unchanged(self, ctx: PanelContext, cohort: Cohort) -> HttpResponse:
-        return inactive_cohort_response(ctx.request, cohort, self.blocked_phrase)
+        return inactive_cohort_response(ctx, cohort, self.blocked_phrase)
 
 
 class ReactivateCohortAction(CohortStateAction):
     label = "Reactivate"
     action_name = "reactivate"
     target_state = True
+    loading_text = "Reactivating…"
     template_name = "educator_interface/modal/reactivate_confirmation.html"
 
     def perform(self, cohort: Cohort, *, actor: User, reason: str) -> bool:
@@ -557,15 +525,14 @@ class ReactivateCohortAction(CohortStateAction):
         return not cast(Cohort, ctx.instance).is_active
 
     def refuse_unchanged(self, ctx: PanelContext, cohort: Cohort) -> HttpResponse:
-        return render(
-            ctx.request,
-            "educator_interface/modal/cohort_already_active.html",
-            {"cohort": cohort},
-            status=422,
+        return self.refuse(
+            ctx,
+            "Nothing changed. Someone else may have reactivated it already.",
+            title=f"{cohort} is already active",
         )
 
 
-class DeleteEmptyCohortAction(ReasonMixin, DeleteAction):
+class DeleteEmptyCohortAction(EducatorReasonMixin, DeleteAction):
     """Deletes a cohort that has no memberships and no course registrations.
 
     A cohort that is not empty is neither offered the action nor allowed to
@@ -573,18 +540,15 @@ class DeleteEmptyCohortAction(ReasonMixin, DeleteAction):
     inactive registrations, which nobody sees on the page.
     """
 
-    template_name = "educator_interface/modal/delete_cohort_confirmation.html"
-
     def is_offered(self, ctx: PanelContext) -> bool:
         cohort = cast(Cohort, ctx.instance)
         return cohort_is_empty(cohort) and not import_into_cohort_in_progress(cohort)
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        cohort = cast(Cohort, ctx.instance)
-        reason = cohort_not_empty_sentence(cohort)
-        if reason:
-            return self._blocked_context(ctx, cohort, reason)
-        return super().get_context_data(ctx)
+    def get_title(self, ctx: PanelContext) -> str:
+        return f"{super().get_title(ctx)}?"
+
+    def get_known_blocked_reason(self, ctx: PanelContext, instance: Model) -> str:
+        return cohort_not_empty_sentence(cast(Cohort, instance))
 
     def before_delete(self, ctx: PanelContext, instance: Model) -> HttpResponse | None:
         # Lock the cohort so a membership added between this check and the
@@ -616,59 +580,32 @@ class RegisterCohortForCourseAction(RequiresActiveCohortMixin, FormPanelAction):
     action_name = "register"
     blocked_phrase = "register it for a course"
     capability = "freedom_ls_learner_management.add_cohortcourseregistration"
+    form_class = CohortCourseRegistrationForm
+    refresh_on_change = ("course",)
     submit_buttons = [
-        {"label": "Register", "variant": "primary", "loading_text": "Registering..."}
+        {"label": "Register", "variant": "primary", "loading_text": "Registering…"}
     ]
-    _cohort: Cohort
-    _page_url: str
 
-    def _bind(self, ctx: PanelContext) -> None:
-        self._cohort = cast(Cohort, ctx.instance)
-        self._page_url = ctx.page_url
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
+        return {**super().get_form_kwargs(ctx), "cohort": ctx.instance}
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        self._bind(ctx)
-        return super().get_context_data(ctx)
+    def get_form_title(self, ctx: PanelContext, form: forms.BaseForm) -> str:
+        return _register_title(form, str(ctx.instance))
 
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        self._bind(ctx)
-        return super().handle_submit(ctx)
-
-    def get_form(
-        self, request: HttpRequest, instance: Model | None = None
-    ) -> forms.ModelForm:
-        # On a POST, instance is the cohort, which must never reach a
-        # registration form.
-        if request.method == "POST":
-            return CohortCourseRegistrationForm(request.POST, cohort=self._cohort)
-        return _picker_on_get(
-            lambda data: CohortCourseRegistrationForm(data, cohort=self._cohort),
-            request,
-            "course",
-        )
-
-    def _fragment_context(
-        self, form: forms.ModelForm, form_url: str
-    ) -> dict[str, object]:
-        _prepare_register_dialog(self, form, form_url, str(self._cohort))
-        return super()._fragment_context(form, form_url)
-
-    def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
         register_cohort_for_course(
-            self._cohort,
+            cast(Cohort, ctx.instance),
             form.cleaned_data["course"],
-            actor=cast("User", request.user),
+            actor=cast("User", ctx.request.user),
         )
         # The courses tab, its count and the header's course stat all
         # re-render, which a panel refresh alone could not do for the header.
-        return navigation_response(self._page_url)
+        return navigation_response(ctx.page_url)
 
 
-class LearnerStateAction(PanelAction):
+class LearnerStateAction(ConfirmAction):
     """Moves a learner to `target_state`, after confirmation."""
 
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
-    variant = "secondary"
     capability = "freedom_ls_learner_management.change_learner"
     target_state: bool
 
@@ -678,33 +615,36 @@ class LearnerStateAction(PanelAction):
     def is_offered(self, ctx: PanelContext) -> bool:
         return cast(Learner, ctx.instance).is_active != self.target_state
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+    def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
         learner = cast(Learner, ctx.instance)
-        context = super().get_context_data(ctx)
-        context["learner"] = learner
-        context["on_default_organisation"] = (
-            learner.organisation_id == get_default_organisation(learner.site).pk
-        )
-        return context
+        return {
+            "learner": learner,
+            "on_default_organisation": (
+                learner.organisation_id == get_default_organisation(learner.site).pk
+            ),
+        }
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         learner = cast(Learner, ctx.instance)
         if not self.perform(learner, cast("User", ctx.request.user), ctx.reason):
-            return render(
-                ctx.request,
-                "educator_interface/modal/learner_already_in_state.html",
-                {"learner": learner, "state": self.label},
-                status=422,
+            return self.refuse(
+                ctx,
+                (
+                    "Nothing changed. Someone else may have already used "
+                    f"{self.label} on this learner."
+                ),
+                title=f"{learner.user.display_name} was already changed",
             )
         # The header's badge and actions change, so the page re-renders in
         # full, on the tab it was on, and no domain event is sent.
         return navigation_response(current_page_within(ctx.request, ctx.page_url))
 
 
-class DeactivateLearnerAction(ReasonMixin, LearnerStateAction):
+class DeactivateLearnerAction(EducatorReasonMixin, LearnerStateAction):
     label = "Deactivate"
     action_name = "deactivate"
     target_state = False
+    loading_text = "Deactivating…"
     template_name = "educator_interface/modal/deactivate_learner_confirmation.html"
 
     def perform(self, learner: Learner, actor: User, reason: str = "") -> bool:
@@ -715,6 +655,7 @@ class ReactivateLearnerAction(LearnerStateAction):
     label = "Reactivate"
     action_name = "reactivate"
     target_state = True
+    loading_text = "Reactivating…"
     template_name = "educator_interface/modal/reactivate_learner_confirmation.html"
 
     def perform(self, learner: Learner, actor: User, reason: str = "") -> bool:
@@ -737,44 +678,44 @@ def record_and_resend_setup_email(learner: Learner, actor: User) -> None:
         resend_account_setup_email(learner.user, learner.organisation.name)
 
 
-class ResendSetupEmailAction(PanelAction):
+class ResendSetupEmailAction(ConfirmAction):
     """Sends a pending learner the account setup email again, after confirmation."""
 
     label = "Resend setup email"
     action_name = "resend_setup_email"
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
-    variant = "secondary"
+    loading_text = "Sending…"
     capability = "freedom_ls_learner_management.change_learner"
     template_name = "educator_interface/modal/resend_setup_email_confirmation.html"
 
     def is_offered(self, ctx: PanelContext) -> bool:
         return is_pending(cast(Learner, ctx.instance).user)
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        context = super().get_context_data(ctx)
-        context["learner"] = ctx.instance
-        return context
+    def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
+        return {"learner": ctx.instance}
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         learner = cast(Learner, ctx.instance)
         try:
             record_and_resend_setup_email(learner, cast("User", ctx.request.user))
         except SetupEmailRecentlySent:
-            return render(
-                ctx.request,
-                "educator_interface/modal/setup_email_recently_sent.html",
-                {
-                    "learner": learner,
-                    "minutes": accounts_config.SETUP_EMAIL_RESEND_SECONDS // 60,
-                },
-                status=422,
+            minutes = accounts_config.SETUP_EMAIL_RESEND_SECONDS // 60
+            return self.refuse(
+                ctx,
+                (
+                    f"{learner.user.display_name} was sent a setup email recently. "
+                    f"Try again in {minutes} minutes."
+                ),
+                title="Setup email sent recently",
             )
         except AccountAlreadySetUp:
-            return render(
-                ctx.request,
-                "educator_interface/modal/account_already_set_up.html",
-                {"learner": learner},
-                status=422,
+            name = learner.user.display_name
+            return self.refuse(
+                ctx,
+                (
+                    f"Nothing was sent. {name} has signed in or set a password "
+                    "since this page loaded."
+                ),
+                title=f"{name} has already set up their account",
             )
         return changed_response({LEARNER_CHANGED: [str(learner.pk)]})
 
@@ -783,7 +724,7 @@ KEEPING_NAMES_SHOWN = 10
 
 
 class DeactivateCohortRegistrationAction(
-    ReasonMixin, RequiresActiveCohortMixin, PanelAction
+    EducatorReasonMixin, RequiresActiveCohortMixin, ConfirmAction
 ):
     """Deactivates one of the cohort's active course registrations, after
     confirmation. The registration travels as a `registration` parameter, so
@@ -793,22 +734,26 @@ class DeactivateCohortRegistrationAction(
     label = "Deactivate"
     action_name = "deactivate_cohort_registration"
     blocked_phrase = "deactivate one of its course registrations"
-    variant = "secondary"
     renders_in_footer = False
     capability = "freedom_ls_learner_management.change_cohortcourseregistration"
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+    loading_text = "Deactivating…"
     template_name = (
         "educator_interface/modal/deactivate_cohort_registration_confirmation.html"
     )
 
-    def _registration(self, ctx: PanelContext) -> CohortCourseRegistration:
-        return get_object_or_404(
-            cast(Cohort, ctx.instance).course_registrations.select_related("course"),
-            pk=_uuid_param(ctx.request, "registration"),
-            is_active=True,
+    row_param = "registration"
+
+    def get_row_queryset(self, ctx: PanelContext) -> QuerySet[CohortCourseRegistration]:
+        return (
+            cast(Cohort, ctx.instance)
+            .course_registrations.select_related("course")
+            .filter(is_active=True)
         )
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+    def _registration(self, ctx: PanelContext) -> CohortCourseRegistration:
+        return cast(CohortCourseRegistration, self.get_row_object(ctx))
+
+    def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
         cohort = cast(Cohort, ctx.instance)
         registration = self._registration(ctx)
         keeping = list(members_keeping_access(registration))
@@ -816,19 +761,14 @@ class DeactivateCohortRegistrationAction(
         names = [learner.user.display_name for learner in keeping[:KEEPING_NAMES_SHOWN]]
         if len(keeping) > KEEPING_NAMES_SHOWN:
             names.append(f"{len(keeping) - KEEPING_NAMES_SHOWN} more")
-        context = super().get_context_data(ctx)
-        context.update(
-            {
-                "cohort": cohort,
-                "registration": registration,
-                "course": registration.course,
-                "losing_count": member_count - len(keeping),
-                "losing_phrase": count_noun(Learner, member_count - len(keeping)),
-                "keeping_names": join_prose(names),
-                "confirm_url": self.get_action_url(ctx),
-            }
-        )
-        return context
+        return {
+            "cohort": cohort,
+            "registration": registration,
+            "course": registration.course,
+            "losing_count": member_count - len(keeping),
+            "losing_phrase": count_noun(Learner, member_count - len(keeping)),
+            "keeping_names": join_prose(names),
+        }
 
     def handle_active_submit(self, ctx: PanelContext) -> HttpResponse:
         deactivate_cohort_registration(
@@ -853,58 +793,37 @@ class RegisterLearnerForCourseAction(FormPanelAction):
     label = "Register for a course"
     action_name = "register_for_course"
     capability = "freedom_ls_learner_management.add_learnercourseregistration"
+    form_class = LearnerCourseRegistrationForm
+    refresh_on_change = ("course",)
     submit_buttons = [
-        {"label": "Register", "variant": "primary", "loading_text": "Registering..."}
+        {"label": "Register", "variant": "primary", "loading_text": "Registering…"}
     ]
-    _learner: Learner
 
-    def _bind(self, ctx: PanelContext) -> None:
-        self._learner = cast(Learner, ctx.instance)
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
+        return {**super().get_form_kwargs(ctx), "learner": ctx.instance}
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        self._bind(ctx)
-        context = super().get_context_data(ctx)
-        context["empty_message"] = _empty_message(
-            cast(forms.BaseForm, context["form"]),
+    def get_form_title(self, ctx: PanelContext, form: forms.BaseForm) -> str:
+        return _register_title(form, cast(Learner, ctx.instance).user.display_name)
+
+    def get_empty_message(self, ctx: PanelContext, form: forms.BaseForm) -> str | None:
+        name = cast(Learner, ctx.instance).user.display_name
+        return _empty_message(
+            form,
             "course",
-            f"There is no course {self._learner.user.display_name} can be "
-            "registered for right now.",
-        )
-        return context
-
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        self._bind(ctx)
-        return super().handle_submit(ctx)
-
-    def get_form(
-        self, request: HttpRequest, instance: Model | None = None
-    ) -> forms.ModelForm:
-        # On a POST, instance is the learner, which must never reach a
-        # registration form.
-        if request.method == "POST":
-            return LearnerCourseRegistrationForm(request.POST, learner=self._learner)
-        return _picker_on_get(
-            lambda data: LearnerCourseRegistrationForm(data, learner=self._learner),
-            request,
-            "course",
+            f"There is no course {name} can be registered for right now.",
         )
 
-    def _fragment_context(
-        self, form: forms.ModelForm, form_url: str
-    ) -> dict[str, object]:
-        _prepare_register_dialog(self, form, form_url, self._learner.user.display_name)
-        return super()._fragment_context(form, form_url)
-
-    def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
+        learner = cast(Learner, ctx.instance)
         register_for_course(
-            self._learner,
+            learner,
             form.cleaned_data["course"],
-            actor=cast("User", request.user),
+            actor=cast("User", ctx.request.user),
         )
-        return _registration_changed_response(self._learner)
+        return _registration_changed_response(learner)
 
 
-class DeactivateRegistrationAction(ReasonMixin, PanelAction):
+class DeactivateRegistrationAction(EducatorReasonMixin, ConfirmAction):
     """Deactivates one of the learner's active individual registrations, after
     confirmation. The registration travels as a `registration` parameter, so
     the action resolves on the registrations card and renders per row there,
@@ -912,24 +831,24 @@ class DeactivateRegistrationAction(ReasonMixin, PanelAction):
 
     label = "Deactivate"
     action_name = "deactivate_registration"
-    variant = "secondary"
     renders_in_footer = False
     capability = "freedom_ls_learner_management.change_learnercourseregistration"
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+    loading_text = "Deactivating…"
     template_name = "educator_interface/modal/deactivate_registration_confirmation.html"
 
-    def _registration(self, ctx: PanelContext) -> LearnerCourseRegistration:
-        registrations = LearnerCourseRegistration.objects.filter(
+    row_param = "registration"
+
+    def get_row_queryset(
+        self, ctx: PanelContext
+    ) -> QuerySet[LearnerCourseRegistration]:
+        return LearnerCourseRegistration.objects.filter(
             learner=cast(Learner, ctx.instance), is_active=True
         ).select_related("course")
-        return cast(
-            LearnerCourseRegistration,
-            get_object_or_404(
-                registrations, pk=_uuid_param(ctx.request, "registration")
-            ),
-        )
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+    def _registration(self, ctx: PanelContext) -> LearnerCourseRegistration:
+        return cast(LearnerCourseRegistration, self.get_row_object(ctx))
+
+    def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
         learner = cast(Learner, ctx.instance)
         registration = self._registration(ctx)
         scoped = cast("OrganisationScopedRequest", ctx.request)
@@ -940,23 +859,18 @@ class DeactivateRegistrationAction(ReasonMixin, PanelAction):
                 "pk", flat=True
             )
         )
-        context = super().get_context_data(ctx)
-        context.update(
-            {
-                "learner": learner,
-                "registration": registration,
-                "course": registration.course,
-                "keeping_cohorts": join_prose(
-                    [cohort.name for cohort in granting if cohort.pk in visible_ids]
-                ),
-                "keeps_access": bool(granting),
-                "on_default_organisation": (
-                    learner.organisation_id == get_default_organisation(learner.site).pk
-                ),
-                "confirm_url": self.get_action_url(ctx),
-            }
-        )
-        return context
+        return {
+            "learner": learner,
+            "registration": registration,
+            "course": registration.course,
+            "keeping_cohorts": join_prose(
+                [cohort.name for cohort in granting if cohort.pk in visible_ids]
+            ),
+            "keeps_access": bool(granting),
+            "on_default_organisation": (
+                learner.organisation_id == get_default_organisation(learner.site).pk
+            ),
+        }
 
     def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
         learner = cast(Learner, ctx.instance)
@@ -969,42 +883,37 @@ class DeactivateRegistrationAction(ReasonMixin, PanelAction):
         return _registration_changed_response(learner)
 
 
-class ReactivateRegistrationAction(PanelAction):
+class ReactivateRegistrationAction(ConfirmAction):
     """Reactivates one of the learner's inactive individual registrations,
     after confirmation. Like deactivating, the registration travels as a
     `registration` parameter and the action renders per row."""
 
     label = "Reactivate"
     action_name = "reactivate_registration"
-    variant = "secondary"
     renders_in_footer = False
     capability = "freedom_ls_learner_management.change_learnercourseregistration"
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+    loading_text = "Reactivating…"
     template_name = "educator_interface/modal/reactivate_registration_confirmation.html"
 
-    def _registration(self, ctx: PanelContext) -> LearnerCourseRegistration:
-        registrations = LearnerCourseRegistration.objects.filter(
+    row_param = "registration"
+
+    def get_row_queryset(
+        self, ctx: PanelContext
+    ) -> QuerySet[LearnerCourseRegistration]:
+        return LearnerCourseRegistration.objects.filter(
             learner=cast(Learner, ctx.instance), is_active=False
         ).select_related("course")
-        return cast(
-            LearnerCourseRegistration,
-            get_object_or_404(
-                registrations, pk=_uuid_param(ctx.request, "registration")
-            ),
-        )
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+    def _registration(self, ctx: PanelContext) -> LearnerCourseRegistration:
+        return cast(LearnerCourseRegistration, self.get_row_object(ctx))
+
+    def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
         registration = self._registration(ctx)
-        context = super().get_context_data(ctx)
-        context.update(
-            {
-                "learner": cast(Learner, ctx.instance),
-                "registration": registration,
-                "course": registration.course,
-                "confirm_url": self.get_action_url(ctx),
-            }
-        )
-        return context
+        return {
+            "learner": cast(Learner, ctx.instance),
+            "registration": registration,
+            "course": registration.course,
+        }
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         learner = cast(Learner, ctx.instance)
@@ -1045,14 +954,8 @@ def _joinable_cohorts(ctx: PanelContext, learner: Learner) -> QuerySet[Cohort]:
     )
 
 
-def _cohort_picker(
-    ctx: PanelContext,
-    learner: Learner,
-    get_data: Mapping[str, str] | None,
-    *,
-    field_name: str = "cohort",
-) -> CohortPickerForm:
-    """The picker of cohorts to put `learner` in, bound to `get_data` on a GET.
+def _picker_cohorts(ctx: PanelContext, learner: Learner) -> QuerySet[Cohort]:
+    """The cohorts a picker for `learner` draws on.
 
     A POST picks from every cohort of the organisation the learner is not in,
     wider than the offered set, so a cohort the user may see but not add to
@@ -1060,17 +963,27 @@ def _cohort_picker(
     """
     if ctx.request.method == "POST":
         scoped = cast("OrganisationScopedRequest", ctx.request)
-        queryset = Cohort.objects.filter(organisation=scoped.organisation).exclude(
+        return Cohort.objects.filter(organisation=scoped.organisation).exclude(
             cohortmembership__learner=learner
         )
-        data: Mapping[str, str] | None = ctx.request.POST
-    else:
-        queryset = _joinable_cohorts(ctx, learner)
-        data = get_data
-    return CohortPickerForm(data, queryset=queryset, field_name=field_name)
+    return _joinable_cohorts(ctx, learner)
 
 
-class MembershipAction(PanelAction):
+def _cohort_picker(
+    ctx: PanelContext,
+    learner: Learner,
+    get_data: Mapping[str, str] | None,
+    *,
+    field_name: str = "cohort",
+) -> CohortPickerForm:
+    """The picker of cohorts to put `learner` in, bound to `get_data` on a GET."""
+    data = ctx.request.POST if ctx.request.method == "POST" else get_data
+    return CohortPickerForm(
+        data, queryset=_picker_cohorts(ctx, learner), field_name=field_name
+    )
+
+
+class MembershipAction(ModalPanelAction):
     """A change to one learner's membership of one cohort, after confirmation.
 
     The action resolves on the learner page, where the cohort travels as a
@@ -1082,7 +995,11 @@ class MembershipAction(PanelAction):
     blocked_phrase: str
     variant = "secondary"
     renders_in_footer = False
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+    row_param = "cohort"
+
+    def get_row_queryset(self, ctx: PanelContext) -> QuerySet[Cohort]:
+        scoped = cast("OrganisationScopedRequest", ctx.request)
+        return cohorts_visible_to(scoped.user, scoped.organisation)
 
     def perform(
         self, learner: Learner, cohort: Cohort, actor: User, reason: str = ""
@@ -1092,20 +1009,20 @@ class MembershipAction(PanelAction):
     def _cohort(self, ctx: PanelContext) -> Cohort:
         if isinstance(ctx.instance, Cohort):
             return ctx.instance
-        scoped = cast("OrganisationScopedRequest", ctx.request)
-        return get_object_or_404(
-            cohorts_visible_to(scoped.user, scoped.organisation),
-            pk=_uuid_param(ctx.request, "cohort"),
-        )
+        return cast(Cohort, self.get_row_object(ctx))
 
     def _pair(self, ctx: PanelContext) -> tuple[Learner, Cohort]:
         if isinstance(ctx.instance, Cohort):
             scoped = cast("OrganisationScopedRequest", ctx.request)
-            learner = get_object_or_404(
-                learners_visible_to(
-                    scoped.user, scoped.organisation, include_inactive=True
+            learner_pk = _uuid_from(_action_params(ctx.request), "learner")
+            learner = ctx.once(
+                (MembershipAction, "learner", learner_pk),
+                lambda: get_object_or_404(
+                    learners_visible_to(
+                        scoped.user, scoped.organisation, include_inactive=True
+                    ),
+                    pk=learner_pk,
                 ),
-                pk=_uuid_param(ctx.request, "learner"),
             )
             return learner, ctx.instance
         return cast(Learner, ctx.instance), self._cohort(ctx)
@@ -1125,17 +1042,20 @@ class MembershipAction(PanelAction):
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         learner, cohort = self._pair(ctx)
         if not cohort.is_active:
-            return inactive_cohort_response(ctx.request, cohort, self.blocked_phrase)
+            return inactive_cohort_response(ctx, cohort, self.blocked_phrase)
         self.perform(learner, cohort, cast("User", ctx.request.user), ctx.reason)
         ids = [str(learner.pk), str(cohort.pk)]
         return _membership_changed_response(ids, ids)
 
 
-class RemoveFromCohortAction(ReasonMixin, MembershipAction):
+class RemoveFromCohortAction(EducatorReasonMixin, ConfirmAction, MembershipAction):
     label = "Remove from cohort"
     action_name = "remove_from_cohort"
     blocked_phrase = "remove learners from it"
     capability = "freedom_ls_learner_management.delete_cohortmembership"
+    confirm_label = "Remove"
+    confirm_variant = "error"
+    loading_text = "Removing…"
     template_name = "educator_interface/modal/remove_from_cohort_confirmation.html"
 
     def perform(
@@ -1143,25 +1063,22 @@ class RemoveFromCohortAction(ReasonMixin, MembershipAction):
     ) -> bool:
         return remove_from_cohort(learner, cohort, actor=actor, reason=reason)
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+    def get_hidden_fields(self, ctx: PanelContext) -> dict[str, str]:
+        """The other side of the pair, which the page does not name."""
         learner, cohort = self._pair(ctx)
         if isinstance(ctx.instance, Cohort):
-            other_side = {"name": "learner", "value": str(learner.pk)}
-        else:
-            other_side = {"name": "cohort", "value": str(cohort.pk)}
-        context = super().get_context_data(ctx)
-        context.update(
-            {
-                "learner": learner,
-                "cohort": cohort,
-                "losing_courses": join_prose(
-                    [str(course) for course in courses_losing_access(learner, cohort)]
-                ),
-                "other_side": other_side,
-                "confirm_url": self.get_action_url(ctx),
-            }
-        )
-        return context
+            return {"learner": str(learner.pk)}
+        return {"cohort": str(cohort.pk)}
+
+    def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
+        learner, cohort = self._pair(ctx)
+        return {
+            "learner": learner,
+            "cohort": cohort,
+            "losing_courses": join_prose(
+                [str(course) for course in courses_losing_access(learner, cohort)]
+            ),
+        }
 
 
 class MoveToCohortAction(MembershipAction):
@@ -1178,12 +1095,29 @@ class MoveToCohortAction(MembershipAction):
         get_data = ctx.request.GET if "destination" in ctx.request.GET else None
         return _cohort_picker(ctx, learner, get_data, field_name="destination")
 
+    def _not_a_member_response(
+        self, ctx: PanelContext, learner: Learner, source: Cohort
+    ) -> HttpResponse:
+        name = learner.user.display_name
+        return refusal_response(
+            ctx,
+            title=f"{name} is no longer in {source}",
+            message=f"Nothing changed. {name} is no longer a member of {source}, "
+            "so they cannot be moved from it.",
+        )
+
+    def _is_member(self, learner: Learner, source: Cohort) -> bool:
+        return CohortMembership.objects.filter(learner=learner, cohort=source).exists()
+
+    def render_fragment(self, ctx: PanelContext) -> HttpResponse:
+        learner, source = self._pair(ctx)
+        if not self._is_member(learner, source):
+            return self._not_a_member_response(ctx, learner, source)
+        return super().render_fragment(ctx)
+
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         learner, source = self._pair(ctx)
         context = super().get_context_data(ctx)
-        if not CohortMembership.objects.filter(learner=learner, cohort=source).exists():
-            context.update({"learner": learner, "cohort": source, "not_a_member": True})
-            return context
         if not _joinable_cohorts(ctx, learner).exists():
             name = learner.user.display_name
             context.update(
@@ -1236,13 +1170,8 @@ class MoveToCohortAction(MembershipAction):
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         learner, source = self._pair(ctx)
-        if not CohortMembership.objects.filter(learner=learner, cohort=source).exists():
-            return render(
-                ctx.request,
-                self.template_name,
-                self.get_context_data(ctx),
-                status=422,
-            )
+        if not self._is_member(learner, source):
+            return self._not_a_member_response(ctx, learner, source)
         form = self._picker(ctx, learner)
         if not form.is_valid():
             return self._refusal(ctx, choice_error("cohort")["invalid_choice"])
@@ -1252,7 +1181,7 @@ class MoveToCohortAction(MembershipAction):
         for cohort in (source, destination):
             if not cohort.is_active:
                 return inactive_cohort_response(
-                    ctx.request, cohort, "move learners into or out of it"
+                    ctx, cohort, "move learners into or out of it"
                 )
         try:
             move_between_cohorts(
@@ -1264,13 +1193,15 @@ class MoveToCohortAction(MembershipAction):
         return _membership_changed_response(ids, ids)
 
     def _refusal(self, ctx: PanelContext, reason: str) -> HttpResponse:
+        learner, source = self._pair(ctx)
+        if not self._is_member(learner, source):
+            return self._not_a_member_response(ctx, learner, source)
         context = self.get_context_data(ctx)
-        if context.get("empty_message") or context.get("not_a_member"):
+        if context.get("empty_message"):
             return render(ctx.request, self.template_name, context, status=422)
         context["refusal"] = reason
         # The re-rendered select offers what the fresh dialog offered.
         form = cast(CohortPickerForm, context["form"])
-        learner, _ = self._pair(ctx)
         cast(
             forms.ModelChoiceField, form.fields["destination"]
         ).queryset = _joinable_cohorts(ctx, learner)
@@ -1281,36 +1212,6 @@ def _empty_message(form: forms.BaseForm, field_name: str, message: str) -> str |
     """`message` when the picker's field offers nothing, otherwise None."""
     queryset = cast(forms.ModelChoiceField, form.fields[field_name]).queryset
     return None if queryset is not None and queryset.exists() else message
-
-
-def _refresh_on_change(form: forms.BaseForm, field_name: str, url: str) -> None:
-    """Make choosing a value re-render the dialog from `url`, so the title
-    can name the choice before anything is submitted. Without JavaScript the
-    title keeps its generic form and the submit still works."""
-    form.fields[field_name].widget.attrs.update(
-        {
-            "hx-get": url,
-            "hx-include": "closest form",
-            "hx-trigger": "change",
-            "hx-target": "#app-modal-body",
-            "hx-swap": "innerHTML",
-        }
-    )
-
-
-def _picker_on_get[F: forms.BaseForm](
-    build: Callable[[Mapping[str, str] | None], F],
-    request: HttpRequest,
-    field_name: str,
-) -> F:
-    """The picker a GET renders: bound to the choice the query names when
-    the picker offers it, else unbound. A stale choice is not a submission,
-    so it earns no error."""
-    if field_name in request.GET:
-        form = build(request.GET)
-        if form.is_valid():
-            return form
-    return build(None)
 
 
 def _picker_title[M: Model](
@@ -1327,70 +1228,38 @@ def _picker_title[M: Model](
     return f"{unchosen}?"
 
 
-def _prepare_register_dialog(
-    action: FormPanelAction, form: forms.BaseForm, form_url: str, subject: str
-) -> None:
+def _register_title(form: forms.BaseForm, subject: str) -> str:
     """Title a register-for-a-course dialog for `subject` (a learner's or a
-    cohort's name) and make its course select re-render it."""
+    cohort's name), naming the course once one is chosen."""
 
     def chosen(course: Course) -> str:
         return f"Register {subject} for {course.title}"
 
-    action.form_title = _picker_title(
+    return _picker_title(
         form, "course", unchosen=f"Register {subject} for a course", chosen=chosen
     )
-    _refresh_on_change(form, "course", form_url)
 
 
-def _picker_fragment(
-    action: PanelAction,
-    ctx: PanelContext,
-    form: forms.BaseForm,
-    *,
-    title: str,
-    button: dict[str, str],
-    status: int = 200,
-) -> HttpResponse:
-    """The picker form's modal fragment, bound or unbound."""
-    context = form_fragment_context(
-        form,
-        form_title=title,
-        form_url=action.get_action_url(ctx),
-        submit_buttons=[button],
-    )
-    html = render_to_string(
-        "panel_framework/modal/form.html", context, request=ctx.request
-    )
-    return HttpResponse(html, status=status)
-
-
-class AddToCohortAction(PanelAction):
+class AddToCohortAction(FormPanelAction):
     """Adds the learner on the page to an active cohort the user may add to."""
 
     label = "Add to cohort"
     action_name = "add_to_cohort"
     variant = "secondary"
     capability = ADD_COHORTMEMBERSHIP
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
-    template_name = "panel_framework/modal/form.html"
-    _BUTTON = {
-        "label": "Add to cohort",
-        "variant": "primary",
-        "loading_text": "Adding...",
-    }
+    form_class = CohortPickerForm
+    refresh_on_change = ("cohort",)
+    submit_buttons = [
+        {"label": "Add to cohort", "variant": "primary", "loading_text": "Adding…"}
+    ]
 
-    def _form(self, ctx: PanelContext) -> CohortPickerForm:
-        learner = cast(Learner, ctx.instance)
-        if ctx.request.method == "POST":
-            form = _cohort_picker(ctx, learner, None)
-        else:
-            form = _picker_on_get(
-                lambda data: _cohort_picker(ctx, learner, data), ctx.request, "cohort"
-            )
-        _refresh_on_change(form, "cohort", self.get_action_url(ctx))
-        return form
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
+        return {
+            **super().get_form_kwargs(ctx),
+            "queryset": _picker_cohorts(ctx, cast(Learner, ctx.instance)),
+        }
 
-    def _title(self, ctx: PanelContext, form: CohortPickerForm) -> str:
+    def get_form_title(self, ctx: PanelContext, form: forms.BaseForm) -> str:
         name = cast(Learner, ctx.instance).user.display_name
 
         def chosen(cohort: Cohort) -> str:
@@ -1400,43 +1269,34 @@ class AddToCohortAction(PanelAction):
             form, "cohort", unchosen=f"Add {name} to a cohort", chosen=chosen
         )
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        form = self._form(ctx)
+    def get_empty_message(self, ctx: PanelContext, form: forms.BaseForm) -> str | None:
         name = cast(Learner, ctx.instance).user.display_name
-        return form_fragment_context(
+        return _empty_message(
             form,
-            form_title=self._title(ctx, form),
-            form_url=self.get_action_url(ctx),
-            submit_buttons=[self._BUTTON],
-            empty_message=_empty_message(
-                form,
-                "cohort",
-                f"{name} is already in every active cohort you can add learners to.",
-            ),
+            "cohort",
+            f"{name} is already in every active cohort you can add learners to.",
         )
 
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        form = self._form(ctx)
-        if not form.is_valid():
-            return _picker_fragment(
-                self,
-                ctx,
-                form,
-                title=self._title(ctx, form),
-                button=self._BUTTON,
-                status=422,
-            )
+    def form_invalid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
+        # A POST validates against a wider set so a refused cohort reaches the
+        # permission check; the re-rendered select offers what the fresh dialog offered.
+        cast(
+            forms.ModelChoiceField, form.fields["cohort"]
+        ).queryset = _joinable_cohorts(ctx, cast(Learner, ctx.instance))
+        return super().form_invalid(ctx, form)
+
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
         cohort = cast(Cohort, form.cleaned_data["cohort"])
         if not can(ctx.request.user, ADD_COHORTMEMBERSHIP, cohort):
             return denied_response(ctx, self)
         if not cohort.is_active:
-            return inactive_cohort_response(ctx.request, cohort, "add learners to it")
+            return inactive_cohort_response(ctx, cohort, "add learners to it")
         learner = cast(Learner, ctx.instance)
         add_to_cohort(learner, cohort, actor=cast("User", ctx.request.user))
         return _membership_changed_response([str(learner.pk)], [str(cohort.pk)])
 
 
-class AddExistingLearnersAction(RequiresActiveCohortMixin, PanelAction):
+class AddExistingLearnersAction(RequiresActiveCohortMixin, FormPanelAction):
     """Adds existing learners to the cohort on the page, for a user who may
     add cohort members but not create learners."""
 
@@ -1445,13 +1305,10 @@ class AddExistingLearnersAction(RequiresActiveCohortMixin, PanelAction):
     blocked_phrase = "add learners to it"
     variant = "secondary"
     capability = ADD_COHORTMEMBERSHIP
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
-    template_name = "panel_framework/modal/form.html"
-    _BUTTON = {
-        "label": "Add learners",
-        "variant": "primary",
-        "loading_text": "Adding...",
-    }
+    form_class = LearnerPickerForm
+    submit_buttons = [
+        {"label": "Add learners", "variant": "primary", "loading_text": "Adding…"}
+    ]
 
     def is_offered(self, ctx: PanelContext) -> bool:
         scoped = cast("OrganisationScopedRequest", ctx.request)
@@ -1459,40 +1316,28 @@ class AddExistingLearnersAction(RequiresActiveCohortMixin, PanelAction):
             scoped.user, ADD_LEARNER, scoped.organisation
         )
 
-    def _form(self, ctx: PanelContext) -> LearnerPickerForm:
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
         scoped = cast("OrganisationScopedRequest", ctx.request)
         cohort = cast(Cohort, ctx.instance)
-        return LearnerPickerForm(
-            ctx.request.POST if ctx.request.method == "POST" else None,
-            queryset=learners_visible_to(scoped.user, scoped.organisation)
+        return {
+            **super().get_form_kwargs(ctx),
+            "queryset": learners_visible_to(scoped.user, scoped.organisation)
             .select_related("user")
             .exclude(cohortmembership__cohort=cohort),
-        )
+        }
 
-    def _title(self, ctx: PanelContext) -> str:
+    def get_form_title(self, ctx: PanelContext, form: forms.BaseForm) -> str:
         return f"Add learners to {cast(Cohort, ctx.instance)}"
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        form = self._form(ctx)
-        return form_fragment_context(
+    def get_empty_message(self, ctx: PanelContext, form: forms.BaseForm) -> str | None:
+        return _empty_message(
             form,
-            form_title=self._title(ctx),
-            form_url=self.get_action_url(ctx),
-            submit_buttons=[self._BUTTON],
-            empty_message=_empty_message(
-                form,
-                "learners",
-                f"Everyone in your other cohorts is already in {ctx.instance}. "
-                "To add someone new, ask an organisation admin.",
-            ),
+            "learners",
+            f"Everyone in your other cohorts is already in {ctx.instance}. "
+            "To add someone new, ask an organisation admin.",
         )
 
-    def handle_active_submit(self, ctx: PanelContext) -> HttpResponse:
-        form = self._form(ctx)
-        if not form.is_valid():
-            return _picker_fragment(
-                self, ctx, form, title=self._title(ctx), button=self._BUTTON, status=422
-            )
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
         cohort = cast(Cohort, ctx.instance)
         learners = form.cleaned_data["learners"]
         with transaction.atomic():
@@ -1503,7 +1348,7 @@ class AddExistingLearnersAction(RequiresActiveCohortMixin, PanelAction):
         )
 
 
-class AddLearnerAction(PanelAction):
+class AddLearnerAction(FormPanelAction):
     """Adds one email address as a learner of the organisation, making a
     pending account for an unknown address, and optionally puts them in a
     cohort. Add reports the outcome in the modal with Add another beside
@@ -1514,17 +1359,16 @@ class AddLearnerAction(PanelAction):
     label = "Add learner"
     action_name = "add_learner"
     capability = ADD_LEARNER
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
-    template_name = "panel_framework/modal/form.html"
-    _BUTTONS = [
+    form_class = AddLearnerForm
+    submit_buttons = [
         {
             "label": "Add and add another",
             "variant": "secondary",
             "name": "action",
             "value": "add_another",
-            "loading_text": "Adding...",
+            "loading_text": "Adding…",
         },
-        {"label": "Add", "variant": "primary", "loading_text": "Adding..."},
+        {"label": "Add", "variant": "primary", "loading_text": "Adding…"},
     ]
     _ADDED = (AddOutcome.CREATED, AddOutcome.JOINED, AddOutcome.REACTIVATED)
 
@@ -1545,40 +1389,35 @@ class AddLearnerAction(PanelAction):
             return ctx.instance
         if "cohort" not in ctx.request.GET:
             return None
-        return get_object_or_404(
-            self._cohorts(ctx), pk=_uuid_from(ctx.request.GET, "cohort")
+        cohort_pk = _uuid_from(ctx.request.GET, "cohort")
+        return ctx.once(
+            (AddLearnerAction, "preset_cohort", cohort_pk),
+            lambda: get_object_or_404(self._cohorts(ctx), pk=cohort_pk),
         )
 
-    def _form(
-        self, ctx: PanelContext, preset: Cohort | None, *, bound: bool = True
-    ) -> AddLearnerForm:
-        return AddLearnerForm(
-            ctx.request.POST if bound and ctx.request.method == "POST" else None,
-            cohorts=self._cohorts(ctx),
-            preset=preset,
-        )
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
+        return {
+            **super().get_form_kwargs(ctx),
+            "cohorts": self._cohorts(ctx),
+            "preset": self._preset_cohort(ctx),
+        }
 
-    def _form_url(self, ctx: PanelContext, preset: Cohort | None) -> str:
+    def get_form_title(self, ctx: PanelContext, form: forms.BaseForm) -> str:
+        preset = self._preset_cohort(ctx)
+        return f"Add a learner to {preset}" if preset else "Add a learner"
+
+    def _action_url(self, ctx: PanelContext, preset: Cohort | None) -> str:
         url = self.get_action_url(ctx)
         if preset is not None and not isinstance(ctx.instance, Cohort):
             return f"{url}?cohort={preset.pk}"
         return url
 
-    def _fragment_context(
-        self,
-        ctx: PanelContext,
-        form: AddLearnerForm,
-        preset: Cohort | None,
-        status_message: str = "",
+    def get_fragment_context(
+        self, ctx: PanelContext, form: forms.BaseForm
     ) -> dict[str, object]:
         return {
-            **form_fragment_context(
-                form,
-                form_title=f"Add a learner to {preset}" if preset else "Add a learner",
-                form_url=self._form_url(ctx, preset),
-                submit_buttons=self._BUTTONS,
-            ),
-            "status_message": status_message,
+            **super().get_fragment_context(ctx, form),
+            "action_url": self._action_url(ctx, self._preset_cohort(ctx)),
         }
 
     @staticmethod
@@ -1588,42 +1427,29 @@ class AddLearnerAction(PanelAction):
             sentence += f" {result.cohort_outcome.label}."
         return sentence
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
         preset = self._preset_cohort(ctx)
-        return self._fragment_context(ctx, self._form(ctx, preset), preset)
-
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        preset = self._preset_cohort(ctx)
-        form = self._form(ctx, preset)
-        if not form.is_valid():
-            html = render_to_string(
-                self.template_name,
-                self._fragment_context(ctx, form, preset),
-                request=ctx.request,
-            )
-            return HttpResponse(html, status=422)
+        add_form = cast(AddLearnerForm, form)
         cohort = cast(Cohort | None, form.cleaned_data["cohort"]) or preset
         organisation = cast("OrganisationScopedRequest", ctx.request).organisation
         try:
             result = add_learner(
                 organisation,
-                form.entry(),
+                add_form.entry(),
                 cohort,
                 actor=cast("User", ctx.request.user),
             )
         except CohortUnavailableError:
             return inactive_cohort_response(
-                ctx.request, cast(Cohort, cohort), "add learners to it"
+                ctx, cast(Cohort, cohort), "add learners to it"
             )
         if ctx.request.POST.get("action") == "add_another":
             html = render_to_string(
-                self.template_name,
-                self._fragment_context(
-                    ctx,
-                    self._form(ctx, preset, bound=False),
-                    preset,
-                    status_message=self._outcome_sentence(result),
-                ),
+                self.get_fragment_template_name(),
+                {
+                    **self.get_fragment_context(ctx, self.get_unbound_form(ctx)),
+                    "status_message": self._outcome_sentence(result),
+                },
                 request=ctx.request,
             )
         else:
@@ -1633,7 +1459,7 @@ class AddLearnerAction(PanelAction):
                     "result": result,
                     "added": result.outcome in self._ADDED,
                     "cohort": cohort,
-                    "form_url": self._form_url(ctx, preset),
+                    "action_url": self._action_url(ctx, preset),
                 },
                 request=ctx.request,
             )
@@ -1737,15 +1563,10 @@ def _organisation(ctx: PanelContext) -> Organisation:
 
 def _refused(ctx: PanelContext, message: str) -> HttpResponse:
     """The 422 message a staff dialog shows in place of its body."""
-    return render(
-        ctx.request,
-        "educator_interface/modal/staff_change_refused.html",
-        {"message": message},
-        status=422,
-    )
+    return refusal_response(ctx, title="This change wasn't made", message=message)
 
 
-def refusal_response(
+def role_refusal_response(
     ctx: PanelContext, action: PanelAction, refused: RoleChangeRefused, name: str
 ) -> HttpResponse:
     """What a refused role change answers with: the 403 denied fragment for
@@ -1830,7 +1651,7 @@ def _entries_after(
     return [held[key] for key in STAFF_ROLES if key in held]
 
 
-class AddStaffMemberAction(PanelAction):
+class AddStaffMemberAction(ModalPanelAction):
     """Gives an existing account a staff role, in a dialog of steps: look up
     the address, choose the role, confirm. Nothing is written until the
     confirmation is submitted."""
@@ -1838,7 +1659,6 @@ class AddStaffMemberAction(PanelAction):
     label = "Add staff member"
     action_name = "add_staff_member"
     capability = ADD_STAFF_MEMBER
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
     template_name = "educator_interface/modal/add_staff_member.html"
     #: Every role this dialog could offer. A role missing from the grantor's
     #: grantable roles counts as withheld only when it is in here.
@@ -1879,7 +1699,8 @@ class AddStaffMemberAction(PanelAction):
             "step": "email",
             "dialog_title": self._dialog_title(ctx),
             "form": form,
-            "form_url": self.get_action_url(ctx),
+            "field_error_count": field_error_count(form),
+            "action_url": self.get_action_url(ctx),
             "search_url": self.get_action_url(ctx),
             "listbox_id": SEARCH_LISTBOX_ID,
             "searches_pickable_only": not self._may_add_anyone(ctx),
@@ -2053,7 +1874,8 @@ class AddStaffMemberAction(PanelAction):
             "person": person,
             "current_entries": role_entries_shown_to(ctx.request, entries),
             "form": form,
-            "form_url": self.get_action_url(ctx),
+            "field_error_count": field_error_count(form),
+            "action_url": self.get_action_url(ctx),
             "role_cards": self._role_cards(ctx, entries),
             "preset_cohort": self._preset(ctx),
             "cohort_rows": self._cohort_rows(ctx, chosen),
@@ -2219,7 +2041,7 @@ class AddStaffMemberAction(PanelAction):
                     "creates_account": user is None,
                     "first_name": names[0],
                     "last_name": names[1],
-                    "form_url": self.get_action_url(ctx),
+                    "action_url": self.get_action_url(ctx),
                     "email": email,
                     "role": "",
                     "cohort_ids": [],
@@ -2278,7 +2100,7 @@ class AddStaffMemberAction(PanelAction):
                 "creates_account": user is None,
                 "first_name": names[0],
                 "last_name": names[1],
-                "form_url": self.get_action_url(ctx),
+                "action_url": self.get_action_url(ctx),
                 "person": self._fixed_person(ctx),
                 "email": email,
                 "role": role,
@@ -2319,13 +2141,26 @@ class AddStaffMemberAction(PanelAction):
                 if created:
                     send_account_setup_email(user, organisation.name)
         except RoleChangeRefused as refused:
-            return refusal_response(ctx, self, refused, name)
+            return role_refusal_response(ctx, self, refused, name)
         except EmailInUseOnAnotherSite:
             return self._other_site_response(ctx)
         return staff_member_changed_response(user, ctx)
 
 
-class AddRoleAction(AddStaffMemberAction):
+class StaffRowMixin(PanelAction):
+    """An action on one staff member, named by the `user` parameter and read
+    through staff_of, so a missing, malformed or non-staff value is a 404."""
+
+    row_param = "user"
+
+    def get_row_queryset(self, ctx: PanelContext) -> QuerySet[User]:
+        return staff_of(_organisation(ctx))
+
+    def _staff_member(self, ctx: PanelContext) -> User:
+        return cast(User, self.get_row_object(ctx))
+
+
+class AddRoleAction(StaffRowMixin, AddStaffMemberAction):
     """Gives one staff member another role, from their row. The person is
     fixed by the `user` parameter, so the dialog opens at the role step and
     the posted email is never read."""
@@ -2340,21 +2175,21 @@ class AddRoleAction(AddStaffMemberAction):
         return has_grantable_roles(ctx)
 
     def _dialog_title(self, ctx: PanelContext) -> str:
-        return f"Add a role for {_staff_member_param(ctx).display_name}"
+        return f"Add a role for {self._staff_member(ctx).display_name}"
 
     def _fixed_person(self, ctx: PanelContext) -> User | None:
-        return _staff_member_param(ctx)
+        return self._staff_member(ctx)
 
     def _posted(self, ctx: PanelContext) -> QueryDict:
         posted = ctx.request.POST.copy()
-        posted["email"] = _staff_member_param(ctx).email
+        posted["email"] = self._staff_member(ctx).email
         return posted
 
     def _match(self, ctx: PanelContext, email: str) -> User:
-        return _staff_member_param(ctx)
+        return self._staff_member(ctx)
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        person = _staff_member_param(ctx)
+        person = self._staff_member(ctx)
         form = AddStaffMemberForm(
             None,
             roles=[(g.role, g.role) for g in self._grantable(ctx)],
@@ -2403,7 +2238,7 @@ class AddStaffMemberToCohortAction(AddStaffMemberAction):
         return cast(Cohort, ctx.instance)
 
 
-class CohortRoleAction(PanelAction):
+class CohortRoleAction(StaffRowMixin, ModalPanelAction):
     """An action on one person's one cohort role on this cohort, named by the
     `user` and `role` parameters. The assignment is re-read on every request;
     one that is gone or inactive is a 404 that the action route answers with
@@ -2411,7 +2246,6 @@ class CohortRoleAction(PanelAction):
 
     variant = "secondary"
     renders_in_footer = False
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
 
     def permission_object(self, ctx: PanelContext) -> Model | None:
         return ctx.instance
@@ -2424,7 +2258,7 @@ class CohortRoleAction(PanelAction):
 
     def _assignment(self, ctx: PanelContext) -> ObjectRoleAssignment:
         cohort = cast(Cohort, ctx.instance)
-        user = _staff_member_param(ctx)
+        user = self._staff_member(ctx)
         role = _action_params(ctx.request).get("role", "")
         if role_target(role) != "cohort" or role not in STAFF_ROLES:
             raise Http404("Not a cohort role")
@@ -2484,7 +2318,7 @@ class ChangeRoleAction(CohortRoleAction):
                 "role": assignment.role,
                 "cohort": ctx.instance,
                 "role_cards": self._role_cards(ctx, assignment.role),
-                "form_url": self.get_action_url(ctx),
+                "action_url": self.get_action_url(ctx),
             }
         )
         return context
@@ -2534,11 +2368,11 @@ class ChangeRoleAction(CohortRoleAction):
                 assign_role(grantor, user, new_role, cohort)
                 deactivate_role(grantor, user, assignment.role, cohort)
         except RoleChangeRefused as refused:
-            return refusal_response(ctx, self, refused, user.display_name)
+            return role_refusal_response(ctx, self, refused, user.display_name)
         return staff_member_changed_response(user, ctx)
 
 
-class RemoveStaffFromCohortAction(ReasonMixin, CohortRoleAction):
+class RemoveStaffFromCohortAction(EducatorReasonMixin, CohortRoleAction):
     """Takes one cohort role off a staff member on this cohort alone."""
 
     label = "Remove from cohort"
@@ -2579,11 +2413,11 @@ class RemoveStaffFromCohortAction(ReasonMixin, CohortRoleAction):
                     reason=ctx.reason,
                 )
         except RoleChangeRefused as refused:
-            return refusal_response(ctx, self, refused, user.display_name)
+            return role_refusal_response(ctx, self, refused, user.display_name)
         return staff_member_changed_response(user, ctx)
 
 
-class StaffRoleAction(PanelAction):
+class StaffRoleAction(StaffRowMixin, ModalPanelAction):
     """An action on one role entry of one staff member, named by the `user` and
     `role` parameters. Renders per entry, never in the header. The target
     is re-read on every request through staff_of, so a staff member who has
@@ -2592,7 +2426,6 @@ class StaffRoleAction(PanelAction):
 
     variant = "secondary"
     renders_in_footer = False
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
 
     def has_permission(self, ctx: PanelContext) -> bool:
         return has_grantable_roles(ctx)
@@ -2631,7 +2464,7 @@ class StaffRoleAction(PanelAction):
         return [cohort for cohort in entry.cohorts if cohort in reach]
 
 
-class DeactivateRoleAction(ReasonMixin, StaffRoleAction):
+class DeactivateRoleAction(EducatorReasonMixin, ConfirmAction, StaffRoleAction):
     """Takes one role entry off a staff member: on the organisation, or on every
     cohort of the entry the grantor can act on. A cohort outside the
     grantor's reach keeps the role, and the dialog says so. An entry with no
@@ -2639,6 +2472,8 @@ class DeactivateRoleAction(ReasonMixin, StaffRoleAction):
 
     label = "Deactivate role"
     action_name = "deactivate_role"
+    confirm_label = "Deactivate"
+    loading_text = "Deactivating…"
     template_name = "educator_interface/modal/deactivate_role_confirmation.html"
 
     def _split(
@@ -2675,11 +2510,15 @@ class DeactivateRoleAction(ReasonMixin, StaffRoleAction):
             parts.append(f"{possessive} learner access in this organisation")
         return join_prose(parts)
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+    def get_hidden_fields(self, ctx: PanelContext) -> dict[str, str]:
+        params = _action_params(ctx.request)
+        return {"user": params.get("user", ""), "role": params.get("role", "")}
+
+    def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
         organisation = _organisation(ctx)
         site = organisation.site
         grantor = cast("User", ctx.request.user)
-        user = _staff_member_param(ctx)
+        user = self._staff_member(ctx)
         entries = self._entries(ctx, user)
         entry = self._entry(ctx, entries)
         # A role the viewer cannot act on answers as one the person does not
@@ -2691,42 +2530,35 @@ class DeactivateRoleAction(ReasonMixin, StaffRoleAction):
         is_self = user.pk == grantor.pk
         shown_entries = role_entries_shown_to(ctx.request, entries)
         description = get_role_config(site.name)[entry.role].description.rstrip(".")
-        context = super().get_context_data(ctx)
-        context.update(
-            {
-                "staff_member": user,
-                "entry": entry,
-                "description": description,
-                "full_scope": (
-                    "the whole organisation"
-                    if entry.target == "organisation"
-                    else join_prose([cohort.name for cohort in removed])
-                ),
-                "stays": (
-                    join_prose([cohort.name for cohort in staying])
-                    if shows_roles
-                    else ""
-                ),
-                "keeps": self._kept(
-                    ctx, user, entry, shown_entries, "your" if is_self else "their"
-                ),
-                "is_self": is_self,
-                # Nothing else left here: the person stays on the staff list
-                # with no roles, which a site-level admin's dialog says.
-                "last_role": not staying
-                and all(other.role == entry.role for other in shown_entries),
-                "last_organisation_admin": entry.role == "organisation_admin"
-                and is_last_organisation_admin(organisation, user),
-                "grantor_is_site_level": is_site_level_admin(grantor, site),
-                "target_is_site_level": shows_roles and is_site_level_admin(user, site),
-                "confirm_url": self.get_action_url(ctx),
-            }
-        )
-        return context
+        return {
+            "staff_member": user,
+            "entry": entry,
+            "description": description,
+            "full_scope": (
+                "the whole organisation"
+                if entry.target == "organisation"
+                else join_prose([cohort.name for cohort in removed])
+            ),
+            "stays": (
+                join_prose([cohort.name for cohort in staying]) if shows_roles else ""
+            ),
+            "keeps": self._kept(
+                ctx, user, entry, shown_entries, "your" if is_self else "their"
+            ),
+            "is_self": is_self,
+            # Nothing else left here: the person stays on the staff list
+            # with no roles, which a site-level admin's dialog says.
+            "last_role": not staying
+            and all(other.role == entry.role for other in shown_entries),
+            "last_organisation_admin": entry.role == "organisation_admin"
+            and is_last_organisation_admin(organisation, user),
+            "grantor_is_site_level": is_site_level_admin(grantor, site),
+            "target_is_site_level": shows_roles and is_site_level_admin(user, site),
+        }
 
     def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
         organisation = _organisation(ctx)
-        user = _staff_member_param(ctx)
+        user = self._staff_member(ctx)
         entry = self._entry(ctx, self._entries(ctx, user))
         removed, _ = self._split(ctx, entry)
         targets: list[Organisation | Cohort] = (
@@ -2745,7 +2577,7 @@ class DeactivateRoleAction(ReasonMixin, StaffRoleAction):
                         reason=ctx.reason,
                     )
         except RoleChangeRefused as refused:
-            return refusal_response(ctx, self, refused, user.display_name)
+            return role_refusal_response(ctx, self, refused, user.display_name)
         return staff_member_changed_response(user, ctx)
 
 
@@ -2804,7 +2636,7 @@ class ChangeCohortsAction(StaffRoleAction):
         return {
             "staff_member": user,
             "entry": entry,
-            "form_url": self.get_action_url(ctx),
+            "action_url": self.get_action_url(ctx),
             "cohort_rows": [
                 {
                     "pk": str(cohort.pk),
@@ -2823,7 +2655,7 @@ class ChangeCohortsAction(StaffRoleAction):
         }
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        user = _staff_member_param(ctx)
+        user = self._staff_member(ctx)
         entry = self._entry(ctx, self._entries(ctx, user))
         return {"step": "form", **self._dialog(ctx, user, entry)}
 
@@ -2840,7 +2672,7 @@ class ChangeCohortsAction(StaffRoleAction):
         return chosen
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        user = _staff_member_param(ctx)
+        user = self._staff_member(ctx)
         grantor = cast("User", ctx.request.user)
         entry = self._entry(ctx, self._entries(ctx, user))
         chosen = self._chosen(ctx, entry)
@@ -2856,7 +2688,7 @@ class ChangeCohortsAction(StaffRoleAction):
                 for cohort in plan.removed:
                     deactivate_role(grantor, user, entry.role, cohort)
         except RoleChangeRefused as refused:
-            return refusal_response(ctx, self, refused, user.display_name)
+            return role_refusal_response(ctx, self, refused, user.display_name)
         return staff_member_changed_response(user, ctx)
 
     def _confirmation(
@@ -2875,7 +2707,7 @@ class ChangeCohortsAction(StaffRoleAction):
                 "step": "confirmation",
                 "staff_member": user,
                 "entry": entry,
-                "form_url": self.get_action_url(ctx),
+                "action_url": self.get_action_url(ctx),
                 "cohort_ids": [str(cohort.pk) for cohort in chosen],
                 "added": join_prose([cohort.name for cohort in plan.added]),
                 "removed": join_prose([cohort.name for cohort in plan.removed]),
@@ -2886,14 +2718,12 @@ class ChangeCohortsAction(StaffRoleAction):
         )
 
 
-class StaffMemberStateAction(PanelAction):
+class StaffMemberStateAction(StaffRowMixin, ConfirmAction):
     """Flips one staff member's StaffMember row, named by the `user`
     parameter, after confirmation. Renders per row, never in the header."""
 
-    variant = "secondary"
     renders_in_footer = False
     capability = CHANGE_STAFF_MEMBER
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
 
     def permission_object(self, ctx: PanelContext) -> Model | None:
         return _organisation(ctx)
@@ -2902,33 +2732,28 @@ class StaffMemberStateAction(PanelAction):
         return StaffMember.objects.filter(user=user, organisation=organisation).first()
 
 
-class DeactivateStaffMemberAction(ReasonMixin, StaffMemberStateAction):
+class DeactivateStaffMemberAction(EducatorReasonMixin, StaffMemberStateAction):
     label = "Deactivate staff member"
     action_name = "deactivate"
+    confirm_label = "Deactivate"
+    loading_text = "Deactivating…"
     template_name = "educator_interface/modal/deactivate_staff_member_confirmation.html"
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+    def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
         organisation = _organisation(ctx)
-        user = _staff_member_param(ctx)
-        context = super().get_context_data(ctx)
-        context.update(
-            {
-                "staff_member": user,
-                "organisation": organisation,
-                "last_organisation_admin": is_last_organisation_admin(
-                    organisation, user
-                ),
-                "grantor_is_site_level": is_site_level_admin(
-                    cast("User", ctx.request.user), organisation.site
-                ),
-                "confirm_url": self.get_action_url(ctx),
-            }
-        )
-        return context
+        user = self._staff_member(ctx)
+        return {
+            "staff_member": user,
+            "organisation": organisation,
+            "last_organisation_admin": is_last_organisation_admin(organisation, user),
+            "grantor_is_site_level": is_site_level_admin(
+                cast("User", ctx.request.user), organisation.site
+            ),
+        }
 
     def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
         organisation = _organisation(ctx)
-        user = _staff_member_param(ctx)
+        user = self._staff_member(ctx)
         row = self._row(user, organisation)
         if row is None or not row.is_active:
             raise Http404("The staff member is already inactive")
@@ -2940,29 +2765,30 @@ class DeactivateStaffMemberAction(ReasonMixin, StaffMemberStateAction):
                 reason=ctx.reason,
             )
         except RoleChangeRefused as refused:
-            return refusal_response(ctx, self, refused, user.display_name)
+            return role_refusal_response(ctx, self, refused, user.display_name)
         return staff_member_changed_response(user, ctx)
 
 
 class ReactivateStaffMemberAction(StaffMemberStateAction):
     label = "Reactivate staff member"
     action_name = "reactivate"
+    confirm_label = "Reactivate"
+    loading_text = "Reactivating…"
     template_name = "educator_interface/modal/reactivate_staff_member_confirmation.html"
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        user = _staff_member_param(ctx)
+    def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
+        user = self._staff_member(ctx)
         entries = current_role_entries(user, _organisation(ctx))
         return {
             "staff_member": user,
             "roles": join_prose(
                 [f"{entry.display_name} on {entry.scope}" for entry in entries]
             ),
-            "confirm_url": self.get_action_url(ctx),
         }
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         organisation = _organisation(ctx)
-        user = _staff_member_param(ctx)
+        user = self._staff_member(ctx)
         row = self._row(user, organisation)
         if row is not None and row.is_active:
             raise Http404("The staff member is already active")
@@ -2976,80 +2802,24 @@ class ReactivateStaffMemberAction(StaffMemberStateAction):
                 row = row or ensure_staff_member(user, organisation, is_active=False)
                 set_staff_member_active(cast("User", ctx.request.user), row, True)
         except RoleChangeRefused as refused:
-            return refusal_response(ctx, self, refused, user.display_name)
+            return role_refusal_response(ctx, self, refused, user.display_name)
         return staff_member_changed_response(user, ctx)
 
 
-BULK_ACTIONS: dict[tuple[str, str], type[EducatorBulkAction]] = {}
-
-
-def register_bulk_action[ActionT: type[EducatorBulkAction]](cls: ActionT) -> ActionT:
-    """Class decorator: file the action under its table and name, in
-    registration order, which is the order the action bar lists them."""
-    BULK_ACTIONS[(cls.table_key, cls.action_name)] = cls
-    return cls
-
-
-def bulk_actions_for_table(table_key: str) -> list[EducatorBulkAction]:
-    return [
-        action_class()
-        for (key, _name), action_class in BULK_ACTIONS.items()
-        if key == table_key
-    ]
-
-
-class EducatorBulkAction(RecordedBulkAction):
+class EducatorBulkAction(PermittedBulkAction[User]):
     """A bulk action over the rows of an educator-interface table, scoped to
     the organisation the request was made under.
 
     Each object is changed with the same capability and service its
-    single-object action uses. `permitted` decides which objects the user may
-    change; it is read once per preview and once per run, so the preview and
-    the run agree and the cost does not grow with the selection. Subclasses
-    fill in the hooks; the defaults suit an action with no target picker.
+    single-object action uses.
     """
-
-    capability: str
-    #: The skip reason when the service reports nothing changed.
-    unchanged_reason: str = ""
-    #: The pks `permitted` returned, set by `prepare`.
-    permitted_ids: frozenset[object] = frozenset()
 
     def has_permission(self, request: HttpRequest) -> bool:
         scoped = cast("OrganisationScopedRequest", request)
         return can_on_any(scoped.user, scoped.organisation, self.capability)
 
-    def permitted(
-        self,
-        user: AbstractBaseUser | AnonymousUser,
-        organisation: Organisation,
-        queryset: QuerySet,
-        cleaned_data: dict[str, object],
-    ) -> QuerySet:
-        """`queryset` narrowed to the objects the user may act on."""
-        raise NotImplementedError
-
-    def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
-        """The reason this permitted object would be skipped, from its
-        current state; None when it would change."""
-        return None
-
-    def prepare(
-        self,
-        user: AbstractBaseUser | AnonymousUser,
-        scope: Model | None,
-        queryset: QuerySet,
-        cleaned_data: dict[str, object],
-    ) -> None:
-        self.permitted_ids = frozenset(
-            self.permitted(
-                user, cast(Organisation, scope), queryset, cleaned_data
-            ).values_list("pk", flat=True)
-        )
-
-    def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
-        """Call the service; False when it reports nothing changed."""
-        raise NotImplementedError
+    def scope_for_request(self, request: HttpRequest) -> Model | None:
+        return cast("OrganisationScopedRequest", request).organisation
 
     def objects_for_keys(self, scope: Model | None, keys: list[str]) -> QuerySet:
         # Narrowed to the run's organisation, so a key from another one can
@@ -3072,91 +2842,6 @@ class EducatorBulkAction(RecordedBulkAction):
             user=cast("User", request.user), target=run, site_id=run.site_id
         )
 
-    def not_permitted_reason(self) -> str:
-        return (
-            f"{self.noun_model._meta.verbose_name_plural} "
-            "you don't have permission to change"
-        )
-
-    def classify_all(
-        self,
-        request: HttpRequest,
-        queryset: QuerySet,
-        cleaned_data: dict[str, object],
-    ) -> dict[str, BulkOutcome] | None:
-        scoped = cast("OrganisationScopedRequest", request)
-        self.prepare(scoped.user, scoped.organisation, queryset, cleaned_data)
-        outcomes: dict[str, BulkOutcome] = {}
-        for obj in self.with_related(queryset):
-            if obj.pk not in self.permitted_ids:
-                outcomes[str(obj.pk)] = BulkOutcome(
-                    "skipped", self.not_permitted_reason()
-                )
-            elif (reason := self.skip_reason(obj, cleaned_data)) is not None:
-                outcomes[str(obj.pk)] = BulkOutcome("skipped", reason)
-            else:
-                outcomes[str(obj.pk)] = BulkOutcome("changed")
-        return outcomes
-
-    def changed_count(self, classified: dict[str, BulkOutcome] | None) -> int:
-        counts = count_outcomes(classified or {})
-        return sum(item.count for item in counts if item.status == "changed")
-
-    def changed_keys(self, classified: dict[str, BulkOutcome] | None) -> list[str]:
-        return [
-            key
-            for key, outcome in (classified or {}).items()
-            if outcome.status == "changed"
-        ]
-
-    def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
-        """The confirmation sentence for the `count` objects that will change."""
-        raise NotImplementedError
-
-    def confirmation_title(self, count: int, cleaned_data: dict[str, object]) -> str:
-        """The sentence, asked: every dialog's heading is its sentence with
-        a question mark, so wording lives in one place."""
-        return self.sentence(count, cleaned_data).removesuffix(".") + "?"
-
-    def consequences(
-        self,
-        queryset: QuerySet,
-        classified: dict[str, BulkOutcome] | None,
-        cleaned_data: dict[str, object],
-    ) -> list[str]:
-        """What the change means beyond itself, one line each. None by default."""
-        return []
-
-    def confirmation_wording(
-        self,
-        request: HttpRequest,
-        queryset: QuerySet,
-        classified: dict[str, BulkOutcome] | None,
-        cleaned_data: dict[str, object],
-    ) -> ConfirmationWording:
-        wording = super().confirmation_wording(
-            request, queryset, classified, cleaned_data
-        )
-        return ConfirmationWording(
-            sentence=self.sentence(self.changed_count(classified), cleaned_data),
-            skips=wording.skips,
-            consequences=self.consequences(queryset, classified, cleaned_data),
-        )
-
-    def apply(
-        self,
-        user: AbstractBaseUser | AnonymousUser,
-        obj: Model,
-        cleaned_data: dict[str, object],
-    ) -> BulkOutcome:
-        if obj.pk not in self.permitted_ids:
-            return BulkOutcome("skipped", self.not_permitted_reason())
-        if self.perform(obj, cleaned_data, cast("User", user)):
-            return BulkOutcome("changed")
-        # The service said nothing changed, so the reason the preview gave
-        # applies here too.
-        return BulkOutcome("skipped", self.unchanged_reason)
-
 
 class LearnerBulkAction(EducatorBulkAction):
     """A bulk action over the rows of the learners table."""
@@ -3173,14 +2858,14 @@ class LearnerBulkAction(EducatorBulkAction):
     def permitted(
         self,
         user: AbstractBaseUser | AnonymousUser,
-        organisation: Organisation,
+        scope: Model | None,
         queryset: QuerySet,
         cleaned_data: dict[str, object],
     ) -> QuerySet:
         return queryset.filter(
-            pk__in=learners_permitted_for(user, organisation, self.capability).values(
-                "pk"
-            )
+            pk__in=learners_permitted_for(
+                user, cast(Organisation, scope), self.capability
+            ).values("pk")
         )
 
 
@@ -3211,7 +2896,7 @@ class CohortMembershipBulkAction(LearnerBulkAction):
     def permitted(
         self,
         user: AbstractBaseUser | AnonymousUser,
-        organisation: Organisation,
+        scope: Model | None,
         queryset: QuerySet,
         cleaned_data: dict[str, object],
     ) -> QuerySet:
@@ -3542,37 +3227,16 @@ class ResendSetupEmailBulkAction(LearnerBulkAction):
             return f"{emails} sent recently."
         return super().result_line(item)
 
-    def confirmation_wording(
-        self,
-        request: HttpRequest,
-        queryset: QuerySet,
-        classified: dict[str, BulkOutcome] | None,
-        cleaned_data: dict[str, object],
-    ) -> ConfirmationWording:
-        wording = super().confirmation_wording(
-            request, queryset, classified, cleaned_data
-        )
+    def confirmation_skip_line(self, item: BulkCount) -> str:
         # "account already set up" names its own subject, so it cannot follow
-        # the "N is/are" the skip lines put in front of a reason; result_line
-        # words both of this action's reasons for the same cause.
-        set_up = sum(
-            skip.count for skip in wording.skips if skip.reason == self.unchanged_reason
-        )
-        return ConfirmationWording(
-            sentence=wording.sentence,
-            skips=[
-                skip for skip in wording.skips if skip.reason != self.unchanged_reason
-            ],
-            consequences=(
-                [
-                    f"{count_noun(Learner, set_up)} "
-                    f"{'is' if set_up == 1 else 'are'} "
-                    "already set up and will be skipped."
-                ]
-                if set_up
-                else []
-            ),
-        )
+        # the "N is/are" the default line puts in front of a reason.
+        if item.reason == self.unchanged_reason:
+            return (
+                f"{count_noun(Learner, item.count)} "
+                f"{'is' if item.count == 1 else 'are'} "
+                "already set up and will be skipped."
+            )
+        return super().confirmation_skip_line(item)
 
 
 class CohortBulkAction(EducatorBulkAction):
@@ -3587,13 +3251,13 @@ class CohortBulkAction(EducatorBulkAction):
     def permitted(
         self,
         user: AbstractBaseUser | AnonymousUser,
-        organisation: Organisation,
+        scope: Model | None,
         queryset: QuerySet,
         cleaned_data: dict[str, object],
     ) -> QuerySet:
         return queryset.filter(
             pk__in=cohorts_visible_to(
-                user, organisation, capability=self.capability
+                user, cast(Organisation, scope), capability=self.capability
             ).values("pk")
         )
 

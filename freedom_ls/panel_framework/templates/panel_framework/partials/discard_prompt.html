@@ -1,0 +1,18 @@
+{% comment %}
+The prompt a host shows in place of a dirty form's body when it is dismissed
+by the close control or Esc. Included by #app-modal and #quick-view, which
+both answer to the `keepEditing` and `discard` methods. The wording is a
+default: the host replaces the title and body with the dirty form's
+`data-discard-title` and `data-discard-body` when it carries them. Context:
+`title_id` (the heading's id, which #app-modal's aria-labelledby moves to),
+`prompt_class`.
+{% endcomment %}
+<div data-discard-prompt hidden class="{{ prompt_class }}">
+    <header class="border-b border-border px-6 py-4">
+        <h2 id="{{ title_id }}" data-discard-title class="text-lg font-semibold">Discard changes?</h2>
+    </header>
+    <c-modal-body><p data-discard-body>The changes you made haven't been saved.</p></c-modal-body>
+    <c-modal-footer cancel="Keep editing" cancel_click="keepEditing" focus_cancel="true">
+        <c-button variant="error" x-on:click="discard">Discard</c-button>
+    </c-modal-footer>
+</div>

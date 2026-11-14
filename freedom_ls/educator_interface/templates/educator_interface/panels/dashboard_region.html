@@ -1,4 +1,4 @@
-{% extends "educator_interface/panels/_lazy_region.html" %}
+{% extends "panel_framework/panels/_lazy_region.html" %}
 {% load panel_tags %}
 
 {% comment %}
@@ -18,11 +18,7 @@ cohorts, inline, is_organisation_admin; when loaded, figures.
         <div class="space-y-6">
             <c-panel-stat-row>
                 <c-panel-stat-tile label="Learners" :value="inline.learner_count" sub="Across {{ inline.cohort_count }} cohort{{ inline.cohort_count|pluralize }}" />
-                <c-panel-stat-tile label="Cohorts" :value="inline.cohort_count">
-                    <c-slot name="value_content">
-                        <a href="{% url 'educator_interface:interface' organisation_slug=request.organisation.slug path_string='cohorts' %}" aria-label="{{ inline.cohort_count }} cohort{{ inline.cohort_count|pluralize }}" class="text-on-surface no-underline hover:text-primary">{{ inline.cohort_count }}</a>
-                    </c-slot>
-                </c-panel-stat-tile>
+                <c-panel-stat-tile label="Cohorts" :value="inline.cohort_count" href="{% url 'educator_interface:interface' organisation_slug=request.organisation.slug path_string='cohorts' %}" aria-label="{{ inline.cohort_count }} cohort{{ inline.cohort_count|pluralize }}" />
                 {% if is_loaded %}
                     <c-panel-stat-tile label="Average progress" value="{% if figures.average_progress is None %}—{% endif %}">
                         {% if figures.average_progress is not None %}
@@ -43,7 +39,7 @@ cohorts, inline, is_organisation_admin; when loaded, figures.
             {% if is_loaded %}
                 {% if figures.figures_as_of %}<p class="text-sm text-muted">Figures as of <c-datetime :value="figures.figures_as_of" /></p>{% endif %}
                 {% for excluded in figures.excluded %}
-                    <p class="rounded-md bg-warning-light px-3 py-2 text-sm text-on-warning-light">{{ excluded.message }}</p>
+                    <c-panel-notice tone="warning">{{ excluded.message }}</c-panel-notice>
                 {% endfor %}
             {% endif %}
 
@@ -58,16 +54,7 @@ cohorts, inline, is_organisation_admin; when loaded, figures.
             <c-panel-attention-list>
                 {% for row in figures.attention_rows %}
                     {% resolve_url_path_template row 'educator_interface:interface' 'learners/{learner_id}' as learner_url %}
-                    <c-panel-attention-row :subject="row.full_name" :href="learner_url" :user_id="row.learner_id">
-                        <c-slot name="trigger">
-                            <button type="button"
-                                    hx-get="{{ learner_url }}/__quick-view" hx-target="#quick-view-body" hx-swap="innerHTML"
-                                    hx-sync="#quick-view-body:replace" aria-controls="quick-view" aria-expanded="false"
-                                    aria-label="Quick view: {{ row.full_name }}"
-                                    class="relative z-10 inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-primary md:size-8">
-                                <c-icon name="quick_view" class="size-4" />
-                            </button>
-                        </c-slot>
+                    <c-panel-attention-row :subject="row.full_name" :href="learner_url" :user_id="row.learner_id" quick_view_url="{{ learner_url }}/__quick-view">
                         <ul class="list-none ml-0 mt-1 space-y-2 lg:mt-0">
                             {% for entry in row.cohorts %}
                                 {% resolve_url_path_template entry 'educator_interface:interface' 'cohorts/{cohort.pk}' as cohort_url %}
@@ -94,25 +81,20 @@ cohorts, inline, is_organisation_admin; when loaded, figures.
 
     <c-panel-card title="Cohort progress" landmark="true">
         {% if figures.cohort_rows %}
-            <ul class="list-none ml-0 space-y-0 divide-y divide-border">
+            <c-panel-list>
                 {% for row in figures.cohort_rows %}
                     {% resolve_url_path_template row 'educator_interface:interface' 'cohorts/{cohort.pk}' as cohort_url %}
-                    <li class="relative flex items-center gap-3 py-3">
-                        <div class="min-w-0 grow">
-                            <a href="{{ cohort_url }}" class="font-bold text-on-surface no-underline hover:text-primary max-md:after:absolute max-md:after:inset-0 max-md:after:content-['']">{{ row.cohort.name }}</a>
-                            <p class="text-sm text-muted">{{ row.learner_count }} learner{{ row.learner_count|pluralize }}, {{ row.flagged_count }} flagged</p>
-                        </div>
-                        <div class="w-32 shrink-0 text-right">
+                    <c-panel-list-row :title="row.cohort.name" :href="cohort_url" detail="{{ row.learner_count }} learner{{ row.learner_count|pluralize }}, {{ row.flagged_count }} flagged">
+                        <div class="w-32 text-right">
                             {% if row.mean_completion is None %}
                                 <span aria-hidden="true" class="text-muted">—</span><span class="sr-only">No progress to show</span>
                             {% else %}
                                 <c-panel-progress-bar :percentage="row.mean_completion" label="{{ row.cohort.name }} progress" />
                             {% endif %}
                         </div>
-                        <span aria-hidden="true" class="md:hidden text-muted"><c-icon name="next" class="size-5" /></span>
-                    </li>
+                    </c-panel-list-row>
                 {% endfor %}
-            </ul>
+            </c-panel-list>
         {% else %}
             <c-panel-empty-state message="No cohorts could be included in these figures." />
         {% endif %}

@@ -26,13 +26,16 @@ from django.apps import apps
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import AnonymousUser
 from django.db.models import Field, Model, QuerySet
-from django.http import HttpRequest, QueryDict
+from django.http import HttpRequest, HttpResponse, QueryDict
 from django.shortcuts import get_object_or_404
 
 from freedom_ls.panel_framework.actions import (
+    ConfirmAction,
     CreateInstanceAction,
     DeleteAction,
     PanelAction,
+    ReasonMixin,
+    changed_response,
 )
 from freedom_ls.panel_framework.bulk_actions import (
     BulkAction,
@@ -136,7 +139,7 @@ class StubCreateAction(CreateInstanceAction):
         # test_panel_actions.py using its own StubCreateAction.
         return True
 
-    def get_success_url(self, instance: Model) -> str:
+    def get_success_url(self, ctx: PanelContext, instance: Model) -> str:
         # A real, reachable page under this app's own test URLconf, so a
         # browser test can follow the HX-Location this action's "Save"
         # sends and see actual content, not a 404.
@@ -156,7 +159,7 @@ class StubDataTable(DataTable):
         return [
             Column(
                 header="Name",
-                template="cotton/data-table-cells/link.html",
+                template_name="cotton/data-table-cells/link.html",
                 text_attr="name",
                 url_name="panel_framework_test:framework",
                 url_path_template="stubs/{pk}",
@@ -166,13 +169,13 @@ class StubDataTable(DataTable):
             ),
             Column(
                 header="Kind",
-                template="cotton/data-table-cells/text.html",
+                template_name="cotton/data-table-cells/text.html",
                 attr="get_kind_display",
                 card="secondary",
             ),
             Column(
                 header="SAT score",
-                template="cotton/data-table-cells/text.html",
+                template_name="cotton/data-table-cells/text.html",
                 attr="sat_score",
                 card="md_only",
             ),
@@ -345,7 +348,7 @@ class StubChildDataTable(DataTable):
         return [
             Column(
                 header="Parent",
-                template="cotton/data-table-cells/text.html",
+                template_name="cotton/data-table-cells/text.html",
                 attr="parent",
             ),
         ]
@@ -388,7 +391,7 @@ class StubPlainDataTable(DataTable):
         return [
             Column(
                 header="Name",
-                template="cotton/data-table-cells/text.html",
+                template_name="cotton/data-table-cells/text.html",
                 attr="name",
                 card="primary",
             ),
@@ -398,7 +401,7 @@ class StubPlainDataTable(DataTable):
 class StubDetailDataTable(StubPlainDataTable):
     """The plain table with a row detail shown only for kind "a" rows."""
 
-    row_detail_template = "panel_framework/test_row_detail.html"
+    row_detail_template_name = "panel_framework/test_row_detail.html"
 
     @staticmethod
     def has_row_detail(row: Model) -> bool:
@@ -441,7 +444,7 @@ class StubCardDataTable(StubDataTable):
     """The same rows and columns as StubDataTable, with its default card
     body replaced by a custom template."""
 
-    card_template = "panel_framework/test_stub_card.html"
+    card_template_name = "panel_framework/test_stub_card.html"
 
 
 class StubCardTablePanel(DataTablePanel):
@@ -454,6 +457,31 @@ class StubDeleteAction(DeleteAction):
     def has_permission(self, ctx: PanelContext) -> bool:
         # Stub: always allow in tests, the way StubCreateAction does.
         return True
+
+
+class StubRefusedDeleteAction(StubDeleteAction):
+    """A delete that is always refused on submit, as if a dependent row had
+    appeared since the dialog opened."""
+
+    label = "Delete Refused"
+    action_name = "delete_refused"
+
+    def before_delete(self, ctx: PanelContext, instance: Model) -> HttpResponse:
+        return self._blocked_response(ctx, instance, "It still has 1 learner.")
+
+
+class StubConfirmReasonAction(ReasonMixin, ConfirmAction):
+    """A test-only confirm dialog with a reason field, reachable by URL."""
+
+    label = "Retire Item"
+    action_name = "retire_item"
+    template_name = "panel_framework/test_reason_dialog.html"
+
+    def has_permission(self, ctx: PanelContext) -> bool:
+        return True
+
+    def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
+        return changed_response({})
 
 
 class StubReadOnlyAction(PanelAction):
@@ -476,7 +504,9 @@ class StubDetailsPanel(Panel):
     def get_actions(self) -> list[PanelAction]:
         return [
             StubDeleteAction(success_url="/test-panel/framework/stubs"),
+            StubRefusedDeleteAction(success_url="/test-panel/framework/stubs"),
             StubReadOnlyAction(),
+            StubConfirmReasonAction(),
         ]
 
 
@@ -503,6 +533,11 @@ class StubTabSet(TabSet):
 
 class StubInstanceView(InstanceView):
     panel = StubTabSet
+    header_refresh_events = ("itemChanged",)
+
+    def get_subtitle(self) -> str:
+        self.instance.refresh_from_db()
+        return f"Subtitle of {self.instance}"
 
 
 class StubQuickView(QuickView):

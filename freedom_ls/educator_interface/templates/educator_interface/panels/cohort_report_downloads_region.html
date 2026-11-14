@@ -21,17 +21,14 @@ generated before the cohort grew is still offered.
         <p id="{{ region_id }}-limit" class="text-sm text-muted">{{ over_limit_message }}</p>
     {% endif %}
     {% if rows %}
-        <div class="relative overflow-x-auto">
-        <table class="text-sm">
-            <caption class="sr-only">Generated reports</caption>
-            <thead>
+        <c-panel-table caption="Generated reports">
+            <c-slot name="head">
                 <tr>
                     <th scope="col">Generated</th>
                     <th scope="col">By</th>
                     <th scope="col"><span class="sr-only">Download</span></th>
                 </tr>
-            </thead>
-            <tbody>
+            </c-slot>
                 {% for row in rows %}
                     <tr>
                         <td class="whitespace-nowrap">{% if row.kind == "ready" %}<c-datetime :value="row.report.finished_at" />{% else %}<c-datetime :value="row.report.requested_at" />{% endif %}</td>
@@ -52,10 +49,8 @@ generated before the cohort grew is still offered.
                         </td>
                     </tr>
                 {% endfor %}
-            </tbody>
-        </table>
-        </div>
+        </c-panel-table>
     {% elif not over_limit_message %}
-        <p class="text-sm text-muted">No reports yet.</p>
+        <c-panel-empty-state size="compact" message="No reports yet." />
     {% endif %}
 </div>

@@ -9,7 +9,9 @@ starts the conversation.
     {% if conversation %}
         {% include "comms/partials/thread.html" with pane_height="h-[65dvh]" embedded=True %}
     {% else %}
-        <p class="m-0 px-4 pb-4 text-muted sm:px-6">No messages with {{ learner.user.display_name }} yet.</p>
+        <div class="px-4 pb-4 sm:px-6">
+            <c-panel-empty-state size="compact" message="No messages with {{ learner.user.display_name }} yet." />
+        </div>
         {% if composer %}{% include "comms/partials/composer.html" %}{% endif %}
     {% endif %}
 {% endblock panel_body %}

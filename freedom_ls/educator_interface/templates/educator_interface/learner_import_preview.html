@@ -5,27 +5,19 @@
     <c-panel-card>
         <div class="flex flex-wrap items-center justify-between gap-3">
             <c-chip>{{ learner_import.file_name }} &middot; {{ learner_import.row_count }} row{{ learner_import.row_count|pluralize }}</c-chip>
-            <c-button variant="secondary" size="small" class="min-h-11 md:min-h-0" href="{{ upload_url }}" icon_left="retry">Upload a different file</c-button>
+            <c-button variant="secondary" size="small" href="{{ upload_url }}" icon_left="retry">Upload a different file</c-button>
         </div>
     </c-panel-card>
     <div>
         <c-panel-stat-row>
             {% for item in label_counts %}
-                <a data-label-filter href="{{ preview_url }}?label={{ item.label }}" aria-label="{{ item.name }}: {{ item.count }}"
-                   {% if item.label == label %}aria-current="true"{% endif %}
-                   class="block h-full rounded-lg no-underline {% if item.label == label %}ring-2 ring-primary{% endif %}">
-                    {% if item.label == "error" and item.count %}
-                        <div class="h-full min-h-11 rounded-lg border border-error bg-surface px-4 py-3 text-error">
-                            <c-panel-stat-tile label="{{ item.name }}" variant="plain">
-                                <c-slot name="value_content"><span class="inline-flex items-center gap-1 text-error"><span aria-hidden="true"><c-icon name="error" class="size-5" /></span>{{ item.count }}</span></c-slot>
-                            </c-panel-stat-tile>
-                        </div>
-                    {% else %}
-                        <div class="h-full min-h-11 rounded-lg border border-border bg-surface px-4 py-3">
-                            <c-panel-stat-tile label="{{ item.name }}" value="{{ item.count }}" variant="plain" />
-                        </div>
-                    {% endif %}
-                </a>
+                {% if item.label == "error" and item.count %}
+                    <c-panel-stat-tile data-label-filter error="true" label="{{ item.name }}" href="{{ preview_url }}?label={{ item.label }}" selected="{% if item.label == label %}true{% endif %}" aria-label="{{ item.name }}: {{ item.count }}">
+                        <c-slot name="value_content"><span class="inline-flex items-center gap-1 text-error"><span aria-hidden="true"><c-icon name="error" class="size-5" /></span>{{ item.count }}</span></c-slot>
+                    </c-panel-stat-tile>
+                {% else %}
+                    <c-panel-stat-tile data-label-filter label="{{ item.name }}" :value="item.count" href="{{ preview_url }}?label={{ item.label }}" selected="{% if item.label == label %}true{% endif %}" aria-label="{{ item.name }}: {{ item.count }}" />
+                {% endif %}
             {% endfor %}
         </c-panel-stat-row>
         {% if label %}<p class="mt-2 text-sm"><c-button variant="link" size="small" href="{{ preview_url }}">Clear filter</c-button></p>{% endif %}
@@ -34,78 +26,54 @@
         {% include "educator_interface/partials/import_error_block.html" with heading_count=error_count %}
     {% endif %}
     {% if page_obj.paginator.count %}
+    {% partialdef rows inline %}
+    <div id="import-rows">
     <c-panel-card title="Rows" flush="true">
-        <div class="hidden overflow-x-auto md:block">
-            <table data-import-rows class="w-full text-left text-sm">
-                <thead>
-                    <tr>
-                        <th scope="col" class="px-4 py-2">Line</th>
-                        <th scope="col" class="px-4 py-2">Email</th>
-                        <th scope="col" class="px-4 py-2">First name</th>
-                        <th scope="col" class="px-4 py-2">Last name</th>
-                        <th scope="col" class="px-4 py-2">Cohort</th>
-                        <th scope="col" class="px-4 py-2">Label</th>
-                        <th scope="col" class="px-4 py-2">Reason</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in page_obj %}
-                        <tr class="border-t border-border">
-                            <td class="px-4 py-2">{{ row.line_number }}</td>
-                            <td class="px-4 py-2">{{ row.email }}</td>
-                            <td class="px-4 py-2">{{ row.first_name }}</td>
-                            <td class="px-4 py-2">{{ row.last_name }}</td>
-                            <td class="px-4 py-2">{% firstof learner_import.cohort.name row.cohort_name %}</td>
-                            <td class="whitespace-nowrap px-4 py-2" data-tone="{{ row.tone }}"><c-panel-status-badge tone="{{ row.tone }}" label="{{ row.get_preview_label_display }}" /></td>
-                            <td class="px-4 py-2">{{ row.preview_reason }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% comment %}
-        Below md the table is hidden and each row is a card, laid out like the
-        data table's cards: the email on top, the other values labelled below.
-        {% endcomment %}
-        <ul data-row-cards class="list-none ml-0 space-y-0 divide-y divide-border md:hidden">
+        <c-panel-table caption="Rows" cards="true" data-import-rows="true">
+            <c-slot name="head">
+                <tr>
+                    <th scope="col">Line</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">First name</th>
+                    <th scope="col">Last name</th>
+                    <th scope="col">Cohort</th>
+                    <th scope="col">Label</th>
+                    <th scope="col">Reason</th>
+                </tr>
+            </c-slot>
             {% for row in page_obj %}
-                <li class="px-4 py-3 sm:px-6">
-                    <p class="min-w-0 break-words font-bold">{{ row.email }}</p>
-                    <dl class="mt-1 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 text-sm">
-                        <dt class="text-muted">Line</dt>
-                        <dd>{{ row.line_number }}</dd>
-                        <dt class="text-muted">Label</dt>
-                        <dd><c-panel-status-badge tone="{{ row.tone }}" label="{{ row.get_preview_label_display }}" /></dd>
+                <tr>
+                    <td>{{ row.line_number }}</td>
+                    <td>{{ row.email }}</td>
+                    <td>{{ row.first_name }}</td>
+                    <td>{{ row.last_name }}</td>
+                    <td>{% firstof learner_import.cohort.name row.cohort_name %}</td>
+                    <td class="whitespace-nowrap" data-tone="{{ row.tone }}"><c-panel-status-badge tone="{{ row.tone }}" label="{{ row.get_preview_label_display }}" /></td>
+                    <td>{{ row.preview_reason }}</td>
+                </tr>
+            {% endfor %}
+            <c-slot name="card_rows">
+                {% for row in page_obj %}
+                    <c-panel-table-card primary="{{ row.email }}">
+                        <c-panel-definition-row label="Line">{{ row.line_number }}</c-panel-definition-row>
+                        <c-panel-definition-row label="Label"><c-panel-status-badge tone="{{ row.tone }}" label="{{ row.get_preview_label_display }}" /></c-panel-definition-row>
                         {% if row.preview_reason %}
-                            <dt class="text-muted">Reason</dt>
-                            <dd class="min-w-0 break-words">{{ row.preview_reason }}</dd>
+                            <c-panel-definition-row label="Reason">{{ row.preview_reason }}</c-panel-definition-row>
                         {% endif %}
                         {% if row.first_name or row.last_name %}
-                            <dt class="text-muted">Name</dt>
-                            <dd class="min-w-0 break-words">{{ row.first_name }} {{ row.last_name }}</dd>
+                            <c-panel-definition-row label="Name">{{ row.first_name }} {{ row.last_name }}</c-panel-definition-row>
                         {% endif %}
                         {% if learner_import.cohort or row.cohort_name %}
-                            <dt class="text-muted">Cohort</dt>
-                            <dd class="min-w-0 break-words">{% firstof learner_import.cohort.name row.cohort_name %}</dd>
+                            <c-panel-definition-row label="Cohort">{% firstof learner_import.cohort.name row.cohort_name %}</c-panel-definition-row>
                         {% endif %}
-                    </dl>
-                </li>
-            {% endfor %}
-        </ul>
-        {% if page_obj.paginator.num_pages > 1 %}
-            <nav aria-label="Rows pages" class="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
-                <span class="text-sm text-muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-                <span class="flex gap-2">
-                    {% if page_obj.has_previous %}
-                        <a rel="prev" href="{% querystring page=page_obj.previous_page_number %}" class="btn btn-secondary btn-sm min-h-11 md:min-h-0">Previous</a>
-                    {% endif %}
-                    {% if page_obj.has_next %}
-                        <a rel="next" href="{% querystring page=page_obj.next_page_number %}" class="btn btn-secondary btn-sm min-h-11 md:min-h-0">Next</a>
-                    {% endif %}
-                </span>
-            </nav>
-        {% endif %}
+                    </c-panel-table-card>
+                {% endfor %}
+            </c-slot>
+        </c-panel-table>
+        <c-pagination :page_obj="page_obj" :base_url="preview_url" table_id="import-rows" :extra_params="pagination_params" push_url="true" class="px-4 py-3 sm:px-6" />
     </c-panel-card>
+    </div>
+    {% endpartialdef %}
     {% endif %}
     <c-panel-card>
         {% if add_count %}
@@ -117,11 +85,11 @@
             </ul>
             <form method="post" class="mt-4 flex sm:justify-end">
                 {% csrf_token %}
-                <c-button type="submit" class="min-h-11 md:min-h-0 w-full sm:w-auto">Add {{ add_count }} learner{{ add_count|pluralize }}</c-button>
+                <c-button type="submit" size="small" class="w-full sm:w-auto">Add {{ add_count }} learner{{ add_count|pluralize }}</c-button>
             </form>
         {% else %}
             <p class="font-semibold">Nothing can be added: every row has an error or is already a member.</p>
-            <p class="mt-4"><c-button href="{{ upload_url }}" class="min-h-11 md:min-h-0 w-full sm:w-auto">Upload a different file</c-button></p>
+            <p class="mt-4"><c-button href="{{ upload_url }}" size="small" class="w-full sm:w-auto">Upload a different file</c-button></p>
         {% endif %}
     </c-panel-card>
 {% endblock standalone_main %}

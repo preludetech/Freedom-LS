@@ -1,0 +1,16 @@
+<c-vars tag="h3" class="" />
+
+{% comment %}
+Panel heading — the heading of a section inside a panel or quick view. It is
+the bare heading element with the `panel-heading` class, which steps the
+base layer's heading size down to the panel's scale.
+
+Attributes:
+  tag    The element (default h3).
+  class  Extra classes, such as padding.
+Other attributes, such as an id for aria-labelledby, land on it.
+
+The default slot is the heading text.
+{% endcomment %}
+
+<{{ tag }} class="panel-heading {{ class }}" {{ attrs }}>{{ slot }}</{{ tag }}>

@@ -11,7 +11,7 @@ from collections.abc import Callable, Iterator, Sequence
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
-from urllib.parse import quote
+from urllib.parse import parse_qsl, quote, urlsplit
 from uuid import uuid4
 
 import lxml.html
@@ -667,8 +667,8 @@ def test_the_learner_header_refreshes_on_learner_changed(staff_client: Client):
         staff_client, _interface_url(organisation.slug, f"learners/{learner.pk}")
     )
 
-    (refresher,) = document.cssselect("#instance-header [data-header-refresh-events]")
-    assert refresher.get("data-header-refresh-events") == LEARNER_CHANGED
+    (refresher,) = document.cssselect("#instance-header [data-refresh-events]")
+    assert refresher.get("data-refresh-events") == LEARNER_CHANGED
 
 
 @pytest.mark.django_db
@@ -1087,8 +1087,8 @@ def test_cohort_header_refreshes_its_counts_when_the_cohort_changes(
 
     document = _cohort_page(staff_client, cohort)
 
-    (refresher,) = document.cssselect("#instance-header [data-header-refresh-events]")
-    assert refresher.get("data-header-refresh-events") == COHORT_CHANGED
+    (refresher,) = document.cssselect("#instance-header [data-refresh-events]")
+    assert refresher.get("data-refresh-events") == COHORT_CHANGED
 
 
 @pytest.mark.django_db
@@ -1302,6 +1302,44 @@ def test_the_settings_tab_names_each_staff_member_and_their_role(
     assert "Ada Lovelace" in text
     assert "Cohort Admin" in text or "Cohort admin" in text
     assert not document.cssselect("section[data-panel='educators']")
+
+
+@pytest.mark.django_db
+def test_the_settings_tab_staff_names_are_small_semibold_beside_a_small_avatar(
+    mock_site_context, logged_in_client
+):
+    """A staff member is the small person row. The name used to render at the
+    base size and regular weight beside a medium avatar."""
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(
+        user__first_name="Ada", user__last_name="Lovelace", organisation=organisation
+    ).user
+    assign_role(grantor, educator, "cohort_admin", cohort)
+    admin = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, admin, "organisation_admin", organisation)
+
+    document = _get_document(
+        logged_in_client(admin), _settings_url(organisation, cohort)
+    )
+
+    (name,) = [
+        n
+        for n in _staff_section(document).cssselect("span.truncate")
+        if n.text_content().strip() == "Ada Lovelace"
+    ]
+    classes = " ".join(
+        " ".join(
+            a.get("class", "")
+            for a in [name, *name.iterancestors("span", "div")]
+            if a.getparent() is not None and a.tag != "li"
+        ).split()
+    )
+    assert "text-sm" in classes
+    assert "font-semibold" in classes
+    assert _staff_section(document).cssselect("span.size-6")
+    assert not _staff_section(document).cssselect("span.size-8")
 
 
 @pytest.mark.django_db
@@ -1828,6 +1866,40 @@ def test_the_registrations_card_names_the_cohort_of_a_cohort_registration(
 
     (row,) = document.cssselect("[data-testid='registration-row']")
     assert "via Evening group" in row.text_content()
+
+
+@pytest.mark.django_db
+def test_a_registration_row_without_an_action_keeps_an_empty_action_slot(
+    staff_client: Client,
+):
+    """A cohort registration has no button, and its badge sat in the button column.
+
+    Every row keeps a fixed-width action slot after the badge, empty when the
+    viewer cannot act on the row, so the badges share one column.
+    """
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    cohort = CohortFactory(organisation=organisation)
+    CohortMembershipFactory(learner=learner, cohort=cohort)
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=CourseFactory(title="Algebra")
+    )
+    LearnerCourseRegistrationFactory(
+        learner=learner, course=CourseFactory(title="Geometry")
+    )
+
+    document = _learner_page(staff_client, learner, "overview")
+
+    rows = document.cssselect("[data-testid='registration-row']")
+    assert len(rows) == 2
+    slots = [row.cssselect("[data-testid='registration-action-slot']") for row in rows]
+    assert all(len(slot) == 1 for slot in slots)
+    cohort_row_slot = next(
+        slot[0]
+        for row, slot in zip(rows, slots, strict=True)
+        if "via" in row.text_content()
+    )
+    assert cohort_row_slot.text_content().strip() == ""
 
 
 @pytest.mark.django_db
@@ -2728,6 +2800,28 @@ def test_the_add_to_cohort_picker_on_a_learners_page_offers_no_inactive_cohort(
         HTTP_HX_REQUEST="true",
     )
 
+    assert str(inactive.pk) not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_the_add_to_cohort_picker_offers_no_inactive_cohort_after_a_submit_with_no_choice(
+    staff_client: Client,
+):
+    """A submit with no cohort chosen used to re-render the select with the
+    organisation's inactive cohorts, which the first render never offered."""
+    organisation = OrganisationFactory()
+    inactive = CohortFactory(organisation=organisation, is_active=False)
+    learner = LearnerFactory(organisation=organisation)
+
+    response = staff_client.post(
+        _interface_url(
+            organisation.slug, f"learners/{learner.pk}/__actions/add_to_cohort"
+        ),
+        {"cohort": ""},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 422
     assert str(inactive.pk) not in response.content.decode()
 
 
@@ -4749,6 +4843,41 @@ class TestLearnerMessagesTab:
         assert "peer words" not in text
         assert "Peer Person" not in text
 
+    def test_the_conversation_row_is_a_small_person_row_in_one_button(
+        self, msg_client_for
+    ):
+        """The other educator is a small semibold name beside a small avatar.
+        It used to render at the base size and regular weight beside a medium
+        avatar."""
+        organisation = OrganisationFactory()
+        admin = _msg_educator(organisation)
+        colleague = _msg_educator(organisation)
+        learner = _msg_learner(organisation)
+        theirs = _msg_conversation(colleague, learner.user)
+        MessageFactory(conversation=theirs, sender=colleague, body="colleague words")
+
+        document = _tab_document(msg_client_for(admin), learner)
+
+        (section,) = document.xpath("//section[@data-panel='others']")
+        (button,) = section.cssselect("li button")
+        (name,) = [
+            n
+            for n in button.cssselect("span.truncate")
+            if n.text_content().strip() == colleague.display_name
+        ]
+        classes = " ".join(
+            " ".join(
+                a.get("class", "")
+                for a in [name, *name.iterancestors("span", "div")]
+                if a.getparent() is not None and a.tag != "li"
+            ).split()
+        )
+        assert "text-sm" in classes
+        assert "font-semibold" in classes
+        assert button.cssselect("span.size-6")
+        assert not button.cssselect("span.size-8")
+        assert "colleague words" in button.text_content()
+
     def test_a_site_admin_sees_the_list(self, msg_client_for, mock_site_context):
         organisation = OrganisationFactory()
         site_admin = cast(User, UserFactory(staff=True))
@@ -4960,6 +5089,17 @@ class TestOversight:
         conversation = _msg_conversation(educator, learner.user)
         MessageFactory(conversation=conversation, sender=educator, body="oversight me")
         return organisation, educator, learner, conversation
+
+    def test_the_oversight_dialog_ends_in_a_close_button(self, msg_client_for, scene):
+        organisation, _educator, learner, conversation = scene
+        admin = _msg_educator(organisation)
+
+        response = _open_conversation(msg_client_for(admin), learner, conversation.pk)
+
+        page = lxml.html.fromstring(response.content.decode())
+        assert [b.text_content().strip() for b in page.cssselect("footer button")][
+            -1:
+        ] == ["Close"]
 
     def test_an_organisation_admin_reads_the_thread_read_only(
         self, msg_client_for, scene
@@ -6085,12 +6225,56 @@ def test_the_preview_pages_fifty_rows_at_a_time_and_keeps_the_label_filter(
     first = _get_document(import_world.client, f"{preview_url}?label=error")
     second = _get_document(import_world.client, f"{preview_url}?label=error&page=2")
 
-    next_link = first.cssselect("a[rel='next']")[0]
+    next_link = next(
+        link for link in first.cssselect("a") if link.text_content().strip() == "Next"
+    )
     assert (
         len(first.cssselect("[data-import-rows] tbody tr")),
         len(second.cssselect("[data-import-rows] tbody tr")),
-        next_link.get("href"),
-    ) == (50, 1, "?label=error&page=2")
+        sorted(parse_qsl(urlsplit(next_link.get("href")).query)),
+    ) == (50, 1, [("label", "error"), ("page", "2")])
+
+
+@pytest.mark.django_db
+def test_an_htmx_page_request_for_the_preview_returns_only_the_rows_card(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, *_numbered_lines(2, 51)
+    )
+    preview_url = _import_url(
+        import_world.organisation, "learner_import_preview", learner_import
+    )
+
+    response = import_world.client.get(
+        f"{preview_url}?label=error&page=2",
+        headers={"HX-Request": "true", "HX-Target": "import-rows"},
+    )
+
+    page = lxml.html.fromstring(response.content.decode())
+    assert len(page.cssselect("[data-import-rows] tbody tr")) == 1
+    assert not page.cssselect("[data-label-filter]")
+
+
+@pytest.mark.django_db
+def test_an_htmx_request_for_the_preview_from_elsewhere_returns_the_whole_preview(
+    import_world: SimpleNamespace,
+):
+    """htmx following a redirect here, or a navigation link, swaps the main
+    content, so it needs the tiles and the confirm form as well as the rows."""
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, *_numbered_lines(2, 3)
+    )
+    preview_url = _import_url(
+        import_world.organisation, "learner_import_preview", learner_import
+    )
+
+    response = import_world.client.get(
+        preview_url, headers={"HX-Request": "true", "HX-Target": "main-content"}
+    )
+
+    page = lxml.html.fromstring(response.content.decode())
+    assert page.cssselect("[data-label-filter]")
 
 
 @pytest.mark.django_db
@@ -7184,46 +7368,6 @@ def test_active_status_badge_has_one_label_and_tone_per_state(
     badge = active_status_badge(is_active)
 
     assert (badge.label, badge.tone) == (label, tone)
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize(
-    ("state", "label", "tone"),
-    [
-        ("active", "Active", "success"),
-        ("pending", "Pending", "info"),
-        ("inactive", "Inactive", "muted"),
-    ],
-)
-def test_learner_status_cell_renders_the_badge_tone_for_the_state(
-    mock_site_context, state: str, label: str, tone: str
-):
-    rendered = render_to_string(
-        "educator_interface/data-table-cells/learner_status.html",
-        {"object": _learner_in_state(state)},
-    )
-
-    (badge,) = lxml.html.fromstring(rendered).cssselect("[data-tone]")
-    assert (badge.text_content().strip(), badge.get("data-tone")) == (label, tone)
-
-
-@pytest.mark.parametrize(
-    ("is_active", "label", "tone"),
-    [(True, "Active", "success"), (False, "Inactive", "muted")],
-)
-def test_active_status_cell_renders_the_badge_tone_for_the_state(
-    is_active: bool, label: str, tone: str
-):
-    rendered = render_to_string(
-        "educator_interface/data-table-cells/active_status.html",
-        {
-            "object": SimpleNamespace(is_active=is_active),
-            "column": SimpleNamespace(attr="is_active"),
-        },
-    )
-
-    (badge,) = lxml.html.fromstring(rendered).cssselect("[data-tone]")
-    assert (badge.text_content().strip(), badge.get("data-tone")) == (label, tone)
 
 
 @pytest.mark.django_db

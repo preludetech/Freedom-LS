@@ -1,13 +1,14 @@
 <c-vars label="" />
 
 {% comment %}
-Definition row — one label/value pair inside a `panel-definition-list`.
+Definition row — one label/value pair inside a `panel-definition-list`, which
+styles the label and the value for its layout.
 
 Attributes:
   label  The term. The default slot is the value.
 {% endcomment %}
 
 <div {{ attrs }}>
-    <dt class="text-xs font-semibold uppercase tracking-wide text-muted">{{ label }}</dt>
-    <dd class="mt-1 text-sm break-words">{{ slot }}</dd>
+    <dt>{{ label }}</dt>
+    <dd>{{ slot }}</dd>
 </div>

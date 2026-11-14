@@ -5,6 +5,7 @@ from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from functools import cached_property
+from operator import attrgetter
 from typing import ClassVar, Literal, NamedTuple, cast
 from uuid import UUID, uuid4
 
@@ -101,7 +102,6 @@ from freedom_ls.educator_interface.actions import (
     RemoveStaffFromCohortAction,
     ResendSetupEmailAction,
     actionable_roles,
-    bulk_actions_for_table,
     cohort_not_empty_sentence,
     cohort_state_actions,
     grantable_roles_for,
@@ -118,11 +118,9 @@ from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
 from freedom_ls.educator_interface.filters import (
     AuditActionFilter,
     AuditActorFilter,
-    AuditPeriodFilter,
     LearnerCohortFilter,
     LearnerCourseFilter,
     LearnerStatusFilter,
-    ShowInactiveFilter,
     StaffRoleFilter,
     VisibleCourseFilter,
     may_see_staff_roles,
@@ -209,10 +207,10 @@ from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,
     PanelAction,
 )
-from freedom_ls.panel_framework.bulk_actions import BulkAction
+from freedom_ls.panel_framework.bulk_actions import BulkAction, bulk_actions_for_table
 from freedom_ls.panel_framework.config import config as panel_framework_config
 from freedom_ls.panel_framework.context import PanelContext
-from freedom_ls.panel_framework.filters import TableFilter
+from freedom_ls.panel_framework.filters import PeriodFilter, TableFilter, ToggleFilter
 from freedom_ls.panel_framework.models import RunStatus
 from freedom_ls.panel_framework.panels import (
     DataTablePanel,
@@ -222,9 +220,11 @@ from freedom_ls.panel_framework.panels import (
     TabSet,
 )
 from freedom_ls.panel_framework.tables import (
+    BadgeColumn,
     Column,
     DataTable,
     ExportColumn,
+    RelatedListColumn,
     TableQuery,
 )
 from freedom_ls.panel_framework.views import (
@@ -338,17 +338,6 @@ class OrganisationSectionConfig(SectionConfigBase):
 # instance, other actions (eg: send_email)
 
 
-@dataclass
-class RelationLinkColumn(Column):
-    """A cell listing every related object in `relation_set`, each linked
-    through `url_name`/`url_path_template` (inherited from `Column`) and
-    resolved against `link_object_attr`."""
-
-    relation_set: str = ""
-    link_object_attr: str = ""
-    link_text_attr: str = ""
-
-
 def _interface_link(
     header: str,
     text_attr: str,
@@ -365,7 +354,7 @@ def _interface_link(
     drawer instead."""
     return Column(
         header=header,
-        template="cotton/data-table-cells/link.html",
+        template_name="cotton/data-table-cells/link.html",
         text_attr=text_attr,
         fallback_text_attr=fallback_text_attr,
         url_name="educator_interface:interface",
@@ -383,7 +372,7 @@ def _learner_column(attr: str = "") -> Column:
     prefix = f"{attr}__" if attr else ""
     return Column(
         header="Learner",
-        template="educator_interface/data-table-cells/learner.html",
+        template_name="educator_interface/data-table-cells/learner.html",
         attr=attr,
         sortable=True,
         sort_field=f"{prefix}user__first_name",
@@ -391,17 +380,37 @@ def _learner_column(attr: str = "") -> Column:
     )
 
 
+def _active_status_column(header: str, attr: str) -> BadgeColumn:
+    """An Active/Inactive badge column for the `is_active` flag at `attr`."""
+    return BadgeColumn(
+        header=header,
+        template_name="cotton/data-table-cells/badge.html",
+        badge=lambda row: active_status_badge(bool(attrgetter(attr)(row))),
+    )
+
+
+def _cohort_links_column(relation_set: str) -> RelatedListColumn:
+    """The Cohorts column: each related cohort, linked to its page."""
+    return RelatedListColumn(
+        header="Cohorts",
+        template_name="cotton/data-table-cells/related_list.html",
+        relation_set=relation_set,
+        link_object_attr="cohort",
+        item_text_attr="cohort.name",
+        url_name="educator_interface:interface",
+        url_path_template="cohorts/{pk}",
+        htmx_nav=True,
+        layout="inline",
+    )
+
+
 def _registration_columns() -> list[Column]:
     """The Status/Registered columns the three registration tables share."""
     return [
-        Column(
-            header="Status",
-            template="educator_interface/data-table-cells/active_status.html",
-            attr="is_active",
-        ),
+        _active_status_column("Status", "is_active"),
         Column(
             header="Registered",
-            template="cotton/data-table-cells/datetime.html",
+            template_name="cotton/data-table-cells/datetime.html",
             attr="registered_at",
             card="md_only",
         ),
@@ -413,6 +422,8 @@ class CohortDataTable(DataTable):
     empty_no_results = "No cohorts match these filters."
     search_fields = ["name"]
     default_sort = "name"
+    #: The key of the toggle that widens the table to inactive cohorts.
+    inactive_toggle_key = "inactive"
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
@@ -448,24 +459,22 @@ class CohortDataTable(DataTable):
                 card="primary",
                 quick_view=True,
             ),
-            Column(
-                header="Status",
-                template="educator_interface/data-table-cells/active_status.html",
-                attr="is_active",
-            ),
+            _active_status_column("Status", "is_active"),
             Column(
                 header="Learners",
-                template="educator_interface/data-table-cells/learner_count.html",
+                template_name="cotton/data-table-cells/text.html",
                 attr="learner_count",
                 sortable=True,
             ),
-            Column(
+            RelatedListColumn(
                 header="Courses",
-                template="educator_interface/data-table-cells/cohort_courses.html",
+                template_name="cotton/data-table-cells/related_list.html",
+                relation_set="course_registrations.all",
+                item_text_attr="course.title",
             ),
             Column(
                 header="Created",
-                template="cotton/data-table-cells/datetime.html",
+                template_name="cotton/data-table-cells/datetime.html",
                 attr="created_at",
                 sortable=True,
                 card="md_only",
@@ -479,7 +488,7 @@ class CohortDataTable(DataTable):
     @classmethod
     def get_filters(cls) -> list[TableFilter]:
         return [
-            ShowInactiveFilter("inactive", "Show inactive"),
+            ToggleFilter(cls.inactive_toggle_key, "Show inactive"),
             VisibleCourseFilter(
                 "course", "Course", lookup="course_registrations__course"
             ),
@@ -490,11 +499,13 @@ class CohortDataTable(DataTable):
         cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
     ) -> QuerySet:
         # The toggle can only widen, so the table excludes inactive cohorts
-        # itself whenever it offers the toggle and the toggle is unset.
-        toggle = next(
-            (f for f in cls.get_filters() if isinstance(f, ShowInactiveFilter)), None
+        # itself whenever it offers the toggle and the toggle is unset. Another
+        # toggle on the table is not this one, so the match is by key.
+        offers_toggle = any(
+            isinstance(f, ToggleFilter) and f.key == cls.inactive_toggle_key
+            for f in cls.get_filters()
         )
-        if toggle is not None and toggle.key not in query.filters:
+        if offers_toggle and cls.inactive_toggle_key not in query.filters:
             queryset = queryset.filter(is_active=True)
         return super().filter_queryset(request, queryset, query)
 
@@ -515,14 +526,14 @@ class LearnerCohortDataTable(CohortDataTable):
             *CohortDataTable.get_columns(),
             Column(
                 header="Joined",
-                template="cotton/data-table-cells/datetime.html",
+                template_name="cotton/data-table-cells/datetime.html",
                 attr="joined_at",
                 sortable=True,
                 card="md_only",
             ),
             Column(
                 header="",
-                template="educator_interface/data-table-cells/membership_actions.html",
+                template_name="educator_interface/data-table-cells/membership_actions.html",
                 card="secondary",
             ),
         ]
@@ -617,28 +628,22 @@ class LearnerDataTable(DataTable):
     def get_columns() -> list[Column]:
         return [
             _learner_column(),
-            Column(
+            BadgeColumn(
                 header="Status",
-                template="educator_interface/data-table-cells/learner_status.html",
+                template_name="cotton/data-table-cells/badge.html",
+                badge=lambda row: learner_status_badge(cast(Learner, row)),
             ),
-            RelationLinkColumn(
-                header="Cohorts",
-                template="educator_interface/data-table-cells/cohort_links.html",
-                relation_set="cohortmembership_set.all",
-                link_object_attr="cohort",
-                link_text_attr="cohort.name",
-                url_name="educator_interface:interface",
-                url_path_template="cohorts/{pk}",
-            ),
+            _cohort_links_column("cohortmembership_set.all"),
             Column(
                 header="Courses",
-                template="educator_interface/data-table-cells/learner_courses.html",
+                template_name="educator_interface/data-table-cells/learner_courses.html",
             ),
             Column(
                 header="Last active",
-                template="educator_interface/data-table-cells/learner_last_active.html",
+                template_name="cotton/data-table-cells/date.html",
                 attr="last_active",
                 sortable=True,
+                empty_text="Never",
             ),
         ]
 
@@ -650,8 +655,8 @@ class LearnerDataTable(DataTable):
     def get_filters() -> list[TableFilter]:
         return [
             LearnerStatusFilter(),
-            LearnerCohortFilter("cohort", "Cohort", lookup=""),
-            LearnerCourseFilter("course", "Course", lookup=""),
+            LearnerCohortFilter("cohort", "Cohort"),
+            LearnerCourseFilter("course", "Course"),
         ]
 
     @staticmethod
@@ -703,22 +708,24 @@ class CohortLearnerDataTable(LearnerDataTable):
             *LearnerDataTable.get_columns(),
             Column(
                 header="",
-                template="educator_interface/data-table-cells/cohort_member_actions.html",
+                template_name="educator_interface/data-table-cells/membership_actions.html",
                 card="secondary",
             ),
         ]
 
 
-class LearnerDetailsPanel(Panel):
+class LearnerDetailsPanel(InstanceDetailsPanel):
     model = Learner
-    title = "Details"
-    template_name = "educator_interface/panels/learner_details.html"
     refresh_events = (LEARNER_CHANGED,)
 
-    def get_context_data(self) -> dict[str, object]:
-        context = super().get_context_data()
-        context["learner"] = cast(Learner, self.instance)
-        return context
+    def get_rows(self) -> list[dict[str, object]]:
+        learner = cast(Learner, self.instance)
+        return [
+            self.detail_row("Name", learner.user.display_name),
+            self.detail_row("Email", learner.user.email),
+            self.detail_row("Status", learner_status_badge(learner), "badge"),
+            self.detail_row("Date added", learner.created_at, "date"),
+        ]
 
 
 class LearnerCohortsPanel(DataTablePanel):
@@ -750,13 +757,16 @@ class LearnerCohortsPanel(DataTablePanel):
         request = cast(OrganisationScopedRequest, self.request)
         context = super().get_context_data()
         # A grant on only some of the learner's cohorts shows Remove on
-        # those rows alone.
-        context["manageable_cohort_ids"] = set(
+        # those rows alone, and an inactive cohort offers nothing.
+        context["membership_param"] = "cohort"
+        context["membership_row_ids"] = set(
             cohorts_visible_to(
                 request.user,
                 request.organisation,
                 capability=DELETE_COHORTMEMBERSHIP,
-            ).values_list("pk", flat=True)
+            )
+            .filter(is_active=True)
+            .values_list("pk", flat=True)
         )
         return context
 
@@ -770,6 +780,10 @@ class RegistrationRow:
     via: str
     is_active: bool
     registration: LearnerCourseRegistration | CohortCourseRegistration
+
+    @property
+    def badge(self) -> StatusBadge:
+        return active_status_badge(self.is_active)
 
     @property
     def is_individual(self) -> bool:
@@ -890,14 +904,14 @@ class AuditLogEntryTable(DataTable):
     default_sort names so the When header reads as sorted that way."""
 
     page_size = 25
-    card_template = "educator_interface/partials/audit_log_card.html"
+    card_template_name = "educator_interface/partials/audit_log_card.html"
     default_sort = "-created_at"
     noun = "entries"
     noun_singular = "entry"
     empty_message = "Nothing has been recorded yet."
     empty_no_results = "No entries match these filters."
 
-    row_detail_template = "educator_interface/partials/audit_row_detail.html"
+    row_detail_template_name = "educator_interface/partials/audit_row_detail.html"
 
     @staticmethod
     def get_row_label(row: Model) -> str:
@@ -926,7 +940,22 @@ class AuditLogEntryTable(DataTable):
 
     @staticmethod
     def get_filters() -> list[TableFilter]:
-        return [AuditActorFilter(), AuditActionFilter(), AuditPeriodFilter()]
+        return [
+            AuditActorFilter(),
+            AuditActionFilter(),
+            PeriodFilter(
+                "when",
+                "When",
+                "created_at",
+                {
+                    "today": ("Today", 1),
+                    "7d": ("Last 7 days", 7),
+                    "30d": ("Last 30 days", 30),
+                    "90d": ("Last 90 days", 90),
+                    "12m": ("Last 12 months", 365),
+                },
+            ),
+        ]
 
     @staticmethod
     def get_export_columns() -> list[ExportColumn]:
@@ -950,21 +979,21 @@ class AuditLogEntryTable(DataTable):
         return [
             Column(
                 header="When",
-                template="cotton/data-table-cells/datetime.html",
+                template_name="cotton/data-table-cells/datetime.html",
                 attr="created_at",
                 sortable=True,
                 cell_class="whitespace-nowrap py-2",
             ),
             Column(
                 header="Who",
-                template="educator_interface/data-table-cells/audit_who.html",
+                template_name="educator_interface/data-table-cells/audit_who.html",
                 sortable=True,
                 sort_field="actor_label",
                 cell_class="py-2",
             ),
             Column(
                 header="What",
-                template="educator_interface/data-table-cells/audit_what.html",
+                template_name="educator_interface/data-table-cells/audit_what.html",
                 card="primary",
                 sortable=True,
                 sort_field="action",
@@ -978,14 +1007,14 @@ class AuditLogEntryTable(DataTable):
 class TargetedAuditLogEntryTable(AuditLogEntryTable):
     """Audit log entries that may be about different objects, so each row names its target."""
 
-    card_template = "educator_interface/partials/audit_log_card_targeted.html"
+    card_template_name = "educator_interface/partials/audit_log_card_targeted.html"
 
     @staticmethod
     def get_columns() -> list[Column]:
         when, who, what = AuditLogEntryTable.get_columns()
         target = Column(
             header="Target",
-            template="educator_interface/data-table-cells/audit_target.html",
+            template_name="educator_interface/data-table-cells/audit_target.html",
             sortable=True,
             sort_field="target_label",
             cell_class="py-2",
@@ -1440,7 +1469,7 @@ def learner_status_badge(learner: Learner) -> StatusBadge:
 
 
 def active_status_badge(is_active: bool) -> StatusBadge:
-    """The badge for an `is_active` flag, matching `<c-active-status-badge>`."""
+    """The badge for an `is_active` flag, shown by `<c-panel-status-badge>`."""
     if is_active:
         return StatusBadge("success", "Active")
     return StatusBadge("muted", "Inactive")
@@ -1454,20 +1483,20 @@ def inactive_badge(is_active: bool) -> StatusBadge | None:
     return StatusBadge("muted", "Inactive")
 
 
-class CohortDetailsPanel(Panel):
+class CohortDetailsPanel(InstanceDetailsPanel):
     model = Cohort
-    title = "Details"
-    template_name = "educator_interface/panels/cohort_details.html"
     refresh_events = (COHORT_CHANGED,)
 
-    def get_context_data(self) -> dict[str, object]:
+    def get_rows(self) -> list[dict[str, object]]:
         cohort = cast(Cohort, self.instance)
-        context = super().get_context_data()
-        context["cohort"] = cohort
         counts = cohort_counts(cohort)
-        context["cohort_learner_count"] = counts.learners
-        context["cohort_course_count"] = counts.courses
-        return context
+        return [
+            self.detail_row("Name", cohort.name),
+            self.detail_row("Status", active_status_badge(cohort.is_active), "badge"),
+            self.detail_row("Created", cohort.created_at, "date"),
+            self.detail_row("Learners", counts.learners),
+            self.detail_row("Courses", counts.courses),
+        ]
 
 
 class CohortCourseRegistrationDataTable(DataTable):
@@ -1493,7 +1522,7 @@ class CohortCourseRegistrationDataTable(DataTable):
             *_registration_columns(),
             Column(
                 header="",
-                template="educator_interface/data-table-cells/deactivate_registration.html",
+                template_name="educator_interface/data-table-cells/deactivate_registration.html",
                 card="secondary",
             ),
         ]
@@ -1516,7 +1545,12 @@ class CohortLearnersPanel(DataTablePanel):
 
     def get_context_data(self) -> dict[str, object]:
         context = super().get_context_data()
-        context["cohort_is_active"] = cast(Cohort, self.instance).is_active
+        # None offers the actions on every learner row; an inactive cohort
+        # offers none.
+        context["membership_param"] = "learner"
+        context["membership_row_ids"] = (
+            None if cast(Cohort, self.instance).is_active else set()
+        )
         return context
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
@@ -1788,29 +1822,29 @@ class CreateCohortAction(CreateInstanceAction):
     action_name = "create_cohort"
     success_events = (COHORT_CHANGED,)
 
-    def get_form(
-        self, request: HttpRequest, instance: Model | None = None
-    ) -> forms.ModelForm:
+    def get_form(self, ctx: PanelContext) -> forms.BaseForm:
         # The organisation is not a user choice — CohortForm never exposes
         # the field — so it comes from the URL the request already resolved
         # and authorised, not from anything the form submitted. It is attached
         # here rather than in form_valid because the per-organisation
         # uniqueness constraint can only be checked while cleaning if the
         # instance already carries its organisation.
-        form = super().get_form(request, instance)
-        organisation = cast(OrganisationScopedRequest, request).organisation
-        cast(Cohort, form.instance).organisation = organisation
-        self._organisation = organisation
+        form = super().get_form(ctx)
+        organisation = cast(OrganisationScopedRequest, ctx.request).organisation
+        cast(Cohort, cast(forms.ModelForm, form).instance).organisation = organisation
         return form
 
-    def get_success_url(self, instance: Model) -> str:
-        return interface_path(self._organisation, f"cohorts/{instance.pk}")
+    def get_success_url(self, ctx: PanelContext, instance: Model) -> str:
+        organisation = cast(OrganisationScopedRequest, ctx.request).organisation
+        return interface_path(organisation, f"cohorts/{instance.pk}")
 
-    def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
         with transaction.atomic():
-            response = super().form_valid(request, form)
+            response = super().form_valid(ctx, form)
             record_cohort_entry(
-                cast(Cohort, form.instance), "cohort.created", cast(User, request.user)
+                cast(Cohort, cast(forms.ModelForm, form).instance),
+                "cohort.created",
+                cast(User, ctx.request.user),
             )
         return response
 
@@ -1970,35 +2004,27 @@ class CourseDataTable(DataTable):
             _interface_link("Title", "title", "courses/{pk}", card="primary"),
             Column(
                 header="Visibility",
-                template="cotton/data-table-cells/text.html",
+                template_name="cotton/data-table-cells/text.html",
                 attr="get_visibility_display",
             ),
             Column(
                 header="Interest",
-                template="cotton/data-table-cells/text.html",
+                template_name="cotton/data-table-cells/text.html",
                 attr="interest_count",
                 card="md_only",
             ),
             Column(
                 header="Active Learners",
-                template="cotton/data-table-cells/text.html",
+                template_name="cotton/data-table-cells/text.html",
                 attr="total_learner_count",
             ),
             Column(
                 header="Active Cohorts",
-                template="cotton/data-table-cells/text.html",
+                template_name="cotton/data-table-cells/text.html",
                 attr="cohort_count",
                 card="md_only",
             ),
-            RelationLinkColumn(
-                header="Cohorts",
-                template="educator_interface/data-table-cells/cohort_links.html",
-                relation_set="cohort_registrations.all",
-                link_object_attr="cohort",
-                link_text_attr="cohort.name",
-                url_name="educator_interface:interface",
-                url_path_template="cohorts/{pk}",
-            ),
+            _cohort_links_column("cohort_registrations.all"),
         ]
 
 
@@ -2350,11 +2376,7 @@ class CourseCohortRegistrationDataTable(DataTable):
             _interface_link(
                 "Cohort", "cohort.name", "cohorts/{cohort.pk}", card="primary"
             ),
-            Column(
-                header="Cohort status",
-                template="educator_interface/data-table-cells/active_status.html",
-                attr="cohort.is_active",
-            ),
+            _active_status_column("Cohort status", "cohort.is_active"),
             *_registration_columns(),
         ]
 
@@ -2450,7 +2472,7 @@ class StaffDataTable(DataTable):
     # Four columns, two of them buttons, need more room than a tablet or the
     # space beside the quick view gives.
     cards_when_narrow = True
-    card_template = "educator_interface/partials/staff_card.html"
+    card_template_name = "educator_interface/partials/staff_card.html"
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
@@ -2504,24 +2526,24 @@ class StaffDataTable(DataTable):
         return [
             Column(
                 header="Staff member",
-                template="educator_interface/data-table-cells/staff_member.html",
+                template_name="educator_interface/data-table-cells/staff_member.html",
                 sortable=True,
                 sort_field="first_name",
                 card="primary",
             ),
             Column(
                 header="Roles",
-                template="educator_interface/data-table-cells/staff_roles.html",
+                template_name="educator_interface/data-table-cells/staff_roles.html",
                 card="secondary",
             ),
             Column(
                 header="Role actions",
-                template="educator_interface/data-table-cells/staff_role_actions.html",
+                template_name="educator_interface/data-table-cells/staff_role_actions.html",
                 card="secondary",
             ),
             Column(
                 header="Staff member actions",
-                template="educator_interface/data-table-cells/staff_member_actions.html",
+                template_name="educator_interface/data-table-cells/staff_member_actions.html",
                 card="secondary",
             ),
         ]
@@ -3107,14 +3129,20 @@ def learner_import_preview(
     ).get_page(request.GET.get("page"))
     for row in page_obj:
         row.tone = PREVIEW_LABEL_TONES[row.preview_label]
+    template = "educator_interface/learner_import_preview.html"
+    if request.headers.get("HX-Target") == "import-rows":
+        # A page link swaps in only the rows card. Any other htmx request (a
+        # redirect followed here, a navigation link) needs the whole page.
+        template = f"{template}#rows"
     return _import_page(
         request,
         scoped,
-        "educator_interface/learner_import_preview.html",
+        template,
         {
             "learner_import": learner_import,
             "page_obj": page_obj,
             "label": label,
+            "pagination_params": urlencode({"label": label}) if label else "",
             "preview_url": _import_url(
                 "learner_import_preview", scoped.organisation, import_id
             ),

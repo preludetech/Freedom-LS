@@ -1,31 +1,17 @@
+{% extends "panel_framework/modal/confirm.html" %}
 {% comment %}
-The modal fragment a RemoveFromCohortAction's GET returns. Context: learner,
-cohort, losing_courses (a prose list, empty when nothing is lost),
-other_side (name and value of the hidden input), confirm_url.
+The dialog a RemoveFromCohortAction's GET returns. Context: learner, cohort,
+losing_courses (a prose list, empty when nothing is lost).
 {% endcomment %}
-<c-modal-header>Remove {{ learner.user.display_name }} from {{ cohort }}?</c-modal-header>
 
-<form hx-post="{{ confirm_url }}"
-      hx-target="#app-modal-body"
-      hx-swap="innerHTML"
-      hx-disabled-elt="find button[type='submit']">
-    <input type="hidden" name="{{ other_side.name }}" value="{{ other_side.value }}">
+{% block title %}Remove {{ learner.user.display_name }} from {{ cohort }}?{% endblock title %}
 
-    <c-modal-body>
-        {% if losing_courses %}
-            <p>They lose access to: {{ losing_courses }}.</p>
-        {% else %}
-            <p>They keep access to every course through another registration.</p>
-        {% endif %}
-        <p>Progress is kept.</p>
-        <p>You can add them back to the cohort later.</p>
-    </c-modal-body>
-    {% include "educator_interface/partials/reason_field.html" %}
-
-    <c-modal-footer>
-        <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button></c-slot>
-        <c-button type="submit" variant="error" loading="true" loading_text="Removing…">
-            Remove
-        </c-button>
-    </c-modal-footer>
-</form>
+{% block body %}
+    {% if losing_courses %}
+        <p>They lose access to: {{ losing_courses }}.</p>
+    {% else %}
+        <p>They keep access to every course through another registration.</p>
+    {% endif %}
+    <p>Progress is kept.</p>
+    <p>You can add them back to the cohort later.</p>
+{% endblock body %}

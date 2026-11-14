@@ -1,22 +1,11 @@
+{% extends "panel_framework/modal/confirm.html" %}
 {% comment %}
-The modal fragment a ReactivateLearnerAction's GET returns. Context: learner,
-action_url.
+The dialog a ReactivateLearnerAction's GET returns. Context: learner.
 {% endcomment %}
-<c-modal-header>Reactivate {{ learner.user.display_name }}?</c-modal-header>
 
-<c-modal-body>
+{% block title %}Reactivate {{ learner.user.display_name }}?{% endblock title %}
+
+{% block body %}
     <p>{{ learner.user.display_name }}'s access returns through their existing cohorts and registrations.</p>
     <p>Their progress was kept. You can deactivate them again at any time.</p>
-</c-modal-body>
-
-<c-modal-footer>
-    <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button></c-slot>
-    <form hx-post="{{ action_url }}"
-          hx-target="#app-modal-body"
-          hx-swap="innerHTML"
-          hx-disabled-elt="find button[type='submit']">
-        <c-button type="submit" variant="primary" loading="true" loading_text="Reactivating…">
-            Reactivate
-        </c-button>
-    </form>
-</c-modal-footer>
+{% endblock body %}

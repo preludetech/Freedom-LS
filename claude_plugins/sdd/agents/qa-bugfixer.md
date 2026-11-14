@@ -179,7 +179,7 @@ the footer stays the final line.
 
 ### Why the file lists matter
 
-The orchestrator (depth-0 `do_qa`) uses `## Files modified` for two decisions:
+The orchestrator (depth-0 `do_qa` or `qa_fix`) uses `## Files modified` for two decisions:
 
 - **Whether to spot-check.** If a modified file is imported by more than one view or app, the fix
   touched shared code and adjacent pages get re-checked after the fix.

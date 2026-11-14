@@ -20,7 +20,7 @@ state into the messages page's #thread-pane instead of navigating.
 {% partialdef results inline %}
     <div id="recipient-results" class="mt-4">
         {% if search.needs_term %}
-            <p class="text-muted">Keep typing to find someone. Enter at least two characters.</p>
+            <c-panel-empty-state size="compact" message="Keep typing to find someone. Enter at least two characters." />
         {% else %}
             {% for group in search.groups %}
                 <div role="group" {% if group.label %}aria-labelledby="recipient-group-{{ forloop.counter }}"{% endif %} class="mb-4">
@@ -44,9 +44,9 @@ state into the messages page's #thread-pane instead of navigating.
                 </div>
             {% empty %}
                 {% if term %}
-                    <p class="text-muted">No one you can message matches '{{ term }}'</p>
+                    <c-panel-empty-state size="compact" message="No one you can message matches '{{ term }}'" />
                 {% else %}
-                    <p class="text-muted">There's no one you can message here.</p>
+                    <c-panel-empty-state size="compact" message="There's no one you can message here." />
                 {% endif %}
             {% endfor %}
             {% if search.truncated %}

@@ -311,7 +311,7 @@ def test_dashboard_fills_its_lazy_figures_without_overflow_at_every_width(
         attention_tile = page.locator("dl", has_text="Learners needing attention")
         expect(attention_tile.locator("dd").first).to_have_text("1")
         expect(
-            page.get_by_role("button", name="Quick view: Thandi Mokoena")
+            page.get_by_role("link", name="Quick view: Thandi Mokoena", exact=True)
         ).to_be_visible()
         expect(page.get_by_role("link", name="Flagged Cohort").first).to_be_visible()
         assert_no_horizontal_overflow(page)

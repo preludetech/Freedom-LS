@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from django.core.paginator import Page, Paginator
 from django.db.models import Model, Q, QuerySet
@@ -12,6 +12,18 @@ from django.utils.functional import SimpleLazyObject
 from freedom_ls.base.csv_safety import escape_csv_formula
 from freedom_ls.panel_framework.filters import TableFilter
 from freedom_ls.panel_framework.templatetags.data_table_tags import getattr_str
+
+__all__ = [
+    "BadgeColumn",
+    "Column",
+    "DataTable",
+    "ExportColumn",
+    "RelatedListColumn",
+    "TableQuery",
+]
+
+if TYPE_CHECKING:
+    from freedom_ls.panel_framework.views import StatusBadge
 
 
 @dataclass(frozen=True)
@@ -172,7 +184,7 @@ class Column:
     """
 
     header: str
-    template: str
+    template_name: str
     attr: str = ""
     text_attr: str = ""
     #: The link cell's text when `text_attr` is blank, so the row stays linked.
@@ -187,6 +199,9 @@ class Column:
     header_class: str = ""
     cell_class: str = ""
     card: Literal["primary", "secondary", "md_only"] = "secondary"
+    #: What the date and related-list cells show when the row has no value
+    #: (the cell's own default when blank).
+    empty_text: str = ""
 
     def __post_init__(self) -> None:
         if self.sortable and not self.sort_field:
@@ -196,6 +211,30 @@ class Column:
     def is_link(self) -> bool:
         """Whether the cell opens the row's page: only the link cell reads a URL."""
         return bool(self.url_name or self.url_path_template)
+
+
+@dataclass
+class BadgeColumn(Column):
+    """A column of status badges: `badge` reads a row's badge, or `None` for a
+    row that shows nothing."""
+
+    badge: Callable[[Model], StatusBadge | None] = lambda row: None
+
+
+@dataclass
+class RelatedListColumn(Column):
+    """A column listing every related object in `relation_set`.
+
+    Each item shows `item_text_attr` (read off the item). With
+    `url_name`/`url_path_template` set, each item links to the object
+    `link_object_attr` names on the item (the item itself when blank).
+    `layout` is "list" (one item per line) or "inline" (comma-separated).
+    """
+
+    relation_set: str = ""
+    item_text_attr: str = ""
+    link_object_attr: str = ""
+    layout: Literal["list", "inline"] = "list"
 
 
 @dataclass(frozen=True)
@@ -225,7 +264,7 @@ class DataTable:
     #: A template that replaces the default card body (the primary/secondary
     #: cell rendering) below md, for a denser layout than the generic card
     #: gives. `None` keeps the default.
-    card_template: str | None = None
+    card_template_name: str | None = None
     #: Show the cards wherever the table's own container is too narrow for
     #: its columns, rather than only below md: at 768, and beside an open
     #: quick view. For a table whose row of columns and buttons would
@@ -234,12 +273,12 @@ class DataTable:
     #: A template rendered under a row, hidden until the row's toggle opens
     #: it (a <details> disclosure below md). None means rows have no detail
     #: and the table renders no toggle column.
-    row_detail_template: str | None = None
+    row_detail_template_name: str | None = None
 
     @staticmethod
     def has_row_detail(row: Model) -> bool:
         """Whether this row has anything to show under it. Only consulted
-        when `row_detail_template` is set; every row has one by default."""
+        when `row_detail_template_name` is set; every row has one by default."""
         return True
 
     #: The template drawn when the page has no rows. It renders with the
@@ -247,7 +286,7 @@ class DataTable:
     #: clear_search_changes, page_url, base_url, region_id, empty_message,
     #: empty_no_results, header_actions), so it can tell "nothing yet" from
     #: "nothing matches" and offer the way back.
-    empty_state_template: str | None = "panel_framework/partials/table_empty.html"
+    empty_state_template_name: str | None = "panel_framework/partials/table_empty.html"
     #: What the empty state says when the table has no rows and no search or
     #: filter is in play.
     empty_message: str = "Nothing to see"
@@ -474,7 +513,7 @@ class DataTable:
         def _lazy_label(row: Model) -> SimpleLazyObject:
             return SimpleLazyObject(lambda: cls.get_row_label(row))
 
-        detailed = cls.row_detail_template is not None
+        detailed = cls.row_detail_template_name is not None
         rows = [
             {
                 "object": row,
@@ -509,10 +548,10 @@ class DataTable:
             "primary_column": primary_column,
             "secondary_columns": secondary_columns,
             "sortable_columns": sortable_columns,
-            "card_template": cls.card_template,
+            "card_template_name": cls.card_template_name,
             "cards_when_narrow": cls.cards_when_narrow,
-            "row_detail_template": cls.row_detail_template,
-            "empty_state_template": cls.empty_state_template,
+            "row_detail_template_name": cls.row_detail_template_name,
+            "empty_state_template_name": cls.empty_state_template_name,
             "empty_message": cls.empty_message,
             "empty_no_results": cls.empty_no_results,
             "sheet_hidden_inputs": hidden_inputs(

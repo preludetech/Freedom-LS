@@ -232,8 +232,8 @@ class TestLearnerQuickView:
 
         document = html.fromstring(response.content.decode())
         (row,) = document.cssselect("[data-testid='quick-view-registration']")
-        spans = [" ".join(s.text_content().split()) for s in row.cssselect("span")]
-        assert spans == ["Intro to Freedom", "55%", "via Year 9 Maths"]
+        parts = [" ".join(e.text_content().split()) for e in row.cssselect("span, p")]
+        assert parts == ["Intro to Freedom", "via Year 9 Maths", "55%"]
 
     def test_shows_no_progress_yet_for_a_registration_with_no_record(
         self, educator_client

@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from io import StringIO
 from pathlib import Path
-from typing import ClassVar, cast
+from typing import cast
 
 import pytest
 import pytest_django.fixtures
@@ -24,23 +24,20 @@ from django.contrib.sessions.models import Session
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import DatabaseError
+from django.db.models import Model
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.deployment.housekeeping import (
-    ORPHANED_MESSAGE,
-    UNPICKED_MESSAGE,
-    BulkRecordModel,
+    ORPHANED_OPERATOR_MESSAGE,
+    UNPICKED_OPERATOR_MESSAGE,
     OrphanReapResult,
-    delete_finished_records,
     delete_stale_previews,
     find_late_unpicked_tasks,
     find_orphaned_running_reports,
     find_orphaned_running_tasks,
     mark_orphaned_running_reports_failed,
     mark_orphaned_running_tasks_failed,
-    mark_orphaned_runs_failed,
-    mark_unpicked_runs_failed,
     run_housekeeping_sweeps,
 )
 from freedom_ls.learner_management.models import (
@@ -50,7 +47,13 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.mail.factories import OutboundEmailFactory
 from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.panel_framework.bulk_actions import RecordedBulkAction
+from freedom_ls.panel_framework.housekeeping import (
+    ORPHANED_MESSAGE,
+    UNPICKED_MESSAGE,
+    delete_finished_records,
+    mark_orphaned_runs_failed,
+    mark_unpicked_runs_failed,
+)
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 from freedom_ls.reports.factories import GeneratedReportFactory
 from freedom_ls.reports.models import GeneratedReport
@@ -857,7 +860,7 @@ FIXED_NOW = datetime(2026, 3, 1, 12, 0, tzinfo=UTC)
 
 
 def _make_bulk_record(
-    model: BulkRecordModel,
+    model: type[Model],
     *,
     status: str,
     created_ago: timedelta = timedelta(0),
@@ -885,7 +888,7 @@ def _make_bulk_record(
             action_name="deactivate",
         )
     with time_machine.travel(FIXED_NOW - created_ago, tick=False):
-        return model._base_manager.create(**fields)
+        return cast(BulkActionRun | LearnerImport, model._base_manager.create(**fields))
 
 
 @pytest.mark.django_db
@@ -961,10 +964,10 @@ class TestDeleteStalePreviews:
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("model", BULK_MODELS)
+@pytest.mark.parametrize("model", [LearnerImport])
 class TestMarkUnpickedRunsFailed:
     def test_queued_record_older_than_the_window_is_failed(
-        self, model: BulkRecordModel, mock_site_context
+        self, model: type[Model], mock_site_context
     ) -> None:
         record = _make_bulk_record(
             model, status=RunStatus.QUEUED, created_ago=timedelta(seconds=3601)
@@ -981,7 +984,7 @@ class TestMarkUnpickedRunsFailed:
         )
 
     def test_error_message_tells_the_reader_it_did_not_start(
-        self, model: BulkRecordModel, mock_site_context
+        self, model: type[Model], mock_site_context
     ) -> None:
         record = _make_bulk_record(
             model, status=RunStatus.QUEUED, created_ago=timedelta(hours=2)
@@ -993,22 +996,8 @@ class TestMarkUnpickedRunsFailed:
         record.refresh_from_db()
         assert record.error_message == UNPICKED_MESSAGE
 
-    def test_each_closed_record_is_reported_to_sentry_separately(
-        self, model: BulkRecordModel, mock_site_context, mocker: MockerFixture
-    ) -> None:
-        sentry = mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
-        for _ in range(2):
-            _make_bulk_record(
-                model, status=RunStatus.QUEUED, created_ago=timedelta(hours=2)
-            )
-
-        with time_machine.travel(FIXED_NOW, tick=False):
-            mark_unpicked_runs_failed(model, 3600)
-
-        assert sentry.capture_message.call_count == 2
-
     def test_queued_record_inside_the_window_is_left_queued(
-        self, model: BulkRecordModel, mock_site_context
+        self, model: type[Model], mock_site_context
     ) -> None:
         record = _make_bulk_record(
             model, status=RunStatus.QUEUED, created_ago=timedelta(seconds=3599)
@@ -1021,7 +1010,7 @@ class TestMarkUnpickedRunsFailed:
         assert record.status == RunStatus.QUEUED
 
     def test_running_record_is_not_touched(
-        self, model: BulkRecordModel, mock_site_context
+        self, model: type[Model], mock_site_context
     ) -> None:
         record = _make_bulk_record(
             model,
@@ -1037,54 +1026,11 @@ class TestMarkUnpickedRunsFailed:
         assert record.status == RunStatus.RUNNING
 
 
-class _ReportingAction(RecordedBulkAction):
-    """Records the runs it is told have finished."""
-
-    finished: ClassVar[list[str]] = []
-
-    def on_finished(self, run: BulkActionRun) -> None:
-        type(self).finished.append(str(run.pk))
-
-
 @pytest.mark.django_db
-@pytest.mark.parametrize(
-    ("sweep", "fields"),
-    [
-        (
-            mark_unpicked_runs_failed,
-            {"status": RunStatus.QUEUED, "created_ago": timedelta(hours=2)},
-        ),
-        (
-            mark_orphaned_runs_failed,
-            {"status": RunStatus.RUNNING, "started_ago": timedelta(hours=2)},
-        ),
-    ],
-    ids=["unpicked", "orphaned"],
-)
-def test_a_run_closed_by_a_sweep_is_reported_to_its_action(
-    mock_site_context, monkeypatch, sweep, fields: dict[str, object]
-) -> None:
-    """The sweeps closed runs with a bare update, so the action's on_finished
-    never ran and the requester was never told the run had stopped."""
-    monkeypatch.setattr(_ReportingAction, "finished", [])
-    record = _make_bulk_record(BulkActionRun, **fields)
-    BulkActionRun._base_manager.filter(pk=record.pk).update(
-        action_path=f"{__name__}.{_ReportingAction.__name__}"
-    )
-
-    with time_machine.travel(FIXED_NOW, tick=False):
-        closed = sweep(BulkActionRun, 3600)
-
-    record.refresh_from_db()
-    assert (closed, record.status) == (1, RunStatus.FAILED)
-    assert _ReportingAction.finished == [str(record.pk)]
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize("model", BULK_MODELS)
+@pytest.mark.parametrize("model", [LearnerImport])
 class TestMarkOrphanedRunsFailed:
     def test_running_record_started_before_the_window_is_failed(
-        self, model: BulkRecordModel, mock_site_context
+        self, model: type[Model], mock_site_context
     ) -> None:
         record = _make_bulk_record(
             model, status=RunStatus.RUNNING, started_ago=timedelta(seconds=3601)
@@ -1101,7 +1047,7 @@ class TestMarkOrphanedRunsFailed:
         )
 
     def test_error_message_tells_the_reader_it_stopped(
-        self, model: BulkRecordModel, mock_site_context
+        self, model: type[Model], mock_site_context
     ) -> None:
         record = _make_bulk_record(
             model, status=RunStatus.RUNNING, started_ago=timedelta(hours=2)
@@ -1113,22 +1059,8 @@ class TestMarkOrphanedRunsFailed:
         record.refresh_from_db()
         assert record.error_message == ORPHANED_MESSAGE
 
-    def test_each_closed_record_is_reported_to_sentry_separately(
-        self, model: BulkRecordModel, mock_site_context, mocker: MockerFixture
-    ) -> None:
-        sentry = mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
-        for _ in range(2):
-            _make_bulk_record(
-                model, status=RunStatus.RUNNING, started_ago=timedelta(hours=2)
-            )
-
-        with time_machine.travel(FIXED_NOW, tick=False):
-            mark_orphaned_runs_failed(model, 3600)
-
-        assert sentry.capture_message.call_count == 2
-
     def test_running_record_started_inside_the_window_is_left_running(
-        self, model: BulkRecordModel, mock_site_context
+        self, model: type[Model], mock_site_context
     ) -> None:
         record = _make_bulk_record(
             model, status=RunStatus.RUNNING, started_ago=timedelta(seconds=3599)
@@ -1141,7 +1073,7 @@ class TestMarkOrphanedRunsFailed:
         assert record.status == RunStatus.RUNNING
 
     def test_queued_record_is_not_touched(
-        self, model: BulkRecordModel, mock_site_context
+        self, model: type[Model], mock_site_context
     ) -> None:
         record = _make_bulk_record(
             model, status=RunStatus.QUEUED, created_ago=timedelta(hours=5)
@@ -1155,10 +1087,10 @@ class TestMarkOrphanedRunsFailed:
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("model", BULK_MODELS)
+@pytest.mark.parametrize("model", [LearnerImport])
 class TestDeleteFinishedRecords:
     def test_record_finished_before_the_retention_window_is_deleted(
-        self, model: BulkRecordModel, mock_site_context
+        self, model: type[Model], mock_site_context
     ) -> None:
         _make_bulk_record(
             model,
@@ -1172,7 +1104,7 @@ class TestDeleteFinishedRecords:
         assert (deleted, model._base_manager.count()) == (1, 0)
 
     def test_record_finished_inside_the_retention_window_is_kept(
-        self, model: BulkRecordModel, mock_site_context
+        self, model: type[Model], mock_site_context
     ) -> None:
         _make_bulk_record(
             model,
@@ -1186,7 +1118,7 @@ class TestDeleteFinishedRecords:
         assert model._base_manager.count() == 1
 
     def test_unfinished_record_is_kept_however_old(
-        self, model: BulkRecordModel, mock_site_context
+        self, model: type[Model], mock_site_context
     ) -> None:
         _make_bulk_record(
             model, status=RunStatus.QUEUED, created_ago=timedelta(days=90)
@@ -1198,7 +1130,7 @@ class TestDeleteFinishedRecords:
         assert model._base_manager.count() == 1
 
     def test_record_failed_by_a_sweep_is_deleted_once_retention_passes(
-        self, model: BulkRecordModel, mock_site_context
+        self, model: type[Model], mock_site_context
     ) -> None:
         _make_bulk_record(
             model, status=RunStatus.QUEUED, created_ago=timedelta(hours=2)
@@ -1408,3 +1340,51 @@ class TestHousekeepingCommandHelp:
 
         list_part = Command.help.split(" Runs once")[0]
         assert list_part.count(" and ") == 1
+
+
+@pytest.mark.django_db
+class TestBulkRecordSweepsReportToSentry:
+    @pytest.fixture(autouse=True)
+    def _no_delegated_commands(self, mocker: MockerFixture) -> None:
+        mocker.patch("freedom_ls.deployment.housekeeping.call_command")
+
+    def test_each_unpicked_record_is_reported_with_its_scope_extras(
+        self, mock_site_context, mocker: MockerFixture
+    ) -> None:
+        sentry = mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        record = _make_bulk_record(
+            LearnerImport, status=RunStatus.QUEUED, created_ago=timedelta(hours=2)
+        )
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            run_housekeeping_sweeps()
+
+        scope = sentry.new_scope.return_value.__enter__.return_value
+        assert [c.args for c in sentry.capture_message.call_args_list] == [
+            (UNPICKED_OPERATOR_MESSAGE,)
+        ]
+        assert {c.args[0]: c.args[1] for c in scope.set_extra.call_args_list} == {
+            "model": LearnerImport._meta.label,
+            "record_id": str(record.pk),
+            "site_id": str(record.site_id),
+            "max_age_seconds": "3600",
+        }
+
+    def test_each_orphaned_record_is_reported_with_its_scope_extras(
+        self, mock_site_context, mocker: MockerFixture
+    ) -> None:
+        sentry = mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        record = _make_bulk_record(
+            LearnerImport, status=RunStatus.RUNNING, started_ago=timedelta(hours=2)
+        )
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            run_housekeeping_sweeps()
+
+        scope = sentry.new_scope.return_value.__enter__.return_value
+        assert [c.args for c in sentry.capture_message.call_args_list] == [
+            (ORPHANED_OPERATOR_MESSAGE,)
+        ]
+        extras = {c.args[0]: c.args[1] for c in scope.set_extra.call_args_list}
+        assert extras["record_id"] == str(record.pk)
+        assert extras["model"] == LearnerImport._meta.label

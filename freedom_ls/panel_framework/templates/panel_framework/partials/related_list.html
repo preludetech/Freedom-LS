@@ -1,0 +1,32 @@
+{% load panel_tags %}
+{% comment %}
+Objects related to a record: one per line (`layout` "list") or a
+comma-separated run (`layout` "inline"). Reads "—" when there are none. With
+`url_name` and `url_path_template` each item links to its page; the links carry
+no quick-view trigger, so a cell naming three objects does not carry three
+icons.
+
+Context:
+  items             The objects to list.
+  layout            "list" (default) or "inline".
+  text_attr         The attribute read off each item for its text (dotted
+                    paths work); blank shows the item itself.
+  link_object_attr  The attribute naming the object an item links to; blank
+                    links the item itself.
+  url_name, url_path_template
+                    The link target, as `resolve_url_path_template` takes it.
+                    Without them the items are plain text.
+  htmx_nav          On: a link navigates with HTMX into #main-content.
+  request           The request, which the link URLs read their scope from.
+{% endcomment %}
+{% if items %}
+    {% if layout == "inline" %}
+        {% for item in items %}{% include "panel_framework/partials/related_item.html" %}{% endfor %}
+    {% else %}
+        <ul class="list-none ml-0 space-y-1">
+            {% for item in items %}<li class="py-0">{% include "panel_framework/partials/related_item.html" %}</li>{% endfor %}
+        </ul>
+    {% endif %}
+{% else %}
+    <span role="img" aria-label="None">—</span>
+{% endif %}

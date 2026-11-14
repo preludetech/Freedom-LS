@@ -14,6 +14,7 @@ import re
 import sys
 from collections import Counter
 from collections.abc import Iterator
+from html.parser import HTMLParser
 
 import pytest
 import pytest_django.fixtures
@@ -51,6 +52,10 @@ COMPONENT_NAMES = [
     "applied-filter",
     "empty-state",
     "skeleton",
+    "table",
+    "list",
+    "heading",
+    "notice",
     "callout",
 ]
 
@@ -68,6 +73,44 @@ class _FakeDebugToolbarModule:
 def test_examples_partial_renders_with_no_queries(django_assert_num_queries) -> None:
     with django_assert_num_queries(0):
         render_to_string("panel_framework/reference/_examples.html", EXAMPLE_CONTEXT)
+
+
+class _SidePanelDialogs(HTMLParser):
+    """Records, per `x-data="sidePanel"` element, whether a `<dialog>` sits inside it."""
+
+    VOID = {"input", "br", "hr", "img", "meta", "link"}
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.stack: list[tuple[str, int | None]] = []
+        self.has_dialog: list[bool] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in self.VOID:
+            return
+        index: int | None = None
+        if dict(attrs).get("x-data") == "sidePanel":
+            index = len(self.has_dialog)
+            self.has_dialog.append(False)
+        if tag == "dialog":
+            for _, open_index in self.stack:
+                if open_index is not None:
+                    self.has_dialog[open_index] = True
+        self.stack.append((tag, index))
+
+    def handle_endtag(self, tag: str) -> None:
+        while self.stack:
+            open_tag, _ = self.stack.pop()
+            if open_tag == tag:
+                break
+
+
+def test_every_side_panel_in_the_examples_holds_a_dialog() -> None:
+    """A sidePanel with no <dialog> throws in its init on the reference page."""
+    html = render_to_string("panel_framework/reference/_examples.html", EXAMPLE_CONTEXT)
+    parser = _SidePanelDialogs()
+    parser.feed(html)
+    assert False not in parser.has_dialog
 
 
 def test_examples_partial_has_no_duplicate_ids() -> None:
@@ -110,6 +153,14 @@ def test_every_component_has_at_least_one_example_id(
     client.force_login(make_staff_user())
     response = client.get("/test-panel/components/")
     assert f'id="{component_name}-' in response.content.decode()
+
+
+@pytest.mark.parametrize("tone", ["info", "warning", "error", "success"])
+def test_reference_shows_a_notice_in_each_tone(tone: str) -> None:
+    """The reference page had no example of `c-panel-notice` in any tone."""
+    html = render_to_string("panel_framework/reference/_examples.html", EXAMPLE_CONTEXT)
+    assert f'id="notice-{tone}"' in html
+    assert f"border-{tone}/20 bg-{tone}/10" in html
 
 
 def test_component_reference_does_not_resolve_without_debug(

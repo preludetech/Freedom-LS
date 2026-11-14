@@ -3,6 +3,7 @@ kinds the view dispatches, instance details rows, tab dispatch and the menu buil
 
 from __future__ import annotations
 
+import datetime
 import json
 from typing import cast
 
@@ -492,7 +493,7 @@ def test_a_delete_actions_trigger_url_returns_its_confirmation_fragment(
 
     html = _as_a_user_permitted_to_delete(path_string).content.decode()
 
-    assert f'hx-delete="{DELETE_URL}"' in html
+    assert f'hx-post="{DELETE_URL}"' in html
 
 
 def test_a_delete_action_from_a_panel_deletes_on_submit(
@@ -548,16 +549,16 @@ def _bind_details(
 
 
 @pytest.mark.django_db
-def test_rows_carry_label_value_and_is_boolean(mock_site_context: Site) -> None:
+def test_rows_carry_label_value_and_kind(mock_site_context: Site) -> None:
     stub = make_stub(name="Detailed", kind="b", is_active=True)
 
     rows = _bind_details(StubInstanceDetails, stub).get_rows()
 
     assert rows == [
-        {"label": "name", "value": "Detailed", "is_boolean": False},
-        {"label": "kind", "value": "Beta", "is_boolean": False},
-        {"label": "is active", "value": True, "is_boolean": True},
-        {"label": "SAT score", "value": "-", "is_boolean": False},
+        {"label": "name", "value": "Detailed", "kind": "text"},
+        {"label": "kind", "value": "Beta", "kind": "text"},
+        {"label": "is active", "value": True, "kind": "boolean"},
+        {"label": "SAT score", "value": "-", "kind": "text"},
     ]
 
 
@@ -949,3 +950,32 @@ def test_promote_bulk_actions_leaves_the_input_list_unchanged() -> None:
     promote_bulk_actions(entries)
 
     assert [e["separator_before"] for e in entries] == [False] * 6
+
+
+class StubBadgeDateDetails(InstanceDetailsPanel):
+    model = StubModel
+    fields = ["created_at"]
+
+    def get_rows(self) -> list[dict[str, object]]:
+        return [
+            *super().get_rows(),
+            self.detail_row("Status", StatusBadge("success", "Active"), "badge"),
+        ]
+
+
+@pytest.mark.django_db
+def test_a_badge_row_and_a_date_row_render_through_their_components(
+    mock_site_context: Site,
+) -> None:
+    stub = make_stub(name="Detailed")
+    stub.created_at = datetime.datetime(2026, 11, 3, 9, 0, tzinfo=datetime.UTC)
+    panel = _bind_details(StubBadgeDateDetails, stub)
+
+    html = render_to_string(panel.template_name, panel.get_context_data())
+
+    document = lxml.html.fromstring(f"<div>{html}</div>")
+    (badge,) = document.cssselect("dd [data-tone]")
+    assert badge.text_content().strip() == "Active"
+    assert badge.get("data-tone") == "success"
+    (time,) = document.cssselect("dd time")
+    assert time.get("datetime") == "2026-11-03"

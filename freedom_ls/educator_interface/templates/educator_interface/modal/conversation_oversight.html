@@ -5,6 +5,4 @@ thread context and viewer_role_label.
 {% endcomment %}
 <c-modal-header focus_title="true">Conversation with {% if other %}{{ other.display_name }}{% else %}Deleted user{% endif %}</c-modal-header>
 {% include "comms/partials/thread.html" with pane_height="h-[70dvh]" heading_tag="h3" %}
-<c-modal-footer>
-    <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Close</c-button></c-slot>
-</c-modal-footer>
+<c-modal-footer cancel="Close" />

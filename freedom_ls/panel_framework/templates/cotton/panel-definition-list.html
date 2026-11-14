@@ -1,13 +1,21 @@
-<c-vars columns="3" />
+<c-vars columns="3" layout="stacked" />
 
 {% comment %}
-Definition list — the grid every instance-details panel renders its label/value
-pairs into. `<dl>` over a `<table>` since these are label/value pairs, not
-tabular data with column headers. Two columns on a phone, the full count
-from md up.
+Definition list — label/value pairs as a `<dl>`, not a `<table>`, since they
+are not tabular data with column headers. Holds <c-panel-definition-row>
+pairs; the list owns how every row's label and value look.
 
 Attributes:
-  columns  2, 3 or 4 (default 3). Anything else falls back to 3.
+  layout   "stacked" (default): each label sits over its value, in a grid
+           that is two columns on a phone and `columns` from md up.
+           "inline": one label column beside one value column, for a dense
+           list such as a table row shown as a card.
+  columns  2, 3 or 4 (default 3). Anything else falls back to 3. Stacked
+           layout only.
 {% endcomment %}
 
-<dl class="grid gap-x-6 gap-y-4 {% if columns == "2" %}grid-cols-2{% elif columns == "4" %}grid-cols-2 md:grid-cols-4{% else %}grid-cols-2 md:grid-cols-3{% endif %}" {{ attrs }}>{{ slot }}</dl>
+{% if layout == "inline" %}
+<dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm [&>div]:contents [&>div>dt]:max-w-28 [&>div>dt]:text-muted [&>div>dd]:min-w-0 [&>div>dd]:break-words" {{ attrs }}>{{ slot }}</dl>
+{% else %}
+<dl class="grid gap-x-6 gap-y-4 [&>div>dt]:text-xs [&>div>dt]:font-semibold [&>div>dt]:uppercase [&>div>dt]:tracking-wide [&>div>dt]:text-muted [&>div>dd]:mt-1 [&>div>dd]:text-sm [&>div>dd]:break-words {% if columns == "2" %}grid-cols-2{% elif columns == "4" %}grid-cols-2 md:grid-cols-4{% else %}grid-cols-2 md:grid-cols-3{% endif %}" {{ attrs }}>{{ slot }}</dl>
+{% endif %}
