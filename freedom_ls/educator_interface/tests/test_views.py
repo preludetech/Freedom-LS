@@ -2732,6 +2732,28 @@ def test_the_add_to_cohort_picker_on_a_learners_page_offers_no_inactive_cohort(
 
 
 @pytest.mark.django_db
+def test_the_add_to_cohort_picker_offers_no_inactive_cohort_after_a_submit_with_no_choice(
+    staff_client: Client,
+):
+    """A submit with no cohort chosen used to re-render the select with the
+    organisation's inactive cohorts, which the first render never offered."""
+    organisation = OrganisationFactory()
+    inactive = CohortFactory(organisation=organisation, is_active=False)
+    learner = LearnerFactory(organisation=organisation)
+
+    response = staff_client.post(
+        _interface_url(
+            organisation.slug, f"learners/{learner.pk}/__actions/add_to_cohort"
+        ),
+        {"cohort": ""},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 422
+    assert str(inactive.pk) not in response.content.decode()
+
+
+@pytest.mark.django_db
 def test_an_inactive_cohorts_learners_tab_renders_no_move_control(
     staff_client: Client,
 ):

@@ -1277,6 +1277,14 @@ class AddToCohortAction(FormPanelAction):
             f"{name} is already in every active cohort you can add learners to.",
         )
 
+    def form_invalid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
+        # A POST validates against a wider set so a refused cohort reaches the
+        # permission check; the re-rendered select offers what the fresh dialog offered.
+        cast(
+            forms.ModelChoiceField, form.fields["cohort"]
+        ).queryset = _joinable_cohorts(ctx, cast(Learner, ctx.instance))
+        return super().form_invalid(ctx, form)
+
     def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
         cohort = cast(Cohort, form.cleaned_data["cohort"])
         if not can(ctx.request.user, ADD_COHORTMEMBERSHIP, cohort):
