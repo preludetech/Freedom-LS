@@ -100,9 +100,14 @@ def test_create_modal_lifecycle(
     expect(name_field).to_have_value("Dirty")
     expect(name_field).to_be_focused()
 
+    # A second Esc asks again instead of closing the dialog.
+    page.keyboard.press("Escape")
+    expect(page.get_by_role("dialog", name="Discard changes?")).to_be_visible()
+    page.get_by_role("button", name="Keep editing").click()
+    expect(name_field).to_have_value("Dirty")
+
     # The header close control asks the same question as Esc; the footer
-    # Cancel does not (below). A second Esc without an intervening click is
-    # not cancellable, so the close control is what reaches Discard here.
+    # Cancel does not (below).
     page.locator("#app-modal-body").get_by_role("button", name="Close").click()
     page.get_by_role("button", name="Discard").click()
     expect(modal).to_be_hidden()

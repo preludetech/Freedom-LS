@@ -53,7 +53,21 @@ def test_instance_dialogs_and_heading(
     page.get_by_role("button", name="Retire Item").click()
     dialog = page.get_by_role("dialog", name="Retire Item")
     expect(dialog.get_by_role("button", name="Cancel")).to_be_focused()
-    dialog.get_by_label("Reason (optional):").fill("Typed but not needed")
+    reason = dialog.get_by_label("Reason (optional):")
+    reason.fill("Typed but not needed")
+
+    # Esc asks to discard; "Keep editing" puts focus back in the field, and
+    # every further Esc asks again instead of closing the dialog.
+    page.keyboard.press("Escape")
+    expect(page.get_by_role("dialog", name="Discard changes?")).to_be_visible()
+    page.get_by_role("button", name="Keep editing").click()
+    expect(reason).to_have_value("Typed but not needed")
+    expect(reason).to_be_focused()
+    page.keyboard.press("Escape")
+    expect(page.get_by_role("dialog", name="Discard changes?")).to_be_visible()
+    page.get_by_role("button", name="Keep editing").click()
+    expect(reason).to_be_focused()
+
     dialog.get_by_role("button", name="Cancel").click()
     expect(modal).to_be_hidden()
     expect(page.get_by_role("dialog", name="Discard changes?")).to_be_hidden()

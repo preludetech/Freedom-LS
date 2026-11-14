@@ -224,12 +224,24 @@ document.addEventListener("alpine:init", () => {
 
             // The native "cancel" event fires for both Esc and requestClose(),
             // so this is the single place a dirty form can hold the dialog
-            // open. A second Esc pressed before any other user activation
-            // cannot be cancelled under the CloseWatcher rules browsers apply
-            // to <dialog>: the dialog closes and the typed input is lost.
-            // Nothing in this handler can prevent that.
+            // open for requestClose(); Esc is handled by the keydown
+            // listener below, because a second uncancelled Esc would close
+            // the dialog despite this handler.
             trackListener(this._handlers, this._dialog, "cancel", (event) => {
                 if (!this.dirty) return;
+                event.preventDefault();
+                this._showDiscardPrompt();
+            });
+
+            // Chromium does not let a page cancel a dialog's close request
+            // twice without a user activation in between, so the guard above
+            // alone lets a second Esc close the dialog. Handling the key
+            // itself, and preventing its default, means no close request is
+            // ever made for a dirty form.
+            trackListener(this._handlers, document, "keydown", (event) => {
+                if (event.key !== "Escape" || event.defaultPrevented) return;
+                if (!this._dialog.open || !this.dirty) return;
+                if (document.querySelector("dialog[open]:modal") !== this._dialog) return;
                 event.preventDefault();
                 this._showDiscardPrompt();
             });
@@ -297,7 +309,8 @@ document.addEventListener("alpine:init", () => {
         keepEditing() {
             this._hideDiscardPrompt();
             const form = this._body.querySelector("form");
-            const field = form && form.querySelector("input, select, textarea");
+            const field =
+                form && form.querySelector("input:not([type=hidden]), select, textarea");
             if (field) field.focus();
         },
         // The only caller of close() from a button: the prompt has already
