@@ -6,12 +6,14 @@
             {% for row in rows %}
                 <c-panel-list-row :title="row.course.title" :detail="row.via" data-testid="registration-row">
                     <c-panel-status-badge :badge="row.badge" />
+                    <div data-testid="registration-action-slot" class="flex w-28 justify-end">
                     {% if row.is_individual and row.is_active and row_action_urls.deactivate_registration %}
                         <c-modal-trigger url="{{ row_action_urls.deactivate_registration }}?registration={{ row.registration.pk }}" label="Deactivate" variant="secondary" size="small" />
                     {% endif %}
                     {% if row.is_individual and not row.is_active and row_action_urls.reactivate_registration %}
                         <c-modal-trigger url="{{ row_action_urls.reactivate_registration }}?registration={{ row.registration.pk }}" label="Reactivate" variant="secondary" size="small" />
                     {% endif %}
+                    </div>
                 </c-panel-list-row>
             {% endfor %}
         </c-panel-list>
