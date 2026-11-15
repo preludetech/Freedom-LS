@@ -27,6 +27,10 @@ script). Claude Code refuses `uv run git …` inside an isolated worktree.
 
 Several processes often work in the same worktree at once, so commits you didn't make, and files changing under you, are normal. Every commit is intentional unless the user says otherwise. Commit your work on top of whatever is there and push the branch as it stands, commits from other processes included. History stays as it is: rewrite, drop, squash or reset a commit only when the user asks for that specific commit.
 
+## Todo list
+
+"The todo list" is the current worktree's spec checklist: `spec_dd/2. in progress/<spec>/todo.md`, where `<spec>` is the current branch name. Add or tick items there with `sdd:protected:update_todo`, even when the item is about other code. Every file you write lives inside the current worktree.
+
 ## IMPORTANT: Use skills whenever possible!
 
 Whenever you are asked to do anything, check what skills are available. Rely on skills and documentation rather than pre-training.
