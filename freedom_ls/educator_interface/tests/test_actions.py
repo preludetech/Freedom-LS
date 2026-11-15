@@ -207,6 +207,76 @@ def test_the_rename_fragment_is_the_inline_form_holding_the_current_name(
 
 
 @pytest.mark.django_db
+def test_an_empty_cohort_name_shows_the_bare_message_as_an_announced_field_error(
+    staff_client: Client,
+):
+    """A field error in the inline form used to repeat the field's label, carry
+    no role and leave the input unlinked from it."""
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation, name="Year 11 Science")
+
+    response = _post(
+        staff_client,
+        _cohort_url(organisation, cohort, "/__actions/edit"),
+        {"name": ""},
+    )
+
+    document = lxml.html.fromstring(f"<div>{response.content.decode()}</div>")
+    (name,) = document.cssselect("form#cohort-name-form input[name=name]")
+    (error,) = document.cssselect("form#cohort-name-form [role=alert]")
+    assert response.status_code == 422
+    assert error.text_content().strip() == "This field is required."
+    assert error.get("id")
+    assert name.get("aria-describedby") == error.get("id")
+    assert name.get("aria-invalid") == "true"
+    assert not document.cssselect("[data-error-summary]")
+
+
+@pytest.mark.django_db
+def test_an_inline_form_field_without_an_error_is_neither_invalid_nor_described(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation, name="Year 11 Science")
+
+    response = staff_client.get(
+        _cohort_url(organisation, cohort, "/__actions/edit"), HTTP_HX_REQUEST="true"
+    )
+
+    document = lxml.html.fromstring(f"<div>{response.content.decode()}</div>")
+    (name,) = document.cssselect("form#cohort-name-form input[name=name]")
+    assert name.get("aria-invalid") is None
+    assert name.get("aria-describedby") is None
+    assert not document.cssselect("[role=alert]")
+
+
+@pytest.mark.django_db
+def test_the_learner_name_form_puts_each_field_error_under_its_own_field(
+    mock_site_context: Site, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner = _named_learner(organisation)
+    client = _site_admin_client(mock_site_context, logged_in_client)
+
+    response = _post(
+        client,
+        _edit_name_url(organisation, learner),
+        {"first_name": "x" * 201, "last_name": "y" * 201},
+    )
+
+    document = lxml.html.fromstring(f"<div>{response.content.decode()}</div>")
+    alerts = document.cssselect("form [role=alert]")
+    assert response.status_code == 422
+    assert len(alerts) == 2
+    for field_name in ("first_name", "last_name"):
+        (field,) = document.cssselect(f"form input[name={field_name}]")
+        (error,) = [a for a in alerts if a.get("id") == field.get("aria-describedby")]
+        assert field.get("aria-invalid") == "true"
+        assert "Ensure this value has at most 200 characters" in error.text_content()
+        assert "name" not in error.text_content().split("Ensure")[0].lower()
+
+
+@pytest.mark.django_db
 def test_a_rename_answers_204_with_the_new_title_for_the_page(staff_client: Client):
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation, name="Year 11 Science")

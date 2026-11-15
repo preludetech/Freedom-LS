@@ -4,7 +4,9 @@ from a Settings panel rather than a dialog. Returned by the action's GET and
 its 422 too. Context: form, action_url, form_id. The form targets itself, so a
 422 swaps the errors in place; a save answers 204 and the panel's own refresh
 re-renders it with the saved values, with focus returned to the first field
-by id. The fields sit in one row with Save at its end, lined up on the inputs.
+by id. The fields sit in one row with Save at its end, lined up on the inputs. A field error is one line under the row: the
+message alone, role=alert, with the id Django names in the input's
+aria-describedby.
 {% endcomment %}
 <form id="{{ form_id }}"
       hx-post="{{ action_url }}"
@@ -28,6 +30,6 @@ by id. The fields sit in one row with Save at its end, lined up on the inputs.
         <c-button type="submit" variant="primary" size="small" loading="true" loading_text="Saving...">Save</c-button>
     </div>
     {% for field in form.visible_fields %}
-        {% if field.errors %}<p class="text-sm text-error">{{ field.label }}: {{ field.errors|join:" " }}</p>{% endif %}
+        {% if field.errors %}<p id="{{ field.auto_id }}_error" role="alert" class="text-sm text-error">{{ field.errors|join:" " }}</p>{% endif %}
     {% endfor %}
 </form>
