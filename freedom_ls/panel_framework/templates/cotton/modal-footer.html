@@ -13,10 +13,9 @@ literal in a template, never filled from context, and `cancel_href` only
 ever receives a URL the server built. `focus_cancel` makes the button take
 initial focus and `cancel_describedby` names the element describing it. The default slot holds the actions, right aligned with the
 primary last, and wraps onto its own row below sm when it does not fit.
-Sticky so it stays in view while the dialog, which is the scroll container,
-scrolls.
+It stays in view because only the body between it and the header scrolls.
 {% endcomment %}
-<footer class="panel-surface sticky bottom-0 z-10 flex items-center justify-between gap-3 border-t border-border px-6 py-4 max-sm:flex-wrap {{ class }}" {{ attrs }}>
+<footer class="panel-surface shrink-0 flex items-center justify-between gap-3 border-t border-border px-6 py-4 max-sm:flex-wrap {{ class }}" {{ attrs }}>
     <div class="shrink-0">
         {% if cancel_href %}
             <c-button variant="secondary" href="{{ cancel_href }}" autofocus="{{ focus_cancel }}" aria_describedby="{{ cancel_describedby }}">{{ cancel }}</c-button>

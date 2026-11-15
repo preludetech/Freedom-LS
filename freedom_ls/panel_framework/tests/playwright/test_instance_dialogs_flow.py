@@ -141,3 +141,78 @@ def test_refused_delete_moves_focus_to_its_error_notice(
     notice = dialog.locator("[data-error-summary]")
     expect(notice).to_contain_text("It still has 1 learner.")
     expect(notice).to_be_focused()
+
+
+@pytest.mark.parametrize(
+    "viewport", [{"width": 1920, "height": 1080}, {"width": 375, "height": 812}]
+)
+def test_only_the_dialog_body_scrolls_between_full_width_header_and_footer(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+    viewport: dict[str, int],
+) -> None:
+    """The header and footer rules stopped short of the dialog's right edge
+    because the dialog itself scrolled, so its scrollbar gutter sat beside
+    them and the body's padding was uneven. Now the header and footer span the
+    dialog's full width, the padding left and right of the body is equal, and
+    with tall content the body scrolls while the footer stays in view."""
+    stub = make_stub(name="Scrolling")
+    page.set_viewport_size(viewport)
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/{stub.pk}/__tabs/details")
+    page.get_by_role("button", name="Retire Item").click()
+    modal = page.locator("#app-modal")
+    expect(modal.get_by_role("button", name="Cancel")).to_be_visible()
+    # The phone sheet slides up; measure once it has settled.
+    expect(modal).to_have_css("transform", "none")
+
+    def measure() -> dict[str, float]:
+        measured: dict[str, float] = modal.evaluate(
+            """dialog => {
+                const rect = (el) => el.getBoundingClientRect();
+                const box = rect(dialog);
+                const bw = parseFloat(getComputedStyle(dialog).borderLeftWidth);
+                const header = rect(dialog.querySelector('#app-modal-body header'));
+                const footer = rect(dialog.querySelector('#app-modal-body footer'));
+                const body = dialog.querySelector('#app-modal-body [data-modal-scroll]');
+                const style = getComputedStyle(body);
+                return {
+                    headerLeft: header.left - box.left - bw,
+                    headerRight: box.right - bw - header.right,
+                    footerLeft: footer.left - box.left - bw,
+                    footerRight: box.right - bw - footer.right,
+                    padLeft: parseFloat(style.paddingLeft),
+                    padRight: parseFloat(style.paddingRight),
+                    dialogScrolls: dialog.scrollHeight > dialog.clientHeight + 1,
+                    bodyScrolls: body.scrollHeight > body.clientHeight + 1,
+                    footerBottom: footer.bottom,
+                    dialogBottom: box.bottom,
+                    viewportHeight: innerHeight,
+                };
+            }"""
+        )
+        return measured
+
+    short = measure()
+    for key in ("headerLeft", "headerRight", "footerLeft", "footerRight"):
+        assert abs(short[key]) <= 1, (key, short)
+    assert short["padLeft"] == short["padRight"]
+
+    modal.evaluate(
+        """dialog => {
+            const tall = document.createElement('div');
+            tall.style.height = '3000px';
+            dialog.querySelector('#app-modal-body [data-modal-scroll]').append(tall);
+        }"""
+    )
+    tall = measure()
+    assert tall["bodyScrolls"], tall
+    assert not tall["dialogScrolls"], tall
+    assert tall["footerBottom"] <= tall["viewportHeight"], tall
+    for key in ("headerRight", "footerRight"):
+        assert abs(tall[key]) <= 1, (key, tall)
+    expect(modal.locator("#app-modal-body footer")).to_be_in_viewport()
+    expect(modal.locator("#app-modal-body [data-modal-scroll]")).to_have_attribute(
+        "data-more-below", "true"
+    )

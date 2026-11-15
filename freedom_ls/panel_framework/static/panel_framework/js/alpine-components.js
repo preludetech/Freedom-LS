@@ -271,14 +271,16 @@ document.addEventListener("alpine:init", () => {
                 if (this._dialog.open) this._dialog.close();
             });
 
-            // The bottom fade (modal_host.html) shows while content lies
-            // below the fold: re-measured on scroll, when the body changes
-            // size (a fragment landing, an image loading, a section
-            // expanding) and when the dialog opens.
-            trackListener(this._handlers, this._dialog, "scroll", () => this._syncMoreBelow());
+            // The bottom fade (modal_host.html) shows while the body's content
+            // lies below the fold: re-measured on scroll (which does not
+            // bubble, so it is caught in the capture phase), when the body
+            // changes size (a fragment landing, an image loading, a section
+            // expanding), when the dialog resizes and when it opens.
+            trackListener(this._handlers, this._dialog, "scroll", () => this._syncMoreBelow(), true);
             trackListener(this._handlers, this._dialog, "toggle", () => this._syncMoreBelow());
             this._resizeObserver = new ResizeObserver(() => this._syncMoreBelow());
             this._resizeObserver.observe(this._body);
+            this._resizeObserver.observe(this._dialog);
         },
         destroy() {
             this._handlers.forEach(([target, type, handler, options]) => {
@@ -288,8 +290,12 @@ document.addEventListener("alpine:init", () => {
         },
         _syncMoreBelow() {
             const dialog = this._dialog;
-            const more = dialog.open && dialog.scrollHeight - dialog.scrollTop - dialog.clientHeight > 8;
-            dialog.dataset.moreBelow = more ? "true" : "false";
+            dialog.querySelectorAll("[data-modal-scroll]").forEach((scroller) => {
+                const more =
+                    dialog.open &&
+                    scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight > 8;
+                scroller.dataset.moreBelow = more ? "true" : "false";
+            });
         },
         requestClose() {
             if (typeof this._dialog.requestClose === "function") {

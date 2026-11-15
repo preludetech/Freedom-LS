@@ -25,9 +25,32 @@ editing" brings the form back with everything typed into it.
         max-width: 100vw;
         /* dvh so the cap follows the on-screen keyboard. */
         max-height: min(90dvh, 100%);
-        /* `scroll`, not `auto`, so the track shows wherever the platform
-         * draws classic scrollbars, and the gutter stays put as content
-         * loads: the dialog says that it scrolls before anyone tries. */
+        /* Only the body scrolls (the [data-modal-scroll] element below), so
+         * the header and footer span the dialog's full width and the dialog
+         * itself never grows a scrollbar of its own. */
+        overflow: hidden;
+    }
+    /* Flex only while open: a closed dialog must keep the UA's display:none. */
+    #app-modal[open] {
+        display: flex;
+        flex-direction: column;
+    }
+    /* Every wrapper between the dialog and a body (the fragment host, a
+     * fragment's form, a preview's root) passes the dialog's height down, so
+     * the body is what gives way when the content is taller than the cap.
+     * The discard prompt is excluded while hidden. */
+    #app-modal :has([data-modal-scroll]):not([hidden]) {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+    /* `scroll`, not `auto`, so the track shows wherever the platform draws
+     * classic scrollbars, and the gutter stays put as content loads: the body
+     * says that it scrolls before anyone tries. The gutter sits inside the
+     * body, so the padding left and right of the content is equal. */
+    #app-modal [data-modal-scroll] {
+        flex: 1 1 auto;
+        min-height: 0;
         overflow-y: scroll;
         scrollbar-gutter: stable;
         overflow-x: hidden;
@@ -42,34 +65,33 @@ editing" brings the form back with everything typed into it.
         z-index: 50;
         outline: 100vmax solid color-mix(in srgb, black 50%, transparent);
     }
-    /* A fade over the dialog's bottom edge while content lies below the
+    /* A fade over the body's bottom edge while content lies below the
      * fold, gone once the end is reached. The pseudo-element is the last
      * flow child of the scroll container, so sticky pins it to the visible
-     * bottom; the negative margin keeps it from adding to the scroll
-     * height. appModal keeps data-more-below current. The fade is the
-     * dialog's own background, inherited and masked, so it matches
-     * whatever colour a theme gives .panel-surface. */
-    #app-modal::after {
+     * bottom; the negative margins make it span the body's padding and keep
+     * it from adding to the scroll height. appModal keeps data-more-below
+     * current. The fade is the body's own background, inherited and masked,
+     * so it matches whatever colour a theme gives .panel-surface. */
+    #app-modal [data-modal-scroll]::after {
         content: "";
         position: sticky;
         bottom: 0;
         display: block;
         height: 3rem;
-        margin-top: -3rem;
+        margin: -3rem -1.5rem -1.25rem;
         pointer-events: none;
         background-color: inherit;
         mask-image: linear-gradient(to bottom, transparent, #000);
         opacity: 0;
         transition: opacity 150ms ease;
     }
-    #app-modal[data-more-below="true"]::after {
+    #app-modal [data-modal-scroll][data-more-below="true"]::after {
         opacity: 1;
     }
     /* A content preview needs reading width for tables, code and images.
      * The fragment opts in with data-modal-size="wide" on its root; the
      * rule reads the open dialog's body, so nothing else ever widens.
-     * Height and scrolling stay the shared rule's, so the sticky header
-     * keeps working. */
+     * Height and scrolling stay the shared rule's. */
     @media (min-width: 640px) {
         #app-modal:has([data-modal-size="wide"]) {
             width: min(92vw, 64rem);

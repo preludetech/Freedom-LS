@@ -60,10 +60,11 @@ def test_the_default_slot_renders_after_the_cancel() -> None:
     assert [button.text for button in boxes[1].findall("button")] == ["Save"]
 
 
-def test_the_footer_pushes_cancel_and_the_actions_apart_and_stays_in_view() -> None:
+def test_the_footer_pushes_cancel_and_the_actions_apart_and_never_scrolls() -> None:
     footer = _render()
 
     classes = footer.get("class", "").split()
 
-    assert {"flex", "justify-between", "sticky", "bottom-0"} <= set(classes)
+    assert {"flex", "justify-between", "shrink-0"} <= set(classes)
+    assert "sticky" not in classes
     assert "justify-end" in footer.findall("div")[1].get("class", "").split()
