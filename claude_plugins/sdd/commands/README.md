@@ -60,7 +60,8 @@ An optional suffix argument (`/sdd:plan_from_spec <spec> 2b`) selects a second p
 Run `/implement_plan` to execute the implementation plan. It runs batch waves: up to `Parallel batches` (the key in `.claude/sdd/config.md`) independent batches at a time, each in its own batch worktree. When the batches are done it continues into the QA command. An optional suffix argument (`/implement_plan 2b`) selects the plan `2b. plan.md`, commits its batches as `[batch 2b.N]` and resumes only from those commits. Without a suffix, it runs `2. plan.md` with `[batch N]` commits. After each slice that builds a designed screen, it runs the design check through the `Design check` hook in `.claude/sdd/config.md`, and sends any design misses (unmet lines of the plan's design checklist) to fix batches. Each batch runs as `sdd:sdd-implementer`, with the skills named in `.claude/sdd/config.md`'s `## Testing Skills` loaded first.
 
 Once a batch's tier passes, one `sdd:sdd-worker` reviews the batch's touched files for test
-organisation, against the mirroring and dependency-direction rules the named skills define.
+organisation, against the mirroring and dependency-direction rules the named skills define. It
+reports only problems the batch introduced; a problem that was already there is the boy-scout's.
 Mechanical findings go to one `sdd:sdd-implementer`, which commits `[batch <id> review-fix]`;
 judgement findings go to the user via `AskUserQuestion`.
 

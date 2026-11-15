@@ -193,6 +193,9 @@ One `sdd:sdd-worker`, spawned per the fan-out recipe as in `plan_from_spec.md` S
 
 - the skill line;
 - the touched files, above;
+- what the batch changed, since the worker has no `Bash`. Take `PRE` as the parent of the `[batch <id>]` implementation commit. For each touched file, say whether it is new, moved from another path, or edited in place, using `git diff -M --name-status "$PRE" HEAD` (`A`, `R<score>` or `M`). For a moved or in-place file, give the lines the batch added (the `+` lines of `git diff -U0 -M "$PRE" HEAD -- <old-path> <path>`);
+- report only problems the batch introduced. For mirroring, that is a test file the batch added, or moved to its current path. For dependency direction, it is an import or fixture use in a new file or in the batch's added lines. A problem that was already there at `PRE` is not a finding, even in a touched file: the boy-scout tidies it within its budget;
+- `kind: mechanical` when the loaded skills give one fix and the recommendation needs no choice; `kind: judgement` when it does, for example keeping a new cross-app edge rather than writing a local fixture. A recommendation never says "optional";
 - read the "Dependency table" (`App | Runtime deps | Test-only deps`) in `docs/app_structure.md` directly. If that file is absent, check mirroring only;
 - mirroring: check each touched test file's placement against the mirroring rule in the loaded skills;
 - dependency direction: for each touched test, conftest or factory file, check its imports of another app, and any fixtures it pulls from a `conftest.py` under another app, against its own app's Runtime deps. A project-wide pytest plugin (`pytest_plugins`, `pytest11`) is infrastructure, not an edge;

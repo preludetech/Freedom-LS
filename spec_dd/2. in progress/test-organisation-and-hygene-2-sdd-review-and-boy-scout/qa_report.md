@@ -96,6 +96,46 @@ afterwards on the same branch.
 Interrupt and resume, Record a follow-up, and Workflow 3. Re-run them on a fresh throwaway branch
 built with the new Setup, after the Cleanup section has removed the old one.
 
+## Second hand run of Workflows 1–2
+
+Run on 2026-09-29 on `qa-boy-scout-throwaway-2`, built with the squash Setup, so the QA slices
+were batches 1 and 2.
+
+| Check | Result | Notes |
+|---|---|---|
+| Agents load `ds:testing` then `fls-dev:testing` first | PASS | Every implementer, reviewer and boy-scout |
+| Interrupt and resume (steps 3–4) | PASS | One `[batch 1]` commit; the resumed run went straight to the review |
+| Batch 1 review fixes | PASS | `test_misc.py` and the `content_engine` import, in `[batch 1 review-fix]` |
+| Flag on `page_count`, `pagination.py` untouched | PASS | Recommendation first, all three answers offered |
+| Record a follow-up (step 7) | PASS | In `test-organisation-and-hygene-6-small-apps/idea.md`; roadmap unchanged; `.sdd-work` cleaned |
+| Batch 2 boy-scout move and edit (step 8) | FAIL | The batch 2 review moved `test_form_engine_tags.py` in a `[batch 2 review-fix]` instead |
+| "Not a bug" flag-note (step 9) | NOT RUN | The `percent` flag was answered "Record a follow-up" |
+| Record and Summary counts (step 10) | PASS | Match the commits and the conversation |
+| `uv run pytest` | PASS | 5140 passed, 38 deselected, before the record commits (markdown only after) |
+| Workflow 2.1: budget count prints `1` | FAIL | Printed `0`, from the step 8 failure |
+| Workflow 2.2: scope check | PASS | Exit 0, no output, run from the review-fix commit since there was no boy-scout commit |
+| Workflow 2.3: scope check with a nonsense ref | PASS | Exit 64 and the usage line |
+
+### Findings and what became of them
+
+- **The review fixed a problem the batch didn't introduce.** `test_form_engine_tags.py` was
+  misplaced on `main`. Batch 2 only added a test to it, but the review still reported it as a
+  mechanical finding, so it landed as a review fix. That broke Decision 5: the boy-scout never
+  moved a file, and its budget never counted the move. The reviewer even wrote "Batch 2 did not
+  introduce it" and "optional", under `kind: mechanical`. Fixed in `implement_plan.md`: depth 0
+  now tells the reviewer which touched files are new and which lines the batch added, the review
+  reports only problems the batch introduced, and `mechanical`/`judgement` have a definition with
+  no "optional" recommendations. The spec and `commands/README.md` say the same.
+- **`fls-dev:testing` says no FLS app mirrors a subpackage.** True on this branch. It only went
+  stale on the QA branch because of the move above. With the fix, a boy-scout move reports it as a
+  deferred item, which is the designed path.
+- **Postgres dropped out during batch 2.** Environment, not this feature. Handled elsewhere.
+
+### Still to run
+
+Workflow 1 steps 8–9 and Workflow 2.1 again, answering "Not a bug" on the batch 2 flag, and
+Workflow 3.
+
 ## General notes
 
 - The key behaviours of this feature are still unverified by QA. That means resume after an
