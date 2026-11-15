@@ -363,7 +363,10 @@ def course_deadlines_for(
             for extension in extensions_by_record.get(record.pk, [])
         )
     ]
-    completed = completion_instants(shifted_ids) if items and shifted_ids else {}
+    completed_by_record: dict[UUID, dict[UUID, datetime]] = defaultdict(dict)
+    if items and shifted_ids:
+        for (progress_id, item_id), instant in completion_instants(shifted_ids).items():
+            completed_by_record[progress_id][item_id] = instant
 
     result: dict[UUID, CourseDeadlines] = {}
     for record in records:
@@ -372,11 +375,7 @@ def course_deadlines_for(
         sources = ShiftSources(
             pauses=pauses.get(record.pk, []),
             extensions=extensions_by_record.get(record.pk, []),
-            completed_at={
-                item_id: instant
-                for (progress_id, item_id), instant in completed.items()
-                if progress_id == record.pk
-            },
+            completed_at=completed_by_record.get(record.pk, {}),
         )
         resolved_items = (
             {
