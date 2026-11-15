@@ -13,7 +13,8 @@ themselves, to help them find work. It is not the account page (`accounts:accoun
 edits the name), not a `Learner` row (the `(user, organisation)` join row) and not an
 `Organisation` profile. It is off until the learner switches it on.
 
-The learner edits it on plain views in `accounts`: the blurb, a work experience list, an "open to work"
+The learner edits it in panels in the account area built by
+`learner-profile-use-panels-framework-3-account-page`: the blurb, a work experience list, an "open to work"
 flag, a place with a "willing to move" flag, and social media URLs. A switch turns it on or off.
 Switching on records the learner's consent and shows who will see the profile.
 
@@ -51,8 +52,10 @@ Credly) handle publishing a person's details to third parties, and it supports t
   autofills when the learner has not set one. The field is not called "location": that name is taken
   by `Location` in `hr_attributes`, and the new field says it is the learner's own choice, not
   organisation HR data.
-- The learner edits through plain views in `accounts`, in the style of `edit_profile`, not the panel
-  framework (which is educator-side and being extracted).
+- The learner edits through panels in the account area from
+  `learner-profile-use-panels-framework-3-account-page`, which adds a sidebar section for them. The
+  work experience list uses the editable list panel from
+  `learner-profile-use-panels-framework-2-editable-list-panel`. No plain edit views are added.
 - The public profile page works for anyone, including anonymous visitors, whatever access rule the
   index gets later. Only the index is ever restricted; the learner's own link is not.
 - The page returns 404 when the profile is off, when the feature is disabled for the site, and when
@@ -93,7 +96,7 @@ Credly) handle publishing a person's details to third parties, and it supports t
 ## Resources
 
 - `spec_dd/1. next/learner-public-profile/research_existing_profile_code.md` (user and learner data,
-  per-site config models, anonymous pages, site isolation, why not panels)
+  per-site config models, anonymous pages, site isolation; its case against panels is superseded)
 - `spec_dd/1. next/learner-public-profile/research_comparable_systems.md` (fields, opt-in and
   consent, link format, 404 when off, `noindex`)
 - Skills: `fls-dev:domain-glossary`, `fls-dev:multi-tenant`, `fls-dev:admin-interface`,

@@ -34,7 +34,8 @@ because some completions they may not want to advertise. This spec also gives
 - A hidden course does not appear on the profile page and does not count for the completed-course
   filter in `learner-public-profile-5-index`.
 - The profile edit page and the profile page come from `learner-public-profile-2-profile-and-page`.
-  This spec adds a section to each. Editing uses plain views in `accounts`, not the panel framework.
+  This spec adds a section to each. Editing is a panel in the account area from
+  `learner-profile-use-panels-framework-3-account-page`.
 - Everything the profile page shows follows the profile's on/off switch: with the profile off, the
   page is a 404 and no completed course is exposed.
 - The completed-course data is exposed in a form `learner-public-profile-5-index` can filter on.

@@ -50,8 +50,11 @@ queue.
 - The object key is derived from a uuid and never from a learner id or sequence number, and removing a
   certificate removes the stored file.
 - The profile page and the learner edit page are built by `learner-public-profile-2-profile-and-page`,
-  and this spec adds a certificates section to each. Learner editing uses plain views in `accounts`,
-  not the panel framework. The educator panel uses the panel framework.
+  and this spec adds a certificates section to each. Learner editing is a panel in the account area from
+  `learner-profile-use-panels-framework-3-account-page`, using the editable list panel from
+  `learner-profile-use-panels-framework-2-editable-list-panel` and file upload from
+  `learner-profile-use-panels-framework-1-file-upload-actions`. The educator panel uses the panel
+  framework too.
 - This spec runs beside `learner-public-profile-3-completed-courses`; both add sections to the public
   profile page and do not depend on each other.
 
