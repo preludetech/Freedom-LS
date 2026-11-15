@@ -196,4 +196,17 @@ def test_report_tables_keep_a_readable_name_and_a_reachable_download_on_a_phone(
     box = download.bounding_box()
     assert box is not None
     assert box["x"] + box["width"] <= 375
+    by_cell = (
+        page.get_by_role("table", name="Generated reports").locator("tbody td").nth(1)
+    )
+    by_box = by_cell.bounding_box()
+    assert by_box is not None
+    assert by_box["height"] < 80
+    generated_box = (
+        page.get_by_role("table", name="Generated reports")
+        .locator("tbody td")
+        .first.bounding_box()
+    )
+    assert generated_box is not None
+    assert generated_box["height"] < 80
     assert_no_horizontal_overflow(page)
