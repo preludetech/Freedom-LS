@@ -46,6 +46,7 @@ from freedom_ls.course_applications.models import AnonymousApplicant, CourseAppl
 from freedom_ls.form_engine.factories import FormProgressFactory
 from freedom_ls.form_engine.models import FormProgress
 from freedom_ls.referral_tracking.config import config as referral_config
+from freedom_ls.referral_tracking.conversions import record_conversion
 from freedom_ls.referral_tracking.models import (
     AttributionTouch,
     Conversion,
@@ -1049,3 +1050,23 @@ def test_a_failed_conversion_write_leaves_the_claim_committed(
 
     application.refresh_from_db()
     assert (outcome is not None, application.user) == (True, account_with_user)
+
+
+def test_a_claim_replacing_the_accounts_draft_leaves_one_conversion_for_the_course(
+    account_with_user,
+):
+    application = _application_made_at_applied_time("taken@example.com")
+    held = _held_draft(account_with_user, application.course)
+    record_conversion(
+        user=account_with_user,
+        kind=ConversionKind.COURSE_APPLICATION,
+        target=held,
+        occurred_at=held.created_at,
+        target_label=held.course.title,
+    )
+
+    _claim(_request_after_landing_on("A"), application)
+
+    assert list(_application_conversions().values_list("object_id", flat=True)) == [
+        str(application.pk)
+    ]

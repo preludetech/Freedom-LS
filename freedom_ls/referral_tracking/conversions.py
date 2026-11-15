@@ -121,6 +121,19 @@ def flush_cookie_touches(
     return flushed
 
 
+def discard_conversions_for(target: Model) -> None:
+    """Delete the conversions recorded for `target`.
+
+    For a target replaced by another that records its own conversion, so the
+    one event is not counted twice. A target that is merely deleted keeps its
+    conversions: their frozen copies still read correctly.
+    """
+    Conversion._base_manager.filter(
+        content_type=ContentType.objects.get_for_model(target),
+        object_id=str(target.pk),
+    ).delete()
+
+
 def record_conversion(
     *,
     user: SiteAwareModelBase,

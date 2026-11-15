@@ -24,6 +24,7 @@ from freedom_ls.course_applications.models import (
     claim_link_max_age,
 )
 from freedom_ls.referral_tracking.conversions import (
+    discard_conversions_for,
     flush_cookie_touches,
     record_conversion,
 )
@@ -383,8 +384,12 @@ def _discard_draft(draft: CourseApplication) -> None:
     is deleted here rather than by the application's post-delete receiver,
     which leaves a sitting with a user for that user to reach; this one is
     about to have nothing reaching it.
+
+    Its conversion goes too: the application that replaces it records its
+    own, and the account applied for the course once.
     """
     sitting = draft.form_progress
+    discard_conversions_for(draft)
     draft.delete()
     if sitting is not None:
         sitting.delete()
