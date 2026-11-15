@@ -5,7 +5,8 @@ in flight and not stalled, so a response for a ready, failed or stalled
 report carries no hx-trigger and polling stops. Rows: an in-flight report
 ("Generating…", or "Check again" once stalled), a failure newer than the
 newest ready report (its reason), then the ready reports, each with a
-Download button. A cohort over the learner limit gets the reason as the
+Download button. Below sm the By column is hidden and the requester sits
+under the date, so the table fits a phone without a sideways scroll. A cohort over the learner limit gets the reason as the
 first line, which the header's disabled Generate button is described by, and
 a failed row for the same reason is not repeated as an error. A report
 generated before the cohort grew is still offered.
@@ -25,14 +26,15 @@ generated before the cohort grew is still offered.
             <c-slot name="head">
                 <tr>
                     <th scope="col">Generated</th>
-                    <th scope="col">By</th>
+                    <th scope="col" class="max-sm:hidden">By</th>
                     <th scope="col"><span class="sr-only">Download</span></th>
                 </tr>
             </c-slot>
                 {% for row in rows %}
                     <tr>
-                        <td class="whitespace-nowrap">{% if row.kind == "ready" %}<c-datetime :value="row.report.finished_at" />{% else %}<c-datetime :value="row.report.requested_at" />{% endif %}</td>
-                        <td class="max-w-24 truncate sm:max-w-none" title="{{ row.report.requested_by.display_name|default:"the system" }}">{{ row.report.requested_by.display_name|default:"the system" }}</td>
+                        <td class="whitespace-nowrap">{% if row.kind == "ready" %}<c-datetime :value="row.report.finished_at" />{% else %}<c-datetime :value="row.report.requested_at" />{% endif %}
+                            <span data-report-by class="block max-w-32 truncate text-muted sm:hidden">{{ row.report.requested_by.display_name|default:"the system" }}</span></td>
+                        <td class="max-sm:hidden">{{ row.report.requested_by.display_name|default:"the system" }}</td>
                         <td class="text-right whitespace-nowrap">
                             {% if row.kind == "ready" %}
                                 <c-button variant="secondary" size="small" icon_left="download" href="{{ row.pdf_url }}" hx-boost="false" aria_label="Download the report generated {{ row.report.finished_at|display_datetime }}">Download</c-button>

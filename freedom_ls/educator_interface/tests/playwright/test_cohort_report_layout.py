@@ -195,18 +195,23 @@ def test_report_tables_keep_a_readable_name_and_a_reachable_download_on_a_phone(
     expect(download).to_be_visible()
     box = download.bounding_box()
     assert box is not None
-    assert box["x"] + box["width"] <= 375
-    by_cell = (
-        page.get_by_role("table", name="Generated reports").locator("tbody td").nth(1)
+    downloads = page.get_by_role("table", name="Generated reports")
+    # The button is inside the table's own scroll region, not behind it.
+    fits = downloads.evaluate(
+        "table => table.scrollWidth <= table.parentElement.clientWidth"
     )
-    by_box = by_cell.bounding_box()
+    assert fits
+    region_box = downloads.locator("xpath=..").bounding_box()
+    assert region_box is not None
+    assert box["x"] + box["width"] <= region_box["x"] + region_box["width"]
+    first_cell = downloads.locator("tbody td").first
+    # On a phone the requester sits under the date, in one readable line.
+    by_line = first_cell.locator("[data-report-by]")
+    expect(by_line).to_be_visible()
+    by_box = by_line.bounding_box()
     assert by_box is not None
-    assert by_box["height"] < 80
-    generated_box = (
-        page.get_by_role("table", name="Generated reports")
-        .locator("tbody td")
-        .first.bounding_box()
-    )
+    assert by_box["height"] < 32
+    generated_box = first_cell.bounding_box()
     assert generated_box is not None
-    assert generated_box["height"] < 80
+    assert generated_box["height"] < 100
     assert_no_horizontal_overflow(page)

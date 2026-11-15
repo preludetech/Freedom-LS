@@ -404,11 +404,15 @@ class TestReportTab:
 
         (table,) = region.cssselect("table")
         assert table.cssselect("caption")[0].text_content() == "Generated reports"
+        # The first cell also carries the requester, shown under the date on a phone.
         dates = [
-            row.cssselect("td")[0].text_content().strip()
+            row.cssselect("td")[0].text_content().strip().splitlines()[0].strip()
             for row in table.cssselect("tbody tr")
         ]
         assert dates == [f"{day} Mar 2026, 09:00" for day in (7, 6, 5, 4, 3)]
+        assert all(
+            row.cssselect("td [data-report-by]") for row in table.cssselect("tbody tr")
+        )
         hrefs = [a.get("href") for a in table.cssselect("tbody a")]
         assert f"/{reports[-1].pk}/" in hrefs[0]
 
