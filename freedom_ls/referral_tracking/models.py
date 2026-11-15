@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -42,6 +40,21 @@ ATTRIBUTION_KEY_FIELDS = (
     "utm_term",
     "referral_code",
 )
+
+
+def _refuse_update(instance: models.Model) -> None:
+    """Raise when `instance` is already saved: append-only rows are written once.
+
+    `SiteAwareModel` uses a UUID PK with `default=uuid.uuid4`, so `pk` is set
+    as soon as the instance is constructed, before the row exists; only
+    `_state.adding` tells a first insert from an update. This guards `save()`
+    alone. `QuerySet.update()` and `bulk_update()` bypass it, which is why
+    the admin for every append-only model is fully read-only as well.
+    """
+    if not instance._state.adding:
+        raise ValueError(
+            f"{type(instance).__name__} records are append-only and cannot be updated"
+        )
 
 
 class SignupAttribution(SiteAwareModel):
@@ -90,18 +103,8 @@ class SignupAttribution(SiteAwareModel):
         ]
         ordering = ["-signed_up_at"]
 
-    def save(self, *args: Any, **kwargs: Any) -> None:
-        # `SiteAwareModel` uses a UUID PK with `default=uuid.uuid4`, so
-        # `self.pk` is set as soon as the instance is constructed — before
-        # the row exists in the DB. We therefore need `_state.adding` to
-        # distinguish "first-time insert" from "update an existing row".
-        # Note: this guard only covers ``.save()``. ``QuerySet.update()`` and
-        # ``bulk_update()`` bypass it silently — the admin is registered as
-        # fully read-only as the second layer of defence.
-        if self.pk is not None and self._state.adding is False:
-            raise ValueError(
-                "SignupAttribution records are append-only and cannot be updated"
-            )
+    def save(self, *args: object, **kwargs: object) -> None:
+        _refuse_update(self)
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
@@ -211,18 +214,8 @@ class AttributionTouch(SiteAwareModel):
         ordering = ["-occurred_at", "-recorded_at"]
         verbose_name_plural = "attribution touches"
 
-    def save(self, *args: Any, **kwargs: Any) -> None:
-        # `SiteAwareModel` uses a UUID PK with `default=uuid.uuid4`, so
-        # `self.pk` is set as soon as the instance is constructed — before
-        # the row exists in the DB. We therefore need `_state.adding` to
-        # distinguish "first-time insert" from "update an existing row".
-        # Note: this guard only covers ``.save()``. ``QuerySet.update()`` and
-        # ``bulk_update()`` bypass it silently — the admin is registered as
-        # fully read-only as the second layer of defence.
-        if self.pk is not None and self._state.adding is False:
-            raise ValueError(
-                "AttributionTouch records are append-only and cannot be updated"
-            )
+    def save(self, *args: object, **kwargs: object) -> None:
+        _refuse_update(self)
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
@@ -300,16 +293,8 @@ class Conversion(SiteAwareModel):
         ]
         ordering = ["-occurred_at"]
 
-    def save(self, *args: Any, **kwargs: Any) -> None:
-        # `SiteAwareModel` uses a UUID PK with `default=uuid.uuid4`, so
-        # `self.pk` is set as soon as the instance is constructed — before
-        # the row exists in the DB. We therefore need `_state.adding` to
-        # distinguish "first-time insert" from "update an existing row".
-        # Note: this guard only covers ``.save()``. ``QuerySet.update()`` and
-        # ``bulk_update()`` bypass it silently — the admin is registered as
-        # fully read-only as the second layer of defence.
-        if self.pk is not None and self._state.adding is False:
-            raise ValueError("Conversion records are append-only and cannot be updated")
+    def save(self, *args: object, **kwargs: object) -> None:
+        _refuse_update(self)
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
@@ -364,7 +349,7 @@ class ReferralCode(SiteAwareModel):
         ]
         ordering = ["-created_at"]
 
-    def full_clean(self, *args: Any, **kwargs: Any) -> None:
+    def full_clean(self, *args: object, **kwargs: object) -> None:
         self._set_site_from_request()
         if not self.code and self.site_id:
             from freedom_ls.referral_tracking.codes import generate_code

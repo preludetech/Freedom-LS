@@ -51,8 +51,25 @@ def _readonly_field_names(model: type[Model]) -> list[str]:
     return [f.name for f in model._meta.fields if f.name not in ("id", "site")]
 
 
+class ReadOnlyAdminMixin:
+    """No add, change or delete: the rows are written by the app, never by hand."""
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_change_permission(
+        self, request: HttpRequest, obj: Model | None = None
+    ) -> bool:
+        return False
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: Model | None = None
+    ) -> bool:
+        return False
+
+
 @admin.register(SignupAttribution)
-class SignupAttributionAdmin(SiteAwareExportModelAdmin):
+class SignupAttributionAdmin(ReadOnlyAdminMixin, SiteAwareExportModelAdmin):
     date_hierarchy = "signed_up_at"
     list_display = [
         "user",
@@ -70,25 +87,12 @@ class SignupAttributionAdmin(SiteAwareExportModelAdmin):
     readonly_fields = _readonly_field_names(SignupAttribution)
     resource_classes = [SignupAttributionResource]
 
-    def has_add_permission(self, request: HttpRequest) -> bool:
-        return False
-
-    def has_change_permission(
-        self, request: HttpRequest, obj: SignupAttribution | None = None
-    ) -> bool:
-        return False
-
-    def has_delete_permission(
-        self, request: HttpRequest, obj: SignupAttribution | None = None
-    ) -> bool:
-        return False
-
 
 USER_ERASURE_CASCADE_MODELS.add(SignupAttribution)
 
 
 @admin.register(AttributionTouch)
-class AttributionTouchAdmin(SiteAwareExportModelAdmin):
+class AttributionTouchAdmin(ReadOnlyAdminMixin, SiteAwareExportModelAdmin):
     date_hierarchy = "occurred_at"
     list_display = [
         "user",
@@ -104,19 +108,6 @@ class AttributionTouchAdmin(SiteAwareExportModelAdmin):
     search_fields = ["user__email"]
     readonly_fields = _readonly_field_names(AttributionTouch)
     resource_classes = [AttributionTouchResource]
-
-    def has_add_permission(self, request: HttpRequest) -> bool:
-        return False
-
-    def has_change_permission(
-        self, request: HttpRequest, obj: AttributionTouch | None = None
-    ) -> bool:
-        return False
-
-    def has_delete_permission(
-        self, request: HttpRequest, obj: AttributionTouch | None = None
-    ) -> bool:
-        return False
 
 
 class CodeInPlayFilter(TextFilter):
@@ -137,7 +128,7 @@ class CodeInPlayFilter(TextFilter):
 
 
 @admin.register(Conversion)
-class ConversionAdmin(SiteAwareExportModelAdmin):
+class ConversionAdmin(ReadOnlyAdminMixin, SiteAwareExportModelAdmin):
     date_hierarchy = "occurred_at"
     list_display = [
         "user",
@@ -161,26 +152,13 @@ class ConversionAdmin(SiteAwareExportModelAdmin):
     ]
     resource_classes = [ConversionResource]
 
-    def has_add_permission(self, request: HttpRequest) -> bool:
-        return False
-
-    def has_change_permission(
-        self, request: HttpRequest, obj: Conversion | None = None
-    ) -> bool:
-        return False
-
-    def has_delete_permission(
-        self, request: HttpRequest, obj: Conversion | None = None
-    ) -> bool:
-        return False
-
 
 USER_ERASURE_CASCADE_MODELS.add(AttributionTouch)
 USER_ERASURE_CASCADE_MODELS.add(Conversion)
 
 
 @admin.register(FirstTouchCount)
-class FirstTouchCountAdmin(SiteAwareExportModelAdmin):
+class FirstTouchCountAdmin(ReadOnlyAdminMixin, SiteAwareExportModelAdmin):
     date_hierarchy = "day"
     list_display = [
         "day",
@@ -198,19 +176,6 @@ class FirstTouchCountAdmin(SiteAwareExportModelAdmin):
     search_fields = ["utm_campaign", "advert_code", "referral_code"]
     readonly_fields = _readonly_field_names(FirstTouchCount)
     resource_classes = [FirstTouchCountResource]
-
-    def has_add_permission(self, request: HttpRequest) -> bool:
-        return False
-
-    def has_change_permission(
-        self, request: HttpRequest, obj: FirstTouchCount | None = None
-    ) -> bool:
-        return False
-
-    def has_delete_permission(
-        self, request: HttpRequest, obj: FirstTouchCount | None = None
-    ) -> bool:
-        return False
 
 
 @admin.register(ReferralCode)
@@ -325,7 +290,7 @@ class ReferralCodeAdmin(SiteAwareExportModelAdmin):
 
 
 @admin.register(ReferralCodeHit)
-class ReferralCodeHitAdmin(SiteAwareExportModelAdmin):
+class ReferralCodeHitAdmin(ReadOnlyAdminMixin, SiteAwareExportModelAdmin):
     list_display = [
         "hit_at",
         "referral_code",
@@ -344,16 +309,3 @@ class ReferralCodeHitAdmin(SiteAwareExportModelAdmin):
     @admin.display(description="Label")
     def referral_code_label(self, obj: ReferralCodeHit) -> str:
         return obj.referral_code.label
-
-    def has_add_permission(self, request: HttpRequest) -> bool:
-        return False
-
-    def has_change_permission(
-        self, request: HttpRequest, obj: ReferralCodeHit | None = None
-    ) -> bool:
-        return False
-
-    def has_delete_permission(
-        self, request: HttpRequest, obj: ReferralCodeHit | None = None
-    ) -> bool:
-        return False
