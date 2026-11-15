@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import datetime
+from collections.abc import Callable
 
 import pytest
 import time_machine
 
+from django.contrib.auth import login
 from django.contrib.auth.models import AnonymousUser
+from django.contrib.sessions.backends.db import SessionStore
 from django.db import connection
 from django.http import HttpRequest, HttpResponse
 from django.http.response import HttpResponseBase
@@ -33,6 +36,7 @@ from freedom_ls.referral_tracking.models import (
     FirstTouchCount,
     ReferralCodeHit,
 )
+from freedom_ls.referral_tracking.views import follow_referral_code
 
 ROBOTS_TXT = "/robots.txt"
 COOKIE_NAME = config.REFERRAL_TRACKING_COOKIE_NAME
@@ -445,6 +449,19 @@ def test_a_signed_in_referral_redirect_writes_no_touch(signed_in_client) -> None
     assert not AttributionTouch._base_manager.exists()
 
 
+def _run_through_process_view(
+    request: HttpRequest, view: Callable[[HttpRequest], HttpResponseBase]
+) -> HttpResponseBase:
+    """Run the middleware as Django's handler does: `process_view`, then the view."""
+
+    def get_response(request: HttpRequest) -> HttpResponseBase:
+        middleware.process_view(request, view, (), {})
+        return view(request)
+
+    middleware = AttributionCaptureMiddleware(get_response)
+    return middleware(request)
+
+
 @pytest.mark.django_db
 def test_a_signed_in_tracked_get_whose_view_raises_still_writes_the_touch(
     mock_site_context, site
@@ -456,7 +473,7 @@ def test_a_signed_in_tracked_get_whose_view_raises_still_writes_the_touch(
         raise RuntimeError("boom")
 
     with pytest.raises(RuntimeError):
-        AttributionCaptureMiddleware(failing_view)(request)
+        _run_through_process_view(request, failing_view)
 
     assert AttributionTouch._base_manager.count() == 1
 
@@ -469,7 +486,7 @@ def test_a_signed_in_tracked_get_costs_the_live_touch_queries(
 
     # The latest-touch read, then the savepoint, the insert and the release.
     with django_assert_num_queries(4):
-        AttributionCaptureMiddleware(lambda request: HttpResponse())(request)
+        _run_through_process_view(request, lambda request: HttpResponse())
 
 
 def _clearing_view(request: HttpRequest) -> HttpResponse:
@@ -501,3 +518,77 @@ def test_a_request_that_does_not_request_a_clear_gets_no_deleting_cookie() -> No
     response = _run_middleware(rf.post("/"), lambda request: HttpResponse())
 
     assert COOKIE_NAME not in response.cookies
+
+
+def _logging_in_view(user):
+    def view(request: HttpRequest) -> HttpResponse:
+        login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+        return HttpResponse()
+
+    return view
+
+
+def _anonymous_request(path: str) -> HttpRequest:
+    request = rf.get(path)
+    request.user = AnonymousUser()
+    request.session = SessionStore()
+    return request
+
+
+@pytest.mark.django_db
+def test_a_tracked_get_whose_view_logs_in_writes_the_landing_as_a_touch(
+    mock_site_context,
+) -> None:
+    user = UserFactory()
+
+    _run_through_process_view(_anonymous_request("/?ref=A"), _logging_in_view(user))
+
+    assert list(
+        AttributionTouch._base_manager.values_list("user_id", "referral_code")
+    ) == [(user.pk, "A")]
+
+
+@pytest.mark.django_db
+def test_a_tracked_get_whose_view_logs_in_mints_no_cookie_and_tallies_nothing(
+    mock_site_context,
+) -> None:
+    response = _run_through_process_view(
+        _anonymous_request("/?ref=A"), _logging_in_view(UserFactory())
+    )
+
+    assert COOKIE_NAME not in response.cookies
+    assert not FirstTouchCount.objects.exists()
+
+
+@pytest.mark.django_db
+def test_a_tracked_get_whose_view_logs_in_with_a_cookie_records_both_and_deletes_it(
+    mock_site_context,
+) -> None:
+    holder = HttpResponse()
+    set_attribution_cookie(holder, first_touch_from_request(rf.get("/?ref=OLD")))
+    request = _anonymous_request("/?ref=A")
+    request.COOKIES[COOKIE_NAME] = holder.cookies[COOKIE_NAME].value
+
+    response = _run_through_process_view(request, _logging_in_view(UserFactory()))
+
+    assert response.cookies[COOKIE_NAME]["max-age"] == 0
+    assert sorted(
+        AttributionTouch._base_manager.values_list("referral_code", flat=True)
+    ) == ["A", "OLD"]
+
+
+@pytest.mark.django_db
+def test_the_referral_redirect_view_is_recognised_whatever_path_reached_it(
+    mock_site_context,
+) -> None:
+    request = rf.get("/somewhere-else/?utm_source=x")
+    request.user = UserFactory()
+
+    def get_response(request: HttpRequest) -> HttpResponseBase:
+        middleware.process_view(request, follow_referral_code, (), {})
+        return HttpResponse()
+
+    middleware = AttributionCaptureMiddleware(get_response)
+    middleware(request)
+
+    assert not AttributionTouch._base_manager.exists()

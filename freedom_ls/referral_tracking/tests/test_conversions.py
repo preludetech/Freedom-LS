@@ -18,6 +18,7 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.referral_tracking.capture import (
     COOKIE_SALT,
     COOKIE_TOUCHES_KEY,
+    first_touch_from_request,
     is_cookie_clear_requested,
 )
 from freedom_ls.referral_tracking.config import config
@@ -42,12 +43,9 @@ rf = RequestFactory()
 
 
 def _record(user, site, path: str = "/?ref=A", occurred_at=None):
-    return record_live_touch(
-        request=rf.get(path),
-        user=user,
-        site=site,
-        occurred_at=occurred_at or timezone.now(),
-    )
+    landing = first_touch_from_request(rf.get(path))
+    landing["first_seen"] = (occurred_at or timezone.now()).isoformat()
+    return record_live_touch(landing=landing, user=user, site=site)
 
 
 @pytest.mark.django_db
@@ -375,6 +373,29 @@ def test_a_flush_writes_on_the_users_site_without_an_ambient_request(
 @time_machine.travel(FLUSH_TIME, tick=False)
 def test_a_flush_sets_the_clear_flag(mock_site_context) -> None:
     request = _three_landings_request()
+
+    _flush(request, UserFactory())
+
+    assert is_cookie_clear_requested(request)
+
+
+@pytest.mark.django_db
+def test_a_flush_without_a_cookie_does_not_set_the_clear_flag(
+    mock_site_context,
+) -> None:
+    request = rf.get("/")
+
+    _flush(request, UserFactory())
+
+    assert not is_cookie_clear_requested(request)
+
+
+@pytest.mark.django_db
+def test_a_flush_of_an_unreadable_cookie_still_sets_the_clear_flag(
+    mock_site_context,
+) -> None:
+    request = rf.get("/")
+    request.COOKIES[config.REFERRAL_TRACKING_COOKIE_NAME] = "forged"
 
     _flush(request, UserFactory())
 

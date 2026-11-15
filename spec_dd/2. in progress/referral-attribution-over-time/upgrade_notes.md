@@ -40,4 +40,6 @@ later landings go under a separate key, `tl`, which `read_attribution_cookie` do
   `freedom_ls_referral_tracking.W001`, fires at `manage.py check` when the window is shorter than
   `REFERRAL_TRACKING_COOKIE_MAX_AGE_DAYS`.
 - Optional: touches are kept until an operator prunes them. To limit how long they are kept, schedule
-  `manage.py prune_attribution_touches --older-than-days <N>`. Conversions are never pruned.
+  `manage.py prune_attribution_touches --older-than-days <N>`, with `<N>` at least
+  `REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS`; the command refuses a shorter age. Conversions are never
+  pruned.

@@ -9,6 +9,7 @@ import pytest
 
 from django.contrib.sites.models import Site
 from django.core.management import call_command
+from django.test import override_settings
 from django.utils import timezone
 
 from freedom_ls.referral_tracking.factories import (
@@ -19,7 +20,7 @@ from freedom_ls.referral_tracking.models import AttributionTouch
 
 pytestmark = pytest.mark.django_db
 
-OLD_ENOUGH = timedelta(days=45)
+OLD_ENOUGH = timedelta(days=120)
 NOT_OLD_ENOUGH = timedelta(days=1)
 
 
@@ -40,7 +41,7 @@ def test_old_unreferenced_touches_are_deleted_and_recent_ones_kept(
     _touch(site, OLD_ENOUGH)
     recent = _touch(site, NOT_OLD_ENOUGH)
 
-    call_command("prune_attribution_touches", "--older-than-days", "30")
+    call_command("prune_attribution_touches", "--older-than-days", "90")
 
     assert _remaining() == {recent.pk}
 
@@ -54,7 +55,7 @@ def test_touches_a_conversion_references_are_kept(mock_site_context, site) -> No
         site=site, last_touch=as_last, user=AttributionTouchFactory(site=site).user
     )
 
-    call_command("prune_attribution_touches", "--older-than-days", "30")
+    call_command("prune_attribution_touches", "--older-than-days", "90")
 
     remaining = _remaining()
     assert as_first.pk in remaining
@@ -67,7 +68,7 @@ def test_touches_on_every_site_are_pruned(mock_site_context, site) -> None:
     _touch(site, OLD_ENOUGH)
     _touch(other_site, OLD_ENOUGH)
 
-    call_command("prune_attribution_touches", "--older-than-days", "30")
+    call_command("prune_attribution_touches", "--older-than-days", "90")
 
     assert not AttributionTouch._base_manager.exists()
 
@@ -87,9 +88,32 @@ def test_the_command_reports_how_many_it_deleted(
     for _ in range(3):
         _touch(site, OLD_ENOUGH)
 
-    call_command("prune_attribution_touches", "--older-than-days", "30")
+    call_command("prune_attribution_touches", "--older-than-days", "90")
 
     assert (
-        "Deleted 3 attribution touch(es) older than 30 day(s)."
+        "Deleted 3 attribution touch(es) older than 90 day(s)."
         in capsys.readouterr().out
     )
+
+
+@override_settings(REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS=60)
+def test_a_cutoff_inside_the_attribution_window_is_refused(
+    mock_site_context, site
+) -> None:
+    touch = _touch(site, OLD_ENOUGH)
+
+    with pytest.raises(click.exceptions.BadParameter, match="60"):
+        call_command("prune_attribution_touches", "--older-than-days", "59")
+
+    assert _remaining() == {touch.pk}
+
+
+@override_settings(REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS=60)
+def test_a_cutoff_equal_to_the_attribution_window_is_accepted(
+    mock_site_context, site
+) -> None:
+    _touch(site, OLD_ENOUGH)
+
+    call_command("prune_attribution_touches", "--older-than-days", "60")
+
+    assert _remaining() == set()

@@ -513,31 +513,31 @@ def test_a_re_signed_cookie_whose_first_touch_is_over_the_limit_reads_as_absent(
 
 
 def test_append_touch_skips_a_landing_with_every_key_blank() -> None:
-    request = rf.get("/", {"gclid": "abc"})
+    landing = first_touch_from_request(rf.get("/", {"gclid": "abc"}))
 
-    assert append_touch([], _first_touch(utm_source="x"), request) is None
+    assert append_touch([], _first_touch(utm_source="x"), landing) is None
 
 
 def test_append_touch_skips_a_repeat_of_the_first_touch_when_the_list_is_empty() -> (
     None
 ):
-    request = rf.get("/", {"utm_source": "x"})
+    landing = first_touch_from_request(rf.get("/", {"utm_source": "x"}))
 
-    assert append_touch([], _first_touch(utm_source="x"), request) is None
+    assert append_touch([], _first_touch(utm_source="x"), landing) is None
 
 
 def test_append_touch_skips_a_repeat_of_the_last_entry() -> None:
-    request = rf.get("/", {"utm_source": "b"})
+    landing = first_touch_from_request(rf.get("/", {"utm_source": "b"}))
     touches = [_touch(utm_source="a"), _touch(utm_source="b")]
 
-    assert append_touch(touches, _first_touch(utm_source="x"), request) is None
+    assert append_touch(touches, _first_touch(utm_source="x"), landing) is None
 
 
 def test_append_touch_appends_a_landing_that_differs_from_the_last_entry() -> None:
-    request = rf.get("/", {"utm_source": "b"})
+    landing = first_touch_from_request(rf.get("/", {"utm_source": "b"}))
 
     result = append_touch(
-        [_touch(utm_source="a")], _first_touch(utm_source="x"), request
+        [_touch(utm_source="a")], _first_touch(utm_source="x"), landing
     )
 
     assert result is not None
@@ -545,30 +545,30 @@ def test_append_touch_appends_a_landing_that_differs_from_the_last_entry() -> No
 
 
 def test_append_touch_appends_a_return_to_an_earlier_key() -> None:
-    request = rf.get("/", {"utm_source": "a"})
+    landing = first_touch_from_request(rf.get("/", {"utm_source": "a"}))
     touches = [_touch(utm_source="a"), _touch(utm_source="b")]
 
-    result = append_touch(touches, _first_touch(utm_source="x"), request)
+    result = append_touch(touches, _first_touch(utm_source="x"), landing)
 
     assert result is not None
     assert [touch.utm_source for touch in result] == ["a", "b", "a"]
 
 
 def test_append_touch_returns_a_new_list() -> None:
-    request = rf.get("/", {"utm_source": "b"})
+    landing = first_touch_from_request(rf.get("/", {"utm_source": "b"}))
     touches = [_touch(utm_source="a")]
 
-    append_touch(touches, _first_touch(utm_source="x"), request)
+    append_touch(touches, _first_touch(utm_source="x"), landing)
 
     assert len(touches) == 1
 
 
 @override_settings(REFERRAL_TRACKING_MAX_COOKIE_TOUCHES=2)
 def test_append_touch_evicts_the_oldest_entry_at_the_cap() -> None:
-    request = rf.get("/", {"utm_source": "c"})
+    landing = first_touch_from_request(rf.get("/", {"utm_source": "c"}))
     touches = [_touch(utm_source="a"), _touch(utm_source="b")]
 
-    result = append_touch(touches, _first_touch(utm_source="x"), request)
+    result = append_touch(touches, _first_touch(utm_source="x"), landing)
 
     assert result is not None
     assert [touch.utm_source for touch in result] == ["b", "c"]

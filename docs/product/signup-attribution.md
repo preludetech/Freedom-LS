@@ -44,7 +44,7 @@ FLS is installed into someone else's project, and that operator is the data cont
 
 ## Retention
 
-There is no scheduled deletion. A signup record is kept until its account is deleted, and goes with it at that point, as do the account's touches and conversions. Touches can be trimmed sooner: an operator runs `prune_attribution_touches --older-than-days <N>` on whatever schedule their retention policy needs, for example monthly with 365 days. An age shorter than the attribution window leaves later conversions with fewer touches to credit. Touches a conversion names are kept, and conversions are never pruned. See [security and data handling](./security-and-data-handling.md#retention-deletion-and-data-subject-rights-not-yet-built) for the wider retention and erasure position, which this feature shares.
+There is no scheduled deletion. A signup record is kept until its account is deleted, and goes with it at that point, as do the account's touches and conversions. Touches can be trimmed sooner: an operator runs `prune_attribution_touches --older-than-days <N>` on whatever schedule their retention policy needs, for example monthly with 365 days. The command refuses an age shorter than the attribution window (90 days by default), because a younger touch can still be credited by a conversion that has not happened yet. Touches a conversion names are kept, and conversions are never pruned. See [security and data handling](./security-and-data-handling.md#retention-deletion-and-data-subject-rights-not-yet-built) for the wider retention and erasure position, which this feature shares.
 
 ## Configuration
 

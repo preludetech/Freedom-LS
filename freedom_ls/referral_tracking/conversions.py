@@ -16,7 +16,6 @@ from django.http import HttpRequest
 
 from freedom_ls.referral_tracking.best_effort import best_effort_write
 from freedom_ls.referral_tracking.capture import (
-    first_touch_from_request,
     flushable_cookie_touches,
     request_cookie_clear,
 )
@@ -38,12 +37,14 @@ from freedom_ls.site_aware_models.models import SiteAwareModelBase
 
 def record_live_touch(
     *,
-    request: HttpRequest,
+    landing: dict[str, str],
     user: AbstractBaseUser,
     site: Site,
-    occurred_at: datetime,
 ) -> AttributionTouch | None:
     """Write the touch for a signed-in user's tracked landing.
+
+    `landing` is what `first_touch_from_request` read off the request before
+    the view ran; its `first_seen` is when the landing happened.
 
     Writes nothing when the landing carries no attribution-key value (a click id
     alone is not an attribution key) or when the user's latest touch on this
@@ -55,7 +56,6 @@ def record_live_touch(
     `_base_manager` so the row lands on that site whatever the ambient site
     context is.
     """
-    landing = first_touch_from_request(request)
     if not any(attribution_key_values(landing)):
         return None
     key_hash = attribution_key_hash_of(landing)
@@ -73,7 +73,7 @@ def record_live_touch(
             site=site,
             user_id=user.pk,
             recorded_via=TouchSource.LIVE,
-            occurred_at=occurred_at,
+            occurred_at=datetime.fromisoformat(landing["first_seen"]),
             key_hash=key_hash,
             landing_path=landing["landing_path"],
             **{name: landing[name] for name in ATTRIBUTION_KEY_FIELDS},
@@ -117,7 +117,9 @@ def flush_cookie_touches(
             )
             written.append(touch)
         flushed = written
-    request_cookie_clear(request)
+    # Presence, not validity: a forged or expired cookie is cleared too.
+    if config.REFERRAL_TRACKING_COOKIE_NAME in request.COOKIES:
+        request_cookie_clear(request)
     return flushed
 
 

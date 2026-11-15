@@ -5,6 +5,10 @@ schedule suits their retention policy. A touch that a conversion records as its
 first or last touch is kept however old it is: the conversion's foreign keys are
 `RESTRICT`, which is the guarantee, and the filter here only keeps the command
 from tripping over it.
+
+The cutoff can be no shorter than `REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS`:
+a touch younger than that can still be in play for a conversion that has not
+happened yet, and pruning it would record that conversion with no codes.
 """
 
 from __future__ import annotations
@@ -15,6 +19,7 @@ import djclick as click
 
 from django.utils import timezone
 
+from freedom_ls.referral_tracking.config import config
 from freedom_ls.referral_tracking.models import AttributionTouch
 
 PRUNE_BATCH_SIZE = 1000
@@ -24,6 +29,14 @@ PRUNE_BATCH_SIZE = 1000
 @click.option("--older-than-days", type=click.IntRange(min=1), required=True)
 def command(older_than_days: int) -> None:
     """Delete unreferenced attribution touches older than the cutoff, on every site."""
+    window_days = config.REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS
+    if older_than_days < window_days:
+        raise click.BadParameter(
+            f"must be at least REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS "
+            f"({window_days}); a younger touch can still count toward a "
+            "conversion.",
+            param_hint="--older-than-days",
+        )
     cutoff = timezone.now() - timedelta(days=older_than_days)
     deleted = 0
     while True:

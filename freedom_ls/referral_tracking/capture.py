@@ -393,16 +393,16 @@ def flushable_cookie_touches(request: HttpRequest) -> list[CookieTouch]:
 def append_touch(
     touches: Sequence[CookieTouch],
     first_touch: dict[str, str],
-    request: HttpRequest,
+    landing: dict[str, str],
 ) -> list[CookieTouch] | None:
-    """The touch list with this landing added, or None when it adds nothing.
+    """The touch list with `landing` added, or None when it adds nothing.
 
-    A landing adds nothing when every attribution field is blank (a click id
-    alone) or when it repeats the latest key. `first_touch` is the cookie's
-    frozen first touch, which stands in as the latest key while the list is
-    empty. The list is bounded: the oldest entry is evicted first.
+    `landing` is what `first_touch_from_request` read off this request. It
+    adds nothing when every attribution field is blank (a click id alone) or
+    when it repeats the latest key. `first_touch` is the cookie's frozen first
+    touch, which stands in as the latest key while the list is empty. The
+    list is bounded: the oldest entry is evicted first.
     """
-    landing = first_touch_from_request(request)
     landing_values = attribution_key_values(landing)
     if not any(landing_values):
         return None
