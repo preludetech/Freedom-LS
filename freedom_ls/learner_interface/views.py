@@ -1144,27 +1144,23 @@ def _course_access_redirect(
 
     The same gate for every route that serves or accepts a course item: the access
     backend decides whether this learner may see content at all. A learner whose access
-    ended is turned away too, except from the routes ``_ended_route_redirect`` leaves open,
-    and so is a learner whose course is paused, except from those
-    ``_paused_route_redirect`` leaves open.
+    ended is turned away too, and so is a learner whose course is paused, except from the
+    routes ``_read_only_route_redirect`` leaves open to each.
     """
     if decision.can_access_content:
         return None
-    if decision.paused_at is not None:
-        return _paused_route_redirect(
-            course,
-            route=route,
-            collection_item=collection_item,
-            course_progress=course_progress,
-        )
-    if decision.access_ended_at is None:
+    paused = decision.paused_at is not None
+    if not paused and decision.access_ended_at is None:
         return redirect("learner_interface:course_detail", course_slug=course.slug)
-    return _ended_route_redirect(
-        decision,
+    # A pause freezes work in flight, so nothing that writes stays open; a learner whose
+    # access ended may still finalise an open attempt.
+    return _read_only_route_redirect(
         course,
         route=route,
         collection_item=collection_item,
         course_progress=course_progress,
+        submit_open=not paused,
+        finished_items_open=paused or _shows_ended_outline(decision),
     )
 
 
@@ -1198,23 +1194,25 @@ def _is_closed_for_learner(
     )
 
 
-def _ended_route_redirect(
-    decision: CourseAccessDecision,
+def _read_only_route_redirect(
     course: Course,
     *,
     route: PlayerRoute,
     collection_item: ContentCollectionItem | None,
     course_progress: CourseProgress | None,
+    submit_open: bool,
+    finished_items_open: bool,
 ) -> HttpResponseRedirect | None:
-    """What a learner whose access ended may still reach, else a redirect to the detail page.
+    """What a learner without content access may still reach, else a redirect to the
+    detail page.
 
-    A learner is always entitled to the score they earned, so finalising an open attempt
-    and a completed attempt's results stay open (a completed attempt is not the same as a
-    completed item: a failed sitting still has a score to show). When the policy keeps the
-    outline and results, a finished item opens too; a form's start and fill-in routes stay
-    shut, so a complete form is not re-sat.
+    The results of a completed attempt always stay open: a learner is entitled to the
+    score they earned, and a completed attempt is not the same as a completed item (a
+    failed sitting still has a score to show). ``submit_open`` keeps submit-and-exit open
+    so an open attempt can be finalised; ``finished_items_open`` keeps a finished item
+    readable. A form's start and fill-in routes stay shut, so nothing is re-sat.
     """
-    if route is PlayerRoute.SUBMIT_AND_EXIT:
+    if submit_open and route is PlayerRoute.SUBMIT_AND_EXIT:
         return None
     if (
         route is PlayerRoute.FORM_RESULTS
@@ -1225,36 +1223,7 @@ def _ended_route_redirect(
         return None
     if (
         route is PlayerRoute.ITEM
-        and _shows_ended_outline(decision)
-        and collection_item is not None
-        and _is_complete_for_learner(course_progress, collection_item)
-    ):
-        return None
-    return redirect("learner_interface:course_detail", course_slug=course.slug)
-
-
-def _paused_route_redirect(
-    course: Course,
-    *,
-    route: PlayerRoute,
-    collection_item: ContentCollectionItem | None,
-    course_progress: CourseProgress | None,
-) -> HttpResponseRedirect | None:
-    """What a paused learner may still reach, else a redirect to the detail page.
-
-    A pause freezes work in flight, so nothing that writes stays open: no submit, no
-    finish, no unfinished item. A finished item and the results of a completed attempt
-    stay readable.
-    """
-    if (
-        route is PlayerRoute.FORM_RESULTS
-        and course_progress is not None
-        and collection_item is not None
-        and completed_attempts(course_progress, collection_item).exists()
-    ):
-        return None
-    if (
-        route is PlayerRoute.ITEM
+        and finished_items_open
         and collection_item is not None
         and _is_complete_for_learner(course_progress, collection_item)
     ):
@@ -1465,24 +1434,25 @@ def view_course_item(request, course_slug, index):
     if index < 1 or index > len(viewable_collection_items):
         raise Http404("No course item at this index.")
     current_collection_item = viewable_collection_items[index - 1]
+    paused = decision.paused_at is not None
+    # Only an ended or paused learner's gate reads the record; everyone else is
+    # decided by the decision alone, so nothing is fetched for them.
+    gated_record = (
+        course_progress_for(cast("User", request.user), course)
+        if decision.access_ended_at is not None or paused
+        else None
+    )
     no_access = _course_access_redirect(
         decision,
         course,
         route=PlayerRoute.ITEM,
         collection_item=current_collection_item,
-        # Only an ended learner's gate reads the record; everyone else is decided
-        # by the decision alone, so nothing is fetched for them.
-        course_progress=(
-            course_progress_for(cast("User", request.user), course)
-            if decision.access_ended_at is not None or decision.paused_at is not None
-            else None
-        ),
+        course_progress=gated_record,
     )
     if no_access is not None:
         return no_access
     current_item = current_collection_item.child
     viewable_items = [item.child for item in viewable_collection_items]
-    paused = decision.paused_at is not None
 
     # The record every write below lands in, minted from the registration if it
     # is missing. This is the self-healing path: a registration made before
@@ -1490,9 +1460,7 @@ def view_course_item(request, course_slug, index):
     # the course, which is why no backfill is needed. A paused learner's record
     # exists already and nothing is written to it.
     course_progress = (
-        course_progress_for(cast("User", request.user), course)
-        if paused
-        else _ensure_player_course_progress(request.user, course)
+        gated_record if paused else _ensure_player_course_progress(request.user, course)
     )
 
     # Sequential-unlock gate. Built here rather than inside _player_chrome_context
