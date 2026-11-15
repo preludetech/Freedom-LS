@@ -2521,7 +2521,10 @@ def test_the_disabled_move_states_its_reason_and_names_it_with_aria_describedby(
 
     document = lxml.html.fromstring(response.content.decode())
     (move,) = document.cssselect("form button[type='submit']")
-    (reason,) = document.cssselect("footer #move-disabled-reason")
+    (reason,) = document.cssselect(
+        "form > div[data-modal-scroll] #move-disabled-reason"
+    )
+    assert not document.cssselect("footer #move-disabled-reason")
     assert move.get("disabled") is not None
     assert move.get("aria-describedby") == "move-disabled-reason"
     assert reason.text_content().strip() == "Choose a cohort to move them to."
@@ -6675,7 +6678,8 @@ def test_bulk_confirm_with_every_learner_skipped_names_why_it_is_disabled(
     response = _bulk_post(staff_client, organisation, "deactivate", inactive)
 
     document = lxml.html.fromstring(response.content.decode())
-    [reason] = document.cssselect("#bulk-confirm-reason")
+    [reason] = document.cssselect("[data-modal-scroll] #bulk-confirm-reason")
+    assert not document.cssselect("footer #bulk-confirm-reason")
     assert (
         " ".join(reason.text_content().split())
         == "Nothing to change: all 2 selected learners will be skipped."

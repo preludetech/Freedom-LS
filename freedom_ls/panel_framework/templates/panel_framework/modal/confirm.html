@@ -4,7 +4,7 @@ confirm button. A template extends it and fills the blocks. Context: title,
 action_url, hidden_fields (name to value), confirm_label, confirm_variant,
 loading_text, reason_form (a ReasonForm, set by ReasonMixin), refusal (a
 sentence for a re-render after a refused submit) and confirm_disabled_reason
-(text that disables the confirm button and is shown beside the footer).
+(text that disables the confirm button and is shown at the end of the body).
 With JavaScript off the server renders the dialog open and passes page_url, the
 page behind it: the close control and Cancel then link back to it, and the form
 posts plainly, which is why it carries a method, an action and a CSRF token.
@@ -26,10 +26,10 @@ Blocks: title, hidden_fields, body, reason and confirm_button.
         {% if refusal %}<c-panel-notice tone="error" data-error-summary tabindex="-1">{{ refusal }}</c-panel-notice>{% endif %}
         {% block body %}{% endblock body %}
         {% block reason %}{% if reason_form %}{% include "panel_framework/partials/reason_field.html" %}{% endif %}{% endblock reason %}
+        {% if confirm_disabled_reason %}<p id="confirm-disabled-reason" class="text-muted">{{ confirm_disabled_reason }}</p>{% endif %}
     </c-modal-body>
 
     <c-modal-footer focus_cancel="true" cancel_href="{{ page_url }}">
-        {% if confirm_disabled_reason %}<p id="confirm-disabled-reason" class="text-muted">{{ confirm_disabled_reason }}</p>{% endif %}
         {% block confirm_button %}
             <c-button type="submit"
                       variant="{{ confirm_variant }}"

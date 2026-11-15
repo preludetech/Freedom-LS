@@ -1536,7 +1536,7 @@ def test_a_confirm_dialog_shows_a_refusal_as_an_error_notice(
 
 
 @pytest.mark.django_db
-def test_a_disabled_confirm_is_named_by_a_visible_reason_beside_the_footer(
+def test_a_disabled_confirm_is_named_by_a_visible_reason_in_the_body(
     mock_site_context: Site,
 ) -> None:
     document = _render_confirm(StubConfirmAction(), disabled="Pick one first.")
@@ -1546,7 +1546,8 @@ def test_a_disabled_confirm_is_named_by_a_visible_reason_beside_the_footer(
     reason = document.get_element_by_id(confirm.get("aria-describedby"))
     assert reason.text_content() == "Pick one first."
     assert "sr-only" not in (reason.get("class") or "")
-    assert document.cssselect("footer #confirm-disabled-reason")
+    assert document.cssselect("[data-modal-scroll] #confirm-disabled-reason")
+    assert not document.cssselect("footer #confirm-disabled-reason")
 
 
 @pytest.mark.django_db

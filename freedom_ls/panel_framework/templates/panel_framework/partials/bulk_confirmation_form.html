@@ -1,6 +1,3 @@
-{% if confirm_disabled_reason %}
-    <p id="bulk-confirm-reason" class="text-muted">{{ confirm_disabled_reason }}</p>
-{% endif %}
 {% querystring request.GET as qs %}
     <form method="post"
           action="{{ action_url }}{{ qs }}"

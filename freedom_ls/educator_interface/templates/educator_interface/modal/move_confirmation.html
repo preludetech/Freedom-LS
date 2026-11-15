@@ -38,6 +38,9 @@ empty_message (with form_title) replaces the form when there is no cohort to mov
                 <option value="{{ option.pk }}" {% if option.pk == destination.pk %}selected{% endif %}>{{ option }}</option>
             {% endfor %}
         </select>
+        {% if not destination %}
+            <p id="move-disabled-reason" class="text-muted">Choose a cohort to move them to.</p>
+        {% endif %}
         {% if destination %}
             {% if losing_courses %}
                 <p>They lose access to: {{ losing_courses }}.</p>
@@ -58,7 +61,6 @@ empty_message (with form_title) replaces the form when there is no cohort to mov
         {% if destination %}
             <c-button type="submit" variant="primary" loading="true" loading_text="Moving…">Move</c-button>
         {% else %}
-            <p id="move-disabled-reason" class="text-muted">Choose a cohort to move them to.</p>
             <c-button type="submit" variant="primary" disabled="true" aria_describedby="move-disabled-reason">Move</c-button>
         {% endif %}
     </c-modal-footer>
