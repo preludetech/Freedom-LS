@@ -58,9 +58,9 @@ from freedom_ls.deadlines.queries import (
     ContentDefaults,
     canonical_beneath,
     content_default_for,
-    open_pause,
 )
 from freedom_ls.deadlines.resolver import (
+    CourseDeadlines,
     DeadlineSource,
     DeadlineValue,
     LayerRows,
@@ -75,6 +75,7 @@ from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
 from freedom_ls.site_aware_models.admin_filters import InclusiveRangeDateTimeFilter
 from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
+from freedom_ls.site_aware_models.models import get_cached_site
 from freedom_ls.site_aware_models.time_zones import site_time_zone, site_zone_text
 
 DeadlineOverride = CohortDeadlineOverride | LearnerDeadlineOverride
@@ -399,6 +400,20 @@ def _paused_line(pause: CoursePause | None, tz: ZoneInfo) -> SafeString:
     return format_html("<p>{}</p>", text)
 
 
+_DEADLINES_ATTR = "_admin_course_deadlines"
+
+
+def _record_deadlines(record: CourseProgress) -> CourseDeadlines:
+    """The record's resolved deadlines, resolved once per instance: the change page renders
+    each read-only field several times and two of them read the deadlines."""
+    cached = record.__dict__.get(_DEADLINES_ATTR)
+    if isinstance(cached, CourseDeadlines):
+        return cached
+    deadlines = course_deadlines(record)
+    record.__dict__[_DEADLINES_ATTR] = deadlines
+    return deadlines
+
+
 @admin.display(description="Effective deadlines")
 def effective_deadlines(model_admin: ModelAdmin, record: CourseProgress) -> SafeString:
     """Every collection item with a deadline, its due instant in the site zone and its source,
@@ -406,7 +421,7 @@ def effective_deadlines(model_admin: ModelAdmin, record: CourseProgress) -> Safe
     Titles are author text, so every line goes through format_html."""
     if record._state.adding:
         return format_html("{}", "")
-    deadlines = course_deadlines(record)
+    deadlines = _record_deadlines(record)
     lines: list[tuple[str, str, str]] = []
     for item in record.course.viewable_collection_items():
         resolved = deadlines.items.get(item.pk)
@@ -453,7 +468,7 @@ def effective_deadline_policy(
         )
         for field in CONFIG_FIELDS
     ]
-    ends_at = access_end_instant(course_deadlines(record).time_limit, policy)
+    ends_at = access_end_instant(_record_deadlines(record).time_limit, policy)
     ends_line = (
         format_html("<li>Access ends: {}</li>", site_zone_text(ends_at))
         if ends_at is not None
@@ -775,10 +790,17 @@ def _get_actions_detail(
     actions: list[UnfoldAction] = _courseprogress_get_actions_detail(
         self, request, object_id
     )
-    record = self.get_object(request, unquote(object_id))
-    if record is None:
+    try:
+        record_id = UUID(unquote(object_id))
+    except ValueError:
         return actions
-    paused = open_pause(record, timezone.now()) is not None
+    # Read by id: the change view has loaded the record already, so it is not fetched again.
+    now = timezone.now()
+    tz = site_time_zone(cast("Site", get_cached_site(request)))
+    paused = any(
+        pause.is_open(now, tz)
+        for pause in CoursePause.objects.filter(course_progress_id=record_id)
+    )
     hidden = "resume_course_action" if not paused else "pause_course_action"
     return [a for a in actions if not a.action_name.endswith(hidden)]
 

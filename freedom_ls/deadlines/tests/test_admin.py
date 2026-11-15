@@ -1483,3 +1483,28 @@ def test_effective_policy_lists_the_pause_settings_with_their_deciding_layer(
     assert "learners_may_pause: Off (settings)" in body
     assert "max_pauses: 2 (course)" in body
     assert "max_pause_days: No limit (course)" in body
+
+
+@pytest.mark.django_db
+def test_the_progress_page_resolves_deadlines_once_per_record_instance(
+    staff_client, mock_site_context
+) -> None:
+    record, _ = _record_with_item()
+    CoursePauseFactory(course_progress=record)
+
+    with CaptureQueriesContext(connection) as captured:
+        _progress_page(staff_client, record)
+
+    # One pause read decides the pause or resume action. The read-only fields are rendered
+    # several times from two record instances, and each instance resolves the deadlines once.
+    assert _queries_on(captured, CoursePause._meta.db_table) == 3
+    assert _queries_on(captured, DeadlineExtension._meta.db_table) == 2
+
+
+@pytest.mark.django_db
+def test_a_progress_page_for_a_malformed_id_redirects_rather_than_failing(
+    staff_client, mock_site_context
+) -> None:
+    response = staff_client.get(reverse(PROGRESS_CHANGE_URL_NAME, args=["not-a-uuid"]))
+
+    assert response.status_code == 302
