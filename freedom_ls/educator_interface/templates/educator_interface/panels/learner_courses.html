@@ -3,13 +3,13 @@
 
 {% block panel_body %}
     {% if details %}
-        <ul class="list-none ml-0 flex flex-col gap-4">
+        <ul class="list-none ml-0 flex flex-col gap-8">
             {% for detail in details %}
                 <li>
-                    <c-panel-card>
+                    <section aria-labelledby="course-{{ forloop.counter }}-title">
                         <div class="flex flex-col gap-3">
                             <div class="flex flex-wrap items-baseline justify-between gap-x-4">
-                                <h3 class="font-medium">{{ detail.course_title }}</h3>
+                                <c-panel-heading id="course-{{ forloop.counter }}-title">{{ detail.course_title }}</c-panel-heading>
                                 <span class="text-sm text-muted">{% if detail.cohort_name %}via {{ detail.cohort_name }}{% else %}Individual{% endif %}</span>
                             </div>
                             {% include "educator_interface/partials/learner_badges.html" with completion_percentage=detail.completion_percentage flags=detail.flags %}
@@ -32,7 +32,7 @@
                             {% endif %}
                             {% for quiz in detail.quiz_results %}
                                 <div class="flex flex-col gap-1">
-                                    <h4 class="text-sm font-medium">{{ quiz.title }}</h4>
+                                    <c-panel-heading tag="h4">{{ quiz.title }}</c-panel-heading>
                                     <c-panel-table caption="{{ quiz.title }} attempts">
                                         <c-slot name="head">
                                             <tr>
@@ -61,7 +61,7 @@
                                 </div>
                             {% endfor %}
                         </div>
-                    </c-panel-card>
+                    </section>
                 </li>
             {% endfor %}
         </ul>

@@ -973,6 +973,23 @@ class TestCohortReportBody:
         }
         assert "Figures as of 15 Mar 2026, 10:30" in region.text_content()
 
+    def test_each_course_and_quiz_is_a_plain_section_not_a_card_inside_the_panel(
+        self, logged_in_client
+    ):
+        """Course summaries and quiz confusions were bordered cards inside the panel."""
+        cohort = CohortFactory()
+        client = logged_in_client(_org_admin(cohort.organisation))
+        _seed_report_cache(cohort, _confusion())
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        assert not region.cssselect(".panel-surface")
+        headings = [
+            h.text_content().strip() for h in region.cssselect("h4.panel-heading")
+        ]
+        assert "Astronomy" in headings
+        assert "Orbit Quiz" in headings
+
     def test_a_learner_name_in_a_summary_row_links_to_the_learner_page(
         self, logged_in_client
     ):

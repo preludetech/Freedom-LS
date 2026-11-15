@@ -44,8 +44,10 @@ with incorrect answers), refresh_url.
 
         <section aria-labelledby="report-summary-title" class="space-y-3">
             <c-panel-heading id="report-summary-title">Summary of learner progress</c-panel-heading>
+            <div class="space-y-8">
             {% for section in data.courses %}
-                <c-panel-card :title="section.title" heading_level="4">
+                <section aria-labelledby="report-course-{{ forloop.counter }}-title" class="space-y-3">
+                    <c-panel-heading tag="h4" id="report-course-{{ forloop.counter }}-title">{{ section.title }}</c-panel-heading>
                     {% if not section.is_active %}<p class="mb-2 text-sm text-muted">(inactive registration)</p>{% endif %}
                     {% if not section.learner_rows %}
                         <c-panel-empty-state message="This cohort has no learners." />
@@ -103,16 +105,19 @@ with incorrect answers), refresh_url.
                         {% endfor %}
                         <p class="mt-2 text-xs text-muted">Score is the latest attempt · ×n is the number of attempts · quiz columns follow course order.</p>
                     {% endif %}
-                </c-panel-card>
+                </section>
             {% empty %}
                 <c-panel-empty-state message="There are no course registrations to summarise." />
             {% endfor %}
+            </div>
         </section>
 
         <section aria-labelledby="report-confusions-title" class="space-y-3">
             <c-panel-heading id="report-confusions-title">Quiz confusions across the cohort</c-panel-heading>
+            <div class="space-y-8">
             {% for card in confusions %}
-                <c-panel-card :title="card.heading" heading_level="4">
+                <section aria-labelledby="report-confusion-{{ forloop.counter }}-title" class="space-y-3">
+                    <c-panel-heading tag="h4" id="report-confusion-{{ forloop.counter }}-title">{{ card.heading }}</c-panel-heading>
                     <c-panel-table caption="{{ card.heading }}">
                         <c-slot name="head">
                             <tr>
@@ -139,10 +144,11 @@ with incorrect answers), refresh_url.
                         {% endfor %}
                     </c-panel-table>
                     {% include "reports/partials/cap_disclosure.html" with shown=card.block.shown total=card.block.total noun="questions with at least one incorrect answer" %}
-                </c-panel-card>
+                </section>
             {% empty %}
                 <c-panel-empty-state message="No quiz in this report has any incorrect answers to analyse." />
             {% endfor %}
+            </div>
         </section>
     </div>
 {% endblock loaded_body %}

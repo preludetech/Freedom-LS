@@ -1992,6 +1992,25 @@ def test_the_courses_tab_says_nothing_completed_for_a_registration_without_activ
 
 
 @pytest.mark.django_db
+def test_the_courses_tab_sets_each_course_out_as_a_plain_section_not_a_nested_card(
+    staff_client: Client,
+):
+    """Each course sat in its own bordered card inside the panel's card."""
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    for title in ("Algebra", "Geometry"):
+        LearnerCourseRegistrationFactory(
+            learner=learner, course=CourseFactory(title=title)
+        )
+
+    document = _learner_page(staff_client, learner, "courses")
+
+    (panel,) = document.cssselect("section[data-panel='courses']")
+    assert len(panel.cssselect(".panel-surface")) == 1
+    headings = [h.text_content().strip() for h in panel.cssselect("h3.panel-heading")]
+    assert sorted(headings) == ["Algebra", "Geometry"]
+
+
+@pytest.mark.django_db
 def test_the_history_tab_renders_its_empty_state(staff_client: Client):
     learner = LearnerFactory(organisation=OrganisationFactory())
 
