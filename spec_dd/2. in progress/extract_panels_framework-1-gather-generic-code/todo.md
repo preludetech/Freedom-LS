@@ -40,7 +40,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (user) Decide whether an empty cohort name shows an error notice (as `3. frontend_qa.md` Test 11.3 says) or the inline field error other forms use (QA bug B15), then align the page or the QA plan
 - [ ] (user) Decide between cards and a minimum name width for the cohort report tables at 375 and the learner tables at 768 (QA bug B16: names are clipped to one or three letters), then fix (TDD: failing test first, then fix)
 - [ ] (user) Decide whether to keep `freedom_ls/qa_helpers/management/commands/qa_create_bulk_learners.py` and the changed notes under `.claude/agent-memory/sdd-qa-data-helper/` (written by the QA data helper during this run; uncommitted), then commit or delete them
-- [ ] (user) Correct `3. frontend_qa.md` where this run found it out of date: Test 7.7 bulk action order, Test 7.6 notification threshold (250 rows, not 25), Tests 8.1 and 8.2 URL parameter names (`cohorts-inactive`, `audit_log-when`), Test 11.4 last-active column
+- [x] (user) Correct `3. frontend_qa.md` where this run found it out of date: Test 7.7 bulk action order, Test 7.6 notification threshold (250 rows, not 25), Tests 8.1 and 8.2 URL parameter names (`cohorts-inactive`, `audit_log-when`), Test 11.4 last-active column
 
 ## 4. Documentation and pull request
 
