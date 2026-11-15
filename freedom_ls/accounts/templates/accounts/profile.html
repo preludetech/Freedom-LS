@@ -9,18 +9,49 @@
     Profile
 </h1>
 
-<c-panel-avatar-chip size="lg" :name="request.user.display_name" :initials="request.user.initials" :user_id="request.user.pk" :picture_url="request.user.profile_picture_url" />
-
-<form method="POST" enctype="multipart/form-data">
+<div class="space-y-6">
+    {# The picture block reads request.user, the saved state, so a refused upload still shows the stored picture. #}
+    <form method="POST" action="{% url 'accounts:account_profile_picture' %}" enctype="multipart/form-data" class="flex flex-col items-center gap-6 rounded-lg border border-border bg-surface p-6 sm:flex-row sm:items-start">
         {% csrf_token %}
-        {{form}}
+        <c-panel-avatar-chip size="xl" name_hidden="true" :name="request.user.display_name" :initials="request.user.initials" :user_id="request.user.pk" :picture_url="request.user.profile_picture_url" />
+
+        <div class="w-full min-w-0 space-y-3 text-center sm:text-left">
+            <p class="truncate text-lg font-semibold">{{ request.user.display_name }}</p>
+
+            {{ picture_form.non_field_errors }}
+
+            <div class="space-y-1">
+                <label for="{{ picture_form.profile_picture.id_for_label }}" class="block text-sm font-medium">{{ picture_form.profile_picture.label }}</label>
+                {% if picture_form.profile_picture.errors %}
+                    <div class="text-sm text-error [&_ul]:list-none">{{ picture_form.profile_picture.errors }}</div>
+                {% endif %}
+                <div class="[&_input]:w-auto [&_input]:max-w-full [&_input]:border-0 [&_input]:p-0 [&_input]:shadow-none">{{ picture_form.profile_picture }}</div>
+                <p id="{{ picture_form.profile_picture.auto_id }}_helptext" class="text-sm text-muted">{{ picture_form.profile_picture.help_text }}</p>
+            </div>
+
+            {% if picture_form.remove_profile_picture %}
+                <div class="flex items-center justify-center gap-2 sm:justify-start">
+                    {{ picture_form.remove_profile_picture }}
+                    <label for="{{ picture_form.remove_profile_picture.id_for_label }}" class="text-sm">{{ picture_form.remove_profile_picture.label }}</label>
+                </div>
+            {% endif %}
+
+            <c-button type="submit" variant="secondary">
+                Save picture
+            </c-button>
+        </div>
+    </form>
+
+    <form method="POST" class="space-y-4">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        <div>{{ form.first_name.as_field_group }}</div>
+        <div>{{ form.last_name.as_field_group }}</div>
 
         <c-button type="submit">
             Save
         </c-button>
-
-</form>
-
-
+    </form>
+</div>
 
 {% endblock content %}

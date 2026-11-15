@@ -11,6 +11,11 @@ urlpatterns = [
         name="account_profile",
     ),
     path(
+        "profile/picture/",
+        views.edit_profile_picture,
+        name="account_profile_picture",
+    ),
+    path(
         "legal/<str:doc_type>/",
         views.legal_doc_view,
         name="legal_doc",

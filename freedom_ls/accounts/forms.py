@@ -36,6 +36,12 @@ logger = logging.getLogger(__name__)
 
 
 class UserForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name"]
+
+
+class ProfilePictureForm(forms.ModelForm):
     profile_picture = forms.FileField(
         required=False,
         label="Profile picture",
@@ -50,7 +56,7 @@ class UserForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ["first_name", "last_name", "profile_picture"]
+        fields = ["profile_picture"]
 
     def __init__(
         self,
@@ -100,7 +106,7 @@ class UserForm(forms.ModelForm):
         if not commit:
             # The superseded file is deleted when this save commits, so an
             # unsaved form has nothing to hang that on.
-            raise ValueError("UserForm.save() does not support commit=False.")
+            raise ValueError("ProfilePictureForm.save() does not support commit=False.")
         with transaction.atomic():
             superseded = self._lock_and_read_stored_profile_picture_name()
             user: UserModel = super().save()

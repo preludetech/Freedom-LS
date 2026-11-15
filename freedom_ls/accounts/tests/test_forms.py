@@ -20,6 +20,7 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
 from freedom_ls.accounts.forms import (
+    ProfilePictureForm,
     SiteAwareSignupForm,
     UserForm,
     accepted_legal_docs,
@@ -459,16 +460,16 @@ def test_tripped_honeypot_is_false_when_the_field_is_empty():
     assert tripped_honeypot(form) is False
 
 
-def _picture_form(user, data: bytes) -> UserForm:
-    return UserForm(
-        {"first_name": user.first_name, "last_name": user.last_name},
+def _picture_form(user, data: bytes) -> ProfilePictureForm:
+    return ProfilePictureForm(
+        {},
         {"profile_picture": SimpleUploadedFile("me.jpg", data)},
         instance=user,
     )
 
 
 @pytest.mark.django_db
-def test_user_form_stores_a_400_square_webp_under_the_users_prefix(
+def test_profile_picture_form_stores_a_400_square_webp_under_the_users_prefix(
     mock_site_context, pathless_profile_picture_storage
 ):
     user = UserFactory()
@@ -483,7 +484,7 @@ def test_user_form_stores_a_400_square_webp_under_the_users_prefix(
 
 
 @pytest.mark.django_db
-def test_user_form_without_a_file_keeps_the_existing_picture(
+def test_user_form_saving_names_keeps_the_existing_picture(
     mock_site_context, pathless_profile_picture_storage
 ):
     user = UserFactory(with_profile_picture=True)
@@ -498,6 +499,28 @@ def test_user_form_without_a_file_keeps_the_existing_picture(
 
 
 @pytest.mark.django_db
+def test_profile_picture_form_without_a_file_keeps_the_existing_picture(
+    mock_site_context, pathless_profile_picture_storage
+):
+    user = UserFactory(with_profile_picture=True)
+    stored_name = user.profile_picture.name
+    form = ProfilePictureForm({}, {}, instance=user)
+
+    assert form.is_valid(), form.errors
+    form.save()
+
+    user.refresh_from_db()
+    assert user.profile_picture.name == stored_name
+
+
+@pytest.mark.django_db
+def test_user_form_has_no_picture_fields(mock_site_context):
+    form = UserForm(instance=UserFactory(with_profile_picture=True))
+
+    assert set(form.fields) == {"first_name", "last_name"}
+
+
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     ("data", "message"),
     [
@@ -506,7 +529,7 @@ def test_user_form_without_a_file_keeps_the_existing_picture(
         (truncated_jpeg_bytes(), UNREADABLE),
     ],
 )
-def test_user_form_puts_a_rejected_picture_on_the_field(
+def test_profile_picture_form_puts_a_rejected_picture_on_the_field(
     mock_site_context, data: bytes, message: str
 ):
     form = _picture_form(UserFactory(), data)
@@ -516,7 +539,7 @@ def test_user_form_puts_a_rejected_picture_on_the_field(
 
 
 @pytest.mark.django_db
-def test_user_form_deletes_the_superseded_picture_on_commit_not_before(
+def test_profile_picture_form_deletes_the_superseded_picture_on_commit_not_before(
     mock_site_context,
     pathless_profile_picture_storage,
     django_capture_on_commit_callbacks,
@@ -539,7 +562,7 @@ def test_user_form_deletes_the_superseded_picture_on_commit_not_before(
 
 
 @pytest.mark.django_db
-def test_user_form_reads_the_superseded_picture_under_a_row_lock(
+def test_profile_picture_form_reads_the_superseded_picture_under_a_row_lock(
     mock_site_context, pathless_profile_picture_storage
 ):
     """Two saves at once must run one after the other, or each deletes the
@@ -558,14 +581,14 @@ class _RollBackError(Exception):
     pass
 
 
-def _save_then_roll_back(form: UserForm) -> None:
+def _save_then_roll_back(form: ProfilePictureForm) -> None:
     with transaction.atomic():
         form.save()
         raise _RollBackError
 
 
 @pytest.mark.django_db
-def test_user_form_keeps_the_old_picture_when_the_save_rolls_back(
+def test_profile_picture_form_keeps_the_old_picture_when_the_save_rolls_back(
     mock_site_context,
     pathless_profile_picture_storage,
     django_capture_on_commit_callbacks,
@@ -587,7 +610,7 @@ def test_user_form_keeps_the_old_picture_when_the_save_rolls_back(
 
 
 @pytest.mark.django_db
-def test_user_form_saving_names_alone_deletes_nothing(
+def test_user_form_saving_names_deletes_nothing(
     mock_site_context,
     pathless_profile_picture_storage,
     django_capture_on_commit_callbacks,
@@ -606,39 +629,35 @@ def test_user_form_saving_names_alone_deletes_nothing(
 
 
 @pytest.mark.django_db
-def test_user_form_save_without_commit_raises(mock_site_context):
-    form = UserForm({"first_name": "A", "last_name": "B"}, {}, instance=UserFactory())
+def test_profile_picture_form_save_without_commit_raises(mock_site_context):
+    form = ProfilePictureForm({}, {}, instance=UserFactory())
     assert form.is_valid(), form.errors
 
     with pytest.raises(ValueError, match="commit=False"):
         form.save(commit=False)
 
 
-def _removal_form(user, files: dict | None = None) -> UserForm:
-    return UserForm(
-        {
-            "first_name": user.first_name,
-            "last_name": user.last_name,
-            "remove_profile_picture": "on",
-        },
+def _removal_form(user, files: dict | None = None) -> ProfilePictureForm:
+    return ProfilePictureForm(
+        {"remove_profile_picture": "on"},
         files or {},
         instance=user,
     )
 
 
 @pytest.mark.django_db
-def test_user_form_offers_removal_only_when_a_picture_is_set(
+def test_profile_picture_form_offers_removal_only_when_a_picture_is_set(
     mock_site_context, pathless_profile_picture_storage
 ):
-    without = UserForm(instance=UserFactory())
-    with_picture = UserForm(instance=UserFactory(with_profile_picture=True))
+    without = ProfilePictureForm(instance=UserFactory())
+    with_picture = ProfilePictureForm(instance=UserFactory(with_profile_picture=True))
 
     assert "remove_profile_picture" not in without.fields
     assert "remove_profile_picture" in with_picture.fields
 
 
 @pytest.mark.django_db
-def test_user_form_ignores_a_forged_removal_flag_without_a_picture(
+def test_profile_picture_form_ignores_a_forged_removal_flag_without_a_picture(
     mock_site_context,
 ):
     user = UserFactory()
@@ -649,7 +668,7 @@ def test_user_form_ignores_a_forged_removal_flag_without_a_picture(
 
 
 @pytest.mark.django_db
-def test_user_form_removal_clears_the_field_and_deletes_the_file_on_commit(
+def test_profile_picture_form_removal_clears_the_field_and_deletes_the_file_on_commit(
     mock_site_context,
     pathless_profile_picture_storage,
     django_capture_on_commit_callbacks,
@@ -671,7 +690,7 @@ def test_user_form_removal_clears_the_field_and_deletes_the_file_on_commit(
 
 
 @pytest.mark.django_db
-def test_user_form_new_file_wins_over_removal(
+def test_profile_picture_form_new_file_wins_over_removal(
     mock_site_context,
     pathless_profile_picture_storage,
     django_capture_on_commit_callbacks,
@@ -694,7 +713,7 @@ def test_user_form_new_file_wins_over_removal(
 
 
 @pytest.mark.django_db
-def test_user_form_removal_with_an_invalid_file_keeps_the_old_picture(
+def test_profile_picture_form_removal_with_an_invalid_file_keeps_the_old_picture(
     mock_site_context, pathless_profile_picture_storage
 ):
     user = UserFactory(with_profile_picture=True)
@@ -710,7 +729,7 @@ def test_user_form_removal_with_an_invalid_file_keeps_the_old_picture(
 
 
 @pytest.mark.django_db
-def test_user_form_removal_keeps_the_file_when_the_save_rolls_back(
+def test_profile_picture_form_removal_keeps_the_file_when_the_save_rolls_back(
     mock_site_context,
     pathless_profile_picture_storage,
     django_capture_on_commit_callbacks,

@@ -15,7 +15,9 @@ Attributes:
                gives one letter, an empty name gives none).
   secondary    Email or role, second line, text-muted (default none).
   size         "md" (default, table rows), "sm" (a person in a list row
-               beside other text) or "lg" (profile header).
+               beside other text), "lg" (profile header) or "xl" (128 px,
+               a picture the page is about, such as the account page's
+               picture block).
   name_hidden  Off (default). On: the name and second line are not
                rendered, for a caller that shows the name itself (the
                attention row's subject link, so the row keeps one visible
@@ -54,7 +56,7 @@ this component.
 }</style>
 
 <div class="{% if name_hidden|flag %}flex{% else %}grid grid-cols-[auto_minmax(0,1fr)] gap-x-3{% endif %} items-center" {{ attrs }}>
-    <span aria-hidden="true" class="panel-avatar-{{ user_id|avatar_slot }} relative flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-on-surface {% if size == "lg" %}size-13 text-lg{% elif size == "sm" %}size-6 text-[0.625rem]{% else %}size-8 text-xs{% endif %}">{% firstof initials name|initials %}{% if picture_url %}<img data-profile-picture src="{{ picture_url }}" alt="" loading="lazy" {% if size == "lg" %}width="52" height="52"{% elif size == "sm" %}width="24" height="24"{% else %}width="32" height="32"{% endif %} class="absolute inset-0 size-full bg-surface object-cover" />{% endif %}</span>
+    <span aria-hidden="true" class="panel-avatar-{{ user_id|avatar_slot }} relative flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-on-surface {% if size == "xl" %}size-32 text-4xl{% elif size == "lg" %}size-13 text-lg{% elif size == "sm" %}size-6 text-[0.625rem]{% else %}size-8 text-xs{% endif %}">{% firstof initials name|initials %}{% if picture_url %}<img data-profile-picture src="{{ picture_url }}" alt="" loading="lazy" {% if size == "xl" %}width="128" height="128"{% elif size == "lg" %}width="52" height="52"{% elif size == "sm" %}width="24" height="24"{% else %}width="32" height="32"{% endif %} class="absolute inset-0 size-full bg-surface object-cover" />{% endif %}</span>
     {% if not name_hidden|flag %}
         <span class="min-w-0">
             <span class="block truncate">{{ name }}</span>

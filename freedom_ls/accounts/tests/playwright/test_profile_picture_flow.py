@@ -1,8 +1,9 @@
 """Browser flow for the account page: upload, replace, refuse, remove.
 
 The Django test client covers what the server renders. What only a browser
-shows is covered here: choosing a file in the input, the saved picture beside
-the name and in the header trigger, the refusal leaving that picture in place,
+shows is covered here: the picture and details forms saving apart, choosing a
+file in the input, the saved picture in the picture block and in the header
+trigger, the refusal leaving that picture in place,
 and the layout at each viewport.
 """
 
@@ -37,12 +38,16 @@ def test_upload_a_picture_then_a_refused_file(
 
     page.get_by_label("First name").fill("Ada")
     page.get_by_label("Last name").fill("Lovelace")
+    page.get_by_role("button", name="Save", exact=True).click()
+
+    expect(page.get_by_text("Profile saved")).to_be_visible()
+
     page.get_by_label(re.compile(r"^Profile picture")).set_input_files(
         {"name": "me.jpg", "mimeType": "image/jpeg", "buffer": jpeg_bytes()}
     )
-    page.get_by_role("button", name="Save").click()
+    page.get_by_role("button", name="Save picture").click()
 
-    expect(page.get_by_text("Profile saved")).to_be_visible()
+    expect(page.get_by_text("Profile picture saved")).to_be_visible()
     main = page.locator("main")
     expect(main.get_by_text("Ada Lovelace")).to_be_visible()
     expect(main.locator("img[data-profile-picture]")).to_have_attribute(
@@ -58,9 +63,9 @@ def test_upload_a_picture_then_a_refused_file(
     page.get_by_label(re.compile(r"^Profile picture")).set_input_files(
         {"name": "new.png", "mimeType": "image/png", "buffer": png_bytes()}
     )
-    page.get_by_role("button", name="Save").click()
+    page.get_by_role("button", name="Save picture").click()
 
-    expect(page.get_by_text("Profile saved")).to_be_visible()
+    expect(page.get_by_text("Profile picture saved")).to_be_visible()
     expect(main.locator("img[data-profile-picture]")).to_have_attribute(
         "src", PICTURE_SRC
     )
@@ -75,7 +80,7 @@ def test_upload_a_picture_then_a_refused_file(
     page.get_by_label(re.compile(r"^Profile picture")).set_input_files(
         {"name": "notes.png", "mimeType": "image/png", "buffer": b"just some text"}
     )
-    page.get_by_role("button", name="Save").click()
+    page.get_by_role("button", name="Save picture").click()
 
     expect(page.get_by_text(WRONG_TYPE)).to_be_visible()
     expect(main.locator("img[data-profile-picture]")).to_have_attribute(
@@ -96,17 +101,17 @@ def test_upload_a_picture_then_a_refused_file(
     page.get_by_label(re.compile(r"^Profile picture")).set_input_files(
         {"name": "again.png", "mimeType": "image/png", "buffer": png_bytes()}
     )
-    page.get_by_role("button", name="Save").click()
+    page.get_by_role("button", name="Save picture").click()
 
-    expect(page.get_by_text("Profile saved")).to_be_visible()
+    expect(page.get_by_text("Profile picture saved")).to_be_visible()
     expect(main.locator("img[data-profile-picture]")).to_have_attribute(
         "src", PICTURE_SRC
     )
 
     page.get_by_label(re.compile(r"^Remove profile picture")).check()
-    page.get_by_role("button", name="Save").click()
+    page.get_by_role("button", name="Save picture").click()
 
-    expect(page.get_by_text("Profile saved")).to_be_visible()
+    expect(page.get_by_text("Profile picture removed")).to_be_visible()
     expect(main.get_by_text("Ada Lovelace")).to_be_visible()
     expect(main.locator("img[data-profile-picture]")).to_have_count(0)
     expect(header.locator("img[data-profile-picture]")).to_have_count(0)

@@ -941,19 +941,82 @@ def _picture_srcs(html: str) -> list[str]:
     return re.findall(r'<img data-profile-picture\s+src="([^"]+)"', html)
 
 
+def _profile_forms(html: str) -> tuple[str, str]:
+    """The picture form and the details form, in page order."""
+    forms = re.findall(r"<form method=\"POST\".*?</form>", html, re.DOTALL)
+    assert len(forms) == 2
+    return forms[0], forms[1]
+
+
 @pytest.mark.django_db
-def test_profile_page_renders_a_multipart_form_with_a_described_image_input(
+def test_profile_page_renders_a_multipart_picture_form_with_a_described_image_input(
     mock_site_context,
 ):
     client = Client()
     client.force_login(UserFactory())
 
     html = client.get(reverse("accounts:account_profile")).content.decode()
+    picture_form, _ = _profile_forms(html)
 
-    assert 'enctype="multipart/form-data"' in html
-    assert 'accept="image/jpeg,image/png,image/webp"' in html
-    assert 'aria-describedby="id_profile_picture_helptext"' in html
-    assert "JPEG, PNG or WebP, up to 10 MB." in html
+    assert f'action="{reverse("accounts:account_profile_picture")}"' in picture_form
+    assert 'enctype="multipart/form-data"' in picture_form
+    assert 'accept="image/jpeg,image/png,image/webp"' in picture_form
+    assert 'aria-describedby="id_profile_picture_helptext"' in picture_form
+    assert "JPEG, PNG or WebP, up to 10 MB." in picture_form
+    assert "Save picture" in picture_form
+
+
+@pytest.mark.django_db
+def test_profile_page_details_form_is_separate_from_the_picture(mock_site_context):
+    client = Client()
+    client.force_login(UserFactory())
+
+    html = client.get(reverse("accounts:account_profile")).content.decode()
+    _, details_form = _profile_forms(html)
+
+    assert 'name="first_name"' in details_form
+    assert 'name="last_name"' in details_form
+    assert 'type="file"' not in details_form
+    assert "action=" not in details_form
+
+
+@pytest.mark.django_db
+def test_saving_details_redirects_and_keeps_the_picture(
+    mock_site_context, pathless_profile_picture_storage
+):
+    user = UserFactory(
+        first_name="Ada", last_name="Lovelace", with_profile_picture=True
+    )
+    saved_name = user.profile_picture.name
+    client = Client()
+    client.force_login(user)
+    profile_url = reverse("accounts:account_profile")
+
+    response = client.post(profile_url, {"first_name": "Grace", "last_name": "Hopper"})
+    page = client.get(profile_url).content.decode()
+
+    user.refresh_from_db()
+    assert (response.status_code, response.url) == (302, profile_url)
+    assert (user.first_name, user.profile_picture.name) == ("Grace", saved_name)
+    assert "Profile saved" in page
+
+
+@pytest.mark.django_db
+def test_picture_url_refuses_get(mock_site_context):
+    client = Client()
+    client.force_login(UserFactory())
+
+    response = client.get(reverse("accounts:account_profile_picture"))
+
+    assert response.status_code == 405
+
+
+@pytest.mark.django_db
+def test_picture_url_requires_login(mock_site_context):
+    response = Client().post(reverse("accounts:account_profile_picture"))
+
+    assert response.status_code == 302
+    assert reverse("account_login") in response.url
 
 
 @pytest.mark.django_db
@@ -966,17 +1029,14 @@ def test_valid_picture_post_redirects_and_the_page_then_shows_the_picture(
     profile_url = reverse("accounts:account_profile")
 
     response = client.post(
-        profile_url,
-        {
-            "first_name": "Ada",
-            "last_name": "Lovelace",
-            "profile_picture": SimpleUploadedFile("me.jpg", jpeg_bytes()),
-        },
+        reverse("accounts:account_profile_picture"),
+        {"profile_picture": SimpleUploadedFile("me.jpg", jpeg_bytes())},
     )
     page = client.get(profile_url).content.decode()
 
     assert (response.status_code, response.url) == (302, profile_url)
-    # The header trigger and the chip above the form.
+    assert "Profile picture saved" in page
+    # The header trigger and the picture block.
     assert len(_picture_srcs(page)) == 2
 
 
@@ -992,22 +1052,16 @@ def test_refused_picture_re_renders_with_the_error_and_the_saved_state(
     client.force_login(user)
 
     response = client.post(
-        reverse("accounts:account_profile"),
-        {
-            "first_name": "Grace",
-            "last_name": "Hopper",
-            "profile_picture": SimpleUploadedFile("me.png", b"not an image"),
-        },
+        reverse("accounts:account_profile_picture"),
+        {"profile_picture": SimpleUploadedFile("me.png", b"not an image")},
     )
     html = response.content.decode()
 
     user.refresh_from_db()
     assert response.status_code == 200
     assert WRONG_TYPE in html
-    assert (user.first_name, user.last_name) == ("Ada", "Lovelace")
     assert user.profile_picture.name == saved_name
-    assert 'value="Grace"' in html
-    assert "Ada Lovelace" in html
+    assert 'value="Ada"' in html
     assert len(_picture_srcs(html)) == 2
 
 
@@ -1024,16 +1078,13 @@ def test_removing_the_picture_shows_initials_and_drops_the_checkbox(
     before = client.get(profile_url).content.decode()
 
     response = client.post(
-        profile_url,
-        {
-            "first_name": "Ada",
-            "last_name": "Lovelace",
-            "remove_profile_picture": "on",
-        },
+        reverse("accounts:account_profile_picture"),
+        {"remove_profile_picture": "on"},
     )
     after = client.get(profile_url).content.decode()
 
     assert 'name="remove_profile_picture"' in before
     assert (response.status_code, response.url) == (302, profile_url)
+    assert "Profile picture removed" in after
     assert _picture_srcs(after) == []
     assert 'name="remove_profile_picture"' not in after

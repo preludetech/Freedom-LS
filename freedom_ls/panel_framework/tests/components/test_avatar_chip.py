@@ -15,7 +15,9 @@ def _circle(html: str) -> lxml.html.HtmlElement:
     return circle
 
 
-@pytest.mark.parametrize(("size", "pixels"), [("sm", "24"), ("md", "32"), ("lg", "52")])
+@pytest.mark.parametrize(
+    ("size", "pixels"), [("sm", "24"), ("md", "32"), ("lg", "52"), ("xl", "128")]
+)
 def test_picture_url_puts_a_sized_image_in_the_circle_over_the_initials(
     size: str, pixels: str
 ) -> None:

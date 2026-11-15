@@ -10,6 +10,7 @@ from django.contrib.sites.models import Site
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_POST
 
 from freedom_ls.site_aware_models.models import get_cached_site
 
@@ -27,17 +28,36 @@ from .utils import (
 )
 
 
+def _own_user(request: HttpRequest) -> User:
+    """A fresh copy of the signed-in user for a form to bind to.
+
+    A ModelForm writes submitted values onto its instance while it
+    validates. request.user is what the header and sidebar render, so each
+    form gets its own copy and a refused submission never shows there. The
+    base manager, because the lookup is by the signed-in user's own pk,
+    which the session already vouches for, so the site filter has nothing
+    to add.
+    """
+    return get_object_or_404(User._base_manager, pk=request.user.pk)
+
+
+def _render_profile(
+    request: HttpRequest,
+    form: forms.UserForm,
+    picture_form: forms.ProfilePictureForm,
+) -> HttpResponse:
+    return render(
+        request,
+        "accounts/profile.html",
+        {"form": form, "picture_form": picture_form},
+    )
+
+
 @login_required
 def edit_profile(request: HttpRequest) -> HttpResponse:
-    # A ModelForm writes submitted values onto its instance while it
-    # validates. request.user is what the header and sidebar render, so the
-    # form gets its own copy and a refused submission never shows there.
-    # The base manager, because the lookup is by the signed-in user's own
-    # pk, which the session already vouches for, so the site filter has
-    # nothing to add.
-    user = get_object_or_404(User._base_manager, pk=request.user.pk)
+    user = _own_user(request)
     if request.method == "POST":
-        form = forms.UserForm(request.POST, request.FILES, instance=user)
+        form = forms.UserForm(request.POST, instance=user)
         if form.is_valid():
             form.save()
             messages.add_message(request, messages.SUCCESS, "Profile saved")
@@ -46,7 +66,25 @@ def edit_profile(request: HttpRequest) -> HttpResponse:
             return redirect("accounts:account_profile")
     else:
         form = forms.UserForm(instance=user)
-    return render(request, "accounts/profile.html", {"form": form})
+    picture_form = forms.ProfilePictureForm(instance=_own_user(request))
+    return _render_profile(request, form, picture_form)
+
+
+@login_required
+@require_POST
+def edit_profile_picture(request: HttpRequest) -> HttpResponse:
+    picture_form = forms.ProfilePictureForm(
+        request.POST, request.FILES, instance=_own_user(request)
+    )
+    if picture_form.is_valid():
+        # False is what the form hands the model field to clear it.
+        removed = picture_form.cleaned_data["profile_picture"] is False
+        picture_form.save()
+        message = "Profile picture removed" if removed else "Profile picture saved"
+        messages.add_message(request, messages.SUCCESS, message)
+        return redirect("accounts:account_profile")
+    form = forms.UserForm(instance=_own_user(request))
+    return _render_profile(request, form, picture_form)
 
 
 def legal_doc_view(request: HttpRequest, doc_type: str) -> HttpResponse:
