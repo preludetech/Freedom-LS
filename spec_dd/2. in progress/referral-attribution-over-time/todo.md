@@ -18,6 +18,17 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
+- [ ] (user) Fix the follow-up to PR #247: a partial content reload moves deadline overrides off a child's other placement. A topic placed in two parts of a course has a row in each; reloading only part B's directory leaves part A's row unwritten, so `moved_children` (`content_engine/moved_children.py`) treats it as stale and the deadlines receiver moves its cohort/learner overrides to part B's row. Placement due dates are safe since #247; the overrides are not. Needs a way to tell a real move from a second placement, e.g. checking whether part A's file still lists the child before calling the row stale.
+- [x] (cmd) PR 244 review: delete a discarded draft's conversion so a course has one COURSE_APPLICATION conversion
+- [x] (cmd) PR 244 review: evict cookie list entries before dropping first-touch fields
+- [x] (cmd) PR 244 review: record a tracked anonymous GET whose view logs in as a live touch
+- [x] (cmd) PR 244 review: prune refuses --older-than-days below the attribution window
+- [x] (cmd) PR 244 review: system check for an attribution window over 32767 days
+- [x] (cmd) PR 244 review: detect the referral redirect in process_view
+- [x] (cmd) PR 244 review: cut login flush and conversion queries
+- [x] (cmd) PR 244 review: clear the attribution cookie only when the request carries one
+- [x] (cmd) PR 244 review: replace Any in the append-only save overrides
+- [x] (cmd) PR 244 review: ReadOnlyAdminMixin and one shared append-only guard
 
 ## 4. Documentation and pull request
 
