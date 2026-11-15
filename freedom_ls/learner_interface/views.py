@@ -284,9 +284,16 @@ def _annotate_registered_courses(
     """
     records = course_progress_by_course_for(user, courses)
     now = timezone.now()
-    deadlines_by_record = course_deadlines_for(records.values(), now=now)
-    policies_by_record = get_deadline_policy().resolve_for(list(records.values()))
     decisions = backend.get_access_many(user=user, courses=courses)
+    # Without content access the index carries no progress, so a finished item would
+    # read as missed: deadlines are only resolved for records the learner can open.
+    open_records = [
+        record
+        for course_id, record in records.items()
+        if decisions[course_id].can_access_content
+    ]
+    deadlines_by_record = course_deadlines_for(open_records, now=now)
+    policies_by_record = get_deadline_policy().resolve_for(open_records)
     for course in courses:
         setattr(course, "is_registered", True)  # noqa: B010
         setattr(  # noqa: B010
@@ -301,8 +308,7 @@ def _annotate_registered_courses(
         )
         # Pass can_access_content from the backend decision so a future
         # backend (e.g. subscription-gated) could revoke access without a
-        # separate check. Without content access the index carries no
-        # progress, so a finished item would read as missed: no deadlines then.
+        # separate check.
         course_decision = decisions[course.pk]
         setattr(course, "access_ended_at", course_decision.access_ended_at)  # noqa: B010
         setattr(course, "paused_at", course_decision.paused_at)  # noqa: B010
@@ -316,14 +322,10 @@ def _annotate_registered_courses(
             can_access_content=course_decision.can_access_content,
             course_progress=record,
             course_deadlines=(
-                deadlines_by_record.get(record.pk)
-                if record is not None and course_decision.can_access_content
-                else None
+                deadlines_by_record.get(record.pk) if record is not None else None
             ),
             deadline_policy=(
-                policies_by_record.get(record.pk)
-                if record is not None and course_decision.can_access_content
-                else None
+                policies_by_record.get(record.pk) if record is not None else None
             ),
             now=now,
         )
