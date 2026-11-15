@@ -72,6 +72,29 @@ CLOSED = "CLOSED"
 PAUSED = "PAUSED"
 
 
+class OutlineMode(StrEnum):
+    """What the outline shows beyond what content access decides.
+
+    FULL follows content access alone. ENDED is a learner whose access ended but who keeps
+    the outline: progress is read and only finished rows stay linked. PAUSED is a learner
+    whose course is paused: the same, with every other open row marked PAUSED and no
+    deadline on any row."""
+
+    FULL = "full"
+    ENDED = "ended"
+    PAUSED = "paused"
+
+
+def _status_in_outline(status: str, outline_mode: OutlineMode) -> str:
+    """The row status once the outline mode has withheld what it withholds. A row
+    sequential unlock withholds stays BLOCKED in a paused outline."""
+    if outline_mode is OutlineMode.ENDED and status != COMPLETE:
+        return BLOCKED
+    if outline_mode is OutlineMode.PAUSED and status not in (COMPLETE, BLOCKED):
+        return PAUSED
+    return status
+
+
 def derive_part_status(child_statuses: list[str]) -> str:
     """Summarise a course part from the statuses of the children it holds.
 
@@ -498,8 +521,7 @@ def get_course_index(
     course_deadlines: CourseDeadlines | None = None,
     deadline_policy: ResolvedDeadlinePolicy | None = None,
     now: datetime | None = None,
-    access_ended_outline: bool = False,
-    paused: bool = False,
+    outline_mode: OutlineMode = OutlineMode.FULL,
 ) -> list[dict]:
     """
     Generate an index of course children with their status and metadata.
@@ -520,9 +542,8 @@ def get_course_index(
     the policy resolved for the same record, and decides whether ``is_overdue``
     shows; a caller passes both or neither.
 
-    ``paused`` is for a learner whose course is paused: progress is read without content
-    access, finished rows stay linked, every other open row reads PAUSED with no url,
-    and no row carries a deadline.
+    ``outline_mode`` reads progress without content access for an ended or paused
+    learner; see ``OutlineMode`` for what each mode withholds.
 
     Returns a list of dictionaries with title, status, url, type, and optionally children.
     """
@@ -533,7 +554,8 @@ def get_course_index(
     # the default backend.
     topic_progress_map: dict[uuid.UUID, TopicProgress] = {}
     form_placement_map: dict[uuid.UUID, FormPlacementProgress] = {}
-    if (can_access_content or access_ended_outline or paused) and user.is_authenticated:
+    reads_progress = can_access_content or outline_mode is not OutlineMode.FULL
+    if reads_progress and user.is_authenticated:
         if isinstance(course_progress, Unresolved):
             # can_access_content implies an authenticated, registered user (it
             # comes from the backend decision), so the cast to User is safe here.
@@ -562,8 +584,7 @@ def get_course_index(
             course_deadlines=course_deadlines,
             deadline_policy=deadline_policy,
             now=now,
-            access_ended_outline=access_ended_outline,
-            paused=paused,
+            outline_mode=outline_mode,
         )
         children.append(child_dict)
         global_index += items_added
@@ -752,8 +773,7 @@ def create_child_dict_with_flattened_index(
     course_deadlines: CourseDeadlines | None = None,
     deadline_policy: ResolvedDeadlinePolicy | None = None,
     now: datetime | None = None,
-    access_ended_outline: bool = False,
-    paused: bool = False,
+    outline_mode: OutlineMode = OutlineMode.FULL,
 ) -> tuple[dict, str, int]:
     """
     Create a child dict with proper flattened indices for nested items.
@@ -766,15 +786,15 @@ def create_child_dict_with_flattened_index(
     marked ``contains_current=True`` so the TOC can highlight the current item
     and auto-expand its part.
 
-    ``access_ended_outline`` reads progress without content access and withholds
-    every row that is not COMPLETE, so only finished items stay linked. ``paused`` reads
-    progress the same way, but marks an unfinished row PAUSED rather than BLOCKED (a row
-    sequential unlock withholds stays BLOCKED) and resolves no deadlines for any row.
+    ``outline_mode`` reads progress without content access for an ended or paused
+    learner and withholds rows as ``OutlineMode`` describes.
 
     Returns tuple of (child_dict, updated_next_status, number_of_items_added)
     """
     now = now or timezone.now()
     content_item = cast("Topic | Form | CoursePart", collection_item.child)
+    reads_progress = can_access_content or outline_mode is not OutlineMode.FULL
+    row_deadlines = None if outline_mode is OutlineMode.PAUSED else course_deadlines
 
     # Handle CoursePart specially - don't calculate its status yet, process children first
     if isinstance(content_item, CoursePart):
@@ -791,7 +811,7 @@ def create_child_dict_with_flattened_index(
                 # Defensive: today's data model does not nest parts; skip URL allocation
                 # for any unexpected nested CoursePart and let status logic ignore it.
                 continue
-            if can_access_content or access_ended_outline or paused:
+            if reads_progress:
                 child_status, part_next_status = get_content_status(
                     part_item,
                     part_next_status,
@@ -808,17 +828,10 @@ def create_child_dict_with_flattened_index(
             else:
                 child_status = BLOCKED
                 child_url = ""
-            if access_ended_outline and child_status != COMPLETE:
-                child_status = BLOCKED
-            if paused and child_status not in (COMPLETE, BLOCKED):
-                child_status = PAUSED
+            child_status = _status_in_outline(child_status, outline_mode)
 
             keys = _deadline_keys(
-                part_item,
-                child_status,
-                None if paused else course_deadlines,
-                deadline_policy,
-                now,
+                part_item, child_status, row_deadlines, deadline_policy, now
             )
             child_status = _closed_if_past_close(child_status, keys)
             part_child_index = start_index + items_added + 1
@@ -859,7 +872,7 @@ def create_child_dict_with_flattened_index(
             failed_child = next(
                 (c for c in part_children_dicts if c["status"] == FAILED), None
             )
-            if access_ended_outline or paused:
+            if outline_mode is not OutlineMode.FULL:
                 # Only COMPLETE children carry a url here, so the part opens the
                 # first finished one and nothing when none is.
                 complete_child = next(
@@ -895,7 +908,7 @@ def create_child_dict_with_flattened_index(
     else:
         # Regular content item (Topic, Form, etc.)
         items_added = 1
-        if can_access_content or access_ended_outline or paused:
+        if reads_progress:
             status, next_status = get_content_status(
                 collection_item, next_status, topic_progress_map, form_placement_map
             )
@@ -906,17 +919,10 @@ def create_child_dict_with_flattened_index(
         else:
             status = BLOCKED
             url = ""
-        if access_ended_outline and status != COMPLETE:
-            status = BLOCKED
-        if paused and status not in (COMPLETE, BLOCKED):
-            status = PAUSED
+        status = _status_in_outline(status, outline_mode)
 
         keys = _deadline_keys(
-            collection_item,
-            status,
-            None if paused else course_deadlines,
-            deadline_policy,
-            now,
+            collection_item, status, row_deadlines, deadline_policy, now
         )
         status = _closed_if_past_close(status, keys)
         child_dict = {

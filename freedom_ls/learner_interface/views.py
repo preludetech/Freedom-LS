@@ -118,6 +118,7 @@ from .utils import (
     READY,
     UNRESOLVED,
     CourseListingStatus,
+    OutlineMode,
     Unresolved,
     card_deadline_line,
     current_entry,
@@ -916,8 +917,7 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
             course_progress=course_progress,
             course_deadlines=course_deadlines,
             deadline_policy=deadline_policy,
-            access_ended_outline=shows_ended_outline,
-            paused=paused,
+            outline_mode=_outline_mode(decision),
         )
     )
     start_url: str | None
@@ -1240,6 +1240,15 @@ def _latest_pause_start(course_progress: CourseProgress) -> datetime | None:
     return max((pause.started_at for pause in pauses), default=None)
 
 
+def _outline_mode(decision: CourseAccessDecision) -> OutlineMode:
+    """How much of the outline this learner sees beyond what content access decides."""
+    if decision.paused_at is not None:
+        return OutlineMode.PAUSED
+    if _shows_ended_outline(decision):
+        return OutlineMode.ENDED
+    return OutlineMode.FULL
+
+
 def _shows_ended_outline(decision: CourseAccessDecision) -> bool:
     """Whether a learner whose access ended still sees the course outline and results."""
     return (
@@ -1317,17 +1326,15 @@ def _player_course_index(
     index: int,
     course_progress: CourseProgress | None,
     *,
-    access_ended_outline: bool = False,
-    paused: bool = False,
+    outline_mode: OutlineMode = OutlineMode.FULL,
 ) -> PlayerCourseIndex:
     """The outline the player gates and chrome both read, with deadlines resolved from the
     record so every gate sees blocking and closing as the learner's table of contents does.
 
-    ``access_ended_outline`` is for a learner whose access ended but who keeps the outline:
-    only finished items stay linked. ``paused`` is for a learner whose course is paused:
-    the same, with every other row marked paused and no deadline or policy resolved."""
+    ``outline_mode`` withholds rows as ``OutlineMode`` describes; a paused outline
+    resolves no deadline or policy."""
     now = timezone.now()
-    if paused:
+    if outline_mode is OutlineMode.PAUSED:
         rows = get_course_index(
             user=user,
             course=course,
@@ -1335,7 +1342,7 @@ def _player_course_index(
             can_access_content=False,
             course_progress=course_progress,
             now=now,
-            paused=True,
+            outline_mode=outline_mode,
         )
         return PlayerCourseIndex(rows, None, None, now)
     course_deadlines = _deadlines_or_none(course_progress, now)
@@ -1349,7 +1356,7 @@ def _player_course_index(
         course_deadlines=course_deadlines,
         deadline_policy=deadline_policy,
         now=now,
-        access_ended_outline=access_ended_outline,
+        outline_mode=outline_mode,
     )
     return PlayerCourseIndex(rows, course_deadlines, deadline_policy, now)
 
@@ -1473,8 +1480,7 @@ def view_course_item(request, course_slug, index):
         course,
         index,
         course_progress,
-        access_ended_outline=_shows_ended_outline(decision),
-        paused=paused,
+        outline_mode=_outline_mode(decision),
     )
     course_index = player_index.rows
     blocked = _blocked_item_redirect(
@@ -1516,8 +1522,7 @@ def view_course_item(request, course_slug, index):
         viewable_items=viewable_items,
         course_index=player_index,
         course_progress=course_progress,
-        access_ended_outline=_shows_ended_outline(decision),
-        paused=paused,
+        outline_mode=_outline_mode(decision),
     )
 
     entry = current_entry(course_index)
@@ -1619,8 +1624,7 @@ def _player_chrome_context(
     viewable_items: list | None = None,
     course_index: PlayerCourseIndex | None = None,
     course_progress: CourseProgress | None | Unresolved = UNRESOLVED,
-    access_ended_outline: bool = False,
-    paused: bool = False,
+    outline_mode: OutlineMode = OutlineMode.FULL,
 ) -> dict:
     """Build the shared player-chrome context (TOC, breadcrumb, header, title).
 
@@ -1630,10 +1634,9 @@ def _player_chrome_context(
     callers that have not let them default. Passing ``course_progress=None``
     means "there is no record", and is not the same as leaving it out.
 
-    ``access_ended_outline`` shapes the outline it builds for a learner whose access
-    ended but who keeps the outline; it also withholds the next-deadline card. ``paused``
-    does the same for a learner whose course is paused. When ``course_index`` is passed
-    in, it is built by the caller with those same flags.
+    ``outline_mode`` shapes the outline it builds for an ended or paused learner and
+    withholds the next-deadline card from both. When ``course_index`` is passed in, it is
+    built by the caller with the same mode.
     """
     user = request.user
     if viewable_items is None:
@@ -1671,15 +1674,14 @@ def _player_chrome_context(
             course,
             index,
             course_progress,
-            access_ended_outline=access_ended_outline,
-            paused=paused,
+            outline_mode=outline_mode,
         )
 
     rows = course_index.rows
     course_complete = (
         course_progress is not None and course_progress.completed_time is not None
     )
-    if access_ended_outline or paused or course_complete:
+    if outline_mode is not OutlineMode.FULL or course_complete:
         # Neither carries a deadline on the dashboard either.
         next_deadline = None
     else:
@@ -1703,7 +1705,7 @@ def _player_chrome_context(
         "course_organisation": course_organisation,
         "item_title": current_item.title,
         "index": index,
-        "paused": paused,
+        "paused": outline_mode is OutlineMode.PAUSED,
         **_time_zone_context(request),
     }
 
@@ -2171,8 +2173,7 @@ def course_form_complete(request, course_slug, index):
             PlayerCourseIndex.empty() if access_ended and not keeps_outline else None
         ),
         course_progress=course_progress,
-        access_ended_outline=keeps_outline,
-        paused=paused,
+        outline_mode=_outline_mode(decision),
     )
     course_index = chrome["course_index"]
     # A closed form refuses a new sitting, so its results offer no retry. Read off

@@ -42,6 +42,7 @@ from freedom_ls.learner_interface.utils import (
     PAUSED,
     READY,
     DeadlineTier,
+    OutlineMode,
     card_deadline_line,
     current_entry,
     deadline_tier,
@@ -694,7 +695,7 @@ def test_access_ended_outline_marks_incomplete_rows_blocked_and_keeps_complete_u
         course,
         can_access_content=False,
         course_progress=record,
-        access_ended_outline=True,
+        outline_mode=OutlineMode.ENDED,
     )
 
     done_row, todo_row = part_row["children"]
@@ -715,7 +716,7 @@ def test_access_ended_outline_links_a_part_to_its_first_complete_child(
         course,
         can_access_content=False,
         course_progress=record,
-        access_ended_outline=True,
+        outline_mode=OutlineMode.ENDED,
     )
 
     assert part_row["url"] == part_row["children"][0]["url"]
@@ -737,7 +738,7 @@ def test_access_ended_outline_leaves_a_part_without_complete_children_unlinked(
         course,
         can_access_content=False,
         course_progress=record,
-        access_ended_outline=True,
+        outline_mode=OutlineMode.ENDED,
     )
 
     assert part_row["url"] is None
@@ -754,7 +755,7 @@ def test_paused_outline_marks_unfinished_rows_paused_and_keeps_complete_urls(
         course,
         can_access_content=False,
         course_progress=record,
-        paused=True,
+        outline_mode=OutlineMode.PAUSED,
     )
 
     done_row, todo_row = part_row["children"]
@@ -775,7 +776,7 @@ def test_paused_part_reads_paused_and_links_its_first_complete_child(
         course,
         can_access_content=False,
         course_progress=record,
-        paused=True,
+        outline_mode=OutlineMode.PAUSED,
     )
 
     assert part_row["status"] == PAUSED
@@ -794,7 +795,7 @@ def test_paused_rows_carry_no_deadline_keys(mock_site_context):
         course_progress=record,
         course_deadlines=course_deadlines(record),
         deadline_policy=_policy(close_items=True),
-        paused=True,
+        outline_mode=OutlineMode.PAUSED,
     )
 
     _done_row, todo_row = part_row["children"]
@@ -819,7 +820,7 @@ def test_paused_outline_keeps_a_row_sequential_unlock_withholds_blocked(
         course,
         can_access_content=False,
         course_progress=record,
-        paused=True,
+        outline_mode=OutlineMode.PAUSED,
     )
 
     assert [row["status"] for row in rows] == [PAUSED, BLOCKED, BLOCKED]
