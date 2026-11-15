@@ -427,3 +427,40 @@ def test_a_failed_flush_still_sets_the_clear_flag(mock_site_context, mocker) -> 
     _flush(request, UserFactory())
 
     assert is_cookie_clear_requested(request)
+
+
+def test_a_second_conversion_for_a_target_reads_no_touches(
+    db, mock_site_context, django_assert_num_queries
+) -> None:
+    user = UserFactory()
+    _convert(user, user)
+
+    # The savepoint, the existing-row lookup and the release; the touches
+    # are never read.
+    with django_assert_num_queries(3):
+        conversion = _convert(user, user)
+
+    assert conversion is not None
+
+
+@time_machine.travel(FLUSH_TIME, tick=False)
+def test_a_second_flush_in_the_same_request_costs_no_query(
+    db, mock_site_context, django_assert_num_queries
+) -> None:
+    user = UserFactory()
+    request = _three_landings_request()
+    _flush(request, user)
+
+    with django_assert_num_queries(0):
+        flushed = _flush(request, user)
+
+    assert flushed == []
+
+
+def test_a_flush_without_a_cookie_costs_no_query(
+    db, mock_site_context, django_assert_num_queries
+) -> None:
+    user = UserFactory()
+
+    with django_assert_num_queries(0):
+        _flush(rf.get("/"), user)

@@ -16,7 +16,9 @@ from django.http import HttpRequest
 
 from freedom_ls.referral_tracking.best_effort import best_effort_write
 from freedom_ls.referral_tracking.capture import (
+    CookieTouch,
     flushable_cookie_touches,
+    is_cookie_clear_requested,
     request_cookie_clear,
 )
 from freedom_ls.referral_tracking.config import config
@@ -88,8 +90,11 @@ def flush_cookie_touches(
 
     A touch already written for the same moment and key is found rather than
     written again, so flushing twice, or flushing what a live landing already
-    recorded, leaves one row each. Returns the touches written or found, or an
-    empty list when there is no request, no cookie, or the write failed.
+    recorded, leaves one row each. A second flush in the same request, as when
+    a login adopts several applications, does no work at all. Returns the
+    touches written or found, or an empty list when there is no request, no
+    cookie, the cookie was already flushed in this request, or the write
+    failed.
 
     Touches are written on `user.site` rather than the ambient site, because
     `user_logged_in` can fire outside a request's site context, and through
@@ -97,9 +102,21 @@ def flush_cookie_touches(
     whether or not the write succeeded: a lost write stays lost, and nothing
     retries it.
     """
-    if request is None:
+    if request is None or is_cookie_clear_requested(request):
         return []
     cookie_touches = flushable_cookie_touches(request)
+    flushed: list[AttributionTouch] = []
+    if cookie_touches:
+        flushed = _write_cookie_touches(cookie_touches, user=user, source=source)
+    # Presence, not validity: a forged or expired cookie is cleared too.
+    if config.REFERRAL_TRACKING_COOKIE_NAME in request.COOKIES:
+        request_cookie_clear(request)
+    return flushed
+
+
+def _write_cookie_touches(
+    cookie_touches: list[CookieTouch], *, user: SiteAwareModelBase, source: TouchSource
+) -> list[AttributionTouch]:
     flushed: list[AttributionTouch] = []
     with best_effort_write():
         written: list[AttributionTouch] = []
@@ -117,9 +134,6 @@ def flush_cookie_touches(
             )
             written.append(touch)
         flushed = written
-    # Presence, not validity: a forged or expired cookie is cleared too.
-    if config.REFERRAL_TRACKING_COOKIE_NAME in request.COOKIES:
-        request_cookie_clear(request)
     return flushed
 
 
@@ -156,12 +170,18 @@ def record_conversion(
     conversion = None
     with best_effort_write():
         site = user.site
+        target_key = {
+            "site": site,
+            "kind": kind,
+            "content_type": ContentType.objects.get_for_model(target),
+            "object_id": str(target.pk),
+        }
+        existing = Conversion._base_manager.filter(**target_key).first()
+        if existing is not None:
+            return existing
         first, last = touches_in_play(user=user, site=site, when=occurred_at)
         conversion, _ = Conversion._base_manager.get_or_create(
-            site=site,
-            kind=kind,
-            content_type=ContentType.objects.get_for_model(target),
-            object_id=str(target.pk),
+            **target_key,
             defaults={
                 "user_id": user.pk,
                 "occurred_at": occurred_at,
