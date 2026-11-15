@@ -46,6 +46,12 @@ and the close button.
         opacity: 1;
         transform: none;
     }
+    /* The discard prompt sits in a wrapper that cancels the drawer's side
+     * padding, so its header and footer pad themselves. Its body takes the
+     * same 1.5rem here; inside #app-modal the dialog's own rule does it. */
+    #quick-view [data-discard-prompt] [data-modal-scroll] {
+        padding-inline: 1.5rem;
+    }
     @starting-style {
         #quick-view[open] {
             opacity: 0;

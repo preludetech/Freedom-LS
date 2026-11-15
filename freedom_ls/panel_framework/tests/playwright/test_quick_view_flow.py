@@ -404,6 +404,13 @@ def test_unsent_draft_asks_before_the_drawer_is_left(
     expect(prompt).to_be_visible()
     expect(prompt.get_by_text("Discard your message?")).to_be_visible()
     expect(quick_view).to_be_visible()
+    # The sentence starts on the same padding as the heading, not on the
+    # drawer's edge.
+    heading_box = prompt.locator("[data-discard-title]").bounding_box()
+    body_box = prompt.locator("[data-discard-body]").bounding_box()
+    assert heading_box is not None
+    assert body_box is not None
+    assert body_box["x"] == pytest.approx(heading_box["x"], abs=1)
     prompt.get_by_role("button", name="Keep editing").click()
     expect(prompt).to_be_hidden()
     expect(note).to_have_value("half a thought")
