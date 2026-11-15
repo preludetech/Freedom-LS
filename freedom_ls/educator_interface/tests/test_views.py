@@ -4803,7 +4803,8 @@ class TestLearnerMessagesTab:
         assert not pane.xpath(".//h1 | .//h2 | .//h3")
         classes = pane.get("class").split()
         assert "rounded-b-lg" in classes
-        assert "sm:[&_[role=log]]:px-6" in classes
+        assert "sm:[&_[data-inset]]:px-6" in classes
+        assert "[&_#composer]:border-t-0" in classes
 
     def test_a_learner_with_no_conversation_shows_a_prompt_and_a_composer_posting_to_the_tab(
         self, msg_client_for
@@ -4820,6 +4821,24 @@ class TestLearnerMessagesTab:
         region_id = document.xpath("//section[@data-panel='conversation']")[0].get("id")
         assert composer.get("hx-target") == f"#{region_id}"
         assert composer.get("hx-swap") == "outerHTML"
+
+    def test_the_composer_before_a_first_message_sits_on_the_panels_padding_with_no_rule(
+        self, msg_client_for
+    ):
+        """The composer used to draw a rule above itself and sit 8px left of
+        the panel's heading, on its own 16px padding instead of the panel's."""
+        organisation = OrganisationFactory()
+        educator = _msg_educator(organisation)
+        learner = _msg_learner(organisation)
+
+        document = _tab_document(msg_client_for(educator), learner)
+
+        (composer,) = document.xpath("//form[@id='composer']")
+        classes = composer.get("class").split()
+        assert "border-t" not in classes
+        assert "px-4" not in classes
+        wrapper = composer.getparent()
+        assert {"px-4", "sm:px-6"} <= set(wrapper.get("class").split())
 
     def test_opening_the_tab_moves_the_educators_read_marker(self, msg_client_for):
         organisation = OrganisationFactory()
@@ -5125,6 +5144,26 @@ class TestOversight:
         assert [b.text_content().strip() for b in page.cssselect("footer button")][
             -1:
         ] == ["Close"]
+
+    def test_the_oversight_dialog_has_one_header_and_its_thread_sits_on_the_dialog_padding(
+        self, msg_client_for, scene
+    ):
+        """The dialog used to repeat the person in a pane header under its own
+        title, and the thread and banner sat 8px left of the title."""
+        organisation, _educator, learner, conversation = scene
+        admin = _msg_educator(organisation)
+
+        response = _open_conversation(msg_client_for(admin), learner, conversation.pk)
+
+        page = lxml.html.fromstring(response.content.decode())
+        assert len(page.xpath("//header")) == 1
+        (pane,) = page.xpath("//section[@x-data='conversationThread']")
+        assert "[&_[data-inset]]:px-6" in pane.get("class").split()
+        (log,) = pane.xpath(".//*[@role='log']")
+        assert "px-4" not in log.get("class").split()
+        (banner,) = pane.xpath(".//*[@role='status']/..")
+        assert "border-t" not in banner.get("class").split()
+        assert "px-4" not in banner.get("class").split()
 
     def test_an_organisation_admin_reads_the_thread_read_only(
         self, msg_client_for, scene

@@ -203,6 +203,24 @@ class TestThreadPage:
         assert log.get("role") == "log"
         assert log.get("aria-label") == "Messages with Kai Ngata"
 
+    def test_a_learner_thread_keeps_its_header_and_the_composers_rule_and_padding(
+        self, pair, logged_in_client
+    ) -> None:
+        """Only a pane marked embedded drops its header and the composer's
+        rule; a thread on its own page keeps both."""
+        user, _other, conversation = pair
+
+        response = logged_in_client(user).get(thread_url(conversation))
+
+        tree = html.fromstring(response.content)
+        (pane,) = tree.xpath("//section[@x-data='conversationThread']")
+        assert pane.xpath("./header/h1")
+        assert "data-inset" not in tree.get_element_by_id("thread-log").attrib
+        assert "[&_#composer]:border-t-0" not in pane.get("class")
+        classes = tree.get_element_by_id("composer").get("class").split()
+        assert {"border-t", "border-border", "px-4"} <= set(classes)
+        assert "data-inset" not in tree.get_element_by_id("composer").attrib
+
     def test_messages_appear_in_the_log(self, pair, logged_in_client) -> None:
         user, other, conversation = pair
         MessageFactory(conversation=conversation, sender=other, body="Welcome aboard")

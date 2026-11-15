@@ -15,14 +15,17 @@ embedded marks a pane inside a panel card whose title already names the
 conversation: the pane draws no header of its own, the log and the composer
 (or the closed note standing in for it) sit on the panel's padding, and the
 pane keeps the card's rounded bottom corners. The padding is set from the
-pane, so a composer swapped in out of band keeps it.
+pane onto the log, the composer or closed note (both #composer) and the read-only
+banner, and removes the composer's top rule, so a composer swapped in out of
+band keeps both. It is 16px, 24px from sm up, to match a panel; a host whose
+container pads 24px at every width (a dialog) passes inset_fixed.
 {% endcomment %}
 {% firstof thread_id "thread" as thread_id %}
 <section x-data="conversationThread"
          {% if just_read and not read_only %}data-just-read{% endif %}
          x-on:htmx:before-swap="rememberScroll"
          x-on:htmx:after-settle="keepScrollAfterPrepend"
-         class="flex {% firstof pane_height 'h-[calc(100dvh-var(--thread-top,0px))]' %} min-h-0 flex-col bg-surface{% if embedded %} overflow-hidden rounded-b-lg sm:[&_#composer]:px-6 sm:[&_[role=log]]:px-6{% endif %}">
+         class="flex {% firstof pane_height 'h-[calc(100dvh-var(--thread-top,0px))]' %} min-h-0 flex-col bg-surface{% if embedded %} overflow-hidden rounded-b-lg{% if inset_fixed %} [&_#composer]:border-t-0 [&_#composer]:px-6 [&_[data-inset]]:px-6{% else %} [&_#composer]:border-t-0 [&_#composer]:px-4 sm:[&_#composer]:px-6 [&_[data-inset]]:px-4 sm:[&_[data-inset]]:px-6{% endif %}{% endif %}">
     {% if not embedded %}
     <header class="flex items-center gap-3 border-b border-border px-4 py-3">
         {% if back_url and not read_only %}
@@ -45,7 +48,8 @@ pane, so a composer swapped in out of band keeps it.
             x-on:scroll="onScroll"
             role="log"
             aria-label="Messages with {% if other %}{{ other.display_name }}{% else %}Deleted user{% endif %}"
-            class="m-0 min-h-0 flex-1 list-none space-y-3 overflow-y-auto px-4 py-4 [scroll-padding-bottom:5rem]">
+            {% if embedded %}data-inset{% endif %}
+            class="m-0 min-h-0 flex-1 list-none space-y-3 overflow-y-auto{% if not embedded %} px-4{% endif %} py-4 [scroll-padding-bottom:5rem]">
             {% for entry in thread_entries %}
                 {% include "comms/partials/message_entry.html" %}
             {% endfor %}
@@ -64,7 +68,8 @@ pane, so a composer swapped in out of band keeps it.
         </div>
     </div>
     {% if read_only %}
-        <div class="border-t border-border bg-surface-2 px-4 py-3">
+        <div {% if embedded %}data-inset{% endif %}
+             class="bg-surface-2 py-3{% if not embedded %} border-t border-border px-4{% endif %}">
             <p role="status" class="m-0 flex items-start gap-2 text-sm">
                 <c-icon name="locked" class="size-5 shrink-0" />
                 Read only. You are viewing this conversation as {{ viewer_role_label }}.

@@ -4,5 +4,5 @@ app modal to someone with oversight of the learner. Context: the read-only
 thread context and viewer_role_label.
 {% endcomment %}
 <c-modal-header focus_title="true">Conversation with {% if other %}{{ other.display_name }}{% else %}Deleted user{% endif %}</c-modal-header>
-{% include "comms/partials/thread.html" with pane_height="h-[70dvh]" heading_tag="h3" %}
+{% include "comms/partials/thread.html" with pane_height="h-[70dvh]" heading_tag="h3" embedded=True inset_fixed=True %}
 <c-modal-footer cancel="Close" />

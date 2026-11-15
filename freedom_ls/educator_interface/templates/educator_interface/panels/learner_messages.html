@@ -12,6 +12,10 @@ starts the conversation.
         <div class="px-4 pb-4 sm:px-6">
             <c-panel-empty-state size="compact" message="No messages with {{ learner.user.display_name }} yet." />
         </div>
-        {% if composer %}{% include "comms/partials/composer.html" %}{% endif %}
+        {% if composer %}
+            <div class="px-4 sm:px-6">
+                {% include "comms/partials/composer.html" with embedded=True %}
+            </div>
+        {% endif %}
     {% endif %}
 {% endblock panel_body %}
