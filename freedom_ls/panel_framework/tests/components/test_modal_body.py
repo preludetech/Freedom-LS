@@ -7,7 +7,7 @@ import lxml.html
 from ..cotton_helpers import render_cotton
 
 
-def test_the_body_owns_its_padding_and_the_gap_between_blocks() -> None:
+def test_the_body_owns_its_vertical_padding_and_the_gap_between_blocks() -> None:
     body = lxml.html.fromstring(
         render_cotton("<c-modal-body><p>One</p><p>Two</p></c-modal-body>")
     )
@@ -15,7 +15,8 @@ def test_the_body_owns_its_padding_and_the_gap_between_blocks() -> None:
     classes = set(body.get("class", "").split())
 
     assert body.tag == "div"
-    assert {"px-6", "py-5", "space-y-4", "text-sm"} <= classes
+    assert {"py-5", "space-y-4", "text-sm"} <= classes
+    assert "px-6" not in classes
     assert [p.text for p in body.findall("p")] == ["One", "Two"]
 
 

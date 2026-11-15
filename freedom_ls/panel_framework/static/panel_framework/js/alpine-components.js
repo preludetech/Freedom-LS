@@ -278,6 +278,7 @@ document.addEventListener("alpine:init", () => {
             // expanding), when the dialog resizes and when it opens.
             trackListener(this._handlers, this._dialog, "scroll", () => this._syncMoreBelow(), true);
             trackListener(this._handlers, this._dialog, "toggle", () => this._syncMoreBelow());
+            trackListener(this._handlers, document, "htmx:afterSettle", () => this._syncMoreBelow());
             this._resizeObserver = new ResizeObserver(() => this._syncMoreBelow());
             this._resizeObserver.observe(this._body);
             this._resizeObserver.observe(this._dialog);
@@ -295,6 +296,10 @@ document.addEventListener("alpine:init", () => {
                     dialog.open &&
                     scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight > 8;
                 scroller.dataset.moreBelow = more ? "true" : "false";
+                scroller.style.setProperty(
+                    "--modal-track",
+                    `${scroller.offsetWidth - scroller.clientWidth}px`,
+                );
             });
         },
         requestClose() {
@@ -335,6 +340,9 @@ document.addEventListener("alpine:init", () => {
             // show controls that ignore the first interaction (a select whose
             // hx-get fires on change), so wire them now; process is idempotent.
             htmx.process(this._body);
+            // The new body may be what the dialog first scrolls or shows a
+            // track for, and the dialog's own size need not change.
+            this._syncMoreBelow();
             if (!this._dialog.open) {
                 // The fragment is already in the DOM, so native autofocus
                 // picks the initial focus.
