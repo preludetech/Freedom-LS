@@ -362,6 +362,9 @@ def test_navigation_shows_as_a_left_column_with_javascript_off(
     wider, in the same place and width as with scripting on."""
     organisation = OrganisationFactory(name="Org A")
     assign_object_role(educator_user, organisation, "organisation_admin")
+    assign_object_role(
+        educator_user, OrganisationFactory(name="Org B"), "organisation_admin"
+    )
     url = interface_url(live_server, organisation.slug, "learners")
     page = educator_logged_in_page
     page.set_viewport_size({"width": 1920, "height": 1080})
@@ -375,6 +378,7 @@ def test_navigation_shows_as_a_left_column_with_javascript_off(
         nav = plain.locator("dialog[aria-label='Navigation']")
         expect(nav.get_by_role("link", name="Cohorts")).to_be_visible()
         expect(nav.get_by_role("link", name="Learners")).to_be_visible()
+        expect(nav.get_by_title("Org A")).to_be_visible()
         expect(plain.get_by_role("button", name="Open navigation panel")).to_be_hidden()
         expect(nav.get_by_role("button", name="Close navigation")).to_be_hidden()
         without_script = nav.bounding_box()
@@ -400,12 +404,16 @@ def test_navigation_shows_above_the_content_with_javascript_off_on_a_phone(
     content instead of a dialog that never opens."""
     organisation = OrganisationFactory(name="Org A")
     assign_object_role(educator_user, organisation, "organisation_admin")
+    assign_object_role(
+        educator_user, OrganisationFactory(name="Org B"), "organisation_admin"
+    )
     plain = _scriptless_page(browser, educator_logged_in_page)
     try:
         plain.set_viewport_size(_PHONE)
         plain.goto(interface_url(live_server, organisation.slug, "learners"))
         nav = plain.locator("dialog[aria-label='Navigation']")
         expect(nav.get_by_role("link", name="Cohorts")).to_be_visible()
+        expect(nav.get_by_title("Org A")).to_be_visible()
         expect(plain.get_by_role("button", name="Open navigation panel")).to_be_hidden()
         expect(nav.get_by_role("button", name="Close navigation")).to_be_hidden()
         box = nav.bounding_box()
