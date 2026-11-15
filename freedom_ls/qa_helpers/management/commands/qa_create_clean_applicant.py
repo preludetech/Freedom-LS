@@ -80,13 +80,18 @@ def _get_courses(site: Site, course_slugs: tuple[str, ...]) -> list[Course]:
     return courses
 
 
-def _ensure_user(email: str, site: Site) -> tuple[User, bool]:
+def _ensure_user(
+    email: str, site: Site, password: str | None = None
+) -> tuple[User, bool]:
     """Create or reset a plain learner User on the given site.
+
+    The password defaults to the email address (the DemoDev convention).
 
     _base_manager: outside a request there is no ambient site, and an account
     with this email could live on another Site where a site-filtered lookup
     would miss it and mint a duplicate instead of resetting.
     """
+    password = password or email
     user = User._base_manager.filter(email=email).first()
     if user is None:
         created = cast(
@@ -96,7 +101,7 @@ def _ensure_user(email: str, site: Site) -> tuple[User, bool]:
                 is_active=True,
                 is_staff=False,
                 is_superuser=False,
-                password=email,
+                password=password,
                 site=site,
             ),
         )
@@ -106,7 +111,7 @@ def _ensure_user(email: str, site: Site) -> tuple[User, bool]:
     user.is_active = True
     user.is_staff = False
     user.is_superuser = False
-    user.set_password(email)
+    user.set_password(password)
     user.save()
     return user, False
 

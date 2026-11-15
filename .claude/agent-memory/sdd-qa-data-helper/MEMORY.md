@@ -1,5 +1,6 @@
 # Memory Index
 
+- [reference_formula_title_course_command.md](reference_formula_title_course_command.md) — qa_create_formula_title_course: free published course titled =HYPERLINK(...) (slug qa-formula-course) for CSV-injection export checks
 - [reference_course_content_preview_command.md](reference_course_content_preview_command.md) — qa_create_course_content_preview: educator content-preview seed; delete-and-recreate (pks change per run); Course has organisations m2m; c-content-link 500s (Topic.preview_url)
 - [reference_verified_learner_setup.md](reference_verified_learner_setup.md) — Three records needed for a login-ready QA learner (User, verified EmailAddress, UserCourseRegistration); "right password but lands on Verify Your Email Address" = missing/unverified EmailAddress; use update_or_create
 - [reference_completing_a_course.md](reference_completing_a_course.md) — How to mark a course Completed for a user; the save-hook and missing-site gotchas to avoid
@@ -73,6 +74,7 @@
 - [reference_deadline_outline_scenario_command.md](reference_deadline_outline_scenario_command.md) — qa_create_deadline_outline_scenario: all deadline tiers in one outline + 3 dashboard cards for demodev; fresh-DB bootstrap; GET on a topic page mutates progress
 
 - [reference_audit_log_history_command.md](reference_audit_log_history_command.md) — qa_create_audit_log_history: learner+cohort History tabs + org Audit log seed (bulk run 56 w/ reason, system + deleted actor); audit entries append-only so run-once; bulk summary never shows on the cohort tab
+- [reference_referral_attribution_scenario_command.md](reference_referral_attribution_scenario_command.md) — qa_create_referral_attribution_scenario: 3 reused demo courses + PARTNERA/B + 3 learners & no-perm staff (QaPass!2026x); Conversion-before-Touch RESTRICT; admin URLs use freedom_ls_referral_tracking label
 
 ## Recurring requests
 
