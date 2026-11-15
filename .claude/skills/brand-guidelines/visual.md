@@ -60,7 +60,7 @@ Sizes and weights for headings, prose, tables and form inputs live in the `@laye
 
 1. **Content first, chrome second**: foreground the learning content (rendered Markdown). Every pixel of navigation, toolbar and chrome earns its place.
 2. **Obvious over clever**: navigation, progress and actions read at a glance. If it's clickable, it looks clickable. Clarity beats minimalism.
-3. **Whitespace is the structure**: build hierarchy from generous, consistent spacing on Tailwind's scale. Space separates things. Surfaces stay flat; a shadow, border or rule appears only where it does a job (the edge of a card or dialog, a sticky dialog header or footer, a table's header row) and where a component already carries it. Siblings that space can separate get space: no box around each item in a group, no rule between list items, no box inside a box.
+3. **Whitespace is the structure**: build hierarchy from generous, consistent spacing on Tailwind's scale. Space separates things. Surfaces stay flat; a shadow, border or rule appears only where it does a job (the edge of a card or dialog, a sticky dialog header or footer, a table's header row) and where a component already carries it. Siblings that space can separate get space: no box around each item in a group, no box inside a box, and no rule between list items except in a component built as a ruled list of records.
 4. **Things line up**: content shares edges. Blocks start and stop on their container's padding, a button lines up with the text above it, and items of one kind sit in one column so they read down the page.
 5. **Progressive disclosure**: essentials by default, detail on demand.
 6. **Respect the content author**: content is authored in Markdown, and default rendering must look excellent with zero custom CSS. Honour the author's structure.
@@ -96,13 +96,15 @@ FLS already builds each of these, and the brand decisions above are encoded in t
 
 Where you do write utilities, keep to Tailwind's spacing scale and use `rounded-md` (`--fls-radius-md`) unless the component says otherwise. Padding, gaps, dialog footers and phone sizing are set by the panel-framework components; `Skill(fls-dev:panel-framework)` says what they do.
 
+**Buttons of one size are one height.** A variant changes a button's colour and outline, never its box: the secondary button's outline is drawn inside its box, so it sits level with a primary or error button beside it. This holds on every page, learner pages included.
+
 **A button label fits on one line, down to a 375px phone.** Keep it to a verb and a noun ("Download errors", "Upload a corrected file"). A count or a sentence goes in the heading or text beside the button, not in the label. A label wraps only when no shorter wording names the action.
 
 **A long list inside a block scrolls in its own region.** When a block can hold more than about ten rows (an import's error rows, say), cap its height (`max-h-96 overflow-y-auto`) so the page around it stays short. Make the region focusable (`tabindex="0"`, `role="region"`, an `aria-label`) and keep the table header sticky.
 
 **An expand chevron shows whether its control is open.** A menu button, a `<details>` disclosure, a filter chip and an accordion end in `<c-icon name="dropdown">`, which points down while closed and turns up (`rotate-180`) while open: `group-open:rotate-180` under a `<details class="group">`, `group-aria-expanded:rotate-180` under a trigger with `aria-expanded`, and `group-aria-expanded/menu:rotate-180` in a `<c-dropdown-menu>` trigger, which is a `group/menu`.
 
-**The navigation is a left column from 1024px up.** The interface shells (`_base_interface.html`) dock the navigation `<dialog>` beside the content as the grid's first column at `lg` and wider; below `lg` it is a sheet opened from the page heading's toggle. A page where the navigation is drawn above the content, spans the page width or is missing at a desktop width is a broken shell. It is never the page's look, whatever a sibling page or an earlier screenshot shows.
+**The navigation is a left column from 1024px up.** The interface shells (`_base_interface.html`) dock the navigation `<dialog>` beside the content as the grid's first column at `lg` and wider; below `lg` it is a sheet opened from the page heading's toggle. A page where the navigation is drawn above the content, spans the page width or is missing at a desktop width is a broken shell. It is never the page's look, whatever a sibling page or an earlier screenshot shows. With JavaScript off the navigation still shows, by CSS alone: docked as the left column at `lg` and wider, a block above the content below that.
 
 **Separate outcomes get separate panels.** A result page puts what succeeded and what failed in two sibling panels, never one card holding both. The learner import result shows the "Added…" summary in one `<c-panel-card>` and the error block as its own panel beside it in the stack.
 
@@ -120,7 +122,7 @@ person it gives a role to; the per-role actions sit in the Role actions column.
 
 What QA checks in a screenshot of any FLS page.
 
-- At 1024px and wider the navigation is a left column beside the content, never a band above it, never the page's width, never missing.
+- At 1024px and wider the navigation is a left column beside the content, never a band above it, never the page's width, never missing, JavaScript on or off.
 - A person is linked with the avatar-and-name person link, never a bare name.
 - A link that acts as a control carries no prose underline; a link inside prose does.
 - A control that changes a thing sits beside the thing it changes; a Settings tab holds only the
@@ -132,7 +134,8 @@ What QA checks in a screenshot of any FLS page.
 - A page a person cannot use shows a large centred icon with text under it, not a callout.
 - Every deadline, close-date, time-limit or access-date line a learner sees ("Closes" included) has its own coloured icon and bold tier word, with the date in muted mono; none is plain text, and none sits inside another deadline's block.
 - Every expand chevron (menu button, disclosure, filter chip, accordion) points down while closed and up while open.
-- Items are separated by space: no box around each option, no rule between list items, no box inside a box; a rule appears only at a card or dialog edge, a sticky dialog header or footer, or a table header.
+- Items are separated by space: no box around each option, no box inside a box; a rule appears only at a card or dialog edge, a dialog header or footer, a table header, or between the rows of a ruled list of records.
+- Buttons of one size are one height, whatever their variant: an outlined button is no taller than a filled one beside it.
 - Content lines up: blocks start and stop on their container's padding, buttons line up with the text above them, items of one kind share a column.
 
 ## Example page

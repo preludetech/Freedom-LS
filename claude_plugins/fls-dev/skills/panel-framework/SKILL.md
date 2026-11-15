@@ -97,6 +97,10 @@ Components live in `freedom_ls/panel_framework/templates/cotton/`: `data-table`,
 - A table whose columns do not fit its own container shows as cards, never behind a sideways
   scroll. The table declares it (`cards_when_narrow`) and the switch reads the container's width,
   not the viewport's, so it also holds beside an open quick view.
+- A wide read-only table with no action column (a report's progress table) may scroll sideways
+  inside its own region instead. Its name column then has a minimum width, so a person's name
+  stays readable at every width, a status badge stays on one line, and no button sits behind the
+  scroll.
 - A row the viewer cannot act on states its fields and leaves its buttons column empty: no note
   saying why, no link to the page where it can be changed.
 - A row's own record is opened in the quick view; detail a row does not need to be scanned (who
@@ -134,12 +138,16 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
   rounded corners.
 - Inside a panel, space separates items. A list of people or records is rows in a grid with a gap,
   one column per kind of content (person, role, buttons), so the columns line up.
+- `<c-panel-list>` is the one list that draws a rule between its rows. Nothing else inside a panel
+  does, and nothing inside a panel is boxed: a group within a panel (one course among several) is
+  a section with its own heading, separated from the next by space, never a card inside the card.
 
 ### Tables
 
 - The footer states the entry count at the left, in line with the pager, on a single-page table
   too ("12 records", "Showing 1–10 of 80 records"). It renders from `entry_count`, so a table
-  never writes its own.
+  never writes its own. A paged `<c-panel-table>` uses the same footer: the count at the left and
+  the pager at the right, never a bare pager.
 - An empty table shows `<c-panel-empty-state>` inside the data table's empty row, which carries
   `hover:bg-transparent` so the empty state takes no row hover.
 - A person in a list row is `<c-panel-attention-row>`: the name `text-sm font-semibold`, the chip
@@ -213,8 +221,10 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
 - Body text in a dialog is one size, the base size; only the title in `<c-modal-header>` differs.
   Lists, consequences, notices and errors in the body take no `text-sm`.
 - A confirm dialog states what is true now and what the action changes, naming the records it
-  touches. A disabled action shows its reason beside the control, and the control names it with
-  `aria-describedby`. A bulk confirm waiting on its picker gives
+  touches. A disabled confirm's reason is body text in the dialog's body, never in the footer:
+  directly under the field that causes it (the picker), or at the end of the body when no field
+  does. The footer holds Cancel and the disabled confirm only, and the confirm names the reason
+  with `aria-describedby`. A bulk confirm waiting on its picker gives
   "Choose a <field label> first." as that reason, worded from the picker field's label.
 - A list of options in a dialog (radio choices, search results) is separated by space. An option
   draws no border of its own and options have no dividers between them; the group's own container
@@ -237,8 +247,10 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
   in by putting `data-modal-size="wide"` on its root. It changes the width (about
   `min(92vw, 64rem)` from 640px up) and the max-height (95dvh); the height, the scrolling and the
   sticky header stay the shared rule's.
-- `#app-modal` shows that it scrolls: the scrollbar track is always visible, and a fade sits at
-  the dialog's bottom edge while content lies below the fold, gone once the end is reached.
+- Only a dialog's body scrolls. The header and footer stay put and span the dialog's full width,
+  so their rules reach both edges, and the body has the same padding left and right.
+- The body shows that it scrolls: its scrollbar track is always visible, and a fade sits at the
+  body's bottom edge while content lies below the fold, gone once the end is reached.
 
 ### Selection bar
 
@@ -271,6 +283,13 @@ the selection clears. Every control stays inside the bar at 375px.
   Dialogs are for confirmations and multi-field forms.
 - Entering an email for a person who may already exist searches as you type and offers the
   matches, so the person picks rather than remembers.
+- An inline form in a panel (a record's name on its Settings tab) shows a field error as one line
+  under its field: the message alone, never prefixed with the field's label, with `role="alert"`,
+  and the input names it with `aria-describedby` and carries `aria-invalid`. It gets no notice
+  box and no error summary.
+- An element that takes focus only by script, so a screen reader announces it (a result heading,
+  a notice, an error summary: `tabindex="-1"`), shows no outline. One shared rule does this.
+  Buttons, links and fields keep their focus rings.
 
 ### Placement
 
@@ -330,7 +349,7 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
 - A dialog's Cancel sits at the left and its actions at the right; two buttons in one row never
   share a bare verb.
 - The table footer states the entry count at the left, in line with the pager, on a single-page
-  table too; hovering an empty table's message tints nothing.
+  table and a paged static table too; hovering an empty table's message tints nothing.
 - A list of records in a panel has the same fields in the same places on every row, never
   dash-joined sentences; a row of figures lines its labels up in columns at every width; a person
   in a list row has a small name and a small avatar centred on the name's first line; a person's
@@ -339,8 +358,9 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
   and the chevron turns up while open; a group opened inside a popover draws no second box.
 - A confirmation shows as a modal over the page it came from, JavaScript on or off; body text in a
   dialog is one size.
-- A disabled confirm has its reason beside it; a bulk picker dialog with nothing chosen reads
-  "Choose a cohort first." (or the picker's own field).
+- A disabled confirm has its reason in the dialog's body, under the field that causes it, at the
+  body's text size, and its footer holds Cancel and the confirm on one line; a bulk picker dialog
+  with nothing chosen reads "Choose a cohort first." (or the picker's own field).
 - A bulk result shows counts ("N records changed", "N records already up to date") and names only
   failed rows.
 - The selection bar sits above the table, in the toolbar's place, at every viewport, and stays in
@@ -356,7 +376,8 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
   leaves the page behind it undimmed and tappable, a modal dims it.
 - A dialog, sheet, table or selection bar (More menu included) stays inside the viewport at every
   width, title and every button included. A table with action columns is cards at 768 and beside
-  an open quick view, with no button cut off or behind a sideways scroll.
+  an open quick view, with no button cut off or behind a sideways scroll. In a table that scrolls
+  sideways in its own region, every person's name is readable and no badge wraps.
 - A page header states each fact once and shows a state badge only for a state that differs from
   the default; a list page starts at its heading and toolbar, with help in a dialog or the docs
   rather than a paragraph above the list.
@@ -367,8 +388,11 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
 - Each panel does one job: no panel holds a second heading for a different job, and no panel
   header has a rule under it.
 - Every dialog has a header, a body and a footer, with the header and footer rules running the
-  full width of the dialog and the footer buttons lined up with the body text and the close
-  control.
+  full width of the dialog, edge to edge, and the footer buttons lined up with the body text and
+  the close control. The body's padding is the same left and right, and only the body scrolls.
+- A heading, notice or error summary that takes focus so a screen reader announces it shows no
+  focus box; a button, link or field does.
+- A field error in an inline panel form is one line under its field, without the field's label.
 - Options in a dialog (radio choices, search results) are separated by space, with no box around
   each option and no line between them; an empty result list draws nothing.
 - A table row's per-item buttons sit on their item's line in their own column, and the

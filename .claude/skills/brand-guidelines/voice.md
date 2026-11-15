@@ -82,7 +82,8 @@ Name the specific problem, suggest a specific fix, in plain language. Explain an
   person does, never the system's step ("Look up"), and never a noun that may be untrue for this
   person ("Add staff member" for someone already on the staff).
 - A disabled action shows its reason beside the control, and the control names it with
-  `aria-describedby`.
+  `aria-describedby`. In a dialog the reason is body text under the field that causes it, never
+  in the footer.
 - Two buttons in one row never share a bare verb. Each names its noun.
 - One word for a relation everywhere it appears: a list and a quick view both say "via".
 - Adding a record by hand is a form for one record, with "Add" and "Add and add another". A
