@@ -58,7 +58,8 @@ out of an existing one.
 
 A move is always followed by its edit commit — never left standing on its own. A split or a
 dependency removal is one edit commit with no move. After each move/edit pair, or after a
-standalone edit, run `uv run pytest <affected app test dirs>`; a move-only commit can break a
+standalone edit, read `claude_plugins/sdd/commands/protected/run_test_tier.md` and follow it
+with `<tier>`: `targeted` and `<diff>`: `--range <commit before the pair>..HEAD`; a move-only commit can break a
 test that relies on its old directory's `conftest.py`, and the edit commit that follows it has to
 restore that.
 

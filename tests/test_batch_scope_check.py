@@ -94,7 +94,7 @@ def repo(tmp_path: Path) -> GitRepo:
     return git_repo
 
 
-def add_batch(repo: GitRepo, n: int, paths: dict[str, str]) -> str:
+def add_batch(repo: GitRepo, n: int | str, paths: dict[str, str]) -> str:
     """Write and commit `[batch n] implement`, touching each of `paths` (path -> content)."""
     for path, content in paths.items():
         repo.write_text(path, content)
@@ -253,14 +253,43 @@ def test_non_boy_scout_commit_in_range_is_not_checked(repo: GitRepo) -> None:
     assert result.returncode == 0
 
 
+def test_suffixed_batch_id_checks_its_own_touched_files(repo: GitRepo) -> None:
+    # Arrange
+    from_ref = add_batch(
+        repo, "2b.1", {"freedom_ls/app_a/tests/test_models.py": "content\n"}
+    )
+    repo.write_text("freedom_ls/app_a/tests/test_models.py", "content, tidied\n")
+    repo.commit("[batch 2b.1 boy-scout] edit tidy import")
+    repo.write_text("freedom_ls/app_b/tests/test_other.py", "new\n")
+    repo.commit("[batch 2b.1 boy-scout] edit touches app_b")
+
+    # Act
+    result = _run_script(["2b.1", from_ref], repo.path, repo.env)
+
+    # Assert
+    assert result.returncode == 1
+    assert result.stdout.splitlines() == [
+        "OUT_OF_SCOPE:",
+        "freedom_ls/app_b/tests/test_other.py",
+    ]
+
+
 @pytest.mark.parametrize(
     "args_factory",
     [
         lambda from_ref: [],
         lambda from_ref: ["abc", from_ref],
+        lambda from_ref: ["2b.", from_ref],
+        lambda from_ref: ["b.1", from_ref],
         lambda from_ref: ["1", "not-a-real-ref"],
     ],
-    ids=["no_args", "non_numeric_batch", "unknown_ref"],
+    ids=[
+        "no_args",
+        "non_numeric_batch",
+        "suffix_without_number",
+        "suffix_without_plan_number",
+        "unknown_ref",
+    ],
 )
 def test_bad_arguments_exit_64(
     repo: GitRepo, args_factory: Callable[[str], list[str]]

@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 # Checks that one batch's boy-scout commits touch only that batch's touched files.
 #
-# Usage: batch_scope_check.sh <batch-number> <from-ref> [<to-ref>]
+# Usage: batch_scope_check.sh <batch-id> <from-ref> [<to-ref>]
+#
+# <batch-id> is a batch number (3), or a suffixed plan's id (2b.3).
 #
 # Exit 0: in scope. Exit 1: a boy-scout commit touched a path outside the batch's touched files;
 # prints OUT_OF_SCOPE: then one path per line. Exit 64: bad arguments.
 set -euo pipefail
-usage() { echo "Usage: $0 <batch-number> <from-ref> [<to-ref>]" >&2; }
+usage() { echo "Usage: $0 <batch-id> <from-ref> [<to-ref>]" >&2; }
 
 [[ $# -eq 2 || $# -eq 3 ]] || { usage; exit 64; }
 BATCH=$1; FROM=$2; TO=${3:-HEAD}
-[[ $BATCH =~ ^[0-9]+$ ]] || { usage; exit 64; }
+[[ $BATCH =~ ^([0-9]+|2[a-z]+\.[0-9]+)$ ]] || { usage; exit 64; }
 for ref in "$FROM" "$TO" origin/main; do
     git rev-parse --verify --quiet "${ref}^{commit}" >/dev/null || { usage; exit 64; }
 done
