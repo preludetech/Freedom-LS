@@ -448,20 +448,20 @@ Actual: Cohort report tables at 375 show 'AA A' for every learner and cut the Do
 |---|---|
 | B1 | **FIXED** (commit: 6fa29689c) — Discard prompt: Keep editing drops focus and the next Esc closes the dialog without asking |
 | B2 | **FIXED** (commit: ab737e8e4) — Add to cohort dialog offers an inactive cohort after a validation error |
-| B3 | **UNRESOLVED** — Dialog header and footer rules stop 16px short of the right edge (reason: the fix, commit 9c7ac77a1, dropped the always-reserved scrollbar gutter and reworded the rule "the scrollbar track is always visible" in the panel-framework skill; choosing between that rule and full-width rules is a design decision, so the fix was reverted in 4a67ac950) |
-| B4 | **UNRESOLVED** — A disabled confirm's reason is larger than the dialog text and sits above the button (reason: a 512px footer has no room for Cancel, a sentence and the confirm on one line, so where the reason goes and at what size needs a design decision) |
-| B5 | **UNRESOLVED** — Secondary buttons are 2px taller than primary ones (reason: the button styles are shared with learner pages, which this spec says must not change; evening the sizes needs a decision on which size wins site-wide) |
-| B6 | **UNRESOLVED** — Refusal for deactivating an inactive cohort tells the person to reactivate it in order to deactivate it (reason: needs a copy decision on what this refusal should say) |
+| B3 | **FIXED** (commits: a9d497ad3, 30eaf8eb4) — Dialog header and footer rules stop 16px short of the right edge — after the fix: ![](screenshots/fixed/page-2026-11-15T10-32-26-673Z.png) ![](screenshots/fixed/page-2026-11-15T10-32-40-967Z.png) |
+| B4 | **FIXED** (commit: 26e0835f3) — A disabled confirm's reason is larger than the dialog text and sits above the button — after the fix: ![](screenshots/fixed/page-2026-11-15T10-32-56-654Z.png) ![](screenshots/fixed/page-2026-11-15T10-33-13-359Z.png) |
+| B5 | **FIXED** (commit: 5ba8393b5) — Secondary buttons are 2px taller than primary ones — after the fix: ![](screenshots/fixed/page-2026-11-15T10-12-54-974Z.png) |
+| B6 | **FIXED** (commit: 3879331b6) — Refusal for deactivating an inactive cohort tells the person to reactivate it in order to deactivate it — after the fix: ![](screenshots/fixed/page-2026-11-15T10-33-35-333Z.png) |
 | B7 | **FIXED** (commit: a69e136b5) — Registrations list: status badge of a row with no action sits in the button column |
-| B8 | **UNRESOLVED** — Panel lists draw a rule between rows and course cards are boxes inside a box, against the brand checklist (reason: the list component is documented as divided by rules while the brand checklist says no rule between list items; which one is right is a design decision) |
-| B9 | **UNRESOLVED** — Embedded conversation does not line up with its panel or dialog and repeats a header (reason: the thread and composer are shared with learner message pages, which this spec says must not change; needs a decision on changing the shared partial or wrapping it) |
+| B8 | **FIXED** (commit: 37585b93d) — Panel lists draw a rule between rows and course cards are boxes inside a box, against the brand checklist (decision: list rows keep their rule and the checklist allows it; course boxes removed) — after the fix: ![](screenshots/fixed/page-2026-11-15T10-13-07-382Z.png) ![](screenshots/fixed/page-2026-11-15T10-13-20-508Z.png) |
+| B9 | **FIXED** (commit: 0d43694a2) — Embedded conversation does not line up with its panel or dialog and repeats a header — after the fix: ![](screenshots/fixed/page-2026-11-15T10-13-33-031Z.png) ![](screenshots/fixed/page-2026-11-15T10-13-49-438Z.png) |
 | B10 | **FIXED** (commit: 5d183b582) — People in the cohort staff list and the other-educator conversations list are not the small person row |
-| B11 | **UNRESOLVED** — No navigation on educator pages when JavaScript is off (reason: how the sidebar renders without JavaScript is a design decision; same on main) |
-| B12 | **UNRESOLVED** — Import preview Rows table has no entry count in its footer (reason: needs a decision on whether static panel tables carry the data table's count-and-pager footer and a height cap) |
-| B13 | **UNRESOLVED** — Import result shows browser-local time while the tables show server time (reason: needs a decision on which clock educator pages show; same on main) |
-| B14 | **UNRESOLVED** — Programmatically focused heading and notice are drawn inside a heavy black box (reason: needs a design decision on the focus style for elements focused for screen readers) |
-| B15 | **UNRESOLVED** — Empty cohort name shows inline red text, not the error notice the QA plan expects (reason: the plan asks for a notice while other forms show field errors inline; which shape this form uses is a design decision) |
-| B16 | **UNRESOLVED** — Tables clip the learner's name to one or three letters at 375 and 768 (reason: needs a design decision between cards at these widths and a minimum name width with sideways scroll, for the report tables and the learner tables) |
+| B11 | **FIXED** (commits: 8b9b24a71, dcf9cddef) — No navigation on educator pages when JavaScript is off — after the fix: ![](screenshots/fixed/page-2026-11-15T11-10-00-001Z.png) ![](screenshots/fixed/page-2026-11-15T11-10-10-001Z.png) |
+| B12 | **FIXED** (commit: 6ae27bfb5) — Import preview Rows table has no entry count in its footer — after the fix: ![](screenshots/fixed/page-2026-11-15T10-14-24-455Z.png) |
+| B13 | **FIXED** (commit: f550374a6) — Import result shows browser-local time while the tables show server time — after the fix: ![](screenshots/fixed/page-2026-11-15T10-14-03-560Z.png) |
+| B14 | **FIXED** (commit: ddc1b4533) — Programmatically focused heading and notice are drawn inside a heavy black box — after the fix: ![](screenshots/fixed/page-2026-11-15T10-14-03-560Z.png) ![](screenshots/fixed/page-2026-11-15T10-15-00-001Z.png) |
+| B15 | **FIXED** (commit: 6258f8053) — Empty cohort name shows inline red text, not the error notice the QA plan expects (decision: keep the inline field error, without the label, announced and linked to the field; the QA plan now expects that) — after the fix: ![](screenshots/fixed/page-2026-11-15T10-12-54-974Z.png) |
+| B16 | **FIXED** (commits: 2e165f27c, 2d632c18b, f412b203f) — Tables clip the learner's name to one or three letters at 375 and 768 — after the fix: ![](screenshots/fixed/page-2026-11-15T10-14-46-767Z.png) ![](screenshots/fixed/page-2026-11-15T10-15-17-448Z.png) ![](screenshots/fixed/page-2026-11-15T10-47-39-076Z.png) |
 
 Fix verification, re-driven in the browser after each commit:
 
@@ -469,6 +469,13 @@ Fix verification, re-driven in the browser after each commit:
 - B2: the cohort select lists the same active cohorts before and after an invalid submit.
 - B7: every registration row's badge ends in the same column at 1920 and at 375 (![](screenshots/page-2026-11-14T12-40-00-001Z.png)).
 - B10: both lists show a 14px semibold name with a 24px avatar on the name's line; row buttons and the conversation dialog still work (![](screenshots/page-2026-11-14T13-00-00-001Z.png), ![](screenshots/page-2026-11-14T13-00-10-001Z.png)).
+
+Notes from the 15 Nov fix run (`/sdd:qa_fix`), where the page was checked after each fix:
+
+- B3 took two attempts: the first left the body 24px from the left edge and 40px from the right and drew the bottom fade over content that fitted; the second put the scrollbar track inside the right-hand space and shows the fade only when content lies below.
+- B11 uses a `scripting: none` media query, not a `noscript` block, because a `noscript` block leaked onto JavaScript-on pages after an htmx history restore. A table's filter sheet also shows inline on a phone without JavaScript; that is the existing design of `table_sheet.html` (it keeps filtering usable without JavaScript) and was left as it is.
+- B16 took three commits: cards for the learner tables and a name floor for report tables; then the Downloads table's By column; then, by hand, the requester moved under the date on a phone so the Download button stays in view. The phone layout test now checks the table fits its own scroll region.
+- B5 changes every secondary button on the site, learner pages included, as decided.
 
 ## General notes
 
@@ -485,4 +492,4 @@ Fix verification, re-driven in the browser after each commit:
 - Names in the staff cards at 768 are truncated ("Cora Cohortad…") although the card has room.
 - The data helper wrote files during the run that are not committed: `freedom_ls/qa_helpers/management/commands/qa_create_bulk_learners.py` and notes under `.claude/agent-memory/sdd-qa-data-helper/`.
 
-status: ok · reason: 16 bugs: 4 fixed, 12 unresolved (1 of them a reverted fix); report rendered, screenshots verified
+status: ok · reason: 16 bugs: 16 fixed, 0 unresolved; report rendered, screenshots verified
