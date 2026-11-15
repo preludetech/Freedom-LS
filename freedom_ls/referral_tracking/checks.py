@@ -2,12 +2,14 @@
 
 E001 — REFERRAL_TRACKING_INACTIVE_DESTINATION is not a site path.
 W001 — REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS is shorter than the cookie's life.
+E002 — REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS is too large for `Conversion.window_days`.
 """
 
 from __future__ import annotations
 
 from django.core.checks import CheckMessage, Error, Warning, register
 from django.core.exceptions import ValidationError
+from django.db import connection
 
 
 @register()
@@ -31,9 +33,23 @@ def check_inactive_destination(**kwargs: object) -> list[CheckMessage]:
 @register()
 def check_attribution_window(**kwargs: object) -> list[CheckMessage]:
     from freedom_ls.referral_tracking.config import config
+    from freedom_ls.referral_tracking.models import Conversion
 
     window = config.REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS
     cookie_days = config.REFERRAL_TRACKING_COOKIE_MAX_AGE_DAYS
+    field = Conversion._meta.get_field("window_days")
+    _, largest = connection.ops.integer_field_range(field.get_internal_type())
+    if largest is not None and window > largest:
+        # Every conversion insert would fail, and the best-effort write
+        # around it would swallow the error.
+        return [
+            Error(
+                f"REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS ({window}) is larger "
+                f"than Conversion.window_days can store ({largest}).",
+                hint=f"Set it to {largest} days or fewer.",
+                id="freedom_ls_referral_tracking.E002",
+            )
+        ]
     if window < cookie_days:
         return [
             Warning(

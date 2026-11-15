@@ -39,3 +39,17 @@ def test_w001_is_silent_when_the_window_equals_the_cookies_life(settings) -> Non
     settings.REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS = 90
 
     assert check_attribution_window() == []
+
+
+def test_e002_fires_when_the_window_does_not_fit_window_days(settings) -> None:
+    settings.REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS = 32768
+
+    errors = check_attribution_window()
+
+    assert [error.id for error in errors] == ["freedom_ls_referral_tracking.E002"]
+
+
+def test_e002_is_silent_at_the_largest_window_that_fits(settings) -> None:
+    settings.REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS = 32767
+
+    assert check_attribution_window() == []
