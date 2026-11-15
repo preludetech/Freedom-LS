@@ -6052,6 +6052,28 @@ def test_confirming_runs_the_import_and_the_result_page_reports_it(
 
 
 @pytest.mark.django_db
+def test_the_result_shows_its_completed_time_in_site_time_not_the_browsers(
+    import_world: SimpleNamespace,
+):
+    """The completed time used to be a `<time x-data="localTime">` the browser
+    rewrote into its own zone, so it disagreed with the tables beside it."""
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,,,"
+    )
+    import_world.client.post(
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(import_world.organisation, "learner_import_result", learner_import),
+    )
+
+    assert page.cssselect('time[x-data="localTime"]') == []
+    assert len(page.cssselect("time[datetime]")) == 1
+
+
+@pytest.mark.django_db
 def test_a_second_confirmation_does_not_run_the_import_again(
     import_world: SimpleNamespace,
 ):
