@@ -5,6 +5,7 @@ set `site` by hand."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date, datetime
 
 from django.db import transaction
@@ -289,6 +290,15 @@ def _record_resumed(
     _notify(locked, actor, "course.resumed", {"summary": summary % values})
 
 
+@dataclass(frozen=True)
+class GrantedExtension:
+    """The extension row, and the deadline it moved once it applies: None for the whole
+    course, which has no single deadline."""
+
+    extension: DeadlineExtension
+    due_at: datetime | None
+
+
 def extend_deadline(
     record: CourseProgress,
     *,
@@ -299,7 +309,7 @@ def extend_deadline(
     days: int | None = None,
     requested_date: date | None = None,
     now: datetime | None = None,
-) -> DeadlineExtension:
+) -> GrantedExtension:
     """Add days to one deadline, the course time limit or every unmet deadline of the
     record, given as a number of days or as the date the target should fall on. Allowed
     while paused and after access ended: a time-limit extension that lifts the access end
@@ -403,7 +413,7 @@ def extend_deadline(
         else:
             summary = _("Your educator moved your deadlines in %(course)s by %(days)s.")
         _notify(locked, actor, "deadline.extended", {"summary": summary % values})
-    return extension
+    return GrantedExtension(extension=extension, due_at=due_after)
 
 
 def _extension_target(

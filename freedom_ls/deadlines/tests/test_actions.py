@@ -608,7 +608,7 @@ class TestExtendDeadline:
             collection_item=item,
             days=4,
             now=NOW,
-        )
+        ).extension
 
         assert (
             extension.site_id,
@@ -650,7 +650,7 @@ class TestExtendDeadline:
             collection_item=item,
             requested_date=date(2026, 3, 30),
             now=NOW,
-        )
+        ).extension
 
         assert (extension.days, extension.requested_date) == (7, date(2026, 3, 30))
         assert _item_due(record, item).date() == date(2026, 3, 30)
@@ -660,7 +660,7 @@ class TestExtendDeadline:
         before = course_deadlines(record, now=NOW).time_limit.due_at
         assert before is not None
 
-        extend_deadline(
+        granted = extend_deadline(
             record,
             actor=UserFactory(),
             reason="Late",
@@ -669,9 +669,9 @@ class TestExtendDeadline:
             now=NOW,
         )
 
-        assert course_deadlines(record, now=NOW).time_limit.due_at == before + (
-            timedelta(days=10)
-        )
+        after = course_deadlines(record, now=NOW).time_limit.due_at
+        assert after == before + timedelta(days=10)
+        assert granted.due_at == after
 
     def test_a_course_extension_moves_every_unmet_deadline(self, mock_site_context):
         record, item = _record_with_a_dated_topic()
@@ -709,7 +709,7 @@ class TestExtendDeadline:
             target_kind=ExtensionTarget.COURSE,
             days=2,
             now=given_now,
-        )
+        ).extension
 
         assert extension.granted_at == given_now
         after = course_deadlines(record, now=given_now).items[item.pk].due_at
@@ -726,7 +726,7 @@ class TestExtendDeadline:
             collection_item=item,
             days=MAX_EXTENSION_DAYS,
             now=NOW,
-        )
+        ).extension
 
         assert extension.days == MAX_EXTENSION_DAYS
 
@@ -919,7 +919,7 @@ class TestExtendDeadline:
                 collection_item=item,
                 days=4,
                 now=NOW,
-            )
+            ).extension
 
         (event,) = _events("deadline.extended")
         assert event.payload["extension_id"] == str(extension.pk)
@@ -1081,6 +1081,6 @@ class TestExtendDeadline:
             collection_item=item,
             days=4,
             now=NOW,
-        )
+        ).extension
 
         assert extension.pk is not None

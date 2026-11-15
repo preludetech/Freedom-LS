@@ -15,9 +15,9 @@ from django.utils import formats, timezone
 
 from freedom_ls.accounts.models import User
 from freedom_ls.base.date_display import DATE_DISPLAY_FORMAT
-from freedom_ls.content_engine.models import ContentCollectionItem
 from freedom_ls.deadlines.actions import (
     DeadlineActionError,
+    GrantedExtension,
     days_text,
     extend_deadline,
     pause_course,
@@ -155,23 +155,21 @@ def _extendable_targets(record: CourseProgress) -> list[tuple[str, str]]:
     return targets
 
 
-def _extended_message(
-    record: CourseProgress,
-    target_kind: str,
-    item: ContentCollectionItem | None,
-    days: int,
-) -> str:
+def _extended_message(record: CourseProgress, granted: GrantedExtension) -> str:
     learner, course = record.learner, record.course
-    if target_kind == ExtensionTarget.COURSE:
-        return f"Moved {learner}'s deadlines in {course} by {days_text(days)}."
-    deadlines = course_deadlines(record)
+    extension = granted.extension
+    if extension.target_kind == ExtensionTarget.COURSE:
+        return (
+            f"Moved {learner}'s deadlines in {course} by {days_text(extension.days)}."
+        )
+    item = extension.collection_item
     if item is not None:
         target = item.child.title if item.child is not None else str(item.pk)
-        due_at = deadlines.items[item.pk].due_at
     else:
-        target, due_at = "the course time limit", deadlines.time_limit.due_at
+        target = "the course time limit"
+    due_at = granted.due_at
     return (
-        f"Extended {target} for {learner} by {days_text(days)}. "
+        f"Extended {target} for {learner} by {days_text(extension.days)}. "
         f"Its deadline is now {site_zone_text(due_at) if due_at else 'none'}."
     )
 
@@ -184,21 +182,13 @@ def extend_view(
     form = ExtendDeadlineForm(record, request.POST or None)
     if request.method == "POST" and form.is_valid():
         try:
-            extension = extend_deadline(
+            granted = extend_deadline(
                 record, actor=_actor(request), **form.cleaned_data
             )
         except DeadlineActionError as error:
             form.add_error(None, str(error))
         else:
-            model_admin.message_user(
-                request,
-                _extended_message(
-                    record,
-                    extension.target_kind,
-                    extension.collection_item,
-                    extension.days,
-                ),
-            )
+            model_admin.message_user(request, _extended_message(record, granted))
             return redirect(_change_url(record))
     return TemplateResponse(
         request,
