@@ -582,6 +582,7 @@ def learner_course_summaries(learner: Learner) -> list[LearnerCourseSummary]:
 
 
 class LearnerDataTable(DataTable):
+    cards_when_narrow = True
     empty_message = "No learners yet. Learners you add or import will appear here."
     empty_no_results = "No learners match these filters."
     search_fields = ["user__first_name", "user__last_name", "user__email"]

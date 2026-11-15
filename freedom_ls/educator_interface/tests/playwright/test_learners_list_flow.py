@@ -426,3 +426,74 @@ def test_the_toolbar_is_one_row_at_tablet_and_desktop_widths(
             assert box is not None
             middles.append(box["y"] + box["height"] / 2)
         assert max(middles) - min(middles) < 8, f"toolbar wraps at {viewport}"
+
+
+def test_the_learners_table_is_cards_where_its_columns_would_not_fit(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """On a tablet the learners table stayed a table and squeezed each name to
+    a few letters; it shows as cards wherever its own container is narrow."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    LearnerFactory(
+        organisation=organisation,
+        user__first_name="Aaron",
+        user__last_name="Abercrombie",
+    )
+    main = page.locator("#main-content")
+    table = main.get_by_role("table")
+    card = main.locator("[data-card-primary-line]").first
+    url = interface_url(live_server, organisation.slug, "learners")
+
+    page.set_viewport_size({"width": 1920, "height": 1080})
+    page.goto(url)
+    expect(table).to_be_visible()
+    expect(card).to_be_hidden()
+
+    page.set_viewport_size({"width": 768, "height": 1024})
+    page.goto(url)
+    expect(card).to_be_visible()
+    expect(table).to_be_hidden()
+    expect(main.locator("ul").get_by_text("Aaron Abercrombie").first).to_be_visible()
+    assert_no_horizontal_overflow(page)
+
+
+def test_the_cohort_learners_table_is_cards_with_its_buttons_in_view_on_a_tablet(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """On a tablet the cohort's learners table stayed a table with a clipped
+    name and its Remove and Move buttons behind a sideways scroll."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    cohort = CohortFactory(organisation=organisation, name="Alpha Cohort")
+    CohortFactory(organisation=organisation, name="Beta Cohort")
+    learner = LearnerFactory(
+        organisation=organisation,
+        user__first_name="Aaron",
+        user__last_name="Abercrombie",
+    )
+    CohortMembership.objects.create(cohort=cohort, learner=learner)
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    main = page.locator("#main-content")
+    url = interface_url(
+        live_server, organisation.slug, f"cohorts/{cohort.pk}/__tabs/learners"
+    )
+
+    page.set_viewport_size({"width": 768, "height": 1024})
+    page.goto(url)
+    expect(main.get_by_role("table")).to_be_hidden()
+    expect(main.locator("ul").get_by_text("Aaron Abercrombie").first).to_be_visible()
+    for name in ("Remove", "Move"):
+        button = main.locator("ul").get_by_role("button", name=re.compile(name)).first
+        expect(button).to_be_visible()
+        box = button.bounding_box()
+        assert box is not None
+        assert box["x"] + box["width"] <= 768
+    assert_no_horizontal_overflow(page)

@@ -57,7 +57,7 @@ with incorrect answers), refresh_url.
                             <c-panel-table caption="{{ section.title }}{% if table.continued %} (continued){% endif %}">
                                 <c-slot name="head">
                                     <tr>
-                                        <th scope="col" class="sticky left-0 bg-surface">Learner</th>
+                                        <th scope="col" class="sticky left-0 min-w-44 bg-surface">Learner</th>
                                         {% if not table.continued %}
                                             <th scope="col">Status</th>
                                             <th scope="col">Completion</th>
@@ -72,9 +72,9 @@ with incorrect answers), refresh_url.
                                 {% for row in table.rows %}
                                     {% resolve_url_path_template row 'educator_interface:interface' 'learners/{learner_id}' as learner_url %}
                                     <tr>
-                                        <th scope="row" class="sticky left-0 bg-surface text-left whitespace-nowrap"><c-panel-person-link :name="row.full_name" :user_id="row.learner_id" :href="learner_url" /></th>
+                                        <th scope="row" class="sticky left-0 min-w-44 bg-surface text-left whitespace-nowrap"><c-panel-person-link :name="row.full_name" :user_id="row.learner_id" :href="learner_url" /></th>
                                         {% if not table.continued %}
-                                            <td>
+                                            <td class="whitespace-nowrap">
                                                 {% progress_status_badge row.completion_percentage as status_badge %}
                                                 <c-panel-status-badge :badge="status_badge" />
                                             </td>

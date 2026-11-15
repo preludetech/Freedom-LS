@@ -32,8 +32,8 @@ generated before the cohort grew is still offered.
                 {% for row in rows %}
                     <tr>
                         <td class="whitespace-nowrap">{% if row.kind == "ready" %}<c-datetime :value="row.report.finished_at" />{% else %}<c-datetime :value="row.report.requested_at" />{% endif %}</td>
-                        <td>{{ row.report.requested_by.display_name|default:"the system" }}</td>
-                        <td class="text-right">
+                        <td class="[overflow-wrap:anywhere]">{{ row.report.requested_by.display_name|default:"the system" }}</td>
+                        <td class="text-right whitespace-nowrap">
                             {% if row.kind == "ready" %}
                                 <c-button variant="secondary" size="small" icon_left="download" href="{{ row.pdf_url }}" hx-boost="false" aria_label="Download the report generated {{ row.report.finished_at|display_datetime }}">Download</c-button>
                             {% elif row.kind == "in_flight" %}

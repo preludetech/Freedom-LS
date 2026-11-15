@@ -142,3 +142,58 @@ def test_report_tab_with_generated_reports_does_not_scroll_the_page_sideways(
             page.get_by_role("link", name=re.compile("^Download")).first
         ).to_be_visible()
         assert_no_horizontal_overflow(page)
+
+
+def test_report_tables_keep_a_readable_name_and_a_reachable_download_on_a_phone(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """In the sideways-scrolling report tables the learner column shrank to
+    the avatar and one letter, the "Not started" badge wrapped onto two lines,
+    and the Download button sat cut off past the region's edge."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    cohort = CohortFactory(organisation=organisation, name="Year 9 Maths")
+    course = CourseFactory(title="Algebra")
+    for order, title in enumerate(("Unit quiz one", "Unit quiz two")):
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=quiz_form(title, 50), order=order
+        )
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    CohortMembershipFactory(
+        cohort=cohort,
+        learner=LearnerFactory(
+            organisation=organisation,
+            user__first_name="Aaron",
+            user__last_name="Abercrombie",
+        ),
+    )
+    report = GeneratedReportFactory(
+        cohort=cohort, status=GeneratedReport.STATUS_READY, requested_by=educator_user
+    )
+    report.file.save("r.pdf", ContentFile(b"%PDF-1.4 bytes"), save=True)
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+
+    page.set_viewport_size({"width": 375, "height": 812})
+    page.goto(
+        interface_url(
+            live_server, organisation.slug, f"cohorts/{cohort.pk}/__tabs/report"
+        )
+    )
+    expect(page.get_by_text("Summary of learner progress")).to_be_visible()
+
+    name_cell = page.locator("tbody th[scope='row']").first
+    name_box = name_cell.bounding_box()
+    assert name_box is not None
+    assert name_box["width"] >= 150
+    badge_box = page.get_by_text("Not started").first.bounding_box()
+    assert badge_box is not None
+    assert badge_box["height"] < 32
+    download = page.get_by_role("link", name=re.compile("^Download")).first
+    expect(download).to_be_visible()
+    box = download.bounding_box()
+    assert box is not None
+    assert box["x"] + box["width"] <= 375
+    assert_no_horizontal_overflow(page)
