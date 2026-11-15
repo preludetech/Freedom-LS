@@ -610,6 +610,25 @@ def test_a_multibyte_worst_case_cookie_keeps_the_newest_entry(
     assert read_back[-1].utm_campaign == "字" * CAPS["utm_campaign"]
 
 
+def test_a_full_cookie_evicts_older_entries_before_the_first_touchs_click_ids() -> None:
+    response = HttpResponse()
+    set_attribution_cookie(
+        response,
+        _first_touch(utm_source="x", gclid="g" * 100, landing_path="/landing/"),
+        touches=_entries_ending_in_a_distinct_newest(10),
+    )
+
+    request = _request_holding(response)
+    first_touch = read_attribution_cookie(request)
+
+    assert first_touch is not None
+    assert (first_touch["gclid"], first_touch["landing_path"]) == (
+        "g" * 100,
+        "/landing/",
+    )
+    assert len(read_cookie_touches(request)) < 10
+
+
 def test_a_worst_case_entry_that_cannot_fit_beside_the_first_touch_sets_nothing() -> (
     None
 ):

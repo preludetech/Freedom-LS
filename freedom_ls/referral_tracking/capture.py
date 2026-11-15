@@ -70,7 +70,8 @@ COOKIE_TOUCHES_KEY = "tl"
 # a timestamp and signature of about 55 bytes and the default name is 16, so
 # the encoded payload itself gets a little under 3.9KB.
 COOKIE_MAX_ENCODED_LENGTH = 3800
-# Dropped from the payload, in this order, until it fits. A multi-byte campaign
+# Dropped from the first touch, in this order, once older list entries have
+# been evicted and the payload still does not fit. A multi-byte campaign
 # at the caps is over after the first two; only an all-multi-byte payload — one
 # whose click ids are not click ids — gets past them. None of these is part of
 # the attribution key, so the cookie and the tally still agree.
@@ -240,9 +241,10 @@ def set_attribution_cookie(
 
     A browser drops an oversize cookie without saying so, and a visitor whose
     cookie never sticks would be minted and tallied again on every landing.
-    The fields that are not part of the attribution key are dropped from the
-    first touch in order of value until the payload fits; then list entries
-    go, oldest first, but never the newest. A payload that still does not fit
+    List entries go first, oldest first, but never the newest: the first
+    touch is what a signup records, click ids included. Then the fields that
+    are not part of the attribution key are dropped from the first touch in
+    order of value until the payload fits. A payload that still does not fit
     is not set at all, and the caller must not count it as a first touch.
 
     Expiry is counted from the first touch, not from now, so appending to the
@@ -260,13 +262,13 @@ def set_attribution_cookie(
         return _encode_payload(payload)
 
     encoded = encode()
+    while len(encoded) > COOKIE_MAX_ENCODED_LENGTH and len(entries) > 1:
+        entries.pop(0)
+        encoded = encode()
     for name in COOKIE_DROP_ORDER:
         if len(encoded) <= COOKIE_MAX_ENCODED_LENGTH:
             break
         payload.pop(COOKIE_KEYS[name], None)
-        encoded = encode()
-    while len(encoded) > COOKIE_MAX_ENCODED_LENGTH and len(entries) > 1:
-        entries.pop(0)
         encoded = encode()
     if len(encoded) > COOKIE_MAX_ENCODED_LENGTH:
         return False
