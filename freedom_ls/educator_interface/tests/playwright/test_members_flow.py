@@ -274,6 +274,11 @@ def test_the_add_member_button_stays_in_view_on_the_role_step_at_375(
         "button", name="Add staff member", exact=True
     ).first.click()
     modal.get_by_label("Email address").fill("existing@example.com")
+    # Clicking Next while the as-you-type search is still pending loses the click
+    # on a loaded machine, so wait for the search to swap in its results first.
+    expect(modal.locator("#staff-search-results")).not_to_have_attribute(
+        "data-state", "prompt"
+    )
     modal.get_by_role("button", name="Next", exact=True).click()
     modal.get_by_text("Cohort admin", exact=True).click()
 
