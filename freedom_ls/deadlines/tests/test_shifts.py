@@ -110,13 +110,13 @@ def _extension(
     days: int,
     *,
     collection_item_id: UUID | None = None,
-    created_at: datetime = START,
+    granted_at: datetime = START,
 ) -> DeadlineExtension:
     return DeadlineExtension(
         target_kind=target_kind,
         days=days,
         collection_item_id=collection_item_id,
-        created_at=created_at,
+        granted_at=granted_at,
     )
 
 
@@ -174,7 +174,7 @@ def test_a_pause_and_an_extension_sum_for_an_item_and_only_the_pause_for_none_of
 
 
 @pytest.mark.parametrize(
-    ("created_at", "expected"),
+    ("granted_at", "expected"),
     [
         pytest.param(START - timedelta(hours=1), 7, id="before-completion"),
         pytest.param(START + timedelta(hours=1), 0, id="after-completion"),
@@ -182,12 +182,12 @@ def test_a_pause_and_an_extension_sum_for_an_item_and_only_the_pause_for_none_of
     ],
 )
 def test_a_course_extension_skips_an_item_completed_before_it_was_made(
-    created_at: datetime, expected: int
+    granted_at: datetime, expected: int
 ):
     item_id = uuid4()
     sources = ShiftSources(
         pauses=[],
-        extensions=[_extension(ExtensionTarget.COURSE, 7, created_at=created_at)],
+        extensions=[_extension(ExtensionTarget.COURSE, 7, granted_at=granted_at)],
         completed_at={item_id: START},
     )
 

@@ -333,6 +333,7 @@ def extend_deadline(
             collection_item=collection_item,
             days=days,
             requested_date=requested_date,
+            granted_at=now,
             reason=reason,
             set_by=actor,
         )

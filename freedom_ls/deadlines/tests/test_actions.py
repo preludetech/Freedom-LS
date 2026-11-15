@@ -9,6 +9,7 @@ import pytest
 import time_machine
 
 from django.db import transaction
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.audit_log.models import REASON_LENGTH, AuditLogEntry
@@ -36,7 +37,10 @@ from freedom_ls.deadlines.models import (
 )
 from freedom_ls.deadlines.resolver import course_deadlines
 from freedom_ls.learner_management.models import LearnerCourseRegistration
-from freedom_ls.learner_progress.factories import CourseProgressFactory
+from freedom_ls.learner_progress.factories import (
+    CourseProgressFactory,
+    TopicProgressFactory,
+)
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
@@ -683,6 +687,33 @@ class TestExtendDeadline:
         )
 
         assert _item_due(record, item) == before + timedelta(days=2)
+
+    def test_a_course_extension_is_dated_by_the_now_it_was_given(
+        self, mock_site_context
+    ):
+        record, item = _record_with_a_dated_topic(time_limit_days=30)
+        given_now = timezone.now() - timedelta(hours=2)
+        before = course_deadlines(record, now=given_now).items[item.pk].due_at
+        assert before is not None
+        TopicProgressFactory(
+            course_progress=record,
+            collection_item=item,
+            topic=item.child,
+            complete_time=given_now + timedelta(hours=1),
+        )
+
+        extension = extend_deadline(
+            record,
+            actor=UserFactory(),
+            reason="Late",
+            target_kind=ExtensionTarget.COURSE,
+            days=2,
+            now=given_now,
+        )
+
+        assert extension.granted_at == given_now
+        after = course_deadlines(record, now=given_now).items[item.pk].due_at
+        assert after == before + timedelta(days=2)
 
     def test_accepts_exactly_the_maximum(self, mock_site_context):
         record, item = _record_with_a_dated_topic()

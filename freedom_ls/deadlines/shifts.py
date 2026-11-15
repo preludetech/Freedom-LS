@@ -64,7 +64,7 @@ def shift_for_collection_item(
             if extension.collection_item_id == collection_item_id:
                 total += extension.days
         elif extension.target_kind == ExtensionTarget.COURSE and (
-            done is None or extension.created_at <= done
+            done is None or extension.granted_at <= done
         ):
             total += extension.days
     return total

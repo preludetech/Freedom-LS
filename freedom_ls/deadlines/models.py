@@ -9,6 +9,7 @@ from django.contrib.sites.models import Site
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, QuerySet
+from django.utils import timezone
 
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
 from freedom_ls.deadlines import shifts
@@ -528,6 +529,9 @@ class DeadlineExtension(SiteAwareModel, TimestampedModel):
     )
     days = models.PositiveIntegerField()
     requested_date = models.DateField(null=True, blank=True)
+    # When the extension takes effect: an item completed before it keeps its date under a
+    # whole-course extension.
+    granted_at = models.DateTimeField(default=timezone.now)
     reason = models.TextField()
     set_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
