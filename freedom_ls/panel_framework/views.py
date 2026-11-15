@@ -988,6 +988,15 @@ def _handle_bulk_action(
     picker = action.get_form(
         request, request.POST if form.cleaned_data["refresh"] or confirmed else None
     )
+    if (
+        picker is not None
+        and picker.is_bound
+        and not confirmed
+        and not picker.is_valid()
+    ):
+        # A refresh previews the choice made so far. A choice that is still
+        # empty is the dialog's first state, not an error.
+        picker = action.get_form(request, None)
     cleaned_data: dict[str, object] = {}
     if picker is not None:
         if picker.is_bound and picker.is_valid():

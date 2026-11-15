@@ -7136,7 +7136,7 @@ def test_refresh_with_a_cohort_shows_what_the_cohort_would_change(
 
 
 @pytest.mark.django_db
-def test_refresh_without_a_cohort_answers_422_with_confirm_disabled(
+def test_refresh_without_a_cohort_answers_200_with_confirm_disabled(
     staff_client: Client,
 ):
     organisation = OrganisationFactory()
@@ -7147,7 +7147,7 @@ def test_refresh_without_a_cohort_answers_422_with_confirm_disabled(
     )
 
     document = lxml.html.fromstring(response.content.decode())
-    assert response.status_code == 422
+    assert response.status_code == 200
     assert document.cssselect("button[disabled]")
 
 
@@ -7189,7 +7189,7 @@ def test_a_bulk_picker_refreshed_without_a_cohort_says_to_choose_one(
         staff_client, organisation, "add_to_cohort", [learner], refresh="1"
     )
 
-    assert response.status_code == 422
+    assert response.status_code == 200
     assert _disabled_confirm_reason(response) == "Choose a cohort first."
 
 
@@ -7629,7 +7629,7 @@ def test_bulk_register_confirmation_counts_changes_and_skips(staff_client: Clien
 
 
 @pytest.mark.django_db
-def test_bulk_register_without_a_course_answers_422(staff_client: Client):
+def test_bulk_register_refreshed_without_a_course_answers_200(staff_client: Client):
     organisation = OrganisationFactory()
     learner = _bulk_learner(organisation=organisation)
 
@@ -7637,7 +7637,7 @@ def test_bulk_register_without_a_course_answers_422(staff_client: Client):
         staff_client, organisation, "register_for_course", [learner], refresh="1"
     )
 
-    assert response.status_code == 422
+    assert response.status_code == 200
 
 
 @pytest.mark.django_db
@@ -8140,7 +8140,9 @@ def test_bulk_cohort_register_registers_only_unregistered_active_cohorts(
 
 
 @pytest.mark.django_db
-def test_bulk_cohort_register_without_a_course_answers_422(staff_client: Client):
+def test_bulk_cohort_register_refreshed_without_a_course_answers_200(
+    staff_client: Client,
+):
     organisation = OrganisationFactory()
     cohort = _bulk_cohort(organisation)
 
@@ -8148,7 +8150,7 @@ def test_bulk_cohort_register_without_a_course_answers_422(staff_client: Client)
         staff_client, organisation, "register", [cohort], refresh="1"
     )
 
-    assert response.status_code == 422
+    assert response.status_code == 200
 
 
 @pytest.mark.django_db

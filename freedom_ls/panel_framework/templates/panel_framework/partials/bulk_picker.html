@@ -1,13 +1,15 @@
 {% comment %}
 The form an action asks to be filled in before it can run, such as a target
 picker. Choosing a value re-posts the dialog with refresh=1, so the
-confirmation below it shows what the chosen target would change. Without
+confirmation below it shows what the chosen target would change. The form
+is novalidate so that clearing the choice re-posts too. Without
 JavaScript the button does the same. Context: form, action_url, selection.
 {% endcomment %}
 {% querystring request.GET as qs %}
 <form method="post"
       action="{{ action_url }}{{ qs }}"
       class="mb-4 space-y-2"
+      novalidate
       hx-post="{{ action_url }}{{ qs }}"
       hx-trigger="change"
       hx-target="#app-modal-body"

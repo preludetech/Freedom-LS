@@ -294,6 +294,39 @@ def test_bulk_deactivate_with_javascript_off_returns_to_the_list_with_a_flash(
     )
 
 
+def test_bulk_picker_returns_to_no_choice_when_the_choice_is_cleared(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """Setting the picker back to no choice used to leave the previous
+    target's title and enabled confirm on screen, because the required select
+    blocked the re-post."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    CohortFactory(organisation=organisation, name="Evening group")
+    LearnerFactory(organisation=organisation)
+    page.goto(interface_url(live_server, organisation.slug, "learners"))
+    modal = page.locator("#app-modal")
+
+    page.locator("#learners-table tbody input[name='keys']").first.check()
+    page.locator("#main-content").get_by_role(
+        "button", name="Add to cohort", exact=True
+    ).click()
+    modal.get_by_label("Cohort").select_option(label="Evening group")
+    expect(modal.get_by_text("Add 1 learner to Evening group?")).to_be_visible()
+    modal.get_by_label("Cohort").select_option(index=0)
+
+    expect(modal.get_by_text("Add to cohort?", exact=True)).to_be_visible()
+    expect(modal.get_by_text("Choose a cohort first.")).to_be_visible()
+    expect(
+        modal.get_by_role("button", name="Add to cohort", exact=True)
+    ).to_be_disabled()
+    expect(modal.get_by_text("This field is required.")).to_have_count(0)
+
+
 def test_bulk_add_to_cohort_with_javascript_off_asks_for_the_cohort_first(
     browser: Browser,
     live_server,
