@@ -14,11 +14,10 @@ from django.urls import reverse
 from django.utils import formats, timezone
 
 from freedom_ls.accounts.models import User
-from freedom_ls.base.date_display import DATE_DISPLAY_FORMAT
+from freedom_ls.base.date_display import DATE_DISPLAY_FORMAT, days_text
 from freedom_ls.deadlines.actions import (
     DeadlineActionError,
     GrantedExtension,
-    days_text,
     extend_deadline,
     pause_course,
     resume_course,

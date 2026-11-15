@@ -6,6 +6,7 @@ import time_machine
 from django.utils import timezone
 
 from freedom_ls.base.date_display import (
+    days_text,
     display_date,
     display_datetime,
     display_short_date,
@@ -42,3 +43,7 @@ def test_a_short_date_this_year_reads_day_and_short_month() -> None:
 @time_machine.travel(datetime(2026, 9, 1, 10, 0, tzinfo=ZoneInfo("UTC")), tick=False)
 def test_a_short_date_in_another_year_keeps_the_year() -> None:
     assert display_short_date(date(2027, 11, 18)) == "18 Nov 2027"
+
+
+def test_days_text_pluralises_by_count() -> None:
+    assert (days_text(1), days_text(4)) == ("1 day", "4 days")

@@ -11,11 +11,10 @@ from datetime import date, datetime
 from django.db import transaction
 from django.utils import formats, timezone
 from django.utils.translation import gettext as _
-from django.utils.translation import ngettext
 
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.models import REASON_LENGTH
-from freedom_ls.base.date_display import DATE_DISPLAY_FORMAT
+from freedom_ls.base.date_display import DATE_DISPLAY_FORMAT, days_text
 from freedom_ls.comms.notify import raise_notification
 from freedom_ls.content_engine.models import ContentCollectionItem
 from freedom_ls.deadlines.models import (
@@ -82,10 +81,6 @@ def _notify(
         site_id=record.site_id,
         data=data,
     )
-
-
-def days_text(days: int) -> str:
-    return ngettext("%(count)d day", "%(count)d days", days) % {"count": days}
 
 
 def _course_payload(record: CourseProgress) -> dict[str, object]:

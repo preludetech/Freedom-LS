@@ -167,7 +167,7 @@ def test_the_registry_is_built_once_per_value_of_the_setting():
 @pytest.mark.parametrize(
     ("code", "details", "expected"),
     [
-        ("course.paused", {"planned_resume_on": "2026-03-20"}, "Until 2026-03-20"),
+        ("course.paused", {"planned_resume_on": "2026-03-20"}, "Until 20 Mar 2026"),
         ("course.paused", {"planned_resume_on": None}, "No planned resume"),
         ("course.resumed", {"shift_days": 1}, "Deadlines moved by 1 day"),
         ("course.resumed", {"shift_days": 4}, "Deadlines moved by 4 days"),

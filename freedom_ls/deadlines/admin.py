@@ -31,9 +31,8 @@ from django.utils.html import format_html, format_html_join
 from django.utils.safestring import SafeString
 
 from freedom_ls.accounts.models import User
-from freedom_ls.base.date_display import display_date
+from freedom_ls.base.date_display import days_text, display_date
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
-from freedom_ls.deadlines.actions import days_text
 from freedom_ls.deadlines.admin_views import extend_view, pause_view, resume_view
 from freedom_ls.deadlines.consequences import access_end_instant
 from freedom_ls.deadlines.forms import CollectionItemChoiceField

@@ -5,6 +5,7 @@
 from datetime import date, datetime
 
 from django.utils import formats, timezone
+from django.utils.translation import ngettext
 
 DATE_DISPLAY_FORMAT = "j M Y"
 SHORT_DATE_DISPLAY_FORMAT = "j M"
@@ -36,3 +37,8 @@ def display_time(value: datetime) -> str:
 
 def display_datetime(value: datetime) -> str:
     return formats.date_format(_in_current_zone(value), DATETIME_DISPLAY_FORMAT)
+
+
+def days_text(days: int) -> str:
+    """A number of days, "1 day" or "4 days"."""
+    return ngettext("%(count)d day", "%(count)d days", days) % {"count": days}

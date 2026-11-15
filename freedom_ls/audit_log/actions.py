@@ -5,10 +5,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date
 from functools import cache
 from typing import TYPE_CHECKING
 
 from freedom_ls.audit_log.config import config
+from freedom_ls.base.date_display import days_text, display_date
 
 if TYPE_CHECKING:
     from freedom_ls.audit_log.models import AuditLogEntry
@@ -70,12 +72,14 @@ def _describe_course(entry: AuditLogEntry) -> str:
 
 def _describe_paused(entry: AuditLogEntry) -> str:
     planned = entry.details.get("planned_resume_on")
-    return f"Until {planned}" if planned else "No planned resume"
+    if not planned:
+        return "No planned resume"
+    return f"Until {display_date(date.fromisoformat(str(planned)))}"
 
 
 def _describe_resumed(entry: AuditLogEntry) -> str:
     days = int(str(entry.details.get("shift_days", 0)))
-    return f"Deadlines moved by {days} {'day' if days == 1 else 'days'}"
+    return f"Deadlines moved by {days_text(days)}"
 
 
 def _describe_extended(entry: AuditLogEntry) -> str:
@@ -84,7 +88,7 @@ def _describe_extended(entry: AuditLogEntry) -> str:
         kind = entry.details.get("target_kind")
         target = "Course time limit" if kind == "time_limit" else "Whole course"
     days = int(str(entry.details.get("days", 0)))
-    return f"{target} +{days} {'day' if days == 1 else 'days'}"
+    return f"{target} +{days_text(days)}"
 
 
 def _describe_move(entry: AuditLogEntry) -> str:
