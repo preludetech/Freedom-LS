@@ -10,7 +10,7 @@ browser state.
 from __future__ import annotations
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Browser, Page, expect
 
 from django.contrib.auth.base_user import AbstractBaseUser
 
@@ -342,3 +342,77 @@ def test_the_organisation_switcher_popover_opens_under_its_trigger(
     assert abs(options_box["y"] - (trigger_box["y"] + trigger_box["height"])) < 16
     assert options_box["x"] >= trigger_box["x"] - 1
     assert options_box["x"] < trigger_box["x"] + trigger_box["width"]
+
+
+def _scriptless_page(browser: Browser, logged_in_page: Page) -> Page:
+    """A page in a context with scripting off, sharing the login session."""
+    context = browser.new_context(java_script_enabled=False)
+    context.add_cookies(logged_in_page.context.cookies())
+    return context.new_page()
+
+
+def test_navigation_shows_as_a_left_column_with_javascript_off(
+    browser: Browser,
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """With scripting off nothing opened the navigation dialog, so an educator
+    page had no navigation at all. It now docks as the left column at lg and
+    wider, in the same place and width as with scripting on."""
+    organisation = OrganisationFactory(name="Org A")
+    assign_object_role(educator_user, organisation, "organisation_admin")
+    url = interface_url(live_server, organisation.slug, "learners")
+    page = educator_logged_in_page
+    page.set_viewport_size({"width": 1920, "height": 1080})
+    page.goto(url)
+    with_script = page.locator("dialog[aria-label='Navigation']").bounding_box()
+
+    plain = _scriptless_page(browser, educator_logged_in_page)
+    try:
+        plain.set_viewport_size({"width": 1920, "height": 1080})
+        plain.goto(url)
+        nav = plain.locator("dialog[aria-label='Navigation']")
+        expect(nav.get_by_role("link", name="Cohorts")).to_be_visible()
+        expect(nav.get_by_role("link", name="Learners")).to_be_visible()
+        expect(plain.get_by_role("button", name="Open navigation panel")).to_be_hidden()
+        expect(nav.get_by_role("button", name="Close navigation")).to_be_hidden()
+        without_script = nav.bounding_box()
+        content = plain.locator("#interface-main").bounding_box()
+        assert without_script is not None
+        assert content is not None
+        assert with_script is not None
+        assert without_script["x"] == with_script["x"]
+        assert without_script["width"] == with_script["width"]
+        assert content["x"] >= without_script["x"] + without_script["width"]
+        assert_no_horizontal_overflow(plain)
+    finally:
+        plain.context.close()
+
+
+def test_navigation_shows_above_the_content_with_javascript_off_on_a_phone(
+    browser: Browser,
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """Below lg with scripting off the navigation is a static block above the
+    content instead of a dialog that never opens."""
+    organisation = OrganisationFactory(name="Org A")
+    assign_object_role(educator_user, organisation, "organisation_admin")
+    plain = _scriptless_page(browser, educator_logged_in_page)
+    try:
+        plain.set_viewport_size(_PHONE)
+        plain.goto(interface_url(live_server, organisation.slug, "learners"))
+        nav = plain.locator("dialog[aria-label='Navigation']")
+        expect(nav.get_by_role("link", name="Cohorts")).to_be_visible()
+        expect(plain.get_by_role("button", name="Open navigation panel")).to_be_hidden()
+        expect(nav.get_by_role("button", name="Close navigation")).to_be_hidden()
+        box = nav.bounding_box()
+        content = plain.locator("#interface-main").bounding_box()
+        assert box is not None
+        assert content is not None
+        assert box["y"] + box["height"] <= content["y"] + 1
+        assert_no_horizontal_overflow(plain)
+    finally:
+        plain.context.close()

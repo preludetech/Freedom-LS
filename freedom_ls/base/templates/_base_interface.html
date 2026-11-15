@@ -136,6 +136,53 @@
     </style>
 
     {% comment %}
+    With scripting off nothing opens the navigation <dialog>, so it would stay
+    display:none and the page would have no navigation. These rules apply only
+    then and show the dialog's content without it being open: docked as the
+    left column from lg up, in the same place and width as the scripted page,
+    and a static block above the content below lg. They are unlayered so they
+    beat the components layer above and the utilities on the elements. The
+    controls that only open and close the dialog can do nothing without
+    scripting, so they go. Only the shell's own dialog is a direct child of the
+    grid; a table's filter sheet is deeper and stays closed.
+
+    The condition is the scripting media feature rather than a <noscript>
+    block: htmx restores a page from history by parsing a saved copy of it with
+    scripting off, which turns a <noscript> block's styles live on a scripted
+    page.
+    {% endcomment %}
+    <style>
+        @media (scripting: none) {
+            .side-panel-grid > .side-panel-dialog {
+                display: block;
+                position: static;
+                inset: auto;
+                width: 100%;
+                height: auto;
+                max-width: 100%;
+                max-height: none;
+                opacity: 1;
+                transform: none;
+                overflow: visible;
+            }
+            .side-panel-grid .side-panel-dialog button[x-on\:click="close"],
+            .side-panel-grid button[x-on\:click="toggle"] {
+                display: none;
+            }
+        }
+        @media (scripting: none) and (min-width: 1024px) {
+            .side-panel-grid {
+                grid-template-columns: var(--sidebar-width, 16rem) minmax(0, 1fr);
+            }
+            .side-panel-grid > .side-panel-dialog {
+                position: sticky;
+                top: 0;
+                height: 100vh;
+            }
+        }
+    </style>
+
+    {% comment %}
     This shell owns its outer horizontal padding because c-page sits inside the
     right-hand content column rather than wrapping the whole shell — the content
     header and grid need their own outer px-* to avoid pushing to the screen edge.
