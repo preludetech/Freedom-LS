@@ -41,6 +41,25 @@ _RESOLVE_PRIMARY_COLOUR = """() => {
 }"""
 
 
+_MEASURE_BUTTON_HEIGHTS = """() => {
+    const heights = {};
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    for (const size of ['', 'btn-sm']) {
+        for (const variant of ['primary', 'secondary', 'error']) {
+            const button = document.createElement('button');
+            button.className = `btn btn-${variant} ${size}`;
+            button.textContent = 'Label';
+            host.appendChild(button);
+            heights[`${size || 'full'} ${variant}`] =
+                button.getBoundingClientRect().height;
+        }
+    }
+    host.remove();
+    return heights;
+}"""
+
+
 def _sign_in_as_staff(
     page: Page, live_server: pytest_django.live_server_helper.LiveServer
 ) -> None:
@@ -92,6 +111,14 @@ def test_component_reference_flow(
     box = tile_progress.bounding_box()
     assert box is not None
     assert box["width"] > 50
+
+    # Buttons of one size are one height whatever their variant: the secondary
+    # outline is drawn inside its box instead of adding to it.
+    page.set_viewport_size({"width": 1920, "height": 1080})
+    heights = page.evaluate(_MEASURE_BUTTON_HEIGHTS)
+    for size in ("full", "btn-sm"):
+        assert heights[f"{size} secondary"] == heights[f"{size} primary"]
+        assert heights[f"{size} error"] == heights[f"{size} primary"]
 
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)

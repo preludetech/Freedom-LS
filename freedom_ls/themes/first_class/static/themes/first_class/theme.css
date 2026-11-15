@@ -97,7 +97,7 @@
     }
 
     .btn-secondary {
-        @apply border-2;
+        @apply inset-ring-2;
     }
 
     .chip {

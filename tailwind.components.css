@@ -222,8 +222,10 @@
                hover:bg-primary-hover focus:ring-primary
     }
 
+    /* The outline is an inset ring, not a border, so it adds no height or
+     * width and a secondary button is the size of every other variant. */
     .btn-secondary {
-        @apply bg-transparent text-primary border border-primary
+        @apply bg-transparent text-primary inset-ring inset-ring-primary
                hover:bg-primary/10 focus:ring-primary
     }
 
