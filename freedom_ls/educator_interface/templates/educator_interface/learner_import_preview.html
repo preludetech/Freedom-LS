@@ -29,7 +29,7 @@
     {% partialdef rows inline %}
     <div id="import-rows">
     <c-panel-card title="Rows" flush="true">
-        <c-panel-table caption="Rows" cards="true" data-import-rows="true">
+        <c-panel-table caption="Rows" cards="true" capped="true" data-import-rows="true">
             <c-slot name="head">
                 <tr>
                     <th scope="col">Line</th>
@@ -70,7 +70,7 @@
                 {% endfor %}
             </c-slot>
         </c-panel-table>
-        <c-pagination :page_obj="page_obj" :base_url="preview_url" table_id="import-rows" :extra_params="pagination_params" push_url="true" class="px-4 py-3 sm:px-6" />
+        {% include "panel_framework/partials/table_footer.html" with base_url=preview_url region_id="import-rows" extra_params=pagination_params push_url="true" %}
     </c-panel-card>
     </div>
     {% endpartialdef %}

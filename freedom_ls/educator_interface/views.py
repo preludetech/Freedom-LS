@@ -218,6 +218,7 @@ from freedom_ls.panel_framework.panels import (
     Panel,
     PanelStack,
     TabSet,
+    entry_count_text,
 )
 from freedom_ls.panel_framework.tables import (
     BadgeColumn,
@@ -3141,6 +3142,7 @@ def learner_import_preview(
         {
             "learner_import": learner_import,
             "page_obj": page_obj,
+            "entry_count": entry_count_text(page_obj, "row", "rows"),
             "label": label,
             "pagination_params": urlencode({"label": label}) if label else "",
             "preview_url": _import_url(

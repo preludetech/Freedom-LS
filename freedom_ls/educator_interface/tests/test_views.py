@@ -6320,6 +6320,90 @@ def test_an_htmx_page_request_for_the_preview_returns_only_the_rows_card(
     assert not page.cssselect("[data-label-filter]")
 
 
+def _rows_footer_count(page: lxml.html.HtmlElement) -> str:
+    (count,) = page.cssselect("#import-rows [data-entry-count]")
+    return str(count.text_content()).strip()
+
+
+@pytest.mark.django_db
+def test_a_one_page_preview_states_how_many_rows_it_shows_in_its_footer(
+    import_world: SimpleNamespace,
+):
+    """The Rows table used to have no footer at all on a single page."""
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, *_numbered_lines(28, 0)
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(
+            import_world.organisation, "learner_import_preview", learner_import
+        ),
+    )
+
+    assert _rows_footer_count(page) == "28 rows"
+    assert not page.cssselect("#import-rows a[hx-get]")
+
+
+@pytest.mark.django_db
+def test_a_two_page_preview_footer_shows_the_range_and_the_pager(
+    import_world: SimpleNamespace,
+):
+    """The footer used to read only "Page 1 of 2", with no entry count."""
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, *_numbered_lines(60, 0)
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(
+            import_world.organisation, "learner_import_preview", learner_import
+        ),
+    )
+
+    assert _rows_footer_count(page) == "Showing 1\u201350 of 60 rows"
+    assert any(
+        link.text_content().strip() == "Next"
+        for link in page.cssselect("#import-rows a")
+    )
+
+
+@pytest.mark.django_db
+def test_a_filtered_preview_footer_counts_the_filtered_rows(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, *_numbered_lines(5, 3)
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+        + "?label=error",
+    )
+
+    assert _rows_footer_count(page) == "3 rows"
+
+
+@pytest.mark.django_db
+def test_the_preview_rows_table_scrolls_inside_a_capped_region(
+    import_world: SimpleNamespace,
+):
+    """The Rows table used to grow the page by up to fifty rows."""
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, *_numbered_lines(3, 0)
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(
+            import_world.organisation, "learner_import_preview", learner_import
+        ),
+    )
+
+    assert page.cssselect("#import-rows [data-capped]")
+
+
 @pytest.mark.django_db
 def test_an_htmx_request_for_the_preview_from_elsewhere_returns_the_whole_preview(
     import_world: SimpleNamespace,

@@ -37,11 +37,26 @@ __all__ = [
     "Panel",
     "PanelStack",
     "TabSet",
+    "entry_count_text",
 ]
 
 #: How many permitted, non-destructive bulk actions the selection bar shows
 #: as buttons. Every other action goes under More.
 PROMOTED_BULK_ACTION_COUNT = 4
+
+
+def entry_count_text(page_obj: Page, singular: object, plural: object) -> str:
+    """A table footer's count: which entries this page shows when there are
+    several pages, else how many there are. Empty for an empty table."""
+    count = page_obj.paginator.count
+    if count == 0:
+        return ""
+    if page_obj.paginator.num_pages > 1:
+        return (
+            f"Showing {page_obj.start_index()}\u2013{page_obj.end_index()} "
+            f"of {count} {plural}"
+        )
+    return count_phrase(count, singular, plural)
 
 
 class BulkActionEntry(TypedDict):
@@ -329,15 +344,9 @@ class DataTablePanel(Panel):
     def entry_count(self, request: HttpRequest, page_obj: Page) -> str:
         """The footer's count: which rows this page shows when there are
         several pages, else how many there are. Empty for an empty table."""
-        count = page_obj.paginator.count
-        if count == 0:
-            return ""
-        if page_obj.paginator.num_pages > 1:
-            return (
-                f"Showing {page_obj.start_index()}\u2013{page_obj.end_index()} "
-                f"of {count} {self.noun(request)}"
-            )
-        return count_phrase(count, self.noun_singular(request), self.noun(request))
+        return entry_count_text(
+            page_obj, self.noun_singular(request), self.noun(request)
+        )
 
     def get_export_queryset(self, request: HttpRequest) -> QuerySet:
         """The rows the CSV export narrows with the same search, filters
