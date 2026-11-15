@@ -3,6 +3,7 @@
 E001 — REFERRAL_TRACKING_INACTIVE_DESTINATION is not a site path.
 W001 — REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS is shorter than the cookie's life.
 E002 — REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS is too large for `Conversion.window_days`.
+E003 — REFERRAL_TRACKING_TOUCH_RETENTION_DAYS is shorter than the attribution window.
 """
 
 from __future__ import annotations
@@ -61,6 +62,26 @@ def check_attribution_window(**kwargs: object) -> list[CheckMessage]:
                     "the cookie's life."
                 ),
                 id="freedom_ls_referral_tracking.W001",
+            )
+        ]
+    return []
+
+
+@register()
+def check_touch_retention(**kwargs: object) -> list[CheckMessage]:
+    from freedom_ls.referral_tracking.config import config
+
+    retention = config.REFERRAL_TRACKING_TOUCH_RETENTION_DAYS
+    window = config.REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS
+    if retention < window:
+        # Housekeeping would delete touches a conversion that has not happened
+        # yet could still credit, and that conversion would record no codes.
+        return [
+            Error(
+                f"REFERRAL_TRACKING_TOUCH_RETENTION_DAYS ({retention}) is shorter "
+                f"than REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS ({window}).",
+                hint=f"Set it to {window} days or more.",
+                id="freedom_ls_referral_tracking.E003",
             )
         ]
     return []

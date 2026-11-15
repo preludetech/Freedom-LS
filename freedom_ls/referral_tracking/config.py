@@ -12,6 +12,7 @@ class ReferralTrackingSettings(AppSettings):
     REFERRAL_TRACKING_HIT_LOG_WINDOW_SECONDS: int
     REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS: int
     REFERRAL_TRACKING_MAX_COOKIE_TOUCHES: int
+    REFERRAL_TRACKING_TOUCH_RETENTION_DAYS: int
 
     declared_settings = {
         "REFERRAL_TRACKING_COOKIE_NAME": Setting(default="fls_attribution"),
@@ -28,6 +29,10 @@ class ReferralTrackingSettings(AppSettings):
         # The oldest is dropped past this, and a bigger number only helps while
         # the cookie still fits the browser limit.
         "REFERRAL_TRACKING_MAX_COOKIE_TOUCHES": Setting(default=10),
+        # Days an attribution touch is kept before housekeeping deletes it. A
+        # touch a conversion names is kept regardless. Must be at least
+        # REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS, which check E003 enforces.
+        "REFERRAL_TRACKING_TOUCH_RETENTION_DAYS": Setting(default=365),
     }
 
 

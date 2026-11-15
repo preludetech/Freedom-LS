@@ -15,8 +15,9 @@ class Command(BaseCommand):
         "left unpicked past the configured window, close any task result still "
         "claimed past the configured window, close any cohort report still "
         "rendering past its own window, requeue outgoing email that is past due, "
-        "re-send email a dead worker left unfinished, and delete old outgoing "
-        "email records. Runs once and exits."
+        "re-send email a dead worker left unfinished, delete old outgoing email "
+        "records, and delete attribution touches past retention. Runs once and "
+        "exits."
     )
 
     def handle(self, *args: object, **options: object) -> None:

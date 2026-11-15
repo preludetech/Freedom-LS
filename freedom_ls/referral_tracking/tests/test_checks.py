@@ -7,6 +7,7 @@ import pytest
 from freedom_ls.referral_tracking.checks import (
     check_attribution_window,
     check_inactive_destination,
+    check_touch_retention,
 )
 
 
@@ -53,3 +54,19 @@ def test_e002_is_silent_at_the_largest_window_that_fits(settings) -> None:
     settings.REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS = 32767
 
     assert check_attribution_window() == []
+
+
+def test_e003_fires_when_retention_is_shorter_than_the_window(settings) -> None:
+    settings.REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS = 90
+    settings.REFERRAL_TRACKING_TOUCH_RETENTION_DAYS = 89
+
+    errors = check_touch_retention()
+
+    assert [error.id for error in errors] == ["freedom_ls_referral_tracking.E003"]
+
+
+def test_e003_is_silent_when_retention_equals_the_window(settings) -> None:
+    settings.REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS = 90
+    settings.REFERRAL_TRACKING_TOUCH_RETENTION_DAYS = 90
+
+    assert check_touch_retention() == []

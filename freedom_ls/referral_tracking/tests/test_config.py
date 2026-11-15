@@ -65,3 +65,9 @@ def test_max_cookie_touches_is_a_declared_setting() -> None:
         "REFERRAL_TRACKING_MAX_COOKIE_TOUCHES"
         in ReferralTrackingSettings.declared_settings
     )
+
+
+def test_touch_retention_days_defaults_when_project_sets_nothing(settings) -> None:
+    settings.REFERRAL_TRACKING_TOUCH_RETENTION_DAYS = None
+
+    assert config.REFERRAL_TRACKING_TOUCH_RETENTION_DAYS == 365
