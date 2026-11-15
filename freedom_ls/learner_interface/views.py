@@ -54,6 +54,7 @@ from freedom_ls.deadlines.consequences import (
 from freedom_ls.deadlines.loader import get_deadline_policy
 from freedom_ls.deadlines.models import AfterAccessEnded
 from freedom_ls.deadlines.policy import ResolvedDeadlinePolicy
+from freedom_ls.deadlines.queries import pauses_for
 from freedom_ls.deadlines.resolver import (
     CourseDeadlines,
     course_deadlines,
@@ -1261,6 +1262,13 @@ def _paused_route_redirect(
     return redirect("learner_interface:course_detail", course_slug=course.slug)
 
 
+def _latest_pause_start(course_progress: CourseProgress) -> datetime | None:
+    """When the record's most recent pause began, or None if it was never paused. A
+    sitting untouched since then was interrupted by the pause, not left."""
+    pauses = pauses_for([course_progress]).get(course_progress.pk, [])
+    return max((pause.started_at for pause in pauses), default=None)
+
+
 def _shows_ended_outline(decision: CourseAccessDecision) -> bool:
     """Whether a learner whose access ended still sees the course outline and results."""
     return (
@@ -1813,7 +1821,11 @@ def view_form(
         # Finalise any stale incomplete attempt for submit-on-exit forms before
         # reading progress state. No-op for save-on-exit forms.
         if not paused:
-            finalise_stale_incomplete(course_progress, collection_item)
+            finalise_stale_incomplete(
+                course_progress,
+                collection_item,
+                kept_if_untouched_since=_latest_pause_start(course_progress),
+            )
 
         # The learner's open attempt at this placement, if they have one. Not
         # created here -- the start screen reads, form_start writes.
@@ -1909,7 +1921,11 @@ def form_start(request, course_slug, index):
 
     # Finalise any stale incomplete attempt for submit-on-exit forms before
     # get_or_create_incomplete runs. No-op for save-on-exit forms.
-    finalise_stale_incomplete(course_progress, collection_item)
+    finalise_stale_incomplete(
+        course_progress,
+        collection_item,
+        kept_if_untouched_since=_latest_pause_start(course_progress),
+    )
 
     # Create a FormProgress instance if it doesn't yet exist
     form_progress = get_or_create_incomplete(course_progress, collection_item)

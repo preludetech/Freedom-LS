@@ -16,6 +16,7 @@ apart, and it cannot tell a course attempt from a standalone one.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import cast
 
 from django.db import transaction
@@ -107,16 +108,25 @@ def get_or_create_incomplete(
 def finalise_stale_incomplete(
     course_progress: CourseProgress,
     collection_item: ContentCollectionItem,
+    *,
+    kept_if_untouched_since: datetime | None = None,
 ) -> FormProgress | None:
     """For submit-on-exit forms: complete the learner's open attempt, if there is one.
 
-    Safe for save-on-exit forms (no-op) and idempotent via complete().
+    An attempt last touched at or before `kept_if_untouched_since` was interrupted, not
+    left, so it stays open for the learner to continue. Safe for save-on-exit forms
+    (no-op) and idempotent via complete().
     """
     form = cast("Form", collection_item.child)
     if not form.submit_on_exit:
         return None
     incomplete = get_latest_incomplete(course_progress, collection_item)
     if incomplete is None:
+        return None
+    if (
+        kept_if_untouched_since is not None
+        and incomplete.last_updated_time <= kept_if_untouched_since
+    ):
         return None
     incomplete.complete()
     return incomplete

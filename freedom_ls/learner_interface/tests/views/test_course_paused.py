@@ -320,3 +320,50 @@ def test_once_the_planned_resume_passes_the_player_opens_again_and_writes_nothin
     assert response.status_code == 200
     assert response.context["paused"] is False
     assert record.pauses.get().ended_at is None
+
+
+def _submit_on_exit_sitting_paused_then_resumed() -> tuple:
+    """A learner's open submit-on-exit sitting, then a pause, then a resume."""
+    course, form = _paused_course()
+    form.submit_on_exit = True
+    form.save()
+    page = FormPageFactory(form=form, order=0)
+    FormQuestionFactory(form_page=page, type="short_text", order=0)
+    user = UserFactory()
+    record = course_progress_record(course, user)
+    _complete_topic(course, user)
+    sitting = form_attempt(course, user, form)
+    CoursePauseFactory(course_progress=record, started_at=timezone.now())
+    resume_course(record, actor=None, reason="Back")
+    client = Client()
+    client.force_login(user)
+    return course, form, user, sitting, client
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("route", ["form_item", "form_start"])
+def test_a_submit_on_exit_sitting_a_pause_interrupted_stays_open_after_resume(
+    mock_site_context, route
+):
+    course, _form, _user, sitting, client = (
+        _submit_on_exit_sitting_paused_then_resumed()
+    )
+
+    client.get(_urls(course)[route])
+
+    sitting.refresh_from_db()
+    assert sitting.completed_time is None
+
+
+@pytest.mark.django_db
+def test_a_submit_on_exit_sitting_left_after_resume_is_finalised(mock_site_context):
+    course, _form, _user, sitting, client = (
+        _submit_on_exit_sitting_paused_then_resumed()
+    )
+    urls = _urls(course)
+    client.post(urls["form_fill_page"], {})
+
+    client.get(urls["form_item"])
+
+    sitting.refresh_from_db()
+    assert sitting.completed_time is not None
