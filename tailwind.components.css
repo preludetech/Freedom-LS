@@ -22,6 +22,15 @@
         scroll-padding-block-start: max(5rem, var(--sidebar-top, 0px));
     }
 
+    /* An element that takes focus only by script so a screen reader announces
+     * it (a result heading, a notice, an error summary) is not a control and
+     * shows no outline. Real controls keep their own focus rings; the only
+     * tabindex="-1" controls (disabled pagination links, hidden submit and
+     * honeypot inputs) are never meant to show focus. */
+    [tabindex="-1"]:focus {
+        outline: none;
+    }
+
     /* Prevent horizontal scrolling on mobile */
     body {
         @apply overflow-x-hidden

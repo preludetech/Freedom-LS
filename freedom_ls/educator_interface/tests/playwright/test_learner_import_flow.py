@@ -211,3 +211,44 @@ def test_import_a_file_with_errors_then_download_the_error_rows(
                 label_box = page.locator("[data-step-label]").first.bounding_box()
                 assert label_box is not None
                 assert label_box["width"] <= 1
+
+
+def test_script_focused_notice_has_no_outline_but_buttons_keep_their_ring(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+    tmp_path: Path,
+) -> None:
+    """A notice that takes focus only by script was drawn inside the browser's
+    heavy default outline. Real controls must keep their focus ring."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    bad = tmp_path / "bad-header.csv"
+    bad.write_text("name\nAda\n")
+
+    page.goto(interface_url(live_server, organisation.slug, "learners"))
+    page.get_by_role("link", name="Import learners").first.click()
+    page.get_by_label("CSV file").set_input_files(str(bad))
+    page.get_by_role("button", name="Upload and preview").click()
+
+    notice = page.locator("#main-content [role=alert]")
+    expect(notice).to_contain_text("The file could not be uploaded.")
+    notice.focus()
+    expect(notice).to_be_focused()
+    assert notice.evaluate("el => getComputedStyle(el).outlineStyle") == "none"
+
+    button = page.get_by_role("button", name="Upload and preview")
+    for _ in range(40):
+        if button.evaluate("el => el === document.activeElement"):
+            break
+        page.keyboard.press("Tab")
+    expect(button).to_be_focused()
+    ring = button.evaluate(
+        """el => {
+            const style = getComputedStyle(el);
+            return [style.outlineStyle, style.boxShadow];
+        }"""
+    )
+    assert ring[0] != "none" or ring[1] != "none"
