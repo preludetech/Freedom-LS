@@ -215,3 +215,46 @@ def test_report_tables_keep_a_readable_name_and_a_reachable_download_on_a_phone(
     assert generated_box is not None
     assert generated_box["height"] < 100
     assert_no_horizontal_overflow(page)
+
+
+def test_report_summary_names_are_not_cut_short_on_a_phone(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """The sticky learner column of the summary tables used to be narrower
+    than a name plus its avatar, so "Aaron Abrahams" showed as "Aaron Abrah…"."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    cohort = CohortFactory(organisation=organisation, name="Year 9 Maths")
+    course = CourseFactory(title="Algebra")
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=quiz_form("Unit quiz one", 50), order=0
+    )
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    for first, last in (("Aaron", "Abrahams"), ("Amy", "Achterberg")):
+        CohortMembershipFactory(
+            cohort=cohort,
+            learner=LearnerFactory(
+                organisation=organisation,
+                user__first_name=first,
+                user__last_name=last,
+            ),
+        )
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto(
+            interface_url(
+                live_server, organisation.slug, f"cohorts/{cohort.pk}/__tabs/report"
+            )
+        )
+        expect(page.get_by_text("Summary of learner progress")).to_be_visible()
+        names = page.locator("tbody th[scope='row'] span.truncate")
+        assert names.count() == 2
+        for index in range(2):
+            assert names.nth(index).evaluate(
+                "el => el.scrollWidth <= el.clientWidth"
+            ), f"name cut short at {viewport['width']}px"
