@@ -499,7 +499,6 @@ class DeactivateCohortAction(
 ):
     label = "Deactivate"
     action_name = "deactivate"
-    blocked_phrase = "deactivate it"
     target_state = False
     loading_text = "Deactivating…"
     template_name = "educator_interface/modal/deactivate_confirmation.html"
@@ -508,7 +507,14 @@ class DeactivateCohortAction(
         return deactivate_cohort(cohort, actor=actor, reason=reason)
 
     def refuse_unchanged(self, ctx: PanelContext, cohort: Cohort) -> HttpResponse:
-        return inactive_cohort_response(ctx, cohort, self.blocked_phrase)
+        return self.refuse(
+            ctx,
+            "Nothing changed. Someone else may have deactivated it already.",
+            title=f"{cohort} is already inactive",
+        )
+
+    def refuse_inactive(self, ctx: PanelContext) -> HttpResponse:
+        return self.refuse_unchanged(ctx, cast(Cohort, ctx.instance))
 
 
 class ReactivateCohortAction(CohortStateAction):

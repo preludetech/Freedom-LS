@@ -316,7 +316,9 @@ def test_stale_deactivate_on_an_inactive_cohort_answers_422_and_changes_nothing(
 
     cohort.refresh_from_db()
     assert response.status_code == 422
-    assert "to deactivate it." in " ".join(response.content.decode().split())
+    assert "Someone else may have deactivated it already." in " ".join(
+        response.content.decode().split()
+    )
     assert cohort.is_active is False
     assert not AuditLogEntry.unscoped.filter(action="cohort.deactivated").exists()
 
@@ -535,6 +537,7 @@ def test_every_action_guarded_by_an_active_cohort_names_what_it_blocks() -> None
     assert all(
         isinstance(getattr(subclass, "blocked_phrase", None), str)
         for subclass in guarded
+        if subclass.refuse_inactive is RequiresActiveCohortMixin.refuse_inactive
     )
 
 
@@ -9651,9 +9654,8 @@ def test_an_inactive_cohort_refusal_is_a_message_dialog(staff_client: Client):
 
     _assert_message_dialog(
         response,
-        f"{cohort} is inactive",
-        "The change was not made. Reactivate the cohort from its Settings tab to "
-        "deactivate it.",
+        f"{cohort} is already inactive",
+        "Nothing changed. Someone else may have deactivated it already.",
     )
 
 
