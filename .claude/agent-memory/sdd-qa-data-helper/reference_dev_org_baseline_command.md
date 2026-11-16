@@ -15,3 +15,7 @@ Drift seen: testers delete "QA cohort empty" and set Penny up via the setup link
 re-creates the cohort and (since Nov 15 2026) restores Penny to unusable password + last_login None.
 "QA cohort tmp" (929cf900) is a tester-made cohort holding Alice; leave it.
 DemoDev domain is 127.0.0.1:8000 but settings_dev FORCE_SITE_NAME=DemoDev pins any port.
+Nov 16 2026 re-run: covered the whole checklist again, no gaps (332 learners / 327 active).
+For "learner login on a course with several topics" use qa.alice (cohort A gives her
+functionality-demo-show-end-with-topic: 6 topics + 1 form). Report output is long (every
+learner line); filter with grep -v '^LEARNER qa\.\(imp\|import\|new\|bulk\|bg\|addtest\)'.
