@@ -44,6 +44,10 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (user) Correct `3. frontend_qa.md` where this run found it out of date: Test 7.7 bulk action order, Test 7.6 notification threshold (250 rows, not 25), Tests 8.1 and 8.2 URL parameter names (`cohorts-inactive`, `audit_log-when`), Test 11.4 last-active column
 - [x] (user) Decide whether the learner course-outline bottom sheet at 375 gets a header with a close control (the panel-framework rule says a phone sheet has one; `freedom_ls/base/templates/_base_interface.html` says the side panel has no chrome and closes by backdrop or Esc), then add the control or record the learner outline as an exception in the rule
 - [x] (user) Decide whether to keep the QA data helper's uncommitted edits to `freedom_ls/qa_helpers/management/commands/qa_create_dev_org_baseline.py` (a re-run puts the pending learner back to pending) and `.claude/agent-memory/sdd-qa-data-helper/MEMORY.md`, then commit or revert them
+- [ ] (user) Decide what to do about QA bug: import error-rows table header draws a band across the amber warning notice (the sticky header fill does not match the notice's translucent tint over the grey canvas; a fix compositing the tint over the white surface was tried and reverted) (TDD: failing test first, then fix)
+- [ ] (user) Run the full test tier after the QA fix for the educator navigation sheet (commit 1dbd8ff6e): the full run was stopped before it reported; the fixer's targeted tier passed
+- [ ] (user) Correct `3. frontend_qa.md` Test 5.3: the second staff member is already on the staff, so entering her email is refused; the role step needs a non-staff email
+- [ ] (user) Decide whether to keep the QA data helper's uncommitted edit to `.claude/agent-memory/sdd-qa-data-helper/reference_dev_org_baseline_command.md`, then commit or revert it
 
 ## 4. Documentation and pull request
 

@@ -179,6 +179,7 @@ Manifestations:
 |---|---|
 | B1 | **UNRESOLVED** — Import error-rows table header draws a white band across the amber warning notice (reason: the fix (commit 1fe573edc) gave `<c-panel-notice>` a per-tone `--panel-table-head` composited over the white surface, but the import notice sits on the grey page canvas, so the header still showed as a cream band against the olive-grey body; reverted in 166820610. The header needs an opaque fill that matches the notice wherever it sits, or the notice an opaque background of its own) |
 | B2 | **FIXED** (commit: 1dbd8ff6e) — Educator navigation sheet on phone and tablet shows a 'Close navigation' control |
+| — | **UNRESOLVED** — full test run after the fixes did not complete (reason: stopped by the user before it reported; the fixer's targeted tier passed, 2563 tests) |
 
 ## General notes
 
