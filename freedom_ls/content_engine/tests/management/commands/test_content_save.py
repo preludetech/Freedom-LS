@@ -3445,6 +3445,8 @@ children:
 def test_a_broken_nested_list_sends_nothing_to_storage(
     site, mock_site_context, monkeypatch
 ):
+    """Called directly, without the command's validate(), as fixtures and downstream
+    projects do: the load still checks placements before anything reaches storage."""
     sent: list[Path] = []
     monkeypatch.setattr(
         "freedom_ls.content_engine.management.commands.content_save.save_file_to_db",
@@ -3459,7 +3461,7 @@ def test_a_broken_nested_list_sends_nothing_to_storage(
         (course_dir / "picture.png").write_bytes(b"")
 
         with pytest.raises(ValueError, match="Invalid due date placement"):
-            _run_content_save(course_dir, site)
+            save_content_to_db(course_dir, site.name)
 
     assert sent == []
 

@@ -64,6 +64,8 @@ from freedom_ls.content_engine.validate import (
     resolve_author_path,
     split_yaml_documents,
     validate,
+    validate_children_lists,
+    validate_due_date_placements,
 )
 from freedom_ls.form_engine import schema as form_schema
 from freedom_ls.form_engine.models import (
@@ -965,6 +967,17 @@ def save_content_to_db(path, site_name):
     for file_path in all_files:
         if file_path in content_files:
             all_parsed.extend(parse_single_file(file_path))
+
+    # Checked here as well as in the command's validate(), because fixtures and downstream
+    # projects call this function directly. Every placement error at once, before
+    # anything is written: the rows roll back with the transaction, but a file already
+    # sent to storage does not.
+    placement_errors = [
+        *validate_children_lists(all_parsed),
+        *validate_due_date_placements(all_parsed),
+    ]
+    if placement_errors:
+        raise ValueError("\n".join(placement_errors))
 
     # Save non-content files (images, documents, etc.) to the database
     for file_path in all_files:
