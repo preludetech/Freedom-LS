@@ -57,3 +57,21 @@ def test_without_a_title_there_is_no_bold_line() -> None:
 
 def test_attributes_pass_through() -> None:
     assert _render("data-status-message").get("data-status-message") is not None
+
+
+@pytest.mark.parametrize("tone", ["info", "warning", "error", "success"])
+def test_a_capped_table_inside_a_notice_gets_an_opaque_header_fill_of_the_notice_tint(
+    tone: str,
+) -> None:
+    """A sticky table header inside a notice used to be opaque white.
+
+    The notice sets --panel-table-head to its own tint composited over the
+    surface, so the header matches the notice yet still hides rows scrolling
+    under it.
+    """
+    classes = _render(f'tone="{tone}"').get("class")
+
+    assert (
+        f"[--panel-table-head:color-mix(in_srgb,var(--color-{tone})_10%,var(--color-surface))]"
+        in classes
+    )
