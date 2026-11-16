@@ -9,7 +9,7 @@ that each still has the shape the QA plan needs:
 * a coming-soon course offering "Express interest".
 
 It makes sure referral codes ``PARTNERA`` and ``PARTNERB`` exist and are active,
-then creates or resets three login-ready learners and one staff user who can
+then creates or resets four login-ready learners and one staff user who can
 reach /admin/ but holds no permissions at all.
 
 Re-running is idempotent AND destructive for the named QA accounts: their
@@ -54,6 +54,8 @@ LEARNER_EMAILS = (
     "qa.live@example.com",
     "qa.login@example.com",
     "qa.selfreg@example.com",
+    # Signs in fresh for the "claim over a draft" test: no application yet.
+    "qa.draft@example.com",
 )
 STAFF_EMAIL = "qa.staffnoperm@example.com"
 
