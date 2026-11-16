@@ -1,6 +1,13 @@
 import pytest
 
-from freedom_ls.referral_tracking.referers import normalised_host, referer_host
+from freedom_ls.referral_tracking.models import CAPS
+from freedom_ls.referral_tracking.referers import (
+    REFERER_LENGTH_CAP,
+    normalised_host,
+    referer_host,
+)
+
+_CAP = CAPS["referer"]
 
 
 @pytest.mark.parametrize(
@@ -19,22 +26,23 @@ from freedom_ls.referral_tracking.referers import normalised_host, referer_host
         ("[::1", "[::1"),
         ("  Example.com  ", "example.com"),
         ("", ""),
+        ("google.com.:443", "google.com"),
+        ("google.com :443", "google.com"),
+        ("münchen.de", "xn--mnchen-3ya.de"),
+        ("www.MÜNCHEN.de.", "xn--mnchen-3ya.de"),
+        ("ü..de", "ü..de"),
+        ("\x00\x01\x7f", "\x00\x01\x7f"),
+        ("]]:[[", "]]"),
+        ("[]:80", ""),
+        ("[]", ""),
+        (".:.", ""),
+        ("www..", "www"),
     ],
 )
 def test_normalised_host_reduces_host_to_comparable_form(
     host: str, expected: str
 ) -> None:
     assert normalised_host(host) == expected
-
-
-@pytest.mark.parametrize(
-    "host",
-    ["\x00\x01\x7f", "]]:[[", "[]:80", "[]", ".:.", "www.."],
-)
-def test_normalised_host_hostile_input_returns_str(host: str) -> None:
-    result = normalised_host(host)
-
-    assert isinstance(result, str)
 
 
 @pytest.mark.parametrize(
@@ -59,6 +67,19 @@ def test_normalised_host_hostile_input_returns_str(host: str) -> None:
         ("not a url", ""),
         ("http://[::1", ""),
         ("", ""),
+        ("https://münchen.de/", "xn--mnchen-3ya.de"),
+        ("https://www." + "a" * (_CAP - 12), ""),
+        ("https://user:" + "p" * (_CAP - 13), ""),
+        ("https://" + "u" * (_CAP - 20) + "@[2001:db8::", ""),
+        ("https://www.google.com/" + "a" * (_CAP - 23), "google.com"),
+        ("\x00\x01\x7f", ""),
+        ("http://\x00a.com", "\x00a.com"),
+        ("http://a]b[", ""),
+        ("http://[", ""),
+        ("]]:[[", ""),
+        ("[]:80", ""),
+        ("http://a.com:\n80", "a.com"),
+        ("android-app://[", ""),
     ],
 )
 def test_referer_host_reads_comparable_host_from_raw_referer(
@@ -67,20 +88,5 @@ def test_referer_host_reads_comparable_host_from_raw_referer(
     assert referer_host(referer) == expected
 
 
-@pytest.mark.parametrize(
-    "referer",
-    [
-        "\x00\x01\x7f",
-        "http://\x00a.com",
-        "http://a]b[",
-        "http://[",
-        "]]:[[",
-        "[]:80",
-        "http://a.com:\n80",
-        "android-app://[",
-    ],
-)
-def test_referer_host_hostile_input_returns_str(referer: str) -> None:
-    result = referer_host(referer)
-
-    assert isinstance(result, str)
+def test_referer_length_cap_matches_stored_cap() -> None:
+    assert CAPS["referer"] == REFERER_LENGTH_CAP
