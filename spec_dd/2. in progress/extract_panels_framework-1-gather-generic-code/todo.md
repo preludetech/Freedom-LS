@@ -18,7 +18,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [x] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
-- [ ] (user) Force-push the branch, rebased onto main (now with deadlines-3): `git push origin HEAD --force-with-lease --force-if-includes`
+- [x] (user) Force-push the branch, rebased onto main (now with deadlines-3): `git push origin HEAD --force-with-lease --force-if-includes`
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
 - [x] (user) Decide what to do about QA bug: component reference page has no panel-notice examples (TDD: failing test first, then fix)
 - [x] (user) Decide what to do about QA bug: learners table mixes '—' (Cohorts) and '-' (Courses, learner_courses.html) for empty cells (TDD: failing test first, then fix)
@@ -42,8 +42,8 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (user) Decide between cards and a minimum name width for the cohort report tables at 375 and the learner tables at 768 (QA bug B16: names are clipped to one or three letters), then fix (TDD: failing test first, then fix)
 - [x] (user) Decide whether to keep `freedom_ls/qa_helpers/management/commands/qa_create_bulk_learners.py` and the changed notes under `.claude/agent-memory/sdd-qa-data-helper/` (written by the QA data helper during this run; uncommitted), then commit or delete them
 - [x] (user) Correct `3. frontend_qa.md` where this run found it out of date: Test 7.7 bulk action order, Test 7.6 notification threshold (250 rows, not 25), Tests 8.1 and 8.2 URL parameter names (`cohorts-inactive`, `audit_log-when`), Test 11.4 last-active column
-- [ ] (user) Decide whether the learner course-outline bottom sheet at 375 gets a header with a close control (the panel-framework rule says a phone sheet has one; `freedom_ls/base/templates/_base_interface.html` says the side panel has no chrome and closes by backdrop or Esc), then add the control or record the learner outline as an exception in the rule
-- [ ] (user) Decide whether to keep the QA data helper's uncommitted edits to `freedom_ls/qa_helpers/management/commands/qa_create_dev_org_baseline.py` (a re-run puts the pending learner back to pending) and `.claude/agent-memory/sdd-qa-data-helper/MEMORY.md`, then commit or revert them
+- [x] (user) Decide whether the learner course-outline bottom sheet at 375 gets a header with a close control (the panel-framework rule says a phone sheet has one; `freedom_ls/base/templates/_base_interface.html` says the side panel has no chrome and closes by backdrop or Esc), then add the control or record the learner outline as an exception in the rule
+- [x] (user) Decide whether to keep the QA data helper's uncommitted edits to `freedom_ls/qa_helpers/management/commands/qa_create_dev_org_baseline.py` (a re-run puts the pending learner back to pending) and `.claude/agent-memory/sdd-qa-data-helper/MEMORY.md`, then commit or revert them
 
 ## 4. Documentation and pull request
 

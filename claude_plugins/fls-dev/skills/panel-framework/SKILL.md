@@ -239,6 +239,10 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
   corners (`bottom-sheet` / `bottom-sheet-bare`) and opens with a header holding the title and a
   close control (`aria-label="Close"`, `<c-icon name="close">`), as `#quick-view`,
   `<c-modal-header>` and the filter sheet have.
+- The shell side panel (`side-panel-dialog` in `_base_interface.html`: the educator navigation,
+  the learner course outline) is shell navigation, not a framework sheet. On a phone it rises as a
+  bottom sheet with no header and no close control, and closes by a backdrop tap, Esc or
+  device-back.
 - `#quick-view` opens with `show()` at every width, never `showModal()`: no scrim, no inert page,
   the list behind it stays tappable. `#app-modal` is the modal; it dims and blocks the page.
 - A preview opens in `#app-modal` at the wide size, titled "<title> (Preview)" with its type
@@ -372,7 +376,8 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
 - A preview dialog is titled "<title> (Preview)" with its type chip and carries no "this is a
   preview" callout; the dialog shows its scrollbar and a bottom fade while more content lies
   below.
-- A sheet on a phone has rounded top corners and a header with a close control; a quick view
+- A sheet on a phone has rounded top corners and a header with a close control. The shell side
+  panel has no header and no close control, and closes by a backdrop tap or Esc. A quick view
   leaves the page behind it undimmed and tappable, a modal dims it.
 - A dialog, sheet, table or selection bar (More menu included) stays inside the viewport at every
   width, title and every button included. A table with action columns is cards at 768 and beside
