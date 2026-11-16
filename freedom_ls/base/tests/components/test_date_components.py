@@ -33,6 +33,12 @@ def test_date_of_a_datetime_is_the_date_in_the_current_zone() -> None:
     assert ">4 Nov 2026</time>" in result
 
 
+def test_date_leaves_no_space_before_following_punctuation() -> None:
+    result = _render('<c-date :value="when" />.', when=date(2026, 11, 21))
+
+    assert "21 Nov 2026</time>." in result
+
+
 def test_date_without_a_value_renders_a_dash() -> None:
     assert _render('<c-date :value="when" />', when=None).strip() == "-"
 
