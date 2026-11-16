@@ -238,7 +238,7 @@ Deactivation is visible: a deactivated row shows up again with `is_active` set t
 | `course-progress` | Nothing: a row has no `is_active`. See [Course progress](#course-progress). | Only the operator's development commands `danger_clear_all_course_progress` and `danger_content_delete`. A row's learner, course and registration cannot be deleted while the row exists. |
 | `course-applications` | Nothing. | An admin deletes the application. |
 | `referral-codes` | Deactivated: `is_active: false`. | Never deleted. |
-| `referral-code-hits` | Nothing. | Older than the cutoff of the operator's `prune_referral_code_hits --older-than-days` command. How often it runs, and with what cutoff, is the operator's choice. |
+| `referral-code-hits` | Nothing. | Older than `REFERRAL_TRACKING_HIT_RETENTION_DAYS` (365 by default), when the deployment's scheduled housekeeping run deletes it. |
 | `signup-attributions` | Nothing. | Its user is deleted. The attribution goes with the user. |
 | `first-touch-counts` | Nothing. | Never deleted. |
 

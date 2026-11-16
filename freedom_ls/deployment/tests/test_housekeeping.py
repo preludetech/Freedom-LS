@@ -1427,6 +1427,34 @@ class TestAttributionTouchPruneSweep:
         assert outcome.sweep_failures == ["attribution touch prune failed: down"]
 
 
+@pytest.mark.django_db
+class TestReferralCodeHitPruneSweep:
+    def test_deleted_hits_are_a_note(
+        self, mocker: MockerFixture, database_task_backend: None
+    ) -> None:
+        mocker.patch(
+            "freedom_ls.deployment.housekeeping.prune_referral_code_hits",
+            return_value=4,
+        )
+
+        outcome = run_housekeeping_sweeps()
+
+        assert "Deleted 4 referral code hit(s) past retention." in outcome.notes
+
+    def test_database_error_from_the_sweep_is_a_sweep_failure(
+        self, mocker: MockerFixture, database_task_backend: None
+    ) -> None:
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        mocker.patch(
+            "freedom_ls.deployment.housekeeping.prune_referral_code_hits",
+            side_effect=DatabaseError("down"),
+        )
+
+        outcome = run_housekeeping_sweeps()
+
+        assert outcome.sweep_failures == ["referral code hit prune failed: down"]
+
+
 class TestHousekeepingCommandHelp:
     def test_help_is_one_list_with_a_single_and_before_the_last_item(self) -> None:
         """The help text used to carry an "and" before a middle item as well as the last."""

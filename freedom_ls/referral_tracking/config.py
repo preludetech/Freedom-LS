@@ -13,6 +13,7 @@ class ReferralTrackingSettings(AppSettings):
     REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS: int
     REFERRAL_TRACKING_MAX_COOKIE_TOUCHES: int
     REFERRAL_TRACKING_TOUCH_RETENTION_DAYS: int
+    REFERRAL_TRACKING_HIT_RETENTION_DAYS: int
 
     declared_settings = {
         "REFERRAL_TRACKING_COOKIE_NAME": Setting(default="fls_attribution"),
@@ -33,6 +34,9 @@ class ReferralTrackingSettings(AppSettings):
         # touch a conversion names is kept regardless. Must be at least
         # REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS, which check E003 enforces.
         "REFERRAL_TRACKING_TOUCH_RETENTION_DAYS": Setting(default=365),
+        # Days a referral code hit is kept before housekeeping deletes it. A
+        # code's hit_count is a separate counter and is not reduced.
+        "REFERRAL_TRACKING_HIT_RETENTION_DAYS": Setting(default=365),
     }
 
 

@@ -6,6 +6,8 @@ requires_settings_change: true
 changed_settings:
   - REFERRAL_TRACKING_ATTRIBUTION_WINDOW_DAYS  # optional: default 90
   - REFERRAL_TRACKING_MAX_COOKIE_TOUCHES  # optional: default 10
+  - REFERRAL_TRACKING_TOUCH_RETENTION_DAYS  # optional: default 365
+  - REFERRAL_TRACKING_HIT_RETENTION_DAYS  # optional: default 365
 requires_package_upgrade: false
 changed_packages: []
 requires_npm_install: false
@@ -21,6 +23,10 @@ requires_tailwind_rebuild: false
   `LearnerCourseRegistration` when it created one, and `None` otherwise. It used to return `True` or
   `False`. A downstream caller that compares the result with `True` (`is True`, `== True`) must
   change to a truthiness or `is not None` check. A plain `if self_register(...):` keeps working.
+- The `prune_referral_code_hits` management command is removed. `fls_run_housekeeping` now deletes
+  referral code hits older than `REFERRAL_TRACKING_HIT_RETENTION_DAYS` (365 by default). Delete any
+  cron job or scheduled task that runs `prune_referral_code_hits`, and set
+  `REFERRAL_TRACKING_HIT_RETENTION_DAYS` to the cutoff it used.
 
 Nothing else downstream code calls changes shape. The attribution cookie's first-touch keys
 (`COOKIE_KEYS`) and the `dict[str, str]` that `read_attribution_cookie` returns are unchanged. The

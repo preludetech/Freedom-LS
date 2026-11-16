@@ -16,8 +16,8 @@ class Command(BaseCommand):
         "claimed past the configured window, close any cohort report still "
         "rendering past its own window, requeue outgoing email that is past due, "
         "re-send email a dead worker left unfinished, delete old outgoing email "
-        "records, and delete attribution touches past retention. Runs once and "
-        "exits."
+        "records, delete attribution touches past retention, and delete referral "
+        "code hits past retention. Runs once and exits."
     )
 
     def handle(self, *args: object, **options: object) -> None:

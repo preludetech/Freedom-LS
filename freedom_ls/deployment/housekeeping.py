@@ -32,7 +32,10 @@ from freedom_ls.mail.sweeps import (
 )
 from freedom_ls.panel_framework.bulk_runs import report_finished
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
-from freedom_ls.referral_tracking.sweeps import prune_attribution_touches
+from freedom_ls.referral_tracking.sweeps import (
+    prune_attribution_touches,
+    prune_referral_code_hits,
+)
 from freedom_ls.reports.models import GeneratedReport
 
 
@@ -356,7 +359,7 @@ SWEEP_FAILURES = (CommandError, DatabaseError)
 
 def run_housekeeping_sweeps() -> HousekeepingOutcome:
     """Run both sweeps, the late-task check, the orphan reap, the mail sweeps and
-    the attribution touch prune.
+    the referral tracking prunes.
 
     The mail sweeps enqueue outgoing email that is past due and re-drive email a
     dead worker left in sending. The prune deletes old
@@ -538,6 +541,15 @@ def run_housekeeping_sweeps() -> HousekeepingOutcome:
             notes.append(
                 f"Deleted {touches_deleted} attribution touch(es) past retention."
             )
+
+    try:
+        hits_deleted = prune_referral_code_hits()
+    except DatabaseError as exc:
+        sentry_sdk.capture_exception(exc)
+        sweep_failures.append(f"referral code hit prune failed: {exc}")
+    else:
+        if hits_deleted:
+            notes.append(f"Deleted {hits_deleted} referral code hit(s) past retention.")
 
     return HousekeepingOutcome(
         sweep_failures=sweep_failures, findings=findings, notes=notes

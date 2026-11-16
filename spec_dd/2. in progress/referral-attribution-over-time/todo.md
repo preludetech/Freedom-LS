@@ -24,6 +24,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) PR 244 review: record a tracked anonymous GET whose view logs in as a live touch
 - [x] (cmd) PR 244 review: prune refuses --older-than-days below the attribution window
 - [x] (cmd) Move attribution touch pruning into fls_run_housekeeping with REFERRAL_TRACKING_TOUCH_RETENTION_DAYS
+- [x] (cmd) Move referral code hit pruning into fls_run_housekeeping with REFERRAL_TRACKING_HIT_RETENTION_DAYS
 - [x] (cmd) PR 244 review: system check for an attribution window over 32767 days
 - [x] (cmd) PR 244 review: detect the referral redirect in process_view
 - [x] (cmd) PR 244 review: cut login flush and conversion queries

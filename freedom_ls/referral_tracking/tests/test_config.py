@@ -71,3 +71,9 @@ def test_touch_retention_days_defaults_when_project_sets_nothing(settings) -> No
     settings.REFERRAL_TRACKING_TOUCH_RETENTION_DAYS = None
 
     assert config.REFERRAL_TRACKING_TOUCH_RETENTION_DAYS == 365
+
+
+def test_hit_retention_days_defaults_when_project_sets_nothing(settings) -> None:
+    settings.REFERRAL_TRACKING_HIT_RETENTION_DAYS = None
+
+    assert config.REFERRAL_TRACKING_HIT_RETENTION_DAYS == 365
