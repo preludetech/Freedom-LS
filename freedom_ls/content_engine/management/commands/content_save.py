@@ -1244,7 +1244,11 @@ def save_content_to_db(path, site_name):
         part_collection_item__collection_id__in=loaded_course_ids,
     ).exclude(pk__in=kept).delete()
 
-    moved = moved_children(site, written)
+    loaded_collections = {
+        (DjangoContentType.objects.get_for_model(collection).pk, collection.id)
+        for collection, _ in collections_data
+    }
+    moved = moved_children(site, written, loaded_collections)
     carry_placement_due_dates(site, moved)
     collection_items_synced.send(
         sender=ContentCollectionItem,

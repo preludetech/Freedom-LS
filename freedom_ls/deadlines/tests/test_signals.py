@@ -242,6 +242,28 @@ def test_a_topic_placed_in_two_parts_on_purpose_keeps_its_overrides(
 
 
 @pytest.mark.django_db
+def test_reloading_one_part_of_a_double_placement_keeps_the_other_parts_overrides(
+    site, mock_site_context, tmp_path
+):
+    """The topic sits in part A and, on purpose, in part B, and the overrides are on part
+    B's row. Part B is not in a part-A-only load, so its row is not taken to be left
+    behind."""
+    _, cohort_override, learner_override = _first_load_with_overrides(tmp_path, site)
+    write_part(tmp_path, PART_B, children=[f"../{PART_A}/moving.md"])
+    _load(tmp_path, site)
+    row_b = _row_in_part(_topic(), PART_B)
+    for override in (cohort_override, learner_override):
+        type(override)._base_manager.filter(pk=override.pk).update(
+            collection_item=row_b
+        )
+
+    _load(tmp_path / PART_A, site)
+
+    assert _item_of(cohort_override) == row_b.pk
+    assert _item_of(learner_override) == row_b.pk
+
+
+@pytest.mark.django_db
 def test_a_child_with_two_stale_rows_keeps_its_overrides(
     site, mock_site_context, tmp_path
 ):
@@ -323,9 +345,12 @@ def _receiver_query_count(root: Path, site: Site, topic_count: int) -> int:
         write_topic(part, f"topic-{index}")
     _load(root, site)
     rows = list(ContentCollectionItem._base_manager.filter(site=site))
+    loaded = {(row.collection_type_id, row.collection_id) for row in rows}
     with CaptureQueriesContext(connection) as queries:
         carry_over_deadline_overrides(
-            sender=ContentCollectionItem, site=site, moved=moved_children(site, rows)
+            sender=ContentCollectionItem,
+            site=site,
+            moved=moved_children(site, rows, loaded),
         )
     return len(queries)
 
