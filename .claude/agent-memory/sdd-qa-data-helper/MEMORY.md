@@ -75,6 +75,7 @@
 
 - [reference_audit_log_history_command.md](reference_audit_log_history_command.md) — qa_create_audit_log_history: learner+cohort History tabs + org Audit log seed (bulk run 56 w/ reason, system + deleted actor); audit entries append-only so run-once; bulk summary never shows on the cohort tab
 - [reference_referral_attribution_scenario_command.md](reference_referral_attribution_scenario_command.md) — qa_create_referral_attribution_scenario: 3 reused demo courses + PARTNERA/B + 3 learners & no-perm staff (QaPass!2026x); Conversion-before-Touch RESTRICT; admin URLs use freedom_ls_referral_tracking label
+- [reference_dev_org_baseline_command.md](reference_dev_org_baseline_command.md) — qa_create_dev_org_baseline: one-shot demodev checklist (QA cohort A/B/inactive/empty, Penny pending, Quinn quiz, Dan deactivated, Cora limited staff, old audit, Alice-Cora conversation); restores Penny
 
 ## Recurring requests
 

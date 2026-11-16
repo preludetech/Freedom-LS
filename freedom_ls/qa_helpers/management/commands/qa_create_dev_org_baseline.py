@@ -262,6 +262,11 @@ def _seed(site: Site) -> None:
     pending_user, _ = match_or_create_user(
         site, "qa.penny@email.com", "Penny", "Pending"
     )
+    # A QA run that walks the setup link gives Penny a password; put her back.
+    if pending_user.has_usable_password() or pending_user.last_login is not None:
+        pending_user.set_unusable_password()
+        pending_user.last_login = None
+        pending_user.save(update_fields=["password", "last_login"])
     penny = ensure_learner(pending_user, org)
     quinn = learner("qa.quinn@email.com", "Quinn", "Quiz")
     bea = learner("qa.bea@email.com", "Bea", "Botha")
