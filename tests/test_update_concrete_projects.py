@@ -14,6 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 FLS_DEV = REPO_ROOT / "claude_plugins/fls-dev"
 COMMAND = FLS_DEV / "commands/update_concrete_projects.md"
 DO_QA = REPO_ROOT / "claude_plugins/sdd/commands/do_qa.md"
+ROADMAP = REPO_ROOT / "claude_plugins/sdd/commands/roadmap.md"
 CONFIG_TEMPLATE = FLS_DEV / "templates/config.local.md"
 SETTINGS = REPO_ROOT / ".claude/settings.json"
 COMMAND_FORM_SOURCES = [
@@ -79,7 +80,6 @@ def test_config_local_template_has_an_empty_concrete_projects_section() -> None:
         "Bash(git switch *)",
         "Bash(git -C * fetch origin main)",
         "Bash(git -C * submodule status*)",
-        "Bash(git -C * symbolic-ref *)",
         "Bash(git -C * remote get-url *)",
         "Bash(git -C * add *)",
         "Bash(git -C * branch --show-current)",
@@ -285,13 +285,34 @@ def test_roadmap_sync_runs_once_at_the_end_of_the_run() -> None:
     assert "Skill(sdd:roadmap)" in section(text, "## End of run")
 
 
-def test_every_question_is_asked_in_step_3_or_named_late_sections() -> None:
+def test_every_question_is_asked_in_step_3() -> None:
     text = COMMAND.read_text()
-    allowed = [
-        section(text, "## Step 3: Preview and confirm"),
-        section(text, "**Size test.**"),
+    step_3 = section(text, "## Step 3: Preview and questions")
+
+    assert text.count("`AskUserQuestion`") == step_3.count("`AskUserQuestion`") > 0
+
+
+@pytest.mark.parametrize("question", ["Confirm the plan", "Push policy"])
+def test_always_yes_questions_are_not_asked(question: str) -> None:
+    assert question not in COMMAND.read_text()
+
+
+def test_roadmap_sync_applies_without_asking() -> None:
+    end_of_run = section(COMMAND.read_text(), "## End of run")
+
+    assert "`Skill(sdd:roadmap)` with args `apply`" in end_of_run
+    assert "With the `apply` argument, continue to S6" in ROADMAP.read_text()
+
+
+def test_scans_start_before_the_steps_that_do_not_feed_them() -> None:
+    text = COMMAND.read_text()
+    order = [
+        text.index("Then spawn the pull-in workers"),
+        text.index("## Step 1: Project preflight"),
+        text.index("Then spawn the workaround workers"),
+        text.index("## Step 3: Preview and questions"),
+        text.index("## Step 3b: Environment and baseline"),
+        text.index("## Step 4: The loop"),
     ]
 
-    assert text.count("`AskUserQuestion`") == sum(
-        s.count("`AskUserQuestion`") for s in allowed
-    )
+    assert order == sorted(order)

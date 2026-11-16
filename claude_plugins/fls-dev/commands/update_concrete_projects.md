@@ -8,7 +8,7 @@ Run from the FLS `main` worktree. Integrate each completed FLS spec into every c
 
 Inputs from the caller: `$ARGUMENTS`, optional project paths. When given, the run covers only the listed projects whose path matches one of them.
 
-This command runs at **depth 0**, following `claude_plugins/sdd/skills/claude-code-authoring/resources/fanout_recipe.md`. The run is long and the operator answers once and leaves, so every question is **front-loaded** into Step 3, before any project changes. After Step 3 the run asks only the borderline size question in `## Failure handling` and the single `/sdd:roadmap` confirmation in `## End of run`. The Permissions section lists the commands that still prompt by design, and Step 3 shows which cells hit them.
+This command runs at **depth 0**, following `claude_plugins/sdd/skills/claude-code-authoring/resources/fanout_recipe.md`. The run is long and the operator answers once and leaves, so every question is **front-loaded** into Step 3, and the scans that feed Step 3 start as early as their inputs exist. The run asks only about workaround removals and pull-ins. It starts without a plan confirmation, always pushes, and asks nothing after Step 3. The Permissions section lists the commands that still prompt by design, and Step 3 shows which cells hit them.
 
 ## Rules
 
@@ -23,7 +23,7 @@ This command runs at **depth 0**, following `claude_plugins/sdd/skills/claude-co
   - **cell**: one completed FLS spec integrated into one concrete project. The unit of work, commit, result and retry.
   - **spec name**: the spec's done directory name, `<dir>` in Step 2 (for example `2026-03-18_13:49_webhook-translation-layer`). `<spec>` and `<spec-name>` in this file and in `concrete_spec_integration.md` stand for it; an `Update FLS:` subject names it.
   - **last good**: the project's most recent `Update FLS: <spec-name>` commit, or its HEAD when the run started.
-  - **baseline**: the project's pre-existing failures, the failing node ids of the portable contract test set in `concrete_spec_integration.md` at its current pointer before any spec moves. Step 2b reuses ids a previous run recorded for the same tree, or starts the baseline **lazy**: empty, filled only by gate failures that also fail at last good (`## Failure handling`). The full set never runs just to take a baseline.
+  - **baseline**: the project's pre-existing failures, the failing node ids of the portable contract test set in `concrete_spec_integration.md` at its current pointer before any spec moves. Step 3b reuses ids a previous run recorded for the same tree, or starts the baseline **lazy**: empty, filled only by gate failures that also fail at last good (`## Failure handling`). The full set never runs just to take a baseline.
   - **parked**: a project whose cell ended `blocked-on-spec`. Its remaining specs are skipped and the other projects continue.
   - **pull-in**: concrete-project code proposed for moving into FLS.
 
@@ -61,6 +61,8 @@ One absolute path per line, each the checked-out worktree of a concrete project.
 - /home/me/workspace/first_class/First-Class-LMS.git/main
 ```
 
+Then spawn the pull-in workers (`## Pull-in scan`) for every listed path that exists, in one message. They need only the project root, so they work while Steps 1 and 2 run. A project that Step 1 records as `skipped` has its pull-in file ignored.
+
 ## Step 1: Project preflight
 
 For each path, run these checks in order, each one read-only Bash call in the FLS session. A failing check records `skipped: <reason>` for that project and moves to the next path.
@@ -88,7 +90,6 @@ Record per project:
 - branch: `git -C <p> branch --show-current`
 - HEAD SHA, the first last good: `git -C <p> rev-parse HEAD`
 - submodule SHA: `git -C <p> submodule status submodules/Freedom-LS`. A leading `+` means the checkout differs from the recorded pointer: a dirty tree.
-- default branch: `git -C <p> symbolic-ref refs/remotes/origin/HEAD`. When that ref is unset the default branch is unknown.
 
 ## Step 2: Pending specs
 
@@ -108,13 +109,32 @@ git -C <p> log --format=%s --grep='^Update FLS: '
 
 A spec is already integrated when one of those subjects names its `<dir>` as a whole comma-separated item, or, for commits made before subjects carried the full directory name, its slug (the part of `<dir>` after the `yyyy-mm-dd_HH:MM_` prefix) as a whole item. A project's pending list is every spec above, in order, minus the integrated ones. The union across projects, in commit order, is the run's spec list.
 
-For every spec in the run's list, read the six flags and `changed_template_paths` from its `upgrade_notes.md` frontmatter (`no notes` when the file is absent), and write its spec diff file as `## Workaround removal` describes. Step 2b and Step 3 need both.
+For every spec in the run's list, read the six flags and `changed_template_paths` from its `upgrade_notes.md` frontmatter (`no notes` when the file is absent), and write its spec diff file as `## Workaround removal` describes. Step 3 and Step 3b need both.
 
-## Step 2b: Environment, baseline and scans
+Then spawn the workaround workers (`## Workaround removal`) for every project that is not skipped and has pending specs, in one message. Step 3 starts once every workaround and pull-in worker has returned.
+
+## Step 3: Preview and questions
+
+Print, in this order:
+
+1. One block per project: path, branch, submodule SHA, pending count.
+2. The skipped projects with their reasons.
+3. A matrix with one row per spec: name, completion date, the six flags from its `upgrade_notes.md` frontmatter (`requires_migrations`, `requires_template_review`, `requires_settings_change`, `requires_package_upgrade`, `requires_npm_install`, `requires_tailwind_rebuild`) or `no notes`, and per project `overrides: <paths>` for the paths in `changed_template_paths` that the project overrides, or `-`.
+4. A **will prompt** line per project naming the cells that will stop on a permission prompt and why: `migrate` for `requires_migrations` (or `no notes`), `npm install` for `requires_npm_install`, `seed` for a QA cell, and `push` at the end, which every project gets. Add one line saying writes into a project prompt unless this session runs in `acceptEdits` mode.
+
+The run starts without a plan confirmation: the preview is for the transcript. Then ask, recommended option first, up to four questions per `AskUserQuestion`, in this order:
+
+1. One question per matched workaround, as `## Workaround removal` describes.
+2. One question per pull-in card, as `## Pull-in scan` describes.
+3. Any `needs` a `blocked` scan worker listed that the code and the other units' files cannot answer.
+
+With nothing to ask, continue to Step 3b. There is no per-spec confirmation. An unanswered question takes its stated default and is recorded for the report's assumed-defaults section. Write every answer as it arrives to `.sdd-work/update_concrete_answers.md`, one `<question id> | <answer> | answered` or `assumed` line each, and on a resumed run ask only the questions that file lacks. Nothing is written to any project before Step 3 ends.
+
+## Step 3b: Environment and baseline
 
 Per project that is not skipped:
 
-**Environment.** When a pending spec sets `requires_npm_install` or `requires_tailwind_rebuild` and `<p>/node_modules` does not exist, run `npm --prefix <p> install` now. It prompts, which is why it runs here, at the start, not in the middle of the night.
+**Environment.** When a pending spec sets `requires_npm_install` or `requires_tailwind_rebuild` and `<p>/node_modules` does not exist, run `npm --prefix <p> install` now. It prompts, which is why it runs here, straight after the questions, not in the middle of the night.
 
 **Baseline.** A project with no pending specs has no baseline. Otherwise take the first source that applies:
 
@@ -126,26 +146,7 @@ Any other HEAD, including one `/fls-dev:update_fls` or a person committed, takes
 
 Write `.sdd-work/update_concrete_baseline_<project>.md` with one `key: value` line each for `source:` (`resumed`, `recorded <date>` or `lazy`), `taken-at:` (HEAD), `submodule:` and `ids:` (`none` when empty).
 
-**Scans.** Spawn the workaround and pull-in workers (`## Workaround removal`, `## Pull-in scan`) for every project in one message. Step 3 starts once every worker has returned.
-
-## Step 3: Preview and confirm
-
-Print, in this order:
-
-1. One block per project: path, branch, submodule SHA, baseline source and result (`lazy`, `recorded <date>: N failing` or `resumed: N failing`), pending count.
-2. The skipped projects with their reasons.
-3. A matrix with one row per spec: name, completion date, the six flags from its `upgrade_notes.md` frontmatter (`requires_migrations`, `requires_template_review`, `requires_settings_change`, `requires_package_upgrade`, `requires_npm_install`, `requires_tailwind_rebuild`) or `no notes`, and per project `overrides: <paths>` for the paths in `changed_template_paths` that the project overrides, or `-`.
-4. A **will prompt** line per project naming the cells that will stop on a permission prompt and why: `migrate` for `requires_migrations` (or `no notes`), `npm install` for `requires_npm_install`, `seed` for a QA cell, and `push` at the end under a push policy. Add one line saying writes into a project prompt unless this session runs in `acceptEdits` mode.
-
-Then ask, recommended option first, up to four questions per `AskUserQuestion`, in this order:
-
-1. Confirm the plan: yes, or stop.
-2. Push policy: push each project's branch at the end, or leave unpushed.
-3. One question per matched workaround, as `## Workaround removal` describes.
-4. One question per pull-in card, as `## Pull-in scan` describes.
-5. Any `needs` a `blocked` scan worker listed that the code and the other units' files cannot answer.
-
-Ask item 1 alone first; a stop ends the run before the rest are asked. There is no per-spec confirmation. An unanswered question takes its stated default and is recorded for the report's assumed-defaults section. Write every answer as it arrives to `.sdd-work/update_concrete_answers.md`, one `<question id> | <answer> | answered` or `assumed` line each, and on a resumed run ask only the questions that file lacks. Nothing is written to any project before the confirmation.
+Print one line per project: baseline source and result (`lazy`, `recorded <date>: N failing` or `resumed: N failing`).
 
 ## Step 4: The loop
 
@@ -212,11 +213,11 @@ It leaves `qa_report.md` and `screenshots/` beside the plan. Every cell with a Q
 
 ## Workaround removal
 
-Concrete projects carry workarounds for FLS defects. Step 2b finds the ones the run's specs make obsolete, for every project at once; Step 3 asks which to remove; each cell removes its approved ones before its gate.
+Concrete projects carry workarounds for FLS defects. The scan after Step 2 finds the ones the run's specs make obsolete, for every project at once; Step 3 asks which to remove; each cell removes its approved ones before its gate.
 
 **Spec diff file.** In Step 2, per spec, write `.sdd-work/update_concrete_specdiff_<spec>.md` unless it exists. It holds `git diff --stat <previous-spec-commit>..<spec-commit>`, `git diff --name-only` of the same range, and the body of the spec's `upgrade_notes.md`, with `<previous-spec-commit>` the commit before the spec's in the run's spec list (or, for the first, the oldest submodule SHA among the projects it is pending in). The worker has no Bash, so it matches symbols, test ids, template paths and settings through this file.
 
-**Worker.** One `sdd:sdd-worker` per project, spawned in Step 2b, writing `.sdd-work/update_concrete_workarounds_<project>.md`. The brief states:
+**Worker.** One `sdd:sdd-worker` per project, spawned at the end of Step 2, writing `.sdd-work/update_concrete_workarounds_<project>.md`. The brief states:
 
 - the project root, and its pending specs in order, each with its name, directory and spec diff file path;
 - the read set: `apps/`, `config/`, `templates/`, `tests/`, every `conftest.py` and `pyproject.toml`;
@@ -267,7 +268,7 @@ Print a stop card: project, spec, step, failing ids, diff stat, class and propos
 - An environment failure is fixed once: `npm --prefix <p> install` for `node_modules`, or tell the operator the database is unreachable. The cell then retries, and that retry does not count as the fix attempt.
 - A stale override makes the cell `blocked-on-fix`. The project is not parked, and its next spec's cell still runs.
 
-**Size test.** A fix is small when all hold: no model or migration change; no new setting; at most three FLS files plus one test file; one regression test covers it. For a borderline case, ask one `AskUserQuestion`: small fix now (recommended) or write an idea. An unanswered question takes the recommended option and is recorded in report section 8.
+**Size test.** A fix is small when all hold: no model or migration change; no new setting; at most three FLS files plus one test file; one regression test covers it. A borderline case takes the small fix, and the call is recorded in report section 8.
 
 **Small fix.** In the FLS `main` worktree, each command its own Bash call:
 
@@ -287,7 +288,7 @@ Run the command it prints. Then:
 git commit -m "fix: <what> (found integrating <spec> into <project>)"
 ```
 
-The fix lands without a separate approval question; the size test, the targeted tier, the borderline question and the operator's attendance are the gates. Print `git diff main...HEAD --stat` and the regression test name so the transcript shows what lands, then:
+The fix lands without a separate approval question; the size test and the targeted tier are the gates. Print `git diff main...HEAD --stat` and the regression test name so the transcript shows what lands, then:
 
 ```
 claude_plugins/sdd/scripts/land_on_main.sh land
@@ -311,7 +312,7 @@ Stage the idea file only. Then:
 git push origin main
 ```
 
-The push keeps `main` equal to `origin/main`, which Step 0 needs on a resume. The roadmap row waits for `## End of run`, so the operator confirms one roadmap sync for the whole run, not one per idea. A rejected push stops the run with the reason. The cell result is `blocked-on-spec <slug>`. The project is parked: its remaining cells in this run are `skipped` with reason `parked on <slug>`, and the other projects continue with the same spec.
+The push keeps `main` equal to `origin/main`, which Step 0 needs on a resume. The roadmap row waits for `## End of run`, so the whole run gets one roadmap sync, not one per idea. A rejected push stops the run with the reason. The cell result is `blocked-on-spec <slug>`. The project is parked: its remaining cells in this run are `skipped` with reason `parked on <slug>`, and the other projects continue with the same spec.
 
 ## Resume
 
@@ -319,9 +320,9 @@ Before a cell runs, skip it when its result file already ends `result: integrate
 
 ## Pull-in scan
 
-Once per project per run, find concrete-project code that belongs in FLS and put it to the operator: the scan runs in Step 2b, the questions in Step 3, the answers are applied in Step 5. The command never copies project code into FLS. An accepted candidate becomes an idea on FLS `main` that names the project's files as the reference implementation.
+Once per project per run, find concrete-project code that belongs in FLS and put it to the operator: the scan starts once the project list is read, the questions run in Step 3, the answers are applied in Step 5. The command never copies project code into FLS. An accepted candidate becomes an idea on FLS `main` that names the project's files as the reference implementation.
 
-**Worker.** One `sdd:sdd-worker` per project, spawned in Step 2b, writing `.sdd-work/update_concrete_pullin_<project>.md`. The brief states:
+**Worker.** One `sdd:sdd-worker` per project, spawned straight after `## Reading the project list`, writing `.sdd-work/update_concrete_pullin_<project>.md`. The brief states:
 
 - the project root;
 - the read set: `apps/`, `templates/`, `config/`, `pyproject.toml`, and `spec_dd/fls_integration/declined_pull_ins.md` when it exists;
@@ -360,18 +361,18 @@ For each project, in this order:
 1. The final sync section of `concrete_spec_integration.md`, with its `checkout` line replaced by `claude_plugins/fls-dev/scripts/concrete_pointer_move.sh <p> origin/main`. Its closing test run (with `-rf`) is skipped when the pointer did not move and `git -C <p> diff --name-only <last-cell-commit>` lists only paths under `spec_dd/`: the last cell's gate already tested this tree, so reuse that cell's `failing:` ids. Run it otherwise, including for a project with no cell this run.
 2. Write the integration report with the `Write` tool to `<p>/spec_dd/fls_integration/<run-date>/integration_report.md`. Its sections are below.
 3. Commit it: `git -C <p> add spec_dd/fls_integration`, then `uv run --directory <p> git commit -m "Update FLS: integration report <run-date>"`.
-4. Push under the Step 3 policy. When the policy says push and the project's branch is neither its default branch nor, when the default is unknown, `main` or `master`, run `git -C <p> push`. Otherwise do not push.
+4. Push: `git -C <p> push`, whatever the branch, the default branch included.
 
-The report is committed before the push, so write its verdict line with `pushed: yes` or `pushed: no` and, for no, the reason: the policy said leave unpushed, or the branch is the default branch.
+The report is committed before the push, so it carries no push result. Print the result per project in the run's closing summary; for a rejected push, print the reason and leave the commits as they are.
 
 ### The integration report
 
 Sections, in this order:
 
-1. Verdict line: integrated N of M, parked on `<slug>` or `none`, FLS fixes landed, ideas written, `pushed: yes` or `pushed: no`, and the resume instruction when the run is not complete. The resume instruction is the command name with the project path as its argument.
+1. Verdict line: integrated N of M, parked on `<slug>` or `none`, FLS fixes landed, ideas written, and the resume instruction when the run is not complete. The resume instruction is the command name with the project path as its argument.
 2. Needs attention: `blocked-on-fix` cells with their evidence, and the stale-override flags from the template-drift step of `concrete_spec_integration.md`. `none` when there are no such cells. Say when lines were redacted.
 3. Per-cell results, one row per cell read from the cell result files: spec, FLS commit, flags, result, project commit, new failures, QA result. The QA column is `pass` with a relative link `<spec-name>/qa_report.md`, `skipped: <reason>`, or `bug: see stop card`.
-4. Baseline: the baseline source and failing ids, and which of them passed in item 1's test run (or the reused `failing:` ids). End the section with the block the next run's Step 2b reads, exactly in this shape, `none` for an empty list:
+4. Baseline: the baseline source and failing ids, and which of them passed in item 1's test run (or the reused `failing:` ids). End the section with the block the next run's Step 3b reads, exactly in this shape, `none` for an empty list:
 
    ~~~
    ```final-failing-ids
@@ -383,11 +384,11 @@ Sections, in this order:
 5. FLS changes made: each fix commit (subject, SHA, the spec and the regression test) and each idea (path, slug). `none` when there are none.
 6. Workarounds: removed (path, spec), declined, still needed and unmatched, read from the workaround files and the cell result counts. `none` when no cell listed any.
 7. Pull-in candidates: each idea written (slug, path), each candidate declined (path), each deferred (path). `none` when the scan found no candidates.
-8. Assumed defaults: every `assumed` line of the answers file that concerns this project, and every borderline size call decided without an answer.
+8. Assumed defaults: every `assumed` line of the answers file that concerns this project, and every borderline size call.
 
 ## End of run
 
-After every project's Step 5, and on the walk-cap stop: when this run wrote any idea (a large fix or a pull-in), call `Skill(sdd:roadmap)` with no argument once. It commits the roadmap rows for all of them, and its confirmation is the run's last question. Then:
+After every project's Step 5, and on the walk-cap stop: when this run wrote any idea (a large fix or a pull-in), call `Skill(sdd:roadmap)` with args `apply` once. It commits the roadmap rows for all of them without asking. Then:
 
 ```
 git push origin main

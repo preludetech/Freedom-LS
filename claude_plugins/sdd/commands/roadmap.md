@@ -1,7 +1,7 @@
 ---
 description: Keep the spec roadmap (spec_dd/1. next/roadmap.md) in sync with the spec directories, or cut a big idea into ordered, dependent specs and add them to it
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, Skill
-argument-hint: [<spec-dir to cut>]
+argument-hint: [apply | <spec-dir to cut>]
 ---
 
 This command owns the spec roadmap, `spec_dd/1. next/roadmap.md`: what is up next, then every
@@ -15,7 +15,8 @@ write those by hand.
 
 Two modes:
 
-- **No argument: sync.** Reconcile the roadmap with the directories on disk.
+- **No argument, or `apply`: sync.** Reconcile the roadmap with the directories on disk. `apply`
+  means the caller already holds the owner's approval, so S5 applies the diff without asking.
 - **A directory under `spec_dd/`: cut.** Take one idea or spec that is too big for one SDD run, do
   the research and the questioning it needs, cut it into ordered sibling specs, write one
   decision-complete idea per spec, and add the effort to the roadmap. A cut ends with a sync.
@@ -103,7 +104,8 @@ reason becomes the bullet's precursor: `` Before starting: cut it with `/sdd:roa
 
 Print the diff: adds (with their features), drops, blocker corrections, precursors added, format
 fixes and unresolved dependencies. A drop whose directory is neither done nor in progress is
-called out on its own line. One `AskUserQuestion`: apply, or stop.
+called out on its own line. With the `apply` argument, continue to S6. Otherwise one
+`AskUserQuestion`: apply, or stop.
 
 ## S6: Edit and run the script
 

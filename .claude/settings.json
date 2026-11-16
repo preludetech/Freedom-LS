@@ -138,7 +138,6 @@
       "Bash(git -C * diff*)",
       "Bash(git -C * fetch origin main)",
       "Bash(git -C * submodule status*)",
-      "Bash(git -C * symbolic-ref *)",
       "Bash(git -C * remote get-url *)",
       "Bash(git -C * add *)",
       "Bash(git -C * branch --show-current)",
