@@ -121,3 +121,25 @@ def test_upload_a_picture_then_a_refused_file(
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
         assert_no_horizontal_overflow(page)
+
+
+def test_refused_picture_error_lines_up_with_its_label(
+    live_server, logged_in_page: Page
+) -> None:
+    page = logged_in_page
+    page.set_viewport_size({"width": 1920, "height": 1080})
+    page.goto(reverse_url(live_server, "accounts:account_profile"))
+
+    page.get_by_label(re.compile(r"^Profile picture")).set_input_files(
+        {"name": "notes.png", "mimeType": "image/png", "buffer": b"just some text"}
+    )
+    page.get_by_role("button", name="Save picture").click()
+
+    error = page.get_by_text(WRONG_TYPE)
+    expect(error).to_be_visible()
+    label = page.locator("label[for='id_profile_picture']")
+    error_box = error.bounding_box()
+    label_box = label.bounding_box()
+    assert error_box is not None
+    assert label_box is not None
+    assert error_box["x"] == pytest.approx(label_box["x"], abs=1)

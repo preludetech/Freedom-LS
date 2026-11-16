@@ -23,7 +23,7 @@
             <div class="space-y-1">
                 <label for="{{ picture_form.profile_picture.id_for_label }}" class="block text-sm font-medium">{{ picture_form.profile_picture.label }}</label>
                 {% if picture_form.profile_picture.errors %}
-                    <div class="text-sm text-error [&_ul]:list-none">{{ picture_form.profile_picture.errors }}</div>
+                    <div class="text-sm text-error [&_ul]:ml-0 [&_ul]:list-none">{{ picture_form.profile_picture.errors }}</div>
                 {% endif %}
                 <div class="[&_input]:w-auto [&_input]:max-w-full [&_input]:border-0 [&_input]:p-0 [&_input]:shadow-none">{{ picture_form.profile_picture }}</div>
                 <p id="{{ picture_form.profile_picture.auto_id }}_helptext" class="text-sm text-muted">{{ picture_form.profile_picture.help_text }}</p>
