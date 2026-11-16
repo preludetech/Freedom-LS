@@ -27,6 +27,12 @@ requires_tailwind_rebuild: false
   referral code hits older than `REFERRAL_TRACKING_HIT_RETENTION_DAYS` (365 by default). Delete any
   cron job or scheduled task that runs `prune_referral_code_hits`, and set
   `REFERRAL_TRACKING_HIT_RETENTION_DAYS` to the cutoff it used.
+- `read_attribution_cookie` now returns `None` for a cookie whose first touch (`first_seen`) is more
+  than `REFERRAL_TRACKING_COOKIE_MAX_AGE_DAYS` old (90 by default), even when its signature is newer.
+  The cookie is re-signed each time a later landing is added, so the signature's age no longer
+  bounds it. A test that builds a cookie with `set_attribution_cookie` and a fixed `first_seen` now
+  reads `None` once that date is older than the max age. Pin the clock near that date (for example
+  with `time_machine.travel`) or use a recent `first_seen`.
 
 Nothing else downstream code calls changes shape. The attribution cookie's first-touch keys
 (`COOKIE_KEYS`) and the `dict[str, str]` that `read_attribution_cookie` returns are unchanged. The
