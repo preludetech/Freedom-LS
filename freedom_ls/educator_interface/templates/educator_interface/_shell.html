@@ -35,14 +35,6 @@ the last card.
 {% block main_class %}panel-canvas flex flex-col{% endblock main_class %}
 
 {% block sidebar_content %}
-    <div class="flex justify-end lg:hidden">
-        <button type="button"
-                x-on:click="close"
-                class="p-3 rounded-md text-muted hover:text-on-surface hover:bg-surface-2 transition-colors cursor-pointer"
-                aria-label="Close navigation">
-            <c-icon name="close" class="size-5" />
-        </button>
-    </div>
     {% include "educator_interface/partials/organisation_switcher.html" %}
     {% include "panel_framework/partials/sidebar_nav.html" with menu_groups=menu_groups request=request only %}
     {% comment %}

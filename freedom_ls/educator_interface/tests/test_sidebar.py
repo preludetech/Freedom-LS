@@ -129,17 +129,15 @@ def test_user_block_follows_the_nav_inside_the_sidebar_dialog(
 
 
 @pytest.mark.django_db
-def test_navigation_dialog_has_a_close_button_before_the_organisation_switcher(
+def test_navigation_dialog_has_no_close_control(
     sidebar: tuple[lxml.html.HtmlElement, str],
 ) -> None:
+    """The navigation sheet used to carry a "Close navigation" button. It has no
+    header or close control and closes by a backdrop tap or Esc."""
     nav, _page = sidebar
     dialog = nav.xpath("ancestor::dialog[@aria-label='Navigation']")[0]
 
-    (close_button,) = dialog.xpath(".//button[@aria-label='Close navigation']")
-    (switcher,) = dialog.cssselect("#organisation-switcher")
-
-    document_order = list(dialog.iter())
-    assert document_order.index(close_button) < document_order.index(switcher)
+    assert not dialog.xpath(".//button[@aria-label='Close navigation']")
 
 
 @pytest.mark.django_db

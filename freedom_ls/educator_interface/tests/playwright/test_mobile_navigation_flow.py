@@ -75,8 +75,10 @@ def test_educator_navigates_and_creates_a_cohort_on_a_phone(
     expect(body).to_have_css("border-top-left-radius", "16px")
     expect(body).to_have_css("border-top-right-radius", "16px")
 
-    # Closing returns focus to the toggle that opened the sheet.
-    sheet.get_by_role("button", name="Close navigation").click()
+    # The sheet has no close control; Esc closes it and returns focus to the
+    # toggle that opened it.
+    expect(sheet.get_by_role("button", name="Close navigation")).to_have_count(0)
+    page.keyboard.press("Escape")
     expect(sheet).to_be_hidden()
     expect(toggle).to_be_focused()
 
@@ -380,7 +382,6 @@ def test_navigation_shows_as_a_left_column_with_javascript_off(
         expect(nav.get_by_role("link", name="Learners")).to_be_visible()
         expect(nav.get_by_title("Org A")).to_be_visible()
         expect(plain.get_by_role("button", name="Open navigation panel")).to_be_hidden()
-        expect(nav.get_by_role("button", name="Close navigation")).to_be_hidden()
         without_script = nav.bounding_box()
         content = plain.locator("#interface-main").bounding_box()
         assert without_script is not None
@@ -415,7 +416,6 @@ def test_navigation_shows_above_the_content_with_javascript_off_on_a_phone(
         expect(nav.get_by_role("link", name="Cohorts")).to_be_visible()
         expect(nav.get_by_title("Org A")).to_be_visible()
         expect(plain.get_by_role("button", name="Open navigation panel")).to_be_hidden()
-        expect(nav.get_by_role("button", name="Close navigation")).to_be_hidden()
         box = nav.bounding_box()
         content = plain.locator("#interface-main").bounding_box()
         assert box is not None
