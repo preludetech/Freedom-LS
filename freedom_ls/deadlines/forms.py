@@ -16,7 +16,7 @@ from django import forms
 from django.http import QueryDict
 
 from freedom_ls.audit_log.models import REASON_LENGTH
-from freedom_ls.content_engine.models import ContentCollectionItem
+from freedom_ls.content_engine.models import ContentCollectionItem, CoursePart
 from freedom_ls.deadlines.models import MAX_EXTENSION_DAYS, ExtensionTarget
 from freedom_ls.learner_progress.models import CourseProgress
 
@@ -26,12 +26,17 @@ def _date_widget() -> forms.DateInput:
     return forms.DateInput(attrs={"type": "date", "class": " ".join(INPUT_CLASSES)})
 
 
+_PLACEMENT_SEPARATOR = "\N{SINGLE RIGHT-POINTING ANGLE QUOTATION MARK}"
+
+
 class CollectionItemChoiceField(forms.ModelChoiceField):
     def label_from_instance(self, obj: ContentCollectionItem) -> str:
         child = obj.child
         if child is None:
             return str(obj.pk)
-        return f"{child.title} ({child.file_path})"
+        if isinstance(obj.collection, CoursePart):
+            return f"{obj.collection.title} {_PLACEMENT_SEPARATOR} {child.title}"
+        return str(child.title)
 
 
 class ReasonForm(forms.Form):
@@ -96,7 +101,7 @@ class ExtendDeadlineForm(ReasonForm):
         picker = cast(CollectionItemChoiceField, self.fields["collection_item"])
         picker.queryset = ContentCollectionItem.objects.filter(
             pk__in=[i.pk for i in record.course.viewable_collection_items()]
-        ).prefetch_related("child")
+        ).prefetch_related("child", "collection")
 
     def clean(self) -> dict[str, object]:
         cleaned = super().clean() or {}

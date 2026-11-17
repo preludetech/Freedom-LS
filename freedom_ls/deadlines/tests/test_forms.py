@@ -8,7 +8,11 @@ from unfold.widgets import UnfoldAdminRadioSelectWidget
 from django.http import QueryDict
 
 from freedom_ls.audit_log.models import REASON_LENGTH
-from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.content_engine.factories import (
+    CourseFactory,
+    CoursePartFactory,
+    TopicFactory,
+)
 from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.deadlines.forms import (
     ExtendDeadlineForm,
@@ -85,6 +89,24 @@ def test_the_item_picker_offers_only_the_records_course(record_with_item) -> Non
 
     assert list(form.fields["collection_item"].queryset) == [item]
     assert foreign not in form.fields["collection_item"].queryset
+
+
+@pytest.mark.django_db
+def test_the_item_picker_names_each_placement_of_one_child(mock_site_context) -> None:
+    course = CourseFactory()
+    part = CoursePartFactory(title="Getting Started")
+    topic = TopicFactory(title="What to Expect")
+    course.items.create(child=part, order=0)
+    part.items.create(child=topic, order=0)
+    course.items.create(child=topic, order=1)
+    record = CourseProgressFactory(course=course)
+
+    picker = _extend_form(record).fields["collection_item"]
+
+    assert sorted(picker.label_from_instance(item) for item in picker.queryset) == [
+        "Getting Started \N{SINGLE RIGHT-POINTING ANGLE QUOTATION MARK} What to Expect",
+        "What to Expect",
+    ]
 
 
 @pytest.mark.parametrize(

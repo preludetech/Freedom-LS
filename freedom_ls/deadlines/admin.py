@@ -293,7 +293,7 @@ class DeadlineOverrideInline(TabularInline):
         items = (
             ContentCollectionItem.objects.filter(
                 pk__in=[i.pk for i in course.viewable_collection_items()]
-            ).prefetch_related("child")
+            ).prefetch_related("child", "collection")
             if course is not None
             else ContentCollectionItem.objects.none()
         )

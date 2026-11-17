@@ -244,9 +244,7 @@ def test_the_picker_lists_only_the_courses_items(
     assert list(field.queryset) == [item]
     assert field.empty_label == "Course time limit"
     assert item.child is not None
-    assert field.label_from_instance(item) == (
-        f"{item.child.title} ({item.child.file_path})"
-    )
+    assert field.label_from_instance(item) == item.child.title
     assert foreign_item not in field.queryset
 
 

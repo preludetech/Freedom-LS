@@ -96,7 +96,7 @@ def test_signal_names_the_children_a_load_moved(
     old_row = ContentCollectionItem.objects.get(course_part__title="01. One")
     (tmp_path / "01. One" / "topic.md").rename(tmp_path / "02. Two" / "moved.md")
 
-    save_content_to_db(tmp_path / "02. Two", site.name)
+    save_content_to_db(tmp_path, site.name)
 
     assert receiver.calls[0]["moved"] == []
     [move] = receiver.calls[1]["moved"]
