@@ -20,7 +20,7 @@ from django.http import (
     StreamingHttpResponse,
 )
 from django.template.loader import render_to_string
-from django.test import Client, RequestFactory
+from django.test import Client, RequestFactory, override_settings
 from django.utils import timezone
 
 from freedom_ls.panel_framework.bulk_actions import BulkAction
@@ -2202,8 +2202,11 @@ def _normalised_toolbar(html: str) -> list[str]:
 
 
 def _toolbar_for(query: dict[str, str]) -> list[str]:
+    # The expected markup holds heroicons' SVGs, so pin the set: a concrete project
+    # running this suite may configure another one.
     stub = make_stub(name="row-x", kind="a")
-    html = fetch(f"stubs/{stub.pk}/__tabs/default", data=query).content.decode()
+    with override_settings(FREEDOM_LS_ICON_SET="heroicons"):
+        html = fetch(f"stubs/{stub.pk}/__tabs/default", data=query).content.decode()
     return _normalised_toolbar(html)
 
 
@@ -2214,6 +2217,13 @@ def test_the_toolbar_with_a_filter_applied_renders_the_same_controls_in_order(
 
 
 def test_the_toolbar_with_no_filter_applied_renders_the_same_controls_in_order(
+    mock_site_context: Site,
+) -> None:
+    assert _toolbar_for({}) == NO_FILTER_APPLIED
+
+
+@override_settings(FREEDOM_LS_ICON_SET="phosphor")
+def test_the_toolbar_comparison_holds_when_the_project_uses_another_icon_set(
     mock_site_context: Site,
 ) -> None:
     assert _toolbar_for({}) == NO_FILTER_APPLIED
