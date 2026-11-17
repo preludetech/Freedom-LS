@@ -18,7 +18,11 @@ from django.template.loader import render_to_string
 from django.test import RequestFactory
 
 from freedom_ls.panel_framework.actions import DeleteAction, PanelAction
-from freedom_ls.panel_framework.bulk_actions import Selection, resolve_selection
+from freedom_ls.panel_framework.bulk_actions import (
+    BulkAction,
+    Selection,
+    resolve_selection,
+)
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.filters import BooleanFilter, TableFilter
 from freedom_ls.panel_framework.panels import (
@@ -53,6 +57,7 @@ from .stub_panels import (
     StubBaseConfig,
     StubBTablePanel,
     StubBulkAction,
+    StubChildRowsTablePanel,
     StubClassifyingBulkAction,
     StubDataTablePanel,
     StubDetailsPanel,
@@ -668,6 +673,7 @@ def test_a_hidden_tab_has_no_link(mock_site_context: Site) -> None:
         "Cards",
         "Sort only",
         "Detail",
+        "Child rows",
     }
 
 
@@ -1069,3 +1075,23 @@ def test_export_over_a_sequence_table_fails_loudly() -> None:
 
     with pytest.raises(ImproperlyConfigured, match="CSV export"):
         panel.get_export_queryset(panel.request)
+
+
+def test_child_rows_with_bulk_actions_fail_loudly() -> None:
+    class _Panel(StubChildRowsTablePanel):
+        def get_bulk_actions(self) -> list[BulkAction]:
+            return [StubBulkAction()]
+
+    panel = _Panel(
+        PanelContext(
+            request=RequestFactory().get("/p"),
+            instance=None,
+            base_url="/p",
+            name="",
+            config=SectionConfigBase,
+            page_url="/p",
+        )
+    )
+
+    with pytest.raises(ImproperlyConfigured, match="bulk actions"):
+        panel.get_context_data()

@@ -25,11 +25,40 @@ class _Row:
     object: _Item
     label: str
     has_row_detail: bool = False
+    row_id: str = "region-row-1"
+    depth: int = 0
+    parent_ids: tuple[str, ...] = ()
+    child_row_ids: tuple[str, ...] = ()
 
 
 def _row(has_row_detail: bool = False) -> _Row:
     item = _Item(pk=7, name="Alpha", kind="Letter")
     return _Row(object=item, label="Alpha", has_row_detail=has_row_detail)
+
+
+def _child_row(
+    *,
+    depth: int = 0,
+    parent_ids: tuple[str, ...] = (),
+    child_row_ids: tuple[str, ...] = (),
+) -> _Row:
+    return _Row(
+        object=_Item(pk=7, name="Alpha", kind="Letter"),
+        label="Alpha",
+        row_id="region-row-3",
+        depth=depth,
+        parent_ids=parent_ids,
+        child_row_ids=child_row_ids,
+    )
+
+
+def _child_rows_card(row: _Row) -> lxml.html.HtmlElement:
+    return _card(
+        "<c-data-table-card :row='row' :primary_column='primary' "
+        ":has_child_rows='True' />",
+        row=row,
+        primary=_name_column(),
+    )
 
 
 def _name_column() -> Column:
@@ -179,3 +208,51 @@ def test_an_unlinked_primary_column_has_no_open_icon() -> None:
     )
 
     assert card.cssselect("svg[data-icon=open_page]") == []
+
+
+def test_a_group_card_has_a_chevron_naming_its_children_with_the_card_suffix() -> None:
+    card = _child_rows_card(_child_row(child_row_ids=("region-row-4", "region-row-5")))
+
+    (button,) = card.cssselect("button")
+    assert button.get("aria-expanded") == "true"
+    assert button.get("aria-controls") == "region-row-4-card region-row-5-card"
+    assert button.get("aria-label") == "Alpha"
+    assert button.get("data-row") == "region-row-3-card"
+
+
+def test_a_leaf_card_has_no_chevron() -> None:
+    card = _child_rows_card(_child_row())
+
+    assert card.cssselect("button") == []
+
+
+def test_a_card_id_ends_in_the_card_suffix() -> None:
+    card = _child_rows_card(_child_row())
+
+    assert card.get("id") == "region-row-3-card"
+
+
+def test_a_child_card_lists_its_ancestors_with_the_card_suffix() -> None:
+    card = _child_rows_card(
+        _child_row(depth=2, parent_ids=("region-row-1", "region-row-2"))
+    )
+
+    assert card.get("data-parents") == "region-row-1-card region-row-2-card"
+    assert card.get("x-show") == "shown"
+
+
+def test_a_top_level_card_has_no_parents_or_visibility_binding() -> None:
+    card = _child_rows_card(_child_row())
+
+    assert card.get("data-parents") is None
+    assert card.get("x-show") is None
+
+
+def test_a_card_without_child_rows_has_no_id() -> None:
+    card = _card(
+        "<c-data-table-card :row='row' :primary_column='primary' />",
+        row=_row(),
+        primary=_name_column(),
+    )
+
+    assert card.get("id") is None

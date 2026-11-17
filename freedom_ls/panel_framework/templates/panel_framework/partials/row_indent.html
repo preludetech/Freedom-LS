@@ -1,0 +1,5 @@
+{% comment %}
+The start padding of a child row's first cell or card, by depth: ps-8, ps-12,
+and ps-16 from depth 3 down. Literal class names, so Tailwind finds them.
+A top-level row prints nothing.
+{% endcomment %}{% if depth == 1 %}ps-8{% elif depth == 2 %}ps-12{% elif depth >= 3 %}ps-16{% endif %}

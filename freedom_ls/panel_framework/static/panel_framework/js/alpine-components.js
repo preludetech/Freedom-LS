@@ -1095,6 +1095,30 @@ document.addEventListener("alpine:init", () => {
             button.setAttribute("aria-expanded", String(opening));
         },
     }));
+
+    // Child rows (cotton/data-table.html). x-data sits on the <table> and on the
+    // card list, and the two share nothing. A group row's chevron names its own
+    // row in data-row; a child row names every group above it in data-parents,
+    // so closing a group hides all of its descendants and reopening it shows
+    // each one as its own group left it. Every group starts open, and an htmx
+    // swap of the region starts a fresh instance, open again. The CSP build
+    // passes no arguments, which is why the ids travel in data attributes.
+    // No x-transition: a table row's display cannot animate, and the cards
+    // behave as the rows do.
+    Alpine.data("childRows", () => ({
+        collapsed: {},
+        toggle(event) {
+            const rowId = event.currentTarget.dataset.row;
+            this.collapsed[rowId] = !this.collapsed[rowId];
+        },
+        expandedAttr() {
+            return this.collapsed[this.$el.dataset.row] ? "false" : "true";
+        },
+        shown() {
+            const parents = (this.$el.dataset.parents || "").split(" ");
+            return parents.every((rowId) => !this.collapsed[rowId]);
+        },
+    }));
 });
 
 // Scroll a tab strip sideways just far enough to show its active tab whole.

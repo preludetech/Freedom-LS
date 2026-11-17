@@ -1,4 +1,4 @@
-<c-vars row="" primary_column="" secondary_columns="" selectable="" card_template_name="" row_detail_template_name="" detail_id="" />
+<c-vars row="" primary_column="" secondary_columns="" selectable="" card_template_name="" row_detail_template_name="" detail_id="" has_child_rows="" />
 
 {% comment %}
 One row of a table rendered as a card below md. `card_template_name`, when set on
@@ -16,8 +16,13 @@ the desktop row, beside the card's first line; negative margins keep its
 touch target from adding height. The detail opens inside the card body, so it
 is indented under the first line rather than set apart. A card with no detail
 keeps an empty slot the toggle's width so every card's first line aligns.
+
+A table with child rows gives each card an id, the depth indent and, for a
+child, a hidden binding that follows its groups. A group card holds the
+chevron in the leading slot; a leaf keeps the slot empty. The ids carry a
+"-card" suffix so they never collide with the table row's own.
 {% endcomment %}
-<li class="panel-data-table-card flex items-start gap-3 px-4 py-3 sm:px-6 [&_.btn]:min-h-11">
+<li{% if has_child_rows %} id="{{ row.row_id }}-card"{% if row.parent_ids %} x-show="shown" data-parents="{% for parent_id in row.parent_ids %}{{ parent_id }}-card{% if not forloop.last %} {% endif %}{% endfor %}"{% endif %}{% endif %} class="panel-data-table-card flex items-start gap-3 px-4 py-3 sm:px-6 [&_.btn]:min-h-11{% if has_child_rows %} {% include "panel_framework/partials/row_indent.html" with depth=row.depth %}{% endif %}">
     {% if selectable %}
         <label class="flex size-11 shrink-0 items-center justify-center">
             <input type="checkbox"
@@ -36,6 +41,24 @@ keeps an empty slot the toggle's width so every card's first line aligns.
                         aria-expanded="false"
                         aria-controls="{{ detail_id }}"
                         aria-label="More about {{ row.label }}"
+                        x-on:click="toggle">
+                    <span aria-hidden="true" class="inline-flex motion-safe:transition-[rotate] group-aria-expanded:rotate-180">
+                        <c-icon name="dropdown" class="size-4" />
+                    </span>
+                </button>
+            {% endif %}
+        </div>
+    {% endif %}
+    {% if has_child_rows %}
+        <div class="w-6 shrink-0 self-start pt-1">
+            {% if row.child_row_ids %}
+                <button type="button"
+                        class="group -m-2.5 inline-flex size-11 items-center justify-center rounded-full text-muted hover:text-on-surface aria-expanded:text-primary"
+                        aria-expanded="true"
+                        aria-controls="{% for child_id in row.child_row_ids %}{{ child_id }}-card{% if not forloop.last %} {% endif %}{% endfor %}"
+                        aria-label="{{ row.label }}"
+                        data-row="{{ row.row_id }}-card"
+                        x-bind:aria-expanded="expandedAttr"
                         x-on:click="toggle">
                     <span aria-hidden="true" class="inline-flex motion-safe:transition-[rotate] group-aria-expanded:rotate-180">
                         <c-icon name="dropdown" class="size-4" />

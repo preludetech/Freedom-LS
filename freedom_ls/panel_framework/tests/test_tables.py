@@ -12,6 +12,8 @@ import lxml.html
 import pytest
 
 from django.contrib.sites.models import Site
+from django.core.exceptions import ImproperlyConfigured
+from django.core.paginator import Page
 from django.db.models import QuerySet
 from django.http import (
     Http404,
@@ -41,10 +43,14 @@ from freedom_ls.tests.site_context import drop_ambient_request
 from .helpers import make_stub
 from .stub_panels import (
     StubBulkAction,
+    StubChildRowsDataTable,
+    StubChildRowsTablePanel,
     StubDataTable,
     StubDataTablePanel,
     StubDetailDataTable,
     StubPlainDataTable,
+    StubSequenceDataTable,
+    StubSequenceRow,
     StubSequenceTablePanel,
 )
 from .view_helpers import call_view, fetch, make_request
@@ -2320,3 +2326,148 @@ def test_gathering_a_sequence_tables_context_runs_no_queries(
 
     with django_assert_max_num_queries(0):
         panel.get_context_data()
+
+
+def _child_row_dicts(
+    panel_class: type[DataTablePanel] = StubChildRowsTablePanel,
+    query_string: str = "",
+) -> list[dict[str, object]]:
+    panel = _bind_sequence_panel(panel_class, query_string)
+    return cast("list[dict[str, object]]", panel.get_context_data()["rows"])
+
+
+def test_child_rows_flatten_depth_first_in_the_hooks_order() -> None:
+    rows = _child_row_dicts()
+
+    names = [cast(StubSequenceRow, row["object"]).name for row in rows]
+    assert names == [
+        "group",
+        "inner-group",
+        "leaf-one",
+        "leaf-two",
+        "middle-leaf",
+        "top-leaf",
+    ]
+
+
+def test_every_flattened_row_has_a_unique_row_id() -> None:
+    rows = _child_row_dicts()
+
+    ids = [row["row_id"] for row in rows]
+    assert len(set(ids)) == len(ids)
+
+
+def test_a_row_id_starts_with_the_region_id() -> None:
+    panel = _bind_sequence_panel(StubChildRowsTablePanel)
+    rows = cast("list[dict[str, object]]", panel.get_context_data()["rows"])
+
+    assert str(rows[0]["row_id"]).startswith(f"{panel.region_id}-row-")
+
+
+def test_each_row_carries_its_depth() -> None:
+    rows = _child_row_dicts()
+
+    assert [row["depth"] for row in rows] == [0, 1, 2, 2, 1, 0]
+
+
+def test_each_row_lists_every_ancestor_in_parent_ids() -> None:
+    rows = _child_row_dicts()
+
+    group, inner, leaf_one = rows[0], rows[1], rows[2]
+    assert group["parent_ids"] == ()
+    assert inner["parent_ids"] == (group["row_id"],)
+    assert leaf_one["parent_ids"] == (group["row_id"], inner["row_id"])
+
+
+def test_a_group_row_lists_only_its_direct_children() -> None:
+    rows = _child_row_dicts()
+
+    group, inner, middle_leaf = rows[0], rows[1], rows[4]
+    assert group["child_row_ids"] == [inner["row_id"], middle_leaf["row_id"]]
+
+
+def test_a_leaf_row_has_no_child_row_ids() -> None:
+    rows = _child_row_dicts()
+
+    assert rows[5]["child_row_ids"] == []
+
+
+class _ManyGroupsTable(StubChildRowsDataTable):
+    page_size = 2
+
+    @staticmethod
+    def get_queryset(request: HttpRequest) -> list[StubSequenceRow]:
+        return [
+            StubSequenceRow(
+                name="a",
+                kind="a",
+                children=(
+                    StubSequenceRow(name="a1", kind="a"),
+                    StubSequenceRow(name="a2", kind="a"),
+                ),
+            ),
+            StubSequenceRow(
+                name="b", kind="a", children=(StubSequenceRow(name="b1", kind="a"),)
+            ),
+            StubSequenceRow(name="c", kind="a"),
+        ]
+
+
+class _ManyGroupsPanel(StubChildRowsTablePanel):
+    data_table = _ManyGroupsTable
+
+    def get_queryset(self, request: HttpRequest) -> list[StubSequenceRow]:
+        return _ManyGroupsTable.get_queryset(request)
+
+
+def test_a_page_of_child_rows_ends_with_the_last_top_level_rows_last_descendant() -> (
+    None
+):
+    rows = _child_row_dicts(_ManyGroupsPanel)
+
+    names = [cast(StubSequenceRow, row["object"]).name for row in rows]
+    assert names == ["a", "a1", "a2", "b", "b1"]
+
+
+def test_the_entry_count_of_child_rows_is_the_top_level_count() -> None:
+    panel = _bind_sequence_panel(_ManyGroupsPanel)
+
+    page_obj = cast(Page, panel.get_context_data()["page_obj"])
+    assert page_obj.paginator.count == 3
+
+
+def test_get_child_rows_is_not_called_without_has_child_rows() -> None:
+    calls: list[object] = []
+
+    class _Table(StubSequenceDataTable):
+        @staticmethod
+        def get_child_rows(row: object) -> list[object]:
+            calls.append(row)
+            return []
+
+    class _Panel(StubSequenceTablePanel):
+        data_table = _Table
+
+    _bind_sequence_panel(_Panel).get_context_data()
+
+    assert calls == []
+
+
+def test_a_table_without_child_rows_still_gives_each_row_the_four_keys() -> None:
+    rows = _child_row_dicts(StubSequenceTablePanel)
+
+    assert rows[0]["depth"] == 0
+    assert rows[0]["parent_ids"] == ()
+    assert rows[0]["child_row_ids"] == []
+    assert rows[0]["row_id"]
+
+
+def test_child_rows_with_a_row_detail_fail_loudly() -> None:
+    class _Table(StubChildRowsDataTable):
+        row_detail_template_name = "panel_framework/test_row_detail.html"
+
+    class _Panel(StubChildRowsTablePanel):
+        data_table = _Table
+
+    with pytest.raises(ImproperlyConfigured, match="row detail"):
+        _bind_sequence_panel(_Panel).get_context_data()

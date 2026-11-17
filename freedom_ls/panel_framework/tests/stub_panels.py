@@ -473,6 +473,53 @@ class StubSequenceTablePanel(DataTablePanel):
         return STUB_SEQUENCE_ROWS
 
 
+STUB_CHILD_ROWS: list[StubSequenceRow] = [
+    StubSequenceRow(
+        name="group",
+        kind="a",
+        children=(
+            StubSequenceRow(
+                name="inner-group",
+                kind="a",
+                children=(
+                    StubSequenceRow(name="leaf-one", kind="a"),
+                    StubSequenceRow(name="leaf-two", kind="a"),
+                ),
+            ),
+            StubSequenceRow(name="middle-leaf", kind="a"),
+        ),
+    ),
+    StubSequenceRow(name="top-leaf", kind="a"),
+]
+
+
+class StubChildRowsDataTable(StubSequenceDataTable):
+    """A sequence table whose rows nest three levels deep."""
+
+    has_child_rows = True
+
+    @staticmethod
+    def get_queryset(request: HttpRequest) -> Sequence[object]:
+        return STUB_CHILD_ROWS
+
+    @staticmethod
+    def get_child_rows(row: object) -> Sequence[object]:
+        return cast(StubSequenceRow, row).children
+
+    @staticmethod
+    def get_row_label(row: object) -> str:
+        return cast(StubSequenceRow, row).name
+
+
+class StubChildRowsTablePanel(DataTablePanel):
+    title = "Child rows"
+    data_table = StubChildRowsDataTable
+    table_key = "childrows"
+
+    def get_queryset(self, request: HttpRequest) -> Sequence[object]:
+        return STUB_CHILD_ROWS
+
+
 class StubSortOnlyDataTable(StubDataTable):
     """The same rows and sortable column as StubDataTable, with no filters
     declared, so the filter and sort sheet shows its Sort section alone."""
@@ -576,6 +623,7 @@ class StubTabSet(TabSet):
         "cards": StubCardTablePanel,
         "sortonly": StubSortOnlyTablePanel,
         "detail": StubDetailTablePanel,
+        "childrows": StubChildRowsTablePanel,
     }
 
 

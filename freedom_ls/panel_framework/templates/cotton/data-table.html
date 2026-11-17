@@ -32,7 +32,8 @@
         sheet_hidden_inputs=""
         reset_changes=""
         entry_count=""
-        cards_when_narrow="" />
+        cards_when_narrow=""
+        has_child_rows="" />
 
 <div id="{{ region_id }}" data-table-region class="panel-data-table"{% if bulk_actions %} x-data="tableSelection"{% endif %}>
     <div tabindex="-1" data-table-anchor></div>
@@ -88,7 +89,7 @@
         leading cell empty, which indents the detail in line with the first
         column and reads it as part of the row above.
         {% endcomment %}
-        <table{% if row_detail_template_name %} x-data="rowDetail"{% endif %} aria-labelledby="{{ region_id }}-caption">
+        <table{% if row_detail_template_name %} x-data="rowDetail"{% elif has_child_rows %} x-data="childRows"{% endif %} aria-labelledby="{{ region_id }}-caption">
                 <caption id="{{ region_id }}-caption" class="sr-only">{{ noun|default:"Data"|capfirst }}</caption>
                 <thead class="border-b border-border bg-transparent">
                     <tr>
@@ -130,7 +131,7 @@
                 <tbody>
                     {% if rows %}
                         {% for row in rows %}
-                            <tr>
+                            <tr{% if has_child_rows %} id="{{ row.row_id }}"{% if row.parent_ids %} x-show="shown" data-parents="{{ row.parent_ids|join:' ' }}"{% endif %}{% endif %}>
                                 {% if bulk_actions %}
                                     <td>
                                         <input type="checkbox"
@@ -158,10 +159,34 @@
                                     </td>
                                 {% endif %}
                                 {% for column in columns %}
+                                    {% if has_child_rows and column == primary_column %}
+                                        <td class="{% if column.cell_class %}{{ column.cell_class }} {% endif %}{% include "panel_framework/partials/row_indent.html" with depth=row.depth %}">
+                                            <div class="flex items-center gap-2">
+                                                {% if row.child_row_ids %}
+                                                    <button type="button"
+                                                            class="group -my-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted hover:text-on-surface aria-expanded:text-primary"
+                                                            aria-expanded="true"
+                                                            aria-controls="{{ row.child_row_ids|join:' ' }}"
+                                                            aria-label="{{ row.label }}"
+                                                            data-row="{{ row.row_id }}"
+                                                            x-bind:aria-expanded="expandedAttr"
+                                                            x-on:click="toggle">
+                                                        <span aria-hidden="true" class="inline-flex motion-safe:transition-[rotate] group-aria-expanded:rotate-180">
+                                                            <c-icon name="dropdown" class="size-4" />
+                                                        </span>
+                                                    </button>
+                                                {% else %}
+                                                    <span class="size-8 shrink-0"></span>
+                                                {% endif %}
+                                                {% include column.template_name with object=row.object column=column %}
+                                            </div>
+                                        </td>
+                                    {% else %}
                                     <td {% if column.cell_class %}class="{{ column.cell_class }}"{% endif %}>
                                         {% include column.template_name with object=row.object column=column %}
 
                                     </td>
+                                    {% endif %}
                                 {% endfor %}
                             </tr>
                             {% if row.has_row_detail %}
@@ -186,7 +211,7 @@
             </table>
     </div>
 
-    <ul class="list-none ml-0 space-y-0 divide-y divide-border {% if cards_when_narrow %}@min-[58rem]:hidden{% else %}md:hidden{% endif %}"{% if row_detail_template_name %} x-data="rowDetail"{% endif %}>
+    <ul class="list-none ml-0 space-y-0 divide-y divide-border {% if cards_when_narrow %}@min-[58rem]:hidden{% else %}md:hidden{% endif %}"{% if row_detail_template_name %} x-data="rowDetail"{% elif has_child_rows %} x-data="childRows"{% endif %}>
         {% if rows %}
             {% for row in rows %}
                 <c-data-table-card :row="row"
@@ -195,6 +220,7 @@
                                     :selectable="bulk_actions"
                                     :card_template_name="card_template_name"
                                     :row_detail_template_name="row_detail_template_name"
+                                    :has_child_rows="has_child_rows"
                                     detail_id="{{ region_id }}-card-detail-{{ forloop.counter }}" />
             {% endfor %}
         {% else %}

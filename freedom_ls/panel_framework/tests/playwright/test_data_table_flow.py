@@ -866,3 +866,66 @@ def test_a_row_detail_opens_and_closes_by_mouse_and_keyboard(
     card_toggle.click()
     expect(card_detail).to_be_hidden()
     expect(card_toggle).to_have_attribute("aria-expanded", "false")
+
+
+def test_a_group_row_hides_and_shows_its_descendants_by_mouse_and_keyboard(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    stub = make_stub(name="host")
+    page.set_viewport_size(QA_VIEWPORTS[2])
+    page.goto(f"{live_server.url}{_FRAMEWORK_PATH}/stubs/{stub.pk}/__tabs/childrows")
+    table = page.locator("#childrows-table table")
+    outer = table.get_by_role("button", name="group", exact=True)
+    inner = table.get_by_role("button", name="inner-group", exact=True)
+    grandchild = table.get_by_text("leaf-one")
+
+    expect(grandchild).to_be_visible()
+    outer.click()
+    expect(outer).to_have_attribute("aria-expanded", "false")
+    expect(inner).to_be_hidden()
+    expect(grandchild).to_be_hidden()
+
+    outer.focus()
+    page.keyboard.press("Enter")
+    expect(grandchild).to_be_visible()
+    expect(outer).to_be_focused()
+
+    page.keyboard.press("Space")
+    expect(grandchild).to_be_hidden()
+    expect(outer).to_be_focused()
+    page.keyboard.press("Space")
+
+    inner.click()
+    expect(grandchild).to_be_hidden()
+    outer.click()
+    outer.click()
+    expect(inner).to_be_visible()
+    expect(inner).to_have_attribute("aria-expanded", "false")
+    expect(grandchild).to_be_hidden()
+
+    outer.click()
+    outer.focus()
+    page.keyboard.press("Tab")
+    expect(table.locator('button[aria-label="inner-group"]')).not_to_be_focused()
+    outer.click()
+
+    outer_box = outer.bounding_box()
+    inner_box = inner.bounding_box()
+    assert outer_box is not None
+    assert inner_box is not None
+    assert inner_box["x"] > outer_box["x"]
+
+    page.set_viewport_size(QA_VIEWPORTS[0])
+    cards = page.locator("#childrows-table ul")
+    card_outer = cards.get_by_role("button", name="group", exact=True)
+    card_leaf = cards.get_by_text("leaf-one")
+    expect(card_leaf).to_be_visible()
+    card_outer.click()
+    expect(card_leaf).to_be_hidden()
+    expect(card_outer).to_have_attribute("aria-expanded", "false")
+    card_outer.click()
+    expect(card_leaf).to_be_visible()
+    assert_no_horizontal_overflow(page)

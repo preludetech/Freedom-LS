@@ -435,6 +435,11 @@ class DataTablePanel(Panel):
             for action in self.get_bulk_actions()
             if action.has_permission(self.request)
         ]
+        if entries and self.data_table.has_child_rows:
+            raise ImproperlyConfigured(
+                f"{self.data_table.__name__} sets `has_child_rows`, so it cannot "
+                "have bulk actions: a selection would not cover a group's rows."
+            )
         context["bulk_actions"] = entries
         context["promoted_bulk_actions"], context["overflow_bulk_actions"] = (
             promote_bulk_actions(entries)

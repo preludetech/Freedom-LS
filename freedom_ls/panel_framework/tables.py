@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+import itertools
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
 
@@ -284,6 +285,17 @@ class DataTable:
         when `row_detail_template_name` is set; every row has one by default."""
         return True
 
+    #: Rows may have child rows: full table rows nested under a group row,
+    #: which carries a chevron that hides and shows them. Not for a table
+    #: with a row detail or bulk actions.
+    has_child_rows: bool = False
+
+    @staticmethod
+    def get_child_rows(row: object) -> Sequence[object]:
+        """This row's child rows, in display order. Only consulted when
+        `has_child_rows` is set; no row has any by default."""
+        return ()
+
     #: The template drawn when the page has no rows. It renders with the
     #: table's own context (query, any_filter_set, clear_changes,
     #: clear_search_changes, page_url, base_url, region_id, empty_message,
@@ -521,22 +533,12 @@ class DataTable:
         # so both stay in place.
         reset_changes = query.clear_filters_changes(filter_keys)
 
-        # The label is lazy: a table with no bulk action never renders it (the
-        # checkbox is the only place it's read), and get_row_label defaults to
-        # str(row), which would otherwise cost a query per row on a model
-        # whose __str__ reads an un-prefetched relation.
-        def _lazy_label(row: object) -> SimpleLazyObject:
-            return SimpleLazyObject(lambda: cls.get_row_label(row))
-
-        detailed = cls.row_detail_template_name is not None
-        rows = [
-            {
-                "object": row,
-                "label": _lazy_label(row),
-                "has_row_detail": detailed and cls.has_row_detail(row),
-            }
-            for row in page_obj
-        ]
+        if cls.has_child_rows and cls.row_detail_template_name:
+            raise ImproperlyConfigured(
+                f"{cls.__name__} sets `has_child_rows` and a row detail, which "
+                "both claim the first cell of a row."
+            )
+        rows = list(_flatten_rows(cls, page_obj, region_id, itertools.count(1)))
         return {
             "columns": columns,
             "header_columns": header_columns,
@@ -566,6 +568,7 @@ class DataTable:
             "card_template_name": cls.card_template_name,
             "cards_when_narrow": cls.cards_when_narrow,
             "row_detail_template_name": cls.row_detail_template_name,
+            "has_child_rows": cls.has_child_rows,
             "empty_state_template_name": cls.empty_state_template_name,
             "empty_message": cls.empty_message,
             "empty_no_results": cls.empty_no_results,
@@ -574,6 +577,56 @@ class DataTable:
             ),
             "reset_changes": reset_changes,
         }
+
+
+def _lazy_label(table: type[DataTable], row: object) -> SimpleLazyObject:
+    """The row's label, computed on first use. A table with no bulk action
+    never renders it (the checkbox is the only place it's read), and
+    get_row_label defaults to str(row), which would otherwise cost a query per
+    row on a model whose __str__ reads an un-prefetched relation."""
+    return SimpleLazyObject(lambda: table.get_row_label(row))
+
+
+def _flatten_rows(
+    table: type[DataTable],
+    rows: Iterable[object],
+    region_id: str,
+    numbers: Iterator[int],
+    parent_ids: tuple[str, ...] = (),
+) -> Iterator[dict[str, object]]:
+    """Each row's dict, followed by its descendants' in display order.
+    `numbers` is shared down the recursion so every row id is unique."""
+    for row in rows:
+        row_id = f"{region_id}-row-{next(numbers)}"
+        children = (
+            list(
+                _flatten_rows(
+                    table,
+                    table.get_child_rows(row),
+                    region_id,
+                    numbers,
+                    (*parent_ids, row_id),
+                )
+            )
+            if table.has_child_rows
+            else []
+        )
+        yield {
+            "object": row,
+            "label": _lazy_label(table, row),
+            "has_row_detail": table.row_detail_template_name is not None
+            and table.has_row_detail(row),
+            "row_id": row_id,
+            "depth": len(parent_ids),
+            "parent_ids": parent_ids,
+            # Direct children only: a grandchild names this row among its parents.
+            "child_row_ids": [
+                child["row_id"]
+                for child in children
+                if child["depth"] == len(parent_ids) + 1
+            ],
+        }
+        yield from children
 
 
 def _require_queryset(rows: QuerySet | Sequence[object], what: str) -> QuerySet:

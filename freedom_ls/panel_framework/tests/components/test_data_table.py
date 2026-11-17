@@ -19,6 +19,7 @@ from ..stub_panels import (
     StubBTablePanel,
     StubBulkAction,
     StubCardDataTable,
+    StubChildRowsTablePanel,
     StubClassifyingBulkAction,
     StubDataTablePanel,
     StubDetailDataTable,
@@ -449,3 +450,86 @@ def test_a_card_lists_its_secondary_values_in_an_inline_definition_list(
     assert [dd.text_content().strip() for dd in card.cssselect("dl > div > dd")] == [
         "Alpha"
     ]
+
+
+def test_a_group_row_has_a_chevron_naming_its_child_rows(
+    mock_site_context: Site,
+) -> None:
+    document = _render(StubChildRowsTablePanel)
+
+    group = document.cssselect("tbody tr")[0]
+    (button,) = group.cssselect("button")
+    child_ids = [
+        row.get("id")
+        for row in document.cssselect("tbody tr")
+        if row.get("data-parents") == group.get("id")
+    ]
+    assert button.get("aria-expanded") == "true"
+    assert button.get("aria-controls") == " ".join(child_ids)
+    assert button.get("aria-label") == "group"
+    assert button.get("data-row") == group.get("id")
+
+
+def test_a_leaf_row_has_no_chevron_button(mock_site_context: Site) -> None:
+    document = _render(StubChildRowsTablePanel)
+
+    leaf = document.cssselect("tbody tr")[-1]
+    assert leaf.cssselect("button") == []
+
+
+def test_a_child_rows_data_parents_lists_its_ancestors(
+    mock_site_context: Site,
+) -> None:
+    document = _render(StubChildRowsTablePanel)
+
+    rows = document.cssselect("tbody tr")
+    group, inner, leaf_one = rows[0], rows[1], rows[2]
+    assert group.get("data-parents") is None
+    assert inner.get("data-parents") == group.get("id")
+    assert leaf_one.get("data-parents") == f"{group.get('id')} {inner.get('id')}"
+    assert leaf_one.get("x-show") == "shown"
+
+
+def test_the_table_and_the_card_list_each_run_their_own_child_rows_state(
+    mock_site_context: Site,
+) -> None:
+    document = _render(StubChildRowsTablePanel)
+
+    assert len(document.cssselect('[x-data="childRows"]')) == 2
+    assert len(document.cssselect('table[x-data="childRows"]')) == 1
+
+
+def test_every_id_in_a_child_rows_region_is_unique(mock_site_context: Site) -> None:
+    document = _render(StubChildRowsTablePanel)
+
+    ids = [element.get("id") for element in document.cssselect("[id]")]
+    assert len(set(ids)) == len(ids)
+
+
+def test_every_card_id_ends_in_the_card_suffix(mock_site_context: Site) -> None:
+    document = _render(StubChildRowsTablePanel)
+
+    cards = document.cssselect("ul > li")
+    assert [card.get("id").endswith("-card") for card in cards] == [True] * 6
+
+
+def test_a_deeper_child_row_is_indented_further(mock_site_context: Site) -> None:
+    document = _render(StubChildRowsTablePanel)
+
+    cells = [row.cssselect("td")[0] for row in document.cssselect("tbody tr")]
+    classes = [cell.get("class") or "" for cell in cells]
+    assert "ps-" not in classes[0]
+    assert "ps-8" in classes[1]
+    assert "ps-12" in classes[2]
+
+
+def test_a_table_without_child_rows_has_no_row_ids_or_child_rows_state(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="row-a", kind="a")
+
+    document = _render(StubBTablePanel)
+
+    assert document.cssselect("tr[id]") == []
+    assert document.cssselect('[x-data="childRows"]') == []
+    assert document.cssselect("tbody button") == []
