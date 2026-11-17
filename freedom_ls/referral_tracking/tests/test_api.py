@@ -860,22 +860,57 @@ class TestRecordedAtFeed:
         assert response.status_code == 400
         assert "updated_since" in response.json()
 
-    def test_the_next_link_keeps_updated_since_and_page_size(
+    def test_user_returns_only_that_users_rows(
+        self, client, auth, list_name, model, row_factory, distinct_rows
+    ):
+        mine, other = UserFactory(), UserFactory()
+        wanted = row_factory(user=mine, **distinct_rows)
+        row_factory(user=other, **distinct_rows)
+
+        body = client.get(reverse(list_name), {"user": mine.pk}, headers=auth).json()
+
+        assert [row["id"] for row in body["results"]] == [str(wanted.pk)]
+
+    @pytest.mark.parametrize("value", ["abc", "1.5"])
+    def test_a_non_integer_user_is_400_naming_the_parameter(
+        self, client, auth, list_name, model, row_factory, distinct_rows, value
+    ):
+        response = client.get(reverse(list_name), {"user": value}, headers=auth)
+
+        assert response.status_code == 400
+        assert "user" in response.json()
+
+    def test_a_user_whose_rows_are_on_another_site_returns_an_empty_page(
+        self, client, auth, list_name, model, row_factory, distinct_rows
+    ):
+        with site_context(SiteFactory(name="Other", domain="other.example.com")):
+            elsewhere = UserFactory()
+            row_factory(user=elsewhere, **distinct_rows)
+
+        body = client.get(
+            reverse(list_name), {"user": elsewhere.pk}, headers=auth
+        ).json()
+
+        assert body == {"next": None, "results": []}
+
+    def test_the_next_link_keeps_updated_since_user_and_page_size(
         self, client, auth, settings, list_name, model, row_factory, distinct_rows
     ):
         settings.API_PAGE_SIZE = 2
+        user = UserFactory()
         for _ in range(3):
-            row = row_factory(**distinct_rows)
+            row = row_factory(user=user, **distinct_rows)
             model._base_manager.filter(pk=row.pk).update(recorded_at=BASE)
 
         body = client.get(
             reverse(list_name),
-            {"updated_since": "2030-01-01T00:00:00Z", "page_size": 2},
+            {"updated_since": "2030-01-01T00:00:00Z", "page_size": 2, "user": user.pk},
             headers=auth,
         ).json()
 
         assert "updated_since=2030-01-01T00%3A00%3A00Z" in body["next"]
         assert "page_size=2" in body["next"]
+        assert f"user={user.pk}" in body["next"]
 
 
 def test_a_touch_recorded_late_for_an_old_occurrence_comes_back_on_the_second_page(

@@ -6,7 +6,7 @@ from django import forms
 from django.http import QueryDict
 
 from freedom_ls.api.factories import ApiKeyFactory
-from freedom_ls.api.filters import IsoDateFilter, UpdatedSinceFilterSet
+from freedom_ls.api.filters import IntegerFilter, IsoDateFilter, UpdatedSinceFilterSet
 from freedom_ls.api.models import ApiKey
 
 pytestmark = pytest.mark.django_db
@@ -76,3 +76,13 @@ def test_anything_but_an_iso_date_is_rejected_with_the_format_message(value):
         IsoDateFilter().field.clean(value)
 
     assert excinfo.value.messages == ["Give a date as YYYY-MM-DD."]
+
+
+def test_integer_filter_cleans_a_whole_number_to_an_int():
+    assert IntegerFilter().field.clean("42") == 42
+
+
+@pytest.mark.parametrize("value", ["1.5", "abc"])
+def test_integer_filter_rejects_a_non_integer(value):
+    with pytest.raises(forms.ValidationError):
+        IntegerFilter().field.clean(value)

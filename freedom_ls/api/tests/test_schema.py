@@ -89,6 +89,17 @@ def test_schema_describes_the_users_list_parameters(document):
     assert {"updated_since", "cursor", "page_size"} <= {p["name"] for p in parameters}
 
 
+@pytest.mark.parametrize(
+    "path", ["/api/v1/conversions/", "/api/v1/attribution-touches/"]
+)
+def test_schema_types_the_user_filter_as_an_integer(document, path):
+    parameters = document["paths"][path]["get"]["parameters"]
+
+    user = next(p for p in parameters if p["name"] == "user")
+
+    assert user["schema"]["type"] == "integer"
+
+
 def test_spectacular_validates_without_warnings(tmp_path: Path):
     call_command(
         "spectacular", "--validate", "--fail-on-warn", file=str(tmp_path / "s.json")

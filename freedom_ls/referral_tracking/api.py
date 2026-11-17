@@ -9,7 +9,7 @@ import django_filters
 
 from rest_framework import serializers
 
-from freedom_ls.api.filters import AwareIsoDateTimeFilter, IsoDateFilter
+from freedom_ls.api.filters import AwareIsoDateTimeFilter, IntegerFilter, IsoDateFilter
 from freedom_ls.api.routers import router
 from freedom_ls.api.scopes import ApiScope
 from freedom_ls.api.viewsets import ReadOnlyApiViewSet
@@ -207,6 +207,9 @@ class RecordedAtFilterSet(django_filters.FilterSet):
         field_name="recorded_at",
         lookup_expr="gte",
         help_text="Rows whose recorded_at is at or after this instant.",
+    )
+    user = IntegerFilter(
+        field_name="user_id", help_text="Rows whose user is this user id."
     )
 
 

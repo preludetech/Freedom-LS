@@ -6,6 +6,8 @@ from datetime import date, datetime
 import django_filters
 from django_filters.fields import IsoDateTimeField
 from django_filters.filters import IsoDateTimeFilter
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema_field
 
 from django import forms
 from django.utils import timezone
@@ -62,3 +64,10 @@ class IsoDateFilter(django_filters.DateFilter):
 
 class UpdatedSinceFilterSet(django_filters.FilterSet):
     updated_since = AwareIsoDateTimeFilter(field_name="updated_at", lookup_expr="gte")
+
+
+@extend_schema_field(OpenApiTypes.INT)
+class IntegerFilter(django_filters.NumberFilter):
+    # NumberFilter parses to a Decimal, so 1.5 would pass validation and reach
+    # an integer column; IntegerField rejects it as a 400 on the parameter.
+    field_class = forms.IntegerField
