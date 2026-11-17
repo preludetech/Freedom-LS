@@ -89,7 +89,7 @@ def test_component_reference_flow(
     # A rejected cookie would land on the admin login instead.
     expect(page).to_have_url(re.compile(r"/test-panel/components/$"))
     # `> h2` excludes the card examples' own titles, which are nested in cards.
-    expect(page.locator("section > h2")).to_have_count(15)
+    expect(page.locator("section > h2")).to_have_count(18)
 
     # The progress bar's fill is the primary colour, not the browser default.
     # Chromium drops a whole CSS rule when one selector in a list uses an
@@ -119,6 +119,19 @@ def test_component_reference_flow(
     for size in ("full", "btn-sm"):
         assert heights[f"{size} secondary"] == heights[f"{size} primary"]
         assert heights[f"{size} error"] == heights[f"{size} primary"]
+
+    # The child-rows example's chevron closes and opens the rows under it.
+    page.set_viewport_size(QA_VIEWPORTS[2])
+    child_table = page.locator("#data-table-child-rows table")
+    group_chevron = child_table.get_by_role("button", name="Handbook", exact=True)
+    nested_row = child_table.get_by_text("Welcome")
+    expect(nested_row).to_be_visible()
+    group_chevron.click()
+    expect(group_chevron).to_have_attribute("aria-expanded", "false")
+    expect(nested_row).to_be_hidden()
+    group_chevron.click()
+    expect(group_chevron).to_have_attribute("aria-expanded", "true")
+    expect(nested_row).to_be_visible()
 
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)

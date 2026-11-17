@@ -1,7 +1,8 @@
 {% comment %}
 The dialog every ConfirmAction renders: a title, a body, hidden inputs and one
 confirm button. A template extends it and fills the blocks. Context: title,
-action_url, hidden_fields (name to value), confirm_label, confirm_variant,
+action_url, title_id (the heading's id, app-modal-title unless a page shows
+several dialogs at once), hidden_fields (name to value), confirm_label, confirm_variant,
 loading_text, reason_form (a ReasonForm, set by ReasonMixin), refusal (a
 sentence for a re-render after a refused submit) and confirm_disabled_reason
 (text that disables the confirm button and is shown at the end of the body).
@@ -10,7 +11,7 @@ page behind it: the close control and Cancel then link back to it, and the form
 posts plainly, which is why it carries a method, an action and a CSRF token.
 Blocks: title, hidden_fields, body, reason and confirm_button.
 {% endcomment %}
-<c-modal-header close_href="{{ page_url }}">{% block title %}{{ title }}{% endblock title %}</c-modal-header>
+<c-modal-header close_href="{{ page_url }}" title_id="{{ title_id|default:'app-modal-title' }}">{% block title %}{{ title }}{% endblock title %}</c-modal-header>
 
 <form method="post"
       action="{{ action_url }}"

@@ -506,4 +506,51 @@ somewhere on the page to land.
         </div>
     </section>
 
+    <section class="space-y-6">
+        <h2>Reason dialog</h2>
+
+        <div id="reason-dialog-required">
+            <p class="text-sm text-muted">Use <code>reason_required</code> when the action must record why it was taken: an empty reason is refused.</p>
+            <div hx-disable class="max-w-lg overflow-hidden rounded-lg border border-border">{{ reason_dialogs.required }}</div>
+        </div>
+
+        <div id="reason-dialog-choices">
+            <p class="text-sm text-muted">Use <code>reason_choices</code> when the reasons come from a fixed list; the text field then holds optional details.</p>
+            <div hx-disable class="max-w-lg overflow-hidden rounded-lg border border-border">{{ reason_dialogs.choices }}</div>
+        </div>
+
+        <div id="reason-dialog-choices-required">
+            <p class="text-sm text-muted">Use both when a reason must be chosen and explained.</p>
+            <div hx-disable class="max-w-lg overflow-hidden rounded-lg border border-border">{{ reason_dialogs.choices_required }}</div>
+        </div>
+    </section>
+
+    <section class="space-y-6">
+        <h2>Lazy panel</h2>
+
+        <div id="lazy-panel-as-of">
+            <p class="text-sm text-muted">Use <code>show_as_of</code> when the loaded body is gathered at a moment the reader should know: the stamp sits above the body.</p>
+            {{ lazy_panel }}
+        </div>
+    </section>
+
+    <section class="space-y-6">
+        <h2>Data table</h2>
+
+        <div id="data-table-row-detail">
+            <p class="text-sm text-muted">Use <code>row_detail_template_name</code> when a row has more to say than its columns fit.</p>
+            {{ data_tables.row_detail }}
+        </div>
+
+        <div id="data-table-child-rows">
+            <p class="text-sm text-muted">Use <code>has_child_rows</code> when rows nest under a group row whose chevron hides them; <code>get_row_template_name</code> turns a row into a note.</p>
+            {{ data_tables.child_rows }}
+        </div>
+
+        <div id="data-table-compact">
+            <p class="text-sm text-muted">Use <code>compact</code> when rows are short and many, so more of them fit on screen.</p>
+            {{ data_tables.compact }}
+        </div>
+    </section>
+
 </div>

@@ -22,10 +22,10 @@ from pytest_mock import MockerFixture
 
 from django.contrib.auth import get_user_model
 from django.template.loader import render_to_string
-from django.test import Client
+from django.test import Client, RequestFactory
 from django.urls import NoReverseMatch, clear_url_caches, reverse
 
-from ..reference import EXAMPLE_CONTEXT
+from ..reference import example_context
 from .helpers import make_staff_user
 
 pytestmark = pytest.mark.django_db
@@ -57,6 +57,9 @@ COMPONENT_NAMES = [
     "heading",
     "notice",
     "callout",
+    "reason-dialog",
+    "lazy-panel",
+    "data-table",
 ]
 
 
@@ -70,9 +73,16 @@ class _FakeDebugToolbarModule:
         return []
 
 
+def _render_examples() -> str:
+    return render_to_string(
+        "panel_framework/reference/_examples.html",
+        example_context(RequestFactory().get("/test-panel/components/")),
+    )
+
+
 def test_examples_partial_renders_with_no_queries(django_assert_num_queries) -> None:
     with django_assert_num_queries(0):
-        render_to_string("panel_framework/reference/_examples.html", EXAMPLE_CONTEXT)
+        _render_examples()
 
 
 class _SidePanelDialogs(HTMLParser):
@@ -107,17 +117,47 @@ class _SidePanelDialogs(HTMLParser):
 
 def test_every_side_panel_in_the_examples_holds_a_dialog() -> None:
     """A sidePanel with no <dialog> throws in its init on the reference page."""
-    html = render_to_string("panel_framework/reference/_examples.html", EXAMPLE_CONTEXT)
+    html = _render_examples()
     parser = _SidePanelDialogs()
     parser.feed(html)
     assert False not in parser.has_dialog
 
 
 def test_examples_partial_has_no_duplicate_ids() -> None:
-    html = render_to_string("panel_framework/reference/_examples.html", EXAMPLE_CONTEXT)
+    html = _render_examples()
     ids = Counter(re.findall(r'\bid="([^"]+)"', html))
     duplicates = {element_id: count for element_id, count in ids.items() if count > 1}
     assert duplicates == {}
+
+
+@pytest.mark.parametrize(
+    "example_id",
+    [
+        "reason-dialog-required",
+        "reason-dialog-choices",
+        "reason-dialog-choices-required",
+        "lazy-panel-as-of",
+        "data-table-row-detail",
+        "data-table-child-rows",
+        "data-table-compact",
+    ],
+)
+def test_reference_has_each_new_example(example_id: str) -> None:
+    assert f'id="{example_id}"' in _render_examples()
+
+
+def test_reference_lazy_panel_shows_its_as_of_stamp() -> None:
+    assert "As of" in _render_examples()
+
+
+def test_reference_child_rows_example_has_a_chevron_that_starts_open() -> None:
+    html = _render_examples()
+    assert 'aria-expanded="true"' in html
+
+
+def test_reference_reason_dialogs_are_inert() -> None:
+    html = _render_examples()
+    assert html.count("hx-disable") >= 3
 
 
 def test_anonymous_user_is_redirected_to_admin_login(client: Client) -> None:
@@ -158,7 +198,7 @@ def test_every_component_has_at_least_one_example_id(
 @pytest.mark.parametrize("tone", ["info", "warning", "error", "success"])
 def test_reference_shows_a_notice_in_each_tone(tone: str) -> None:
     """The reference page had no example of `c-panel-notice` in any tone."""
-    html = render_to_string("panel_framework/reference/_examples.html", EXAMPLE_CONTEXT)
+    html = _render_examples()
     assert f'id="notice-{tone}"' in html
     assert f"border-{tone}/20 bg-{tone}/10" in html
 

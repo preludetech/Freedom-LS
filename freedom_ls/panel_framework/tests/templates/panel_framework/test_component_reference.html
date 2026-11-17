@@ -1,4 +1,5 @@
 {% extends "_base.html" %}
+{% load static %}
 
 {% comment %}
 This test runs on the isolated panel_framework ROOT_URLCONF, which carries
@@ -6,6 +7,10 @@ no accounts: or educator_interface: URLs. The shared header and footer
 reverse those, so both are blanked here, the same reason
 test_interface.html blanks them.
 {% endcomment %}
+{% block extra_alpine_components %}
+    <script defer src="{% static 'panel_framework/js/alpine-components.js' %}"></script>
+{% endblock extra_alpine_components %}
+
 {% block header %}{% endblock header %}
 
 {% block footer %}{% endblock footer %}

@@ -90,6 +90,34 @@ def promote_bulk_actions(
     return promoted, rest + destructive
 
 
+def table_region_context(
+    table: type[DataTable],
+    *,
+    noun: str,
+    entry_count: str,
+    bulk_entries: list[BulkActionEntry],
+) -> dict[str, object]:
+    """What the table region reads beyond `DataTable.get_context`: the
+    noun, the footer count, the bulk actions and the column span a
+    full-width cell must cover. Shared by a table panel and by any page that
+    renders a table region without a panel."""
+    promoted, overflow = promote_bulk_actions(bulk_entries)
+    columns = table.get_columns()
+    return {
+        "noun": noun,
+        "entry_count": entry_count,
+        "bulk_actions": bulk_entries,
+        "promoted_bulk_actions": promoted,
+        "overflow_bulk_actions": overflow,
+        # Every column a full-width cell must span: the data columns, the
+        # toggle column when rows have a detail, and the selection column
+        # when bulk actions render.
+        "table_colspan": len(columns)
+        + (1 if table.row_detail_template_name else 0)
+        + (1 if bulk_entries else 0),
+    }
+
+
 class Panel:
     """One rectangle of an interface page, rendered through `template_name`.
 
@@ -440,22 +468,15 @@ class DataTablePanel(Panel):
                 f"{self.data_table.__name__} sets `has_child_rows`, so it cannot "
                 "have bulk actions: a selection would not cover a group's rows."
             )
-        context["bulk_actions"] = entries
-        context["promoted_bulk_actions"], context["overflow_bulk_actions"] = (
-            promote_bulk_actions(entries)
-        )
-        # Every column a full-width cell must span: the data columns, the
-        # toggle column when rows have a detail, and the selection column
-        # when bulk actions render.
-        columns = self.data_table.get_columns()
-        context["table_colspan"] = (
-            len(columns)
-            + (1 if self.data_table.row_detail_template_name else 0)
-            + (1 if context["bulk_actions"] else 0)
-        )
-        context["noun"] = self.noun(self.request)
-        context["entry_count"] = self.entry_count(
-            self.request, cast(Page, context["page_obj"])
+        context.update(
+            table_region_context(
+                self.data_table,
+                noun=self.noun(self.request),
+                entry_count=self.entry_count(
+                    self.request, cast(Page, context["page_obj"])
+                ),
+                bulk_entries=entries,
+            )
         )
         # An empty page with every filter at its default is "nothing yet"
         # only when the scope itself is empty; otherwise the defaults are
