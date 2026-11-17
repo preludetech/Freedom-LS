@@ -331,6 +331,9 @@ def test_the_article_changelist_lists_the_article(staff_client) -> None:
     assert "Why we teach in public" in response.content.decode()
 
 
+CHANGELIST_MAX_QUERIES = 10
+
+
 @pytest.mark.django_db
 class TestCourseAdminOrganisations:
     def test_organisation_names_joins_the_names_of_the_courses_organisations(
@@ -354,6 +357,46 @@ class TestCourseAdminOrganisations:
         course = CourseFactory()
 
         assert CourseAdmin(Course, admin.site).organisation_names(course) == ""
+
+    def test_shared_with_names_joins_the_names_of_the_organisations_shared_with(
+        self, mock_site_context
+    ) -> None:
+        course = CourseFactory()
+        course.shared_with.set(
+            [
+                OrganisationFactory(name="Alpha"),
+                OrganisationFactory(name="Beta"),
+            ]
+        )
+
+        names = CourseAdmin(Course, admin.site).shared_with_names(course)
+
+        assert sorted(names.split(", ")) == ["Alpha", "Beta"]
+
+    def test_shared_with_is_read_only_and_on_the_change_form(
+        self, mock_site_context
+    ) -> None:
+        course_admin = CourseAdmin(Course, admin.site)
+        fieldset_fields = course_admin.fieldsets[0][1]["fields"]
+
+        assert "shared_with" in course_admin.get_readonly_fields(request=None)
+        assert "shared_with" in fieldset_fields
+
+    @pytest.mark.parametrize("course_count", [1, 5])
+    def test_the_changelist_query_count_does_not_grow_with_shared_courses(
+        self, course_count: int, staff_client, django_assert_max_num_queries
+    ) -> None:
+        for _ in range(course_count):
+            course = CourseFactory()
+            course.organisations.set([OrganisationFactory()])
+            course.shared_with.set([OrganisationFactory(), OrganisationFactory()])
+        url = reverse("admin:freedom_ls_content_engine_course_changelist")
+        staff_client.get(url)
+
+        with django_assert_max_num_queries(CHANGELIST_MAX_QUERIES):
+            response = staff_client.get(url)
+
+        assert response.status_code == 200
 
     @pytest.mark.parametrize("field", ["organisations", "audience"])
     def test_organisations_and_audience_are_read_only(

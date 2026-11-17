@@ -184,7 +184,13 @@ class ContentCollectionItemInline(GenericTabularInline):
 
 @admin.register(Course)
 class CourseAdmin(SiteAwareModelAdmin):
-    list_display = ["title", "subtitle", "visibility", "organisation_names"]
+    list_display = [
+        "title",
+        "subtitle",
+        "visibility",
+        "organisation_names",
+        "shared_with_names",
+    ]
     list_filter = ("visibility", "organisations", ContentTagListFilter)
     search_fields = ("title", "subtitle", "description")
     readonly_fields = (
@@ -193,6 +199,7 @@ class CourseAdmin(SiteAwareModelAdmin):
         "dashboard_category",
         "categories",
         "organisations",
+        "shared_with",
         "audience",
     )
     inlines = [ContentCollectionItemInline]
@@ -212,6 +219,7 @@ class CourseAdmin(SiteAwareModelAdmin):
                     "dashboard_category",
                     "categories",
                     "organisations",
+                    "shared_with",
                     "audience",
                     "estimated_duration",
                 )
@@ -237,11 +245,15 @@ class CourseAdmin(SiteAwareModelAdmin):
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Course]:
         courses: QuerySet[Course] = super().get_queryset(request)
-        return courses.prefetch_related("organisations")
+        return courses.prefetch_related("organisations", "shared_with")
 
     @admin.display(description="Organisations")
     def organisation_names(self, obj: Course) -> str:
         return ", ".join(org.name for org in obj.organisations.all())
+
+    @admin.display(description="Shared with")
+    def shared_with_names(self, obj: Course) -> str:
+        return ", ".join(org.name for org in obj.shared_with.all())
 
     def has_delete_permission(
         self, request: HttpRequest, obj: Course | None = None
