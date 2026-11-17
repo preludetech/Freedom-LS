@@ -807,7 +807,7 @@ def test_the_counts_next_link_keeps_day_since_and_page_size(client, auth, settin
 class TestRecordedAtFeed:
     def test_rows_come_back_in_recorded_at_order_across_pages(
         self, client, auth, settings, list_name, model, row_factory, distinct_rows
-    ):
+    ) -> None:
         settings.API_PAGE_SIZE = 2
         first, second, third = (row_factory(**distinct_rows) for _ in range(3))
         for row, day in ((first, 3), (second, 2), (third, 1)):
@@ -824,7 +824,7 @@ class TestRecordedAtFeed:
 
     def test_the_query_count_does_not_grow_with_the_page_size(
         self, client, auth, list_name, model, row_factory, distinct_rows
-    ):
+    ) -> None:
         for _ in range(6):
             row_factory(**distinct_rows)
         query_count(client, reverse(list_name), {"page_size": 50}, auth)
@@ -844,7 +844,7 @@ class TestRecordedAtFeed:
         model,
         row_factory,
         distinct_rows,
-    ):
+    ) -> None:
         settings.API_MAX_PAGE_SIZE = 500
         user = UserFactory()
         rows = row_factory.build_batch(1500, user=user, **distinct_rows)
@@ -859,7 +859,7 @@ class TestRecordedAtFeed:
 
     def test_updated_since_includes_a_row_at_that_instant_and_excludes_one_before(
         self, client, auth, list_name, model, row_factory, distinct_rows
-    ):
+    ) -> None:
         at = row_factory(**distinct_rows)
         before = row_factory(**distinct_rows)
         model._base_manager.filter(pk=at.pk).update(recorded_at=BASE)
@@ -875,7 +875,7 @@ class TestRecordedAtFeed:
 
     def test_a_naive_updated_since_is_400_naming_the_parameter(
         self, client, auth, list_name, model, row_factory, distinct_rows
-    ):
+    ) -> None:
         response = client.get(
             reverse(list_name), {"updated_since": "2030-01-01T00:00:00"}, headers=auth
         )
@@ -885,7 +885,7 @@ class TestRecordedAtFeed:
 
     def test_user_returns_only_that_users_rows(
         self, client, auth, list_name, model, row_factory, distinct_rows
-    ):
+    ) -> None:
         mine, other = UserFactory(), UserFactory()
         wanted = row_factory(user=mine, **distinct_rows)
         row_factory(user=other, **distinct_rows)
@@ -897,7 +897,7 @@ class TestRecordedAtFeed:
     @pytest.mark.parametrize("value", ["abc", "1.5"])
     def test_a_non_integer_user_is_400_naming_the_parameter(
         self, client, auth, list_name, model, row_factory, distinct_rows, value
-    ):
+    ) -> None:
         response = client.get(reverse(list_name), {"user": value}, headers=auth)
 
         assert response.status_code == 400
@@ -905,7 +905,7 @@ class TestRecordedAtFeed:
 
     def test_a_user_whose_rows_are_on_another_site_returns_an_empty_page(
         self, client, auth, list_name, model, row_factory, distinct_rows
-    ):
+    ) -> None:
         with site_context(SiteFactory(name="Other", domain="other.example.com")):
             elsewhere = UserFactory()
             row_factory(user=elsewhere, **distinct_rows)
@@ -918,7 +918,7 @@ class TestRecordedAtFeed:
 
     def test_the_next_link_keeps_every_filter_and_page_size(
         self, client, auth, settings, list_name, model, row_factory, distinct_rows
-    ):
+    ) -> None:
         settings.API_PAGE_SIZE = 2
         filters, matching_row = FILTERS_AND_MATCHING_ROW[list_name]
         user = UserFactory()
@@ -945,7 +945,7 @@ class TestRecordedAtFeed:
 
 def test_a_touch_recorded_late_for_an_old_occurrence_comes_back_on_the_second_page(
     client, auth, settings
-):
+) -> None:
     settings.API_PAGE_SIZE = 2
     early, middle = (
         AttributionTouchFactory(occurred_at=BASE + timedelta(days=day))
@@ -967,7 +967,7 @@ def test_a_touch_recorded_late_for_an_old_occurrence_comes_back_on_the_second_pa
 
 def test_a_conversion_with_no_touches_and_blank_codes_serialises_nulls_and_blanks(
     client, auth
-):
+) -> None:
     ConversionFactory(first_touch=None, last_touch=None)
 
     row = client.get(reverse("api:conversion_list"), headers=auth).json()["results"][0]
@@ -978,7 +978,7 @@ def test_a_conversion_with_no_touches_and_blank_codes_serialises_nulls_and_blank
     assert row["last_referral_code"] == ""
 
 
-def test_a_conversion_serialises_its_touch_ids_as_strings(client, auth):
+def test_a_conversion_serialises_its_touch_ids_as_strings(client, auth) -> None:
     user = UserFactory()
     first, last = AttributionTouchFactory.create_batch(2, user=user)
     ConversionFactory(user=user, first_touch=first, last_touch=last)
@@ -991,7 +991,7 @@ def test_a_conversion_serialises_its_touch_ids_as_strings(client, auth):
 
 def test_a_conversion_whose_target_was_deleted_is_still_listed_with_its_label(
     client, auth
-):
+) -> None:
     target = UserFactory()
     conversion = ConversionFactory(target=target, target_label="Deleted target")
     target.delete()
@@ -1002,7 +1002,7 @@ def test_a_conversion_whose_target_was_deleted_is_still_listed_with_its_label(
     assert body["results"][0]["target_label"] == "Deleted target"
 
 
-def test_the_kind_filter_returns_only_conversions_of_that_kind(client, auth):
+def test_the_kind_filter_returns_only_conversions_of_that_kind(client, auth) -> None:
     ConversionFactory(kind="account_signup")
     wanted = ConversionFactory(kind="course_interest", object_id="2")
 
@@ -1013,7 +1013,7 @@ def test_the_kind_filter_returns_only_conversions_of_that_kind(client, auth):
     assert [row["id"] for row in body["results"]] == [str(wanted.pk)]
 
 
-def test_an_unknown_kind_is_400_listing_every_kind(client, auth):
+def test_an_unknown_kind_is_400_listing_every_kind(client, auth) -> None:
     response = client.get(
         reverse("api:conversion_list"), {"kind": "nonsense"}, headers=auth
     )
@@ -1023,7 +1023,7 @@ def test_an_unknown_kind_is_400_listing_every_kind(client, auth):
     assert all(kind in message for kind in ConversionKind.values)
 
 
-def test_the_touch_referral_code_filter_ignores_case(client, auth):
+def test_the_touch_referral_code_filter_ignores_case(client, auth) -> None:
     wanted = AttributionTouchFactory(referral_code="SUMMER")
     AttributionTouchFactory(referral_code="winter")
 
@@ -1059,7 +1059,7 @@ def _conversion_ids(client, auth, params: dict[str, str]) -> set[str]:
 
 def test_the_conversion_referral_code_filter_matches_first_or_last_code_ignoring_case(
     client, auth, code_conversions
-):
+) -> None:
     ids = _conversion_ids(client, auth, {"referral_code": "abc"})
 
     assert ids == {str(code_conversions[key].pk) for key in ("first", "last", "both")}
@@ -1067,7 +1067,7 @@ def test_the_conversion_referral_code_filter_matches_first_or_last_code_ignoring
 
 def test_an_empty_conversion_referral_code_filter_returns_every_conversion(
     client, auth, code_conversions
-):
+) -> None:
     ids = _conversion_ids(client, auth, {"referral_code": ""})
 
     assert ids == {str(conversion.pk) for conversion in code_conversions.values()}
@@ -1075,7 +1075,7 @@ def test_an_empty_conversion_referral_code_filter_returns_every_conversion(
 
 def test_the_first_referral_code_filter_matches_the_first_code_ignoring_case(
     client, auth, code_conversions
-):
+) -> None:
     ids = _conversion_ids(client, auth, {"first_referral_code": "abc"})
 
     assert ids == {str(code_conversions[key].pk) for key in ("first", "both")}
@@ -1083,7 +1083,7 @@ def test_the_first_referral_code_filter_matches_the_first_code_ignoring_case(
 
 def test_the_last_referral_code_filter_matches_the_last_code_ignoring_case(
     client, auth, code_conversions
-):
+) -> None:
     ids = _conversion_ids(client, auth, {"last_referral_code": "abc"})
 
     assert ids == {str(code_conversions[key].pk) for key in ("last", "both")}

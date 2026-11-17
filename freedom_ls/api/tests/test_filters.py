@@ -78,11 +78,11 @@ def test_anything_but_an_iso_date_is_rejected_with_the_format_message(value):
     assert excinfo.value.messages == ["Give a date as YYYY-MM-DD."]
 
 
-def test_integer_filter_cleans_a_whole_number_to_an_int():
+def test_integer_filter_cleans_a_whole_number_to_an_int() -> None:
     assert IntegerFilter().field.clean("42") == 42
 
 
 @pytest.mark.parametrize("value", ["1.5", "abc"])
-def test_integer_filter_rejects_a_non_integer(value):
+def test_integer_filter_rejects_a_non_integer(value) -> None:
     with pytest.raises(forms.ValidationError):
         IntegerFilter().field.clean(value)

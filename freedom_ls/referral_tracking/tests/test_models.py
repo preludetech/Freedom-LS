@@ -189,7 +189,7 @@ def test_with_code_in_play_given_an_empty_code_returns_the_queryset_unchanged(
 
 
 @pytest.fixture
-def seqscan_off(db) -> None:
+def seqscan_off(db: None) -> None:
     """Make the planner use an index whenever one can serve the query."""
     with connection.cursor() as cursor:
         cursor.execute("SET LOCAL enable_seqscan = off")

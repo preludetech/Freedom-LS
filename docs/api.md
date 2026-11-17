@@ -243,8 +243,8 @@ Deactivation is visible: a deactivated row shows up again with `is_active` set t
 | `referral-codes` | Deactivated: `is_active: false`. | Never deleted. |
 | `referral-code-hits` | Nothing. | Older than `REFERRAL_TRACKING_HIT_RETENTION_DAYS` (365 by default), when the deployment's scheduled housekeeping run deletes it. |
 | `signup-attributions` | Nothing. | Its user is deleted. The attribution goes with the user. |
-| `attribution-touches` | Nothing. | Its user is deleted. The touch goes with the user. A touch a conversion points at cannot be deleted on its own. |
-| `conversions` | Nothing. | Its user is deleted. The conversion goes with the user. |
+| `attribution-touches` | Nothing. | Its user is deleted and the touch goes with the user, or it is older than `REFERRAL_TRACKING_TOUCH_RETENTION_DAYS` (365 by default) and no conversion points at it, when the deployment's scheduled housekeeping run deletes it. A touch a conversion points at is never deleted on its own. |
+| `conversions` | Nothing. | Its user is deleted and the conversion goes with the user, or it belongs to a draft application that is discarded when the applicant claims an account. The claimed application records its own conversion. |
 | `first-touch-counts` | Nothing. | Never deleted. |
 
 To catch the invisible ones, run a periodic full pull (no filter) and remove the rows whose `id`
@@ -1057,8 +1057,9 @@ timeline of a user's landings on `occurred_at`.
 - `referral_code` takes code text and ignores case.
 - An unknown query parameter is ignored, not rejected, so a misspelled filter returns every row.
 
-A touch is never changed once written. It is deleted with its user; see
-[Deletions](#deletions). A touch that a conversion points at cannot be deleted on its own.
+A touch is never changed once written. It is deleted with its user, or by housekeeping once it is
+older than `REFERRAL_TRACKING_TOUCH_RETENTION_DAYS` and no conversion points at it; see
+[Deletions](#deletions). A touch that a conversion points at is never deleted on its own.
 
 **Not returned:** IP address, user agent, referer, raw query, click ids and cookie ids. The touch
 holds none of them.
@@ -1134,7 +1135,8 @@ picks no credit model; choose first touch or last touch in your own query.
 - All three code filters ignore case.
 - An unknown query parameter is ignored, not rejected, so a misspelled filter returns every row.
 
-A conversion is never changed once written. It is deleted with its user; see
+A conversion is never changed once written. It is deleted with its user, or with its draft
+application when the applicant claims an account and the draft is discarded; see
 [Deletions](#deletions).
 
 **Not returned:** the conversion's target, other than `target_label`.

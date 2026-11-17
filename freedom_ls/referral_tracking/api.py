@@ -204,8 +204,9 @@ router.register(
 
 
 class RecordedAtFilterSet(django_filters.FilterSet):
-    # Touches and conversions are append-only; recorded_at is stamped when the
-    # row is written, so it never moves backwards relative to rows already read.
+    # Touches and conversions are append-only, but recorded_at is stamped before
+    # the writing transaction commits, so a row can become visible after rows
+    # with a later recorded_at. Clients overlap their checkpoints to catch it.
     updated_since = AwareIsoDateTimeFilter(
         field_name="recorded_at",
         lookup_expr="gte",

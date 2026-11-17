@@ -207,7 +207,6 @@ class AttributionTouch(SiteAwareModel):
         ]
         indexes = [
             models.Index(fields=["site", "user", "occurred_at"]),
-            models.Index(fields=["site", "referral_code"]),
             # PostgreSQL compiles iexact to UPPER(col::text) = UPPER(%s), so only
             # an Upper expression index serves a case-insensitive code lookup.
             models.Index(

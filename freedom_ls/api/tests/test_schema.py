@@ -92,7 +92,7 @@ def test_schema_describes_the_users_list_parameters(document):
 @pytest.mark.parametrize(
     "path", ["/api/v1/conversions/", "/api/v1/attribution-touches/"]
 )
-def test_schema_types_the_user_filter_as_an_integer(document, path):
+def test_schema_types_the_user_filter_as_an_integer(document, path) -> None:
     parameters = document["paths"][path]["get"]["parameters"]
 
     user = next(p for p in parameters if p["name"] == "user")
