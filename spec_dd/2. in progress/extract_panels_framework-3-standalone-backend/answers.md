@@ -1,0 +1,11 @@
+# Answers: extract_panels_framework-3-standalone-backend
+
+Asked by `/sdd:start` before the spec was written.
+
+- Q: How should BulkActionRun's site filtering reach the request once it stops using FLS's thread-local SiteAwareModel manager? → A: An explicit `for_request()` queryset method on a framework-owned manager. Views pass the request, the worker passes `site_id`, and `site` is passed on create. (asked up front)
+- Q: How should the framework declare that the host needs a durable TASKS backend, given FLS dev and tests use ImmediateBackend? → A: A system check that warns on an immediate or dummy backend, only when `DEBUG` is False. (asked up front)
+- Q: How should the standalone unit tests be run, given the FLS suite keeps `config.settings_dev` from the same tree? → A: A separate command: a pytest config in `freedom_ls/panel_framework/tests/` invoked explicitly, with its own test tier. The FLS suite is untouched, and spec 5 moves the config with the package. (asked up front)
+- Q: What should the site resolver setting be called and look like? → A: `PANEL_FRAMEWORK_SITE_RESOLVER`, a dotted import-path string to a callable `(request) -> Site`, defaulting to `django.contrib.sites.shortcuts.get_current_site`, with the result cached on the request. (asked up front)
+- Q: Seven FLS educator_interface tests create a BulkActionRun with no site and rely on the thread-local save hook. How should they be handled? → A: Pass `site=` explicitly in those call sites; "unchanged" means unchanged behaviour, and the model gets no save-time fallback. (asked during spec_from_idea)
+- Q: The unit test files render framework templates that use FLS cotton components and pin heroicons output. How should the standalone run handle them before spec 4? → A: The standalone `tests/` ships minimal stand-in cotton templates for every primitive the unit tests render. Tests that assert FLS-specific markup get a marker and run only under FLS until spec 4. (asked during spec_from_idea)
+- Q: What should the import guard do with the component, invariant and Playwright test directories that still import FLS? → A: Exempt `components/`, `invariants/` and `playwright/` by name, pinned in the test; spec 4 removes the exemptions. (asked during spec_from_idea)
