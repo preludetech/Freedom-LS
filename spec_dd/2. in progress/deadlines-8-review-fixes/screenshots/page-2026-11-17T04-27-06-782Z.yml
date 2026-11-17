@@ -1,0 +1,105 @@
+- generic [active] [ref=f9e1]:
+  - banner [ref=f9e2]:
+    - link [ref=f9e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f9e4]
+      - heading "FirstClass" [level=1] [ref=f9e5]
+    - navigation [ref=f9e6]:
+      - generic [ref=f9e7]:
+        - generic [ref=f9e8]:
+          - button "Notifications, 3 new" [ref=f9e9]
+          - status:
+            - generic [ref=f9e13]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f9e14]: "3"
+        - button "Open user menu for qa_deadline_fresh@email.com" [ref=f9e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f9e17]: QA
+  - generic:
+    - status
+    - alert
+  - main [ref=f9e18]:
+    - generic [ref=f9e20]:
+      - dialog "Course outline" [ref=f9e21]:
+        - generic [ref=f9e24]:
+          - generic [ref=f9e25]:
+            - generic [ref=f9e26]:
+              - generic [aria-hidden] [ref=f9e27]: QD
+              - generic [ref=f9e28]: QA Deadlines Org
+            - paragraph [ref=f9e29]: Course outline
+            - paragraph [ref=f9e30]: Functionality Demo - Course Parts
+            - generic [ref=f9e32]:
+              - progressbar "Progress for Functionality Demo - Course Parts" [ref=f9e33]: 0%
+              - generic [ref=f9e34]: 0% complete
+            - generic [ref=f9e40]:
+              - generic [ref=f9e41]: Missed deadline
+              - generic [ref=f9e42]: Welcome
+              - time [ref=f9e45]: 31 Jan 2024, 23:59
+          - navigation "Course outline" [ref=f9e46]:
+            - list [ref=f9e47]:
+              - listitem [ref=f9e48]:
+                - button "1. Not started Getting Started" [expanded] [ref=f9e49] [cursor=pointer]:
+                  - generic [ref=f9e50]:
+                    - generic [ref=f9e51]: "1."
+                    - generic [ref=f9e52]: Not started
+                    - generic [ref=f9e56]: Getting Started
+                - list [ref=f9e62]:
+                  - listitem [ref=f9e63]:
+                    - generic [ref=f9e64]:
+                      - generic [ref=f9e65]: "1.1"
+                      - generic [ref=f9e66]: Not started
+                      - generic [ref=f9e70]: Welcome
+                      - generic [ref=f9e72]:
+                        - generic [ref=f9e76]: Missed deadline
+                        - time [ref=f9e78]: 31 Jan 2024
+                  - listitem [ref=f9e79]:
+                    - generic [ref=f9e80]:
+                      - generic [ref=f9e81]: "1.2"
+                      - generic [ref=f9e82]: Locked
+                      - generic [ref=f9e86]: What to Expect
+                      - generic [ref=f9e88]:
+                        - generic [ref=f9e92]: Deadline
+                        - time [ref=f9e94]: Today, 23:59
+              - listitem [ref=f9e95]:
+                - button "2. Locked Core Concepts" [ref=f9e96] [cursor=pointer]:
+                  - generic [ref=f9e97]:
+                    - generic [ref=f9e98]: "2."
+                    - generic [ref=f9e99]: Locked
+                    - generic [ref=f9e103]: Core Concepts
+              - listitem [ref=f9e109]:
+                - button "3. Locked Wrapping Up" [ref=f9e110] [cursor=pointer]:
+                  - generic [ref=f9e111]:
+                    - generic [ref=f9e112]: "3."
+                    - generic [ref=f9e113]: Locked
+                    - generic [ref=f9e117]: Wrapping Up
+      - generic [ref=f9e123]:
+        - generic [ref=f9e125]:
+          - navigation "Breadcrumb" [ref=f9e128]:
+            - list [ref=f9e129]:
+              - listitem [ref=f9e130]:
+                - link "Functionality Demo - Course Parts" [ref=f9e131] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/detail/
+              - listitem [ref=f9e132]:
+                - generic [aria-hidden] [ref=f9e133]: ">"
+                - link "Getting Started" [ref=f9e134] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/1/
+              - listitem [ref=f9e135]:
+                - generic [aria-hidden] [ref=f9e136]: ">"
+                - generic "Welcome" [ref=f9e137]
+          - paragraph [ref=f9e139]:
+            - text: Missed deadline
+            - time [ref=f9e145]: 31 Jan 2024, 23:59
+          - heading "Welcome" [level=1] [ref=f9e148]
+        - generic [ref=f9e150]:
+          - generic [ref=f9e151]:
+            - paragraph [ref=f9e152]: "Welcome to the Course Parts demo course. This topic is inside Part 1: \"Getting Started\"."
+            - paragraph [ref=f9e153]: This course demonstrates how content can be organised into parts, which act as chapters or modules within a course. Each part groups related topics and forms together.
+          - button "Next" [ref=f9e156] [cursor=pointer]
+  - contentinfo [ref=f9e160]:
+    - generic [ref=f9e161]:
+      - paragraph [ref=f9e162]: © 2026 FirstClass
+      - navigation "Legal" [ref=f9e163]:
+        - link "Terms and Conditions" [ref=f9e164] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f9e165] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f9e166] [cursor=pointer]: deadlines-8-review-fixes
+  - generic "Show toolbar" [ref=f9e168]: DJDT

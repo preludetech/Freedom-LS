@@ -1,0 +1,95 @@
+- generic [active] [ref=f8e1]:
+  - banner [ref=f8e2]:
+    - link [ref=f8e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f8e4]
+      - heading "FirstClass" [level=1] [ref=f8e5]
+    - navigation [ref=f8e6]:
+      - generic [ref=f8e7]:
+        - generic [ref=f8e8]:
+          - button "Notifications, 3 new" [ref=f8e9]
+          - status:
+            - generic [ref=f8e13]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f8e14]: "3"
+        - button "Open user menu for qa_deadline_fresh@email.com" [ref=f8e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f8e17]: QA
+  - generic:
+    - status
+    - alert
+  - main [ref=f8e18]:
+    - generic [ref=f8e20]:
+      - dialog "Course outline" [ref=f8e21]:
+        - generic [ref=f8e24]:
+          - generic [ref=f8e25]:
+            - generic [ref=f8e26]:
+              - generic [aria-hidden] [ref=f8e27]: QD
+              - generic [ref=f8e28]: QA Deadlines Org
+            - paragraph [ref=f8e29]: Course outline
+            - paragraph [ref=f8e30]: Functionality Demo - Per-placement Due Dates
+            - generic [ref=f8e32]:
+              - progressbar "Progress for Functionality Demo - Per-placement Due Dates" [ref=f8e33]: 0%
+              - generic [ref=f8e34]: 0% complete
+            - generic [ref=f8e40]:
+              - generic [ref=f8e41]: Deadline
+              - generic [ref=f8e42]: Key Ideas
+              - time [ref=f8e45]: 20 Nov 2026, 23:59
+          - navigation "Course outline" [ref=f8e46]:
+            - list [ref=f8e47]:
+              - listitem [ref=f8e48]:
+                - button "1. Not started Core Concepts" [expanded] [ref=f8e49] [cursor=pointer]:
+                  - generic [ref=f8e50]:
+                    - generic [ref=f8e51]: "1."
+                    - generic [ref=f8e52]: Not started
+                    - generic [ref=f8e56]: Core Concepts
+                - list [ref=f8e62]:
+                  - listitem [ref=f8e63]:
+                    - generic [ref=f8e64]:
+                      - generic [ref=f8e65]: "1.1"
+                      - generic [ref=f8e66]: Not started
+                      - generic [ref=f8e70]: Key Ideas
+                      - generic [ref=f8e72]:
+                        - generic [ref=f8e76]: Deadline
+                        - time [ref=f8e78]: 20 Nov
+                  - listitem [ref=f8e79]:
+                    - generic [ref=f8e80]:
+                      - generic [ref=f8e81]: "1.2"
+                      - generic [ref=f8e82]: Locked
+                      - generic [ref=f8e86]: Going Deeper
+                  - listitem [ref=f8e87]:
+                    - generic [ref=f8e88]:
+                      - generic [ref=f8e89]: "1.3"
+                      - generic [ref=f8e90]: Locked
+                      - generic [ref=f8e94]: Knowledge Check
+      - generic [ref=f8e95]:
+        - generic [ref=f8e97]:
+          - navigation "Breadcrumb" [ref=f8e100]:
+            - list [ref=f8e101]:
+              - listitem [ref=f8e102]:
+                - link "Functionality Demo - Per-placement Due Dates" [ref=f8e103] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-per-placement-due-dates/detail/
+              - listitem [ref=f8e104]:
+                - generic [aria-hidden] [ref=f8e105]: ">"
+                - link "Core Concepts" [ref=f8e106] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-per-placement-due-dates/1/
+              - listitem [ref=f8e107]:
+                - generic [aria-hidden] [ref=f8e108]: ">"
+                - generic "Key Ideas" [ref=f8e109]
+          - paragraph [ref=f8e111]:
+            - text: Deadline
+            - time [ref=f8e117]: 20 Nov 2026, 23:59
+          - heading "Key Ideas" [level=1] [ref=f8e120]
+        - generic [ref=f8e122]:
+          - generic [ref=f8e123]:
+            - paragraph [ref=f8e124]: "This topic is inside Part 2: \"Core Concepts\". Parts can contain a mix of topics and forms."
+            - paragraph [ref=f8e125]: After reading through the topics in this part, you will encounter a quiz that tests your understanding.
+          - button "Next" [ref=f8e128] [cursor=pointer]
+  - contentinfo [ref=f8e132]:
+    - generic [ref=f8e133]:
+      - paragraph [ref=f8e134]: © 2026 FirstClass
+      - navigation "Legal" [ref=f8e135]:
+        - link "Terms and Conditions" [ref=f8e136] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f8e137] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f8e138] [cursor=pointer]: deadlines-8-review-fixes
+  - generic "Show toolbar" [ref=f8e140]: DJDT
