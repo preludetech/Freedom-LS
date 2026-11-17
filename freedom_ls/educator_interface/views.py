@@ -191,6 +191,7 @@ from freedom_ls.learner_management.queries import (
     cohort_educators,
     cohorts_visible_to,
     courses_visible_to,
+    is_course_available_to_organisation,
     learner_status,
     learners_visible_to,
     organisations_accessible_to,
@@ -2222,6 +2223,14 @@ def outline_rows(course: Course) -> list[OutlineRow]:
     return rows
 
 
+def _preview_available(request: HttpRequest, course: Course) -> bool:
+    """Content previews are for courses available to the organisation in
+    view; a course listed only because the organisation holds a
+    registration on it shows its details but not its content."""
+    organisation = cast(OrganisationScopedRequest, request).organisation
+    return is_course_available_to_organisation(course, organisation)
+
+
 def _outline_content_count(rows: Sequence[OutlineRow]) -> int:
     """The outline's items at every depth: neither the course details row
     nor a note is one."""
@@ -2302,6 +2311,8 @@ class CourseContentPanel(DataTablePanel):
 
     @cached_property
     def outline(self) -> list[OutlineRow]:
+        if not self.preview_available:
+            return []
         return outline_rows(cast(Course, self.instance))
 
     def get_row_sequence(self, request: HttpRequest) -> Sequence[object]:
@@ -2313,10 +2324,20 @@ class CourseContentPanel(DataTablePanel):
             return ""
         return count_phrase(count, self.noun_singular(request), self.noun(request))
 
+    @cached_property
+    def preview_available(self) -> bool:
+        return _preview_available(self.request, cast(Course, self.instance))
+
     def get_context_data(self) -> dict[str, object]:
-        return {**super().get_context_data(), "course": cast(Course, self.instance)}
+        return {
+            **super().get_context_data(),
+            "course": cast(Course, self.instance),
+            "preview_available": self.preview_available,
+        }
 
     def get_actions(self) -> list[PanelAction]:
+        if not self.preview_available:
+            return []
         return [PreviewContentAction(), PreviewCourseDetailsAction()]
 
 
@@ -2383,6 +2404,8 @@ class PreviewContentAction(PanelAction):
     template_name = "educator_interface/modal/content_preview.html"
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        if not _preview_available(ctx.request, cast(Course, ctx.instance)):
+            raise Http404
         if ctx.request.headers.get("HX-Request") != "true":
             raise Http404
         course = cast(Course, ctx.instance)
@@ -2425,6 +2448,8 @@ class PreviewCourseDetailsAction(PanelAction):
     template_name = "educator_interface/modal/course_details_preview.html"
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        if not _preview_available(ctx.request, cast(Course, ctx.instance)):
+            raise Http404
         if ctx.request.headers.get("HX-Request") != "true":
             raise Http404
         course = cast(Course, ctx.instance)

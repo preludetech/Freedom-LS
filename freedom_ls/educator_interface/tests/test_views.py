@@ -9148,3 +9148,86 @@ def test_the_courses_list_renders_its_empty_state_when_no_course_is_available(
     response = client.get(_interface_url(organisation.slug, "courses"))
 
     assert CourseDataTable.empty_message in response.content.decode()
+
+
+PREVIEW_AVAILABLE = [
+    ("no_owner", True),
+    ("owned", True),
+    ("shared", True),
+    ("held", False),
+]
+
+
+def _topic_item_of(course: CourseModel) -> uuid.UUID:
+    item = ContentCollectionItemFactory(
+        collection_object=course, child_object=TopicFactory(), order=0
+    )
+    return cast(uuid.UUID, item.pk)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(("row", "available"), PREVIEW_AVAILABLE)
+def test_the_content_panel_shows_its_outline_only_for_an_available_course(
+    mock_site_context: Site,
+    logged_in_client: Callable[[User], Client],
+    row: str,
+    available: bool,
+):
+    organisation = OrganisationFactory()
+    course = course_per_reach_row(organisation)[row]
+    _topic_item_of(course)
+    client = logged_in_client(organisation_admin_viewer(organisation))
+
+    document = _get_document(
+        client, _interface_url(organisation.slug, f"courses/{course.pk}")
+    )
+
+    panel = document.cssselect("section[data-panel='content']")[0]
+    assert (len(panel.cssselect("#course-outline-caption")) == 1) is available
+    assert (len(panel.cssselect("button[hx-get]")) > 0) is available
+    assert (len(panel.cssselect("[data-testid='preview-withheld']")) == 1) is (
+        not available
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(("row", "available"), PREVIEW_AVAILABLE)
+def test_the_preview_actions_answer_only_for_an_available_course(
+    mock_site_context: Site,
+    logged_in_client: Callable[[User], Client],
+    row: str,
+    available: bool,
+):
+    organisation = OrganisationFactory()
+    course = course_per_reach_row(organisation)[row]
+    item_pk = _topic_item_of(course)
+    client = logged_in_client(organisation_admin_viewer(organisation))
+    content_url = _content_action_url(organisation, course, "preview_content")
+    details_url = _content_action_url(organisation, course, "preview_course_details")
+
+    content = client.get(f"{content_url}?item={item_pk}", HTTP_HX_REQUEST="true")
+    details = client.get(details_url, HTTP_HX_REQUEST="true")
+
+    expected = 200 if available else 404
+    assert (content.status_code, details.status_code) == (expected, expected)
+
+
+@pytest.mark.django_db
+def test_a_form_page_of_a_course_held_only_through_a_registration_cannot_be_previewed(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+):
+    organisation = OrganisationFactory()
+    course = course_per_reach_row(organisation)["held"]
+    form = FormFactory()
+    page = FormPageFactory(form=form)
+    item = ContentCollectionItemFactory(
+        collection_object=course, child_object=form, order=0
+    )
+    client = logged_in_client(organisation_admin_viewer(organisation))
+    url = _content_action_url(organisation, course, "preview_content")
+
+    response = client.get(
+        f"{url}?item={item.pk}&page={page.pk}", HTTP_HX_REQUEST="true"
+    )
+
+    assert response.status_code == 404

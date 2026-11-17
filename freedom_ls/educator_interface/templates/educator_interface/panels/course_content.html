@@ -1,9 +1,23 @@
 {% extends "panel_framework/panels/_data_table_base.html" %}
 
+{% comment %}
+A course the organisation sees only through a registration it holds has no
+outline: the panel says so instead.
+{% endcomment %}
 {% block panel_header %}
-    {% if course.table_of_contents_in_development %}
+    {% if preview_available and course.table_of_contents_in_development %}
         <div class="px-4 pt-4 sm:px-6">
             <c-callout level="info" class="my-0">Learners can't see this outline yet. The course is marked as still in development.</c-callout>
         </div>
     {% endif %}
 {% endblock panel_header %}
+
+{% block panel_body %}
+    {% if preview_available %}
+        {{ block.super }}
+    {% else %}
+        <div class="px-4 py-4 sm:px-6">
+            <c-panel-empty-state message="Content preview isn't shared with your organisation." data-testid="preview-withheld" />
+        </div>
+    {% endif %}
+{% endblock panel_body %}
