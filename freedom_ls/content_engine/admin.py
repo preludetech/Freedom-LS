@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 from unfold.admin import TabularInline
 
 from django.contrib import admin
@@ -6,6 +8,8 @@ from django.db.models import QuerySet
 from django.http import HttpRequest
 
 from freedom_ls.content_base.admin_filters import ContentTagListFilter
+from freedom_ls.form_engine.admin import FormQuestionAdmin
+from freedom_ls.form_engine.models import FormQuestion
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
 
 from .forms import FileAdminForm
@@ -20,6 +24,9 @@ from .models import (
     File,
     Topic,
 )
+
+if TYPE_CHECKING:
+    from django.contrib.admin.options import _FieldsetSpec
 
 
 @admin.register(Topic)
@@ -340,3 +347,44 @@ class FileAdmin(SiteAwareModelAdmin):
         self, request: HttpRequest, obj: File | None = None
     ) -> bool:
         return False
+
+
+class FormQuestionWithSectionsAdmin(FormQuestionAdmin):
+    """FormQuestionAdmin plus the sections the question tests.
+
+    Registered here because the sections are content_engine relations, and
+    form_engine does not depend on content_engine.
+    """
+
+    readonly_fields = (
+        *FormQuestionAdmin.readonly_fields,
+        "section_topics",
+        "section_course_parts",
+    )
+
+    def get_fieldsets(
+        self, request: HttpRequest, obj: FormQuestion | None = None
+    ) -> "_FieldsetSpec":
+        *leading, metadata = super().get_fieldsets(request, obj)
+        sections = (
+            "Sections",
+            {
+                "fields": ("section_topics", "section_course_parts"),
+                "description": (
+                    "Set by the sections: key in the form files and rewritten on every load."
+                ),
+            },
+        )
+        return [*leading, sections, metadata]
+
+    @admin.display(description="Topics")
+    def section_topics(self, obj: FormQuestion) -> str:
+        return ", ".join(topic.title for topic in obj.topics.all())
+
+    @admin.display(description="Course parts")
+    def section_course_parts(self, obj: FormQuestion) -> str:
+        return ", ".join(part.title for part in obj.course_parts.all())
+
+
+admin.site.unregister(FormQuestion)
+admin.site.register(FormQuestion, FormQuestionWithSectionsAdmin)

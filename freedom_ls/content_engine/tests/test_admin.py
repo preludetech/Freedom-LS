@@ -42,6 +42,7 @@ from freedom_ls.content_engine.models import (
     File,
     Topic,
 )
+from freedom_ls.form_engine.factories import FormQuestionFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 
 CONTENT_ADMINS = [
@@ -456,3 +457,62 @@ class TestPartPlacementChildDueDatesInline:
         html = self._change_page(staff_client, topic_placement)
 
         assert 'name="child_due_dates-TOTAL_FORMS" value="0"' in html
+
+
+@pytest.mark.django_db
+class TestFormQuestionSections:
+    """A question's sections are shown on its change page and cannot be edited there."""
+
+    def _question_with_sections(self):
+        question = FormQuestionFactory(type="short_text")
+        question.topics.add(TopicFactory(title="Sampling Topic"))
+        question.course_parts.add(CoursePartFactory(title="Bias Part"))
+        return question
+
+    def _change_url(self, question) -> str:
+        return reverse(
+            "admin:freedom_ls_form_engine_formquestion_change", args=[question.pk]
+        )
+
+    def test_the_change_page_shows_the_topic_and_part_titles(
+        self, staff_client
+    ) -> None:
+        question = self._question_with_sections()
+
+        response = staff_client.get(self._change_url(question))
+
+        html = response.content.decode()
+        assert "Sampling Topic" in html
+        assert "Bias Part" in html
+
+    def test_posting_the_change_form_leaves_the_sections_unchanged(
+        self, staff_client
+    ) -> None:
+        question = self._question_with_sections()
+        other_topic = TopicFactory(title="Other Topic")
+
+        response = staff_client.post(
+            self._change_url(question),
+            {
+                "question": "Reworded?",
+                "type": "short_text",
+                "required": "on",
+                "form_page": question.form_page_id,
+                "category": "",
+                "order": question.order,
+                "decimal_places": "0",
+                "file_path": "forms/q.md",
+                "topics": [other_topic.pk],
+                "course_parts": [],
+                "options-TOTAL_FORMS": "0",
+                "options-INITIAL_FORMS": "0",
+                "options-MIN_NUM_FORMS": "0",
+                "options-MAX_NUM_FORMS": "1000",
+            },
+        )
+
+        question.refresh_from_db()
+        assert response.status_code == 302
+        assert question.question == "Reworded?"
+        assert [t.title for t in question.topics.all()] == ["Sampling Topic"]
+        assert [p.title for p in question.course_parts.all()] == ["Bias Part"]
