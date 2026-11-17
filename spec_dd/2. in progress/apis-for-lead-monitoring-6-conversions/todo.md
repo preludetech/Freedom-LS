@@ -22,8 +22,8 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 4. Documentation and pull request
 
-- [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
-- [ ] (cmd) Update `docs/api.md` for the `attribution-touches` and `conversions` endpoints: intro, scope table, Referral data intro, Incremental syncs checkpoint rows, Deletions, one section per resource, the example's `PATHS`, and the No conversion uploads caveat (spec section "Documentation and downstream", `docs/api.md` bullets)
+- [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [x] (cmd) Update `docs/api.md` for the `attribution-touches` and `conversions` endpoints: intro, scope table, Referral data intro, Incremental syncs checkpoint rows, Deletions, one section per resource, the example's `PATHS`, and the No conversion uploads caveat (spec section "Documentation and downstream", `docs/api.md` bullets)
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
