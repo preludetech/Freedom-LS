@@ -78,6 +78,25 @@ def _fail_first_quick_view(page: Page) -> dict[str, int]:
     return attempts
 
 
+def _go_back_and_wait_for_restore(page: Page) -> None:
+    """Go back and wait until htmx has restored the page and Alpine has started it.
+
+    The URL changes on popstate, before htmx swaps the restored page in, so
+    asserting the URL alone lets a click land on the page that is about to be
+    replaced.
+    """
+    page.evaluate(
+        "window.__historyRestored = false;"
+        "document.addEventListener('htmx:historyRestore', "
+        "() => { window.__historyRestored = true; }, {once: true})"
+    )
+    page.go_back()
+    page.wait_for_function("window.__historyRestored === true")
+    page.wait_for_function(
+        "document.getElementById('quick-view')?._x_dataStack !== undefined"
+    )
+
+
 def test_quick_view_drawer(
     page: Page,
     live_server: pytest_django.live_server_helper.LiveServer,
@@ -156,7 +175,7 @@ def test_quick_view_drawer(
         f"push: '{_FRAMEWORK_PATH}/stubs/{detail_stub.pk}'}})"
     )
     expect(page).to_have_url(detail_url)
-    page.go_back()
+    _go_back_and_wait_for_restore(page)
     expect(page).to_have_url(list_url)
     expect(page.locator("#app-modal")).to_be_hidden()
 
