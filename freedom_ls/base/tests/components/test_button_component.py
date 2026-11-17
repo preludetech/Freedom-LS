@@ -1,5 +1,7 @@
 """Tests for the <c-button /> cotton component's loading prop."""
 
+import re
+
 from django_cotton.compiler_regex import CottonCompiler
 
 from django.template import Context, Template
@@ -41,6 +43,16 @@ class TestButtonLoadingProp:
             '<c-button loading="true" loading_text="Deleting...">Delete</c-button>'
         )
         assert "Deleting..." in result
+
+    def test_loading_span_carries_its_text_as_data_loading_label(self) -> None:
+        result = self._render(
+            '<c-button loading="true" loading_text="Deleting…">Delete</c-button>'
+        )
+        assert re.search(
+            r'<span data-loading-label="Deleting…"[^>]*>.*? Deleting…</span>',
+            result,
+            re.DOTALL,
+        )
 
     def test_loading_preserves_normal_content(self) -> None:
         result = self._render('<c-button loading="true">Save</c-button>')

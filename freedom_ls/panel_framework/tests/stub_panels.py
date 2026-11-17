@@ -36,6 +36,7 @@ from freedom_ls.panel_framework.actions import (
     ConfirmAction,
     CreateInstanceAction,
     DeleteAction,
+    FormPanelAction,
     PanelAction,
     ReasonMixin,
     changed_response,
@@ -653,6 +654,55 @@ class StubDetailsPanel(Panel):
         ]
 
 
+class _StubUploadForm(forms.Form):
+    title = forms.CharField()
+    attachment = forms.FileField(required=False)
+
+
+class StubUploadAction(FormPanelAction):
+    """A dialog form with a file field, answering 204 once it is valid."""
+
+    label = "Upload"
+    action_name = "upload"
+    form_class = _StubUploadForm
+    form_title = "Upload"
+
+    def has_permission(self, ctx: PanelContext) -> bool:
+        return True
+
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
+        return changed_response({})
+
+
+class StubInlineUploadAction(StubUploadAction):
+    """The same form posted inline from a panel instead of a dialog."""
+
+    action_name = "upload_inline"
+    template_name = "panel_framework/test_inline_upload_form.html"
+    renders_in_footer = False
+    autofocus_first_field = False
+
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
+        # The dialog form shares the page, and a label's `for` resolves to the
+        # first element with that id.
+        return {**super().get_form_kwargs(ctx), "auto_id": "inline_%s"}
+
+
+class StubUploadPanel(Panel):
+    """A panel holding the dialog upload action and the inline upload form."""
+
+    title = "Upload"
+    template_name = "panel_framework/test_stub_upload_panel.html"
+
+    def get_actions(self) -> list[PanelAction]:
+        return [StubUploadAction(), StubInlineUploadAction()]
+
+    def get_context_data(self) -> dict[str, object]:
+        context = super().get_context_data()
+        context["upload"] = self.available_actions[1].get_context_data(self.ctx)
+        return context
+
+
 class StubHiddenPanel(Panel):
     title = "Hidden"
 
@@ -673,6 +723,7 @@ class StubTabSet(TabSet):
         "detail": StubDetailTablePanel,
         "childrows": StubChildRowsTablePanel,
         "compact": StubCompactTablePanel,
+        "upload": StubUploadPanel,
     }
 
 

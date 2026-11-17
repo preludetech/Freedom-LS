@@ -5,6 +5,23 @@
  * alpine-components.js script.
  */
 
+// The loading text of a form's submit buttons says what the request is
+// doing. It is set on every request, back to the button's own text when no
+// file is going up, so a failed upload never leaves "Uploading…" behind.
+const UPLOADING_LABEL = "Uploading…";
+document.addEventListener("htmx:beforeRequest", (event) => {
+    const form = event.detail.elt;
+    if (!(form instanceof HTMLFormElement)) return;
+    const uploading = Array.from(form.querySelectorAll("input[type=file]")).some(
+        (input) => input.files.length > 0,
+    );
+    form.querySelectorAll("button[type=submit] [data-loading-label]").forEach((span) => {
+        // The span holds the spinner and then the text; only the text changes.
+        span.lastChild.textContent =
+            " " + (uploading ? UPLOADING_LABEL : span.dataset.loadingLabel);
+    });
+});
+
 // An unmarked 403 or 404 on an htmx request is a full page: the user has lost
 // access to what they are looking at, so the page reloads onto the page a
 // fresh visit shows instead of a click that does nothing. This belongs to the
