@@ -265,16 +265,33 @@ def in_audience_expression(user: RequestUser, *, registered: Q | None = None) ->
     return open_to_everyone_expression() | own_organisation_learner | registered
 
 
+def _through_has_organisation(
+    through: type[Model], organisation: Organisation
+) -> Exists:
+    # The through table rather than a join, so the predicate adds no rows
+    # to the course queryset it is embedded in. The through tables carry
+    # no site manager; the outer Course queryset is site-filtered, and the
+    # loader resolves every slug on the course's own site, so a row here
+    # never pairs a course with another site's organisation.
+    return Exists(
+        through._base_manager.filter(
+            course_id=OuterRef("pk"), organisation=organisation
+        )
+    )
+
+
 def open_to_organisation_expression(organisation: Organisation) -> Q:
     """Courses open to this organisation: every course that is not an
     organisation_learners organisation course (so every public one too),
-    plus the organisation's own."""
-    return open_to_everyone_expression() | Q(
-        Exists(
-            Course.organisations.through.objects.filter(
-                course_id=OuterRef("pk"), organisation=organisation
-            )
-        )
+    plus the organisation's own and those an owning organisation has shared
+    with it.
+
+    The expression only ever widens: learner self-join of public courses goes
+    through the same gate, so it must keep accepting every public course."""
+    return (
+        open_to_everyone_expression()
+        | Q(_through_has_organisation(Course.organisations.through, organisation))
+        | Q(_through_has_organisation(Course.shared_with.through, organisation))
     )
 
 

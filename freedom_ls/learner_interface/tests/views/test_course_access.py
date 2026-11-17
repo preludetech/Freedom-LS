@@ -380,6 +380,105 @@ def test_initiate_access_organisation_course_closed_to_the_default_organisation_
     ).exists()
 
 
+@pytest.mark.django_db
+@pytest.mark.parametrize("shared", [True, False])
+def test_a_learner_of_another_organisation_self_joins_a_public_organisation_course(
+    mock_site_context, logged_in_client, course_with_topic, shared
+):
+    course = course_with_topic(access_type="free", audience=CourseAudience.PUBLIC)
+    course.organisations.add(OrganisationFactory())
+    own_organisation = OrganisationFactory()
+    course.shared_with.set([own_organisation] if shared else [])
+    user = UserFactory()
+    LearnerFactory(user=user, organisation=own_organisation)
+    client = logged_in_client(user)
+
+    browse = client.get(reverse("learner_interface:dashboard"))
+    _initiate_access(client, course)
+
+    assert course.id in {
+        listed.id for listed in rendered_section(browse, "available").courses
+    }
+    assert LearnerCourseRegistration.objects.filter(
+        learner__user=user, course=course
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_a_learner_registered_through_a_share_opens_the_course_content(
+    mock_site_context, logged_in_client, course_with_topic
+):
+    course = course_with_topic(
+        access_type="free", audience=CourseAudience.ORGANISATION_LEARNERS
+    )
+    course.organisations.add(OrganisationFactory())
+    learner = LearnerFactory()
+    course.shared_with.add(learner.organisation)
+    LearnerCourseRegistrationFactory(learner=learner, course=course)
+
+    response = logged_in_client(learner.user).get(
+        reverse(
+            "learner_interface:view_course_item",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_a_learner_registered_through_a_share_on_a_gated_course_needs_no_application(
+    mock_site_context, logged_in_client, course_with_topic
+):
+    course = course_with_topic(
+        access_type="application_gated", audience=CourseAudience.PUBLIC
+    )
+    course.organisations.add(OrganisationFactory())
+    learner = LearnerFactory()
+    course.shared_with.add(learner.organisation)
+    LearnerCourseRegistrationFactory(learner=learner, course=course)
+
+    response = logged_in_client(learner.user).get(
+        reverse(
+            "learner_interface:view_course_item",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_an_unregistered_learner_of_the_shared_with_organisation_still_meets_the_gate(
+    mock_site_context, logged_in_client, course_with_topic
+):
+    course = course_with_topic(
+        access_type="application_gated", audience=CourseAudience.PUBLIC
+    )
+    course.organisations.add(OrganisationFactory())
+    learner = LearnerFactory()
+    course.shared_with.add(learner.organisation)
+    client = logged_in_client(learner.user)
+
+    content = client.get(
+        reverse(
+            "learner_interface:view_course_item",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+    initiate = client.post(
+        reverse(
+            "learner_interface:initiate_course_access",
+            kwargs={"course_slug": course.slug},
+        )
+    )
+
+    assert content.status_code == 302
+    assert initiate["Location"] == reverse(
+        "course_applications:apply", kwargs={"course_slug": course.slug}
+    )
+
+
 # ---------------------------------------------------------------------------
 # 2. CTA branching — course_detail
 # ---------------------------------------------------------------------------

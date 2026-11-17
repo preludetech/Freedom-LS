@@ -1244,6 +1244,20 @@ class TestRegisterForCourseOrganisationCheck:
 
         assert not LearnerCourseRegistration.objects.filter(learner=learner).exists()
 
+    def test_a_course_shared_with_the_learners_organisation_is_registered(
+        self, mock_site_context
+    ):
+        learner = LearnerFactory()
+        course = CourseFactory(audience=CourseAudience.ORGANISATION_LEARNERS)
+        course.organisations.add(OrganisationFactory())
+        course.shared_with.add(learner.organisation)
+
+        register_for_course(learner, course)
+
+        assert LearnerCourseRegistration.objects.filter(
+            learner=learner, course=course
+        ).exists()
+
 
 @pytest.mark.django_db
 class TestDecideAdd:

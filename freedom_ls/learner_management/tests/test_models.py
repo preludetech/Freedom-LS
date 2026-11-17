@@ -488,6 +488,28 @@ class TestRegistrationOrganisationCheck:
 
         registration.full_clean(exclude=["site"])
 
+    def test_an_individual_registration_on_a_shared_course_is_accepted(
+        self, mock_site_context
+    ):
+        learner = LearnerFactory()
+        course = CourseFactory(audience=CourseAudience.ORGANISATION_LEARNERS)
+        course.organisations.add(OrganisationFactory())
+        course.shared_with.add(learner.organisation)
+        registration = LearnerCourseRegistration(learner=learner, course=course)
+
+        registration.full_clean(exclude=["site"])
+
+    def test_a_cohort_registration_on_a_shared_course_is_accepted(
+        self, mock_site_context
+    ):
+        cohort = CohortFactory()
+        course = CourseFactory(audience=CourseAudience.ORGANISATION_LEARNERS)
+        course.organisations.add(OrganisationFactory())
+        course.shared_with.add(cohort.organisation)
+        registration = CohortCourseRegistration(cohort=cohort, course=course)
+
+        registration.full_clean(exclude=["site"])
+
     # A course can gain organisations after a registration was made. The rows
     # made before that stay editable; only switching an inactive one back on
     # is a new grant of access and is refused.

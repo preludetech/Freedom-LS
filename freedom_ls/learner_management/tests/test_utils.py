@@ -590,6 +590,18 @@ class TestRegisterCohortForCourseOrganisationCheck:
 
         assert not cohort.course_registrations.exists()
 
+    def test_a_course_shared_with_the_cohorts_organisation_is_registered(
+        self, mock_site_context
+    ):
+        cohort = CohortFactory()
+        course = CourseFactory(audience=CourseAudience.ORGANISATION_LEARNERS)
+        course.organisations.add(OrganisationFactory())
+        course.shared_with.add(cohort.organisation)
+
+        register_cohort_for_course(cohort, course)
+
+        assert cohort.course_registrations.filter(course=course).exists()
+
 
 @pytest.mark.django_db
 class TestCohortRegistrationAudit:

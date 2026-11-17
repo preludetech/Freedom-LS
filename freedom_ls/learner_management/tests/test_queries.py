@@ -2358,6 +2358,16 @@ class TestOpenToOrganisation:
 
         assert is_course_open_to_organisation(course, organisation) is True
 
+    def test_a_shared_course_of_another_organisation_is_open(
+        self, organisation: Organisation
+    ) -> None:
+        course = _course_open_to(
+            OrganisationFactory(), audience=CourseAudience.ORGANISATION_LEARNERS
+        )
+        course.shared_with.add(organisation)
+
+        assert is_course_open_to_organisation(course, organisation) is True
+
     def test_a_course_of_another_organisation_is_not_open(
         self, organisation: Organisation
     ) -> None:
@@ -2376,10 +2386,14 @@ class TestOpenToOrganisation:
         _course_open_to(
             OrganisationFactory(), audience=CourseAudience.ORGANISATION_LEARNERS
         )
+        shared_course = _course_open_to(
+            OrganisationFactory(), audience=CourseAudience.ORGANISATION_LEARNERS
+        )
+        shared_course.shared_with.add(organisation)
 
         listed = Course.objects.filter(open_to_organisation_expression(organisation))
 
-        assert list(listed) == [open_course]
+        assert set(listed) == {open_course, shared_course}
 
 
 @pytest.mark.django_db
