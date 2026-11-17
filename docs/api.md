@@ -13,8 +13,9 @@ This page covers what every API endpoint shares, then each API endpoint in turn:
   registered for or interested in each course, and how far each registration has got;
 - [course applications](#course-applications);
 - [referral codes](#referral-codes), [referral code hits](#referral-code-hits),
-  [signup attributions](#signup-attributions) and [first-touch counts](#first-touch-counts),
-  the site's referral tracking data.
+  [signup attributions](#signup-attributions), [attribution touches](#attribution-touches),
+  [conversions](#conversions) and [first-touch counts](#first-touch-counts), the site's referral
+  tracking data.
 
 ## Before you start
 
@@ -51,7 +52,7 @@ expiry, rotate it.
 | --- | --- |
 | `users` | `User` |
 | `course_applications` | `CourseApplication` and its answers |
-| `referral_data` | `ReferralCode`, `ReferralCodeHit`, `SignupAttribution`, `FirstTouchCount` |
+| `referral_data` | `ReferralCode`, `ReferralCodeHit`, `SignupAttribution`, `AttributionTouch`, `Conversion`, `FirstTouchCount` |
 | `registrations_and_progress` | `LearnerCourseRegistration`, `CohortCourseRegistration`, `CourseInterest`, `CourseProgress` |
 
 `registrations_and_progress` reads learner course registrations, cohort course registrations,
@@ -174,6 +175,8 @@ its rows change after they are written, and whether anything records the change.
 | `referral-codes` | `created_at` | none | [Full pull](#full-pull) |
 | `referral-code-hits` | `hit_at` | `updated_since` on `hit_at` | [Checkpoint](#checkpoint) |
 | `signup-attributions` | `signed_up_at` | `updated_since` on `signed_up_at` | [Checkpoint](#checkpoint) |
+| `attribution-touches` | `recorded_at` | `updated_since` on `recorded_at` | [Checkpoint](#checkpoint) |
+| `conversions` | `recorded_at` | `updated_since` on `recorded_at` | [Checkpoint](#checkpoint) |
 | `first-touch-counts` | `day` | `day_since` on `day` | [Lookback](#lookback) |
 
 Every filter is inclusive: it returns rows at or after the value you give.
@@ -185,9 +188,9 @@ ISO 8601 with a timezone offset or `Z`, such as `2026-11-03T02:00:00Z`. A time w
 or one that does not parse, is a 400.
 
 On users, course registrations, course interest, course progress and course applications the filter field is
-`updated_at`. Referral code hits and signup attributions are never changed once written, so they have no `updated_at`: there `updated_since` compares against
-`hit_at` or `signed_up_at`, the time the row was written. Both are stamped before the write
-commits, so the same 5-minute margin applies.
+`updated_at`. Referral code hits, signup attributions, attribution touches and conversions are never changed once written, so they have no `updated_at`: there `updated_since` compares against
+`hit_at`, `signed_up_at` or `recorded_at`, the time the row was written. All three are stamped
+before the write commits, so the same 5-minute margin applies.
 
 To sync without missing changes:
 
@@ -240,13 +243,15 @@ Deactivation is visible: a deactivated row shows up again with `is_active` set t
 | `referral-codes` | Deactivated: `is_active: false`. | Never deleted. |
 | `referral-code-hits` | Nothing. | Older than `REFERRAL_TRACKING_HIT_RETENTION_DAYS` (365 by default), when the deployment's scheduled housekeeping run deletes it. |
 | `signup-attributions` | Nothing. | Its user is deleted. The attribution goes with the user. |
+| `attribution-touches` | Nothing. | Its user is deleted. The touch goes with the user. A touch a conversion points at cannot be deleted on its own. |
+| `conversions` | Nothing. | Its user is deleted. The conversion goes with the user. |
 | `first-touch-counts` | Nothing. | Never deleted. |
 
 To catch the invisible ones, run a periodic full pull (no filter) and remove the rows whose `id`
 it no longer returns. Remove them only once the pull has finished, when `next` is `null`: a pull
 that fails halfway has not returned the rows it never reached. Whether to keep pruned hits is
-yours to decide; deleted users' data, including their registrations, course interest and signup
-attribution, is yours to delete.
+yours to decide; deleted users' data, including their registrations, course interest, signup
+attribution, attribution touches and conversions, is yours to delete.
 
 ### Example: checkpoint sync
 
@@ -280,6 +285,8 @@ PATHS = {
     "course-applications": "updated_at",
     "referral-code-hits": "hit_at",
     "signup-attributions": "signed_up_at",
+    "attribution-touches": "recorded_at",
+    "conversions": "recorded_at",
 }
 
 
@@ -874,13 +881,15 @@ A deleted application is not reported; it stops appearing. See [Deletions](#dele
 
 ## Referral data
 
-Four API endpoints read a site's referral tracking: the codes handed out to partners, the log of
-each visit to a code, where each signed-up user first came from, and a daily tally of first
-landings per campaign. All four need the `referral_data` API scope. Every `id` is a UUID string.
+Six API endpoints read a site's referral tracking: the codes handed out to partners, the log of
+each visit to a code, where each signed-up user first came from, each later landing by a known
+user, each conversion with the codes in play, and a daily tally of first landings per campaign.
+All six need the `referral_data` API scope. Every `id` is a UUID string.
 
 A field named `referral_code` means different things on different API endpoints. On referral
-code hits it is the `id` of a referral code. On signup attributions and first-touch counts it is
-the code text captured from the visitor's link, which may match no referral code.
+code hits it is the `id` of a referral code. On signup attributions, attribution touches,
+conversions and first-touch counts it is the code text captured from the visitor's link, which
+may match no referral code.
 
 Blank text is `""`, never `null`.
 
@@ -992,6 +1001,144 @@ the users API endpoint.
 **Not returned:** `client_ip`, `user_agent`, `ga_cookie`, `fbp_cookie` and `fbc_cookie`. No key
 or API scope returns them. They stay behind the Django admin's view permission and export.
 
+## Attribution touches
+
+`/api/v1/attribution-touches/` lists each tracked landing by a known user: one row per landing,
+written once and never changed.
+
+| | |
+| --- | --- |
+| API scope | `referral_data` |
+| List | `GET /api/v1/attribution-touches/` |
+| Detail | `GET /api/v1/attribution-touches/<id>/` |
+| Ordering field | `recorded_at` |
+| Filters | `updated_since` (on `recorded_at`), `user`, `referral_code`, plus `cursor` and `page_size` on the list |
+| Recipe | [Checkpoint](#checkpoint) on `recorded_at` |
+
+### Fields
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | string (UUID) | Upsert on this. |
+| `user` | integer | The user's `id`, as the [users](#users) API endpoint returns it. |
+| `user_email` | string | The user's current sign-in address. |
+| `advert_code` | string | May be empty. |
+| `referral_code` | string | The code text from the landing's link, not an `id`. It may match no referral code. May be empty. |
+| `utm_source` | string | May be empty. |
+| `utm_medium` | string | May be empty. |
+| `utm_campaign` | string | May be empty. |
+| `utm_content` | string | May be empty. |
+| `utm_term` | string | May be empty. |
+| `landing_path` | string | The path of the landing. May be empty on a touch written by a flush. |
+| `occurred_at` | string (ISO 8601) | When the landing happened. |
+| `recorded_at` | string (ISO 8601) | When the row was written. Drives paging and `updated_since`. |
+| `recorded_via` | string | How the row was written. See "How a touch was recorded" below. |
+
+### Two clocks
+
+`occurred_at` is when the landing happened. `recorded_at` is when the row was written. The two can
+be days apart: a visitor lands on Monday and signs up on Thursday, so the touch is written on
+Thursday with `occurred_at` on Monday and `recorded_via` set to `signup_flush`.
+
+Checkpoint on `recorded_at`, which is what `updated_since` filters and the ordering field. Sort a
+timeline of a user's landings on `occurred_at`.
+
+### How a touch was recorded
+
+| `recorded_via` | Meaning |
+| --- | --- |
+| `live` | Written when the landing happened, for a user who was signed in. |
+| `signup_flush` | Written later, when the visitor signed up, from the attribution cookie. |
+| `login_flush` | Written later, when the visitor signed in, from the attribution cookie. |
+
+### Filters
+
+- `user` takes a user id, an integer. A value that is not an integer is a 400.
+- `referral_code` takes code text and ignores case.
+- An unknown query parameter is ignored, not rejected, so a misspelled filter returns every row.
+
+A touch is never changed once written. It is deleted with its user; see
+[Deletions](#deletions). A touch that a conversion points at cannot be deleted on its own.
+
+**Not returned:** IP address, user agent, referer, raw query, click ids and cookie ids. The touch
+holds none of them.
+
+## Conversions
+
+`/api/v1/conversions/` lists each conversion: a user signing up, applying for a course, showing
+interest in a course or registering for one, with the referral codes in play when it happened.
+
+| | |
+| --- | --- |
+| API scope | `referral_data` |
+| List | `GET /api/v1/conversions/` |
+| Detail | `GET /api/v1/conversions/<id>/` |
+| Ordering field | `recorded_at` |
+| Filters | `updated_since` (on `recorded_at`), `user`, `kind`, `referral_code`, `first_referral_code`, `last_referral_code`, plus `cursor` and `page_size` on the list |
+| Recipe | [Checkpoint](#checkpoint) on `recorded_at` |
+
+### Fields
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | string (UUID) | Upsert on this. |
+| `user` | integer | The user's `id`, as the [users](#users) API endpoint returns it. |
+| `user_email` | string | The user's current sign-in address. |
+| `kind` | string | What the user did. See "Kinds" below. |
+| `target_label` | string | What the conversion was for. See "Kinds" below. May be empty. |
+| `occurred_at` | string (ISO 8601) | When the action happened. |
+| `recorded_at` | string (ISO 8601) | When the row was written. Drives paging and `updated_since`. |
+| `window_days` | integer | The attribution window, in days, when the conversion was resolved. |
+| `first_touch` | string (UUID) or `null` | The `id` of the earliest [attribution touch](#attribution-touches) in play. `null` when none was. |
+| `last_touch` | string (UUID) or `null` | The `id` of the latest touch in play. `null` when none was. |
+| `first_referral_code` | string | The `referral_code` of the first touch, as text. `""` when there was none. |
+| `last_referral_code` | string | The `referral_code` of the last touch, as text. `""` when there was none. |
+
+### Two clocks
+
+`occurred_at` is when the action happened. `recorded_at` is when the row was written. Checkpoint
+on `recorded_at`, which is what `updated_since` filters and the ordering field. Sort a timeline on
+`occurred_at`.
+
+### Kinds
+
+| `kind` | `target_label` holds |
+| --- | --- |
+| `account_signup` | `Account signup`. |
+| `course_application` | The course's title. |
+| `course_interest` | The course's title. |
+| `course_registration` | The course's title. |
+
+`target_label` is a copy taken when the conversion was recorded. It does not follow a later
+course rename.
+
+### First and last touch
+
+`first_touch` and `last_touch` are the earliest and latest touches in play within `window_days`
+when the conversion was resolved. They are the same `id` when one touch was in play. When none
+was, both are `null` and both codes are `""`. That is a recorded answer, not missing data.
+
+A row is final once written: a touch recorded later never changes an earlier conversion.
+`window_days` is the window at the time the conversion was resolved, not today's setting. The API
+picks no credit model; choose first touch or last touch in your own query.
+
+### Filters
+
+- `user` takes a user id, an integer. A value that is not an integer is a 400.
+- `kind` takes one of `account_signup`, `course_application`, `course_interest` or
+  `course_registration`. Any other value is a 400.
+- `first_referral_code` and `last_referral_code` take code text and match only their own field.
+- `referral_code` matches a conversion whose first or last code is the given one, so counting its
+  rows does not give first-touch or last-touch credit. Use `first_referral_code` or
+  `last_referral_code` for that.
+- All three code filters ignore case.
+- An unknown query parameter is ignored, not rejected, so a misspelled filter returns every row.
+
+A conversion is never changed once written. It is deleted with its user; see
+[Deletions](#deletions).
+
+**Not returned:** the conversion's target, other than `target_label`.
+
 ## First-touch counts
 
 `/api/v1/first-touch-counts/` lists a daily tally of first landings per attribution key: the
@@ -1043,4 +1190,6 @@ to compare campaigns against each other, not as an absolute number.
   on the day its attribution key fields changed.
 - **Counts are not fraud-checked.** Anyone can mint first touches with made-up query strings.
 - **No conversion uploads.** Without IP address, user agent and cookie ids, this data cannot feed
-  a Google or Meta conversion upload.
+  a Google or Meta conversion upload. That means uploading conversions to those ad platforms. It
+  is not the [conversions](#conversions) API endpoint, which reads FreedomLS's own conversion
+  records.
