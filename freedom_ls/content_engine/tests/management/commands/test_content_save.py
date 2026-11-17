@@ -3827,7 +3827,7 @@ title: A course
 ---
 """)
 
-    with pytest.raises(ValueError, match="not a TOPIC or COURSE_PART"):
+    with pytest.raises(ValueError, match="this file is a"):
         save_content_to_db(tmp_path, site.name)
 
 
@@ -4023,3 +4023,47 @@ def test_an_unplaced_quiz_in_a_sibling_directory_loads_with_its_sections(
 
     assert Form.objects.count() == 1
     assert _section_rows() == (["Key Ideas"], [])
+
+
+@pytest.mark.django_db
+def test_a_bad_section_path_leaves_nothing_written(site, mock_site_context, tmp_path):
+    _write_part_with_quiz(tmp_path, sections_line="sections:\n  - ../nowhere.md")
+
+    with pytest.raises(ValueError, match="nowhere"):
+        save_content_to_db(tmp_path, site.name)
+
+    assert Topic.objects.count() == 0
+    assert CoursePart.objects.count() == 0
+    assert Form.objects.count() == 0
+    assert FormQuestion.objects.count() == 0
+    assert FormQuestionTopic.objects.count() == 0
+    assert FormQuestionCoursePart.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_two_bad_section_paths_are_both_in_the_message(
+    site, mock_site_context, tmp_path
+):
+    _write_part_with_quiz(
+        tmp_path, sections_line="sections:\n  - ../one.md\n  - ../two.md"
+    )
+
+    with pytest.raises(ValueError, match=r"\.\./one\.md") as error:
+        save_content_to_db(tmp_path, site.name)
+
+    assert "../one.md" in str(error.value)
+    assert "../two.md" in str(error.value)
+
+
+@pytest.mark.django_db
+def test_a_section_outside_the_loaded_directory_fails_the_load(
+    site, mock_site_context, tmp_path
+):
+    _write_part_with_quiz(
+        tmp_path, sections_line="sections:\n  - ../01. key-ideas/content.md"
+    )
+
+    with pytest.raises(ValueError, match="outside the directory"):
+        save_content_to_db(tmp_path / "03. knowledge-check", site.name)
+
+    assert FormQuestion.objects.count() == 0

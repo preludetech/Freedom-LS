@@ -583,11 +583,14 @@ def _reference_error(
     problem: str,
     fix: str,
     header: str = "Broken widget reference",
+    resolved: Path | None = None,
 ) -> str:
     """Build the error block for a path that does not resolve.
 
     Same header/field/problem/given-value/fix layout as
-    `_category_reference_error`, without its declared-list section.
+    `_category_reference_error`, without its declared-list section. A
+    `resolved` path adds a line under the given value, so the path as written
+    and as resolved both show.
     """
     lines = [
         f"\n❌ {header} in {file_path}",
@@ -596,9 +599,10 @@ def _reference_error(
         f"  • Field: {field}",
         f"    Problem: {problem}",
         f"    Given value: {path!r}",
-        "",
-        f"    {fix}",
     ]
+    if resolved is not None:
+        lines.append(f"    Resolved to: {resolved}")
+    lines += ["", f"    {fix}"]
     return "\n".join(lines)
 
 
@@ -868,7 +872,8 @@ def validate_children_lists(all_parsed: Sequence[BaseBaseContentModel]) -> list[
                 item.content_type,
                 f"children[{index}]",
                 str(entries[index].path),
-                **_NAMED_TWICE,
+                _NAMED_TWICE["problem"],
+                _NAMED_TWICE["fix"],
                 header="Invalid children list",
             )
             for index in sorted(repeated)
@@ -923,6 +928,82 @@ def effective_sections(
     if "sections" in question.model_fields_set:
         return question, question.sections or []
     return form, form.sections or []
+
+
+def section_error(
+    declarer: SectionsDeclarer,
+    index: int,
+    path: Path,
+    resolved: Path,
+    problem: str,
+    fix: str,
+) -> str:
+    """The error block for one bad entry in a sections: list."""
+    field = f"sections[{index}]"
+    if isinstance(declarer, FormQuestion):
+        field = f"{_target_label(declarer, 0)} → {field}"
+    return _reference_error(
+        declarer.file_path,
+        declarer.content_type,
+        field,
+        str(path),
+        problem,
+        fix,
+        header="Invalid section reference",
+        resolved=resolved,
+    )
+
+
+_SECTION_TYPES = frozenset({ContentType.COURSE_PART, ContentType.TOPIC})
+
+SECTION_FILE_FIX = (
+    "Name a part's part.yaml or a topic's markdown file; paths are relative "
+    "to this file's directory."
+)
+SECTION_REPEATED_FIX = "Name each section once."
+SECTION_OUTSIDE_FIX = "Load a directory that holds both the form and the section."
+
+
+def validate_question_sections(
+    all_parsed: Sequence[BaseBaseContentModel], *, read_outside: bool = True
+) -> list[str]:
+    """Check every sections: list, on a form and on each question that sets its own.
+
+    With read_outside, a target beyond the validated path is read from disk,
+    as a single-directory validate run needs. content_save passes False: it
+    links only rows it loads in the same run. Every error is reported.
+    """
+    parsed = {content_key(item.file_path): item for item in all_parsed}
+    lookup = _ParsedByPath(all_parsed).get if read_outside else parsed.get
+    errors: list[str] = []
+    for declarer in all_parsed:
+        if not isinstance(declarer, (Form, FormQuestion)) or not declarer.sections:
+            continue
+        keys = [resolve_author_path(declarer.file_path, p) for p in declarer.sections]
+        repeated = _repeated_indices(keys)
+        for index, (given, key) in enumerate(zip(declarer.sections, keys, strict=True)):
+            target = lookup(key)
+            problem_fix: tuple[str, str] | None = None
+            if not key.is_file():
+                problem_fix = ("no file at this path", SECTION_FILE_FIX)
+            elif target is None and not read_outside:
+                problem_fix = (
+                    "this file is not loaded with the form: it sits outside "
+                    "the directory content_save was given",
+                    SECTION_OUTSIDE_FIX,
+                )
+            elif target is None:
+                continue
+            elif target.content_type not in _SECTION_TYPES:
+                problem_fix = (
+                    f"this file is a {target.content_type}",
+                    SECTION_FILE_FIX,
+                )
+            elif index in repeated:
+                problem_fix = ("this section is named twice", SECTION_REPEATED_FIX)
+            if problem_fix is not None:
+                errors.append(section_error(declarer, index, given, key, *problem_fix))
+    return errors
 
 
 def _condition_error(
@@ -1173,6 +1254,8 @@ def validate(path):
     for message in validate_due_date_placements(all_parsed):
         failed_files.append((path, message))
     for message in validate_form_conditions(all_parsed):
+        failed_files.append((path, message))
+    for message in validate_question_sections(all_parsed):
         failed_files.append((path, message))
     # A single-file run has no sibling files to resolve an image against.
     if path.is_dir():

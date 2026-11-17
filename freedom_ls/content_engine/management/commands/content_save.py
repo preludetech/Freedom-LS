@@ -57,6 +57,7 @@ from freedom_ls.content_engine.schema import Course as CourseSchema
 from freedom_ls.content_engine.signals import collection_items_synced
 from freedom_ls.content_engine.validate import (
     IMAGE_EXTENSIONS,
+    SECTION_FILE_FIX,
     SectionsDeclarer,
     collection_children,
     content_key,
@@ -64,10 +65,12 @@ from freedom_ls.content_engine.validate import (
     get_all_files,
     parse_single_file,
     resolve_author_path,
+    section_error,
     split_yaml_documents,
     validate,
     validate_children_lists,
     validate_due_date_placements,
+    validate_question_sections,
 )
 from freedom_ls.form_engine import schema as form_schema
 from freedom_ls.form_engine.models import (
@@ -802,7 +805,7 @@ def save_question_sections(
     """
     topics: list[Topic] = []
     course_parts: list[CoursePart] = []
-    for path in section_paths:
+    for index, path in enumerate(section_paths):
         key = resolve_author_path(declarer.file_path, path)
         target = content_by_path.get(key)
         if isinstance(target, Topic):
@@ -811,9 +814,14 @@ def save_question_sections(
             course_parts.append(target)
         else:
             raise ValueError(
-                f"{declarer.file_path}: question {question.question!r} names "
-                f"section {path} ({key}), which is not a TOPIC or COURSE_PART "
-                "loaded in this run"
+                section_error(
+                    declarer,
+                    index,
+                    path,
+                    key,
+                    "this file is not a TOPIC or COURSE_PART loaded in this run",
+                    SECTION_FILE_FIX,
+                )
             )
     question.topics.set(topics)
     question.course_parts.set(course_parts)
@@ -1012,6 +1020,7 @@ def save_content_to_db(path, site_name):
     placement_errors = [
         *validate_children_lists(all_parsed),
         *validate_due_date_placements(all_parsed),
+        *validate_question_sections(all_parsed, read_outside=False),
     ]
     if placement_errors:
         raise ValueError("\n".join(placement_errors))

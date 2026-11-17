@@ -13,6 +13,7 @@ from freedom_ls.content_engine.validate import (
     validate_children_lists,
     validate_due_date_placements,
     validate_form_conditions,
+    validate_question_sections,
 )
 
 # Tests for the content scanner: file discovery and cross-file validation
@@ -1548,3 +1549,162 @@ def test_validation_header_names_a_single_problem(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="Validation failed: 1 problem:"):
         validate(tmp_path)
+
+
+def _quiz(
+    directory: Path,
+    *,
+    name: str = "quiz",
+    form_sections: str = "",
+    question_sections: str = "",
+) -> Path:
+    """A quiz form directory holding one question; each argument is a verbatim
+    `sections:` line, or "" to omit the key at that level."""
+    quiz_dir = directory / name
+    _write_widget_file(
+        quiz_dir / "form.md",
+        "---\ncontent_type: FORM\nstrategy: QUIZ\ntitle: Quiz\n"
+        "quiz_show_incorrect: true\nquiz_pass_percentage: 70\n"
+        f"{form_sections}\n---\n",
+    )
+    _write_widget_file(
+        quiz_dir / "1. page.yaml",
+        "---\ncontent_type: FORM_PAGE\ntitle: Page\n---\n"
+        f"question: What is a part?\ntype: short_text\n{question_sections}\n",
+    )
+    return quiz_dir
+
+
+def _topic_file(path: Path) -> Path:
+    return _write_widget_file(path, "---\ncontent_type: TOPIC\ntitle: A Topic\n---\n")
+
+
+def _section_errors(directory: Path, *, read_outside: bool = True) -> list[str]:
+    parsed = [
+        item
+        for file_path in get_all_files(directory)
+        for item in parse_single_file(file_path)
+    ]
+    return validate_question_sections(parsed, read_outside=read_outside)
+
+
+def test_a_question_naming_a_missing_file_fails_naming_file_question_and_paths(
+    tmp_path: Path,
+):
+    _quiz(tmp_path, question_sections="sections: [../nowhere.md]")
+
+    errors = _section_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "1. page.yaml" in errors[0]
+    assert 'question "What is a part?"' in errors[0]
+    assert "sections[0]" in errors[0]
+    assert "'../nowhere.md'" in errors[0]
+    assert f"Resolved to: {tmp_path / 'nowhere.md'}" in errors[0]
+    assert "no file at this path" in errors[0]
+
+
+def _other_form(path: Path) -> Path:
+    return _quiz(path.parent.parent, name=path.parent.name) / "form.md"
+
+
+@pytest.mark.parametrize(
+    ("filename", "make_target"),
+    [
+        ("course.md", _course),
+        ("activity.md", _activity),
+        ("other/form.md", _other_form),
+    ],
+)
+def test_a_question_naming_a_non_section_file_fails_naming_its_type(
+    tmp_path: Path, filename: str, make_target
+):
+    make_target(tmp_path / filename)
+    _quiz(tmp_path, question_sections=f"sections: [../{filename}]")
+
+    errors = [e for e in _section_errors(tmp_path) if "Resolved to" in e]
+
+    assert len(errors) == 1
+    assert "this file is a" in errors[0]
+
+
+def test_a_path_listed_twice_in_one_list_fails_at_the_second_entry(tmp_path: Path):
+    _topic_file(tmp_path / "topic.md")
+    _quiz(tmp_path, question_sections="sections: [../topic.md, ../topic.md]")
+
+    errors = _section_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "sections[1]" in errors[0]
+    assert "named twice" in errors[0]
+
+
+def test_a_form_default_error_is_reported_against_the_form_file(tmp_path: Path):
+    _quiz(tmp_path, form_sections="sections: [../nowhere.md]")
+
+    errors = _section_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "form.md" in errors[0]
+    assert "question" not in errors[0]
+    assert "sections[0]" in errors[0]
+
+
+def test_a_question_override_error_is_reported_against_the_question(tmp_path: Path):
+    _topic_file(tmp_path / "topic.md")
+    _quiz(
+        tmp_path,
+        form_sections="sections: [../topic.md]",
+        question_sections="sections: [../nowhere.md]",
+    )
+
+    errors = _section_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "1. page.yaml" in errors[0]
+    assert 'question "What is a part?"' in errors[0]
+
+
+def test_two_bad_paths_are_both_reported(tmp_path: Path):
+    _quiz(tmp_path, question_sections="sections: [../one.md, ../two.md]")
+
+    errors = _section_errors(tmp_path)
+
+    assert len(errors) == 2
+
+
+def test_valid_part_and_topic_targets_pass(tmp_path: Path):
+    _topic_file(tmp_path / "topic.md")
+    _part(tmp_path / "part.yaml")
+    _quiz(tmp_path, question_sections="sections: [../topic.md, ../part.yaml]")
+
+    assert _section_errors(tmp_path) == []
+
+
+def test_a_target_outside_the_validated_path_passes_validate(tmp_path: Path):
+    _topic_file(tmp_path / "topic.md")
+    quiz_dir = _quiz(tmp_path, question_sections="sections: [../topic.md]")
+
+    validate(quiz_dir)
+
+
+def test_a_wrongly_typed_target_outside_the_validated_path_fails_validate(
+    tmp_path: Path,
+):
+    _course(tmp_path / "course.md")
+    quiz_dir = _quiz(tmp_path, question_sections="sections: [../course.md]")
+
+    with pytest.raises(ValueError, match="this file is a"):
+        validate(quiz_dir)
+
+
+def test_a_target_outside_the_loaded_directory_fails_without_read_outside(
+    tmp_path: Path,
+):
+    _topic_file(tmp_path / "topic.md")
+    quiz_dir = _quiz(tmp_path, question_sections="sections: [../topic.md]")
+
+    errors = _section_errors(quiz_dir, read_outside=False)
+
+    assert len(errors) == 1
+    assert "outside the directory" in errors[0]
