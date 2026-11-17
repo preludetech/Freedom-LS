@@ -39,8 +39,12 @@ def _hold_requests(page: Page, action_name: str) -> list[Route]:
     return held
 
 
-# The button's accessible name follows its in-flight text, so the submit button
-# is found by its type rather than by "Save".
+def _submit_button(container: Locator) -> Locator:
+    # The button's accessible name follows its in-flight text, so the submit
+    # button is found by its type rather than by "Save".
+    return container.locator("button[type=submit]:not([hidden])")
+
+
 def _held_request(page: Page, held: list[Route], index: int) -> Route:
     """The index-th parked request, once the browser has sent it."""
     while len(held) <= index:
@@ -83,7 +87,7 @@ def test_dialog_reads_uploading_while_a_file_goes_up(
     _open_upload_tab(page, live_server)
     held = _hold_requests(page, "upload")
     dialog = _open_dialog(page)
-    save = dialog.locator("button[type=submit]:not([hidden])")
+    save = _submit_button(dialog)
 
     _submit_with_file(dialog, save)
 
@@ -101,7 +105,7 @@ def test_dialog_reads_saving_when_no_file_is_chosen(
     _open_upload_tab(page, live_server)
     held = _hold_requests(page, "upload")
     dialog = _open_dialog(page)
-    save = dialog.locator("button[type=submit]:not([hidden])")
+    save = _submit_button(dialog)
 
     _submit_without_file(dialog, save)
 
@@ -119,7 +123,7 @@ def test_dialog_reads_saving_after_a_failed_upload_is_cleared(
     _open_upload_tab(page, live_server)
     held = _hold_requests(page, "upload")
     dialog = _open_dialog(page)
-    save = dialog.locator("button[type=submit]:not([hidden])")
+    save = _submit_button(dialog)
 
     _submit_with_file(dialog, save)
     expect(save).to_have_text("Uploading…", use_inner_text=True)
@@ -142,7 +146,7 @@ def test_inline_form_reads_uploading_while_a_file_goes_up(
     _open_upload_tab(page, live_server)
     held = _hold_requests(page, "upload_inline")
     form = page.locator("#stub-upload-form")
-    save = form.locator("button[type=submit]:not([hidden])")
+    save = _submit_button(form)
 
     _submit_with_file(form, save)
 
@@ -160,7 +164,7 @@ def test_inline_form_reads_saving_when_no_file_is_chosen(
     _open_upload_tab(page, live_server)
     held = _hold_requests(page, "upload_inline")
     form = page.locator("#stub-upload-form")
-    save = form.locator("button[type=submit]:not([hidden])")
+    save = _submit_button(form)
 
     _submit_without_file(form, save)
 
@@ -178,7 +182,7 @@ def test_inline_form_reads_saving_after_a_failed_upload_is_cleared(
     _open_upload_tab(page, live_server)
     held = _hold_requests(page, "upload_inline")
     form = page.locator("#stub-upload-form")
-    save = form.locator("button[type=submit]:not([hidden])")
+    save = _submit_button(form)
 
     _submit_with_file(form, save)
     expect(save).to_have_text("Uploading…", use_inner_text=True)
