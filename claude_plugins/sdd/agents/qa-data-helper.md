@@ -41,6 +41,7 @@ After creating data, give:
 - the count of each entity
 - the relationships between them
 - the URL paths where the data shows, when you can determine them
+- **Files written:** the path of every file you created or changed (factories, fixtures, data commands, scripts), or `none`. The QA run commits them, so make each one fit to keep: typed, following the project's conventions, with no hard-coded secrets
 
 After deleting or resetting data, give:
 

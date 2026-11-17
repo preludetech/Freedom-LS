@@ -118,8 +118,13 @@ management command of its own. Every data change goes through `sdd:qa-data-helpe
 `## QA Dev Data` command. Append one record per change:
 
 ```json
-{"type": "data_change", "via": "sdd:qa-data-helper or the key name", "what": "…"}
+{"type": "data_change", "via": "sdd:qa-data-helper or the key name", "what": "…", "files": ["…"]}
 ```
+
+`files` lists the paths the helper reported under **Files written** (empty when none). Those files
+(factories, fixtures, data commands) are kept: Step 17 commits them, because they help later QA
+runs and testing in projects that install this one. Never ask the user whether to keep or delete
+them, and never file a `todo.md` item about them.
 
 **Only** mark a test PARTIAL / skipped for one of two reasons: `sdd:qa-data-helper` reports the
 scenario is impossible to set up, or the ladder above ran out of configured rungs.
@@ -592,8 +597,8 @@ lists every manifestation (`test_id` + viewport), embeds the relevant screenshot
 viewport, URL, screenshot (linked relative to the report) and the result: `clean`, or the flags.
 With no `layout` records, the section says why the probe did not run.
 
-**`## Data changes`** — one row per `data_change` record: what changed, and the agent call or
-command that made it. With no records, the section says "no data changes".
+**`## Data changes`** — one row per `data_change` record: what changed, the agent call or
+command that made it, and the files it wrote. With no records, the section says "no data changes".
 
 **`## Bug status`** — one row per `bug` record, with that exact heading. At render time every bug is
 `UNRESOLVED`; Step 13 rewrites this section with final verdicts.
@@ -790,13 +795,14 @@ These six categories, and nothing else:
 5. A failure in the full run after the QA fixes:
    `add:"<section>|user|Fix the tests the full run after the QA fixes left failing: <test names>"`.
 6. Anything else the run leaves outstanding for the user, as the `sdd:outstanding-items` skill
-   defines it: a test it could not run that only they can stage, a file a helper created that they
-   must keep or delete, a decision it deferred to them:
+   defines it: a test it could not run that only they can stage, a decision it deferred to them.
+   A file a helper created is not one of these; Step 17 commits it:
    `add:"<section>|user|<what to do, naming the file or test, and what follows>"`.
 
 ### What must never be added
 
 - Deleting, resetting, re-seeding or tidying development data — Rule 2, that is your work.
+- Keeping, committing or deleting a file `sdd:qa-data-helper` wrote — Step 17 commits it.
 - "Verify X yourself" for anything you could have driven in the browser.
 - An observation with no action attached — it goes in `qa_report.md` under General notes.
 - Anything already fixed this run. **FIXED** bugs live only in `qa_report.md`'s `## Bug status`, with
@@ -840,5 +846,7 @@ In project-root mode, skip this step; see `## Project-root mode`.
 
 Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
 steps with `<summary>`: `run the frontend QA pass`. Tell it to stage the QA report, the
-`screenshots/` directory, and the `todo.md` beside them. The bugfixers' own commits are already in;
-this one carries the QA artifacts.
+`screenshots/` directory, the `todo.md` beside them, and every path in the `files` lists of this
+run's `data_change` records, by explicit path (Step 16 deleted the scratch file, so read them from
+the report's `## Data changes`). The bugfixers' own commits are already in; this one
+carries the QA artifacts and the data helpers' files.
