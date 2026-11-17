@@ -1166,7 +1166,9 @@ def validate(path):
     # Report all failures at the end
     if failed_files:
         error_report = ["\n" + "=" * 80]
-        error_report.append(f"❌ Validation failed for {len(failed_files)} file(s):")
+        count = len(failed_files)
+        problems = "problem" if count == 1 else "problems"
+        error_report.append(f"❌ Validation failed: {count} {problems}:")
         error_report.append("=" * 80)
 
         for _file_path, error_msg in failed_files:

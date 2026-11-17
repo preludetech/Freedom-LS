@@ -1695,3 +1695,22 @@ def test_a_condition_naming_an_unknown_slug_fails(tmp_path: Path) -> None:
         result, 'when.question names "employer_pay", which no question in this form'
     )
     assert "Declared slugs: employer_pays." in result.stdout + result.stderr
+
+
+def test_validation_header_counts_problems(tmp_path: Path) -> None:
+    content = tmp_path / "content"
+    content.mkdir()
+    (content / "intro.md").write_text(
+        "---\ncontent_type: TOPIC\ntitle: Intro\n---\n\nBody.\n", encoding="utf-8"
+    )
+    (content / "course.md").write_text(
+        "---\ncontent_type: COURSE\ntitle: A Course\nchildren:\n"
+        "  - path: intro.md\n  - path: intro.md\n  - path: intro.md\n---\n",
+        encoding="utf-8",
+    )
+
+    result = run_validator(content)
+
+    combined = result.stdout + result.stderr
+    assert combined.count("Name each child once.") == 2
+    assert "Validation failed: 2 problems:" in combined
