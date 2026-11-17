@@ -18,6 +18,7 @@ from typing import cast
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.paginator import Page
 from django.http import HttpRequest, HttpResponse
+from django.middleware.csrf import get_token
 from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.utils.safestring import SafeString
@@ -221,6 +222,7 @@ def _render_reason_dialog(
         "confirm_variant": "primary",
         "loading_text": "Archiving",
         "reason_form": form,
+        "csrf_token": get_token(request),
     }
     return render_to_string("panel_framework/reference/_reason_dialog.html", context)
 
