@@ -8,8 +8,10 @@ from typing import cast
 import pytest
 
 from django.core.management import call_command
+from django.test import override_settings
 
 from freedom_ls.panel_framework.checks import (
+    check_task_backend,
     default_sort_errors,
     filter_key_errors,
     panel_errors,
@@ -324,3 +326,52 @@ def test_call_command_check_passes_on_the_real_config() -> None:
     gc.collect()
 
     call_command("check")
+
+
+@pytest.mark.parametrize(
+    "backend",
+    [
+        "django.tasks.backends.immediate.ImmediateBackend",
+        "django.tasks.backends.dummy.DummyBackend",
+    ],
+)
+def test_non_durable_task_backend_warns_w001(backend: str) -> None:
+    # Arrange
+    tasks = {"default": {"BACKEND": backend}}
+
+    # Act
+    with override_settings(DEBUG=False, TASKS=tasks):
+        messages = check_task_backend(app_configs=None)
+
+    # Assert
+    assert len(messages) == 1
+    assert messages[0].id == "freedom_ls_panel_framework.W001"
+    assert backend in messages[0].msg
+
+
+@pytest.mark.parametrize(
+    ("debug", "tasks"),
+    [
+        (
+            True,
+            {
+                "default": {
+                    "BACKEND": "django.tasks.backends.immediate.ImmediateBackend"
+                }
+            },
+        ),
+        (False, {"default": {"BACKEND": "django_tasks_db.DatabaseBackend"}}),
+        (False, {}),
+        (False, {"default": {}}),
+    ],
+    ids=["debug_on", "durable_backend", "no_tasks", "no_backend_key"],
+)
+def test_task_backend_check_is_silent_when_nothing_is_wrong(
+    debug: bool, tasks: dict[str, dict[str, str]]
+) -> None:
+    # Arrange / Act
+    with override_settings(DEBUG=debug, TASKS=tasks):
+        messages = check_task_backend(app_configs=None)
+
+    # Assert
+    assert messages == []

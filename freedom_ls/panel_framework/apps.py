@@ -10,6 +10,10 @@ class PanelFrameworkConfig(AppConfig):
     def ready(self) -> None:
         from django.core.checks import register
 
-        from freedom_ls.panel_framework.checks import check_panels
+        from freedom_ls.panel_framework.checks import (
+            check_panels,
+            check_task_backend,
+        )
 
         register(check_panels)
+        register(check_task_backend)

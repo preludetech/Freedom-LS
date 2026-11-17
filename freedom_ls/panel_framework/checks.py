@@ -8,7 +8,7 @@ from importlib import import_module
 
 from django.apps import AppConfig
 from django.conf import settings
-from django.core.checks import CheckMessage, Error
+from django.core.checks import CheckMessage, Error, Warning
 
 from freedom_ls.panel_framework.field_display import label_for_field
 from freedom_ls.panel_framework.panels import DataTablePanel, Panel
@@ -20,6 +20,35 @@ from freedom_ls.panel_framework.views import ListViewConfig, ListViewPanel
 
 _TABLE_KEY_PATTERN = re.compile(r"^[a-z0-9_]+$")
 _RESERVED_FILTER_KEYS = {"q", "sort", "page", "export"}
+
+_NON_DURABLE_BACKENDS = (
+    "django.tasks.backends.immediate.ImmediateBackend",
+    "django.tasks.backends.dummy.DummyBackend",
+)
+
+
+def check_task_backend(
+    *,
+    app_configs: Sequence[AppConfig] | None,
+    databases: Sequence[str] | None = None,
+    **kwargs: object,
+) -> list[CheckMessage]:
+    """Warn when background bulk actions would run inline or not at all."""
+    backend = settings.TASKS.get("default", {}).get("BACKEND", "")
+    if settings.DEBUG or backend not in _NON_DURABLE_BACKENDS:
+        return []
+    return [
+        Warning(
+            f"TASKS['default'] uses {backend}.",
+            hint=(
+                "Bulk actions over BULK_BACKGROUND_THRESHOLD rows run as background "
+                "tasks and need a durable backend with a worker. Add "
+                "freedom_ls_panel_framework.W001 to SILENCED_SYSTEM_CHECKS if "
+                "this is intended."
+            ),
+            id="freedom_ls_panel_framework.W001",
+        )
+    ]
 
 
 def check_panels(
