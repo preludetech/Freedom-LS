@@ -19,7 +19,9 @@ class ApiScope(models.TextChoices):
 _DESCRIPTIONS: dict[ApiScope, str] = {
     ApiScope.USERS: "User",
     ApiScope.COURSE_APPLICATIONS: "CourseApplication and its answers",
-    ApiScope.REFERRAL_DATA: "ReferralCode, ReferralCodeHit, SignupAttribution, FirstTouchCount",
+    ApiScope.REFERRAL_DATA: (
+        "ReferralCode, ReferralCodeHit, SignupAttribution, FirstTouchCount, AttributionTouch"
+    ),
     ApiScope.REGISTRATIONS_AND_PROGRESS: (
         "LearnerCourseRegistration, CohortCourseRegistration, CourseInterest, CourseProgress"
     ),

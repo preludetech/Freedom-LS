@@ -4,25 +4,29 @@ from __future__ import annotations
 
 import json
 from base64 import urlsafe_b64encode
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
 
+import factory
 import pytest
 
 from django.urls import reverse
 from rest_framework.test import APIClient
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.api.factories import ApiKeyFactory
 from freedom_ls.api.scopes import ApiScope
-from freedom_ls.api.tests.helpers import collect_pages
+from freedom_ls.api.tests.helpers import collect_pages, query_count
 from freedom_ls.referral_tracking.factories import (
+    AttributionTouchFactory,
     FirstTouchCountFactory,
     ReferralCodeFactory,
     ReferralCodeHitFactory,
     SignupAttributionFactory,
 )
 from freedom_ls.referral_tracking.models import (
+    AttributionTouch,
     FirstTouchCount,
     ReferralCode,
     ReferralCodeHit,
@@ -116,6 +120,43 @@ RESOURCES = [
             "count",
         },
         id="first_touch_counts",
+    ),
+    pytest.param(
+        "api:attribution_touch_list",
+        "api:attribution_touch_detail",
+        AttributionTouchFactory,
+        "AttributionTouch",
+        {
+            "id",
+            "user",
+            "user_email",
+            "advert_code",
+            "referral_code",
+            "utm_source",
+            "utm_medium",
+            "utm_campaign",
+            "utm_content",
+            "utm_term",
+            "landing_path",
+            "occurred_at",
+            "recorded_at",
+            "recorded_via",
+        },
+        id="attribution_touches",
+    ),
+]
+
+BASE = datetime(2030, 1, 1, tzinfo=UTC)
+
+# (list URL name, model, factory, factory overrides that keep a batch inside
+# the model's unique constraint)
+FEED_RESOURCES = [
+    pytest.param(
+        "api:attribution_touch_list",
+        AttributionTouch,
+        AttributionTouchFactory,
+        {"occurred_at": factory.Sequence(lambda n: BASE + timedelta(seconds=n))},
+        id="attribution_touches",
     ),
 ]
 
@@ -705,3 +746,125 @@ def test_the_counts_next_link_keeps_day_since_and_page_size(client, auth, settin
 
     assert "day_since=2030-01-01" in body["next"]
     assert "page_size=2" in body["next"]
+
+
+@pytest.mark.parametrize(
+    ("list_name", "model", "row_factory", "distinct_rows"), FEED_RESOURCES
+)
+class TestRecordedAtFeed:
+    def test_rows_come_back_in_recorded_at_order_across_pages(
+        self, client, auth, settings, list_name, model, row_factory, distinct_rows
+    ):
+        settings.API_PAGE_SIZE = 2
+        first, second, third = (row_factory(**distinct_rows) for _ in range(3))
+        for row, day in ((first, 3), (second, 2), (third, 1)):
+            model._base_manager.filter(pk=row.pk).update(
+                recorded_at=datetime(2030, 1, day, tzinfo=UTC)
+            )
+
+        pages = collect_pages(client, reverse(list_name), auth)
+
+        assert [[row["id"] for row in page["results"]] for page in pages] == [
+            [str(third.pk), str(second.pk)],
+            [str(first.pk)],
+        ]
+
+    def test_the_query_count_does_not_grow_with_the_page_size(
+        self, client, auth, list_name, model, row_factory, distinct_rows
+    ):
+        for _ in range(6):
+            row_factory(**distinct_rows)
+        query_count(client, reverse(list_name), {"page_size": 50}, auth)
+
+        small = query_count(client, reverse(list_name), {"page_size": 2}, auth)
+        large = query_count(client, reverse(list_name), {"page_size": 50}, auth)
+
+        assert small == large
+
+    def test_1500_rows_with_one_recorded_at_page_without_loss_or_repeat(
+        self,
+        client,
+        auth,
+        settings,
+        mock_site_context,
+        list_name,
+        model,
+        row_factory,
+        distinct_rows,
+    ):
+        settings.API_MAX_PAGE_SIZE = 500
+        user = UserFactory()
+        rows = row_factory.build_batch(1500, user=user, **distinct_rows)
+        model._base_manager.bulk_create(rows)
+        model._base_manager.update(recorded_at=BASE)
+
+        pages = collect_pages(client, reverse(list_name) + "?page_size=500", auth)
+
+        ids = [row["id"] for page in pages for row in page["results"]]
+        assert len(ids) == 1500
+        assert len(set(ids)) == 1500
+
+    def test_updated_since_includes_a_row_at_that_instant_and_excludes_one_before(
+        self, client, auth, list_name, model, row_factory, distinct_rows
+    ):
+        at = row_factory(**distinct_rows)
+        before = row_factory(**distinct_rows)
+        model._base_manager.filter(pk=at.pk).update(recorded_at=BASE)
+        model._base_manager.filter(pk=before.pk).update(
+            recorded_at=BASE - timedelta(seconds=1)
+        )
+
+        body = client.get(
+            reverse(list_name), {"updated_since": "2030-01-01T00:00:00Z"}, headers=auth
+        ).json()
+
+        assert [row["id"] for row in body["results"]] == [str(at.pk)]
+
+    def test_a_naive_updated_since_is_400_naming_the_parameter(
+        self, client, auth, list_name, model, row_factory, distinct_rows
+    ):
+        response = client.get(
+            reverse(list_name), {"updated_since": "2030-01-01T00:00:00"}, headers=auth
+        )
+
+        assert response.status_code == 400
+        assert "updated_since" in response.json()
+
+    def test_the_next_link_keeps_updated_since_and_page_size(
+        self, client, auth, settings, list_name, model, row_factory, distinct_rows
+    ):
+        settings.API_PAGE_SIZE = 2
+        for _ in range(3):
+            row = row_factory(**distinct_rows)
+            model._base_manager.filter(pk=row.pk).update(recorded_at=BASE)
+
+        body = client.get(
+            reverse(list_name),
+            {"updated_since": "2030-01-01T00:00:00Z", "page_size": 2},
+            headers=auth,
+        ).json()
+
+        assert "updated_since=2030-01-01T00%3A00%3A00Z" in body["next"]
+        assert "page_size=2" in body["next"]
+
+
+def test_a_touch_recorded_late_for_an_old_occurrence_comes_back_on_the_second_page(
+    client, auth, settings
+):
+    settings.API_PAGE_SIZE = 2
+    early, middle = (
+        AttributionTouchFactory(occurred_at=BASE + timedelta(days=day))
+        for day in (5, 6)
+    )
+    late_arrival = AttributionTouchFactory(occurred_at=BASE)
+    for touch, day in ((early, 1), (middle, 2), (late_arrival, 3)):
+        AttributionTouch._base_manager.filter(pk=touch.pk).update(
+            recorded_at=BASE + timedelta(days=day)
+        )
+
+    pages = collect_pages(client, reverse("api:attribution_touch_list"), auth)
+
+    assert [[row["id"] for row in page["results"]] for page in pages] == [
+        [str(early.pk), str(middle.pk)],
+        [str(late_arrival.pk)],
+    ]

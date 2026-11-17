@@ -14,7 +14,13 @@ from freedom_ls.api.routers import router
 from freedom_ls.api.scopes import ApiScope
 from freedom_ls.api.viewsets import ReadOnlyApiViewSet
 
-from .models import FirstTouchCount, ReferralCode, ReferralCodeHit, SignupAttribution
+from .models import (
+    AttributionTouch,
+    FirstTouchCount,
+    ReferralCode,
+    ReferralCodeHit,
+    SignupAttribution,
+)
 
 
 class ReferralCodeApiSerializer(serializers.ModelSerializer):
@@ -190,4 +196,58 @@ class FirstTouchCountApiViewSet(ReadOnlyApiViewSet):
 
 router.register(
     "first-touch-counts", FirstTouchCountApiViewSet, basename="first_touch_count"
+)
+
+
+class RecordedAtFilterSet(django_filters.FilterSet):
+    # Touches and conversions are append-only; recorded_at is stamped when the
+    # row is written, so it never moves backwards relative to rows already read.
+    updated_since = AwareIsoDateTimeFilter(
+        field_name="recorded_at",
+        lookup_expr="gte",
+        help_text="Rows whose recorded_at is at or after this instant.",
+    )
+
+
+class AttributionTouchApiSerializer(serializers.ModelSerializer):
+    user_email = serializers.EmailField(source="user.email", read_only=True)
+
+    class Meta:
+        model = AttributionTouch
+        # key_hash is withheld: it is an internal dedup key, not attribution data.
+        fields = (
+            "id",
+            "user",
+            "user_email",
+            "advert_code",
+            "referral_code",
+            "utm_source",
+            "utm_medium",
+            "utm_campaign",
+            "utm_content",
+            "utm_term",
+            "landing_path",
+            "occurred_at",
+            "recorded_at",
+            "recorded_via",
+        )
+        read_only_fields = fields
+
+
+class AttributionTouchFilterSet(RecordedAtFilterSet):
+    class Meta:
+        model = AttributionTouch
+        fields: list[str] = []
+
+
+class AttributionTouchApiViewSet(ReadOnlyApiViewSet):
+    queryset = AttributionTouch._base_manager.select_related("user")
+    cursor_field = "recorded_at"
+    filterset_class = AttributionTouchFilterSet
+    required_scope = ApiScope.REFERRAL_DATA
+    serializer_class = AttributionTouchApiSerializer
+
+
+router.register(
+    "attribution-touches", AttributionTouchApiViewSet, basename="attribution_touch"
 )
