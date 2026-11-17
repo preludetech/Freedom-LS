@@ -49,7 +49,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - ⚪ Priority not set · `learner-interface-features-5-protected-video` (Learner interface features)
 - ⚪ Priority not set · `from-address-system-check` (Tooling and operations)
 - ⚪ Priority not set · `housekeeping-sentry-cron-checkin` (Tooling and operations)
-- ⚪ Priority not set · `learner-import-management-command` (Tooling and operations)
 - ⚪ Priority not set · `forced-site-name-for-host-based-site-lookup` (Tooling and operations)
 - ⚪ Priority not set · `dev-site-bootstrap-command` (Tooling and operations)
 
@@ -372,11 +371,10 @@ Developer tooling, deployment and downstream fixes.
 
 - `from-address-system-check` — **ready** — A `mail` system check warns when the email backend really delivers but `DEFAULT_FROM_EMAIL` is blank.
 - `housekeeping-sentry-cron-checkin` — **ready** — When a monitor slug is configured, `fls_run_housekeeping` checks in with Sentry Crons.
-- `learner-import-management-command` — **ready** — A management command that previews and commits the learner CSV import for one named site.
 - `forced-site-name-for-host-based-site-lookup` — **ready** — `FORCE_SITE_NAME` reaches host-based site lookup in development, so every dev port works.
 - `dev-site-bootstrap-command` — **ready** — A development command that creates the forced-name dev Site and a verified dev superuser.
 
 ![Tooling and operations](roadmap_diagrams/tooling-and-operations.svg)
 
 **Notes**
-- `housekeeping-sentry-cron-checkin`, `learner-import-management-command`, `forced-site-name-for-host-based-site-lookup` and `dev-site-bootstrap-command` are pull-ins from First-Class-LMS.
+- `housekeeping-sentry-cron-checkin`, `forced-site-name-for-host-based-site-lookup` and `dev-site-bootstrap-command` are pull-ins from First-Class-LMS.

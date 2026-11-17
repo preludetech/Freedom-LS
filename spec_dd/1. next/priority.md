@@ -35,6 +35,5 @@ adds anything missing under "Priority not set"; move it from there to the level 
 - `learner-profile-use-panels-framework`
 - `from-address-system-check`
 - `housekeeping-sentry-cron-checkin`
-- `learner-import-management-command`
 - `forced-site-name-for-host-based-site-lookup`
 - `dev-site-bootstrap-command`
