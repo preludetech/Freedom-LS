@@ -20,6 +20,7 @@ from freedom_ls.api.scopes import ApiScope
 from freedom_ls.api.tests.helpers import collect_pages, query_count
 from freedom_ls.referral_tracking.factories import (
     AttributionTouchFactory,
+    ConversionFactory,
     FirstTouchCountFactory,
     ReferralCodeFactory,
     ReferralCodeHitFactory,
@@ -27,6 +28,7 @@ from freedom_ls.referral_tracking.factories import (
 )
 from freedom_ls.referral_tracking.models import (
     AttributionTouch,
+    Conversion,
     FirstTouchCount,
     ReferralCode,
     ReferralCodeHit,
@@ -144,6 +146,27 @@ RESOURCES = [
         },
         id="attribution_touches",
     ),
+    pytest.param(
+        "api:conversion_list",
+        "api:conversion_detail",
+        ConversionFactory,
+        "Conversion",
+        {
+            "id",
+            "user",
+            "user_email",
+            "kind",
+            "target_label",
+            "occurred_at",
+            "recorded_at",
+            "window_days",
+            "first_touch",
+            "last_touch",
+            "first_referral_code",
+            "last_referral_code",
+        },
+        id="conversions",
+    ),
 ]
 
 BASE = datetime(2030, 1, 1, tzinfo=UTC)
@@ -157,6 +180,13 @@ FEED_RESOURCES = [
         AttributionTouchFactory,
         {"occurred_at": factory.Sequence(lambda n: BASE + timedelta(seconds=n))},
         id="attribution_touches",
+    ),
+    pytest.param(
+        "api:conversion_list",
+        Conversion,
+        ConversionFactory,
+        {"object_id": factory.Sequence(str)},
+        id="conversions",
     ),
 ]
 
@@ -868,3 +898,40 @@ def test_a_touch_recorded_late_for_an_old_occurrence_comes_back_on_the_second_pa
         [str(early.pk), str(middle.pk)],
         [str(late_arrival.pk)],
     ]
+
+
+def test_a_conversion_with_no_touches_and_blank_codes_serialises_nulls_and_blanks(
+    client, auth
+):
+    ConversionFactory(first_touch=None, last_touch=None)
+
+    row = client.get(reverse("api:conversion_list"), headers=auth).json()["results"][0]
+
+    assert row["first_touch"] is None
+    assert row["last_touch"] is None
+    assert row["first_referral_code"] == ""
+    assert row["last_referral_code"] == ""
+
+
+def test_a_conversion_serialises_its_touch_ids_as_strings(client, auth):
+    user = UserFactory()
+    first, last = AttributionTouchFactory.create_batch(2, user=user)
+    ConversionFactory(user=user, first_touch=first, last_touch=last)
+
+    row = client.get(reverse("api:conversion_list"), headers=auth).json()["results"][0]
+
+    assert row["first_touch"] == str(first.pk)
+    assert row["last_touch"] == str(last.pk)
+
+
+def test_a_conversion_whose_target_was_deleted_is_still_listed_with_its_label(
+    client, auth
+):
+    target = UserFactory()
+    conversion = ConversionFactory(target=target, target_label="Deleted target")
+    target.delete()
+
+    body = client.get(reverse("api:conversion_list"), headers=auth).json()
+
+    assert [row["id"] for row in body["results"]] == [str(conversion.pk)]
+    assert body["results"][0]["target_label"] == "Deleted target"

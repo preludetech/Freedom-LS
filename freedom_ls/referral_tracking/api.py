@@ -16,6 +16,7 @@ from freedom_ls.api.viewsets import ReadOnlyApiViewSet
 
 from .models import (
     AttributionTouch,
+    Conversion,
     FirstTouchCount,
     ReferralCode,
     ReferralCodeHit,
@@ -251,3 +252,46 @@ class AttributionTouchApiViewSet(ReadOnlyApiViewSet):
 router.register(
     "attribution-touches", AttributionTouchApiViewSet, basename="attribution_touch"
 )
+
+
+class ConversionApiSerializer(serializers.ModelSerializer):
+    user_email = serializers.EmailField(source="user.email", read_only=True)
+
+    class Meta:
+        model = Conversion
+        # content_type and object_id are withheld: the target is described by
+        # the frozen target_label, which survives the target being deleted.
+        fields = (
+            "id",
+            "user",
+            "user_email",
+            "kind",
+            "target_label",
+            "occurred_at",
+            "recorded_at",
+            "window_days",
+            "first_touch",
+            "last_touch",
+            "first_referral_code",
+            "last_referral_code",
+        )
+        read_only_fields = fields
+
+
+class ConversionFilterSet(RecordedAtFilterSet):
+    class Meta:
+        model = Conversion
+        fields: list[str] = []
+
+
+class ConversionApiViewSet(ReadOnlyApiViewSet):
+    # first_touch and last_touch render as bare ids from the *_id columns, so
+    # they are deliberately not select_related.
+    queryset = Conversion._base_manager.select_related("user")
+    cursor_field = "recorded_at"
+    filterset_class = ConversionFilterSet
+    required_scope = ApiScope.REFERRAL_DATA
+    serializer_class = ConversionApiSerializer
+
+
+router.register("conversions", ConversionApiViewSet, basename="conversion")

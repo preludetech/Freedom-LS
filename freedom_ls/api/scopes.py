@@ -20,7 +20,7 @@ _DESCRIPTIONS: dict[ApiScope, str] = {
     ApiScope.USERS: "User",
     ApiScope.COURSE_APPLICATIONS: "CourseApplication and its answers",
     ApiScope.REFERRAL_DATA: (
-        "ReferralCode, ReferralCodeHit, SignupAttribution, FirstTouchCount, AttributionTouch"
+        "ReferralCode, ReferralCodeHit, SignupAttribution, FirstTouchCount, AttributionTouch, Conversion"
     ),
     ApiScope.REGISTRATIONS_AND_PROGRESS: (
         "LearnerCourseRegistration, CohortCourseRegistration, CourseInterest, CourseProgress"
