@@ -1925,19 +1925,17 @@ class LearnerConfig(OrganisationSectionConfig, ListViewConfig):
 
 
 class CourseDataTable(DataTable):
-    empty_message = (
-        "No courses yet. Courses open to this organisation will appear here."
-    )
+    empty_message = "Courses available to your organisation will appear here."
     empty_no_results = "No courses match these filters."
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
-        # Most courses are shared across the site, and a course that belongs
-        # to organisations is listed only for the ones it is open to. The
+        # The list holds the courses available to the organisation plus those
+        # it holds a registration for. The
         # list, the counts and the cells are all read through the organisation
         # in view: the cohorts and learners counted and linked on each row are
         # narrowed to what this educator may see, and another organisation's
-        # cohorts never show through a shared course.
+        # cohorts never show through a course shared with this one.
         scoped = cast(OrganisationScopedRequest, request)
         visible_cohorts = cohorts_visible_to(scoped.user, scoped.organisation)
         visible_learners = learners_visible_to(scoped.user, scoped.organisation)
@@ -2485,7 +2483,7 @@ class CourseLearnerRegistrationDataTable(DataTable):
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
-        # Most courses are shared across the site, so the registrations are scoped through the organisation's learners rather than through the course.
+        # A course can be available to several organisations, so the registrations are scoped through the organisation's learners rather than through the course.
         organisation = cast(OrganisationScopedRequest, request).organisation
         return (
             LearnerCourseRegistration.objects.select_related("learner__user", "course")

@@ -60,6 +60,7 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course as CourseModel
+from freedom_ls.content_engine.models import CourseAudience
 from freedom_ls.educator_interface import views as educator_views
 from freedom_ls.educator_interface.actions import DeactivateLearnersBulkAction
 from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
@@ -70,6 +71,7 @@ from freedom_ls.educator_interface.learner_import import (
 )
 from freedom_ls.educator_interface.messaging import OwnConversation
 from freedom_ls.educator_interface.tests.helpers import (
+    course_per_reach_row,
     get_interface_page,
     organisation_admin_viewer,
     page_after_adding_rows,
@@ -81,6 +83,7 @@ from freedom_ls.educator_interface.tests.interface_walk import (
 )
 from freedom_ls.educator_interface.views import (
     CohortDataTable,
+    CourseDataTable,
     active_status_badge,
     learner_status_badge,
 )
@@ -9084,3 +9087,64 @@ def test_the_audit_log_names_a_person_with_initials_alone() -> None:
 
     assert person.display_name in content
     assert profile_picture_sources(content) == []
+
+
+LISTED_AND_DETAIL = [
+    ("no_owner", True),
+    ("owned", True),
+    ("shared", True),
+    ("held", True),
+    ("unreached", False),
+]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(("row", "reached"), LISTED_AND_DETAIL)
+def test_the_courses_list_holds_a_course_only_when_it_reaches_the_organisation(
+    mock_site_context: Site,
+    logged_in_client: Callable[[User], Client],
+    row: str,
+    reached: bool,
+):
+    organisation = OrganisationFactory()
+    courses = course_per_reach_row(organisation)
+    client = logged_in_client(organisation_admin_viewer(organisation))
+
+    response = client.get(_interface_url(organisation.slug, "courses"))
+
+    assert response.status_code == 200
+    assert (str(courses[row].pk) in response.content.decode()) is reached
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(("row", "reached"), LISTED_AND_DETAIL)
+def test_the_course_detail_url_answers_only_for_a_course_that_reaches_the_organisation(
+    mock_site_context: Site,
+    logged_in_client: Callable[[User], Client],
+    row: str,
+    reached: bool,
+):
+    organisation = OrganisationFactory()
+    courses = course_per_reach_row(organisation)
+    client = logged_in_client(organisation_admin_viewer(organisation))
+
+    response = client.get(
+        _interface_url(organisation.slug, f"courses/{courses[row].pk}")
+    )
+
+    assert response.status_code == (200 if reached else 404)
+
+
+@pytest.mark.django_db
+def test_the_courses_list_renders_its_empty_state_when_no_course_is_available(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+):
+    organisation = OrganisationFactory()
+    CourseFactory(audience=CourseAudience.PUBLIC).organisations.add(
+        OrganisationFactory()
+    )
+    client = logged_in_client(organisation_admin_viewer(organisation))
+
+    response = client.get(_interface_url(organisation.slug, "courses"))
+
+    assert CourseDataTable.empty_message in response.content.decode()

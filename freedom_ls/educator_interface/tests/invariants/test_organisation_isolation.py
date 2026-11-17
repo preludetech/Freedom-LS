@@ -494,8 +494,8 @@ class TestCrossOrganisationIsolation:
     def test_course_detail_cohort_registrations_never_show_organisation_bs_cohort(
         self, isolation: SimpleNamespace
     ) -> None:
-        """Most courses are shared across organisations; the cohorts registered
-        for one are not."""
+        """A course with no owning organisation is available to every
+        organisation; the cohorts registered for one are not."""
         CohortCourseRegistrationFactory(
             cohort=isolation.cohort_a, course=isolation.course_a
         )
@@ -520,6 +520,22 @@ class TestCrossOrganisationIsolation:
         course = CourseFactory(
             title="Organisation Course Of B",
             audience=CourseAudience.ORGANISATION_LEARNERS,
+        )
+        course.organisations.add(isolation.organisation_b)
+
+        response = isolation.client.get(
+            _interface_url(isolation.organisation_a.slug, "courses")
+        )
+
+        assert response.status_code == 200
+        assert isolation.course_a.title in response.content.decode()
+        assert course.title not in response.content.decode()
+
+    def test_an_unshared_public_course_of_b_is_absent_from_as_list(
+        self, isolation: SimpleNamespace
+    ) -> None:
+        course = CourseFactory(
+            title="Public Course Of B", audience=CourseAudience.PUBLIC
         )
         course.organisations.add(isolation.organisation_b)
 

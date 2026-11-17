@@ -287,9 +287,26 @@ def open_to_organisation_expression(organisation: Organisation) -> Q:
     with it.
 
     The expression only ever widens: learner self-join of public courses goes
-    through the same gate, so it must keep accepting every public course."""
+    through the same gate, so it must keep accepting every public course.
+
+    It deliberately differs from available_to_organisation_expression:
+    another organisation's public course is open for a registration to be
+    held, but not available to this organisation's educators."""
     return (
         open_to_everyone_expression()
+        | Q(_through_has_organisation(Course.organisations.through, organisation))
+        | Q(_through_has_organisation(Course.shared_with.through, organisation))
+    )
+
+
+def available_to_organisation_expression(organisation: Organisation) -> Q:
+    """Courses this organisation's educators may list, preview and register
+    for: a course with no owning organisation, one it owns, or one an owning
+    organisation has shared with it. Audience plays no part: a public course
+    is open to every learner but reaches other organisations' educators only
+    through a course share."""
+    return (
+        ~is_organisation_course_expression()
         | Q(_through_has_organisation(Course.organisations.through, organisation))
         | Q(_through_has_organisation(Course.shared_with.through, organisation))
     )
@@ -312,6 +329,13 @@ def is_in_audience(user: RequestUser, course: Course) -> bool:
 def is_course_open_to_organisation(course: Course, organisation: Organisation) -> bool:
     """Single-course form of open_to_organisation_expression."""
     return _course_matches(course, open_to_organisation_expression(organisation))
+
+
+def is_course_available_to_organisation(
+    course: Course, organisation: Organisation
+) -> bool:
+    """Single-course form of available_to_organisation_expression."""
+    return _course_matches(course, available_to_organisation_expression(organisation))
 
 
 class CourseNotOpenError(ValueError):
@@ -541,11 +565,11 @@ def courses_visible_to(
     user: RequestUser, organisation: Organisation
 ) -> QuerySet[Course]:
     """Courses this user may see in this organisation: every published
-    course open to it, plus any course a visible cohort or learner holds a
-    registration for, active or not. A hidden or coming-soon course, or one
-    that has since closed to this organisation, shows only through such a
-    registration. A course of other organisations that nobody here is
-    registered for is left out, superusers included."""
+    course available to it, plus any course a visible cohort or learner holds
+    a registration for, active or not. A hidden or coming-soon course, or one
+    that is no longer available to this organisation, shows only through such
+    a registration. A course owned by other organisations and not shared with
+    this one shows only through such a registration, superusers included."""
     # Subqueries, not joins: CourseDataTable annotates Count() over the same
     # relations, and a filter join would narrow those counts.
     through_cohorts = CohortCourseRegistration.objects.filter(
@@ -555,27 +579,27 @@ def courses_visible_to(
         learner__in=learners_visible_to(user, organisation)
     ).values("course_id")
     held = Q(pk__in=through_cohorts) | Q(pk__in=through_learners)
-    open_to = open_to_organisation_expression(organisation)
-    resolved = _resolved_or_none(user, Course.objects.filter(open_to | held))
+    available = available_to_organisation_expression(organisation)
+    resolved = _resolved_or_none(user, Course.objects.filter(available | held))
     if resolved is not None:
         return resolved
     return Course.objects.filter(
-        (open_to & Q(visibility=CourseVisibility.PUBLISHED)) | held
+        (available & Q(visibility=CourseVisibility.PUBLISHED)) | held
     )
 
 
 def registerable_courses(organisation: Organisation) -> QuerySet[Course]:
-    """Published and hidden courses open to the organisation, by title;
+    """Published and hidden courses available to the organisation, by title;
     coming-soon courses cannot be registered for."""
     return (
-        Course.objects.filter(open_to_organisation_expression(organisation))
+        Course.objects.filter(available_to_organisation_expression(organisation))
         .exclude(visibility=CourseVisibility.COMING_SOON)
         .order_by("title")
     )
 
 
 def registerable_courses_for(cohort: Cohort) -> QuerySet[Course]:
-    """Registerable courses open to the cohort's organisation that the cohort
+    """Registerable courses available to the cohort's organisation that the cohort
     holds no active registration for. A course with an inactive registration
     is offered, and registering it reactivates that row."""
     return registerable_courses(cohort.organisation).exclude(
@@ -584,7 +608,7 @@ def registerable_courses_for(cohort: Cohort) -> QuerySet[Course]:
 
 
 def registerable_courses_for_learner(learner: Learner) -> QuerySet[Course]:
-    """Registerable courses open to the learner's organisation that the learner
+    """Registerable courses available to the learner's organisation that the learner
     holds no active individual registration for. A course with an inactive
     registration is offered."""
     return registerable_courses(learner.organisation).exclude(

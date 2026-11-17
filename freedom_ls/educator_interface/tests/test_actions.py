@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 import uuid
@@ -55,6 +56,7 @@ from freedom_ls.educator_interface.events import (
     STAFF_CHANGED,
 )
 from freedom_ls.educator_interface.staff import current_role_entries
+from freedom_ls.educator_interface.tests.helpers import course_per_reach_row
 from freedom_ls.educator_interface.views import CohortConfig, OrganisationScopedRequest
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.factories import (
@@ -9877,3 +9879,86 @@ def test_a_membership_dialog_on_a_cohort_page_reads_its_learner_once(
         pair = action._pair(ctx)
 
     assert pair == (learner, cohort)
+
+
+REGISTERABLE_ROWS = [
+    ("no_owner", True),
+    ("owned", True),
+    ("shared", True),
+    ("held", False),
+    ("unreached", False),
+]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "action",
+    [RegisterForCourseBulkAction, RegisterCohortForCourseBulkAction],
+)
+@pytest.mark.parametrize(
+    ("row", "outcome"),
+    [
+        ("no_owner", contextlib.nullcontext()),
+        ("owned", contextlib.nullcontext()),
+        ("shared", contextlib.nullcontext()),
+        ("held", pytest.raises(Http404)),
+        ("unreached", pytest.raises(Http404)),
+    ],
+)
+def test_a_bulk_register_picker_resolves_a_course_only_when_it_is_registerable(
+    mock_site_context: Site,
+    action: type[RegisterForCourseBulkAction | RegisterCohortForCourseBulkAction],
+    row: str,
+    outcome: contextlib.AbstractContextManager[object],
+):
+    organisation = OrganisationFactory()
+    courses = course_per_reach_row(organisation)
+
+    with outcome:
+        action().resolve_target(organisation, {"course": str(courses[row].pk)})
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(("row", "registered"), REGISTERABLE_ROWS)
+def test_registering_a_cohort_for_a_course_works_only_when_it_is_registerable(
+    staff_client: Client, row: str, registered: bool
+):
+    organisation = OrganisationFactory()
+    courses = course_per_reach_row(organisation)
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+
+    response = _post(
+        staff_client,
+        _register_url(organisation, cohort),
+        {"course": str(courses[row].pk)},
+    )
+
+    assert (
+        response.status_code,
+        CohortCourseRegistration.objects.filter(
+            cohort=cohort, course=courses[row]
+        ).exists(),
+    ) == ((204 if registered else 422), registered)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(("row", "registered"), REGISTERABLE_ROWS)
+def test_registering_a_learner_for_a_course_works_only_when_it_is_registerable(
+    staff_client: Client, row: str, registered: bool
+):
+    organisation = OrganisationFactory()
+    courses = course_per_reach_row(organisation)
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+
+    response = _post(
+        staff_client,
+        _learner_register_url(organisation, learner),
+        {"course": str(courses[row].pk)},
+    )
+
+    assert (
+        response.status_code,
+        LearnerCourseRegistration.objects.filter(
+            learner=learner, course=courses[row]
+        ).exists(),
+    ) == ((204 if registered else 422), registered)

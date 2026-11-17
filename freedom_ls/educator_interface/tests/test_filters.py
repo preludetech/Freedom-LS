@@ -25,6 +25,7 @@ from freedom_ls.educator_interface.filters import (
     StaffRoleFilter,
     VisibleCourseFilter,
 )
+from freedom_ls.educator_interface.tests.helpers import course_per_reach_row
 from freedom_ls.educator_interface.views import (
     AuditLogEntryTable,
     CohortDataTable,
@@ -735,3 +736,42 @@ def test_the_audit_log_filters_on_the_when_parameter(audit_request):
     )
 
     assert list(rows) == [recent]
+
+
+COURSE_REACH_ROWS = [
+    ("no_owner", True),
+    ("owned", True),
+    ("shared", True),
+    ("held", True),
+    ("unreached", False),
+]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(("row", "offered"), COURSE_REACH_ROWS)
+def test_visible_course_filter_offers_a_course_only_when_it_reaches_the_organisation(
+    site_aware_request, row: str, offered: bool
+):
+    organisation = OrganisationFactory()
+    courses = course_per_reach_row(organisation)
+    request = _educator_request(site_aware_request, organisation)
+
+    choices = VisibleCourseFilter(
+        "course", "Course", lookup="course_registrations__course"
+    ).get_choices(request)
+
+    assert ((str(courses[row].pk), courses[row].title) in choices) is offered
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(("row", "offered"), COURSE_REACH_ROWS)
+def test_learner_course_filter_offers_a_course_only_when_it_reaches_the_organisation(
+    site_aware_request, row: str, offered: bool
+):
+    organisation = OrganisationFactory()
+    courses = course_per_reach_row(organisation)
+    request = _educator_request(site_aware_request, organisation)
+
+    choices = _course_filter().get_choices(request)
+
+    assert ((str(courses[row].pk), courses[row].title) in choices) is offered

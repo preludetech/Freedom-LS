@@ -15,6 +15,15 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
+from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.models import Course, CourseAudience
+from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortFactory,
+    LearnerCourseRegistrationFactory,
+    LearnerFactory,
+)
+from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
@@ -67,3 +76,44 @@ def page_after_adding_rows(
 
     with django_assert_max_num_queries(len(one_row.captured_queries)):
         return get_interface_page(organisation, path_string, viewer)
+
+
+def _public_course() -> Course:
+    return cast(Course, CourseFactory(audience=CourseAudience.PUBLIC))
+
+
+def course_per_reach_row(organisation: Organisation) -> dict[str, Course]:
+    """One public, published course for each way a course can stand to
+    `organisation`, keyed by row id:
+
+    - ``no_owner``: no owning organisation.
+    - ``owned``: owned by `organisation`.
+    - ``shared``: owned by another organisation and shared with `organisation`.
+    - ``held``: owned by another organisation, not shared, but a cohort and a
+      learner of `organisation` each hold an inactive registration on it.
+    - ``unreached``: owned by another organisation, not shared, with no
+      registration held by `organisation`.
+    """
+    other = OrganisationFactory()
+    owned = _public_course()
+    owned.organisations.add(organisation)
+    shared = _public_course()
+    shared.organisations.add(other)
+    shared.shared_with.add(organisation)
+    held = _public_course()
+    held.organisations.add(other)
+    CohortCourseRegistrationFactory(
+        cohort=CohortFactory(organisation=organisation), course=held, is_active=False
+    )
+    LearnerCourseRegistrationFactory(
+        learner=LearnerFactory(organisation=organisation), course=held, is_active=False
+    )
+    unreached = _public_course()
+    unreached.organisations.add(other)
+    return {
+        "no_owner": _public_course(),
+        "owned": owned,
+        "shared": shared,
+        "held": held,
+        "unreached": unreached,
+    }

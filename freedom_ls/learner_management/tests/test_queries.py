@@ -48,6 +48,7 @@ from freedom_ls.learner_management.queries import (
     ResolvedRegistration,
     active_organisation_admins,
     all_cohorts_visible_to,
+    available_to_organisation_expression,
     can_on_any,
     can_view_cohort,
     cohort_counts,
@@ -64,6 +65,7 @@ from freedom_ls.learner_management.queries import (
     educators_of,
     holds_registration_for_any_expression,
     in_audience_expression,
+    is_course_available_to_organisation,
     is_course_open_to_organisation,
     is_in_audience,
     is_registered_for_course_expression,
@@ -2397,6 +2399,60 @@ class TestOpenToOrganisation:
 
 
 @pytest.mark.django_db
+class TestAvailableToOrganisation:
+    @pytest.fixture
+    def organisation(self, mock_site_context: Site) -> Organisation:
+        return cast(Organisation, OrganisationFactory())
+
+    @pytest.fixture
+    def courses(self, organisation: Organisation) -> dict[str, Course]:
+        other = OrganisationFactory()
+        shared = _course_open_to(other, audience=CourseAudience.PUBLIC)
+        shared.shared_with.add(organisation)
+        return {
+            "no_owner": cast(Course, CourseFactory(audience=CourseAudience.PUBLIC)),
+            "owned": _course_open_to(organisation, audience=CourseAudience.PUBLIC),
+            "shared": shared,
+            "held": _course_open_to(other, audience=CourseAudience.PUBLIC),
+            "unreached": _course_open_to(other, audience=CourseAudience.PUBLIC),
+        }
+
+    @pytest.mark.parametrize(
+        ("row", "expected"),
+        [
+            ("no_owner", True),
+            ("owned", True),
+            ("shared", True),
+            ("held", False),
+            ("unreached", False),
+        ],
+    )
+    def test_a_course_is_available_only_to_its_reach_row(
+        self,
+        organisation: Organisation,
+        courses: dict[str, Course],
+        row: str,
+        expected: bool,
+    ) -> None:
+        assert (
+            is_course_available_to_organisation(courses[row], organisation) is expected
+        )
+
+    def test_the_queryset_form_agrees_with_the_single_course_form(
+        self, organisation: Organisation, courses: dict[str, Course]
+    ) -> None:
+        listed = Course.objects.filter(
+            available_to_organisation_expression(organisation)
+        )
+
+        assert set(listed) == {
+            courses["no_owner"],
+            courses["owned"],
+            courses["shared"],
+        }
+
+
+@pytest.mark.django_db
 class TestCoursesVisibleToOrganisationCourses:
     def test_an_educator_does_not_see_another_organisations_course(
         self, mock_site_context: Site
@@ -2407,11 +2463,37 @@ class TestCoursesVisibleToOrganisationCourses:
         own = _course_open_to(
             organisation, audience=CourseAudience.ORGANISATION_LEARNERS
         )
+        shared = _course_open_to(
+            OrganisationFactory(), audience=CourseAudience.ORGANISATION_LEARNERS
+        )
+        shared.shared_with.add(organisation)
         _course_open_to(
             OrganisationFactory(), audience=CourseAudience.ORGANISATION_LEARNERS
         )
 
-        assert list(courses_visible_to(educator, organisation)) == [own]
+        visible = courses_visible_to(educator, organisation)
+
+        assert set(visible) == {own, shared}
+
+    def test_an_educator_does_not_see_another_organisations_unshared_public_course(
+        self, mock_site_context: Site
+    ) -> None:
+        organisation = OrganisationFactory()
+        educator = UserFactory()
+        assign_object_role(educator, organisation, "organisation_admin")
+        _course_open_to(OrganisationFactory(), audience=CourseAudience.PUBLIC)
+
+        assert list(courses_visible_to(educator, organisation)) == []
+
+    def test_a_superuser_does_not_see_another_organisations_unshared_public_course(
+        self, mock_site_context: Site
+    ) -> None:
+        organisation = OrganisationFactory()
+        _course_open_to(OrganisationFactory(), audience=CourseAudience.PUBLIC)
+
+        visible = courses_visible_to(UserFactory(superuser=True), organisation)
+
+        assert list(visible) == []
 
     def test_a_superuser_does_not_see_another_organisations_course(
         self, mock_site_context: Site
@@ -2467,6 +2549,44 @@ class TestRegisterableCoursesOpenToOrganisation:
         )
 
         assert list(registerable_courses_for(cohort)) == []
+
+    def test_a_cohort_is_offered_a_course_shared_with_its_organisation(
+        self, mock_site_context: Site
+    ) -> None:
+        cohort = _make_cohort(organisation=OrganisationFactory())
+        shared = _course_open_to(
+            OrganisationFactory(), audience=CourseAudience.ORGANISATION_LEARNERS
+        )
+        shared.shared_with.add(cohort.organisation)
+
+        assert list(registerable_courses_for(cohort)) == [shared]
+
+    def test_a_cohort_is_not_offered_another_organisations_unshared_public_course(
+        self, mock_site_context: Site
+    ) -> None:
+        cohort = _make_cohort(organisation=OrganisationFactory())
+        _course_open_to(OrganisationFactory(), audience=CourseAudience.PUBLIC)
+
+        assert list(registerable_courses_for(cohort)) == []
+
+    def test_a_learner_is_offered_a_course_shared_with_their_organisation(
+        self, mock_site_context: Site
+    ) -> None:
+        learner = LearnerFactory()
+        shared = _course_open_to(
+            OrganisationFactory(), audience=CourseAudience.ORGANISATION_LEARNERS
+        )
+        shared.shared_with.add(learner.organisation)
+
+        assert list(registerable_courses_for_learner(learner)) == [shared]
+
+    def test_a_learner_is_not_offered_another_organisations_unshared_public_course(
+        self, mock_site_context: Site
+    ) -> None:
+        learner = LearnerFactory()
+        _course_open_to(OrganisationFactory(), audience=CourseAudience.PUBLIC)
+
+        assert list(registerable_courses_for_learner(learner)) == []
 
     def test_a_learner_is_not_offered_another_organisations_course(
         self, mock_site_context: Site
