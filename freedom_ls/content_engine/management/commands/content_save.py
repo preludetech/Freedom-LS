@@ -603,7 +603,12 @@ def save_course(item, site, base_path):
     # The access_config written here still carries the author's raw
     # application_form path; the binding pass in save_content_to_db resolves it
     # into the Course.application_form foreign key once every Form is saved.
-    organisations = _resolve_course_organisations(item, site)
+    organisations = _resolve_organisations(
+        item.organisations, "organisations", item.file_path, site
+    )
+    shared_with = _resolve_organisations(
+        item.shared_with, "shared_with", item.file_path, site
+    )
     # Written on every load, None included, so that deleting `time_limit_days`
     # from the file removes the limit; a None in the dump would be dropped.
     course = save_with_uuid(
@@ -618,31 +623,34 @@ def save_course(item, site, base_path):
             "price",
             "time_limit_days",
             "organisations",
+            "shared_with",
         },
         dashboard_category=dashboard_category,
         time_limit_days=item.time_limit_days,
         **price_fields,
     )
     # A replace, like categories: an absent key clears the link, so the file
-    # stays the single source of which organisations a course belongs to.
+    # stays the single source of which organisations own a course and which it
+    # is shared with.
     course.organisations.set(organisations)
+    course.shared_with.set(shared_with)
     return course
 
 
-def _resolve_course_organisations(item: CourseSchema, site: Site) -> list[Organisation]:
-    """Return the site's organisations named by the course, or raise naming the bad slugs."""
-    if not item.organisations:
+def _resolve_organisations(
+    slugs: list[str], field: str, file_path: Path, site: Site
+) -> list[Organisation]:
+    """Return the site's organisations named by `slugs`, or raise naming the bad ones."""
+    if not slugs:
         return []
-    found = list(
-        Organisation._base_manager.filter(site=site, slug__in=item.organisations)
-    )
-    unknown = sorted(set(item.organisations) - {o.slug for o in found})
+    found = list(Organisation._base_manager.filter(site=site, slug__in=slugs))
+    unknown = sorted(set(slugs) - {o.slug for o in found})
     if unknown:
         valid = sorted(
             Organisation._base_manager.filter(site=site).values_list("slug", flat=True)
         )
         raise ValueError(
-            f"Unknown organisations {unknown} in {item.file_path} on site "
+            f"Unknown organisations {unknown} in {field} of {file_path} on site "
             f"'{site.name}'. Valid organisation slugs: {valid}"
         )
     return found

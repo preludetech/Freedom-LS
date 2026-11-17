@@ -3195,6 +3195,119 @@ uuid: 70000000-0000-0000-0000-000000000001
 
 
 @pytest.mark.django_db
+def test_shared_with_slugs_resolve_to_the_sites_organisations(site, mock_site_context):
+    OrganisationFactory(name="Alpha", slug="alpha")
+    beta = OrganisationFactory(name="Beta", slug="beta")
+    OrganisationFactory(name="Gamma", slug="gamma")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_dir = Path(tmpdir)
+        _write_organisation_course(
+            repo_dir, "organisations:\n  - alpha\nshared_with:\n  - beta\n"
+        )
+
+        save_content_to_db(repo_dir, site.name)
+
+    course = Course.objects.get(site=site, title="Org Course")
+    assert set(course.shared_with.all()) == {beta}
+
+
+@pytest.mark.django_db
+def test_unknown_shared_with_slug_fails_naming_key_slug_file_and_valid_slugs(
+    site, mock_site_context
+):
+    OrganisationFactory(name="Alpha", slug="alpha")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_dir = Path(tmpdir)
+        _write_organisation_course(
+            repo_dir, "organisations:\n  - alpha\nshared_with:\n  - nope\n"
+        )
+
+        with pytest.raises(ValueError, match="Unknown organisations") as excinfo:
+            save_content_to_db(repo_dir, site.name)
+
+    message = str(excinfo.value)
+    assert "shared_with" in message
+    assert "nope" in message
+    assert "course.md" in message
+    assert "alpha" in message
+
+
+@pytest.mark.django_db
+def test_shared_with_slug_of_another_sites_organisation_fails(site, mock_site_context):
+    OrganisationFactory(name="Alpha", slug="alpha")
+    OrganisationFactory(name="Elsewhere", slug="elsewhere", site=SiteFactory())
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_dir = Path(tmpdir)
+        _write_organisation_course(
+            repo_dir, "organisations:\n  - alpha\nshared_with:\n  - elsewhere\n"
+        )
+
+        with pytest.raises(ValueError, match="Unknown organisations") as excinfo:
+            save_content_to_db(repo_dir, site.name)
+
+    message = str(excinfo.value)
+    assert "shared_with" in message
+    assert "elsewhere" in message
+
+
+@pytest.mark.django_db
+def test_reloading_with_a_shared_with_entry_removed_drops_that_share(
+    site, mock_site_context
+):
+    OrganisationFactory(name="Alpha", slug="alpha")
+    beta = OrganisationFactory(name="Beta", slug="beta")
+    OrganisationFactory(name="Gamma", slug="gamma")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_dir = Path(tmpdir)
+        course_file = _write_organisation_course(
+            repo_dir,
+            "organisations:\n  - alpha\nshared_with:\n  - beta\n  - gamma\n",
+        )
+        save_content_to_db(repo_dir, site.name)
+        course = Course.objects.get(site=site, title="Org Course")
+        course_file.write_text("""---
+content_type: COURSE
+title: Org Course
+uuid: 70000000-0000-0000-0000-000000000001
+organisations:
+  - alpha
+shared_with:
+  - beta
+---
+""")
+        save_content_to_db(repo_dir, site.name)
+
+    assert set(course.shared_with.all()) == {beta}
+
+
+@pytest.mark.django_db
+def test_reloading_with_the_shared_with_key_removed_clears_every_share(
+    site, mock_site_context
+):
+    OrganisationFactory(name="Alpha", slug="alpha")
+    OrganisationFactory(name="Beta", slug="beta")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_dir = Path(tmpdir)
+        course_file = _write_organisation_course(
+            repo_dir, "organisations:\n  - alpha\nshared_with:\n  - beta\n"
+        )
+        save_content_to_db(repo_dir, site.name)
+        course = Course.objects.get(site=site, title="Org Course")
+        assert course.shared_with.count() == 1
+        course_file.write_text("""---
+content_type: COURSE
+title: Org Course
+uuid: 70000000-0000-0000-0000-000000000001
+organisations:
+  - alpha
+---
+""")
+        save_content_to_db(repo_dir, site.name)
+
+    assert course.shared_with.count() == 0
+
+
+@pytest.mark.django_db
 def test_a_course_without_the_keys_defaults_to_organisation_learners(
     site, mock_site_context
 ):

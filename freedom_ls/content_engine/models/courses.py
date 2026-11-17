@@ -179,6 +179,14 @@ class Course(MarkdownContent, TitledContent):
     organisations = models.ManyToManyField(
         "freedom_ls_organisations.Organisation", blank=True, related_name="courses"
     )
+    # Organisations an owning organisation has shared the course with. Their
+    # educators list, preview and register for it as the owners' do. Only
+    # meaningful on an organisation course; the loader rejects it otherwise.
+    shared_with = models.ManyToManyField(
+        "freedom_ls_organisations.Organisation",
+        blank=True,
+        related_name="shared_courses",
+    )
     audience = models.CharField(
         max_length=32,
         choices=CourseAudience.choices,

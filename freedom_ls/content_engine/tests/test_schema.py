@@ -208,6 +208,38 @@ def test_course_multiple_categories_with_explicit_dashboard_category_validates()
     assert course.dashboard_category == "technical"
 
 
+def test_shared_with_beside_organisations_is_accepted():
+    course = Course.model_validate(
+        _course(organisations=["northwind"], shared_with=["harbour"])
+    )
+
+    assert course.shared_with == ["harbour"]
+
+
+@pytest.mark.parametrize(
+    ("overrides", "fragment"),
+    [
+        ({"shared_with": ["harbour"]}, "needs organisations"),
+        (
+            {"organisations": ["northwind"], "shared_with": ["northwind"]},
+            "names owning organisations ['northwind']",
+        ),
+        (
+            {"organisations": ["northwind"], "shared_with": ["harbour", "harbour"]},
+            "names ['harbour'] more than once",
+        ),
+    ],
+    ids=["no_owner", "names_an_owner", "repeated"],
+)
+def test_bad_shared_with_is_rejected_naming_the_file(overrides, fragment):
+    with pytest.raises(ValidationError) as exc_info:
+        Course.model_validate(_course(**overrides))
+
+    message = str(exc_info.value)
+    assert fragment in message
+    assert "courses/demo/course.md" in message
+
+
 def test_retired_category_key_fails_naming_both_replacements():
     with pytest.raises(ValidationError) as exc_info:
         Course.model_validate(_course(category="Technical"))

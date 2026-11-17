@@ -400,6 +400,13 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
         CourseAudience.ORGANISATION_LEARNERS,
         description="Who may see an organisation course: its organisations' learners, or everyone.",
     )
+    shared_with: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Slugs of other organisations the owning organisations share this "
+            "course with, resolved per site at load."
+        ),
+    )
 
     icon: str | None = Field(
         None,
@@ -471,6 +478,33 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
             "of category slugs), and 'dashboard_category' when there is more "
             "than one."
         )
+
+    @model_validator(mode="after")
+    def _validate_shared_with(self) -> "Course":
+        if not self.shared_with:
+            return self
+        if not self.organisations:
+            raise ValueError(
+                f"shared_with in {self.file_path} needs organisations: a course "
+                "with no owning organisation is already available to every "
+                "organisation. Remove shared_with or add organisations:."
+            )
+        owners = sorted(set(self.shared_with) & set(self.organisations))
+        if owners:
+            raise ValueError(
+                f"shared_with in {self.file_path} names owning organisations "
+                f"{owners}; an owning organisation already reaches its own "
+                f"course. Remove {owners} from shared_with."
+            )
+        repeated = sorted(
+            slug for slug, count in Counter(self.shared_with).items() if count > 1
+        )
+        if repeated:
+            raise ValueError(
+                f"shared_with in {self.file_path} names {repeated} more than "
+                "once. List each organisation once."
+            )
+        return self
 
     def resolve_dashboard_category(self) -> str | None:
         """The slug the dashboard should place this course under, or None.
