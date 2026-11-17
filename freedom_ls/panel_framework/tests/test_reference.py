@@ -263,6 +263,13 @@ def test_file_field_inline_example_posts_multipart_with_no_remove_checkbox() -> 
     assert 'type="checkbox"' not in block
 
 
+def test_file_field_inline_example_wrapper_disables_htmx() -> None:
+    """The inline example's Save used to post for real and nest a copy of the page."""
+    html = _examples_html()
+    start = html.index('<div id="file-field-inline"')
+    assert "hx-disable" in html[start : html.index(">", start)]
+
+
 def test_no_file_field_dialog_example_can_post() -> None:
     html = _render_examples()
     for example_id in ("file-field-dialog", "file-field-error"):

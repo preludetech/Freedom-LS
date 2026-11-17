@@ -518,7 +518,7 @@ somewhere on the page to land.
             </c-panel-card>
         </div>
 
-        <div id="file-field-inline">
+        <div id="file-field-inline" hx-disable>
             <p class="text-sm text-muted">A required file field in an inline form, which posts as multipart.</p>
             {% include "panel_framework/partials/inline_record_form.html" with form=file_field_inline_form form_id="file-field-inline-form" action_url="#file-field-inline" %}
         </div>
