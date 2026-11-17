@@ -670,10 +670,16 @@ def test_no_dialog_template_hand_writes_what_a_component_owns(rule: str) -> None
     assert offenders == []
 
 
+INLINE_FORM = (
+    FREEDOM_LS_PACKAGE_DIR
+    / "panel_framework/templates/panel_framework/partials/inline_record_form.html"
+)
+
+
 def test_every_dialog_loading_text_ends_in_the_ellipsis_character() -> None:
     offenders = [
         f"{path.name}: {match}"
-        for path in DIALOG_BODIES
+        for path in (*DIALOG_BODIES, INLINE_FORM)
         for match in re.findall(r'loading_text="[^"]*"', path.read_text())
         if "..." in match
     ]

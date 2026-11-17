@@ -2213,3 +2213,79 @@ def test_a_form_invalid_override_still_gets_the_choose_again_message() -> None:
 
     assert response.status_code == 422
     assert response.content.decode() == CHOOSE_AGAIN_MESSAGE
+
+
+class _InlineUploadAction(StubUploadFormAction):
+    action_name = "inline_upload"
+    template_name = "panel_framework/test_inline_upload_form.html"
+    renders_in_footer = False
+    autofocus_first_field = False
+
+
+class _InlineEditFileAction(EditAction):
+    template_name = "panel_framework/test_inline_upload_form.html"
+    renders_in_footer = False
+    autofocus_first_field = False
+
+
+def _inline_edit_file_action(item: StubFileModel) -> EditAction:
+    return _InlineEditFileAction(
+        form_class=_StubFileModelForm, form_title="Edit", instance=item
+    )
+
+
+def test_a_multipart_post_to_an_inline_form_action_reaches_form_valid_with_the_file() -> (
+    None
+):
+    request = RequestFactory().post(
+        "/", {"name": "Ada", "attachment": _upload(b"payload")}
+    )
+    _InlineUploadAction.received.clear()
+
+    response = _InlineUploadAction().handle_submit(_ctx(request))
+
+    assert response.content == b"saved"
+    (form,) = _InlineUploadAction.received
+    assert form.cleaned_data["attachment"].read() == b"payload"
+
+
+@pytest.mark.django_db
+def test_a_multipart_post_to_an_inline_edit_action_saves_the_file(
+    mock_site_context: Site,
+) -> None:
+    item = make_stub_file(name="Record")
+    request = RequestFactory().post(
+        "/", {"name": "Record", "attachment": _upload(b"payload")}
+    )
+    request.user = make_staff_user()
+
+    response = _inline_edit_file_action(item).handle_submit(_ctx(request, item))
+
+    assert response.status_code == 204
+    item.refresh_from_db()
+    with item.attachment.open() as saved:
+        assert saved.read() == b"payload"
+
+
+@pytest.mark.django_db
+def test_an_inline_form_get_posts_multipart(mock_site_context: Site) -> None:
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+
+    response = _InlineUploadAction().render_fragment(_ctx(request))
+
+    (form,) = lxml.html.fromstring(response.content.decode()).xpath("//form")
+    assert form.get("enctype") == "multipart/form-data"
+    assert form.get("hx-encoding") == "multipart/form-data"
+
+
+@pytest.mark.django_db
+def test_an_inline_422_asks_for_the_file_again_in_the_files_described_by_line(
+    mock_site_context: Site,
+) -> None:
+    root = _post_upload(_InlineUploadAction(), {"name": "", "attachment": _upload()})
+
+    (file_input,) = root.xpath("//input[@name='attachment']")
+    (line,) = root.xpath(f"//*[@id='{file_input.get('aria-describedby')}']")
+    assert line.get("role") == "alert"
+    assert CHOOSE_AGAIN_MESSAGE in line.text_content()
