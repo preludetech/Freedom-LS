@@ -13,6 +13,7 @@ import pytest
 from django import forms
 from django.contrib.sites.models import Site
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db.models import Model, QuerySet
 from django.http import Http404, HttpRequest, HttpResponse
 from django.template.loader import render_to_string
@@ -48,9 +49,10 @@ from .helpers import (
     make_staff_user,
     make_stub,
     make_stub_child,
+    make_stub_file,
     make_stub_protected_child,
 )
-from .stub_models import StubGrandchild, StubModel
+from .stub_models import StubFileModel, StubGrandchild, StubModel
 from .stub_panels import RecordingCapabilityConfig, StubReadOnlyAction
 
 # -- Shared test form ---------------------------------------------------
@@ -1892,3 +1894,117 @@ def test_refusal_response_renders_the_title_the_message_and_a_focused_close(
     assert len(close) == 1
     assert close[0].get("autofocus") is not None
     assert document.get_element_by_id("app-modal-title").get("autofocus") is None
+
+
+# -- File uploads --------------------------------------------------------
+
+
+class _UploadForm(forms.Form):
+    name = forms.CharField()
+    attachment = forms.FileField()
+
+
+class _StubFileModelForm(forms.ModelForm):
+    class Meta:
+        model = StubFileModel
+        fields = ["name", "attachment"]
+
+
+class StubUploadFormAction(FormPanelAction):
+    label = "Upload"
+    action_name = "upload"
+    form_class = _UploadForm
+    form_title = "Upload"
+    received: list[forms.BaseForm] = []
+
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
+        self.received.append(form)
+        return HttpResponse("saved")
+
+
+class StubFileCreateAction(CreateInstanceAction):
+    form_class = _StubFileModelForm
+    form_title = "Create file record"
+    label = "Create file record"
+    action_name = "create_file_record"
+
+    def get_success_url(self, ctx: PanelContext, instance: Model) -> str:
+        return f"/files/{instance.pk}"
+
+
+def _upload(content: bytes = b"hello", name: str = "notes.txt") -> SimpleUploadedFile:
+    return SimpleUploadedFile(name, content)
+
+
+def test_get_form_kwargs_passes_the_uploaded_files_on_a_post() -> None:
+    request = RequestFactory().post("/", {"name": "Ada", "attachment": _upload()})
+
+    kwargs = StubUploadFormAction().get_form_kwargs(_ctx(request))
+
+    assert kwargs["files"] is request.FILES
+    assert "attachment" in cast(dict[str, object], kwargs["files"])
+
+
+def test_get_form_kwargs_passes_no_files_on_a_get() -> None:
+    kwargs = StubUploadFormAction().get_form_kwargs(_ctx(RequestFactory().get("/")))
+
+    assert kwargs["files"] is None
+    assert kwargs["data"] is None
+
+
+def test_get_unbound_form_on_a_multipart_post_is_unbound_for_data_and_files() -> None:
+    request = RequestFactory().post("/", {"name": "Ada", "attachment": _upload()})
+
+    form = StubUploadFormAction().get_unbound_form(_ctx(request))
+
+    assert form.is_bound is False
+    assert form.files == {}
+
+
+def test_a_multipart_post_to_a_form_action_reaches_form_valid_with_the_file() -> None:
+    request = RequestFactory().post(
+        "/", {"name": "Ada", "attachment": _upload(b"payload")}
+    )
+    StubUploadFormAction.received.clear()
+
+    response = StubUploadFormAction().handle_submit(_ctx(request))
+
+    assert response.content == b"saved"
+    (form,) = StubUploadFormAction.received
+    assert form.cleaned_data["attachment"].read() == b"payload"
+
+
+@pytest.mark.django_db
+def test_a_multipart_post_to_an_edit_action_saves_the_file_on_the_instance(
+    mock_site_context: Site,
+) -> None:
+    item = make_stub_file(name="Record")
+    action = EditAction(form_class=_StubFileModelForm, form_title="Edit", instance=item)
+    request = RequestFactory().post(
+        "/", {"name": "Record", "attachment": _upload(b"payload")}
+    )
+    request.user = make_staff_user()
+
+    response = action.handle_submit(_ctx(request, item))
+
+    assert response.status_code == 204
+    item.refresh_from_db()
+    with item.attachment.open() as saved:
+        assert saved.read() == b"payload"
+
+
+@pytest.mark.django_db
+def test_a_multipart_post_to_a_create_action_saves_the_file(
+    mock_site_context: Site,
+) -> None:
+    request = RequestFactory().post(
+        "/", {"name": "Fresh", "attachment": _upload(b"payload")}
+    )
+    request.user = make_staff_user()
+
+    response = StubFileCreateAction().handle_submit(_ctx(request, None, "/files"))
+
+    assert response.status_code == 204
+    item = StubFileModel.objects.get(name="Fresh")
+    with item.attachment.open() as saved:
+        assert saved.read() == b"payload"

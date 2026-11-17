@@ -13,7 +13,7 @@ replaces the form with that sentence and a Close button.
 <form hx-post="{{ action_url }}"
       hx-target="#app-modal-body"
       hx-swap="innerHTML"
-      hx-disabled-elt="#app-modal-body button[type='submit']">
+      hx-disabled-elt="#app-modal-body button[type='submit']"{% if form.is_multipart %} hx-encoding="multipart/form-data" enctype="multipart/form-data"{% endif %}>
     <c-modal-body>
 {% if status_message %}
     <c-panel-notice tone="success" data-status-message>{{ status_message }}</c-panel-notice>

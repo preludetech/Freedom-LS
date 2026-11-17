@@ -76,3 +76,18 @@ class StubProtectedChild(models.Model):
 
     def __str__(self) -> str:
         return f"StubProtectedChild({self.pk})"
+
+
+class StubFileModel(models.Model):
+    """A record with an optional file. The field names no storage alias: the
+    model exists only in the test run, and the autouse fixture in
+    ``conftest.py`` swaps in a per-test directory."""
+
+    name = models.CharField(max_length=120)
+    attachment = models.FileField(upload_to="stub_files/", blank=True)
+
+    class Meta:
+        app_label = "freedom_ls_panel_framework"
+
+    def __str__(self) -> str:
+        return self.name

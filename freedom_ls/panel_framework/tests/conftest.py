@@ -13,6 +13,7 @@ import pytest_django.fixtures
 
 from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
+from django.core.files.storage import FileSystemStorage
 from django.db import connection
 
 # Relative, not the freedom_ls.-prefixed absolute form: this project's
@@ -21,7 +22,14 @@ from django.db import connection
 # here would load stub_panels.py under a second module name and hand this
 # fixture a RecordingCapabilityConfig the test files never see -- the same
 # hazard stub_panels.py's own module docstring works around for StubModel.
-from .stub_models import StubChild, StubGrandchild, StubModel, StubProtectedChild
+from .helpers import use_temp_file_storage
+from .stub_models import (
+    StubChild,
+    StubFileModel,
+    StubGrandchild,
+    StubModel,
+    StubProtectedChild,
+)
 from .stub_panels import RecordingCapabilityConfig
 
 # ---------------------------------------------------------------------------
@@ -44,12 +52,14 @@ def _panel_test_tables(django_db_setup, django_db_blocker):
     app_models["stubchild"] = StubChild
     app_models["stubgrandchild"] = StubGrandchild
     app_models["stubprotectedchild"] = StubProtectedChild
+    app_models["stubfilemodel"] = StubFileModel
 
     with django_db_blocker.unblock(), connection.schema_editor() as editor:
         editor.create_model(StubModel)
         editor.create_model(StubChild)
         editor.create_model(StubGrandchild)
         editor.create_model(StubProtectedChild)
+        editor.create_model(StubFileModel)
     # A content type row made inside a test's transaction is rolled back with
     # it while ContentType's cache keeps it, so a later test that points a
     # generic foreign key at a stub would reference a row that is gone. Make
@@ -68,14 +78,25 @@ def _panel_test_tables(django_db_setup, django_db_blocker):
         ContentType.objects.clear_cache()
 
     with django_db_blocker.unblock(), connection.schema_editor() as editor:
+        editor.delete_model(StubFileModel)
         editor.delete_model(StubProtectedChild)
         editor.delete_model(StubGrandchild)
         editor.delete_model(StubChild)
         editor.delete_model(StubModel)
+    app_models.pop("stubfilemodel", None)
     app_models.pop("stubprotectedchild", None)
     app_models.pop("stubgrandchild", None)
     app_models.pop("stubmodel", None)
     app_models.pop("stubchild", None)
+
+
+@pytest.fixture(autouse=True)
+def _stub_file_storage(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> FileSystemStorage:
+    """Keep every stub upload in the test's own directory, so no test can write
+    into MEDIA_ROOT by forgetting to ask for a storage."""
+    return use_temp_file_storage(monkeypatch, tmp_path)
 
 
 @pytest.fixture(autouse=True)

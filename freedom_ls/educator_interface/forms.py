@@ -2,8 +2,10 @@ from collections.abc import Mapping
 from typing import cast
 
 from django import forms
+from django.core.files.uploadedfile import UploadedFile
 from django.db.models import QuerySet
 from django.http import QueryDict
+from django.utils.datastructures import MultiValueDict
 
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.models import REASON_LENGTH as AUDIT_REASON_LENGTH
@@ -51,12 +53,13 @@ class BulkTargetPickerForm(forms.Form):
     def __init__(
         self,
         data: Mapping[str, str] | None = None,
+        files: MultiValueDict[str, UploadedFile] | None = None,
         *,
         field_name: str,
         queryset: QuerySet,
         label: str,
     ) -> None:
-        super().__init__(data)
+        super().__init__(data, files)
         self.fields[field_name] = forms.ModelChoiceField(
             queryset=queryset, label=label, error_messages=choice_error(label)
         )
@@ -95,9 +98,13 @@ class CohortCourseRegistrationForm(forms.Form):
     course = forms.ModelChoiceField(queryset=Course.objects.none())
 
     def __init__(
-        self, data: Mapping[str, str] | None = None, *, cohort: Cohort
+        self,
+        data: Mapping[str, str] | None = None,
+        files: MultiValueDict[str, UploadedFile] | None = None,
+        *,
+        cohort: Cohort,
     ) -> None:
-        super().__init__(data)
+        super().__init__(data, files)
         course_field = cast(forms.ModelChoiceField, self.fields["course"])
         course_field.queryset = registerable_courses_for(cohort)
 
@@ -109,9 +116,13 @@ class LearnerCourseRegistrationForm(forms.Form):
     course = forms.ModelChoiceField(queryset=Course.objects.none())
 
     def __init__(
-        self, data: Mapping[str, str] | None = None, *, learner: Learner
+        self,
+        data: Mapping[str, str] | None = None,
+        files: MultiValueDict[str, UploadedFile] | None = None,
+        *,
+        learner: Learner,
     ) -> None:
-        super().__init__(data)
+        super().__init__(data, files)
         course_field = cast(forms.ModelChoiceField, self.fields["course"])
         course_field.queryset = registerable_courses_for_learner(learner)
 
@@ -127,11 +138,12 @@ class CohortPickerForm(forms.Form):
     def __init__(
         self,
         data: Mapping[str, str] | None = None,
+        files: MultiValueDict[str, UploadedFile] | None = None,
         *,
         queryset: QuerySet[Cohort],
         field_name: str = "cohort",
     ) -> None:
-        super().__init__(data)
+        super().__init__(data, files)
         self.fields[field_name] = self.fields.pop("cohort")
         cast(forms.ModelChoiceField, self.fields[field_name]).queryset = queryset
 
@@ -154,9 +166,13 @@ class LearnerPickerForm(forms.Form):
     )
 
     def __init__(
-        self, data: QueryDict | None = None, *, queryset: QuerySet[Learner]
+        self,
+        data: QueryDict | None = None,
+        files: MultiValueDict[str, UploadedFile] | None = None,
+        *,
+        queryset: QuerySet[Learner],
     ) -> None:
-        super().__init__(data)
+        super().__init__(data, files)
         cast(LearnerMultipleChoiceField, self.fields["learners"]).queryset = queryset
 
 
@@ -172,11 +188,12 @@ class AddLearnerForm(forms.Form):
     def __init__(
         self,
         data: Mapping[str, str] | None = None,
+        files: MultiValueDict[str, UploadedFile] | None = None,
         *,
         cohorts: QuerySet[Cohort],
         preset: Cohort | None = None,
     ) -> None:
-        super().__init__(data)
+        super().__init__(data, files)
         cohort_field = cast(forms.ModelChoiceField, self.fields["cohort"])
         cohort_field.queryset = cohorts
         if preset is not None:
@@ -220,6 +237,7 @@ class AddStaffMemberForm(forms.Form):
     def __init__(
         self,
         data: Mapping[str, str] | None = None,
+        files: MultiValueDict[str, UploadedFile] | None = None,
         *,
         roles: list[tuple[str, str]],
         cohorts: QuerySet[Cohort],
@@ -230,7 +248,7 @@ class AddStaffMemberForm(forms.Form):
         if preset is not None and isinstance(data, QueryDict):
             data = data.copy()
             data.setlist("cohorts", [str(preset.pk)])
-        super().__init__(data)
+        super().__init__(data, files)
         if not new_account:
             del self.fields["first_name"]
             del self.fields["last_name"]
@@ -267,10 +285,11 @@ class ChangeRoleForm(forms.Form):
     def __init__(
         self,
         data: Mapping[str, str] | None = None,
+        files: MultiValueDict[str, UploadedFile] | None = None,
         *,
         roles: list[tuple[str, str]],
     ) -> None:
-        super().__init__(data)
+        super().__init__(data, files)
         cast(forms.ChoiceField, self.fields["new_role"]).choices = roles
 
 

@@ -312,8 +312,10 @@ class FormPanelAction(ModalPanelAction):
     refresh_on_change: tuple[str, ...] = ()
 
     def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
+        posting = ctx.request.method == "POST"
         kwargs: dict[str, object] = {
-            "data": ctx.request.POST if ctx.request.method == "POST" else None
+            "data": ctx.request.POST if posting else None,
+            "files": ctx.request.FILES if posting else None,
         }
         # form_class may be a factory function, which issubclass() rejects.
         if isinstance(self.form_class, type) and issubclass(
@@ -340,7 +342,9 @@ class FormPanelAction(ModalPanelAction):
 
     def get_unbound_form(self, ctx: PanelContext) -> forms.BaseForm:
         """A form with no data, for the dialog after a save that stays open."""
-        form = self.form_class(**{**self.get_form_kwargs(ctx), "data": None})
+        form = self.form_class(
+            **{**self.get_form_kwargs(ctx), "data": None, "files": None}
+        )
         self._mark_refresh_fields(ctx, form)
         return form
 

@@ -30,6 +30,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.db.models import Field, Model, QuerySet
 from django.http import HttpRequest, HttpResponse, QueryDict
 from django.shortcuts import get_object_or_404
+from django.utils.datastructures import MultiValueDict
 
 from freedom_ls.panel_framework.actions import (
     ConfirmAction,
@@ -110,7 +111,9 @@ def _stub_child_model() -> type[Model]:
 
 
 def _build_stub_create_form(
-    data: QueryDict | None = None, instance: Model | None = None
+    data: QueryDict | None = None,
+    instance: Model | None = None,
+    files: MultiValueDict | None = None,
 ) -> forms.ModelForm:
     """Build a ModelForm instance for StubModel, resolved lazily via the app registry."""
     StubModelCls = _stub_model()
@@ -120,7 +123,7 @@ def _build_stub_create_form(
             model = StubModelCls
             fields = ["name"]
 
-    return _StubModelForm(data, instance=instance)
+    return _StubModelForm(data, files, instance=instance)
 
 
 class StubCreateAction(CreateInstanceAction):
