@@ -1520,3 +1520,21 @@ def test_the_shipped_demo_content_has_no_condition_errors() -> None:
     demo_content = Path(__file__).resolve().parents[3] / "demo_content"
 
     assert _condition_errors(demo_content) == []
+
+
+def test_validation_header_counts_files_not_errors(tmp_path: Path) -> None:
+    """One file with two errors reports one failed file. The header used to
+    count every error as a file."""
+    _topic(tmp_path / "intro.md")
+    _write_widget_file(
+        tmp_path / "course.md",
+        "---\ncontent_type: COURSE\ntitle: A Course\nchildren:\n"
+        "  - path: intro.md\n  - path: intro.md\n  - path: intro.md\n---\n",
+    )
+
+    with pytest.raises(ValueError, match="Validation failed") as exc_info:
+        validate(tmp_path)
+
+    message = str(exc_info.value)
+    assert message.count("Name each child once.") == 2
+    assert "Validation failed for 1 file(s):" in message
