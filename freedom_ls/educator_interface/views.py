@@ -483,7 +483,7 @@ class CohortDataTable(DataTable):
         ]
 
     @staticmethod
-    def get_row_label(row: Model) -> str:
+    def get_row_label(row: object) -> str:
         return cast(Cohort, row).name
 
     @classmethod
@@ -497,7 +497,10 @@ class CohortDataTable(DataTable):
 
     @classmethod
     def filter_queryset(
-        cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
+        cls,
+        request: HttpRequest,
+        queryset: QuerySet,
+        query: TableQuery,
     ) -> QuerySet:
         # The toggle can only widen, so the table excludes inactive cohorts
         # itself whenever it offers the toggle and the toggle is unset. Another
@@ -650,7 +653,7 @@ class LearnerDataTable(DataTable):
         ]
 
     @staticmethod
-    def get_row_label(row: Model) -> str:
+    def get_row_label(row: object) -> str:
         return cast(Learner, row).user.display_name
 
     @staticmethod
@@ -742,10 +745,8 @@ class LearnerCohortsPanel(DataTablePanel):
                 cohort=OuterRef("pk"), learner=self.instance
             ).values("created_at")[:1]
         )
-        queryset: QuerySet = (
-            super()
-            .get_queryset(request)
-            .filter(cohortmembership__learner=self.instance)
+        queryset: QuerySet = cast(QuerySet, super().get_queryset(request)).filter(
+            cohortmembership__learner=self.instance
         )
         annotated: QuerySet = queryset.annotate(joined_at=joined_at)
         return annotated
@@ -916,12 +917,12 @@ class AuditLogEntryTable(DataTable):
     row_detail_template_name = "educator_interface/partials/audit_row_detail.html"
 
     @staticmethod
-    def get_row_label(row: Model) -> str:
+    def get_row_label(row: object) -> str:
         entry = cast(AuditLogEntry, row)
         return f"{entry.label}: {entry.target_label}"
 
     @staticmethod
-    def has_row_detail(row: Model) -> bool:
+    def has_row_detail(row: object) -> bool:
         entry = cast(AuditLogEntry, row)
         return bool(
             entry.description or entry.reason or getattr(entry, "run_entries", [])
@@ -934,7 +935,10 @@ class AuditLogEntryTable(DataTable):
 
     @classmethod
     def get_rows(
-        cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
+        cls,
+        request: HttpRequest,
+        queryset: QuerySet | Sequence[object],
+        query: TableQuery,
     ) -> Page:
         page_obj = super().get_rows(request, queryset, query)
         _attach_target_users(list(page_obj.object_list))
@@ -1081,10 +1085,8 @@ class HistoryPanel(DataTablePanel):
         return context
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
-        return (
-            super()
-            .get_queryset(request)
-            .filter(subjects__contains=[subject_key(cast(Model, self.instance))])
+        return cast(QuerySet, super().get_queryset(request)).filter(
+            subjects__contains=[subject_key(cast(Model, self.instance))]
         )
 
     def get_export_queryset(self, request: HttpRequest) -> QuerySet:
@@ -1556,8 +1558,8 @@ class CohortLearnersPanel(DataTablePanel):
         return context
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
-        return (
-            super().get_queryset(request).filter(cohortmembership__cohort=self.instance)
+        return cast(QuerySet, super().get_queryset(request)).filter(
+            cohortmembership__cohort=self.instance
         )
 
     def get_export_scope_slug(self, request: HttpRequest) -> str:
@@ -1575,7 +1577,9 @@ class CohortCoursesPanel(DataTablePanel):
     refresh_events = (COHORT_CHANGED, REGISTRATION_CHANGED)
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
-        return super().get_queryset(request).filter(cohort=self.instance)
+        return cast(QuerySet, super().get_queryset(request)).filter(
+            cohort=self.instance
+        )
 
     def get_actions(self) -> list[PanelAction]:
         # Deactivate renders per row, not in the footer: the registration cell
@@ -1994,7 +1998,10 @@ class CourseDataTable(DataTable):
 
     @classmethod
     def get_rows(
-        cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
+        cls,
+        request: HttpRequest,
+        queryset: QuerySet | Sequence[object],
+        query: TableQuery,
     ) -> Page:
         page_obj = super().get_rows(request, queryset, query)
         cls._annotate_total_learner_count(page_obj)
@@ -2389,7 +2396,9 @@ class CourseCohortRegistrationsPanel(DataTablePanel):
     table_key = "cohort_registrations"
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
-        return super().get_queryset(request).filter(course=self.instance)
+        return cast(QuerySet, super().get_queryset(request)).filter(
+            course=self.instance
+        )
 
 
 class CourseLearnerRegistrationDataTable(DataTable):
@@ -2421,7 +2430,9 @@ class CourseLearnerRegistrationsPanel(DataTablePanel):
     table_key = "learner_registrations"
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
-        return super().get_queryset(request).filter(course=self.instance)
+        return cast(QuerySet, super().get_queryset(request)).filter(
+            course=self.instance
+        )
 
 
 class CoursePanelStack(PanelStack):
@@ -2507,7 +2518,10 @@ class StaffDataTable(DataTable):
 
     @classmethod
     def get_rows(
-        cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
+        cls,
+        request: HttpRequest,
+        queryset: QuerySet | Sequence[object],
+        query: TableQuery,
     ) -> Page:
         page_obj = super().get_rows(request, queryset, query)
         site = cast(OrganisationScopedRequest, request).organisation.site
@@ -2551,7 +2565,7 @@ class StaffDataTable(DataTable):
         ]
 
     @staticmethod
-    def get_row_label(row: Model) -> str:
+    def get_row_label(row: object) -> str:
         return cast(User, row).display_name
 
 
@@ -2626,7 +2640,10 @@ class OrganisationAuditLogTable(TargetedAuditLogEntryTable):
 
     @classmethod
     def get_rows(
-        cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
+        cls,
+        request: HttpRequest,
+        queryset: QuerySet | Sequence[object],
+        query: TableQuery,
     ) -> Page:
         # Skips AuditLogEntryTable.get_rows: the page's entries and the run
         # entries attached below take one target lookup together.

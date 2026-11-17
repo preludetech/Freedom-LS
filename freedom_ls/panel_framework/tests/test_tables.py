@@ -6,6 +6,7 @@ from __future__ import annotations
 import csv
 import io
 import re
+from typing import cast
 
 import lxml.html
 import pytest
@@ -44,6 +45,7 @@ from .stub_panels import (
     StubDataTablePanel,
     StubDetailDataTable,
     StubPlainDataTable,
+    StubSequenceTablePanel,
 )
 from .view_helpers import call_view, fetch, make_request
 
@@ -1622,7 +1624,7 @@ def test_get_context_marks_each_row_with_the_has_row_detail_predicate(
     context = StubDetailDataTable.get_context(
         panel.request,
         query,
-        queryset.order_by("name"),
+        cast(QuerySet, queryset).order_by("name"),
         base_url="/p",
         page_url="/p",
         region_id="r",
@@ -1669,7 +1671,9 @@ class _OverriddenExportPanel(StubDataTablePanel):
     calls: list[list[str]] = []
 
     def get_export_queryset(self, request: HttpRequest) -> QuerySet:
-        return self.get_queryset(request).filter(name__startswith="keep")
+        return cast(QuerySet, self.get_queryset(request)).filter(
+            name__startswith="keep"
+        )
 
     def before_export(self, request: HttpRequest, rows: QuerySet) -> QuerySet:
         type(self).calls.append([row.name for row in rows])
@@ -2244,3 +2248,78 @@ def test_the_toolbar_comparison_holds_when_the_project_uses_another_icon_set(
     mock_site_context: Site,
 ) -> None:
     assert _toolbar_for({}) == NO_FILTER_APPLIED
+
+
+# -- A table over a sequence of rows --------------------------------------
+
+
+def _bind_sequence_panel(
+    panel_class: type[DataTablePanel], query_string: str = ""
+) -> DataTablePanel:
+    return panel_class(
+        PanelContext(
+            request=RequestFactory().get(f"/p?{query_string}"),
+            instance=None,
+            base_url="/p",
+            name="",
+            config=SectionConfigBase,
+            page_url="/p",
+        )
+    )
+
+
+def _render_sequence_panel(
+    panel_class: type[DataTablePanel] = StubSequenceTablePanel,
+    query_string: str = "",
+) -> lxml.html.HtmlElement:
+    panel = _bind_sequence_panel(panel_class, query_string)
+    html = render_to_string(
+        panel.region_template_name, panel.get_context_data(), request=panel.request
+    )
+    return lxml.html.fromstring(html)
+
+
+def test_a_sequence_table_renders_its_rows(mock_site_context: Site) -> None:
+    document = _render_sequence_panel()
+
+    names = [cell.text_content().strip() for cell in document.cssselect("tbody td")]
+    assert names == [f"sequence-{index}" for index in range(5)]
+
+
+def test_a_sequence_table_footer_counts_rows_with_its_noun(
+    mock_site_context: Site,
+) -> None:
+    document = _render_sequence_panel()
+
+    (count,) = document.cssselect("[data-entry-count]")
+    assert count.text_content().strip() == "Showing 1\u20135 of 7 stub items"
+
+
+def test_a_sequence_table_page_two_holds_the_rows_after_the_page_size(
+    mock_site_context: Site,
+) -> None:
+    document = _render_sequence_panel(query_string="sequence-page=2")
+
+    names = [cell.text_content().strip() for cell in document.cssselect("tbody td")]
+    assert names == ["sequence-5", "sequence-6"]
+
+
+class _EmptySequenceTablePanel(StubSequenceTablePanel):
+    def get_queryset(self, request: HttpRequest) -> list[object]:
+        return []
+
+
+def test_an_empty_sequence_renders_the_empty_state(mock_site_context: Site) -> None:
+    document = _render_sequence_panel(_EmptySequenceTablePanel)
+
+    assert document.cssselect("[data-entry-count]") == []
+    assert "Nothing to see" in document.text_content()
+
+
+def test_gathering_a_sequence_tables_context_runs_no_queries(
+    mock_site_context: Site, django_assert_max_num_queries
+) -> None:
+    panel = _bind_sequence_panel(StubSequenceTablePanel)
+
+    with django_assert_max_num_queries(0):
+        panel.get_context_data()

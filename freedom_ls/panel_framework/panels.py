@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import datetime
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import replace
 from functools import cached_property
 from typing import Literal, TypedDict, cast
@@ -29,7 +29,11 @@ from freedom_ls.panel_framework.field_display import (
     label_for_field,
     lookup_field,
 )
-from freedom_ls.panel_framework.tables import DataTable, TableQuery
+from freedom_ls.panel_framework.tables import (
+    DataTable,
+    TableQuery,
+    _require_queryset,
+)
 
 __all__ = [
     "DataTablePanel",
@@ -309,7 +313,7 @@ class DataTablePanel(Panel):
     def region_id(self) -> str:
         return f"{self.table_key}-table"
 
-    def get_queryset(self, request: HttpRequest) -> QuerySet:
+    def get_queryset(self, request: HttpRequest) -> QuerySet | Sequence[object]:
         """The rows this panel may show.
 
         This is the one place a table panel is scoped. Narrow it in a
@@ -333,12 +337,16 @@ class DataTablePanel(Panel):
     def noun(self, request: HttpRequest) -> str:
         """What this table calls its rows, plural and lower case."""
         return self.data_table.noun or str(
-            self.get_queryset(request).model._meta.verbose_name_plural
+            _require_queryset(
+                self.get_queryset(request), "A table with no `noun`"
+            ).model._meta.verbose_name_plural
         )
 
     def noun_singular(self, request: HttpRequest) -> str:
         return self.data_table.noun_singular or str(
-            self.get_queryset(request).model._meta.verbose_name
+            _require_queryset(
+                self.get_queryset(request), "A table with no `noun_singular`"
+            ).model._meta.verbose_name
         )
 
     def entry_count(self, request: HttpRequest, page_obj: Page) -> str:
@@ -352,7 +360,7 @@ class DataTablePanel(Panel):
         """The rows the CSV export narrows with the same search, filters
         and sort as the screen. Defaults to the screen's own rows; a panel
         overrides it to add a `select_related` the screen does not need."""
-        return self.get_queryset(request)
+        return _require_queryset(self.get_queryset(request), "CSV export")
 
     def before_export(self, request: HttpRequest, rows: QuerySet) -> QuerySet:
         """Runs once after narrowing and before the streaming response is
@@ -361,20 +369,49 @@ class DataTablePanel(Panel):
         return rows
 
     def narrow(
-        self, request: HttpRequest, queryset: QuerySet | None = None
-    ) -> tuple[TableQuery, QuerySet]:
+        self,
+        request: HttpRequest,
+        queryset: QuerySet | Sequence[object] | None = None,
+    ) -> tuple[TableQuery, QuerySet | Sequence[object]]:
         """This table's own query, and its scoped rows searched and sorted
         from it. The one place a table's request parameters are parsed and
         applied, so a render and an export narrow identically. `queryset`
         replaces the panel's own rows as the starting point (the export
-        passes `get_export_queryset`)."""
+        passes `get_export_queryset`). A sequence of rows is returned as it
+        is: it has nothing to search, filter or sort."""
+        rows = self.get_queryset(request) if queryset is None else queryset
         query = self.data_table.parse_query(request, self.table_key)
-        rows = self.data_table.filter_queryset(
-            request,
-            self.get_queryset(request) if queryset is None else queryset,
-            query,
-        )
+        if isinstance(rows, QuerySet):
+            return query, self.data_table.filter_queryset(request, rows, query)
+        self._check_sequence_table()
         return query, rows
+
+    def _check_sequence_table(self) -> None:
+        """Raise unless the table is one a sequence of rows can serve: a
+        sequence cannot be searched, filtered, sorted or exported, and has no
+        model to take its noun from."""
+        table = self.data_table
+        name = table.__name__
+        if table.search_fields:
+            raise ImproperlyConfigured(
+                f"{name} returns a sequence of rows, so it cannot set `search_fields`."
+            )
+        if table.get_filters():
+            raise ImproperlyConfigured(
+                f"{name} returns a sequence of rows, so it cannot declare filters."
+            )
+        if any(column.sortable for column in table.get_columns()):
+            raise ImproperlyConfigured(
+                f"{name} returns a sequence of rows, so it cannot have a sortable column."
+            )
+        if table.get_export_columns():
+            raise ImproperlyConfigured(
+                f"{name} returns a sequence of rows, so it cannot declare export columns."
+            )
+        if not table.noun or not table.noun_singular:
+            raise ImproperlyConfigured(
+                f"{name} returns a sequence of rows, so it must set `noun` and `noun_singular`."
+            )
 
     def get_context_data(self) -> dict[str, object]:
         context = super().get_context_data()
@@ -423,7 +460,9 @@ class DataTablePanel(Panel):
             and bool(context["has_defaulted_filters"])
             and not context["any_filter_set"]
             and not query.search
-            and self.get_queryset(self.request).exists()
+            and _require_queryset(
+                self.get_queryset(self.request), "A table with defaulted filters"
+            ).exists()
         )
         return context
 

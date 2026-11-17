@@ -78,7 +78,9 @@ class _NarrowedTablePanel(StubDataTablePanel):
     """The same table, scoped to rows whose name starts with "keep"."""
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
-        return super().get_queryset(request).filter(name__startswith="keep")
+        return cast(QuerySet, super().get_queryset(request)).filter(
+            name__startswith="keep"
+        )
 
 
 def test_keys_outside_scope_are_dropped(mock_site_context: Site) -> None:

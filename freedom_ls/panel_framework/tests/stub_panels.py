@@ -19,6 +19,8 @@ time, after the ``_panel_test_tables`` fixture has registered it under the
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import ClassVar, cast
 
 from django import forms
@@ -404,8 +406,8 @@ class StubDetailDataTable(StubPlainDataTable):
     row_detail_template_name = "panel_framework/test_row_detail.html"
 
     @staticmethod
-    def has_row_detail(row: Model) -> bool:
-        return cast(str, row.kind) == "a"
+    def has_row_detail(row: object) -> bool:
+        return cast(str, cast(Model, row).kind) == "a"
 
 
 class StubDetailTablePanel(DataTablePanel):
@@ -423,6 +425,52 @@ class StubBTablePanel(DataTablePanel):
 class StubPairStack(PanelStack):
     title = "Pair"
     children = {"a": StubATablePanel, "b": StubBTablePanel}
+
+
+@dataclass(frozen=True)
+class StubSequenceRow:
+    """One row of a table whose rows are computed, not stored."""
+
+    name: str
+    kind: str
+    children: tuple[StubSequenceRow, ...] = ()
+
+
+STUB_SEQUENCE_ROWS: list[StubSequenceRow] = [
+    StubSequenceRow(name=f"sequence-{index}", kind="a") for index in range(7)
+]
+
+
+class StubSequenceDataTable(DataTable):
+    """A table over a list of `StubSequenceRow`, so it has no model."""
+
+    page_size = 5
+    noun = "stub items"
+    noun_singular = "stub item"
+
+    @staticmethod
+    def get_queryset(request: HttpRequest) -> Sequence[object]:
+        return STUB_SEQUENCE_ROWS
+
+    @staticmethod
+    def get_columns() -> list[Column]:
+        return [
+            Column(
+                header="Name",
+                template_name="cotton/data-table-cells/text.html",
+                attr="name",
+                card="primary",
+            ),
+        ]
+
+
+class StubSequenceTablePanel(DataTablePanel):
+    title = "Sequence"
+    data_table = StubSequenceDataTable
+    table_key = "sequence"
+
+    def get_queryset(self, request: HttpRequest) -> Sequence[object]:
+        return STUB_SEQUENCE_ROWS
 
 
 class StubSortOnlyDataTable(StubDataTable):

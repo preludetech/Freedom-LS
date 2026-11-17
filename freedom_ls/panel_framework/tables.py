@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
 
+from django.core.exceptions import ImproperlyConfigured
 from django.core.paginator import Page, Paginator
 from django.db.models import Model, Q, QuerySet
 from django.http import HttpRequest
@@ -278,7 +279,7 @@ class DataTable:
     row_detail_template_name: str | None = None
 
     @staticmethod
-    def has_row_detail(row: Model) -> bool:
+    def has_row_detail(row: object) -> bool:
         """Whether this row has anything to show under it. Only consulted
         when `row_detail_template_name` is set; every row has one by default."""
         return True
@@ -310,7 +311,11 @@ class DataTable:
     default_sort: str = ""
 
     @staticmethod
-    def get_queryset(request: HttpRequest) -> QuerySet:
+    def get_queryset(request: HttpRequest) -> QuerySet | Sequence[object]:
+        """The table's rows: a queryset, or a sequence of row objects for a
+        table whose rows are computed rather than stored. A sequence supports
+        paging and the empty state only: no search, filters, sorting, export
+        or bulk selection, and `noun` and `noun_singular` must be set."""
         raise NotImplementedError
 
     @staticmethod
@@ -323,7 +328,7 @@ class DataTable:
         return []
 
     @staticmethod
-    def get_row_label(row: Model) -> str:
+    def get_row_label(row: object) -> str:
         """One row's accessible name, for its selection checkbox's aria-label."""
         return str(row)
 
@@ -432,7 +437,10 @@ class DataTable:
 
     @classmethod
     def get_rows(
-        cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
+        cls,
+        request: HttpRequest,
+        queryset: QuerySet | Sequence[object],
+        query: TableQuery,
     ) -> Page:
         """Paginate `queryset`, already searched and sorted, to `query.page`."""
         return Paginator(queryset, cls.get_page_size()).get_page(query.page)
@@ -442,7 +450,7 @@ class DataTable:
         cls,
         request: HttpRequest,
         query: TableQuery,
-        queryset: QuerySet,
+        queryset: QuerySet | Sequence[object],
         *,
         base_url: str,
         page_url: str,
@@ -517,7 +525,7 @@ class DataTable:
         # checkbox is the only place it's read), and get_row_label defaults to
         # str(row), which would otherwise cost a query per row on a model
         # whose __str__ reads an un-prefetched relation.
-        def _lazy_label(row: Model) -> SimpleLazyObject:
+        def _lazy_label(row: object) -> SimpleLazyObject:
             return SimpleLazyObject(lambda: cls.get_row_label(row))
 
         detailed = cls.row_detail_template_name is not None
@@ -566,6 +574,13 @@ class DataTable:
             ),
             "reset_changes": reset_changes,
         }
+
+
+def _require_queryset(rows: QuerySet | Sequence[object], what: str) -> QuerySet:
+    """`rows` as a queryset, for a feature a sequence cannot serve."""
+    if not isinstance(rows, QuerySet):
+        raise ImproperlyConfigured(f"{what} needs a queryset, not a sequence of rows.")
+    return rows
 
 
 def _toolbar_entry(

@@ -59,7 +59,7 @@ from freedom_ls.panel_framework.events import BULK_RUN_STARTED_EVENT, build_hx_t
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus, scope_lookup
 from freedom_ls.panel_framework.panels import DataTablePanel, Panel, TabSet
 from freedom_ls.panel_framework.quick_view import QuickView
-from freedom_ls.panel_framework.tables import DataTable
+from freedom_ls.panel_framework.tables import DataTable, _require_queryset
 
 __all__ = [
     "BaseViewConfig",
@@ -324,7 +324,7 @@ class ListViewConfig(SectionConfigBase):
         """The rows the CSV export narrows. Defaults to the list's own rows."""
         if cls.list_view is None:
             raise ValueError(f"{cls.__name__} must define list_view")
-        return cls.list_view.get_queryset(request)
+        return _require_queryset(cls.list_view.get_queryset(request), "CSV export")
 
     @classmethod
     def before_export(cls, request: HttpRequest, rows: QuerySet) -> QuerySet:
@@ -1362,7 +1362,8 @@ def _export_response(
         raise Http404("This table has no CSV export")
     if request.GET.get(f"{panel.table_key}-export") != "csv":
         raise Http404("Unsupported export format")
-    _query, queryset = panel.narrow(request, panel.get_export_queryset(request))
+    _query, rows_in_scope = panel.narrow(request, panel.get_export_queryset(request))
+    queryset = _require_queryset(rows_in_scope, "CSV export")
     queryset = panel.before_export(request, queryset)
 
     def rows() -> Iterator[str]:

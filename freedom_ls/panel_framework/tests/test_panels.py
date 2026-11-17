@@ -18,7 +18,9 @@ from django.template.loader import render_to_string
 from django.test import RequestFactory
 
 from freedom_ls.panel_framework.actions import DeleteAction, PanelAction
+from freedom_ls.panel_framework.bulk_actions import Selection, resolve_selection
 from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.panel_framework.filters import BooleanFilter, TableFilter
 from freedom_ls.panel_framework.panels import (
     PROMOTED_BULK_ACTION_COUNT,
     BulkActionEntry,
@@ -28,6 +30,7 @@ from freedom_ls.panel_framework.panels import (
     TabSet,
     promote_bulk_actions,
 )
+from freedom_ls.panel_framework.tables import Column, DataTable, ExportColumn
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
     HeaderStat,
@@ -59,6 +62,8 @@ from .stub_panels import (
     StubPairStack,
     StubPurgeBulkAction,
     StubRecordedBulkAction,
+    StubSequenceDataTable,
+    StubSequenceTablePanel,
     StubTabSet,
 )
 from .view_helpers import call_view, fetch, make_request
@@ -84,7 +89,9 @@ class _ModelPanel(Panel):
 
 class _NarrowedTablePanel(StubDataTablePanel):
     def get_queryset(self, request: HttpRequest) -> QuerySet:
-        return super().get_queryset(request).filter(name__startswith="keep")
+        return cast(QuerySet, super().get_queryset(request)).filter(
+            name__startswith="keep"
+        )
 
 
 class _GatedPanel(Panel):
@@ -979,3 +986,89 @@ def test_a_badge_row_and_a_date_row_render_through_their_components(
     assert badge.get("data-tone") == "success"
     (time,) = document.cssselect("dd time")
     assert time.get("datetime") == "2026-11-03"
+
+
+# -- A table over a sequence of rows --------------------------------------
+
+
+def _sequence_panel(table: type[DataTable] = StubSequenceDataTable) -> Panel:
+    class _Panel(StubSequenceTablePanel):
+        data_table = table
+
+    request = RequestFactory().get("/p")
+    return _Panel(
+        PanelContext(
+            request=request,
+            instance=None,
+            base_url="/p",
+            name="",
+            config=SectionConfigBase,
+            page_url="/p",
+        )
+    )
+
+
+def _sequence_table(**attributes: object) -> type[DataTable]:
+    return type("_SequenceTable", (StubSequenceDataTable,), attributes)
+
+
+def _a_filter() -> list[TableFilter]:
+    return [BooleanFilter("active", "Active only", lookup="is_active")]
+
+
+def _a_sortable_column() -> list[Column]:
+    return [
+        Column(
+            header="Name",
+            template_name="cotton/data-table-cells/text.html",
+            attr="name",
+            sortable=True,
+        )
+    ]
+
+
+def _an_export_column() -> list[ExportColumn]:
+    return [ExportColumn("Name", "name")]
+
+
+@pytest.mark.parametrize(
+    ("attributes", "offence"),
+    [
+        ({"search_fields": ["name"]}, "search_fields"),
+        ({"get_filters": staticmethod(_a_filter)}, "filters"),
+        ({"get_columns": staticmethod(_a_sortable_column)}, "sortable"),
+        ({"get_export_columns": staticmethod(_an_export_column)}, "export"),
+        ({"noun": ""}, "noun"),
+    ],
+)
+def test_a_sequence_table_using_a_query_only_feature_fails_loudly(
+    attributes: dict[str, object], offence: str
+) -> None:
+    panel = cast(
+        "StubSequenceTablePanel", _sequence_panel(_sequence_table(**attributes))
+    )
+
+    with pytest.raises(ImproperlyConfigured, match=offence):
+        panel.narrow(panel.request)
+
+
+def test_a_sequence_table_narrows_to_the_rows_unchanged() -> None:
+    panel = cast("StubSequenceTablePanel", _sequence_panel())
+
+    _query, rows = panel.narrow(panel.request)
+
+    assert rows == panel.get_queryset(panel.request)
+
+
+def test_bulk_selection_over_a_sequence_table_fails_loudly() -> None:
+    panel = cast("StubSequenceTablePanel", _sequence_panel())
+
+    with pytest.raises(ImproperlyConfigured, match="Bulk selection"):
+        resolve_selection(panel, panel.request, Selection(mode="keys", keys=["1"]))
+
+
+def test_export_over_a_sequence_table_fails_loudly() -> None:
+    panel = cast("StubSequenceTablePanel", _sequence_panel())
+
+    with pytest.raises(ImproperlyConfigured, match="CSV export"):
+        panel.get_export_queryset(panel.request)
