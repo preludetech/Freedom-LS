@@ -15,10 +15,12 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 3. Implementation and QA
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
+- [ ] (user) Decide whether to chase the order-dependent failure of freedom_ls/audit_log/tests/test_actions.py::test_course_progress_actions_describe_their_details (TypeError: 'Mock' object is not iterable): it failed once in a full run on this branch, passed on re-run and in every later full run, and the branch does not touch audit_log; if it recurs, find the test that leaks the Mock
+- [ ] (user) Check the change to freedom_ls/educator_interface/forms.py: eight educator forms now accept a files argument, because the panel framework now passes files to every form action; the plan had expected no host changes
 
 ## 4. Documentation and pull request
 
