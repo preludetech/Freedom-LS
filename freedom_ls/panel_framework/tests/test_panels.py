@@ -988,9 +988,6 @@ def test_a_badge_row_and_a_date_row_render_through_their_components(
     assert time.get("datetime") == "2026-11-03"
 
 
-# -- A table over a sequence of rows --------------------------------------
-
-
 def _sequence_panel(table: type[DataTable] = StubSequenceDataTable) -> Panel:
     class _Panel(StubSequenceTablePanel):
         data_table = table

@@ -13,7 +13,7 @@ from freedom_ls.panel_framework.forms import REASON_LENGTH, ReasonForm
 
 CHOICES = [("moved", "Moved away"), ("other", "Other")]
 
-# The HTML the form rendered before it could require a reason or offer choices.
+# The default form's markup, pinned so a host that uses neither option sees no change.
 DEFAULT_FORM_HTML = (
     '<div>\n    <label for="id_reason">Reason (optional):</label>\n\n\n\n'
     '<input type="text" name="reason" maxlength="500" id="id_reason">\n'

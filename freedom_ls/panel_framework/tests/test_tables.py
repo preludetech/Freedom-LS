@@ -2250,9 +2250,6 @@ def test_the_toolbar_comparison_holds_when_the_project_uses_another_icon_set(
     assert _toolbar_for({}) == NO_FILTER_APPLIED
 
 
-# -- A table over a sequence of rows --------------------------------------
-
-
 def _bind_sequence_panel(
     panel_class: type[DataTablePanel], query_string: str = ""
 ) -> DataTablePanel:
