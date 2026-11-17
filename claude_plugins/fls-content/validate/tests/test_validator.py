@@ -1714,3 +1714,106 @@ def test_validation_header_counts_problems(tmp_path: Path) -> None:
     combined = result.stdout + result.stderr
     assert combined.count("Name each child once.") == 2
     assert "Validation failed: 2 problems:" in combined
+
+
+def write_sections_form(
+    directory: Path, form_sections: str = "", question_sections: str = ""
+) -> Path:
+    """Write a form directory with one question, a part and a topic beside it."""
+    form_dir = directory / "quiz"
+    form_dir.mkdir(parents=True)
+    (form_dir / "form.md").write_text(
+        "---\ncontent_type: FORM\ntitle: Quiz\nstrategy: CATEGORY_VALUE_SUM\n"
+        f"{form_sections}---\n",
+        encoding="utf-8",
+    )
+    (form_dir / "1. page.yaml").write_text(
+        "---\ncontent_type: FORM_PAGE\ntitle: Page\n"
+        f"---\nquestion: Which topic?\ntype: short_text\n{question_sections}",
+        encoding="utf-8",
+    )
+    (form_dir / "part.yaml").write_text(
+        "---\ncontent_type: COURSE_PART\ntitle: A Part\n---\n", encoding="utf-8"
+    )
+    (form_dir / "topic.md").write_text(
+        "---\ncontent_type: TOPIC\ntitle: A Topic\n---\n\nBody.\n", encoding="utf-8"
+    )
+    return form_dir
+
+
+def test_valid_sections_on_form_and_question_exit_zero(tmp_path: Path) -> None:
+    """Sections naming a part and a topic validate, on a form and on a question."""
+    form_dir = write_sections_form(
+        tmp_path, "sections: [part.yaml]\n", "sections: [topic.md]\n"
+    )
+
+    result = run_validator(form_dir)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_section_path_with_no_file_fails(tmp_path: Path) -> None:
+    """A sections entry with no file behind it names the question and the path."""
+    form_dir = write_sections_form(tmp_path, question_sections="sections: [gone.md]\n")
+
+    result = run_validator(form_dir)
+
+    assert_validator_fails(result, "no file at this path")
+    combined = result.stdout + result.stderr
+    assert "1. page.yaml" in combined
+    assert "Which topic?" in combined
+    assert "gone.md" in combined
+
+
+def test_section_naming_a_form_fails(tmp_path: Path) -> None:
+    """A sections entry must be a part or a topic, not another content type."""
+    form_dir = write_sections_form(tmp_path, "sections: [form.md]\n")
+
+    result = run_validator(form_dir)
+
+    assert_validator_fails(result, "this file is a FORM")
+    assert "form.md" in result.stdout + result.stderr
+
+
+def test_section_named_twice_fails(tmp_path: Path) -> None:
+    """The same section named twice in one list is rejected."""
+    form_dir = write_sections_form(
+        tmp_path, question_sections="sections: [topic.md, topic.md]\n"
+    )
+
+    result = run_validator(form_dir)
+
+    assert_validator_fails(result, "this section is named twice")
+    combined = result.stdout + result.stderr
+    assert "1. page.yaml" in combined
+    assert "Which topic?" in combined
+    assert "topic.md" in combined
+
+
+def test_section_in_sibling_directory_is_checked(tmp_path: Path) -> None:
+    """A target outside the validated directory is read from disk and type-checked."""
+    form_dir = write_sections_form(tmp_path, "sections: [../other/form.md]\n")
+    other = tmp_path / "other"
+    other.mkdir()
+    (other / "form.md").write_text(
+        "---\ncontent_type: FORM\ntitle: Other\nstrategy: CATEGORY_VALUE_SUM\n---\n",
+        encoding="utf-8",
+    )
+
+    result = run_validator(form_dir)
+
+    assert_validator_fails(result, "this file is a FORM")
+
+
+def test_section_topic_in_sibling_directory_passes(tmp_path: Path) -> None:
+    """A topic beside the validated directory is an accepted section."""
+    form_dir = write_sections_form(tmp_path, "sections: [../other/topic.md]\n")
+    other = tmp_path / "other"
+    other.mkdir()
+    (other / "topic.md").write_text(
+        "---\ncontent_type: TOPIC\ntitle: Other\n---\n\nBody.\n", encoding="utf-8"
+    )
+
+    result = run_validator(form_dir)
+
+    assert result.returncode == 0, result.stdout + result.stderr

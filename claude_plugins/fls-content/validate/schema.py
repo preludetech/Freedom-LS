@@ -881,6 +881,12 @@ class CoursePart(BaseContentModel, content_type=ContentType.COURSE_PART):
     # content: Optional[str] = Field(None, description="Markdown content body")
 
 
+SECTIONS_DESCRIPTION = (
+    "Paths to the part.yaml or topic markdown files this tests, "
+    "relative to this file's directory"
+)
+
+
 class Form(
     BaseContentModel,
     MarkdownContentModel,
@@ -902,6 +908,8 @@ class Form(
         None,
         description="Required if strategy is QUIZ. Percentage (0-100) required to pass the quiz",
     )
+
+    sections: list[Path] | None = Field(None, description=SECTIONS_DESCRIPTION)
 
     submit_on_exit: bool = Field(
         False,
@@ -1218,6 +1226,7 @@ class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION)
         ),
     )
     when: Condition | None = Field(None, description=WHEN_DESCRIPTION)
+    sections: list[Path] | None = Field(None, description=SECTIONS_DESCRIPTION)
     type: QuestionType = Field(
         ...,
         description=(
