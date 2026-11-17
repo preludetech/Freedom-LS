@@ -281,6 +281,12 @@
         @apply px-2 py-1.5 text-sm
     }
 
+    /* A compact table's rows are shorter from md up. Below md the rows are
+     * cards, which keep their own padding and touch targets. */
+    .panel-data-table-compact :is(th, td) {
+        @apply md:py-2
+    }
+
     /* Below md every button and text field on an interface page, dialogs
      * included, is at least 44px tall for a finger. */
     .panel-surface .btn,

@@ -285,6 +285,10 @@ class DataTable:
         when `row_detail_template_name` is set; every row has one by default."""
         return True
 
+    #: Shorter rows from `md` up. Below `md` the rows are cards, which keep
+    #: their own padding.
+    compact: bool = False
+
     #: Rows may have child rows: full table rows nested under a group row,
     #: which carries a chevron that hides and shows them. Not for a table
     #: with a row detail or bulk actions.
@@ -581,6 +585,7 @@ class DataTable:
             "cards_when_narrow": cls.cards_when_narrow,
             "row_detail_template_name": cls.row_detail_template_name,
             "has_child_rows": cls.has_child_rows,
+            "compact": cls.compact,
             "leading_columns": leading_columns,
             "row_template_colspan": len(columns) - len(leading_columns),
             "empty_state_template_name": cls.empty_state_template_name,

@@ -21,6 +21,7 @@ from ..stub_panels import (
     StubCardDataTable,
     StubChildRowsTablePanel,
     StubClassifyingBulkAction,
+    StubCompactTablePanel,
     StubDataTablePanel,
     StubDetailDataTable,
     StubDetailTablePanel,
@@ -31,6 +32,7 @@ from ..stub_panels import (
     StubPlainDataTable,
     StubPurgeBulkAction,
     StubRecordedBulkAction,
+    StubSequenceTablePanel,
 )
 from ..test_tables import _bind_table_panel
 
@@ -616,3 +618,19 @@ def test_a_table_without_row_templates_renders_every_cell(
 
     assert document.cssselect("tbody [data-test-row-template]") == []
     assert document.cssselect("tbody td[colspan]") == []
+
+
+def test_a_compact_table_root_carries_the_compact_class(
+    mock_site_context: Site,
+) -> None:
+    document = _render(StubCompactTablePanel)
+
+    assert "panel-data-table-compact" in document.get("class").split()
+
+
+def test_a_default_table_root_does_not_carry_the_compact_class(
+    mock_site_context: Site,
+) -> None:
+    document = _render(StubSequenceTablePanel)
+
+    assert "panel-data-table-compact" not in document.get("class").split()

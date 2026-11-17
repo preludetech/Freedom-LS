@@ -45,6 +45,7 @@ from .stub_panels import (
     StubBulkAction,
     StubChildRowsDataTable,
     StubChildRowsTablePanel,
+    StubCompactTablePanel,
     StubDataTable,
     StubDataTablePanel,
     StubDetailDataTable,
@@ -2514,3 +2515,15 @@ def test_the_columns_before_the_primary_one_are_the_leading_columns() -> None:
     leading = cast("list[Column]", context["leading_columns"])
     assert [column.header for column in leading] == ["Marker"]
     assert context["row_template_colspan"] == 2
+
+
+def test_a_table_is_not_compact_by_default() -> None:
+    context = _bind_sequence_panel(StubSequenceTablePanel).get_context_data()
+
+    assert context["compact"] is False
+
+
+def test_a_compact_table_puts_compact_in_the_context() -> None:
+    context = _bind_sequence_panel(StubCompactTablePanel).get_context_data()
+
+    assert context["compact"] is True

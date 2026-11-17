@@ -494,6 +494,21 @@ STUB_CHILD_ROWS: list[StubSequenceRow] = [
 ]
 
 
+class StubCompactDataTable(StubSequenceDataTable):
+    """A sequence table at the compact density."""
+
+    compact = True
+
+
+class StubCompactTablePanel(DataTablePanel):
+    title = "Compact"
+    data_table = StubCompactDataTable
+    table_key = "compact"
+
+    def get_queryset(self, request: HttpRequest) -> Sequence[object]:
+        return STUB_SEQUENCE_ROWS
+
+
 class StubChildRowsDataTable(StubSequenceDataTable):
     """A sequence table whose rows nest three levels deep."""
 
@@ -662,6 +677,7 @@ class StubTabSet(TabSet):
         "sortonly": StubSortOnlyTablePanel,
         "detail": StubDetailTablePanel,
         "childrows": StubChildRowsTablePanel,
+        "compact": StubCompactTablePanel,
     }
 
 

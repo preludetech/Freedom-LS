@@ -674,6 +674,7 @@ def test_a_hidden_tab_has_no_link(mock_site_context: Site) -> None:
         "Sort only",
         "Detail",
         "Child rows",
+        "Compact",
     }
 
 

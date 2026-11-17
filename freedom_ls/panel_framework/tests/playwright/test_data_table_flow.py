@@ -934,3 +934,24 @@ def test_a_group_row_hides_and_shows_its_descendants_by_mouse_and_keyboard(
     card_outer.click()
     expect(card_leaf).to_be_visible()
     assert_no_horizontal_overflow(page)
+
+    for viewport in (QA_VIEWPORTS[1], QA_VIEWPORTS[2]):
+        page.set_viewport_size(viewport)
+        page.goto(
+            f"{live_server.url}{_FRAMEWORK_PATH}/stubs/{stub.pk}/__tabs/childrows"
+        )
+        default_row = page.locator("#childrows-table tbody tr", has_text="top-leaf")
+        default_height = default_row.bounding_box()
+        page.goto(f"{live_server.url}{_FRAMEWORK_PATH}/stubs/{stub.pk}/__tabs/compact")
+        compact_rows = page.locator("#compact-table tbody tr")
+        expect(compact_rows).to_have_count(5)
+        compact_heights = [row.bounding_box() for row in compact_rows.all()]
+        assert default_height is not None
+        assert all(box is not None for box in compact_heights)
+        heights = [box["height"] for box in compact_heights if box]
+        assert max(heights) - min(heights) <= 1
+        assert max(heights) < default_height["height"]
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        assert_no_horizontal_overflow(page)
