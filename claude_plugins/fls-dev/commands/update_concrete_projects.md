@@ -39,7 +39,12 @@ git fetch origin main && git rev-parse main origin/main
 
 - The first prints `main`.
 - The second prints nothing.
-- The two SHAs of the third are equal.
+- The two SHAs of the third are equal. When they differ, sync `main` yourself, without asking; commits on `main` from other processes are intentional:
+  - `main` ahead of `origin/main` (`git merge-base --is-ancestor origin/main main` exits 0): run `git push origin main`.
+  - `main` behind (`git merge-base --is-ancestor main origin/main` exits 0): run `git merge --ff-only origin/main`.
+  - Diverged: run `git pull --rebase origin main`, then `git push origin main`. A conflict or a rejected push is the only failure here: stop and print the reason.
+
+  Then re-run the third check; the SHAs must now be equal.
 
 `pre_step_rebase.md` is not run: this worktree is `main` and the third check replaces its fetch. Take `<run-date>` here, once: `date +%Y-%m-%d_%H:%M`.
 
