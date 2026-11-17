@@ -923,6 +923,18 @@ def test_a_group_row_hides_and_shows_its_descendants_by_mouse_and_keyboard(
     assert inner_box is not None
     assert inner_box["x"] > outer_box["x"]
 
+    # A group row's chevron and a leaf row's chevron spacer take the same
+    # height, so one-line rows of both kinds are level.
+    group_row = table.locator(
+        "tbody tr", has=page.locator('button[aria-label="inner-group"]')
+    )
+    leaf_row = table.locator("tbody tr", has_text="top-leaf")
+    group_box = group_row.bounding_box()
+    leaf_box = leaf_row.bounding_box()
+    assert group_box is not None
+    assert leaf_box is not None
+    assert abs(group_box["height"] - leaf_box["height"]) <= 1
+
     page.set_viewport_size(QA_VIEWPORTS[0])
     cards = page.locator("#childrows-table ul")
     card_outer = cards.get_by_role("button", name="group", exact=True)

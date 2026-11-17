@@ -158,6 +158,16 @@ def test_educator_previews_course_content(
                     outline.get_by_text(title, exact=True).locator("visible=true")
                 ).to_be_visible()
             assert_no_horizontal_overflow(page)
+            if viewport["width"] >= 768:
+                outline_rows = page.get_by_role(
+                    "region", name="Course outline items"
+                ).locator("tbody tr")
+                boxes = [
+                    row.bounding_box()
+                    for row in outline_rows.locator("visible=true").all()
+                ]
+                row_heights = [box["height"] for box in boxes if box is not None]
+                assert max(row_heights) - min(row_heights) <= 1
 
             # Enter on the keyboard-focused button opens the dialog and puts
             # focus on its title.
