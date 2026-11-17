@@ -20,6 +20,7 @@ A course can contain COURSE_PARTs (sections that group topics and forms), but th
 | `dashboard_category` | `str` | Conditional | The one category slug the learner dashboard files this course under. **Required when `categories` has two or more entries**, and must be one of them. With exactly one entry, that entry is used automatically. |
 | `organisations` | `list[str]` | No | Slugs of the organisations the course belongs to, resolved per site; an unknown slug fails the load. Defaults to `[]`. |
 | `audience` | `organisation_learners` or `public` | No | Who may see a course that has organisations: only learners of those organisations, or everyone. Defaults to `organisation_learners`. |
+| `shared_with` | `list[str]` | No | Slugs of other organisations whose educators the course is shared with, resolved per site. Needs `organisations`, and must not repeat a slug or name an owning organisation. Defaults to `[]`. |
 | `uuid` | `str` | No | Written by `content_save` — **omit on new files** |
 | `icon` | `str` | No | Semantic icon name (e.g. `"notes"`) or literal glyph |
 | `icon_fallback` | `str` | No | `"<iconset>:<glyph>"` (e.g. `"phosphor:drone"`); only valid when `icon` is also set |

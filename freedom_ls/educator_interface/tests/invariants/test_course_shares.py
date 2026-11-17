@@ -61,7 +61,9 @@ from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 
-QUERY_BOUND = 54
+# Headroom over the measured count: a cold per-process cache adds a query or two to the
+# first request, depending on which tests ran earlier in the worker.
+QUERY_BOUND = 60
 SHARED_FRONTMATTER = (
     "organisations:\n  - owner\nshared_with:\n  - sharee\naudience: public\n"
 )

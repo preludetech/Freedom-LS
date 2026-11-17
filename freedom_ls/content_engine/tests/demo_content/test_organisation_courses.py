@@ -45,3 +45,29 @@ def test_each_demo_organisation_course_loads_with_its_organisation_and_audience(
         organisation_slug
     ]
     assert course.audience == audience
+
+
+@pytest.mark.django_db
+def test_shared_demo_course_loads_shared_with_harbour_college(
+    site, loaded_demo_content, mock_site_context
+):
+    course = Course.objects.get(
+        site=site,
+        file_path="functionality_demo_organisation_course_northwind/course.md",
+    )
+
+    assert list(course.shared_with.values_list("slug", flat=True)) == [
+        "harbour-college"
+    ]
+
+
+@pytest.mark.django_db
+def test_unshared_demo_course_loads_public_with_no_shares(
+    site, loaded_demo_content, mock_site_context
+):
+    course = Course.objects.get(
+        site=site,
+        file_path="functionality_demo_organisation_course_northwind_unshared/course.md",
+    )
+
+    assert (course.shared_with.count(), course.audience) == (0, CourseAudience.PUBLIC)

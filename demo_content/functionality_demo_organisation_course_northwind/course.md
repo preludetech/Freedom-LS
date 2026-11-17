@@ -4,9 +4,11 @@ categories:
   - start-here-demo
 content_type: COURSE
 dashboard_category: start-here-demo
-description: Northwind Logistics' workplace safety course, visible to everyone.
+description: Northwind Logistics' workplace safety course. It is shared with Harbour College educators and open to every learner.
 organisations:
   - northwind-logistics
+shared_with:
+  - harbour-college
 subtitle: An organisation course
 title: Workplace Safety Essentials
 uuid: 26c2e0d5-534f-40dc-86de-8218355233e5
