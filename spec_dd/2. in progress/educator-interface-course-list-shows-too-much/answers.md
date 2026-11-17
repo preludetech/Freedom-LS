@@ -12,3 +12,17 @@ Asked by `/sdd:start` before the spec was written. The permission structure was 
 - Q: With no grant, what do educators of another organisation get on a public course? → A: Hidden: not in the Courses list or course pickers, detail page 404. Its learners still self-join through the course's own gates. (asked up front)
 - Q: Which rights can an owner grant another named organisation? → A: Three independent flags, `see`, `register` and `preview`; `register` and `preview` each imply `see`. Owner organisations (listed in `organisations:`) have everything; a course with no organisations keeps today's behaviour. (asked up front)
 - Q: Does a `register` grant let that organisation's educators register learners directly, skipping the course's price and application gate? → A: Yes. The grant is the licence; seat caps can come in a later spec. (asked up front)
+
+## Checked against real course content
+
+Asked after reading a downstream project's courses: one organisation owning public primers,
+qualification, renewal and business courses, and a partner organisation owning two
+`organisation_learners` theory courses. These answers replace the three-flag answer above.
+
+- Q: Which organisations get the owner's practical primers for their own learners? → A: Named partners only, listed in each primer's `course.md`.
+- Q: What can a partner's educators do on a shared primer? → A: Everything but edit: see, preview, register and track.
+- Q: Who may take a primer as a learner? → A: The public pays or applies; partner learners get in free through the share.
+- Q: How does a partner's learner get onto a primer for free? → A: A partner educator registers them. A learner who joins on their own meets the public price or gate.
+- Q: What can the owner's educators do on the partner's own courses? → A: Nothing through the educator interface, unless the partner shares them.
+- Q: What do the partner's educators reach on the owner's other public courses (gated, paid or free)? → A: Nothing unless shared.
+- Q: Should the `see` / `register` / `preview` flags go, leaving `shared_with:` a plain list of organisation slugs? → A: Yes, one plain share.
