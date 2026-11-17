@@ -3066,6 +3066,35 @@ def test_reregister_post_on_a_course_that_gained_another_organisation_answers_42
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("row", "reactivated"),
+    [("no_owner", True), ("owned", True), ("shared", True), ("held", False)],
+)
+def test_reregister_post_reactivates_only_a_course_available_to_the_organisation(
+    staff_client: Client, row: str, reactivated: bool
+):
+    organisation = OrganisationFactory()
+    courses = course_per_reach_row(organisation)
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    registration = LearnerCourseRegistrationFactory(
+        learner=learner, course=courses[row], is_active=False
+    )
+
+    response = _post(
+        staff_client,
+        _learner_reregister_url(organisation, learner),
+        {"registration": str(registration.pk)},
+    )
+
+    registration.refresh_from_db()
+    assert (response.status_code, registration.is_active) == (
+        204 if reactivated else 422,
+        reactivated,
+    )
+    assert (COURSE_NOT_OPEN_MESSAGE in response.content.decode()) is not reactivated
+
+
+@pytest.mark.django_db
 def test_reregister_post_naming_an_active_registration_answers_404(
     staff_client: Client,
 ):

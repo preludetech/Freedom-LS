@@ -106,6 +106,7 @@ from freedom_ls.learner_management.queries import (
     CHANGE_COHORTCOURSEREGISTRATION,
     CHANGE_LEARNER,
     CHANGE_LEARNERCOURSEREGISTRATION,
+    COURSE_NOT_OPEN_MESSAGE,
     DELETE_COHORTMEMBERSHIP,
     ORGANISATION_ROLES,
     STAFF_ROLES,
@@ -120,6 +121,7 @@ from freedom_ls.learner_management.queries import (
     courses_lost_by_any,
     has_staff_assignments,
     import_into_cohort_in_progress,
+    is_course_available_to_organisation,
     learners_keeping_access_count,
     learners_permitted_for,
     learners_visible_to,
@@ -921,20 +923,24 @@ class ReactivateRegistrationAction(ConfirmAction):
             "course": registration.course,
         }
 
+    def _refused(self, ctx: PanelContext, message: str) -> HttpResponse:
+        context = self.get_context_data(ctx)
+        context["refusal"] = message
+        return render(ctx.request, self.template_name, context, status=422)
+
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         learner = cast(Learner, ctx.instance)
+        course = self._registration(ctx).course
+        # The write gate accepts every public course, but an educator registers
+        # only for courses available to the organisation.
+        if not is_course_available_to_organisation(course, learner.organisation):
+            return self._refused(ctx, COURSE_NOT_OPEN_MESSAGE)
         try:
-            register_for_course(
-                learner,
-                self._registration(ctx).course,
-                actor=cast("User", ctx.request.user),
-            )
+            register_for_course(learner, course, actor=cast("User", ctx.request.user))
         except CourseNotOpenError as error:
             # The course may have gained organisations since the registration
             # was made, leaving it closed to this learner's organisation.
-            context = self.get_context_data(ctx)
-            context["refusal"] = str(error)
-            return render(ctx.request, self.template_name, context, status=422)
+            return self._refused(ctx, str(error))
         return _registration_changed_response(learner)
 
 
