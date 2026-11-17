@@ -15,10 +15,12 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 3. Implementation and QA
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
+- [ ] (user) Decide whether to stabilise `freedom_ls/panel_framework/tests/playwright/test_quick_view_flow.py::test_quick_view_drawer`: it timed out on a visibility check in two full runs on a loaded machine and passes when run alone
+- [ ] (user) Review three changes made beyond the plan: `modal/confirm.html` takes an optional `title_id`, the component reference page loads `panel_framework/js/alpine-components.js`, and `panels.py` has a new shared `table_region_context` function; keep them or ask for another approach
 
 ## 4. Documentation and pull request
 
