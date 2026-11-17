@@ -6,10 +6,9 @@ host's own record of a background run. These sweeps close run records only. A
 host's task-result and report sweeps (in FLS, `mark_orphaned_running_tasks_failed`
 and `mark_orphaned_running_reports_failed`) are a separate job the host owns.
 
-The sweeps run from a scheduled job with no request and so no current site, and
-they must close stale rows on every site. They therefore read through
-`model._base_manager`, not the site-aware `objects`, and report each closed row
-with its own `site_id`.
+The sweeps run from a scheduled job with no request, and they must close stale
+rows on every site. They therefore read through `model._base_manager`, which
+filters by no site, and report each closed row with its own `site_id`.
 
 The module reads no setting: the caller passes every threshold, and a host that
 wants an operator alert passes `report_closed`.

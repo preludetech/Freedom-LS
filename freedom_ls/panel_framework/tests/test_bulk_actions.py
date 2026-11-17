@@ -10,6 +10,7 @@ from typing import cast
 
 import lxml.html
 import pytest
+from pytest_django.fixtures import SettingsWrapper
 
 from django import forms
 from django.contrib.auth.base_user import AbstractBaseUser
@@ -17,11 +18,12 @@ from django.contrib.auth.models import AnonymousUser
 from django.contrib.messages import get_messages
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.sites.models import Site
-from django.core.exceptions import ImproperlyConfigured
+from django.contrib.sites.requests import RequestSite
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied
 from django.db.models import Model, QuerySet
 from django.http import Http404, HttpRequest, HttpResponse
 from django.template.loader import render_to_string
-from django.test import RequestFactory
+from django.test import RequestFactory, override_settings
 
 from freedom_ls.panel_framework.bulk_actions import (
     BULK_ACTIONS,
@@ -49,7 +51,7 @@ from freedom_ls.panel_framework.views import (
     _ResolvedAction,
 )
 
-from .helpers import make_staff_user, make_stub
+from .helpers import make_site, make_staff_user, make_stub
 from .stub_models import StubModel
 from .stub_panels import (
     RecordingCapabilityConfig,
@@ -1225,6 +1227,19 @@ def test_selection_ui_hidden_without_permitted_actions(mock_site_context: Site) 
 
 # -- recorded runs and their status route ---------------------------------
 
+
+class ResolverError(Exception):
+    """Raised by a stand-in resolver to prove the exception propagates."""
+
+
+def returns_non_site(request: HttpRequest) -> RequestSite:
+    return RequestSite(request)
+
+
+def raises_resolver_error(request: HttpRequest) -> Site:
+    raise ResolverError
+
+
 RECORDED_PATH = f"{StubRecordedBulkAction.__module__}.StubRecordedBulkAction"
 
 
@@ -1316,6 +1331,63 @@ def test_a_recorded_run_records_the_sections_scope(
     _confirm_recorded(two_stubs)
 
     assert BulkActionRun.objects.get().scope == scope
+
+
+def test_a_confirmed_bulk_action_records_its_run_under_the_requests_site(
+    two_stubs: tuple[StubModel, StubModel], mock_site_context: Site
+) -> None:
+    _confirm_recorded(two_stubs)
+
+    assert BulkActionRun.objects.get().site == mock_site_context
+
+
+def test_a_resolver_returning_no_site_records_no_run_and_is_denied(
+    two_stubs: tuple[StubModel, StubModel], settings: SettingsWrapper
+) -> None:
+    settings.PANEL_FRAMEWORK_SITE_RESOLVER = f"{__name__}.returns_non_site"
+
+    with pytest.raises(PermissionDenied):
+        _confirm_recorded(two_stubs)
+
+    assert not BulkActionRun.objects.exists()
+
+
+@override_settings(SITE_ID=None, ALLOWED_HOSTS=["*"])
+def test_an_unknown_host_under_the_default_resolver_records_no_run_and_is_denied(
+    settings: SettingsWrapper,
+) -> None:
+    del settings.PANEL_FRAMEWORK_SITE_RESOLVER
+    stub = make_stub()
+    path = "stubs/__actions/stub_recorded"
+    data = {
+        "mode": "keys",
+        "keys": [str(stub.pk)],
+        "confirmed": "1",
+        "expected_count": "1",
+    }
+    request = RequestFactory().post(
+        f"/test-panel/framework/{path}",
+        data,
+        HTTP_HX_REQUEST="true",
+        HTTP_HOST="unknown.test",
+    )
+    request.user = make_staff_user(make_site("Other", "other.test"))
+
+    with pytest.raises(PermissionDenied):
+        call_view(request, path)
+
+    assert not BulkActionRun.objects.exists()
+
+
+def test_a_resolver_that_raises_propagates_and_records_no_run(
+    two_stubs: tuple[StubModel, StubModel], settings: SettingsWrapper
+) -> None:
+    settings.PANEL_FRAMEWORK_SITE_RESOLVER = f"{__name__}.raises_resolver_error"
+
+    with pytest.raises(ResolverError):
+        _confirm_recorded(two_stubs)
+
+    assert not BulkActionRun.objects.exists()
 
 
 def test_confirming_a_recorded_action_below_the_threshold_runs_it_inline(

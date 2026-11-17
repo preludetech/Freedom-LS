@@ -1143,7 +1143,7 @@ def _handle_run_status(request: HttpRequest, resolved: _Resolved) -> HttpRespons
     panel = resolved.panel
     if not isinstance(panel, DataTablePanel) or not request.user.is_authenticated:
         raise Http404("No such run")
-    runs = BulkActionRun.objects.filter(
+    runs = BulkActionRun.objects.for_request(request).filter(
         requested_by=request.user,
         table_key=panel.table_key,
         **scope_lookup(panel.ctx.scope),

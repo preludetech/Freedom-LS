@@ -70,9 +70,8 @@ def with_missing_keys(
 
 
 def _run_on_site(run_id: str, site_id: int) -> QuerySet[BulkActionRun]:
-    """Callable from a background task, which has no request and so no
-    ambient site: the run is read through `_base_manager` filtered on
-    `site_id`."""
+    """Callable from a background task, which has no request to resolve a
+    site from: the run is read by the `site_id` the task was given."""
     return (
         BulkActionRun._base_manager.filter(site_id=site_id, pk=run_id)
         .select_related("requested_by", "scope_type")

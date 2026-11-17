@@ -20,6 +20,7 @@ from django.test import RequestFactory
 from freedom_ls.panel_framework.actions import PanelAction, changed_response
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.filters import TableFilter
+from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 from freedom_ls.panel_framework.tables import Column
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
@@ -34,7 +35,7 @@ from freedom_ls.panel_framework.views import (
     panel_framework_view,
 )
 
-from .helpers import make_staff_user, make_stub
+from .helpers import make_site, make_staff_user, make_stub
 from .stub_models import StubModel
 from .stub_panels import (
     RecordingCapabilityConfig,
@@ -1267,3 +1268,24 @@ class TestMenuCountEvents:
     ) -> None:
         with pytest.raises(ImproperlyConfigured):
             _count_trigger(section)
+
+
+def test_the_run_status_view_answers_404_for_a_run_of_another_site(
+    mock_site_context: Site,
+) -> None:
+    requester = make_staff_user()
+    run = BulkActionRun.objects.create(
+        site=make_site("Other", "other.test"),
+        requested_by=requester,
+        action_path="panel_framework.tests.stub_panels.StubRecordedBulkAction",
+        table_key="stubs",
+        action_name="stub_recorded",
+        status=RunStatus.DONE,
+    )
+    path = f"stubs/__runs/{run.pk}"
+    request = make_request(path, htmx=True)
+    request.user = requester
+
+    response = call_view(request, path)
+
+    assert response.status_code == 404

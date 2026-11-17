@@ -10,7 +10,11 @@ from typing import TYPE_CHECKING, Literal, cast
 from django import forms
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import AnonymousUser
-from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.core.exceptions import (
+    ImproperlyConfigured,
+    PermissionDenied,
+    ValidationError,
+)
 from django.db import transaction
 from django.db.models import Model, QuerySet
 from django.http import HttpRequest, QueryDict
@@ -19,6 +23,7 @@ from freedom_ls.panel_framework.actions import count_phrase
 from freedom_ls.panel_framework.config import config
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
+from freedom_ls.panel_framework.sites import resolve_site
 
 __all__ = [
     "BULK_ACTIONS",
@@ -380,8 +385,14 @@ class RecordedBulkAction(BulkAction):
         from freedom_ls.panel_framework.bulk_runs import run_bulk_action
         from freedom_ls.panel_framework.tasks import _run_bulk_action_task
 
+        site = resolve_site(ctx.request)
+        if site is None:
+            # A run belongs to exactly one site; without one it could not be
+            # scoped, so nothing is recorded and nothing runs.
+            raise PermissionDenied("This request belongs to no site.")
         run = BulkActionRun.objects.create(
-            requested_by=ctx.request.user,
+            site=site,
+            requested_by_id=cast(int, ctx.request.user.pk),
             scope=ctx.scope,
             action_path=f"{type(self).__module__}.{type(self).__qualname__}",
             table_key=self.table_key,

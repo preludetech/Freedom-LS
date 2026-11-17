@@ -29,10 +29,17 @@ def make_site(name: str, domain: str) -> Site:
     return Site.objects.create(name=name, domain=domain)
 
 
-def make_staff_user() -> object:
-    """Create a staff user with a unique email. Requires mock_site_context active."""
+def make_staff_user(site: Site | None = None) -> object:
+    """Create a staff user with a unique email. Without ``site`` it requires
+    mock_site_context to be active; with one the user is saved on that site, so
+    a test that must not fake the ambient site can still have a user."""
     User = get_user_model()
     n = next(_counter)
+    if site is not None:
+        user = User(email=f"staff{n}@test.local", is_staff=True, site=site)
+        user.set_unusable_password()
+        user.save()
+        return user
     return User.objects.create_user(
         email=f"staff{n}@test.local",
         password="testpass",  # pragma: allowlist secret
