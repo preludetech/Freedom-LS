@@ -23,6 +23,7 @@ from django.template.loader import render_to_string
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.events import build_hx_trigger
 from freedom_ls.panel_framework.forms import ReasonForm
+from freedom_ls.panel_framework.widgets import PanelClearableFileInput
 
 __all__ = [
     "ConfirmAction",
@@ -338,6 +339,7 @@ class FormPanelAction(ModalPanelAction):
             if queried.is_valid():
                 form = queried
         self._mark_refresh_fields(ctx, form)
+        self._use_framework_file_widgets(form)
         return form
 
     def get_unbound_form(self, ctx: PanelContext) -> forms.BaseForm:
@@ -346,7 +348,20 @@ class FormPanelAction(ModalPanelAction):
             **{**self.get_form_kwargs(ctx), "data": None, "files": None}
         )
         self._mark_refresh_fields(ctx, form)
+        self._use_framework_file_widgets(form)
         return form
+
+    def _use_framework_file_widgets(self, form: forms.BaseForm) -> None:
+        """Give each default file widget the framework's own, which shows the
+        current file's name without its storage key or a link."""
+        for field in form.fields.values():
+            # Exactly Django's default: a form that declares a widget of its
+            # own, a subclass included, keeps it.
+            if type(field.widget) is not forms.ClearableFileInput:
+                continue
+            widget = PanelClearableFileInput(attrs=field.widget.attrs.copy())
+            widget.is_required = field.required
+            field.widget = widget
 
     def _mark_refresh_fields(self, ctx: PanelContext, form: forms.BaseForm) -> None:
         """Make a change to each `refresh_on_change` field re-render the dialog

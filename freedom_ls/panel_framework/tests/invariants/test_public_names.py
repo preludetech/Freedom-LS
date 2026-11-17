@@ -29,6 +29,7 @@ PUBLIC_MODULES = [
     "run_records",
     "tables",
     "views",
+    "widgets",
 ]
 
 

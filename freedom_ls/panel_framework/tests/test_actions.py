@@ -44,6 +44,7 @@ from freedom_ls.panel_framework.views import (
     _handle_action,
     _ResolvedAction,
 )
+from freedom_ls.panel_framework.widgets import PanelClearableFileInput
 
 from .helpers import (
     make_staff_user,
@@ -2008,3 +2009,98 @@ def test_a_multipart_post_to_a_create_action_saves_the_file(
     item = StubFileModel.objects.get(name="Fresh")
     with item.attachment.open() as saved:
         assert saved.read() == b"payload"
+
+
+class _AcceptingFileForm(forms.ModelForm):
+    class Meta:
+        model = StubFileModel
+        fields = ["name", "attachment"]
+        widgets = {"attachment": forms.ClearableFileInput(attrs={"accept": ".pdf"})}
+
+
+class _DeclaredFileInputForm(forms.Form):
+    attachment = forms.FileField(widget=forms.FileInput)
+
+
+class _AcceptingFileAction(FormPanelAction):
+    action_name = "accepting"
+    form_class = _AcceptingFileForm
+
+
+class _DeclaredFileInputAction(FormPanelAction):
+    action_name = "declared"
+    form_class = _DeclaredFileInputForm
+
+
+@pytest.mark.parametrize("build", ["get_form", "get_unbound_form"])
+def test_a_file_field_gets_the_framework_widget_keeping_its_attrs_and_required(
+    build: str,
+) -> None:
+    action = _AcceptingFileAction()
+    form = getattr(action, build)(_ctx(RequestFactory().get("/")))
+
+    widget = form.fields["attachment"].widget
+    assert isinstance(widget, PanelClearableFileInput)
+    assert widget.attrs["accept"] == ".pdf"
+    assert widget.attrs is not _AcceptingFileForm.base_fields["attachment"].widget.attrs
+    assert widget.is_required is form.fields["attachment"].required
+
+
+def test_a_required_file_field_keeps_is_required_on_the_framework_widget() -> None:
+    form = StubUploadFormAction().get_form(_ctx(RequestFactory().get("/")))
+
+    widget = form.fields["attachment"].widget
+    assert isinstance(widget, PanelClearableFileInput)
+    assert widget.is_required is True
+
+
+@pytest.mark.parametrize("build", ["get_form", "get_unbound_form"])
+def test_a_declared_file_input_is_not_replaced(build: str) -> None:
+    form = getattr(_DeclaredFileInputAction(), build)(_ctx(RequestFactory().get("/")))
+
+    assert type(form.fields["attachment"].widget) is forms.FileInput
+
+
+def _edit_file_record(
+    post: dict[str, object],
+) -> tuple[StubFileModel, HttpResponse]:
+    item = make_stub_file(name="Record", attachment=_upload(b"old", "old.txt"))
+    action = EditAction(form_class=_StubFileModelForm, form_title="Edit", instance=item)
+    request = RequestFactory().post("/", post)
+    request.user = make_staff_user()
+    return item, action.handle_submit(_ctx(request, item))
+
+
+@pytest.mark.django_db
+def test_a_ticked_remove_clears_the_instances_file(mock_site_context: Site) -> None:
+    item, response = _edit_file_record({"name": "Record", "attachment-clear": "on"})
+
+    assert response.status_code == 204
+    item.refresh_from_db()
+    assert not item.attachment
+
+
+@pytest.mark.django_db
+def test_a_ticked_remove_comes_back_ticked_when_another_field_is_invalid(
+    mock_site_context: Site,
+) -> None:
+    item, response = _edit_file_record({"name": "", "attachment-clear": "on"})
+
+    assert response.status_code == 422
+    root = lxml.html.fromstring(response.content.decode())
+    (checkbox,) = root.xpath("//input[@name='attachment-clear']")
+    assert checkbox.get("checked") is not None
+    item.refresh_from_db()
+    assert str(item.attachment.name).endswith("old.txt")
+
+
+@pytest.mark.django_db
+def test_a_ticked_remove_with_a_new_upload_is_a_contradiction(
+    mock_site_context: Site,
+) -> None:
+    _, response = _edit_file_record(
+        {"name": "Record", "attachment-clear": "on", "attachment": _upload()}
+    )
+
+    assert response.status_code == 422
+    assert "not both" in response.content.decode().lower()
