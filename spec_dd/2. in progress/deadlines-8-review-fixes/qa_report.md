@@ -132,9 +132,9 @@ Note on the mobile open-sheet row: this was measured with the outline bottom she
 ## Bug status
 
 - **FIXED** (commit: 39534064a) — B1: Content reset leaves CourseParts behind
-- **UNRESOLVED** — B2: Validator header counts errors as files (reason: the fixer's commit 1103d0cca counted distinct paths, but every cross-file error is filed under the scanned root, so several bad files in one load would read "1 file(s)"; reverted in 5cc1e70a6. A real fix needs each cross-file error to carry its own file, or a decision to word the header as a count of problems)
-- **UNRESOLVED** — B3: Override picker cannot tell two placements of one child apart (reason: how to label a placement in the picker is a UX decision)
-- **UNRESOLVED** — full run after the fixes left tests failing (reason: `freedom_ls/content_engine/tests/test_signals.py::test_signal_names_the_children_a_load_moved`; 14442 passed, 1 failed. It fails with or without the QA fixes: it loads only part "02. Two" and expects the row in part "01. One" to count as moved, but the branch's rule that only rows in the load's own collections count as left behind says it does not; which one is intended needs a decision)
+- **FIXED** (commit: ee840f5eb) — B2: Validator header counts errors as files. Decision: the header counts problems ("Validation failed: N problem(s)"), since cross-file errors are filed under the scanned root and a file count would be wrong
+- **FIXED** (commit: f2afbc5a1) — B3: Override picker cannot tell two placements of one child apart. Decision: an item in a part reads "Part › Title"; one placed on the course reads its title; no file path
+- **FIXED** (commit: f2afbc5a1) — `test_signal_names_the_children_a_load_moved` failed. Decision: keep the rule that only rows in the load's own collections count as left behind; the test now reloads the whole course. Full suite: 15053 passed
 
 ## General notes
 

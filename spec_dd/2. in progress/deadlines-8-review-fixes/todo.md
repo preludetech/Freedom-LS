@@ -9,9 +9,9 @@ items. See `claude_plugins/sdd/commands/README.md`.
 - [x] (cmd) Open PR #247 and review it
 - [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (user) Review the QA report and decide the unresolved items
-- [ ] (cmd) Fix B2: the validator header counts errors as files ("Validation failed for 2 file(s)" for one file)
-- [ ] (cmd) Fix B3: the override picker labels two placements of one child identically
-- [ ] (cmd) Fix the failing `content_engine/tests/test_signals.py::test_signal_names_the_children_a_load_moved`, once it is decided whether a row outside the load's own collections counts as moved
+- [x] (cmd) Fix B2: the validator header counts errors as files ("Validation failed for 2 file(s)" for one file)
+- [x] (cmd) Fix B3: the override picker labels two placements of one child identically
+- [x] (cmd) Fix the failing `content_engine/tests/test_signals.py::test_signal_names_the_children_a_load_moved`, once it is decided whether a row outside the load's own collections counts as moved
 
 ## 2. Documentation and pull request
 
