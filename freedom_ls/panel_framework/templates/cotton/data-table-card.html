@@ -21,6 +21,10 @@ A table with child rows gives each card an id, the depth indent and, for a
 child, a hidden binding that follows its groups. A group card holds the
 chevron in the leading slot; a leaf keeps the slot empty. The ids carry a
 "-card" suffix so they never collide with the table row's own.
+
+A row with a row template replaces the whole card body with that template,
+ahead of card_template_name and the primary/secondary rendering; the card's
+selection checkbox, chevron slot, id and indent are unchanged.
 {% endcomment %}
 <li{% if has_child_rows %} id="{{ row.row_id }}-card"{% if row.parent_ids %} x-show="shown" data-parents="{% for parent_id in row.parent_ids %}{{ parent_id }}-card{% if not forloop.last %} {% endif %}{% endfor %}"{% endif %}{% endif %} class="panel-data-table-card flex items-start gap-3 px-4 py-3 sm:px-6 [&_.btn]:min-h-11{% if has_child_rows %} {% include "panel_framework/partials/row_indent.html" with depth=row.depth %}{% endif %}">
     {% if selectable %}
@@ -68,7 +72,9 @@ chevron in the leading slot; a leaf keeps the slot empty. The ids carry a
         </div>
     {% endif %}
     <div class="min-w-0 flex-1 py-1">
-        {% if card_template_name %}
+        {% if row.row_template_name %}
+            {% include row.row_template_name with object=row.object row=row %}
+        {% elif card_template_name %}
             {% include card_template_name with object=row.object %}
         {% else %}
             {% if primary_column %}

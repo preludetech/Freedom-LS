@@ -296,6 +296,13 @@ class DataTable:
         `has_child_rows` is set; no row has any by default."""
         return ()
 
+    @staticmethod
+    def get_row_template_name(row: object) -> str | None:
+        """A template that replaces this row's cells from the primary column
+        to the last one, for a row that is a note rather than a record. None
+        keeps the columns."""
+        return None
+
     #: The template drawn when the page has no rows. It renders with the
     #: table's own context (query, any_filter_set, clear_changes,
     #: clear_search_changes, page_url, base_url, region_id, empty_message,
@@ -527,6 +534,11 @@ class DataTable:
             if column is not primary_column and column.card != "md_only"
         ]
         sortable_columns = [column for column in columns if column.sortable]
+        # A row template starts at the primary column, so the columns before
+        # it keep an empty cell each.
+        leading_columns = (
+            columns[: columns.index(primary_column)] if primary_column else []
+        )
 
         # "Reset" clears every filter, but not the search text or the sort:
         # the sheet holds neither (search has its own form, sort is a menu),
@@ -569,6 +581,8 @@ class DataTable:
             "cards_when_narrow": cls.cards_when_narrow,
             "row_detail_template_name": cls.row_detail_template_name,
             "has_child_rows": cls.has_child_rows,
+            "leading_columns": leading_columns,
+            "row_template_colspan": len(columns) - len(leading_columns),
             "empty_state_template_name": cls.empty_state_template_name,
             "empty_message": cls.empty_message,
             "empty_no_results": cls.empty_no_results,
@@ -616,6 +630,7 @@ def _flatten_rows(
             "label": _lazy_label(table, row),
             "has_row_detail": table.row_detail_template_name is not None
             and table.has_row_detail(row),
+            "row_template_name": table.get_row_template_name(row),
             "row_id": row_id,
             "depth": len(parent_ids),
             "parent_ids": parent_ids,

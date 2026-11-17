@@ -27,6 +27,7 @@ from ..stub_panels import (
     StubDiscardBulkAction,
     StubExportBulkAction,
     StubForbiddenBulkAction,
+    StubLeadingColumnChildRowsTablePanel,
     StubPlainDataTable,
     StubPurgeBulkAction,
     StubRecordedBulkAction,
@@ -510,7 +511,7 @@ def test_every_card_id_ends_in_the_card_suffix(mock_site_context: Site) -> None:
     document = _render(StubChildRowsTablePanel)
 
     cards = document.cssselect("ul > li")
-    assert [card.get("id").endswith("-card") for card in cards] == [True] * 6
+    assert [card.get("id").endswith("-card") for card in cards] == [True] * 7
 
 
 def test_a_deeper_child_row_is_indented_further(mock_site_context: Site) -> None:
@@ -533,3 +534,85 @@ def test_a_table_without_child_rows_has_no_row_ids_or_child_rows_state(
     assert document.cssselect("tr[id]") == []
     assert document.cssselect('[x-data="childRows"]') == []
     assert document.cssselect("tbody button") == []
+
+
+def _note_row(document: lxml.html.HtmlElement) -> lxml.html.HtmlElement:
+    (row,) = [
+        row for row in document.cssselect("tbody tr") if row.cssselect("td[colspan]")
+    ]
+    return row
+
+
+def test_a_row_with_a_row_template_renders_it_once_in_the_table(
+    mock_site_context: Site,
+) -> None:
+    document = _render(StubChildRowsTablePanel)
+
+    (template,) = document.cssselect("tbody [data-test-row-template]")
+    assert template.get("data-object") == "note"
+
+
+def test_the_row_template_receives_the_row_dict(mock_site_context: Site) -> None:
+    document = _render(StubChildRowsTablePanel)
+
+    note = _note_row(document)
+    (template,) = note.cssselect("[data-test-row-template]")
+    assert template.get("data-row-id") == note.get("id")
+
+
+def test_a_row_template_keeps_the_rows_id_and_data_parents(
+    mock_site_context: Site,
+) -> None:
+    document = _render(StubChildRowsTablePanel)
+
+    note = _note_row(document)
+    group = document.cssselect("tbody tr")[0]
+    assert note.get("data-parents") == group.get("id")
+    assert note.get("x-show") == "shown"
+
+
+def test_a_row_template_spans_every_column_from_the_primary_one(
+    mock_site_context: Site,
+) -> None:
+    document = _render(StubLeadingColumnChildRowsTablePanel)
+
+    note = _note_row(document)
+    cells = note.cssselect("td")
+    assert [cell.text_content().strip() for cell in cells[:-1]] == [""]
+    assert cells[-1].get("colspan") == "2"
+
+
+def test_a_leading_cell_of_a_row_template_carries_the_columns_cell_class(
+    mock_site_context: Site,
+) -> None:
+    document = _render(StubLeadingColumnChildRowsTablePanel)
+
+    leading = _note_row(document).cssselect("td")[0]
+    assert leading.get("class") == "w-12"
+
+
+def test_a_row_template_is_indented_by_its_depth(mock_site_context: Site) -> None:
+    document = _render(StubChildRowsTablePanel)
+
+    assert "ps-8" in _note_row(document).cssselect("td")[0].get("class")
+
+
+def test_a_row_template_row_takes_no_hover_and_has_no_chevron(
+    mock_site_context: Site,
+) -> None:
+    document = _render(StubChildRowsTablePanel)
+
+    note = _note_row(document)
+    assert note.get("class") == "hover:bg-transparent"
+    assert note.cssselect("button") == []
+
+
+def test_a_table_without_row_templates_renders_every_cell(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="row-a", kind="a")
+
+    document = _render(StubBTablePanel)
+
+    assert document.cssselect("tbody [data-test-row-template]") == []
+    assert document.cssselect("tbody td[colspan]") == []

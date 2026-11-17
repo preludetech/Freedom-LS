@@ -487,6 +487,7 @@ STUB_CHILD_ROWS: list[StubSequenceRow] = [
                 ),
             ),
             StubSequenceRow(name="middle-leaf", kind="a"),
+            StubSequenceRow(name="note", kind="note"),
         ),
     ),
     StubSequenceRow(name="top-leaf", kind="a"),
@@ -510,11 +511,48 @@ class StubChildRowsDataTable(StubSequenceDataTable):
     def get_row_label(row: object) -> str:
         return cast(StubSequenceRow, row).name
 
+    @staticmethod
+    def get_row_template_name(row: object) -> str | None:
+        if cast(StubSequenceRow, row).kind == "note":
+            return "panel_framework/test_row_template.html"
+        return None
+
 
 class StubChildRowsTablePanel(DataTablePanel):
     title = "Child rows"
     data_table = StubChildRowsDataTable
     table_key = "childrows"
+
+    def get_queryset(self, request: HttpRequest) -> Sequence[object]:
+        return STUB_CHILD_ROWS
+
+
+class StubLeadingColumnChildRowsDataTable(StubChildRowsDataTable):
+    """The child rows table with a narrow marker column before the name and a kind column after it."""
+
+    @staticmethod
+    def get_columns() -> list[Column]:
+        return [
+            Column(
+                header="Marker",
+                template_name="cotton/data-table-cells/text.html",
+                attr="kind",
+                cell_class="w-12",
+                card="md_only",
+            ),
+            *StubSequenceDataTable.get_columns(),
+            Column(
+                header="Kind",
+                template_name="cotton/data-table-cells/text.html",
+                attr="kind",
+            ),
+        ]
+
+
+class StubLeadingColumnChildRowsTablePanel(DataTablePanel):
+    title = "Leading column child rows"
+    data_table = StubLeadingColumnChildRowsDataTable
+    table_key = "leadingchildrows"
 
     def get_queryset(self, request: HttpRequest) -> Sequence[object]:
         return STUB_CHILD_ROWS

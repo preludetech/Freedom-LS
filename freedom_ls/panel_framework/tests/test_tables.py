@@ -48,6 +48,7 @@ from .stub_panels import (
     StubDataTable,
     StubDataTablePanel,
     StubDetailDataTable,
+    StubLeadingColumnChildRowsTablePanel,
     StubPlainDataTable,
     StubSequenceDataTable,
     StubSequenceRow,
@@ -2346,6 +2347,7 @@ def test_child_rows_flatten_depth_first_in_the_hooks_order() -> None:
         "leaf-one",
         "leaf-two",
         "middle-leaf",
+        "note",
         "top-leaf",
     ]
 
@@ -2367,7 +2369,7 @@ def test_a_row_id_starts_with_the_region_id() -> None:
 def test_each_row_carries_its_depth() -> None:
     rows = _child_row_dicts()
 
-    assert [row["depth"] for row in rows] == [0, 1, 2, 2, 1, 0]
+    assert [row["depth"] for row in rows] == [0, 1, 2, 2, 1, 1, 0]
 
 
 def test_each_row_lists_every_ancestor_in_parent_ids() -> None:
@@ -2382,14 +2384,18 @@ def test_each_row_lists_every_ancestor_in_parent_ids() -> None:
 def test_a_group_row_lists_only_its_direct_children() -> None:
     rows = _child_row_dicts()
 
-    group, inner, middle_leaf = rows[0], rows[1], rows[4]
-    assert group["child_row_ids"] == [inner["row_id"], middle_leaf["row_id"]]
+    group, inner, middle_leaf, note = rows[0], rows[1], rows[4], rows[5]
+    assert group["child_row_ids"] == [
+        inner["row_id"],
+        middle_leaf["row_id"],
+        note["row_id"],
+    ]
 
 
 def test_a_leaf_row_has_no_child_row_ids() -> None:
     rows = _child_row_dicts()
 
-    assert rows[5]["child_row_ids"] == []
+    assert rows[6]["child_row_ids"] == []
 
 
 class _ManyGroupsTable(StubChildRowsDataTable):
@@ -2471,3 +2477,40 @@ def test_child_rows_with_a_row_detail_fail_loudly() -> None:
 
     with pytest.raises(ImproperlyConfigured, match="row detail"):
         _bind_sequence_panel(_Panel).get_context_data()
+
+
+def test_each_row_carries_its_row_template_name() -> None:
+    rows = _child_row_dicts()
+
+    assert [row["row_template_name"] for row in rows] == [
+        None,
+        None,
+        None,
+        None,
+        None,
+        "panel_framework/test_row_template.html",
+        None,
+    ]
+
+
+def test_a_table_that_names_no_row_templates_gives_every_row_none() -> None:
+    rows = _child_row_dicts(StubSequenceTablePanel)
+
+    assert {row["row_template_name"] for row in rows} == {None}
+
+
+def test_the_context_has_no_leading_columns_when_the_primary_column_is_first() -> None:
+    context = _bind_sequence_panel(StubChildRowsTablePanel).get_context_data()
+
+    assert context["leading_columns"] == []
+    assert context["row_template_colspan"] == 1
+
+
+def test_the_columns_before_the_primary_one_are_the_leading_columns() -> None:
+    context = _bind_sequence_panel(
+        StubLeadingColumnChildRowsTablePanel
+    ).get_context_data()
+
+    leading = cast("list[Column]", context["leading_columns"])
+    assert [column.header for column in leading] == ["Marker"]
+    assert context["row_template_colspan"] == 2

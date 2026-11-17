@@ -900,6 +900,11 @@ def test_a_group_row_hides_and_shows_its_descendants_by_mouse_and_keyboard(
 
     inner.click()
     expect(grandchild).to_be_hidden()
+    expect(table.get_by_text("Note: note")).to_be_visible()
+    outer.click()
+    expect(table.get_by_text("Note: note")).to_be_hidden()
+    outer.click()
+    expect(table.get_by_text("Note: note")).to_be_visible()
     outer.click()
     outer.click()
     expect(inner).to_be_visible()

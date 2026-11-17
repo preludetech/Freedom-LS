@@ -29,6 +29,7 @@ class _Row:
     depth: int = 0
     parent_ids: tuple[str, ...] = ()
     child_row_ids: tuple[str, ...] = ()
+    row_template_name: str | None = None
 
 
 def _row(has_row_detail: bool = False) -> _Row:
@@ -256,3 +257,21 @@ def test_a_card_without_child_rows_has_no_id() -> None:
     )
 
     assert card.get("id") is None
+
+
+def test_a_row_template_replaces_the_card_body() -> None:
+    row = _child_row()
+    row.row_template_name = "panel_framework/test_row_template.html"
+
+    card = _card(
+        "<c-data-table-card :row='row' :primary_column='primary' "
+        ":card_template_name='card_template' :has_child_rows='True' />",
+        row=row,
+        primary=_name_column(),
+        card_template="panel_framework/test_stub_card.html",
+    )
+
+    (template,) = card.cssselect("[data-test-row-template]")
+    assert template.get("data-row-id") == "region-row-3"
+    assert card.cssselect("[data-card-primary-line]") == []
+    assert card.get("id") == "region-row-3-card"
