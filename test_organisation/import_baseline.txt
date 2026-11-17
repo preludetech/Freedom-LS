@@ -74,6 +74,7 @@ freedom_ls.meta_pixel.tests.test_context_processors -> freedom_ls.learner_manage
 freedom_ls.organisations.tests.test_models -> freedom_ls.role_based_permissions.utils
 
 # panel_framework
+freedom_ls.panel_framework.tests.invariants.test_templates -> freedom_ls.base.theming
 
 # registration_rules
 freedom_ls.registration_rules.tests.test_evaluation -> freedom_ls.comms.models

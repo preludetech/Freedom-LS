@@ -11,8 +11,8 @@ from django.db.models import Model, Q, QuerySet
 from django.http import HttpRequest
 from django.utils.functional import SimpleLazyObject
 
-from freedom_ls.base.csv_safety import escape_csv_formula
 from freedom_ls.panel_framework.config import config
+from freedom_ls.panel_framework.csv_safety import escape_csv_formula
 from freedom_ls.panel_framework.filters import TableFilter
 from freedom_ls.panel_framework.templatetags.data_table_tags import getattr_str
 

@@ -204,7 +204,6 @@ flowchart TB
     organisations --> base
     organisations --> site_aware_models
     panel_framework --> accounts
-    panel_framework --> base
     panel_framework --> site_aware_models
     qa_helpers --> accounts
     qa_helpers --> audit_log
@@ -293,6 +292,7 @@ flowchart TB
     meta_pixel -.-> learner_management
     organisations -.-> accounts
     organisations -.-> role_based_permissions
+    panel_framework -.-> base
     registration_rules -.-> comms
     registration_rules -.-> webhooks
     reports -.-> role_based_permissions
@@ -342,7 +342,7 @@ flowchart TB
 | messaging_policy | accounts, base, comms, learner_management, organisations, role_based_permissions, site_aware_models | — |
 | meta_pixel | base | accounts, content_engine, learner_management |
 | organisations | base, site_aware_models | accounts, role_based_permissions |
-| panel_framework | accounts, base, site_aware_models | — |
+| panel_framework | accounts, site_aware_models | base |
 | qa_helpers | accounts, audit_log, comms, content_engine, course_applications, course_interest, course_recommendations, deadlines, educator_interface, form_engine, hr_attributes, learner_interface, learner_management, learner_progress, mail, messaging_policy, organisations, panel_framework, referral_tracking, registration_rules, reports, role_based_permissions, site_aware_models, webhooks | — |
 | referral_tracking | accounts, api, base, site_aware_models | — |
 | registration_rules | accounts, base, content_engine, course_recommendations, hr_attributes, learner_management, learner_progress, organisations, site_aware_models | comms, webhooks |

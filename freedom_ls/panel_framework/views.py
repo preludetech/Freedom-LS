@@ -30,8 +30,6 @@ from django.utils import timezone
 from django.utils.cache import patch_vary_headers
 from django.utils.text import slugify
 
-from freedom_ls.base.csv_import import EchoWriter
-from freedom_ls.base.csv_safety import UTF8_BOM
 from freedom_ls.panel_framework.actions import (
     PanelAction,
     count_noun,
@@ -55,6 +53,7 @@ from freedom_ls.panel_framework.bulk_runs import (
     stopped_after,
 )
 from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.panel_framework.csv_safety import UTF8_BOM, EchoWriter
 from freedom_ls.panel_framework.events import BULK_RUN_STARTED_EVENT, build_hx_trigger
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus, scope_lookup
 from freedom_ls.panel_framework.panels import DataTablePanel, Panel, TabSet

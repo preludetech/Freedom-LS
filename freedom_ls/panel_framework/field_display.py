@@ -71,7 +71,8 @@ from django.forms.utils import pretty_name
 from django.utils import formats, timezone
 from django.utils.hashable import make_hashable
 
-from freedom_ls.base.date_display import DATE_DISPLAY_FORMAT, DATETIME_DISPLAY_FORMAT
+DATE_DISPLAY_FORMAT = "j M Y"
+DATETIME_DISPLAY_FORMAT = "j M Y, H:i"
 
 # django-stubs doesn't cover `template_localtime`, though it exists at runtime;
 # this typed alias keeps the call sites below free of Any. getattr, not direct
