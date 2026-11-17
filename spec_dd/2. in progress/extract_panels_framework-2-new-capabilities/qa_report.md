@@ -123,7 +123,7 @@ Manifestations: test 8.5 (desktop), test 8.9 (tablet).
 - The long course's part had to be moved so it ends page 1 (it is now the 9th top-level item, last row of page 1 after Course details).
 - The dev database had to be rebuilt at the start because it had no DemoDev site.
 
-- The full run after the fixes: 15578 passed, 1 failed. The failure was `test_quick_view_drawer`, the known flaky test already filed in todo.md (it times out on a loaded machine and passes when run alone).
+- The full run after the fixes: 15578 passed, 1 failed. The failure was `test_quick_view_drawer`, the known flaky test already filed in todo.md (it times out on a loaded machine and passes when run alone). Stabilised afterwards (commit: 24f3b007f): after Back the test now waits for htmx's history restore before clicking; the next full run passed 15597 of 15597.
 
 - After the fixes, the first reason dialog example's Cancel button showed a focus ring on a fresh page load, so something on the reference page takes focus on load. Not covered by the QA plan; noted only.
 
