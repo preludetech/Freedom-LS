@@ -169,6 +169,7 @@ class TestCrossOrganisationIsolation:
         self, isolation: SimpleNamespace
     ) -> None:
         run = BulkActionRun.objects.create(
+            site=isolation.organisation_b.site,
             scope=isolation.organisation_b,
             requested_by=isolation.educator,
             table_key="learners",

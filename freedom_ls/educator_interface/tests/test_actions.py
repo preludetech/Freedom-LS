@@ -7365,6 +7365,7 @@ def test_a_cohort_deactivated_after_the_confirmation_fails_each_learner_without_
     cohort = cast(Cohort, CohortFactory(organisation=organisation, is_active=False))
     learner = _bulk_learner(organisation=organisation)
     run = BulkActionRun.objects.create(
+        site=organisation.site,
         scope=organisation,
         requested_by=UserFactory(superuser=True),
         action_path=f"{AddToCohortBulkAction.__module__}.AddToCohortBulkAction",
@@ -8336,6 +8337,7 @@ def _run_over(learner: Learner, *others: str) -> BulkActionRun:
     return cast(
         BulkActionRun,
         BulkActionRun.objects.create(
+            site=learner.organisation.site,
             scope=learner.organisation,
             requested_by=UserFactory(superuser=True),
             action_path=DEACTIVATE,

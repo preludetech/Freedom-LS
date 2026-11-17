@@ -881,8 +881,10 @@ def _make_bulk_record(
     if model is LearnerImport:
         fields.update(organisation=OrganisationFactory(), file_name="learners.csv")
     else:
+        organisation = OrganisationFactory()
         fields.update(
-            scope=OrganisationFactory(),
+            site=organisation.site,
+            scope=organisation,
             action_path="nowhere.Deactivate",
             table_key="learners",
             action_name="deactivate",

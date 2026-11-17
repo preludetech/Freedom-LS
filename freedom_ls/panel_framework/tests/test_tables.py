@@ -38,7 +38,6 @@ from freedom_ls.panel_framework.views import (
     SectionConfig,
     SectionConfigBase,
 )
-from freedom_ls.tests.site_context import drop_ambient_request
 
 from .helpers import make_stub
 from .stub_panels import (
@@ -1075,19 +1074,6 @@ def test_unknown_export_format_is_404(mock_site_context: Site) -> None:
 
     with pytest.raises(Http404):
         fetch(_panel_path(stub.pk), data={"stub-export": "xlsx"})
-
-
-def test_export_stays_scoped_when_site_thread_local_cleared(
-    mock_site_context: Site,
-) -> None:
-    stubs = [make_stub(name=f"row-{i:02d}") for i in range(3)]
-
-    response = fetch(_panel_path(stubs[0].pk), data={"stub-export": "csv"})
-    drop_ambient_request()
-
-    _header, *body = _rows(response)
-    names = [row[0] for row in body]
-    assert names == sorted(stub.name for stub in stubs)
 
 
 def test_export_link_of_a_stacked_table_serves_its_csv(

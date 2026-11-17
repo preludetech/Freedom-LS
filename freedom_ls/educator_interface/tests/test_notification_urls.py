@@ -16,6 +16,7 @@ from freedom_ls.panel_framework.models import BulkActionRun
 def test_bulk_run_table_url_is_the_runs_table(mock_site_context) -> None:
     organisation = OrganisationFactory()
     run = BulkActionRun.objects.create(
+        site=organisation.site,
         scope=organisation,
         requested_by=UserFactory(),
         table_key="cohorts",
@@ -33,6 +34,7 @@ def test_a_run_whose_organisation_was_deleted_links_nowhere(mock_site_context) -
     """Nothing cascades to a run, so its scope is gone rather than the run."""
     organisation = OrganisationFactory()
     run = BulkActionRun.objects.create(
+        site=organisation.site,
         scope=organisation,
         requested_by=UserFactory(),
         table_key="cohorts",

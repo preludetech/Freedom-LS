@@ -10,19 +10,19 @@ import pytest
 from django.contrib.sites.models import Site
 
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus, scope_lookup
-from freedom_ls.tests.factories import SiteFactory
 
-from .helpers import make_staff_user, make_stub
+from .helpers import make_site, make_staff_user, make_stub
 
 pytestmark = pytest.mark.django_db
 
 ACTION_PATH = "panel_framework.tests.stub_panels.StubRecordedBulkAction"
 
 
-def _run(**fields: object) -> BulkActionRun:
+def _run(site: Site, **fields: object) -> BulkActionRun:
     return cast(
         BulkActionRun,
         BulkActionRun.objects.create(
+            site=site,
             requested_by=make_staff_user(),
             action_path=ACTION_PATH,
             table_key="stubs",
@@ -33,14 +33,14 @@ def _run(**fields: object) -> BulkActionRun:
 
 
 def test_a_run_takes_its_site_from_the_ambient_site(mock_site_context: Site):
-    run = _run()
+    run = _run(mock_site_context)
 
     assert run.site == mock_site_context
 
 
 def test_the_default_manager_hides_another_sites_runs(mock_site_context: Site):
     BulkActionRun._base_manager.create(
-        site=SiteFactory(),
+        site=make_site("Other", "other.test"),
         requested_by=make_staff_user(),
         action_path=ACTION_PATH,
         table_key="stubs",
@@ -51,7 +51,7 @@ def test_the_default_manager_hides_another_sites_runs(mock_site_context: Site):
 
 
 def test_a_new_run_is_queued_with_no_progress(mock_site_context: Site):
-    run = _run()
+    run = _run(mock_site_context)
 
     assert (run.status, run.processed_count, run.result) == (
         RunStatus.QUEUED,
@@ -63,16 +63,16 @@ def test_a_new_run_is_queued_with_no_progress(mock_site_context: Site):
 def test_a_run_records_the_scope_it_was_started_under(mock_site_context: Site):
     scope = make_stub()
 
-    run = _run(scope=scope)
+    run = _run(mock_site_context, scope=scope)
 
     assert BulkActionRun.objects.get(pk=run.pk).scope == scope
 
 
 def test_the_scope_lookup_finds_runs_of_one_scope_only(mock_site_context: Site):
     here, elsewhere = make_stub(), make_stub()
-    run = _run(scope=here)
-    _run(scope=elsewhere)
-    _run()
+    run = _run(mock_site_context, scope=here)
+    _run(mock_site_context, scope=elsewhere)
+    _run(mock_site_context)
 
     assert list(BulkActionRun.objects.filter(**scope_lookup(here))) == [run]
 
@@ -80,7 +80,7 @@ def test_the_scope_lookup_finds_runs_of_one_scope_only(mock_site_context: Site):
 def test_the_scope_lookup_for_no_scope_finds_only_unscoped_runs(
     mock_site_context: Site,
 ):
-    _run(scope=make_stub())
-    unscoped = _run()
+    _run(mock_site_context, scope=make_stub())
+    unscoped = _run(mock_site_context)
 
     assert list(BulkActionRun.objects.filter(**scope_lookup(None))) == [unscoped]

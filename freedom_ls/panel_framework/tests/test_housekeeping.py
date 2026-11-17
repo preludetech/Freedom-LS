@@ -23,10 +23,8 @@ from freedom_ls.panel_framework.housekeeping import (
     sweep_run_records,
 )
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
-from freedom_ls.tests.factories import SiteFactory
-from freedom_ls.tests.site_context import site_context
 
-from .helpers import make_staff_user
+from .helpers import make_site, make_staff_user
 
 pytestmark = pytest.mark.django_db
 
@@ -34,12 +32,12 @@ FIXED_NOW = datetime(2026, 3, 1, 12, 0, tzinfo=UTC)
 
 
 def _make_run(
+    site: Site,
     *,
     status: str,
     created_ago: timedelta = timedelta(0),
     started_ago: timedelta | None = None,
     finished_ago: timedelta | None = None,
-    site: Site | None = None,
     action_path: str = "nowhere.Deactivate",
 ) -> BulkActionRun:
     """A run in `status`, with its timestamps set relative to FIXED_NOW.
@@ -49,6 +47,7 @@ def _make_run(
     """
     requester = make_staff_user()
     run = BulkActionRun(
+        site=site,
         requested_by=requester,
         status=status,
         started_at=None if started_ago is None else FIXED_NOW - started_ago,
@@ -57,8 +56,6 @@ def _make_run(
         table_key="stubs",
         action_name="deactivate",
     )
-    if site is not None:
-        run.site = site
     with time_machine.travel(FIXED_NOW - created_ago, tick=False):
         run.save()
     return run
@@ -76,7 +73,11 @@ class TestMarkUnpickedRunsFailed:
     def test_queued_record_older_than_the_window_is_failed(
         self, mock_site_context
     ) -> None:
-        record = _make_run(status=RunStatus.QUEUED, created_ago=timedelta(seconds=3601))
+        record = _make_run(
+            mock_site_context,
+            status=RunStatus.QUEUED,
+            created_ago=timedelta(seconds=3601),
+        )
 
         with time_machine.travel(FIXED_NOW, tick=False):
             closed = mark_unpicked_runs_failed(BulkActionRun, 3600)
@@ -91,7 +92,9 @@ class TestMarkUnpickedRunsFailed:
     def test_error_message_tells_the_reader_it_did_not_start(
         self, mock_site_context
     ) -> None:
-        record = _make_run(status=RunStatus.QUEUED, created_ago=timedelta(hours=2))
+        record = _make_run(
+            mock_site_context, status=RunStatus.QUEUED, created_ago=timedelta(hours=2)
+        )
 
         with time_machine.travel(FIXED_NOW, tick=False):
             mark_unpicked_runs_failed(BulkActionRun, 3600)
@@ -102,7 +105,11 @@ class TestMarkUnpickedRunsFailed:
     def test_a_record_exactly_at_the_threshold_is_closed(
         self, mock_site_context
     ) -> None:
-        record = _make_run(status=RunStatus.QUEUED, created_ago=timedelta(seconds=3600))
+        record = _make_run(
+            mock_site_context,
+            status=RunStatus.QUEUED,
+            created_ago=timedelta(seconds=3600),
+        )
 
         with time_machine.travel(FIXED_NOW, tick=False):
             mark_unpicked_runs_failed(BulkActionRun, 3600)
@@ -113,7 +120,11 @@ class TestMarkUnpickedRunsFailed:
     def test_queued_record_inside_the_window_is_left_queued(
         self, mock_site_context
     ) -> None:
-        record = _make_run(status=RunStatus.QUEUED, created_ago=timedelta(seconds=3599))
+        record = _make_run(
+            mock_site_context,
+            status=RunStatus.QUEUED,
+            created_ago=timedelta(seconds=3599),
+        )
 
         with time_machine.travel(FIXED_NOW, tick=False):
             mark_unpicked_runs_failed(BulkActionRun, 3600)
@@ -123,6 +134,7 @@ class TestMarkUnpickedRunsFailed:
 
     def test_running_record_is_not_touched(self, mock_site_context) -> None:
         record = _make_run(
+            mock_site_context,
             status=RunStatus.RUNNING,
             created_ago=timedelta(hours=5),
             started_ago=timedelta(minutes=1),
@@ -135,7 +147,9 @@ class TestMarkUnpickedRunsFailed:
         assert record.status == RunStatus.RUNNING
 
     def test_a_second_sweep_closes_nothing(self, mock_site_context) -> None:
-        _make_run(status=RunStatus.QUEUED, created_ago=timedelta(hours=2))
+        _make_run(
+            mock_site_context, status=RunStatus.QUEUED, created_ago=timedelta(hours=2)
+        )
 
         with time_machine.travel(FIXED_NOW, tick=False):
             first = mark_unpicked_runs_failed(BulkActionRun, 3600)
@@ -147,7 +161,11 @@ class TestMarkUnpickedRunsFailed:
         self, mock_site_context
     ) -> None:
         records = [
-            _make_run(status=RunStatus.QUEUED, created_ago=timedelta(hours=2))
+            _make_run(
+                mock_site_context,
+                status=RunStatus.QUEUED,
+                created_ago=timedelta(hours=2),
+            )
             for _ in range(2)
         ]
         recorder = _Recorder()
@@ -166,7 +184,9 @@ class TestMarkOrphanedRunsFailed:
         self, mock_site_context
     ) -> None:
         record = _make_run(
-            status=RunStatus.RUNNING, started_ago=timedelta(seconds=3601)
+            mock_site_context,
+            status=RunStatus.RUNNING,
+            started_ago=timedelta(seconds=3601),
         )
 
         with time_machine.travel(FIXED_NOW, tick=False):
@@ -180,7 +200,9 @@ class TestMarkOrphanedRunsFailed:
         )
 
     def test_error_message_tells_the_reader_it_stopped(self, mock_site_context) -> None:
-        record = _make_run(status=RunStatus.RUNNING, started_ago=timedelta(hours=2))
+        record = _make_run(
+            mock_site_context, status=RunStatus.RUNNING, started_ago=timedelta(hours=2)
+        )
 
         with time_machine.travel(FIXED_NOW, tick=False):
             mark_orphaned_runs_failed(BulkActionRun, 3600)
@@ -192,7 +214,9 @@ class TestMarkOrphanedRunsFailed:
         self, mock_site_context
     ) -> None:
         record = _make_run(
-            status=RunStatus.RUNNING, started_ago=timedelta(seconds=3600)
+            mock_site_context,
+            status=RunStatus.RUNNING,
+            started_ago=timedelta(seconds=3600),
         )
 
         with time_machine.travel(FIXED_NOW, tick=False):
@@ -205,7 +229,9 @@ class TestMarkOrphanedRunsFailed:
         self, mock_site_context
     ) -> None:
         record = _make_run(
-            status=RunStatus.RUNNING, started_ago=timedelta(seconds=3599)
+            mock_site_context,
+            status=RunStatus.RUNNING,
+            started_ago=timedelta(seconds=3599),
         )
 
         with time_machine.travel(FIXED_NOW, tick=False):
@@ -215,7 +241,9 @@ class TestMarkOrphanedRunsFailed:
         assert record.status == RunStatus.RUNNING
 
     def test_queued_record_is_not_touched(self, mock_site_context) -> None:
-        record = _make_run(status=RunStatus.QUEUED, created_ago=timedelta(hours=5))
+        record = _make_run(
+            mock_site_context, status=RunStatus.QUEUED, created_ago=timedelta(hours=5)
+        )
 
         with time_machine.travel(FIXED_NOW, tick=False):
             mark_orphaned_runs_failed(BulkActionRun, 3600)
@@ -224,7 +252,9 @@ class TestMarkOrphanedRunsFailed:
         assert record.status == RunStatus.QUEUED
 
     def test_a_second_sweep_closes_nothing(self, mock_site_context) -> None:
-        _make_run(status=RunStatus.RUNNING, started_ago=timedelta(hours=2))
+        _make_run(
+            mock_site_context, status=RunStatus.RUNNING, started_ago=timedelta(hours=2)
+        )
 
         with time_machine.travel(FIXED_NOW, tick=False):
             first = mark_orphaned_runs_failed(BulkActionRun, 3600)
@@ -235,7 +265,9 @@ class TestMarkOrphanedRunsFailed:
     def test_report_closed_is_called_once_per_closed_row(
         self, mock_site_context
     ) -> None:
-        record = _make_run(status=RunStatus.RUNNING, started_ago=timedelta(hours=2))
+        record = _make_run(
+            mock_site_context, status=RunStatus.RUNNING, started_ago=timedelta(hours=2)
+        )
         recorder = _Recorder()
 
         with time_machine.travel(FIXED_NOW, tick=False):
@@ -248,7 +280,11 @@ class TestDeleteFinishedRecords:
     def test_record_finished_before_the_retention_window_is_deleted(
         self, mock_site_context
     ) -> None:
-        _make_run(status=RunStatus.DONE, finished_ago=timedelta(days=30, seconds=1))
+        _make_run(
+            mock_site_context,
+            status=RunStatus.DONE,
+            finished_ago=timedelta(days=30, seconds=1),
+        )
 
         with time_machine.travel(FIXED_NOW, tick=False):
             deleted = delete_finished_records(BulkActionRun, 30)
@@ -258,7 +294,9 @@ class TestDeleteFinishedRecords:
     def test_record_finished_exactly_at_the_retention_boundary_is_deleted(
         self, mock_site_context
     ) -> None:
-        _make_run(status=RunStatus.DONE, finished_ago=timedelta(days=30))
+        _make_run(
+            mock_site_context, status=RunStatus.DONE, finished_ago=timedelta(days=30)
+        )
 
         with time_machine.travel(FIXED_NOW, tick=False):
             delete_finished_records(BulkActionRun, 30)
@@ -268,7 +306,11 @@ class TestDeleteFinishedRecords:
     def test_record_finished_inside_the_retention_window_is_kept(
         self, mock_site_context
     ) -> None:
-        _make_run(status=RunStatus.DONE, finished_ago=timedelta(days=29, hours=23))
+        _make_run(
+            mock_site_context,
+            status=RunStatus.DONE,
+            finished_ago=timedelta(days=29, hours=23),
+        )
 
         with time_machine.travel(FIXED_NOW, tick=False):
             delete_finished_records(BulkActionRun, 30)
@@ -276,7 +318,9 @@ class TestDeleteFinishedRecords:
         assert BulkActionRun._base_manager.count() == 1
 
     def test_unfinished_record_is_kept_however_old(self, mock_site_context) -> None:
-        _make_run(status=RunStatus.QUEUED, created_ago=timedelta(days=90))
+        _make_run(
+            mock_site_context, status=RunStatus.QUEUED, created_ago=timedelta(days=90)
+        )
 
         with time_machine.travel(FIXED_NOW, tick=False):
             delete_finished_records(BulkActionRun, 30)
@@ -286,7 +330,9 @@ class TestDeleteFinishedRecords:
     def test_record_failed_by_a_sweep_is_deleted_once_retention_passes(
         self, mock_site_context
     ) -> None:
-        _make_run(status=RunStatus.QUEUED, created_ago=timedelta(hours=2))
+        _make_run(
+            mock_site_context, status=RunStatus.QUEUED, created_ago=timedelta(hours=2)
+        )
         with time_machine.travel(FIXED_NOW, tick=False):
             mark_unpicked_runs_failed(BulkActionRun, 3600)
 
@@ -303,10 +349,18 @@ class TestSweepRunRecords:
     def test_returns_the_unpicked_orphaned_and_deleted_counts(
         self, mock_site_context
     ) -> None:
-        _make_run(status=RunStatus.QUEUED, created_ago=timedelta(hours=2))
-        _make_run(status=RunStatus.RUNNING, started_ago=timedelta(hours=2))
-        _make_run(status=RunStatus.RUNNING, started_ago=timedelta(hours=3))
-        _make_run(status=RunStatus.DONE, finished_ago=timedelta(days=40))
+        _make_run(
+            mock_site_context, status=RunStatus.QUEUED, created_ago=timedelta(hours=2)
+        )
+        _make_run(
+            mock_site_context, status=RunStatus.RUNNING, started_ago=timedelta(hours=2)
+        )
+        _make_run(
+            mock_site_context, status=RunStatus.RUNNING, started_ago=timedelta(hours=3)
+        )
+        _make_run(
+            mock_site_context, status=RunStatus.DONE, finished_ago=timedelta(days=40)
+        )
 
         with time_machine.travel(FIXED_NOW, tick=False):
             counts = sweep_run_records(
@@ -323,14 +377,13 @@ class TestSweepsSpanEverySite:
     def test_stale_rows_on_two_sites_are_closed_and_each_reported_with_its_own_site(
         self, mock_site_context
     ) -> None:
-        other_site = SiteFactory()
-        with site_context(other_site):
-            on_other = _make_run(
-                status=RunStatus.QUEUED,
-                created_ago=timedelta(hours=2),
-                site=other_site,
-            )
-        on_current = _make_run(status=RunStatus.QUEUED, created_ago=timedelta(hours=2))
+        other_site = make_site("Other", "other.test")
+        on_other = _make_run(
+            other_site, status=RunStatus.QUEUED, created_ago=timedelta(hours=2)
+        )
+        on_current = _make_run(
+            mock_site_context, status=RunStatus.QUEUED, created_ago=timedelta(hours=2)
+        )
         recorder = _Recorder()
 
         with time_machine.travel(FIXED_NOW, tick=False):
@@ -354,16 +407,18 @@ class _ReportingAction(RecordedBulkAction):
         type(self).finished.append(str(run.pk))
 
 
-def _queued_for_two_hours(action_path: str) -> BulkActionRun:
+def _queued_for_two_hours(site: Site, action_path: str) -> BulkActionRun:
     return _make_run(
+        site,
         status=RunStatus.QUEUED,
         created_ago=timedelta(hours=2),
         action_path=action_path,
     )
 
 
-def _running_for_two_hours(action_path: str) -> BulkActionRun:
+def _running_for_two_hours(site: Site, action_path: str) -> BulkActionRun:
     return _make_run(
+        site,
         status=RunStatus.RUNNING,
         started_ago=timedelta(hours=2),
         action_path=action_path,
@@ -382,12 +437,12 @@ def test_a_run_closed_by_a_sweep_is_reported_to_its_action(
     mock_site_context,
     monkeypatch: pytest.MonkeyPatch,
     sweep: Callable[[type[Model], int], int],
-    make_run: Callable[[str], BulkActionRun],
+    make_run: Callable[[Site, str], BulkActionRun],
 ) -> None:
     """The sweeps close runs with a bare update, so the action's on_finished
     would never run and the requester would never hear the run had stopped."""
     monkeypatch.setattr(_ReportingAction, "finished", [])
-    record = make_run(f"{__name__}.{_ReportingAction.__name__}")
+    record = make_run(mock_site_context, f"{__name__}.{_ReportingAction.__name__}")
 
     with time_machine.travel(FIXED_NOW, tick=False):
         closed = sweep(BulkActionRun, 3600)

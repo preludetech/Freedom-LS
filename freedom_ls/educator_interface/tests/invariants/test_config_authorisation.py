@@ -201,6 +201,7 @@ def test_the_bulk_run_route_404s_for_a_user_with_no_access_to_the_organisation(
     requester = UserFactory(staff=True)
     assign_object_role(requester, other_organisation, "organisation_admin")
     run = BulkActionRun.objects.create(
+        site=organisation.site,
         scope=organisation,
         requested_by=requester,
         table_key="learners",

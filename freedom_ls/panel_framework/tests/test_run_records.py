@@ -21,6 +21,7 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def records(mock_site_context: Site) -> QuerySet[BulkActionRun]:
     created = BulkActionRun.objects.create(
+        site=mock_site_context,
         requested_by=make_staff_user(),
         action_path="panel_framework.tests.stub_panels.StubRecordedBulkAction",
         table_key="stubs",

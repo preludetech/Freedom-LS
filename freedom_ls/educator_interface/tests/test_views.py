@@ -5483,6 +5483,7 @@ class TestOversight:
 
 def _run_for(user: User, organisation: Organisation, **fields: object):
     return BulkActionRun.objects.create(
+        site=organisation.site,
         scope=organisation,
         requested_by=user,
         action_path=(

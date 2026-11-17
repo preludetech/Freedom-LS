@@ -1229,7 +1229,7 @@ RECORDED_PATH = f"{StubRecordedBulkAction.__module__}.StubRecordedBulkAction"
 
 
 def _recorded_run(
-    requester: object, *stubs: StubModel, **fields: object
+    site: Site, requester: object, *stubs: StubModel, **fields: object
 ) -> BulkActionRun:
     fields.setdefault("action_path", RECORDED_PATH)
     fields.setdefault("table_key", "stubs")
@@ -1237,6 +1237,7 @@ def _recorded_run(
     return cast(
         BulkActionRun,
         BulkActionRun.objects.create(
+            site=site,
             requested_by=requester,
             keys=[str(stub.pk) for stub in stubs],
             **fields,
@@ -1319,6 +1320,7 @@ def test_a_recorded_run_records_the_sections_scope(
 
 def test_confirming_a_recorded_action_below_the_threshold_runs_it_inline(
     two_stubs: tuple[StubModel, StubModel],
+    mock_site_context: Site,
 ) -> None:
     response = _confirm_recorded(two_stubs)
 
@@ -1330,9 +1332,9 @@ def test_confirming_a_recorded_action_below_the_threshold_runs_it_inline(
 
 @pytest.mark.parametrize("status", [RunStatus.QUEUED, RunStatus.RUNNING])
 def test_an_unfinished_run_answers_204(
-    two_stubs: tuple[StubModel, StubModel], status: str
+    two_stubs: tuple[StubModel, StubModel], status: str, mock_site_context: Site
 ) -> None:
-    run = _recorded_run(make_staff_user(), *two_stubs, status=status)
+    run = _recorded_run(mock_site_context, make_staff_user(), *two_stubs, status=status)
 
     response = _poll(run)
 
@@ -1343,7 +1345,7 @@ def test_an_unfinished_run_answers_204(
 def test_a_finished_run_answers_the_result_modal_and_refreshes_the_table(
     two_stubs: tuple[StubModel, StubModel], mock_site_context: Site
 ) -> None:
-    run = _recorded_run(make_staff_user(), *two_stubs)
+    run = _recorded_run(mock_site_context, make_staff_user(), *two_stubs)
     run_bulk_action(str(run.pk), mock_site_context.pk)
 
     response = _poll(run)
@@ -1356,8 +1358,10 @@ def test_a_finished_run_answers_the_result_modal_and_refreshes_the_table(
 
 def test_a_failed_run_answers_a_modal_saying_where_it_stopped(
     two_stubs: tuple[StubModel, StubModel],
+    mock_site_context: Site,
 ) -> None:
     run = _recorded_run(
+        mock_site_context,
         make_staff_user(),
         *two_stubs,
         status=RunStatus.FAILED,
@@ -1375,10 +1379,12 @@ def test_a_failed_run_answers_a_modal_saying_where_it_stopped(
 
 def test_a_finished_run_of_a_removed_action_answers_its_summary(
     two_stubs: tuple[StubModel, StubModel],
+    mock_site_context: Site,
 ) -> None:
     """The poll used to look the action up unguarded and 500 once it was
     renamed or removed."""
     run = _recorded_run(
+        mock_site_context,
         make_staff_user(),
         *two_stubs,
         action_path="nowhere.RenamedAway",
@@ -1397,8 +1403,11 @@ def test_a_finished_run_of_a_removed_action_answers_its_summary(
 
 def test_a_run_is_a_404_for_another_user(
     two_stubs: tuple[StubModel, StubModel],
+    mock_site_context: Site,
 ) -> None:
-    run = _recorded_run(make_staff_user(), *two_stubs, status=RunStatus.DONE)
+    run = _recorded_run(
+        mock_site_context, make_staff_user(), *two_stubs, status=RunStatus.DONE
+    )
 
     response = _poll(run, user=make_staff_user())
 
@@ -1407,8 +1416,11 @@ def test_a_run_is_a_404_for_another_user(
 
 def test_a_run_is_a_404_for_an_anonymous_visitor(
     two_stubs: tuple[StubModel, StubModel],
+    mock_site_context: Site,
 ) -> None:
-    run = _recorded_run(make_staff_user(), *two_stubs, status=RunStatus.DONE)
+    run = _recorded_run(
+        mock_site_context, make_staff_user(), *two_stubs, status=RunStatus.DONE
+    )
 
     response = _poll(run, user=AnonymousUser())
 
@@ -1417,9 +1429,14 @@ def test_a_run_is_a_404_for_an_anonymous_visitor(
 
 def test_a_run_of_another_scope_is_a_404(
     two_stubs: tuple[StubModel, StubModel],
+    mock_site_context: Site,
 ) -> None:
     run = _recorded_run(
-        make_staff_user(), *two_stubs, status=RunStatus.DONE, scope=make_stub()
+        mock_site_context,
+        make_staff_user(),
+        *two_stubs,
+        status=RunStatus.DONE,
+        scope=make_stub(),
     )
 
     response = _poll(run)
@@ -1429,9 +1446,14 @@ def test_a_run_of_another_scope_is_a_404(
 
 def test_a_run_of_another_table_is_a_404(
     two_stubs: tuple[StubModel, StubModel],
+    mock_site_context: Site,
 ) -> None:
     run = _recorded_run(
-        make_staff_user(), *two_stubs, status=RunStatus.DONE, table_key="elsewhere"
+        mock_site_context,
+        make_staff_user(),
+        *two_stubs,
+        status=RunStatus.DONE,
+        table_key="elsewhere",
     )
 
     response = _poll(run)
