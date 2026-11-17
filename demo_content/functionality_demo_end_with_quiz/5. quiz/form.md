@@ -2,6 +2,8 @@
 content_type: FORM
 strategy: QUIZ
 title: End course Quiz
+sections:
+- ../4. topic/content.md
 uuid: 14d26cf3-4f47-4814-8eeb-eacfa1ef09d0
 quiz_show_incorrect: false
 quiz_pass_percentage: 50

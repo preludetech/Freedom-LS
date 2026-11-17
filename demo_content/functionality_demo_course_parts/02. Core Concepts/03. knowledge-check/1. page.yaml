@@ -16,6 +16,8 @@ options:
   value: wrong2
 question: What is a course part?
 required: true
+sections:
+- ../01. key-ideas/content.md
 type: multiple_choice
 uuid: 2d28fa56-6a6b-4f60-a69a-c945c04e0539
 ---
