@@ -5,8 +5,10 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 1. Spec
 
-- [ ] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
+- [x] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
 - [ ] (user) Review the spec and edit where needed; after substantial hand edits, run `/sdd:spec_review`
+- [ ] (user) Confirm the source and status of the SACAA 141.07.1 "E-Learning system" text quoted in `research_prior_art.md` section 2 before the effort relies on it
+- [ ] (user) Confirm or overrule the four assumed defaults under `## Open questions` in `1. spec.md`
 
 ## 2. Plan
 
