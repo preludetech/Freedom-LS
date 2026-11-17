@@ -25,6 +25,7 @@ from django.template.loader import render_to_string
 from django.test import Client, RequestFactory
 from django.urls import NoReverseMatch, clear_url_caches, reverse
 
+from ..actions import CHOOSE_AGAIN_MESSAGE
 from ..reference import example_context
 from .helpers import make_staff_user
 
@@ -56,6 +57,7 @@ COMPONENT_NAMES = [
     "list",
     "heading",
     "notice",
+    "file-field",
     "callout",
     "reason-dialog",
     "lazy-panel",
@@ -125,7 +127,8 @@ def test_every_side_panel_in_the_examples_holds_a_dialog() -> None:
 
 def test_examples_partial_has_no_duplicate_ids() -> None:
     html = _render_examples()
-    ids = Counter(re.findall(r'\bid="([^"]+)"', html))
+    # `data-refocus-id="…"` names an element's id without being one.
+    ids = Counter(re.findall(r'(?<![-\w])id="([^"]+)"', html))
     duplicates = {element_id: count for element_id, count in ids.items() if count > 1}
     assert duplicates == {}
 
@@ -217,6 +220,53 @@ def test_reference_shows_a_notice_in_each_tone(tone: str) -> None:
     html = _render_examples()
     assert f'id="notice-{tone}"' in html
     assert f"border-{tone}/20 bg-{tone}/10" in html
+
+
+def _example_block(html: str, example_id: str) -> str:
+    """The markup of one example wrapper, up to the next example or section."""
+    start = html.index(f'id="{example_id}"')
+    ends = [html.find(marker, start) for marker in ('<div id="', "</section>")]
+    return html[start : min(end for end in ends if end != -1)]
+
+
+@pytest.mark.parametrize(
+    "example_id", ["file-field-dialog", "file-field-error", "file-field-inline"]
+)
+def test_reference_shows_each_file_field_example(example_id: str) -> None:
+    assert f'id="{example_id}"' in _render_examples()
+
+
+def test_file_field_dialog_example_shows_the_current_file_and_a_remove_checkbox() -> (
+    None
+):
+    block = _example_block(_render_examples(), "file-field-dialog")
+    assert "Current file:" in block
+    assert "first-aid-certificate.pdf" in block
+    assert "certificates/2026/" not in block
+    assert "Remove" in block
+    assert 'type="checkbox"' in block
+    assert 'type="file"' in block
+
+
+def test_file_field_error_example_shows_the_choose_again_message_and_a_summary() -> (
+    None
+):
+    block = _example_block(_render_examples(), "file-field-error")
+    assert CHOOSE_AGAIN_MESSAGE in block
+    assert "data-error-summary" in block
+
+
+def test_file_field_inline_example_posts_multipart_with_no_remove_checkbox() -> None:
+    block = _example_block(_render_examples(), "file-field-inline")
+    assert 'hx-encoding="multipart/form-data"' in block
+    assert "Remove" not in block
+    assert 'type="checkbox"' not in block
+
+
+def test_no_file_field_dialog_example_can_post() -> None:
+    html = _render_examples()
+    for example_id in ("file-field-dialog", "file-field-error"):
+        assert "hx-post" not in _example_block(html, example_id)
 
 
 def test_component_reference_does_not_resolve_without_debug(

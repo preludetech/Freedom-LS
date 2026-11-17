@@ -496,6 +496,35 @@ somewhere on the page to land.
     </section>
 
     <section class="space-y-6">
+        <h2>File field</h2>
+
+        <div id="file-field-dialog">
+            <p class="text-sm text-muted">A dialog form's file field with a stored file: the current file's name, a Remove checkbox and the file input.</p>
+            <c-panel-card>
+                <form class="space-y-4">
+                    {% include "panel_framework/partials/error_summary.html" with form=file_field_dialog_form %}
+                    {% include "partials/form.html" with form=file_field_dialog_form %}
+                </form>
+            </c-panel-card>
+        </div>
+
+        <div id="file-field-error">
+            <p class="text-sm text-muted">The same form after a failed save: a browser never keeps a chosen file, so the field asks for it again.</p>
+            <c-panel-card>
+                <form class="space-y-4">
+                    {% include "panel_framework/partials/error_summary.html" with form=file_field_error_form field_error_count=file_field_error_count %}
+                    {% include "partials/form.html" with form=file_field_error_form %}
+                </form>
+            </c-panel-card>
+        </div>
+
+        <div id="file-field-inline">
+            <p class="text-sm text-muted">A required file field in an inline form, which posts as multipart.</p>
+            {% include "panel_framework/partials/inline_record_form.html" with form=file_field_inline_form form_id="file-field-inline-form" action_url="#file-field-inline" %}
+        </div>
+    </section>
+
+    <section class="space-y-6">
         <h2>Callout</h2>
 
         <div id="callout-info">

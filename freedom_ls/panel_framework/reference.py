@@ -15,6 +15,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import cast
 
+from django import forms
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.paginator import Page
 from django.http import HttpRequest, HttpResponse
@@ -31,9 +32,59 @@ from freedom_ls.panel_framework.panels import (
 )
 from freedom_ls.panel_framework.tables import Column, DataTable
 
+from .actions import CHOOSE_AGAIN_MESSAGE
+from .widgets import PanelClearableFileInput
+
 __all__ = [
     "component_reference",
 ]
+
+
+class _ExampleFile:
+    """Stands in for a stored file: a name and nothing else, so the page
+    reads no storage."""
+
+    name = "certificates/2026/first-aid-certificate.pdf"
+
+
+class _OptionalFileForm(forms.Form):
+    title = forms.CharField()
+    attachment = forms.FileField(required=False, widget=PanelClearableFileInput)
+
+
+class _RequiredFileForm(forms.Form):
+    attachment = forms.FileField(widget=PanelClearableFileInput)
+
+
+def _file_field_initial() -> dict[str, object]:
+    return {"title": "First aid", "attachment": _ExampleFile()}
+
+
+# Django derives the Remove checkbox's id from the field name alone, so each
+# form takes its own prefix to keep two checkboxes on one page apart.
+def file_field_dialog_form() -> forms.Form:
+    return _OptionalFileForm(
+        initial=_file_field_initial(),
+        auto_id="file-field-dialog-%s",
+        prefix="file-field-dialog",
+    )
+
+
+def file_field_error_form() -> forms.Form:
+    form = _OptionalFileForm(
+        data={},
+        initial=_file_field_initial(),
+        auto_id="file-field-error-%s",
+        prefix="file-field-error",
+    )
+    form.is_valid()
+    form.add_error("attachment", CHOOSE_AGAIN_MESSAGE)
+    return form
+
+
+def file_field_inline_form() -> forms.Form:
+    return _RequiredFileForm(auto_id="file-field-inline-%s")
+
 
 # Two rows for `#attention-list-default`, so the divider between rows is
 # visible. Their `href`/`action_href` are fragments on the page itself
@@ -62,6 +113,10 @@ EXAMPLE_CONTEXT: dict[str, object] = {
             "action_href": "#attention-row-action",
         },
     ],
+    "file_field_dialog_form": file_field_dialog_form(),
+    "file_field_error_form": file_field_error_form(),
+    "file_field_error_count": 2,
+    "file_field_inline_form": file_field_inline_form(),
 }
 
 
