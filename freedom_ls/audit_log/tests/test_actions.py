@@ -188,7 +188,9 @@ def test_the_registry_is_built_once_per_value_of_the_setting():
         ),
     ],
 )
-def test_course_progress_actions_describe_their_details(code, details, expected):
+def test_course_progress_actions_describe_their_details(
+    mock_site_context, code, details, expected
+):
     entry = AuditLogEntryFactory.build(action=code, details=details)
 
     assert get_audit_action(code).describe(entry) == expected
