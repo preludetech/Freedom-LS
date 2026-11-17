@@ -194,3 +194,114 @@ def test_inline_form_reads_saving_after_a_failed_upload_is_cleared(
 
     expect(save).to_have_text("Saving…", use_inner_text=True)
     _held_request(page, held, 1).fulfill(status=204)
+
+
+_TOO_LARGE_MESSAGE = "The file may be too large to upload. Choose a smaller file."
+_GENERIC_MESSAGE = "Your changes could not be saved. Try again."
+_FAILURES = [(413, _TOO_LARGE_MESSAGE), (500, _GENERIC_MESSAGE)]
+
+
+@pytest.mark.parametrize(("status", "message"), _FAILURES)
+def test_dialog_shows_the_request_error_and_can_be_saved_again(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+    status: int,
+    message: str,
+) -> None:
+    _open_upload_tab(page, live_server)
+    held = _hold_requests(page, "upload")
+    dialog = _open_dialog(page)
+    save = _submit_button(dialog)
+
+    _submit_with_file(dialog, save)
+    _held_request(page, held, 0).fulfill(status=status, body="Server error")
+
+    alert = dialog.get_by_role("alert")
+    expect(alert).to_have_text(message)
+    expect(dialog.locator("[data-request-error]")).to_be_focused()
+    expect(dialog).to_be_visible()
+    expect(dialog.get_by_label("Title")).to_have_value("Notes")
+    expect(save).to_be_enabled()
+
+    save.click()
+    _held_request(page, held, 1).fulfill(status=204)
+
+    expect(alert).to_have_count(0)
+
+
+@pytest.mark.parametrize(("status", "message"), _FAILURES)
+def test_inline_form_shows_the_request_error_and_keeps_what_was_typed(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+    status: int,
+    message: str,
+) -> None:
+    _open_upload_tab(page, live_server)
+    held = _hold_requests(page, "upload_inline")
+    form = page.locator("#stub-upload-form")
+    save = _submit_button(form)
+
+    _submit_with_file(form, save)
+    _held_request(page, held, 0).fulfill(status=status, body="Server error")
+
+    expect(form.get_by_role("alert")).to_have_text(message)
+    expect(form.get_by_label("Title")).to_have_value("Notes")
+    expect(save).to_be_enabled()
+
+
+def test_dialog_without_a_file_field_shows_the_generic_request_error(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    make_stub()
+    held = _hold_requests(page, "create_item")
+    page.goto(f"{live_server.url}/test-panel/framework/stubs")
+    page.get_by_role("button", name="Create Item").click()
+    dialog = page.locator("#app-modal")
+    expect(dialog).to_be_visible()
+
+    dialog.get_by_label("Name").fill("Widget")
+    dialog.get_by_role("button", name="Save", exact=True).click()
+    _held_request(page, held, 0).fulfill(status=500, body="Server error")
+
+    expect(dialog.get_by_role("alert")).to_have_text(_GENERIC_MESSAGE)
+
+
+def test_dialog_shows_the_generic_request_error_when_the_request_cannot_be_sent(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    _open_upload_tab(page, live_server)
+    held = _hold_requests(page, "upload")
+    dialog = _open_dialog(page)
+
+    _submit_without_file(dialog, _submit_button(dialog))
+    _held_request(page, held, 0).abort()
+
+    expect(dialog.get_by_role("alert")).to_have_text(_GENERIC_MESSAGE)
+
+
+def test_dialog_shows_no_request_error_when_the_page_reloads_for_a_404(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    _open_upload_tab(page, live_server)
+    held = _hold_requests(page, "upload")
+    dialog = _open_dialog(page)
+
+    _submit_without_file(dialog, _submit_button(dialog))
+    with page.expect_navigation():
+        _held_request(page, held, 0).fulfill(status=404, body="Not found")
+
+    expect(page.get_by_text(_GENERIC_MESSAGE)).to_have_count(0)
+    expect(page.get_by_text(_TOO_LARGE_MESSAGE)).to_have_count(0)

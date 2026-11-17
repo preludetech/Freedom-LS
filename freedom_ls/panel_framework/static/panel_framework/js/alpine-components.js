@@ -12,6 +12,11 @@ const UPLOADING_LABEL = "Uploading…";
 document.addEventListener("htmx:beforeRequest", (event) => {
     const form = event.detail.elt;
     if (!(form instanceof HTMLFormElement)) return;
+    const requestError = form.querySelector("[data-request-error]");
+    if (requestError) {
+        requestError.replaceChildren();
+        requestError.hidden = true;
+    }
     const uploading = Array.from(form.querySelectorAll("input[type=file]")).some(
         (input) => input.files.length > 0,
     );
@@ -21,6 +26,36 @@ document.addEventListener("htmx:beforeRequest", (event) => {
             " " + (uploading ? UPLOADING_LABEL : span.dataset.loadingLabel);
     });
 });
+
+const REQUEST_ERROR_TOO_LARGE =
+    "The file may be too large to upload. Choose a smaller file.";
+const REQUEST_ERROR_GENERIC = "Your changes could not be saved. Try again.";
+
+// A panel form whose request failed with nothing to swap in says so inside
+// the form: the response body is a server error page, never form markup.
+// Only a request the form itself issued counts, so a field's own refresh
+// request and the quick view keep their handling.
+function showRequestError(event) {
+    const config = event.detail.requestConfig;
+    const form = config && config.elt;
+    if (!(form instanceof HTMLFormElement)) return;
+    const holder = form.querySelector("[data-request-error]");
+    if (!holder) return;
+    const status = event.detail.xhr ? event.detail.xhr.status : 0;
+    // The page reloads for these.
+    if (status === 403 || status === 404) return;
+    // The host has already shown this response its own way.
+    if (config.panelErrorShown) return;
+    const message = document.createElement("p");
+    message.setAttribute("role", "alert");
+    message.textContent =
+        status === 413 ? REQUEST_ERROR_TOO_LARGE : REQUEST_ERROR_GENERIC;
+    holder.replaceChildren(message);
+    holder.hidden = false;
+    if (form.closest("dialog")) holder.focus();
+}
+document.addEventListener("htmx:responseError", showRequestError);
+document.addEventListener("htmx:sendError", showRequestError);
 
 // An unmarked 403 or 404 on an htmx request is a full page: the user has lost
 // access to what they are looking at, so the page reloads onto the page a

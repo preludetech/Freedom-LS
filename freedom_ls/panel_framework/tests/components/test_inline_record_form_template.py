@@ -111,3 +111,12 @@ def test_a_form_with_a_file_field_posts_multipart() -> None:
 
     assert root.get("hx-encoding") == "multipart/form-data"
     assert root.get("enctype") == "multipart/form-data"
+
+
+def test_the_request_error_holder_is_empty_and_inside_the_form() -> None:
+    root = lxml.html.fromstring(_render(_TextFieldsForm()))
+
+    (holder,) = root.cssselect("[data-request-error]")
+    assert holder.get("tabindex") == "-1"
+    assert holder.get("hidden") is not None
+    assert holder.text_content() == ""

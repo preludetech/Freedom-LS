@@ -262,3 +262,14 @@ def test_a_form_without_a_file_field_renders_as_it_always_did() -> None:
     assert normalised_form_markup(html) == normalised_form_markup(
         GOLDEN_FORM_WITHOUT_FILE_FIELD
     )
+
+
+def test_the_request_error_holder_is_empty_and_inside_the_modal_body() -> None:
+    document = _render(form=_TextFieldsForm())
+
+    (holder,) = document.cssselect("form [data-request-error]")
+    assert holder.get("tabindex") == "-1"
+    assert holder.get("hidden") is not None
+    assert holder.text_content() == ""
+    assert document.cssselect("[data-modal-scroll] [data-request-error]") == [holder]
+    assert document.cssselect("footer [data-request-error]") == []

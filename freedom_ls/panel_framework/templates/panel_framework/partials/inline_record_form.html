@@ -29,6 +29,7 @@ aria-describedby.
         {% endfor %}
         <c-button type="submit" variant="primary" size="small" loading="true" loading_text="Saving…">Save</c-button>
     </div>
+    <div data-request-error tabindex="-1" hidden class="text-sm text-error"></div>
     {% for field in form.visible_fields %}
         {% if field.errors %}<p id="{{ field.auto_id }}_error" role="alert" class="text-sm text-error">{{ field.errors|join:" " }}</p>{% endif %}
     {% endfor %}
