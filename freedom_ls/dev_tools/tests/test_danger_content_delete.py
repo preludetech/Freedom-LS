@@ -10,8 +10,8 @@ from django.db import transaction
 from django.db.models import ProtectedError
 from django.utils import timezone
 
-from freedom_ls.content_engine.factories import ArticleFactory
-from freedom_ls.content_engine.models import Article, Course, Topic
+from freedom_ls.content_engine.factories import ArticleFactory, CoursePartFactory
+from freedom_ls.content_engine.models import Article, Course, CoursePart, Topic
 from freedom_ls.form_engine.factories import (
     FormPageFactory,
     FormProgressFactory,
@@ -102,3 +102,12 @@ def test_danger_content_delete_removes_a_form_whose_page_is_gated_by_its_own_opt
     assert Form.objects.count() == 0
     assert FormPage.objects.count() == 0
     assert QuestionOption.objects.count() == 0
+
+
+def test_danger_content_delete_removes_course_parts(mock_site_context):
+    """Course parts used to survive the reset and collide with the next content load."""
+    CoursePartFactory()
+
+    call_command("danger_content_delete", "--yes")
+
+    assert CoursePart.objects.count() == 0
