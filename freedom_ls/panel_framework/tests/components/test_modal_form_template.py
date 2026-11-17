@@ -5,8 +5,8 @@ from django.template.loader import render_to_string
 
 from ..helpers import normalised_form_markup
 
-# A render of a form with no file field, captured from `modal/form.html` as it
-# was before the template learned about multipart forms.
+# A render of a form with no file field: the markup must carry no encoding
+# attributes.
 GOLDEN_FORM_WITHOUT_FILE_FIELD = """
 
 
