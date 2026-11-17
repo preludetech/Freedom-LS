@@ -200,7 +200,6 @@ def test_educator_previews_course_content(
             survey_toggle.click()
             expect(page_row).to_be_visible()
 
-            # Collapsing a part hides its items and leaves its siblings.
             part_toggle = page.get_by_role(
                 "button", name="Chapter One", exact=True
             ).locator("visible=true")
