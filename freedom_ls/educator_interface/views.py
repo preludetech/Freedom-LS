@@ -1930,12 +1930,9 @@ class CourseDataTable(DataTable):
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
-        # The list holds the courses available to the organisation plus those
-        # it holds a registration for. The
-        # list, the counts and the cells are all read through the organisation
-        # in view: the cohorts and learners counted and linked on each row are
-        # narrowed to what this educator may see, and another organisation's
-        # cohorts never show through a course shared with this one.
+        # Counts and cells are narrowed to the cohorts and learners this
+        # educator may see, so another organisation's cohorts never show
+        # through a course shared with this one.
         scoped = cast(OrganisationScopedRequest, request)
         visible_cohorts = cohorts_visible_to(scoped.user, scoped.organisation)
         visible_learners = learners_visible_to(scoped.user, scoped.organisation)
