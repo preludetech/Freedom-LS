@@ -599,6 +599,20 @@ def test_a_row_template_is_indented_by_its_depth(mock_site_context: Site) -> Non
     assert "ps-8" in _note_row(document).cssselect("td")[0].get("class")
 
 
+def test_a_row_template_lines_up_with_the_titles_of_its_sibling_rows(
+    mock_site_context: Site,
+) -> None:
+    """The template sat at the cell's start edge, left of the sibling rows' titles.
+
+    A primary cell puts a chevron-wide slot before its value, so the template
+    needs the same slot or it is indented less than its siblings.
+    """
+    document = _render(StubChildRowsTablePanel)
+
+    (template,) = _note_row(document).cssselect("[data-test-row-template]")
+    assert "ps-10" in template.getparent().get("class", "")
+
+
 def test_a_row_template_row_takes_no_hover_and_has_no_chevron(
     mock_site_context: Site,
 ) -> None:

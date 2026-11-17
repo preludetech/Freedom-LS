@@ -138,7 +138,10 @@
                                 {% if row.row_template_name %}
                                     {% for column in leading_columns %}<td{% if column.cell_class %} class="{{ column.cell_class }}"{% endif %}></td>{% endfor %}
                                     <td colspan="{{ row_template_colspan }}"{% if has_child_rows and row.depth %} class="{% include "panel_framework/partials/row_indent.html" with depth=row.depth %}"{% endif %}>
-                                        {% include row.row_template_name with object=row.object row=row %}
+                                        {% comment %}ps-10 is the chevron slot (size-8 plus gap-2) a primary cell puts before its value, so the template lines up with its sibling rows' titles.{% endcomment %}
+                                        <div{% if has_child_rows %} class="ps-10"{% endif %}>
+                                            {% include row.row_template_name with object=row.object row=row %}
+                                        </div>
                                     </td>
                                 {% else %}
                                 {% if bulk_actions %}
