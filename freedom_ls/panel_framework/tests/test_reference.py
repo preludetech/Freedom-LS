@@ -160,6 +160,22 @@ def test_reference_reason_dialogs_are_inert() -> None:
     assert html.count("hx-disable") >= 3
 
 
+def test_reference_reason_dialogs_inset_their_body_like_the_app_modal() -> None:
+    """The examples sit outside #app-modal, which supplies the body's side padding.
+
+    Each example's wrapper has to supply it, or the body text and fields sit
+    flush with the dialog's edges while the title and footer are inset.
+    """
+    html = _render_examples()
+    wrappers = [
+        w
+        for w in re.findall(r'<div hx-disable class="([^"]*)"', html)
+        if "overflow-hidden" in w
+    ]
+    assert len(wrappers) == 3
+    assert all("[&_[data-modal-scroll]]:px-6" in w for w in wrappers)
+
+
 def test_anonymous_user_is_redirected_to_admin_login(client: Client) -> None:
     response = client.get("/test-panel/components/")
     assert response.status_code == 302

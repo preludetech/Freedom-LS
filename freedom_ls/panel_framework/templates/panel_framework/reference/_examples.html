@@ -511,17 +511,17 @@ somewhere on the page to land.
 
         <div id="reason-dialog-required">
             <p class="text-sm text-muted">Use <code>reason_required</code> when the action must record why it was taken: an empty reason is refused.</p>
-            <div hx-disable class="max-w-lg overflow-hidden rounded-lg border border-border">{{ reason_dialogs.required }}</div>
+            <div hx-disable class="max-w-lg overflow-hidden rounded-lg border border-border [&_[data-modal-scroll]]:px-6">{{ reason_dialogs.required }}</div>
         </div>
 
         <div id="reason-dialog-choices">
             <p class="text-sm text-muted">Use <code>reason_choices</code> when the reasons come from a fixed list; the text field then holds optional details.</p>
-            <div hx-disable class="max-w-lg overflow-hidden rounded-lg border border-border">{{ reason_dialogs.choices }}</div>
+            <div hx-disable class="max-w-lg overflow-hidden rounded-lg border border-border [&_[data-modal-scroll]]:px-6">{{ reason_dialogs.choices }}</div>
         </div>
 
         <div id="reason-dialog-choices-required">
             <p class="text-sm text-muted">Use both when a reason must be chosen and explained.</p>
-            <div hx-disable class="max-w-lg overflow-hidden rounded-lg border border-border">{{ reason_dialogs.choices_required }}</div>
+            <div hx-disable class="max-w-lg overflow-hidden rounded-lg border border-border [&_[data-modal-scroll]]:px-6">{{ reason_dialogs.choices_required }}</div>
         </div>
     </section>
 
