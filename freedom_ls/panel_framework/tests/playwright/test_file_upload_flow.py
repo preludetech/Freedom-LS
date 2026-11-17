@@ -305,3 +305,54 @@ def test_dialog_shows_no_request_error_when_the_page_reloads_for_a_404(
 
     expect(page.get_by_text(_GENERIC_MESSAGE)).to_have_count(0)
     expect(page.get_by_text(_TOO_LARGE_MESSAGE)).to_have_count(0)
+
+
+def test_escape_closes_the_dialog_when_nothing_has_changed(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    _open_upload_tab(page, live_server)
+    dialog = _open_dialog(page)
+
+    page.keyboard.press("Escape")
+
+    expect(dialog).to_be_hidden()
+
+
+def test_choosing_a_file_makes_escape_ask_before_discarding(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    _open_upload_tab(page, live_server)
+    dialog = _open_dialog(page)
+    attachment = dialog.get_by_label("Attachment")
+    attachment.set_input_files(_FILE)
+
+    page.keyboard.press("Escape")
+
+    expect(page.get_by_role("dialog", name="Discard changes?")).to_be_visible()
+    page.get_by_role("button", name="Keep editing").click()
+    expect(dialog).to_be_visible()
+    assert attachment.evaluate("input => input.files[0].name") == "notes.txt"
+
+
+def test_clearing_a_chosen_file_makes_escape_close_without_asking(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    _open_upload_tab(page, live_server)
+    dialog = _open_dialog(page)
+    attachment = dialog.get_by_label("Attachment")
+    attachment.set_input_files(_FILE)
+    attachment.set_input_files([])
+
+    page.keyboard.press("Escape")
+
+    expect(dialog).to_be_hidden()
+    expect(page.get_by_role("dialog", name="Discard changes?")).to_have_count(0)

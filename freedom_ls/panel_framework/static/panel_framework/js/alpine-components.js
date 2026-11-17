@@ -185,10 +185,19 @@ function dirtyTracker(container, ignore = "") {
         return data;
     }
 
+    function serialiseValue(value) {
+        if (!(value instanceof File)) return value;
+        // An input with nothing chosen yields a nameless, empty File whose
+        // lastModified is the moment it was read, so it would never match the
+        // baseline.
+        if (!value.name && value.size === 0) return "";
+        return `${value.name}:${value.size}:${value.lastModified}`;
+    }
+
     function serialise(formData) {
         if (!formData) return "";
         return Array.from(formData.entries())
-            .map(([name, value]) => `${name}=${value}`)
+            .map(([name, value]) => `${name}=${serialiseValue(value)}`)
             .join("&");
     }
 
