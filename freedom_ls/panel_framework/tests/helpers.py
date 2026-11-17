@@ -16,11 +16,17 @@ import lxml.html
 import pytest
 
 from django.contrib.auth import get_user_model
+from django.contrib.sites.models import Site
 from django.core.files.storage import FileSystemStorage
 
 from .stub_models import StubChild, StubFileModel, StubModel, StubProtectedChild
 
 _counter = itertools.count(1)
+
+
+def make_site(name: str, domain: str) -> Site:
+    """Create a Site row. The one place framework tests create one."""
+    return Site.objects.create(name=name, domain=domain)
 
 
 def make_staff_user() -> object:

@@ -633,6 +633,10 @@ COURSE_ACCESS_BACKEND = (
     "freedom_ls.course_applications.backends.ApplicationCourseAccessBackend"
 )
 
+# Resolves a request's Site for bulk-action runs. get_cached_site keeps FORCE_SITE_NAME and
+# FLS's per-request site cache in force there too.
+PANEL_FRAMEWORK_SITE_RESOLVER = "freedom_ls.site_aware_models.models.get_cached_site"
+
 # content_engine resolves this at content-load to validate/normalize Course.access_config.
 # Unset → access_config is stored verbatim (still opaque). course_access registers the
 # default validator; a future backend with its own config keys swaps this string

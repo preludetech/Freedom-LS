@@ -25,6 +25,7 @@ __all__ = [
 class PanelFrameworkConfig(AppSettings):
     BULK_BACKGROUND_THRESHOLD: int
     PANEL_TABLE_PAGE_SIZE: int
+    PANEL_FRAMEWORK_SITE_RESOLVER: str
 
     declared_settings = {
         # A bulk action over more objects than this runs in a background task
@@ -32,6 +33,13 @@ class PanelFrameworkConfig(AppSettings):
         "BULK_BACKGROUND_THRESHOLD": Setting(default=250),
         # Rows per page for a table that sets no `page_size` of its own.
         "PANEL_TABLE_PAGE_SIZE": Setting(default=10),
+        # Dotted path of a callable that takes the request and returns its Site.
+        # The default follows django.contrib.sites, where SITE_ID wins over the
+        # request's host: a project serving several sites from one process must
+        # set its own resolver, or every request shares one site's runs.
+        "PANEL_FRAMEWORK_SITE_RESOLVER": Setting(
+            default="django.contrib.sites.shortcuts.get_current_site"
+        ),
     }
 
 
