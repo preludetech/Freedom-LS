@@ -5,13 +5,15 @@ fetch carries loaded=1 and swaps this whole region for the body. A region that
 cannot be built because its body is too large shows the reason in its place.
 A panel's region template extends this and fills loaded_body, and may fill
 skeleton_body to shape the placeholder or override region_content to wrap or
-replace the whole state switch.
+replace the whole state switch. A region that overrides region_content
+includes partials/as_of.html itself when the panel shows the stamp.
 {% endcomment %}
 <div id="{{ region_id }}"{% if not is_loaded %} aria-busy="true"{% endif %}>
     {% block region_content %}
         {% if too_large_message %}
             <c-panel-notice tone="warning">{{ too_large_message }}</c-panel-notice>
         {% elif is_loaded %}
+            {% block as_of %}{% if show_as_of %}{% include "panel_framework/partials/as_of.html" %}{% endif %}{% endblock as_of %}
             {% block loaded_body %}{% endblock loaded_body %}
         {% else %}
             <div hx-get="{{ loaded_url }}" hx-trigger="load" hx-target="#{{ region_id }}" hx-swap="outerHTML">

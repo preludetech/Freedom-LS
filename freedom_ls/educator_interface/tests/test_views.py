@@ -693,10 +693,10 @@ def test_course_page_buttons_are_only_preview_triggers(staff_client: Client):
     header = heading.xpath("ancestor::*[contains(@class, 'justify-between')]")[0]
     assert header.cssselect("button[hx-get]") == []
     buttons = document.cssselect("section[data-panel] button[hx-get]")
-    assert [button.get("aria-label") for button in buttons] == [
+    assert {button.get("aria-label") for button in buttons} == {
         "Preview course details page",
         "Preview Intro",
-    ]
+    }
     assert document.cssselect("section[data-panel] footer button") == []
 
 

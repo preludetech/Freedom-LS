@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from django.http import HttpResponse
 from django.shortcuts import render
+from django.utils import timezone
 
 from freedom_ls.panel_framework.errors import PanelBodyTooLargeError
 from freedom_ls.panel_framework.panels import Panel
@@ -37,6 +40,11 @@ class LazyBodyPanel(Panel):
     skeleton_lines = 3
     #: The link text a browser without JavaScript follows to load the body.
     load_label: str = "Load"
+    #: Show when the body's data is from, above the loaded body. A panel whose
+    #: data is gathered or cached returns the time it was computed under
+    #: "as_of" from get_loaded_context; otherwise the stamp is the time of
+    #: this render, which is wrong for data that is older than the request.
+    show_as_of: bool = False
 
     @property
     def is_loaded(self) -> bool:
@@ -53,10 +61,17 @@ class LazyBodyPanel(Panel):
             skeleton_shape=self.skeleton_shape,
             skeleton_lines=self.skeleton_lines,
             load_label=self.load_label,
+            show_as_of=self.show_as_of,
         )
         if self.is_loaded:
             try:
                 context.update(self.get_loaded_context())
+                if self.show_as_of:
+                    as_of = context.setdefault("as_of", timezone.now())
+                    if not isinstance(as_of, datetime) or timezone.is_naive(as_of):
+                        raise ValueError(
+                            f"{type(self).__name__}'s as_of must be an aware datetime."
+                        )
             except PanelBodyTooLargeError as error:
                 context["too_large_message"] = str(error)
         return context
