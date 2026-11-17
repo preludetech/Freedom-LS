@@ -15,7 +15,7 @@ items. See `claude_plugins/sdd/commands/README.md`.
 
 ## 2. Documentation and pull request
 
-- [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
 - [ ] (user) Confirm PR #247 is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
 ## 3. Cleanup
