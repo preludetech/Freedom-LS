@@ -17,6 +17,7 @@ from freedom_ls.api.viewsets import ReadOnlyApiViewSet
 from .models import (
     AttributionTouch,
     Conversion,
+    ConversionKind,
     FirstTouchCount,
     ReferralCode,
     ReferralCodeHit,
@@ -282,6 +283,14 @@ class ConversionApiSerializer(serializers.ModelSerializer):
 
 
 class ConversionFilterSet(RecordedAtFilterSet):
+    kind = django_filters.ChoiceFilter(
+        choices=ConversionKind.choices,
+        error_messages={
+            "invalid_choice": f"Give one of: {', '.join(ConversionKind.values)}."
+        },
+        help_text="Conversions whose kind is this value.",
+    )
+
     class Meta:
         model = Conversion
         fields: list[str] = []

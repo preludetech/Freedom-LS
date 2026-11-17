@@ -29,6 +29,7 @@ from freedom_ls.referral_tracking.factories import (
 from freedom_ls.referral_tracking.models import (
     AttributionTouch,
     Conversion,
+    ConversionKind,
     FirstTouchCount,
     ReferralCode,
     ReferralCodeHit,
@@ -970,3 +971,24 @@ def test_a_conversion_whose_target_was_deleted_is_still_listed_with_its_label(
 
     assert [row["id"] for row in body["results"]] == [str(conversion.pk)]
     assert body["results"][0]["target_label"] == "Deleted target"
+
+
+def test_the_kind_filter_returns_only_conversions_of_that_kind(client, auth):
+    ConversionFactory(kind="account_signup")
+    wanted = ConversionFactory(kind="course_interest", object_id="2")
+
+    body = client.get(
+        reverse("api:conversion_list"), {"kind": "course_interest"}, headers=auth
+    ).json()
+
+    assert [row["id"] for row in body["results"]] == [str(wanted.pk)]
+
+
+def test_an_unknown_kind_is_400_listing_every_kind(client, auth):
+    response = client.get(
+        reverse("api:conversion_list"), {"kind": "nonsense"}, headers=auth
+    )
+
+    message = " ".join(response.json()["kind"])
+    assert response.status_code == 400
+    assert all(kind in message for kind in ConversionKind.values)
