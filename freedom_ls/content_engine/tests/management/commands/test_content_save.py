@@ -52,6 +52,7 @@ from freedom_ls.content_engine.models import (
     PriceKind,
     Topic,
 )
+from freedom_ls.content_engine.tests.helpers import write_organisation_course
 from freedom_ls.content_engine.validate import parse_single_file
 from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import (
@@ -3120,19 +3121,6 @@ def test_a_topic_file_with_due_fields_saves_without_a_topic_column(
     assert topic.title == "Dated"
 
 
-def _write_organisation_course(repo_dir: Path, extra_frontmatter: str = "") -> Path:
-    course_dir = repo_dir / "org_course"
-    course_dir.mkdir(exist_ok=True)
-    course_file = course_dir / "course.md"
-    course_file.write_text(f"""---
-content_type: COURSE
-title: Org Course
-uuid: 70000000-0000-0000-0000-000000000001
-{extra_frontmatter}---
-""")
-    return course_file
-
-
 @pytest.mark.django_db
 def test_organisation_slugs_resolve_to_the_sites_organisations(site, mock_site_context):
     alpha = OrganisationFactory(name="Alpha", slug="alpha")
@@ -3140,7 +3128,7 @@ def test_organisation_slugs_resolve_to_the_sites_organisations(site, mock_site_c
     OrganisationFactory(name="Gamma", slug="gamma")
     with tempfile.TemporaryDirectory() as tmpdir:
         repo_dir = Path(tmpdir)
-        _write_organisation_course(
+        write_organisation_course(
             repo_dir, "organisations:\n  - alpha\n  - beta\naudience: public\n"
         )
 
@@ -3158,7 +3146,7 @@ def test_unknown_organisation_slug_fails_naming_slug_file_and_valid_slugs(
     OrganisationFactory(name="Alpha", slug="alpha")
     with tempfile.TemporaryDirectory() as tmpdir:
         repo_dir = Path(tmpdir)
-        _write_organisation_course(repo_dir, "organisations:\n  - nope\n")
+        write_organisation_course(repo_dir, "organisations:\n  - nope\n")
 
         with pytest.raises(ValueError, match="Unknown organisations") as excinfo:
             save_content_to_db(repo_dir, site.name)
@@ -3176,9 +3164,7 @@ def test_reloading_with_the_organisations_key_removed_clears_the_links(
     OrganisationFactory(name="Alpha", slug="alpha")
     with tempfile.TemporaryDirectory() as tmpdir:
         repo_dir = Path(tmpdir)
-        course_file = _write_organisation_course(
-            repo_dir, "organisations:\n  - alpha\n"
-        )
+        course_file = write_organisation_course(repo_dir, "organisations:\n  - alpha\n")
         save_content_to_db(repo_dir, site.name)
         course = Course.objects.get(site=site, title="Org Course")
         assert course.organisations.count() == 1
@@ -3201,7 +3187,7 @@ def test_shared_with_slugs_resolve_to_the_sites_organisations(site, mock_site_co
     OrganisationFactory(name="Gamma", slug="gamma")
     with tempfile.TemporaryDirectory() as tmpdir:
         repo_dir = Path(tmpdir)
-        _write_organisation_course(
+        write_organisation_course(
             repo_dir, "organisations:\n  - alpha\nshared_with:\n  - beta\n"
         )
 
@@ -3218,7 +3204,7 @@ def test_unknown_shared_with_slug_fails_naming_key_slug_file_and_valid_slugs(
     OrganisationFactory(name="Alpha", slug="alpha")
     with tempfile.TemporaryDirectory() as tmpdir:
         repo_dir = Path(tmpdir)
-        _write_organisation_course(
+        write_organisation_course(
             repo_dir, "organisations:\n  - alpha\nshared_with:\n  - nope\n"
         )
 
@@ -3238,7 +3224,7 @@ def test_shared_with_slug_of_another_sites_organisation_fails(site, mock_site_co
     OrganisationFactory(name="Elsewhere", slug="elsewhere", site=SiteFactory())
     with tempfile.TemporaryDirectory() as tmpdir:
         repo_dir = Path(tmpdir)
-        _write_organisation_course(
+        write_organisation_course(
             repo_dir, "organisations:\n  - alpha\nshared_with:\n  - elsewhere\n"
         )
 
@@ -3259,7 +3245,7 @@ def test_reloading_with_a_shared_with_entry_removed_drops_that_share(
     OrganisationFactory(name="Gamma", slug="gamma")
     with tempfile.TemporaryDirectory() as tmpdir:
         repo_dir = Path(tmpdir)
-        course_file = _write_organisation_course(
+        course_file = write_organisation_course(
             repo_dir,
             "organisations:\n  - alpha\nshared_with:\n  - beta\n  - gamma\n",
         )
@@ -3288,7 +3274,7 @@ def test_reloading_with_the_shared_with_key_removed_clears_every_share(
     OrganisationFactory(name="Beta", slug="beta")
     with tempfile.TemporaryDirectory() as tmpdir:
         repo_dir = Path(tmpdir)
-        course_file = _write_organisation_course(
+        course_file = write_organisation_course(
             repo_dir, "organisations:\n  - alpha\nshared_with:\n  - beta\n"
         )
         save_content_to_db(repo_dir, site.name)
@@ -3313,7 +3299,7 @@ def test_a_course_without_the_keys_defaults_to_organisation_learners(
 ):
     with tempfile.TemporaryDirectory() as tmpdir:
         repo_dir = Path(tmpdir)
-        _write_organisation_course(repo_dir)
+        write_organisation_course(repo_dir)
 
         save_content_to_db(repo_dir, site.name)
 
