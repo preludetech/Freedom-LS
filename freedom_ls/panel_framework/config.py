@@ -14,7 +14,7 @@ Usage::
 
 from __future__ import annotations
 
-from freedom_ls.base.app_settings import AppSettings, Setting
+from freedom_ls.panel_framework.app_settings import AppSettings, Setting
 
 __all__ = [
     "PanelFrameworkConfig",
