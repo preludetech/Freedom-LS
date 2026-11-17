@@ -20,5 +20,5 @@ items. See `claude_plugins/sdd/commands/README.md`.
 
 ## 3. Cleanup
 
-- [ ] (cmd) Run `/sdd:finish_worktree` to close out the worktree and land it on main
+- [x] (cmd) Run `/sdd:finish_worktree` to close out the worktree and land it on main
 - [ ] (user) Remove the worktree and delete the branch once main has it
