@@ -12,6 +12,7 @@ import pytest
 import pytest_django.fixtures
 
 from django.apps import apps
+from django.conf import settings as django_settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.storage import FileSystemStorage
 from django.db import connection
@@ -31,6 +32,15 @@ from .stub_models import (
     StubProtectedChild,
 )
 from .stub_panels import RecordingCapabilityConfig
+
+# A host project's conftest provides `site` and `mock_site_context`, wired
+# to however that host tracks its site. With no host around the framework
+# there are none, so the framework's own apply.
+if (
+    django_settings.SETTINGS_MODULE
+    == "freedom_ls.panel_framework.tests.standalone_settings"
+):
+    from .standalone_fixtures import mock_site_context, site
 
 # ---------------------------------------------------------------------------
 # Session-scoped table creation + permission setup
@@ -54,12 +64,26 @@ def _panel_test_tables(django_db_setup, django_db_blocker):
     app_models["stubprotectedchild"] = StubProtectedChild
     app_models["stubfilemodel"] = StubFileModel
 
-    with django_db_blocker.unblock(), connection.schema_editor() as editor:
-        editor.create_model(StubModel)
-        editor.create_model(StubChild)
-        editor.create_model(StubGrandchild)
-        editor.create_model(StubProtectedChild)
-        editor.create_model(StubFileModel)
+    # With --nomigrations the test database is built from the registered models,
+    # stubs included, so only the tables that are missing get created, and only
+    # those are dropped at the end.
+    stub_models = [
+        StubModel,
+        StubChild,
+        StubGrandchild,
+        StubProtectedChild,
+        StubFileModel,
+    ]
+    with django_db_blocker.unblock():
+        existing_tables = set(connection.introspection.table_names())
+        created_models = [
+            model
+            for model in stub_models
+            if model._meta.db_table not in existing_tables
+        ]
+        with connection.schema_editor() as editor:
+            for model in created_models:
+                editor.create_model(model)
     # A content type row made inside a test's transaction is rolled back with
     # it while ContentType's cache keeps it, so a later test that points a
     # generic foreign key at a stub would reference a row that is gone. Make
@@ -78,11 +102,8 @@ def _panel_test_tables(django_db_setup, django_db_blocker):
         ContentType.objects.clear_cache()
 
     with django_db_blocker.unblock(), connection.schema_editor() as editor:
-        editor.delete_model(StubFileModel)
-        editor.delete_model(StubProtectedChild)
-        editor.delete_model(StubGrandchild)
-        editor.delete_model(StubChild)
-        editor.delete_model(StubModel)
+        for model in reversed(created_models):
+            editor.delete_model(model)
     app_models.pop("stubfilemodel", None)
     app_models.pop("stubprotectedchild", None)
     app_models.pop("stubgrandchild", None)

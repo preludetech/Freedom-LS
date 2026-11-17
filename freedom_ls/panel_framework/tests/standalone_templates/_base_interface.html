@@ -1,0 +1,16 @@
+{% extends "_base.html" %}
+{% comment %}Test fixture: runs the panel framework without a host project's components. It keeps the props and slots the framework passes and drops the styling.{% endcomment %}
+{% block body %}
+<div data-storage-key="{% block sidebar_storage_key %}sidebar{% endblock sidebar_storage_key %}">
+    <aside>{% block sidebar_content %}{% endblock sidebar_content %}</aside>
+    <div id="interface-main">
+        {% block content_header %}
+            {% block content_header_top %}{% block breadcrumbs %}{% endblock breadcrumbs %}{% endblock content_header_top %}
+            {% block page_title %}{% include "partials/page_title.html" %}{% endblock page_title %}
+        {% endblock content_header %}
+        {% block content %}{% endblock content %}
+    </div>
+    {% block quick_view_host %}{% endblock quick_view_host %}
+    {% block modal_host %}{% endblock modal_host %}
+</div>
+{% endblock body %}

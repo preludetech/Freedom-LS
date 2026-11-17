@@ -1,0 +1,20 @@
+{% comment %}Test fixture: runs the panel framework without a host project's components. It keeps the props and slots the framework passes and drops the styling.{% endcomment %}
+<c-vars page_obj="" base_url="" table_id="" sort_by="" sort_order="" search_query="" extra_params="" page_param_name="page" push_url="" links="" page_url="" class="" />
+{% if page_obj and page_obj.paginator.num_pages > 1 %}
+    <nav class="{{ class }}" aria-label="Pagination">
+        <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        {% if links %}
+            {% if links.previous %}{% querystring request.GET links.previous.changes as qs %}<a href="{{ page_url }}{{ qs }}" hx-get="{{ base_url }}{{ qs }}" hx-target="#{{ table_id }}" hx-swap="outerHTML">Previous</a>{% endif %}
+            {% for link in links.pages %}
+                {% if link.number %}
+                    {% if link.current %}<span>{{ link.number }}</span>{% else %}{% querystring request.GET link.changes as qs %}<a href="{{ page_url }}{{ qs }}" hx-get="{{ base_url }}{{ qs }}" hx-target="#{{ table_id }}" hx-swap="outerHTML">{{ link.number }}</a>{% endif %}
+                {% endif %}
+            {% endfor %}
+            {% if links.next %}{% querystring request.GET links.next.changes as qs %}<a href="{{ page_url }}{{ qs }}" hx-get="{{ base_url }}{{ qs }}" hx-target="#{{ table_id }}" hx-swap="outerHTML">Next</a>{% endif %}
+        {% else %}
+            {% for num in page_obj.paginator.page_range %}
+                {% if num == page_obj.number %}<span>{{ num }}</span>{% else %}<a href="?{{ page_param_name }}={{ num }}" hx-get="{{ base_url }}?{{ page_param_name }}={{ num }}" hx-target="#{{ table_id }}" hx-swap="outerHTML">{{ num }}</a>{% endif %}
+            {% endfor %}
+        {% endif %}
+    </nav>
+{% endif %}

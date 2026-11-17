@@ -1,0 +1,3 @@
+{% comment %}Test fixture: runs the panel framework without a host project's components. It keeps the props and slots the framework passes and drops the styling.{% endcomment %}
+<c-vars name="" variant="outline" class="size-5" aria_label="" />
+<svg data-icon="{{ name }}" class="{{ class }}"{% if aria_label %} role="img" aria-label="{{ aria_label }}"{% else %} aria-hidden="true"{% endif %}></svg>

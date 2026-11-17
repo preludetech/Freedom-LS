@@ -2261,18 +2261,21 @@ def _toolbar_for(query: dict[str, str]) -> list[str]:
     return _normalised_toolbar(html)
 
 
+@pytest.mark.needs_fls_host
 def test_the_toolbar_with_a_filter_applied_renders_the_same_controls_in_order(
     mock_site_context: Site,
 ) -> None:
     assert _toolbar_for({"stub-kind": "a", "stub-sort": "name"}) == APPLIED_FILTER
 
 
+@pytest.mark.needs_fls_host
 def test_the_toolbar_with_no_filter_applied_renders_the_same_controls_in_order(
     mock_site_context: Site,
 ) -> None:
     assert _toolbar_for({}) == NO_FILTER_APPLIED
 
 
+@pytest.mark.needs_fls_host
 @override_settings(FREEDOM_LS_ICON_SET="phosphor")
 def test_the_toolbar_comparison_holds_when_the_project_uses_another_icon_set(
     mock_site_context: Site,

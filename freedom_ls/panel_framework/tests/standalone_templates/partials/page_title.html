@@ -1,0 +1,2 @@
+{% comment %}Test fixture: runs the panel framework without a host project's components. It keeps the props and slots the framework passes and drops the styling.{% endcomment %}
+<hgroup id="page-title"{% if oob %} hx-swap-oob="true"{% endif %}>{% if page_title %}<h1>{{ page_title }}</h1>{% if page_subtitle %}<p>{{ page_subtitle }}</p>{% endif %}{% endif %}</hgroup>

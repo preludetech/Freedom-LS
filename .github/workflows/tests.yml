@@ -87,6 +87,9 @@ jobs:
       - name: Run unit tests
         run: uv run pytest -m "not playwright and not dev_tooling" -n auto --cov --cov-fail-under=92
 
+      - name: Run the panel framework's unit tests on their own
+        run: uv run pytest -c freedom_ls/panel_framework/tests/standalone_pytest.ini freedom_ls/panel_framework/tests
+
   dev-tooling-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10

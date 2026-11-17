@@ -276,6 +276,7 @@ def test_no_file_field_dialog_example_can_post() -> None:
         assert "hx-post" not in _example_block(html, example_id)
 
 
+@pytest.mark.needs_fls_host
 def test_component_reference_does_not_resolve_without_debug(
     settings: pytest_django.fixtures.SettingsWrapper,
 ) -> None:
@@ -336,6 +337,7 @@ def debug_dev_server_urls(
         clear_url_caches()
 
 
+@pytest.mark.needs_fls_host
 @pytest.mark.usefixtures("debug_dev_server_urls")
 def test_dev_server_route_returns_200_for_staff(
     client: Client, mock_site_context: object
@@ -345,6 +347,7 @@ def test_dev_server_route_returns_200_for_staff(
     assert response.status_code == 200
 
 
+@pytest.mark.needs_fls_host
 @pytest.mark.usefixtures("debug_dev_server_urls")
 def test_dev_server_route_loads_the_panel_framework_alpine_components(
     client: Client, mock_site_context: object
@@ -357,6 +360,7 @@ def test_dev_server_route_loads_the_panel_framework_alpine_components(
     assert "panel_framework/js/alpine-components.js" in response.content.decode()
 
 
+@pytest.mark.needs_fls_host
 @pytest.mark.usefixtures("debug_dev_server_urls")
 def test_dev_server_route_redirects_anonymous_to_admin_login() -> None:
     response = Client().get("/panel-framework/components/")

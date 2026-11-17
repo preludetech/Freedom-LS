@@ -72,6 +72,8 @@ dev = [
     "pypdf>=6.16.1",
     "pytest-timeout>=2.4.0",
     "import-linter>=2.15",
+    "lxml>=6.1.0",
+    "cssselect>=1.4.0",
 ]
 
 [tool.setuptools.packages.find]
@@ -94,6 +96,7 @@ markers = [
     "fls_internal: marks tests that only pass under FLS's own settings, theme, branding or demo content (not portable to a concrete downstream)",
     "weasyprint: marks tests that invoke WeasyPrint and need Pango/cairo/gdk-pixbuf/HarfBuzz",
     "dev_tooling: tests of developer tooling (QA seeders, danger_ commands, dev scripts, the content validator); deselected by default, run with -m dev_tooling",
+    "needs_fls_host: needs FLS's real templates, icon set or URLconf; deselected when the panel framework's unit tests run on their own",
 ]
 timeout = 300
 
@@ -221,6 +224,8 @@ dev = [
     "pytest-timeout>=2.4.0",
     "pyyaml>=6.0.3",
     "import-linter>=2.15",
+    "lxml>=6.1.0",
+    "cssselect>=1.4.0",
 ]
 
 
