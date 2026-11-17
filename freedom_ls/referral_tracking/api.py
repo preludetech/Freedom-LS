@@ -7,6 +7,7 @@ every lookup to the key's site instead, so no lookup depends on thread state.
 
 import django_filters
 
+from django.db.models import QuerySet
 from rest_framework import serializers
 
 from freedom_ls.api.filters import AwareIsoDateTimeFilter, IntegerFilter, IsoDateFilter
@@ -22,6 +23,7 @@ from .models import (
     ReferralCode,
     ReferralCodeHit,
     SignupAttribution,
+    with_code_in_play,
 )
 
 
@@ -240,6 +242,12 @@ class AttributionTouchApiSerializer(serializers.ModelSerializer):
 
 
 class AttributionTouchFilterSet(RecordedAtFilterSet):
+    referral_code = django_filters.CharFilter(
+        field_name="referral_code",
+        lookup_expr="iexact",
+        help_text="Touches whose referral_code is this code, ignoring case.",
+    )
+
     class Meta:
         model = AttributionTouch
         fields: list[str] = []
@@ -290,10 +298,32 @@ class ConversionFilterSet(RecordedAtFilterSet):
         },
         help_text="Conversions whose kind is this value.",
     )
+    referral_code = django_filters.CharFilter(
+        method="filter_code_in_play",
+        help_text=(
+            "Conversions whose first_referral_code or last_referral_code is this "
+            "code, ignoring case."
+        ),
+    )
+    first_referral_code = django_filters.CharFilter(
+        field_name="first_referral_code",
+        lookup_expr="iexact",
+        help_text="Conversions whose first_referral_code is this code, ignoring case.",
+    )
+    last_referral_code = django_filters.CharFilter(
+        field_name="last_referral_code",
+        lookup_expr="iexact",
+        help_text="Conversions whose last_referral_code is this code, ignoring case.",
+    )
 
     class Meta:
         model = Conversion
         fields: list[str] = []
+
+    def filter_code_in_play(
+        self, queryset: QuerySet[Conversion], name: str, value: str
+    ) -> QuerySet[Conversion]:
+        return with_code_in_play(queryset, value)
 
 
 class ConversionApiViewSet(ReadOnlyApiViewSet):

@@ -5,7 +5,8 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models.functions import Lower
+from django.db.models import F, Q, QuerySet
+from django.db.models.functions import Lower, Upper
 
 from freedom_ls.referral_tracking.codes import validate_site_path
 from freedom_ls.site_aware_models.models import SiteAwareModel
@@ -207,6 +208,11 @@ class AttributionTouch(SiteAwareModel):
         indexes = [
             models.Index(fields=["site", "user", "occurred_at"]),
             models.Index(fields=["site", "referral_code"]),
+            # PostgreSQL compiles iexact to UPPER(col::text) = UPPER(%s), so only
+            # an Upper expression index serves a case-insensitive code lookup.
+            models.Index(
+                F("site"), Upper("referral_code"), name="referral_touch_code_upper_idx"
+            ),
             # A cursor for a changed-since conversions feed.
             models.Index(fields=["site", "recorded_at"]),
         ]
@@ -288,6 +294,18 @@ class Conversion(SiteAwareModel):
         indexes = [
             models.Index(fields=["content_type", "object_id"]),
             models.Index(fields=["site", "kind", "occurred_at"]),
+            # PostgreSQL compiles iexact to UPPER(col::text) = UPPER(%s), so only
+            # an Upper expression index serves a case-insensitive code lookup.
+            models.Index(
+                F("site"),
+                Upper("first_referral_code"),
+                name="referral_conv_first_upper_idx",
+            ),
+            models.Index(
+                F("site"),
+                Upper("last_referral_code"),
+                name="referral_conv_last_upper_idx",
+            ),
             # A cursor for a changed-since conversions feed.
             models.Index(fields=["site", "recorded_at"]),
         ]
@@ -299,6 +317,22 @@ class Conversion(SiteAwareModel):
 
     def __str__(self) -> str:
         return f"{self.kind} by {self.user_id} at {self.occurred_at:%Y-%m-%d}"
+
+
+def with_code_in_play(
+    queryset: QuerySet[Conversion], code: str
+) -> QuerySet[Conversion]:
+    """Conversions whose first or last referral code is `code`, ignoring case.
+
+    Stored codes keep the case they were typed or printed in, and code text is
+    unique ignoring case, so case never distinguishes two codes. An empty code
+    leaves the queryset unchanged.
+    """
+    if not code:
+        return queryset
+    return queryset.filter(
+        Q(first_referral_code__iexact=code) | Q(last_referral_code__iexact=code)
+    )
 
 
 class ReferralCode(SiteAwareModel):

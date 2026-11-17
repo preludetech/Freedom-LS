@@ -3,10 +3,11 @@
 
 from __future__ import annotations
 
+import factory
 import pytest
 
 from django.contrib.sites.models import Site
-from django.db import IntegrityError
+from django.db import IntegrityError, connection
 from django.db.models import ProtectedError, RestrictedError
 
 from freedom_ls.accounts.factories import UserFactory
@@ -25,6 +26,7 @@ from freedom_ls.referral_tracking.models import (
     Conversion,
     ReferralCode,
     SignupAttribution,
+    with_code_in_play,
 )
 
 
@@ -175,3 +177,69 @@ def test_a_second_conversion_on_the_same_target_raises(mock_site_context) -> Non
 def test_attribution_touch_plural_name_is_spelled_touches() -> None:
     """The admin plural used to read "Attribution touchs" because Django only appends "s"."""
     assert AttributionTouch._meta.verbose_name_plural == "attribution touches"
+
+
+@pytest.mark.django_db
+def test_with_code_in_play_given_an_empty_code_returns_the_queryset_unchanged(
+    mock_site_context,
+) -> None:
+    queryset = Conversion._base_manager.all()
+
+    assert with_code_in_play(queryset, "") is queryset
+
+
+@pytest.fixture
+def seqscan_off(db) -> None:
+    """Make the planner use an index whenever one can serve the query."""
+    with connection.cursor() as cursor:
+        cursor.execute("SET LOCAL enable_seqscan = off")
+
+
+@pytest.mark.django_db
+def test_the_touch_code_lookup_uses_the_upper_index(seqscan_off, site) -> None:
+    queryset = AttributionTouch._base_manager.filter(
+        site=site, referral_code__iexact="abc"
+    )
+
+    assert "referral_touch_code_upper_idx" in queryset.explain()
+
+
+@pytest.mark.django_db
+def test_the_code_in_play_lookup_uses_both_conversion_upper_indexes(
+    seqscan_off, mock_site_context, site
+) -> None:
+    user = UserFactory()
+    rows = ConversionFactory.build_batch(
+        2000,
+        user=user,
+        object_id=factory.Sequence(str),
+        first_referral_code=factory.Sequence(lambda n: f"first{n}"),
+        last_referral_code=factory.Sequence(lambda n: f"last{n}"),
+    )
+    Conversion._base_manager.bulk_create(rows)
+    with connection.cursor() as cursor:
+        cursor.execute("ANALYZE freedom_ls_referral_tracking_conversion")
+    queryset = with_code_in_play(Conversion._base_manager.filter(site=site), "abc")
+
+    plan = queryset.explain()
+
+    assert "referral_conv_first_upper_idx" in plan
+    assert "referral_conv_last_upper_idx" in plan
+
+
+@pytest.mark.django_db
+def test_the_first_code_lookup_uses_its_upper_index(seqscan_off, site) -> None:
+    queryset = Conversion._base_manager.filter(
+        site=site, first_referral_code__iexact="abc"
+    )
+
+    assert "referral_conv_first_upper_idx" in queryset.explain()
+
+
+@pytest.mark.django_db
+def test_the_last_code_lookup_uses_its_upper_index(seqscan_off, site) -> None:
+    queryset = Conversion._base_manager.filter(
+        site=site, last_referral_code__iexact="abc"
+    )
+
+    assert "referral_conv_last_upper_idx" in queryset.explain()

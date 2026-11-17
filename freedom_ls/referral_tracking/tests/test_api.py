@@ -191,6 +191,28 @@ FEED_RESOURCES = [
     ),
 ]
 
+# Per list URL name: the filters the next-link test sends and the row
+# attributes that satisfy every one of them.
+FILTERS_AND_MATCHING_ROW = {
+    "api:attribution_touch_list": (
+        {"referral_code": "abc"},
+        {"referral_code": "ABC"},
+    ),
+    "api:conversion_list": (
+        {
+            "kind": "account_signup",
+            "referral_code": "abc",
+            "first_referral_code": "abc",
+            "last_referral_code": "abc",
+        },
+        {
+            "kind": "account_signup",
+            "first_referral_code": "ABC",
+            "last_referral_code": "ABC",
+        },
+    ),
+}
+
 
 @pytest.fixture
 def api_key(mock_site_context):
@@ -894,24 +916,31 @@ class TestRecordedAtFeed:
 
         assert body == {"next": None, "results": []}
 
-    def test_the_next_link_keeps_updated_since_user_and_page_size(
+    def test_the_next_link_keeps_every_filter_and_page_size(
         self, client, auth, settings, list_name, model, row_factory, distinct_rows
     ):
         settings.API_PAGE_SIZE = 2
+        filters, matching_row = FILTERS_AND_MATCHING_ROW[list_name]
         user = UserFactory()
         for _ in range(3):
-            row = row_factory(user=user, **distinct_rows)
+            row = row_factory(user=user, **matching_row, **distinct_rows)
             model._base_manager.filter(pk=row.pk).update(recorded_at=BASE)
 
         body = client.get(
             reverse(list_name),
-            {"updated_since": "2030-01-01T00:00:00Z", "page_size": 2, "user": user.pk},
+            {
+                "updated_since": "2030-01-01T00:00:00Z",
+                "page_size": 2,
+                "user": user.pk,
+                **filters,
+            },
             headers=auth,
         ).json()
 
         assert "updated_since=2030-01-01T00%3A00%3A00Z" in body["next"]
         assert "page_size=2" in body["next"]
         assert f"user={user.pk}" in body["next"]
+        assert all(f"{name}={value}" in body["next"] for name, value in filters.items())
 
 
 def test_a_touch_recorded_late_for_an_old_occurrence_comes_back_on_the_second_page(
@@ -992,3 +1021,69 @@ def test_an_unknown_kind_is_400_listing_every_kind(client, auth):
     message = " ".join(response.json()["kind"])
     assert response.status_code == 400
     assert all(kind in message for kind in ConversionKind.values)
+
+
+def test_the_touch_referral_code_filter_ignores_case(client, auth):
+    wanted = AttributionTouchFactory(referral_code="SUMMER")
+    AttributionTouchFactory(referral_code="winter")
+
+    body = client.get(
+        reverse("api:attribution_touch_list"), {"referral_code": "summer"}, headers=auth
+    ).json()
+
+    assert [row["id"] for row in body["results"]] == [str(wanted.pk)]
+
+
+@pytest.fixture
+def code_conversions() -> dict[str, ConversionFactory]:
+    return {
+        "first": ConversionFactory(
+            first_referral_code="ABC", last_referral_code="x", object_id="1"
+        ),
+        "last": ConversionFactory(
+            first_referral_code="x", last_referral_code="ABC", object_id="2"
+        ),
+        "both": ConversionFactory(
+            first_referral_code="ABC", last_referral_code="ABC", object_id="3"
+        ),
+        "neither": ConversionFactory(
+            first_referral_code="x", last_referral_code="y", object_id="4"
+        ),
+    }
+
+
+def _conversion_ids(client, auth, params: dict[str, str]) -> set[str]:
+    body = client.get(reverse("api:conversion_list"), params, headers=auth).json()
+    return {row["id"] for row in body["results"]}
+
+
+def test_the_conversion_referral_code_filter_matches_first_or_last_code_ignoring_case(
+    client, auth, code_conversions
+):
+    ids = _conversion_ids(client, auth, {"referral_code": "abc"})
+
+    assert ids == {str(code_conversions[key].pk) for key in ("first", "last", "both")}
+
+
+def test_an_empty_conversion_referral_code_filter_returns_every_conversion(
+    client, auth, code_conversions
+):
+    ids = _conversion_ids(client, auth, {"referral_code": ""})
+
+    assert ids == {str(conversion.pk) for conversion in code_conversions.values()}
+
+
+def test_the_first_referral_code_filter_matches_the_first_code_ignoring_case(
+    client, auth, code_conversions
+):
+    ids = _conversion_ids(client, auth, {"first_referral_code": "abc"})
+
+    assert ids == {str(code_conversions[key].pk) for key in ("first", "both")}
+
+
+def test_the_last_referral_code_filter_matches_the_last_code_ignoring_case(
+    client, auth, code_conversions
+):
+    ids = _conversion_ids(client, auth, {"last_referral_code": "abc"})
+
+    assert ids == {str(code_conversions[key].pk) for key in ("last", "both")}

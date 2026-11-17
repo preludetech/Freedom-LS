@@ -10,7 +10,7 @@ from __future__ import annotations
 from unfold.contrib.filters.admin import TextFilter
 
 from django.contrib import admin
-from django.db.models import Model, Q, QuerySet
+from django.db.models import Model, QuerySet
 from django.http import HttpRequest
 from django.urls import NoReverseMatch
 from django.utils.html import format_html
@@ -30,6 +30,7 @@ from freedom_ls.referral_tracking.models import (
     ReferralCode,
     ReferralCodeHit,
     SignupAttribution,
+    with_code_in_play,
 )
 from freedom_ls.referral_tracking.resources import (
     AttributionTouchResource,
@@ -119,12 +120,7 @@ class CodeInPlayFilter(TextFilter):
     def queryset(
         self, request: HttpRequest, queryset: QuerySet[Conversion]
     ) -> QuerySet[Conversion]:
-        code = self.value()
-        if not code:
-            return queryset
-        return queryset.filter(
-            Q(first_referral_code__iexact=code) | Q(last_referral_code__iexact=code)
-        )
+        return with_code_in_play(queryset, self.value() or "")
 
 
 @admin.register(Conversion)
