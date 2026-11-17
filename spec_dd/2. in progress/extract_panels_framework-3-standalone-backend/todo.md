@@ -15,10 +15,13 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 3. Implementation and QA
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
+- [ ] (user) Run `uv run manage.py check` with DEBUG=False and TASKS on the immediate backend (expect freedom_ls_panel_framework.W001) and `uv run manage.py check --settings=config.settings_prod` (expect no W001); the security-guard hook blocked both during implement_plan
+- [ ] (user) Review the standalone test run's departures from the plan: the test app has no apps.py (label `standalone_app`, because the app-map generator broke lint-imports with one), its User has a nullable `site` FK for `make_staff_user(site=...)`, and `_panel_test_tables` in `freedom_ls/panel_framework/tests/conftest.py` changed beyond the guarded import so it works under --nomigrations; keep them or say what to change
+- [ ] (user) Decide whether to fix the test-order flake in `freedom_ls/audit_log/tests/test_actions.py::test_course_progress_actions_describe_their_details` (failed in two loaded full runs, passes alone; this branch does not touch audit_log) and the xdist-only failures of the `needs_fls_host` tests in `freedom_ls/panel_framework/tests/test_reference.py` that reload `config.urls` (DRF 'basename user already registered'); a separate idea is the likely home
 
 ## 4. Documentation and pull request
 
