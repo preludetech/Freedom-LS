@@ -356,3 +356,32 @@ def test_clearing_a_chosen_file_makes_escape_close_without_asking(
 
     expect(dialog).to_be_hidden()
     expect(page.get_by_role("dialog", name="Discard changes?")).to_have_count(0)
+
+
+def _computed_colour(locator: Locator) -> str:
+    return str(locator.evaluate("el => getComputedStyle(el).color"))
+
+
+@pytest.mark.parametrize("container_selector", ["dialog[open]", "#stub-upload-form"])
+def test_request_error_message_is_drawn_in_the_holder_error_colour(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+    container_selector: str,
+) -> None:
+    """The alert inserted into the request-error holder used to take the body
+    text colour from the base paragraph rule instead of the error colour."""
+    _open_upload_tab(page, live_server)
+    inline = container_selector == "#stub-upload-form"
+    held = _hold_requests(page, "upload_inline" if inline else "upload")
+    container = page.locator("#stub-upload-form") if inline else _open_dialog(page)
+    save = _submit_button(container)
+
+    _submit_with_file(container, save)
+    _held_request(page, held, 0).fulfill(status=500, body="Server error")
+
+    alert = container.get_by_role("alert")
+    expect(alert).to_have_text(_GENERIC_MESSAGE)
+    holder = container.locator("[data-request-error]")
+    assert _computed_colour(alert) == _computed_colour(holder)
