@@ -1,0 +1,26 @@
+# Best practices: tagging questions to sections, and cross-reference integrity
+
+Scope: only findings that would change the spec. Settled answers (`answers.md`) are not reopened. Web evidence was thin (one search); the rest is established practice from standards and content-as-code tooling, stated as such.
+
+## Findings
+
+1. **Link by stable identifier, display by path.** Standards that align items to objectives (QTI 3 metadata on IEEE LOM, 1EdTech CSM/CASE) reference an objective by an identifier that resolves to a definition, never by a free-text label. In FLS the author writes a path (settled), but the stored link should be a real FK to the target row. Paths are only the authoring and resolution syntax, so renaming or moving a section's file does not need a stored-string rewrite. Spec consequence: store an M2M (or through table) to `CoursePart` and `Topic`; do not store the path string.
+2. **Resolve at load, fail the whole load, report all errors.** Content-as-code link checkers (docs-site builders, `mkdocs --strict`, Hugo/Sphinx broken-ref checks) treat a dangling internal reference as a build error and list every broken reference in one run, not just the first. Spec consequence: the loader collects every missing target across a form, naming question (slug or index) and target path, and raises once. Do it before any DB write for that form so a failed load leaves nothing half-linked (loader transaction).
+3. **Validate in two places with one rule.** Static validator (`fls-content`) checks schema shape and that paths resolve against the content tree; `content_save` checks again against what it actually loaded. Share the resolver so they cannot disagree. Spec consequence: one resolver function used by both.
+4. **Form-level default plus per-question override: define the override as replace, not merge.** Metadata inheritance systems (Hugo front matter cascade, CSS-style defaults) are least surprising when a child value replaces the parent. An explicit empty list on a question should mean "no sections", distinct from absent key meaning "inherit". Spec consequence: schema must distinguish absent from `[]`; store the effective (resolved) links on each question row so downstream features query the question only, and say whether a later edit of the form default re-resolves (it does, on reload, since reload rewrites the links).
+5. **Reload must be idempotent and reconcile, not append.** On each load, set the question's link set to exactly what the file says (add missing, remove stale). Identity comes from the question `uuid` (existing behaviour); without a `uuid` the first load creates the row and `content_save` writes the `uuid` back, so the link is created once. Spec consequence: test reload twice, reload after reordering, and reload after removing one section from the list.
+6. **Referential integrity on the DB side: do not cascade silently.** Assessment-alignment data is used for reporting, so deleting a section should not silently erase which questions covered it. But a dangling-at-load check already stops file-side removals. For row-side deletion, prefer PROTECT or a reconcile-on-next-load over CASCADE on the section side, matching the answer-row PROTECT convention; decide explicitly and test (the idea's fact a, dropped questions, remains to be confirmed in code).
+7. **Targets are content, not placements (settled), so resolution must not depend on a course.** Path resolution should use the content-tree path (as `children:` does), which is what lets a bank form (placed nowhere) carry links. Spec consequence: the resolver must not require a `ContentCollectionItem` or course context; this also bears on whether unplaced forms load at all (open in the idea; confirm in code).
+8. **Ambiguity: a Topic named the same in two places.** Path resolution must be unambiguous and site-scoped (site-aware models). Reject, not guess, if a path matches more than one row or none. Spec consequence: error text distinguishes "not found" from "ambiguous".
+9. **Mixed target types need a type-safe link.** Linking to two models (CoursePart, Topic) is usually done with two M2Ms, or a small link table with two nullable FKs and a check constraint of exactly one set. Generic FKs lose DB integrity and make later queries ("all questions for this section") awkward. Spec consequence: prefer two explicit relations or a constrained link table; avoid GenericForeignKey.
+10. **Document the key in the authoring docs and the validator error catalogue, with a worked example** covering default, override, empty override, and a bank form. Standards bodies and content-as-code projects both treat undocumented metadata keys as drift.
+
+## Sources
+
+- https://www.imsglobal.org/spec/qti/v3p0/md-bind (QTI 3 metadata binding, extends IEEE LOM)
+- https://www.1edtech.org/standards/qti/index
+- https://www.1edtech.org/blog/digital-assessment-in-edtech-ecosystems (CSM/CASE identifier resolution)
+- https://bb.uab.edu/elearning/news/quality-matters-news/q-tip-meeting-standard-3-1-aligning-assessments-and-objectives (assessments must align to stated objectives)
+- Items 2, 4, 6, 9 are general practice (docs-build strict link checking, front-matter cascade, relational integrity), not tied to a fetched URL.
+
+status: ok
