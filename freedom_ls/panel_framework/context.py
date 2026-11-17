@@ -45,6 +45,9 @@ class PanelContext:
     # The reason a confirm dialog posted, set by the action that validated
     # it; empty for an action that takes none.
     reason: str = ""
+    # The value picked from the dialog's reason choices (not its label); empty
+    # for an action that offers none.
+    reason_choice: str = ""
     # What `once` has loaded during this request. A context built with
     # `dataclasses.replace` shares it, so a key names everything its value
     # depends on.

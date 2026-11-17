@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections import Counter
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
 from typing import cast
 from urllib.parse import urlsplit
@@ -718,22 +718,45 @@ class DeleteAction(ConfirmAction):
 
 
 class ReasonMixin(PanelAction):
-    """A confirm dialog that takes an optional reason, which the submit reads
-    from `ctx.reason`. List it first in the bases, as RequiresActiveCohortMixin
-    is, so the reason is validated before any other submit handling. An
-    action with its own submit overrides handle_confirmed_submit, never
-    handle_submit, and one that builds its own context calls
-    super().get_context_data so the reason field is in it."""
+    """A confirm dialog that takes a reason, which the submit reads from
+    `ctx.reason`, and the value chosen from `reason_choices` from
+    `ctx.reason_choice`. Set `reason_required` to refuse an empty reason. List
+    it first in the bases, as RequiresActiveCohortMixin is, so the reason is
+    validated before any other submit handling. An action with its own submit
+    overrides handle_confirmed_submit, never handle_submit, and one that
+    builds its own context calls super().get_context_data so the reason field
+    is in it."""
 
     reason_form_class: type[ReasonForm] = ReasonForm
+    reason_required: bool = False
+    reason_choices: Sequence[tuple[str, str]] = ()
+
+    def get_reason_choices(self, ctx: PanelContext) -> Sequence[tuple[str, str]]:
+        """The (value, label) pairs the dialog offers. Override for a list
+        computed per request."""
+        return self.reason_choices
+
+    def get_reason_form(
+        self, ctx: PanelContext, data: Mapping[str, str] | None = None
+    ) -> ReasonForm:
+        """The dialog's form, built the same way to render and to validate, so
+        the list a person chose from is the list their choice is checked
+        against. An action that uses neither option passes neither, so a host
+        form with its own `__init__(self, data=None)` keeps working."""
+        choices = self.get_reason_choices(ctx)
+        if not self.reason_required and not choices:
+            return self.reason_form_class(data)
+        return self.reason_form_class(
+            data, required=self.reason_required, choices=choices
+        )
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         context = super().get_context_data(ctx)
-        context.setdefault("reason_form", self.reason_form_class())
+        context.setdefault("reason_form", self.get_reason_form(ctx))
         return context
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        form = self.reason_form_class(ctx.request.POST)
+        form = self.get_reason_form(ctx, ctx.request.POST)
         if not form.is_valid():
             context = {**self.get_context_data(ctx), "reason_form": form}
             html = render_to_string(
@@ -741,7 +764,11 @@ class ReasonMixin(PanelAction):
             )
             return HttpResponse(html, status=422)
         return self.handle_confirmed_submit(
-            replace(ctx, reason=str(form.cleaned_data["reason"]))
+            replace(
+                ctx,
+                reason=str(form.cleaned_data["reason"]),
+                reason_choice=str(form.cleaned_data.get("reason_choice", "")),
+            )
         )
 
     def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:

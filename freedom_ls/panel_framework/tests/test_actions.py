@@ -4,6 +4,7 @@ permission checks, the htmx responses they send and the modal fragments they ren
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from typing import cast
 
 import lxml.html
@@ -1718,6 +1719,144 @@ def test_an_over_length_reason_is_a_422_with_the_field_re_rendered(
     (field,) = document.cssselect("form input[name='reason']")
     assert field.get("value") == too_long
     assert document.cssselect(".text-error")
+
+
+class StubRequiredReasonAction(StubReasonAction):
+    action_name = "stub_required_reason"
+    reason_required = True
+
+
+class StubChoiceReasonAction(StubReasonAction):
+    action_name = "stub_choice_reason"
+    reason_choices = [("moved", "Moved away"), ("other", "Other")]
+
+    def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
+        return HttpResponse(f"choice={ctx.reason_choice};reason={ctx.reason}")
+
+
+class StubRequiredChoiceReasonAction(StubChoiceReasonAction):
+    reason_required = True
+
+
+class StubComputedChoiceReasonAction(StubChoiceReasonAction):
+    reason_choices = []
+
+    def get_reason_choices(self, ctx: PanelContext) -> list[tuple[str, str]]:
+        return [("computed", "Computed choice")]
+
+
+class LegacyReasonForm(forms.Form):
+    """A host form whose `__init__` takes only the data."""
+
+    def __init__(self, data: Mapping[str, str] | None = None) -> None:
+        super().__init__(data)
+        self.fields["reason"] = forms.CharField(required=False)
+
+
+class StubLegacyFormReasonAction(StubReasonAction):
+    reason_form_class = cast(type[ReasonForm], LegacyReasonForm)
+
+
+def _post_reason(action: ReasonMixin, data: dict[str, str]) -> HttpResponse:
+    request = RequestFactory().post("/", data)
+    request.user = make_staff_user()
+    return action.handle_submit(_ctx(request))
+
+
+@pytest.mark.django_db
+def test_a_required_reason_posted_empty_is_a_422_with_the_error_under_the_field(
+    mock_site_context: Site,
+) -> None:
+    response = _post_reason(StubRequiredReasonAction(), {"reason": ""})
+
+    assert response.status_code == 422
+    document = lxml.html.fromstring(response.content.decode())
+    assert document.cssselect("form input[name='reason'] ~ .text-error, .text-error")
+
+
+@pytest.mark.django_db
+def test_an_unknown_choice_is_a_422_that_keeps_the_typed_text(
+    mock_site_context: Site,
+) -> None:
+    response = _post_reason(
+        StubChoiceReasonAction(), {"reason_choice": "bogus", "reason": "typed text"}
+    )
+
+    assert response.status_code == 422
+    document = lxml.html.fromstring(response.content.decode())
+    (field,) = document.cssselect("form input[name='reason']")
+    assert field.get("value") == "typed text"
+    assert document.cssselect(".text-error")
+
+
+@pytest.mark.django_db
+def test_a_valid_choice_with_missing_required_text_keeps_the_option_selected(
+    mock_site_context: Site,
+) -> None:
+    response = _post_reason(
+        StubRequiredChoiceReasonAction(), {"reason_choice": "moved", "reason": ""}
+    )
+
+    assert response.status_code == 422
+    document = lxml.html.fromstring(response.content.decode())
+    (selected,) = document.cssselect("select[name='reason_choice'] option[selected]")
+    assert selected.get("value") == "moved"
+
+
+@pytest.mark.django_db
+def test_a_valid_post_reaches_the_submit_with_the_reason_and_the_choice(
+    mock_site_context: Site,
+) -> None:
+    response = _post_reason(
+        StubRequiredChoiceReasonAction(),
+        {"reason_choice": "moved", "reason": "  new city "},
+    )
+
+    assert response.status_code == 200
+    assert response.content == b"choice=moved;reason=new city"
+
+
+@pytest.mark.django_db
+def test_an_action_computing_its_choices_renders_and_validates_against_them(
+    mock_site_context: Site,
+) -> None:
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+    document = lxml.html.fromstring(
+        _render(StubComputedChoiceReasonAction(), _ctx(request))
+    )
+    values = [
+        option.get("value")
+        for option in document.cssselect("select[name='reason_choice'] option")
+    ]
+
+    assert values == ["", "computed"]
+    assert (
+        _post_reason(
+            StubComputedChoiceReasonAction(), {"reason_choice": "computed"}
+        ).content
+        == b"choice=computed;reason="
+    )
+    assert (
+        _post_reason(StubComputedChoiceReasonAction(), {"reason_choice": "moved"})
+    ).status_code == 422
+
+
+@pytest.mark.django_db
+def test_a_form_class_taking_only_the_data_still_renders_and_submits(
+    mock_site_context: Site,
+) -> None:
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+
+    document = lxml.html.fromstring(
+        _render(StubLegacyFormReasonAction(), _ctx(request))
+    )
+
+    assert document.cssselect("form input[name='reason']")
+    assert _post_reason(StubLegacyFormReasonAction(), {"reason": "x"}).content == (
+        b"reason=x"
+    )
 
 
 def _refusal(**kwargs: object) -> HttpResponse:

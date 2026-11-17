@@ -90,6 +90,10 @@ def _context() -> PanelContext:
     )
 
 
+def test_a_context_has_no_reason_choice_by_default() -> None:
+    assert _context().reason_choice == ""
+
+
 def test_once_loads_a_value_the_first_time_and_returns_it_after() -> None:
     ctx = _context()
     loads: list[str] = []
