@@ -1,0 +1,150 @@
+- generic [active] [ref=f8e1]:
+  - banner [ref=f8e2]:
+    - link [ref=f8e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f8e4]
+      - heading "FirstClass" [level=1] [ref=f8e5]
+    - navigation [ref=f8e6]:
+      - generic [ref=f8e7]:
+        - generic [ref=f8e8]:
+          - button "Messages" [ref=f8e9]
+          - status:
+            - generic [ref=f8e13]: Messages
+        - generic [ref=f8e14]:
+          - button "Notifications, none new" [ref=f8e15]
+          - status:
+            - generic [ref=f8e19]: Notifications, none new
+        - button "Open user menu for Harriet Harbour" [ref=f8e21] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f8e22]: HH
+  - generic:
+    - status
+    - alert
+  - main [ref=f8e23]:
+    - generic [ref=f8e25]:
+      - dialog "Navigation" [ref=f8e26]:
+        - generic [ref=f8e28]:
+          - generic [ref=f8e29]:
+            - paragraph [ref=f8e30]: Organisation
+            - generic [ref=f8e31]:
+              - generic [aria-hidden] [ref=f8e32]: HC
+              - generic "Harbour College" [ref=f8e33]
+          - navigation "Sections" [ref=f8e34]:
+            - heading "Teaching" [level=2] [ref=f8e35]
+            - list [ref=f8e36]:
+              - listitem [ref=f8e37]:
+                - link "Dashboard" [ref=f8e38] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/dashboard
+              - listitem [ref=f8e43]:
+                - link "Cohorts" [ref=f8e44] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/cohorts
+              - listitem [ref=f8e49]:
+                - link "Learners" [ref=f8e50] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/learners
+              - listitem [ref=f8e55]:
+                - link "Courses" [ref=f8e56] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/courses
+            - heading "Administration" [level=2] [ref=f8e61]
+            - list [ref=f8e62]:
+              - listitem [ref=f8e63]:
+                - link "Staff" [ref=f8e64] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/staff
+              - listitem [ref=f8e69]:
+                - link "Audit log" [ref=f8e70] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/audit-log
+          - generic [ref=f8e75]:
+            - generic [ref=f8e77]:
+              - generic [aria-hidden] [ref=f8e78]: HH
+              - generic [ref=f8e79]:
+                - generic [ref=f8e80]: Harriet Harbour
+                - generic [ref=f8e81]: qa_harbour_educator@email.com
+            - link "Account settings" [ref=f8e82] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f8e88]:
+        - generic [ref=f8e90]:
+          - heading "Learners" [level=1] [ref=f8e94]
+          - generic [ref=f8e95]:
+            - button "Add learner" [ref=f8e96] [cursor=pointer]
+            - link "Import learners" [ref=f8e97] [cursor=pointer]:
+              - /url: /educator/organisations/harbour-college/learners/import/
+        - generic [ref=f8e102]:
+          - generic [ref=f8e103]:
+            - generic [ref=f8e105]:
+              - generic [ref=f8e106]: Search
+              - searchbox "Search" [ref=f8e108]
+            - generic [ref=f8e109]:
+              - group [ref=f8e110]:
+                - 'generic "Status: Active, Pending" [ref=f8e111]'
+              - group [ref=f8e115]:
+                - generic "Add filter" [ref=f8e116]
+              - link "Export CSV" [ref=f8e120] [cursor=pointer]:
+                - /url: /educator/organisations/harbour-college/learners?learners-export=csv
+          - status [ref=f8e124]
+          - region "Learners" [ref=f8e127]:
+            - table [ref=f8e128]:
+              - caption [ref=f8e129]: Learners
+              - rowgroup [ref=f8e130]:
+                - row [ref=f8e131]:
+                  - columnheader [ref=f8e132]:
+                    - checkbox "Select all on this page" [ref=f8e133] [cursor=pointer]
+                  - columnheader [ref=f8e134]:
+                    - link "Learner" [ref=f8e135] [cursor=pointer]:
+                      - /url: /educator/organisations/harbour-college/learners?learners-sort=-user__first_name
+                  - columnheader "Status" [ref=f8e139]
+                  - columnheader "Cohorts" [ref=f8e140]
+                  - columnheader "Courses" [ref=f8e141]
+                  - columnheader [ref=f8e142]:
+                    - link "Last active" [ref=f8e143] [cursor=pointer]:
+                      - /url: /educator/organisations/harbour-college/learners?learners-sort=last_active
+              - rowgroup [ref=f8e147]:
+                - row [ref=f8e148]:
+                  - cell [ref=f8e149]:
+                    - checkbox "Select Lena Harbour" [ref=f8e150] [cursor=pointer]
+                  - cell [ref=f8e151]:
+                    - generic [ref=f8e152]:
+                      - link "Lena Harbour qa_harbour_learner@email.com" [ref=f8e154] [cursor=pointer]:
+                        - /url: /educator/organisations/harbour-college/learners/d6e5b7d4-c8d2-41ab-bcde-9d28b20aec2f
+                        - generic [ref=f8e155]:
+                          - generic [aria-hidden] [ref=f8e156]: LH
+                          - generic [ref=f8e157]:
+                            - generic [ref=f8e158]: Lena Harbour
+                            - generic [ref=f8e159]: qa_harbour_learner@email.com
+                      - 'link "Quick view: Lena Harbour" [ref=f8e160] [cursor=pointer]':
+                        - /url: /educator/organisations/harbour-college/learners/d6e5b7d4-c8d2-41ab-bcde-9d28b20aec2f
+                  - cell "Active" [ref=f8e165]
+                  - cell [ref=f8e167]:
+                    - link "QA Harbour Cohort" [ref=f8e168] [cursor=pointer]:
+                      - /url: /educator/organisations/harbour-college/cohorts/bca4b3b1-a8bf-4457-bb04-0d798cad646c
+                  - cell [ref=f8e169]:
+                    - img "None" [ref=f8e170]: —
+                  - cell "Never" [ref=f8e171]
+                - row [ref=f8e172]:
+                  - cell [ref=f8e173]:
+                    - checkbox "Select Sol Harbour" [ref=f8e174] [cursor=pointer]
+                  - cell [ref=f8e175]:
+                    - generic [ref=f8e176]:
+                      - link "Sol Harbour qa_harbour_solo@email.com" [ref=f8e178] [cursor=pointer]:
+                        - /url: /educator/organisations/harbour-college/learners/0a414a56-85ef-4125-85bb-496512cd50fd
+                        - generic [ref=f8e179]:
+                          - generic [aria-hidden] [ref=f8e180]: SH
+                          - generic [ref=f8e181]:
+                            - generic [ref=f8e182]: Sol Harbour
+                            - generic [ref=f8e183]: qa_harbour_solo@email.com
+                      - 'link "Quick view: Sol Harbour" [ref=f8e184] [cursor=pointer]':
+                        - /url: /educator/organisations/harbour-college/learners/0a414a56-85ef-4125-85bb-496512cd50fd
+                  - cell "Active" [ref=f8e189]
+                  - cell [ref=f8e191]:
+                    - img "None" [ref=f8e192]: —
+                  - cell [ref=f8e193]:
+                    - img "None" [ref=f8e194]: —
+                  - cell "Never" [ref=f8e195]
+          - paragraph [ref=f8e197]: 2 learners
+  - contentinfo [ref=f8e200]:
+    - generic [ref=f8e201]:
+      - paragraph [ref=f8e202]: © 2026 FirstClass
+      - navigation "Legal" [ref=f8e203]:
+        - link "Terms and Conditions" [ref=f8e204] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f8e205] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f8e206] [cursor=pointer]: educator-interface-course-list-shows-too-much
+  - generic "Show toolbar" [ref=f8e208]: DJDT

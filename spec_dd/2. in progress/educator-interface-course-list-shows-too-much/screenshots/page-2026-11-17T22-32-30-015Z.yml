@@ -1,0 +1,179 @@
+- generic [active] [ref=f17e1]:
+  - banner [ref=f17e2]:
+    - link [ref=f17e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f17e4]
+      - heading "FirstClass" [level=1] [ref=f17e5]
+    - navigation [ref=f17e6]:
+      - generic [ref=f17e7]:
+        - generic [ref=f17e8]:
+          - button "Messages" [ref=f17e9]
+          - status:
+            - generic [ref=f17e13]: Messages
+        - generic [ref=f17e14]:
+          - button "Notifications, none new" [ref=f17e15]
+          - status:
+            - generic [ref=f17e19]: Notifications, none new
+        - button "Open user menu for Harriet Harbour" [ref=f17e21] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f17e22]: HH
+  - generic:
+    - status
+    - alert
+  - main [ref=f17e23]:
+    - generic [ref=f17e25]:
+      - dialog "Navigation" [ref=f17e26]:
+        - generic [ref=f17e28]:
+          - generic [ref=f17e29]:
+            - paragraph [ref=f17e30]: Organisation
+            - generic [ref=f17e31]:
+              - generic [aria-hidden] [ref=f17e32]: HC
+              - generic "Harbour College" [ref=f17e33]
+          - navigation "Sections" [ref=f17e34]:
+            - heading "Teaching" [level=2] [ref=f17e35]
+            - list [ref=f17e36]:
+              - listitem [ref=f17e37]:
+                - link "Dashboard" [ref=f17e38] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/dashboard
+              - listitem [ref=f17e43]:
+                - link "Cohorts" [ref=f17e44] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/cohorts
+              - listitem [ref=f17e49]:
+                - link "Learners" [ref=f17e50] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/learners
+              - listitem [ref=f17e55]:
+                - link "Courses" [ref=f17e56] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/courses
+            - heading "Administration" [level=2] [ref=f17e61]
+            - list [ref=f17e62]:
+              - listitem [ref=f17e63]:
+                - link "Staff" [ref=f17e64] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/staff
+              - listitem [ref=f17e69]:
+                - link "Audit log" [ref=f17e70] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/audit-log
+          - generic [ref=f17e75]:
+            - generic [ref=f17e77]:
+              - generic [aria-hidden] [ref=f17e78]: HH
+              - generic [ref=f17e79]:
+                - generic [ref=f17e80]: Harriet Harbour
+                - generic [ref=f17e81]: qa_harbour_educator@email.com
+            - link "Account settings" [ref=f17e82] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f17e87]:
+        - navigation "Back" [ref=f17e89]:
+          - link "Courses" [ref=f17e90] [cursor=pointer]:
+            - /url: /educator/organisations/harbour-college/courses
+        - generic [ref=f17e94]:
+          - heading "Workplace Safety Essentials" [level=1] [ref=f17e101]
+          - generic [ref=f17e103]:
+            - generic [ref=f17e105]:
+              - heading "Details" [level=2] [ref=f17e108]
+              - generic [ref=f17e110]:
+                - generic [ref=f17e111]:
+                  - term [ref=f17e112]: Title
+                  - definition [ref=f17e113]: Workplace Safety Essentials
+                - generic [ref=f17e114]:
+                  - term [ref=f17e115]: Subtitle
+                  - definition [ref=f17e116]: An organisation course
+                - generic [ref=f17e117]:
+                  - term [ref=f17e118]: Category
+                  - definition [ref=f17e119]: Start here
+                - generic [ref=f17e120]:
+                  - term [ref=f17e121]: Visibility
+                  - definition [ref=f17e122]: Published
+                - generic [ref=f17e123]:
+                  - term [ref=f17e124]: Lessons
+                  - definition [ref=f17e125]: "1"
+            - generic [ref=f17e127]:
+              - heading "Course content" [level=2] [ref=f17e130]
+              - region "Course outline" [ref=f17e133]:
+                - table [ref=f17e134]:
+                  - caption [ref=f17e135]: Course outline
+                  - rowgroup [ref=f17e136]:
+                    - row [ref=f17e137]:
+                      - columnheader "#" [ref=f17e138]
+                      - columnheader "Title" [ref=f17e139]
+                      - columnheader "Type" [ref=f17e140]
+                      - columnheader "Actions" [ref=f17e141]
+                  - rowgroup [ref=f17e143]:
+                    - row [ref=f17e144]:
+                      - cell [ref=f17e145]
+                      - cell "Course details" [ref=f17e146]
+                      - cell "Course" [ref=f17e149]
+                      - cell [ref=f17e150]:
+                        - button "Preview course details page" [ref=f17e152] [cursor=pointer]: Preview
+                    - row [ref=f17e153]:
+                      - cell "1." [ref=f17e154]
+                      - cell "Topic Safety on site" [ref=f17e155]:
+                        - generic [ref=f17e156]:
+                          - generic [ref=f17e157]: Topic
+                          - generic [ref=f17e161]: Safety on site
+                      - cell "Topic" [ref=f17e162]
+                      - cell [ref=f17e163]:
+                        - button "Preview Safety on site" [ref=f17e165] [cursor=pointer]: Preview
+            - generic [ref=f17e167]:
+              - heading "Cohort registrations" [level=2] [ref=f17e170]
+              - generic [ref=f17e172]:
+                - region "Cohort course registrations" [ref=f17e174]:
+                  - table [ref=f17e175]:
+                    - caption [ref=f17e176]: Cohort course registrations
+                    - rowgroup [ref=f17e177]:
+                      - row [ref=f17e178]:
+                        - columnheader "Cohort" [ref=f17e179]
+                        - columnheader "Cohort status" [ref=f17e180]
+                        - columnheader "Status" [ref=f17e181]
+                        - columnheader "Registered" [ref=f17e182]
+                    - rowgroup [ref=f17e183]:
+                      - row [ref=f17e184]:
+                        - cell [ref=f17e185]:
+                          - link "QA Harbour Cohort" [ref=f17e186] [cursor=pointer]:
+                            - /url: /educator/organisations/harbour-college/cohorts/bca4b3b1-a8bf-4457-bb04-0d798cad646c
+                        - cell "Active" [ref=f17e187]
+                        - cell "Active" [ref=f17e189]
+                        - cell "17 Nov 2026, 22:29" [ref=f17e191]:
+                          - time [ref=f17e192]:
+                            - generic [ref=f17e193]: 17 Nov 2026,
+                            - generic [ref=f17e194]: 22:29
+                - paragraph [ref=f17e196]: 1 cohort course registration
+            - generic [ref=f17e198]:
+              - heading "Direct registrations" [level=2] [ref=f17e201]
+              - generic [ref=f17e203]:
+                - region "Learner course registrations" [ref=f17e206]:
+                  - table [ref=f17e207]:
+                    - caption [ref=f17e208]: Learner course registrations
+                    - rowgroup [ref=f17e209]:
+                      - row [ref=f17e210]:
+                        - columnheader [ref=f17e211]:
+                          - link "Learner" [ref=f17e212] [cursor=pointer]:
+                            - /url: /educator/organisations/harbour-college/courses/26c2e0d5-534f-40dc-86de-8218355233e5?learner_registrations-sort=-learner__user__first_name
+                        - columnheader "Status" [ref=f17e216]
+                        - columnheader "Registered" [ref=f17e217]
+                    - rowgroup [ref=f17e218]:
+                      - row [ref=f17e219]:
+                        - cell [ref=f17e220]:
+                          - generic [ref=f17e221]:
+                            - link "Sol Harbour qa_harbour_solo@email.com" [ref=f17e223] [cursor=pointer]:
+                              - /url: /educator/organisations/harbour-college/learners/0a414a56-85ef-4125-85bb-496512cd50fd
+                              - generic [ref=f17e224]:
+                                - generic [aria-hidden] [ref=f17e225]: SH
+                                - generic [ref=f17e226]:
+                                  - generic [ref=f17e227]: Sol Harbour
+                                  - generic [ref=f17e228]: qa_harbour_solo@email.com
+                            - 'link "Quick view: Sol Harbour" [ref=f17e229] [cursor=pointer]':
+                              - /url: /educator/organisations/harbour-college/learners/0a414a56-85ef-4125-85bb-496512cd50fd
+                        - cell "Inactive" [ref=f17e234]
+                        - cell "17 Nov 2026, 22:31" [ref=f17e236]:
+                          - time [ref=f17e237]:
+                            - generic [ref=f17e238]: 17 Nov 2026,
+                            - generic [ref=f17e239]: 22:31
+                - paragraph [ref=f17e241]: 1 learner course registration
+  - contentinfo [ref=f17e244]:
+    - generic [ref=f17e245]:
+      - paragraph [ref=f17e246]: © 2026 FirstClass
+      - navigation "Legal" [ref=f17e247]:
+        - link "Terms and Conditions" [ref=f17e248] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f17e249] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f17e250] [cursor=pointer]: educator-interface-course-list-shows-too-much
+  - generic "Show toolbar" [ref=f17e252]: DJDT

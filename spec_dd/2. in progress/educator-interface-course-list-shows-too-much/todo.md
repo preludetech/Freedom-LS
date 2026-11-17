@@ -16,10 +16,14 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 3. Implementation and QA
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
+- [ ] (user) Decide whether to keep QUERY_BOUND = 60 in freedom_ls/educator_interface/tests/invariants/test_course_shares.py (raised from the measured 54 because a cold per-process cache adds a query or two to the first request under some test orders), or pin it tighter by warming the cache with one request before measuring; then tick this
+- [ ] (user) Decide what to do about QA bug: two courses with the same title (Harbour's own and Northwind's shared Workplace Safety Essentials) are indistinguishable in the educator Courses list, course filters and register pickers — decide how to tell them apart, e.g. show the owning organisation beside a shared course (TDD: failing test first, then fix)
+- [ ] (user) Keep or discard the edits the QA data helper made to .claude/agent-memory/sdd-qa-data-helper/reference_empty_db_baseline.md and reference_org_course_registration.md (left unstaged; CLAUDE.md says not to use memory): `git checkout -- .claude/agent-memory/` to discard
+- [ ] (user) Fix the QA plan 3. frontend_qa.md: 1.1 step 4 searches a Courses list that has no search box, its URLs omit the organisations/ segment, and 2.2 names a 'Course registrations' panel that is the learner Overview's 'Registrations' panel
 
 ## 4. Documentation and pull request
 

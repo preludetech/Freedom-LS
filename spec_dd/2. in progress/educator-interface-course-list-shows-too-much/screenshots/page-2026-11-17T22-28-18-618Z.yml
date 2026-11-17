@@ -1,0 +1,76 @@
+- generic [active] [ref=f6e1]:
+  - banner [ref=f6e2]:
+    - heading "Page not found (404)" [level=1] [ref=f6e3]
+    - table [ref=f6e4]:
+      - rowgroup [ref=f6e5]:
+        - row [ref=f6e6]:
+          - rowheader "Request Method:" [ref=f6e7]
+          - cell "GET" [ref=f6e8]
+        - row [ref=f6e9]:
+          - rowheader "Request URL:" [ref=f6e10]
+          - cell "http://127.0.0.1:8898/educator/organisations/harbour-college/courses/c358d156-4f88-4ea7-ac1a-538ee8a47152" [ref=f6e11]
+        - row [ref=f6e12]:
+          - rowheader "Raised by:" [ref=f6e13]
+          - cell "freedom_ls.educator_interface.views.interface" [ref=f6e14]
+  - main [ref=f6e15]:
+    - paragraph [ref=f6e16]:
+      - text: Using the URLconf defined in
+      - code [ref=f6e17]: config.urls
+      - text: ", Django tried these URL patterns, in this order:"
+    - list [ref=f6e18]:
+      - listitem [ref=f6e19]:
+        - code [ref=f6e20]: health/
+      - listitem [ref=f6e21]:
+        - code [ref=f6e22]: admin/
+      - listitem [ref=f6e23]:
+        - code [ref=f6e24]: robots.txt [name='robots_txt']
+      - listitem [ref=f6e25]:
+        - code [ref=f6e26]: sitemap.xml [name='sitemap']
+      - listitem [ref=f6e27]:
+        - code
+        - code [ref=f6e28]: "^[gG][oO]/(?P<code>[A-Za-z0-9-]{1,64})/?$ [name='follow_go']"
+      - listitem [ref=f6e29]:
+        - code
+        - code [ref=f6e30]: "^[dD]/(?P<code>[A-Za-z0-9-]{1,64})/?$ [name='follow_d']"
+      - listitem [ref=f6e31]:
+        - code [ref=f6e32]: educator/
+        - code [ref=f6e33]: ^$ [name='root']
+      - listitem [ref=f6e34]:
+        - code [ref=f6e35]: educator/
+        - code [ref=f6e36]: "^organisations/(?P<organisation_slug>[-\\w]+)/cohorts/(?P<cohort_pk>[0-9a-f-]{36})/reports/(?P<report_pk>[0-9a-f-]{36})/download/$ [name='cohort_report_download']"
+      - listitem [ref=f6e37]:
+        - code [ref=f6e38]: educator/
+        - code [ref=f6e39]: "^organisations/(?P<organisation_slug>[-\\w]+)/learners/(?P<learner_pk>[0-9a-f-]{36})/conversations/(?P<conversation_pk>[0-9a-f-]{36})/older/$ [name='oversight_thread_older']"
+      - listitem [ref=f6e40]:
+        - code [ref=f6e41]: educator/
+        - code [ref=f6e42]: ^organisations/(?P<organisation_slug>[-\w]+)/learners/import/$ [name='learner_import']
+      - listitem [ref=f6e43]:
+        - code [ref=f6e44]: educator/
+        - code [ref=f6e45]: "^organisations/(?P<organisation_slug>[-\\w]+)/learners/import/(?P<import_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/$ [name='learner_import_preview']"
+      - listitem [ref=f6e46]:
+        - code [ref=f6e47]: educator/
+        - code [ref=f6e48]: ^organisations/(?P<organisation_slug>[-\w]+)/learners/import/template\.csv$ [name='learner_import_template']
+      - listitem [ref=f6e49]:
+        - code [ref=f6e50]: educator/
+        - code [ref=f6e51]: "^organisations/(?P<organisation_slug>[-\\w]+)/learners/import/(?P<import_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/errors\\.csv$ [name='learner_import_errors']"
+      - listitem [ref=f6e52]:
+        - code [ref=f6e53]: educator/
+        - code [ref=f6e54]: "^organisations/(?P<organisation_slug>[-\\w]+)/learners/import/(?P<import_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/result/$ [name='learner_import_result']"
+      - listitem [ref=f6e55]:
+        - code [ref=f6e56]: educator/
+        - code [ref=f6e57]: "^organisations/(?P<organisation_slug>[-\\w]+)/learners/import/(?P<import_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/status/$ [name='learner_import_status']"
+      - listitem [ref=f6e58]:
+        - code [ref=f6e59]: educator/
+        - code [ref=f6e60]: ^organisations/(?P<organisation_slug>[-\w]+)/(?P<path_string>.*)$ [name='interface']
+    - paragraph [ref=f6e61]:
+      - text: The current path,
+      - code [ref=f6e62]: educator/organisations/harbour-college/courses/c358d156-4f88-4ea7-ac1a-538ee8a47152
+      - text: ", matched the last one."
+  - contentinfo [ref=f6e63]:
+    - paragraph [ref=f6e64]:
+      - text: You’re seeing this error because you have
+      - code [ref=f6e65]: DEBUG = True
+      - text: in your Django settings file. Change that to
+      - code [ref=f6e66]: "False"
+      - text: ", and Django will display a standard 404 page."
+  - generic "Show toolbar" [ref=f6e68]: DJDT

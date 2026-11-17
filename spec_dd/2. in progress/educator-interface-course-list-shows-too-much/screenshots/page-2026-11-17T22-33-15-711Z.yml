@@ -1,0 +1,61 @@
+- generic [active] [ref=f26e1]:
+  - banner [ref=f26e2]:
+    - link [ref=f26e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f26e4]
+      - heading "FirstClass" [level=1] [ref=f26e5]
+    - navigation [ref=f26e6]:
+      - generic [ref=f26e7]:
+        - generic [ref=f26e8]:
+          - button "Notifications, none new" [ref=f26e9]
+          - status:
+            - generic [ref=f26e13]: Notifications, none new
+        - button "Open user menu for Lena Harbour" [ref=f26e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f26e16]: LH
+  - generic:
+    - status
+    - alert
+  - main [ref=f26e17]:
+    - generic [ref=f26e19]:
+      - dialog "Course outline" [ref=f26e20]:
+        - generic [ref=f26e23]:
+          - generic [ref=f26e24]:
+            - generic [ref=f26e25]:
+              - generic [aria-hidden] [ref=f26e26]: HC
+              - generic [ref=f26e27]: Harbour College
+            - paragraph [ref=f26e28]: Course outline
+            - paragraph [ref=f26e29]: Workplace Safety Essentials
+            - generic [ref=f26e31]:
+              - progressbar "Progress for Workplace Safety Essentials" [ref=f26e32]: 0%
+              - generic [ref=f26e33]: 0% complete
+          - navigation "Course outline" [ref=f26e34]:
+            - list [ref=f26e35]:
+              - listitem [ref=f26e36]:
+                - generic [ref=f26e37]:
+                  - generic [ref=f26e38]: "1."
+                  - generic [ref=f26e39]: Not started
+                  - generic [ref=f26e43]: Safety on site
+      - generic [ref=f26e44]:
+        - generic [ref=f26e46]:
+          - navigation "Breadcrumb" [ref=f26e49]:
+            - list [ref=f26e50]:
+              - listitem [ref=f26e51]:
+                - link "Workplace Safety Essentials" [ref=f26e52] [cursor=pointer]:
+                  - /url: /courses/workplace-safety-essentials-2/detail/
+              - listitem [ref=f26e53]:
+                - generic [aria-hidden] [ref=f26e54]: ">"
+                - generic "Safety on site" [ref=f26e55]
+          - heading "Safety on site" [level=1] [ref=f26e58]
+        - generic [ref=f26e60]:
+          - paragraph [ref=f26e62]: Report hazards as soon as you see them.
+          - button "Finish Course" [ref=f26e65] [cursor=pointer]
+  - contentinfo [ref=f26e69]:
+    - generic [ref=f26e70]:
+      - paragraph [ref=f26e71]: © 2026 FirstClass
+      - navigation "Legal" [ref=f26e72]:
+        - link "Terms and Conditions" [ref=f26e73] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f26e74] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f26e75] [cursor=pointer]: educator-interface-course-list-shows-too-much
+  - generic "Show toolbar" [ref=f26e77]: DJDT
