@@ -20,6 +20,7 @@ from django.template.loader import render_to_string
 from django.test import RequestFactory
 
 from freedom_ls.panel_framework.actions import (
+    CHOOSE_AGAIN_MESSAGE,
     ConfirmAction,
     CreateInstanceAction,
     DeleteAction,
@@ -2104,3 +2105,111 @@ def test_a_ticked_remove_with_a_new_upload_is_a_contradiction(
 
     assert response.status_code == 422
     assert "not both" in response.content.decode().lower()
+
+
+class _OverridingInvalidAction(StubUploadFormAction):
+    action_name = "overriding_invalid"
+
+    def form_invalid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
+        return HttpResponse("\n".join(form.errors["attachment"]), status=422)
+
+
+class _RejectingUploadForm(_UploadForm):
+    def clean_attachment(self) -> object:
+        raise forms.ValidationError("That file type is not allowed.")
+
+
+class _RejectingUploadAction(StubUploadFormAction):
+    action_name = "rejecting"
+    form_class = _RejectingUploadForm
+
+
+class _PrefixedUploadAction(StubUploadFormAction):
+    action_name = "prefixed"
+
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
+        return {**super().get_form_kwargs(ctx), "prefix": "doc"}
+
+
+def _post_upload(
+    action: FormPanelAction, post: dict[str, object]
+) -> lxml.html.HtmlElement:
+    request = RequestFactory().post("/", post)
+    request.user = make_staff_user()
+    response = action.handle_submit(_ctx(request))
+    assert response.status_code == 422
+    return lxml.html.fromstring(response.content.decode())
+
+
+def _field_error_texts(root: lxml.html.HtmlElement) -> list[str]:
+    return [item.text_content() for item in root.cssselect("ul.errorlist li")]
+
+
+@pytest.mark.django_db
+def test_a_422_with_a_file_chosen_asks_for_the_file_again(
+    mock_site_context: Site,
+) -> None:
+    root = _post_upload(StubUploadFormAction(), {"name": "", "attachment": _upload()})
+
+    (file_input,) = root.xpath("//input[@name='attachment']")
+    assert file_input.get("value") is None
+    assert CHOOSE_AGAIN_MESSAGE in _field_error_texts(root)
+    summary = " ".join(root.xpath("//*[@data-error-summary]//text()"))
+    assert "2 fields to fix." in summary
+
+
+@pytest.mark.django_db
+def test_a_422_on_an_edit_action_still_names_the_current_file(
+    mock_site_context: Site,
+) -> None:
+    item = make_stub_file(name="Record", attachment=_upload(b"old", "old.txt"))
+    action = EditAction(form_class=_StubFileModelForm, form_title="Edit", instance=item)
+    request = RequestFactory().post("/", {"name": "", "attachment": _upload()})
+    request.user = make_staff_user()
+
+    response = action.handle_submit(_ctx(request, item))
+
+    assert response.status_code == 422
+    body = response.content.decode()
+    assert "old.txt" in body
+    assert CHOOSE_AGAIN_MESSAGE in body
+
+
+@pytest.mark.django_db
+def test_a_prefixed_form_gets_the_choose_again_message(mock_site_context: Site) -> None:
+    root = _post_upload(
+        _PrefixedUploadAction(), {"doc-name": "", "doc-attachment": _upload()}
+    )
+
+    assert CHOOSE_AGAIN_MESSAGE in _field_error_texts(root)
+
+
+@pytest.mark.django_db
+def test_a_file_field_with_its_own_error_shows_only_that_error(
+    mock_site_context: Site,
+) -> None:
+    root = _post_upload(
+        _RejectingUploadAction(), {"name": "Ada", "attachment": _upload()}
+    )
+
+    texts = _field_error_texts(root)
+    assert "That file type is not allowed." in texts
+    assert CHOOSE_AGAIN_MESSAGE not in texts
+
+
+@pytest.mark.django_db
+def test_a_422_with_no_file_chosen_has_no_choose_again_message(
+    mock_site_context: Site,
+) -> None:
+    root = _post_upload(StubUploadFormAction(), {"name": ""})
+
+    assert CHOOSE_AGAIN_MESSAGE not in _field_error_texts(root)
+
+
+def test_a_form_invalid_override_still_gets_the_choose_again_message() -> None:
+    request = RequestFactory().post("/", {"name": "", "attachment": _upload()})
+
+    response = _OverridingInvalidAction().handle_submit(_ctx(request))
+
+    assert response.status_code == 422
+    assert response.content.decode() == CHOOSE_AGAIN_MESSAGE

@@ -26,6 +26,7 @@ from freedom_ls.panel_framework.forms import ReasonForm
 from freedom_ls.panel_framework.widgets import PanelClearableFileInput
 
 __all__ = [
+    "CHOOSE_AGAIN_MESSAGE",
     "ConfirmAction",
     "CreateInstanceAction",
     "DeleteAction",
@@ -45,6 +46,8 @@ __all__ = [
     "navigation_response",
     "refusal_response",
 ]
+
+CHOOSE_AGAIN_MESSAGE = "Choose the file again. It is not kept when the form has errors."
 
 
 def _model_capability(model: type[Model] | Model, verb: str) -> str:
@@ -409,7 +412,22 @@ class FormPanelAction(ModalPanelAction):
         form = self.get_form(ctx)
         if form.is_valid():
             return self.form_valid(ctx, form)
+        # Here rather than in form_invalid, which subclasses override.
+        self._add_choose_again_errors(ctx, form)
         return self.form_invalid(ctx, form)
+
+    def _add_choose_again_errors(self, ctx: PanelContext, form: forms.BaseForm) -> None:
+        """A browser cannot be handed a file back, so a re-rendered file input
+        is empty. Say so on each file field the user had filled in."""
+        for name, field in form.fields.items():
+            uploaded = form.add_prefix(name) in ctx.request.FILES
+            # A field with an error of its own already says what is wrong.
+            if (
+                isinstance(field, forms.FileField)
+                and uploaded
+                and name not in form.errors
+            ):
+                form.add_error(name, CHOOSE_AGAIN_MESSAGE)
 
     def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
         raise NotImplementedError
