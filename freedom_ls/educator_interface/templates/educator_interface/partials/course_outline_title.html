@@ -1,0 +1,9 @@
+<div class="flex items-center gap-2">
+    {% if object.kind != "course" %}
+        <span class="shrink-0 text-muted">
+            <c-icon name="{{ object.icon }}" class="size-4" />
+            <span class="sr-only">{{ object.kind_label }}</span>
+        </span>
+    {% endif %}
+    <span class="min-w-0 font-medium">{{ object.title }}</span>
+</div>

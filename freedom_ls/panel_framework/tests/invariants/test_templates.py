@@ -471,15 +471,6 @@ def test_no_control_link_is_hand_styled() -> None:
     assert offenders == []
 
 
-# Templates that write their own <table>, each with its reason.
-HAND_WRITTEN_TABLE_EXEMPTIONS: dict[str, str] = {
-    "panels/course_content.html": (
-        "the course outline is a tree whose rows expand and collapse, which "
-        "neither table component offers"
-    ),
-}
-
-
 def test_no_template_hand_writes_a_table_outside_the_table_components() -> None:
     """A static table is `<c-panel-table>` and a list a user sorts or filters
     is `<c-data-table>`: both give the table its caption, header style and a
@@ -489,8 +480,6 @@ def test_no_template_hand_writes_a_table_outside_the_table_components() -> None:
     for root in (TEMPLATES_DIR, EDUCATOR_TEMPLATES_DIR):
         for path in sorted(root.rglob("*.html")):
             if path.name in table_components:
-                continue
-            if str(path.relative_to(root)) in HAND_WRITTEN_TABLE_EXEMPTIONS:
                 continue
             source = re.sub(
                 r"{% comment %}.*?{% endcomment %}", "", path.read_text(), flags=re.S

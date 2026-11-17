@@ -1,0 +1,5 @@
+{% if object.kind == "course" %}
+    <c-panel-empty-state message="{{ object.note }}" />
+{% else %}
+    <span class="text-sm text-muted">{{ object.note }}</span>
+{% endif %}

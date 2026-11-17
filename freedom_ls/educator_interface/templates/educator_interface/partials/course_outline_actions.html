@@ -1,0 +1,19 @@
+{% comment %}
+The Preview trigger of an outline row. row_action_urls comes from the course
+content panel; a part has no preview query and shows nothing.
+{% endcomment %}
+{% if object.kind == "course" %}
+    <c-data-table-actions>
+        <c-modal-trigger size="small" variant="secondary"
+                         url="{{ row_action_urls.preview_course_details }}"
+                         label="Preview"
+                         aria_label="Preview course details page" />
+    </c-data-table-actions>
+{% elif object.preview_query %}
+    <c-data-table-actions>
+        <c-modal-trigger size="small" variant="secondary"
+                         url="{{ row_action_urls.preview_content }}?{{ object.preview_query }}"
+                         label="Preview"
+                         aria_label="{% if object.kind == 'page' %}Preview {{ object.form_title }}: {{ object.title }}{% else %}Preview {{ object.title }}{% endif %}" />
+    </c-data-table-actions>
+{% endif %}

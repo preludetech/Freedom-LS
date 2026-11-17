@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import cast
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Locator, Page, expect
 
 from django.contrib.auth.base_user import AbstractBaseUser
 
@@ -93,6 +93,12 @@ def _seed_course(user: AbstractBaseUser) -> tuple[Organisation, Course]:
     return organisation, course
 
 
+def _visible_text(page: Page, text: str) -> Locator:
+    """The outline's visible copy of `text`: the table and the cards both
+    hold every row, and only the one for the viewport shows."""
+    return page.get_by_text(text, exact=True).locator("visible=true")
+
+
 def _tab_to_focus(page: Page, selector: str) -> None:
     """Presses Tab until the element matching `selector` holds focus."""
     for _ in range(80):
@@ -134,7 +140,11 @@ def test_educator_previews_course_content(
         with no_console_errors(page):
             page.set_viewport_size(viewport)
             page.goto(course_url)
-            outline = page.get_by_role("region", name="Course outline")
+            outline = page.locator("[data-table-layout]")
+            if viewport["width"] >= 768:
+                expect(
+                    page.get_by_role("region", name="Course outline items")
+                ).to_be_visible()
             for title in (
                 "Course details",
                 "Cards",
@@ -144,7 +154,9 @@ def test_educator_previews_course_content(
                 "Survey",
                 "Your thoughts",
             ):
-                expect(outline.get_by_text(title, exact=True)).to_be_visible()
+                expect(
+                    outline.get_by_text(title, exact=True).locator("visible=true")
+                ).to_be_visible()
             assert_no_horizontal_overflow(page)
 
             # Enter on the keyboard-focused button opens the dialog and puts
@@ -177,13 +189,28 @@ def test_educator_previews_course_content(
             _press_escape_and_expect_closed(page)
 
             # A multi-page form's page row previews that page alone.
-            survey_toggle = page.get_by_role("button", name="Survey", exact=True)
-            page_row = page.locator("tr", has_text="Your thoughts")
+            survey_toggle = page.get_by_role(
+                "button", name="Survey", exact=True
+            ).locator("visible=true")
+            page_row = _visible_text(page, "Your thoughts")
             expect(page_row).to_be_visible()
             survey_toggle.click()
             expect(page_row).to_be_hidden()
+            expect(_visible_text(page, "Check yourself")).to_be_visible()
             survey_toggle.click()
             expect(page_row).to_be_visible()
+
+            # Collapsing a part hides its items and leaves its siblings.
+            part_toggle = page.get_by_role(
+                "button", name="Chapter One", exact=True
+            ).locator("visible=true")
+            part_item = _visible_text(page, "Inside the part")
+            part_toggle.click()
+            expect(part_item).to_be_hidden()
+            expect(_visible_text(page, "Cards")).to_be_visible()
+            expect(_visible_text(page, "Survey")).to_be_visible()
+            part_toggle.click()
+            expect(part_item).to_be_visible()
             page.get_by_role("button", name="Preview Survey: Your thoughts").click()
             expect(
                 modal.get_by_role("heading", name="Your thoughts (Preview)")

@@ -7998,7 +7998,7 @@ def _course_content_panel(client: Client, course: CourseModel) -> lxml.html.Html
 
 
 def _outline_rows(panel: lxml.html.HtmlElement) -> list[lxml.html.HtmlElement]:
-    return list(panel.cssselect("[aria-label='Course outline'] tbody tr"))
+    return list(panel.cssselect("[aria-label='Course outline items'] tbody tr"))
 
 
 def _outline_numbers(panel: lxml.html.HtmlElement) -> list[str]:
@@ -8064,7 +8064,7 @@ def test_course_content_part_rows_are_expandable_buttons(staff_client: Client):
 
     panel = _course_content_panel(staff_client, course)
 
-    (button,) = panel.cssselect("button[aria-controls]")
+    (button,) = panel.cssselect("table button[aria-controls]")
     assert button.get("aria-expanded") == "true"
     # aria-expanded carries the state, so the name holds no verb that would
     # be wrong once the group is collapsed.
@@ -8114,6 +8114,56 @@ def test_a_multi_page_form_expands_into_one_row_per_page(staff_client: Client):
     assert quiz_row.cssselect("button[aria-controls]") == []
     (quiz_trigger,) = quiz_row.cssselect("button[hx-get]")
     assert "page=" not in str(quiz_trigger.get("hx-get"))
+
+
+@pytest.mark.django_db
+def test_course_content_pages_top_level_rows_past_the_page_size(staff_client: Client):
+    course = CourseFactory()
+    topics = [TopicFactory(title=f"Topic {number:03d}") for number in range(60)]
+    for order, topic in enumerate(topics):
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=topic, order=order
+        )
+    organisation = OrganisationFactory()
+    url = _interface_url(organisation.slug, f"courses/{course.pk}")
+
+    first = _get_document(staff_client, url)
+    second = _get_document(staff_client, f"{url}?outline-page=2")
+
+    (first_panel,) = first.cssselect("section[data-panel='content']")
+    (second_panel,) = second.cssselect("section[data-panel='content']")
+    page_size = len(_outline_rows(first_panel))
+    assert 1 < page_size < 61
+    assert "Showing 1" in first_panel.text_content()
+    assert "course outline items" in first_panel.text_content()
+    second_titles = [
+        row.cssselect("td .font-medium")[0].text_content().strip()
+        for row in _outline_rows(second_panel)
+    ]
+    # Page one holds the course details row and the first topics.
+    assert second_titles[0] == f"Topic {page_size - 1:03d}"
+
+
+@pytest.mark.django_db
+def test_course_content_cards_mirror_the_rows_without_repeating_ids(
+    staff_client: Client,
+):
+    course = CourseFactory()
+    part = CoursePartFactory(title="Warm up")
+    ContentCollectionItemFactory(collection_object=course, child_object=part, order=0)
+    ContentCollectionItemFactory(
+        collection_object=part, child_object=TopicFactory(), order=0
+    )
+
+    panel = _course_content_panel(staff_client, course)
+
+    rows = _outline_rows(panel)
+    cards = panel.cssselect("li.panel-data-table-card")
+    assert len(cards) == len(rows) == 3
+    assert len(cards[1].cssselect("button[aria-controls]")) == 1
+    assert cards[2].cssselect("button[aria-controls]") == []
+    ids = [node.get("id") for node in panel.cssselect("[id]")]
+    assert len(ids) == len(set(ids))
 
 
 @pytest.mark.django_db
