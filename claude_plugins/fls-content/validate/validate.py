@@ -1,6 +1,7 @@
 # Bundled from freedom_ls/content_engine/validate.py — re-sync via /update_claude_plugin_fls_content
 # Patches applied:
-#   1. Import: `from .schema import SCHEMAS` → `from schema import SCHEMAS`
+#   1. Imports: the FLS `freedom_ls.content_base.schema`, `freedom_ls.content_engine.schema` and
+#      `freedom_ls.form_engine.schema` imports → one `from schema import (...)` block
 #      (same-directory import; Python puts the script's own dir on sys.path when run as a script
 #      via `uv run python .../validate.py`).
 #   2. Added `if __name__ == "__main__":` entry point: reads a path from sys.argv, calls
