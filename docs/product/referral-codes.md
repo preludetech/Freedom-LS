@@ -1,6 +1,6 @@
 # Referral Codes
 
-_Last updated: 2026-11-13_
+_Last updated: 2026-11-17_
 
 ## Summary
 
@@ -31,7 +31,7 @@ These URLs are public and need no login, so repeated hits on one code from one a
 
 Both the code list and the hit log export to CSV. Scripts can also read them through the read-only [API](../api.md) with a key holding the referral data scope (see [API client authentication](./authentication.md#api-client-authentication)), together with first-touch counts and signup attributions. [Security and data handling](./security-and-data-handling.md#api-access-built) covers the personal data that reaches it.
 
-An operator can list conversions in the admin, filter them to those where a code was first or last in play, and export the result to CSV. For a partner paid per conversion, that export is the payout list. See [signup attribution](./signup-attribution.md#reviewing-and-exporting).
+An operator can list conversions in the admin, filter them to those where a code was first or last in play, and export the result to CSV. For a partner paid per conversion, that export is the payout list. A script with the referral data scope can pull the same conversions, filtered by code, through the API. See [signup attribution](./signup-attribution.md#reviewing-and-exporting).
 
 ## Not Built
 
