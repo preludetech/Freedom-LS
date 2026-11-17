@@ -3848,3 +3848,178 @@ def test_sections_are_stored_on_the_loading_site_only():
     assert rows.count() == 2
     assert all(row.question.site_id == row.topic.site_id for row in rows)
     assert {row.topic.site_id for row in rows} == {site_a.id, site_b.id}
+
+
+def _write_part_with_default_sections_quiz(
+    directory: Path, *, form_sections_line: str, question_sections_line: str
+) -> None:
+    """A part with two topics and a quiz whose form.md carries `form_sections_line`
+    and whose single question carries `question_sections_line`; "" omits a key."""
+    _write_part_with_quiz(directory, sections_line=question_sections_line)
+    (directory / "02. more-ideas").mkdir(exist_ok=True)
+    (directory / "02. more-ideas" / "content.md").write_text("""---
+content_type: TOPIC
+title: More Ideas
+---
+
+More ideas content
+""")
+    (directory / "03. knowledge-check" / "form.md").write_text(f"""---
+content_type: FORM
+strategy: QUIZ
+title: Knowledge check
+quiz_show_incorrect: true
+quiz_pass_percentage: 70
+{form_sections_line}
+---
+""")
+
+
+_DEFAULT_KEY_IDEAS = "sections:\n  - ../01. key-ideas/content.md"
+_OWN_MORE_IDEAS = "sections:\n  - ../02. more-ideas/content.md"
+
+
+@pytest.mark.django_db
+def test_a_question_without_the_key_inherits_the_form_default(
+    site, mock_site_context, tmp_path
+):
+    _write_part_with_default_sections_quiz(
+        tmp_path,
+        form_sections_line="sections: [../01. key-ideas/content.md]",
+        question_sections_line="",
+    )
+
+    save_content_to_db(tmp_path, site.name)
+
+    assert _section_rows() == (["Key Ideas"], [])
+
+
+@pytest.mark.django_db
+def test_a_question_with_empty_sections_gets_none_under_a_form_default(
+    site, mock_site_context, tmp_path
+):
+    _write_part_with_default_sections_quiz(
+        tmp_path,
+        form_sections_line="sections: [../01. key-ideas/content.md]",
+        question_sections_line="sections: []",
+    )
+
+    save_content_to_db(tmp_path, site.name)
+
+    assert FormQuestion.objects.count() == 1
+    assert _section_rows() == ([], [])
+
+
+@pytest.mark.django_db
+def test_a_question_list_replaces_the_form_default_rather_than_merging(
+    site, mock_site_context, tmp_path
+):
+    _write_part_with_default_sections_quiz(
+        tmp_path,
+        form_sections_line="sections: [../01. key-ideas/content.md]",
+        question_sections_line=_OWN_MORE_IDEAS,
+    )
+
+    save_content_to_db(tmp_path, site.name)
+
+    assert _section_rows() == (["More Ideas"], [])
+
+
+def _edit_in_place(path: Path, old: str, new: str) -> None:
+    """Edit a file the loader has already written a uuid into (and so
+    re-serialised), so a reload sees the same rows."""
+    text = path.read_text()
+    assert old in text
+    path.write_text(text.replace(old, new))
+
+
+_QUIZ_DIR = "03. knowledge-check"
+
+
+@pytest.mark.django_db
+def test_reloading_after_removing_a_path_from_a_question_drops_that_section(
+    site, mock_site_context, tmp_path
+):
+    _write_part_with_quiz(
+        tmp_path,
+        sections_line="sections:\n  - ../01. key-ideas/content.md\n  - ../part.yaml",
+    )
+    save_content_to_db(tmp_path, site.name)
+    _edit_in_place(tmp_path / _QUIZ_DIR / "1. page.yaml", "- ../part.yaml\n", "")
+
+    save_content_to_db(tmp_path, site.name)
+
+    assert FormQuestion.objects.count() == 1
+    assert _section_rows() == (["Key Ideas"], [])
+
+
+@pytest.mark.django_db
+def test_reloading_after_removing_the_question_key_falls_back_to_the_default(
+    site, mock_site_context, tmp_path
+):
+    _write_part_with_default_sections_quiz(
+        tmp_path,
+        form_sections_line="sections: [../01. key-ideas/content.md]",
+        question_sections_line=_OWN_MORE_IDEAS,
+    )
+    save_content_to_db(tmp_path, site.name)
+    _edit_in_place(
+        tmp_path / _QUIZ_DIR / "1. page.yaml",
+        "sections:\n- ../02. more-ideas/content.md\n",
+        "",
+    )
+
+    save_content_to_db(tmp_path, site.name)
+
+    assert FormQuestion.objects.count() == 1
+    assert _section_rows() == (["Key Ideas"], [])
+
+
+@pytest.mark.django_db
+def test_reloading_after_changing_the_form_default_rewrites_the_sections(
+    site, mock_site_context, tmp_path
+):
+    _write_part_with_default_sections_quiz(
+        tmp_path,
+        form_sections_line="sections: [../01. key-ideas/content.md]",
+        question_sections_line="",
+    )
+    save_content_to_db(tmp_path, site.name)
+    _edit_in_place(tmp_path / _QUIZ_DIR / "form.md", "01. key-ideas", "02. more-ideas")
+
+    save_content_to_db(tmp_path, site.name)
+
+    assert FormQuestion.objects.count() == 1
+    assert _section_rows() == (["More Ideas"], [])
+
+
+@pytest.mark.django_db
+def test_a_question_first_loaded_without_a_uuid_keeps_its_sections_on_reload(
+    site, mock_site_context, tmp_path
+):
+    _write_part_with_quiz(tmp_path, sections_line=_DEFAULT_KEY_IDEAS)
+    save_content_to_db(tmp_path, site.name)
+
+    save_content_to_db(tmp_path, site.name)
+
+    assert FormQuestion.objects.count() == 1
+    assert _section_rows() == (["Key Ideas"], [])
+
+
+@pytest.mark.django_db
+def test_an_unplaced_quiz_in_a_sibling_directory_loads_with_its_sections(
+    site, mock_site_context, tmp_path
+):
+    course_dir = tmp_path / "course"
+    course_dir.mkdir()
+    _write_part_with_default_sections_quiz(
+        course_dir,
+        form_sections_line="sections: [../course/01. key-ideas/content.md]",
+        question_sections_line="",
+    )
+    shutil.move(course_dir / "03. knowledge-check", tmp_path / "quiz")
+
+    save_content_to_db(tmp_path, site.name)
+
+    assert Form.objects.count() == 1
+    assert _section_rows() == (["Key Ideas"], [])

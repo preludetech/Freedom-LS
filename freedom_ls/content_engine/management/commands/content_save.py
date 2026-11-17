@@ -660,7 +660,11 @@ def save_course_part(item, site, base_path):
 def save_form(item, site, base_path):
     """Save a Form to the database."""
     return save_with_uuid(
-        Form, item, site, base_path, exclude_fields=DUE_DATE_FIELD_NAMES
+        Form,
+        item,
+        site,
+        base_path,
+        exclude_fields=DUE_DATE_FIELD_NAMES | {"sections"},
     )
 
 
@@ -1086,10 +1090,10 @@ def save_content_to_db(path, site_name):
         logger.info(f"Saved CoursePart: {collection.title}")
 
     # Save Forms and track them by directory
-    forms_by_dir = {}
+    forms_by_dir: dict[Path, tuple[Form, form_schema.Form]] = {}
     for item in grouped.get(SchemaContentType.FORM, []):
         form = save_form(item, site, path)
-        forms_by_dir[item.file_path.parent] = form
+        forms_by_dir[item.file_path.parent] = (form, item)
         content_by_path[content_key(item.file_path)] = form
         schema_by_path[content_key(item.file_path)] = item
         logger.info(f"Saved Form: {form.title}")
@@ -1102,12 +1106,13 @@ def save_content_to_db(path, site_name):
     # Group pages by parent form directory
     pages_by_form = defaultdict(list)
     for file_path, page_items in pages_by_file.items():
-        parent_form = forms_by_dir.get(file_path.parent)
-        if parent_form:
-            pages_by_form[parent_form].append((file_path, page_items))
+        form_entry = forms_by_dir.get(file_path.parent)
+        if form_entry:
+            pages_by_form[file_path.parent].append((file_path, page_items))
 
     # Save form pages and their content in alphabetical order per form
-    for parent_form, form_pages in pages_by_form.items():
+    for form_dir, form_pages in pages_by_form.items():
+        parent_form, form_item = forms_by_dir[form_dir]
         options_by_slug: dict[str, dict[str, QuestionOption]] = {}
         # Sort pages by file path alphabetically
         for page_order, (file_path, page_items) in enumerate(sorted(form_pages)):
@@ -1164,7 +1169,9 @@ def save_content_to_db(path, site_name):
                             ),
                         )
                         save_question_sections(
-                            question, *effective_sections(item), content_by_path
+                            question,
+                            *effective_sections(item, form_item),
+                            content_by_path,
                         )
                         if item.slug:
                             options_by_slug[item.slug] = saved_options

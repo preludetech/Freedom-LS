@@ -911,12 +911,18 @@ _FormSection = FormPage | FormContent | FormQuestion
 SectionsDeclarer = Form | FormQuestion
 
 
-def effective_sections(question: FormQuestion) -> tuple[SectionsDeclarer, list[Path]]:
+def effective_sections(
+    question: FormQuestion, form: Form
+) -> tuple[SectionsDeclarer, list[Path]]:
     """The file that declares the sections a question tests, and the paths as written.
 
-    Paths resolve against the declarer's file_path.
+    A question that sets the key uses its own list, [] included; one that
+    does not inherits the form's. The two files share a directory, so a
+    path means the same thing at either level.
     """
-    return question, question.sections or []
+    if "sections" in question.model_fields_set:
+        return question, question.sections or []
+    return form, form.sections or []
 
 
 def _condition_error(

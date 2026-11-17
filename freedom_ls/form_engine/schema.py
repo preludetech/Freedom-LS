@@ -38,6 +38,12 @@ class FormStrategy(StrEnum):
     UNSCORED = "UNSCORED"
 
 
+SECTIONS_DESCRIPTION = (
+    "Paths to the part.yaml or topic markdown files this tests, "
+    "relative to this file's directory"
+)
+
+
 class Form(
     BaseContentModel,
     MarkdownContentModel,
@@ -59,6 +65,8 @@ class Form(
         None,
         description="Required if strategy is QUIZ. Percentage (0-100) required to pass the quiz",
     )
+
+    sections: list[Path] | None = Field(None, description=SECTIONS_DESCRIPTION)
 
     submit_on_exit: bool = Field(
         False,
@@ -140,11 +148,6 @@ class Condition(BaseModel):
 WHEN_DESCRIPTION = (
     "Show this only when an earlier answer matches: question (a slug) plus "
     "exactly one of equals or includes"
-)
-
-SECTIONS_DESCRIPTION = (
-    "Paths to the part.yaml or topic markdown files this tests, "
-    "relative to this file's directory"
 )
 
 

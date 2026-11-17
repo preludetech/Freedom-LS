@@ -6,6 +6,7 @@ do. These are the members application forms add.
 from __future__ import annotations
 
 from datetime import date
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -461,3 +462,19 @@ def test_a_page_section_with_question_and_sections_is_a_form_question():
     )
 
     assert derived == ContentType.FORM_QUESTION
+
+
+def test_a_form_with_sections_parses_them_as_paths():
+    form = Form.model_validate(
+        {
+            "content_type": "FORM",
+            "file_path": "forms/quiz/form.md",
+            "title": "Quiz",
+            "strategy": "QUIZ",
+            "quiz_show_incorrect": True,
+            "quiz_pass_percentage": 70,
+            "sections": ["../part.yaml"],
+        }
+    )
+
+    assert form.sections == [Path("../part.yaml")]
