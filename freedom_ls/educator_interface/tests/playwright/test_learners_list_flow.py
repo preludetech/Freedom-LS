@@ -368,7 +368,7 @@ def test_mobile_selection_bar_does_not_cover_the_last_card_checkbox(
     organisation = OrganisationFactory(name="Org A")
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, educator_user, "organisation_admin", organisation)
-    for _ in range(LearnerDataTable.page_size + 1):
+    for _ in range(LearnerDataTable.get_page_size() + 1):
         LearnerFactory(organisation=organisation)
     page.set_viewport_size({"width": 375, "height": 812})
     page.goto(interface_url(live_server, organisation.slug, "learners"))

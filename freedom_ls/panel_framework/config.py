@@ -24,11 +24,14 @@ __all__ = [
 
 class PanelFrameworkConfig(AppSettings):
     BULK_BACKGROUND_THRESHOLD: int
+    DEFAULT_PAGE_SIZE: int
 
     declared_settings = {
         # A bulk action over more objects than this runs in a background task
         # instead of inside the request.
         "BULK_BACKGROUND_THRESHOLD": Setting(default=250),
+        # Rows per page for a table that sets no `page_size` of its own.
+        "DEFAULT_PAGE_SIZE": Setting(default=10),
     }
 
 

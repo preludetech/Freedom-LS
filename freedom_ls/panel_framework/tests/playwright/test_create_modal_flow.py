@@ -61,7 +61,7 @@ def test_create_modal_lifecycle(
     live_server_site: Site,
     mock_site_context: None,
 ) -> None:
-    page_size = StubDataTable.page_size
+    page_size = StubDataTable.get_page_size()
     make_stub(name="Existing")
     for i in range(page_size + 5):
         make_stub(name=f"row-{i:02d}")

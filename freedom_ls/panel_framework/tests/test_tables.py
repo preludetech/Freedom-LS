@@ -92,9 +92,26 @@ def test_a_column_with_no_url_is_not_a_link() -> None:
     assert column.is_link is False
 
 
-def test_a_table_shows_ten_rows_a_page_by_default() -> None:
-    """Few enough that the pager sits on screen below the table."""
-    assert DataTable.page_size == 10
+def test_a_table_with_no_page_size_pages_at_the_declared_default(settings) -> None:
+    """Ten rows is few enough that the pager sits on screen below the table."""
+    del settings.DEFAULT_PAGE_SIZE
+
+    assert DataTable.get_page_size() == 10
+
+
+def test_a_table_with_no_page_size_pages_at_the_projects_setting(settings) -> None:
+    settings.DEFAULT_PAGE_SIZE = 3
+
+    assert DataTable.get_page_size() == 3
+
+
+def test_a_table_that_sets_page_size_ignores_the_setting(settings) -> None:
+    class SizedTable(DataTable):
+        page_size = 7
+
+    settings.DEFAULT_PAGE_SIZE = 3
+
+    assert SizedTable.get_page_size() == 7
 
 
 # A table panel refreshes its region, never its whole frame.
@@ -105,7 +122,7 @@ def test_a_table_shows_ten_rows_a_page_by_default() -> None:
 
 
 # Enough rows for a second page, whatever the page size.
-_PAGE_SIZE = StubDataTable.page_size
+_PAGE_SIZE = StubDataTable.get_page_size()
 _ROWS = _PAGE_SIZE + 5
 
 
@@ -360,7 +377,7 @@ def test_search_trigger_sets_replace_url(mock_site_context: Site) -> None:
 def test_pagination_links_in_a_sorted_region_response_keep_the_sort(
     client: Client, mock_site_context: Site
 ) -> None:
-    for i in range(StubDataTable.page_size + 2):
+    for i in range(StubDataTable.get_page_size() + 2):
         make_stub(name=f"row-{i:02d}")
 
     response = client.get(

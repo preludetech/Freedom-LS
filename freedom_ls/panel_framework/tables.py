@@ -10,6 +10,7 @@ from django.http import HttpRequest
 from django.utils.functional import SimpleLazyObject
 
 from freedom_ls.base.csv_safety import escape_csv_formula
+from freedom_ls.panel_framework.config import config
 from freedom_ls.panel_framework.filters import TableFilter
 from freedom_ls.panel_framework.templatetags.data_table_tags import getattr_str
 
@@ -259,7 +260,8 @@ class ExportColumn:
 class DataTable:
     """Abstract class used for rendering data tables"""
 
-    page_size = 10
+    #: Rows per page. None means the project's DEFAULT_PAGE_SIZE.
+    page_size: int | None = None
     search_fields: list[str] = []
     #: A template that replaces the default card body (the primary/secondary
     #: cell rendering) below md, for a denser layout than the generic card
@@ -424,11 +426,16 @@ class DataTable:
         return queryset
 
     @classmethod
+    def get_page_size(cls) -> int:
+        """Rows per page: the table's own `page_size`, else the project default."""
+        return cls.page_size if cls.page_size is not None else config.DEFAULT_PAGE_SIZE
+
+    @classmethod
     def get_rows(
         cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
     ) -> Page:
         """Paginate `queryset`, already searched and sorted, to `query.page`."""
-        return Paginator(queryset, cls.page_size).get_page(query.page)
+        return Paginator(queryset, cls.get_page_size()).get_page(query.page)
 
     @classmethod
     def get_context(

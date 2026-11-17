@@ -19,7 +19,7 @@ Two things decide what the tester sees, and neither is the email address:
   carry a zero-padded ``last_name``, which is what makes their order in the
   table predictable and the page boundary unambiguous.
 
-Page size is read off ``CourseLearnerRegistrationDataTable.page_size`` (the
+Page size is read off ``CourseLearnerRegistrationDataTable.get_page_size()`` (the
 ``DataTable`` base default) rather than hardcoded.
 
 Idempotent: users are matched on email and registrations on
@@ -116,11 +116,11 @@ def command(
     organisation = get_default_organisation(site)
     course = _get_course(site, course_slug)
 
-    page_size = CourseLearnerRegistrationDataTable.page_size
+    page_size = CourseLearnerRegistrationDataTable.get_page_size()
     if num_rows <= page_size:
         raise click.ClickException(
             f"--num-rows={num_rows} would not page: "
-            f"CourseLearnerRegistrationDataTable.page_size is {page_size}. "
+            f"CourseLearnerRegistrationDataTable.page size is {page_size}. "
             f"Ask for at least {page_size + 1}."
         )
 

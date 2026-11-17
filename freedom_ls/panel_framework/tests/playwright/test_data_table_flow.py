@@ -30,7 +30,7 @@ pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
 _FRAMEWORK_PATH = "/test-panel/framework"
 _LIST_PATH = f"{_FRAMEWORK_PATH}/stubs/"
-PAGE_SIZE = StubDataTable.page_size
+PAGE_SIZE = StubDataTable.get_page_size()
 # Below Tailwind's `md` breakpoint the table is replaced by a card list.
 _PHONE_MAX_WIDTH = 768
 _PHONE_VIEWPORT: ViewportSize = {"width": 390, "height": 844}

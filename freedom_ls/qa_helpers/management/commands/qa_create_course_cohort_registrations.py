@@ -14,7 +14,7 @@ still one row. Paging this table therefore needs many *cohorts* registered to
 the course, not many learners in one cohort. The columns are Cohort / Active /
 Registered -- no learner is rendered at all.
 
-The page size is read off ``CourseCohortRegistrationDataTable.page_size``
+The page size is read off ``CourseCohortRegistrationDataTable.get_page_size()``
 rather than hardcoded, so this command keeps producing more than one page if
 the table's own configuration changes.
 
@@ -187,11 +187,11 @@ def command(
     organisation = _get_organisation(organisation_slug, site)
     course = _get_course(course_slug, site)
 
-    page_size = CourseCohortRegistrationDataTable.page_size
+    page_size = CourseCohortRegistrationDataTable.get_page_size()
     if num_registrations <= page_size:
         raise click.ClickException(
             f"--num-registrations={num_registrations} would not page: "
-            f"CourseCohortRegistrationDataTable.page_size is {page_size}. "
+            f"CourseCohortRegistrationDataTable.page size is {page_size}. "
             f"Ask for at least {page_size + 1}."
         )
 

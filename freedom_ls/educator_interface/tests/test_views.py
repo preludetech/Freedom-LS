@@ -410,7 +410,7 @@ def test_learners_page_param_leaves_course_registrations_on_page_one(
 ) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation, name="Big Cohort")
-    for i in range(DataTable.page_size + 1):
+    for i in range(DataTable.get_page_size() + 1):
         learner = LearnerFactory(
             user=UserFactory(first_name=f"Learner{i:02d}", last_name="Test"),
             organisation=organisation,
@@ -433,7 +433,7 @@ def test_learners_page_param_leaves_course_registrations_on_page_one(
     content = learners_tab.content.decode()
     # The learners table is on its own page 2: the last learner shows, the
     # 1st (on page 1) does not.
-    assert f"Learner{DataTable.page_size:02d}" in content
+    assert f"Learner{DataTable.get_page_size():02d}" in content
     assert "Learner00" not in content
     # The course registrations table is untouched, still on page 1.
     assert courses_tab.status_code == 200
