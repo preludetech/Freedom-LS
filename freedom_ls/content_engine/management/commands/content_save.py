@@ -20,7 +20,7 @@ from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.contrib.sites.models import Site
 from django.core.files import File as DjangoFile
 from django.core.files.base import ContentFile
-from django.db import transaction
+from django.db import models, transaction
 from django.utils.module_loading import import_string
 from django.utils.text import slugify
 
@@ -57,8 +57,10 @@ from freedom_ls.content_engine.schema import Course as CourseSchema
 from freedom_ls.content_engine.signals import collection_items_synced
 from freedom_ls.content_engine.validate import (
     IMAGE_EXTENSIONS,
+    SectionsDeclarer,
     collection_children,
     content_key,
+    effective_sections,
     get_all_files,
     parse_single_file,
     resolve_author_path,
@@ -750,7 +752,7 @@ def save_form_question(
         item,
         site,
         base_path,
-        exclude_fields={"options", "when"},
+        exclude_fields={"options", "when", "sections"},
         form_page=form_page,
         order=order,
         condition_option=condition_option,
@@ -780,6 +782,37 @@ def save_form_question(
             update_file_with_option_uuids(item.file_path, question.id, option_uuids)
 
     return question, saved_options
+
+
+def save_question_sections(
+    question: FormQuestion,
+    declarer: SectionsDeclarer,
+    section_paths: list[Path],
+    content_by_path: Mapping[Path, models.Model],
+) -> None:
+    """Set the question's sections to exactly this list.
+
+    Both set() calls run every time, empty lists included, so a path removed
+    from the file drops that section. Targets come from this run's saved rows,
+    never a slug or database lookup, so they are always this site's rows.
+    """
+    topics: list[Topic] = []
+    course_parts: list[CoursePart] = []
+    for path in section_paths:
+        key = resolve_author_path(declarer.file_path, path)
+        target = content_by_path.get(key)
+        if isinstance(target, Topic):
+            topics.append(target)
+        elif isinstance(target, CoursePart):
+            course_parts.append(target)
+        else:
+            raise ValueError(
+                f"{declarer.file_path}: question {question.question!r} names "
+                f"section {path} ({key}), which is not a TOPIC or COURSE_PART "
+                "loaded in this run"
+            )
+    question.topics.set(topics)
+    question.course_parts.set(course_parts)
 
 
 def get_file_type_from_extension(file_path):
@@ -1120,7 +1153,7 @@ def save_content_to_db(path, site_name):
                             f"Saved FormContent in {form_page.title} (order={content_order})"
                         )
                     elif item.content_type == SchemaContentType.FORM_QUESTION:
-                        _question, saved_options = save_form_question(
+                        question, saved_options = save_form_question(
                             item,
                             form_page,
                             site,
@@ -1129,6 +1162,9 @@ def save_content_to_db(path, site_name):
                             condition_option=_resolve_condition(
                                 item.when, options_by_slug, file_path
                             ),
+                        )
+                        save_question_sections(
+                            question, *effective_sections(item), content_by_path
                         )
                         if item.slug:
                             options_by_slug[item.slug] = saved_options

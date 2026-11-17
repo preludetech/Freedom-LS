@@ -10,11 +10,16 @@ from django.db import transaction
 from django.db.models import ProtectedError
 from django.utils import timezone
 
-from freedom_ls.content_engine.factories import ArticleFactory, CoursePartFactory
+from freedom_ls.content_engine.factories import (
+    ArticleFactory,
+    CoursePartFactory,
+    TopicFactory,
+)
 from freedom_ls.content_engine.models import Article, Course, CoursePart, Topic
 from freedom_ls.form_engine.factories import (
     FormPageFactory,
     FormProgressFactory,
+    FormQuestionFactory,
     QuestionAnswerFactory,
     QuestionOptionFactory,
 )
@@ -111,3 +116,18 @@ def test_danger_content_delete_removes_course_parts(mock_site_context):
     call_command("danger_content_delete", "--yes")
 
     assert CoursePart.objects.count() == 0
+
+
+def test_danger_content_delete_succeeds_with_a_question_naming_a_topic_and_a_part(
+    mock_site_context,
+):
+    """A section row PROTECTs the topic or part it names, so the questions go first."""
+    question = FormQuestionFactory()
+    question.topics.add(TopicFactory())
+    question.course_parts.add(CoursePartFactory())
+
+    call_command("danger_content_delete", "--yes")
+
+    assert Topic.objects.count() == 0
+    assert CoursePart.objects.count() == 0
+    assert FormQuestion.objects.count() == 0

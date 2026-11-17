@@ -46,6 +46,8 @@ from freedom_ls.content_engine.models import (
     CoursePart,
     CoursePartChildDueDate,
     File,
+    FormQuestionCoursePart,
+    FormQuestionTopic,
     PriceKind,
     Topic,
 )
@@ -3712,3 +3714,137 @@ when:
     assert parsed[1].when is not None
     assert parsed[1].when.question == "employed"
     assert parsed[1].when.literal == "yes"
+
+
+def _write_part_with_quiz(directory: Path, *, sections_line: str) -> None:
+    """A part with one topic and a quiz form beside them. The quiz's single
+    question carries `sections_line` verbatim; pass "" to omit the key."""
+    quiz_dir = directory / "03. knowledge-check"
+    quiz_dir.mkdir(parents=True)
+    (directory / "part.yaml").write_text("""---
+content_type: COURSE_PART
+title: Core Concepts
+---
+""")
+    topic_dir = directory / "01. key-ideas"
+    topic_dir.mkdir()
+    (topic_dir / "content.md").write_text("""---
+content_type: TOPIC
+title: Key Ideas
+---
+
+Key ideas content
+""")
+    (quiz_dir / "form.md").write_text("""---
+content_type: FORM
+strategy: QUIZ
+title: Knowledge check
+quiz_show_incorrect: true
+quiz_pass_percentage: 70
+---
+""")
+    (quiz_dir / "1. page.yaml").write_text(f"""---
+content_type: FORM_PAGE
+title: Page 1
+---
+question: What is a part?
+type: short_text
+{sections_line}
+""")
+
+
+def _section_rows() -> tuple[list[str], list[str]]:
+    topics = [row.topic.title for row in FormQuestionTopic.objects.all()]
+    parts = [row.course_part.title for row in FormQuestionCoursePart.objects.all()]
+    return topics, parts
+
+
+@pytest.mark.django_db
+def test_a_question_naming_a_topic_stores_it(site, mock_site_context, tmp_path):
+    _write_part_with_quiz(
+        tmp_path, sections_line="sections:\n  - ../01. key-ideas/content.md"
+    )
+
+    save_content_to_db(tmp_path, site.name)
+
+    assert _section_rows() == (["Key Ideas"], [])
+
+
+@pytest.mark.django_db
+def test_a_question_naming_a_part_stores_it(site, mock_site_context, tmp_path):
+    _write_part_with_quiz(tmp_path, sections_line="sections:\n  - ../part.yaml")
+
+    save_content_to_db(tmp_path, site.name)
+
+    assert _section_rows() == ([], ["Core Concepts"])
+
+
+@pytest.mark.django_db
+def test_a_question_naming_a_topic_and_a_part_stores_both(
+    site, mock_site_context, tmp_path
+):
+    _write_part_with_quiz(
+        tmp_path,
+        sections_line="sections:\n  - ../01. key-ideas/content.md\n  - ../part.yaml",
+    )
+
+    save_content_to_db(tmp_path, site.name)
+
+    assert _section_rows() == (["Key Ideas"], ["Core Concepts"])
+
+
+@pytest.mark.django_db
+def test_a_question_without_sections_stores_none(site, mock_site_context, tmp_path):
+    _write_part_with_quiz(tmp_path, sections_line="")
+
+    save_content_to_db(tmp_path, site.name)
+
+    assert FormQuestion.objects.count() == 1
+    assert _section_rows() == ([], [])
+
+
+@pytest.mark.django_db
+def test_a_question_naming_a_missing_file_raises_naming_file_question_and_path(
+    site, mock_site_context, tmp_path
+):
+    _write_part_with_quiz(tmp_path, sections_line="sections:\n  - ../nowhere.md")
+
+    with pytest.raises(ValueError, match="nowhere") as error:
+        save_content_to_db(tmp_path, site.name)
+
+    message = str(error.value)
+    assert "1. page.yaml" in message
+    assert "What is a part?" in message
+    assert "../nowhere.md" in message
+
+
+@pytest.mark.django_db
+def test_a_question_naming_a_course_file_raises(site, mock_site_context, tmp_path):
+    _write_part_with_quiz(tmp_path, sections_line="sections:\n  - ../course.md")
+    (tmp_path / "course.md").write_text("""---
+content_type: COURSE
+title: A course
+---
+""")
+
+    with pytest.raises(ValueError, match="not a TOPIC or COURSE_PART"):
+        save_content_to_db(tmp_path, site.name)
+
+
+@pytest.mark.django_db
+def test_sections_are_stored_on_the_loading_site_only():
+    site_a = SiteFactory()
+    site_b = SiteFactory()
+    sections_line = "sections:\n  - ../01. key-ideas/content.md"
+    with tempfile.TemporaryDirectory() as tmpdir_a:
+        _write_part_with_quiz(Path(tmpdir_a), sections_line=sections_line)
+        save_content_to_db(Path(tmpdir_a), site_a.name)
+    with tempfile.TemporaryDirectory() as tmpdir_b:
+        _write_part_with_quiz(Path(tmpdir_b), sections_line=sections_line)
+        save_content_to_db(Path(tmpdir_b), site_b.name)
+
+    rows = FormQuestionTopic.objects.select_related("question", "topic")
+
+    assert rows.count() == 2
+    assert all(row.question.site_id == row.topic.site_id for row in rows)
+    assert {row.topic.site_id for row in rows} == {site_a.id, site_b.id}

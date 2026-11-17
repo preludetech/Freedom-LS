@@ -10,6 +10,7 @@ from datetime import date
 import pytest
 from pydantic import ValidationError
 
+from freedom_ls.content_base.schema import ContentType
 from freedom_ls.form_engine.schema import (
     Condition,
     Form,
@@ -440,3 +441,23 @@ def test_a_content_block_accepts_when():
     )
 
     assert content.when == _condition(question="employed", equals="yes")
+
+
+def test_a_page_section_with_question_and_sections_is_a_form_question():
+    page = FormPage.model_validate(
+        {
+            "content_type": "FORM_PAGE",
+            "file_path": "forms/quiz/1. page.yaml",
+            "title": "Page",
+        }
+    )
+
+    derived = page.derive_content_type(
+        {
+            "question": "What is a part?",
+            "type": "short_text",
+            "sections": ["../part.yaml"],
+        }
+    )
+
+    assert derived == ContentType.FORM_QUESTION

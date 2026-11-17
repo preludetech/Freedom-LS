@@ -1,4 +1,5 @@
 from enum import StrEnum
+from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -141,6 +142,11 @@ WHEN_DESCRIPTION = (
     "exactly one of equals or includes"
 )
 
+SECTIONS_DESCRIPTION = (
+    "Paths to the part.yaml or topic markdown files this tests, "
+    "relative to this file's directory"
+)
+
 
 class FormPage(BaseContentModel, content_type=ContentType.FORM_PAGE):
     """A page within a form."""
@@ -208,6 +214,7 @@ class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION)
         ),
     )
     when: Condition | None = Field(None, description=WHEN_DESCRIPTION)
+    sections: list[Path] | None = Field(None, description=SECTIONS_DESCRIPTION)
     type: QuestionType = Field(
         ...,
         description=(

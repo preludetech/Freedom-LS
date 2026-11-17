@@ -38,18 +38,21 @@ def command(yes: bool) -> None:
     require_dev_tools_enabled()
 
     # Get counts before deletion
+    # The form rows come before Topics and Course Parts: a FormQuestionTopic or
+    # FormQuestionCoursePart row PROTECTs the topic or part it names, and is
+    # removed only when its question is deleted.
     models_to_delete = [
+        ("Forms", Form),
+        ("Form Pages", FormPage),
+        ("Form Content", FormContent),
+        ("Form Questions", FormQuestion),
+        ("Question Options", QuestionOption),
         ("Topics", Topic),
         ("Activities", Activity),
         ("Courses", Course),
         ("Course Parts", CoursePart),
         ("Articles", Article),
         ("Collection Items", ContentCollectionItem),
-        ("Forms", Form),
-        ("Form Pages", FormPage),
-        ("Form Content", FormContent),
-        ("Form Questions", FormQuestion),
-        ("Question Options", QuestionOption),
         ("Files", File),
     ]
 

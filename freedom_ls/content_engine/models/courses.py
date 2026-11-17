@@ -25,7 +25,11 @@ def _is_form(child: object) -> bool:
 
 
 if TYPE_CHECKING:
+    from freedom_ls.content_engine.models.question_sections import (
+        FormQuestionCoursePart,
+    )
     from freedom_ls.content_engine.prices import CoursePrice
+    from freedom_ls.form_engine.models import FormQuestion
     from freedom_ls.organisations.models import Organisation
 
 
@@ -533,6 +537,14 @@ class CoursePart(TitledContent):
         content_type_field="collection_type",
         object_id_field="collection_id",
         related_query_name="course_part",
+    )
+    testing_questions: models.ManyToManyField[FormQuestion, FormQuestionCoursePart] = (
+        models.ManyToManyField(
+            "freedom_ls_form_engine.FormQuestion",
+            through="FormQuestionCoursePart",
+            blank=True,
+            related_name="course_parts",
+        )
     )
 
     class Meta:

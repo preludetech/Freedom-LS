@@ -908,6 +908,16 @@ _CONDITION_SOURCE_TYPES = {
 
 _FormSection = FormPage | FormContent | FormQuestion
 
+SectionsDeclarer = Form | FormQuestion
+
+
+def effective_sections(question: FormQuestion) -> tuple[SectionsDeclarer, list[Path]]:
+    """The file that declares the sections a question tests, and the paths as written.
+
+    Paths resolve against the declarer's file_path.
+    """
+    return question, question.sections or []
+
 
 def _condition_error(
     file_path: Path, target: str, problem: str, fix: str, field: str = "when"

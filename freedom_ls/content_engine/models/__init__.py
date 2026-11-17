@@ -11,6 +11,7 @@ from .courses import (
     PriceKind,
 )
 from .files import File, file_upload_handler
+from .question_sections import FormQuestionCoursePart, FormQuestionTopic
 from .topics import Activity, Topic
 
 __all__ = [
@@ -26,6 +27,8 @@ __all__ = [
     "CourseVisibility",
     "DifficultyLevel",
     "File",
+    "FormQuestionCoursePart",
+    "FormQuestionTopic",
     "PriceKind",
     "Topic",
     "file_upload_handler",
