@@ -346,6 +346,18 @@ def test_dev_server_route_returns_200_for_staff(
 
 
 @pytest.mark.usefixtures("debug_dev_server_urls")
+def test_dev_server_route_loads_the_panel_framework_alpine_components(
+    client: Client, mock_site_context: object
+) -> None:
+    """The page loads the panel framework's script. It used to omit it, so the
+    inline form's `refocusAfterRequest` component was undefined and Alpine
+    logged an error on every load."""
+    client.force_login(make_staff_user())
+    response = client.get("/panel-framework/components/")
+    assert "panel_framework/js/alpine-components.js" in response.content.decode()
+
+
+@pytest.mark.usefixtures("debug_dev_server_urls")
 def test_dev_server_route_redirects_anonymous_to_admin_login() -> None:
     response = Client().get("/panel-framework/components/")
     assert response.status_code == 302
