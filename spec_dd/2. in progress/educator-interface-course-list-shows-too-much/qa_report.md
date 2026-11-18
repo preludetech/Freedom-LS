@@ -95,7 +95,7 @@ Screenshots:
 
 | Bug | Title | Status |
 |---|---|---|
-| B1 | Two courses with the same title are indistinguishable in the educator Courses list, filters and register pickers | **UNRESOLVED** (reason: how to tell same-titled courses apart, e.g. showing the owning organisation beside a shared course, is a product/UX decision the spec does not make) |
+| B1 | Two courses with the same title are indistinguishable in the educator Courses list, filters and register pickers | **FIXED** (commit: b05f9b5ce, 6462dece9, 31969e501) — Two courses with the same title are indistinguishable — after the fix: ![](screenshots/fixed/page-2026-11-18T10-04-35-192Z.png) ![](screenshots/fixed/page-2026-11-18T10-47-20-705Z.png) ![](screenshots/fixed/page-2026-11-18T10-05-14-394Z.png) ![](screenshots/fixed/fix-tablet-courses.png) ![](screenshots/fixed/fix-tablet-learners.png) ![](screenshots/fixed/fix-tablet-register.png) ![](screenshots/fixed/page-2026-11-18T10-49-19-320Z.png) ![](screenshots/fixed/fix-mobile-learners.png) ![](screenshots/fixed/fix-mobile-register.png) |
 
 ## General notes
 
@@ -109,4 +109,4 @@ Screenshots:
 - (h) The cohort-list Filter button could not be clicked by accessible name in Playwright, so the filter options were read from the DOM.
 - (i) Django DEBUG is on in dev, so 404s render Django's debug not-found page rather than the interface's own.
 
-status: ok · reason: 1 bug — 0 fixed, 1 unresolved (red lane, needs a UX decision); report rendered, screenshots verified
+status: ok · reason: 1 bug — 1 fixed, 0 unresolved (owner named on shared courses, checked at desktop, tablet and mobile)
