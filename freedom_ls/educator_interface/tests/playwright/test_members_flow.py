@@ -22,7 +22,7 @@ from freedom_ls.tests.playwright_helpers import (
     assert_no_horizontal_overflow,
 )
 
-from .helpers import interface_url
+from .helpers import TOUCH_HEIGHT, interface_url
 
 # transaction=True so the live server's own DB connection sees the fixture
 # data this test's connection committed.
@@ -249,9 +249,8 @@ def test_phone_row_actions_and_toolbar_controls_meet_the_touch_target(
         main.get_by_role("button", name="Filter"),
         main.get_by_role("button", name="Sort"),
     ):
-        box = control.bounding_box()
-        assert box is not None
-        assert box["height"] >= 44, f"{control} is {box['height']}px high"
+        height = control.evaluate(TOUCH_HEIGHT)
+        assert round(height) >= 44, f"{control} is {height}px high to the touch"
 
 
 def test_the_add_member_button_stays_in_view_on_the_role_step_at_375(

@@ -25,6 +25,16 @@ def interface_url(
     return f"{live_server.url}{path}"
 
 
+#: How tall a control is to the touch: the taller of its own box and its
+#: ::after. Below md a `.btn` keeps its desktop look and gets an invisible
+#: 44px ::after hit area, so its box alone reads short.
+TOUCH_HEIGHT = """(el) => {
+    const after = getComputedStyle(el, "::after");
+    const afterHeight = after.content === "none" ? 0 : parseFloat(after.height) || 0;
+    return Math.max(el.getBoundingClientRect().height, afterHeight);
+}"""
+
+
 @contextmanager
 def no_console_errors(page: Page) -> Iterator[None]:
     """Fails the test if the page logged a console error or an uncaught

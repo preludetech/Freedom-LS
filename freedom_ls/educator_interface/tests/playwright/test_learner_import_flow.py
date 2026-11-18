@@ -24,7 +24,7 @@ from freedom_ls.tests.playwright_helpers import (
     assert_no_horizontal_overflow,
 )
 
-from .helpers import interface_url
+from .helpers import TOUCH_HEIGHT, interface_url
 
 # transaction=True so the live server's own DB connection sees the fixture
 # data this test's connection committed.
@@ -141,13 +141,14 @@ def test_import_a_file_with_errors_then_download_the_error_rows(
             visit()
             assert_no_horizontal_overflow(page)
             if viewport["width"] == 375:
-                # Buttons used to render 34 to 42px tall on the import pages.
+                # Buttons used to be 34 to 42px tall to the touch on the
+                # import pages.
                 heights = page.locator("#main-content .btn").evaluate_all(
-                    "els => els.map(el => [el.textContent.trim(), el.getBoundingClientRect().height])"
+                    f"els => els.map(el => [el.textContent.trim(), ({TOUCH_HEIGHT})(el)])"
                 )
                 assert heights
-                too_short = [(text, h) for text, h in heights if h < 44]
-                assert not too_short, f"buttons under 44px tall: {too_short}"
+                too_short = [(text, h) for text, h in heights if round(h) < 44]
+                assert not too_short, f"buttons under 44px to the touch: {too_short}"
             error_labels = page.locator("[data-error-block] dt")
             if viewport["width"] == 375 and error_labels.count():
                 # The theme paints a bare <dt> in primary blue; the error
