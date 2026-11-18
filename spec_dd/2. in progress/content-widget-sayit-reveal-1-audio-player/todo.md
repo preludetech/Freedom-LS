@@ -25,9 +25,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 4. Documentation and pull request
 
-- [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
-- [ ] (cmd) Run `/sdd:document`: add `c-audio` to the widget list in `claude_plugins/fls-dev/resources/markdown_content.md`, and name the `content_engine` URLconf as the place a widget's endpoint lives (spec, Documentation and downstream)
-- [ ] (cmd) Run `/sdd:document`: add an `audioFile` row (`content_engine`, `cotton/audio.html`) to the component inventory in `claude_plugins/fls-dev/skills/alpine-js/SKILL.md` (spec, Documentation and downstream)
+- [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [x] (cmd) Run `/sdd:document`: add `c-audio` to the widget list in `claude_plugins/fls-dev/resources/markdown_content.md`, and name the `content_engine` URLconf as the place a widget's endpoint lives (spec, Documentation and downstream)
+- [x] (cmd) Run `/sdd:document`: add an `audioFile` row (`content_engine`, `cotton/audio.html`) to the component inventory in `claude_plugins/fls-dev/skills/alpine-js/SKILL.md` (spec, Documentation and downstream)
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
