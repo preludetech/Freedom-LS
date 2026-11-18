@@ -118,7 +118,7 @@ The probe's `header` region was reported missing on every page. The configured s
 
 | Bug | Status |
 |---|---|
-| B1 | **UNRESOLVED** — Bulk runs write no audit-log run summary and no shared run_id (reason: red lane. Wiring `RecordedBulkAction` to `record_run_summary` crosses the boundary this spec draws: the framework may not import FLS's `audit_log`, so the hook's shape is a design decision. The audit-log spec also ties it to a reason input in the bulk confirmation, which is a UX decision.) |
+| B1 | **WONTFIX** — Bulk runs write no audit-log run summary and no shared run_id (reason: pre-existing and outside this extraction spec; filed as `spec_dd/1. next/bulk-run-audit-summary/idea.md`, which covers the after-run hook, the shared run_id and the reason input) |
 | B2 | **FIXED** (commit: 3ebf5c197) — Audit log WHO column squeezed to one character at tablet width |
 | — | Full run after the fix: **PASS**. 15581 passed, 0 failed, 1 skipped. The first attempt was unusable because Docker stopped mid-run (8976 connection errors, 7 failures under load). The second hit `fls_dev` password-authentication errors while the database was still starting. The third, with the database fully up, was clean. |
 
@@ -130,4 +130,4 @@ B2 re-verification: at 768px the organisation audit log's WHO and TARGET columns
 - The cross-site Bloom run 30903178 was scoped to the Northside organisation, which is a test artefact.
 - The background-task path (over BULK_BACKGROUND_THRESHOLD=250 rows) and the W001 system check were not driven in the browser. The unit tests cover them, and the todo already holds a user item for the `manage.py check` run.
 
-status: ok · reason: 2 bugs — 1 fixed, 1 unresolved; full run after the fix passed (15581 passed); report rendered, screenshots verified
+status: ok · reason: 2 bugs — 1 fixed, 1 closed (filed as an idea), 0 unresolved; full run after the qa_fix changes passed (15651 passed); report rendered, screenshots verified
