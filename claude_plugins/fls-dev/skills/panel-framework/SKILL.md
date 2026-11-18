@@ -475,7 +475,7 @@ and `test_every_expand_chevron_turns_when_its_control_opens`. In the browser,
 desktop height on a phone, that its hit area is 44px, and that a dialog footer's buttons are 44px tall.
 Run that file after any change to a panel template.
 
-Two guards cover the standalone backend:
+Three guards cover the standalone backend:
 
 - `freedom_ls/panel_framework/tests/test_import_guard.py` parses every `.py` file under the
   framework and fails on any import of a `freedom_ls` module outside `freedom_ls.panel_framework`
@@ -490,6 +490,11 @@ Two guards cover the standalone backend:
   allowance is the worker's `_base_manager` read in `panel_framework/bulk_runs.py`, which filters by
   the site id its task was given. `BulkActionRun.site` has `related_name="+"`, so there is no
   `site.bulkactionrun_set` to read through.
+- `freedom_ls/educator_interface/tests/invariants/test_framework_copies_match_base.py` holds the
+  framework's private copies to their `freedom_ls.base` originals: `escape_csv_formula`,
+  `EchoWriter`, `Setting` and `AppSettings` must have identical source, and `FORMULA_TRIGGERS`,
+  `UTF8_BOM`, `_E164_PHONE_NUMBER` and the date display formats identical values. Change a helper
+  in both places at once.
 
 Three more files sit beside the template invariants in `tests/invariants/`:
 
