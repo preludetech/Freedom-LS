@@ -44,3 +44,16 @@ DemoDev pk 3, domain 127.0.0.1:8000, but the dev server on ANY port (8801 here) 
 settings_dev FORCE_SITE_NAME="DemoDev". Verify login with curl against the running server (csrf token from
 GET, then POST login/password -> 302 to /, then /admin/ 200). The Django test Client in `manage.py shell`
 500s on /accounts/login/ with Site.DoesNotExist (host lookup of 'testserver') — not a real failure.
+
+Nov 2026 (educator-interface-course-list-shows-too-much): same bootstrap (create_demo_data --yes, then
+content_save -> 17 courses, exit 0). Org-sharing demo courses: callers name them by CONTENT DIRECTORY
+(`functionality_demo_organisation_course_northwind`), not slug — look up with
+`Course._base_manager.get(site=site, file_path=f"{dir}/course.md")`. Slugs: northwind ->
+`workplace-safety-essentials-2`, northwind_unshared -> `forklift-safety-basics`, harbour ->
+`workplace-safety-essentials` (Harbour and Northwind share the title "Workplace Safety Essentials").
+Course NOW HAS `organisations` and `shared_with` m2m (Organisation) on this branch — the old
+"Course has no organisation FK" note in reference_org_course_registration is outdated here.
+Educators per org: `qa_create_single_org_educator --organisation-slug X --email E --password E`.
+Learners/cohort: reuse that command's `_ensure_user`/`_ensure_consents` + LearnerFactory/CohortFactory/
+CohortMembershipFactory with explicit site= under `_site_context`. Educator course URL:
+/educator/organisations/<slug>/courses/<course-pk>.

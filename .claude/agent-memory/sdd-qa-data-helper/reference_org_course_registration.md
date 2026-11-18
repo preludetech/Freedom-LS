@@ -5,7 +5,7 @@ metadata:
   type: reference
 ---
 
-## A Course has NO Organisation FK
+## A Course has NO Organisation FK (outdated on branches with Course.organisations/shared_with m2m — see reference_empty_db_baseline)
 
 `Course` fields are: accent_slot, access_config, category, content, description,
 difficulty, estimated_duration, file_path, icon, icon_fallback, interests,
@@ -69,3 +69,7 @@ The factory is `LearnerCourseRegistrationFactory` (model
 `LearnerCourseRegistration`, FKs `learner` + `collection`). Older notes and
 `claude_plugins/fls-dev/resources/factory_boy.md` still say
 `UserCourseRegistrationFactory`/`user=` — that name no longer exists.
+
+## Leftover registration on an unshared course
+
+`LearnerCourseRegistration.clean()` runs `validate_course_open_to`, but `save()` does not call clean, so `LearnerCourseRegistrationFactory(site=..., learner=..., course=..., is_active=False)` creates a "left over from an earlier share" registration without touching `Course.organisations`.
