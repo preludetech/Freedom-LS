@@ -7,6 +7,7 @@ from typing import cast
 
 import pytest
 
+from django.core.checks import run_checks
 from django.core.management import call_command
 from django.test import override_settings
 
@@ -375,3 +376,16 @@ def test_task_backend_check_is_silent_when_nothing_is_wrong(
 
     # Assert
     assert messages == []
+
+
+@pytest.mark.django_db
+def test_non_durable_task_backend_warning_is_registered_with_run_checks() -> None:
+    # Arrange
+    tasks = {"default": {"BACKEND": "django.tasks.backends.immediate.ImmediateBackend"}}
+
+    # Act
+    with override_settings(DEBUG=False, TASKS=tasks):
+        message_ids = [message.id for message in run_checks()]
+
+    # Assert
+    assert "freedom_ls_panel_framework.W001" in message_ids

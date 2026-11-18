@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from django.core.checks import run_checks
 from django.core.exceptions import ImproperlyConfigured
 from django.http import HttpResponse
 from django.middleware.security import SecurityMiddleware
@@ -344,3 +345,13 @@ def test_prod_settings_uses_database_cache_backend(
     prod = importlib.reload(importlib.import_module("config.settings_prod"))
 
     assert prod.CACHES == settings_defaults.DATABASE_CACHES
+
+
+@pytest.mark.django_db
+def test_production_task_default_raises_no_task_backend_warning() -> None:
+    # Act
+    with override_settings(DEBUG=False, TASKS=settings_defaults.DATABASE_TASKS):
+        message_ids = [message.id for message in run_checks()]
+
+    # Assert
+    assert "freedom_ls_panel_framework.W001" not in message_ids
