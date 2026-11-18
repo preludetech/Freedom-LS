@@ -998,7 +998,9 @@ class AuditLogEntryTable(DataTable):
                 template_name="educator_interface/data-table-cells/audit_who.html",
                 sortable=True,
                 sort_field="actor_label",
-                cell_class="py-2",
+                # A person's name keeps a readable width when a long What
+                # cell would otherwise squeeze the column.
+                cell_class="min-w-48 py-2",
             ),
             Column(
                 header="What",
@@ -1026,7 +1028,7 @@ class TargetedAuditLogEntryTable(AuditLogEntryTable):
             template_name="educator_interface/data-table-cells/audit_target.html",
             sortable=True,
             sort_field="target_label",
-            cell_class="py-2",
+            cell_class="min-w-48 py-2",
         )
         return [when, who, what, target]
 

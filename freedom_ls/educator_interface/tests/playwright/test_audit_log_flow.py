@@ -87,3 +87,27 @@ def test_when_cell_keeps_date_and_time_on_one_line_at_the_md_breakpoint(
     assert date_box is not None
     assert time_box is not None
     assert time_box["y"] == date_box["y"]
+
+
+def test_who_cell_keeps_the_actor_name_readable_at_the_md_breakpoint(
+    live_server, educator_logged_in_page: Page, educator_user: AbstractBaseUser
+) -> None:
+    """At 768px a long What cell squeezed the Who column to a single
+    character, leaving the actor's name unreadable."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    grantor = LearnerFactory(user__superuser=True, user__email="demodev@email.com").user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    AuditLogEntryFactory(
+        target=organisation,
+        actor=grantor,
+        action="cohort.created",
+        target_label="Learner registered for course Functionality Demo - Course Parts "
+        * 3,
+    )
+    page.set_viewport_size({"width": 768, "height": 1024})
+    page.goto(interface_url(live_server, organisation.slug, "audit-log"))
+
+    who_cell = page.locator("#main-content table tbody tr td").nth(2)
+    width = who_cell.evaluate("el => el.getBoundingClientRect().width")
+    assert width >= 160
