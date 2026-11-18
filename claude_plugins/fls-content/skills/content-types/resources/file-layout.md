@@ -125,7 +125,7 @@ ever a collection child.
 
 ## Image path resolution
 
-Paths in `c-picture`, `c-pdf-embed`, and `c-file-download` are stored relative to the course root in the DB (as uploaded by `content_save`). In source files, write paths relative to the content file referencing them:
+Paths in `c-picture`, `c-pdf-embed`, `c-file-download`, and `c-audio` are stored relative to the course root in the DB (as uploaded by `content_save`). In source files, write paths relative to the content file referencing them:
 
 - A topic-local image, from `02. going-deeper/content.md`:
   `src="images/diagram.svg"` → stored as `02. going-deeper/images/diagram.svg`.
@@ -139,3 +139,7 @@ when it stores them, but `src=` always keeps the extension of the file you autho
 `src="images/photo.jpg"` stays correct even though the stored object is renamed
 `photo.webp`. See `c-picture` in the
 `fls-content:widget-reference` skill for what happens to the image itself.
+
+## Audio files
+
+`content_save` classes a file as audio by extension: `.mp3`, `.wav`, `.ogg`, `.m4a`, `.flac`, `.aac`. Use `.mp3` unless you have a reason not to. Any other extension (including `.opus` and `.oga`) is not audio, and `c-audio` shows its "Audio not found" error box for it. Keep audio next to the topic that uses it (e.g. `audio/bravo.mp3` in the topic directory) and write `src` relative to the content file, as for images. See `c-audio` in the `fls-content:widget-reference` skill.
