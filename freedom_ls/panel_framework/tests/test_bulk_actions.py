@@ -20,7 +20,7 @@ from django.contrib.messages import get_messages
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.sites.models import Site
 from django.contrib.sites.requests import RequestSite
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied
 from django.db.models import Model, QuerySet
 from django.http import Http404, HttpRequest, HttpResponse
 from django.template.loader import render_to_string
@@ -1391,6 +1391,42 @@ def test_an_unknown_host_under_the_default_resolver_answers_422_and_records_no_r
 
     assert isinstance(response, HttpResponse)
     assert response.status_code == 422
+    assert not BulkActionRun.objects.exists()
+
+
+def _execute_recorded(request: HttpRequest) -> None:
+    ctx = PanelContext(
+        request=request,
+        instance=None,
+        base_url="/test-panel/framework/stubs",
+        name="",
+        config=SectionConfigBase,
+    )
+    StubRecordedBulkAction().execute(ctx, StubModel.objects.all(), {})
+
+
+def test_executing_a_recorded_action_with_no_site_is_denied(
+    two_stubs: tuple[StubModel, StubModel], settings: SettingsWrapper
+) -> None:
+    settings.PANEL_FRAMEWORK_SITE_RESOLVER = f"{__name__}.returns_non_site"
+    request = RequestFactory().post("/")
+    request.user = make_staff_user(Site.objects.get_current())
+
+    with pytest.raises(PermissionDenied):
+        _execute_recorded(request)
+
+    assert not BulkActionRun.objects.exists()
+
+
+def test_executing_a_recorded_action_for_an_anonymous_user_is_denied(
+    two_stubs: tuple[StubModel, StubModel],
+) -> None:
+    request = RequestFactory().post("/")
+    request.user = AnonymousUser()
+
+    with pytest.raises(PermissionDenied):
+        _execute_recorded(request)
+
     assert not BulkActionRun.objects.exists()
 
 

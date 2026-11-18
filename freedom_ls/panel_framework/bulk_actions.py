@@ -391,9 +391,12 @@ class RecordedBulkAction(BulkAction):
             # A run belongs to exactly one site; without one it could not be
             # scoped, so nothing is recorded and nothing runs.
             raise PermissionDenied(NO_SITE_ERROR)
+        user = ctx.request.user
+        if isinstance(user, AnonymousUser):
+            raise PermissionDenied("A run needs a signed-in user to record.")
         run = BulkActionRun.objects.create(
             site=site,
-            requested_by_id=cast(int, ctx.request.user.pk),
+            requested_by=user,
             scope=ctx.scope,
             action_path=f"{type(self).__module__}.{type(self).__qualname__}",
             table_key=self.table_key,
