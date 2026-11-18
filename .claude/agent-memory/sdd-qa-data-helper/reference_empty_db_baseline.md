@@ -62,3 +62,14 @@ Correction (Nov 2026, this branch): the headless check with HTTP_HOST="testserve
 Site.DoesNotExist (create_demo_data gives DemoDev the domain `127.0.0.1:8000`). Use
 `Client(HTTP_HOST="127.0.0.1:8000")` and set `settings.ALLOWED_HOSTS=["*"]` after setup_test_environment.
 Educator learner pages are keyed by the LEARNER pk (`/learners/<learner-uuid>`), not the user pk (404).
+
+Nov 18 2026 (content-widget-sayit-reveal-1-audio-player): empty DB -> create_demo_data --yes ->
+`content_save ./demo_content DemoDev` (16 courses; 4 AUDIO Files bravo/charlie/oscar/romeo.mp3).
+`content-widgets-demo-reference` is visibility coming_soon; superuser is NOT exempt from registration
+OR sequential unlock. To open Media (item 2) as learner: ensure_learner(user, default org) +
+LearnerCourseRegistrationFactory under _site_context, then
+`qa_set_item_completion --learner demodev@email.com --course-slug content-widgets-demo-reference --item "Annotation and Emphasis" --action complete`.
+c-audio renders as /content/audio/<File pk>/ (no <audio> tag in HTML). Educator preview URL:
+/educator/organisations/demodev/courses/<course pk>/__panels/content/__actions/preview_content?item=<ContentCollectionItem pk>
+(course page /educator/organisations/demodev/courses/<course pk>; slug in URL 404s).
+If asked again, wrap registration+unlock as a qa_helpers command.
