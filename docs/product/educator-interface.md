@@ -110,7 +110,7 @@ Renaming, deactivating, reactivating and deleting need an organisation admin or 
 
 ![Courses list with each course's visibility, interest, active learners, active cohorts and cohorts](screenshots/educator_courses.png)
 
-The Courses section is read-only and scoped to the current organisation. It lists every published course, plus any course registered to a cohort or learner the educator can see, so a hidden or coming-soon course appears only where this organisation uses it. A course that belongs to other organisations and is not public is not listed; see [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations). Cohorts are registered for courses from the cohort page.
+The Courses section is read-only and scoped to the current organisation. It lists every published course, plus any course registered to a cohort or learner the educator can see, so a hidden or coming-soon course appears only where this organisation uses it. A course that belongs to other organisations is listed only once one of them shares it with this organisation, and a shared course names the organisation that owns it wherever an educator reads or picks it; see [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations). Cohorts are registered for courses from the cohort page.
 
 Each course shows its **visibility** (published, coming soon or hidden), its active learner and cohort counts, and the cohorts registered for it. Counts and links include only what the educator can see, and inactive cohorts are not counted. A course's page shows the title and category, the course's details (subtitle, level, duration, time limit, learning outcomes and lesson count), the cohorts registered with each cohort's status, and any direct registrations.
 

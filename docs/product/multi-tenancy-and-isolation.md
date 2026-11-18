@@ -1,6 +1,6 @@
 # Multi-Tenancy and Isolation
 
-_Last updated: 2026-11-03_
+_Last updated: 2026-11-18_
 
 ## Summary
 
@@ -53,6 +53,8 @@ Every site has at least one organisation, named after the site itself and create
 Staff access within an organisation comes from role assignments: a role on the organisation covers everything in it, including cohorts created later, and a role on a cohort covers that cohort only. Either counts only while the person is an active member of that organisation. See [educator interface](./educator-interface.md#access-control).
 
 A course can belong to one or more organisations, declared by its authors in the course content (see [content editing workflow](./content-editing-workflow.md)). Such a course is seen and opened only by learners of those organisations, unless its audience is set to public, and it can be registered onto only through those organisations. A course with no organisation stays open to the whole site. A learner already registered keeps access for as long as the learner association they registered through stays active.
+
+An owning organisation can **share** a course with other organisations on the site. Educators of an organisation reach the courses with no organisation, the courses it owns, and the courses shared with it, whatever a course's audience. Through a share they see, preview and register people on the course as the owner's educators do, and the course's price and application step do not apply to those registrations. Without a share, another organisation's course stays out of the educator interface, unless the organisation already holds registrations on it: the course then stays listed for those registrations, but its content cannot be previewed and nobody new can be registered on it. Learners' own access is unchanged by sharing, apart from a shared course becoming registerable through the organisations it is shared with.
 
 This is the canonical statement of what an organisation is and is not; other docs link here rather than restating it.
 
