@@ -82,10 +82,25 @@ Components live in `freedom_ls/panel_framework/templates/cotton/`: `data-table`,
 
 ### Triggers and buttons
 
-- Every action trigger the framework renders is `size="small"`: `{% render_action %}`,
-  `<c-modal-trigger>`, the page header, a panel footer, an empty state, the selection bar, a table
-  row, a card. The one full-size pair is `<c-modal-footer>`'s Cancel and confirm, because that is
-  the decision the dialog asks for.
+- A button's size and variant follow from where it sits:
+
+  | Place | Size | Variant |
+  | --- | --- | --- |
+  | Dialog footer (`<c-modal-footer>`) | default | Cancel `secondary`; the one confirm `primary`, or `error` when it deletes |
+  | Panel footer, page header, empty state | small | `primary` for the panel's one main create action; `secondary` for the rest |
+  | Table row, card | small | `secondary`; never `primary` or `error` |
+  | Toolbar (Filter, Sort, Export), pager | small | `secondary` |
+  | Selection bar | small | `ghost`, text only |
+  | Text action in content ("Edit", "Change", "Clear all") | small | `link` |
+
+  Every trigger the framework renders is `size="small"` (`{% render_action %}`,
+  `<c-modal-trigger>`); the dialog footer's pair is the one full-size pair, because that is the
+  decision the dialog asks for. A panel holds at most one `primary` button outside a dialog.
+- A button looks the same at every width. Below `md` the shared rule in
+  `tailwind.components.css` gives every panel button an invisible 44px-tall hit area and leaves
+  its look alone, so a small button stays about 32px tall on a phone. The dialog footer's buttons
+  are the one exception: on a phone they are 44px tall, at the bottom of the sheet under the
+  thumb. A text field is 44px tall on a phone. No template adds a height to a button.
 - Buttons in a table cell or a card sit inside `<c-data-table-actions>`, which owns the gap; the
   buttons carry no margins.
 - A table row's buttons sit in columns by what they act on. A button for one item in a cell sits
@@ -309,8 +324,18 @@ app's skill.
 - A list value in a details panel sits flush with its label: the bullets line up with the label's
   first letter. Override the base `ul` margin (`ml-0`) and keep wrapped lines under the text.
   Its items sit close together: override the base list spacing (`space-y-1`, `py-0` on each item).
-- On a phone a button is 44px tall and as wide as its label, with the small size's text and
-  padding; the height is the only thing that grows.
+- On a phone a button is as wide as its label and as tall as at desktop; its 44px hit area is
+  invisible (see Triggers and buttons).
+- Vertical space follows one scale, and the components own it:
+  - 4px (`space-y-1`) inside one field: the items of one list value.
+  - 12px (`gap-y-3`, `mt-3`) between the fields of a card or an inline
+    `<c-panel-definition-list>`, and between a card's title block (name, email) and its fields.
+  - 16px (`py-4`) above and below a card's content, with the list's rule between cards.
+
+  So a card reads as title, then fields, each field distinct, and a list value stays tighter than
+  the space between fields. A card template takes this spacing from `<c-panel-definition-list>`
+  and `<c-data-table-card>`, plus `mt-3` above its fields; it sets no `gap-y-1` or `mt-1` of its
+  own.
 
 ## What enforces it
 
@@ -346,10 +371,14 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
 
 - A link that acts as a control (a name, a back link, a row, "Edit", a choice in a filter menu)
   has the look of that control, with the prose underline absent.
-- Every action trigger outside a dialog footer is the small size, and the triggers on one page are
-  one size; buttons that sit together have a gap between them.
+- Row, card, toolbar and pager buttons are the small size at every width, with no taller look on a
+  phone; only a dialog footer's buttons are full size, and 44px tall on a phone. Each button's
+  variant matches its place (outline in rows, cards, toolbar and pager; text-only in the selection
+  bar). Buttons that sit together have a gap between them.
 - Every control has padding on all sides and a select's chevron sits clear of its edge; at the
-  phone viewport a button is 44px tall and as wide as its label.
+  phone viewport a button is as wide as its label.
+- In a card, the fields have clear space between them, more than between the items of one value,
+  and the title block stands apart from the fields.
 - A dialog's Cancel sits at the left and its actions at the right; two buttons in one row never
   share a bare verb.
 - The table footer states the entry count at the left, in line with the pager, on a single-page
