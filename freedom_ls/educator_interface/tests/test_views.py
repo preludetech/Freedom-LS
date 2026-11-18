@@ -8455,6 +8455,30 @@ def test_the_preview_url_built_for_the_denial_tests_is_the_published_one(
 
 
 @pytest.mark.django_db
+def test_a_topic_inside_a_part_nested_in_a_part_can_be_previewed(
+    staff_client: Client,
+):
+    """The outline shows a Preview button at every depth, but the preview used
+    to find items only one part deep, so a nested part's topic returned 404."""
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    outer = CoursePartFactory(title="Outer part")
+    inner = CoursePartFactory(title="Inner part")
+    ContentCollectionItemFactory(collection_object=course, child_object=outer, order=0)
+    ContentCollectionItemFactory(collection_object=outer, child_object=inner, order=0)
+    nested = ContentCollectionItemFactory(
+        collection_object=inner,
+        child_object=TopicFactory(title="Nested topic"),
+        order=0,
+    )
+    url = _content_action_url(organisation, course, "preview_content")
+
+    response = staff_client.get(f"{url}?item={nested.pk}", HTTP_HX_REQUEST="true")
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
 def test_a_course_belonging_only_to_another_organisation_cannot_be_previewed(
     staff_client: Client,
 ):

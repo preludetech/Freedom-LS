@@ -2184,6 +2184,18 @@ def _outline_item_rows(
     )
 
 
+def _all_collection_items(
+    items: list[ContentCollectionItem],
+) -> list[ContentCollectionItem]:
+    """The items and everything inside their parts, at any depth, in order."""
+    flattened: list[ContentCollectionItem] = []
+    for item in items:
+        flattened.append(item)
+        if isinstance(item.child, CoursePart):
+            flattened.extend(_all_collection_items(item.child.collection_items()))
+    return flattened
+
+
 def outline_rows(course: Course) -> list[OutlineRow]:
     """The top-level rows of the course outline: the course details first,
     then every collection item in order, numbered as the learner outline
@@ -2191,7 +2203,7 @@ def outline_rows(course: Course) -> list[OutlineRow]:
     every form, so the count stays flat as forms grow."""
     forms = [
         item.child
-        for item in course.collection_items_flat()
+        for item in _all_collection_items(course.collection_items())
         if isinstance(item.child, Form)
     ]
     prefetch_related_objects(forms, "pages")
@@ -2379,7 +2391,12 @@ class PreviewContentAction(PanelAction):
         course = cast(Course, ctx.instance)
         pk = uuid_or_404(ctx.request.GET.get("item"))
         collection_item = next(
-            (item for item in course.collection_items_flat() if item.pk == pk), None
+            (
+                item
+                for item in _all_collection_items(course.collection_items())
+                if item.pk == pk
+            ),
+            None,
         )
         if collection_item is None or isinstance(collection_item.child, CoursePart):
             raise Http404
