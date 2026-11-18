@@ -34,6 +34,8 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) In `claude_plugins/fls-dev/skills/testing/SKILL.md`, document the standalone run command and the `needs_fls_host` marker (spec section "Documentation and downstream")
 - [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
+- [x] (cmd) Fix code-review findings on PR 254: restore the export-scoping test on the educator learners table, raise ImproperlyConfigured for a non-Site resolver result, say 'no site' as a 422 before the bulk preview, pass requested_by as the user and refuse anonymous runs, W001 by issubclass incl. django_tasks backport, widen the bulk-run scoping guard (_default_manager/_base_manager/stored objects, related_name='+')
+- [ ] (user) Decide on the skipped review findings for PR 254: #2 resolve_site swallows Site.DoesNotExist (FLS's FORCE_SITE_NAME error already breaks every page), #6 no check for SITE_ID with the default resolver in multi-host setups, #8 copied app_settings/csv_safety/date formats kept as copies per spec
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
 ## 5. Cleanup
