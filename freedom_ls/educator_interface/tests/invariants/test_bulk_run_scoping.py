@@ -11,29 +11,51 @@ from pathlib import Path
 
 import pytest
 
+from django.contrib.sites.models import Site
+
 # The manager methods that name a site themselves. Anything else on `objects` reads every site's runs.
 SCOPED = ("for_site", "for_request", "create")
+# Managers with no for_site or for_request: any use of them is reported.
+UNSCOPED_MANAGERS = ("_default_manager", "_base_manager")
+# The worker reads a run by the site id its task was given, through _base_manager.
+ALLOWED = {("panel_framework/bulk_runs.py", "_base_manager")}
 
 PACKAGE_ROOT = Path(__file__).parents[3]
 EXCLUDED_DIRECTORIES = {"tests", "migrations"}
 
 
+def _is_run_model(node: ast.expr) -> bool:
+    return isinstance(node, ast.Name) and node.id == "BulkActionRun"
+
+
 def unscoped_run_reads(path: Path) -> list[str]:
-    """Each `BulkActionRun.objects.<method>` in `path` whose method does not
-    scope the read to a site, as "<path>:<line>: <method>"."""
+    """Each read of `BulkActionRun` in `path` that does not name a site, as
+    "<path>:<line>: <what>": a method on `objects` other than SCOPED, `objects`
+    itself kept for later, or any use of an UNSCOPED_MANAGERS manager."""
+    tree = ast.parse(path.read_text())
+    parents = {
+        child: parent
+        for parent in ast.walk(tree)
+        for child in ast.iter_child_nodes(parent)
+    }
     found: list[str] = []
-    for node in ast.walk(ast.parse(path.read_text())):
-        if not isinstance(node, ast.Attribute) or node.attr in SCOPED:
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Attribute) or not _is_run_model(node.value):
             continue
-        manager = node.value
-        if (
-            isinstance(manager, ast.Attribute)
-            and manager.attr == "objects"
-            and isinstance(manager.value, ast.Name)
-            and manager.value.id == "BulkActionRun"
-        ):
+        if node.attr in UNSCOPED_MANAGERS:
             found.append(f"{path}:{node.lineno}: {node.attr}")
+        elif node.attr == "objects":
+            method = parents.get(node)
+            if not isinstance(method, ast.Attribute):
+                found.append(f"{path}:{node.lineno}: objects")
+            elif method.attr not in SCOPED:
+                found.append(f"{path}:{node.lineno}: {method.attr}")
     return found
+
+
+def _allowed(path: Path, read: str) -> bool:
+    relative = path.relative_to(PACKAGE_ROOT).as_posix()
+    return (relative, read.split(": ")[-1]) in ALLOWED
 
 
 def production_files() -> list[Path]:
@@ -46,7 +68,12 @@ def production_files() -> list[Path]:
 
 
 def test_no_production_code_reads_runs_across_sites() -> None:
-    reads = [read for path in production_files() for read in unscoped_run_reads(path)]
+    reads = [
+        read
+        for path in production_files()
+        for read in unscoped_run_reads(path)
+        if not _allowed(path, read)
+    ]
 
     assert reads == []
 
@@ -57,6 +84,9 @@ def test_no_production_code_reads_runs_across_sites() -> None:
         ("BulkActionRun.objects.filter(pk=1)", "filter"),
         ("BulkActionRun.objects.get(pk=1)", "get"),
         ("BulkActionRun.objects.all()", "all"),
+        ("runs = BulkActionRun.objects", "objects"),
+        ("BulkActionRun._default_manager.filter(pk=1)", "_default_manager"),
+        ("BulkActionRun._base_manager.filter(pk=1)", "_base_manager"),
     ],
 )
 def test_an_unscoped_read_is_reported(tmp_path: Path, source: str, method: str) -> None:
@@ -72,7 +102,6 @@ def test_an_unscoped_read_is_reported(tmp_path: Path, source: str, method: str) 
         "BulkActionRun.objects.for_request(request).filter()",
         "BulkActionRun.objects.for_site(1)",
         "BulkActionRun.objects.create(site=site)",
-        "BulkActionRun._base_manager.filter()",
     ],
 )
 def test_a_scoped_read_is_not_reported(tmp_path: Path, source: str) -> None:
@@ -80,3 +109,15 @@ def test_a_scoped_read_is_not_reported(tmp_path: Path, source: str) -> None:
     module.write_text(f"{source}\n")
 
     assert unscoped_run_reads(module) == []
+
+
+def test_the_allowed_base_manager_read_is_the_workers_own() -> None:
+    worker = PACKAGE_ROOT / "panel_framework" / "bulk_runs.py"
+
+    assert [read.split(": ")[-1] for read in unscoped_run_reads(worker)] == [
+        "_base_manager"
+    ]
+
+
+def test_a_site_has_no_reverse_accessor_to_its_runs() -> None:
+    assert not hasattr(Site, "bulkactionrun_set")

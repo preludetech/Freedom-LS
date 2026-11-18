@@ -475,8 +475,12 @@ Two guards cover the standalone backend:
   templates. Reach host behaviour through a setting, as the site resolver does.
 - `freedom_ls/educator_interface/tests/invariants/test_bulk_run_scoping.py` parses every production
   `.py` file under `freedom_ls/` (`tests/` and `migrations/` directories excluded) and fails on any
-  `BulkActionRun.objects.<method>` other than `for_site`, `for_request` and `create`. A bare
-  `.filter()`, `.get()` or `.all()` reads every site's runs.
+  `BulkActionRun.objects.<method>` other than `for_site`, `for_request` and `create`, on
+  `BulkActionRun.objects` kept in a variable, and on any use of `BulkActionRun._default_manager` or
+  `_base_manager`. A bare `.filter()`, `.get()` or `.all()` reads every site's runs. Its one
+  allowance is the worker's `_base_manager` read in `panel_framework/bulk_runs.py`, which filters by
+  the site id its task was given. `BulkActionRun.site` has `related_name="+"`, so there is no
+  `site.bulkactionrun_set` to read through.
 
 Three more files sit beside the template invariants in `tests/invariants/`:
 

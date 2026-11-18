@@ -179,7 +179,7 @@ def _purge_stale(
     )
     _delete(
         "BulkActionRun",
-        BulkActionRun._base_manager.filter(_runs_of(orgs.values())),
+        BulkActionRun.objects.for_site(site.pk).filter(_runs_of(orgs.values())),
         counts,
     )
 
@@ -442,7 +442,7 @@ def _report(
     click.echo(f"AWAY {away.email} pk={away.pk} site={away.site.name}")
     click.echo(
         f"IMPORTS={LearnerImport._base_manager.filter(organisation__in=orgs).count()} "
-        f"BULK_RUNS={BulkActionRun._base_manager.filter(_runs_of(orgs)).count()}"
+        f"BULK_RUNS={BulkActionRun.objects.for_site(site.pk).filter(_runs_of(orgs)).count()}"
     )
 
 
