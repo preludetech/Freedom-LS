@@ -19,26 +19,26 @@
         <div class="flex sm:hidden items-center gap-2 {{ class }}">
             {% if links.previous %}
                 {% querystring request.GET links.previous.changes as qs %}
-                <c-button variant="secondary" size="small" icon_left="previous" class="min-h-11 md:min-h-0"
+                <c-button variant="secondary" size="small" icon_left="previous"
                           href="{{ page_url }}{{ qs }}"
                           hx-get="{{ base_url }}{{ qs }}"
                           hx-target="#{{ table_id }}"
                           hx-swap="outerHTML">Previous</c-button>
             {% else %}
-                <c-button variant="secondary" size="small" icon_left="previous" class="min-h-11 md:min-h-0" disabled="true">Previous</c-button>
+                <c-button variant="secondary" size="small" icon_left="previous" disabled="true">Previous</c-button>
             {% endif %}
             <span class="text-sm text-muted whitespace-nowrap">
                 Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
             </span>
             {% if links.next %}
                 {% querystring request.GET links.next.changes as qs %}
-                <c-button variant="secondary" size="small" icon_right="next" class="min-h-11 md:min-h-0"
+                <c-button variant="secondary" size="small" icon_right="next"
                           href="{{ page_url }}{{ qs }}"
                           hx-get="{{ base_url }}{{ qs }}"
                           hx-target="#{{ table_id }}"
                           hx-swap="outerHTML">Next</c-button>
             {% else %}
-                <c-button variant="secondary" size="small" icon_right="next" class="min-h-11 md:min-h-0" disabled="true">Next</c-button>
+                <c-button variant="secondary" size="small" icon_right="next" disabled="true">Next</c-button>
             {% endif %}
         </div>
 
@@ -52,7 +52,7 @@
                        hx-get="{{ base_url }}{{ qs }}"
                        hx-target="#{{ table_id }}"
                        hx-swap="outerHTML"
-                       class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
+                       class="btn btn-secondary btn-sm">
                         Previous
                     </a>
                 {% endif %}
@@ -60,14 +60,14 @@
                 {% for link in links.pages %}
                     {% if link.number %}
                         {% if link.current %}
-                            <span class="btn btn-primary btn-sm min-h-11 md:min-h-0">{{ link.number }}</span>
+                            <span class="btn btn-primary btn-sm">{{ link.number }}</span>
                         {% else %}
                             {% querystring request.GET link.changes as qs %}
                             <a href="{{ page_url }}{{ qs }}"
                                hx-get="{{ base_url }}{{ qs }}"
                                hx-target="#{{ table_id }}"
                                hx-swap="outerHTML"
-                               class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
+                               class="btn btn-secondary btn-sm">
                                 {{ link.number }}
                             </a>
                         {% endif %}
@@ -82,7 +82,7 @@
                        hx-get="{{ base_url }}{{ qs }}"
                        hx-target="#{{ table_id }}"
                        hx-swap="outerHTML"
-                       class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
+                       class="btn btn-secondary btn-sm">
                         Next
                     </a>
                 {% endif %}
@@ -95,27 +95,27 @@
     {# Mobile pagination: Previous / Page X of Y / Next #}
     <div class="flex sm:hidden items-center gap-2 {{ class }}">
         {% if page_obj.has_previous %}
-            <c-button variant="secondary" size="small" icon_left="previous" class="min-h-11 md:min-h-0"
+            <c-button variant="secondary" size="small" icon_left="previous"
                       href="?{{ page_param_name }}={{ page_obj.previous_page_number }}{{ suffix }}"
                       hx-get="{{ base_url }}?{{ page_param_name }}={{ page_obj.previous_page_number }}{{ suffix }}"
                       hx-target="#{{ table_id }}"
                       hx-swap="outerHTML"
                       hx-push-url="{% if push_url %}true{% else %}false{% endif %}">Previous</c-button>
         {% else %}
-            <c-button variant="secondary" size="small" icon_left="previous" class="min-h-11 md:min-h-0" disabled="true">Previous</c-button>
+            <c-button variant="secondary" size="small" icon_left="previous" disabled="true">Previous</c-button>
         {% endif %}
         <span class="text-sm text-muted whitespace-nowrap">
             Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
         </span>
         {% if page_obj.has_next %}
-            <c-button variant="secondary" size="small" icon_right="next" class="min-h-11 md:min-h-0"
+            <c-button variant="secondary" size="small" icon_right="next"
                       href="?{{ page_param_name }}={{ page_obj.next_page_number }}{{ suffix }}"
                       hx-get="{{ base_url }}?{{ page_param_name }}={{ page_obj.next_page_number }}{{ suffix }}"
                       hx-target="#{{ table_id }}"
                       hx-swap="outerHTML"
                       hx-push-url="{% if push_url %}true{% else %}false{% endif %}">Next</c-button>
         {% else %}
-            <c-button variant="secondary" size="small" icon_right="next" class="min-h-11 md:min-h-0" disabled="true">Next</c-button>
+            <c-button variant="secondary" size="small" icon_right="next" disabled="true">Next</c-button>
         {% endif %}
     </div>
 
@@ -129,7 +129,7 @@
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
                    {% if push_url %}hx-push-url="true"{% endif %}
-                   class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
+                   class="btn btn-secondary btn-sm">
                     First
                 </a>
                 <a href="?{{ page_param_name }}={{ page_obj.previous_page_number }}{{ suffix }}"
@@ -137,21 +137,21 @@
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
                    {% if push_url %}hx-push-url="true"{% endif %}
-                   class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
+                   class="btn btn-secondary btn-sm">
                     Previous
                 </a>
             {% endif %}
 
             {% for num in page_obj.paginator.page_range %}
                 {% if num == page_obj.number %}
-                    <span class="btn btn-primary btn-sm min-h-11 md:min-h-0">{{ num }}</span>
+                    <span class="btn btn-primary btn-sm">{{ num }}</span>
                 {% elif num <= 2 or num >= page_obj.paginator.num_pages|add:'-1' or num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
                     <a href="?{{ page_param_name }}={{ num }}{{ suffix }}"
                        hx-get="{{ base_url }}?{{ page_param_name }}={{ num }}{{ suffix }}"
                        hx-target="#{{ table_id }}"
                        hx-swap="outerHTML"
                        {% if push_url %}hx-push-url="true"{% endif %}
-                       class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
+                       class="btn btn-secondary btn-sm">
                         {{ num }}
                     </a>
                 {% elif num == 3 and page_obj.number > 5 %}
@@ -167,7 +167,7 @@
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
                    {% if push_url %}hx-push-url="true"{% endif %}
-                   class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
+                   class="btn btn-secondary btn-sm">
                     Next
                 </a>
                 <a href="?{{ page_param_name }}={{ page_obj.paginator.num_pages }}{{ suffix }}"
@@ -175,7 +175,7 @@
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
                    {% if push_url %}hx-push-url="true"{% endif %}
-                   class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
+                   class="btn btn-secondary btn-sm">
                     Last
                 </a>
             {% endif %}

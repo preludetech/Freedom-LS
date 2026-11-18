@@ -75,3 +75,15 @@ def test_extra_attributes_land_on_the_list() -> None:
     )
 
     assert document.cssselect("dl[data-test-list]")
+
+
+def test_a_class_joins_the_lists_own_classes_in_both_layouts() -> None:
+    for layout in ("stacked", "inline"):
+        html = render_cotton(
+            f'<c-panel-definition-list layout="{layout}" class="mt-3">Body</c-panel-definition-list>'
+        )
+
+        assert html.count("class=") == 1
+        (dl,) = lxml.html.fromstring(f"<div>{html}</div>").cssselect("dl")
+        assert "mt-3" in dl.get("class").split()
+        assert "grid" in dl.get("class").split()

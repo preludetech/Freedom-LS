@@ -1,4 +1,4 @@
-<c-vars columns="3" layout="stacked" />
+<c-vars columns="3" layout="stacked" class="" />
 
 {% comment %}
 Definition list — label/value pairs as a `<dl>`, not a `<table>`, since they
@@ -12,10 +12,11 @@ Attributes:
            list such as a table row shown as a card.
   columns  2, 3 or 4 (default 3). Anything else falls back to 3. Stacked
            layout only.
+  class    Extra classes, joined to the list's own (a card's `mt-3`).
 {% endcomment %}
 
 {% if layout == "inline" %}
-<dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm [&>div]:contents [&>div>dt]:max-w-28 [&>div>dt]:text-muted [&>div>dd]:min-w-0 [&>div>dd]:break-words" {{ attrs }}>{{ slot }}</dl>
+<dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-3 text-sm [&>div]:contents [&>div>dt]:max-w-28 [&>div>dt]:text-muted [&>div>dd]:min-w-0 [&>div>dd]:break-words {{ class }}" {{ attrs }}>{{ slot }}</dl>
 {% else %}
-<dl class="grid gap-x-6 gap-y-4 [&>div>dt]:text-xs [&>div>dt]:font-semibold [&>div>dt]:uppercase [&>div>dt]:tracking-wide [&>div>dt]:text-muted [&>div>dd]:mt-1 [&>div>dd]:text-sm [&>div>dd]:break-words {% if columns == "2" %}grid-cols-2{% elif columns == "4" %}grid-cols-2 md:grid-cols-4{% else %}grid-cols-2 md:grid-cols-3{% endif %}" {{ attrs }}>{{ slot }}</dl>
+<dl class="grid gap-x-6 gap-y-4 [&>div>dt]:text-xs [&>div>dt]:font-semibold [&>div>dt]:uppercase [&>div>dt]:tracking-wide [&>div>dt]:text-muted [&>div>dd]:mt-1 [&>div>dd]:text-sm [&>div>dd]:break-words {% if columns == "2" %}grid-cols-2{% elif columns == "4" %}grid-cols-2 md:grid-cols-4{% else %}grid-cols-2 md:grid-cols-3{% endif %} {{ class }}" {{ attrs }}>{{ slot }}</dl>
 {% endif %}

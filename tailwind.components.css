@@ -287,10 +287,31 @@
         @apply md:py-2
     }
 
-    /* Below md every button and text field on an interface page, dialogs
-     * included, is at least 44px tall for a finger. */
-    .panel-surface .btn,
-    .panel-canvas .btn,
+    /* Below md a button keeps its desktop look and gets a 44px-tall hit area
+     * from an invisible ::after centred on it, so a small button stays small
+     * to the eye and easy to tap. */
+    @media (width < 48rem) {
+        .btn {
+            position: relative;
+        }
+        .btn::after {
+            content: "";
+            position: absolute;
+            inset-inline: 0;
+            top: 50%;
+            height: 2.75rem;
+            translate: 0 -50%;
+        }
+    }
+
+    /* A dialog footer's Cancel and confirm are the decision the dialog asks
+     * for, at the bottom of the sheet under the thumb: 44px tall below md. */
+    [data-modal-footer] .btn {
+        @apply max-md:min-h-11
+    }
+
+    /* Below md every text field on an interface page, dialogs included, is
+     * at least 44px tall for a finger. */
     .panel-surface :is(input, select):not([type="checkbox"], [type="radio"], [type="hidden"]),
     .panel-canvas :is(input, select):not([type="checkbox"], [type="radio"], [type="hidden"]) {
         @apply max-md:min-h-11

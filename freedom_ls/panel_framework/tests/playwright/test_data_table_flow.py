@@ -302,7 +302,8 @@ def test_data_table_interaction(
                 "button", name="Clear", exact=True
             ).click()
 
-            # The phone toolbar buttons and the pager meet the 44px touch target.
+            # The phone toolbar buttons and the pager keep their small look
+            # and reach the 44px touch target through their ::after hit area.
             for control in (
                 page.get_by_role("button", name="Filter"),
                 page.get_by_role("button", name="Sort"),
@@ -310,7 +311,11 @@ def test_data_table_interaction(
             ):
                 box = control.bounding_box()
                 assert box is not None
-                assert box["height"] >= 44, f"{control} is {box['height']}px high"
+                assert box["height"] < 40, f"{control} is {box['height']}px high"
+                hit_height = control.evaluate(
+                    "(el) => parseFloat(getComputedStyle(el, '::after').height)"
+                )
+                assert hit_height >= 44, f"{control} hit area is {hit_height}px"
 
             # "Sort" opens a menu of columns; choosing the sorted column again
             # flips its direction. "Filter" opens the sheet, whose inputs sit

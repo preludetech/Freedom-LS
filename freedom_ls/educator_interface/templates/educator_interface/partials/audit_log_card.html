@@ -6,7 +6,7 @@ about different objects uses audit_log_card_targeted.html, which adds the
 Target. Every value is user-derived text, so nothing here is marked safe.
 {% endcomment %}
 <p class="font-bold break-words">{{ object.label }}</p>
-<c-panel-definition-list layout="inline" class="mt-1">
+<c-panel-definition-list layout="inline" class="mt-3">
     <c-panel-definition-row label="When"><c-datetime :value="object.created_at" /></c-panel-definition-row>
     <c-panel-definition-row label="Who">{% include "educator_interface/data-table-cells/audit_who.html" %}</c-panel-definition-row>
     {% block card_target %}{% endblock %}

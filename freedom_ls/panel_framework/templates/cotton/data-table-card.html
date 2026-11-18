@@ -9,7 +9,8 @@ open-page icon ends the primary line, in line with the name and its
 quick-view trigger. Every other value is labelled with its
 column header, since the table headings aren't on screen to explain it; a
 long header wraps at 7rem so the value beside it keeps the room it needs.
-Cards only exist below md, so every button in one is a 44px touch target.
+Cards only exist below md; a button in one keeps its small look, and the shared
+`.btn` rule gives it a 44px hit area.
 
 A table with a row detail gives each card the same leading chevron toggle as
 the desktop row, beside the card's first line; negative margins keep its
@@ -26,7 +27,7 @@ A row with a row template replaces the whole card body with that template,
 ahead of card_template_name and the primary/secondary rendering; the card's
 selection checkbox, chevron slot, id and indent are unchanged.
 {% endcomment %}
-<li{% if has_child_rows %} id="{{ row.row_id }}-card"{% if row.parent_ids %} x-show="shown" data-parents="{% for parent_id in row.parent_ids %}{{ parent_id }}-card{% if not forloop.last %} {% endif %}{% endfor %}"{% endif %}{% endif %} class="panel-data-table-card flex items-start gap-3 px-4 py-3 sm:px-6 [&_.btn]:min-h-11{% if has_child_rows %} {% include "panel_framework/partials/row_indent.html" with depth=row.depth %}{% endif %}">
+<li{% if has_child_rows %} id="{{ row.row_id }}-card"{% if row.parent_ids %} x-show="shown" data-parents="{% for parent_id in row.parent_ids %}{{ parent_id }}-card{% if not forloop.last %} {% endif %}{% endfor %}"{% endif %}{% endif %} class="panel-data-table-card flex items-start gap-3 px-4 py-4 sm:px-6{% if has_child_rows %} {% include "panel_framework/partials/row_indent.html" with depth=row.depth %}{% endif %}">
     {% if selectable %}
         <label class="flex size-11 shrink-0 items-center justify-center">
             <input type="checkbox"
@@ -86,7 +87,7 @@ selection checkbox, chevron slot, id and indent are unchanged.
                 </div>
             {% endif %}
             {% if secondary_columns %}
-                <c-panel-definition-list layout="inline" class="mt-1">
+                <c-panel-definition-list layout="inline" class="mt-3">
                     {% for column in secondary_columns %}
                         <c-panel-definition-row :label="column.header">{% include column.template_name with object=row.object column=column in_secondary_line=True %}</c-panel-definition-row>
                     {% endfor %}
@@ -94,7 +95,7 @@ selection checkbox, chevron slot, id and indent are unchanged.
             {% endif %}
         {% endif %}
         {% if row_detail_template_name and row.has_row_detail %}
-            <div hidden data-row-detail id="{{ detail_id }}" class="mt-1">{% include row_detail_template_name with object=row.object %}</div>
+            <div hidden data-row-detail id="{{ detail_id }}" class="mt-3">{% include row_detail_template_name with object=row.object %}</div>
         {% endif %}
     </div>
 </li>

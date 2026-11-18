@@ -354,7 +354,10 @@ QA looks: `test_no_control_link_is_hand_styled`, `test_every_anchor_with_visible
 `test_no_dialog_form_with_a_find_selector_holds_an_element_that_issues_its_own_request`,
 `test_no_educator_module_sets_the_modal_trigger_template_by_hand`,
 `test_no_template_hand_writes_a_table_outside_the_table_components`,
-`test_no_button_hand_writes_a_touch_height` and `test_every_expand_chevron_turns_when_its_control_opens`.
+`test_no_button_hand_writes_a_touch_height`, `test_only_the_dialog_footer_makes_a_button_44px_tall_on_a_phone`
+and `test_every_expand_chevron_turns_when_its_control_opens`. In the browser,
+`educator_interface/tests/playwright/test_touch_targets.py` checks that a small button keeps its
+desktop height on a phone, that its hit area is 44px, and that a dialog footer's buttons are 44px tall.
 Run that file after any change to a panel template.
 
 Three more files sit beside it in `tests/invariants/`:

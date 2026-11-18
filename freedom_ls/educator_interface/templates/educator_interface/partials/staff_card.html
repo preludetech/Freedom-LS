@@ -8,8 +8,8 @@ person and the whole-person buttons.
 {% endcomment %}
 <div data-card-primary-line class="font-bold break-words">{% include "educator_interface/data-table-cells/staff_member.html" %}</div>
 {% if shows_roles %}
-    {% if not object.role_entries %}<p class="m-0 mt-2 text-sm text-muted">No roles yet</p>{% endif %}
-    <ul class="m-0 mt-2 flex list-none flex-col gap-3 p-0 text-sm" aria-label="Roles">
+    {% if not object.role_entries %}<p class="m-0 mt-3 text-sm text-muted">No roles yet</p>{% endif %}
+    <ul class="m-0 mt-3 flex list-none flex-col gap-3 p-0 text-sm" aria-label="Roles">
         {% for entry in object.role_entries %}
             <li class="flex min-w-0 flex-col gap-1">
                 <span class="block font-semibold text-on-surface break-words">{{ entry.display_name }}</span>

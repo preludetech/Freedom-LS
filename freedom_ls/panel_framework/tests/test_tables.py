@@ -2009,7 +2009,8 @@ APPLIED_FILTER: list[str] = [
     'input [class="sr-only" name="stub-active" type="checkbox" value="1"]',
     "text: Active only",
     'footer [class="panel-surface shrink-0 flex items-center justify-between gap-3 '
-    'border-t border-border px-6 py-4 max-sm:flex-wrap sticky bottom-0 z-10 mt-auto -mx-4 -mb-4"]',
+    'border-t border-border px-6 py-4 max-sm:flex-wrap sticky bottom-0 z-10 mt-auto -mx-4 -mb-4" '
+    'data-modal-footer=""]',
     'div [class="shrink-0"]',
     'button [class="btn btn-secondary" data-variant="secondary" type="button" x-on:click="close"] '
     "Cancel",
@@ -2197,7 +2198,8 @@ NO_FILTER_APPLIED: list[str] = [
     'input [class="sr-only" name="stub-active" type="checkbox" value="1"]',
     "text: Active only",
     'footer [class="panel-surface shrink-0 flex items-center justify-between gap-3 '
-    'border-t border-border px-6 py-4 max-sm:flex-wrap sticky bottom-0 z-10 mt-auto -mx-4 -mb-4"]',
+    'border-t border-border px-6 py-4 max-sm:flex-wrap sticky bottom-0 z-10 mt-auto -mx-4 -mb-4" '
+    'data-modal-footer=""]',
     'div [class="shrink-0"]',
     'button [class="btn btn-secondary" data-variant="secondary" type="button" x-on:click="close"] '
     "Cancel",

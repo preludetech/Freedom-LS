@@ -500,20 +500,41 @@ def test_every_framework_action_trigger_is_small() -> None:
 
 
 def test_no_button_hand_writes_a_touch_height() -> None:
-    """The interface button rule already gives every `.btn` 44px on a phone,
-    so a button never carries `min-h-11` itself. Dropdown menu items are not
-    `.btn`, so they keep theirs."""
+    """A button looks the same at every width: the shared `.btn` rule gives it
+    an invisible 44px hit area below md, and only the dialog footer's rule
+    makes a button 44px to the eye. So no button carries `min-h-11` itself.
+    Dropdown menu items are not `.btn`, so they keep theirs."""
     offenders = []
-    for root in (TEMPLATES_DIR, EDUCATOR_TEMPLATES_DIR):
+    roots = (
+        TEMPLATES_DIR,
+        EDUCATOR_TEMPLATES_DIR,
+        FREEDOM_LS_PACKAGE_DIR / "base" / "templates",
+    )
+    for root in roots:
         for path in sorted(root.rglob("*.html")):
             source = path.read_text()
             for tag in re.findall(r"<c-button\b[^>]*>", source):
                 if "min-h-11" in tag and "dropdown=" not in tag:
                     offenders.append(f"{path.name}: {tag[:80]}")
+            for classes in re.findall(r'class="(btn [^"]*)"', source):
+                if "min-h-11" in classes:
+                    offenders.append(f"{path.name}: {classes}")
             for trigger in re.findall(r'trigger_class="btn[^"]*"', source):
                 if "min-h-11" in trigger:
                     offenders.append(f"{path.name}: {trigger}")
     assert offenders == []
+
+
+def test_only_the_dialog_footer_makes_a_button_44px_tall_on_a_phone() -> None:
+    """Below md every `.btn` gets a 44px hit area from an invisible ::after,
+    and the one height rule for buttons is the dialog footer's."""
+    css = TAILWIND_COMPONENTS_CSS.read_text()
+    height_rules = re.findall(r"\n    ([^\n{]*\.btn[^\n{]*)\{[^}]*min-h-11", css)
+
+    assert height_rules == ["[data-modal-footer] .btn "]
+    assert re.search(r"\.btn::after \{[^}]*height: 2\.75rem", css)
+    footer = (COMPONENTS_DIR / "modal-footer.html").read_text()
+    assert "data-modal-footer" in footer
 
 
 def test_the_filter_sheet_has_a_close_control() -> None:
