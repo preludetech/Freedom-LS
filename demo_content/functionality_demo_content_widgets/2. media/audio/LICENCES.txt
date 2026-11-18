@@ -1,0 +1,27 @@
+bravo.mp3
+  Source page: https://commons.wikimedia.org/wiki/File:En-ca-bravo.oga
+  Author: K6ka (own work)
+  Licence: CC0 1.0
+  Retrieved: 2026-11-18
+  Conversion: ffmpeg -i En-ca-bravo.oga -af silenceremove=start_periods=1:start_threshold=-50dB,areverse,silenceremove=start_periods=1:start_threshold=-50dB,areverse -ac 1 -b:a 64k bravo.mp3
+
+charlie.mp3
+  Source page: https://commons.wikimedia.org/wiki/File:En-ca-Charlie.oga
+  Author: K6ka (own work)
+  Licence: CC0 1.0
+  Retrieved: 2026-11-18
+  Conversion: ffmpeg -i En-ca-Charlie.oga -af silenceremove=start_periods=1:start_threshold=-50dB,areverse,silenceremove=start_periods=1:start_threshold=-50dB,areverse -ac 1 -b:a 64k charlie.mp3
+
+oscar.mp3
+  Source page: https://commons.wikimedia.org/wiki/File:En-ca-Oscar.oga
+  Author: K6ka (own work)
+  Licence: CC0 1.0
+  Retrieved: 2026-11-18
+  Conversion: ffmpeg -i En-ca-Oscar.oga -af silenceremove=start_periods=1:start_threshold=-50dB,areverse,silenceremove=start_periods=1:start_threshold=-50dB,areverse -ac 1 -b:a 64k oscar.mp3
+
+romeo.mp3
+  Source page: https://commons.wikimedia.org/wiki/File:En-ca-Romeo.oga
+  Author: K6ka (own work)
+  Licence: CC0 1.0
+  Retrieved: 2026-11-18
+  Conversion: ffmpeg -i En-ca-Romeo.oga -af silenceremove=start_periods=1:start_threshold=-50dB,areverse,silenceremove=start_periods=1:start_threshold=-50dB,areverse -ac 1 -b:a 64k romeo.mp3

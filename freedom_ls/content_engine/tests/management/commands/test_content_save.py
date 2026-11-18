@@ -30,6 +30,7 @@ from freedom_ls.content_engine.management.commands.content_save import (
     PreservingDumper,
     _format_bytes,
     _format_image_decision_line,
+    get_file_type_from_extension,
     markdown_translate,
     save_content_to_db,
     save_course,
@@ -4210,3 +4211,10 @@ type: short_text
     ]
     assert len(section_queries) <= 6
     assert _section_rows() == (["Key Ideas"] * 4, [])
+
+
+@pytest.mark.parametrize("extension", [".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac"])
+def test_get_file_type_from_extension_types_every_audio_extension_as_audio(
+    extension: str,
+):
+    assert get_file_type_from_extension(Path(f"clip{extension}")) == File.FileType.AUDIO

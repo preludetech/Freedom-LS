@@ -72,3 +72,19 @@ If you do not want a grid, you do not need a wrapper. Consecutive `c-picture` bl
 <c-picture src="../images/square.svg" alt="A dark circle centred on an orange background" title="A second stacked figure directly below the first"></c-picture>
 
 <c-picture src="../images/backyard-drone-flight.jpg" alt="A man stands in a back garden holding a handheld controller, looking up at a white quadcopter drone hovering above a wooden fence" title="A hobbyist flying a drone in his back garden"></c-picture>
+
+## Audio
+
+Play a recorded word with `c-audio`. `src` is the audio file, `label` is the word shown beside the speak button, and `respelling` is the optional pronunciation guide shown under the word. Wrap several in a `c-grid` to line them up.
+
+<c-grid columns="4">
+
+<c-audio src="audio/bravo.mp3" label="Bravo" respelling="BRAH VOH"></c-audio>
+
+<c-audio src="audio/charlie.mp3" label="Charlie" respelling="CHAR LEE"></c-audio>
+
+<c-audio src="audio/oscar.mp3" label="Oscar" respelling="OSS CAH"></c-audio>
+
+<c-audio src="audio/romeo.mp3" label="Romeo" respelling="ROW ME OH"></c-audio>
+
+</c-grid>
