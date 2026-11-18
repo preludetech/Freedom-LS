@@ -18,6 +18,7 @@ A form lives in a **numbered subdirectory** (e.g. `03. quiz/`) containing:
 | `quiz_show_incorrect` | `bool` | Conditional | Required when `strategy: QUIZ`; **must be absent** for `CATEGORY_VALUE_SUM` and `UNSCORED` |
 | `quiz_pass_percentage` | `int` (0–100) | Conditional | Required when `strategy: QUIZ`; **must be absent** for `CATEGORY_VALUE_SUM` and `UNSCORED` |
 | `submit_on_exit` | `bool` | No (default `false`) | If `true`, partial attempt is finalised on navigation away |
+| `sections` | `list[path]` | No | Paths to the topic markdown files or `part.yaml` files the questions test, relative to `form.md`'s directory. Questions inherit this list unless they set their own `sections:` |
 | `subtitle` | `str` | No | Optional subtitle |
 | `description` | `str` | No | Optional description |
 | `content` | `str` | No | Optional markdown intro body |
@@ -125,6 +126,7 @@ The parser selects `FORM_QUESTION` when a subsequent section contains a `questio
 | `decimal_places` | `int` | No (default `0`) | Decimal places a `number` answer may use. Only valid on `number` |
 | `slug` | `str` | No | The name a later `when` uses to refer to this question. Lowercase letters, digits and underscores only (`^[a-z0-9_]+$`), at most 100 characters, unique within the form. Only needed on a question that a `when` points at |
 | `when` | mapping | No | Show this question only when an earlier answer matches. See "Conditional pages, questions and content (`when`)" below |
+| `sections` | `list[path]` | No | Paths to the topic markdown files or `part.yaml` files this question tests, relative to the page yaml's directory. Overrides the form's `sections:` for this question; `sections: []` means none. See the `sections` section below |
 | `uuid` | `str` | No | Written by `content_save` — **omit on new files** |
 | `meta` | `dict` | No | Optional metadata |
 | `tags` | `list[str]` | No | Optional tags |
