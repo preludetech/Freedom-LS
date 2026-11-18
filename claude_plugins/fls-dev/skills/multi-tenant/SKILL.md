@@ -12,6 +12,7 @@ allowed-tools: Read, Grep, Glob
 - Extend `SiteAwareModelBase` for site isolation with a custom primary key.
 - The manager's `get_queryset()` filters by current site automatically; never filter manually.
 - On save, `site_id` auto-populates from the current request; never set it manually.
+- `panel_framework.BulkActionRun` is a plain model, not a `SiteAwareModel`: `objects` is unfiltered, create passes `site=`, reads use `.for_request(request)` or `.for_site(site_id)`. See the `panel-framework` skill.
 - In tests, always use the `mock_site_context` fixture.
 
 Full details: `${CLAUDE_PLUGIN_ROOT}/resources/multi_tenant.md`.

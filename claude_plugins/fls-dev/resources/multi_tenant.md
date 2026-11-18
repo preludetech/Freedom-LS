@@ -16,6 +16,10 @@ The Django Sites framework isolates sites automatically.
 
 **Result:** every query scopes to the current site.
 
+## Exception: BulkActionRun
+
+`freedom_ls.panel_framework.models.BulkActionRun` is not a `SiteAwareModel`, because panel_framework runs outside FLS. It has a plain `site` FK, nothing fills it automatically, and `objects` does not filter by site. Pass `site=` on create and scope reads with `BulkActionRun.objects.for_request(request)` or `.for_site(site_id)`. Detail in the `panel-framework` skill.
+
 ## Key Files
 
 - `freedom_ls/site_aware_models/models.py`
