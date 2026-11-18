@@ -44,6 +44,7 @@ class LazyBodyPanel(Panel):
     #: data is gathered or cached returns the time it was computed under
     #: "as_of" from get_loaded_context; otherwise the stamp is the time of
     #: this render, which is wrong for data that is older than the request.
+    #: An "as_of" of None (nothing computed yet) shows the body with no stamp.
     show_as_of: bool = False
 
     @property
@@ -68,7 +69,9 @@ class LazyBodyPanel(Panel):
                 context.update(self.get_loaded_context())
                 if self.show_as_of:
                     as_of = context.setdefault("as_of", timezone.now())
-                    if not isinstance(as_of, datetime) or timezone.is_naive(as_of):
+                    if as_of is None:
+                        context["show_as_of"] = False
+                    elif not isinstance(as_of, datetime) or timezone.is_naive(as_of):
                         raise ValueError(
                             f"{type(self).__name__}'s as_of must be an aware datetime."
                         )

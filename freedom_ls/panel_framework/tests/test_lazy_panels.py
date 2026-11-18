@@ -52,6 +52,11 @@ class _StampedNaivePanel(_StampedPanel):
         return {"as_of": datetime.fromisoformat("2026-01-05T08:15:00")}
 
 
+class _StampedNotYetComputedPanel(_StampedPanel):
+    def get_loaded_context(self) -> dict[str, object]:
+        return {"gathered": "gathered-value", "as_of": None}
+
+
 class _StampedTooLargePanel(_StampedPanel):
     def get_loaded_context(self) -> dict[str, object]:
         raise PanelBodyTooLargeError("Far too big to show.")
@@ -158,6 +163,15 @@ def test_a_value_returned_as_as_of_is_the_one_shown(mock_site_context: Site) -> 
 def test_a_naive_as_of_raises(mock_site_context: Site) -> None:
     with pytest.raises(ValueError, match="_StampedNaivePanel's as_of"):
         _render(_StampedNaivePanel, LOADED_QUERY)
+
+
+def test_an_as_of_of_none_shows_the_body_without_a_stamp(
+    mock_site_context: Site,
+) -> None:
+    html = _render(_StampedNotYetComputedPanel, LOADED_QUERY)
+
+    assert "gathered-value" in html
+    assert "As of" not in html
 
 
 def test_the_skeleton_has_no_stamp(mock_site_context: Site) -> None:
