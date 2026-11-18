@@ -61,9 +61,10 @@ from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 
-# Headroom over the measured count: a cold per-process cache adds a query or two to the
-# first request, depending on which tests ran earlier in the worker.
-QUERY_BOUND = 60
+# The warm request count is 51 for both the one-course and ten-course lists. The test
+# makes an unmeasured request first so per-process caches (content types, site, role
+# configuration) are filled; the bound adds two queries of headroom.
+QUERY_BOUND = 53
 SHARED_FRONTMATTER = (
     "organisations:\n  - owner\nshared_with:\n  - sharee\naudience: public\n"
 )
@@ -204,6 +205,7 @@ def test_the_courses_list_query_count_does_not_grow_with_shared_courses(
     client = logged_in_client(organisation_admin_viewer(organisation))
     url = _interface_url(organisation.slug, "courses")
     _share_courses(organisation, 1)
+    client.get(url)  # warm-up: fills per-process caches, not measured
     with django_assert_max_num_queries(QUERY_BOUND):
         assert client.get(url).status_code == 200
     _share_courses(organisation, 9)
