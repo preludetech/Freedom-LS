@@ -22,6 +22,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (user) Decide whether to chase the order-dependent failure of freedom_ls/audit_log/tests/test_actions.py::test_course_progress_actions_describe_their_details (TypeError: 'Mock' object is not iterable): it failed once in a full run on this branch, passed on re-run and in every later full run, and the branch does not touch audit_log; if it recurs, find the test that leaks the Mock
 - [x] (user) Check the change to freedom_ls/educator_interface/forms.py: eight educator forms now accept a files argument, because the panel framework now passes files to every form action; the plan had expected no host changes
 - [x] (user) Decide whether to keep the QA data helper's 4-line addition to .claude/agent-memory/sdd-qa-data-helper/reference_dev_org_baseline_command.md (it notes that qa_create_dev_org_baseline creates QA cohort A); it is left uncommitted: commit it or discard it with git checkout
+- [ ] (user) Decide what to do about QA bug: hidden request-error element adds 12px of space under the inline Name form (base form space-y-2 also bites a flex-col fix; see qa_report.md Bug status) (TDD: failing test first, then fix)
 
 ## 4. Documentation and pull request
 

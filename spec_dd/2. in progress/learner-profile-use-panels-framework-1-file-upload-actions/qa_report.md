@@ -1,32 +1,23 @@
 # Frontend QA report: learner-profile-use-panels-framework-1-file-upload-actions
 
+All tests pass except one bug, B1: the hidden request-error element in the inline Name form adds 12px of empty space under the field row on the learner and cohort Settings tabs (Tests 2.5 and 3.5, also visible in 2.6 and 3.1). Test 7.5 was skipped because no educator action answers an error with a toast. The file field widget, the inline and dialog save states, the request-error message, the 413 message, the refresh and quick-view error paths and the loading labels all behave as the plan describes. The layout probe was clean on every screenshot.
+
 ## Methodology
 
-Playwright MCP run at 1920x1080 (desktop), 375x812 (mobile) and 768x1024 (tablet) against a dev server on port 8569. Screenshots were collected into `screenshots/` beside this report, and every referenced image exists there. Accessibility snapshot (.yml) and console log files were moved out of the spec dir and are not committed.
+- Playwright MCP drove a real browser against the dev server.
+- Viewports: desktop 1920x1080, mobile 375x812, tablet 768x1024.
+- A layout probe ran after each screenshot.
+- Screenshots were collected into `screenshots/` beside this report, and every image referenced here exists.
+- Requests were failed with `page.route`, as the plan describes (500, 404, 413 and aborted requests, plus delayed responses for the loading states).
+- The console errors seen were only the browser and htmx logs of the expected 422 responses and the simulated 4xx/5xx/aborted requests. There were no JS or Alpine errors.
 
 ## Diff scoping
 
-Class: **FULL**.
-
-Changed front-end files that triggered it:
-
-- `freedom_ls/base/templates/cotton/button.html`
-- `freedom_ls/panel_framework/static/panel_framework/js/alpine-components.js`
-- `freedom_ls/panel_framework/templates/panel_framework/modal/form.html`
-- `freedom_ls/panel_framework/templates/panel_framework/partials/inline_record_form.html`
-- `freedom_ls/panel_framework/templates/panel_framework/reference/_examples.html`
-- `freedom_ls/panel_framework/templates/panel_framework/widgets/clearable_file_input.html`
-- `freedom_ls/educator_interface/templates/educator_interface/partials/inline_record_form.html`
-- `freedom_ls/panel_framework/actions.py`
-- `freedom_ls/panel_framework/widgets.py`
-- `freedom_ls/panel_framework/reference.py`
-- `freedom_ls/educator_interface/forms.py`
-
-Desktop, mobile and tablet all ran. Nothing was skipped.
+Class: FULL. The changed files include templates and static paths (for example `button.html`, `alpine-components.js`, `modal/form.html`, `partials/inline_record_form.html`, `widgets/clearable_file_input.html`, `reference/_examples.html`), plus `widgets.py`, `actions.py` and `educator_interface/forms.py`. Nothing was skipped.
 
 ## Smoke gate
 
-Outcome: **pass**. Pages loaded: `/` and `/panel-framework/components/`.
+Pass. Pages checked: `/` and `/panel-framework/components/`.
 
 ## Design check
 
@@ -34,100 +25,93 @@ No design states tested.
 
 ## Results
 
-| Test | Viewport | Status | Screenshot | Note |
+| Test | Viewport | Status | Note | Screenshot |
 |---|---|---|---|---|
-| 1.1-1.5 | desktop | pass | [shot](screenshots/page-2026-11-18T12-48-43-279Z.png) | Three wrappers present. Current file first-aid-certificate.pdf, no directory, no link. Attachment label opens file chooser. Error example shows "2 fields to fix." summary, "Choose the file again..." under field, input empty, current file still shown. Inline: file input + Save at row end, no Remove/Current file. |
-| 1.6 | desktop | pass | [shot](screenshots/page-2026-11-18T12-48-43-279Z.png) | Current file line is 16px (dialog base). Remove label is 14px, same as field labels in the real Create cohort dialog (Name: 14px). |
-| 1.3-visual | desktop | fail | [shot](screenshots/page-2026-11-18T12-49-16-582Z.png) | Remove checkbox flush against the word Remove, slightly above baseline. See B1. |
-| 1.8 | desktop | pass | [shot](screenshots/page-2026-11-18T12-49-53-694Z.png) | No console errors/warnings. Notice (above) and Callout (below) render normally. |
-| 1.9 | desktop | pass | [shot](screenshots/page-2026-11-18T12-49-16-582Z.png) | Ticked Remove then chose qa-sample.txt: nothing broke, no navigation, no console error. |
-| 1.10 | desktop | pass | — | getByRole('checkbox', name 'Remove first-aid-certificate.pdf') matches (dialog and error examples). |
-| 2.1-2.2 | desktop | pass | [shot](screenshots/page-learner-name-saving-1795006224269.png) | Name panel one row First/Last + Save. During save: button disabled, "Saving…". After: heading "Alicia Adeyemi", focus back on id_first_name. |
-| 2.3 | desktop | pass | [shot](screenshots/page-2026-11-18T12-50-46-860Z.png) | Used a 210-char name: one-line error under row, no box, no summary, aria-invalid=true. Console shows only the browser's 422 log. |
-| 2.4-2.5 | desktop | pass | [shot](screenshots/page-2026-11-18T12-50-46-860Z.png) | No enctype/hx-encoding. data-request-error element hidden, height 0, no visible gap. |
-| 6.1-6.2 | desktop | pass | [shot](screenshots/page-inline-request-error-1795006258811.png) | 500: "Your changes could not be saved. Try again." under the row, 14px error colour, role=alert, name kept, Save enabled, no error page. After unroute + Save: message hidden, name saved. |
-| 7.1 | desktop | pass | — | POST answering 404 text/plain reloads the page; no request error message. |
-| 8.1, 8.3 | desktop | pass | [shot](screenshots/page-confirm-loading-1795006286431.png) | Deactivate confirm: during request disabled, spinner, "Deactivating…". data-loading-label equals visible text. Request delayed then aborted so learner stayed active. |
-| 3 | desktop | pass | [shot](screenshots/page-cohort-name-error-1795006330782.png) | Cohort Name panel: one row + Save; "Saving…" disabled during request; heading updated; focus back to id_name; no enctype/hx-encoding; hidden request-error takes 0 height. Server "This field is required." shows as one unboxed line, aria-invalid=true, no summary. Name restored to "QA cohort A". |
-| 4.1-4.5 | desktop | pass | [shot](screenshots/page-2026-11-18T12-52-39-031Z.png) | Create cohort dialog: header, Name field, footer (Cancel, Save and add another, Save); focus in id_name. No enctype/hx-encoding. Empty submit: "1 field to fix." summary focused, field error, no "Choose the file again". Esc with typed name: "Discard changes?"; Keep editing keeps draft. Cleared + Esc closes with no prompt. |
-| 4.6, 5.4-5.5 | desktop | pass | [shot](screenshots/page-dialog-saving-1795006412301.png) | After removing the route, Save: request-error hidden as request starts, button disabled "Saving…" (never Uploading…), cohort "QA cohort created" created once and dialog closed. Reopened dialog has no leftover message. |
-| 5.1-5.3, 5.6 | desktop | pass | [shot](screenshots/page-dialog-request-error-413-1795006390785.png) | 500: dialog stays open, message in error colour in body, focus on message, name kept, Save enabled reads Save. 413: "The file may be too large to upload. Choose a smaller file.", one message only. Abort: generic message. |
-| 7.2 | desktop | pass | [shot](screenshots/page-create-cohort-422-1795006368482.png) | Empty create-cohort submit: 422 summary only, request-error element stays hidden. |
-| 7.3 | desktop | pass | [shot](screenshots/page-add-to-cohort-refresh-500-1795006446233.png) | Add to cohort dialog: select hx-get refresh routed to 500; dialog stays as is, no request error message, nothing broke. |
-| 7.4 | desktop | pass | [shot](screenshots/page-quick-view-500-1795006457683.png) | Quick view GET answered 500: drawer shows its own "Something went wrong loading this." with Retry. |
-| 7.5 | desktop | skip | — | No educator action answers a 4xx/5xx with a toast; skipped as the plan allows. |
-| 8.2 | desktop | pass | [shot](screenshots/page-learner-activity-1795006528753.png) | Learner form runner buttons are plain .btn (full-page POST) without the c-button loading span; unaffected. Next moved to page 2 normally. |
-| 1.7 | mobile | pass | [shot](screenshots/page-2026-11-18T12-55-44-103Z.png) | scrollWidth 375, nothing in the three file-field wrappers overflows. Inline example wraps Save under the input. |
-| 2.6, 6.1 | mobile | pass | [shot](screenshots/page-2026-11-18T12-56-03-932Z.png) | Learner Settings at 375: no sideways scroll; fields stack, Save below; 500 request error wraps under the row. |
-| 4.7, 5.7 | mobile | pass | [shot](screenshots/page-2026-11-18T12-56-22-761Z.png) | Create cohort is a bottom sheet; 500 message wraps inside; scrollWidth within viewport. |
-| 1.3-visual | mobile | fail | [shot](screenshots/page-2026-11-18T12-55-44-103Z.png) | Remove checkbox flush against its text at 375. See B1. |
-| 1.3-visual | tablet | fail | [shot](screenshots/page-2026-11-18T12-56-40-713Z.png) | Remove checkbox flush against its text at 768. See B1. |
-| 1.7 | tablet | pass | [shot](screenshots/page-2026-11-18T12-56-40-713Z.png) | scrollWidth 768, nothing overflows; inline Save stays at row end. |
-| 3, 6.1 (413) | tablet | pass | [shot](screenshots/page-2026-11-18T12-56-52-725Z.png) | Cohort Name panel one row with Save; 413 shows "The file may be too large to upload. Choose a smaller file." under the row; no sideways scroll. |
-| 5.3 | tablet | pass | [shot](screenshots/page-2026-11-18T12-57-04-997Z.png) | Create cohort dialog centred (512px wide); aborted request shows generic message in body; no sideways scroll. |
+| 1.1-1.5 | desktop | pass | Three wrappers present. Current file shown as text with no link or storage path. Remove checkbox sits before the file input. Error example shows the summary and "Choose the file again" message, with aria attributes set. Inline example has no Remove or Current file. | ![](screenshots/page-2026-11-18T16-36-25-102Z.png) |
+| 1.7-1.8 | desktop | pass | No sideways scroll at 1920. No console errors. Notice and Callout render either side of File field. | ![](screenshots/page-2026-11-18T16-36-25-102Z.png) |
+| 1.9-1.10 | desktop | pass | Ticking Remove then choosing a file causes no request or console error. Checkbox accessible name is "Remove first-aid-certificate.pdf". | none |
+| 2.1-2.4 | desktop | pass | Learner Name panel: fields in one row with Save. Delayed save shows a disabled "Saving…", the heading updates and focus returns to the first name field. A 205-char name shows one plain error line with aria-invalid and aria-describedby. No enctype or hx-encoding. | ![](screenshots/page-2026-11-18T16-38-50-133Z.png) |
+| 2.5 | desktop | **fail** | The hidden request-error div is the form's last child, so the field row gets 12px margin-bottom and the Name card gains 12px of empty space (B1). | ![](screenshots/page-2026-11-18T16-38-12-244Z.png) |
+| 3.1-3.4 | desktop | pass | Cohort Name panel: Name and Save in one row. Delayed save shows a disabled "Saving…", the heading updates and focus returns. A 205-char name shows "Ensure this value has at most 150 characters". Name restored. | ![](screenshots/page-2026-11-18T16-39-17-830Z.png) |
+| 3.5 | desktop | **fail** | Same cause as 2.5: the Name card has more bottom space than the Staff and Status cards (B1). | ![](screenshots/page-2026-11-18T16-39-17-830Z.png) |
+| 1.6 | desktop | pass | The widget has no text-sm. "Current file:" renders at 16px on the reference page, labels and Remove at 14px. | ![](screenshots/page-2026-11-18T16-36-25-102Z.png) |
+| 4.1-4.3 | desktop | pass | Create cohort dialog opens with focus in the Name field and no enctype. An empty submit shows the "1 field to fix." summary, a field error and aria-invalid, with no "Choose the file again". The hidden request-error div adds no space in the modal body. | ![](screenshots/page-2026-11-18T16-40-44-537Z.png) |
+| 4.4-4.6 | desktop | pass | Typed name then Esc shows "Discard changes?", and Keep editing returns to the typed name. Cleared then Esc closes with no prompt. Valid save with a 2s delay shows a disabled "Saving…" (never "Uploading…"), creates the cohort and navigates to it. | ![](screenshots/page-discard-prompt.png) |
+| 5.1-5.3 | desktop | pass | 500: the dialog stays open and shows "Your changes could not be saved. Try again." in the error colour, focus is in the message, the typed name is kept and Save is enabled. 413: the message becomes "The file may be too large to upload. Choose a smaller file." (one message). Abort: the generic message. | ![](screenshots/page-2026-11-18T16-41-57-597Z.png) ![](screenshots/page-413.png) |
+| 5.4-5.6 | desktop | pass | With the route removed, the message hides when the request starts, the cohort is created and the dialog closes. Reopening shows no leftover message, including after fail, Cancel and reopen. The message is a role=alert element. | ![](screenshots/page-2026-11-18T16-42-15-613Z.png) |
+| 6.1-6.2 | desktop | pass | Learner Name inline form, 500: the message shows under the field row at 14px in the error colour with role=alert. The changed name is kept, Save is enabled and the panel is not replaced. With the route removed, the message hides and the name saves. Name restored. | ![](screenshots/page-2026-11-18T16-42-53-056Z.png) |
+| 7.1-7.2 | desktop | pass | Name form POST routed to a 404 plain body: the page reloaded, no request-error message and the name is unchanged. The create-cohort 422 showed only the summary, with the request-error element hidden. | none |
+| 7.3 | desktop | pass | Add to cohort dialog with the select's hx-get refresh routed to 500: no request-error message, and the dialog stays open and usable. | ![](screenshots/page-refresh-500.png) |
+| 7.4 | desktop | pass | Learners list quick view GET routed to 500: the drawer shows its own "Something went wrong loading this." block with Retry, and no request-error message appears. | ![](screenshots/page-2026-11-18T16-43-50-673Z.png) |
+| 7.5 | desktop | skip | No educator action answers a 4xx/5xx with a toast. HX-Trigger is only set on success paths. Skipped, as the plan allows. | none |
+| 8.1, 8.3 | desktop | pass | Deactivate confirm with the POST delayed then aborted: the button is disabled and shows a spinner and "Deactivating…". The loading span's data-loading-label matches the visible text. Create-cohort and Name Save spans carry "Saving…". | ![](screenshots/page-confirm-loading.png) |
+| 8.2 | desktop | pass | Quiz "Next" and "Leave and submit" are plain submit buttons with no loading state, unchanged by this branch. Answering page 1 and pressing Next moved to page 2 with no console errors. | none |
+| 1.7 | mobile (375) | pass | scrollWidth 375 and no element extends past its wrapper. The inline example wraps Save under the file input. | ![](screenshots/page-2026-11-18T16-44-56-924Z.png) |
+| 2.6 | mobile (375) | pass | No sideways scroll. Fields stack with Save under them. The extra space under Save in the Name card (B1) is visible. | ![](screenshots/page-2026-11-18T16-45-10-982Z.png) |
+| 4.7, 5.7 | mobile (375) | pass | Create cohort is a bottom sheet. The 500 message sits inside the sheet on one line with no sideways scroll. | ![](screenshots/page-2026-11-18T16-45-24-479Z.png) |
+| 1.7 | tablet (768) | pass | No sideways scroll. The inline example keeps Save at the end of the row. | ![](screenshots/page-2026-11-18T16-45-42-395Z.png) |
+| 3.1 | tablet (768) | pass | Cohort Settings: Name and Save in one row, no sideways scroll. The B1 extra space under the Name card is visible. | ![](screenshots/page-2026-11-18T16-45-49-091Z.png) |
+| 5.2 | tablet (768) | pass | Create cohort is a centred dialog. The 413 message shows inside the body with no sideways scroll. | ![](screenshots/page-2026-11-18T16-45-59-265Z.png) |
 
 ## Bugs
 
-### B1: Remove checkbox sits flush against its label text
+### B1: Hidden request-error element adds 12px of space under the inline Name form
 
 Manifestations:
 
-- 1.3-visual, desktop
-- 1.3-visual, mobile
-- 1.3-visual, tablet
+- Test 2.5, desktop (learner Name panel)
+- Test 3.5, desktop (cohort Name panel)
+- Test 2.6, mobile (visible in the learner Settings screenshot)
+- Test 3.1, tablet (visible in the cohort Settings screenshot)
 
-![](screenshots/page-2026-11-18T12-49-16-582Z.png)
-![](screenshots/page-2026-11-18T12-55-44-103Z.png)
-![](screenshots/page-2026-11-18T12-56-40-713Z.png)
+Screenshots:
 
-**Expected:** The checkbox and the word Remove read as one control with a small gap between them, vertically centred, like other checkbox-plus-label pairs.
+![](screenshots/page-2026-11-18T16-38-12-244Z.png)
+![](screenshots/page-2026-11-18T16-39-17-830Z.png)
+![](screenshots/page-2026-11-18T16-45-10-982Z.png)
 
-**Actual:** The label inside the file widget gets the generic block field-label style (display:block, 14px, margin-bottom 4px); the checkbox has 0px margin and touches the "R" of Remove, sitting slightly above the text.
+Expected: The hidden `[data-request-error]` element takes no space. The inline form's height and the panel's bottom spacing are as on main, with the field row as the last visible child and no margin under it.
+
+Actual: In `panel_framework/partials/inline_record_form.html` the hidden div is the form's last child. Tailwind's `space-y-3` puts a margin on every child but the last, so the field row gets `margin-bottom: 12px`. The margin collapses out of the form. The Name card on the learner and cohort Settings tabs now has 12px more space under the row than before (36px from input bottom to card bottom, against 24px of padding).
 
 ## Layout probe
 
-Header/sidebar regions reported "missing" on pages outside the educator shell (reference page, dashboard, dialogs over the list) are expected and are not flags.
-
 | Test | Viewport | URL | Screenshot | Result |
 |---|---|---|---|---|
-| smoke | desktop | `/` | [shot](screenshots/page-2026-11-18T12-48-27-534Z.png) | clean |
-| 1 | desktop | `/panel-framework/components/` | [shot](screenshots/page-2026-11-18T12-48-43-279Z.png) | clean |
-| 2 | desktop | `/educator/organisations/demodev/learners/<pk>/__tabs/settings` | [shot](screenshots/page-2026-11-18T12-50-46-860Z.png) | clean |
-| 3 | desktop | `/educator/organisations/demodev/cohorts/<pk>/__tabs/settings` | [shot](screenshots/page-cohort-name-error-1795006330782.png) | clean |
-| 4 | desktop | `/educator/organisations/demodev/cohorts` | [shot](screenshots/page-2026-11-18T12-52-39-031Z.png) | clean |
-| 1 | mobile | `/panel-framework/components/` | [shot](screenshots/page-2026-11-18T12-55-44-103Z.png) | clean |
-| 1 | mobile | `/panel-framework/components/` | [shot](screenshots/page-2026-11-18T12-55-51-232Z.png) | clean |
-| 2 | mobile | `/educator/organisations/demodev/learners/<pk>/__tabs/settings` | [shot](screenshots/page-2026-11-18T12-56-03-932Z.png) | clean |
-| 5 | mobile | `/educator/organisations/demodev/cohorts` | [shot](screenshots/page-2026-11-18T12-56-22-761Z.png) | clean |
-| 1 | tablet | `/panel-framework/components/` | [shot](screenshots/page-2026-11-18T12-56-40-713Z.png) | clean |
-| 3 | tablet | `/educator/organisations/demodev/cohorts/<pk>/__tabs/settings` | [shot](screenshots/page-2026-11-18T12-56-52-725Z.png) | clean |
-| 5 | tablet | `/educator/organisations/demodev/cohorts` | [shot](screenshots/page-2026-11-18T12-57-04-997Z.png) | clean |
+| 1.1 | desktop | /panel-framework/components/ | ![](screenshots/page-2026-11-18T16-36-25-102Z.png) | clean |
+| 2.3 | desktop | /educator/organisations/demodev/learners/&lt;id&gt;/__tabs/settings | ![](screenshots/page-2026-11-18T16-38-50-133Z.png) | clean |
+| 3.1 | desktop | /educator/organisations/demodev/cohorts/&lt;id&gt;/__tabs/settings | ![](screenshots/page-2026-11-18T16-39-17-830Z.png) | clean |
+| 4.1 | desktop | /educator/organisations/demodev/cohorts/ | ![](screenshots/page-2026-11-18T16-39-48-961Z.png) | clean |
+| 6.1 | desktop | /educator/organisations/demodev/learners/&lt;id&gt;/__tabs/settings | ![](screenshots/page-2026-11-18T16-42-53-056Z.png) | clean |
+| 7.4 | desktop | /educator/organisations/demodev/learners/ | ![](screenshots/page-2026-11-18T16-43-50-673Z.png) | clean |
+| 1.7 | mobile | /panel-framework/components/ | ![](screenshots/page-2026-11-18T16-44-56-924Z.png) | clean |
+| 1.7b | mobile | /panel-framework/components/ | ![](screenshots/page-2026-11-18T16-45-04-350Z.png) | clean |
+| 2.6 | mobile | /educator/organisations/demodev/learners/&lt;id&gt;/__tabs/settings | ![](screenshots/page-2026-11-18T16-45-10-982Z.png) | clean |
+| 5.7 | mobile | /educator/organisations/demodev/cohorts/ | ![](screenshots/page-2026-11-18T16-45-24-479Z.png) | clean |
+| 1.7 | tablet | /panel-framework/components/ | ![](screenshots/page-2026-11-18T16-45-42-395Z.png) | clean |
+| 3.1 | tablet | /educator/organisations/demodev/cohorts/&lt;id&gt;/__tabs/settings | ![](screenshots/page-2026-11-18T16-45-49-091Z.png) | clean |
+| 5.2 | tablet | /educator/organisations/demodev/cohorts/ | ![](screenshots/page-2026-11-18T16-45-59-265Z.png) | clean |
 
 ## Data changes
 
-| Via | What |
-|---|---|
-| sdd:qa-data-helper | Dev DB had only example.com site (every page 500). Ran create_demo_data --yes, content_save ./demo_content DemoDev, qa_create_dev_org_baseline, qa_register_org_course (demodev@email.com on functionality-demo-show-end-with-quiz). Org slug demodev; QA cohort A with Alice Adeyemi et al. |
+No data changes were made via the data helper or dev-data commands. Residue from driving the UI:
+
+- Cohorts "QA cohort upload check" and "QA cohort req error" were created through the create dialog (Tests 4.6, 5.4).
+- Learner Aaron's and QA cohort A's names were changed and restored.
+- One quiz page of "Mid course Quiz" was answered as the QA user (Test 8.2).
 
 ## Bug status
 
-- **FIXED** (commit: 41c87ea2f) — Remove checkbox sits flush against its label text
-
-  Re-verified at 1920: the label is now `flex items-center gap-2`; 8px between checkbox and text, centres level.
-
-  ![](screenshots/page-2026-11-18T13-06-25-332Z.png)
+| Bug | Status |
+|---|---|
+| B1 | **UNRESOLVED** — Hidden request-error element adds 12px of space under the inline Name form (reason: the auto-fix, 456fa222b, swapped the form's `space-y-3` for `flex flex-col gap-3`. Re-verification in the browser found that the base `form { @apply space-y-2 }` rule in `tailwind.components.css`, which `space-y-3` used to override, then applied. The row got an 8px margin that no longer collapses, so the form was 74px tall around a 66px row. The fix was reverted in 494c1202f. A correct fix must also neutralise the base form spacing, for example by placing the hidden holder so it is never the last child, or with `space-y-0` alongside the flex gap. Its regression test should measure the rendered layout in a browser, not only the markup.) |
 
 ## General notes
 
-- The dev DB was empty (only example.com site) at the start, so every page 500'd until the QA data helper re-seeded it.
-- The learner Name panel's first name is optional, so clearing it saves (heading became "Adeyemi"); 2.3 used a 210-character name instead. Name was restored to Alice.
-- The cohort Name input has the HTML `required` attribute, so an empty submit is blocked by the browser; the attribute was removed in devtools to reach the server's 422.
-- Console errors seen during the run were only the browser's/htmx's own logs of the induced 422/500/413/aborted requests; no JavaScript or Alpine errors.
-- After a failed inline save, the previous field error (from the 210-char attempt) stays visible under the new request-error message, because the failed request swaps nothing. Observation only.
-- The Deactivate confirm dialog shows no message when its request fails at the network level (it has no request-error element); out of this spec's scope, observation only.
-- A 413 on a form with no file field still says "The file may be too large to upload"; this matches the spec's wording rule (413 always gets that message).
-- Test 7.5 skipped: no educator action answers a 4xx/5xx with a toast.
-- Test 8.2: the learner form runner uses plain `.btn` buttons with a full-page POST, not the c-button loading span, so it is unaffected.
-- Data created by the run: cohort "QA cohort created" (and failed attempts created nothing else).
+- (a) The reference page's dialog examples are not wrapped in `<c-modal-body>` (text-sm), so "Current file:" shows at 16px there, while a real dialog body is 14px. The widget itself has no text-sm, as the spec requires.
+- (b) A blank learner first name is accepted by the server. This is pre-existing and not from this branch. The cohort name is blocked by the browser's required check, so Test 3.3 used a 205-char name.
+- (c) Both "Save" and "Save and add another" show "Saving…" during a create-cohort request. This is pre-existing.
+- (d) The footer Cancel closes without a discard prompt, as the panel-framework skill documents.
+- (e) Test 7.5 was skipped: no educator action answers an error with a toast.
 
-status: ok · reason: 1 bug — 1 fixed, 0 unresolved; report rendered, screenshots verified
+status: ok · reason: 1 bug — 0 fixed, 1 unresolved (auto-fix failed browser re-verification and was reverted); report rendered, screenshots verified
