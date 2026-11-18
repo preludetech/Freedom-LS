@@ -12,7 +12,7 @@
 <text x="694.0" y="95.0" fill="#111827">filter-design</text>
 <rect x="24.0" y="126.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <text x="34.0" y="148.0" fill="#111827">audit-log-coverage-gaps</text>
-<rect x="354.0" y="126.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<rect x="354.0" y="126.0" width="250" height="35" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <text x="364.0" y="148.0" fill="#111827">misure-of-admonitions</text>
 <rect x="684.0" y="126.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <text x="694.0" y="148.0" fill="#111827">educator-interface-more polish</text>
