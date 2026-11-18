@@ -28,3 +28,17 @@ def test_callout_puts_a_passed_class_on_its_box() -> None:
     )
 
     assert "rounded-r-lg mx-auto max-w-reading" in result
+
+
+def test_callout_default_margin_is_dropped_when_the_caller_passes_one() -> None:
+    """The default my-6 used to stay beside a caller's my-0 and win in the CSS."""
+    result = _render('<c-callout level="info" class="my-0">Body</c-callout>')
+
+    assert "my-6" not in result
+    assert "my-0" in result
+
+
+def test_callout_keeps_its_default_margin_when_the_caller_passes_no_margin() -> None:
+    result = _render('<c-callout level="info" class="mx-auto">Body</c-callout>')
+
+    assert 'class="my-6 p-4' in result
