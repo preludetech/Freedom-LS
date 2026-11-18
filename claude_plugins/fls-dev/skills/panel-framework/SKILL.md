@@ -63,6 +63,8 @@ components; `Skill(fls-dev:frontend-styling)` owns the theme tokens.
   `PeriodFilter(key, label, field, presets)` filters `field` to calendar days ending today, each
   preset a `(label, days)`.
 - `quick_view.py`: `QuickView` feeds the drawer one row of a list opens.
+- `widgets.py`: `PanelClearableFileInput`, the file widget a form action swaps in for Django's
+  default one: it names the current file without a link or its storage key.
 - `bulk_actions.py`: row selection and the action that runs once over the selected rows.
   `PermittedBulkAction[ActorT]` is the base a host subclasses: it takes the scope from
   `scope_for_request` (no default) and words each skip reason in both tenses
@@ -342,6 +344,42 @@ the selection clears. Every control stays inside the bar at 375px.
 - An element that takes focus only by script, so a screen reader announces it (a result heading,
   a notice, an error summary: `tabindex="-1"`), shows no outline. One shared rule does this.
   Buttons, links and fields keep their focus rings.
+
+### Forms with a file field
+
+A `ModelForm` with a `FileField` or `ImageField` on a `FormPanelAction` (`EditAction`,
+`CreateInstanceAction`), in a dialog or the inline record form, uploads with no host code beyond
+the form. The framework does the rest:
+
+- A form with a file field posts as `multipart/form-data` (`form.is_multipart`, in `modal/form.html`
+  and `partials/inline_record_form.html`).
+- A field whose widget is exactly Django's `ClearableFileInput` gets `PanelClearableFileInput`:
+  "Current file:" and the basename, and a "Remove" checkbox when the field is not required. A form
+  that declares a widget of its own, a subclass included, keeps it.
+- A browser cannot be handed a file back, so after a 422 the file input is empty. Each file field
+  the person had filled in and that has no error of its own gets `CHOOSE_AGAIN_MESSAGE`.
+- While a file is going up, the submit button's loading text reads "Uploading…".
+- The discard prompt counts a chosen file as a change.
+- A request that fails with nothing to swap in (a 413 or 5xx, a network error) shows a
+  `role="alert"` message in the form's `[data-request-error]` element, and Save works again. A
+  413 says the file may be too large; anything else says the changes could not be saved. A 403
+  or 404 reloads the page instead. A template that renders its own form needs the element too.
+
+The host owns:
+
+- The storage alias on the model field, chosen per `Skill(fls-dev:file-storage)`.
+- Size and type validators on the form or the model field. The framework limits neither.
+- A reverse-proxy body limit (nginx `client_max_body_size`) at or above the largest file the
+  validators allow. Below it, the proxy answers 413 before Django runs and the person sees the
+  generic request error, not a field error.
+- A form that accepts Django's `(data, files)` arguments. `FormPanelAction.get_form_kwargs` passes
+  `files`, so a form whose `__init__` is `def __init__(self, data=None, *, ...)` raises
+  `TypeError`. Take `files` after `data` and pass both to `super().__init__(data, files)`.
+
+A host that shows a failed response its own way (a toast) sets
+`event.detail.requestConfig.panelErrorShown = true` in its `htmx:beforeSwap` handler. The
+framework then adds no message of its own for that response; without the flag, the person sees
+both. `base/js/alpine-components.js` sets it where it swaps an out-of-band toast on a 4xx or 5xx.
 
 ### Placement
 
