@@ -57,3 +57,8 @@ Educators per org: `qa_create_single_org_educator --organisation-slug X --email 
 Learners/cohort: reuse that command's `_ensure_user`/`_ensure_consents` + LearnerFactory/CohortFactory/
 CohortMembershipFactory with explicit site= under `_site_context`. Educator course URL:
 /educator/organisations/<slug>/courses/<course-pk>.
+
+Correction (Nov 2026, this branch): the headless check with HTTP_HOST="testserver" raised
+Site.DoesNotExist (create_demo_data gives DemoDev the domain `127.0.0.1:8000`). Use
+`Client(HTTP_HOST="127.0.0.1:8000")` and set `settings.ALLOWED_HOSTS=["*"]` after setup_test_environment.
+Educator learner pages are keyed by the LEARNER pk (`/learners/<learner-uuid>`), not the user pk (404).
