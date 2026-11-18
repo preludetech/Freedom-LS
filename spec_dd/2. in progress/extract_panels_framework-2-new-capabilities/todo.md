@@ -22,6 +22,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (user) Decide whether to stabilise `freedom_ls/panel_framework/tests/playwright/test_quick_view_flow.py::test_quick_view_drawer`: it timed out on a visibility check in two full runs on a loaded machine and passes when run alone
 - [x] (user) Review three changes made beyond the plan: `modal/confirm.html` takes an optional `title_id`, the component reference page loads `panel_framework/js/alpine-components.js`, and `panels.py` has a new shared `table_region_context` function; keep them or ask for another approach
 - [x] (user) Keep or delete `freedom_ls/qa_helpers/management/commands/qa_create_course_structure_variants.py`, a QA data command written during QA that builds QA Multi Page Course and QA Long Course; it is untracked, so commit it to keep it or delete the file
+- [ ] (cmd) Run the full test tier for commit 5db78f2d3 (panel button hit area, card spacing); skipped at the user's request
 
 ## 4. Documentation and pull request
 
