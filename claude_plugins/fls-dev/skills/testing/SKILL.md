@@ -107,17 +107,27 @@ FreedomLS ships to downstream projects, so markers control which tests are *port
 - **`ci_only`** — slow / real-time tests.
 - **`dev_tooling`** — tests of developer tooling: QA seeders, `danger_` commands, dev scripts and the content validator.
 - **`weasyprint`** — invokes WeasyPrint and needs Pango/cairo/gdk-pixbuf/HarfBuzz.
+- **`needs_fls_host`** — a `panel_framework` test that needs FLS's real templates, icon set or URLconf. The standalone run deselects it.
 
 What runs where:
 
 - `uv run pytest` runs `not ci_only and not weasyprint and not dev_tooling` (the `addopts` `-m`), without coverage. `--cov` opts in. It includes `playwright` and `fls_internal`: that is FLS regression testing. `testpaths` covers `freedom_ls`, `tests` and `claude_plugins/fls-content`.
 - The test tiers (`select_tests.sh`) pass `-m 'not ci_only and not weasyprint'`, from `[tool.test_tiers] markers`, so `dev_tooling` tests run when a tier selects them. `addopts` also sets `--dist loadfile`: under `-n auto` a module's tests stay on one worker, so a module-scoped fixture such as the demo-content import runs once per module.
 - CI runs three jobs. The unit job runs `-m "not playwright and not dev_tooling" --cov` with the coverage gate, and includes `weasyprint` because CI has the system libraries. The developer-tooling job runs `-m "dev_tooling and not playwright"`. The Playwright job runs `-m playwright -n auto`, which the root conftest caps at four workers.
+- The panel framework's unit tests also run with no FLS around them, in CI's unit job after the coverage step. This is a documented command, not a `[tool.test_tiers]` tier:
+
+```bash
+uv run pytest -c freedom_ls/panel_framework/tests/standalone_pytest.ini freedom_ls/panel_framework/tests
+```
+
+  `standalone_pytest.ini` sets `--ds=freedom_ls.panel_framework.tests.standalone_settings` (in-memory SQLite, `standalone_app/` for the user model, `standalone_templates/` for stand-in templates), adds `-m "not needs_fls_host"`, skips `components`, `invariants` and `playwright`, and blocks network access. `standalone_fixtures.py` supplies the `site` and `mock_site_context` fixtures; FLS's conftest does not load.
 - A concrete downstream project runs:
 
 ```bash
 uv run pytest -m "not playwright and not fls_internal and not ci_only and not weasyprint and not dev_tooling" -n auto --dist loadfile
 ```
+
+Add `needs_fls_host` to a `panel_framework` test that fails under the standalone run because the stand-in templates, icon set or URLconf lack something it asserts on (a rendered FLS template, a real icon, an FLS URL name). Mark the individual test, as `test_reference.py` and `test_tables.py` do. The marker is not `fls_internal`: the FLS run keeps the test, and a downstream that installs the framework runs it too.
 
 **Reach for `fls_internal` last.** Every portable test is integration signal for a downstream. Before marking a test `fls_internal`, de-brand it first (pin the input or assert the contract). Only mark it when it genuinely depends on FLS's own repo/brand/demo state (e.g. it reads `demo_content/`). Prefer a file-level `pytestmark = pytest.mark.fls_internal` only for wholly brand-coupled files; mark individual tests in mixed files.
 
