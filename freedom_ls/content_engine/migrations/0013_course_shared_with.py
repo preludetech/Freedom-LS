@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('freedom_ls_content_engine', '0011_coursepartchildduedate'),
+        ('freedom_ls_content_engine', '0012_formquestioncoursepart_coursepart_testing_questions_and_more'),
         ('freedom_ls_organisations', '0002_organisation_bio_organisation_profile_logo'),
     ]
 
