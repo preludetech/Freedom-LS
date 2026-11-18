@@ -24,7 +24,11 @@ from freedom_ls.base.env import env_bool, env_float
 from freedom_ls.base.notification_categories import FLS_NOTIFICATION_CATEGORIES
 from freedom_ls.base.theming import FREEDOM_LS_PACKAGE_DIR, configure_theme
 from freedom_ls.base.webhook_event_types import FLS_WEBHOOK_EVENT_TYPES
-from freedom_ls.deployment.storage import PROFILE_PICTURES_PURPOSE, media_csp_sources
+from freedom_ls.deployment.storage import (
+    CONTENT_MEDIA_PURPOSE,
+    PROFILE_PICTURES_PURPOSE,
+    media_csp_sources,
+)
 from freedom_ls.google_tag.google_ads import parse_conversion_labels
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -559,6 +563,10 @@ MESSAGING_ENABLED = False
 # media_csp_sources(PROFILE_PICTURES_PURPOSE) adds the profile-picture bucket's
 # host to img-src, because avatars load straight from the bucket; it adds
 # nothing while pictures sit on local disk.
+#
+# media_csp_sources(CONTENT_MEDIA_PURPOSE) adds the course media host to
+# media-src, because audio loads straight from the bucket after the redirect;
+# 'self' covers local storage and the redirect hop.
 SECURE_CSP_REPORT_ONLY = {
     "default-src": [CSP.SELF],
     "script-src": [
@@ -589,6 +597,7 @@ SECURE_CSP_REPORT_ONLY = {
         "https://www.facebook.com",
         *media_csp_sources(PROFILE_PICTURES_PURPOSE),
     ],
+    "media-src": [CSP.SELF, *media_csp_sources(CONTENT_MEDIA_PURPOSE)],
     "connect-src": [
         CSP.SELF,
         "https://*.google-analytics.com",

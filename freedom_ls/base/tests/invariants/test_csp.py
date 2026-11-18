@@ -134,3 +134,20 @@ def test_csp_report_only_header_names_the_cdn_the_base_template_loads(
     )
 
     assert "https://cdn.jsdelivr.net" in directives["script-src"]
+
+
+@pytest.mark.django_db
+def test_csp_report_only_header_has_media_src_allowing_self(
+    client: Client, mock_site_context: None
+) -> None:
+    """The report-only policy has a media-src directive that allows audio from 'self'."""
+    response = client.get("/")
+    header = response.get("Content-Security-Policy-Report-Only", "")
+
+    directives = dict(
+        directive.strip().split(" ", 1)
+        for directive in header.split(";")
+        if directive.strip()
+    )
+
+    assert "'self'" in directives["media-src"]
