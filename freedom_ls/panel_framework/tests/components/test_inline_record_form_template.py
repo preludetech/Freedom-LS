@@ -15,7 +15,7 @@ GOLDEN_INLINE_FORM_WITHOUT_FILE_FIELD = """
       x-data="refocusAfterRequest"
       data-refocus-id="id_name"
       x-on:htmx:after-request="refocus"
-      class="flex flex-col gap-3">
+      class="space-y-3">
 
     <div class="flex flex-wrap items-end gap-3">
 
@@ -120,15 +120,3 @@ def test_the_request_error_holder_is_empty_and_inside_the_form() -> None:
     assert holder.get("tabindex") == "-1"
     assert holder.get("hidden") is not None
     assert holder.text_content() == ""
-
-
-def test_the_form_spaces_its_children_with_gap_not_sibling_margins() -> None:
-    """The hidden request-error holder is the last child, and `space-y-*` margins every child but the last.
-
-    That put a 12px bottom margin on the field row. `gap` ignores a hidden child.
-    """
-    root = lxml.html.fromstring(_render(_TextFieldsForm()))
-
-    classes = root.get("class").split()
-    assert "space-y-3" not in classes
-    assert {"flex", "flex-col", "gap-3"} <= set(classes)

@@ -16,7 +16,7 @@ aria-describedby.
       x-data="refocusAfterRequest"
       data-refocus-id="{{ form.visible_fields.0.id_for_label }}"
       x-on:htmx:after-request="refocus"
-      class="flex flex-col gap-3">
+      class="space-y-3">
     {% if form.non_field_errors %}
         <c-panel-notice tone="error" data-error-summary tabindex="-1">{{ form.non_field_errors }}</c-panel-notice>
     {% endif %}
