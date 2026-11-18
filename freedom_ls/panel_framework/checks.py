@@ -9,6 +9,7 @@ from importlib import import_module
 from django.apps import AppConfig
 from django.conf import settings
 from django.core.checks import CheckMessage, Error, Warning
+from django.utils.module_loading import import_string
 
 from freedom_ls.panel_framework.field_display import label_for_field
 from freedom_ls.panel_framework.panels import DataTablePanel, Panel
@@ -21,10 +22,27 @@ from freedom_ls.panel_framework.views import ListViewConfig, ListViewPanel
 _TABLE_KEY_PATTERN = re.compile(r"^[a-z0-9_]+$")
 _RESERVED_FILTER_KEYS = {"q", "sort", "page", "export"}
 
-_NON_DURABLE_BACKENDS = (
+# Backends that run a task inline or never: Django's own and the django_tasks
+# backport's. The backport is optional, so a path that does not import is
+# skipped.
+_NON_DURABLE_BACKEND_PATHS = (
     "django.tasks.backends.immediate.ImmediateBackend",
     "django.tasks.backends.dummy.DummyBackend",
+    "django_tasks.backends.immediate.ImmediateBackend",
+    "django_tasks.backends.dummy.DummyBackend",
 )
+
+
+def _importable_classes(paths: Sequence[str]) -> tuple[type, ...]:
+    classes: list[type] = []
+    for path in paths:
+        try:
+            imported = import_string(path)
+        except ImportError:
+            continue
+        if isinstance(imported, type):
+            classes.append(imported)
+    return tuple(classes)
 
 
 def check_task_backend(
@@ -35,7 +53,15 @@ def check_task_backend(
 ) -> list[CheckMessage]:
     """Warn when background bulk actions would run inline or not at all."""
     backend = settings.TASKS.get("default", {}).get("BACKEND", "")
-    if settings.DEBUG or backend not in _NON_DURABLE_BACKENDS:
+    if settings.DEBUG or not backend:
+        return []
+    try:
+        backend_class = import_string(backend)
+    except ImportError:
+        # Django's own task setup reports a backend that does not import.
+        return []
+    non_durable = _importable_classes(_NON_DURABLE_BACKEND_PATHS)
+    if not (isinstance(backend_class, type) and issubclass(backend_class, non_durable)):
         return []
     return [
         Warning(

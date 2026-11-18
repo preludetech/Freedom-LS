@@ -9,6 +9,7 @@ import pytest
 
 from django.core.checks import run_checks
 from django.core.management import call_command
+from django.tasks.backends.immediate import ImmediateBackend
 from django.test import override_settings
 
 from freedom_ls.panel_framework.checks import (
@@ -329,11 +330,18 @@ def test_call_command_check_passes_on_the_real_config() -> None:
     call_command("check")
 
 
+class LocalImmediateBackend(ImmediateBackend):
+    """A host's own subclass of a backend that runs tasks inline."""
+
+
 @pytest.mark.parametrize(
     "backend",
     [
         "django.tasks.backends.immediate.ImmediateBackend",
         "django.tasks.backends.dummy.DummyBackend",
+        "django_tasks.backends.immediate.ImmediateBackend",
+        "django_tasks.backends.dummy.DummyBackend",
+        f"{__name__}.LocalImmediateBackend",
     ],
 )
 def test_non_durable_task_backend_warns_w001(backend: str) -> None:
