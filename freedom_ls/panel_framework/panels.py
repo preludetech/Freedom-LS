@@ -29,11 +29,7 @@ from freedom_ls.panel_framework.field_display import (
     label_for_field,
     lookup_field,
 )
-from freedom_ls.panel_framework.tables import (
-    DataTable,
-    TableQuery,
-    _require_queryset,
-)
+from freedom_ls.panel_framework.tables import DataTable, TableQuery
 
 __all__ = [
     "DataTablePanel",
@@ -324,6 +320,33 @@ class TabSet(Panel):
         return context
 
 
+def _check_sequence_table(table: type[DataTable]) -> None:
+    """Raise unless `table` is one a sequence of rows can serve: a sequence
+    cannot be searched, filtered, sorted or exported, and has no model to
+    take its noun from."""
+    name = table.__name__
+    if table.search_fields:
+        raise ImproperlyConfigured(
+            f"{name} returns a sequence of rows, so it cannot set `search_fields`."
+        )
+    if table.get_filters():
+        raise ImproperlyConfigured(
+            f"{name} returns a sequence of rows, so it cannot declare filters."
+        )
+    if any(column.sortable for column in table.get_columns()):
+        raise ImproperlyConfigured(
+            f"{name} returns a sequence of rows, so it cannot have a sortable column."
+        )
+    if table.get_export_columns():
+        raise ImproperlyConfigured(
+            f"{name} returns a sequence of rows, so it cannot declare export columns."
+        )
+    if not table.noun or not table.noun_singular:
+        raise ImproperlyConfigured(
+            f"{name} returns a sequence of rows, so it must set `noun` and `noun_singular`."
+        )
+
+
 class DataTablePanel(Panel):
     """A panel holding one `DataTable`, scoped through `get_queryset`."""
 
@@ -341,7 +364,13 @@ class DataTablePanel(Panel):
     def region_id(self) -> str:
         return f"{self.table_key}-table"
 
-    def get_queryset(self, request: HttpRequest) -> QuerySet | Sequence[object]:
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        super().__init_subclass__(**kwargs)
+        overrides_sequence = cls.get_row_sequence is not DataTablePanel.get_row_sequence
+        if overrides_sequence and hasattr(cls, "data_table"):
+            _check_sequence_table(cls.data_table)
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet:
         """The rows this panel may show.
 
         This is the one place a table panel is scoped. Narrow it in a
@@ -349,6 +378,14 @@ class DataTablePanel(Panel):
         table's own scoping always applies underneath.
         """
         return self.data_table.get_queryset(request)
+
+    def get_row_sequence(self, request: HttpRequest) -> Sequence[object] | None:
+        """Rows that are computed rather than stored, or None for a table
+        over `get_queryset`. A sequence pages and has an empty state, and
+        nothing else: no search, filters, sorting, export or bulk actions,
+        and the table must set `noun` and `noun_singular`. The table is
+        checked when a panel overriding this is defined."""
+        return None
 
     def get_export_scope_slug(self, request: HttpRequest) -> str:
         """A URL-safe fragment naming this panel's scope in its export
@@ -365,16 +402,12 @@ class DataTablePanel(Panel):
     def noun(self, request: HttpRequest) -> str:
         """What this table calls its rows, plural and lower case."""
         return self.data_table.noun or str(
-            _require_queryset(
-                self.get_queryset(request), "A table with no `noun`"
-            ).model._meta.verbose_name_plural
+            self.get_queryset(request).model._meta.verbose_name_plural
         )
 
     def noun_singular(self, request: HttpRequest) -> str:
         return self.data_table.noun_singular or str(
-            _require_queryset(
-                self.get_queryset(request), "A table with no `noun_singular`"
-            ).model._meta.verbose_name
+            self.get_queryset(request).model._meta.verbose_name
         )
 
     def entry_count(self, request: HttpRequest, page_obj: Page) -> str:
@@ -388,7 +421,7 @@ class DataTablePanel(Panel):
         """The rows the CSV export narrows with the same search, filters
         and sort as the screen. Defaults to the screen's own rows; a panel
         overrides it to add a `select_related` the screen does not need."""
-        return _require_queryset(self.get_queryset(request), "CSV export")
+        return self.get_queryset(request)
 
     def before_export(self, request: HttpRequest, rows: QuerySet) -> QuerySet:
         """Runs once after narrowing and before the streaming response is
@@ -397,77 +430,58 @@ class DataTablePanel(Panel):
         return rows
 
     def narrow(
-        self,
-        request: HttpRequest,
-        queryset: QuerySet | Sequence[object] | None = None,
-    ) -> tuple[TableQuery, QuerySet | Sequence[object]]:
+        self, request: HttpRequest, queryset: QuerySet | None = None
+    ) -> tuple[TableQuery, QuerySet]:
         """This table's own query, and its scoped rows searched and sorted
         from it. The one place a table's request parameters are parsed and
         applied, so a render and an export narrow identically. `queryset`
         replaces the panel's own rows as the starting point (the export
-        passes `get_export_queryset`). A sequence of rows is returned as it
-        is: it has nothing to search, filter or sort."""
+        passes `get_export_queryset`)."""
         rows = self.get_queryset(request) if queryset is None else queryset
         query = self.data_table.parse_query(request, self.table_key)
-        if isinstance(rows, QuerySet):
-            return query, self.data_table.filter_queryset(request, rows, query)
-        self._check_sequence_table()
-        return query, rows
-
-    def _check_sequence_table(self) -> None:
-        """Raise unless the table is one a sequence of rows can serve: a
-        sequence cannot be searched, filtered, sorted or exported, and has no
-        model to take its noun from."""
-        table = self.data_table
-        name = table.__name__
-        if table.search_fields:
-            raise ImproperlyConfigured(
-                f"{name} returns a sequence of rows, so it cannot set `search_fields`."
-            )
-        if table.get_filters():
-            raise ImproperlyConfigured(
-                f"{name} returns a sequence of rows, so it cannot declare filters."
-            )
-        if any(column.sortable for column in table.get_columns()):
-            raise ImproperlyConfigured(
-                f"{name} returns a sequence of rows, so it cannot have a sortable column."
-            )
-        if table.get_export_columns():
-            raise ImproperlyConfigured(
-                f"{name} returns a sequence of rows, so it cannot declare export columns."
-            )
-        if not table.noun or not table.noun_singular:
-            raise ImproperlyConfigured(
-                f"{name} returns a sequence of rows, so it must set `noun` and `noun_singular`."
-            )
+        return query, self.data_table.filter_queryset(request, rows, query)
 
     def get_context_data(self) -> dict[str, object]:
         context = super().get_context_data()
-        query, queryset = self.narrow(self.request)
+        sequence = self.get_row_sequence(self.request)
+        rows: QuerySet | Sequence[object]
+        if sequence is None:
+            query, rows = self.narrow(self.request)
+        else:
+            query = self.data_table.parse_query(self.request, self.table_key)
+            rows = sequence
         context.update(
             self.data_table.get_context(
                 self.request,
                 query,
-                queryset,
+                rows,
                 base_url=self.ctx.base_url,
                 page_url=self.ctx.page_url,
                 region_id=self.region_id,
             )
         )
+        # Checked before the permission filter, so a misconfigured table
+        # fails for every user rather than only for those allowed an action.
+        bulk_actions = self.get_bulk_actions()
+        if bulk_actions and self.data_table.has_child_rows:
+            raise ImproperlyConfigured(
+                f"{self.data_table.__name__} sets `has_child_rows`, so it cannot "
+                "have bulk actions: a selection would not cover a group's rows."
+            )
+        if bulk_actions and sequence is not None:
+            raise ImproperlyConfigured(
+                f"{type(self).__name__} returns a sequence of rows, so it cannot "
+                "have bulk actions: its rows have no keys to select."
+            )
         entries: list[BulkActionEntry] = [
             {
                 "action": action,
                 "url": action.get_action_url(self.ctx),
                 "separator_before": False,
             }
-            for action in self.get_bulk_actions()
+            for action in bulk_actions
             if action.has_permission(self.request)
         ]
-        if entries and self.data_table.has_child_rows:
-            raise ImproperlyConfigured(
-                f"{self.data_table.__name__} sets `has_child_rows`, so it cannot "
-                "have bulk actions: a selection would not cover a group's rows."
-            )
         context.update(
             table_region_context(
                 self.data_table,
@@ -486,9 +500,7 @@ class DataTablePanel(Panel):
             and bool(context["has_defaulted_filters"])
             and not context["any_filter_set"]
             and not query.search
-            and _require_queryset(
-                self.get_queryset(self.request), "A table with defaulted filters"
-            ).exists()
+            and self.get_queryset(self.request).exists()
         )
         return context
 

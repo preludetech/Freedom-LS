@@ -24,15 +24,16 @@ components; `Skill(fls-dev:frontend-styling)` owns the theme tokens.
   `HeaderStat` feed the page header.
 - `tables.py`: `DataTable` and `TableQuery`, each table's own slice of the query string (search,
   sort, page, filters), so two tables on one page never read each other's parameters.
-  A table's rows per page are its `page_size`, else the project setting `DEFAULT_PAGE_SIZE`
+  A table's rows per page are its `page_size`, else the project setting `PANEL_TABLE_PAGE_SIZE`
   (default 10); set `page_size` only for a table that needs another count. `compact = True`
   shortens rows from `md` up, for a dense table (an outline); cards keep their padding.
   `row_detail_template_name` renders a template under each row, behind a toggle (a disclosure
   below `md`); `has_row_detail(row)` hides it for a row with nothing to show. `has_child_rows`
   with `get_child_rows(row)` nests full rows under a group row (see Tables). A per-row template
   `get_row_template_name(row)` replaces a row's cells from the primary column to the last with
-  that template (for a note, not a record); it renders with `object` and `row`. A table whose
-  rows are computed returns a sequence from `get_queryset` (see Tables).
+  that template (for a note, not a record: it has no checkbox and no row detail); it renders with
+  `object` and `row`. A panel whose rows are computed returns them from
+  `DataTablePanel.get_row_sequence` (see Tables).
 - `actions.py`: `PanelAction` is a button and what submitting it does; `FormPanelAction`,
   `CreateInstanceAction`, `EditAction` and `DeleteAction` build on it. `renders_in_footer` places
   an action in the panel footer or inline; `submit_buttons` names a form's buttons.
@@ -73,7 +74,8 @@ components; `Skill(fls-dev:frontend-styling)` owns the theme tokens.
   `show_as_of = True` draws "As of <time>" above the loaded body (`partials/as_of.html`, the
   `as_of` block of `panels/_lazy_region.html`). Use it when the data is gathered or cached: return
   the time it was computed as an aware datetime under `"as_of"` from `get_loaded_context`, or the
-  stamp is the render time, which is wrong for older data. A naive or non-datetime value raises.
+  stamp is the render time, which is wrong for older data. `None` (nothing computed yet) shows
+  the body with no stamp. A naive or non-datetime value raises.
 - `housekeeping.py`: the sweeps over `BulkActionRun`, `mark_unpicked_runs_failed`,
   `mark_orphaned_runs_failed` and `delete_finished_records`, or `sweep_run_records` for all three.
   The framework schedules none of them: the host does.
@@ -214,10 +216,12 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
   The `childRows` Alpine component in `alpine-components.js` runs the chevrons. A note row (an
   empty group's "no items") is `get_row_template_name`, not a column. `CourseOutlineTable` in
   `educator_interface/views.py` is the worked example, with `compact = True`.
-- A sequence-backed table returns a list of row objects from `get_queryset` for rows that are
-  computed, not stored. It pages and shows its empty state, nothing more: no `search_fields`, no
-  filters, no sortable column, no export columns, no bulk actions, and `noun` and `noun_singular`
-  must be set (there is no model to name them). The panel raises `ImproperlyConfigured` otherwise.
+- A sequence-backed table's panel overrides `get_row_sequence(request)` to return a list of row
+  objects for rows that are computed, not stored; `get_queryset` stays a `QuerySet` for every
+  other table. It pages and shows its empty state, nothing more: no `search_fields`, no filters,
+  no sortable column, no export columns, and `noun` and `noun_singular` must be set (there is no
+  model to name them), all checked when the panel class is defined. It has no bulk actions either;
+  that, and child rows with bulk actions, raise on render whether or not the user may run them.
 
 ### Filters and sorting
 

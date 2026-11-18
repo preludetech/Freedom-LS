@@ -449,10 +449,6 @@ class StubSequenceDataTable(DataTable):
     noun_singular = "stub item"
 
     @staticmethod
-    def get_queryset(request: HttpRequest) -> Sequence[object]:
-        return STUB_SEQUENCE_ROWS
-
-    @staticmethod
     def get_columns() -> list[Column]:
         return [
             Column(
@@ -469,7 +465,7 @@ class StubSequenceTablePanel(DataTablePanel):
     data_table = StubSequenceDataTable
     table_key = "sequence"
 
-    def get_queryset(self, request: HttpRequest) -> Sequence[object]:
+    def get_row_sequence(self, request: HttpRequest) -> Sequence[object]:
         return STUB_SEQUENCE_ROWS
 
 
@@ -505,7 +501,7 @@ class StubCompactTablePanel(DataTablePanel):
     data_table = StubCompactDataTable
     table_key = "compact"
 
-    def get_queryset(self, request: HttpRequest) -> Sequence[object]:
+    def get_row_sequence(self, request: HttpRequest) -> Sequence[object]:
         return STUB_SEQUENCE_ROWS
 
 
@@ -513,10 +509,6 @@ class StubChildRowsDataTable(StubSequenceDataTable):
     """A sequence table whose rows nest three levels deep."""
 
     has_child_rows = True
-
-    @staticmethod
-    def get_queryset(request: HttpRequest) -> Sequence[object]:
-        return STUB_CHILD_ROWS
 
     @staticmethod
     def get_child_rows(row: object) -> Sequence[object]:
@@ -538,7 +530,7 @@ class StubChildRowsTablePanel(DataTablePanel):
     data_table = StubChildRowsDataTable
     table_key = "childrows"
 
-    def get_queryset(self, request: HttpRequest) -> Sequence[object]:
+    def get_row_sequence(self, request: HttpRequest) -> Sequence[object]:
         return STUB_CHILD_ROWS
 
 
@@ -569,7 +561,7 @@ class StubLeadingColumnChildRowsTablePanel(DataTablePanel):
     data_table = StubLeadingColumnChildRowsDataTable
     table_key = "leadingchildrows"
 
-    def get_queryset(self, request: HttpRequest) -> Sequence[object]:
+    def get_row_sequence(self, request: HttpRequest) -> Sequence[object]:
         return STUB_CHILD_ROWS
 
 

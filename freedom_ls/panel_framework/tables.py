@@ -262,7 +262,7 @@ class ExportColumn:
 class DataTable:
     """Abstract class used for rendering data tables"""
 
-    #: Rows per page. None means the project's DEFAULT_PAGE_SIZE.
+    #: Rows per page. None means the project's PANEL_TABLE_PAGE_SIZE.
     page_size: int | None = None
     search_fields: list[str] = []
     #: A template that replaces the default card body (the primary/secondary
@@ -334,11 +334,10 @@ class DataTable:
     default_sort: str = ""
 
     @staticmethod
-    def get_queryset(request: HttpRequest) -> QuerySet | Sequence[object]:
-        """The table's rows: a queryset, or a sequence of row objects for a
-        table whose rows are computed rather than stored. A sequence supports
-        paging and the empty state only: no search, filters, sorting, export
-        or bulk selection, and `noun` and `noun_singular` must be set."""
+    def get_queryset(request: HttpRequest) -> QuerySet:
+        """The table's rows. A table whose rows are computed rather than
+        stored has its panel override `DataTablePanel.get_row_sequence`
+        instead."""
         raise NotImplementedError
 
     @staticmethod
@@ -456,7 +455,9 @@ class DataTable:
     @classmethod
     def get_page_size(cls) -> int:
         """Rows per page: the table's own `page_size`, else the project default."""
-        return cls.page_size if cls.page_size is not None else config.DEFAULT_PAGE_SIZE
+        return (
+            cls.page_size if cls.page_size is not None else config.PANEL_TABLE_PAGE_SIZE
+        )
 
     @classmethod
     def get_rows(
@@ -554,7 +555,11 @@ class DataTable:
                 f"{cls.__name__} sets `has_child_rows` and a row detail, which "
                 "both claim the first cell of a row."
             )
-        rows = list(_flatten_rows(cls, page_obj, region_id, itertools.count(1)))
+        rows = (
+            list(_flatten_child_rows(cls, page_obj, region_id, itertools.count(1)))
+            if cls.has_child_rows
+            else [_row_dict(cls, row) for row in page_obj]
+        )
         return {
             "columns": columns,
             "header_columns": header_columns,
@@ -606,7 +611,24 @@ def _lazy_label(table: type[DataTable], row: object) -> SimpleLazyObject:
     return SimpleLazyObject(lambda: table.get_row_label(row))
 
 
-def _flatten_rows(
+def _row_dict(table: type[DataTable], row: object) -> dict[str, object]:
+    """One row's dict, as a table without child rows renders it."""
+    row_template_name = table.get_row_template_name(row)
+    return {
+        "object": row,
+        "label": _lazy_label(table, row),
+        "has_row_detail": table.row_detail_template_name is not None
+        and row_template_name is None
+        and table.has_row_detail(row),
+        "row_template_name": row_template_name,
+        "row_id": "",
+        "depth": 0,
+        "parent_ids": (),
+        "child_row_ids": [],
+    }
+
+
+def _flatten_child_rows(
     table: type[DataTable],
     rows: Iterable[object],
     region_id: str,
@@ -616,28 +638,18 @@ def _flatten_rows(
     """Each row's dict, followed by its descendants' in display order.
     `numbers` is shared down the recursion so every row id is unique."""
     for row in rows:
-        row_template_name = table.get_row_template_name(row)
         row_id = f"{region_id}-row-{next(numbers)}"
-        children = (
-            list(
-                _flatten_rows(
-                    table,
-                    table.get_child_rows(row),
-                    region_id,
-                    numbers,
-                    (*parent_ids, row_id),
-                )
+        children = list(
+            _flatten_child_rows(
+                table,
+                table.get_child_rows(row),
+                region_id,
+                numbers,
+                (*parent_ids, row_id),
             )
-            if table.has_child_rows
-            else []
         )
         yield {
-            "object": row,
-            "label": _lazy_label(table, row),
-            "has_row_detail": table.row_detail_template_name is not None
-            and row_template_name is None
-            and table.has_row_detail(row),
-            "row_template_name": row_template_name,
+            **_row_dict(table, row),
             "row_id": row_id,
             "depth": len(parent_ids),
             "parent_ids": parent_ids,
@@ -649,13 +661,6 @@ def _flatten_rows(
             ],
         }
         yield from children
-
-
-def _require_queryset(rows: QuerySet | Sequence[object], what: str) -> QuerySet:
-    """`rows` as a queryset, for a feature a sequence cannot serve."""
-    if not isinstance(rows, QuerySet):
-        raise ImproperlyConfigured(f"{what} needs a queryset, not a sequence of rows.")
-    return rows
 
 
 def _toolbar_entry(

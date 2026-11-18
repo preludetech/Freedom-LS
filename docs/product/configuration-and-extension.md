@@ -183,7 +183,7 @@ A deployment that has a good reason to accept one of these can silence it indivi
 | `REPORTS_STORAGE_ALIAS` | Storage the cohort report PDF is written to. See [security and data handling](./security-and-data-handling.md). |
 | `CONTENT_MEDIA_STORAGE_ALIAS` | Storage course file assets are written to. See [deployment](./deployment.md). |
 | `ORGANISATION_LOGO_STORAGE_ALIAS` | Storage an organisation's logo is written to. See [deployment](./deployment.md). |
-| `DEFAULT_PAGE_SIZE` | How many rows a table in the [educator interface](./educator-interface.md) shows per page when it sets no size of its own; defaults to 10. |
+| `PANEL_TABLE_PAGE_SIZE` | How many rows a table in the [educator interface](./educator-interface.md) shows per page when it sets no size of its own; defaults to 10. |
 | `REPORTS_MAX_LEARNERS` | Caps the cohort size a report will generate for, bounding render time and memory. |
 | `REPORTS_MAX_QUIZ_COLUMNS` | Caps how many quiz columns a course's landscape summary table carries before splitting into a continued table. |
 | `REPORTS_SCREEN_CACHE_SECONDS` | How long the educator interface's on-screen [reporting](./educator-interface.md#reporting) figures are kept before being recalculated; defaults to five minutes. Longer eases database load on busy pages, shorter shows new progress sooner. |

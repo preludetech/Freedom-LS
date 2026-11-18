@@ -104,13 +104,13 @@ def test_a_column_with_no_url_is_not_a_link() -> None:
 
 def test_a_table_with_no_page_size_pages_at_the_declared_default(settings) -> None:
     """Ten rows is few enough that the pager sits on screen below the table."""
-    del settings.DEFAULT_PAGE_SIZE
+    del settings.PANEL_TABLE_PAGE_SIZE
 
     assert DataTable.get_page_size() == 10
 
 
 def test_a_table_with_no_page_size_pages_at_the_projects_setting(settings) -> None:
-    settings.DEFAULT_PAGE_SIZE = 3
+    settings.PANEL_TABLE_PAGE_SIZE = 3
 
     assert DataTable.get_page_size() == 3
 
@@ -119,7 +119,7 @@ def test_a_table_that_sets_page_size_ignores_the_setting(settings) -> None:
     class SizedTable(DataTable):
         page_size = 7
 
-    settings.DEFAULT_PAGE_SIZE = 3
+    settings.PANEL_TABLE_PAGE_SIZE = 3
 
     assert SizedTable.get_page_size() == 7
 
@@ -2312,7 +2312,7 @@ def test_a_sequence_table_page_two_holds_the_rows_after_the_page_size(
 
 
 class _EmptySequenceTablePanel(StubSequenceTablePanel):
-    def get_queryset(self, request: HttpRequest) -> list[object]:
+    def get_row_sequence(self, request: HttpRequest) -> list[object]:
         return []
 
 
@@ -2401,32 +2401,31 @@ def test_a_leaf_row_has_no_child_row_ids() -> None:
     assert rows[6]["child_row_ids"] == []
 
 
+_MANY_GROUPS: list[StubSequenceRow] = [
+    StubSequenceRow(
+        name="a",
+        kind="a",
+        children=(
+            StubSequenceRow(name="a1", kind="a"),
+            StubSequenceRow(name="a2", kind="a"),
+        ),
+    ),
+    StubSequenceRow(
+        name="b", kind="a", children=(StubSequenceRow(name="b1", kind="a"),)
+    ),
+    StubSequenceRow(name="c", kind="a"),
+]
+
+
 class _ManyGroupsTable(StubChildRowsDataTable):
     page_size = 2
-
-    @staticmethod
-    def get_queryset(request: HttpRequest) -> list[StubSequenceRow]:
-        return [
-            StubSequenceRow(
-                name="a",
-                kind="a",
-                children=(
-                    StubSequenceRow(name="a1", kind="a"),
-                    StubSequenceRow(name="a2", kind="a"),
-                ),
-            ),
-            StubSequenceRow(
-                name="b", kind="a", children=(StubSequenceRow(name="b1", kind="a"),)
-            ),
-            StubSequenceRow(name="c", kind="a"),
-        ]
 
 
 class _ManyGroupsPanel(StubChildRowsTablePanel):
     data_table = _ManyGroupsTable
 
-    def get_queryset(self, request: HttpRequest) -> list[StubSequenceRow]:
-        return _ManyGroupsTable.get_queryset(request)
+    def get_row_sequence(self, request: HttpRequest) -> list[StubSequenceRow]:
+        return _MANY_GROUPS
 
 
 def test_a_page_of_child_rows_ends_with_the_last_top_level_rows_last_descendant() -> (
@@ -2462,13 +2461,13 @@ def test_get_child_rows_is_not_called_without_has_child_rows() -> None:
     assert calls == []
 
 
-def test_a_table_without_child_rows_still_gives_each_row_the_four_keys() -> None:
+def test_a_table_without_child_rows_gives_each_row_no_row_id_or_relatives() -> None:
     rows = _child_row_dicts(StubSequenceTablePanel)
 
     assert rows[0]["depth"] == 0
     assert rows[0]["parent_ids"] == ()
     assert rows[0]["child_row_ids"] == []
-    assert rows[0]["row_id"]
+    assert rows[0]["row_id"] == ""
 
 
 def test_child_rows_with_a_row_detail_fail_loudly() -> None:

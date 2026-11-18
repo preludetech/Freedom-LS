@@ -19,7 +19,6 @@ from freedom_ls.panel_framework.actions import count_phrase
 from freedom_ls.panel_framework.config import config
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
-from freedom_ls.panel_framework.tables import _require_queryset
 
 __all__ = [
     "BULK_ACTIONS",
@@ -657,9 +656,7 @@ def resolve_selection(
     """
 
     def parsed(keys: list[str]) -> list[object]:
-        pk_field = _require_queryset(
-            panel.get_queryset(request), "Bulk selection"
-        ).model._meta.pk
+        pk_field = panel.get_queryset(request).model._meta.pk
         values: list[object] = []
         for key in keys:
             try:
@@ -673,8 +670,5 @@ def resolve_selection(
         # string, so narrow() reads it from request.GET exactly as a render
         # or export would.
         _query, rows = panel.narrow(request)
-        return _require_queryset(rows, "Bulk selection").exclude(
-            pk__in=parsed(selection.excluded)
-        )
-    scoped = _require_queryset(panel.get_queryset(request), "Bulk selection")
-    return scoped.filter(pk__in=parsed(selection.keys))
+        return rows.exclude(pk__in=parsed(selection.excluded))
+    return panel.get_queryset(request).filter(pk__in=parsed(selection.keys))

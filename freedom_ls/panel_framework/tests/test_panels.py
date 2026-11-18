@@ -20,14 +20,13 @@ from django.test import RequestFactory
 from freedom_ls.panel_framework.actions import DeleteAction, PanelAction
 from freedom_ls.panel_framework.bulk_actions import (
     BulkAction,
-    Selection,
-    resolve_selection,
 )
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.filters import BooleanFilter, TableFilter
 from freedom_ls.panel_framework.panels import (
     PROMOTED_BULK_ACTION_COUNT,
     BulkActionEntry,
+    DataTablePanel,
     InstanceDetailsPanel,
     Panel,
     PanelStack,
@@ -63,6 +62,7 @@ from .stub_panels import (
     StubDetailsPanel,
     StubDiscardBulkAction,
     StubExportBulkAction,
+    StubForbiddenBulkAction,
     StubHiddenPanel,
     StubPairStack,
     StubPurgeBulkAction,
@@ -94,9 +94,7 @@ class _ModelPanel(Panel):
 
 class _NarrowedTablePanel(StubDataTablePanel):
     def get_queryset(self, request: HttpRequest) -> QuerySet:
-        return cast(QuerySet, super().get_queryset(request)).filter(
-            name__startswith="keep"
-        )
+        return super().get_queryset(request).filter(name__startswith="keep")
 
 
 class _GatedPanel(Panel):
@@ -995,23 +993,6 @@ def test_a_badge_row_and_a_date_row_render_through_their_components(
     assert time.get("datetime") == "2026-11-03"
 
 
-def _sequence_panel(table: type[DataTable] = StubSequenceDataTable) -> Panel:
-    class _Panel(StubSequenceTablePanel):
-        data_table = table
-
-    request = RequestFactory().get("/p")
-    return _Panel(
-        PanelContext(
-            request=request,
-            instance=None,
-            base_url="/p",
-            name="",
-            config=SectionConfigBase,
-            page_url="/p",
-        )
-    )
-
-
 def _sequence_table(**attributes: object) -> type[DataTable]:
     return type("_SequenceTable", (StubSequenceDataTable,), attributes)
 
@@ -1045,37 +1026,52 @@ def _an_export_column() -> list[ExportColumn]:
         ({"noun": ""}, "noun"),
     ],
 )
-def test_a_sequence_table_using_a_query_only_feature_fails_loudly(
+def test_a_sequence_table_using_a_query_only_feature_fails_when_defined(
     attributes: dict[str, object], offence: str
 ) -> None:
-    panel = cast(
-        "StubSequenceTablePanel", _sequence_panel(_sequence_table(**attributes))
-    )
+    table = _sequence_table(**attributes)
 
     with pytest.raises(ImproperlyConfigured, match=offence):
-        panel.narrow(panel.request)
+
+        class _Panel(StubSequenceTablePanel):
+            data_table = table
 
 
-def test_a_sequence_table_narrows_to_the_rows_unchanged() -> None:
-    panel = cast("StubSequenceTablePanel", _sequence_panel())
-
-    _query, rows = panel.narrow(panel.request)
-
-    assert rows == panel.get_queryset(panel.request)
+def test_a_queryset_table_may_use_the_query_only_features() -> None:
+    class _Panel(DataTablePanel):
+        data_table = _sequence_table(search_fields=["name"])
+        table_key = "queryset"
 
 
-def test_bulk_selection_over_a_sequence_table_fails_loudly() -> None:
-    panel = cast("StubSequenceTablePanel", _sequence_panel())
+def _bound(panel_class: type[DataTablePanel]) -> DataTablePanel:
+    return panel_class(
+        PanelContext(
+            request=RequestFactory().get("/p"),
+            instance=None,
+            base_url="/p",
+            name="",
+            config=SectionConfigBase,
+            page_url="/p",
+        )
+    )
 
-    with pytest.raises(ImproperlyConfigured, match="Bulk selection"):
-        resolve_selection(panel, panel.request, Selection(mode="keys", keys=["1"]))
+
+def test_a_sequence_table_with_bulk_actions_fails_loudly() -> None:
+    class _Panel(StubSequenceTablePanel):
+        def get_bulk_actions(self) -> list[BulkAction]:
+            return [StubBulkAction()]
+
+    with pytest.raises(ImproperlyConfigured, match="bulk actions"):
+        _bound(_Panel).get_context_data()
 
 
-def test_export_over_a_sequence_table_fails_loudly() -> None:
-    panel = cast("StubSequenceTablePanel", _sequence_panel())
+def test_child_rows_with_a_bulk_action_this_user_may_not_run_fail_loudly() -> None:
+    class _Panel(StubChildRowsTablePanel):
+        def get_bulk_actions(self) -> list[BulkAction]:
+            return [StubForbiddenBulkAction()]
 
-    with pytest.raises(ImproperlyConfigured, match="CSV export"):
-        panel.get_export_queryset(panel.request)
+    with pytest.raises(ImproperlyConfigured, match="bulk actions"):
+        _bound(_Panel).get_context_data()
 
 
 def test_child_rows_with_bulk_actions_fail_loudly() -> None:

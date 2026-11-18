@@ -8117,31 +8117,40 @@ def test_a_multi_page_form_expands_into_one_row_per_page(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_course_content_pages_top_level_rows_past_the_page_size(staff_client: Client):
+def test_course_content_shows_every_row_on_one_page(staff_client: Client):
     course = CourseFactory()
     topics = [TopicFactory(title=f"Topic {number:03d}") for number in range(60)]
     for order, topic in enumerate(topics):
         ContentCollectionItemFactory(
             collection_object=course, child_object=topic, order=order
         )
-    organisation = OrganisationFactory()
-    url = _interface_url(organisation.slug, f"courses/{course.pk}")
 
-    first = _get_document(staff_client, url)
-    second = _get_document(staff_client, f"{url}?outline-page=2")
+    panel = _course_content_panel(staff_client, course)
 
-    (first_panel,) = first.cssselect("section[data-panel='content']")
-    (second_panel,) = second.cssselect("section[data-panel='content']")
-    page_size = len(_outline_rows(first_panel))
-    assert 1 < page_size < 61
-    assert "Showing 1" in first_panel.text_content()
-    assert "course outline items" in first_panel.text_content()
-    second_titles = [
-        row.cssselect("td .font-medium")[0].text_content().strip()
-        for row in _outline_rows(second_panel)
-    ]
-    # Page one holds the course details row and the first topics.
-    assert second_titles[0] == f"Topic {page_size - 1:03d}"
+    assert len(_outline_rows(panel)) == 61
+    assert "outline-page=" not in lxml.html.tostring(panel, encoding="unicode")
+    (count,) = panel.cssselect("[data-entry-count]")
+    assert count.text_content().strip() == "60 course outline items"
+
+
+@pytest.mark.django_db
+def test_course_content_counts_nested_rows_but_not_the_details_or_notes(
+    staff_client: Client,
+):
+    course = CourseFactory()
+    part = CoursePartFactory(title="Warm up")
+    ContentCollectionItemFactory(collection_object=course, child_object=part, order=0)
+    ContentCollectionItemFactory(
+        collection_object=part, child_object=TopicFactory(), order=0
+    )
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=CoursePartFactory(), order=1
+    )
+
+    panel = _course_content_panel(staff_client, course)
+
+    (count,) = panel.cssselect("[data-entry-count]")
+    assert count.text_content().strip() == "3 course outline items"
 
 
 @pytest.mark.django_db
@@ -8173,6 +8182,7 @@ def test_course_content_empty_course_shows_empty_state(staff_client: Client):
     assert "No content in this course yet." in panel.text_content()
     assert _outline_numbers(panel) == []
     assert len(_outline_rows(panel)) == 2
+    assert panel.cssselect("[data-entry-count]") == []
 
 
 @pytest.mark.django_db

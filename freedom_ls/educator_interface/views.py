@@ -206,6 +206,7 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,
     PanelAction,
+    count_phrase,
 )
 from freedom_ls.panel_framework.bulk_actions import BulkAction, bulk_actions_for_table
 from freedom_ls.panel_framework.config import config as panel_framework_config
@@ -745,8 +746,10 @@ class LearnerCohortsPanel(DataTablePanel):
                 cohort=OuterRef("pk"), learner=self.instance
             ).values("created_at")[:1]
         )
-        queryset: QuerySet = cast(QuerySet, super().get_queryset(request)).filter(
-            cohortmembership__learner=self.instance
+        queryset: QuerySet = (
+            super()
+            .get_queryset(request)
+            .filter(cohortmembership__learner=self.instance)
         )
         annotated: QuerySet = queryset.annotate(joined_at=joined_at)
         return annotated
@@ -1085,8 +1088,10 @@ class HistoryPanel(DataTablePanel):
         return context
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
-        return cast(QuerySet, super().get_queryset(request)).filter(
-            subjects__contains=[subject_key(cast(Model, self.instance))]
+        return (
+            super()
+            .get_queryset(request)
+            .filter(subjects__contains=[subject_key(cast(Model, self.instance))])
         )
 
     def get_export_queryset(self, request: HttpRequest) -> QuerySet:
@@ -1558,8 +1563,8 @@ class CohortLearnersPanel(DataTablePanel):
         return context
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
-        return cast(QuerySet, super().get_queryset(request)).filter(
-            cohortmembership__cohort=self.instance
+        return (
+            super().get_queryset(request).filter(cohortmembership__cohort=self.instance)
         )
 
     def get_export_scope_slug(self, request: HttpRequest) -> str:
@@ -1577,9 +1582,7 @@ class CohortCoursesPanel(DataTablePanel):
     refresh_events = (COHORT_CHANGED, REGISTRATION_CHANGED)
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
-        return cast(QuerySet, super().get_queryset(request)).filter(
-            cohort=self.instance
-        )
+        return super().get_queryset(request).filter(cohort=self.instance)
 
     def get_actions(self) -> list[PanelAction]:
         # Deactivate renders per row, not in the footer: the registration cell
@@ -2210,6 +2213,16 @@ def outline_rows(course: Course) -> list[OutlineRow]:
     return rows
 
 
+def _outline_content_count(rows: Sequence[OutlineRow]) -> int:
+    """The outline's items at every depth: neither the course details row
+    nor a note is one."""
+    return sum(
+        (0 if row.kind == "course" or row.note else 1)
+        + _outline_content_count(row.children)
+        for row in rows
+    )
+
+
 class CourseOutlineTable(DataTable):
     has_child_rows = True
     compact = True
@@ -2245,6 +2258,17 @@ class CourseOutlineTable(DataTable):
             ),
         ]
 
+    @classmethod
+    def get_rows(
+        cls,
+        request: HttpRequest,
+        queryset: QuerySet | Sequence[object],
+        query: TableQuery,
+    ) -> Page:
+        """Every row on one page. Paging counts top-level rows only, so a
+        page of them could hold any number of nested rows."""
+        return Paginator(queryset, max(len(queryset), 1)).get_page(1)
+
     @staticmethod
     def get_child_rows(row: object) -> Sequence[object]:
         return cast(OutlineRow, row).children
@@ -2267,8 +2291,18 @@ class CourseContentPanel(DataTablePanel):
     data_table = CourseOutlineTable
     table_key = "outline"
 
-    def get_queryset(self, request: HttpRequest) -> Sequence[object]:
+    @cached_property
+    def outline(self) -> list[OutlineRow]:
         return outline_rows(cast(Course, self.instance))
+
+    def get_row_sequence(self, request: HttpRequest) -> Sequence[object]:
+        return self.outline
+
+    def entry_count(self, request: HttpRequest, page_obj: Page) -> str:
+        count = _outline_content_count(self.outline)
+        if count == 0:
+            return ""
+        return count_phrase(count, self.noun_singular(request), self.noun(request))
 
     def get_context_data(self) -> dict[str, object]:
         return {**super().get_context_data(), "course": cast(Course, self.instance)}
@@ -2422,9 +2456,7 @@ class CourseCohortRegistrationsPanel(DataTablePanel):
     table_key = "cohort_registrations"
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
-        return cast(QuerySet, super().get_queryset(request)).filter(
-            course=self.instance
-        )
+        return super().get_queryset(request).filter(course=self.instance)
 
 
 class CourseLearnerRegistrationDataTable(DataTable):
@@ -2456,9 +2488,7 @@ class CourseLearnerRegistrationsPanel(DataTablePanel):
     table_key = "learner_registrations"
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
-        return cast(QuerySet, super().get_queryset(request)).filter(
-            course=self.instance
-        )
+        return super().get_queryset(request).filter(course=self.instance)
 
 
 class CoursePanelStack(PanelStack):

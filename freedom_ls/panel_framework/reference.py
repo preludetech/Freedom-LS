@@ -117,15 +117,11 @@ EXAMPLE_NESTED_ITEMS: list[ExampleItem] = [
 
 
 class _ExampleTable(DataTable):
-    """The shared shape of the example tables: a sequence of `ExampleItem`
-    rows, so there is no model behind them."""
+    """The shared shape of the example tables, over a sequence of
+    `ExampleItem` rows, so there is no model behind them."""
 
     noun = "items"
     noun_singular = "item"
-
-    @staticmethod
-    def get_queryset(request: HttpRequest) -> Sequence[object]:
-        return EXAMPLE_ITEMS
 
     @staticmethod
     def get_columns() -> list[Column]:
@@ -156,10 +152,6 @@ class ChildRowsExampleTable(_ExampleTable):
     has_child_rows = True
 
     @staticmethod
-    def get_queryset(request: HttpRequest) -> Sequence[object]:
-        return EXAMPLE_NESTED_ITEMS
-
-    @staticmethod
     def get_child_rows(row: object) -> Sequence[object]:
         return cast(ExampleItem, row).children
 
@@ -175,15 +167,19 @@ class CompactExampleTable(_ExampleTable):
 
 
 def _render_table(
-    request: HttpRequest, table: type[DataTable], key: str, region_id: str
+    request: HttpRequest,
+    table: type[DataTable],
+    rows: Sequence[object],
+    key: str,
+    region_id: str,
 ) -> SafeString:
     """The table's region as a host gets it: the framework's own context and
-    template, over the example rows."""
+    template, over `rows`."""
     query = table.parse_query(request, key)
     context = table.get_context(
         request,
         query,
-        table.get_queryset(request),
+        rows,
         base_url=request.path,
         page_url=request.path,
         region_id=region_id,
@@ -256,13 +252,25 @@ def example_context(request: HttpRequest) -> dict[str, object]:
     )
     data_tables = {
         "row_detail": _render_table(
-            request, RowDetailExampleTable, "detail", "data-table-row-detail-region"
+            request,
+            RowDetailExampleTable,
+            EXAMPLE_ITEMS,
+            "detail",
+            "data-table-row-detail-region",
         ),
         "child_rows": _render_table(
-            request, ChildRowsExampleTable, "childrows", "data-table-child-rows-region"
+            request,
+            ChildRowsExampleTable,
+            EXAMPLE_NESTED_ITEMS,
+            "childrows",
+            "data-table-child-rows-region",
         ),
         "compact": _render_table(
-            request, CompactExampleTable, "compact", "data-table-compact-region"
+            request,
+            CompactExampleTable,
+            EXAMPLE_ITEMS,
+            "compact",
+            "data-table-compact-region",
         ),
     }
     return {
