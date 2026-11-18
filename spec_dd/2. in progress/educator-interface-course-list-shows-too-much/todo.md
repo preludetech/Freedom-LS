@@ -27,11 +27,12 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (user) Decide what to do about QA bug: two courses with the same title (Harbour's own and Northwind's shared Workplace Safety Essentials) are indistinguishable in the educator Courses list, course filters and register pickers — decide how to tell them apart, e.g. show the owning organisation beside a shared course (TDD: failing test first, then fix)
 - [x] (user) Keep or discard the edits the QA data helper made to .claude/agent-memory/sdd-qa-data-helper/reference_empty_db_baseline.md and reference_org_course_registration.md (left unstaged; CLAUDE.md says not to use memory): `git checkout -- .claude/agent-memory/` to discard
 - [x] (user) Fix the QA plan 3. frontend_qa.md: 1.1 step 4 searches a Courses list that has no search box, its URLs omit the organisations/ segment, and 2.2 names a 'Course registrations' panel that is the learner Overview's 'Registrations' panel
+- [ ] (user) Look at freedom_ls/referral_tracking/tests/test_models.py::test_the_touch_code_lookup_uses_the_upper_index (from main, not this branch): it failed once in the full parallel run after the rebase (the planner picked another index) and passed 3 of 3 when re-run alone
 
 ## 4. Documentation and pull request
 
-- [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
-- [ ] (cmd) In `claude_plugins/fls-dev/skills/domain-glossary/SKILL.md`, add "owning organisation" and "course share" and qualify the `peer` row's "a course is not owned by one" (spec: Documentation and downstream, glossary bullet)
+- [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [x] (cmd) In `claude_plugins/fls-dev/skills/domain-glossary/SKILL.md`, add "owning organisation" and "course share" and qualify the `peer` row's "a course is not owned by one" (spec: Documentation and downstream, glossary bullet)
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
