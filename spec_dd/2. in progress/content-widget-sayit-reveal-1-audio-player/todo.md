@@ -16,11 +16,12 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
 - [ ] (user) Force-push the rebased branch (git push origin HEAD --force-with-lease --force-if-includes): the branch was rebased onto main and the remote still holds the pre-rebase history, so later pushes fail until this runs
 - [ ] (user) Listen to the four demo recordings in demo_content/functionality_demo_content_widgets/2. media/audio/: bravo.mp3 is 2.8 s and the others about 0.5 s after silence trimming, so either Bravo kept noise or the others lost part of the word; re-run the conversion with a different threshold if one sounds wrong
+- [ ] (user) Run QA Test 8 in `3. frontend_qa.md` on real devices: Test 2 steps 1–3 on an iPhone in Safari with the silent switch on and off, and on an Android phone in Chrome, then the VoiceOver or NVDA checks. The automated run had no hardware or screen reader; note the results in `qa_report.md`
 
 ## 4. Documentation and pull request
 
