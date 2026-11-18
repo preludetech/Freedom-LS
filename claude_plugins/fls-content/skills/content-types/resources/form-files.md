@@ -359,6 +359,62 @@ required: true
 
 ---
 
+## Sections a question tests (`sections`)
+
+`sections` names the topics or course parts a question tests. `content_save` stores the link, and
+the admin shows it on the question. Nothing shows the sections to learners yet. It works on every
+form `strategy`, so a bank form need not be a `QUIZ`.
+
+```yaml
+sections:
+  - ../01. key-ideas/content.md   # a topic's markdown file
+  - ../part.yaml                  # or a part's part.yaml
+```
+
+Each entry is a path to a topic markdown file or a `part.yaml`, relative to the directory of the
+file that holds the `sections:` key. See [course-files.md](course-files.md) for path syntax.
+
+- Put `sections:` on the form (`form.md`) to set a default for every question.
+- Put it on a question to replace the form's list for that question. A question without the key
+  inherits the form's list. `sections: []` means the question tests no section, even when the form
+  names some.
+- Order carries no meaning, and each section may be named only once per list.
+- Every `content_save` rewrites each question's sections to exactly its effective list. Removing a
+  path or the key removes the link on the next load.
+- A target must sit inside the directory passed to `content_save`, because only files loaded in
+  that run are linked. A target outside it, a path with no file, or a file that is not a topic or
+  `part.yaml` fails the load with an "Invalid section reference" error. The error names the
+  declaring file, the field (`sections[<i>]`) and the problem. Every bad entry is reported at once,
+  before anything is written. A moved or renamed target is not followed: fix the path.
+- A form that sits in no course (a bank form) needs no placement, but where it sits matters. Put
+  it in a **sibling directory of the courses**. Do not put it in a course directory that has no
+  `children:` list: `content_save` auto-discovers it and places it in that course. Do not put it
+  under a `_` prefix: files and directories starting with `_` are not loaded.
+
+Example, from `functionality_demo_course_parts`. The form defaults to the whole part, and the
+question overrides it with one topic:
+
+```yaml
+# 03. knowledge-check/form.md
+---
+content_type: FORM
+strategy: QUIZ
+title: Knowledge Check
+sections:
+  - ../part.yaml
+---
+```
+
+```yaml
+# 03. knowledge-check/1. page.yaml (a question section)
+question: What is a course part?
+type: multiple_choice
+sections:
+  - ../01. key-ideas/content.md
+```
+
+---
+
 ## Full page YAML file example
 
 ```yaml
