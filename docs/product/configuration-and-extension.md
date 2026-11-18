@@ -131,6 +131,7 @@ Some wiring mistakes are caught without opting in to anything: FLS reports them 
 
 - A required setting left unset, or a course-access backend belonging to an app the project does not install, stops start-up.
 - A missing piece of sitemap wiring is flagged as a warning, not a blocker — a deployment that supplies its own is fine.
+- A production deployment whose background tasks would run inside the request or not at all is warned, because the larger bulk actions an educator runs need a [worker](./deployment.md#background-tasks).
 
 A deployment that has a good reason to accept one of these can silence it individually. Removing an FLS app removes its checks along with it.
 
