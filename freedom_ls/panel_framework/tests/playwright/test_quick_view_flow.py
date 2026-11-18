@@ -48,21 +48,6 @@ def _record_quick_view_requests(page: Page) -> list[str]:
     return urls
 
 
-def _go_back_and_wait_for_restore(page: Page) -> None:
-    """Go Back and wait until htmx has swapped the restored page in.
-
-    The URL changes as soon as Back runs, but htmx fetches the restored page
-    and replaces <body> later, so anything clicked before then is thrown away.
-    """
-    page.evaluate(
-        "window.__historyRestored = false;"
-        "document.addEventListener('htmx:historyRestore',"
-        " () => { window.__historyRestored = true; }, {once: true})"
-    )
-    page.go_back()
-    page.wait_for_function("window.__historyRestored")
-
-
 def _fail_first_quick_view(page: Page) -> dict[str, int]:
     """Answer the first quick-view request with a 500, then let the rest through."""
     attempts = {"count": 0}
