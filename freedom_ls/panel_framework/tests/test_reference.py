@@ -14,11 +14,11 @@ import re
 import sys
 from collections import Counter
 from collections.abc import Iterator
+from contextlib import contextmanager
 from html.parser import HTMLParser
 
 import pytest
 import pytest_django.fixtures
-from pytest_mock import MockerFixture
 
 from django.contrib.auth import get_user_model
 from django.template.loader import render_to_string
@@ -291,9 +291,9 @@ def test_component_reference_does_not_resolve_without_debug(
         clear_url_caches()
 
 
-@pytest.fixture
-def debug_dev_server_urls(
-    settings: pytest_django.fixtures.SettingsWrapper, mocker: MockerFixture
+@contextmanager
+def _dev_server_urls(
+    settings: pytest_django.fixtures.SettingsWrapper, monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[None]:
     """Reload `config.urls` under `settings.DEBUG = True`, the dev-server route.
 
@@ -314,8 +314,11 @@ def debug_dev_server_urls(
 
     Restores `DEBUG`, `ROOT_URLCONF`, the reloaded module and the URL
     resolver cache on teardown, so no other test sees the dev-server route.
+    Only the stand-in's own `sys.modules` key is restored: `config.urls` may be
+    imported here for the first time, and un-importing the URL modules it pulls
+    in would make the next import re-register their DRF routes.
     """
-    mocker.patch.dict(sys.modules, {"debug_toolbar.toolbar": _FakeDebugToolbarModule()})
+    monkeypatch.setitem(sys.modules, "debug_toolbar.toolbar", _FakeDebugToolbarModule())
 
     config_urls = importlib.import_module("config.urls")
     original_debug = settings.DEBUG
@@ -335,6 +338,29 @@ def debug_dev_server_urls(
         settings.ROOT_URLCONF = original_root_urlconf
         importlib.reload(config_urls)
         clear_url_caches()
+
+
+@pytest.fixture
+def debug_dev_server_urls(
+    settings: pytest_django.fixtures.SettingsWrapper, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[None]:
+    """Reload `config.urls` under `settings.DEBUG = True`; see `_dev_server_urls`."""
+    with _dev_server_urls(settings, monkeypatch):
+        yield
+
+
+@pytest.mark.needs_fls_host
+def test_dev_server_urls_fixture_keeps_modules_first_imported_inside_it(
+    settings: pytest_django.fixtures.SettingsWrapper, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tearing the fixture down used to drop every module first imported
+    while it was active, so the API URL modules were re-imported later and
+    DRF raised "basename already registered"."""
+    monkeypatch.delitem(sys.modules, "config.urls", raising=False)
+    monkeypatch.delitem(sys.modules, "freedom_ls.api.urls", raising=False)
+    with _dev_server_urls(settings, monkeypatch):
+        assert "freedom_ls.api.urls" in sys.modules
+    assert "freedom_ls.api.urls" in sys.modules
 
 
 @pytest.mark.needs_fls_host
