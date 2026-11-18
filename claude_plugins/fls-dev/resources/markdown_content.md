@@ -26,7 +26,7 @@ html = topic.rendered_content()
 
 **Location:** `freedom_ls/content_engine/templates/cotton/`
 
-Includes `admonition.html`, `flashcard.html`, `accordion.html`, `youtube.html`, `picture.html`, `content-link.html`.
+Includes `admonition.html`, `flashcard.html`, `accordion.html`, `youtube.html`, `picture.html`, `content-link.html`, `audio.html`.
 
 **Usage:**
 ```markdown
@@ -45,6 +45,7 @@ Includes `admonition.html`, `flashcard.html`, `accordion.html`, `youtube.html`, 
 <c-youtube video_id="abc123"></c-youtube>
 <c-picture src="images/file.svg" alt="Alt text"></c-picture>
 <c-content-link path="other.md">link</c-content-link>
+<c-audio src="audio/file.mp3" label="Listen" respelling="ow-dee-oh"></c-audio>
 ```
 
 `c-admonition` `type` values: `note`, `tip`, `important`, `warning`, `danger`, `key_takeaways`, `checklist`. Unknown types fall back to `note`.
@@ -59,6 +60,7 @@ Includes `admonition.html`, `flashcard.html`, `accordion.html`, `youtube.html`, 
    }
    ```
 3. Use in markdown: `<c-name attr1="value"></c-name>`
+4. A widget that needs its own endpoint puts it in the `content_engine` URLconf (`freedom_ls/content_engine/urls.py`, namespace `content_engine`, mounted under `content/`). `audio_file` is the example: `c-audio` points its button at `content_engine:audio_file`, which redirects to a freshly signed URL.
 
 The current allowlist (from `config/settings_base.py`) is:
 ```python
@@ -77,6 +79,7 @@ MARKDOWN_ALLOWED_TAGS = {
     "c-flashcard": {"size"},
     "c-accordion": {"title", "open"},
     "c-slot": {"name"},
+    "c-audio": {"src", "label", "respelling"},
 }
 ```
 
