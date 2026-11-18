@@ -24,6 +24,15 @@ components; `Skill(fls-dev:frontend-styling)` owns the theme tokens.
   `HeaderStat` feed the page header.
 - `tables.py`: `DataTable` and `TableQuery`, each table's own slice of the query string (search,
   sort, page, filters), so two tables on one page never read each other's parameters.
+  A table's rows per page are its `page_size`, else the project setting `DEFAULT_PAGE_SIZE`
+  (default 10); set `page_size` only for a table that needs another count. `compact = True`
+  shortens rows from `md` up, for a dense table (an outline); cards keep their padding.
+  `row_detail_template_name` renders a template under each row, behind a toggle (a disclosure
+  below `md`); `has_row_detail(row)` hides it for a row with nothing to show. `has_child_rows`
+  with `get_child_rows(row)` nests full rows under a group row (see Tables). A per-row template
+  `get_row_template_name(row)` replaces a row's cells from the primary column to the last with
+  that template (for a note, not a record); it renders with `object` and `row`. A table whose
+  rows are computed returns a sequence from `get_queryset` (see Tables).
 - `actions.py`: `PanelAction` is a button and what submitting it does; `FormPanelAction`,
   `CreateInstanceAction`, `EditAction` and `DeleteAction` build on it. `renders_in_footer` places
   an action in the panel footer or inline; `submit_buttons` names a form's buttons.
@@ -33,6 +42,12 @@ components; `Skill(fls-dev:frontend-styling)` owns the theme tokens.
   cascade. `ReasonMixin` adds the reason dialog: a `ReasonForm` (`forms.py`, `reason_form_class`)
   whose field `modal/confirm.html` renders in the body, validated in `handle_submit`. A host
   sets `reason_max_length` on its `ReasonForm` subclass to the length its own store takes.
+  `reason_required = True` refuses an empty reason (use it when the record needs a why). A
+  `reason_choices` list of `(value, label)` pairs adds a choice ahead of the text, which becomes
+  its "Details"; a choice is then always required, whatever `reason_required` says. Override
+  `get_reason_choices(ctx)` when the list is per request; the same list renders and validates.
+  The submit reads the text from `ctx.reason` and the choice's value from `ctx.reason_choice`.
+  With neither option set the dialog is the plain optional reason.
   `refusal_response(ctx, *, title, message, status=422)` renders a refusal in
   `modal/message.html`, and `ConfirmAction.refuse` calls it. `row_param` names the parameter a
   row-scoped action reads, and `get_row_object(ctx)` looks that row up in `get_row_queryset(ctx)`
@@ -55,6 +70,10 @@ components; `Skill(fls-dev:frontend-styling)` owns the theme tokens.
 - `lazy_panels.py` and `errors.py`: `LazyBodyPanel` renders its body on request (`load_label` is
   the no-JavaScript link text), and a body that raises `PanelBodyTooLargeError` shows its message
   in the region.
+  `show_as_of = True` draws "As of <time>" above the loaded body (`partials/as_of.html`, the
+  `as_of` block of `panels/_lazy_region.html`). Use it when the data is gathered or cached: return
+  the time it was computed as an aware datetime under `"as_of"` from `get_loaded_context`, or the
+  stamp is the render time, which is wrong for older data. A naive or non-datetime value raises.
 - `housekeeping.py`: the sweeps over `BulkActionRun`, `mark_unpicked_runs_failed`,
   `mark_orphaned_runs_failed` and `delete_finished_records`, or `sweep_run_records` for all three.
   The framework schedules none of them: the host does.
@@ -189,6 +208,16 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
 - A group row carries the row-detail chevron (`size-8`, `aria-expanded`, `aria-controls` naming
   its child rows) beside its title, and its children are the indented rows under it, open by
   default. An empty group shows its note as a child row.
+- Child rows (`has_child_rows`, `get_child_rows(row)`) are for a hierarchy shown in one table
+  (a course outline). They cannot be combined with `row_detail_template_name`, and a table with
+  child rows cannot have bulk actions: the framework raises `ImproperlyConfigured` for both.
+  The `childRows` Alpine component in `alpine-components.js` runs the chevrons. A note row (an
+  empty group's "no items") is `get_row_template_name`, not a column. `CourseOutlineTable` in
+  `educator_interface/views.py` is the worked example, with `compact = True`.
+- A sequence-backed table returns a list of row objects from `get_queryset` for rows that are
+  computed, not stored. It pages and shows its empty state, nothing more: no `search_fields`, no
+  filters, no sortable column, no export columns, no bulk actions, and `noun` and `noun_singular`
+  must be set (there is no model to name them). The panel raises `ImproperlyConfigured` otherwise.
 
 ### Filters and sorting
 
