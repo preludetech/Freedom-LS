@@ -86,7 +86,7 @@ matches the bar, so the table's top does not move when one replaces the other.
 A bulk table with no controls keeps that row height from lg for the same
 reason, and is nothing below lg.
 {% endcomment %}
-<c-panel-toolbar layout="{% if searchable or toolbar or sortable_columns or exports %}row{% elif bulk_actions %}reserve{% else %}none{% endif %}"
+<c-panel-toolbar layout="{% if searchable or toolbar or exports %}row{% elif bulk_actions %}reserve{% else %}none{% endif %}"
                  bound_class="{% if bulk_actions %}toolbarClass{% endif %}"
                  sheet_key="{% if toolbar %}{{ query.key }}-sheet{% endif %}">
     <c-slot name="search">

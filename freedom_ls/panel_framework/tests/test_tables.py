@@ -479,6 +479,40 @@ class _ExportOnlyTablePanel(DataTablePanel):
     table_key = "exportonly"
 
 
+class _SortOnlyNoSearchDataTable(_NoSearchDataTable):
+    """Sortable, with no search, filters or export."""
+
+    @staticmethod
+    def get_filters() -> list[TableFilter]:
+        return []
+
+    @staticmethod
+    def get_export_columns() -> list[ExportColumn]:
+        return []
+
+
+class _SortOnlyNoSearchTablePanel(DataTablePanel):
+    title = "Sort only, no search"
+    data_table = _SortOnlyNoSearchDataTable
+    table_key = "sortnosearch"
+
+
+def test_a_sort_only_table_renders_no_desktop_toolbar_band(
+    mock_site_context: Site,
+) -> None:
+    """A table whose only toolbar control is the phone Sort menu used to render
+    an empty bordered row from md up. It now has no desktop row, and the Sort
+    menu still shows on a phone."""
+    panel = _bind_table_panel(_SortOnlyNoSearchTablePanel)
+
+    html = render_to_string(
+        panel.region_template_name, panel.get_context_data(), request=panel.request
+    )
+
+    assert "md:border-b" not in html
+    assert "Sort by" in html
+
+
 class _CountingFilter(ChoiceFilter):
     """Counts `get_choices` calls, standing in for a filter whose choices
     come from a query."""
