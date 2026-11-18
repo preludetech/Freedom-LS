@@ -7469,7 +7469,7 @@ def test_bulk_remove_from_cohort_wording_costs_the_same_for_any_selection_size(
     )
     classified = {str(learner.pk): BulkOutcome("changed") for learner in members}
 
-    with django_assert_num_queries(5):
+    with django_assert_num_queries(6):
         wording = RemoveFromCohortBulkAction().confirmation_wording(
             RequestFactory().post("/"),
             Learner.objects.filter(pk__in=[learner.pk for learner in members]),
@@ -7813,7 +7813,7 @@ def test_bulk_unregister_wording_costs_the_same_for_any_selection_size(
             RequestFactory().post("/"),
             Learner.objects.filter(pk__in=[learner.pk for learner in learners]),
             classified,
-            {"course": course},
+            {"course": course, "course_label": "Algebra"},
         )
 
     assert wording.sentence == "Deactivate the Algebra registration for 4 learners."
@@ -8627,6 +8627,7 @@ def test_bulk_action_confirmation_title_is_a_question_naming_the_count(
     cleaned_data: dict[str, object] = {
         "cohort": Cohort(name="Cohort A"),
         "course": Course(title="Algebra"),
+        "course_label": "Algebra",
     }
 
     title = action_class().confirmation_title(count, cleaned_data)

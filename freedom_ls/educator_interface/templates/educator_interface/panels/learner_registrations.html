@@ -4,7 +4,7 @@
     {% if rows %}
         <c-panel-list>
             {% for row in rows %}
-                <c-panel-list-row :title="row.course.title" :detail="row.via" data-testid="registration-row">
+                <c-panel-list-row :title="row.course.title" :detail="row.detail" data-testid="registration-row">
                     <c-panel-status-badge :badge="row.badge" />
                     <div data-testid="registration-action-slot" class="flex w-28 justify-end">
                     {% if row.is_individual and row.is_active and row_action_urls.deactivate_registration %}

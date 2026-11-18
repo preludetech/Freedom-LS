@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import html
 from collections.abc import Iterator, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from functools import cached_property
 from operator import attrgetter
@@ -366,6 +366,18 @@ def _interface_link(
         quick_view=quick_view,
         sortable=sortable,
         card=card,
+    )
+
+
+def _course_title_column(
+    header: str, text_attr: str, path_template: str, *, attr: str = ""
+) -> Column:
+    """The course title link with the owner of a shared course under it.
+    `attr` names the row's course; empty means the row is the course."""
+    return replace(
+        _interface_link(header, text_attr, path_template, card="primary"),
+        template_name="educator_interface/data-table-cells/course_title.html",
+        attr=attr,
     )
 
 
@@ -787,6 +799,16 @@ class RegistrationRow:
     via: str
     is_active: bool
     registration: LearnerCourseRegistration | CohortCourseRegistration
+    shared_by: str | None = None
+
+    @property
+    def detail(self) -> str:
+        """The muted line under the course title: how the learner is
+        registered, then who shares the course when another organisation
+        owns it."""
+        return (
+            f"{self.via} · Shared by {self.shared_by}" if self.shared_by else self.via
+        )
 
     @property
     def badge(self) -> StatusBadge:
@@ -813,20 +835,39 @@ class LearnerRegistrationsPanel(Panel):
         learner = cast(Learner, self.instance)
         request = cast(OrganisationScopedRequest, self.request)
         visible_cohorts = cohorts_visible_to(request.user, request.organisation)
-        individual = LearnerCourseRegistration.objects.filter(
-            learner=learner
-        ).select_related("course")
+        individual = (
+            LearnerCourseRegistration.objects.filter(learner=learner)
+            .select_related("course")
+            .prefetch_related("course__organisations")
+        )
         # A registration through an inactive cohort is not shown at all; the
         # learner reaches that course only while the cohort is active.
-        through_cohorts = CohortCourseRegistration.objects.filter(
-            cohort__in=visible_cohorts,
-            cohort__is_active=True,
-            cohort__cohortmembership__learner=learner,
-        ).select_related("course", "cohort")
+        through_cohorts = (
+            CohortCourseRegistration.objects.filter(
+                cohort__in=visible_cohorts,
+                cohort__is_active=True,
+                cohort__cohortmembership__learner=learner,
+            )
+            .select_related("course", "cohort")
+            .prefetch_related("course__organisations")
+        )
         rows = [
-            RegistrationRow(r.course, "Individual", r.is_active, r) for r in individual
+            RegistrationRow(
+                r.course,
+                "Individual",
+                r.is_active,
+                r,
+                r.course.shared_by(request.organisation),
+            )
+            for r in individual
         ] + [
-            RegistrationRow(r.course, f"via {r.cohort.name}", r.is_active, r)
+            RegistrationRow(
+                r.course,
+                f"via {r.cohort.name}",
+                r.is_active,
+                r,
+                r.course.shared_by(request.organisation),
+            )
             for r in through_cohorts
         ]
         context = super().get_context_data()
@@ -1521,6 +1562,7 @@ class CohortCourseRegistrationDataTable(DataTable):
         visible_cohorts = cohorts_visible_to(request.user, request.organisation)
         return (
             CohortCourseRegistration.objects.select_related("course", "cohort")
+            .prefetch_related("course__organisations")
             .filter(cohort__in=visible_cohorts)
             .order_by("course__title")
         )
@@ -1528,8 +1570,8 @@ class CohortCourseRegistrationDataTable(DataTable):
     @staticmethod
     def get_columns() -> list[Column]:
         return [
-            _interface_link(
-                "Course", "course.title", "courses/{course.pk}", card="primary"
+            _course_title_column(
+                "Course", "course.title", "courses/{course.pk}", attr="course"
             ),
             *_registration_columns(),
             Column(
@@ -1956,6 +1998,7 @@ class CourseDataTable(DataTable):
                 interest_count=Count("interests", distinct=True),
             )
             .prefetch_related(
+                "organisations",
                 Prefetch(
                     "cohort_registrations",
                     queryset=CohortCourseRegistration.objects.filter(
@@ -2011,7 +2054,7 @@ class CourseDataTable(DataTable):
     @staticmethod
     def get_columns() -> list[Column]:
         return [
-            _interface_link("Title", "title", "courses/{pk}", card="primary"),
+            _course_title_column("Title", "title", "courses/{pk}"),
             Column(
                 header="Visibility",
                 template_name="cotton/data-table-cells/text.html",

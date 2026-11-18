@@ -1225,3 +1225,64 @@ def test_a_collection_item_has_a_no_due_date_flag_and_no_overrides_field() -> No
 
     assert "no_due_date" in field_names
     assert "overrides" not in field_names
+
+
+@pytest.mark.django_db
+def test_course_owned_by_another_organisation_names_it_as_the_sharer(
+    mock_site_context,
+):
+    viewing = OrganisationFactory(name="Harbour College")
+    course = CourseFactory(title="Workplace Safety Essentials")
+    course.organisations.add(OrganisationFactory(name="Northwind Logistics"))
+
+    assert course.shared_by(viewing) == "Northwind Logistics"
+    assert (
+        course.label_for(viewing) == "Workplace Safety Essentials (Northwind Logistics)"
+    )
+
+
+@pytest.mark.django_db
+def test_course_with_several_other_owners_names_all_of_them_comma_separated(
+    mock_site_context,
+):
+    viewing = OrganisationFactory(name="Harbour College")
+    course = CourseFactory(title="Safety")
+    course.organisations.add(
+        OrganisationFactory(name="Northwind Logistics"),
+        OrganisationFactory(name="Acme Training"),
+    )
+
+    assert course.shared_by(viewing) == "Acme Training, Northwind Logistics"
+
+
+@pytest.mark.django_db
+def test_course_the_viewing_organisation_owns_shows_its_title_alone(
+    mock_site_context,
+):
+    viewing = OrganisationFactory(name="Harbour College")
+    course = CourseFactory(title="Safety")
+    course.organisations.add(viewing, OrganisationFactory(name="Northwind Logistics"))
+
+    assert course.shared_by(viewing) is None
+    assert course.label_for(viewing) == "Safety"
+
+
+@pytest.mark.django_db
+def test_course_with_no_owning_organisation_shows_its_title_alone(mock_site_context):
+    course = CourseFactory(title="Safety")
+
+    assert course.shared_by(OrganisationFactory()) is None
+    assert course.label_for(OrganisationFactory()) == "Safety"
+
+
+@pytest.mark.django_db
+def test_shared_by_reads_prefetched_organisations_without_a_query(
+    mock_site_context, django_assert_num_queries
+):
+    viewing = OrganisationFactory()
+    course = CourseFactory()
+    course.organisations.add(OrganisationFactory(name="Northwind Logistics"))
+    prefetched = Course.objects.prefetch_related("organisations").get(pk=course.pk)
+
+    with django_assert_num_queries(0):
+        assert prefetched.shared_by(viewing) == "Northwind Logistics"

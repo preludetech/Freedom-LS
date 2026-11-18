@@ -1,0 +1,12 @@
+{% load data_table_tags educator_tags %}
+{% comment %}
+A course's title as a link, with a muted "Shared by <organisations>" line under
+it when another organisation owns the course. The viewing organisation's own
+courses, and courses nothing owns, show the link alone. column.attr names the
+row's course; empty means the row is the course.
+{% endcomment %}
+{% include "cotton/data-table-cells/link.html" %}
+{% with course=object|getattr_str:column.attr %}
+    {% course_shared_by course as sharers %}
+    {% if sharers %}<p class="text-sm text-muted break-words" data-testid="shared-by">Shared by {{ sharers }}</p>{% endif %}
+{% endwith %}

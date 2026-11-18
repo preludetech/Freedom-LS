@@ -423,6 +423,25 @@ class Course(MarkdownContent, TitledContent):
             return None
         return organisations[0]
 
+    def shared_by(self, organisation: Organisation) -> str | None:
+        """The names of the owning organisations other than `organisation`,
+        comma-separated and sorted, or None when `organisation` owns the
+        course or no organisation does. The site's default organisation is
+        never named, for the reason ``single_organisation`` gives. Reads the
+        prefetched organisations when a caller supplied them.
+        """
+        owners = list(self.organisations.all())
+        if any(owner.pk == organisation.pk for owner in owners):
+            return None
+        names = sorted(owner.name for owner in owners if not owner.is_default)
+        return ", ".join(names) or None
+
+    def label_for(self, organisation: Organisation) -> str:
+        """The title, followed by "(<owners>)" when ``shared_by`` names any:
+        how a picker option, a filter choice or a dialog title reads."""
+        owners = self.shared_by(organisation)
+        return f"{self.title} ({owners})" if owners else self.title
+
     def current_price(self) -> CoursePrice | None:
         """The price this course shows today, with an expired sale turned fixed.
 

@@ -760,7 +760,7 @@ def test_visible_course_filter_offers_a_course_only_when_it_reaches_the_organisa
         "course", "Course", lookup="course_registrations__course"
     ).get_choices(request)
 
-    assert ((str(courses[row].pk), courses[row].title) in choices) is offered
+    assert (str(courses[row].pk) in [pk for pk, _ in choices]) is offered
 
 
 @pytest.mark.django_db
@@ -774,4 +774,27 @@ def test_learner_course_filter_offers_a_course_only_when_it_reaches_the_organisa
 
     choices = _course_filter().get_choices(request)
 
-    assert ((str(courses[row].pk), courses[row].title) in choices) is offered
+    assert (str(courses[row].pk) in [pk for pk, _ in choices]) is offered
+
+
+@pytest.mark.django_db
+def test_course_filter_names_the_owner_of_a_course_another_organisation_owns(
+    site_aware_request,
+):
+    """Two courses with one title stayed indistinguishable in the choices."""
+    organisation = OrganisationFactory(name="Harbour College")
+    own = CourseFactory(title="Workplace Safety Essentials", slug="safety-own")
+    own.organisations.add(organisation)
+    shared = CourseFactory(title="Workplace Safety Essentials", slug="safety-shared")
+    shared.organisations.add(OrganisationFactory(name="Northwind Logistics"))
+    shared.shared_with.add(organisation)
+    request = _educator_request(site_aware_request, organisation)
+
+    choices = VisibleCourseFilter(
+        "course", "Course", lookup="course_registrations__course"
+    ).get_choices(request)
+
+    assert sorted(label for _, label in choices) == [
+        "Workplace Safety Essentials",
+        "Workplace Safety Essentials (Northwind Logistics)",
+    ]

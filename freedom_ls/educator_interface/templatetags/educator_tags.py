@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from django import template
 
+from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.reporting import flag_badge, progress_status_badge
 from freedom_ls.educator_interface.views import (
     LearnerCourseSummary,
+    OrganisationScopedRequest,
     learner_course_summaries,
 )
 from freedom_ls.learner_management.models import Learner
@@ -40,3 +44,11 @@ def passed_badge_tag(passed: bool) -> StatusBadge:
     return (
         StatusBadge("success", "Passed") if passed else StatusBadge("error", "Failed")
     )
+
+
+@register.simple_tag(takes_context=True, name="course_shared_by")
+def course_shared_by_tag(context: template.Context, course: Course) -> str | None:
+    """The other organisations that own `course`, as the request's organisation
+    sees it, for `{% course_shared_by course as sharers %}`."""
+    organisation = cast(OrganisationScopedRequest, context["request"]).organisation
+    return course.shared_by(organisation)

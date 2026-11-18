@@ -11,7 +11,7 @@ from django import forms
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import AnonymousUser
 from django.db import transaction
-from django.db.models import Model, QuerySet
+from django.db.models import Model, QuerySet, prefetch_related_objects
 from django.http import (
     Http404,
     HttpRequest,
@@ -598,7 +598,9 @@ class RegisterCohortForCourseAction(RequiresActiveCohortMixin, FormPanelAction):
         return {**super().get_form_kwargs(ctx), "cohort": ctx.instance}
 
     def get_form_title(self, ctx: PanelContext, form: forms.BaseForm) -> str:
-        return _register_title(form, str(ctx.instance))
+        return _register_title(
+            form, str(ctx.instance), cast(Cohort, ctx.instance).organisation
+        )
 
     def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
         register_cohort_for_course(
@@ -811,7 +813,8 @@ class RegisterLearnerForCourseAction(FormPanelAction):
         return {**super().get_form_kwargs(ctx), "learner": ctx.instance}
 
     def get_form_title(self, ctx: PanelContext, form: forms.BaseForm) -> str:
-        return _register_title(form, cast(Learner, ctx.instance).user.display_name)
+        learner = cast(Learner, ctx.instance)
+        return _register_title(form, learner.user.display_name, learner.organisation)
 
     def get_empty_message(self, ctx: PanelContext, form: forms.BaseForm) -> str | None:
         name = cast(Learner, ctx.instance).user.display_name
@@ -1240,12 +1243,15 @@ def _picker_title[M: Model](
     return f"{unchosen}?"
 
 
-def _register_title(form: forms.BaseForm, subject: str) -> str:
+def _register_title(
+    form: forms.BaseForm, subject: str, organisation: Organisation
+) -> str:
     """Title a register-for-a-course dialog for `subject` (a learner's or a
-    cohort's name), naming the course once one is chosen."""
+    cohort's name), naming the course once one is chosen, as `organisation`
+    reads it."""
 
     def chosen(course: Course) -> str:
-        return f"Register {subject} for {course.title}"
+        return f"Register {subject} for {course.label_for(organisation)}"
 
     return _picker_title(
         form, "course", unchosen=f"Register {subject} for a course", chosen=chosen
@@ -2997,15 +3003,15 @@ class RemoveFromCohortBulkAction(CohortMembershipBulkAction):
         classified: dict[str, BulkOutcome] | None,
         cleaned_data: dict[str, object],
     ) -> list[str]:
+        cohort = cast(Cohort, cleaned_data["cohort"])
         lost = courses_lost_by_any(
-            queryset.filter(pk__in=self.changed_keys(classified)),
-            cast(Cohort, cleaned_data["cohort"]),
+            queryset.filter(pk__in=self.changed_keys(classified)), cohort
         )
         if not lost:
             return []
-        return [
-            f"They lose access to: {join_prose([course.title for course in lost])}."
-        ]
+        prefetch_related_objects(lost, "organisations")
+        titles = join_prose([course.label_for(cohort.organisation) for course in lost])
+        return [f"They lose access to: {titles}."]
 
 
 class LearnerStateBulkAction(LearnerBulkAction):
@@ -3089,6 +3095,7 @@ class CoursePickerMixin(RecordedBulkAction):
                 cast("OrganisationScopedRequest", request).organisation
             ),
             label="Course",
+            organisation=cast("OrganisationScopedRequest", request).organisation,
         )
 
     def target_json(self, cleaned_data: dict[str, object]) -> dict[str, str]:
@@ -3097,12 +3104,12 @@ class CoursePickerMixin(RecordedBulkAction):
     def resolve_target(
         self, scope: Model | None, target: dict[str, str]
     ) -> dict[str, object]:
-        return {
-            "course": get_object_or_404(
-                registerable_courses(cast(Organisation, scope)),
-                pk=target["course"],
-            )
-        }
+        organisation = cast(Organisation, scope)
+        course = get_object_or_404(
+            registerable_courses(organisation).prefetch_related("organisations"),
+            pk=target["course"],
+        )
+        return {"course": course, "course_label": course.label_for(organisation)}
 
 
 class CourseRegistrationBulkAction(CoursePickerMixin, LearnerBulkAction):
@@ -3144,8 +3151,9 @@ class RegisterForCourseBulkAction(CourseRegistrationBulkAction):
         )
 
     def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
-        course = cast(Course, cleaned_data["course"])
-        return f"Register {count_noun(Learner, count)} for {course.title}."
+        return (
+            f"Register {count_noun(Learner, count)} for {cleaned_data['course_label']}."
+        )
 
 
 @register_bulk_action
@@ -3166,8 +3174,7 @@ class DeactivateRegistrationBulkAction(CourseRegistrationBulkAction):
         )
 
     def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
-        course = cast(Course, cleaned_data["course"])
-        return f"Deactivate the {course.title} registration for {count_noun(Learner, count)}."
+        return f"Deactivate the {cleaned_data['course_label']} registration for {count_noun(Learner, count)}."
 
     def consequences(
         self,
@@ -3335,8 +3342,9 @@ class RegisterCohortForCourseBulkAction(CohortCourseBulkAction):
         )
 
     def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
-        course = cast(Course, cleaned_data["course"])
-        return f"Register {count_noun(Cohort, count)} for {course.title}."
+        return (
+            f"Register {count_noun(Cohort, count)} for {cleaned_data['course_label']}."
+        )
 
 
 @register_bulk_action
@@ -3366,8 +3374,7 @@ class DeactivateCohortRegistrationBulkAction(CohortCourseBulkAction):
         return deactivate_cohort_registration(registration, actor=actor)
 
     def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
-        course = cast(Course, cleaned_data["course"])
-        return f"Deactivate the {course.title} registration for {count_noun(Cohort, count)}."
+        return f"Deactivate the {cleaned_data['course_label']} registration for {count_noun(Cohort, count)}."
 
     def consequences(
         self,

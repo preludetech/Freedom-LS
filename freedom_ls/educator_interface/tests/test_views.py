@@ -9231,3 +9231,25 @@ def test_a_form_page_of_a_course_held_only_through_a_registration_cannot_be_prev
     )
 
     assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_courses_list_names_the_owner_under_a_shared_course_only(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+):
+    """Two courses with one title looked identical in the Title column."""
+    organisation = OrganisationFactory(name="Harbour College")
+    own = CourseFactory(title="Own Safety", audience=CourseAudience.PUBLIC)
+    own.organisations.add(organisation)
+    shared = CourseFactory(title="Shared Safety", audience=CourseAudience.PUBLIC)
+    shared.organisations.add(OrganisationFactory(name="Northwind Logistics"))
+    shared.shared_with.add(organisation)
+    client = logged_in_client(organisation_admin_viewer(organisation))
+
+    document = _get_document(client, _interface_url(organisation.slug, "courses"))
+
+    notes = {
+        element.text_content().strip()
+        for element in document.cssselect("[data-testid='shared-by']")
+    }
+    assert notes == {"Shared by Northwind Logistics"}

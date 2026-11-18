@@ -45,7 +45,18 @@ class VisibleCourseFilter(RelatedChoiceFilter):
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         scoped = cast("OrganisationScopedRequest", request)
-        return courses_visible_to(scoped.user, scoped.organisation).order_by("title")
+        return (
+            courses_visible_to(scoped.user, scoped.organisation)
+            .prefetch_related("organisations")
+            .order_by("title")
+        )
+
+    def get_choices(self, request: HttpRequest) -> list[tuple[str, str]]:
+        organisation = cast("OrganisationScopedRequest", request).organisation
+        return [
+            (str(course.pk), course.label_for(organisation))
+            for course in self.get_queryset(request)
+        ]
 
     def apply(
         self, request: HttpRequest, queryset: QuerySet, values: list[str]

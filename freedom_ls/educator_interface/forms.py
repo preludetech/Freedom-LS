@@ -3,7 +3,7 @@ from typing import cast
 
 from django import forms
 from django.core.files.uploadedfile import UploadedFile
-from django.db.models import QuerySet
+from django.db.models import Model, QuerySet
 from django.http import QueryDict
 from django.utils.datastructures import MultiValueDict
 
@@ -20,6 +20,7 @@ from freedom_ls.learner_management.queries import (
     registerable_courses_for,
     registerable_courses_for_learner,
 )
+from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.forms import ReasonForm
 from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
 
@@ -31,6 +32,29 @@ def choice_error(label: str) -> dict[str, str]:
     choice field cannot even cast to a key."""
     message = f"Choose a {label.lower()} from the list."
     return {"invalid_choice": message, "invalid_pk_value": message}
+
+
+class CourseChoiceField(forms.ModelChoiceField):
+    """A course picker whose options read as `organisation` sees each course:
+    a course another organisation owns names its owner."""
+
+    def __init__(
+        self,
+        organisation: Organisation,
+        queryset: QuerySet[Course],
+        *,
+        label: str | None = None,
+        error_messages: dict[str, str] | None = None,
+    ) -> None:
+        super().__init__(
+            queryset=queryset.prefetch_related("organisations"),
+            label=label,
+            error_messages=error_messages,
+        )
+        self.organisation = organisation
+
+    def label_from_instance(self, obj: Model) -> str:
+        return cast(Course, obj).label_for(self.organisation)
 
 
 class LearnerImportForm(forms.Form):
@@ -57,11 +81,28 @@ class BulkTargetPickerForm(forms.Form):
         field_name: str,
         queryset: QuerySet,
         label: str,
+        organisation: Organisation | None = None,
     ) -> None:
         super().__init__(data)
-        self.fields[field_name] = forms.ModelChoiceField(
-            queryset=queryset, label=label, error_messages=choice_error(label)
-        )
+        error_messages = choice_error(label)
+        if organisation is None:
+            self.fields[field_name] = forms.ModelChoiceField(
+                queryset=queryset, label=label, error_messages=error_messages
+            )
+        else:
+            self.fields[field_name] = CourseChoiceField(
+                organisation, queryset, label=label, error_messages=error_messages
+            )
+        self.organisation = organisation
+
+    def clean(self) -> dict[str, object] | None:
+        """A chosen course also carries the label its organisation reads it by,
+        for the confirmation prose that names it."""
+        cleaned = super().clean()
+        course = self.cleaned_data.get("course")
+        if self.organisation is not None and isinstance(course, Course):
+            self.cleaned_data["course_label"] = course.label_for(self.organisation)
+        return cleaned
 
 
 class CohortForm(ConstraintValidationFormMixin):
@@ -94,8 +135,6 @@ class CohortCourseRegistrationForm(forms.Form):
     """The course picker for registering a cohort. The chosen course goes to
     register_cohort_for_course, which owns the reuse of an inactive row."""
 
-    course = forms.ModelChoiceField(queryset=Course.objects.none())
-
     def __init__(
         self,
         data: Mapping[str, str] | None = None,
@@ -104,15 +143,14 @@ class CohortCourseRegistrationForm(forms.Form):
         cohort: Cohort,
     ) -> None:
         super().__init__(data, files)
-        course_field = cast(forms.ModelChoiceField, self.fields["course"])
-        course_field.queryset = registerable_courses_for(cohort)
+        self.fields["course"] = CourseChoiceField(
+            cohort.organisation, registerable_courses_for(cohort)
+        )
 
 
 class LearnerCourseRegistrationForm(forms.Form):
     """The course picker for registering a learner. The chosen course goes to
     register_for_course, which owns the reuse of an inactive row."""
-
-    course = forms.ModelChoiceField(queryset=Course.objects.none())
 
     def __init__(
         self,
@@ -122,8 +160,9 @@ class LearnerCourseRegistrationForm(forms.Form):
         learner: Learner,
     ) -> None:
         super().__init__(data, files)
-        course_field = cast(forms.ModelChoiceField, self.fields["course"])
-        course_field.queryset = registerable_courses_for_learner(learner)
+        self.fields["course"] = CourseChoiceField(
+            learner.organisation, registerable_courses_for_learner(learner)
+        )
 
 
 class CohortPickerForm(forms.Form):

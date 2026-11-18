@@ -27,6 +27,7 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_management.learner_actions import LearnerEntry
 from freedom_ls.learner_management.models import Cohort, Learner
 from freedom_ls.learner_management.queries import registerable_courses_for
+from freedom_ls.organisations.factories import OrganisationFactory
 
 
 @pytest.mark.django_db
@@ -261,3 +262,20 @@ def test_the_educator_reason_form_shows_the_history_help_text() -> None:
 
     assert field.label == "Reason (optional)"
     assert field.help_text == "Only staff can see this. It is shown in the history."
+
+
+@pytest.mark.django_db
+def test_registration_form_option_names_the_owner_of_a_shared_course(
+    mock_site_context,
+):
+    """A shared course read the same as the organisation's own in the picker."""
+    cohort = CohortFactory(organisation=OrganisationFactory(name="Harbour College"))
+    shared = CourseFactory(title="Workplace Safety Essentials", slug="safety-shared")
+    shared.organisations.add(OrganisationFactory(name="Northwind Logistics"))
+    shared.shared_with.add(cohort.organisation)
+
+    form = CohortCourseRegistrationForm(cohort=cohort)
+
+    assert [label for value, label in form.fields["course"].choices if value] == [
+        "Workplace Safety Essentials (Northwind Logistics)"
+    ]
