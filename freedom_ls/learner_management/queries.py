@@ -339,9 +339,9 @@ def is_course_available_to_organisation(
 
 
 class CourseNotOpenError(ValueError):
-    """An organisation_learners organisation course that the organisation is
-    not one of. A ValueError so the registration paths' callers that catch
-    that still do."""
+    """An organisation_learners organisation course that the organisation
+    neither owns nor has had shared with it. A ValueError so the registration
+    paths' callers that catch that still do."""
 
 
 def require_course_open_to(course: Course, organisation: Organisation) -> None:

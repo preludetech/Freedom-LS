@@ -186,6 +186,7 @@ from freedom_ls.learner_management.queries import (
     VIEW_ORGANISATION_STAFF,
     LearnerStatus,
     active_organisation_admins,
+    available_to_organisation_expression,
     can_on_any,
     cohort_counts,
     cohort_educators,
@@ -609,7 +610,7 @@ class LearnerDataTable(DataTable):
         organisation = request.organisation
         return (
             learners_visible_to(request.user, organisation, include_inactive=True)
-            .select_related("user")
+            .select_related("user", "organisation")
             .prefetch_related(
                 # A Learner belongs to exactly one organisation, so the course
                 # registrations hanging off it are already organisation-local.
@@ -696,7 +697,7 @@ class LearnerDataTable(DataTable):
             ExportColumn(
                 "Courses",
                 lambda row: ", ".join(
-                    summary.course.title
+                    summary.course.label_for(cast(Learner, row).organisation)
                     for summary in learner_course_summaries(cast(Learner, row))
                 ),
             ),
@@ -798,6 +799,7 @@ class RegistrationRow:
     is_active: bool
     registration: LearnerCourseRegistration | CohortCourseRegistration
     shared_by: str | None = None
+    can_reactivate: bool = False
 
     @property
     def detail(self) -> str:
@@ -833,7 +835,7 @@ class LearnerRegistrationsPanel(Panel):
         learner = cast(Learner, self.instance)
         request = cast(OrganisationScopedRequest, self.request)
         visible_cohorts = cohorts_visible_to(request.user, request.organisation)
-        individual = (
+        individual = list(
             LearnerCourseRegistration.objects.filter(learner=learner)
             .select_related("course")
             .prefetch_related("course__organisations")
@@ -849,24 +851,31 @@ class LearnerRegistrationsPanel(Panel):
             .select_related("course", "cohort")
             .prefetch_related("course__organisations")
         )
-        rows = [
-            RegistrationRow(
-                r.course,
-                "Individual",
-                r.is_active,
-                r,
-                r.course.shared_by(request.organisation),
+        # Reactivating registers the learner again, which an educator may do
+        # only for a course available to the learner's organisation.
+        available_course_ids = set(
+            Course.objects.filter(
+                pk__in=[r.course_id for r in individual if not r.is_active]
             )
-            for r in individual
-        ] + [
-            RegistrationRow(
-                r.course,
-                f"via {r.cohort.name}",
-                r.is_active,
-                r,
-                r.course.shared_by(request.organisation),
+            .filter(available_to_organisation_expression(learner.organisation))
+            .values_list("pk", flat=True)
+        )
+
+        def row(
+            registration: LearnerCourseRegistration | CohortCourseRegistration,
+            via: str,
+        ) -> RegistrationRow:
+            return RegistrationRow(
+                registration.course,
+                via,
+                registration.is_active,
+                registration,
+                registration.course.shared_by(request.organisation),
+                registration.course_id in available_course_ids,
             )
-            for r in through_cohorts
+
+        rows = [row(r, "Individual") for r in individual] + [
+            row(r, f"via {r.cohort.name}") for r in through_cohorts
         ]
         context = super().get_context_data()
         context["rows"] = sorted(rows, key=lambda row: row.course.title)
@@ -2391,6 +2400,8 @@ class CourseContentPanel(DataTablePanel):
         }
 
     def get_actions(self) -> list[PanelAction]:
+        # Actions resolve only from this list, so withholding them is what
+        # makes a preview URL 404 for a course not available here.
         if not self.preview_available:
             return []
         return [PreviewContentAction(), PreviewCourseDetailsAction()]
@@ -2459,8 +2470,6 @@ class PreviewContentAction(PanelAction):
     template_name = "educator_interface/modal/content_preview.html"
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        if not _preview_available(ctx.request, cast(Course, ctx.instance)):
-            raise Http404
         if ctx.request.headers.get("HX-Request") != "true":
             raise Http404
         course = cast(Course, ctx.instance)
@@ -2503,8 +2512,6 @@ class PreviewCourseDetailsAction(PanelAction):
     template_name = "educator_interface/modal/course_details_preview.html"
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        if not _preview_available(ctx.request, cast(Course, ctx.instance)):
-            raise Http404
         if ctx.request.headers.get("HX-Request") != "true":
             raise Http404
         course = cast(Course, ctx.instance)

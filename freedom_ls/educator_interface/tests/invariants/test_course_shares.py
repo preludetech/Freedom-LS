@@ -39,7 +39,9 @@ from freedom_ls.educator_interface.tests.test_actions import (
 )
 from freedom_ls.educator_interface.tests.test_views import (
     _content_action_url,
+    _export_csv,
     _interface_url,
+    _learner_page,
 )
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -186,6 +188,61 @@ def test_revoking_a_share_makes_reactivating_a_registration_on_it_answer_422(
 
     assert response.status_code == 422
     assert COURSE_NOT_OPEN_MESSAGE in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_revoking_a_share_takes_the_reactivate_trigger_off_the_registrations_card(
+    revoked_share: RevokedShare, logged_in_client: Callable[[User], Client]
+):
+    client = logged_in_client(organisation_admin_viewer(revoked_share.organisation))
+
+    document = _learner_page(client, revoked_share.learner, "overview")
+
+    (row,) = [
+        row
+        for row in document.cssselect("[data-testid='registration-row']")
+        if "Individual" in row.text_content()
+    ]
+    assert "Reactivate" not in row.text_content()
+
+
+@pytest.mark.django_db
+def test_an_inactive_registration_on_an_available_course_still_offers_reactivate(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+):
+    organisation = OrganisationFactory()
+    course = cast(Course, CourseFactory(audience=CourseAudience.PUBLIC))
+    course.organisations.add(OrganisationFactory())
+    course.shared_with.add(organisation)
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    LearnerCourseRegistrationFactory(learner=learner, course=course, is_active=False)
+    client = logged_in_client(organisation_admin_viewer(organisation))
+
+    document = _learner_page(client, learner, "overview")
+
+    (row,) = document.cssselect("[data-testid='registration-row']")
+    assert "Reactivate" in row.text_content()
+
+
+@pytest.mark.django_db
+def test_the_learners_export_names_who_shares_a_shared_course(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+):
+    organisation = OrganisationFactory()
+    own = cast(Course, CourseFactory(title="Safety"))
+    own.organisations.add(organisation)
+    shared = cast(Course, CourseFactory(title="Safety", slug="safety-shared"))
+    shared.organisations.add(OrganisationFactory(name="Northwind"))
+    shared.shared_with.add(organisation)
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    LearnerCourseRegistrationFactory(learner=learner, course=own)
+    LearnerCourseRegistrationFactory(learner=learner, course=shared)
+    client = logged_in_client(organisation_admin_viewer(organisation))
+
+    _header, rows, _disposition = _export_csv(client, "learners", organisation)
+
+    (row,) = rows
+    assert sorted(row[4].split(", ")) == ["Safety", "Safety (Northwind)"]
 
 
 def _share_courses(organisation: Organisation, count: int) -> None:

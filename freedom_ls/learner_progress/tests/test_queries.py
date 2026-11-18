@@ -531,11 +531,11 @@ def test_a_second_organisations_learner_for_the_same_user_is_ignored(
 
 @pytest.mark.django_db
 class TestQueryCost:
-    """Three queries whatever the number of registrations -- the loop below
+    """Five queries whatever the number of registrations -- the loop below
     must never issue one more per row."""
 
     @pytest.mark.parametrize("registration_count", [1, 5])
-    def test_query_count_stays_at_three(
+    def test_query_count_stays_at_five(
         self, mock_site_context, django_assert_max_num_queries, registration_count
     ):
         learner = LearnerFactory()
@@ -559,7 +559,7 @@ class TestQueryCost:
             )
             ensure_course_progress_record(learner, cohort_course, cohort_registration)
 
-        with django_assert_max_num_queries(3):
+        with django_assert_max_num_queries(5):
             result = registrations_with_progress_for_learner(learner)
 
         assert len(result) == registration_count * 2

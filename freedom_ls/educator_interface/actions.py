@@ -56,12 +56,14 @@ from freedom_ls.educator_interface.forms import (
     CohortCourseRegistrationForm,
     CohortPickerForm,
     CohortSetForm,
+    CoursePickerForm,
     EducatorReasonForm,
     LearnerCourseRegistrationForm,
     LearnerNameForm,
     LearnerPickerForm,
     StaffEmailForm,
     choice_error,
+    course_target,
 )
 from freedom_ls.educator_interface.learner_import import check_import_gate
 from freedom_ls.educator_interface.staff import (
@@ -3085,17 +3087,14 @@ class CoursePickerMixin(RecordedBulkAction):
     RecordedBulkAction so the overrides type-check; list it before the
     action in the bases."""
 
-    form_class = BulkTargetPickerForm
+    form_class = CoursePickerForm
 
     def get_form(self, request: HttpRequest, data: QueryDict | None) -> forms.Form:
-        return BulkTargetPickerForm(
+        organisation = cast("OrganisationScopedRequest", request).organisation
+        return CoursePickerForm(
             data,
-            field_name="course",
-            queryset=registerable_courses(
-                cast("OrganisationScopedRequest", request).organisation
-            ),
-            label="Course",
-            organisation=cast("OrganisationScopedRequest", request).organisation,
+            queryset=registerable_courses(organisation),
+            organisation=organisation,
         )
 
     def target_json(self, cleaned_data: dict[str, object]) -> dict[str, str]:
@@ -3109,7 +3108,7 @@ class CoursePickerMixin(RecordedBulkAction):
             registerable_courses(organisation).prefetch_related("organisations"),
             pk=target["course"],
         )
-        return {"course": course, "course_label": course.label_for(organisation)}
+        return course_target(course, organisation)
 
 
 class CourseRegistrationBulkAction(CoursePickerMixin, LearnerBulkAction):

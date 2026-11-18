@@ -1,0 +1,7 @@
+{% load educator_tags %}
+{% comment %}
+The "Shared by" line under a course registration in a related list: `item` is
+the registration.
+{% endcomment %}
+{% course_shared_by item.course as sharers %}
+{% include "educator_interface/partials/course_shared_by.html" %}

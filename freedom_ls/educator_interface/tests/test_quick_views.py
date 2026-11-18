@@ -786,3 +786,32 @@ def test_a_malformed_pk_of_a_staff_row_404s(educator_client, mock_site_context):
     )
 
     assert response.status_code == 404
+
+
+def _register_on_shared_course(learner: Learner, organisation: Organisation) -> None:
+    course = cast(Course, CourseFactory())
+    course.organisations.add(OrganisationFactory())
+    course.shared_with.add(organisation)
+    LearnerCourseRegistrationFactory(learner=learner, course=course)
+
+
+@pytest.mark.django_db
+def test_a_learner_quick_view_query_count_does_not_grow_with_shared_registrations(
+    educator_client,
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    client = educator_client(organisation)
+    path_string = f"learners/{learner.pk}"
+    _register_on_shared_course(learner, organisation)
+    _get_quick_view(client, organisation, path_string)  # warm per-process caches
+    with CaptureQueriesContext(connection) as one_course:
+        _get_quick_view(client, organisation, path_string)
+    for _ in range(4):
+        _register_on_shared_course(learner, organisation)
+
+    with CaptureQueriesContext(connection) as five_courses:
+        response = _get_quick_view(client, organisation, path_string)
+
+    assert response.status_code == 200
+    assert len(five_courses) == len(one_course)

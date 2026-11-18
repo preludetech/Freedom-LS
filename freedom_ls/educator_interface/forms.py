@@ -72,7 +72,8 @@ class LearnerImportForm(forms.Form):
 
 class BulkTargetPickerForm(forms.Form):
     """Picks the one target a bulk action applies to, from every target the
-    user may act on in the organisation. `field_name` is "cohort" or "course"."""
+    user may act on in the organisation. `field_name` names the field, such as
+    "cohort"; a course target uses CoursePickerForm."""
 
     def __init__(
         self,
@@ -81,27 +82,44 @@ class BulkTargetPickerForm(forms.Form):
         field_name: str,
         queryset: QuerySet,
         label: str,
-        organisation: Organisation | None = None,
     ) -> None:
         super().__init__(data)
-        error_messages = choice_error(label)
-        if organisation is None:
-            self.fields[field_name] = forms.ModelChoiceField(
-                queryset=queryset, label=label, error_messages=error_messages
-            )
-        else:
-            self.fields[field_name] = CourseChoiceField(
-                organisation, queryset, label=label, error_messages=error_messages
-            )
+        self.fields[field_name] = forms.ModelChoiceField(
+            queryset=queryset, label=label, error_messages=choice_error(label)
+        )
+
+
+def course_target(course: Course, organisation: Organisation) -> dict[str, object]:
+    """A picked course with the label `organisation` reads it by, as both the
+    preview and a stored run's replay hand it to the confirmation prose."""
+    return {"course": course, "course_label": course.label_for(organisation)}
+
+
+class CoursePickerForm(forms.Form):
+    """Picks the one course a bulk action applies to, its options and the
+    chosen course labelled as `organisation` sees them."""
+
+    def __init__(
+        self,
+        data: Mapping[str, str] | None = None,
+        *,
+        queryset: QuerySet[Course],
+        organisation: Organisation,
+    ) -> None:
+        super().__init__(data)
+        self.fields["course"] = CourseChoiceField(
+            organisation,
+            queryset,
+            label="Course",
+            error_messages=choice_error("Course"),
+        )
         self.organisation = organisation
 
     def clean(self) -> dict[str, object] | None:
-        """A chosen course also carries the label its organisation reads it by,
-        for the confirmation prose that names it."""
         cleaned = super().clean()
         course = self.cleaned_data.get("course")
-        if self.organisation is not None and isinstance(course, Course):
-            self.cleaned_data["course_label"] = course.label_for(self.organisation)
+        if isinstance(course, Course):
+            self.cleaned_data.update(course_target(course, self.organisation))
         return cleaned
 
 

@@ -1,21 +1,6 @@
-{% load educator_tags %}
 {% comment %}
 One line per active course registration of the cohort, each with the owner of
 a course another organisation shares under it. Reads the registrations the
 cohorts table prefetches.
 {% endcomment %}
-{% with registrations=object.course_registrations.all %}
-    {% if registrations %}
-        <ul class="list-none ml-0 space-y-1">
-            {% for registration in registrations %}
-                <li class="py-0">
-                    {{ registration.course.title }}
-                    {% course_shared_by registration.course as sharers %}
-                    {% include "educator_interface/partials/course_shared_by.html" %}
-                </li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <span role="img" aria-label="None">—</span>
-    {% endif %}
-{% endwith %}
+{% include "panel_framework/partials/related_list.html" with items=object.course_registrations.all text_attr="course.title" item_extra_template="educator_interface/partials/registration_shared_by.html" request=request only %}

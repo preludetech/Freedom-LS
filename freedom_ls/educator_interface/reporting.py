@@ -16,7 +16,6 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.models import User
-from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.actions import RegisterLearnerForCourseAction
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
@@ -543,11 +542,10 @@ class LearnerCoursesPanel(Panel):
             )
         ]
         details = gather_learner_course_details(learner, registrations, learner.site_id)
+        # The registrations' courses arrive with their organisations prefetched.
         courses = {
-            course.pk: course
-            for course in Course.objects.filter(
-                pk__in={detail.course_id for detail in details}
-            ).prefetch_related("organisations")
+            registration.course_id: registration.course
+            for registration in registrations
         }
         context = super().get_context_data()
         # Each course's detail beside who shares the course, when another

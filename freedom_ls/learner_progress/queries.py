@@ -345,9 +345,10 @@ def registrations_with_progress_for_learner(
 
     Keyed on the Learner throughout, so a person holding a second Learner row
     in another organisation never has that row's registrations mixed in.
-    Costs three queries whatever the registration count: the two active
-    registration reads, then the progress records themselves, matched up in
-    Python rather than with a query per registration.
+    Costs five queries whatever the registration count: the two active
+    registration reads and the owning organisations of their courses, then
+    the progress records themselves, matched up in Python rather than with a
+    query per registration.
     """
     from freedom_ls.learner_management.models import LearnerCourseRegistration
     from freedom_ls.learner_management.queries import (
@@ -355,14 +356,15 @@ def registrations_with_progress_for_learner(
     )
 
     individual_registrations = list(
-        LearnerCourseRegistration.objects.filter(
-            learner=learner, is_active=True
-        ).select_related("course")
+        LearnerCourseRegistration.objects.filter(learner=learner, is_active=True)
+        .select_related("course")
+        .prefetch_related("course__organisations")
     )
     cohort_registrations = list(
         access_granting_cohort_registrations()
         .filter(cohort__cohortmembership__learner=learner)
         .select_related("cohort", "course")
+        .prefetch_related("course__organisations")
     )
     records = CourseProgress.objects.filter(learner=learner)
     record_by_individual_registration = {
