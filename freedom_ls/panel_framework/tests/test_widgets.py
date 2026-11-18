@@ -167,3 +167,13 @@ def test_two_forms_with_the_same_file_field_get_different_checkbox_ids() -> None
         ids.append(checkbox.get("id"))
 
     assert ids == ["id_inline-attachment_clear", "id_dialog-attachment_clear"]
+
+
+def test_the_remove_label_lays_the_checkbox_out_beside_its_text_with_a_gap() -> None:
+    """The Remove label used to be a bare block label, so the checkbox touched the text."""
+    _, root = _render(_StoredFile("stub_files/notes.txt"), required=False)
+
+    (checkbox,) = _checkboxes(root)
+    (label,) = root.xpath(f"//label[@for='{checkbox.get('id')}']")
+    classes = label.get("class", "").split()
+    assert {"flex", "items-center", "gap-2"} <= set(classes)

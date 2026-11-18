@@ -4,7 +4,7 @@
         <span class="break-all" title="{{ widget.current_file_name }}">{{ widget.current_file_name }}</span>
     </p>
     {% if not widget.required %}
-        <label for="{{ widget.checkbox_id }}">
+        <label for="{{ widget.checkbox_id }}" class="flex items-center gap-2">
             <input type="checkbox" name="{{ widget.checkbox_name }}" id="{{ widget.checkbox_id }}"{% if widget.checked %} checked{% endif %}{% if widget.attrs.disabled %} disabled{% endif %}>
             {{ widget.clear_checkbox_label }}<span class="sr-only"> {{ widget.current_file_name }}</span>
         </label>
