@@ -27,7 +27,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 4. Documentation and pull request
 
 - [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
-- [ ] (cmd) In `claude_plugins/fls-dev/skills/panel-framework/SKILL.md`, document the reason variants (`reason_required`, `reason_choices`), `show_as_of`, row detail, child rows, per-row templates, sequence-backed tables, `DEFAULT_PAGE_SIZE` and `compact` (spec "Documentation and downstream")
+- [x] (cmd) In `claude_plugins/fls-dev/skills/panel-framework/SKILL.md`, document the reason variants (`reason_required`, `reason_choices`), `show_as_of`, row detail, child rows, per-row templates, sequence-backed tables, `DEFAULT_PAGE_SIZE` and `compact` (spec "Documentation and downstream")
 - [ ] (cmd) In `claude_plugins/fls-dev/skills/alpine-js/SKILL.md`, add `childRows` to the component inventory and drop `courseOutline` (spec "Documentation and downstream")
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
