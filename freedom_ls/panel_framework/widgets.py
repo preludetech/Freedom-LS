@@ -35,4 +35,10 @@ class PanelClearableFileInput(forms.ClearableFileInput):
         # Django leaves the Remove tick in the attrs the file input
         # prints; it belongs on the checkbox alone.
         context["widget"]["checked"] = context["widget"]["attrs"].pop("checked", False)
+        # Django builds the checkbox id from the field name alone, so two
+        # forms on one page with the same field would share it. The file
+        # input's id carries the form's prefix and auto_id.
+        input_id = context["widget"]["attrs"].get("id")
+        if input_id:
+            context["widget"]["checkbox_id"] = f"{input_id}_clear"
         return context

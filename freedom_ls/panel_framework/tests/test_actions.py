@@ -2215,6 +2215,58 @@ def test_a_form_invalid_override_still_gets_the_choose_again_message() -> None:
     assert response.content.decode() == CHOOSE_AGAIN_MESSAGE
 
 
+class _RefreshingUploadAction(StubUploadFormAction):
+    action_name = "refreshing_upload"
+    refresh_on_change = ("name",)
+
+
+def test_a_refresh_with_a_required_file_field_renders_the_form_bound() -> None:
+    ctx = _ctx(RequestFactory().get("/", {"name": "Ada"}))
+
+    form = _RefreshingUploadAction().get_form(ctx)
+
+    assert form.is_bound
+    assert not form.errors
+
+
+def test_a_refresh_with_another_invalid_field_still_renders_unbound() -> None:
+    ctx = _ctx(RequestFactory().get("/", {"name": ""}))
+
+    form = _RefreshingUploadAction().get_form(ctx)
+
+    assert not form.is_bound
+
+
+class _OverridingSubmitAction(StubUploadFormAction):
+    action_name = "overriding_submit"
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        form = self.get_form(ctx)
+        if form.is_valid():
+            return self.form_valid(ctx, form)
+        return self.form_invalid(ctx, form)
+
+
+@pytest.mark.django_db
+def test_a_handle_submit_override_still_gets_the_choose_again_message(
+    mock_site_context: Site,
+) -> None:
+    root = _post_upload(
+        _OverridingSubmitAction(), {"name": "", "attachment": _upload()}
+    )
+
+    assert _field_error_texts(root).count(CHOOSE_AGAIN_MESSAGE) == 1
+    summary = " ".join(root.xpath("//*[@data-error-summary]//text()"))
+    assert "2 fields to fix." in summary
+
+
+@pytest.mark.django_db
+def test_the_choose_again_message_is_added_once(mock_site_context: Site) -> None:
+    root = _post_upload(StubUploadFormAction(), {"name": "", "attachment": _upload()})
+
+    assert _field_error_texts(root).count(CHOOSE_AGAIN_MESSAGE) == 1
+
+
 class _InlineUploadAction(StubUploadFormAction):
     action_name = "inline_upload"
     template_name = "panel_framework/test_inline_upload_form.html"

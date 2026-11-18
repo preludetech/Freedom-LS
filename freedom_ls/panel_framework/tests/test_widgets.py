@@ -7,6 +7,8 @@ import lxml.html
 import pytest
 from lxml.html import HtmlElement
 
+from django import forms
+
 from freedom_ls.panel_framework.widgets import PanelClearableFileInput
 
 
@@ -136,6 +138,32 @@ def test_the_file_input_keeps_the_field_attributes_and_the_checkbox_has_none() -
     assert file_input.get("id") == "id_attachment"
     assert file_input.get("aria-describedby") == "id_attachment_error"
     assert file_input.get("aria-invalid") == "true"
-    assert checkbox.get("id") == "attachment-clear_id"
+    assert checkbox.get("id") == "id_attachment_clear"
     assert checkbox.get("aria-describedby") is None
     assert checkbox.get("aria-invalid") is None
+
+
+def test_without_an_id_the_checkbox_keeps_django_s_id() -> None:
+    _, root = _render(_StoredFile("stub_files/notes.txt"))
+
+    (checkbox,) = _checkboxes(root)
+    (label,) = root.xpath("//label")
+    assert checkbox.get("id") == "attachment-clear_id"
+    assert label.get("for") == "attachment-clear_id"
+
+
+def test_two_forms_with_the_same_file_field_get_different_checkbox_ids() -> None:
+    class _Form(forms.Form):
+        attachment = forms.FileField(required=False, widget=PanelClearableFileInput)
+
+    initial = {"attachment": _StoredFile("stub_files/notes.txt")}
+    ids = []
+    for prefix in ("inline", "dialog"):
+        html = str(_Form(initial=initial, prefix=prefix)["attachment"])
+        root = lxml.html.fromstring(f"<div>{html}</div>")
+        (checkbox,) = _checkboxes(root)
+        (label,) = root.xpath("//label")
+        assert label.get("for") == checkbox.get("id")
+        ids.append(checkbox.get("id"))
+
+    assert ids == ["id_inline-attachment_clear", "id_dialog-attachment_clear"]

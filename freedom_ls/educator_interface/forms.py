@@ -53,13 +53,12 @@ class BulkTargetPickerForm(forms.Form):
     def __init__(
         self,
         data: Mapping[str, str] | None = None,
-        files: MultiValueDict[str, UploadedFile] | None = None,
         *,
         field_name: str,
         queryset: QuerySet,
         label: str,
     ) -> None:
-        super().__init__(data, files)
+        super().__init__(data)
         self.fields[field_name] = forms.ModelChoiceField(
             queryset=queryset, label=label, error_messages=choice_error(label)
         )
@@ -237,7 +236,6 @@ class AddStaffMemberForm(forms.Form):
     def __init__(
         self,
         data: Mapping[str, str] | None = None,
-        files: MultiValueDict[str, UploadedFile] | None = None,
         *,
         roles: list[tuple[str, str]],
         cohorts: QuerySet[Cohort],
@@ -248,7 +246,7 @@ class AddStaffMemberForm(forms.Form):
         if preset is not None and isinstance(data, QueryDict):
             data = data.copy()
             data.setlist("cohorts", [str(preset.pk)])
-        super().__init__(data, files)
+        super().__init__(data)
         if not new_account:
             del self.fields["first_name"]
             del self.fields["last_name"]
@@ -285,11 +283,10 @@ class ChangeRoleForm(forms.Form):
     def __init__(
         self,
         data: Mapping[str, str] | None = None,
-        files: MultiValueDict[str, UploadedFile] | None = None,
         *,
         roles: list[tuple[str, str]],
     ) -> None:
-        super().__init__(data, files)
+        super().__init__(data)
         cast(forms.ChoiceField, self.fields["new_role"]).choices = roles
 
 

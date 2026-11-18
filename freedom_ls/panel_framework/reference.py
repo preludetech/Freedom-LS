@@ -32,7 +32,7 @@ from freedom_ls.panel_framework.panels import (
 )
 from freedom_ls.panel_framework.tables import Column, DataTable
 
-from .actions import CHOOSE_AGAIN_MESSAGE
+from .actions import CHOOSE_AGAIN_MESSAGE, field_error_count
 from .widgets import PanelClearableFileInput
 
 __all__ = [
@@ -60,12 +60,11 @@ def _file_field_initial() -> dict[str, object]:
     return {"title": "First aid", "attachment": _ExampleFile()}
 
 
-# Django derives the Remove checkbox's id from the field name alone, so each
-# form takes its own prefix to keep two checkboxes on one page apart.
+# The page shows the same form more than once, so each takes its own prefix
+# to keep its field ids apart.
 def file_field_dialog_form() -> forms.Form:
     return _OptionalFileForm(
         initial=_file_field_initial(),
-        auto_id="file-field-dialog-%s",
         prefix="file-field-dialog",
     )
 
@@ -74,12 +73,14 @@ def file_field_error_form() -> forms.Form:
     form = _OptionalFileForm(
         data={},
         initial=_file_field_initial(),
-        auto_id="file-field-error-%s",
         prefix="file-field-error",
     )
     form.is_valid()
     form.add_error("attachment", CHOOSE_AGAIN_MESSAGE)
     return form
+
+
+_FILE_FIELD_ERROR_FORM = file_field_error_form()
 
 
 def file_field_inline_form() -> forms.Form:
@@ -114,8 +115,8 @@ EXAMPLE_CONTEXT: dict[str, object] = {
         },
     ],
     "file_field_dialog_form": file_field_dialog_form(),
-    "file_field_error_form": file_field_error_form(),
-    "file_field_error_count": 2,
+    "file_field_error_form": _FILE_FIELD_ERROR_FORM,
+    "file_field_error_count": field_error_count(_FILE_FIELD_ERROR_FORM),
     "file_field_inline_form": file_field_inline_form(),
 }
 

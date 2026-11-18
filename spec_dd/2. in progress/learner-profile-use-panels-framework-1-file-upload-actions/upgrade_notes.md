@@ -46,10 +46,13 @@ form has a file field, and a failed request shows a message inside the form.
     `form.is_multipart`, and holds a hidden `[data-request-error]` element for the failed-request
     message.
   - The inline record form: see the breaking change above.
-- If your project has its own `htmx:responseError` or `htmx:sendError` handler that shows the
-  user a message, set `event.detail.requestConfig.panelErrorShown = true` in it. Otherwise a
-  panel form adds its own "Your changes could not be saved" message as well as yours.
+- If your project shows the user its own message for a failed htmx request, set
+  `event.detail.requestConfig.panelErrorShown = true` in an `htmx:beforeSwap` handler for that
+  response. Otherwise a panel form adds its own "Your changes could not be saved" message as well
+  as yours. A response carrying FLS's out-of-band toast needs nothing: the framework sees the
+  toast and adds no message.
 - If your forms take file uploads, set your reverse proxy's request body limit at or above the
   largest file your forms allow. A 413 from the proxy shows "The file may be too large to upload."
+  A proxy that drops the connection instead shows the generic message.
 - Rebuild Tailwind: the changed templates use a utility class, `[&_p]:text-error`, that your
   bundle does not include yet.

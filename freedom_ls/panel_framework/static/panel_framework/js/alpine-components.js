@@ -30,6 +30,8 @@ document.addEventListener("htmx:beforeRequest", (event) => {
 const REQUEST_ERROR_TOO_LARGE =
     "The file may be too large to upload. Choose a smaller file.";
 const REQUEST_ERROR_GENERIC = "Your changes could not be saved. Try again.";
+// The out-of-band toast fragment base/partials/messages.html renders.
+const TOAST_MARKER = 'hx-swap-oob="beforeend:#toast-region-';
 
 // A panel form whose request failed with nothing to swap in says so inside
 // the form: the response body is a server error page, never form markup.
@@ -41,11 +43,14 @@ function showRequestError(event) {
     if (!(form instanceof HTMLFormElement)) return;
     const holder = form.querySelector("[data-request-error]");
     if (!holder) return;
-    const status = event.detail.xhr ? event.detail.xhr.status : 0;
-    // The page reloads for these.
-    if (status === 403 || status === 404) return;
-    // The host has already shown this response its own way.
+    const xhr = event.detail.xhr;
+    const status = xhr ? xhr.status : 0;
+    // Set by the beforeSwap handler below when the page reloads or the
+    // response opens its own dialog, and by a host that shows a failed
+    // response its own way. htmx fires responseError after beforeSwap.
     if (config.panelErrorShown) return;
+    // The response's out-of-band toast is its message.
+    if (xhr && (xhr.responseText || "").includes(TOAST_MARKER)) return;
     const message = document.createElement("p");
     message.setAttribute("role", "alert");
     message.textContent =
@@ -76,11 +81,12 @@ document.addEventListener("htmx:beforeSwap", (event) => {
     const status = event.detail.xhr.status;
     if (status !== 403 && status !== 404) return;
     const body = event.detail.xhr.responseText || "";
-    const trigger =
-        event.detail.requestConfig && event.detail.requestConfig.triggeringEvent;
+    const config = event.detail.requestConfig;
+    const trigger = config && config.triggeringEvent;
     const userAction = Boolean(trigger && trigger.isTrusted);
     const target = event.detail.target;
     if (body.includes("data-htmx-swap-error")) {
+        if (config) config.panelErrorShown = true;
         if (status === 404 && target && !target.closest("#app-modal")) {
             if (userAction) showUnavailableInModal(event);
             else event.detail.shouldSwap = false;
@@ -94,6 +100,7 @@ document.addEventListener("htmx:beforeSwap", (event) => {
         !target.closest("[data-htmx-owns-errors]")
     ) {
         event.detail.shouldSwap = false;
+        if (config) config.panelErrorShown = true;
         window.location.reload();
     }
 });

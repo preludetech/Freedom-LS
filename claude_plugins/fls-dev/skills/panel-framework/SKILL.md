@@ -363,7 +363,9 @@ the form. The framework does the rest:
 - A request that fails with nothing to swap in (a 413 or 5xx, a network error) shows a
   `role="alert"` message in the form's `[data-request-error]` element, and Save works again. A
   413 says the file may be too large; anything else says the changes could not be saved. A 403
-  or 404 reloads the page instead. A template that renders its own form needs the element too.
+  or 404 from a user's own submit reloads the page instead, except inside
+  `[data-htmx-owns-errors]`; any other 403 or 404 gets the message. A template that renders its
+  own form needs the element too.
 
 The host owns:
 
@@ -371,15 +373,23 @@ The host owns:
 - Size and type validators on the form or the model field. The framework limits neither.
 - A reverse-proxy body limit (nginx `client_max_body_size`) at or above the largest file the
   validators allow. Below it, the proxy answers 413 before Django runs and the person sees the
-  generic request error, not a field error.
+  "file may be too large" message, not a field error. A proxy that drops the connection mid-upload
+  shows the generic request error instead.
 - A form that accepts Django's `(data, files)` arguments. `FormPanelAction.get_form_kwargs` passes
   `files`, so a form whose `__init__` is `def __init__(self, data=None, *, ...)` raises
   `TypeError`. Take `files` after `data` and pass both to `super().__init__(data, files)`.
 
-A host that shows a failed response its own way (a toast) sets
-`event.detail.requestConfig.panelErrorShown = true` in its `htmx:beforeSwap` handler. The
-framework then adds no message of its own for that response; without the flag, the person sees
-both. `base/js/alpine-components.js` sets it where it swaps an out-of-band toast on a 4xx or 5xx.
+A response that carries the out-of-band toast from `partials/messages.html` gets no framework
+message: the toast is the message. A host that shows a failed response some other way sets
+`event.detail.requestConfig.panelErrorShown = true` in its `htmx:beforeSwap` handler; without the
+flag, the person sees both.
+
+A `refresh_on_change` request is a GET and carries no files, so a file field's errors do not stop
+the dialog re-rendering, and a file already chosen is dropped. Put file fields after the fields
+that refresh the dialog.
+
+The "Remove" checkbox's id is the file input's id plus `_clear`, so it follows the form's prefix
+and `auto_id`.
 
 ### Placement
 

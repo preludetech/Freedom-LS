@@ -332,14 +332,18 @@ class FormPanelAction(ModalPanelAction):
         """The form for this request. A GET that carries a `refresh_on_change`
         field renders the form bound to the query when the query is valid, so
         the dialog can react to the choice; a stale choice is not a
-        submission and earns no error."""
+        submission and earns no error. A GET carries no files, so a file
+        field's error does not count against the query."""
         kwargs = self.get_form_kwargs(ctx)
         form = self.form_class(**kwargs)
         if ctx.request.method != "POST" and any(
             name in ctx.request.GET for name in self.refresh_on_change
         ):
             queried = self.form_class(**{**kwargs, "data": ctx.request.GET})
-            if queried.is_valid():
+            for name in list(queried.errors):
+                if isinstance(queried.fields.get(name), forms.FileField):
+                    del queried.errors[name]
+            if not queried.errors:
                 form = queried
         self._mark_refresh_fields(ctx, form)
         self._use_framework_file_widgets(form)
@@ -392,6 +396,10 @@ class FormPanelAction(ModalPanelAction):
     def get_fragment_context(
         self, ctx: PanelContext, form: forms.BaseForm
     ) -> dict[str, object]:
+        # Here as well as in handle_submit, so an override of either still
+        # renders the message.
+        if form.is_bound and form.errors:
+            self._add_choose_again_errors(ctx, form)
         return form_fragment_context(
             form,
             form_title=self.get_form_title(ctx, form),
@@ -412,7 +420,8 @@ class FormPanelAction(ModalPanelAction):
         form = self.get_form(ctx)
         if form.is_valid():
             return self.form_valid(ctx, form)
-        # Here rather than in form_invalid, which subclasses override.
+        # Here as well as in get_fragment_context, for a form_invalid override
+        # that renders without it.
         self._add_choose_again_errors(ctx, form)
         return self.form_invalid(ctx, form)
 

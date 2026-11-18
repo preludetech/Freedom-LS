@@ -19,7 +19,3 @@ Nov 16 2026 re-run: covered the whole checklist again, no gaps (332 learners / 3
 For "learner login on a course with several topics" use qa.alice (cohort A gives her
 functionality-demo-show-end-with-topic: 6 topics + 1 form). Report output is long (every
 learner line); filter with grep -v '^LEARNER qa\.\(imp\|import\|new\|bulk\|bg\|addtest\)'.
-Nov 17 2026 (learner-profile-use-panels-framework-1-file-upload-actions): caller named
-qa_create_educator_interface_seed for "QA cohort A" -- WRONG, that seed makes "Educator QA Cohort
-Alpha/Beta". Empty DB -> create_demo_data --yes; content_save demo_content DemoDev;
-qa_create_dev_org_baseline --site-name DemoDev covered the whole ask (~5 min total).

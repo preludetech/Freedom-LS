@@ -31,11 +31,6 @@ document.addEventListener("htmx:beforeSwap", (event) => {
             // Process the OOB toast fragment. Leave isError truthful so
             // any other listeners still see the actual error status.
             event.detail.shouldSwap = true;
-            // The toast is the message for this response, so the panel
-            // framework's forms add none of their own.
-            if (event.detail.requestConfig) {
-                event.detail.requestConfig.panelErrorShown = true;
-            }
         }
     }
 });

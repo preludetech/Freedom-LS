@@ -307,6 +307,50 @@ def test_dialog_shows_no_request_error_when_the_page_reloads_for_a_404(
     expect(page.get_by_text(_TOO_LARGE_MESSAGE)).to_have_count(0)
 
 
+def test_dialog_shows_the_generic_request_error_for_a_scripted_403(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    _open_upload_tab(page, live_server)
+    held = _hold_requests(page, "upload")
+    dialog = _open_dialog(page)
+    dialog.get_by_label("Title").fill("Notes")
+
+    # An event a script dispatches is not a user action, so the page does not
+    # reload.
+    dialog.locator("form").evaluate("form => htmx.trigger(form, 'submit')")
+    _held_request(page, held, 0).fulfill(status=403, body="Forbidden")
+
+    expect(dialog.get_by_role("alert")).to_have_text(_GENERIC_MESSAGE)
+    expect(dialog.get_by_label("Title")).to_have_value("Notes")
+
+
+def test_dialog_adds_no_request_error_when_the_response_carries_a_toast(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    _open_upload_tab(page, live_server)
+    held = _hold_requests(page, "upload")
+    dialog = _open_dialog(page)
+
+    _submit_without_file(dialog, _submit_button(dialog))
+    _held_request(page, held, 0).fulfill(
+        status=500,
+        content_type="text/html",
+        body=(
+            '<div hx-swap-oob="beforeend:#toast-region-assertive">'
+            "<p>The server is busy.</p></div>"
+        ),
+    )
+
+    expect(page.get_by_text("The server is busy.")).to_be_attached()
+    expect(page.get_by_text(_GENERIC_MESSAGE)).to_have_count(0)
+
+
 def test_escape_closes_the_dialog_when_nothing_has_changed(
     page: Page,
     live_server: pytest_django.live_server_helper.LiveServer,
