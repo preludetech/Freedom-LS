@@ -26,3 +26,4 @@ freedom_ls/messaging_policy/tests/test_messages_button.py  # renders the comms h
 freedom_ls/api/tests/invariants/  # compiles the code example in docs/api.md, which mirrors no module
 freedom_ls/panel_framework/tests/test_import_guard.py  # checks every module's imports, which mirrors no single module
 freedom_ls/panel_framework/tests/test_standalone_fixtures.py  # checks which modules the standalone run loads, which mirrors no single module
+freedom_ls/content_engine/tests/components/  # tests of Cotton component templates, which have no Python module

@@ -13,6 +13,7 @@ import io
 import re
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from PIL import Image
@@ -31,7 +32,7 @@ from freedom_ls.content_engine.factories import (
     FileFactory,
     TopicFactory,
 )
-from freedom_ls.content_engine.models import Course, PriceKind
+from freedom_ls.content_engine.models import Course, File, PriceKind
 from freedom_ls.learner_interface.templatetags.course_storage_keys import (
     course_part_storage_key,
 )
@@ -57,6 +58,9 @@ LONG_TOPIC_TITLE = (
 LONG_COURSE_TITLE = "Beta Course With A Rather Long Title To Force Wrapping"
 QUESTION = "Which status code for a failed write?"
 PICTURE_TITLE = "Lone tree at dawn"
+BEEP_MP3 = Path(__file__).parent / "fixtures" / "beep.mp3"
+AUDIO_A_LABEL = "Alpha"
+AUDIO_B_LABEL = "Bravo"
 
 # A five-column table and a fenced code block: between them they set a
 # min-content width several times a phone's viewport.
@@ -147,9 +151,9 @@ def _browse_course(user: User) -> Course:
     """The course the flow browses.
 
     Its first item is a topic gridding two course cards; the second is a part
-    holding a standard flashcard, a wide flashcard and a picture; the last is a
-    topic with a title too long for a phone's outline. It is discounted, so its
-    detail page carries the widest compact price.
+    holding a standard flashcard, a wide flashcard, a picture and two audio
+    widgets; the last is a topic with a title too long for a phone's outline.
+    It is discounted, so its detail page carries the widest compact price.
     """
     CourseFactory(
         title=LONG_COURSE_TITLE,
@@ -170,6 +174,19 @@ def _browse_course(user: User) -> Course:
     )
     LearnerCourseRegistrationFactory(learner__user=user, course=course, is_active=True)
     FileFactory(file_path="images/pic.svg")
+    for name in ("alpha", "bravo"):
+        FileFactory(
+            file_path=f"audio/{name}.mp3",
+            file=SimpleUploadedFile(
+                f"{name}.mp3", BEEP_MP3.read_bytes(), content_type="audio/mpeg"
+            ),
+            file_type=File.FileType.AUDIO,
+            mime_type="audio/mpeg",
+        )
+    audio = (
+        f'<c-audio src="audio/alpha.mp3" label="{AUDIO_A_LABEL}"></c-audio>\n\n'
+        f'<c-audio src="audio/bravo.mp3" label="{AUDIO_B_LABEL}"></c-audio>'
+    )
     filler = "\n\n".join(
         f"Filler paragraph {i}. " + ("lorem ipsum dolor sit amet " * 30)
         for i in range(15)
@@ -200,22 +217,23 @@ def _browse_course(user: User) -> Course:
             slug="picture-topic",
             content=f"{picture}\n\n{filler}",
         ),
+        TopicFactory(title="Audio Topic", slug="audio-topic", content=audio),
         TopicFactory(title=LONG_TOPIC_TITLE, slug="long-title-topic", content="x"),
     ]
     ContentCollectionItemFactory(
         collection_object=course, child_object=topics[0], order=0
     )
     ContentCollectionItemFactory(collection_object=course, child_object=part, order=1)
-    for order, topic in enumerate(topics[1:4]):
+    for order, topic in enumerate(topics[1:5]):
         ContentCollectionItemFactory(
             collection_object=part, child_object=topic, order=order
         )
     ContentCollectionItemFactory(
-        collection_object=course, child_object=topics[4], order=2
+        collection_object=course, child_object=topics[5], order=2
     )
-    set_due_date(course, topics[4], due_date=date(2000, 1, 1))
+    set_due_date(course, topics[5], due_date=date(2000, 1, 1))
     # Items open in order, so finishing the earlier ones unlocks every page.
-    for topic in topics[:4]:
+    for topic in topics[:5]:
         topic_completion(course, user, topic, complete_time=timezone.now())
     return course
 
@@ -231,6 +249,7 @@ def test_learner_browses_a_course(
     flashcard_url = _item_url(live_server, course, 2)
     wide_flashcard_url = _item_url(live_server, course, 3)
     picture_url = _item_url(live_server, course, 4)
+    audio_url = _item_url(live_server, course, 5)
 
     # A course card opens its course from anywhere on the card, not only the title.
     page.set_viewport_size({"width": 1280, "height": 800})
@@ -315,6 +334,21 @@ def test_learner_browses_a_course(
     expect(heading).to_be_visible()
     assert _box(heading)["y"] >= 0
 
+    # A speak button loads nothing until pressed, plays on one press and stops
+    # on the next.
+    requested: list[str] = []
+    page.on("request", lambda request: requested.append(request.url))
+    page.goto(audio_url)
+    button_a = page.get_by_role("button", name=f"Play pronunciation of {AUDIO_A_LABEL}")
+    expect(button_a).to_have_attribute("aria-pressed", "false")
+    assert not [
+        url for url in requested if "/content/audio/" in url or "/media/" in url
+    ]
+    button_a.click()
+    expect(button_a).to_have_attribute("aria-pressed", "true")
+    button_a.click()
+    expect(button_a).to_have_attribute("aria-pressed", "false")
+
     # Back closes the mobile outline sheet without leaving the page.
     page.set_viewport_size({"width": 375, "height": 812})
     page.goto(grid_url)
@@ -331,6 +365,9 @@ def test_learner_browses_a_course(
     # Layout at every width.
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
+
+        page.goto(audio_url)
+        assert_no_horizontal_overflow(page)
 
         page.goto(grid_url)
         for title in ("Browse Course", "Beta Course With"):
@@ -374,7 +411,7 @@ def test_learner_browses_a_course(
             )
             assert _box(row)["height"] < 2 * date_box["height"] + 16
 
-        page.goto(_item_url(live_server, course, 5))
+        page.goto(_item_url(live_server, course, 6))
         title_box = _box(page.locator("#page-title"))
         deadline_box = _box(page.get_by_test_id("player-item-deadline"))
         # The deadline line sits above the title, left-aligned, at every width.

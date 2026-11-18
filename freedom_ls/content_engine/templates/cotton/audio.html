@@ -1,0 +1,28 @@
+<c-vars src="" label="" respelling="" />
+
+{% load content_tags %}
+
+{% comment %}
+Speak button for one recorded audio file.
+data-src holds the redirect URL, never a signed one, so playback after the
+signature expires still works. The audio element is created by the audioFile
+Alpine component on first press, so nothing loads with the page.
+{% endcomment %}
+
+{% with file_obj=src|get_file_by_path:content_instance %}
+  <div class="my-6" x-data="audioFile">
+    <div class="flex items-center gap-2 whitespace-nowrap">
+      <span>{{ label }}</span>
+      <c-button variant="ghost"
+                aria_label="Play pronunciation of {{ label }}"
+                x-bind:aria-pressed="playing"
+                x-on:click="toggle"
+                data-src="{% url 'content_engine:audio_file' file_obj.pk %}"
+                class="size-11 justify-center p-0">
+        <span x-show="idle"><c-icon name="audio_play" class="size-5" /></span>
+        <span x-show="loading" x-cloak><c-icon name="loading" class="size-5 animate-spin" /></span>
+        <span x-show="playing" x-cloak><c-icon name="audio_stop" class="size-5" /></span>
+      </c-button>
+    </div>
+  </div>
+{% endwith %}

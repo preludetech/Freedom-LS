@@ -69,6 +69,8 @@ HEROICONS_MAPPING: dict[str, str] = {
     "star": "star",
     "notes": "document-text",
     "course": "academic-cap",
+    "audio_play": "speaker-wave",
+    "audio_stop": "stop",
 }
 
 LUCIDE_MAPPING: dict[str, str] = {
@@ -133,6 +135,8 @@ LUCIDE_MAPPING: dict[str, str] = {
     "star": "star",
     "notes": "file-text",
     "course": "graduation-cap",
+    "audio_play": "volume-2",
+    "audio_stop": "square",
 }
 
 TABLER_MAPPING: dict[str, str] = {
@@ -197,6 +201,8 @@ TABLER_MAPPING: dict[str, str] = {
     "star": "star",
     "notes": "file-text",
     "course": "school",
+    "audio_play": "volume-2",
+    "audio_stop": "player-stop",
 }
 
 PHOSPHOR_MAPPING: dict[str, str] = {
@@ -261,6 +267,8 @@ PHOSPHOR_MAPPING: dict[str, str] = {
     "star": "star",
     "notes": "file-text",
     "course": "graduation-cap",
+    "audio_play": "speaker-high",
+    "audio_stop": "stop",
 }
 
 HEROICONS_VARIANTS: dict[str, str | None] = {

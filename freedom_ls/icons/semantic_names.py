@@ -70,4 +70,7 @@ SEMANTIC_ICON_NAMES: set[str] = {
     "star",
     "notes",
     "course",
+    # Audio
+    "audio_play",
+    "audio_stop",
 }

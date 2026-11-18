@@ -9,6 +9,7 @@
  * - `equation`        — client-side KaTeX typesetting (cotton/equation.html)
  * - `contentLightbox` — native <dialog> spotlight (cotton/picture.html)
  * - `flashcard`       — two-sided flip card (cotton/flashcard.html)
+ * - `audioFile`       — one shared audio element for speak buttons (cotton/audio.html)
  */
 
 document.addEventListener("alpine:init", () => {
@@ -95,6 +96,53 @@ document.addEventListener("alpine:init", () => {
         },
         _unlockScroll() {
             document.documentElement.style.overflow = this._prevOverflow ?? "";
+        },
+    }));
+
+    // Audio file component (cotton/audio.html).
+    //
+    // One element for the whole page: it plays one audio file at a time by
+    // construction, and iOS unlocks it once from the first press. Web Audio is
+    // not used because the iPhone silent switch mutes it.
+    let sharedAudio = null;
+    let owner = null;
+    // Alpine hands each method a fresh scope proxy, so `this` is not a stable
+    // identity; widgets are compared by this id instead.
+    let nextAudioFileId = 0;
+
+    function audioElement() {
+        if (sharedAudio) return sharedAudio;
+        sharedAudio = new Audio();
+        sharedAudio.addEventListener("playing", () => owner?._setState("playing"));
+        sharedAudio.addEventListener("ended", () => owner?._setState("idle"));
+        return sharedAudio;
+    }
+
+    Alpine.data("audioFile", () => ({
+        _id: nextAudioFileId++,
+        idle: true,
+        loading: false,
+        playing: false,
+
+        toggle() {
+            const audio = audioElement();
+            if (owner?._id === this._id && !this.idle) {
+                audio.pause();
+                audio.currentTime = 0;
+                this._setState("idle");
+                return;
+            }
+            owner = this;
+            this._setState("loading");
+            // src only, never <source type>: the stored mime type can be empty.
+            audio.src = this.$el.dataset.src;
+            // Called synchronously inside the click so iOS treats it as user-initiated.
+            audio.play();
+        },
+        _setState(state) {
+            this.idle = state === "idle";
+            this.loading = state === "loading";
+            this.playing = state === "playing";
         },
     }));
 });

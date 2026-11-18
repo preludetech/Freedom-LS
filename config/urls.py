@@ -75,6 +75,7 @@ urlpatterns = [
         if apps.is_installed("freedom_ls.api")
         else []
     ),
+    path("content/", include("freedom_ls.content_engine.urls")),
     path("", include("freedom_ls.learner_interface.urls")),
     path("notifications/", include("freedom_ls.comms.urls")),
     path("messages/", include("freedom_ls.comms.messaging_urls")),
