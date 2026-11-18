@@ -137,7 +137,7 @@ from freedom_ls.reports.tests.helpers import topic_progress
 from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role
 from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.tests.factories import SiteFactory
-from freedom_ls.tests.site_context import site_context
+from freedom_ls.tests.site_context import drop_ambient_request, site_context
 
 QUERY_BUDGET = 60
 
@@ -2741,6 +2741,28 @@ def test_the_learners_export_neutralises_a_formula_looking_name_and_leaves_never
     (row,) = rows
     assert row[0].startswith("'=HYPERLINK")
     assert row[5] == ""
+
+
+@pytest.mark.django_db
+def test_the_learners_export_stays_scoped_when_the_site_thread_local_is_cleared(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    for name in ("Ada", "Bo"):
+        CohortMembershipFactory(
+            cohort=CohortFactory(organisation=organisation),
+            learner__organisation=organisation,
+            learner__user=UserFactory(first_name=name, last_name="Learner"),
+        )
+
+    response = staff_client.get(
+        _interface_url(organisation.slug, "learners"), {"learners-export": "csv"}
+    )
+    drop_ambient_request()
+    body = b"".join(response.streaming_content).decode("utf-8-sig")
+
+    _header, *rows = list(csv.reader(io.StringIO(body, newline="")))
+    assert sorted(row[0] for row in rows) == ["Ada Learner", "Bo Learner"]
 
 
 @pytest.mark.django_db
