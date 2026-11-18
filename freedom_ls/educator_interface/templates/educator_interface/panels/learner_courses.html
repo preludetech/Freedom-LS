@@ -4,7 +4,7 @@
 {% block panel_body %}
     {% if details %}
         <ul class="list-none ml-0 flex flex-col gap-8">
-            {% for detail in details %}
+            {% for detail, sharers in details %}
                 <li>
                     <section aria-labelledby="course-{{ forloop.counter }}-title">
                         <div class="flex flex-col gap-3">
@@ -12,6 +12,7 @@
                                 <c-panel-heading id="course-{{ forloop.counter }}-title">{{ detail.course_title }}</c-panel-heading>
                                 <span class="text-sm text-muted">{% if detail.cohort_name %}via {{ detail.cohort_name }}{% else %}Individual{% endif %}</span>
                             </div>
+                            {% include "educator_interface/partials/course_shared_by.html" %}
                             {% include "educator_interface/partials/learner_badges.html" with completion_percentage=detail.completion_percentage flags=detail.flags %}
                             <c-panel-progress-bar percentage="{{ detail.completion_percentage }}" label="{{ detail.course_title }} progress" />
                             <p class="text-sm text-muted">{{ detail.completed_item_count }} of {{ detail.total_item_count }} items</p>

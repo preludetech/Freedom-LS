@@ -1,0 +1,5 @@
+{% comment %}
+The muted "Shared by <organisations>" line under a course's title. `sharers`
+is `Course.shared_by`'s result; nothing renders when it is empty.
+{% endcomment %}
+{% if sharers %}<p class="text-sm text-muted break-words" data-testid="shared-by">Shared by {{ sharers }}</p>{% endif %}

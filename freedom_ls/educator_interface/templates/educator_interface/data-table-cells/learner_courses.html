@@ -10,6 +10,8 @@ the furthest progress percentage once a course progress record exists.
             <li class="py-0">
                 {{ summary.course.title }}
                 {% if summary.progress_percentage is not None %}<span class="text-muted">{{ summary.progress_percentage }}%</span>{% endif %}
+                {% course_shared_by summary.course as sharers %}
+                {% include "educator_interface/partials/course_shared_by.html" %}
             </li>
         {% endfor %}
     </ul>

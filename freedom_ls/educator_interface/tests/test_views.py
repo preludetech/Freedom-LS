@@ -9253,3 +9253,133 @@ def test_courses_list_names_the_owner_under_a_shared_course_only(
         for element in document.cssselect("[data-testid='shared-by']")
     }
     assert notes == {"Shared by Northwind Logistics"}
+
+
+def _shared_and_own_course_world() -> tuple[Organisation, CourseModel, CourseModel]:
+    """An organisation with a course of its own and a same-titled course that
+    another organisation owns and shares with it."""
+    organisation = OrganisationFactory(name="Harbour College")
+    own = CourseFactory(
+        title="Workplace Safety", slug="own-safety", audience=CourseAudience.PUBLIC
+    )
+    own.organisations.add(organisation)
+    shared = CourseFactory(
+        title="Workplace Safety", slug="shared-safety", audience=CourseAudience.PUBLIC
+    )
+    shared.organisations.add(OrganisationFactory(name="Northwind Logistics"))
+    shared.shared_with.add(organisation)
+    return (
+        cast(Organisation, organisation),
+        cast(CourseModel, own),
+        cast(CourseModel, shared),
+    )
+
+
+def _shared_by_notes(document: lxml.html.HtmlElement) -> list[str]:
+    return [
+        element.text_content().strip()
+        for element in document.cssselect("[data-testid='shared-by']")
+    ]
+
+
+def _shared_by_notes_by_row(
+    document: lxml.html.HtmlElement,
+) -> dict[str, list[str]]:
+    """The shared-by notes of each table row, keyed by the row's text."""
+    return {
+        " ".join(row.text_content().split()): _shared_by_notes(row)
+        for row in document.cssselect("tbody tr")
+    }
+
+
+def _notes_for(rows: dict[str, list[str]], name: str) -> list[str]:
+    (notes,) = [notes for text, notes in rows.items() if name in text]
+    return notes
+
+
+@pytest.mark.django_db
+def test_learners_list_names_the_owner_under_the_shared_course_entry_only(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+):
+    """Two learners on same-titled courses showed one bare title each, with
+    nothing to tell the shared course from the organisation's own."""
+    organisation, own, shared = _shared_and_own_course_world()
+    on_shared = LearnerFactory(
+        user=UserFactory(first_name="Shared", last_name="Learner"),
+        organisation=organisation,
+    )
+    on_own = LearnerFactory(
+        user=UserFactory(first_name="Own", last_name="Learner"),
+        organisation=organisation,
+    )
+    LearnerCourseRegistrationFactory(learner=on_shared, course=shared)
+    LearnerCourseRegistrationFactory(learner=on_own, course=own)
+    client = logged_in_client(organisation_admin_viewer(organisation))
+
+    document = _get_document(client, _interface_url(organisation.slug, "learners"))
+
+    rows = _shared_by_notes_by_row(document)
+    assert _notes_for(rows, "Shared Learner") == ["Shared by Northwind Logistics"]
+    assert _notes_for(rows, "Own Learner") == []
+
+
+@pytest.mark.django_db
+def test_cohorts_list_names_the_owner_under_the_shared_course_only(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+):
+    """The Courses column of the cohorts list gave a shared course and an own
+    course of one title the same bare text."""
+    organisation, own, shared = _shared_and_own_course_world()
+    on_shared = CohortFactory(organisation=organisation, name="Shared cohort")
+    on_own = CohortFactory(organisation=organisation, name="Own cohort")
+    CohortCourseRegistrationFactory(cohort=on_shared, course=shared)
+    CohortCourseRegistrationFactory(cohort=on_own, course=own)
+    client = logged_in_client(organisation_admin_viewer(organisation))
+
+    document = _get_document(client, _interface_url(organisation.slug, "cohorts"))
+
+    rows = _shared_by_notes_by_row(document)
+    assert _notes_for(rows, "Shared cohort") == ["Shared by Northwind Logistics"]
+    assert _notes_for(rows, "Own cohort") == []
+
+
+@pytest.mark.django_db
+def test_cohort_course_completion_names_the_owner_of_a_shared_course_only(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+):
+    """The cohort's course completion rows named a shared course by its bare
+    title."""
+    organisation, own, shared = _shared_and_own_course_world()
+    cohort = CohortFactory(organisation=organisation)
+    CohortCourseRegistrationFactory(cohort=cohort, course=shared)
+    CohortCourseRegistrationFactory(cohort=cohort, course=own)
+    client = logged_in_client(organisation_admin_viewer(organisation))
+
+    document = _get_document(
+        client,
+        _interface_url(organisation.slug, f"cohorts/{cohort.pk}/__tabs/overview"),
+    )
+
+    text = " ".join(document.text_content().split())
+    assert text.count("Shared by Northwind Logistics") == 1
+    assert "Shared by Northwind Logistics · 0 of 0 completed" in text
+
+
+@pytest.mark.django_db
+def test_learner_courses_tab_names_the_owner_of_a_shared_course_only(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+):
+    """A course card on the learner's Courses tab titled a shared course with
+    its bare title."""
+    organisation, own, shared = _shared_and_own_course_world()
+    learner = LearnerFactory(organisation=organisation)
+    LearnerCourseRegistrationFactory(learner=learner, course=shared)
+    LearnerCourseRegistrationFactory(learner=learner, course=own)
+    client = logged_in_client(organisation_admin_viewer(organisation))
+
+    document = _get_document(
+        client,
+        _interface_url(organisation.slug, f"learners/{learner.pk}/__tabs/courses"),
+    )
+
+    assert _shared_by_notes(document) == ["Shared by Northwind Logistics"]

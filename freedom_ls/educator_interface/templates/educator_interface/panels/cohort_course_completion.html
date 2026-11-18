@@ -4,7 +4,7 @@
     {% if completions %}
         <c-panel-list>
             {% for entry in completions %}
-                <c-panel-list-row :title="entry.course.title" detail="{{ entry.completed_count }} of {{ entry.record_count }} completed">
+                <c-panel-list-row :title="entry.course.title" :detail="entry.detail">
                     <div class="w-32"><c-panel-progress-bar percentage="{{ entry.percentage }}" label="{{ entry.course.title }} completion" /></div>
                 </c-panel-list-row>
             {% endfor %}

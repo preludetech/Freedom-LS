@@ -52,3 +52,11 @@ def course_shared_by_tag(context: template.Context, course: Course) -> str | Non
     sees it, for `{% course_shared_by course as sharers %}`."""
     organisation = cast(OrganisationScopedRequest, context["request"]).organisation
     return course.shared_by(organisation)
+
+
+@register.simple_tag(takes_context=True, name="course_label")
+def course_label_tag(context: template.Context, course: Course) -> str:
+    """The course's title with its other owners in brackets, as the request's
+    organisation sees it, for `{% course_label course as label %}`."""
+    organisation = cast(OrganisationScopedRequest, context["request"]).organisation
+    return course.label_for(organisation)

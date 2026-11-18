@@ -1,3 +1,4 @@
+{% load educator_tags %}
 
 {% comment %}
 The learner's name and email are the drawer's heading and subtitle, so the
@@ -21,7 +22,8 @@ rows start at their status.
         {% if registrations %}
             <c-panel-list>
                 {% for registration in registrations %}
-                    <c-panel-list-row :title="registration.course.title"
+                    {% course_label registration.course as course_label %}
+                    <c-panel-list-row :title="course_label"
                                       detail="{% if registration.cohort %}via {{ registration.cohort }}{% else %}Individual{% endif %}"
                                       figure="{% if registration.progress_percentage is not None %}{{ registration.progress_percentage }}%{% else %}No progress yet{% endif %}"
                                       data-testid="quick-view-registration" />

@@ -16,6 +16,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.models import User
+from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.actions import RegisterLearnerForCourseAction
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
@@ -364,9 +365,9 @@ def visible_active_cohorts(request: OrganisationScopedRequest) -> QuerySet[Cohor
         .prefetch_related(
             Prefetch(
                 "course_registrations",
-                queryset=CohortCourseRegistration.objects.filter(
-                    is_active=True
-                ).select_related("course"),
+                queryset=CohortCourseRegistration.objects.filter(is_active=True)
+                .select_related("course")
+                .prefetch_related("course__organisations"),
             )
         )
         .order_by("name")
@@ -541,8 +542,18 @@ class LearnerCoursesPanel(Panel):
                 key=lambda entry: entry.course.title,
             )
         ]
+        details = gather_learner_course_details(learner, registrations, learner.site_id)
+        courses = {
+            course.pk: course
+            for course in Course.objects.filter(
+                pk__in={detail.course_id for detail in details}
+            ).prefetch_related("organisations")
+        }
         context = super().get_context_data()
-        context["details"] = gather_learner_course_details(
-            learner, registrations, learner.site_id
-        )
+        # Each course's detail beside who shares the course, when another
+        # organisation owns it.
+        context["details"] = [
+            (detail, courses[detail.course_id].shared_by(request.organisation))
+            for detail in details
+        ]
         return context

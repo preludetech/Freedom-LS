@@ -8,5 +8,5 @@ row's course; empty means the row is the course.
 {% include "cotton/data-table-cells/link.html" %}
 {% with course=object|getattr_str:column.attr %}
     {% course_shared_by course as sharers %}
-    {% if sharers %}<p class="text-sm text-muted break-words" data-testid="shared-by">Shared by {{ sharers }}</p>{% endif %}
+    {% include "educator_interface/partials/course_shared_by.html" %}
 {% endwith %}

@@ -139,15 +139,16 @@ class CohortQuickView(QuickView):
 
     def get_context_data(self) -> dict[str, object]:
         cohort = cast(Cohort, self.instance)
+        request = cast("OrganisationScopedRequest", self.request)
         return {
             "cohort": cohort,
             "status_badge": _active_status_badge(cohort.is_active),
             "learner_count": cohort_learner_count(cohort),
             "courses": [
-                registration.course
-                for registration in cohort.course_registrations.filter(
-                    is_active=True
-                ).select_related("course")
+                registration.course.label_for(request.organisation)
+                for registration in cohort.course_registrations.filter(is_active=True)
+                .select_related("course")
+                .prefetch_related("course__organisations")
             ],
         }
 

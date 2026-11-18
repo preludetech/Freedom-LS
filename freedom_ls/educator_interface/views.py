@@ -455,9 +455,9 @@ class CohortDataTable(DataTable):
             .prefetch_related(
                 Prefetch(
                     "course_registrations",
-                    queryset=CohortCourseRegistration.objects.filter(
-                        is_active=True
-                    ).select_related("course"),
+                    queryset=CohortCourseRegistration.objects.filter(is_active=True)
+                    .select_related("course")
+                    .prefetch_related("course__organisations"),
                 )
             )
             .order_by("name", "pk")
@@ -481,11 +481,9 @@ class CohortDataTable(DataTable):
                 attr="learner_count",
                 sortable=True,
             ),
-            RelatedListColumn(
+            Column(
                 header="Courses",
-                template_name="cotton/data-table-cells/related_list.html",
-                relation_set="course_registrations.all",
-                item_text_attr="course.title",
+                template_name="educator_interface/data-table-cells/cohort_courses.html",
             ),
             Column(
                 header="Created",
@@ -627,15 +625,15 @@ class LearnerDataTable(DataTable):
                 ),
                 Prefetch(
                     "cohortmembership_set__cohort__course_registrations",
-                    queryset=CohortCourseRegistration.objects.filter(
-                        is_active=True
-                    ).select_related("course"),
+                    queryset=CohortCourseRegistration.objects.filter(is_active=True)
+                    .select_related("course")
+                    .prefetch_related("course__organisations"),
                 ),
                 Prefetch(
                     "learnercourseregistration_set",
-                    queryset=LearnerCourseRegistration.objects.filter(
-                        is_active=True
-                    ).select_related("course"),
+                    queryset=LearnerCourseRegistration.objects.filter(is_active=True)
+                    .select_related("course")
+                    .prefetch_related("course__organisations"),
                 ),
                 "course_progress_records",
             )
@@ -1646,6 +1644,16 @@ class CourseCompletion:
     completed_count: int
     record_count: int
     percentage: int
+    shared_by: str | None = None
+
+    @property
+    def detail(self) -> str:
+        """The muted line under the course title: who shares the course when
+        another organisation owns it, then how many members have completed."""
+        progress = f"{self.completed_count} of {self.record_count} completed"
+        return (
+            f"Shared by {self.shared_by} · {progress}" if self.shared_by else progress
+        )
 
 
 class CohortCourseCompletionPanel(Panel):
@@ -1669,6 +1677,7 @@ class CohortCourseCompletionPanel(Panel):
         registrations = (
             cohort.course_registrations.filter(is_active=True)
             .select_related("course")
+            .prefetch_related("course__organisations")
             .annotate(
                 record_count=Count(
                     "course_progress_records", filter=current_member, distinct=True
@@ -1692,6 +1701,9 @@ class CohortCourseCompletionPanel(Panel):
                     registration.completed_count * 100 // registration.record_count
                     if registration.record_count
                     else 0
+                ),
+                shared_by=registration.course.shared_by(
+                    cast(OrganisationScopedRequest, self.request).organisation
                 ),
             )
             for registration in registrations
