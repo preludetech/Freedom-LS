@@ -61,6 +61,7 @@ from freedom_ls.content_engine.factories import (
 )
 from freedom_ls.content_engine.models import Course as CourseModel
 from freedom_ls.content_engine.models import CourseAudience
+from freedom_ls.content_engine.models import File
 from freedom_ls.educator_interface import views as educator_views
 from freedom_ls.educator_interface.actions import DeactivateLearnersBulkAction
 from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
@@ -8396,6 +8397,28 @@ def test_opening_a_topic_preview_writes_nothing(staff_client: Client):
     assert response.status_code == 200
     assert "Get notes" in response.content.decode()
     assert [model.objects.count() for model in counted] == before
+
+
+@pytest.mark.django_db
+def test_a_topic_preview_renders_a_speak_button_and_the_course_page_loads_its_script(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    FileFactory(
+        file_path="bravo.mp3", file_type=File.FileType.AUDIO, mime_type="audio/mpeg"
+    )
+    topic = TopicFactory(content='<c-audio src="bravo.mp3" label="Bravo"></c-audio>\n')
+    course, item = _course_with_topic(topic)
+    course_url = _interface_url(organisation.slug, f"courses/{course.pk}")
+    preview_url = _preview_url(staff_client, organisation, course)
+
+    preview = staff_client.get(
+        f"{preview_url}?item={item.pk}", HTTP_HX_REQUEST="true"
+    ).content.decode()
+    course_page = staff_client.get(course_url).content.decode()
+
+    assert "data-src=" in preview
+    assert "content_engine/js/alpine-components.js" in course_page
 
 
 @pytest.mark.django_db

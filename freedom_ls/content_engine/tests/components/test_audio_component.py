@@ -61,3 +61,78 @@ class TestResolvedAudioFile:
         )
 
         assert "onclick" not in html
+
+
+class TestRespelling:
+    def test_respelling_renders_and_describes_the_button(
+        self, mock_site_context: object
+    ) -> None:
+        file_obj = _audio_file("audio/bravo.mp3")
+
+        html = _render(
+            '<c-audio src="audio/bravo.mp3" label="Bravo" respelling="BRAH VOH">'
+            "</c-audio>"
+        )
+
+        respelling_id = f"audio-respelling-{file_obj.pk}"
+        assert f'id="{respelling_id}"' in html
+        assert "BRAH VOH" in html
+        assert f'aria-describedby="{respelling_id}"' in html
+
+    def test_no_respelling_renders_no_respelling_element_or_description(
+        self, mock_site_context: object
+    ) -> None:
+        _audio_file("audio/bravo.mp3")
+
+        html = _render('<c-audio src="audio/bravo.mp3" label="Bravo"></c-audio>')
+
+        assert "audio-respelling" not in html
+        assert "aria-describedby" not in html
+
+
+class TestAuthorMistakes:
+    def test_missing_file_renders_a_red_box_naming_the_src(
+        self, mock_site_context: object
+    ) -> None:
+        html = _render('<c-audio src="audio/nope.mp3" label="Nope"></c-audio>')
+
+        assert "Audio not found: audio/nope.mp3" in html
+        assert "bg-error/10" in html
+        assert "x-data" not in html
+
+    def test_non_audio_file_renders_a_red_box_naming_the_src(
+        self, mock_site_context: object
+    ) -> None:
+        FileFactory(file_path="notes.txt", file_type=File.FileType.OTHER)
+
+        html = _render('<c-audio src="notes.txt" label="Notes"></c-audio>')
+
+        assert "Audio not found: notes.txt" in html
+        assert "x-data" not in html
+
+    def test_empty_label_renders_a_red_box_naming_the_src(
+        self, mock_site_context: object
+    ) -> None:
+        _audio_file("audio/bravo.mp3")
+
+        html = _render('<c-audio src="audio/bravo.mp3"></c-audio>')
+
+        assert "Audio needs a label: audio/bravo.mp3" in html
+        assert "x-data" not in html
+
+
+class TestInsideGrid:
+    def test_playback_attributes_survive_inside_a_grid(
+        self, mock_site_context: object
+    ) -> None:
+        _audio_file("audio/bravo.mp3")
+
+        html = _render(
+            '<c-grid columns="2">\n\n'
+            '<c-audio src="audio/bravo.mp3" label="Bravo"></c-audio>\n\n'
+            "</c-grid>"
+        )
+
+        assert 'x-data="audioFile"' in html
+        assert 'x-on:click="toggle"' in html
+        assert "data-src=" in html
