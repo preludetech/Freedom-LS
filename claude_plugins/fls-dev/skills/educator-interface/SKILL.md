@@ -57,6 +57,18 @@ table, with a "Preview" button on every row.
   Tell us more", with its "Shown only if…" line); the form's own row previews the learner's start
   page: title, intro and the question and page counts, with no button.
 
+## Course names
+
+A course another organisation owns names its owner wherever an educator reads or picks it, so two
+courses with one title stay apart.
+
+- A picker option, a filter choice and a dialog title read "<title> (<owning organisation>)".
+- A table cell shows the title with a muted "Shared by <owning organisation>" line under it.
+- A course with several owning organisations names them all, comma-separated.
+- A course the viewing organisation owns, and a course with no owning organisation, show the title
+  alone.
+- One label helper on `Course` writes every one of these labels; no surface formats its own.
+
 ## Visual checklist
 
 What QA checks in a screenshot of an educator page, on top of the panel framework's checklist.
@@ -66,3 +78,6 @@ What QA checks in a screenshot of an educator page, on top of the panel framewor
 - A log or History table has sort headers and the Who, What and When filters.
 - The course outline has the course details as its first row and a multi-page form expanded into
   one row per page; a content preview sits in the reading column, not the dialog's width.
+- A course another organisation owns shows its owner: "(<organisation>)" after the title in a
+  picker, filter or dialog title, a muted "Shared by <organisation>" line in a table cell; the
+  viewing organisation's own courses show the title alone, and no label wraps out of its control.
