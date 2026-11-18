@@ -152,13 +152,23 @@ With no surviving design misses and nothing outstanding there is nothing to add.
 
 Read `QA command` under `## QA Hooks` in `.claude/sdd/config.md` (`config.local.md` wins).
 
-- Blank: say "no QA command configured; the checklist's QA item is a user item" and go to Step 6.
-- The QA file does not exist: say the plan has no QA plan and go to Step 6.
+- Blank: say "no QA command configured; the checklist's QA item is a user item" and go to Step 7.
+- The QA file does not exist: say the plan has no QA plan and go to Step 7.
 - The value names a command of this plugin (`sdd:<name>`): read `${CLAUDE_PLUGIN_ROOT}/commands/<name>.md` and follow it with `mode: hook`, `<spec-dir>`, `<todo-path>` and the QA file path.
 - Any other value: invoke it with the `Skill` tool and `args: "spec-dir=<spec-dir> todo-path=<todo-path> plan=<QA file> mode: hook"`.
 
-Done when the hook has returned `ok`, `failed`, `blocked` or `paused`; any of the last three is carried to Step 6 with its reason.
+Done when the hook has returned `ok`, `failed`, `blocked` or `paused`; any of the last three is carried to Step 7 with its reason.
 
-## Step 6: Final report
+## Step 6: Leave the tree clean
+
+The run ends with nothing uncommitted. Run `git status --porcelain` and handle every line:
+
+- A tracked file that changed is committed, whoever changed it: a helper agent's project memory (an agent with `memory: project` writes under `.claude/agent-memory/`), a lock file, a regenerated fixture. Never `git checkout --`, `git restore`, `git stash` or `git reset` it.
+- An untracked file that belongs to the work (a report, a screenshot the report links, a new source file) is committed.
+- An untracked file that is scratch (a raw browser snapshot, a console log, a test run's output) is deleted. When unsure, commit it.
+
+Delegate the commit to `sdd:sdd-mechanic`, with plain `git commit` and the subject `<branch>: commit files the run left`. Then run `git status --porcelain` again. Done when it prints nothing. A line that cannot be committed or removed (a pre-commit hook rejects it and the fix is not obvious) stops here with `status: failed`, naming the file and the hook's message; Step 7 reports it.
+
+## Step 7: Final report
 
 Report the QA report path, the bug counts per lane, the `Decide` items filed (`/sdd:qa_fix` works through them), and the next human step from `todo.md`. Anything the report leaves for the user is already a `todo.md` line (Step 4, the QA hook, or the `sdd:outstanding-items` skill for anything raised since); the report names it and points there. A QA hook that returned `failed`, `blocked` or `paused` is reported with its reason; the implementation commits are already on the branch, and `/sdd:do_qa` is the command that continues.
