@@ -36,12 +36,14 @@ from freedom_ls.panel_framework.actions import (
     denied_response,
 )
 from freedom_ls.panel_framework.bulk_actions import (
+    NO_SITE_ERROR,
     BackgroundRun,
     BulkAction,
     BulkConfirmForm,
     BulkOutcome,
     BulkResult,
     ConfirmationWording,
+    RecordedBulkAction,
     Selection,
     parse_selection,
     resolve_selection,
@@ -58,6 +60,7 @@ from freedom_ls.panel_framework.events import BULK_RUN_STARTED_EVENT, build_hx_t
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus, scope_lookup
 from freedom_ls.panel_framework.panels import DataTablePanel, Panel, TabSet
 from freedom_ls.panel_framework.quick_view import QuickView
+from freedom_ls.panel_framework.sites import resolve_site
 from freedom_ls.panel_framework.tables import DataTable
 
 __all__ = [
@@ -967,6 +970,10 @@ def _handle_bulk_action(
             # after the page loaded, the same 404 a single-row action gives.
             raise Http404("None of the selected rows is available")
         return error_response(selection, count, "Nothing selected")
+    if isinstance(action, RecordedBulkAction) and resolve_site(request) is None:
+        # Said before the preview, not after the confirm: a run with no site
+        # could never be recorded.
+        return error_response(selection, count, NO_SITE_ERROR)
     in_background = action.runs_in_background(count)
     # A whole filtered table is bounded only when a task does the work.
     if count > action.max_rows and not (

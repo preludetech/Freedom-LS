@@ -4,6 +4,7 @@ off."""
 
 from __future__ import annotations
 
+import copy
 import json
 import uuid
 from typing import cast
@@ -19,7 +20,7 @@ from django.contrib.messages import get_messages
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.sites.models import Site
 from django.contrib.sites.requests import RequestSite
-from django.core.exceptions import ImproperlyConfigured, PermissionDenied
+from django.core.exceptions import ImproperlyConfigured
 from django.db.models import Model, QuerySet
 from django.http import Http404, HttpRequest, HttpResponse
 from django.template.loader import render_to_string
@@ -1273,14 +1274,13 @@ def _text(response: HttpResponse) -> str:
     )
 
 
-def _confirm_recorded(stubs: tuple[StubModel, ...]) -> HttpResponse:
+def _confirm_recorded(
+    stubs: tuple[StubModel, ...], *, confirmed: bool = True
+) -> HttpResponse:
     path = "stubs/__actions/stub_recorded"
-    data = {
-        "mode": "keys",
-        "keys": [str(stub.pk) for stub in stubs],
-        "confirmed": "1",
-        "expected_count": str(len(stubs)),
-    }
+    data = {"mode": "keys", "keys": [str(stub.pk) for stub in stubs]}
+    if confirmed:
+        data |= {"confirmed": "1", "expected_count": str(len(stubs))}
     response = call_view(make_request(path, method="post", data=data, htmx=True), path)
     assert isinstance(response, HttpResponse)
     return response
@@ -1341,22 +1341,36 @@ def test_a_confirmed_bulk_action_records_its_run_under_the_requests_site(
     assert BulkActionRun.objects.get().site == mock_site_context
 
 
-def test_a_resolver_returning_no_site_records_no_run_and_is_denied(
-    two_stubs: tuple[StubModel, StubModel], settings: SettingsWrapper
+@pytest.mark.parametrize("confirmed", [False, True], ids=["preview", "confirm"])
+def test_a_resolver_returning_no_site_answers_422_and_records_no_run(
+    two_stubs: tuple[StubModel, StubModel],
+    settings: SettingsWrapper,
+    confirmed: bool,
 ) -> None:
     settings.PANEL_FRAMEWORK_SITE_RESOLVER = f"{__name__}.returns_non_site"
 
-    with pytest.raises(PermissionDenied):
-        _confirm_recorded(two_stubs)
+    response = _confirm_recorded(two_stubs, confirmed=confirmed)
 
+    assert response.status_code == 422
+    assert "This request belongs to no site." in _text(response)
     assert not BulkActionRun.objects.exists()
 
 
 @override_settings(SITE_ID=None, ALLOWED_HOSTS=["*"])
-def test_an_unknown_host_under_the_default_resolver_records_no_run_and_is_denied(
+def test_an_unknown_host_under_the_default_resolver_answers_422_and_records_no_run(
     settings: SettingsWrapper,
 ) -> None:
     del settings.PANEL_FRAMEWORK_SITE_RESOLVER
+    # A host may refuse to render anything for a host it has no site for; FLS
+    # does, in its context processors. Without them the framework's own answer
+    # is what renders.
+    templates = copy.deepcopy(settings.TEMPLATES)
+    for engine in templates:
+        processors = engine.get("OPTIONS", {}).get("context_processors", [])
+        engine["OPTIONS"]["context_processors"] = [
+            path for path in processors if path.startswith("django.")
+        ]
+    settings.TEMPLATES = templates
     stub = make_stub()
     path = "stubs/__actions/stub_recorded"
     data = {
@@ -1373,9 +1387,10 @@ def test_an_unknown_host_under_the_default_resolver_records_no_run_and_is_denied
     )
     request.user = make_staff_user(make_site("Other", "other.test"))
 
-    with pytest.raises(PermissionDenied):
-        call_view(request, path)
+    response = call_view(request, path)
 
+    assert isinstance(response, HttpResponse)
+    assert response.status_code == 422
     assert not BulkActionRun.objects.exists()
 
 

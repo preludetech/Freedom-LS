@@ -50,6 +50,7 @@ Status = Literal["changed", "skipped", "failed"]
 
 RESULT_ENTRY_LIMIT = 500
 FAILED_REASON = "could not be changed"
+NO_SITE_ERROR = "This request belongs to no site."
 
 
 @dataclass(frozen=True)
@@ -389,7 +390,7 @@ class RecordedBulkAction(BulkAction):
         if site is None:
             # A run belongs to exactly one site; without one it could not be
             # scoped, so nothing is recorded and nothing runs.
-            raise PermissionDenied("This request belongs to no site.")
+            raise PermissionDenied(NO_SITE_ERROR)
         run = BulkActionRun.objects.create(
             site=site,
             requested_by_id=cast(int, ctx.request.user.pk),
