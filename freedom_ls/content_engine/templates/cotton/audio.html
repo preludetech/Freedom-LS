@@ -38,6 +38,7 @@ order (word, respelling, button); the grid puts it under the word.
           <span x-show="playing" x-cloak><c-icon name="audio_stop" class="size-5" /></span>
         </c-button>
       </div>
+      <p role="status" x-show="failed" x-transition x-cloak class="text-error text-sm">Audio could not be played. Try again.</p>
     </div>
   {% endif %}
 {% endwith %}

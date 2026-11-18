@@ -120,6 +120,9 @@ document.addEventListener("alpine:init", () => {
             // has moved; it is not a stop.
             if (owner && !owner.loading) owner._setState("idle");
         });
+        // A failed load or play attempt; the button stays enabled so the next
+        // press retries.
+        sharedAudio.addEventListener("error", () => owner?._fail());
         return sharedAudio;
     }
 
@@ -128,6 +131,7 @@ document.addEventListener("alpine:init", () => {
         idle: true,
         loading: false,
         playing: false,
+        failed: false,
 
         toggle() {
             const audio = audioElement();
@@ -137,19 +141,30 @@ document.addEventListener("alpine:init", () => {
                 this._setState("idle");
                 return;
             }
-            owner?._setState("idle");
+            if (owner) {
+                owner.failed = false;
+                owner._setState("idle");
+            }
+            this.failed = false;
             owner = this;
             this._setState("loading");
             // src only, never <source type>: the stored mime type can be empty.
             audio.src = this.$el.dataset.src;
             // Called synchronously inside the click so iOS treats it as user-initiated.
-            audio.play();
+            audio.play().catch((error) => {
+                // AbortError means another press replaced this load; not a failure.
+                if (error.name !== "AbortError" && owner?._id === this._id) this._fail();
+            });
         },
         destroy() {
             if (owner?._id === this._id) {
                 sharedAudio.pause();
                 owner = null;
             }
+        },
+        _fail() {
+            this.failed = true;
+            this._setState("idle");
         },
         _setState(state) {
             this.idle = state === "idle";

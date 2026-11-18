@@ -443,6 +443,40 @@ def test_learner_browses_a_course(
         assert len({round(box["x"] + box["width"]) for box in boxes}) == 1
 
 
+def test_speak_button_shows_an_error_line_and_retries_on_the_next_press(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    course = _browse_course(logged_in_user)
+    audio_requests = re.compile(r"/content/audio/")
+    page.route(audio_requests, lambda route: route.abort())
+    page.goto(_item_url(live_server, course, 5))
+    button = page.get_by_role("button", name=f"Play pronunciation of {AUDIO_A_LABEL}")
+    error_line = page.get_by_role("status").filter(
+        has_text="Audio could not be played. Try again."
+    )
+    expect(error_line.first).to_be_hidden()
+
+    # A failed load returns the button to idle and shows the error line.
+    button.click()
+    expect(error_line.first).to_be_visible()
+    expect(button).to_have_attribute("aria-pressed", "false")
+
+    # The next press retries, and a load that works clears the error line.
+    page.unroute(audio_requests)
+    page.route(
+        audio_requests,
+        lambda route: route.fulfill(
+            body=BEEP_MP3.read_bytes(), content_type="audio/mpeg"
+        ),
+    )
+    button.click()
+    expect(button).to_have_attribute("aria-pressed", "true")
+    expect(error_line.first).to_be_hidden()
+
+
 @pytest.mark.browser_context_args(timezone_id="America/New_York", locale="en-US")
 def test_due_date_reads_in_the_browser_time_zone(
     live_server,

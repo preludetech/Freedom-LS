@@ -90,6 +90,19 @@ class TestRespelling:
         assert "aria-describedby" not in html
 
 
+class TestErrorLine:
+    def test_widget_holds_a_status_line_for_a_failed_load(
+        self, mock_site_context: object
+    ) -> None:
+        _audio_file("audio/bravo.mp3")
+
+        html = _render('<c-audio src="audio/bravo.mp3" label="Bravo"></c-audio>')
+
+        assert 'role="status"' in html
+        assert 'x-show="failed"' in html
+        assert "Audio could not be played. Try again." in html
+
+
 class TestAuthorMistakes:
     def test_missing_file_renders_a_red_box_naming_the_src(
         self, mock_site_context: object
