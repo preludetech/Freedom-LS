@@ -1406,11 +1406,13 @@ def _execute_recorded(request: HttpRequest) -> None:
 
 
 def test_executing_a_recorded_action_with_no_site_is_denied(
-    two_stubs: tuple[StubModel, StubModel], settings: SettingsWrapper
+    two_stubs: tuple[StubModel, StubModel],
+    mock_site_context: Site,
+    settings: SettingsWrapper,
 ) -> None:
     settings.PANEL_FRAMEWORK_SITE_RESOLVER = f"{__name__}.returns_non_site"
     request = RequestFactory().post("/")
-    request.user = make_staff_user(Site.objects.get_current())
+    request.user = make_staff_user(mock_site_context)
 
     with pytest.raises(PermissionDenied):
         _execute_recorded(request)
