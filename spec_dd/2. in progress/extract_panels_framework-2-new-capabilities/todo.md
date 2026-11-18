@@ -31,6 +31,12 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) In `claude_plugins/fls-dev/skills/alpine-js/SKILL.md`, add `childRows` to the component inventory and drop `courseOutline` (spec "Documentation and downstream")
 - [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
+- [x] (cmd) PR #251 review fix: a row-template row keeps the bulk-selection and row-detail cells (review finding 1)
+- [ ] (cmd) PR #251 review fix: sequence rows come from `DataTablePanel.get_row_sequence`; `get_queryset` is QuerySet-only; `_require_queryset` removed; sequence validation runs once at class creation; bulk-action bans check unpermitted actions too (review findings 2, 3, 6, 8, 9)
+- [ ] (cmd) PR #251 review fix: the course outline shows on one page and its footer counts content rows only (review finding 4)
+- [ ] (cmd) PR #251 review fix: `show_as_of` with `as_of=None` draws no stamp (review finding 5)
+- [ ] (cmd) PR #251 review fix: extract the child-rows chevron partial; the outline card includes the title partial (review finding 7)
+- [ ] (cmd) PR #251 review fix: rename `DEFAULT_PAGE_SIZE` to `PANEL_TABLE_PAGE_SIZE` (review finding 10)
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
 ## 5. Cleanup

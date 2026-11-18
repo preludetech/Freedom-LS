@@ -3,10 +3,13 @@ the hidden detail rows, the spanning cells and the card toggle."""
 
 from __future__ import annotations
 
+from typing import cast
+
 import lxml.html
 import pytest
 
 from django.contrib.sites.models import Site
+from django.db.models import Model
 from django.template.loader import render_to_string
 
 from freedom_ls.panel_framework.bulk_actions import BulkAction
@@ -621,6 +624,65 @@ def test_a_row_template_row_takes_no_hover_and_has_no_chevron(
     note = _note_row(document)
     assert note.get("class") == "hover:bg-transparent"
     assert note.cssselect("button") == []
+
+
+class _NoteDetailDataTable(StubDetailDataTable):
+    """The detail table with every kind "a" row drawn through a row template."""
+
+    @staticmethod
+    def get_row_template_name(row: object) -> str | None:
+        if cast(str, cast(Model, row).kind) == "a":
+            return "panel_framework/test_row_template.html"
+        return None
+
+
+class _BulkNoteDetailTablePanel(DataTablePanel):
+    title = "Bulk note detail"
+    data_table = _NoteDetailDataTable
+    table_key = "bulknotedetail"
+
+    def get_bulk_actions(self) -> list[BulkAction]:
+        return [StubBulkAction()]
+
+
+def _template_row(document: lxml.html.HtmlElement) -> lxml.html.HtmlElement:
+    (template,) = document.cssselect("tbody [data-test-row-template]")
+    return next(template.iterancestors("tr"))
+
+
+def _cells_spanned(row: lxml.html.HtmlElement) -> int:
+    return sum(int(cell.get("colspan", "1")) for cell in row.cssselect("td"))
+
+
+def test_a_row_template_keeps_the_selection_and_detail_cells(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="row-a", kind="a")
+    make_stub(name="row-b", kind="b")
+
+    document = _render(_BulkNoteDetailTablePanel)
+
+    columns = len(document.cssselect("thead th"))
+    rows = document.cssselect("tbody tr:not([data-row-detail])")
+    assert [_cells_spanned(row) for row in rows] == [columns, columns]
+    note = _template_row(document)
+    select_cell, toggle_cell = note.cssselect("td")[:2]
+    assert select_cell.text_content().strip() == ""
+    assert toggle_cell.text_content().strip() == ""
+
+
+def test_a_row_template_row_has_no_checkbox_and_no_detail_row(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="row-a", kind="a")
+
+    document = _render(_BulkNoteDetailTablePanel)
+
+    assert _template_row(document).cssselect("input[name='keys']") == []
+    assert document.cssselect("tr[data-row-detail]") == []
+    (card,) = document.cssselect("li.panel-data-table-card")
+    assert card.cssselect("input[name='keys']") == []
+    assert card.cssselect("[data-row-detail]") == []
 
 
 def test_a_table_without_row_templates_renders_every_cell(

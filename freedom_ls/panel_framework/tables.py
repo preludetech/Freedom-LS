@@ -303,8 +303,8 @@ class DataTable:
     @staticmethod
     def get_row_template_name(row: object) -> str | None:
         """A template that replaces this row's cells from the primary column
-        to the last one, for a row that is a note rather than a record. None
-        keeps the columns."""
+        to the last one, for a row that is a note rather than a record: it has
+        no selection checkbox and no row detail. None keeps the columns."""
         return None
 
     #: The template drawn when the page has no rows. It renders with the
@@ -616,6 +616,7 @@ def _flatten_rows(
     """Each row's dict, followed by its descendants' in display order.
     `numbers` is shared down the recursion so every row id is unique."""
     for row in rows:
+        row_template_name = table.get_row_template_name(row)
         row_id = f"{region_id}-row-{next(numbers)}"
         children = (
             list(
@@ -634,8 +635,9 @@ def _flatten_rows(
             "object": row,
             "label": _lazy_label(table, row),
             "has_row_detail": table.row_detail_template_name is not None
+            and row_template_name is None
             and table.has_row_detail(row),
-            "row_template_name": table.get_row_template_name(row),
+            "row_template_name": row_template_name,
             "row_id": row_id,
             "depth": len(parent_ids),
             "parent_ids": parent_ids,

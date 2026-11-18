@@ -24,11 +24,14 @@ chevron in the leading slot; a leaf keeps the slot empty. The ids carry a
 "-card" suffix so they never collide with the table row's own.
 
 A row with a row template replaces the whole card body with that template,
-ahead of card_template_name and the primary/secondary rendering; the card's
-selection checkbox, chevron slot, id and indent are unchanged.
+ahead of card_template_name and the primary/secondary rendering. Its chevron
+slot, id and indent are unchanged; a note is not a record, so it keeps the
+checkbox's slot but not the checkbox.
 {% endcomment %}
 <li{% if has_child_rows %} id="{{ row.row_id }}-card"{% if row.parent_ids %} x-show="shown" data-parents="{% for parent_id in row.parent_ids %}{{ parent_id }}-card{% if not forloop.last %} {% endif %}{% endfor %}"{% endif %}{% endif %} class="panel-data-table-card flex items-start gap-3 px-4 py-4 sm:px-6{% if has_child_rows %} {% include "panel_framework/partials/row_indent.html" with depth=row.depth %}{% endif %}">
-    {% if selectable %}
+    {% if selectable and row.row_template_name %}
+        <span class="size-11 shrink-0"></span>
+    {% elif selectable %}
         <label class="flex size-11 shrink-0 items-center justify-center">
             <input type="checkbox"
                    name="keys"

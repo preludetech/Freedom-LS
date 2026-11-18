@@ -136,6 +136,9 @@
                         {% for row in rows %}
                             <tr{% if row.row_template_name %} class="hover:bg-transparent"{% endif %}{% if has_child_rows %} id="{{ row.row_id }}"{% if row.parent_ids %} x-show="shown" data-parents="{{ row.parent_ids|join:' ' }}"{% endif %}{% endif %}>
                                 {% if row.row_template_name %}
+                                    {% comment %}A note is not a record: it keeps the selection and toggle cells, empty.{% endcomment %}
+                                    {% if bulk_actions %}<td></td>{% endif %}
+                                    {% if row_detail_template_name %}<td></td>{% endif %}
                                     {% for column in leading_columns %}<td{% if column.cell_class %} class="{{ column.cell_class }}"{% endif %}></td>{% endfor %}
                                     <td colspan="{{ row_template_colspan }}"{% if has_child_rows and row.depth %} class="{% include "panel_framework/partials/row_indent.html" with depth=row.depth %}"{% endif %}>
                                         {% comment %}ps-10 is the chevron slot (size-8 plus gap-2) a primary cell puts before its value, so the template lines up with its sibling rows' titles.{% endcomment %}
