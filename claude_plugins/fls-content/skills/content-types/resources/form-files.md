@@ -378,12 +378,16 @@ file that holds the `sections:` key. See [course-files.md](course-files.md) for 
 - Put it on a question to replace the form's list for that question. A question without the key
   inherits the form's list. `sections: []` means the question tests no section, even when the form
   names some.
+- A `sections:` key with no value (for example, every entry commented out) fails validation. Write
+  `sections: []` for none, or, on a question, remove the key to inherit the form's list.
 - Order carries no meaning, and each section may be named only once per list.
 - Every `content_save` rewrites each question's sections to exactly its effective list. Removing a
   path or the key removes the link on the next load.
 - A target must sit inside the directory passed to `content_save`, because only files loaded in
-  that run are linked. A target outside it, a path with no file, or a file that is not a topic or
-  `part.yaml` fails the load with an "Invalid section reference" error. The error names the
+  that run are linked. A target outside it, a path with no file, a file that is not a topic or
+  `part.yaml` (an image, or a file that does not parse), or a file under a name starting with `_`
+  or `.` fails the load with an "Invalid section reference" error. The offline validator reports
+  the same errors, except a target outside the validated directory, which it reads from disk. The error names the
   declaring file, the field (`sections[<i>]`) and the problem. Every bad entry is reported at once,
   before anything is written. A moved or renamed target is not followed: fix the path.
 - A form that sits in no course (a bank form) needs no placement, but where it sits matters. Put

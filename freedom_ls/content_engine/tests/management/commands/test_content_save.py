@@ -19,8 +19,9 @@ from PIL import Image
 from django.contrib.sites.models import Site
 from django.core.files.base import ContentFile
 from django.core.management import call_command
-from django.db import IntegrityError
+from django.db import IntegrityError, connection
 from django.test import override_settings
+from django.test.utils import CaptureQueriesContext
 
 from freedom_ls.content_engine.factories import CourseCategoryFactory
 from freedom_ls.content_engine.image_cache import CACHE_DIR_NAME
@@ -3754,13 +3755,20 @@ type: short_text
 
 
 def _section_rows() -> tuple[list[str], list[str]]:
-    topics = [row.topic.title for row in FormQuestionTopic.objects.all()]
-    parts = [row.course_part.title for row in FormQuestionCoursePart.objects.all()]
+    topics = [
+        row.topic.title for row in FormQuestionTopic.objects.select_related("topic")
+    ]
+    parts = [
+        row.course_part.title
+        for row in FormQuestionCoursePart.objects.select_related("course_part")
+    ]
     return topics, parts
 
 
 @pytest.mark.django_db
-def test_a_question_naming_a_topic_stores_it(site, mock_site_context, tmp_path):
+def test_a_question_naming_a_topic_stores_it(
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _write_part_with_quiz(
         tmp_path, sections_line="sections:\n  - ../01. key-ideas/content.md"
     )
@@ -3771,7 +3779,9 @@ def test_a_question_naming_a_topic_stores_it(site, mock_site_context, tmp_path):
 
 
 @pytest.mark.django_db
-def test_a_question_naming_a_part_stores_it(site, mock_site_context, tmp_path):
+def test_a_question_naming_a_part_stores_it(
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _write_part_with_quiz(tmp_path, sections_line="sections:\n  - ../part.yaml")
 
     save_content_to_db(tmp_path, site.name)
@@ -3781,8 +3791,8 @@ def test_a_question_naming_a_part_stores_it(site, mock_site_context, tmp_path):
 
 @pytest.mark.django_db
 def test_a_question_naming_a_topic_and_a_part_stores_both(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _write_part_with_quiz(
         tmp_path,
         sections_line="sections:\n  - ../01. key-ideas/content.md\n  - ../part.yaml",
@@ -3794,7 +3804,9 @@ def test_a_question_naming_a_topic_and_a_part_stores_both(
 
 
 @pytest.mark.django_db
-def test_a_question_without_sections_stores_none(site, mock_site_context, tmp_path):
+def test_a_question_without_sections_stores_none(
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _write_part_with_quiz(tmp_path, sections_line="")
 
     save_content_to_db(tmp_path, site.name)
@@ -3805,8 +3817,8 @@ def test_a_question_without_sections_stores_none(site, mock_site_context, tmp_pa
 
 @pytest.mark.django_db
 def test_a_question_naming_a_missing_file_raises_naming_file_question_and_path(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _write_part_with_quiz(tmp_path, sections_line="sections:\n  - ../nowhere.md")
 
     with pytest.raises(ValueError, match="nowhere") as error:
@@ -3819,7 +3831,9 @@ def test_a_question_naming_a_missing_file_raises_naming_file_question_and_path(
 
 
 @pytest.mark.django_db
-def test_a_question_naming_a_course_file_raises(site, mock_site_context, tmp_path):
+def test_a_question_naming_a_course_file_raises(
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _write_part_with_quiz(tmp_path, sections_line="sections:\n  - ../course.md")
     (tmp_path / "course.md").write_text("""---
 content_type: COURSE
@@ -3827,12 +3841,14 @@ title: A course
 ---
 """)
 
-    with pytest.raises(ValueError, match="this file is a"):
+    with pytest.raises(ValueError, match="its content_type is COURSE"):
         save_content_to_db(tmp_path, site.name)
 
 
 @pytest.mark.django_db
-def test_sections_are_stored_on_the_loading_site_only():
+def test_sections_are_stored_on_the_loading_site_only(
+    mock_site_context: Site,
+) -> None:
     site_a = SiteFactory()
     site_b = SiteFactory()
     sections_line = "sections:\n  - ../01. key-ideas/content.md"
@@ -3881,8 +3897,8 @@ _OWN_MORE_IDEAS = "sections:\n  - ../02. more-ideas/content.md"
 
 @pytest.mark.django_db
 def test_a_question_without_the_key_inherits_the_form_default(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _write_part_with_default_sections_quiz(
         tmp_path,
         form_sections_line="sections: [../01. key-ideas/content.md]",
@@ -3896,8 +3912,8 @@ def test_a_question_without_the_key_inherits_the_form_default(
 
 @pytest.mark.django_db
 def test_a_question_with_empty_sections_gets_none_under_a_form_default(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _write_part_with_default_sections_quiz(
         tmp_path,
         form_sections_line="sections: [../01. key-ideas/content.md]",
@@ -3912,8 +3928,8 @@ def test_a_question_with_empty_sections_gets_none_under_a_form_default(
 
 @pytest.mark.django_db
 def test_a_question_list_replaces_the_form_default_rather_than_merging(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _write_part_with_default_sections_quiz(
         tmp_path,
         form_sections_line="sections: [../01. key-ideas/content.md]",
@@ -3938,8 +3954,8 @@ _QUIZ_DIR = "03. knowledge-check"
 
 @pytest.mark.django_db
 def test_reloading_after_removing_a_path_from_a_question_drops_that_section(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _write_part_with_quiz(
         tmp_path,
         sections_line="sections:\n  - ../01. key-ideas/content.md\n  - ../part.yaml",
@@ -3955,8 +3971,8 @@ def test_reloading_after_removing_a_path_from_a_question_drops_that_section(
 
 @pytest.mark.django_db
 def test_reloading_after_removing_the_question_key_falls_back_to_the_default(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _write_part_with_default_sections_quiz(
         tmp_path,
         form_sections_line="sections: [../01. key-ideas/content.md]",
@@ -3977,8 +3993,8 @@ def test_reloading_after_removing_the_question_key_falls_back_to_the_default(
 
 @pytest.mark.django_db
 def test_reloading_after_changing_the_form_default_rewrites_the_sections(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _write_part_with_default_sections_quiz(
         tmp_path,
         form_sections_line="sections: [../01. key-ideas/content.md]",
@@ -3995,8 +4011,8 @@ def test_reloading_after_changing_the_form_default_rewrites_the_sections(
 
 @pytest.mark.django_db
 def test_a_question_first_loaded_without_a_uuid_keeps_its_sections_on_reload(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _write_part_with_quiz(tmp_path, sections_line=_DEFAULT_KEY_IDEAS)
     save_content_to_db(tmp_path, site.name)
 
@@ -4008,8 +4024,8 @@ def test_a_question_first_loaded_without_a_uuid_keeps_its_sections_on_reload(
 
 @pytest.mark.django_db
 def test_an_unplaced_quiz_in_a_sibling_directory_loads_with_its_sections(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     course_dir = tmp_path / "course"
     course_dir.mkdir()
     _write_part_with_default_sections_quiz(
@@ -4026,7 +4042,9 @@ def test_an_unplaced_quiz_in_a_sibling_directory_loads_with_its_sections(
 
 
 @pytest.mark.django_db
-def test_a_bad_section_path_leaves_nothing_written(site, mock_site_context, tmp_path):
+def test_a_bad_section_path_leaves_nothing_written(
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _write_part_with_quiz(tmp_path, sections_line="sections:\n  - ../nowhere.md")
 
     with pytest.raises(ValueError, match="nowhere"):
@@ -4042,8 +4060,8 @@ def test_a_bad_section_path_leaves_nothing_written(site, mock_site_context, tmp_
 
 @pytest.mark.django_db
 def test_two_bad_section_paths_are_both_in_the_message(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _write_part_with_quiz(
         tmp_path, sections_line="sections:\n  - ../one.md\n  - ../two.md"
     )
@@ -4057,8 +4075,8 @@ def test_two_bad_section_paths_are_both_in_the_message(
 
 @pytest.mark.django_db
 def test_a_section_outside_the_loaded_directory_fails_the_load(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _write_part_with_quiz(
         tmp_path, sections_line="sections:\n  - ../01. key-ideas/content.md"
     )
@@ -4067,3 +4085,29 @@ def test_a_section_outside_the_loaded_directory_fails_the_load(
         save_content_to_db(tmp_path / "03. knowledge-check", site.name)
 
     assert FormQuestion.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_section_writes_do_not_grow_with_the_question_count(
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
+    _write_part_with_quiz(tmp_path, sections_line=_DEFAULT_KEY_IDEAS)
+    for number in (2, 3, 4):
+        (tmp_path / "03. knowledge-check" / f"{number}. page.yaml").write_text(f"""---
+content_type: FORM_PAGE
+title: Page {number}
+---
+question: Question {number}?
+type: short_text
+{_DEFAULT_KEY_IDEAS}
+""")
+    tables = (FormQuestionTopic._meta.db_table, FormQuestionCoursePart._meta.db_table)
+
+    with CaptureQueriesContext(connection) as queries:
+        save_content_to_db(tmp_path, site.name)
+
+    section_queries = [
+        q for q in queries.captured_queries if any(t in q["sql"] for t in tables)
+    ]
+    assert len(section_queries) <= 6
+    assert _section_rows() == (["Key Ideas"] * 4, [])

@@ -1579,13 +1579,14 @@ def _topic_file(path: Path) -> Path:
     return _write_widget_file(path, "---\ncontent_type: TOPIC\ntitle: A Topic\n---\n")
 
 
-def _section_errors(directory: Path, *, read_outside: bool = True) -> list[str]:
+def _section_errors(directory: Path, *, loaded_root: Path | None = None) -> list[str]:
     parsed = [
         item
         for file_path in get_all_files(directory)
+        if file_path.suffix in (".md", ".yaml", ".yml")
         for item in parse_single_file(file_path)
     ]
-    return validate_question_sections(parsed, read_outside=read_outside)
+    return validate_question_sections(parsed, loaded_root=loaded_root)
 
 
 def test_a_question_naming_a_missing_file_fails_naming_file_question_and_paths(
@@ -1625,7 +1626,8 @@ def test_a_question_naming_a_non_section_file_fails_naming_its_type(
     errors = [e for e in _section_errors(tmp_path) if "Resolved to" in e]
 
     assert len(errors) == 1
-    assert "this file is a" in errors[0]
+    assert "its content_type is" in errors[0]
+    assert "not TOPIC or COURSE_PART" in errors[0]
 
 
 def test_a_path_listed_twice_in_one_list_fails_at_the_second_entry(tmp_path: Path):
@@ -1694,7 +1696,7 @@ def test_a_wrongly_typed_target_outside_the_validated_path_fails_validate(
     _course(tmp_path / "course.md")
     quiz_dir = _quiz(tmp_path, question_sections="sections: [../course.md]")
 
-    with pytest.raises(ValueError, match="this file is a"):
+    with pytest.raises(ValueError, match="its content_type is COURSE"):
         validate(quiz_dir)
 
 
@@ -1704,7 +1706,47 @@ def test_a_target_outside_the_loaded_directory_fails_without_read_outside(
     _topic_file(tmp_path / "topic.md")
     quiz_dir = _quiz(tmp_path, question_sections="sections: [../topic.md]")
 
-    errors = _section_errors(quiz_dir, read_outside=False)
+    errors = _section_errors(quiz_dir, loaded_root=quiz_dir)
 
     assert len(errors) == 1
     assert "outside the directory" in errors[0]
+
+
+@pytest.mark.parametrize("loaded", [False, True])
+def test_a_target_that_is_not_a_content_file_fails_in_both_modes(
+    tmp_path: Path, loaded: bool
+) -> None:
+    (tmp_path / "diagram.png").write_bytes(b"not really a png")
+    _quiz(tmp_path, question_sections="sections: [../diagram.png]")
+
+    errors = _section_errors(tmp_path, loaded_root=tmp_path if loaded else None)
+
+    assert len(errors) == 1
+    assert "not a part or topic file" in errors[0]
+    assert "outside the directory" not in errors[0]
+
+
+def test_a_target_that_does_not_parse_outside_the_validated_path_fails(
+    tmp_path: Path,
+) -> None:
+    _write_widget_file(tmp_path / "broken.md", "---\ncontent_type: TOPIC\n---\n")
+    quiz_dir = _quiz(tmp_path, question_sections="sections: [../broken.md]")
+
+    errors = _section_errors(quiz_dir)
+
+    assert len(errors) == 1
+    assert "not a part or topic file" in errors[0]
+
+
+@pytest.mark.parametrize("loaded", [False, True])
+def test_a_target_the_loader_skips_fails_in_both_modes(
+    tmp_path: Path, loaded: bool
+) -> None:
+    _topic_file(tmp_path / "_drafts" / "topic.md")
+    _quiz(tmp_path, question_sections="sections: [../_drafts/topic.md]")
+
+    errors = _section_errors(tmp_path, loaded_root=tmp_path if loaded else None)
+
+    assert len(errors) == 1
+    assert "content_save skips this file" in errors[0]
+    assert "outside the directory" not in errors[0]

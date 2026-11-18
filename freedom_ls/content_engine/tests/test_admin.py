@@ -9,7 +9,7 @@ import pytest
 
 from django.contrib import admin
 from django.db import connection
-from django.test import override_settings
+from django.test import RequestFactory, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
@@ -21,6 +21,7 @@ from freedom_ls.content_engine.admin import (
     CourseCategoryAdmin,
     CoursePartAdmin,
     FileAdmin,
+    FormQuestionWithSectionsAdmin,
     TopicAdmin,
 )
 from freedom_ls.content_engine.factories import (
@@ -43,6 +44,7 @@ from freedom_ls.content_engine.models import (
     Topic,
 )
 from freedom_ls.form_engine.factories import FormQuestionFactory
+from freedom_ls.form_engine.models import FormQuestion
 from freedom_ls.organisations.factories import OrganisationFactory
 
 CONTENT_ADMINS = [
@@ -516,3 +518,14 @@ class TestFormQuestionSections:
         assert question.question == "Reworded?"
         assert [t.title for t in question.topics.all()] == ["Sampling Topic"]
         assert [p.title for p in question.course_parts.all()] == ["Bias Part"]
+
+
+def test_the_sections_fieldset_sits_just_before_metadata() -> None:
+    question_admin = FormQuestionWithSectionsAdmin(FormQuestion, admin.site)
+
+    names = [
+        name for name, _ in question_admin.get_fieldsets(RequestFactory().get("/"))
+    ]
+
+    assert names[-2:] == ["Sections", "Metadata"]
+    assert names.count("Sections") == 1

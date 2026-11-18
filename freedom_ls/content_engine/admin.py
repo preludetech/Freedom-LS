@@ -365,7 +365,7 @@ class FormQuestionWithSectionsAdmin(FormQuestionAdmin):
     def get_fieldsets(
         self, request: HttpRequest, obj: FormQuestion | None = None
     ) -> "_FieldsetSpec":
-        *leading, metadata = super().get_fieldsets(request, obj)
+        fieldsets = super().get_fieldsets(request, obj)
         sections = (
             "Sections",
             {
@@ -375,7 +375,11 @@ class FormQuestionWithSectionsAdmin(FormQuestionAdmin):
                 ),
             },
         )
-        return [*leading, sections, metadata]
+        return [
+            *(fs for fs in fieldsets if fs[0] != "Metadata"),
+            sections,
+            *(fs for fs in fieldsets if fs[0] == "Metadata"),
+        ]
 
     @admin.display(description="Topics")
     def section_topics(self, obj: FormQuestion) -> str:

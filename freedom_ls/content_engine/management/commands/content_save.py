@@ -8,7 +8,7 @@ import mimetypes
 import re
 import uuid
 from collections import Counter, defaultdict
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping, Sequence
 from functools import partial
 from pathlib import Path
 
@@ -45,6 +45,8 @@ from freedom_ls.content_engine.models import (
     CoursePart,
     CoursePartChildDueDate,
     File,
+    FormQuestionCoursePart,
+    FormQuestionTopic,
     Topic,
 )
 from freedom_ls.content_engine.moved_children import (
@@ -57,15 +59,12 @@ from freedom_ls.content_engine.schema import Course as CourseSchema
 from freedom_ls.content_engine.signals import collection_items_synced
 from freedom_ls.content_engine.validate import (
     IMAGE_EXTENSIONS,
-    SECTION_FILE_FIX,
-    SectionsDeclarer,
     collection_children,
     content_key,
     effective_sections,
     get_all_files,
     parse_single_file,
     resolve_author_path,
-    section_error,
     split_yaml_documents,
     validate,
     validate_children_lists,
@@ -791,40 +790,70 @@ def save_form_question(
     return question, saved_options
 
 
-def save_question_sections(
-    question: FormQuestion,
-    declarer: SectionsDeclarer,
-    section_paths: list[Path],
-    content_by_path: Mapping[Path, models.Model],
+def replace_question_sections(
+    sections_by_question: Sequence[tuple[FormQuestion, list[models.Model]]],
 ) -> None:
-    """Set the question's sections to exactly this list.
+    """Set each question's sections to exactly its list, in a fixed number of queries.
 
-    Both set() calls run every time, empty lists included, so a path removed
-    from the file drops that section. Targets come from this run's saved rows,
-    never a slug or database lookup, so they are always this site's rows.
+    Empty lists count too, so a path removed from the file drops that section.
+    A row that is still wanted keeps its id. Targets are this run's saved rows,
+    already checked by validate_question_sections, so they are always this
+    site's topics and parts.
     """
-    topics: list[Topic] = []
-    course_parts: list[CoursePart] = []
-    for index, path in enumerate(section_paths):
-        key = resolve_author_path(declarer.file_path, path)
-        target = content_by_path.get(key)
-        if isinstance(target, Topic):
-            topics.append(target)
-        elif isinstance(target, CoursePart):
-            course_parts.append(target)
-        else:
-            raise ValueError(
-                section_error(
-                    declarer,
-                    index,
-                    path,
-                    key,
-                    "this file is not a TOPIC or COURSE_PART loaded in this run",
-                    SECTION_FILE_FIX,
-                )
-            )
-    question.topics.set(topics)
-    question.course_parts.set(course_parts)
+    question_ids = [question.id for question, _ in sections_by_question]
+    _sync_section_rows(
+        FormQuestionTopic,
+        "topic_id",
+        _section_pairs(sections_by_question, Topic),
+        question_ids,
+        lambda question_id, topic_id: FormQuestionTopic(
+            question_id=question_id, topic_id=topic_id
+        ),
+    )
+    _sync_section_rows(
+        FormQuestionCoursePart,
+        "course_part_id",
+        _section_pairs(sections_by_question, CoursePart),
+        question_ids,
+        lambda question_id, part_id: FormQuestionCoursePart(
+            question_id=question_id, course_part_id=part_id
+        ),
+    )
+
+
+def _section_pairs(
+    sections_by_question: Sequence[tuple[FormQuestion, list[models.Model]]],
+    target_type: type[Topic] | type[CoursePart],
+) -> set[tuple[uuid.UUID, uuid.UUID]]:
+    """The (question id, target id) pairs whose target is of target_type."""
+    return {
+        (question.id, target.pk)
+        for question, targets in sections_by_question
+        for target in targets
+        if isinstance(target, target_type)
+    }
+
+
+def _sync_section_rows[Row: (FormQuestionTopic, FormQuestionCoursePart)](
+    through: type[Row],
+    target_field: str,
+    wanted: set[tuple[uuid.UUID, uuid.UUID]],
+    question_ids: list[uuid.UUID],
+    make_row: Callable[[uuid.UUID, uuid.UUID], Row],
+) -> None:
+    """Delete the questions' rows not in wanted and create the missing ones."""
+    existing = {
+        (question_id, target_id): pk
+        for pk, question_id, target_id in through._default_manager.filter(
+            question_id__in=question_ids
+        ).values_list("pk", "question_id", target_field)
+    }
+    stale = [pk for pair, pk in existing.items() if pair not in wanted]
+    if stale:
+        through._default_manager.filter(pk__in=stale).delete()
+    through._default_manager.bulk_create(
+        [make_row(*pair) for pair in wanted - existing.keys()]
+    )
 
 
 def get_file_type_from_extension(file_path):
@@ -1020,7 +1049,7 @@ def save_content_to_db(path, site_name):
     placement_errors = [
         *validate_children_lists(all_parsed),
         *validate_due_date_placements(all_parsed),
-        *validate_question_sections(all_parsed, read_outside=False),
+        *validate_question_sections(all_parsed, loaded_root=path),
     ]
     if placement_errors:
         raise ValueError("\n".join(placement_errors))
@@ -1119,6 +1148,7 @@ def save_content_to_db(path, site_name):
         if form_entry:
             pages_by_form[file_path.parent].append((file_path, page_items))
 
+    sections_by_question: list[tuple[FormQuestion, list[models.Model]]] = []
     # Save form pages and their content in alphabetical order per form
     for form_dir, form_pages in pages_by_form.items():
         parent_form, form_item = forms_by_dir[form_dir]
@@ -1177,16 +1207,25 @@ def save_content_to_db(path, site_name):
                                 item.when, options_by_slug, file_path
                             ),
                         )
-                        save_question_sections(
-                            question,
-                            *effective_sections(item, form_item),
-                            content_by_path,
+                        declarer, section_paths = effective_sections(item, form_item)
+                        sections_by_question.append(
+                            (
+                                question,
+                                [
+                                    content_by_path[
+                                        resolve_author_path(declarer.file_path, p)
+                                    ]
+                                    for p in section_paths
+                                ],
+                            )
                         )
                         if item.slug:
                             options_by_slug[item.slug] = saved_options
                         logger.info(
                             f"Saved FormQuestion in {form_page.title} (order={content_order})"
                         )
+
+    replace_question_sections(sections_by_question)
 
     # Bind each course to the application form its access_config names. Writing
     # None when the key is absent is what makes deleting the line unbind the

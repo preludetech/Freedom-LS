@@ -478,3 +478,44 @@ def test_a_form_with_sections_parses_them_as_paths():
     )
 
     assert form.sections == [Path("../part.yaml")]
+
+
+def test_a_form_with_a_bare_sections_key_is_rejected() -> None:
+    with pytest.raises(ValidationError, match="sections: has no entries"):
+        Form.model_validate(
+            {
+                "content_type": "FORM",
+                "file_path": "forms/quiz/form.md",
+                "title": "Quiz",
+                "strategy": "QUIZ",
+                "quiz_show_incorrect": True,
+                "quiz_pass_percentage": 70,
+                "sections": None,
+            }
+        )
+
+
+def test_a_question_with_a_bare_sections_key_is_rejected() -> None:
+    with pytest.raises(ValidationError, match="sections: has no entries"):
+        FormQuestion.model_validate(
+            {
+                "content_type": "FORM_QUESTION",
+                "file_path": "forms/quiz/1. page.yaml",
+                "question": "What is a part?",
+                "type": "short_text",
+                "sections": None,
+            }
+        )
+
+
+def test_a_question_without_the_sections_key_parses() -> None:
+    question = FormQuestion.model_validate(
+        {
+            "content_type": "FORM_QUESTION",
+            "file_path": "forms/quiz/1. page.yaml",
+            "question": "What is a part?",
+            "type": "short_text",
+        }
+    )
+
+    assert question.sections is None

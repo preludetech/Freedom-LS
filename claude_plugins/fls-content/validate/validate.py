@@ -29,7 +29,7 @@ import logging
 import os.path
 import re
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 import frontmatter
@@ -179,6 +179,25 @@ def auto_discovered_children(collection_file: Path) -> list[Path]:
     return found
 
 
+def is_loader_skipped(file_path: Path, base_path: Path) -> bool:
+    """Whether the directory walk from base_path leaves this file out.
+
+    Only the directories between base_path and the file count, so a base_path
+    that itself sits under a skipped name is still walked.
+    """
+    if file_path.name in ("README.md", "CLAUDE.md") or file_path.name.endswith("~"):
+        return True
+    if is_skipped_path(file_path):
+        return True
+    try:
+        relative_path = file_path.relative_to(base_path)
+    except ValueError:
+        return False
+    return any(
+        parent.name and is_skipped_path(parent) for parent in relative_path.parents
+    )
+
+
 def get_all_files(path):
     """
     if path points to a regular file, then return it
@@ -191,41 +210,16 @@ def get_all_files(path):
     - are included in directories with names starting with an _ or . (recursive)
     """
 
-    def should_skip(file_path, base_path):
-        """Check if a file should be skipped based on filtering rules."""
-        # Skip README.md
-        if file_path.name == "README.md":
-            return True
-
-        if file_path.name == "CLAUDE.md":
-            return True
-
-        if file_path.name.endswith("~"):
-            return True
-
-        # Skip files starting with _ or .
-        if is_skipped_path(file_path):
-            return True
-
-        # Skip files in directories starting with _ or . (only check parents within base_path)
-        try:
-            relative_path = file_path.relative_to(base_path)
-            for parent in relative_path.parents:
-                # Skip the root parent (which would be '.')
-                if parent.name and parent.name != "." and is_skipped_path(parent):
-                    return True
-        except ValueError:
-            # file_path is not relative to base_path
-            pass
-
-        return False
-
     if path.is_file():
         return [path]
     elif path.is_dir():
         # Recursively find all files, excluding those that match skip criteria
         return sorted(
-            [f for f in path.rglob("*") if f.is_file() and not should_skip(f, path)]
+            [
+                f
+                for f in path.rglob("*")
+                if f.is_file() and not is_loader_skipped(f, path)
+            ]
         )
     else:
         return []
@@ -1025,19 +1019,26 @@ SECTION_FILE_FIX = (
 )
 SECTION_REPEATED_FIX = "Name each section once."
 SECTION_OUTSIDE_FIX = "Load a directory that holds both the form and the section."
+SECTION_SKIPPED_FIX = (
+    "Move the section to a file content_save reads: no name on its path may "
+    "start with _ or ."
+)
 
 
 def validate_question_sections(
-    all_parsed: Sequence[BaseBaseContentModel], *, read_outside: bool = True
+    all_parsed: Sequence[BaseBaseContentModel], *, loaded_root: Path | None = None
 ) -> list[str]:
     """Check every sections: list, on a form and on each question that sets its own.
 
-    With read_outside, a target beyond the validated path is read from disk,
-    as a single-directory validate run needs. content_save passes False: it
-    links only rows it loads in the same run. Every error is reported.
+    Without loaded_root, a target beyond the validated path is read from disk,
+    as a single-directory validate run needs. content_save passes the path it
+    loads: it links only rows it loads in the same run. Every error is reported.
     """
-    parsed = {content_key(item.file_path): item for item in all_parsed}
-    lookup = _ParsedByPath(all_parsed).get if read_outside else parsed.get
+    lookup: Callable[[Path], BaseBaseContentModel | None]
+    if loaded_root is None:
+        lookup = _ParsedByPath(all_parsed).get
+    else:
+        lookup = {content_key(item.file_path): item for item in all_parsed}.get
     errors: list[str] = []
     for declarer in all_parsed:
         if not isinstance(declarer, (Form, FormQuestion)) or not declarer.sections:
@@ -1045,28 +1046,50 @@ def validate_question_sections(
         keys = [resolve_author_path(declarer.file_path, p) for p in declarer.sections]
         repeated = _repeated_indices(keys)
         for index, (given, key) in enumerate(zip(declarer.sections, keys, strict=True)):
-            target = lookup(key)
-            problem_fix: tuple[str, str] | None = None
-            if not key.is_file():
-                problem_fix = ("no file at this path", SECTION_FILE_FIX)
-            elif target is None and not read_outside:
-                problem_fix = (
-                    "this file is not loaded with the form: it sits outside "
-                    "the directory content_save was given",
-                    SECTION_OUTSIDE_FIX,
-                )
-            elif target is None:
-                continue
-            elif target.content_type not in _SECTION_TYPES:
-                problem_fix = (
-                    f"this file is a {target.content_type}",
-                    SECTION_FILE_FIX,
-                )
-            elif index in repeated:
+            problem_fix = _section_problem(declarer, key, lookup, loaded_root)
+            if problem_fix is None and index in repeated:
                 problem_fix = ("this section is named twice", SECTION_REPEATED_FIX)
             if problem_fix is not None:
                 errors.append(section_error(declarer, index, given, key, *problem_fix))
     return errors
+
+
+def _section_problem(
+    declarer: SectionsDeclarer,
+    key: Path,
+    lookup: Callable[[Path], BaseBaseContentModel | None],
+    loaded_root: Path | None,
+) -> tuple[str, str] | None:
+    """The problem and fix for one sections: target, or None when it is a section."""
+    if not key.is_file():
+        return ("no file at this path", SECTION_FILE_FIX)
+    # The walk's base is the deepest directory holding both files: the skip
+    # rule looks only at names below the directory content_save is given.
+    base = Path(os.path.commonpath([content_key(declarer.file_path).parent, key]))
+    if is_loader_skipped(key, base):
+        return (
+            "content_save skips this file: a name on its path starts with _ or .",
+            SECTION_SKIPPED_FIX,
+        )
+    target = lookup(key)
+    if (
+        target is None
+        and loaded_root is not None
+        and not key.is_relative_to(content_key(loaded_root))
+    ):
+        return (
+            "this file is not loaded with the form: it sits outside "
+            "the directory content_save was given",
+            SECTION_OUTSIDE_FIX,
+        )
+    if target is None:
+        return ("this file is not a part or topic file", SECTION_FILE_FIX)
+    if target.content_type not in _SECTION_TYPES:
+        return (
+            f"its content_type is {target.content_type}, not TOPIC or COURSE_PART",
+            SECTION_FILE_FIX,
+        )
+    return None
 
 
 def _condition_error(

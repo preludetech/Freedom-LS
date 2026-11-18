@@ -887,6 +887,17 @@ SECTIONS_DESCRIPTION = (
 )
 
 
+def _reject_bare_sections(value: object) -> object:
+    """A `sections:` key with no value, such as one whose every entry is
+    commented out, would otherwise clear the list without saying so."""
+    if value is None:
+        raise ValueError(
+            "sections: has no entries. Write `sections: []` for none; on a "
+            "question, remove the key to use the form's list."
+        )
+    return value
+
+
 class Form(
     BaseContentModel,
     MarkdownContentModel,
@@ -910,6 +921,9 @@ class Form(
     )
 
     sections: list[Path] | None = Field(None, description=SECTIONS_DESCRIPTION)
+    _sections_not_bare = field_validator("sections", mode="before")(
+        _reject_bare_sections
+    )
 
     submit_on_exit: bool = Field(
         False,
@@ -1227,6 +1241,9 @@ class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION)
     )
     when: Condition | None = Field(None, description=WHEN_DESCRIPTION)
     sections: list[Path] | None = Field(None, description=SECTIONS_DESCRIPTION)
+    _sections_not_bare = field_validator("sections", mode="before")(
+        _reject_bare_sections
+    )
     type: QuestionType = Field(
         ...,
         description=(

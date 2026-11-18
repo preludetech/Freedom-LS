@@ -1771,7 +1771,7 @@ def test_section_naming_a_form_fails(tmp_path: Path) -> None:
 
     result = run_validator(form_dir)
 
-    assert_validator_fails(result, "this file is a FORM")
+    assert_validator_fails(result, "its content_type is FORM, not TOPIC or COURSE_PART")
     assert "form.md" in result.stdout + result.stderr
 
 
@@ -1802,7 +1802,7 @@ def test_section_in_sibling_directory_is_checked(tmp_path: Path) -> None:
 
     result = run_validator(form_dir)
 
-    assert_validator_fails(result, "this file is a FORM")
+    assert_validator_fails(result, "its content_type is FORM, not TOPIC or COURSE_PART")
 
 
 def test_section_topic_in_sibling_directory_passes(tmp_path: Path) -> None:
