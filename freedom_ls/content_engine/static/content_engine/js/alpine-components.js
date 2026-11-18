@@ -115,6 +115,11 @@ document.addEventListener("alpine:init", () => {
         sharedAudio = new Audio();
         sharedAudio.addEventListener("playing", () => owner?._setState("playing"));
         sharedAudio.addEventListener("ended", () => owner?._setState("idle"));
+        sharedAudio.addEventListener("pause", () => {
+            // A src change can fire pause for the previous file after ownership
+            // has moved; it is not a stop.
+            if (owner && !owner.loading) owner._setState("idle");
+        });
         return sharedAudio;
     }
 
@@ -132,12 +137,19 @@ document.addEventListener("alpine:init", () => {
                 this._setState("idle");
                 return;
             }
+            owner?._setState("idle");
             owner = this;
             this._setState("loading");
             // src only, never <source type>: the stored mime type can be empty.
             audio.src = this.$el.dataset.src;
             // Called synchronously inside the click so iOS treats it as user-initiated.
             audio.play();
+        },
+        destroy() {
+            if (owner?._id === this._id) {
+                sharedAudio.pause();
+                owner = null;
+            }
         },
         _setState(state) {
             this.idle = state === "idle";

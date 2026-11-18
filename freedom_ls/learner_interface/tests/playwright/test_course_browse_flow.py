@@ -346,8 +346,21 @@ def test_learner_browses_a_course(
     ]
     button_a.click()
     expect(button_a).to_have_attribute("aria-pressed", "true")
-    button_a.click()
+    button_b = page.get_by_role("button", name=f"Play pronunciation of {AUDIO_B_LABEL}")
+    button_b.click()
     expect(button_a).to_have_attribute("aria-pressed", "false")
+    expect(button_b).to_have_attribute("aria-pressed", "true")
+    button_b.click()
+    expect(button_b).to_have_attribute("aria-pressed", "false")
+
+    # Enter plays and Space stops, and the button keeps focus.
+    button_a.focus()
+    page.keyboard.press("Enter")
+    expect(button_a).to_have_attribute("aria-pressed", "true")
+    expect(button_a).to_be_focused()
+    page.keyboard.press("Space")
+    expect(button_a).to_have_attribute("aria-pressed", "false")
+    expect(button_a).to_be_focused()
 
     # Back closes the mobile outline sheet without leaving the page.
     page.set_viewport_size({"width": 375, "height": 812})
