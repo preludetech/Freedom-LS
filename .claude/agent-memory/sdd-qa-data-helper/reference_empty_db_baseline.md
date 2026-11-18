@@ -38,3 +38,9 @@ active "Cohort W" + lone.admin@qa.test (Lou Lone) as its ONLY cohort_admin, via
 the Westside StaffMember). west.admin@qa.test stays organisation_admin on Westside (org-level, not a
 Cohort W grant). Cohort page: /educator/organisations/westside/cohorts/<pk>?tab=settings.
 If asked again, fold Cohort W + Lou into qa_create_staff_administration_scenario.
+
+Nov 2026 (learner-interface-features-1-question-sections): caller wanted ONLY step 1 (no content_save, no roles).
+DemoDev pk 3, domain 127.0.0.1:8000, but the dev server on ANY port (8801 here) serves DemoDev because
+settings_dev FORCE_SITE_NAME="DemoDev". Verify login with curl against the running server (csrf token from
+GET, then POST login/password -> 302 to /, then /admin/ 200). The Django test Client in `manage.py shell`
+500s on /accounts/login/ with Site.DoesNotExist (host lookup of 'testserver') — not a real failure.
