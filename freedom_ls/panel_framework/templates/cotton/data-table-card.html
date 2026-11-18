@@ -60,18 +60,7 @@ checkbox's slot but not the checkbox.
     {% if has_child_rows %}
         <div class="w-6 shrink-0 self-start pt-1">
             {% if row.child_row_ids %}
-                <button type="button"
-                        class="group -m-2.5 inline-flex size-11 items-center justify-center rounded-full text-muted hover:text-on-surface aria-expanded:text-primary"
-                        aria-expanded="true"
-                        aria-controls="{% for child_id in row.child_row_ids %}{{ child_id }}-card{% if not forloop.last %} {% endif %}{% endfor %}"
-                        aria-label="{{ row.label }}"
-                        data-row="{{ row.row_id }}-card"
-                        x-bind:aria-expanded="expandedAttr"
-                        x-on:click="toggle">
-                    <span aria-hidden="true" class="inline-flex motion-safe:transition-[rotate] group-aria-expanded:rotate-180">
-                        <c-icon name="dropdown" class="size-4" />
-                    </span>
-                </button>
+                {% include "panel_framework/partials/child_rows_toggle.html" with suffix="-card" size_class="-m-2.5 size-11" %}
             {% endif %}
         </div>
     {% endif %}

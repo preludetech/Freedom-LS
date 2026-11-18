@@ -178,18 +178,7 @@
                                         <td class="{% if column.cell_class %}{{ column.cell_class }} {% endif %}{% include "panel_framework/partials/row_indent.html" with depth=row.depth %}">
                                             <div class="flex items-center gap-2">
                                                 {% if row.child_row_ids %}
-                                                    <button type="button"
-                                                            class="group -my-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted hover:text-on-surface aria-expanded:text-primary"
-                                                            aria-expanded="true"
-                                                            aria-controls="{{ row.child_row_ids|join:' ' }}"
-                                                            aria-label="{{ row.label }}"
-                                                            data-row="{{ row.row_id }}"
-                                                            x-bind:aria-expanded="expandedAttr"
-                                                            x-on:click="toggle">
-                                                        <span aria-hidden="true" class="inline-flex motion-safe:transition-[rotate] group-aria-expanded:rotate-180">
-                                                            <c-icon name="dropdown" class="size-4" />
-                                                        </span>
-                                                    </button>
+                                                    {% include "panel_framework/partials/child_rows_toggle.html" with suffix="" size_class="-my-1 size-8" %}
                                                 {% else %}
                                                     <span class="-my-1 size-8 shrink-0"></span>
                                                 {% endif %}

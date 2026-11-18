@@ -4,13 +4,7 @@ the Preview trigger beneath when the row has one.
 {% endcomment %}
 <div class="flex items-center gap-2">
     {% if object.number %}<span class="shrink-0 text-sm text-muted tabular-nums">{{ object.number }}</span>{% endif %}
-    {% if object.kind != "course" %}
-        <span class="shrink-0 text-muted">
-            <c-icon name="{{ object.icon }}" class="size-4" />
-            <span class="sr-only">{{ object.kind_label }}</span>
-        </span>
-    {% endif %}
-    <span class="min-w-0 font-medium break-words">{{ object.title }}</span>
+    {% include "educator_interface/partials/course_outline_title.html" %}
 </div>
 <div class="mt-1 text-sm text-muted">{{ object.kind_label }}</div>
 {% include "educator_interface/partials/course_outline_actions.html" %}
