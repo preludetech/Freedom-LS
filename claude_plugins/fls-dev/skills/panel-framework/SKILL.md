@@ -101,6 +101,31 @@ Components live in `freedom_ls/panel_framework/templates/cotton/`: `data-table`,
 `delete_confirmation.html`, `form.html` and `message.html`.
 `ls freedom_ls/panel_framework/templates/cotton/` is the current list.
 
+## Sites, bulk runs and the task backend
+
+The framework imports nothing from another `freedom_ls` app, so it cannot ask `site_aware_models`
+which site a request belongs to. The host says so through a setting.
+
+- `PANEL_FRAMEWORK_SITE_RESOLVER` is the dotted path of a callable that takes the request and
+  returns its `Site`. The default is `django.contrib.sites.shortcuts.get_current_site`, where
+  `SITE_ID` wins over the host name: a project serving several sites from one process must set its
+  own resolver, or every request shares one site's runs. FLS sets
+  `freedom_ls.site_aware_models.models.get_cached_site` in `config/settings_base.py`.
+- `sites.resolve_site(request)` returns the `Site`, or `None` when the resolver raises
+  `Site.DoesNotExist` or returns something that is not a `Site`. It resolves once per request. A
+  path that cannot be imported or is not callable raises `ImproperlyConfigured`.
+- `BulkActionRun` is a plain `models.Model` with an explicit `site` foreign key, and
+  `BulkActionRun.objects` filters by no site. Scope every read with
+  `BulkActionRun.objects.for_request(request)` (a request that resolves to no site sees no runs) or
+  `.for_site(site_id)`. A worker or sweep has no request and reads by the site id it was given.
+- Name the site when creating a run: `BulkActionRun.objects.create(site=site, ...)`.
+  `PermittedBulkAction` does this itself, from `resolve_site(ctx.request)`, and raises
+  `PermissionDenied` when no site resolves.
+- `freedom_ls_panel_framework.W001` is a system-check warning (`checks.check_task_backend`). It
+  fires when `TASKS["default"]["BACKEND"]` is the immediate or dummy backend and `DEBUG` is off,
+  because a bulk action over `BULK_BACKGROUND_THRESHOLD` rows then runs inline or never. Run a
+  durable backend with a worker, or add the id to `SILENCED_SYSTEM_CHECKS` when that is intended.
+
 ## How it looks and behaves
 
 ### Triggers and buttons
@@ -441,7 +466,19 @@ and `test_every_expand_chevron_turns_when_its_control_opens`. In the browser,
 desktop height on a phone, that its hit area is 44px, and that a dialog footer's buttons are 44px tall.
 Run that file after any change to a panel template.
 
-Three more files sit beside it in `tests/invariants/`:
+Two guards cover the standalone backend:
+
+- `freedom_ls/panel_framework/tests/test_import_guard.py` parses every `.py` file under the
+  framework and fails on any import of a `freedom_ls` module outside `freedom_ls.panel_framework`
+  (including a bare `import freedom_ls`). Relative imports pass. The exempt directories are
+  `tests/components`, `tests/invariants` and `tests/playwright`, which exercise the host's
+  templates. Reach host behaviour through a setting, as the site resolver does.
+- `freedom_ls/educator_interface/tests/invariants/test_bulk_run_scoping.py` parses every production
+  `.py` file under `freedom_ls/` (`tests/` and `migrations/` directories excluded) and fails on any
+  `BulkActionRun.objects.<method>` other than `for_site`, `for_request` and `create`. A bare
+  `.filter()`, `.get()` or `.all()` reads every site's runs.
+
+Three more files sit beside the template invariants in `tests/invariants/`:
 
 - `test_reason_mixin.py`: every `ReasonMixin` subclass submits through the mixin's `handle_submit`.
 - `test_alpine_registration.py`: every `x-data` name a framework template uses is registered by
