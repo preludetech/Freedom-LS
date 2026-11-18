@@ -39,6 +39,10 @@ def returns_request_site(request: HttpRequest) -> RequestSite:
     return RequestSite(request)
 
 
+def returns_a_pk(request: HttpRequest) -> int:
+    return 1
+
+
 def raises_does_not_exist(request: HttpRequest) -> Site:
     CALLS.append(request)
     raise Site.DoesNotExist
@@ -115,6 +119,16 @@ def test_the_resolver_runs_once_per_request(resolver: Callable[..., object]) -> 
 def test_a_request_site_result_resolves_to_none() -> None:
     with override_settings(PANEL_FRAMEWORK_SITE_RESOLVER=_path(returns_request_site)):
         assert resolve_site(_request()) is None
+
+
+def test_a_resolver_returning_neither_a_site_nor_none_raises_improperly_configured() -> (
+    None
+):
+    with (
+        override_settings(PANEL_FRAMEWORK_SITE_RESOLVER=_path(returns_a_pk)),
+        pytest.raises(ImproperlyConfigured, match="returned int, not a Site"),
+    ):
+        resolve_site(_request())
 
 
 def test_a_resolver_raising_any_other_exception_propagates_it() -> None:

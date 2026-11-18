@@ -6,6 +6,7 @@ from collections.abc import Callable
 from typing import cast
 
 from django.contrib.sites.models import Site
+from django.contrib.sites.requests import RequestSite
 from django.core.exceptions import ImproperlyConfigured
 from django.http import HttpRequest
 from django.utils.module_loading import import_string
@@ -33,9 +34,22 @@ def resolve_site(request: HttpRequest) -> Site | None:
     except Site.DoesNotExist:
         # django.contrib.sites answers an unknown host this way.
         resolved = None
-    site = resolved if isinstance(resolved, Site) else None
+    site = _as_site(resolved)
     setattr(request, _REQUEST_ATTR, site)
     return site
+
+
+def _as_site(resolved: object) -> Site | None:
+    """A Site row is the site. None, or a RequestSite (what django.contrib.sites
+    answers when it has no row to give), is no site. Anything else is a
+    resolver that answers the wrong question."""
+    if isinstance(resolved, Site):
+        return resolved
+    if resolved is None or isinstance(resolved, RequestSite):
+        return None
+    raise ImproperlyConfigured(
+        f"{SETTING_NAME} returned {type(resolved).__name__}, not a Site."
+    )
 
 
 def _resolver() -> Callable[[HttpRequest], object]:
