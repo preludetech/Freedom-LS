@@ -6,13 +6,16 @@ import gc
 from typing import cast
 
 import pytest
+from pytest_django.fixtures import SettingsWrapper
 
+from django.contrib.sites.models import Site
 from django.core.checks import run_checks
 from django.core.management import call_command
 from django.tasks.backends.immediate import ImmediateBackend
 from django.test import override_settings
 
 from freedom_ls.panel_framework.checks import (
+    check_site_resolver,
     check_task_backend,
     default_sort_errors,
     filter_key_errors,
@@ -23,6 +26,7 @@ from freedom_ls.panel_framework.filters import BooleanFilter, TableFilter
 from freedom_ls.panel_framework.panels import DataTablePanel, Panel, PanelStack
 from freedom_ls.panel_framework.views import ListViewConfig
 
+from .helpers import make_site
 from .stub_models import StubChild, StubModel
 from .stub_panels import StubDataTable
 
@@ -397,3 +401,83 @@ def test_non_durable_task_backend_warning_is_registered_with_run_checks() -> Non
 
     # Assert
     assert "freedom_ls_panel_framework.W001" in message_ids
+
+
+@pytest.fixture
+def default_resolver(settings: SettingsWrapper) -> None:
+    """Drop the project's resolver so the framework's declared default applies."""
+    if hasattr(settings, "PANEL_FRAMEWORK_SITE_RESOLVER"):
+        del settings.PANEL_FRAMEWORK_SITE_RESOLVER
+
+
+@pytest.fixture
+def two_sites() -> None:
+    make_site("North", "north.test")
+    make_site("South", "south.test")
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("default_resolver", "two_sites")
+def test_site_id_with_the_default_resolver_on_several_sites_warns_w002(
+    settings: SettingsWrapper,
+) -> None:
+    settings.SITE_ID = 1
+
+    messages = check_site_resolver(app_configs=None, databases=["default"])
+
+    assert [message.id for message in messages] == ["freedom_ls_panel_framework.W002"]
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("default_resolver", "two_sites")
+def test_the_site_resolver_check_reads_no_database_unless_asked(
+    settings: SettingsWrapper,
+) -> None:
+    settings.SITE_ID = 1
+
+    assert check_site_resolver(app_configs=None, databases=None) == []
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("default_resolver")
+def test_the_site_resolver_check_is_silent_with_one_site(
+    settings: SettingsWrapper,
+) -> None:
+    site = Site.objects.first() or make_site("Only", "only.test")
+    assert Site.objects.count() == 1
+    settings.SITE_ID = site.pk
+
+    assert check_site_resolver(app_configs=None, databases=["default"]) == []
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("default_resolver", "two_sites")
+def test_the_site_resolver_check_is_silent_without_site_id(
+    settings: SettingsWrapper,
+) -> None:
+    settings.SITE_ID = None
+
+    assert check_site_resolver(app_configs=None, databases=["default"]) == []
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("two_sites")
+def test_the_site_resolver_check_is_silent_with_a_resolver_of_the_hosts_own(
+    settings: SettingsWrapper,
+) -> None:
+    settings.SITE_ID = 1
+    settings.PANEL_FRAMEWORK_SITE_RESOLVER = "some.host.resolver"
+
+    assert check_site_resolver(app_configs=None, databases=["default"]) == []
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("default_resolver", "two_sites")
+def test_the_site_resolver_warning_is_registered_for_database_checks(
+    settings: SettingsWrapper,
+) -> None:
+    settings.SITE_ID = 1
+
+    message_ids = [message.id for message in run_checks(databases=["default"])]
+
+    assert "freedom_ls_panel_framework.W002" in message_ids

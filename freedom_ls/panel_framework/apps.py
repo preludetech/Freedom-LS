@@ -12,8 +12,10 @@ class PanelFrameworkConfig(AppConfig):
 
         from freedom_ls.panel_framework.checks import (
             check_panels,
+            check_site_resolver,
             check_task_backend,
         )
 
         register(check_panels)
         register(check_task_backend)
+        register(check_site_resolver)

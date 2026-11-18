@@ -5,7 +5,7 @@ changed_template_paths: []
 requires_settings_change: true
 changed_settings:
   - PANEL_FRAMEWORK_SITE_RESOLVER  # optional: defaults to freedom_ls.panel_framework.sites.current_site_or_none
-  - SILENCED_SYSTEM_CHECKS  # optional: new warning freedom_ls_panel_framework.W001
+  - SILENCED_SYSTEM_CHECKS  # optional: new warnings freedom_ls_panel_framework.W001 and W002
 requires_package_upgrade: false
 changed_packages: []
 requires_npm_install: false
@@ -44,3 +44,7 @@ propagate; return `None` to say a request belongs to no site.
   `ImmediateBackend` or `DummyBackend`: large bulk actions run as background tasks and need a
   durable backend with a worker. Switch the backend, or add the id to `SILENCED_SYSTEM_CHECKS` if
   that is intended.
+- A project with its own settings module that keeps `SITE_ID` and the default resolver, on a
+  database holding several sites, gets `freedom_ls_panel_framework.W002` from `migrate` or
+  `manage.py check --database default`. Set `PANEL_FRAMEWORK_SITE_RESOLVER`, or silence W002 if
+  every request really is one site.

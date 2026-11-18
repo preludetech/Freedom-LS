@@ -125,9 +125,15 @@ which site a request belongs to. The host says so through a setting.
   resolves, the bulk-action view answers 422 ("This request belongs to no site.") before the
   preview, and `execute` raises `PermissionDenied` as a backstop.
 - `freedom_ls_panel_framework.W001` is a system-check warning (`checks.check_task_backend`). It
-  fires when `TASKS["default"]["BACKEND"]` is the immediate or dummy backend and `DEBUG` is off,
-  because a bulk action over `BULK_BACKGROUND_THRESHOLD` rows then runs inline or never. Run a
-  durable backend with a worker, or add the id to `SILENCED_SYSTEM_CHECKS` when that is intended.
+  fires when `TASKS["default"]["BACKEND"]` is, or subclasses, Django's or the `django_tasks`
+  backport's immediate or dummy backend and `DEBUG` is off, because a bulk action over
+  `BULK_BACKGROUND_THRESHOLD` rows then runs inline or never. Run a durable backend with a worker,
+  or add the id to `SILENCED_SYSTEM_CHECKS` when that is intended.
+- `freedom_ls_panel_framework.W002` (`checks.check_site_resolver`) fires when `SITE_ID` is set,
+  `PANEL_FRAMEWORK_SITE_RESOLVER` is still the default, and the database holds more than one
+  `Site`: every site's runs would be recorded under `SITE_ID`'s. It counts sites, so it runs only
+  under `migrate` or `manage.py check --database default`. FLS sets its own resolver and never
+  sees it.
 
 ## How it looks and behaves
 

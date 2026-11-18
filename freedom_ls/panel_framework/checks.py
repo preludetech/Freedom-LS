@@ -8,9 +8,11 @@ from importlib import import_module
 
 from django.apps import AppConfig
 from django.conf import settings
+from django.contrib.sites.models import Site
 from django.core.checks import CheckMessage, Error, Warning
 from django.utils.module_loading import import_string
 
+from freedom_ls.panel_framework.config import PanelFrameworkConfig, config
 from freedom_ls.panel_framework.field_display import label_for_field
 from freedom_ls.panel_framework.panels import DataTablePanel, Panel
 from freedom_ls.panel_framework.tables import DataTable
@@ -73,6 +75,43 @@ def check_task_backend(
                 "this is intended."
             ),
             id="freedom_ls_panel_framework.W001",
+        )
+    ]
+
+
+def check_site_resolver(
+    *,
+    app_configs: Sequence[AppConfig] | None,
+    databases: Sequence[str] | None = None,
+    **kwargs: object,
+) -> list[CheckMessage]:
+    """Warn when SITE_ID decides every request's site on a database that
+    holds several sites.
+
+    The default resolver follows django.contrib.sites, where SITE_ID wins
+    over the request's host, so every site's bulk runs would be recorded
+    under one. Counting sites needs the database, which Django offers a
+    check only under `migrate` or `check --database`.
+    """
+    default = PanelFrameworkConfig.declared_settings[
+        "PANEL_FRAMEWORK_SITE_RESOLVER"
+    ].default
+    resolver = config.PANEL_FRAMEWORK_SITE_RESOLVER
+    site_id = getattr(settings, "SITE_ID", None)
+    if databases is None or site_id is None or resolver != default:
+        return []
+    if not any(Site.objects.using(alias).count() > 1 for alias in databases):
+        return []
+    return [
+        Warning(
+            f"SITE_ID = {site_id!r} decides the site of every bulk-action "
+            "run, but the database holds several sites.",
+            hint=(
+                "Set PANEL_FRAMEWORK_SITE_RESOLVER to a resolver that reads the "
+                "request's host, or add freedom_ls_panel_framework.W002 to "
+                "SILENCED_SYSTEM_CHECKS if every request really is one site."
+            ),
+            id="freedom_ls_panel_framework.W002",
         )
     ]
 
