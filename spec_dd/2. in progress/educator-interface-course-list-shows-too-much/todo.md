@@ -33,7 +33,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 - [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
 - [x] (cmd) In `claude_plugins/fls-dev/skills/domain-glossary/SKILL.md`, add "owning organisation" and "course share" and qualify the `peer` row's "a course is not owned by one" (spec: Documentation and downstream, glossary bullet)
-- [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
