@@ -14,7 +14,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.http import HttpRequest
 from django.test import RequestFactory, override_settings
 
-from freedom_ls.panel_framework.sites import resolve_site
+from freedom_ls.panel_framework.sites import current_site_or_none, resolve_site
 
 from .helpers import make_site
 
@@ -101,9 +101,7 @@ def test_the_setting_overrides_the_default_resolver() -> None:
     assert site.domain == "stand-in.test"
 
 
-@pytest.mark.parametrize(
-    "resolver", [returns_site, returns_request_site, raises_does_not_exist]
-)
+@pytest.mark.parametrize("resolver", [returns_site, returns_request_site])
 def test_the_resolver_runs_once_per_request(resolver: Callable[..., object]) -> None:
     first, second = _request(), _request()
 
@@ -129,6 +127,30 @@ def test_a_resolver_returning_neither_a_site_nor_none_raises_improperly_configur
         pytest.raises(ImproperlyConfigured, match="returned int, not a Site"),
     ):
         resolve_site(_request())
+
+
+def test_a_resolver_raising_does_not_exist_propagates_it() -> None:
+    # A host's resolver raises it on purpose, e.g. for a misconfigured site
+    # setting; only the framework's own default reads it as an unknown host.
+    with (
+        override_settings(PANEL_FRAMEWORK_SITE_RESOLVER=_path(raises_does_not_exist)),
+        pytest.raises(Site.DoesNotExist),
+    ):
+        resolve_site(_request())
+
+
+@override_settings(SITE_ID=None, ALLOWED_HOSTS=["*"])
+def test_current_site_or_none_returns_the_hosts_site() -> None:
+    wanted = make_site("Wanted", "wanted.test")
+
+    assert current_site_or_none(_request("wanted.test")) == wanted
+
+
+@override_settings(SITE_ID=None, ALLOWED_HOSTS=["*"])
+def test_current_site_or_none_returns_none_for_an_unknown_host() -> None:
+    make_site("Other", "other.test")
+
+    assert current_site_or_none(_request("unknown.test")) is None
 
 
 def test_a_resolver_raising_any_other_exception_propagates_it() -> None:

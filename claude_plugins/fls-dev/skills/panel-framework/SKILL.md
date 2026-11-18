@@ -107,20 +107,23 @@ The framework imports nothing from another `freedom_ls` app, so it cannot ask `s
 which site a request belongs to. The host says so through a setting.
 
 - `PANEL_FRAMEWORK_SITE_RESOLVER` is the dotted path of a callable that takes the request and
-  returns its `Site`. The default is `django.contrib.sites.shortcuts.get_current_site`, where
-  `SITE_ID` wins over the host name: a project serving several sites from one process must set its
-  own resolver, or every request shares one site's runs. FLS sets
+  returns its `Site`, or `None` or a `RequestSite` when the request belongs to no site. Whatever it
+  raises propagates. The default is `freedom_ls.panel_framework.sites.current_site_or_none`, which
+  wraps `django.contrib.sites.shortcuts.get_current_site` and answers an unknown host with `None`.
+  There `SITE_ID` wins over the host name: a project serving several sites from one process must
+  set its own resolver, or every request shares one site's runs. FLS sets
   `freedom_ls.site_aware_models.models.get_cached_site` in `config/settings_base.py`.
-- `sites.resolve_site(request)` returns the `Site`, or `None` when the resolver raises
-  `Site.DoesNotExist` or returns something that is not a `Site`. It resolves once per request. A
-  path that cannot be imported or is not callable raises `ImproperlyConfigured`.
+- `sites.resolve_site(request)` returns the `Site`, or `None` when the resolver returns `None` or
+  a `RequestSite`. It resolves once per request. A path that cannot be imported or is not
+  callable, or a resolver that returns anything else, raises `ImproperlyConfigured`.
 - `BulkActionRun` is a plain `models.Model` with an explicit `site` foreign key, and
   `BulkActionRun.objects` filters by no site. Scope every read with
   `BulkActionRun.objects.for_request(request)` (a request that resolves to no site sees no runs) or
   `.for_site(site_id)`. A worker or sweep has no request and reads by the site id it was given.
 - Name the site when creating a run: `BulkActionRun.objects.create(site=site, ...)`.
-  `PermittedBulkAction` does this itself, from `resolve_site(ctx.request)`, and raises
-  `PermissionDenied` when no site resolves.
+  `PermittedBulkAction` does this itself, from `resolve_site(ctx.request)`. When no site
+  resolves, the bulk-action view answers 422 ("This request belongs to no site.") before the
+  preview, and `execute` raises `PermissionDenied` as a backstop.
 - `freedom_ls_panel_framework.W001` is a system-check warning (`checks.check_task_backend`). It
   fires when `TASKS["default"]["BACKEND"]` is the immediate or dummy backend and `DEBUG` is off,
   because a bulk action over `BULK_BACKGROUND_THRESHOLD` rows then runs inline or never. Run a
