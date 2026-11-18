@@ -51,6 +51,7 @@ Reuse these registered components before writing a new one. Each app registers i
 | `equation` | `content_engine` | `cotton/equation.html` | Client-side KaTeX typesetting (widget-scoped) |
 | `flashcard` | `content_engine` | `cotton/flashcard.html` | Flip state and 3-D face styles for the two-sided card; the animation honours reduced motion |
 | `contentLightbox` | `content_engine` | `cotton/picture.html` | Focus-managing image lightbox (open/close, escape, focus restore) |
+| `audioFile` | `content_engine` | `cotton/audio.html` | Speak button: creates one page-wide audio element on the first press, then plays or stops its file; starting one stops any other, so one plays at a time. Shows idle, loading and playing icons, and a retry message on failure |
 | `claimLinkNotice` | `course_applications` | `course_applications/partials/claim_link_notice.html` | Reveals the change-address form in place, reopening it with the field focused after a failed change |
 
 ### Stores (`Alpine.store`)
