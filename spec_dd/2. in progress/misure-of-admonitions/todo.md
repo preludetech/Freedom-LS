@@ -5,8 +5,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 1. Spec
 
-- [ ] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
+- [x] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
 - [ ] (user) Review the spec and edit where needed; after substantial hand edits, run `/sdd:spec_review`
+- [ ] (user) Start PostgreSQL on port 6543, then re-run `bash .claude/fls-dev/scripts/install_dev.sh` from this worktree: the worktree setup could not create the branch database or run migrations
 
 ## 2. Plan
 
