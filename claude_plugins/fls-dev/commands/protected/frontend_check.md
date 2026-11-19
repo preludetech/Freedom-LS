@@ -5,7 +5,7 @@ allowed-tools: Read, Glob, Grep, Bash, Agent, mcp__plugin_ds_playwright__*
 
 This is a helper command, followed inline by `claude_plugins/sdd/commands/protected/pre_step_rebase.md`
 Step 2 after a rebase that changed something. It runs at **depth 0**, inline, on the caller's model
-and tool grants, so its `Agent` spawn is legal.
+and tool grants.
 
 Inputs from the caller: `<old-base>` and `<spec-dir>`.
 
@@ -21,8 +21,7 @@ branch   = git diff --name-only origin/main...HEAD
 upstream = git diff --name-only <old-base> origin/main
 ```
 
-`front_end(paths)` is the classification rule 1 of `claude_plugins/django-stack/resources/qa_diff_scoping.md`
-uses to decide a change is front-end: read it there rather than restating it here.
+`front_end(paths)` is the classification in rule 1 of `claude_plugins/django-stack/resources/qa_diff_scoping.md`.
 
 ```
 own   = front_end(branch)
@@ -65,8 +64,7 @@ A page fails at a viewport on any of:
 - an error-level console entry
 - on the two small viewports only, a navigation that overflows or overlaps the content
 
-Record page, viewport, pass or fail, and a one-line reason. Take no screenshots: this is a
-smoke-sized pass, not a QA report.
+Record page, viewport, pass or fail, and a one-line reason. Take no screenshots.
 
 ## Step 4: Fix
 

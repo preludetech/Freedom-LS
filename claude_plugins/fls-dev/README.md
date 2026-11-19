@@ -80,3 +80,22 @@ FLS delta addenda (extend the matching `ds` resource): `admin_interface` (extend
 `wrapper_scripts/` (`dev_db_delete.sh`, `dev_db_init.sh`, `install_dev.sh`,
 `rebuild_after_rebase.sh`). The shared `claude.sh` launcher and the `settings.json` baseline are
 `ds`-owned templates.
+
+## Why it works this way
+
+Rationale cut from the prompt files an agent reads at run time.
+
+- **Educator interface placement.** The Course registrations list is the only place an inactive
+  registration is shown, so Reactivate has no other home.
+- **Testing skill.**
+  - Every new test directory needs an `__init__.py` because pytest runs in `prepend` import mode,
+    and same-named modules in different directories collide without it.
+  - The role layer of `role_based_permissions` is transparent at check time: its README says the
+    role system manages what permissions a user should have, and guardian enforces them.
+  - `_panel_test_tables` unblocks the database only around the schema work, because holding the
+    unblock open across the `yield` would let an unmarked test write rows outside a transaction.
+  - `--dist loadfile` keeps a module's tests on one worker under `-n auto`, so a module-scoped
+    fixture such as the demo-content import runs once per module.
+  - No FLS factory breaks the factory cross-app direction rule today and none uses the
+    dotted-string form yet, so that section is new guidance rather than a description of existing
+    code.

@@ -1,3 +1,106 @@
+Measured on the working tree on top of commit `5e667691837162d474635d82c046b3c428d0fd2a`, with every slice 15 edit in place.
+
+| File | Lines | Words | Approx tokens |
+| --- | ---: | ---: | ---: |
+| .claude/ds/scripts/find_available_port.sh | 16 | 71 | 158 |
+| .claude/ds/scripts/kill_runserver.sh | 16 | 71 | 156 |
+| .claude/ds/scripts/run_tests.sh | 19 | 122 | 218 |
+| .claude/fls-dev/scripts/dev_db_delete.sh | 16 | 70 | 153 |
+| .claude/fls-dev/scripts/dev_db_init.sh | 16 | 70 | 152 |
+| .claude/fls-dev/scripts/install_dev.sh | 20 | 87 | 183 |
+| .claude/fls-dev/scripts/rebuild_after_rebase.sh | 18 | 73 | 161 |
+| .claude/skills/brand-guidelines/visual.md | 176 | 2394 | 3871 |
+| .claude/skills/brand-guidelines/voice.md | 154 | 1510 | 2350 |
+| claude_plugins/django-stack/commands/rebase_main.md | 267 | 1599 | 2514 |
+| claude_plugins/django-stack/resources/qa_diff_scoping.md | 26 | 115 | 177 |
+| claude_plugins/django-stack/resources/test_tiers.md | 97 | 813 | 1244 |
+| claude_plugins/django-stack/skills/code-comments/SKILL.md | 100 | 627 | 986 |
+| claude_plugins/fls-dev/commands/protected/design_check.md | 48 | 364 | 631 |
+| claude_plugins/fls-dev/commands/protected/frontend_check.md | 102 | 614 | 1054 |
+| claude_plugins/fls-dev/resources/flaky_tests.md | 65 | 544 | 824 |
+| claude_plugins/fls-dev/resources/plan_review_fls_threats.md | 29 | 250 | 473 |
+| claude_plugins/fls-dev/resources/plan_review_structure.md | 28 | 298 | 463 |
+| claude_plugins/fls-dev/resources/qa_data_helper.md | 29 | 264 | 441 |
+| claude_plugins/fls-dev/skills/domain-glossary/SKILL.md | 282 | 4719 | 8235 |
+| claude_plugins/fls-dev/skills/educator-interface/SKILL.md | 83 | 815 | 1214 |
+| claude_plugins/fls-dev/skills/panel-framework/SKILL.md | 578 | 6388 | 10624 |
+| claude_plugins/fls-dev/skills/testing/SKILL.md | 163 | 1711 | 3492 |
+| claude_plugins/sdd/agents/qa-bugfixer.md | 200 | 1302 | 2006 |
+| claude_plugins/sdd/agents/qa-data-helper.md | 64 | 725 | 1151 |
+| claude_plugins/sdd/agents/sdd-mechanic.md | 39 | 248 | 420 |
+| claude_plugins/sdd/agents/sdd-worker.md | 39 | 293 | 473 |
+| claude_plugins/sdd/commands/capture_feedback.md | 24 | 154 | 257 |
+| claude_plugins/sdd/commands/commit_quickly.md | 127 | 977 | 1425 |
+| claude_plugins/sdd/commands/do_qa.md | 465 | 3457 | 5662 |
+| claude_plugins/sdd/commands/document.md | 80 | 622 | 1045 |
+| claude_plugins/sdd/commands/finish_worktree.md | 297 | 2371 | 3818 |
+| claude_plugins/sdd/commands/implement_plan.md | 183 | 3186 | 5095 |
+| claude_plugins/sdd/commands/init.md | 345 | 3016 | 4984 |
+| claude_plugins/sdd/commands/make_pr_quickly.md | 43 | 298 | 421 |
+| claude_plugins/sdd/commands/plan_from_spec.md | 163 | 2032 | 3162 |
+| claude_plugins/sdd/commands/protected/move_spec_to_in_progress.md | 62 | 415 | 678 |
+| claude_plugins/sdd/commands/protected/pre_step_rebase.md | 95 | 633 | 1005 |
+| claude_plugins/sdd/commands/protected/run_test_tier.md | 63 | 411 | 649 |
+| claude_plugins/sdd/commands/protected/setup_todo_list.md | 98 | 729 | 1048 |
+| claude_plugins/sdd/commands/protected/start_worktree.md | 53 | 325 | 532 |
+| claude_plugins/sdd/commands/protected/update_roadmap.md | 46 | 302 | 503 |
+| claude_plugins/sdd/commands/protected/update_todo.md | 92 | 891 | 1324 |
+| claude_plugins/sdd/commands/qa_fix.md | 258 | 2141 | 3353 |
+| claude_plugins/sdd/commands/register_design.md | 215 | 2101 | 3363 |
+| claude_plugins/sdd/commands/roadmap.md | 255 | 2190 | 3425 |
+| claude_plugins/sdd/commands/spec_from_idea.md | 171 | 1536 | 2459 |
+| claude_plugins/sdd/commands/spec_review.md | 43 | 390 | 645 |
+| claude_plugins/sdd/commands/start.md | 123 | 1093 | 1818 |
+| claude_plugins/sdd/resources/agent_memory_guidelines.md | 32 | 313 | 499 |
+| claude_plugins/sdd/resources/commit_and_push.md | 49 | 277 | 393 |
+| claude_plugins/sdd/resources/do_qa_design_comparison.md | 19 | 180 | 293 |
+| claude_plugins/sdd/resources/do_qa_escalation.md | 6 | 56 | 89 |
+| claude_plugins/sdd/resources/do_qa_fix_loop.md | 137 | 1152 | 1824 |
+| claude_plugins/sdd/resources/do_qa_layout_review.md | 91 | 854 | 1349 |
+| claude_plugins/sdd/resources/do_qa_report.md | 41 | 372 | 589 |
+| claude_plugins/sdd/resources/do_qa_test_data.md | 38 | 380 | 572 |
+| claude_plugins/sdd/resources/do_qa_todo_additions.md | 30 | 285 | 455 |
+| claude_plugins/sdd/resources/do_qa_viewport_focus.md | 15 | 118 | 171 |
+| claude_plugins/sdd/resources/domain_vocabulary.md | 49 | 413 | 589 |
+| claude_plugins/sdd/resources/idea_standard.md | 16 | 125 | 181 |
+| claude_plugins/sdd/resources/launcher_editing.md | 122 | 879 | 1476 |
+| claude_plugins/sdd/resources/plan_review_dimensions.md | 44 | 650 | 942 |
+| claude_plugins/sdd/resources/rebase_auto_resolve.md | 11 | 87 | 161 |
+| claude_plugins/sdd/resources/roadmap_format.md | 168 | 1322 | 2054 |
+| claude_plugins/sdd/resources/spec_review_dimensions.md | 39 | 477 | 720 |
+| claude_plugins/sdd/resources/upstream_change_review.md | 96 | 522 | 994 |
+| claude_plugins/sdd/resources/writing_standard.md | 49 | 394 | 582 |
+| claude_plugins/sdd/scripts/roadmap.py | 875 | 3492 | 7681 |
+| claude_plugins/sdd/skills/capture-feedback/SKILL.md | 121 | 1183 | 1732 |
+| claude_plugins/sdd/skills/claude-code-authoring/SKILL.md | 95 | 890 | 1579 |
+| claude_plugins/sdd/skills/claude-code-authoring/resources/fanout_recipe.md | 77 | 918 | 1452 |
+| claude_plugins/sdd/skills/claude-code-authoring/resources/interactive_cli.md | 33 | 270 | 545 |
+| claude_plugins/sdd/skills/claude-code-authoring/resources/model_tiering.md | 47 | 387 | 773 |
+| claude_plugins/sdd/skills/claude-code-authoring/resources/subagents.md | 59 | 563 | 1018 |
+| claude_plugins/sdd/skills/git-worktree-setup/SKILL.md | 31 | 212 | 353 |
+| claude_plugins/sdd/skills/outstanding-items/SKILL.md | 43 | 390 | 551 |
+| claude_plugins/sdd/skills/planning-references-in-code/SKILL.md | 80 | 567 | 833 |
+| claude_plugins/sdd/skills/update-claude-project-settings/SKILL.md | 60 | 457 | 841 |
+| docs/app_structure.md | 359 | 1458 | 3771 |
+| **Total** | 8923 | 75070 | 125557 |
+
+## Unmeasured
+
+- ${CLAUDE_PLUGIN_ROOT}/commands/
+- ${CLAUDE_PLUGIN_ROOT}/resources/
+- ${CLAUDE_PLUGIN_ROOT}/scripts/
+- ${CLAUDE_PLUGIN_ROOT}/templates/wrapper_scripts/claude.sh
+- ds:app_map
+- ds:playwright-tests
+- ds:testing
+- fls-dev:playwright-tests
+- fls-dev:testing
+- fls-dev:update_claude_plugin_fls_content
+- fls-dev:update_product_docs
+- fls-dev:update_upgrade_notes
+- freedom_ls/*/models.py
+- sdd:do_qa
+
 ## Where instructions went
 
 Repeated shell blocks (fenced blocks that appear in two or more files under `claude_plugins/sdd`, listed with `code_fragments` from `tests/plugin_markdown.py`):
@@ -144,3 +247,51 @@ Slice 14 (sdd resources, agents and skills). Paths are under `claude_plugins/sdd
 | `resources/launcher_editing.md`, `resources/roadmap_format.md`, `resources/spec_review_dimensions.md`, `resources/plan_review_dimensions.md`, `resources/commit_and_push.md`, `skills/git-worktree-setup/SKILL.md`, `skills/claude-code-authoring/resources/subagents.md`, `model_tiering.md`, `interactive_cli.md` | unchanged | Not trimmed: `launcher_editing.md` is a copy kept identical in other plugins; the rest are format definitions or source-cited reference with no sentence that names no action. |
 
 Size of the rows slice 14 touched, in approximate tokens (`measure_prompt_size.py` before and after): `qa-bugfixer.md` 2264 to 2006, `capture-feedback/SKILL.md` 1853 to 1732, `claude-code-authoring/SKILL.md` 1688 to 1579, `fanout_recipe.md` 1541 to 1452, `qa-data-helper.md` 1175 to 1151, `planning-references-in-code/SKILL.md` 986 to 833, `update-claude-project-settings/SKILL.md` 966 to 841, `domain_vocabulary.md` 679 to 589, `writing_standard.md` 632 to 582, `outstanding-items/SKILL.md` 586 to 551, `agent_memory_guidelines.md` 515 to 499, `sdd-worker.md` 513 to 473, `sdd-mechanic.md` 463 to 420. Total 13861 to 12708.
+
+Slice 15 (the django-stack and fls-dev files an SDD run reads). django-stack rationale moved to `claude_plugins/django-stack/README.md` and fls-dev rationale to `claude_plugins/fls-dev/README.md`, each under `## Why it works this way`. `rebase_main.md` keeps every step, rule, status string and the return contract.
+
+| From | To | Kept, moved or merged |
+| --- | --- | --- |
+| `rebase_main.md` intro "The command runs to completion without asking for confirmation; it stops only to report ..." | the shorter intro sentence | Merged: the same two facts (no confirmation, three statuses). |
+| `rebase_main.md` Step 2 "so the lost-change check in Step 7 covers this work like every other commit on the branch" | `django-stack/README.md` | Moved: rationale. "Commit, never stash" and "Do not squash the wip commit" stay. |
+| `rebase_main.md` Step 4 "A rebase replays only a merge commit's first parent and drops the rest without a conflict" | `django-stack/README.md` | Moved: rationale. The stop on a printed merge commit stays. |
+| `rebase_main.md` Step 4 "Rewriting the branch now would orphan that merge: its MERGE_HEAD would point at a commit no branch holds ..." | `django-stack/README.md` | Moved: rationale. The sha comparison and the exact `status: blocked` reason stay. |
+| `rebase_main.md` Step 9 "every command below is one of its tiers" | none | Cut: names no action. |
+| `rebase_main.md` Step 10 "This checks the files the branch changed." | none | Cut: describes the command; the `--from-ref origin/main --to-ref HEAD` line stays. |
+| `rebase_main.md` Step 12 "a rule that blocks `git push --force:*` is a prefix match, and `--force-with-lease` shares that prefix" | `django-stack/README.md` | Moved: rationale. "Keep both flags after the refspec" stays. |
+| `rebase_main.md` Step 12 "so the command cannot push a different branch when pasted elsewhere" | `django-stack/README.md` | Moved: rationale. "Write `<branch>` out as the name Step 1 printed" stays. |
+| `rebase_main.md` closing "This file carries no `model:` frontmatter ..." | `django-stack/README.md` | Moved: describes the file, names no action. |
+| `test_tiers.md` opening "A step that runs pytest names its tier" | the first sentence "name a tier ... and follow this file" | Merged: the same instruction. |
+| `test_tiers.md` targeted "Read the `tier:` line: it is the tier that applies, and `none` means there is nothing to run. Then run the `command:` line exactly as printed. The `why:` lines are the selection's reasons; quote them when reporting." | the reflowed sentence "The `tier:` line is the tier that applies ... quote the `why:` lines" | Merged: wording only; the completion criterion stays. |
+| `test_tiers.md` full "The wrapper prints the exact line ... that line starts with `.claude/ds/scripts/run_tests.sh`; run it as printed" | the shorter sentence | Merged. |
+| `test_tiers.md` "How to run a tier" "A crash retry happens inside that one background run. The one hard guardrail: ..." | the shorter paragraph | Merged. The background rule, one tier at a time, no `ps` or `pgrep` loops and no `timeout` wrapper stay. |
+| `test_tiers.md` Memory-aware runs four-sentence description of the runner | one sentence listing the same four behaviours | Merged. |
+| `test_tiers.md` "A single test run" "`--no-cov` makes the exit code mean pass or fail: in a project whose `addopts` turns coverage on ..." | `django-stack/README.md` | Moved: rationale. The `--no-cov` flag on the command and "Pass `--no-cov` on `pytest --co` and any other partial run too" stay. |
+| `qa_diff_scoping.md` "Apply the rules in order; the first match decides" | "the first matching rule decides" | Merged. |
+| `qa_diff_scoping.md` Rules 2 and 3 "Otherwise, if ..." | "If ..." | Merged: the rules are applied in order, so "Otherwise" repeated the opening line. |
+| `qa_diff_scoping.md` Rule 4 "A misclassification must over-test, never under-test." | `django-stack/README.md` | Moved: rationale. "Anything else is `FULL`" stays. |
+| `code-comments/SKILL.md` opening paragraph "A comment is a promise to the future reader ..." | `django-stack/README.md` | Moved: rationale. The single rule stays. |
+| `code-comments/SKILL.md` "The reader doesn't care what order the code was written in ..." and "A comment that describes the change ... is stale the moment the next change lands" | the one line "Describe the code, never the change: git records history." and `django-stack/README.md` | Merged: the instruction in one line, the rationale moved. |
+| `code-comments/SKILL.md` "is noise and a second thing to keep in sync" | "is noise" | Merged. |
+| `code-comments/SKILL.md` divider label "acceptable when a file has several distinct groups, but if the test names directly below already say it, drop the divider" | the shorter sentence | Merged. |
+| `code-comments/SKILL.md` `---` separators between sections | none | Cut: layout only. |
+| `frontend_check.md` "so its `Agent` spawn is legal" | none | Cut: names no action. |
+| `frontend_check.md` Step 1 "uses to decide a change is front-end: read it there rather than restating it here" | "the classification in rule 1 of `qa_diff_scoping.md`" | Merged. |
+| `frontend_check.md` Step 3 "this is a smoke-sized pass, not a QA report" | none | Cut: restates the description in the frontmatter; "Take no screenshots" stays. |
+| `design_check.md` "so its `Agent` spawn is legal" | none | Cut: names no action. |
+| `plan_review_structure.md` "Parse the approved graph" three-item list and "Also read the spec and the plan in full" | one sentence | Merged: the same three extractions and the full read. |
+| `plan_review_structure.md` signal list intro and the "Step descriptions that create files ..." line | tightened lines | Merged: the same four signals. |
+| `plan_review_structure.md` "For each such signal ... based on where the code would live" | the tightened sentence | Merged: the test-only path rule and the ambiguity rule stay. |
+| `plan_review_structure.md` classification 4 "Fewer edges is generally good." | none | Cut: rationale. |
+| `qa_data_helper.md` "Paths below are from the project root" and the factory-conventions sentence | tightened sentences | Merged: both pointers stay. |
+| `domain-glossary/SKILL.md` `---` separators between sections | none | Cut: layout only. |
+| `educator-interface/SKILL.md` Placement table "the list is the only place an inactive registration is shown, so Reactivate has no other home" | `fls-dev/README.md` | Moved: rationale. The Deactivate / Reactivate row stays. |
+| `fls-dev/skills/testing/SKILL.md` "because pytest runs in `prepend` import mode and same-named modules ... collide without it" | `fls-dev/README.md` | Moved: rationale. The `__init__.py` rule stays. |
+| `fls-dev/skills/testing/SKILL.md` "The role layer is transparent at check time ..." | `fls-dev/README.md` | Moved: rationale. The `assign_perm` rule and the `assign_object_role` exception stay. |
+| `fls-dev/skills/testing/SKILL.md` "Holding the unblock open across the `yield` would let an unmarked test write rows outside a transaction." | `fls-dev/README.md` | Moved: rationale. Rewritten as "Never hold the unblock open across the `yield`." |
+| `fls-dev/skills/testing/SKILL.md` "No FLS factory breaks the direction rule today, and none uses the dotted-string form yet, so this is new guidance ..." | `fls-dev/README.md` | Moved: describes the state of the code, names no action. The `app_not_installed(...)` guard sentence stays. |
+| `fls-dev/skills/testing/SKILL.md` "so a module-scoped fixture such as the demo-content import runs once per module" | `fls-dev/README.md` | Moved: rationale. The `--dist loadfile` line stays. |
+
+Not trimmed in this slice: `panel-framework/SKILL.md` and `domain-glossary/SKILL.md` (apart from the separators) are API and vocabulary references in which each row or bullet is an instruction an agent acts on, and `plan_review_fls_threats.md` is already one trigger per bullet.
+
+Size of the rows slice 15 touched, in approximate tokens (`measure_prompt_size.py` before and after): `rebase_main.md` 2711 to 2514, `fls-dev/skills/testing/SKILL.md` 3632 to 3492, `test_tiers.md` 1326 to 1244, `frontend_check.md` 1093 to 1054, `code-comments/SKILL.md` 1126 to 986, `educator-interface/SKILL.md` 1238 to 1214, `domain-glossary/SKILL.md` 8249 to 8235, `plan_review_structure.md` 513 to 463, `design_check.md` 639 to 631, `qa_diff_scoping.md` 200 to 177, `qa_data_helper.md` 449 to 441. Total 21176 to 20451.

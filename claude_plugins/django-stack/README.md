@@ -84,3 +84,31 @@ server), `.lsp.json` (Pyright).
 `ds:init` ships `templates/settings.json` (the generic permission baseline + the `SessionStart` hook)
 and `templates/wrapper_scripts/` (`claude.sh` launcher plus `find_available_port.sh`, `db_clear.sh`,
 `kill_runserver.sh`).
+
+## Why it works this way
+
+Rationale cut from the prompt files an agent reads at run time.
+
+- **Rebase command.**
+  - The in-flight work is committed, never stashed, so the lost-change check covers it like every
+    other commit on the branch.
+  - A branch with a merge commit stops with `status: blocked`: a rebase replays only a merge
+    commit's first parent and drops the rest without a conflict, so a human has to decide.
+  - A branch another worktree is halfway through merging is not rewritten: its `MERGE_HEAD` would
+    point at a commit no branch holds, leaving whoever started the merge with a conflicted tree and
+    nothing to finish it against.
+  - Both push flags stay after the refspec because a rule that blocks `git push --force:*` is a
+    prefix match, and `--force-with-lease` shares that prefix. `<branch>` is written out so the
+    command cannot push a different branch when pasted elsewhere.
+  - The command carries no `model:` frontmatter, so a caller that follows it inline runs it on its
+    own model.
+- **Test tiers.** `--no-cov` makes the exit code mean pass or fail: in a project whose `addopts`
+  turns coverage on, any run smaller than the whole suite fails the coverage threshold whatever
+  the test did.
+- **QA diff scoping.** A misclassification must over-test, never under-test, which is why anything
+  unmatched is `FULL`.
+- **Code comments.** A comment is a promise to the future reader that the code can't keep on its
+  own. Most break it: they restate the code, narrate how it got written, or cite a document the
+  reader doesn't have. Those comments rot, and rotten comments are worse than none, because the
+  reader trusts them. A comment about the change instead of the code is stale the moment the next
+  change lands, and a change narration means nothing once the diff is merged.

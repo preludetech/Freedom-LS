@@ -3,7 +3,7 @@ description: Helper — screenshot the running app for the design states a slice
 allowed-tools: Read, Glob, Grep, Bash, Agent, ToolSearch, mcp__plugin_ds_playwright__*
 ---
 
-This is a helper command, followed inline by the design check in `claude_plugins/sdd/commands/implement_plan.md`. It runs at **depth 0**, inline, on the caller's model and tool grants, so its `Agent` spawn is legal.
+This is a helper command, followed inline by the design check in `claude_plugins/sdd/commands/implement_plan.md`. It runs at **depth 0**, inline, on the caller's model and tool grants.
 
 Inputs from the caller: `<spec-dir>`, `<plan-path>` and the design state ids. A design state id is the state's id from the plan's design transcription (the design screenshot's file name without `.png`, such as `flows__Signup`), then `__<width>`: `flows__Signup__1280`.
 

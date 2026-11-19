@@ -1,10 +1,10 @@
 # QA data conventions for FreedomLS
 
-`sdd:qa-data-helper` reads this file before it creates, resets or deletes development data. Paths below are from the project root.
+`sdd:qa-data-helper` reads this file before it creates, resets or deletes development data. Paths are from the project root.
 
 ## Factories first
 
-Create data with factory_boy factories. `claude_plugins/fls-dev/resources/factory_boy.md` holds the project's factory conventions, including the `SiteAwareFactory` base. Search `tests/`, each app's `factories.py`, `conftest.py` files and the `qa_helpers` app for an existing factory before writing a new one. A new factory goes in the app that owns the model.
+Create data with factory_boy factories (conventions, including the `SiteAwareFactory` base: `claude_plugins/fls-dev/resources/factory_boy.md`). Search `tests/`, each app's `factories.py`, `conftest.py` files and the `qa_helpers` app for an existing factory before writing a new one. A new factory goes in the app that owns the model.
 
 ## The `qa_helpers` app
 

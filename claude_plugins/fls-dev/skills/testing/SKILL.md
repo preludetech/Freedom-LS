@@ -24,7 +24,7 @@ Test-only helper and URLconf modules that sit correctly beside their tests: `pan
 
 ### Cross-cutting tests
 
-A test that exercises no single module lives in a subpackage of `<app>/tests/` (`components/`, `invariants/`, `demo_content/`). `test_organisation/mirroring_exemptions.txt` lists the current exemptions with a reason for each. To add one, append `<app>/tests/<subpackage>/  # <reason>` to that file and delete the covered files' lines from `mirroring_baseline.txt`. The exemption is permanent, not debt. Every new test directory needs an empty `__init__.py`, because pytest runs in `prepend` import mode and same-named modules in different directories collide without it.
+A test that exercises no single module lives in a subpackage of `<app>/tests/` (`components/`, `invariants/`, `demo_content/`). `test_organisation/mirroring_exemptions.txt` lists the current exemptions with a reason for each. To add one, append `<app>/tests/<subpackage>/  # <reason>` to that file and delete the covered files' lines from `mirroring_baseline.txt`. The exemption is permanent, not debt. Every new test directory needs an empty `__init__.py`.
 
 ### Named exceptions
 
@@ -46,7 +46,7 @@ FLS's baselines and exemptions live in `test_organisation/`: `declared_edges.tom
 
 ### Granting permissions in tests
 
-Use `guardian.shortcuts.assign_perm(codename, user, obj)`, not `role_based_permissions`' `assign_object_role`. The role layer is transparent at check time: its README says the role system manages what permissions a user should have, and guardian enforces them.
+Use `guardian.shortcuts.assign_perm(codename, user, obj)`, not `role_based_permissions`' `assign_object_role`.
 
 Where access resolves through role assignments, `assign_perm` grants nothing and the test uses `assign_object_role`. `learner_management.queries.organisations_accessible_to` is the case: it reads role assignments through `roles_granting`, and every `educator_interface` view and the base header-bar menu go through it.
 
@@ -74,7 +74,7 @@ The FLS instance is `panel_framework/tests/`. `stub_models.py` holds `StubModel`
 
 ### Fixture scope and idempotent reset
 
-The FLS worked example is `_panel_test_tables` in `panel_framework/tests/conftest.py`: session-scoped table creation that unblocks the database only around the schema work on either side of the `yield`. Holding the unblock open across the `yield` would let an unmarked test write rows outside a transaction.
+The FLS worked example is `_panel_test_tables` in `panel_framework/tests/conftest.py`: session-scoped table creation that unblocks the database only around the schema work on either side of the `yield`. Never hold the unblock open across the `yield`.
 
 ### The thin-wrapper rule
 
@@ -82,7 +82,7 @@ Root-conftest fixtures that are correctly not thin: `course_with_topic` (two fac
 
 ### Factory cross-app direction
 
-No FLS factory breaks the direction rule today, and none uses the dotted-string form yet, so this is new guidance rather than a description of existing code. The caller-side guard in FLS is `app_not_installed(...)`, shown in "Collection safety for optional apps — FLS example" below.
+The caller-side guard in FLS is `app_not_installed(...)`, shown in "Collection safety for optional apps — FLS example" below.
 
 ## `mock_site_context` fixture (mandatory for site-aware models)
 
@@ -114,7 +114,7 @@ FreedomLS ships to downstream projects, so markers control which tests are *port
 What runs where:
 
 - `uv run pytest` runs `not ci_only and not weasyprint and not dev_tooling` (the `addopts` `-m`), without coverage. `--cov` opts in. It includes `playwright` and `fls_internal`: that is FLS regression testing. `testpaths` covers `freedom_ls`, `tests` and `claude_plugins/fls-content`.
-- The test tiers (`select_tests.sh`) pass `-m 'not ci_only and not weasyprint'`, from `[tool.test_tiers] markers`, so `dev_tooling` tests run when a tier selects them. `addopts` also sets `--dist loadfile`: under `-n auto` a module's tests stay on one worker, so a module-scoped fixture such as the demo-content import runs once per module.
+- The test tiers (`select_tests.sh`) pass `-m 'not ci_only and not weasyprint'`, from `[tool.test_tiers] markers`, so `dev_tooling` tests run when a tier selects them. `addopts` also sets `--dist loadfile`: under `-n auto` a module's tests stay on one worker.
 - CI runs three jobs. The unit job runs `-m "not playwright and not dev_tooling" --cov` with the coverage gate, and includes `weasyprint` because CI has the system libraries. The developer-tooling job runs `-m "dev_tooling and not playwright"`. The Playwright job runs `-m playwright -n auto`, which the root conftest caps at four workers.
 - The panel framework's unit tests also run with no FLS around them, in CI's unit job after the coverage step. This is a documented command, not a `[tool.test_tiers]` tier:
 

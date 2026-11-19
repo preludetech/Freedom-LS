@@ -1,37 +1,22 @@
 ---
 name: code-comments
 description: "Best practices for code comments, docstrings, and inline explanations, plus how to clean up stale or noisy comments. Use whenever you write or review a comment in Python, Django templates, JS, or CSS. Consult this whenever you catch yourself writing a comment that restates the code, narrates implementation history, or points at an external document."
----
-
 # Code Comments
-
-A comment is a promise to the future reader that the code can't keep on its own. Most comments break
-it: they restate what the code already says, narrate how the code got written, or cite a document the
-reader doesn't have. Those comments rot, and rotten comments are worse than none, because the reader
-trusts them.
 
 The single rule: **a comment must explain *why*, not *what*.** The code already says what.
 
----
-
 ## Don't narrate implementation history
-
-The reader doesn't care what order the code was written in, or that a block was added later.
 
 ```python
 # added later for the new export flow          ← BAD: means nothing once the diff is merged
 # the block below preserves the existing category display logic   ← BAD
 ```
 
-Git records history. A comment that describes *the change* instead of *the code* is stale the moment
-the next change lands.
-
----
+Describe *the code*, never *the change*: git records history.
 
 ## Don't restate the code
 
-If the comment and the line say the same thing, the comment is noise and a second thing to keep in
-sync.
+If the comment and the line say the same thing, the comment is noise.
 
 ```python
 # BAD: the call says exactly this
@@ -56,8 +41,6 @@ long template. Keep the label, drop the class inventory and any citation.
 {% comment %}Copy does not promise an email: nothing sends one when the item publishes.{% endcomment %}
 ```
 
----
-
 ## Tests document themselves
 
 Test and function names are the documentation. Don't head a group of tests with a label the test
@@ -67,10 +50,8 @@ names below already say:
 # --- submit_and_close ---          ← BAD when every test below is named test_submit_and_close_*
 ```
 
-A plain-English divider label is acceptable when a file has several distinct groups, but if the test
-names directly below already say it, drop the divider.
-
----
+A plain-English divider label is acceptable when a file has several distinct groups, unless the test
+names directly below already say it.
 
 ## What a good comment looks like
 
@@ -94,8 +75,6 @@ inventing names.
 
 If you can't articulate a *why*, the line probably doesn't need a comment.
 
----
-
 ## Respect protected comments
 
 **Never delete `TODO` or `@claude` comments** unless the TODO is actually done. When one carries a
@@ -110,8 +89,6 @@ with the concrete detail it was standing in for**, so the TODO says what it need
 {% comment %}TODO: render per-section totals once the order is paid. Keep the block
 below: it displays each section's subtotal and must not be removed.{% endcomment %}
 ```
-
----
 
 ## Quick checklist
 

@@ -1,7 +1,7 @@
 # Test tiers
 
-Before running pytest, name a tier (`none`, `targeted` or `full`) and follow this file. A step that
-runs pytest names its tier; the flags live here and nowhere else.
+Before running pytest, name a tier (`none`, `targeted` or `full`) and follow this file. The flags
+live here and nowhere else.
 
 ## The tiers
 
@@ -15,11 +15,12 @@ runs pytest names its tier; the flags live here and nowhere else.
   The diff arguments are the step's own: `--working-tree` for uncommitted and untracked files,
   explicit paths, `--range <rev>..<rev>` (repeatable) for the files a git range changed, and
   `--tests-changed-in <rev>..<rev>` for test files that join a targeted run without ever raising
-  its tier. An untracked file no rule knows is `none`; a tracked one is `full`. Read the `tier:` line:
-  it is the tier that applies, and `none` means there is nothing to run. Then run the `command:` line exactly as printed. The `why:` lines are the
-  selection's reasons; quote them when reporting. The generic `none` and escalation lists are the
-  two glob tuples at the top of `${CLAUDE_PLUGIN_ROOT}/scripts/select_tests.py`; the project's own
-  are in `[tool.test_tiers]` in `pyproject.toml`. The script applies them; never apply them by hand. Done when every `why:` line is accounted for and the printed command exits zero.
+  its tier. An untracked file no rule knows is `none`; a tracked one is `full`. The `tier:` line is
+  the tier that applies; `none` means there is nothing to run. Run the `command:` line exactly as
+  printed, and quote the `why:` lines when reporting. The generic `none` and escalation lists are
+  the two glob tuples at the top of `${CLAUDE_PLUGIN_ROOT}/scripts/select_tests.py`; the project's
+  own are in `[tool.test_tiers]` in `pyproject.toml`. The script applies them; never apply them by
+  hand. Done when every `why:` line is accounted for and the printed command exits zero.
 - **full.** The whole suite, in parallel:
 
   ```
@@ -28,22 +29,22 @@ runs pytest names its tier; the flags live here and nowhere else.
 
   plus `-m '<expression>'` when `[tool.test_tiers]` in `pyproject.toml` sets `markers`. That
   `-m` replaces the one in `addopts`, so tests the default run deselects still run in a tier.
-  The wrapper prints the exact line for a `tier: full` result. With the test runner installed,
-  that line starts with `.claude/ds/scripts/run_tests.sh`; run it as printed. Coverage and its threshold run
+  The wrapper prints the exact line for a `tier: full` result; with the test runner installed it
+  starts with `.claude/ds/scripts/run_tests.sh`. Run it as printed. Coverage and its threshold run
   wherever the project puts them: in `addopts`, or in CI only.
 
 ## How to run a tier
 
 Run `targeted` and `full` with the Bash tool's `run_in_background: true` and wait for the completion
 notification. Run one tier at a time per worktree. Run the bare command and let it finish; a full
-run can take more than ten minutes. A crash retry happens inside that one background run. The one hard guardrail: no `ps` or `pgrep` polling loops and no
-`timeout` wrapper.
+run can take more than ten minutes, and a crash retry happens inside that one background run. No
+`ps` or `pgrep` polling loops and no `timeout` wrapper.
 
 ## Memory-aware runs
 
-The test runner, `.claude/ds/scripts/run_tests.sh`, wraps one pytest command. It sizes the xdist
-worker count to the memory that is free, and waits a bounded time when memory is short. It
-retries a crashed pytest attempt for the tests that never finished. It prints one verdict.
+The test runner, `.claude/ds/scripts/run_tests.sh`, wraps one pytest command: it sizes the xdist
+worker count to free memory, waits a bounded time when memory is short, retries a crashed attempt
+for the tests that never finished, and prints one verdict.
 
 A number the command gives with `-n` is a ceiling on the worker count, and `-n 0` stays serial.
 A pytest that exits before its session starts (a usage error, a `conftest.py` that fails to
@@ -73,9 +74,7 @@ The TDD RED and GREEN runs of one test:
 uv run pytest <file>::<test> -x --no-cov
 ```
 
-`--no-cov` makes the exit code mean pass or fail: in a project whose `addopts` turns coverage on,
-any run smaller than the whole suite fails the coverage threshold whatever the test did. The same
-flag applies to `pytest --co` and any other partial run.
+Pass `--no-cov` on `pytest --co` and any other partial run too.
 
 ## Reporting
 

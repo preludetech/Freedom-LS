@@ -1,6 +1,6 @@
 # QA diff scoping
 
-Classify a diff's changed paths into one class. Apply the rules in order; the first match decides.
+Classify a diff's changed paths into one class; the first matching rule decides.
 
 ## Rule 1: front-end paths
 
@@ -9,16 +9,15 @@ makes the class `FULL`.
 
 ## Rule 2: admin only
 
-Otherwise, if every changed path is `admin.py` or inside an `admin/` directory, the class is
-`ADMIN_ONLY`.
+If every changed path is `admin.py` or inside an `admin/` directory, the class is `ADMIN_ONLY`.
 
 ## Rule 3: Python only
 
-Otherwise, if every changed path ends in `.py`, the class is `BACKEND_ONLY`.
+If every changed path ends in `.py`, the class is `BACKEND_ONLY`.
 
 ## Rule 4: everything else
 
-Anything else is `FULL`. A misclassification must over-test, never under-test.
+Anything else is `FULL`.
 
 ## What each class runs
 

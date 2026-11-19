@@ -16,8 +16,6 @@ define it once in terms of the nouns below.
 **The code is authoritative and this file is an index over it.** When they disagree, the code is
 right and this file needs fixing.
 
----
-
 ## Content — `freedom_ls/content_engine/models/` (a package: `courses.py`, `topics.py`, `articles.py`, `files.py`)
 
 | Term | Defined at | Means |
@@ -51,8 +49,6 @@ Two accessors sit on top of it and they are **not** the same thing, which is the
 So bare **"item"** is already ambiguous: `Course.items` means rows, `viewable_items()` means
 children. Do not add a third sense. To be unambiguous, say **collection item** for the row and
 **child** for the resolved object.
-
----
 
 ## Course access — `freedom_ls/learner_management/models.py`
 
@@ -110,8 +106,6 @@ through two client organisations has **two `Learner` rows and one `User`**.
 - **`learners_visible_to`** (`learner_management/queries.py`) returns `Learner` rows and replaced
   the deleted `users_visible_to`. Don't reintroduce a user-shaped sibling.
 
----
-
 ## Staff — `freedom_ls/learner_management/`
 
 | Term | Defined at | Means |
@@ -124,8 +118,6 @@ through two client organisations has **two `Learner` rows and one `User`**.
 | **pickable staff** (coined) | `queries.py` `pickable_staff` | The users an actor may pick when adding staff: their visible staff, plus the organisation's active learners for someone who holds `add_staffmember`. Not "candidate", which the messaging policy has taken. |
 | `target` (of a role) | `queries.py` `role_target` | Where a staff role is held: `"organisation"` for a role in `ORGANISATION_ROLES`, otherwise `"cohort"`. Distinct from the `target` argument of `assign_role`, which is the object the role is given on. |
 | **may edit own roles** (coined) | `role_assignment.py` `_may_act_on_self` | Whether an actor may add or deactivate their own role of a type on a target. It holds exactly when they may assign that role on that target, on an organisation or a cohort in it and never on the site. |
-
----
 
 ## Progress — `freedom_ls/learner_progress/models.py`
 
@@ -151,8 +143,6 @@ that says "the attempt" without saying which half is ambiguous wherever the spli
 resolves attempts through `learner_progress/attempts.py`, never through `FormProgress`'s own
 `(user, form)` helpers, which would hand back a sitting from another record.
 
----
-
 ## Tenancy — `freedom_ls/organisations/`, `freedom_ls/site_aware_models/`
 
 | Term | Defined at | Means |
@@ -162,8 +152,6 @@ resolves attempts through `learner_progress/attempts.py`, never through `FormPro
 | **owning organisation** (coined) | `Course.organisations` | An `Organisation` that owns a course. A course may have several; none means it is not an organisation course. |
 | **course share** (coined) | `Course.shared_with` | An owning organisation naming another organisation in `shared_with:`. That organisation's educators then use the course as the owners' do; `available_to_organisation_expression` / `is_course_available_to_organisation` (`learner_management/queries.py`) read it. Not "grant", which is a role assignment. |
 | `SiteAwareModel` / `SiteAwareModelBase` / `SiteAwareManager` | `site_aware_models/models.py` | The base model and manager that apply the site filter. |
-
----
 
 ## Messaging: `freedom_ls/messaging_policy/`, `freedom_ls/learner_management/queries.py`
 
@@ -183,8 +171,6 @@ resolves attempts through `learner_progress/attempts.py`, never through `FormPro
 | **oversight** (coined) | `educator_interface/messaging.py` `oversight_conversations_for` | Read-only access, for holders of `freedom_ls_comms.view_conversation`, to a learner's `Conversation` rows whose other participant is in `educators_of(learner)`. Reached from the learner page only. It never marks a thread read and never goes through participant code paths; each open writes one `conversation.viewed` audit entry. |
 | **rollup** (coined) | `base/notification_categories.py` `NotificationCategory.rollup`, `comms/notify.py` `raise_notification` | A notification category that keeps one unread `Notification` per user and target. A further event updates that row (`created_at` then means "last changed") instead of adding one; once the row is read, the next event starts a new one. Keyed by `Notification.rollup_key`. |
 
----
-
 ## HR attributes — `freedom_ls/hr_attributes/models.py`
 
 | Term | Defined at | Means |
@@ -192,8 +178,6 @@ resolves attempts through `learner_progress/attempts.py`, never through `FormPro
 | `JobTitle`, `Department`, `Location` | `models.py` | A per-organisation list entry. `is_active=False` retires one from every picker; it is never deleted, because a learner may still hold it. |
 | `LearnerHRAttributes` | `models.py` | The one-to-one on `Learner` (`learner.hr_attributes`). Holds one `job_title`, `department` and `location`, plus `organisation_start_date`, `job_title_start_date`, `department_start_date` and `location_start_date`. `organisation_start_date` is the hire date. |
 | `OrganisationHRSettings` | `models.py` | The one-to-one on `Organisation` (`organisation.hr_settings`). Holds `registration_rules_enabled`, the switch: off by default, and off when no row exists. |
-
----
 
 ## Changes — `freedom_ls/audit_log/actions.py`, `freedom_ls/base/webhook_event_types.py`
 
@@ -238,8 +222,6 @@ The words a person reads follow the same verbs:
 - A webhook event that is also an audit action carries the audit action's label. A webhook-only
   event (`user.signed_up`, `course.completed`) follows the same `noun.verb` shape.
 
----
-
 ## Words that are already taken
 
 Do not give these a second meaning.
@@ -260,8 +242,6 @@ Do not give these a second meaning.
 | **role**, bare **title** | Reserved, not in use. `role` is a permission role (`assign_object_role`), and a bare `title` is a content title. | `JobTitle` / `job_title` for what a learner does at work. |
 | **start date** | `organisation_start_date` is the hire date: when the learner started at the organisation, not at a course. | For a course, `started_at` on `CourseProgress`. |
 | **suspend** | Retired. Pausing a learner's course is a `CoursePause`; the verbs are `paused` and `resumed`. | pause, `CoursePause` |
-
----
 
 ## Prose vs. code
 
@@ -288,8 +268,6 @@ The codebase has caught up. `learner-terminology-rename` moved the three apps to
   `unique_learner_course_registration`), and `CourseProgress` followed, keying on `learner` rather than
   `user`. `FormProgress` has not moved yet — it still keys on `user` directly, since a form can be sat
   outside a course. A new model keying on `user` should be able to say why.
-
----
 
 ## Where else to look
 

@@ -3,9 +3,8 @@ description: Rebase the current branch onto main, resolve conflicts, verify, and
 allowed-tools: Bash, Read, Edit, Grep, Glob
 ---
 
-Rebase the current branch onto `main`, resolve conflicts, verify the result, and push. The command
-runs to completion without asking for confirmation; it stops only to report `status: ok`,
-`status: failed`, or `status: blocked`.
+Rebase the current branch onto `main`, resolve conflicts, verify the result, and push, without asking
+for confirmation. It stops only to report `status: ok`, `failed` or `blocked`.
 
 Input from the caller:
 
@@ -40,8 +39,7 @@ git add -A
 git commit -m "<branch>: wip before rebase onto main"
 ```
 
-A commit, not a stash, so the lost-change check in Step 7 covers this work like every other commit
-on the branch. Do not squash the wip commit later; it rides through to the pull request as-is.
+Commit, never stash. Do not squash the wip commit later; it rides through to the pull request as-is.
 
 If a hook rejects the commit, work through it:
 
@@ -78,8 +76,7 @@ OLD_BASE=$(git merge-base origin/main HEAD)
 git log --merges --oneline $OLD_BASE..HEAD
 ```
 
-If this prints anything, stop with `status: blocked`. A rebase replays only a merge commit's first
-parent and drops the rest without a conflict, so a human has to decide what to do with it.
+If this prints anything, stop with `status: blocked`: a human decides what to do with a merge commit.
 
 Then check that no other worktree is halfway through merging this branch:
 
@@ -89,9 +86,7 @@ cat "$common"/MERGE_HEAD "$common"/worktrees/*/MERGE_HEAD 2>/dev/null
 ```
 
 If any printed sha equals `git rev-parse HEAD`, stop with `status: blocked · reason: a worktree
-has a merge of this branch in progress; finish or abort it there first`. Rewriting the branch now
-would orphan that merge: its MERGE_HEAD would point at a commit no branch holds, leaving whoever
-started it with a conflicted tree and nothing to finish it against.
+has a merge of this branch in progress; finish or abort it there first`.
 
 Otherwise, record the branch's current tip before rewriting it:
 
@@ -195,7 +190,7 @@ uv run manage.py migrate
 
 ## Step 9: Run the tests
 
-Follow `${CLAUDE_PLUGIN_ROOT}/resources/test_tiers.md`; every command below is one of its tiers.
+Follow `${CLAUDE_PLUGIN_ROOT}/resources/test_tiers.md`.
 
 `<tier>` is `none` → report `tier: none` and go to Step 10. The caller runs its own tier.
 
@@ -230,7 +225,7 @@ Three attempts. If the run still fails after that, stop with `status: failed`.
 uv run pre-commit run --from-ref origin/main --to-ref HEAD
 ```
 
-This checks the files the branch changed. Fix any failures and re-run until clean.
+Fix any failures and re-run until clean.
 
 ## Step 11: Summarise
 
@@ -250,11 +245,8 @@ No upstream (from Step 1) → say so and skip this step.
 git push origin HEAD --force-with-lease --force-if-includes
 ```
 
-Push without asking, once tests and pre-commit are clean. Keep both flags after the refspec: a rule
-that blocks `git push --force:*` is a prefix match, and `--force-with-lease` shares that prefix.
-
-Write `<branch>` out as the name Step 1 printed, so the command cannot push a different branch when
-pasted elsewhere. If the push is refused, read the refusal:
+Push without asking, once tests and pre-commit are clean. Keep both flags after the refspec. Write
+`<branch>` out as the name Step 1 printed. If the push is refused, read the refusal:
 
 - `stale info` (the lease is stale): the remote moved since Step 3's fetch. Stop with
   `status: failed · reason: push rejected: stale lease`.
@@ -273,6 +265,3 @@ status: ok|failed|blocked · rebased: yes|no · old-base: <sha> · old-tip: <sha
 replayed: <n> · conflicts: <n> · lost-change check: pass|fixed ·
 tier: none|targeted|full · pushed: yes|no · reason: <short>
 ```
-
-This file carries no `model:` frontmatter. A caller that reads and follows it inline runs it on its
-own model.
