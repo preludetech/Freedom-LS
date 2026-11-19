@@ -106,3 +106,17 @@ class StubEntry(models.Model):
 
     def __str__(self) -> str:
         return self.title
+
+
+class StubEntryProtectedChild(models.Model):
+    """A child that refuses to let its entry go, so removing an entry can hit PROTECT."""
+
+    entry = models.ForeignKey(StubEntry, on_delete=models.PROTECT)
+
+    class Meta:
+        app_label = "freedom_ls_panel_framework"
+        verbose_name = "stub entry protected child"
+        verbose_name_plural = "stub entry protected children"
+
+    def __str__(self) -> str:
+        return f"StubEntryProtectedChild({self.pk})"

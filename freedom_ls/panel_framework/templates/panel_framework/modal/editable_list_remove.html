@@ -1,0 +1,8 @@
+{% extends "panel_framework/modal/confirm.html" %}
+{% comment %}
+The dialog an EditableListRemoveAction's GET returns. Context: entry_title.
+{% endcomment %}
+
+{% block body %}
+    <p>Removing {{ entry_title }} cannot be undone.</p>
+{% endblock body %}

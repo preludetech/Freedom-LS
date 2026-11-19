@@ -37,6 +37,7 @@ __all__ = [
     "EditAction",
     "EditableListAddAction",
     "EditableListEditAction",
+    "EditableListRemoveAction",
     "FormPanelAction",
     "ModalPanelAction",
     "PanelAction",
@@ -634,6 +635,17 @@ class ConfirmAction(ModalPanelAction):
         return refusal_response(ctx, title=title, message=message)
 
 
+def _protected_dependents(error: ProtectedError) -> str:
+    """What still depends on a row a protected relation would not let go, as prose."""
+    counts: Counter[type[Model]] = Counter(type(obj) for obj in error.protected_objects)
+    return join_prose(
+        [
+            count_noun(model, counts[model])
+            for model in sorted(counts, key=lambda m: str(m._meta.verbose_name))
+        ]
+    )
+
+
 class DeleteAction(ConfirmAction):
     """Deletes the instance of whatever it is attached to, after confirmation.
 
@@ -680,16 +692,9 @@ class DeleteAction(ConfirmAction):
 
     def get_blocked_reason(self, instance: Model, error: ProtectedError) -> str:
         """One plain sentence naming what still depends on this instance."""
-        counts: Counter[type[Model]] = Counter(
-            type(obj) for obj in error.protected_objects
-        )
-        dependents = [
-            count_noun(model, counts[model])
-            for model in sorted(counts, key=lambda m: str(m._meta.verbose_name))
-        ]
         return (
             f"This {instance._meta.verbose_name} cannot be deleted because it "
-            f"still has {join_prose(dependents)}."
+            f"still has {_protected_dependents(error)}."
         )
 
     def _instance(self, ctx: PanelContext) -> Model:
@@ -931,3 +936,35 @@ class EditableListEditAction(_EditableListEntryAction, FormPanelAction):
         setattr(model_form.instance, self.panel.parent_field, ctx.instance)
         entry = model_form.save()
         return changed_response(self.get_success_events(entry))
+
+
+class EditableListRemoveAction(_EditableListEntryAction, ConfirmAction):
+    label = "Remove"
+    action_name = "remove_entry"
+    capability_verb = "delete"
+    template_name = "panel_framework/modal/editable_list_remove.html"
+    confirm_variant = "error"
+    loading_text = "Removing…"
+
+    def get_title(self, ctx: PanelContext) -> str:
+        return f"Remove {self.panel.get_noun()}"
+
+    def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
+        return {"entry_title": self.panel.get_summary(self.get_row_object(ctx)).title}
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        entry = self.get_row_object(ctx)
+        # Read before delete(): Django clears the pk once the row is gone.
+        events = self.get_success_events(entry)
+        try:
+            with transaction.atomic():
+                entry.delete()
+        except ProtectedError as error:
+            # Answered after the block: a transaction marked for rollback cannot run queries.
+            return self.refuse(
+                ctx,
+                f"This {self.panel.get_noun()} cannot be removed because it still has "
+                f"{_protected_dependents(error)}.",
+                title=self.get_title(ctx),
+            )
+        return changed_response(events)

@@ -22,6 +22,7 @@ from django.core.files.storage import FileSystemStorage
 from .stub_models import (
     StubChild,
     StubEntry,
+    StubEntryProtectedChild,
     StubFileModel,
     StubModel,
     StubProtectedChild,
@@ -69,6 +70,13 @@ def make_stub_entry(parent: StubModel, title: str, detail: str = "") -> StubEntr
     """Create a StubEntry under ``parent``."""
     return cast(
         StubEntry, StubEntry.objects.create(parent=parent, title=title, detail=detail)
+    )
+
+
+def make_stub_entry_protected_child(entry: StubEntry) -> StubEntryProtectedChild:
+    """Create a StubEntryProtectedChild, which blocks removal of ``entry``."""
+    return cast(
+        StubEntryProtectedChild, StubEntryProtectedChild.objects.create(entry=entry)
     )
 
 

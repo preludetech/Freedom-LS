@@ -54,6 +54,7 @@ from .helpers import (
     make_stub,
     make_stub_child,
     make_stub_entry,
+    make_stub_entry_protected_child,
     make_stub_file,
     make_stub_protected_child,
 )
@@ -2716,3 +2717,105 @@ def test_a_form_action_without_a_row_param_renders_no_hidden_input(
     root = lxml.html.fromstring(f"<div>{_render(action, ctx)}</div>")
 
     assert root.xpath("//form//input[@type='hidden']") == []
+
+
+def _remove_path(parent: StubModel) -> str:
+    return f"stubs/{parent.pk}/__tabs/entries/__actions/remove_entry"
+
+
+@pytest.mark.django_db
+def test_a_remove_dialog_names_the_entry_and_says_it_cannot_be_undone(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    entry = make_stub_entry(parent, "Alpha")
+
+    response = fetch(_remove_path(parent), data={"entry": str(entry.pk)}, htmx=True)
+
+    html = response.content.decode()
+    assert response.status_code == 200
+    assert "Removing Alpha cannot be undone." in html
+    assert _hidden_entry_values(response) == [str(entry.pk)]
+
+
+@pytest.mark.django_db
+def test_a_remove_post_deletes_the_entry_and_fires_entry_changed_with_its_pk(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    entry = make_stub_entry(parent, "Alpha")
+    pk = entry.pk
+
+    response = fetch(
+        _remove_path(parent), method="post", data={"entry": str(pk)}, htmx=True
+    )
+
+    assert response.status_code == 204
+    assert response["HX-Trigger"] == build_hx_trigger(
+        {"entryChanged": [str(pk)]}, close_modal=True
+    )
+    assert not StubEntry.objects.filter(pk=pk).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("method", ["get", "post"])
+@pytest.mark.parametrize("which", ["another_parent", "missing", "malformed"])
+def test_a_remove_for_an_entry_outside_the_parents_entries_is_a_404(
+    mock_site_context: Site, method: str, which: str
+) -> None:
+    parent = make_stub()
+    values = {
+        "another_parent": str(make_stub_entry(make_stub(), "Theirs").pk),
+        "missing": "999999",
+        "malformed": "not-a-pk",
+    }
+
+    response = fetch(
+        _remove_path(parent),
+        method=method,
+        data={"entry": values[which]},
+        htmx=True,
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_removing_a_protected_entry_answers_422_with_the_refusal_and_keeps_it(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    entry = make_stub_entry(parent, "Alpha")
+    make_stub_entry_protected_child(entry)
+
+    response = fetch(
+        _remove_path(parent),
+        method="post",
+        data={"entry": str(entry.pk)},
+        htmx=True,
+    )
+
+    assert response.status_code == 422
+    assert (
+        "This stub entry cannot be removed because it still has 1 stub entry "
+        "protected child." in response.content.decode()
+    )
+    assert StubEntry.objects.filter(pk=entry.pk).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("method", ["get", "post"])
+def test_a_denied_remove_answers_403(mock_site_context: Site, method: str) -> None:
+    parent = make_stub()
+    entry = make_stub_entry(parent, "Alpha")
+    RecordingCapabilityConfig.reset(answer=False)
+
+    response = fetch(
+        _remove_path(parent),
+        method=method,
+        data={"entry": str(entry.pk)},
+        htmx=True,
+    )
+
+    assert response.status_code == 403
+    assert StubEntry.objects.filter(pk=entry.pk).exists()

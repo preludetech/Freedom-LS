@@ -24,6 +24,7 @@ from django.http import Http404, HttpRequest
 from freedom_ls.panel_framework.actions import (
     EditableListAddAction,
     EditableListEditAction,
+    EditableListRemoveAction,
     EditAction,
     PanelAction,
     count_phrase,
@@ -644,7 +645,11 @@ class EditableListPanel(Panel):
         return list(self.get_entries())
 
     def get_actions(self) -> list[PanelAction]:
-        return [EditableListAddAction(self), EditableListEditAction(self)]
+        return [
+            EditableListAddAction(self),
+            EditableListEditAction(self),
+            EditableListRemoveAction(self),
+        ]
 
     def get_context_data(self) -> dict[str, object]:
         """`loaded_entries` holds the model instances; the `entries` key holds
@@ -652,11 +657,14 @@ class EditableListPanel(Panel):
         context = super().get_context_data()
         add_trigger: dict[str, object] | None = None
         edit_action: PanelAction | None = None
+        remove_action: PanelAction | None = None
         for action in self.available_actions:
             if isinstance(action, EditableListAddAction):
                 add_trigger = action.get_trigger_context(self.ctx)
             elif isinstance(action, EditableListEditAction):
                 edit_action = action
+            elif isinstance(action, EditableListRemoveAction):
+                remove_action = action
         entries = []
         for entry in self.loaded_entries:
             summary = self.get_summary(entry)
@@ -673,6 +681,11 @@ class EditableListPanel(Panel):
                     "edit_url": (
                         self._entry_action_url(edit_action, entry)
                         if edit_action
+                        else ""
+                    ),
+                    "remove_url": (
+                        self._entry_action_url(remove_action, entry)
+                        if remove_action
                         else ""
                     ),
                 }
