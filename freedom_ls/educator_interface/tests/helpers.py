@@ -23,6 +23,7 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
+from freedom_ls.learner_management.models import Learner
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
@@ -142,3 +143,38 @@ COURSE_REACH_ROWS = [
     ("held", True),
     ("unreached", False),
 ]
+
+
+def _interface_url(organisation_slug: str, path_string: str) -> str:
+    return reverse(
+        "educator_interface:interface",
+        kwargs={"organisation_slug": organisation_slug, "path_string": path_string},
+    )
+
+
+def _bulk_learner(**fields: object) -> Learner:
+    return cast(Learner, LearnerFactory(**fields))
+
+
+def _learners_bulk_url(organisation: Organisation, action_name: str) -> str:
+    return _interface_url(organisation.slug, f"learners/__actions/{action_name}")
+
+
+def _bulk_post(
+    client: Client,
+    organisation: Organisation,
+    action_name: str,
+    learners: list[Learner],
+    **extra: str,
+):
+    return client.post(
+        _learners_bulk_url(organisation, action_name),
+        {"keys": [str(learner.pk) for learner in learners], **extra},
+        HTTP_HX_REQUEST="true",
+    )
+
+
+def _bulk_text(response) -> str:
+    return " ".join(
+        lxml.html.fromstring(response.content.decode()).text_content().split()
+    )
