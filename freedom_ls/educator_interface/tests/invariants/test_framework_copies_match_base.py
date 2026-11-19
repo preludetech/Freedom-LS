@@ -16,9 +16,13 @@ from freedom_ls.base import app_settings as base_app_settings
 from freedom_ls.base import csv_import as base_csv_import
 from freedom_ls.base import csv_safety as base_csv_safety
 from freedom_ls.base import date_display as base_date_display
+from freedom_ls.base.templatetags import pagination_tags as base_pagination_tags
 from freedom_ls.panel_framework import app_settings as framework_app_settings
 from freedom_ls.panel_framework import csv_safety as framework_csv_safety
 from freedom_ls.panel_framework import field_display as framework_field_display
+from freedom_ls.panel_framework.templatetags import (
+    data_table_tags as framework_data_table_tags,
+)
 
 BASE_SCRIPT = (
     Path(base_app_settings.__file__).parent
@@ -40,6 +44,10 @@ SAME_SOURCE = [
     (base_csv_import.EchoWriter, framework_csv_safety.EchoWriter),
     (base_app_settings.Setting, framework_app_settings.Setting),
     (base_app_settings.AppSettings, framework_app_settings.AppSettings),
+    (
+        base_pagination_tags.pagination_suffix,
+        framework_data_table_tags.pagination_suffix,
+    ),
 ]
 
 SAME_VALUE = [

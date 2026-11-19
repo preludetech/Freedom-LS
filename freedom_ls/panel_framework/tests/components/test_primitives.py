@@ -7,7 +7,14 @@ from pathlib import Path
 import pytest
 import pytest_django.fixtures
 
+from django.core.paginator import Page, Paginator
+
 from ..cotton_helpers import render_cotton
+
+
+def _page(number: int) -> Page:
+    return Paginator(list(range(30)), 10).page(number)
+
 
 PRIMITIVE_DEFAULTS = [
     pytest.param(
@@ -52,6 +59,18 @@ PRIMITIVE_DEFAULTS = [
         ],
         id="panel-dropdown-menu",
     ),
+    pytest.param(
+        '<c-panel-pagination :page_obj="page_obj" base_url="/t/" table_id="tbl" '
+        'sort_by="name" page_param_name="p" />',
+        [
+            "panel-btn panel-btn-secondary panel-btn-sm",
+            "panel-btn panel-btn-primary panel-btn-sm",
+            'hx-get="/t/?p=1&amp;sort=name&amp;order=asc"',
+            'hx-target="#tbl"',
+            "Page 2 of 3",
+        ],
+        id="panel-pagination",
+    ),
 ]
 
 PRIMITIVE_OVERRIDES = [
@@ -70,6 +89,11 @@ PRIMITIVE_OVERRIDES = [
         id="panel-dropdown-menu",
     ),
     pytest.param(
+        "panel-pagination",
+        '<c-panel-pagination :page_obj="page_obj" />',
+        id="panel-pagination",
+    ),
+    pytest.param(
         "panel-dropdown-menu-separator",
         "<c-panel-dropdown-menu-separator />",
         id="panel-dropdown-menu-separator",
@@ -81,7 +105,7 @@ PRIMITIVE_OVERRIDES = [
 def test_a_primitive_renders_its_documented_props_and_slot(
     source: str, expected: list[str]
 ) -> None:
-    html = render_cotton(source)
+    html = render_cotton(source, page_obj=_page(2))
 
     assert {text for text in expected if text not in html} == set()
 
@@ -125,6 +149,6 @@ def test_a_template_at_the_first_template_dir_replaces_a_primitive(
     (tmp_path / "cotton" / f"{name}.html").write_text("<i>overridden</i>")
     settings.TEMPLATES[0]["DIRS"] = [str(tmp_path), *settings.TEMPLATES[0]["DIRS"]]
 
-    html = render_cotton(source)
+    html = render_cotton(source, page_obj=_page(2))
 
     assert "<i>overridden</i>" in html

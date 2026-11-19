@@ -8,13 +8,15 @@ import pytest
 from django_cotton.compiler_regex import CottonCompiler
 from lxml import html as lxml_html
 
+from django.core.paginator import Paginator
 from django.template import Context, Template
+from django.test import RequestFactory
 
 _cotton_compiler = CottonCompiler()
 
 
-def _normalised(source: str) -> str:
-    rendered = Template(_cotton_compiler.process(source)).render(Context())
+def _normalised(source: str, **context: object) -> str:
+    rendered = Template(_cotton_compiler.process(source)).render(Context(context))
     fragment = lxml_html.fragment_fromstring(rendered, create_parent="div")
     return re.sub(r"\s+", " ", lxml_html.tostring(fragment, encoding="unicode")).strip()
 
@@ -169,6 +171,61 @@ DROPDOWN_PAIRS = [
         id="dropdown-menu-separator",
     ),
 ]
+
+
+PAGINATION_PROPS = (
+    ':page_obj="page_obj" base_url="/t/" table_id="tbl" sort_by="name" '
+    'sort_order="desc" search_query="x y" extra_params="k=v" '
+    'page_param_name="p" push_url="true" page_url="/here/" class="mt-2"'
+)
+PAGINATION_PAIRS = [
+    pytest.param(
+        f"<c-panel-pagination {PAGINATION_PROPS} />",
+        f"<c-pagination {PAGINATION_PROPS} />",
+        id="pagination-page-object",
+    ),
+    pytest.param(
+        '<c-panel-pagination :page_obj="page_obj" base_url="/t/" />',
+        '<c-pagination :page_obj="page_obj" base_url="/t/" />',
+        id="pagination-page-object-defaults",
+    ),
+    pytest.param(
+        '<c-panel-pagination :page_obj="page_obj" :links="links" base_url="/t/" '
+        'table_id="tbl" page_url="/here/" />',
+        '<c-pagination :page_obj="page_obj" :links="links" base_url="/t/" '
+        'table_id="tbl" page_url="/here/" />',
+        id="pagination-links",
+    ),
+]
+
+
+def _links(number: int, num_pages: int) -> dict[str, object]:
+    def changes(page: int) -> dict[str, int]:
+        return {"page": page}
+
+    return {
+        "previous": {"changes": changes(number - 1)} if number > 1 else None,
+        "next": {"changes": changes(number + 1)} if number < num_pages else None,
+        "pages": [
+            {"number": n, "current": n == number, "changes": changes(n)}
+            for n in range(1, num_pages + 1)
+        ]
+        + [{"number": None}],
+    }
+
+
+@pytest.mark.parametrize("number", [1, 4, 7], ids=["first", "middle", "last"])
+@pytest.mark.parametrize(("wrapper", "original"), PAGINATION_PAIRS)
+def test_a_pagination_wrapper_renders_what_pagination_rendered(
+    wrapper: str, original: str, number: int
+) -> None:
+    context = {
+        "page_obj": Paginator(list(range(70)), 10).page(number),
+        "links": _links(number, 7),
+        "request": RequestFactory().get("/t/", {"sort": "name"}),
+    }
+
+    assert _normalised(wrapper, **context) == _normalised(original, **context)
 
 
 @pytest.mark.parametrize(

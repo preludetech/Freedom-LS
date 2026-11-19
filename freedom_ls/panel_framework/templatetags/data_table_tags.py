@@ -1,4 +1,5 @@
 from django import template
+from django.utils.http import urlencode
 
 register = template.Library()
 
@@ -65,3 +66,33 @@ def column_badge(obj: object, column: object) -> object:
     """
     badge = getattr(column, "badge", None)
     return badge(obj) if callable(badge) else None
+
+
+@register.simple_tag
+def pagination_suffix(
+    sort_by: str = "",
+    sort_order: str = "",
+    search_query: str = "",
+    extra_params: str = "",
+) -> str:
+    """Build the trailing query-string suffix used by ``<c-pagination />``.
+
+    Returns a string like ``"&sort=name&order=asc&search=alice"`` —
+    intentionally with the leading ``&`` so it can sit directly after
+    ``?page=N`` in a URL without further conditionals at the call site.
+
+    ``extra_params`` is expected to be a pre-joined ``a=b&c=d`` fragment
+    (typically built via ``join_query`` so it's already URL-encoded). It is
+    appended verbatim.
+    """
+    params: dict[str, str] = {}
+    if sort_by:
+        params["sort"] = sort_by
+        params["order"] = sort_order or "asc"
+    if search_query:
+        params["search"] = search_query
+    encoded = urlencode(params)
+    pieces = [piece for piece in (encoded, extra_params) if piece]
+    if not pieces:
+        return ""
+    return "&" + "&".join(pieces)
