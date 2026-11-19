@@ -15,7 +15,6 @@ import re
 import signal
 import subprocess
 import sys
-import threading
 import time
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
@@ -94,6 +93,20 @@ def without_unset_settings(
     }
 
 
+def runner_env(
+    stub_tools: StubTools, tmp_path: Path, **variables: str | int
+) -> dict[str, str]:
+    """A clean `DS_TEST_*` environment for the runner, plus `variables`."""
+    settings = {
+        "DS_TEST_TIME_SCALE": 0,
+        "DS_TEST_PSI_PATH": str(tmp_path / "no_such_psi"),
+        **variables,
+    }
+    return without_unset_settings(
+        stub_tools.env(TMPDIR=str(tmp_path), **settings), settings
+    )
+
+
 def run_runner(
     stub_tools: StubTools,
     tmp_path: Path,
@@ -101,18 +114,10 @@ def run_runner(
     **variables: str | int,
 ) -> subprocess.CompletedProcess[str]:
     """Run the runner with a clean `DS_TEST_*` environment plus `variables`."""
-    settings = {
-        "DS_TEST_TIME_SCALE": 0,
-        "DS_TEST_PSI_PATH": str(tmp_path / "no_such_psi"),
-        **variables,
-    }
-    child_env = without_unset_settings(
-        stub_tools.env(TMPDIR=str(tmp_path), **settings), settings
-    )
     return subprocess.run(  # noqa: S603
         [sys.executable, str(SCRIPT), *args],
         cwd=tmp_path,
-        env=child_env,
+        env=runner_env(stub_tools, tmp_path, **variables),
         capture_output=True,
         text=True,
         check=False,
@@ -727,34 +732,45 @@ def test_memory_that_becomes_sufficient_ends_the_wait_with_the_sized_count(
 ) -> None:
     # Arrange
     meminfo = write_meminfo(tmp_path, 100)
+    waiting = "ram: waiting for memory (MemAvailable 100 MB, PSI n/a)"
+    child_env = runner_env(
+        stub_tools,
+        tmp_path,
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        # 60 real seconds, so a loaded machine cannot time the wait out.
+        DS_TEST_WAIT_TIMEOUT_S=6000,
+        DS_TEST_TIME_SCALE=0.01,
+        # Each line reaches the pipe as the runner prints it.
+        PYTHONUNBUFFERED=1,
+    )
 
-    def free_memory() -> None:
-        time.sleep(0.3)
-        # Replaced atomically so the runner never reads a half-written file.
+    # Act
+    with subprocess.Popen(  # noqa: S603
+        [sys.executable, str(SCRIPT), "pytest", "-n", "auto"],
+        cwd=tmp_path,
+        env=child_env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+    ) as runner:
+        assert runner.stdout is not None
+        lines: list[str] = []
+        for line in runner.stdout:
+            lines.append(line.rstrip("\n"))
+            if lines[-1] == waiting:
+                break
+        # Memory is freed only once the runner has said it is waiting. Replaced atomically
+        # so the runner never reads a half-written file.
         replacement = tmp_path / "meminfo_new"
         replacement.write_text(
             f"MemTotal:       99999999 kB\nMemAvailable:   {4096 * 1024} kB\n",
             encoding="utf-8",
         )
         replacement.replace(meminfo)
-
-    thread = threading.Thread(target=free_memory)
-
-    # Act
-    thread.start()
-    result = run_runner(
-        stub_tools,
-        tmp_path,
-        ["pytest", "-n", "auto"],
-        DS_TEST_MEMINFO_PATH=str(meminfo),
-        DS_TEST_WAIT_TIMEOUT_S=100,
-        DS_TEST_TIME_SCALE=0.01,
-    )
-    thread.join()
+        lines += runner.stdout.read().splitlines()
 
     # Assert
-    lines = result.stdout.splitlines()
-    assert "ram: waiting for memory (MemAvailable 100 MB, PSI n/a)" in lines
+    assert waiting in lines
     assert any(line.startswith("ram: wait over after") for line in lines)
     assert runner_worker_count(stub_tools) == "2"
 

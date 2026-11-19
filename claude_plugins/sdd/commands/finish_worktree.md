@@ -77,30 +77,28 @@ mention until Step 8.
   worktree" below.
 - any other exit → `status: blocked · reason: <the script's output, verbatim>`. Stop.
 
-# Step 1: Checkpoint tier
+# Step 1: Full tier
 
-This step is the checkpoint run. Step 7's main-moved loop follows it again after each rebase.
+1. Rebuild generated assets ("Pre-test rebuild" below).
+2. Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/commands/protected/run_test_tier.md` and
+   follow it with `<tier>`: `full`, returning the report line and any failing test names.
+3. Keep the report line for Step 8.
 
-1. Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/commands/protected/run_test_tier.md` and
-   follow it with `<tier>`: `checkpoint` as far as its "Resolve the checkpoint tier" step, and
-   return the `tier:`, `diff:` and `why:` lines. `none` → the report line is
-   `tier: none · summary: <why>`; nothing else runs.
-2. `targeted` or `full` → first rebuild generated assets: read `Pre-test rebuild` under
-   `## Test Hooks` in `.claude/sdd/config.md` (`config.local.md` wins), and when it is a non-blank
-   path, run it from the project root. A non-zero exit is
-   `status: failed · reason: pre-test rebuild failed: <its output>`. Blank, or the key absent,
-   skips the rebuild. Then delegate to
-   `sdd:sdd-mechanic`: follow `run_test_tier.md` with the `<tier>` and `<diff>` as resolved,
-   returning the report line and any failing test names.
-3. Keep every report line for Step 8.
+A failure is `status: failed · reason: <run> failed before landing: <tests>`, where `<run>` is
+`full run` here and `checkpoint run` in Step 7's loop. Nothing is moved or landed until a human
+fixes it, except for a flaky test, handled below. A rebased branch has also passed pre-commit; there
+is nothing to re-run for that.
 
-A failure is `status: failed · reason: checkpoint run failed before landing: <tests>`; nothing is
-moved or landed until a human fixes it, except for a flaky test, handled below. A rebased branch has
-also passed pre-commit; there is nothing to re-run for that.
+## Pre-test rebuild
+
+Read `Pre-test rebuild` under `## Test Hooks` in `.claude/sdd/config.md` (`config.local.md` wins).
+A non-blank path: run it from the project root. A non-zero exit is
+`status: failed · reason: pre-test rebuild failed: <its output>`. Blank, or the key absent: skip
+the rebuild.
 
 ## Flaky tests
 
-When the run in item 2 reports failing tests:
+When Step 1's full run, or a checkpoint run in Step 7's loop, reports failing tests:
 
 1. Delegate to `sdd:sdd-mechanic`: run each failing test on its own, by node ID, three times, as the
    tier definition's single test run, and return the pass count per test. A test with 0 passes is a
@@ -108,7 +106,7 @@ When the run in item 2 reports failing tests:
 2. A test with at least one pass is flaky. Handle the flaky tests one at a time, because they share
    the worktree and its database. For each, spawn a `general-purpose` sub-agent with this brief,
    every input written into the prompt: the test's node ID, its failure output, and, when
-   `Flaky test guide` under `## Test Hooks` (read the way item 2 reads `Pre-test rebuild`) is a
+   `Flaky test guide` under `## Test Hooks` (read the way "Pre-test rebuild" reads its key) is a
    non-blank path, that path to read first. Its rules:
    - Find and fix the root cause on the current branch.
    - Never skip, delete, mark or retry-wrap the test to get a pass.
@@ -117,7 +115,7 @@ When the run in item 2 reports failing tests:
    - Return `status: ok · commit: <sha>` or `status: failed · diagnosis: <one line>`.
 3. A `failed` return gets one more sub-agent, briefed the same way plus the first diagnosis. A second
    `failed` is `status: failed · reason: flaky test <id> not fixed: <diagnosis>`.
-4. After the fixes, `git push`, then follow the checkpoint run again from its start. A test already
+4. After the fixes, `git push`, then follow the run that failed again from its start. A test already
    fixed once that fails again is a real failure. Keep each fix's commit for Step 8.
 
 # Step 2: Tear down any per-worktree resources
@@ -177,14 +175,7 @@ and any `.claude/settings.json` change from Step 5.
 
 # Step 7: Land on main
 
-1. **PR guard.** `gh pr view <branch> --json number,state,reviewDecision`. No pull request, or
-   `MERGED` → continue. `OPEN` with `reviewDecision` of `CHANGES_REQUESTED` →
-   `status: blocked · reason: PR #<n> has changes requested`. `OPEN` otherwise → continue: the
-   human ticked the approval item before this command ran, and the fast-forward push closes the
-   PR as merged. `gh` missing or not logged in → say so and continue; the fast-forward is what
-   protects `main`, not the PR.
-
-2. **Land.**
+1. **Land.**
 
    ```
    <script-path> land
@@ -193,11 +184,11 @@ and any `.claude/settings.json` change from Step 5.
    The script re-runs the Step 0.5 checks, then pushes `HEAD` to `origin/main` as a fast-forward
    (never with force) and fast-forwards the main worktree. A rejected push changes nothing anywhere.
 
-3. **exit 7** → `origin/main` moved after Step 0.5. Run the main-moved loop below.
+2. **exit 7** → `origin/main` moved after Step 0.5. Run the main-moved loop below.
 
-4. **exit 4** → "A dirty main worktree" below.
+3. **exit 4** → "A dirty main worktree" below.
 
-5. **exit 3, 6 or 8** → `status: blocked · reason: <the script's output, verbatim>`. The
+4. **exit 3, 6 or 8** → `status: blocked · reason: <the script's output, verbatim>`. The
    close-out commits are already on the branch and pushed, so re-running this command later picks
    up here: Steps 3 to 6 find nothing left to do.
 
@@ -217,10 +208,10 @@ on each pass, entered with its <blocker>:
         the list from rebase_auto_resolve.md, <own-spec-dir> = the spec's directory under
         spec_dd/3. done/ once Step 4 moved it, else its directory under spec_dd/2. in progress/
     map its result as Step 0's "Rebase results" does
-    # nothing lands before the PR check and the close-out commits
+    # nothing lands before the close-out commits
     entered before Step 7 (from Step 0, or from Step 0.5's exit 4): leave the loop and continue
         at Step 0.5
-    follow the checkpoint run (Step 1)
+    follow the checkpoint run (below)
     <script-path> land        → exit 0 leaves the loop; exit 7 is the next pass
 ```
 
@@ -229,7 +220,21 @@ With `origin/main` as the blocker the reason reads `origin/main moved 5 times in
 
 Do not use the pre-step rebase here: it skips a spec already under `3. done/`, and no
 upstream-change review runs for a finished spec. After the loop's exit 0, any exit other than 7 is
-handled as items 4 and 5 above.
+handled as items 3 and 4 above.
+
+### The checkpoint run
+
+Step 1's full run wrote the full-run record, so a pass tests only what the rebase brought in.
+
+1. Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/commands/protected/run_test_tier.md` and
+   follow it with `<tier>`: `checkpoint` as far as its "Resolve the checkpoint tier" step, and
+   return the `tier:`, `diff:` and `why:` lines. `none` → the report line is
+   `tier: none · summary: <why>`; nothing else runs.
+2. `targeted` or the full tier → rebuild generated assets ("Pre-test rebuild" in Step 1), then
+   delegate to `sdd:sdd-mechanic`: follow `run_test_tier.md` with the tier and `<diff>` as
+   resolved, returning the report line and any failing test names. Failing tests follow Step 1's
+   failure rule and "Flaky tests".
+3. Keep every report line for Step 8.
 
 ## A dirty main worktree
 
@@ -276,11 +281,10 @@ Must be empty in this worktree; anything else is `status: failed` naming the fil
 Report:
 
 - the landed commit and the main worktree path the script printed
-- the PR number and state from Step 7, if any
 - the number of passes of the main-moved loop, and each auto-resolved conflict path with its side
 - the main-worktree commit, when one was made: "main-worktree commit <sha>: <paths>"
 - the script's `synced: pushed` and `pushed:` lines, as "main pushed"
-- every test report line from Step 1
+- every test report line, from Step 1 and from each checkpoint run
 - each flaky test fix, with its commit
 - the `carried:` count, when the script printed one
 - the leftover batch worktrees removed, if any

@@ -392,7 +392,7 @@ still-running server. In project-root mode, see `## Project-root mode`.
 
 When no bug record exists, this step does nothing. Otherwise read
 `claude_plugins/sdd/resources/do_qa_fix_loop.md` and follow its `## Triage and fix` section for every
-bug. Done when every bug is **FIXED** or **UNRESOLVED**, the report says so, and the checkpoint run
+bug. Done when every bug is **FIXED** or **UNRESOLVED**, the report says so, and the targeted run
 after any fix has been checked.
 
 ## Step 14: Clean up the dev server

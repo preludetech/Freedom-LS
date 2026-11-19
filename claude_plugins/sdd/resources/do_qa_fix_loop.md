@@ -123,15 +123,15 @@ Then update the file's trailing `status:` footer so its `reason:` reflects the f
 Use `Edit` for both; do not re-render the whole report. If the Step 12 worker failed and there is no
 `qa_report.md`, skip this sub-step; the verdicts still reach Step 15.
 
-### Checkpoint after the last fix
+### Targeted tests after the last fix
 
 When at least one bug is `FIXED` this run, spawn a **solo `sdd:sdd-mechanic`**. Brief it to read
-`claude_plugins/sdd/commands/protected/run_test_tier.md` and follow it with `<tier>` `checkpoint`, and to
-return the `tier:` line the helper reports and the names of any failing tests inline. It changes nothing and
+`claude_plugins/sdd/commands/protected/run_test_tier.md` and follow it with `<tier>` `targeted` and
+`<diff>` `--range <sha before the first fix>..HEAD`, and to return the `tier:` line the helper reports and the names of any failing tests inline. It changes nothing and
 writes no file, so Step 16's cleanup list stays as it is.
 
 When tests fail, add this row to `## Bug status` (skip the edit if there is no `qa_report.md`):
 
-`**UNRESOLVED** — checkpoint run after the fixes left tests failing (reason: <test names>)`
+`**UNRESOLVED** — targeted run after the fixes left tests failing (reason: <test names>)`
 
 Step 15 files the matching todo item. The fixes stay committed.

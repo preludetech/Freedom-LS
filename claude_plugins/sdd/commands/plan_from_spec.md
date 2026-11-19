@@ -109,8 +109,6 @@ When scoping QA, don't only walk the golden path. For each area of functionality
 
 A QA test that maps to a design state names that state's design screenshot path and copies the state's design checklist from the plan's transcription. The checklist, not the screenshot, is what QA judges against.
 
-If this plan is created then reference it in the plan file as a final step.
-
 IMPORTANT: The QA command picks a free webserver port at run time. Never name a port in the test, and never port 8000 (the default django runserver port).
 - We run the runserver command like this: `uv run python manage.py runserver $PORT`
 - Base url is `http://127.0.0.1:$PORT`

@@ -200,11 +200,11 @@ When every item is checked:
 Done when every item that awaited the visual check is fixed with a screenshot that shows the fix,
 or open with a screenshot that shows it is not.
 
-## Step 7: Checkpoint
+## Step 7: Targeted tests
 
 When Steps 5 and 6 left at least one `code` or `design` fix committed, spawn a solo
 `sdd:sdd-mechanic`. Brief it to read `claude_plugins/sdd/commands/protected/run_test_tier.md` and
-follow it with `<tier>` `checkpoint`, and to return the `tier:` line the helper reports and the names of any failing tests inline.
+follow it with `<tier>` `targeted` and `<diff>` `--range <sha before the first fix>..HEAD`, and to return the `tier:` line the helper reports and the names of any failing tests inline.
 
 The fixes stay committed whatever the result. Failing tests become a todo line in Step 8.
 
@@ -226,8 +226,8 @@ Update the trailing `status:` footer's `reason:` to the new counts.
 
 - one `tick:` per fixed or closed item, the line verbatim from Step 1;
 - a `tick:` for the `/sdd:qa_fix` item when the file has one and no item is open;
-- when the checkpoint run failed:
-  `add_after:"<the /sdd:qa_fix line, or the QA item>|user|Fix the tests the checkpoint run after the QA fixes left failing: <test names>"`;
+- when the targeted run failed:
+  `add_after:"<the /sdd:qa_fix line, or the QA item>|user|Fix the tests the targeted run after the QA fixes left failing: <test names>"`;
 - one `add_after:` naming the same line, marker `user`, for anything else this run leaves
   outstanding for the user, as the `sdd:outstanding-items` skill defines it.
 

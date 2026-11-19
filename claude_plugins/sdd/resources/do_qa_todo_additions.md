@@ -13,8 +13,8 @@ These six categories, and nothing else:
    `add:"<section>|user|Fix smoke gate failure: <short description> before re-running \`/<QA command>\`"`.
 4. A product or UX decision a bug turns on:
    `add:"<section>|user|Decide <the question>, then <what follows from it>"`.
-5. A failure in the checkpoint run after the QA fixes:
-   `add:"<section>|user|Fix the tests the checkpoint run after the QA fixes left failing: <test names>"`.
+5. A failure in the targeted run after the QA fixes:
+   `add:"<section>|user|Fix the tests the targeted run after the QA fixes left failing: <test names>"`.
 6. Anything else the run leaves outstanding for the user, as the `sdd:outstanding-items` skill
    defines it: a test it could not run that only they can stage, a decision it deferred to them.
    A file a helper created is not one of these; Step 17 commits it:

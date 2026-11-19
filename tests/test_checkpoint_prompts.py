@@ -1,4 +1,4 @@
-"""The sdd command files ask for the full tier only at the end of an implementation run."""
+"""The sdd command files ask for the full tier twice: after the last batch and before landing."""
 
 from __future__ import annotations
 
@@ -13,7 +13,9 @@ pytestmark = pytest.mark.dev_tooling
 
 ROOT = Path(__file__).resolve().parents[1]
 COMMANDS = ROOT / "claude_plugins/sdd/commands"
+RESOURCES = ROOT / "claude_plugins/sdd/resources"
 TIER_FULL = re.compile(r"<tier>`?:? *`full`")
+TIER_CHECKPOINT = re.compile(r"<tier>`?:? *`checkpoint`")
 
 
 @pytest.mark.parametrize("name", ["do_qa.md", "qa_fix.md"])
@@ -21,6 +23,21 @@ def test_qa_commands_never_ask_for_the_full_tier(name: str) -> None:
     lines = (COMMANDS / name).read_text().splitlines()
 
     assert [line for line in lines if TIER_FULL.search(line)] == []
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        COMMANDS / "do_qa.md",
+        COMMANDS / "qa_fix.md",
+        RESOURCES / "do_qa_fix_loop.md",
+    ],
+    ids=lambda path: path.name,
+)
+def test_qa_files_never_ask_for_the_checkpoint_tier(path: Path) -> None:
+    lines = path.read_text().splitlines()
+
+    assert [line for line in lines if TIER_CHECKPOINT.search(line)] == []
 
 
 def test_implement_plan_asks_for_the_full_tier_once() -> None:
@@ -33,16 +50,21 @@ def test_plan_from_spec_does_not_promise_the_full_suite() -> None:
     assert "full test suite passing" not in (COMMANDS / "plan_from_spec.md").read_text()
 
 
-def test_finish_worktree_never_pairs_a_tier_input_with_full() -> None:
+def test_finish_worktree_asks_for_the_full_tier_once() -> None:
+    text = (COMMANDS / "finish_worktree.md").read_text()
+
+    assert len(TIER_FULL.findall(text)) == 1
+
+
+def test_finish_worktree_step_one_is_the_full_tier() -> None:
     lines = (COMMANDS / "finish_worktree.md").read_text().splitlines()
 
-    assert [line for line in lines if TIER_FULL.search(line)] == []
+    assert "# Step 1: Full tier" in lines
 
 
-def test_finish_worktree_step_one_is_the_checkpoint_tier() -> None:
-    lines = (COMMANDS / "finish_worktree.md").read_text().splitlines()
-
-    assert "# Step 1: Checkpoint tier" in lines
+@pytest.mark.parametrize("wording", ["gh pr view", "changes requested"])
+def test_finish_worktree_does_not_check_the_pull_request(wording: str) -> None:
+    assert wording not in (COMMANDS / "finish_worktree.md").read_text()
 
 
 @pytest.mark.parametrize(
