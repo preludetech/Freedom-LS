@@ -281,12 +281,6 @@
         @apply px-2 py-1.5 text-sm
     }
 
-    /* A compact table's rows are shorter from md up. Below md the rows are
-     * cards, which keep their own padding and touch targets. */
-    .panel-data-table-compact :is(th, td) {
-        @apply md:py-2
-    }
-
     /* Below md a button keeps its desktop look and gets a 44px-tall hit area
      * from an invisible ::after centred on it, so a small button stays small
      * to the eye and easy to tap. */
@@ -310,45 +304,8 @@
         @apply max-md:min-h-11
     }
 
-    /* Below md every text field on an interface page, dialogs included, is
-     * at least 44px tall for a finger. */
-    .panel-surface :is(input, select):not([type="checkbox"], [type="radio"], [type="hidden"]),
-    .panel-canvas :is(input, select):not([type="checkbox"], [type="radio"], [type="hidden"]) {
-        @apply max-md:min-h-11
-    }
-
     .surface {
         @apply border border-border rounded-md py-4 px-4 sm:py-6 sm:px-8
-    }
-
-    /* The selection bar fades in each time tableSelection displays it.
-     * Opacity alone: a transform would make the bar the containing block of
-     * the fixed "More actions" menu while it fades. Leaving is instant. */
-    @keyframes selection-bar-in {
-        from {
-            opacity: 0;
-        }
-    }
-
-    .panel-table-selection-bar {
-        @apply motion-safe:animate-[selection-bar-in_150ms_ease-out]
-    }
-
-    /* Panel-framework surfaces: the canvas an interface page sits on, and
-     * the raised surface its cards, table card, page header band, quick
-     * panel and modal are drawn in. Default is a grey canvas under white
-     * cards; a theme whose page surface is already off-white reopens both
-     * so the two still differ (first_class). */
-    .panel-canvas {
-        @apply bg-surface-2
-    }
-
-    .panel-surface {
-        @apply bg-surface
-    }
-
-    .panel-heading {
-        @apply text-lg font-semibold
     }
 
     /* Course-detail sign-up / CTA panel. Default sits on the off-white
@@ -506,13 +463,6 @@
     .course-progress-5::-webkit-progress-value { background-color: var(--fls-course-accent-5-to); }
     .course-progress-5::-moz-progress-bar      { background-color: var(--fls-course-accent-5-to); }
 
-    /* Modal scrim: the ::backdrop pseudo of a native <dialog>, whose own box stays
-     * bg-transparent. Carries only the scrim look; positioning / transitions stay
-     * on each element. */
-    .modal-backdrop-host::backdrop {
-        @apply bg-black/50 backdrop-blur-sm;
-    }
-
     /* ── Task lists (markdown `- [ ]` / `- [x]`, pymdownx.tasklist) ───────
      *
      * Read-only checkbox lists used by the `checklist` admonition. The
@@ -529,27 +479,4 @@
         align-items: baseline;
         gap: 0.5rem;
     }
-}
-
-/* Bottom sheet: a panel that slides up from the bottom edge on narrow
- * screens. Utilities rather than component classes so a responsive prefix
- * (max-md:, max-lg:) picks the width at which each panel is a sheet.
- * `bottom-sheet` is for a sheet over a backdrop, which already sets it apart
- * from the page. `bottom-sheet-bare` is for one with no backdrop: the border
- * along its rounded top edge shows where the page ends. The border runs down
- * the sides too, because a top-only border tapers away round the corners. */
-@utility bottom-sheet {
-    border-start-start-radius: 1rem;
-    border-start-end-radius: 1rem;
-    border-end-start-radius: 0;
-    border-end-end-radius: 0;
-}
-
-@utility bottom-sheet-bare {
-    border-start-start-radius: 1rem;
-    border-start-end-radius: 1rem;
-    border-end-start-radius: 0;
-    border-end-end-radius: 0;
-    border: 1px solid var(--color-border);
-    border-block-end-width: 0;
 }

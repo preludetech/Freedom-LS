@@ -27,6 +27,7 @@ TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "templates"
 OVERRIDES_DIR = Path(__file__).resolve().parent.parent / "template_overrides"
 COMPONENTS_DIR = TEMPLATES_DIR / "cotton"
 TAILWIND_COMPONENTS_CSS = FREEDOM_LS_PACKAGE_DIR.parent / "tailwind.components.css"
+FRAMEWORK_CSS = TEMPLATES_DIR.parent / "css" / "panel_framework.css"
 MODAL_HOST = TEMPLATES_DIR / "panel_framework" / "partials" / "modal_host.html"
 SIDE_PANEL_HOST = FREEDOM_LS_PACKAGE_DIR / "base" / "templates" / "_base_interface.html"
 EDUCATOR_TEMPLATES_DIR = (
@@ -312,6 +313,39 @@ def test_the_base_select_rule_draws_its_own_chevron_inside_the_end_padding() -> 
     assert len(chevron_rules) == 1
     assert "currentColor" in chevron_rules[0]
     assert "pr-10" in chevron_rules[0]
+
+
+@pytest.mark.parametrize(
+    "selector",
+    [
+        ".panel-surface",
+        ".panel-canvas",
+        ".panel-heading",
+        ".panel-table-selection-bar",
+        ".panel-data-table-compact",
+        ".modal-backdrop-host::backdrop",
+    ],
+)
+def test_the_framework_stylesheet_defines_the_rules_its_templates_use(
+    selector: str,
+) -> None:
+    assert selector in FRAMEWORK_CSS.read_text()
+
+
+def test_the_framework_stylesheet_scopes_the_select_chevron_to_panel_surfaces() -> None:
+    """A select inside a panel surface draws its own chevron without the
+    host's global select rule."""
+    css = FRAMEWORK_CSS.read_text()
+    scoped_rules = re.findall(
+        r"\n    :is\(\.panel-surface, \.panel-canvas\) select \{(.*?)\n    \}",
+        css,
+        re.DOTALL,
+    )
+
+    assert len(scoped_rules) == 1
+    assert "appearance-none" in scoped_rules[0]
+    assert "currentColor" in scoped_rules[0]
+    assert "pr-10" in scoped_rules[0]
 
 
 def test_the_modal_host_and_the_side_panel_clip_horizontal_overflow() -> None:

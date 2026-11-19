@@ -47,11 +47,12 @@ def test_component_styling_stays_out_of_the_shared_stylesheet(
     )
 
 
-def test_input_css_imports_only_the_three_project_stylesheets() -> None:
+def test_input_css_imports_only_the_four_project_stylesheets() -> None:
     """No per-widget stylesheets: a component's CSS lives in its template."""
     imports = re.findall(r'@import\s+"(\./[^"]+)"', INPUT_CSS.read_text())
     assert imports == [
         "./freedom_ls/themes/default/static/themes/default/theme.css",
         "./tailwind.components.css",
+        "./tailwind.panel_framework.css",
         "./tailwind.active_theme.css",
     ]

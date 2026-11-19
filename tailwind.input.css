@@ -27,6 +27,12 @@
  * template carries both. */
 @import "./tailwind.components.css";
 
+/* Panel framework rules: its surfaces, table and dialog rules and the
+ * templates it scans. Imported through this build so they resolve against the
+ * theme tokens above. The file is generated each build by
+ * `manage.py write_panel_framework_css`. */
+@import "./tailwind.panel_framework.css";
+
 /* Active theme — generated each build by `manage.py write_active_theme_css`
  * keyed on the `FLS_THEME` env var. When FLS_THEME=default this re-imports
  * the same baseline (no-op on cascade); for any other slug the active theme's
