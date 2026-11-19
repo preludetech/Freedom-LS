@@ -590,4 +590,28 @@ somewhere on the page to land.
         </div>
     </section>
 
+    <section class="space-y-6">
+        <h2>Editable list</h2>
+
+        <div id="editable-list-default">
+            <p class="text-sm text-muted">Use when a person keeps a short list of entries that each fit on a line, edited in place.</p>
+            {{ editable_lists.default }}
+        </div>
+
+        <div id="editable-list-empty">
+            <p class="text-sm text-muted">Use <code>empty_message</code> to say what the list holds when it has no entries; the Add trigger sits beneath it.</p>
+            {{ editable_lists.empty }}
+        </div>
+
+        <div id="editable-list-cap">
+            <p class="text-sm text-muted">Use a cap when the list may hold only so many entries: the Add trigger gives way to a sentence saying why.</p>
+            {{ editable_lists.cap }}
+        </div>
+
+        <div id="editable-list-table">
+            <p class="text-sm text-muted">Use the table layout when each entry carries enough detail to read as a row.</p>
+            {{ editable_lists.table }}
+        </div>
+    </section>
+
 </div>

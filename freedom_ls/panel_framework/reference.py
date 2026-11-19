@@ -279,6 +279,67 @@ def _render_reason_dialog(
     return render_to_string("panel_framework/reference/_reason_dialog.html", context)
 
 
+def _editable_list_entries(
+    people: Sequence[tuple[str, str]], *, editable: bool = True
+) -> list[dict[str, object]]:
+    """Entries in the shape `EditableListPanel.get_context_data` builds, from
+    `(title, detail)` pairs."""
+    entries: list[dict[str, object]] = []
+    for index, (title, detail) in enumerate(people):
+        neighbours = people[index + 1 : index + 2] or people[index - 1 : index]
+        entries.append(
+            {
+                "pk": index + 1,
+                "title": title,
+                "detail": detail,
+                "accessible_name": f"{title}, {detail}" if detail else title,
+                "edit_url": "#" if editable else "",
+                "remove_url": "#" if editable else "",
+                "focus_after_remove": (
+                    (people.index(neighbours[0]) + 1) if neighbours else ""
+                ),
+            }
+        )
+    return entries
+
+
+def _render_editable_list(
+    *,
+    region_id: str,
+    layout: str,
+    entries: list[dict[str, object]],
+    cap_line: str = "",
+) -> SafeString:
+    """The editable list's panel template over static data, the way the panel
+    draws it: no model and no query behind it."""
+    context: dict[str, object] = {
+        "panel": {"card_flush": layout == "table"},
+        "name": region_id,
+        "base_url": "#",
+        "title": "Emergency contacts",
+        "actions": [],
+        "region_id": region_id,
+        "region_template_name": "",
+        "refresh_events": [],
+        "layout": layout,
+        "noun": "contacts",
+        "empty_message": "No emergency contacts yet.",
+        "entries": entries,
+        "add_trigger": (
+            None
+            if cap_line
+            else {"label": "Add contact", "variant": "secondary", "action_url": "#"}
+        ),
+        "cap_line": cap_line,
+        "entry_count": (
+            f"{len(entries)} contact"
+            if len(entries) == 1
+            else f"{len(entries)} contacts"
+        ),
+    }
+    return render_to_string("panel_framework/panels/editable_list.html", context)
+
+
 def example_context(request: HttpRequest) -> dict[str, object]:
     """Every example's context. The table, lazy-panel and dialog examples
     are rendered by the framework's own classes, so the page shows what a
@@ -329,8 +390,35 @@ def example_context(request: HttpRequest) -> dict[str, object]:
             "data-table-compact-region",
         ),
     }
+    contacts = [
+        ("Nomsa Dlamini", "Mother, 082 555 0101"),
+        ("Pieter van Wyk", "Neighbour, 083 555 0142"),
+        ("Aisha Patel", ""),
+    ]
+    editable_lists = {
+        "default": _render_editable_list(
+            region_id="editable-list-default-region",
+            layout="list",
+            entries=_editable_list_entries(contacts),
+        ),
+        "empty": _render_editable_list(
+            region_id="editable-list-empty-region", layout="list", entries=[]
+        ),
+        "cap": _render_editable_list(
+            region_id="editable-list-cap-region",
+            layout="list",
+            entries=_editable_list_entries(contacts),
+            cap_line="You can add up to 3 contacts. Remove one to add another.",
+        ),
+        "table": _render_editable_list(
+            region_id="editable-list-table-region",
+            layout="table",
+            entries=_editable_list_entries(contacts),
+        ),
+    }
     return {
         **EXAMPLE_CONTEXT,
+        "editable_lists": editable_lists,
         "reason_dialogs": reason_dialogs,
         "lazy_panel": lazy_panel,
         "data_tables": data_tables,

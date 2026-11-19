@@ -60,6 +60,7 @@ COMPONENT_NAMES = [
     "callout",
     "reason-dialog",
     "lazy-panel",
+    "editable-list",
     "data-table",
 ]
 
@@ -428,3 +429,14 @@ def test_reference_callout_wrapper_spaces_its_explanatory_line_from_the_callout(
     (wrapper,) = root.xpath(f'//div[@id="callout-{tone}"]')
     assert wrapper.xpath("./p")
     assert "space-y-" in wrapper.get("class", "")
+
+
+@pytest.mark.parametrize("state", ["default", "empty", "cap", "table"])
+def test_reference_shows_an_editable_list_in_each_state(state: str) -> None:
+    assert f'id="editable-list-{state}"' in _render_examples()
+
+
+def test_reference_editable_list_cap_example_hides_the_add_trigger() -> None:
+    block = _example_block(_render_examples(), "editable-list-cap")
+    assert "data-editable-list-cap" in block
+    assert 'data-editable-list-action="add_entry"' not in block
