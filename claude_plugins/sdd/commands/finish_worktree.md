@@ -101,8 +101,30 @@ This step is the checkpoint run. Step 7's main-moved loop follows it again after
 3. Keep every report line for Step 8.
 
 A failure is `status: failed · reason: checkpoint run failed before landing: <tests>`; nothing is
-moved or landed until a human fixes it. A rebased branch has also passed pre-commit; there is
-nothing to re-run for that.
+moved or landed until a human fixes it, except for a flaky test, handled below. A rebased branch has
+also passed pre-commit; there is nothing to re-run for that.
+
+## Flaky tests
+
+When the run in item 2 reports failing tests:
+
+1. Delegate to `sdd:sdd-mechanic`: run each failing test on its own, by node ID, three times, as the
+   tier definition's single test run, and return the pass count per test. A test with 0 passes is a
+   real failure: report it as above.
+2. A test with at least one pass is flaky. Handle the flaky tests one at a time, because they share
+   the worktree and its database. For each, spawn a `general-purpose` sub-agent with this brief,
+   every input written into the prompt: the test's node ID, its failure output, and, when
+   `Flaky test guide` under `## Test Hooks` (read the way item 2 reads `Pre-test rebuild`) is a
+   non-blank path, that path to read first. Its rules:
+   - Find and fix the root cause on the current branch.
+   - Never skip, delete, mark or retry-wrap the test to get a pass.
+   - Prove the fix with 10 consecutive passing runs of the tier definition's single test run.
+   - Commit as `fix flaky test <test id>`.
+   - Return `status: ok · commit: <sha>` or `status: failed · diagnosis: <one line>`.
+3. A `failed` return gets one more sub-agent, briefed the same way plus the first diagnosis. A second
+   `failed` is `status: failed · reason: flaky test <id> not fixed: <diagnosis>`.
+4. After the fixes, `git push`, then follow the checkpoint run again from its start. A test already
+   fixed once that fails again is a real failure. Keep each fix's commit for Step 8.
 
 # Step 2: Tear down any per-worktree resources
 
@@ -271,6 +293,7 @@ Report:
 - the main-worktree commit, when one was made: "main-worktree commit <sha>: <paths>"
 - the script's `synced: pushed` and `pushed:` lines, as "main pushed"
 - every test report line from Step 1
+- each flaky test fix, with its commit
 - the `carried:` count, when the script printed one
 - the leftover batch worktrees removed, if any
 - that the worktree directory and the branch still exist; removing them is the `(user)` item that

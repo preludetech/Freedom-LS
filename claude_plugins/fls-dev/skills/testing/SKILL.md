@@ -10,6 +10,8 @@ Read `Skill(ds:testing)` first for the pytest/TDD/AAA methodology. This overlay 
 
 Full FLS patterns and the de-branding techniques: `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` (the FLS addendum to the `ds` testing resource) and `${CLAUDE_PLUGIN_ROOT}/resources/factory_boy.md`.
 
+A test that passes on one run and fails on another: `${CLAUDE_PLUGIN_ROOT}/resources/flaky_tests.md`.
+
 ## Test organisation and hygiene
 
 Read "Test organisation and hygiene" in `ds:testing`'s resource first; what follows is the FLS instance of each rule.

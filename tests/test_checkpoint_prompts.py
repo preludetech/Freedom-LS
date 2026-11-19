@@ -11,7 +11,8 @@ from tests.plugin_markdown import code_fragments
 
 pytestmark = pytest.mark.dev_tooling
 
-COMMANDS = Path(__file__).resolve().parents[1] / "claude_plugins/sdd/commands"
+ROOT = Path(__file__).resolve().parents[1]
+COMMANDS = ROOT / "claude_plugins/sdd/commands"
 TIER_FULL = re.compile(r"<tier>`?:? *`full`")
 
 
@@ -85,3 +86,26 @@ def test_finish_worktree_runs_no_git_command_with(forbidden: str) -> None:
     fragments = code_fragments((COMMANDS / "finish_worktree.md").read_text())
 
     assert [f for f in fragments if "git" in f and forbidden in f] == []
+
+
+@pytest.mark.parametrize(
+    "wording",
+    ["general-purpose", "Flaky test guide", "fix flaky test", "not fixed:"],
+)
+def test_finish_worktree_spells_the_flaky_test_wording(wording: str) -> None:
+    assert wording in (COMMANDS / "finish_worktree.md").read_text()
+
+
+def test_init_template_holds_the_flaky_test_guide_key_under_test_hooks() -> None:
+    text = (COMMANDS / "init.md").read_text()
+    template = text.split("## Test Hooks\n", 1)[1].split("\n   ## ", 1)[0]
+
+    assert "- Flaky test guide:" in template
+
+
+def test_configured_flaky_test_guide_exists() -> None:
+    config = (ROOT / ".claude/sdd/config.md").read_text()
+    match = re.search(r"^- Flaky test guide: *(\S+)$", config, re.MULTILINE)
+
+    assert match is not None
+    assert (ROOT / match.group(1)).is_file()

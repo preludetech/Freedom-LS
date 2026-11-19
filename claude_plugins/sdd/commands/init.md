@@ -137,7 +137,9 @@ teardown scripts to run, and `/sdd:implement_plan` looks here for the `Parallel 
 (`protected/pre_step_rebase.md`) looks here for the rebase command and front-end check it follows
 before a feature-branch SDD step runs. **Design Hooks**: `/sdd:implement_plan` looks here for the
 design check it follows after each slice that builds a designed screen. **Test Hooks**:
-`protected/run_test_tier.md` looks here for the file that defines the test tiers. **Vocabulary Sources**: the idea, spec and plan commands look
+`protected/run_test_tier.md` looks here for the file that defines the test tiers, and `/sdd:finish_worktree` looks here for the
+flaky test guide it hands a sub-agent that fixes a flaky test (blank: the sub-agent works without a
+guide). **Vocabulary Sources**: the idea, spec and plan commands look
 here for the project's own definitions of its domain words. **Plan Review Hooks**:
 `/sdd:plan_from_spec` looks here for project-owned review briefs it spawns after its built-in
 review dimensions. **Review Hooks**: `/sdd:implement_plan` looks here for the comment standard and
@@ -183,6 +185,7 @@ parity and future settings.
 
    - Test tiers:
    - Pre-test rebuild:
+   - Flaky test guide:
 
    ## Plan Review Hooks
 
@@ -328,7 +331,7 @@ parity and future settings.
    model class names and field names are the vocabulary of last resort.
 3. If it already exists, add the `## Worktree Scripts`, `## Rebase Hooks`, `## Design Hooks`, `## Test Hooks`,
    `## Plan Review Hooks`, `## Review Hooks`, `## Documentation Hooks`, `## QA Hooks`, `## QA Login`, `## QA Dev Data`,
-   `## Testing Skills`, `## Rule Files` and `## Vocabulary Sources` sections, and any key only if missing (including `Parallel batches`, `Memory capacity`, `Batch memory (MB)` and `Worker memory (MB)` under `## Worktree Scripts`), using the blank default. Preserve every existing value,
+   `## Testing Skills`, `## Rule Files` and `## Vocabulary Sources` sections, and any key only if missing (including `Flaky test guide` under `## Test Hooks`, `Parallel batches`, `Memory capacity`, `Batch memory (MB)` and `Worker memory (MB)` under `## Worktree Scripts`), using the blank default. Preserve every existing value,
    comment, and ordering.
 4. Tell the user in the summary to fill in the paths and the vocabulary sources themselves.
 
@@ -359,8 +362,8 @@ in-place edits.
    `Front-end check` keys (blank values are valid).
 5. `.claude/sdd/config.md` has a `## Design Hooks` section with a `Design check` key (a blank value
    is valid).
-6. `.claude/sdd/config.md` has a `## Test Hooks` section with `Test tiers` and `Pre-test rebuild`
-   keys (blank values are valid).
+6. `.claude/sdd/config.md` has a `## Test Hooks` section with `Test tiers`, `Pre-test rebuild`
+   and `Flaky test guide` keys (blank values are valid).
 7. `.claude/sdd/config.md` has a `## Plan Review Hooks` section (an empty list is valid).
 8. `.claude/sdd/config.md` has a `## Review Hooks` section with both `Comment standard` and
    `Test standard` keys (blank values are valid).
@@ -387,7 +390,7 @@ in-place edits.
 Print what was done, then the outstanding actions: every Step 0 WARN, anything Step 5 flagged,
 and each worktree setting, allow entry or ignore line that was not merged.
 Point the user at `.claude/sdd/config.md` to fill in the Worktree Scripts Setup and Teardown paths, Parallel batches count and the Memory capacity command with its two sizes,
-the Rebase Hooks Rebase command and Front-end check paths, the Design Hooks Design check path, the Test Hooks Test tiers and Pre-test rebuild paths, the Plan Review Hooks and Documentation Hooks lists, the Review
+the Rebase Hooks Rebase command and Front-end check paths, the Design Hooks Design check path, the Test Hooks Test tiers, Pre-test rebuild and Flaky test guide paths, the Plan Review Hooks and Documentation Hooks lists, the Review
 Hooks Comment standard and Test standard paths, the QA Hooks, QA Login, QA Dev Data and Testing Skills values, and to list the project's Vocabulary Sources.
 
 If `claude.sh` has no `--plugin-dir` line whose final segment is `productivity`, list

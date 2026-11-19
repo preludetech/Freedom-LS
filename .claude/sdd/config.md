@@ -22,6 +22,7 @@
 
 - Test tiers: claude_plugins/django-stack/resources/test_tiers.md
 - Pre-test rebuild: .claude/fls-dev/scripts/rebuild_after_rebase.sh
+- Flaky test guide: claude_plugins/fls-dev/resources/flaky_tests.md
 
 ## Plan Review Hooks
 
