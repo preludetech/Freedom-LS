@@ -19,7 +19,7 @@ from .helpers import interface_url
 pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
 
-def test_save_and_add_another_keeps_the_dialog_open_and_save_opens_the_last_cohort(
+def test_add_and_add_another_keeps_the_dialog_open_and_add_opens_the_last_cohort(
     live_server,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
@@ -33,13 +33,13 @@ def test_save_and_add_another_keeps_the_dialog_open_and_save_opens_the_last_coho
     page.get_by_role("button", name="Create cohort").first.click()
     dialog = page.locator("#app-modal")
     dialog.get_by_label("Name").fill("First Cohort")
-    dialog.get_by_role("button", name="Save and add another").click()
+    dialog.get_by_role("button", name="Add and add another").click()
 
     expect(dialog).to_be_visible()
     expect(dialog.get_by_label("Name")).to_have_value("")
 
     dialog.get_by_label("Name").fill("Second Cohort")
-    dialog.get_by_role("button", name="Save", exact=True).click()
+    dialog.get_by_role("button", name="Add", exact=True).click()
 
     expect(page.locator("#instance-title")).to_have_text("Second Cohort")
     second = Cohort.objects.get(organisation=organisation, name="Second Cohort")

@@ -501,7 +501,7 @@ def test_delete_action_denies_with_no_instance(mock_site_context: Site) -> None:
 def test_create_action_form_valid_creates_instance_and_redirects(
     mock_site_context: Site,
 ) -> None:
-    """ "Save" creates the instance and answers 204 with HX-Location, never
+    """ "Add" creates the instance and answers 204 with HX-Location, never
     HX-Redirect."""
     action = StubCreateAction()
     request = RequestFactory().post("/", {"name": "New Item"})
@@ -523,13 +523,13 @@ def test_create_action_form_valid_creates_instance_and_redirects(
 
 
 @pytest.mark.django_db
-def test_create_action_save_and_add_another_returns_empty_form_and_trigger(
+def test_create_action_add_another_returns_empty_form_status_and_trigger(
     mock_site_context: Site,
 ) -> None:
-    """'Save and add another' returns 200 with the blank form and the domain
-    event, and never closes the modal."""
+    """'Add and add another' returns 200 with the blank form, a sentence naming
+    what was added and the domain event, and never closes the modal."""
     action = StubCreateAction()
-    request = RequestFactory().post("/", {"name": "Item A", "action": "save_and_add"})
+    request = RequestFactory().post("/", {"name": "Item A", "action": "add_another"})
     request.user = make_staff_user()
 
     response = action.handle_submit(_ctx(request, None, "/items"))
@@ -541,6 +541,48 @@ def test_create_action_save_and_add_another_returns_empty_form_and_trigger(
     assert "HX-Redirect" not in response
     content = response.content.decode()
     assert "Create Item" in content
+    assert f"Added {item}." in content
+
+
+@pytest.mark.django_db
+def test_create_action_posting_the_retired_value_adds_and_navigates(
+    mock_site_context: Site,
+) -> None:
+    action = StubCreateAction()
+    request = RequestFactory().post("/", {"name": "Item B", "action": "save_and_add"})
+    request.user = make_staff_user()
+
+    response = action.handle_submit(_ctx(request, None, "/items"))
+
+    item = StubModel.objects.get(name="Item B")
+    assert response.status_code == 204
+    assert response["HX-Trigger"] == build_hx_trigger(
+        {"itemChanged": [str(item.pk)]}, close_modal=True
+    )
+
+
+def test_create_action_offers_add_and_add_another_then_add() -> None:
+    labels = [button["label"] for button in StubCreateAction().submit_buttons]
+
+    assert labels == ["Add and add another", "Add"]
+
+
+@pytest.mark.django_db
+def test_add_another_response_stays_open_with_an_unbound_form_and_a_status(
+    mock_site_context: Site,
+) -> None:
+    request = RequestFactory().post("/", {"name": "Item C", "action": "add_another"})
+    request.user = make_staff_user()
+
+    response = StubCreateAction().add_another_response(
+        _ctx(request, None, "/items"), {"itemChanged": ["7"]}, "Added Item C."
+    )
+
+    content = response.content.decode()
+    assert response.status_code == 200
+    assert response["HX-Trigger"] == build_hx_trigger({"itemChanged": ["7"]})
+    assert "Added Item C." in content
+    assert 'value="Item C"' not in content
 
 
 @pytest.mark.django_db

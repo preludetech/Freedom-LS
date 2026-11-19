@@ -125,10 +125,10 @@ def test_create_modal_lifecycle(
     # A duplicate name moves focus to the error summary.
     name_field = _open_create_modal(page)
     name_field.fill("Existing")
-    page.get_by_role("button", name="Save", exact=True).click()
+    page.get_by_role("button", name="Add", exact=True).click()
     expect(page.locator("[data-error-summary]")).to_be_focused()
 
-    # Fixing the name and choosing "Save and add another" leaves a blank form.
+    # Fixing the name and choosing "Add and add another" leaves a blank form.
     # The reader is on page 2, and rows sort by name, so "zz-" rows land there.
     page.get_by_role("button", name="Cancel").click()
     expect(modal).to_be_hidden()
@@ -139,7 +139,7 @@ def test_create_modal_lifecycle(
 
     name_field = _open_create_modal(page)
     name_field.fill("zz-alpha")
-    page.get_by_role("button", name="Save and add another").click()
+    page.get_by_role("button", name="Add and add another").click()
     expect(_name_cells(page).get_by_text("zz-alpha", exact=True)).to_be_visible()
     expect(modal).to_be_visible()
     expect(name_field).to_have_value("")
@@ -154,7 +154,7 @@ def test_create_modal_lifecycle(
 
     # A second create keeps both rows.
     name_field.fill("zz-beta")
-    page.get_by_role("button", name="Save and add another").click()
+    page.get_by_role("button", name="Add and add another").click()
     expect(_name_cells(page).get_by_text("zz-beta", exact=True)).to_be_visible()
     expect(_name_cells(page).get_by_text("zz-alpha", exact=True)).to_be_visible()
     expect(create_button).to_have_count(1)
@@ -172,7 +172,7 @@ def test_create_modal_lifecycle(
     page.get_by_role("button", name="Keep editing").click()
     expect(name_field).to_have_value("Dirty")
 
-    # Enter in the name field submits as Save, not "Save and add another".
+    # Enter in the name field submits as Add, not "Add and add another".
     name_field.fill("zz-delta")
     name_field.press("Enter")
     expect(page.locator("#instance-title")).to_have_text("zz-delta")
@@ -182,12 +182,12 @@ def test_create_modal_lifecycle(
     expect(page).to_have_url(detail_url)
     expect(page.locator("#main-content")).to_be_focused()
 
-    # Save closes the modal and the navigation has a history entry.
+    # Add closes the modal and the navigation has a history entry.
     page.go_back()
     expect(page).to_have_url(page2_url)
     name_field = _open_create_modal(page)
     name_field.fill("zz-gamma")
-    page.get_by_role("button", name="Save", exact=True).click()
+    page.get_by_role("button", name="Add", exact=True).click()
     expect(modal).to_be_hidden()
     gamma = StubModel.objects.get(name="zz-gamma")
     expect(page).to_have_url(f"{live_server.url}{_LIST_PATH}{gamma.pk}")
@@ -244,7 +244,7 @@ def test_create_modal_lifecycle(
         expect(modal).to_be_hidden()
 
 
-def test_save_disables_every_submit_while_pending(
+def test_add_disables_every_submit_while_pending(
     page: Page,
     live_server: pytest_django.live_server_helper.LiveServer,
     live_server_site: Site,
@@ -262,12 +262,12 @@ def test_save_disables_every_submit_while_pending(
     # Located by CSS, not accessible name: the clicked button's own label
     # swaps to its loading text once the request is in flight.
     submit_buttons = page.locator("#app-modal-body button[type='submit']:not([hidden])")
-    save_and_add_button = submit_buttons.nth(0)
-    save_button = submit_buttons.nth(1)
-    save_button.click()
+    add_another_button = submit_buttons.nth(0)
+    add_button = submit_buttons.nth(1)
+    add_button.click()
 
-    expect(save_and_add_button).to_be_disabled()
-    expect(save_button).to_be_disabled()
+    expect(add_another_button).to_be_disabled()
+    expect(add_button).to_be_disabled()
 
     for _ in range(100):
         if held:
@@ -277,7 +277,7 @@ def test_save_disables_every_submit_while_pending(
     expect(page.locator("#app-modal")).to_be_hidden()
 
 
-def test_double_clicking_save_creates_one_row(
+def test_double_clicking_add_creates_one_row(
     page: Page,
     live_server: pytest_django.live_server_helper.LiveServer,
     live_server_site: Site,
@@ -294,7 +294,7 @@ def test_double_clicking_save_creates_one_row(
     name_field.fill("Gamma")
     page.route("**/__actions/create_item", _count_then_continue)
 
-    page.get_by_role("button", name="Save", exact=True).dblclick()
+    page.get_by_role("button", name="Add", exact=True).dblclick()
 
     expect(page.locator("#app-modal")).to_be_hidden()
     assert post_count["total"] == 1

@@ -26,6 +26,7 @@ from freedom_ls.panel_framework.forms import ReasonForm
 from freedom_ls.panel_framework.widgets import PanelClearableFileInput
 
 __all__ = [
+    "ADD_ANOTHER_BUTTON",
     "CHOOSE_AGAIN_MESSAGE",
     "ConfirmAction",
     "CreateInstanceAction",
@@ -48,6 +49,16 @@ __all__ = [
 ]
 
 CHOOSE_AGAIN_MESSAGE = "Choose the file again. It is not kept when the form has errors."
+
+#: The submit button that adds the entry and reopens the dialog empty. A form
+#: dialog offers it ahead of its plain "Add" button.
+ADD_ANOTHER_BUTTON: dict[str, str] = {
+    "label": "Add and add another",
+    "variant": "secondary",
+    "name": "action",
+    "value": "add_another",
+    "loading_text": "Adding…",
+}
 
 
 def _model_capability(model: type[Model] | Model, verb: str) -> str:
@@ -441,6 +452,26 @@ class FormPanelAction(ModalPanelAction):
     def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
         raise NotImplementedError
 
+    def wants_add_another(self, ctx: PanelContext) -> bool:
+        return ctx.request.POST.get("action") == ADD_ANOTHER_BUTTON["value"]
+
+    def add_another_response(
+        self, ctx: PanelContext, events: dict[str, list[str]], status_message: str
+    ) -> HttpResponse:
+        """The dialog again with an empty form and a sentence saying what was
+        just added. The events carry no closeModal, so the dialog stays open
+        while the panels behind it refresh."""
+        context = {
+            **self.get_fragment_context(ctx, self.get_unbound_form(ctx)),
+            "status_message": status_message,
+        }
+        html = render_to_string(
+            self.get_fragment_template_name(), context, request=ctx.request
+        )
+        response = HttpResponse(html)
+        response["HX-Trigger"] = build_hx_trigger(events)
+        return response
+
     def form_invalid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
         """Re-render the dialog with the form's errors and status 422."""
         html = render_to_string(
@@ -460,13 +491,8 @@ class CreateInstanceAction(FormPanelAction):
 
     variant: str = "primary"
     submit_buttons: list[dict[str, str]] = [
-        {
-            "label": "Save and add another",
-            "variant": "secondary",
-            "name": "action",
-            "value": "save_and_add",
-        },
-        {"label": "Save", "variant": "primary"},
+        ADD_ANOTHER_BUTTON,
+        {"label": "Add", "variant": "primary", "loading_text": "Adding…"},
     ]
 
     def get_success_url(self, ctx: PanelContext, instance: Model) -> str:
@@ -492,15 +518,8 @@ class CreateInstanceAction(FormPanelAction):
     def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
         instance = cast(forms.ModelForm, form).save()
         events = self.get_success_events(instance)
-        if ctx.request.POST.get("action") == "save_and_add":
-            html = render_to_string(
-                self.get_fragment_template_name(),
-                self.get_fragment_context(ctx, self.get_unbound_form(ctx)),
-                request=ctx.request,
-            )
-            response = HttpResponse(html)
-            response["HX-Trigger"] = build_hx_trigger(events)
-            return response
+        if self.wants_add_another(ctx):
+            return self.add_another_response(ctx, events, f"Added {instance}.")
         response = navigation_response(self.get_success_url(ctx, instance))
         response["HX-Trigger"] = build_hx_trigger(events, close_modal=True)
         return response

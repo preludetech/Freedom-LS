@@ -135,7 +135,7 @@ def test_educator_manages_cohorts_and_learners(
     page.get_by_role("button", name="Create cohort").click()
     modal = page.locator("#app-modal")
     modal.get_by_label("Name").fill("Old Name")
-    modal.get_by_role("button", name="Save", exact=True).click()
+    modal.get_by_role("button", name="Add", exact=True).click()
     expect(modal).to_be_hidden()
     created = Cohort.objects.get(name="Old Name")
     assign_perm("freedom_ls_learner_management.change_cohort", educator_user, created)
@@ -243,7 +243,7 @@ def test_educator_manages_cohorts_and_learners(
     page.get_by_role("button", name="Create cohort").click()
     page.locator("#app-modal").get_by_label("Name").fill("Should never exist")
     deactivate_object_role(educator_user, organisation_a, "organisation_admin")
-    modal.get_by_role("button", name="Save", exact=True).click()
+    modal.get_by_role("button", name="Add", exact=True).click()
     heading = page.get_by_role(
         "heading", name="You can't use “Create cohort” here any more"
     )

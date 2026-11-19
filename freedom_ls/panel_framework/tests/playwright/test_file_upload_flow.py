@@ -267,7 +267,7 @@ def test_dialog_without_a_file_field_shows_the_generic_request_error(
     expect(dialog).to_be_visible()
 
     dialog.get_by_label("Name").fill("Widget")
-    dialog.get_by_role("button", name="Save", exact=True).click()
+    dialog.get_by_role("button", name="Add", exact=True).click()
     _held_request(page, held, 0).fulfill(status=500, body="Server error")
 
     expect(dialog.get_by_role("alert")).to_have_text(_GENERIC_MESSAGE)

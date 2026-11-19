@@ -258,7 +258,7 @@ def _create_url(organisation: Organisation) -> str:
 
 
 @pytest.mark.django_db
-def test_the_create_form_footer_offers_cancel_then_save_and_add_another_then_save(
+def test_the_create_form_footer_offers_cancel_then_add_and_add_another_then_add(
     mock_site_context: Site, logged_in_client: Callable[..., Client]
 ) -> None:
     organisation = OrganisationFactory()
@@ -275,11 +275,11 @@ def test_the_create_form_footer_offers_cancel_then_save_and_add_another_then_sav
         for button in form.cssselect("button")
         if button.text_content().strip()
     ]
-    assert labels == ["Cancel", "Save and add another", "Save"]
+    assert labels == ["Cancel", "Add and add another", "Add"]
 
 
 @pytest.mark.django_db
-def test_save_and_add_another_answers_200_with_an_empty_form_and_the_cohort_changed_trigger(
+def test_add_and_add_another_answers_200_with_an_empty_form_and_the_cohort_changed_trigger(
     mock_site_context: Site, logged_in_client: Callable[..., Client]
 ) -> None:
     organisation = OrganisationFactory()
@@ -287,7 +287,7 @@ def test_save_and_add_another_answers_200_with_an_empty_form_and_the_cohort_chan
 
     response = client.post(
         _create_url(organisation),
-        {"name": "First Cohort", "action": "save_and_add"},
+        {"name": "First Cohort", "action": "add_another"},
         HTTP_HX_REQUEST="true",
     )
 
@@ -301,7 +301,7 @@ def test_save_and_add_another_answers_200_with_an_empty_form_and_the_cohort_chan
 
 
 @pytest.mark.django_db
-def test_save_and_add_another_creates_the_cohort(
+def test_add_and_add_another_creates_the_cohort(
     mock_site_context: Site, logged_in_client: Callable[..., Client]
 ) -> None:
     organisation = OrganisationFactory()
@@ -309,7 +309,7 @@ def test_save_and_add_another_creates_the_cohort(
 
     client.post(
         _create_url(organisation),
-        {"name": "First Cohort", "action": "save_and_add"},
+        {"name": "First Cohort", "action": "add_another"},
         HTTP_HX_REQUEST="true",
     )
 
