@@ -8,25 +8,18 @@ A design drawn in Claude lives in claude.ai, not in the repo. It is a Design Art
 made from the Design Artifact type, a canvas of artboards. This command copies one into a spec
 directory: `design_prompt.md` (what the person pasted), `design_source/` (the synced files) and
 `design_screenshots/` (one PNG per artboard), plus `<spec-dir>/design.md`, which every later step
-reads. That file says where the design came from, how to read and treat it, and which screens it
-covers. The command then points every spec that builds to the design at `design.md`.
+reads: where the design came from, how to read and treat it, and which screens it covers. The
+command then points every spec that builds to the design at `design.md`.
 
-A design is a visual reference, never a source of scope. It was drawn on a separate platform that
-knows nothing of this project's features, plans or theme, so it invents controls, screens and data
-the project does not have, and styles them in another theme. The specs and the existing
-functionality decide what gets built; the design only shows how it should look. So this command
-asks the user nothing about what the design draws: anything no spec asks for is left out, silently.
+A design is a visual reference, never a source of scope. The specs and the existing functionality
+decide what gets built. So this command asks the user nothing about what the design draws: anything
+no spec asks for is left out, silently.
 
 It runs at **depth 0**. It spawns the mechanic that runs the screenshot script and the mechanic
-that commits.
-
-The design belongs to the work in progress. Every file this command writes goes into the spec
-directory this branch is working on, inside the current worktree, and is committed to the current
-branch. Never write into another worktree, never switch branches, and never commit to a branch
-other than the current one, even when another worktree holds a spec the design also serves.
-
-It does not rebase: it only adds spec files to the current branch, and the next SDD step's
-pre-step rebase picks main up.
+that commits. Every file it writes goes into the spec directory this branch is working on, inside
+the current worktree, and is committed to the current branch. Never write into another worktree,
+never switch branches, and never commit to another branch, even when another worktree holds a spec
+the design also serves. It does not rebase.
 
 Inputs from the caller: `<spec-dir>`, the design input (a Design Artifact link, a handoff prompt or
 a file path holding either), optional notes, the design-access answer, and `mode: hook`, from a command
@@ -72,8 +65,7 @@ link and notes, following `${CLAUDE_PLUGIN_ROOT}/resources/writing_standard.md`.
 1. Load the tool when it is deferred: `ToolSearch` with `select:Artifact`. Call `list` with the
    link as `url` and `scope: "files"`. Record the version string from the listing's header. Then
    probe the access: `read` `project/canvas.json` with `path` and `out_dir`
-   `<spec-dir>/design_source`. This runs before anything in `design_source/` is touched, so a
-   design that cannot be read leaves the previous sync in place. If the listing has no
+   `<spec-dir>/design_source`. Do this before anything in `design_source/` is touched. If the listing has no
    `project/canvas.json`, or the probe returns a summary instead of the file, stop: say whether
    the user lacks edit access (a summary) or the link is not a Design Artifact with a canvas (no
    `project/canvas.json`), and point at "Registering a design" in `commands/README.md`. In hook
@@ -99,9 +91,7 @@ link and notes, following `${CLAUDE_PLUGIN_ROOT}/resources/writing_standard.md`.
 4. `read` `artifact-type/dc-runtime.js` with `out_dir` `<spec-dir>/design_source`; it lands at
    `design_source/artifact-type/dc-runtime.js`. Move it to
    `<spec-dir>/design_source/project/support.js` (`Bash` `mv`) and remove the now-empty
-   `<spec-dir>/design_source/artifact-type/` (`Bash` `rmdir`), because every artboard loads
-   `./support.js` from its own folder and the canvas serves it only at run time; the screenshot
-   script serves that one copy under every artboard folder. No other type file is synced.
+   `<spec-dir>/design_source/artifact-type/` (`Bash` `rmdir`). No other type file is synced.
 5. Read the link through the `Artifact` tool only. `WebFetch`, a browser, Playwright and `curl`
    have no claude.ai login.
 
@@ -175,17 +165,13 @@ nobody mistakes it for an oversight.
 ## Step 4: Screenshot the design
 
 Delegate to `sdd:sdd-mechanic`: run `<script> "<spec-dir>"` and report its exit status and output.
-Resolve `PLUGINS_ROOT` by `claude_plugins/sdd/commands/init.md`'s "The `PLUGINS_ROOT` rule": the
-`PLUGINS_ROOT="…"` line in `claude.sh` at the project root, else the agreeing `PLUGINS_ROOT="…"`
-line in the `.sh` files under `.claude/*/scripts/` whose value is not `__PLUGINS_ROOT__` (stop if
-two disagree), else `.`. The path is `<PLUGINS_ROOT>/claude_plugins/sdd/scripts/design_screenshots.sh`,
+Resolve `PLUGINS_ROOT` by `claude_plugins/sdd/commands/init.md`'s "The `PLUGINS_ROOT` rule". The path is `<PLUGINS_ROOT>/claude_plugins/sdd/scripts/design_screenshots.sh`,
 written without a `./` prefix when `PLUGINS_ROOT` is `.`.
 
-The script reads `design_source/project/canvas.json` and writes one PNG per artboard to
-`<spec-dir>/design_screenshots/`, named as `design.md` says. Its stderr names each artboard's size
-and each `missing blob` per artboard. An artboard that renders blank gets a `<path>: rendered
-blank` line and no PNG while the others are still written, and the run ends in a `rendered blank`
-or `artboard file not found` error on exit 1. `screenshots/` is `do_qa`'s and gets wiped.
+The script writes one PNG per artboard to `<spec-dir>/design_screenshots/`, named as `design.md`
+says. A blank artboard gets a `<path>: rendered blank` line and no PNG, and the run ends in a
+`rendered blank` or `artboard file not found` error on exit 1. Never write the PNGs to
+`screenshots/`: it is `do_qa`'s and gets wiped.
 
 Done when the mechanic has reported an exit status. A non-zero exit goes in the summary with the
 script's message, and the registration still commits.

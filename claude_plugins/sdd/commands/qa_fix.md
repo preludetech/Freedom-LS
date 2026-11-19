@@ -8,13 +8,10 @@ A QA run fixes what needs no human and files the rest in `todo.md` as **open ite
 turns on a product decision, a fix that failed, a file to keep or delete. This command researches
 each open item, takes the user's decision on it, and makes the fixes.
 
-It runs at **depth 0**: it asks the user, spawns agents and drives the browser (the
-`claude-code-authoring` skill explains why the first two need depth 0).
+It runs at **depth 0**: it asks the user, spawns agents and drives the browser.
 
-A passing test does not prove a page looks right. A fix whose test passes can leave the page
-visibly broken, so every fix that changes what a page shows is screenshotted and looked at before
-it counts as fixed (Step 6). A fix that changes nothing on screen gets no browser and no
-screenshot.
+Every fix that changes what a page shows is screenshotted and looked at before it counts as fixed
+(Step 6). A fix that changes nothing on screen gets no browser and no screenshot.
 
 ## Inputs
 
@@ -164,8 +161,7 @@ For each item awaiting the visual check, in file order, at each viewport it name
 
 1. Resize, navigate fresh to its URL and click through to the state.
 2. Take the screenshot (no `filename`) and run the layout probe.
-3. **Read the screenshot file.** The server returns no image bytes, so a shot you have not read
-   is a shot you have not looked at.
+3. **Read the screenshot file.** The server returns no image bytes.
 4. Write down what the shot shows, region by region, then judge it against the expected behaviour
    (the user's decision) and against the bug as the report's screenshot shows it. Judge from the
    shot, never from the fixer's report or the test result.
@@ -259,4 +255,4 @@ when it changed, `<spec-dir>/screenshots/fixed/` when Step 6 wrote it, and every
 - the lines still unticked in `todo.md`, by name.
 
 Say which fixes were checked on the page and which were proven by tests alone because they change
-nothing a page shows. The project's QA command re-runs the whole plan.
+nothing a page shows.

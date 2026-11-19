@@ -4,14 +4,13 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, Skill
 argument-hint: [apply | <spec-dir to cut>]
 ---
 
-This command owns the spec roadmap, `spec_dd/1. next/roadmap.md`: what is up next, then every
-spec waiting in `spec_dd/1. next/` or in flight in `spec_dd/2. in progress/`, grouped by feature,
-with its state, its blockers and a dependency diagram. It runs at **depth 0**.
+This command owns the spec roadmap, `spec_dd/1. next/roadmap.md`: what is up next, then every spec
+in `spec_dd/1. next/` or `spec_dd/2. in progress/`, grouped by feature. It runs at **depth 0**.
 
 Read `${CLAUDE_PLUGIN_ROOT}/resources/roadmap_format.md` first. It defines the file's shape, how a
-directory is classified, and the bullet grammar. Everything below assumes it. The script
-`${CLAUDE_PLUGIN_ROOT}/scripts/roadmap.py` derives statuses, "Up next", the priority order and
-colours and the diagrams; never write those by hand. The priority itself lives in
+directory is classified, and the bullet grammar. The script
+`${CLAUDE_PLUGIN_ROOT}/scripts/roadmap.py` derives statuses, "Up next", the priority order, colours
+and the diagrams; never write those by hand. The priority itself lives in
 `spec_dd/1. next/priority.md`, which the owner edits.
 
 Two modes:
@@ -22,34 +21,11 @@ Two modes:
   the research and the questioning it needs, cut it into ordered sibling specs, write one
   decision-complete idea per spec, and add the effort to the roadmap. A cut ends with a sync.
 
-## Fan-out recipe (shared)
+## Fan-out recipe
 
-This command runs at **depth 0** and fans work out to sub-agents (the `claude-code-authoring`
-skill explains why).
-
-1. **Start the work; don't ask permission for it.** Never ask the user whether to research, scan
-   or fan out: spawn the workers. Subagents can't use `AskUserQuestion`, so bake into each prompt
-   everything the worker needs from what the user has already said and what is on disk. Questions
-   only the user can answer are asked at depth 0 *while* the workers run: as early as possible,
-   batched up to four per `AskUserQuestion`. Never ask what a worker or the code will answer, and
-   never hold a worker back for an answer it doesn't need.
-2. **One output path per unit.** Durable artifacts keep their real names (e.g. `research_<topic>.md`);
-   intermediate outputs go in `.sdd-work/` at the project root, named `<phase>_<unit-id>.md`.
-3. **Resume scan.** Skip any unit whose output file already exists and ends with `status: ok`;
-   spawn only missing/not-ok units.
-4. **One worker per unit**, in parallel, via the `Agent` tool with `subagent_type: "sdd:sdd-worker"`
-   (or `"sdd:sdd-mechanic"` for mechanical units). Pass the exact output path and the baked-in
-   inputs. Never one worker looping over the batch. Never use the `Workflow` tool for this: it
-   puts a permission dialog in front of the owner, which amounts to asking whether to do the work
-   they already asked for. The number started at once follows the memory capacity rule in point 4 of `fanout_recipe.md`.
-5. **Collect structured returns:** `ok` → done; `failed` → retry the same unit (≤2 attempts, include
-   the prior error); `blocked` → supply the listed `needs` from the source, the code or another unit's
-   output if they can; ask via `AskUserQuestion` only if they can't. Then re-spawn a fresh worker
-   with the original brief + answers (pointing it at any partial file).
-6. **Synthesis is a separate step.** Read the output *files* (pass paths, never dump contents into
-   the prompt) and produce the artifact; it can be retried without re-running workers.
-7. **Clean up on success.** Once the phase artifact is finalised, delete this command's own scratch
-   files **by name**, never the `.sdd-work/` directory itself.
+This command runs at **depth 0** and fans work out to sub-agents. When it spawns workers, read and
+follow `${CLAUDE_PLUGIN_ROOT}/skills/claude-code-authoring/resources/fanout_recipe.md` (units U1…Un). Never use the `Workflow` tool for the fan-out: it puts a permission
+dialog in front of the owner, which amounts to asking whether to do the work they already asked for.
 
 ---
 
@@ -134,8 +110,7 @@ Delete this run's `.sdd-work/roadmap_entry_*.md` files by name.
 Delegate to `sdd:sdd-mechanic`: stage `spec_dd/1. next/roadmap.md`,
 `spec_dd/1. next/priority.md` and `spec_dd/1. next/roadmap_diagrams/`, and commit with
 `git commit`, subject `roadmap: sync the spec roadmap`. Push only when the branch is not
-`main` or `master`. Roadmap bookkeeping normally happens on `main` with no worktree, as in
-`protected/move_spec_to_in_progress.md`, which commits there without pushing.
+`main` or `master`.
 
 ---
 
@@ -143,8 +118,7 @@ Delegate to `sdd:sdd-mechanic`: stage `spec_dd/1. next/roadmap.md`,
 
 The argument names a directory holding an idea (and possibly a spec, research files and nested
 drafts) that will not fit one SDD run. One spec is one SDD run is one PR. The cut goes by
-user-visible outcome, never by line count. The process is the one that produced the educator
-interface rebuild: chart a map, research what the code and comparable systems can answer, put the
+user-visible outcome, never by line count. The process: chart a map, research what the code and comparable systems can answer, put the
 rest to the product owner, propose the cut, then write the ideas.
 
 ## C1: Read the directory
@@ -183,7 +157,7 @@ Do not show the map for approval. Go straight to C3.
 Research and questioning run at the same time, but no question goes to the owner if research could
 answer it.
 
-1. **Fan out now.** Apply the recipe: one `sdd:sdd-worker` per research unit, all spawned in
+1. **Fan out now.** Apply the fan-out recipe: one `sdd:sdd-worker` per research unit, all spawned in
    parallel in the background, each writing its durable `research_<topic>.md` in `<dir>` with a
    `status:` footer and reference URLs for web-sourced findings. These are the files
    `setup_todo_list.md` already detects, so keep the naming.

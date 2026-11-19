@@ -4,15 +4,8 @@ allowed-tools: Bash, Read
 argument-hint: "[mine|all]"
 ---
 
-Commit what is currently in flight. Fast.
-
-This is the quick path: it runs no tests. Use it mid-implementation, when you already know the state
-of the work and want it recorded. For a checkpoint you have not verified, use a commit command that
-runs the targeted test tier first, if the project has one.
-
-This command runs at **depth 0**, inline. It spawns no subagents.
-
-## Optimise for the user's time
+Commit what is currently in flight, fast and without running tests. This command runs at
+**depth 0**, inline, and spawns no subagents.
 
 A hook failure you can fix in under a minute is **not a decision point**: fix it and move on.
 Escalate only when the retry budget in Step 4 is spent or the failure is genuinely outside this
@@ -26,7 +19,7 @@ commit.
   pre-empt them
 - read the contents of a changed file **before** a hook has complained about it
 - run `git diff` in patch mode — `--stat` and `--name-only` only
-- spawn a subagent or invoke another slash command
+- invoke another slash command
 
 **Once a hook fails**, exactly two things open up: you may read the files the hook named, and you
 may re-run that one check to verify your fix. Still no pytest, no full-repo sweeps, no patch-mode
@@ -102,11 +95,9 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 git commit -m "…"
 ```
 
-`uv run` is required by the project's `CLAUDE.md` — the pre-commit hooks live in the uv environment.
-
 ### If the hooks reject the commit, fix it — do not stop
 
-Hooks fail in layers: clearing one often reveals the next. That is normal progress. Work the loop.
+Hooks fail in layers: clearing one often reveals the next. Work the loop.
 
 **Budget: up to 5 attempts.** Stop early only when an attempt fails *identically* to the one before
 it (same hook, same finding): you are not making progress and another retry won't help.

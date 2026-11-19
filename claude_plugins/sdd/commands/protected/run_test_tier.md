@@ -12,8 +12,7 @@ and `<diff>`, so a caller passes none.
 
 ## Step 1: Find the tier definition
 
-Read `.claude/sdd/config.md` (and `.claude/sdd/config.local.md` if it exists; its values take
-precedence). Under `## Test Hooks`, look at the `Test tiers` value. For `checkpoint`, read the
+Read `Test tiers` under `## Test Hooks` in `.claude/sdd/config.md` (`config.local.md` wins). For `checkpoint`, read the
 definition now but run nothing until Step 2 names the tier.
 
 - a non-blank path → read that file and run `<tier>` as it says, with `<diff>` as the diff

@@ -3,7 +3,7 @@ description: Helper — move the spec to "in progress" and commit, before any wo
 allowed-tools: Bash, Read, Glob
 ---
 
-This is a helper command, invoked by `/sdd:start`. It moves the spec directory into
+This helper, invoked by `/sdd:start`, moves the spec directory into
 `spec_dd/2. in progress/` and commits that move on the **current** branch, *before* any new
 worktree/branch is created, so the move lands on the current branch (e.g. `main`) and not the
 feature branch.

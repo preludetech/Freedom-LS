@@ -4,7 +4,7 @@ allowed-tools: Read, Edit
 argument-hint: <todo-path> tick:"<exact item text>" [tick:"…"] [add:"<section heading>|<marker>|<item text>"] [add_first:"<marker>|<item text>"] [add_after:"<item substring>|<marker>|<item text>"] …
 ---
 
-This is a helper command. It does **not** decide what was done; it reacts to what the caller tells it. Callers pass the path to a `todo.md`, items to tick, and optionally items to append or insert. The command edits the file and reports back.
+This helper does **not** decide what was done; it edits the `todo.md` the caller names as the caller says, and reports back.
 
 If any required input is missing, stop and ask the caller for it. Do not try to infer from context.
 
@@ -15,8 +15,8 @@ The caller must supply:
 - **`<todo-path>`** (required) — path to the checklist file to edit. Usually absolute. The file must already exist.
 - **`tick:"…"`** (one or more required) — the exact text of a checklist item to mark done. Match the existing line (minus the `- [ ]` prefix). If the caller gives you a substring that uniquely identifies one unchecked item, use that.
 - **`add:"<section>|<marker>|<text>"`** (zero or more, optional) — a new checklist item to append under the named section. `<section>` is the exact heading text (e.g. `QA`). `<marker>` is one of the literal strings the caller chooses (e.g. `user`, `cmd`, `user + cmd`). `<text>` is the item body.
-- **`add_first:"<marker>|<text>"`** (zero or more, optional) — a new checklist item inserted immediately above the first unchecked (`- [ ]`) line in the whole file, regardless of section. Same `<marker>`/`<text>` shape as `add:`, minus the section (there is only one insertion point). If the file has no unchecked item, stop and tell the caller — there is nowhere to put it ahead of.
-- **`add_after:"<item substring>|<marker>|<text>"`** (zero or more, optional) — a new checklist item inserted immediately below the existing item that `<item substring>` uniquely identifies (ticked or not), so a follow-up lands right where the step that owes it sits. Several `add_after:` arguments naming the same item are inserted in the order given, each below the one before. Same `<marker>`/`<text>` shape as `add:`. If no item matches, or more than one does, stop and tell the caller.
+- **`add_first:"<marker>|<text>"`** (zero or more, optional) — a new checklist item inserted immediately above the first unchecked (`- [ ]`) line in the whole file, regardless of section. Same `<marker>`/`<text>` shape as `add:`, minus the section (there is only one insertion point).
+- **`add_after:"<item substring>|<marker>|<text>"`** (zero or more, optional) — a new checklist item inserted immediately below the existing item that `<item substring>` uniquely identifies (ticked or not), so a follow-up lands right where the step that owes it sits. Several `add_after:` arguments naming the same item are inserted in the order given, each below the one before. Same `<marker>`/`<text>` shape as `add:`.
 
 At least one of `tick:`, `add:`, `add_first:` or `add_after:` must be supplied.
 
@@ -61,7 +61,6 @@ For each `add_first:` argument:
   ```
   - [ ] (<marker>) <text>
   ```
-- If the file has no unchecked line, this was already caught in Step 1 — stop and tell the caller rather than guessing where to put it.
 
 For each `add_after:` argument:
 
@@ -90,4 +89,4 @@ Print a short summary:
 - Which items were inserted via `add_first:` or `add_after:`, and below which item.
 - The next unchecked item in the file, so the caller knows what comes up.
 
-Keep it to a few lines; this runs at the tail of other commands.
+Keep it to a few lines.

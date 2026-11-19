@@ -3,8 +3,8 @@ description: Initialise an SDD workflow — create the todo.md checklist next to
 allowed-tools: AskUserQuestion, EnterWorktree, Artifact, Read, Write, Edit, Glob, Grep, Bash, Skill, Agent, ToolSearch, WebFetch, WebSearch
 ---
 
-This command kicks off Spec-Driven Development for a new spec. It is a chain: it sets up the todo
-list and the worktree, enters the worktree, registers the design and writes the spec.
+This command kicks off a spec as a chain: it sets up the todo list and the worktree, enters the
+worktree, registers the design and writes the spec.
 
 A mechanic that returns `blocked` in Steps 1 to 3 is asked about and re-spawned. Any other stop
 ends the run: Step 4 returning `failed`, or a hook step (Step 6 or 7) returning `failed`, `blocked` or
@@ -16,7 +16,7 @@ continues is `/sdd:start` itself, run again.
 
 ## Step 0: Check the spec roadmap
 
-This runs before anything is spawned because its answer can be "stop".
+Run this before anything is spawned: its answer can be "stop".
 
 If `spec_dd/1. next/roadmap.md` exists and has a bullet for this spec (the line starting
 `` - `<spec directory name>` — ** ``), check its precursor first, then its blockers.
@@ -32,8 +32,7 @@ cut.
 **Blockers.** Read the bullet's `blocked by` list. A blocker is met when a directory named
 `spec_dd/3. done/*_<name>` exists. For each unmet one, say where it stands (`ready`, `blocked` or
 `in progress` per its own bullet) and ask via `AskUserQuestion` whether to start anyway or stop.
-This is a warning, never a block: a feature's notes sometimes allow a spec to start before a
-blocker lands. No roadmap, or no bullet: carry on without comment.
+This is a warning, never a block. No roadmap, or no bullet: carry on without comment.
 
 ## Step 1: Set up the todo list
 
@@ -49,7 +48,7 @@ This moves the spec into `spec_dd/2. in progress/` and commits the move (with th
 
 ## Step 3: Create the worktree
 
-Run this only **after** Step 2's commit has landed on the current branch: the new worktree must branch off a clean, up-to-date branch that already contains the move.
+Run this only **after** Step 2's commit has landed on the current branch.
 
 Delegate to `sdd:sdd-mechanic` with `run_in_background: true`, straight away: have it run the steps in `claude_plugins/sdd/commands/protected/start_worktree.md`, passing through the spec directory (now under `spec_dd/2. in progress/`).
 

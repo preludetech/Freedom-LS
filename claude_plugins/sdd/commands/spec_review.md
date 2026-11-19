@@ -10,17 +10,11 @@ You are doing the final check on a feature spec before it is planned. Five worke
 - Edit the spec to fix every problem the wave finds.
 - Print a summary with one line per applied fix (what, dimension, evidence) and the spec's line and word counts before and after.
 
-## Fan-out recipe (shared)
+## Fan-out recipe
 
-This command runs at **depth 0** and fans work out to sub-agents (the `claude-code-authoring` skill explains why). Orchestrating units U1…Un:
-
-1. **Start the work; don't ask permission for it.** Never ask whether to review or fan out: spawn the workers. Subagents can't use `AskUserQuestion`, so bake into each prompt everything the worker needs from what is on disk. Never ask what a worker or the code will answer, and never hold a worker back for an answer it doesn't need. Ask once, early, with a default; late questions and review judgement calls follow "When a question comes late" in the `claude-code-authoring` skill's `fanout_recipe.md`.
-2. **One output path per unit.** Intermediate outputs go in `.sdd-work/` at the project root, named `<phase>_<unit-id>.md`.
-3. **Resume scan.** Skip any unit whose output file already exists and ends with `status: ok`; spawn only missing/not-ok units.
-4. **One worker per unit**, in parallel, via the `Agent` tool with `subagent_type: "sdd:sdd-worker"`. Pass the exact output path and the baked-in inputs. Never one worker looping over the batch. The number started at once follows the memory capacity rule in point 4 of `fanout_recipe.md`.
-5. **Collect structured returns:** `ok` → done; `failed` → retry the same unit (≤2 attempts, include the prior error); `blocked` → supply the listed `needs` from the source, the code or another unit's output if you can; ask in the end-of-run batch only if you can't. Then re-spawn a fresh worker with the original brief + answers (pointing it at any partial file).
-6. **Synthesis is a separate step.** Read the output *files* (pass paths, never dump contents into the prompt) and edit the artifact; it can be retried without re-running workers.
-7. **Clean up on success.** Delete this command's own scratch files **by name**, never the `.sdd-work/` directory, which is shared with every other SDD command.
+This command runs at **depth 0** and fans work out to sub-agents. When it spawns workers, read and
+follow `${CLAUDE_PLUGIN_ROOT}/skills/claude-code-authoring/resources/fanout_recipe.md` (units U1…Un): never ask whether to review or fan out, ask once, early, with a default,
+and send a `blocked` worker's need to the end-of-run batch only when you cannot supply it.
 
 # Step 0: Pre-step rebase
 

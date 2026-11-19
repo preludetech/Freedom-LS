@@ -129,3 +129,62 @@ Once the PR is approved (or already merged), run `/sdd:finish_worktree`. It reba
 ## The `todo.md` checklist
 
 `/sdd:start` creates a `todo.md` checklist in the spec directory that tracks every step above, in five sections. Commands tick their own item (and add follow-up tasks where relevant) by invoking the protected helper at `claude_plugins/sdd/commands/protected/update_todo.md` as their final step; you never run it yourself. Commands tick their own item, including `/sdd:make_pr_quickly` through `/sdd:document`; the human ticks the `(user)` items. The commit-and-push step runs straight after it.
+
+## Why it works this way
+
+Rationale cut from the command files, one entry per command. Each command file states only what the agent does.
+
+### `/sdd:init`
+
+- Steps P1 to P3b of the preflight are stops, not warnings, so the command can never write
+  `.claude/sdd/config.md` and a `.gitignore` line and then discover it cannot finish.
+- P3b checks the `--plugin-dir` arguments themselves because P1 and P2 are not enough. A project that predates the `claude_plugins/` layout already has a `claude.sh` and a `.claude/settings.json`, so file-existence checks pass, and the command would add its line to a launcher that still points at a plugin directory that no longer exists. With `<MAY_CREATE>` false the launcher edit skips L4 and cannot retire that argument, so the launcher would stay broken.
+- The script allow entries exist because the commands call the scripts by that path: without them every call prompts, and a non-interactive agent returns `blocked`.
+- `worktree.baseRef: head` applies to every worktree Claude Code creates in the project. It branches a sub-agent's worktree from the current branch, so a batch worktree starts from the feature branch.
+- The `git worktree remove --force --force` entry is safe because the commands that use it build the name from the last path component of a `git worktree list` line, never from free text.
+
+### `/sdd:implement_plan`
+
+- A batch commits its own work, instead of delegating the commit to `sdd:sdd-mechanic`, so the work and its completion marker are atomic. A crash between "work done" and "marker written" cannot leave an uncommitted batch that the resume scan would re-run over a dirty tree. That guarantee outweighs tiering the one commit down to Haiku.
+- Batch sub-agents run on `model: "sonnet"`, so non-interactive batch work uses a mid-tier model rather than the session model. A user whose batch needs heavier reasoning can override a spawn to `model: "opus"` or set `CLAUDE_CODE_SUBAGENT_MODEL`.
+- Surviving design misses are written to `todo.md` only at Step 4, because a batch commit or a failed batch's reset would otherwise take the item with it.
+
+### `/sdd:finish_worktree`
+
+- Step 0.5 runs the main-worktree sync before anything is committed, so a parked operation on `main` is found before the branch is touched, and Step 7 does not need a second rebase when local `main` was ahead of `origin`.
+- The pre-test rebuild runs even when the branch needed no rebase, because built assets such as compiled CSS are often gitignored: a branch can hold output older than its templates.
+
+### `/sdd:roadmap`, `/sdd:spec_from_idea`, `/sdd:plan_from_spec`, `/sdd:spec_review`
+
+- Each of the four fans work out at depth 0 by the recipe in `claude-code-authoring/resources/fanout_recipe.md`, which also explains why: no subagent nesting, fan-out only at depth 0, `AskUserQuestion` is orchestrator-only, file-based hand-off, model tiering. The commands name the recipe instead of carrying a copy.
+- `/sdd:roadmap` never uses the `Workflow` tool for its fan-out because the tool puts a permission dialog in front of the owner.
+- The roadmap sync pushes only off `main` because roadmap bookkeeping on `main` normally happens with no worktree and, as in `protected/move_spec_to_in_progress.md`, commits there without pushing.
+
+### `/sdd:plan_from_spec`
+
+- A QA test copies the design checklist from the plan rather than judging against the screenshot, so when the design changes after QA, `sdd:capture-feedback` rewrites those checklist lines and the screenshot stays as drawn.
+
+### `/sdd:register_design`
+
+- A design is drawn on a separate platform that knows nothing of the project's features, plans or theme, so it invents controls, screens and data the project does not have and styles them in another theme. That is why the command treats it as a visual reference only and asks the user nothing about what it draws.
+- The command does not rebase: it only adds spec files to the current branch, and the next SDD step's pre-step rebase picks main up.
+- The canvas probe runs before anything in `design_source/` is touched, so a design that cannot be read leaves the previous sync in place.
+- `support.js` is moved into `design_source/project/` because every artboard loads `./support.js` from its own folder and the canvas serves it only at run time; the screenshot script serves that one copy under every artboard folder.
+
+### `/sdd:qa_fix`
+
+- A passing test does not prove a page looks right: a fix whose test passes can leave the page visibly broken. That is why every fix that changes what a page shows is screenshotted and looked at before it counts as fixed.
+- The command runs at depth 0 because asking the user and spawning agents are legal only there.
+
+### `/sdd:commit_quickly`
+
+- Use it mid-implementation, when you already know the state of the work and want it recorded. For a checkpoint you have not verified, use a commit command that runs the targeted test tier first, if the project has one.
+
+### `/sdd:start`
+
+- Step 3 waits for Step 2's commit because the new worktree must branch off a clean, up-to-date branch that already contains the move.
+- A blocker that is not yet met is a warning, never a block, because a feature's notes sometimes allow a spec to start before a blocker lands.
+
+### The helpers under `commands/protected/`
+
+- `start_worktree.md` makes the worktree from its own parent directory, with an absolute path and the current branch as the base, so the worktree can never land inside another one and always holds the move commit. `cd ..` first would branch it off the bare repo's `HEAD` instead of the branch that holds the move.

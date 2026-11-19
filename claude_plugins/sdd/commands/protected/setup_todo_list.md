@@ -3,9 +3,7 @@ description: Helper — create a todo.md checklist next to the spec or idea
 allowed-tools: Read, Write, Glob, Bash
 ---
 
-This is a helper command, invoked by `/sdd:start`. It creates a `todo.md` checklist that tracks a spec through the full SDD workflow.
-
-The checklist is the single source of truth for where the work is. Every step from idea refinement to merging the PR is a checkbox, marked as a user step or a slash-command step.
+This helper, invoked by `/sdd:start`, creates a `todo.md` checklist that tracks a spec through the full SDD workflow. Every step from idea refinement to merging the PR is a checkbox, marked as a user step or a slash-command step.
 
 ## Step 1: Locate the spec or idea directory
 
@@ -40,7 +38,7 @@ Only tick boxes for artifacts that exist. Do **not** tick user-review items, wor
 
 ## Step 4: Read the QA command
 
-Read `.claude/sdd/config.md` (and `.claude/sdd/config.local.md` if it exists — its values take precedence). Under the **QA Hooks** section, look at the **QA command** value:
+Read **QA command** under `## QA Hooks` in `.claude/sdd/config.md` (`config.local.md` wins):
 
 - A non-blank value is a skill name such as `<plugin>:<skill>`. The QA item in the checklist becomes `- [ ] (cmd) Run \`/<QA command>\` to execute the QA plan`.
 - A blank value, or an absent section or file, means the project has no QA command. The QA item becomes `- [ ] (user) Execute the QA plan by hand`.

@@ -4,7 +4,7 @@ allowed-tools: Read, Glob, Bash, Skill, Agent
 ---
 
 Runs at depth 0. Each hook is a skill from whichever plugin owns it, invoked with the `Skill`
-tool, so it runs with its own plugin root and its own tool grants.
+tool.
 
 ## Step 0: Pre-step rebase
 
@@ -17,7 +17,7 @@ line says.
 
 ## Step 2: Run the hooks
 
-Read `## Documentation Hooks` in `.claude/sdd/config.md` (and `config.local.md`; a non-empty
+Read `## Documentation Hooks` in `.claude/sdd/config.md` (`config.local.md` wins; a non-empty
 list there replaces the whole list). An empty list, or an absent section or file, means no
 hooks: report that and go to Step 2b. Each bullet is `<label>: <skill>`. For each, in order:
 

@@ -6,8 +6,7 @@ allowed-tools: Bash, Read, Glob, Skill, Agent, AskUserQuestion
 This command finishes a spec's worktree. It runs on the feature branch: it rebases the branch,
 makes the close-out commits there (spec directory to done, roadmap row removed, project settings
 tidied), lands the branch on `main` by fast-forward and brings the main worktree up to date.
-It runs at **depth 0** and delegates mechanical steps to the `sdd:sdd-mechanic` (Haiku) agent; the
-`claude-code-authoring` skill explains why.
+It runs at **depth 0** and delegates mechanical steps to the `sdd:sdd-mechanic` agent.
 
 Two rules hold throughout:
 
@@ -67,20 +66,16 @@ entry.
 <script-path> sync
 ```
 
-The script fetches `origin/main`, finds the worktree that has `main` checked out, refuses if that
-worktree has a merge, rebase, cherry-pick, revert or bisect in flight, or an uncommitted change to
-a file the incoming commits change, and
-otherwise makes local `main` equal `origin/main` (pushing when it is ahead, fast-forwarding when it
-is behind). It never touches untracked files, and it prints `carried: <n>` for uncommitted
-tracked files the incoming commits leave alone; those do not block and need no mention until Step 8.
+The script makes local `main` equal `origin/main` (pushing when it is ahead, fast-forwarding when
+it is behind), and refuses when the main worktree has a merge, rebase, cherry-pick, revert or bisect
+in flight or an uncommitted change to a file the incoming commits change. It prints `carried: <n>`
+for uncommitted tracked files the incoming commits leave alone; those do not block and need no
+mention until Step 8.
 
 - exit 0 → continue. Keep any `synced: pushed` and `pushed:` lines for Step 8.
 - exit 4 (an uncommitted change on `main` to a file the landing changes) → "A dirty main
   worktree" below.
 - any other exit → `status: blocked · reason: <the script's output, verbatim>`. Stop.
-
-Running this before anything is committed finds a parked operation on `main` before the branch is
-touched, and keeps Step 7 from needing a second rebase when local `main` was ahead of `origin`.
 
 # Step 1: Checkpoint tier
 
@@ -90,12 +85,11 @@ This step is the checkpoint run. Step 7's main-moved loop follows it again after
    follow it with `<tier>`: `checkpoint` as far as its "Resolve the checkpoint tier" step, and
    return the `tier:`, `diff:` and `why:` lines. `none` → the report line is
    `tier: none · summary: <why>`; nothing else runs.
-2. `targeted` or `full` → first rebuild generated assets: read `.claude/sdd/config.md` (and
-   `.claude/sdd/config.local.md`, whose values take precedence) under `## Test Hooks`, and when the
-   `Pre-test rebuild` value is a non-blank path, run it from the project root. A non-zero exit is
+2. `targeted` or `full` → first rebuild generated assets: read `Pre-test rebuild` under
+   `## Test Hooks` in `.claude/sdd/config.md` (`config.local.md` wins), and when it is a non-blank
+   path, run it from the project root. A non-zero exit is
    `status: failed · reason: pre-test rebuild failed: <its output>`. Blank, or the key absent,
-   skips the rebuild. Built assets such as compiled CSS are often gitignored, so a branch that
-   needed no rebase can still hold output older than its templates. Then delegate to
+   skips the rebuild. Then delegate to
    `sdd:sdd-mechanic`: follow `run_test_tier.md` with the `<tier>` and `<diff>` as resolved,
    returning the report line and any failing test names.
 3. Keep every report line for Step 8.
@@ -128,9 +122,7 @@ When the run in item 2 reports failing tests:
 
 # Step 2: Tear down any per-worktree resources
 
-Teardown (e.g. dropping a per-branch dev database) is project-specific and configured, not hard-coded into the `sdd` plugin.
-
-Read `.claude/sdd/config.md` (and `.claude/sdd/config.local.md` if it exists; its values take precedence). Under the **Worktree Scripts** section, look at the **Teardown script** value:
+Read **Teardown script** under `## Worktree Scripts` in `.claude/sdd/config.md` (`config.local.md` wins):
 
 - A non-blank path: run that script now.
 - Blank, or the config file / section absent: skip this step; this project has no per-worktree teardown.
@@ -199,8 +191,7 @@ and any `.claude/settings.json` change from Step 5.
    ```
 
    The script re-runs the Step 0.5 checks, then pushes `HEAD` to `origin/main` as a fast-forward
-   (never with force) and fast-forwards the main worktree to what `origin` now holds. A rejected
-   push changes nothing anywhere.
+   (never with force) and fast-forwards the main worktree. A rejected push changes nothing anywhere.
 
 3. **exit 7** → `origin/main` moved after Step 0.5. Run the main-moved loop below.
 
@@ -233,8 +224,7 @@ on each pass, entered with its <blocker>:
     <script-path> land        → exit 0 leaves the loop; exit 7 is the next pass
 ```
 
-Read the `Rebase command` value from `.claude/sdd/config.md` (and `.claude/sdd/config.local.md`,
-whose values take precedence) under `## Rebase Hooks`, exactly as `pre_step_rebase.md` Step 1 does.
+Read the `Rebase command` value under `## Rebase Hooks` exactly as `pre_step_rebase.md` Step 1 does.
 With `origin/main` as the blocker the reason reads `origin/main moved 5 times in a row`.
 
 Do not use the pre-step rebase here: it skips a spec already under `3. done/`, and no
@@ -281,9 +271,7 @@ lines and `<main>` is its `main-worktree:` line.
 git status --porcelain
 ```
 
-Must be empty in this worktree; anything else is `status: failed` naming the files. The script's
-own post-landing check has confirmed the main worktree is at the landed commit and that any
-uncommitted work carried across is unchanged.
+Must be empty in this worktree; anything else is `status: failed` naming the files.
 
 Report:
 

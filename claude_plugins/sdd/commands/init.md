@@ -5,9 +5,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob
 
 # Initialize the sdd Plugin
 
-Set up the `sdd` Claude Code plugin for this project. `sdd` provides the portable
-spec-driven-development workflow (worker/mechanic agents, workflow commands, authoring skills). It
-needs little per-project config beyond the shared launcher it expects to exist.
+Set up the `sdd` Claude Code plugin for this project.
 
 ## Two rules that override every step below
 
@@ -17,33 +15,25 @@ untouched, so re-running after the fix is always safe. No step after Step 0 may 
 onward, a problem is *reported as an outstanding action*, never raised as a bail-out.
 
 **Nothing is force-deleted.** No step may pass `-f` to `git rm`, `-f`/`-r` to `rm`, or `--force` to
-any command. `sdd:init` deletes nothing at all, but the rule stands for any future edit.
+any command.
 
-## Scope
+## Scope and hard requirements
 
-`sdd:init` is **plugin-bootstrap only.** It merges only **its own** `enabledPlugins` key,
-permissions and `worktree.baseRef` setting and writes only its own `.claude/sdd/` config dir. Into the shared project-root
-`claude.sh` it adds **only its own** `--plugin-dir` line; it never touches another plugin's.
+`sdd:init` is **plugin-bootstrap only.** It changes only **its own** keys and lines. The
+plugin-neutral artifacts (the `claude.sh` skeleton, the `SessionStart` hook, the
+`.claude/settings.local.json` line in `.gitignore`) belong to whatever initialised the project's
+shared Claude Code setup: Step 0 requires them and otherwise reports on them.
 
-The plugin-neutral artifacts (the `claude.sh` skeleton, the `SessionStart` hook, and the
-`.claude/settings.local.json` line in `.gitignore`) are created by whatever initialised the
-project's shared Claude Code setup. This command requires them to exist (Step 0) and otherwise
-reports on them.
-
-## Hard requirements — do not regress
-
-- **`.claude/settings.json`** — merge, don't replace. Add `Skill(sdd:*)` if missing and `"sdd": true`
-  to `enabledPlugins` (only this key — never another plugin's). **"Missing" means no byte-identical string is
-  already in the list** — never "no entry semantically covers this". A redundant allow entry is
-  harmless; removing one is a permission change this command is not entitled to make. **Never touch the `hooks` section**;
-  `sdd` does not own the `SessionStart` hook. Mutate the file's own parsed object and write it back —
-  never rebuild it from a template. Also merge a top-level `"worktree": {"baseRef": "head"}` when
-  the `worktree` key is absent (never overwrite an existing `worktree` object) and three worktree
-  `allow` entries, under the same absent-means-no-byte-identical-string rule (Step 1).
-- **`.claude/sdd/config.md`** — create when absent, otherwise extend (add any key the default defines
-  but the file lacks; preserve every existing value, comment, and ordering).
-- **`.gitignore`** — append its own `.claude/sdd/config.local.md` and `.claude/worktrees/` lines only. Never remove or reorder,
-  and never touch the shared `.claude/settings.local.json` line, which `sdd` does not own.
+- **`.claude/settings.json`**: merge, don't replace. Mutate the file's own parsed object and write
+  it back, never rebuild it from a template. Add only `Skill(sdd:*)`, `"sdd": true` under
+  `enabledPlugins`, the `worktree` setting and the allow entries Step 1 names; never another
+  plugin's key. **"Missing" means no byte-identical string is already in the list**, never "no
+  entry semantically covers this". Never remove an allow entry. **Never touch `hooks`.**
+- **`.claude/sdd/config.md`**: create when absent, otherwise extend (add any key the default
+  defines but the file lacks; preserve every existing value, comment and ordering).
+- **`.gitignore`**: append only the `.claude/sdd/config.local.md` and `.claude/worktrees/` lines.
+  Never remove or reorder, and never touch the `.claude/settings.local.json` line.
+- **`claude.sh`**: add only the `sdd` `--plugin-dir` line, never another plugin's.
 
 ## The `PLUGINS_ROOT` rule
 
@@ -91,16 +81,6 @@ anything in this step or before it completes.
 | P7 | `.claude/settings.local.json` listed in `.gitignore` | **WARN** → "add it by hand, or with whatever owns the launcher" |
 | P8 | `git status --porcelain --` on `claude.sh` and `.claude/settings.json` | **WARN** if dirty |
 
-P1–P3b are STOPs rather than warnings so this command can never write `.claude/sdd/config.md` and a
-`.gitignore` line and *then* discover it cannot finish.
-
-**P3b exists because P1 and P2 are not sufficient.** A project that predates the `claude_plugins/`
-layout already *has* a `claude.sh` and a `.claude/settings.json`, so file-existence checks pass and
-this command would add its own `--plugin-dir` line to a launcher still pointing at a plugin
-directory that no longer exists. With `<MAY_CREATE>` false it skips L4 and cannot retire that
-argument, so the launcher would stay broken. Only checking the arguments themselves, not merely that
-files exist, catches this.
-
 ## Step 1: Merge the `sdd` permission and enabledPlugins key
 
 1. Add `"Skill(sdd:*)"` to `permissions.allow` if absent (never duplicate).
@@ -111,54 +91,25 @@ files exist, catches this.
    - `Bash(bash <path>:*)`
    - `Bash(./<path>:*)`
 
-   "Absent" means no byte-identical string is already in the list. The commands invoke these
-   scripts by that path, so without the entries every call prompts, and a non-interactive agent
-   returns `blocked` instead. Never remove or rewrite an entry here.
-   For each Python script the commands call by name (`measure_prompt_size.py`, `full_run_record.py`), add
+   "Absent" means no byte-identical string is already in the list. Never remove or rewrite an
+   entry here. For each Python script the commands call by name (`measure_prompt_size.py`, `full_run_record.py`), add
    `Bash(python3 <PLUGINS_ROOT>/claude_plugins/sdd/scripts/<name>.py:*)` if absent, with no `./`
    prefix on the path when `PLUGINS_ROOT` is `.`. Same absent rule; same reason.
 3. Merge `"worktree": {"baseRef": "head"}` at the top level of `.claude/settings.json` when the
-   `worktree` key is absent; never overwrite an existing `worktree` object. `baseRef` applies to
-   every worktree Claude Code creates in the project: `head` branches a sub-agent's worktree
-   from the current branch, so a batch worktree starts from the feature branch.
+   `worktree` key is absent; never overwrite an existing `worktree` object.
 4. Add these `allow` entries if absent: `Bash(git worktree list*)`,
-   `Bash(git worktree remove --force --force .claude/worktrees/*)`, `Bash(git cherry-pick *)`. The
-   commands that use the second one build the name they pass from the last path component of
-   a `git worktree list` line and never from free text.
+   `Bash(git worktree remove --force --force .claude/worktrees/*)`, `Bash(git cherry-pick *)`.
 5. Add `"sdd": true` to `enabledPlugins`. Do not add or remove another plugin's key.
 6. Do not touch `hooks`.
 7. Write the mutated object back and report what changed.
 
 ## Step 2: Create or extend `.claude/sdd/config.md`
 
-`sdd` reads these sections at runtime. **Worktree Scripts**: the worktree helpers
-(`protected/start_worktree.md`, `finish_worktree.md`) look here for the per-worktree setup and
-teardown scripts to run, and `/sdd:implement_plan` looks here for the `Parallel batches` count, `Memory capacity`, `Batch memory (MB)` and `Worker memory (MB)`. **Rebase Hooks**: the pre-step rebase helper
-(`protected/pre_step_rebase.md`) looks here for the rebase command and front-end check it follows
-before a feature-branch SDD step runs. **Design Hooks**: `/sdd:implement_plan` looks here for the
-design check it follows after each slice that builds a designed screen. **Test Hooks**:
-`protected/run_test_tier.md` looks here for the file that defines the test tiers, and `/sdd:finish_worktree` looks here for the
-flaky test guide it hands a sub-agent that fixes a flaky test (blank: the sub-agent works without a
-guide). **Vocabulary Sources**: the idea, spec and plan commands look
-here for the project's own definitions of its domain words. **Plan Review Hooks**:
-`/sdd:plan_from_spec` looks here for project-owned review briefs it spawns after its built-in
-review dimensions. **Review Hooks**: `/sdd:implement_plan` looks here for the comment standard and
-test standard its implementer reads and its batch review checks. **Documentation Hooks**:
-`/sdd:document` looks here for the skills it invokes, in order, after implementation and QA.
-They can come from any plugin. **QA Hooks**: `protected/setup_todo_list.md` looks here for the
-command that executes the QA plan, and writes it into the checklist; the QA command reads the other keys. **QA Login** and **QA Dev Data**: the QA command
-reads the admin login and the commands that reset development data. **Testing Skills**: the QA bug fixer loads these skills.
-**Rule Files**: `sdd:capture-feedback` looks here for the file each rule is written to, and the QA
-command walks the `## Visual checklist` section of each file listed.
-Everything else in this dir exists for
-parity and future settings.
-
 **Do not prompt the user for these values.** Write blank defaults and say where the file is.
 
 1. Ensure `.claude/sdd/` exists.
 2. If `.claude/sdd/config.md` does not exist, write this. The reader helpers locate the values by
-   the section and key names, so keep those exact. The file holds only this project's values; what
-   each key means is documented here, not in the file:
+   the section and key names, so keep those exact. The file holds only this project's values; the key meanings are below:
 
    ```markdown
    # SDD Plugin Configuration
@@ -240,10 +191,9 @@ parity and future settings.
    -
    ```
 
-   A **Setup script** runs when a worktree is created (dependency install, per-branch dev DB,
-   migrations, seed data); a **Teardown script** runs when one is finished (e.g. dropping that DB).
-   Both are blank by default, meaning "this project has no such step". `sdd` is portable and names no
-   product here; if another plugin owns those scripts in this project, the user points these keys at
+   A **Setup script** (read by `protected/start_worktree.md`) runs when a worktree is created (dependency install, per-branch dev DB,
+   migrations, seed data); a **Teardown script** (read by `finish_worktree.md`) runs when one is finished (e.g. dropping that DB).
+   Both are blank by default, meaning "this project has no such step". If another plugin owns those scripts, the user points these keys at
    them.
 
    **Parallel batches** is read by `/sdd:implement_plan`. Blank or `1` runs batches one at a time
@@ -262,8 +212,7 @@ parity and future settings.
    A **Rebase command** value points at a file that rebases the branch onto main; the pre-step
    rebase reads it and follows its steps inline. A **Front-end check** value points at a file that
    verifies front-end pages after a rebase that changed them. Both are blank by default, meaning
-   "this project has no such step"; if another plugin owns those files in this project, the user
-   points these keys at them.
+   "this project has no such step"; if another plugin owns those files, the user points these keys at them.
 
    A **Design check** value points at a file that screenshots the running app for the design states
    it is given and returns their paths; `/sdd:implement_plan` then compares those screenshots with
@@ -271,20 +220,21 @@ parity and future settings.
 
    A **Test tiers** value points at a file that defines the test tiers a step can name and how each
    one runs. Blank means "this project has no tier definition", and `protected/run_test_tier.md`
-   falls back to the project's plain pytest command. If another plugin owns that file in this
-   project, the user points this key at it.
+   falls back to the project's plain pytest command. If another plugin owns that file, the user points this key at it.
 
    A **Pre-test rebuild** value points at a script that rebuilds generated assets (dependencies,
    compiled CSS) the tests read. `/sdd:finish_worktree` runs it before its own full test run, when
    no rebase already rebuilt and tested the branch. Blank means "this project has no such step".
+
+   A **Flaky test guide** value points at the file `/sdd:finish_worktree` hands the sub-agent that
+   fixes a flaky test. Blank means the sub-agent works without a guide.
 
    **Plan Review Hooks** is an ordered list of `<label>: <path>` bullets, and **Documentation
    Hooks** an ordered list of `<label>: <skill>` bullets, where `<skill>` is a plugin skill name
    such as `<plugin>:<command>`. `/sdd:document` invokes each with the `Skill` tool, so the hook
    runs with its own plugin root and tool grants. The label is for reporting and the order is the
    contract. An empty list means "this project has no such hooks", and a non-empty list in
-   `config.local.md` replaces the whole list. If another plugin owns those hooks in this project,
-   the user lists them.
+   `config.local.md` replaces the whole list. If another plugin owns those hooks, the user lists them.
 
    **Review Hooks** is keyed. A **Comment standard** value points at a file that states the
    project's comment rules, and a **Test standard** value points at a file that states its test
@@ -293,7 +243,7 @@ parity and future settings.
    A **QA command** value is a skill name, `<plugin>:<skill>`, that executes a spec's QA plan.
    `protected/setup_todo_list.md` writes it into `todo.md` as the QA step's slash command. Blank
    means "this project has no QA command", and the checklist tells the user to run the QA plan by
-   hand. If another plugin owns that command, the user names it.
+   hand.
 
    **Playwright MCP** is the tool-name prefix of the browser server the QA command drives. Blank
    means the QA command stops `blocked`. **Screenshot directory** is where that server writes
@@ -326,13 +276,13 @@ parity and future settings.
    **Vocabulary Sources** is what the idea, spec and plan commands consult before coining a word for
    a concept the project already names (see `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`).
    Write the heading with an empty list; each source later becomes one bullet holding a path, most
-   authoritative first. Naming this project's actual sources is the user's job; do not guess them by
-   scanning the repo. With the list empty the commands still work: they fall back to the code, where
+   authoritative first. Do not guess the sources by
+   scanning the repo; naming them is the user's job. With the list empty the commands fall back to the code, where
    model class names and field names are the vocabulary of last resort.
-3. If it already exists, add the `## Worktree Scripts`, `## Rebase Hooks`, `## Design Hooks`, `## Test Hooks`,
-   `## Plan Review Hooks`, `## Review Hooks`, `## Documentation Hooks`, `## QA Hooks`, `## QA Login`, `## QA Dev Data`,
-   `## Testing Skills`, `## Rule Files` and `## Vocabulary Sources` sections, and any key only if missing (including `Flaky test guide` under `## Test Hooks`, `Parallel batches`, `Memory capacity`, `Batch memory (MB)` and `Worker memory (MB)` under `## Worktree Scripts`), using the blank default. Preserve every existing value,
-   comment, and ordering.
+3. If it already exists, add every section and every key of the template above that is missing
+   (for instance `Flaky test guide` under `## Test Hooks`, and `Parallel batches`, `Memory capacity`,
+   `Batch memory (MB)` and `Worker memory (MB)` under `## Worktree Scripts`), using the blank
+   default. Preserve every existing value, comment, and ordering.
 4. Tell the user in the summary to fill in the paths and the vocabulary sources themselves.
 
 ## Step 3: Update `.gitignore`
@@ -388,10 +338,8 @@ in-place edits.
 ## Step 6: Summary and outstanding actions
 
 Print what was done, then the outstanding actions: every Step 0 WARN, anything Step 5 flagged,
-and each worktree setting, allow entry or ignore line that was not merged.
-Point the user at `.claude/sdd/config.md` to fill in the Worktree Scripts Setup and Teardown paths, Parallel batches count and the Memory capacity command with its two sizes,
-the Rebase Hooks Rebase command and Front-end check paths, the Design Hooks Design check path, the Test Hooks Test tiers, Pre-test rebuild and Flaky test guide paths, the Plan Review Hooks and Documentation Hooks lists, the Review
-Hooks Comment standard and Test standard paths, the QA Hooks, QA Login, QA Dev Data and Testing Skills values, and to list the project's Vocabulary Sources.
+and each worktree setting, allow entry or ignore line that was not merged. Point the user at
+`.claude/sdd/config.md` to fill in every blank key above and to list the project's Vocabulary Sources.
 
 If `claude.sh` has no `--plugin-dir` line whose final segment is `productivity`, list
 `run /productivity:init` as an outstanding action. This command never adds that line.

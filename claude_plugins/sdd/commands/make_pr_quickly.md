@@ -5,7 +5,7 @@ allowed-tools: Bash
 
 Open a pull request for the current branch **right now**. Nothing comes first.
 
-The user wants the PR to exist. The title and body do not matter. Speed is the only goal.
+The title and body do not matter. Speed is the only goal.
 
 Local state never blocks the PR. A rebase in progress, a detached HEAD, a rejected push or
 uncommitted changes are not reasons to stop or to report back without a PR. The branch already on
