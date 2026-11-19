@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from playwright.sync_api import Page, ViewportSize
+from playwright.sync_api import Locator, Page, ViewportSize
 
 # Phone, tablet and desktop widths a flow's layout checks run at.
 QA_VIEWPORTS: tuple[ViewportSize, ...] = (
@@ -58,3 +58,26 @@ def assert_header_lines_up_with_content(page: Page) -> None:
     assert abs(header_left - content_left) <= 2, (
         f"header starts at x={header_left}, content at x={content_left}"
     )
+
+
+# Space left under a form's visible children: the form's content-box bottom minus the
+# lowest bottom edge (margin included) among its children that generate a box.
+_SPACE_BELOW_LAST_CHILD = """(form) => {
+    const style = getComputedStyle(form);
+    const contentBottom = form.getBoundingClientRect().bottom
+        - parseFloat(style.paddingBottom) - parseFloat(style.borderBottomWidth);
+    let lowest = -Infinity;
+    for (const child of form.children) {
+        if (getComputedStyle(child).display === "none") continue;
+        const bottom = child.getBoundingClientRect().bottom
+            + parseFloat(getComputedStyle(child).marginBottom);
+        lowest = Math.max(lowest, bottom);
+    }
+    return contentBottom - lowest;
+}"""
+
+
+def assert_no_space_below_field_row(form: Locator) -> None:
+    """The form's last visible child ends where the form's content box ends."""
+    space = form.evaluate(_SPACE_BELOW_LAST_CHILD)
+    assert abs(space) <= 1, f"{space}px of space under the form's last visible child"

@@ -36,6 +36,7 @@ from freedom_ls.reports.tests.helpers import (
 from freedom_ls.tests.playwright_helpers import (
     QA_VIEWPORTS,
     assert_no_horizontal_overflow,
+    assert_no_space_below_field_row,
 )
 
 from .helpers import interface_url
@@ -146,6 +147,9 @@ def test_deactivating_then_reactivating_a_learner_from_its_settings_tab(
     )
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, educator_user, "organisation_admin", organisation)
+    # Editing the learner's name changes their user, which only a superuser may do.
+    educator_user.is_superuser = True
+    educator_user.save()
     page.goto(
         interface_url(
             live_server, organisation.slug, f"learners/{learner.pk}/__tabs/settings"
@@ -155,6 +159,7 @@ def test_deactivating_then_reactivating_a_learner_from_its_settings_tab(
     main = page.locator("#main-content")
     header = page.locator("#instance-header")
 
+    assert_no_space_below_field_row(page.locator("#learner-name-form"))
     expect(header.get_by_text("Active", exact=True)).to_have_count(0)
     main.get_by_role("button", name="Deactivate", exact=True).first.click()
     modal.get_by_role("button", name="Deactivate", exact=True).click()

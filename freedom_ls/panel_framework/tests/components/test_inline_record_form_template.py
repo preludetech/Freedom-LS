@@ -17,7 +17,7 @@ GOLDEN_INLINE_FORM_WITHOUT_FILE_FIELD = """
       x-data="refocusAfterRequest"
       data-refocus-id="id_name"
       x-on:htmx:after-request="refocus"
-      class="space-y-3">
+      class="flex flex-col gap-3 space-y-0">
 
     <div class="flex flex-wrap items-end gap-3">
 

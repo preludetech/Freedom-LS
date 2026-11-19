@@ -20,6 +20,7 @@ from freedom_ls.conftest import reverse_url
 from freedom_ls.tests.playwright_helpers import (
     QA_VIEWPORTS,
     assert_no_horizontal_overflow,
+    assert_no_space_below_field_row,
 )
 
 # transaction=True so the live server's own DB connection sees the fixture
@@ -60,6 +61,8 @@ def test_change_the_name_inline_then_follow_the_sidebar(
         )
     )
 
+    assert_no_space_below_field_row(page.locator("#account-name-form"))
+    assert_no_space_below_field_row(page.locator("#account-picture-form"))
     page.evaluate(f"window.{NO_RELOAD_MARKER} = true")
     page.get_by_label("First name").fill("Ada")
     page.get_by_label("Last name").fill("Lovelace")
