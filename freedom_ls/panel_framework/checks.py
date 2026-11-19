@@ -6,10 +6,13 @@ import re
 from collections.abc import Sequence
 from importlib import import_module
 
+from django_cotton.compiler_regex import CottonCompiler
+
 from django.apps import AppConfig
 from django.conf import settings
 from django.contrib.sites.models import Site
 from django.core.checks import CheckMessage, Error, Warning
+from django.template import Context, Template, TemplateDoesNotExist, TemplateSyntaxError
 from django.utils.module_loading import import_string
 
 from freedom_ls.panel_framework.config import PanelFrameworkConfig, config
@@ -32,6 +35,40 @@ _NON_DURABLE_BACKEND_PATHS = (
     "django.tasks.backends.dummy.DummyBackend",
     "django_tasks.backends.immediate.ImmediateBackend",
     "django_tasks.backends.dummy.DummyBackend",
+)
+
+# Every icon name the framework's templates and primitives draw, which the
+# host's `c-icon` must be able to render. Names bound at runtime
+# (`:name="item.icon"`) are the host's own and are not listed.
+REQUIRED_ICON_NAMES: frozenset[str] = frozenset(
+    {
+        "add",
+        "check",
+        "close",
+        "download",
+        "dropdown",
+        "error",
+        "filter",
+        "info",
+        "loading",
+        "menu",
+        "more_options",
+        "next",
+        "open_page",
+        "previous",
+        "quick_view",
+        "retry",
+        "search",
+        "settings",
+        "sort_asc",
+        "sort_desc",
+        "sort_neutral",
+        "success",
+        "trend_down",
+        "trend_up",
+        "user",
+        "warning",
+    }
 )
 
 
@@ -77,6 +114,45 @@ def check_task_backend(
             id="freedom_ls_panel_framework.W001",
         )
     ]
+
+
+def _render_icon(name: str) -> str:
+    """The host's c-icon for `name`, rendered. A string template is never
+    compiled by cotton's loader, so the tag is compiled here."""
+    source = CottonCompiler().process(f'<c-icon name="{name}" />')
+    return Template(source).render(Context())
+
+
+def check_icon_names(
+    *,
+    app_configs: Sequence[AppConfig] | None,
+    databases: Sequence[str] | None = None,
+    **kwargs: object,
+) -> list[CheckMessage]:
+    """Report each icon name the framework draws that the host's c-icon cannot."""
+    messages: list[CheckMessage] = []
+    for name in sorted(REQUIRED_ICON_NAMES):
+        hint = f"Make the host's c-icon draw '{name}'. See HOST_CONTRACT.md#icons."
+        try:
+            rendered = _render_icon(name)
+        except (TemplateDoesNotExist, TemplateSyntaxError, LookupError) as error:
+            messages.append(
+                Error(
+                    f"The host's c-icon cannot draw the icon '{name}': {error!r}.",
+                    hint=hint,
+                    id="freedom_ls_panel_framework.E010",
+                )
+            )
+            continue
+        if not rendered.strip():
+            messages.append(
+                Warning(
+                    f"The host's c-icon draws nothing for the icon '{name}'.",
+                    hint=hint,
+                    id="freedom_ls_panel_framework.W003",
+                )
+            )
+    return messages
 
 
 def check_site_resolver(

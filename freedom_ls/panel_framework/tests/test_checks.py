@@ -3,18 +3,21 @@
 from __future__ import annotations
 
 import gc
+from pathlib import Path
 from typing import cast
 
 import pytest
 from pytest_django.fixtures import SettingsWrapper
 
 from django.contrib.sites.models import Site
-from django.core.checks import run_checks
+from django.core.checks import CheckMessage, run_checks
 from django.core.management import call_command
 from django.tasks.backends.immediate import ImmediateBackend
 from django.test import override_settings
 
 from freedom_ls.panel_framework.checks import (
+    REQUIRED_ICON_NAMES,
+    check_icon_names,
     check_site_resolver,
     check_task_backend,
     default_sort_errors,
@@ -481,3 +484,80 @@ def test_the_site_resolver_warning_is_registered_for_database_checks(
     message_ids = [message.id for message in run_checks(databases=["default"])]
 
     assert "freedom_ls_panel_framework.W002" in message_ids
+
+
+FAILING_NAMES = ("close", "next")
+
+
+def _put_icon_component_first(
+    tmp_path: Path, settings: SettingsWrapper, source: str
+) -> None:
+    (tmp_path / "cotton").mkdir()
+    (tmp_path / "cotton" / "icon.html").write_text(source)
+    settings.TEMPLATES[0]["DIRS"] = [str(tmp_path), *settings.TEMPLATES[0]["DIRS"]]
+
+
+def _run_icon_check() -> list[CheckMessage]:
+    return check_icon_names(app_configs=None)
+
+
+def test_an_icon_component_that_includes_a_missing_template_raises_e010(
+    tmp_path: Path, settings: SettingsWrapper
+) -> None:
+    _put_icon_component_first(tmp_path, settings, '{% include "no_such_icon.html" %}')
+
+    messages = _run_icon_check()
+
+    assert {message.id for message in messages} == {"freedom_ls_panel_framework.E010"}
+    assert len(messages) == len(REQUIRED_ICON_NAMES)
+
+
+def test_an_icon_component_that_renders_nothing_raises_w003(
+    tmp_path: Path, settings: SettingsWrapper
+) -> None:
+    _put_icon_component_first(tmp_path, settings, "")
+
+    messages = _run_icon_check()
+
+    assert {message.id for message in messages} == {"freedom_ls_panel_framework.W003"}
+    assert len(messages) == len(REQUIRED_ICON_NAMES)
+
+
+def test_the_standalone_icon_component_raises_no_icon_message() -> None:
+    assert _run_icon_check() == []
+
+
+def test_each_failing_icon_name_gets_one_error_naming_it(
+    tmp_path: Path, settings: SettingsWrapper
+) -> None:
+    _put_icon_component_first(
+        tmp_path,
+        settings,
+        '<c-vars name="" />{% if name == "close" or name == "next" %}'
+        '{% include "no_such_icon.html" %}{% else %}<svg></svg>{% endif %}',
+    )
+
+    messages = _run_icon_check()
+
+    assert [message.id for message in messages] == [
+        "freedom_ls_panel_framework.E010"
+    ] * len(FAILING_NAMES)
+    assert [
+        message.msg.count(f"'{name}'")
+        for name, message in zip(FAILING_NAMES, messages, strict=True)
+    ] == [1, 1]
+
+
+@pytest.mark.needs_fls_host
+def test_fls_icon_component_raising_key_error_for_an_unknown_name_raises_e010(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "freedom_ls.panel_framework.checks.REQUIRED_ICON_NAMES",
+        REQUIRED_ICON_NAMES | {"no_such_semantic_icon"},
+    )
+
+    messages = _run_icon_check()
+
+    assert [message.id for message in messages] == ["freedom_ls_panel_framework.E010"]
+    assert "no_such_semantic_icon" in messages[0].msg

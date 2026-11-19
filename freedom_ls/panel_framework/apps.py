@@ -11,11 +11,13 @@ class PanelFrameworkConfig(AppConfig):
         from django.core.checks import register
 
         from freedom_ls.panel_framework.checks import (
+            check_icon_names,
             check_panels,
             check_site_resolver,
             check_task_backend,
         )
 
+        register(check_icon_names)
         register(check_panels)
         register(check_task_backend)
         register(check_site_resolver)
