@@ -17,7 +17,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 3. Implementation and QA
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
@@ -28,6 +28,13 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (user) Manual run: `/sdd:finish_worktree` with a deliberately order-dependent test; a sub-agent fixes it and the report lists the commit
 - [ ] (user) Manual run: one pre-step rebase of a spec-only branch; no pytest runs and pre-commit checks only the branch's files
 - [ ] (user) Check every `claude_plugins/sdd/docs/diagrams/*.drawio.svg` opens in draw.io and renders in GitHub's preview of `claude_plugins/sdd/commands/README.md`
+- [ ] (user) Run the full test tier: the run at the end of `/sdd:implement_plan` was killed under low system memory and then cancelled at your request, so no full run has passed on the finished branch and no full-run record exists; `/sdd:do_qa`, `/sdd:qa_fix` and `/sdd:finish_worktree` will each resolve their checkpoint to a full run until one passes
+- [ ] (user) Decide what the second full-run point is: the spec says there are two and names only `implement_plan` Step 3; the overview diagram and `claude_plugins/sdd/commands/README.md` (section "When the full suite runs") label it as a checkpoint that resolves to full, where CI on the pull request is the other reading. Then have the overview label and that section adjusted if needed
+- [ ] (user) Decide whether the diagrams should share one layout: `document`, `rebase`, `start`, `spec_from_idea` and `plan_from_spec` are single horizontal strips of five lanes (`rebase` is about 8,300 px wide); `implement_plan`, `do_qa`, `qa_fix` and `finish_worktree` are stacked bands about 2,500 px wide that repeat their lanes. Redrawing either set follows
+- [ ] (user) Confirm the stale-lease change in `finish_worktree.md`: a main-moved loop pass entered before Step 7 (from Step 0 or Step 0.5) stops after its rebase and continues at Step 0.5, so nothing lands before the PR check and close-out; the plan's wording ran the whole pass, which ends in `land`
+- [ ] (user) Decide what to do about `tests/test_run_tests.py::test_memory_that_becomes_sufficient_ends_the_wait_with_the_sized_count`: it failed once in a full run while the machine was under load and passes alone; fix its timing sensitivity or leave it
+- [ ] (user) Decide what to do about `plan_from_spec.md` Step 5, which tells the plan to reference the QA file as a final step while the same command says a plan never mentions QA; the trim left it because removing it changes behaviour
+- [ ] (user) This spec has no `3. frontend_qa.md`, so `/sdd:do_qa` has no plan to run: decide whether to write one or tick the `/sdd:do_qa` and `/sdd:qa_fix` items as not applicable
 
 ## 4. Documentation and pull request
 
