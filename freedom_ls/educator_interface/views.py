@@ -122,7 +122,6 @@ from freedom_ls.educator_interface.filters import (
     LearnerCourseFilter,
     LearnerStatusFilter,
     StaffRoleFilter,
-    VisibleCourseFilter,
     may_see_staff_roles,
 )
 from freedom_ls.educator_interface.forms import CohortForm, LearnerImportForm
@@ -150,6 +149,7 @@ from freedom_ls.educator_interface.panels.common.badges import (
     active_status_badge,
     inactive_badge,
 )
+from freedom_ls.educator_interface.panels.common.filters import VisibleCourseFilter
 from freedom_ls.educator_interface.panels.common.ids import uuid_or_404
 from freedom_ls.educator_interface.panels.common.request import (
     LAST_ORGANISATION_SESSION_KEY,
