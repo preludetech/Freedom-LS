@@ -144,3 +144,21 @@ def test_a_person_row_links_the_chip_and_name_together_with_the_reason_inside() 
 
     assert "Thandi Mokoena" in link.text_content()
     assert "4 days idle" in link.text_content()
+
+
+def test_user_id_with_picture_url_renders_the_picture() -> None:
+    html = render_cotton(
+        '<c-panel-attention-row subject="Thandi Mokoena" href="/learners/42/" '
+        'user_id="42" picture_url="/media/thandi.webp" />'
+    )
+
+    (image,) = lxml.html.fromstring(html).cssselect("img[data-profile-picture]")
+    assert image.get("src") == "/media/thandi.webp"
+
+
+def test_user_id_without_picture_url_renders_no_image() -> None:
+    html = render_cotton(
+        '<c-panel-attention-row subject="Thandi Mokoena" href="/learners/42/" user_id="42" />'
+    )
+
+    assert lxml.html.fromstring(html).cssselect("img") == []

@@ -13,8 +13,10 @@ import time_machine
 
 from django.core.cache import cache
 from django.core.files.base import ContentFile
+from django.db import connection
 from django.http import HttpResponse
 from django.test import Client, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
@@ -768,6 +770,149 @@ class TestNeedsAttentionCard:
             "so it is not included." in text
         )
         assert "REPORTS_MAX_LEARNERS" not in text
+
+
+def _flagged_membership(cohort, **user_fields) -> CohortMembership:
+    return cast(
+        CohortMembership,
+        CohortMembershipFactory(
+            cohort=cohort, learner__user=UserFactory(**user_fields)
+        ),
+    )
+
+
+def _flag_cohort() -> Cohort:
+    """A cohort registered for a course, so its members are flagged as not started."""
+    cohort = CohortFactory()
+    CohortCourseRegistrationFactory(cohort=cohort, course=_course_with_topic())
+    return cast(Cohort, cohort)
+
+
+def _attention_pictures(client: Client, cohort: Cohort) -> list[str]:
+    region = _attention_region(
+        client, _attention_url(cohort.organisation.slug, cohort.pk)
+    )
+    return [image.get("src") for image in region.cssselect("img[data-profile-picture]")]
+
+
+def _avatar_slot(element: lxml.html.HtmlElement) -> str:
+    (chip,) = element.cssselect("span[class*='panel-avatar-']")
+    (slot,) = [
+        name for name in chip.get("class").split() if name.startswith("panel-avatar-")
+    ]
+    return str(slot)
+
+
+@pytest.mark.django_db
+class TestNeedsAttentionPictures:
+    def test_a_flagged_learner_with_a_picture_shows_it(self, logged_in_client):
+        cohort = _flag_cohort()
+        user = UserFactory(with_profile_picture=True)
+        CohortMembershipFactory(cohort=cohort, learner__user=user)
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        sources = _attention_pictures(client, cohort)
+
+        assert sources == [user.profile_picture_url]
+
+    def test_a_flagged_learner_without_a_picture_shows_initials_alone(
+        self, logged_in_client
+    ):
+        cohort = _flag_cohort()
+        _flagged_membership(cohort)
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        region = _attention_region(
+            client, _attention_url(cohort.organisation.slug, cohort.pk)
+        )
+
+        assert region.cssselect("img") == []
+        assert 'src="None"' not in lxml.html.tostring(region).decode()
+
+    def test_a_row_whose_learner_cannot_be_resolved_shows_initials(
+        self, logged_in_client, monkeypatch
+    ):
+        """A membership row cannot outlive its Learner, so the missing avatar is forced."""
+        cohort = _flag_cohort()
+        CohortMembershipFactory(
+            cohort=cohort, learner__user=UserFactory(with_profile_picture=True)
+        )
+        client = logged_in_client(_org_admin(cohort.organisation))
+        monkeypatch.setattr(
+            "freedom_ls.educator_interface.reporting.learner_avatars",
+            lambda learner_ids: {},
+        )
+
+        region = _attention_region(
+            client, _attention_url(cohort.organisation.slug, cohort.pk)
+        )
+
+        assert region.cssselect("img") == []
+        assert len(region.cssselect("span[class*='panel-avatar-']")) == 1
+
+    def test_the_picture_shows_on_a_warm_cached_load(self, logged_in_client):
+        cohort = _flag_cohort()
+        user = UserFactory(with_profile_picture=True)
+        CohortMembershipFactory(cohort=cohort, learner__user=user)
+        client = logged_in_client(_org_admin(cohort.organisation))
+        _attention_pictures(client, cohort)
+
+        sources = _attention_pictures(client, cohort)
+
+        assert sources == [user.profile_picture_url]
+
+    def test_more_flagged_learners_with_pictures_cost_no_more_queries(
+        self, logged_in_client, django_assert_max_num_queries
+    ):
+        cohort = _flag_cohort()
+        CohortMembershipFactory(
+            cohort=cohort, learner__user=UserFactory(with_profile_picture=True)
+        )
+        client = logged_in_client(_org_admin(cohort.organisation))
+        url = _attention_url(cohort.organisation.slug, cohort.pk)
+        with CaptureQueriesContext(connection) as one_row:
+            _attention_region(client, url)
+        for _ in range(5):
+            CohortMembershipFactory(
+                cohort=cohort, learner__user=UserFactory(with_profile_picture=True)
+            )
+        cache.clear()
+
+        with django_assert_max_num_queries(len(one_row.captured_queries)):
+            sources = _attention_pictures(client, cohort)
+
+        assert len(sources) == 6
+
+    def test_an_attention_row_and_the_learners_table_row_share_a_colour_slot(
+        self, logged_in_client
+    ):
+        cohort = _flag_cohort()
+        membership = _flagged_membership(cohort, first_name="Zed", last_name="Zebra")
+        client = logged_in_client(_org_admin(cohort.organisation))
+        region = _attention_region(
+            client, _attention_url(cohort.organisation.slug, cohort.pk)
+        )
+        table = lxml.html.fromstring(
+            client.get(
+                reverse(
+                    "educator_interface:interface",
+                    kwargs={
+                        "organisation_slug": cohort.organisation.slug,
+                        "path_string": f"cohorts/{cohort.pk}/__tabs/learners",
+                    },
+                )
+            ).content.decode()
+        )
+
+        (row,) = region.cssselect("li")
+        (table_row,) = [
+            candidate
+            for candidate in table.cssselect("tr")
+            if f"/learners/{membership.learner_id}"
+            in lxml.html.tostring(candidate).decode()
+        ]
+
+        assert _avatar_slot(row) == _avatar_slot(table_row)
 
 
 def _body_url(organisation_slug: str, cohort_pk: object) -> str:

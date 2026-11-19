@@ -17,6 +17,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.models import User
 from freedom_ls.educator_interface.actions import RegisterLearnerForCourseAction
+from freedom_ls.educator_interface.avatars import learner_avatars
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     LEARNER_CHANGED,
@@ -216,10 +217,12 @@ class CohortNeedsAttentionPanel(LazyBodyPanel):
     )
 
     def get_loaded_context(self) -> dict[str, object]:
+        attention = cached_cohort_progress(cast(Cohort, self.instance)).attention_list
         return {
-            "attention": cached_cohort_progress(
-                cast(Cohort, self.instance)
-            ).attention_list
+            "attention": attention,
+            "avatars": learner_avatars(
+                learner.learner_id for learner in attention.learners
+            ),
         }
 
 

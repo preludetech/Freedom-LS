@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import cast
 
 from django import template
@@ -60,3 +61,9 @@ def course_label_tag(context: template.Context, course: Course) -> str:
     organisation sees it, for `{% course_label course as label %}`."""
     organisation = cast(OrganisationScopedRequest, context["request"]).organisation
     return course.label_for(organisation)
+
+
+@register.filter
+def lookup[K, V](mapping: Mapping[K, V], key: K) -> V | None:
+    """`mapping[key]`, or None when absent, for a key held in a template variable."""
+    return mapping.get(key)
