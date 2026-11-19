@@ -92,6 +92,11 @@ def _box(locator: Locator) -> FloatRect:
     return box
 
 
+def _computed(locator: Locator, prop: str) -> str:
+    style: str = locator.evaluate(f"el => getComputedStyle(el).{prop}")
+    return style
+
+
 def _card_of(link: Locator) -> Locator:
     return link.locator(
         "xpath=ancestor::*[self::article or contains(@class, 'surface')][1]"
@@ -357,6 +362,17 @@ def test_learner_browses_a_course(
     button_b.click()
     expect(button_a).to_have_attribute("aria-pressed", "false")
     expect(button_b).to_have_attribute("aria-pressed", "true")
+
+    # The playing word's card and button stand out from an idle one.
+    card_a = button_a.locator("xpath=..")
+    card_b = button_b.locator("xpath=..")
+    page.mouse.move(0, 0)
+    assert _computed(card_b, "borderColor") != _computed(card_a, "borderColor")
+    assert _computed(button_b, "backgroundColor") != _computed(
+        button_a, "backgroundColor"
+    )
+    expect(button_b.locator("[data-icon='audio_playing']")).to_be_visible()
+    expect(button_a.locator("[data-icon='audio_play']")).to_be_visible()
     button_b.click()
     expect(button_b).to_have_attribute("aria-pressed", "false")
 

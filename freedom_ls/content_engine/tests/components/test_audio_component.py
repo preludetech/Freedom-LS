@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import lxml.html
 import pytest
 
 from django.urls import reverse
@@ -16,6 +17,15 @@ pytestmark = pytest.mark.django_db
 def _render(markup: str) -> str:
     topic = TopicFactory()
     return str(render_markdown(markup, None, context={"content_instance": topic}))
+
+
+def _render_tree(markup: str) -> lxml.html.HtmlElement:
+    return lxml.html.fromstring(_render(markup))
+
+
+def _respelling(tree: lxml.html.HtmlElement) -> lxml.html.HtmlElement:
+    (element,) = tree.xpath("//*[@*[name()='x-bind:id']=\"$id('audio-respelling')\"]")
+    return element
 
 
 def _audio_file(file_path: str) -> File:
@@ -168,3 +178,68 @@ class TestInsideGrid:
         assert 'x-data="audioFile"' in html
         assert 'x-on:click="toggle"' in html
         assert "data-src=" in html
+
+
+class TestSymbol:
+    def test_symbol_renders_a_tile_hidden_from_screen_readers(
+        self, mock_site_context: object
+    ) -> None:
+        _audio_file("audio/november.mp3")
+
+        tree = _render_tree(
+            '<c-audio src="audio/november.mp3" label="November" symbol="N"></c-audio>'
+        )
+
+        (tile,) = tree.xpath("//span[@aria-hidden='true']")
+        assert tile.text_content() == "N"
+
+    def test_no_symbol_renders_no_tile(self, mock_site_context: object) -> None:
+        _audio_file("audio/november.mp3")
+
+        tree = _render_tree(
+            '<c-audio src="audio/november.mp3" label="November"></c-audio>'
+        )
+
+        assert tree.xpath("//span[@aria-hidden='true']") == []
+
+
+class TestRespellingStress:
+    def test_stressed_syllable_is_emphasised_and_the_text_reads_as_authored(
+        self, mock_site_context: object
+    ) -> None:
+        _audio_file("audio/november.mp3")
+
+        tree = _render_tree(
+            '<c-audio src="audio/november.mp3" label="November" '
+            'respelling="no-VEM-ber"></c-audio>'
+        )
+
+        respelling = _respelling(tree)
+        assert respelling.text_content() == "no-VEM-ber"
+        assert respelling.xpath(".//strong/text()") == ["VEM"]
+
+    def test_respelling_all_in_capitals_emphasises_nothing(
+        self, mock_site_context: object
+    ) -> None:
+        _audio_file("audio/bravo.mp3")
+
+        tree = _render_tree(
+            '<c-audio src="audio/bravo.mp3" label="Bravo" respelling="BRAH VOH">'
+            "</c-audio>"
+        )
+
+        respelling = _respelling(tree)
+        assert respelling.text_content() == "BRAH VOH"
+        assert respelling.xpath(".//strong") == []
+
+
+class TestPlaybackIcons:
+    def test_playing_state_shows_the_audio_playing_icon(
+        self, mock_site_context: object
+    ) -> None:
+        _audio_file("audio/bravo.mp3")
+
+        tree = _render_tree('<c-audio src="audio/bravo.mp3" label="Bravo"></c-audio>')
+
+        icon = tree.xpath("//button//span[@x-show='playing']//svg/@data-icon")
+        assert icon == ["audio_playing"]

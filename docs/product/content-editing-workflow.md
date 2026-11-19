@@ -143,7 +143,7 @@ These widgets are available inside Markdown content:
 | `c-content-link` | Internal link to another content item |
 | `c-pdf-embed` | Inline PDF viewer |
 | `c-file-download` | Downloadable file link |
-| `c-audio` | Speak button that plays a recorded audio file on demand, labelled with the word (`label`) and an optional `respelling`; one plays at a time |
+| `c-audio` | Card that plays a recorded audio file on demand, showing the word (`label`), an optional `respelling` and an optional `symbol` tile; one plays at a time |
 | `c-pull-quote` | Pull quote with optional attribution |
 | `c-equation` | Rendered equation block |
 | `c-image-grid` | Multi-column image grid; a `c-grid` specialised for images |

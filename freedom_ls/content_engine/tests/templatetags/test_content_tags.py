@@ -14,6 +14,7 @@ from freedom_ls.content_engine.templatetags.content_tags import (
     admonition_icon,
     get_content_by_path,
     get_published_article_by_path,
+    respelling_parts,
 )
 from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import Form
@@ -356,3 +357,43 @@ class TestGetPublishedArticleByPath:
         ArticleFactory(file_path="articles/target.md", site=other_site)
 
         assert get_published_article_by_path("../articles/target.md", source) is None
+
+
+class TestRespellingParts:
+    """respelling_parts splits a respelling and marks its stressed syllable."""
+
+    def test_capitalised_syllable_among_lower_case_ones_is_stressed(self) -> None:
+        parts = respelling_parts("no-VEM-ber")
+
+        assert parts == [
+            ("no", False),
+            ("-", False),
+            ("VEM", True),
+            ("-", False),
+            ("ber", False),
+        ]
+
+    @pytest.mark.parametrize(
+        ("respelling", "expected"),
+        [
+            ("BRAH VOH", [("BRAH", False), (" ", False), ("VOH", False)]),
+            ("brah voh", [("brah", False), (" ", False), ("voh", False)]),
+        ],
+        ids=["all-capitals", "all-lower-case"],
+    )
+    def test_respelling_in_one_case_marks_no_stress(
+        self, respelling: str, expected: list[tuple[str, bool]]
+    ) -> None:
+        parts = respelling_parts(respelling)
+
+        assert parts == expected
+
+    def test_apostrophe_stays_inside_its_syllable(self) -> None:
+        parts = respelling_parts("uh-KLOK'S")
+
+        assert parts == [("uh", False), ("-", False), ("KLOK'S", True)]
+
+    def test_empty_respelling_has_no_parts(self) -> None:
+        parts = respelling_parts("")
+
+        assert parts == []

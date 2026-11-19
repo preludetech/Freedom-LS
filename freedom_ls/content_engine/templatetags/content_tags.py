@@ -109,6 +109,27 @@ def safe_url(value: str | None) -> str:
     return ""
 
 
+_RESPELLING_SEPARATOR_RE = re.compile(r"([^\w']+)")
+
+
+@register.filter
+def respelling_parts(respelling: str) -> list[tuple[str, bool]]:
+    """Split a pronunciation respelling into ``(text, stressed)`` pieces.
+
+    A syllable in capitals among lower-case ones is the stressed one:
+    ``"no-VEM-ber"`` marks ``VEM``. Separators come back as their own
+    unstressed pieces, so joining the texts gives the respelling as authored.
+    A respelling written all in capitals marks no stress, because nothing in
+    it stands out.
+
+    Usage: ``{% for text, stressed in respelling|respelling_parts %}``
+    """
+    pieces = [piece for piece in _RESPELLING_SEPARATOR_RE.split(respelling) if piece]
+    syllables = [piece for piece in pieces if any(char.isalpha() for char in piece)]
+    has_contrast = any(not syllable.isupper() for syllable in syllables)
+    return [(piece, has_contrast and piece.isupper()) for piece in pieces]
+
+
 @register.filter  # (needs_context=True)
 def get_file_by_path(file_path, content_instance):
     """

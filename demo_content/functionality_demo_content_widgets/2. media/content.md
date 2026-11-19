@@ -75,16 +75,16 @@ If you do not want a grid, you do not need a wrapper. Consecutive `c-picture` bl
 
 ## Audio
 
-Play a recorded word with `c-audio`. `src` is the audio file, `label` is the word shown beside the speak button, and `respelling` is the optional pronunciation guide shown under the word. Wrap several in a `c-grid` to line them up.
+Play a recorded word with `c-audio`. `src` is the audio file and `label` is the word shown in bold. `respelling` is the optional pronunciation guide under the word: write the stressed syllable in capitals and it stands out. `symbol` is optional short text for the tile at the left, such as the letter the word stands for. Wrap several in a `c-grid` to line them up.
 
-<c-grid columns="4">
+<c-grid columns="2">
 
-<c-audio src="audio/bravo.mp3" label="Bravo" respelling="BRAH VOH"></c-audio>
+<c-audio src="audio/bravo.mp3" label="Bravo" respelling="BRAH-voh" symbol="B"></c-audio>
 
-<c-audio src="audio/charlie.mp3" label="Charlie" respelling="CHAR LEE"></c-audio>
+<c-audio src="audio/charlie.mp3" label="Charlie" respelling="CHAR-lee" symbol="C"></c-audio>
 
-<c-audio src="audio/oscar.mp3" label="Oscar" respelling="OSS CAH"></c-audio>
+<c-audio src="audio/oscar.mp3" label="Oscar" respelling="OSS-cah" symbol="O"></c-audio>
 
-<c-audio src="audio/romeo.mp3" label="Romeo" respelling="ROW ME OH"></c-audio>
+<c-audio src="audio/romeo.mp3" label="Romeo" respelling="ROW-me-oh" symbol="R"></c-audio>
 
 </c-grid>

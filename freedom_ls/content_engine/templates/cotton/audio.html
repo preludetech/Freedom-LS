@@ -1,16 +1,32 @@
-<c-vars src="" label="" respelling="" />
+<c-vars src="" label="" respelling="" symbol="" />
 
 {% load content_tags %}
 
 {% comment %}
-Speak button for one recorded audio file.
+A card that plays one recorded audio file: an optional symbol tile, the word
+in bold with its respelling under it, and a round play button at the right.
+
+Attributes:
+  src         File path of the audio file, looked up via get_file_by_path.
+  label       The visible word. Required: it is the button's accessible name.
+  respelling  Optional pronunciation guide, set in mono under the word. A
+              syllable written in capitals among lower-case ones is the
+              stressed one and is drawn bold in the primary colour
+              ("no-VEM-ber"). All capitals means no stress is marked.
+  symbol      Optional short text for the tile at the left, such as the letter
+              a word stands for. Decorative, so hidden from screen readers.
+
+While the file plays the button fills with the primary colour and shows the
+audio_playing icon, and the card takes the primary border. Both follow the
+button's aria-pressed, so no extra state is bound.
+
 data-src holds the redirect URL, never a signed one, so playback after the
 signature expires still works. The audio element is created by the audioFile
 Alpine component on first press, so nothing loads with the page.
 A missing or non-audio file, or an empty label, renders a red box naming the
 src instead. The respelling comes before the button in the DOM so it reads in
-order (word, respelling, button); the grid puts it under the word. Its id comes
-from Alpine's $id, so two widgets on the same file never share one.
+order (word, respelling, button). Its id comes from Alpine's $id, so two
+widgets on the same file never share one.
 The status line is always in the DOM and only its text changes, so screen
 readers announce each failure.
 {% endcomment %}
@@ -22,19 +38,22 @@ readers announce each failure.
     <c-content-error message="Audio needs a label: {{ src }}" />
   {% else %}
     <div class="my-6" x-data="audioFile"{% if respelling %} x-id="['audio-respelling']"{% endif %}>
-      <div class="grid grid-cols-[minmax(0,auto)_auto] items-center justify-start gap-x-2">
-        <span class="col-start-1 row-start-1 min-w-0 break-words">{{ label }}</span>
-        {% if respelling %}<span x-bind:id="$id('audio-respelling')" class="col-start-1 row-start-2 min-w-0 break-words text-muted">{{ respelling }}</span>{% endif %}
+      <div class="flex items-center gap-3 rounded-lg border border-border bg-surface p-3 transition-colors has-aria-pressed:border-primary has-aria-pressed:bg-primary/5">
+        {% if symbol %}<span aria-hidden="true" class="flex size-12 shrink-0 items-center justify-center rounded-md bg-primary text-xl font-bold text-on-primary">{{ symbol }}</span>{% endif %}
+        <div class="min-w-0 flex-1">
+          <span class="block break-words font-bold leading-tight">{{ label }}</span>
+          {% if respelling %}<span x-bind:id="$id('audio-respelling')" class="mt-1 block break-words font-mono text-sm text-muted">{% for text, stressed in respelling|respelling_parts %}{% if stressed %}<strong class="font-bold text-primary">{{ text }}</strong>{% else %}{{ text }}{% endif %}{% endfor %}</span>{% endif %}
+        </div>
         <c-button variant="ghost"
                   aria_label="Play pronunciation of {{ label }}"
                   x-bind:aria-describedby="{% if respelling %}$id('audio-respelling'){% else %}null{% endif %}"
                   x-bind:aria-pressed="playing"
                   x-on:click="toggle"
                   data-src="{% url 'content_engine:audio_file' file_obj.pk %}"
-                  class="col-start-2 row-start-1 row-span-2 size-11 justify-center p-0">
+                  class="size-11 shrink-0 rounded-pill border border-primary/30 p-0 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-on-primary aria-pressed:hover:bg-primary-hover">
           <span x-show="idle"><c-icon name="audio_play" class="size-5" /></span>
           <span x-show="loading" x-cloak><c-icon name="loading" class="size-5 animate-spin" /></span>
-          <span x-show="playing" x-cloak><c-icon name="audio_stop" class="size-5" /></span>
+          <span x-show="playing" x-cloak><c-icon name="audio_playing" class="size-5" /></span>
         </c-button>
       </div>
       <p role="status" x-text="failed ? 'Audio could not be played. Try again.' : ''" class="text-error text-sm"></p>

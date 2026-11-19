@@ -18,7 +18,7 @@ Widgets are `c-*` cotton components embedded in markdown content bodies. They mu
 | `c-image-grid` | Older name for `c-grid`, kept for existing content; use `c-grid` in new content |
 | `c-pdf-embed` | Displaying a PDF inline |
 | `c-file-download` | Providing a file download button |
-| `c-audio` | A speak button that plays one recorded audio file (e.g. a word pronunciation) |
+| `c-audio` | A card that plays one recorded audio file (e.g. a word pronunciation) |
 | `c-admonition` | Callout boxes — notes, tips, warnings, checklists, etc. |
 | `c-flashcard` | Two-sided recall card (question/answer flip) |
 | `c-accordion` | Collapsible disclosure section |
@@ -49,7 +49,7 @@ c-file-download:  src, text
 c-pull-quote:     attribution, cite, source
 c-equation:       label
 c-grid:           columns
-c-audio:          src, label, respelling
+c-audio:          src, label, respelling, symbol
 c-image-grid:     columns
 c-table:          caption
 c-code-block:     title, language, wrap
