@@ -17,7 +17,7 @@ replaces the form with that sentence and a Close button.
     <c-modal-body>
 <div data-request-error tabindex="-1" hidden class="text-error [&_p]:text-error"></div>
 {% if status_message %}
-    <c-panel-notice tone="success" data-status-message>{{ status_message }}</c-panel-notice>
+    <c-panel-callout tone="success" data-status-message>{{ status_message }}</c-panel-callout>
 {% endif %}
 {% include "panel_framework/partials/error_summary.html" %}
 

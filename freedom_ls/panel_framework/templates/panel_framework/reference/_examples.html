@@ -492,25 +492,25 @@ somewhere on the page to land.
     </section>
 
     <section class="space-y-6">
-        <h2>Notice</h2>
+        <h2>Callout</h2>
 
-        <div id="notice-info">
-            <p class="text-sm text-muted">A compact boxed sentence inside a panel or dialog. <code>tone</code> is <code>info</code> (default), <code>warning</code>, <code>error</code> or <code>success</code>; <code>title</code> adds a bold first line.</p>
-            <c-panel-notice tone="info" title="Heads up">Changes apply to new enrolments only.</c-panel-notice>
+        <div id="callout-info">
+            <p class="text-sm text-muted">A toned status box inside a page, panel or dialog. <code>tone</code> is <code>info</code> (default), <code>success</code>, <code>warning</code> or <code>error</code>; <code>title</code> adds a bold first line. A host project's own callout replaces this one, so the framework never calls the host's <code>&lt;c-callout&gt;</code> directly.</p>
+            <c-panel-callout tone="info" title="Heads up">Changes apply to new enrolments only.</c-panel-callout>
         </div>
 
-        <div id="notice-warning">
-            <c-panel-notice tone="warning" title="Check before continuing">This cohort has learners still in progress.</c-panel-notice>
+        <div id="callout-warning">
+            <c-panel-callout tone="warning" title="Check before continuing">This cohort has learners still in progress.</c-panel-callout>
         </div>
 
-        <div id="notice-error">
-            <p class="text-sm text-muted">An <code>error</code> notice is an alert, so a screen reader announces it when it appears.</p>
-            <c-panel-notice tone="error" title="Could not save">The name is already taken.</c-panel-notice>
+        <div id="callout-error">
+            <p class="text-sm text-muted">An <code>error</code> callout is an alert, so a screen reader announces it when it appears.</p>
+            <c-panel-callout tone="error" title="Could not save">The name is already taken.</c-panel-callout>
         </div>
 
-        <div id="notice-success">
-            <p class="text-sm text-muted">A <code>success</code> notice is a status, announced the same way.</p>
-            <c-panel-notice tone="success">Changes saved.</c-panel-notice>
+        <div id="callout-success">
+            <p class="text-sm text-muted">A <code>success</code> callout is a status, announced the same way.</p>
+            <c-panel-callout tone="success">Changes saved.</c-panel-callout>
         </div>
     </section>
 
@@ -540,17 +540,6 @@ somewhere on the page to land.
         <div id="file-field-inline" hx-disable>
             <p class="text-sm text-muted">A required file field in an inline form, which posts as multipart.</p>
             {% include "panel_framework/partials/inline_record_form.html" with form=file_field_inline_form form_id="file-field-inline-form" action_url="#file-field-inline" %}
-        </div>
-    </section>
-
-    <section class="space-y-6">
-        <h2>Callout</h2>
-
-        <div id="callout-info">
-            <p class="text-sm text-muted">Use for a page-level note. This is `c-callout`; the kit builds nothing new here.</p>
-            <c-callout level="info" title="Heads up">
-                <p>Callouts are an existing base component, listed here for completeness.</p>
-            </c-callout>
         </div>
     </section>
 

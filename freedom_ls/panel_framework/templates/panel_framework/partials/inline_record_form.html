@@ -18,7 +18,7 @@ aria-describedby.
       x-on:htmx:after-request="refocus"
       class="space-y-3">
     {% if form.non_field_errors %}
-        <c-panel-notice tone="error" data-error-summary tabindex="-1">{{ form.non_field_errors }}</c-panel-notice>
+        <c-panel-callout tone="error" data-error-summary tabindex="-1">{{ form.non_field_errors }}</c-panel-callout>
     {% endif %}
     <div class="flex flex-wrap items-end gap-3">
         {% for field in form.visible_fields %}

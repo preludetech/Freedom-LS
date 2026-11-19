@@ -7,17 +7,17 @@ button when a protected relation would block the delete.
 
 {% block body %}
     {% if blocked_reason %}
-        <c-panel-notice tone="error" data-error-summary tabindex="-1">{{ blocked_reason }}</c-panel-notice>
+        <c-panel-callout tone="error" data-error-summary tabindex="-1">{{ blocked_reason }}</c-panel-callout>
     {% else %}
         <p>Deleting this {{ noun }} cannot be undone.</p>
         {% if cascade_summary %}
-            <c-panel-notice tone="error" title="This will also delete:">
+            <c-panel-callout tone="error" title="This will also delete:">
                 <ul class="list-inside list-disc">
                     {% for item in cascade_summary %}
                         <li>{{ item }}</li>
                     {% endfor %}
                 </ul>
-            </c-panel-notice>
+            </c-panel-callout>
         {% endif %}
     {% endif %}
 {% endblock body %}

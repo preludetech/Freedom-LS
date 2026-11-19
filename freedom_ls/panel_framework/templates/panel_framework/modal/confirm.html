@@ -24,7 +24,7 @@ Blocks: title, hidden_fields, body, reason and confirm_button.
         {% for name, value in hidden_fields.items %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
     {% endblock hidden_fields %}
     <c-modal-body>
-        {% if refusal %}<c-panel-notice tone="error" data-error-summary tabindex="-1">{{ refusal }}</c-panel-notice>{% endif %}
+        {% if refusal %}<c-panel-callout tone="error" data-error-summary tabindex="-1">{{ refusal }}</c-panel-callout>{% endif %}
         {% block body %}{% endblock body %}
         {% block reason %}{% if reason_form %}{% include "panel_framework/partials/reason_field.html" %}{% endif %}{% endblock reason %}
         {% if confirm_disabled_reason %}<p id="confirm-disabled-reason" class="text-muted">{{ confirm_disabled_reason }}</p>{% endif %}

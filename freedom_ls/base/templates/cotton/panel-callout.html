@@ -1,0 +1,8 @@
+<c-vars tone="info" title="" class="" />
+
+{% comment %}
+FLS renders the panel framework's callout as its own <c-callout>, so a panel,
+a dialog and a page show the same box and a theme restyles all three through
+the .callout classes.
+{% endcomment %}
+<c-callout :tone="tone" :title="title" :class="class" :attrs="attrs">{{ slot }}</c-callout>

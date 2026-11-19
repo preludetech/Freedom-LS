@@ -11,7 +11,7 @@ includes partials/as_of.html itself when the panel shows the stamp.
 <div id="{{ region_id }}"{% if not is_loaded %} aria-busy="true"{% endif %}>
     {% block region_content %}
         {% if too_large_message %}
-            <c-panel-notice tone="warning">{{ too_large_message }}</c-panel-notice>
+            <c-panel-callout tone="warning">{{ too_large_message }}</c-panel-callout>
         {% elif is_loaded %}
             {% block as_of %}{% if show_as_of %}{% include "panel_framework/partials/as_of.html" %}{% endif %}{% endblock as_of %}
             {% block loaded_body %}{% endblock loaded_body %}

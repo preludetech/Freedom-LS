@@ -6,7 +6,7 @@ the confirm button is disabled.
 {% endcomment %}
 {% if not error %}
     {% if notice %}
-        <c-panel-notice tone="warning">{{ notice }}</c-panel-notice>
+        <c-panel-callout tone="warning">{{ notice }}</c-panel-callout>
     {% endif %}
     {% if wording %}
         <p>{{ wording.sentence }}</p>

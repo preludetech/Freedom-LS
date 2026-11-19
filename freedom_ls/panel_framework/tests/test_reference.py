@@ -56,7 +56,6 @@ COMPONENT_NAMES = [
     "table",
     "list",
     "heading",
-    "notice",
     "file-field",
     "callout",
     "reason-dialog",
@@ -214,12 +213,18 @@ def test_every_component_has_at_least_one_example_id(
     assert f'id="{component_name}-' in response.content.decode()
 
 
+ROLE_BY_TONE = {"info": None, "warning": None, "error": "alert", "success": "status"}
+
+
 @pytest.mark.parametrize("tone", ["info", "warning", "error", "success"])
-def test_reference_shows_a_notice_in_each_tone(tone: str) -> None:
-    """The reference page had no example of `c-panel-notice` in any tone."""
+def test_reference_shows_a_callout_in_each_tone(tone: str) -> None:
+    """The reference page shows one `c-panel-callout` per tone."""
     html = _render_examples()
-    assert f'id="notice-{tone}"' in html
-    assert f"border-{tone}/20 bg-{tone}/10" in html
+    block = html[html.index(f'id="callout-{tone}"') :]
+    block = block[: block.index("</div>")]
+    role = ROLE_BY_TONE[tone]
+
+    assert (f'role="{role}"' in block) is (role is not None)
 
 
 def _example_block(html: str, example_id: str) -> str:

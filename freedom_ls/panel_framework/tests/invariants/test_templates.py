@@ -655,7 +655,6 @@ FORBIDDEN_IN_DIALOGS = {
     "text-sm": re.compile(r"(?<![\w-])text-sm\b"),
     "px-6 py-4": re.compile(r"px-6 py-4"),
     "a bg-error/10 box": re.compile(r"bg-error/10"),
-    "<c-callout>": re.compile(r"<c-callout\b"),
 }
 
 
@@ -667,7 +666,23 @@ def test_no_dialog_template_hand_writes_what_a_component_owns(rule: str) -> None
         if FORBIDDEN_IN_DIALOGS[rule].search(path.read_text())
     ]
 
-    assert offenders == []
+    assert offenders == [], (
+        f"{rule} in a dialog template: use <c-panel-callout> in a framework "
+        "template, <c-callout> in an FLS template"
+    )
+
+
+def test_no_framework_template_calls_the_host_callout() -> None:
+    offenders = [
+        str(path.relative_to(TEMPLATES_DIR))
+        for path in TEMPLATES_DIR.rglob("*.html")
+        if re.search(r"<c-callout(?![\w-])", path.read_text())
+    ]
+
+    assert offenders == [], (
+        "the panel framework imports nothing from a host project: use "
+        "<c-panel-callout>, which a host renders as its own callout"
+    )
 
 
 INLINE_FORM = (

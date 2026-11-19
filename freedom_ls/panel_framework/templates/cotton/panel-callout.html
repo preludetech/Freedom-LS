@@ -1,0 +1,37 @@
+<c-vars tone="info" title="" class="" />
+
+{% comment %}
+The panel framework's toned status box, for pages, panels and dialogs. A host
+project overrides cotton/panel-callout.html to render its own callout; this
+default keeps the framework usable without one, so it styles itself from the
+theme tokens and uses no host class or component.
+
+Attributes:
+  tone   info (default), success, warning or error. Any other value renders
+         as info. `error` is an alert and `success` a status; `info` and
+         `warning` are read in place.
+  title  A bold first line, not a heading.
+{% endcomment %}
+
+{% partialdef panel-callout-box %}
+<div class="rounded-md border p-3 text-on-surface {{ tint }}{% if class %} {{ class }}{% endif %}"{% if known_tone == "error" %} role="alert"{% elif known_tone == "success" %} role="status"{% endif %} {{ attrs }}>
+    <div class="flex items-start gap-2">
+        <c-icon :name="known_tone" class="size-5 shrink-0 {{ icon_colour }}" />
+        <div class="min-w-0 space-y-2">
+            {% if title %}<strong class="block font-semibold">{{ title }}</strong>{% endif %}
+            {{ slot }}
+        </div>
+    </div>
+</div>
+{% endpartialdef %}
+
+{% comment %}Tailwind only builds class names it finds whole in a template, so each tone spells its classes out.{% endcomment %}
+{% if tone == "success" %}
+    {% with known_tone="success" tint="border-success/20 bg-success/10" icon_colour="text-on-success-light" %}{% partial panel-callout-box %}{% endwith %}
+{% elif tone == "warning" %}
+    {% with known_tone="warning" tint="border-warning/20 bg-warning/10" icon_colour="text-on-warning-light" %}{% partial panel-callout-box %}{% endwith %}
+{% elif tone == "error" %}
+    {% with known_tone="error" tint="border-error/20 bg-error/10" icon_colour="text-error" %}{% partial panel-callout-box %}{% endwith %}
+{% else %}
+    {% with known_tone="info" tint="border-info/20 bg-info/10" icon_colour="text-info" %}{% partial panel-callout-box %}{% endwith %}
+{% endif %}
