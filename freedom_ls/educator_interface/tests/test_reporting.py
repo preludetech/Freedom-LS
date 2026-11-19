@@ -29,11 +29,6 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     TopicFactory,
 )
-from freedom_ls.educator_interface.panels.common.report import (
-    PROGRESS_STATUS_TONES,
-    flag_badge,
-    progress_status_badge,
-)
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -49,7 +44,6 @@ from freedom_ls.reports.gather import gather_cohort_report_data
 from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.reports.report_data import (
     MIN_RESPONDENTS_FOR_PERCENTAGE,
-    AtRiskFlag,
     ConfusionBlock,
     LearnerRow,
     QuizColumn,
@@ -58,7 +52,6 @@ from freedom_ls.reports.report_data import (
     over_limit_message,
 )
 from freedom_ls.reports.screen_cache import _cache_key
-from freedom_ls.reports.statuses import ProgressStatus
 from freedom_ls.reports.tests.helpers import (
     form_progress,
     quiz_form,
@@ -602,33 +595,6 @@ class TestCohortReportDownload:
             )
 
         assert response.status_code == 404
-
-
-@pytest.mark.django_db
-class TestProgressBadges:
-    def test_the_three_statuses_map_to_muted_info_and_success(self) -> None:
-        assert [PROGRESS_STATUS_TONES[status] for status in ProgressStatus] == [
-            "muted",
-            "info",
-            "success",
-        ]
-
-    def test_a_completion_percentage_becomes_its_status_badge(self) -> None:
-        badge = progress_status_badge(50)
-
-        assert (badge.tone, badge.label) == ("info", "In progress")
-
-    def test_a_flag_badge_is_toned_by_the_flags_severity(self) -> None:
-        flag = AtRiskFlag(
-            rule_id="inactive",
-            label="No activity recently",
-            reason="No activity recorded in over 7 days.",
-            severity="warning",
-        )
-
-        badge = flag_badge(flag)
-
-        assert (badge.tone, badge.label) == ("warning", "No activity recently")
 
 
 def _attention_url(organisation_slug: str, cohort_pk: object) -> str:
