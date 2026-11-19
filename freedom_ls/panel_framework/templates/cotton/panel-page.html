@@ -1,0 +1,13 @@
+{% comment %}
+Page wrapper. Owns horizontal padding, max-width and top/bottom padding for the content well.
+width="wide" (default) is max-w-7xl; width="narrow" is max-w-4xl.
+flush="true" drops the horizontal padding, for a host shell that already owns the outer px-*
+(a header bar or overlay that must span edge-to-edge), so the content column does not stack the
+shell's padding and its own.
+Inter-section rhythm is the slot content's job: use a single space-y-* on the parent.
+{% endcomment %}
+<c-vars width="wide" flush="false" class="" />
+
+<div class="mx-auto w-full {% if width == 'narrow' %}max-w-4xl{% else %}max-w-7xl{% endif %} {% if flush != 'true' %}px-4 sm:px-6 lg:px-8 {% endif %}py-8 lg:py-12 {{ class }}">
+    {{ slot }}
+</div>

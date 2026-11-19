@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from datetime import UTC, datetime
 
 import pytest
 from django_cotton.compiler_regex import CottonCompiler
@@ -11,6 +12,7 @@ from lxml import html as lxml_html
 from django.core.paginator import Paginator
 from django.template import Context, Template
 from django.test import RequestFactory
+from django.utils import timezone
 
 _cotton_compiler = CottonCompiler()
 
@@ -171,6 +173,56 @@ DROPDOWN_PAIRS = [
         id="dropdown-menu-separator",
     ),
 ]
+
+
+def _pair(name: str, attributes: str = "", body: str = "Text") -> tuple[str, str]:
+    return (
+        f"<c-panel-{name} {attributes}>{body}</c-panel-{name}>",
+        f"<c-{name} {attributes}>{body}</c-{name}>",
+    )
+
+
+REMAINING_PAIRS = [
+    pytest.param(
+        *_pair("callout", f'level="{level}" title="Heading"'), id=f"callout-{level}"
+    )
+    for level in ["info", "warning", "error", "success"]
+] + [
+    pytest.param(*_pair("callout", 'class="mt-2"'), id="callout-caller-margin"),
+    pytest.param(*_pair("callout"), id="callout-defaults"),
+    pytest.param(
+        *_pair("back-link", 'href="/x/" hx-get="/x/" hx-target="#main"'),
+        id="back-link-href-and-htmx",
+    ),
+    pytest.param(*_pair("page", 'width="narrow" flush="true"'), id="page-narrow-flush"),
+    pytest.param(*_pair("page", 'class="extra"'), id="page-default-with-class"),
+    pytest.param(
+        '<c-panel-date :value="today" />', '<c-date :value="today" />', id="date"
+    ),
+    pytest.param(
+        '<c-panel-date :value="today" short />',
+        '<c-date :value="today" short />',
+        id="date-short",
+    ),
+    pytest.param('<c-panel-date value="" />', '<c-date value="" />', id="date-empty"),
+    pytest.param(
+        '<c-panel-datetime :value="moment" />',
+        '<c-datetime :value="moment" />',
+        id="datetime",
+    ),
+]
+
+
+@pytest.mark.parametrize(("wrapper", "original"), REMAINING_PAIRS)
+def test_a_remaining_primitive_wrapper_renders_what_the_component_rendered(
+    wrapper: str, original: str
+) -> None:
+    context = {
+        "today": timezone.localdate(),
+        "moment": datetime(2026, 11, 3, 7, 37, tzinfo=UTC),
+    }
+
+    assert _normalised(wrapper, **context) == _normalised(original, **context)
 
 
 PAGINATION_PROPS = (

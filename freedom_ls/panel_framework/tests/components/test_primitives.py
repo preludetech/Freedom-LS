@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import re
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
 import pytest_django.fixtures
 
 from django.core.paginator import Page, Paginator
+from django.utils import timezone
+
+from freedom_ls.panel_framework import field_display
 
 from ..cotton_helpers import render_cotton
 
@@ -71,6 +76,36 @@ PRIMITIVE_DEFAULTS = [
         ],
         id="panel-pagination",
     ),
+    pytest.param(
+        '<c-panel-callout level="warning" title="Careful" class="mt-2">Body</c-panel-callout>',
+        ["bg-warning/10", "border-warning", "Careful", "mt-2", "Body"],
+        id="panel-callout",
+    ),
+    pytest.param(
+        '<c-panel-back-link href="/x/" hx-get="/x/">Back</c-panel-back-link>',
+        ['href="/x/"', 'hx-get="/x/"', "min-h-11", "Back"],
+        id="panel-back-link",
+    ),
+    pytest.param(
+        '<c-panel-page width="narrow" flush="true" class="extra">Body</c-panel-page>',
+        ["max-w-4xl", "extra", "Body"],
+        id="panel-page",
+    ),
+    pytest.param(
+        '<c-panel-date :value="value" />',
+        ['<time datetime="2026-11-03">3 Nov 2026</time>'],
+        id="panel-date",
+    ),
+    pytest.param(
+        '<c-panel-date :value="value" short />',
+        ['<time datetime="2026-11-03">3 Nov</time>'],
+        id="panel-date-short",
+    ),
+    pytest.param(
+        '<c-panel-datetime :value="moment" />',
+        ["3 Nov 2026,", "09:37", "whitespace-nowrap"],
+        id="panel-datetime",
+    ),
 ]
 
 PRIMITIVE_OVERRIDES = [
@@ -98,6 +133,19 @@ PRIMITIVE_OVERRIDES = [
         "<c-panel-dropdown-menu-separator />",
         id="panel-dropdown-menu-separator",
     ),
+    pytest.param(
+        "panel-callout", "<c-panel-callout>Hi</c-panel-callout>", id="panel-callout"
+    ),
+    pytest.param(
+        "panel-back-link",
+        "<c-panel-back-link>Hi</c-panel-back-link>",
+        id="panel-back-link",
+    ),
+    pytest.param("panel-page", "<c-panel-page>Hi</c-panel-page>", id="panel-page"),
+    pytest.param("panel-date", '<c-panel-date :value="value" />', id="panel-date"),
+    pytest.param(
+        "panel-datetime", '<c-panel-datetime :value="moment" />', id="panel-datetime"
+    ),
 ]
 
 
@@ -105,7 +153,13 @@ PRIMITIVE_OVERRIDES = [
 def test_a_primitive_renders_its_documented_props_and_slot(
     source: str, expected: list[str]
 ) -> None:
-    html = render_cotton(source, page_obj=_page(2))
+    with timezone.override("Africa/Johannesburg"):
+        html = render_cotton(
+            source,
+            page_obj=_page(2),
+            value=date(2026, 11, 3),
+            moment=datetime(2026, 11, 3, 7, 37, tzinfo=UTC),
+        )
 
     assert {text for text in expected if text not in html} == set()
 
@@ -149,6 +203,29 @@ def test_a_template_at_the_first_template_dir_replaces_a_primitive(
     (tmp_path / "cotton" / f"{name}.html").write_text("<i>overridden</i>")
     settings.TEMPLATES[0]["DIRS"] = [str(tmp_path), *settings.TEMPLATES[0]["DIRS"]]
 
-    html = render_cotton(source, page_obj=_page(2))
+    html = render_cotton(
+        source,
+        page_obj=_page(2),
+        value=date(2026, 11, 3),
+        moment=datetime(2026, 11, 3, 7, 37, tzinfo=UTC),
+    )
 
     assert "<i>overridden</i>" in html
+
+
+TEMPLATES = Path(__file__).resolve().parents[2] / "templates" / "cotton"
+FORMAT_STRING = re.compile(r'\|date:"([^"]+)"')
+
+
+def _formats(name: str) -> list[str]:
+    return FORMAT_STRING.findall((TEMPLATES / f"{name}.html").read_text())
+
+
+def test_the_date_primitive_uses_the_display_format_field_display_uses() -> None:
+    assert _formats("panel-date")[-1] == field_display.DATE_DISPLAY_FORMAT
+
+
+def test_the_datetime_primitive_joins_the_date_and_time_display_formats() -> None:
+    date_format, time_format = _formats("panel-datetime")
+
+    assert f"{date_format}, {time_format}" == field_display.DATETIME_DISPLAY_FORMAT

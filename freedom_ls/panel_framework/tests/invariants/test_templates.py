@@ -473,6 +473,7 @@ CLASS_ATTR = re.compile(r'class="([^"]*)"', re.DOTALL)
 # Templates whose anchors are allowed the prose style, each with its reason.
 PROSE_LINK_TEMPLATES: dict[str, str] = {
     "panel_framework/partials/sidebar_nav.html": "nav links colour the current item with aria-[current]:text-primary",
+    "cotton/panel-back-link.html": "the back link primitive owns the one back-link style, text-primary included",
 }
 
 
@@ -806,3 +807,22 @@ def test_no_educator_module_sets_the_modal_trigger_template_by_hand() -> None:
     ]
 
     assert offenders == []
+
+
+COTTON_TAG = re.compile(r"<c-([a-z][a-z0-9-]*)")
+COTTON_SYNTAX_TAGS = {"vars", "slot"}
+HOST_SUPPLIED_COMPONENTS = {"icon"}
+
+
+def test_every_cotton_tag_in_a_framework_template_is_a_framework_component() -> None:
+    available = {
+        path.relative_to(COMPONENTS_DIR).with_suffix("").as_posix().replace("/", ".")
+        for path in COMPONENTS_DIR.rglob("*.html")
+    }
+    used = {
+        name
+        for path in TEMPLATES_DIR.rglob("*.html")
+        for name in COTTON_TAG.findall(path.read_text())
+    }
+
+    assert used - available - COTTON_SYNTAX_TAGS - HOST_SUPPLIED_COMPONENTS == set()
