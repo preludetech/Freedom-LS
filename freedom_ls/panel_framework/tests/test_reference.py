@@ -265,7 +265,7 @@ def test_file_field_inline_example_posts_multipart_with_no_remove_checkbox() -> 
 
 def test_file_field_inline_example_wrapper_disables_htmx() -> None:
     """The inline example's Save used to post for real and nest a copy of the page."""
-    html = _examples_html()
+    html = _render_examples()
     start = html.index('<div id="file-field-inline"')
     assert "hx-disable" in html[start : html.index(">", start)]
 

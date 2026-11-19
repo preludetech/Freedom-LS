@@ -74,7 +74,7 @@ GOLDEN_FORM_WITHOUT_FILE_FIELD = """
 
 
 
-<footer class="panel-surface shrink-0 flex items-center justify-between gap-3 border-t border-border px-6 py-4 max-sm:flex-wrap " >
+<footer data-modal-footer class="panel-surface shrink-0 flex items-center justify-between gap-3 border-t border-border px-6 py-4 max-sm:flex-wrap " >
     <div class="shrink-0">
 
 
