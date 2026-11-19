@@ -265,6 +265,7 @@ flowchart TB
     base -.-> accounts
     base -.-> content_engine
     base -.-> organisations
+    base -.-> panel_framework
     base -.-> role_based_permissions
     comms -.-> content_engine
     comms -.-> learner_management
@@ -291,7 +292,6 @@ flowchart TB
     meta_pixel -.-> learner_management
     organisations -.-> accounts
     organisations -.-> role_based_permissions
-    panel_framework -.-> base
     registration_rules -.-> comms
     registration_rules -.-> webhooks
     reports -.-> role_based_permissions
@@ -315,7 +315,7 @@ flowchart TB
 | api | base, site_aware_models | — |
 | api_admin | accounts, api, audit_log, site_aware_models | — |
 | audit_log | accounts, base, organisations, site_aware_models | — |
-| base | learner_management, site_aware_models | accounts, content_engine, organisations, role_based_permissions |
+| base | learner_management, site_aware_models | accounts, content_engine, organisations, panel_framework, role_based_permissions |
 | blog | base, content_engine | — |
 | comms | accounts, base, site_aware_models | content_engine, learner_management, organisations, role_based_permissions |
 | content_base | markdown_rendering, site_aware_models | content_engine |
@@ -341,7 +341,7 @@ flowchart TB
 | messaging_policy | accounts, base, comms, learner_management, organisations, role_based_permissions, site_aware_models | — |
 | meta_pixel | base | accounts, content_engine, learner_management |
 | organisations | base, site_aware_models | accounts, role_based_permissions |
-| panel_framework | accounts | base |
+| panel_framework | accounts | — |
 | qa_helpers | accounts, audit_log, comms, content_engine, course_applications, course_interest, course_recommendations, deadlines, educator_interface, form_engine, hr_attributes, learner_interface, learner_management, learner_progress, mail, messaging_policy, organisations, panel_framework, referral_tracking, registration_rules, reports, role_based_permissions, site_aware_models, webhooks | — |
 | referral_tracking | accounts, api, base, site_aware_models | — |
 | registration_rules | accounts, base, content_engine, course_recommendations, hr_attributes, learner_management, learner_progress, organisations, site_aware_models | comms, webhooks |

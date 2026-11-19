@@ -41,6 +41,11 @@ def _host_files() -> list[Path]:
 
 
 def _framework_imports(path: Path) -> list[tuple[str, str]]:
+    """Each (module, name) a file imports from the framework's public surface.
+
+    The framework's own test helpers, such as the template rules a host runs over
+    its templates, are shared on purpose and carry no `__all__`.
+    """
     tree = ast.parse(path.read_text(), filename=str(path))
     return [
         (node.module.removeprefix(f"{FRAMEWORK}."), alias.name)
@@ -48,6 +53,7 @@ def _framework_imports(path: Path) -> list[tuple[str, str]]:
         if isinstance(node, ast.ImportFrom)
         and node.module is not None
         and node.module.startswith(f"{FRAMEWORK}.")
+        and not node.module.startswith(f"{FRAMEWORK}.tests.")
         for alias in node.names
     ]
 

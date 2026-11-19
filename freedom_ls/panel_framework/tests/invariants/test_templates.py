@@ -15,41 +15,41 @@ from django.db.models import Model
 from django.template.loader import render_to_string
 from django.test import RequestFactory
 
-from freedom_ls.base.theming import FREEDOM_LS_PACKAGE_DIR
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.panels import Panel, TabSet
 from freedom_ls.panel_framework.views import SectionConfigBase
 
 from ..helpers import make_stub
 from ..stub_panels import StubDetailsPanel, StubHiddenPanel
+from . import template_rules
 
-TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "templates"
-OVERRIDES_DIR = Path(__file__).resolve().parent.parent / "template_overrides"
+FRAMEWORK_ROOT = Path(__file__).resolve().parents[2]
+TESTS_DIR = Path(__file__).resolve().parent.parent
+TEMPLATES_DIR = FRAMEWORK_ROOT / "templates"
+OVERRIDES_DIR = TESTS_DIR / "template_overrides"
 COMPONENTS_DIR = TEMPLATES_DIR / "cotton"
-TAILWIND_COMPONENTS_CSS = FREEDOM_LS_PACKAGE_DIR.parent / "tailwind.components.css"
-FRAMEWORK_CSS = TEMPLATES_DIR.parent / "css" / "panel_framework.css"
+FRAMEWORK_CSS = FRAMEWORK_ROOT / "css" / "panel_framework.css"
 MODAL_HOST = TEMPLATES_DIR / "panel_framework" / "partials" / "modal_host.html"
-SIDE_PANEL_HOST = TEMPLATES_DIR.parent / "css" / "minimal_shell.css"
-EDUCATOR_TEMPLATES_DIR = (
-    FREEDOM_LS_PACKAGE_DIR / "educator_interface" / "templates" / "educator_interface"
+SIDE_PANEL_HOST = FRAMEWORK_ROOT / "css" / "minimal_shell.css"
+PARTIALS_DIR = TEMPLATES_DIR / "panel_framework" / "partials"
+FRAMEWORK_SCRIPT = (
+    FRAMEWORK_ROOT / "static" / "panel_framework" / "js" / "alpine-components.js"
 )
-EDUCATOR_MODAL_DIR = (
-    FREEDOM_LS_PACKAGE_DIR
-    / "educator_interface"
-    / "templates"
-    / "educator_interface"
-    / "modal"
-)
+INLINE_FORM = PARTIALS_DIR / "inline_record_form.html"
 # Every template that renders inside #app-modal or a bottom sheet.
 DIALOG_TEMPLATES = (
     *sorted((TEMPLATES_DIR / "panel_framework" / "modal").glob("*.html")),
-    *sorted(EDUCATOR_MODAL_DIR.glob("*.html")),
     MODAL_HOST,
-    TEMPLATES_DIR / "panel_framework" / "partials" / "table_sheet.html",
-    TEMPLATES_DIR / "panel_framework" / "partials" / "bulk_confirmation.html",
-    TEMPLATES_DIR / "panel_framework" / "partials" / "bulk_result.html",
-    TEMPLATES_DIR / "panel_framework" / "partials" / "action_unavailable.html",
-    TEMPLATES_DIR / "panel_framework" / "partials" / "action_denied.html",
+    PARTIALS_DIR / "table_sheet.html",
+    PARTIALS_DIR / "bulk_confirmation.html",
+    PARTIALS_DIR / "bulk_result.html",
+    PARTIALS_DIR / "action_unavailable.html",
+    PARTIALS_DIR / "action_denied.html",
+)
+DIALOG_BODIES = tuple(
+    path
+    for path in DIALOG_TEMPLATES
+    if path.name not in ("modal_host.html", "table_sheet.html")
 )
 
 RAW_HEX_COLOUR = re.compile(r"#[0-9a-fA-F]{3,8}\b")
@@ -112,13 +112,7 @@ def leaf_override(settings: pytest_django.fixtures.SettingsWrapper) -> None:
 
 
 def test_no_panel_framework_template_uses_safe() -> None:
-    offenders = [
-        str(path.relative_to(TEMPLATES_DIR))
-        for path in TEMPLATES_DIR.rglob("*.html")
-        if "|safe" in path.read_text()
-    ]
-
-    assert offenders == []
+    assert template_rules.files_using_safe(TEMPLATES_DIR) == []
 
 
 @pytest.mark.usefixtures("leaf_override")
@@ -242,7 +236,6 @@ def test_forced_colours_rules_live_with_their_components() -> None:
 
     assert "forced-colors:border" in status_badge
     assert "forced-colors: active" in progress_bar
-    assert "panel-progress-bar" not in TAILWIND_COMPONENTS_CSS.read_text()
 
 
 def test_no_panel_component_uses_raw_colours() -> None:
@@ -303,18 +296,6 @@ def test_the_quick_view_open_full_page_link_shows_the_open_page_icon() -> None:
     assert icon.get("data-icon") == "open_page"
 
 
-def test_the_base_select_rule_draws_its_own_chevron_inside_the_end_padding() -> None:
-    """A select keeps its arrow clear of the edge: the base rule hides the
-    browser's own, draws one in currentColor, and pads the end for it."""
-    css = TAILWIND_COMPONENTS_CSS.read_text()
-    select_rules = re.findall(r"\n    select \{(.*?)\n    \}", css, re.DOTALL)
-    chevron_rules = [body for body in select_rules if "appearance-none" in body]
-
-    assert len(chevron_rules) == 1
-    assert "currentColor" in chevron_rules[0]
-    assert "pr-10" in chevron_rules[0]
-
-
 @pytest.mark.parametrize(
     "selector",
     [
@@ -348,47 +329,49 @@ def test_the_framework_stylesheet_scopes_the_select_chevron_to_panel_surfaces() 
     assert "pr-10" in scoped_rules[0]
 
 
-def test_the_modal_host_and_the_side_panel_clip_horizontal_overflow() -> None:
+@pytest.mark.parametrize("host", [MODAL_HOST, SIDE_PANEL_HOST], ids=lambda p: p.name)
+def test_the_modal_host_and_the_side_panel_clip_horizontal_overflow(
+    host: Path,
+) -> None:
     """Nothing inside a dialog or sheet can push it past the viewport edge."""
-    for host in (MODAL_HOST, SIDE_PANEL_HOST):
-        text = host.read_text()
+    text = host.read_text()
 
-        assert "overflow-x: hidden" in text, host.name
-        assert "max-width: 100vw" in text, host.name
-        assert "max-width: none" not in text, host.name
+    assert "overflow-x: hidden" in text
+    assert "max-width: 100vw" in text
+    assert "max-width: none" not in text
 
 
-WIDE_FRAGMENTS = frozenset({"content_preview.html", "course_details_preview.html"})
 DIALOG_WIDTHS = ("min(92vw, 32rem)", "100%")
 
 
-def test_only_a_fragment_declaring_the_wide_size_widens_the_dialog() -> None:
+def test_only_a_dialog_declaring_the_wide_size_widens_the_modal_host() -> None:
     """Any width other than the standard dialog's and the sheet's is set
-    only by a rule keyed on data-modal-size="wide", and only the content
-    preview fragments declare it."""
+    only by a rule keyed on data-modal-size="wide"."""
     css = re.sub(r"/\*.*?\*/", "", MODAL_HOST.read_text(), flags=re.DOTALL)
-    for match in re.finditer(r"(?<![-\w])width:\s*([^;]+);", css):
-        if match.group(1).strip() in DIALOG_WIDTHS:
-            continue
-        selector = css[: css.rfind("{", 0, match.start())].rsplit("}", 1)[-1]
-        assert 'data-modal-size="wide"' in selector, selector
-    declaring = {
-        path.name
-        for path in DIALOG_TEMPLATES
-        if 'data-modal-size="wide"' in path.read_text() and path != MODAL_HOST
-    }
-    assert declaring == WIDE_FRAGMENTS
+    selectors = [
+        css[: css.rfind("{", 0, match.start())].rsplit("}", 1)[-1]
+        for match in re.finditer(r"(?<![-\w])width:\s*([^;]+);", css)
+        if match.group(1).strip() not in DIALOG_WIDTHS
+    ]
+
+    assert [s for s in selectors if 'data-modal-size="wide"' not in s] == []
+
+
+def test_no_framework_dialog_declares_the_wide_size() -> None:
+    declaring = template_rules.dialogs_declaring_the_wide_size(
+        DIALOG_TEMPLATES, MODAL_HOST
+    )
+
+    assert declaring == set()
 
 
 def test_every_dialog_ends_in_the_modal_footer_not_a_button_group() -> None:
     """A dialog's buttons sit in <c-modal-footer>, Cancel at the left and the
     actions at the right; <c-panel-button-group> is for buttons outside a dialog."""
-    assert len(DIALOG_TEMPLATES) > 20
-    offenders = [
-        path.name
-        for path in DIALOG_TEMPLATES
-        if re.search(r"<c-(panel-)?button-group", path.read_text())
-    ]
+    assert len(DIALOG_TEMPLATES) > 5
+    offenders = template_rules.dialogs_using_a_button_group(
+        DIALOG_TEMPLATES, "panel-button-group"
+    )
 
     assert offenders == []
 
@@ -397,88 +380,47 @@ def test_every_dialog_ends_in_the_modal_footer_not_a_button_group() -> None:
 DIALOG_PART_EXEMPTIONS: dict[str, str] = {
     "modal_host.html": "the host holds the parts only inside its discard prompt",
     "table_sheet.html": "the filter sheet is a bottom sheet with its own grouped body",
-    "conversation_oversight.html": "the thread pane brings its own edge-to-edge layout",
 }
-MODAL_BODY_BLOCK = re.compile(r"<c-modal-body\b.*?</c-modal-body>", re.DOTALL)
-HAND_PADDED_BODY = re.compile(r'<div class="[^"]*\bpx-6\b[^"]*"')
-EXTENDS_FRAMEWORK_DIALOG = re.compile(
-    r'\{% extends "(panel_framework/modal/[a-z_]+\.html)" %\}'
-)
-
-
-def _dialog_parts_source(path: Path) -> str:
-    """The template's text, with the parts of the framework dialog it extends
-    (message.html, confirm.html) counted for it."""
-    text = path.read_text()
-    parent = EXTENDS_FRAMEWORK_DIALOG.search(text)
-    if parent:
-        text += _dialog_parts_source(TEMPLATES_DIR / parent.group(1))
-    return text
 
 
 def test_every_dialog_is_a_header_a_body_and_a_footer() -> None:
     """Every dialog is built from the same three sibling parts, so the header
     and footer rules run the full width and the content lines up with the
     title and the buttons."""
-    templates = [
-        *DIALOG_TEMPLATES,
-        *sorted(
-            path
-            for path in EDUCATOR_MODAL_DIR.glob("*.html")
-            if path not in DIALOG_TEMPLATES
-        ),
-        TEMPLATES_DIR / "panel_framework" / "partials" / "bulk_run_stopped.html",
-    ]
-    offenders = []
-    for path in templates:
-        if path.name in DIALOG_PART_EXEMPTIONS:
-            continue
-        text = _dialog_parts_source(path)
-        if "<c-modal-header" not in text and "{% include" in text:
-            continue
-        for part in ("<c-modal-header", "<c-modal-body", "<c-modal-footer"):
-            if part not in text:
-                offenders.append(f"{path.name}: no {part}>")
+    templates = [*DIALOG_TEMPLATES, PARTIALS_DIR / "bulk_run_stopped.html"]
+
+    offenders = template_rules.dialogs_missing_a_part(
+        templates, TEMPLATES_DIR, DIALOG_PART_EXEMPTIONS
+    )
+
     assert offenders == []
 
 
 def test_no_dialog_footer_sits_inside_the_body() -> None:
     """The footer is the body's sibling: inside the body it picks up the
     body's padding, so its rule stops short and its buttons sit out of line."""
-    offenders = [
-        path.name
-        for path in (*DIALOG_TEMPLATES, *EDUCATOR_MODAL_DIR.glob("*.html"))
-        if any(
-            "<c-modal-footer" in block
-            for block in MODAL_BODY_BLOCK.findall(_dialog_parts_source(path))
-        )
-    ]
+    offenders = template_rules.dialogs_with_a_footer_inside_the_body(
+        DIALOG_TEMPLATES, TEMPLATES_DIR
+    )
+
     assert offenders == []
 
 
 def test_no_dialog_pads_its_own_body() -> None:
     """<c-modal-body> owns a dialog body's padding and spacing; a hand-padded
     div is a second, slightly different body."""
-    offenders = [
-        path.name
-        for path in (*DIALOG_TEMPLATES, *EDUCATOR_MODAL_DIR.glob("*.html"))
-        if path.name not in DIALOG_PART_EXEMPTIONS
-        and HAND_PADDED_BODY.search(path.read_text())
-    ]
+    offenders = template_rules.dialogs_padding_their_own_body(
+        DIALOG_TEMPLATES, DIALOG_PART_EXEMPTIONS
+    )
+
     assert offenders == []
 
 
-CONTROL_TAG = re.compile(r"<(a|button)\b([^>]*)>", re.DOTALL)
-CLASS_ATTR = re.compile(r'class="([^"]*)"', re.DOTALL)
 # Templates whose anchors are allowed the prose style, each with its reason.
 PROSE_LINK_TEMPLATES: dict[str, str] = {
     "panel_framework/partials/sidebar_nav.html": "nav links colour the current item with aria-[current]:text-primary",
     "cotton/panel-back-link.html": "the back link primitive owns the one back-link style, text-primary included",
 }
-
-
-def _control_tags(path: Path) -> list[str]:
-    return [match.group(0) for match in CONTROL_TAG.finditer(path.read_text())]
 
 
 def test_no_control_link_is_hand_styled() -> None:
@@ -487,23 +429,9 @@ def test_no_control_link_is_hand_styled() -> None:
     underline, whether hand-typed or left to the base layer by an anchor
     that names no link style, and a hand-typed text-primary are how a
     control used to be styled by hand, page by page."""
-    offenders: list[str] = []
-    for root in (TEMPLATES_DIR, EDUCATOR_TEMPLATES_DIR):
-        for path in sorted(root.rglob("*.html")):
-            relative = str(path.relative_to(root))
-            if relative in PROSE_LINK_TEMPLATES:
-                continue
-            for tag in _control_tags(path):
-                classes = CLASS_ATTR.search(tag)
-                tokens = set(classes.group(1).split()) if classes else set()
-                if "underline" in tokens or "text-primary" in tokens:
-                    offenders.append(f"{relative}: {tag[:80]}")
-                elif tag.startswith("<a") and "{{ attrs }}" not in tag:
-                    styled = "no-underline" in tokens or any(
-                        token.startswith(("btn", "panel-btn")) for token in tokens
-                    )
-                    if not styled:
-                        offenders.append(f"{relative}: {tag[:80]}")
+    offenders = template_rules.hand_styled_control_links(
+        TEMPLATES_DIR, PROSE_LINK_TEMPLATES
+    )
 
     assert offenders == []
 
@@ -512,17 +440,9 @@ def test_no_template_hand_writes_a_table_outside_the_table_components() -> None:
     """A static table is `<c-panel-table>` and a list a user sorts or filters
     is `<c-data-table>`: both give the table its caption, header style and a
     focusable scroll region, so a hand-written `<table>` drifts from them."""
-    table_components = {"data-table.html", "panel-table.html"}
-    offenders: list[str] = []
-    for root in (TEMPLATES_DIR, EDUCATOR_TEMPLATES_DIR):
-        for path in sorted(root.rglob("*.html")):
-            if path.name in table_components:
-                continue
-            source = re.sub(
-                r"{% comment %}.*?{% endcomment %}", "", path.read_text(), flags=re.S
-            )
-            if re.search(r"<table\b", source):
-                offenders.append(str(path.relative_to(root)))
+    offenders = template_rules.hand_written_tables(
+        TEMPLATES_DIR, {"data-table.html", "panel-table.html"}
+    )
 
     assert offenders == []
 
@@ -531,9 +451,8 @@ def test_every_framework_action_trigger_is_small() -> None:
     """The framework renders every action trigger (page header, panel
     footer, empty state, row) at the small size; only a dialog's footer
     buttons are full size."""
-    partials = TEMPLATES_DIR / "panel_framework" / "partials"
     for name in ("modal_trigger.html", "action_button.html"):
-        assert 'size="small"' in (partials / name).read_text(), name
+        assert 'size="small"' in (PARTIALS_DIR / name).read_text(), name
 
 
 def test_no_button_hand_writes_a_touch_height() -> None:
@@ -541,41 +460,11 @@ def test_no_button_hand_writes_a_touch_height() -> None:
     an invisible 44px hit area below md, and only the dialog footer's rule
     makes a button 44px to the eye. So no button carries `min-h-11` itself.
     Dropdown menu items are not `.panel-btn`, so they keep theirs."""
-    offenders = []
-    roots = (
-        TEMPLATES_DIR,
-        EDUCATOR_TEMPLATES_DIR,
-        FREEDOM_LS_PACKAGE_DIR / "base" / "templates",
+    offenders = template_rules.hand_written_touch_heights(
+        TEMPLATES_DIR, "panel-button", "panel-btn", "panel-dropdown-menu"
     )
-    for root in roots:
-        for path in sorted(root.rglob("*.html")):
-            source = path.read_text()
-            for tag in re.findall(r"<c-(?:panel-)?button\b[^>]*>", source):
-                if "min-h-11" in tag and "dropdown=" not in tag:
-                    offenders.append(f"{path.name}: {tag[:80]}")
-            for classes in re.findall(r'class="((?:panel-)?btn [^"]*)"', source):
-                if "min-h-11" in classes:
-                    offenders.append(f"{path.name}: {classes}")
-            for trigger in re.findall(r'trigger_class="(?:panel-)?btn[^"]*"', source):
-                if "min-h-11" in trigger:
-                    offenders.append(f"{path.name}: {trigger}")
-            for menu in re.findall(r"<c-panel-dropdown-menu\b[^>]*>", source):
-                if "trigger_variant=" in menu and "min-h-11" in menu:
-                    offenders.append(f"{path.name}: {menu[:80]}")
+
     assert offenders == []
-
-
-def test_only_the_dialog_footer_makes_a_button_44px_tall_on_a_phone() -> None:
-    """Below md every `.btn` and `.panel-btn` gets a 44px hit area from an
-    invisible ::after, and the one height rule for buttons is the dialog
-    footer's."""
-    css = TAILWIND_COMPONENTS_CSS.read_text()
-    height_rules = re.findall(r"\n    ([^\n{]*\.btn[^\n{]*)\{[^}]*min-h-11", css)
-
-    assert height_rules == ["[data-modal-footer] .btn "]
-    assert re.search(r"\.btn::after \{[^}]*height: 2\.75rem", css)
-    footer = (COMPONENTS_DIR / "modal-footer.html").read_text()
-    assert "data-modal-footer" in footer
 
 
 def test_only_the_dialog_footer_makes_a_panel_button_44px_tall_on_a_phone() -> None:
@@ -586,14 +475,13 @@ def test_only_the_dialog_footer_makes_a_panel_button_44px_tall_on_a_phone() -> N
 
     assert height_rules == ["[data-modal-footer] .panel-btn "]
     assert re.search(r"\.panel-btn::after \{[^}]*height: 2\.75rem", css)
+    assert "data-modal-footer" in (COMPONENTS_DIR / "modal-footer.html").read_text()
 
 
 def test_the_filter_sheet_has_a_close_control() -> None:
     """A sheet opens with a header holding the title and a close control,
     as the quick view does, so how to dismiss it is never in doubt."""
-    sheet = (
-        TEMPLATES_DIR / "panel_framework" / "partials" / "table_sheet.html"
-    ).read_text()
+    sheet = (PARTIALS_DIR / "table_sheet.html").read_text()
 
     assert "<c-panel-close-button" in sheet
     assert "bottom-sheet" in sheet
@@ -602,17 +490,8 @@ def test_the_filter_sheet_has_a_close_control() -> None:
 def test_the_quick_view_is_never_modal() -> None:
     """A quick view leaves the page behind it usable at every width, so it
     opens with show() and carries no scrim."""
-    host = (
-        TEMPLATES_DIR / "panel_framework" / "partials" / "quick_view_host.html"
-    ).read_text()
-    script = (
-        FREEDOM_LS_PACKAGE_DIR
-        / "panel_framework"
-        / "static"
-        / "panel_framework"
-        / "js"
-        / "alpine-components.js"
-    ).read_text()
+    host = (PARTIALS_DIR / "quick_view_host.html").read_text()
+    script = FRAMEWORK_SCRIPT.read_text()
     quick_view = script[script.index('Alpine.data("quickView"') :]
 
     assert "modal-backdrop-host" not in host
@@ -621,101 +500,38 @@ def test_the_quick_view_is_never_modal() -> None:
 
 def test_every_anchor_with_visible_text_carries_its_own_classes() -> None:
     """A bare <a> falls back to the prose style; a control names its look."""
-    offenders: list[str] = []
-    for root in (TEMPLATES_DIR, EDUCATOR_TEMPLATES_DIR):
-        for path in sorted(root.rglob("*.html")):
-            relative = str(path.relative_to(root))
-            if relative in PROSE_LINK_TEMPLATES:
-                continue
-            text = path.read_text()
-            for match in re.finditer(r"<a\b([^>]*)>(.*?)</a>", text, re.DOTALL):
-                attributes, content = match.group(1), match.group(2)
-                if "class=" in attributes or "{{ attrs }}" in attributes:
-                    continue
-                if "<c-icon" in content and not re.sub(r"<[^>]+>|\s", "", content):
-                    continue
-                offenders.append(f"{relative}: {match.group(0)[:80]}")
+    offenders = template_rules.anchors_without_classes(
+        TEMPLATES_DIR, PROSE_LINK_TEMPLATES
+    )
 
     assert offenders == []
-
-
-DROPDOWN_CHEVRON = re.compile(r'<c-icon name="dropdown"[^>]*>')
 
 
 def test_every_expand_chevron_turns_when_its_control_opens() -> None:
     """A chevron on a menu button, disclosure or filter chip points down while
     closed and up while open, so each one carries a rotate-180 variant, on
     itself or on the span that wraps it."""
-    offenders: list[str] = []
-    roots = (
-        TEMPLATES_DIR,
-        EDUCATOR_TEMPLATES_DIR,
-        FREEDOM_LS_PACKAGE_DIR / "base" / "templates",
-    )
-    for root in roots:
-        for path in sorted(root.rglob("*.html")):
-            text = path.read_text()
-            for match in DROPDOWN_CHEVRON.finditer(text):
-                wrapper = text[max(0, match.start() - 200) : match.start()]
-                last_tag = wrapper[wrapper.rfind("<") :]
-                if "rotate-180" not in match.group(0) and "rotate-180" not in last_tag:
-                    offenders.append(f"{path.relative_to(root)}: {match.group(0)}")
+    offenders = template_rules.expand_chevrons_that_do_not_turn(TEMPLATES_DIR)
 
     assert offenders == []
 
 
-DIALOG_BODIES = tuple(
-    path
-    for path in DIALOG_TEMPLATES
-    if path.name not in ("modal_host.html", "table_sheet.html")
-)
-MODAL_BODY_SPAN = re.compile(r"<c-modal-body\b.*?</c-modal-body>", re.DOTALL)
-STEP_BRANCH = re.compile(r"\bstep == ")
-EDUCATOR_PYTHON_FILES = sorted(
-    (FREEDOM_LS_PACKAGE_DIR / "educator_interface").glob("*.py")
-)
-
-
-def _dialog_id(path: Path) -> str:
-    return path.name
-
-
-@pytest.mark.parametrize("path", DIALOG_BODIES, ids=_dialog_id)
+@pytest.mark.parametrize("path", DIALOG_BODIES, ids=lambda path: path.name)
 def test_every_dialog_renders_one_modal_footer_outside_its_body(path: Path) -> None:
     """A dialog template holds one footer per step it renders, or none when
     it extends a template that supplies it; the footer is never inside the
     body, which is the part that scrolls under it."""
-    text = path.read_text()
-    steps = max(1, len(STEP_BRANCH.findall(text)))
-    footers = [m.start() for m in re.finditer(r"<c-modal-footer\b", text)]
-    inside_body = [
-        start
-        for start in footers
-        for span in MODAL_BODY_SPAN.finditer(text)
-        if span.start() < start < span.end()
-    ]
-
-    assert inside_body == []
-    assert len(footers) <= steps
-    if "{% extends" in text:
-        assert footers == []
+    assert template_rules.dialog_footer_problems(path) == []
 
 
-FORBIDDEN_IN_DIALOGS = {
-    "a hand-written Cancel button": re.compile(r">\s*Cancel\s*</(c-)?button>"),
-    "text-sm": re.compile(r"(?<![\w-])text-sm\b"),
-    "px-6 py-4": re.compile(r"px-6 py-4"),
-    "a bg-error/10 box": re.compile(r"bg-error/10"),
-}
+FORBIDDEN_IN_DIALOGS = template_rules.forbidden_in_dialogs("panel-button")
 
 
 @pytest.mark.parametrize("rule", sorted(FORBIDDEN_IN_DIALOGS))
 def test_no_dialog_template_hand_writes_what_a_component_owns(rule: str) -> None:
-    offenders = [
-        path.name
-        for path in DIALOG_BODIES
-        if FORBIDDEN_IN_DIALOGS[rule].search(path.read_text())
-    ]
+    offenders = template_rules.dialogs_matching(
+        DIALOG_BODIES, FORBIDDEN_IN_DIALOGS[rule]
+    )
 
     assert offenders == [], (
         f"{rule} in a dialog template: use <c-panel-callout> in a framework "
@@ -736,19 +552,10 @@ def test_no_framework_template_calls_the_host_callout() -> None:
     )
 
 
-INLINE_FORM = (
-    FREEDOM_LS_PACKAGE_DIR
-    / "panel_framework/templates/panel_framework/partials/inline_record_form.html"
-)
-
-
 def test_every_dialog_loading_text_ends_in_the_ellipsis_character() -> None:
-    offenders = [
-        f"{path.name}: {match}"
-        for path in (*DIALOG_BODIES, INLINE_FORM)
-        for match in re.findall(r'loading_text="[^"]*"', path.read_text())
-        if "..." in match
-    ]
+    offenders = template_rules.loading_texts_ending_in_three_dots(
+        (*DIALOG_BODIES, INLINE_FORM)
+    )
 
     assert offenders == []
 
@@ -757,17 +564,13 @@ def test_every_dialog_loading_text_ends_in_the_ellipsis_character() -> None:
 # buttons names all of them through the modal body instead. The same goes for
 # a form holding an element that issues its own request, because that element
 # inherits the form's selector and `find` would look inside it.
-MULTI_SUBMIT_DIALOGS = {"form.html", "move_confirmation.html", "add_staff_member.html"}
+MULTI_SUBMIT_DIALOGS = {"form.html"}
 
 
 def test_every_dialog_disables_only_its_own_submit_buttons() -> None:
-    offenders = [
-        f"{path.name}: {match}"
-        for path in DIALOG_BODIES
-        if path.name not in MULTI_SUBMIT_DIALOGS
-        for match in re.findall(r'hx-disabled-elt="[^"]*"', path.read_text())
-        if match != "hx-disabled-elt=\"find button[type='submit']\""
-    ]
+    offenders = template_rules.dialogs_disabling_more_than_their_submit_buttons(
+        DIALOG_BODIES, MULTI_SUBMIT_DIALOGS
+    )
 
     assert offenders == []
 
@@ -778,33 +581,7 @@ def test_no_dialog_form_with_a_find_selector_holds_an_element_that_issues_its_ow
     """An element inside a form inherits the form's hx-disabled-elt, and `find`
     resolves relative to that element, so a select that issues its own request
     logged "returned no matches" in the console."""
-    offenders: list[str] = []
-    for path in DIALOG_BODIES:
-        for form in lxml.html.fragment_fromstring(
-            path.read_text(), create_parent="div"
-        ).iter("form"):
-            if not (form.get("hx-disabled-elt") or "").startswith("find "):
-                continue
-            offenders.extend(
-                f"{path.name}: <{child.tag} id={child.get('id')}>"
-                for child in form.iterdescendants()
-                if child.get("hx-get") or child.get("hx-post")
-            )
-
-    assert offenders == []
-
-
-def test_no_educator_module_sets_the_modal_trigger_template_by_hand() -> None:
-    """The framework's modal action classes own the modal trigger, so an app
-    extends one of them instead of naming the template."""
-    offenders = [
-        path.name
-        for path in EDUCATOR_PYTHON_FILES
-        if re.search(
-            r'trigger_template_name\s*=\s*"panel_framework/partials/modal_trigger.html"',
-            path.read_text(),
-        )
-    ]
+    offenders = template_rules.requesting_elements_inside_a_find_form(DIALOG_BODIES)
 
     assert offenders == []
 
@@ -892,6 +669,36 @@ def test_no_framework_template_names_an_fls_app_or_an_fls_only_event() -> None:
         f"{path.relative_to(TEMPLATES_DIR).as_posix()}: {name}"
         for path in TEMPLATES_DIR.rglob("*.html")
         for name in FLS_ONLY_NAMES.findall(path.read_text())
+    }
+
+    assert offenders == set()
+
+
+HOST_ONLY_TEST_NAMES = re.compile(
+    r"FREEDOM_LS_PACKAGE_DIR|tailwind\.components\.css|freedom_ls\.tests\.playwright_helpers"
+)
+# `_base.html` as a whole file name: the framework's own `_main_base.html` and
+# `_panel_base.html` are its own templates.
+HOST_ONLY_TEMPLATE_NAMES = re.compile(
+    r"(?<![\w])_base\.html|_base_interface\.html|pagination_tags|fls_base_filters"
+)
+
+
+def test_no_framework_test_names_a_host_only_path_or_module() -> None:
+    offenders = {
+        path.relative_to(TESTS_DIR).as_posix()
+        for path in TESTS_DIR.rglob("*.py")
+        if path != Path(__file__) and HOST_ONLY_TEST_NAMES.search(path.read_text())
+    }
+
+    assert offenders == set()
+
+
+def test_no_framework_template_names_a_host_only_template_or_module() -> None:
+    offenders = {
+        f"{path.relative_to(TEMPLATES_DIR).as_posix()}: {name}"
+        for path in TEMPLATES_DIR.rglob("*.html")
+        for name in HOST_ONLY_TEMPLATE_NAMES.findall(path.read_text())
     }
 
     assert offenders == set()

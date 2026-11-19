@@ -1,4 +1,5 @@
 import lxml.html
+import pytest
 
 from django import forms
 from django.template.loader import render_to_string
@@ -99,6 +100,7 @@ def _render_golden_candidate() -> str:
         return _render(_TextFieldsForm())
 
 
+@pytest.mark.needs_fls_host
 def test_a_form_without_a_file_field_renders_the_golden_markup() -> None:
     html = _render_golden_candidate()
 
@@ -107,6 +109,7 @@ def test_a_form_without_a_file_field_renders_the_golden_markup() -> None:
     )
 
 
+@pytest.mark.needs_fls_host
 @override_settings(FREEDOM_LS_ICON_SET="phosphor")
 def test_the_golden_comparison_holds_when_the_project_uses_another_icon_set() -> None:
     html = _render_golden_candidate()

@@ -5,8 +5,9 @@ import pytest
 
 FRAMEWORK_ROOT = Path(__file__).resolve().parent.parent
 
-# Directories whose tests still exercise the host project's templates.
-EXEMPT_DIRECTORIES = ("tests/components", "tests/invariants", "tests/playwright")
+# Directories whose files may import the host project. None: every framework file,
+# its component, invariant and browser tests included, imports nothing outside it.
+EXEMPT_DIRECTORIES: tuple[str, ...] = ()
 
 FRAMEWORK_PACKAGE = "freedom_ls.panel_framework"
 
@@ -83,14 +84,10 @@ def test_foreign_imports_reports_only_modules_outside_the_framework(
         assert found == []
 
 
-def test_framework_files_cover_migrations_and_tests_but_not_exempt_directories() -> (
-    None
-):
+def test_framework_files_cover_migrations_and_every_test_directory() -> None:
     files = framework_files()
 
     assert any("migrations" in path.parts for path in files)
     assert any(path.parent == FRAMEWORK_ROOT / "tests" for path in files)
-    for directory in EXEMPT_DIRECTORIES:
-        assert not any(
-            path.is_relative_to(FRAMEWORK_ROOT / directory) for path in files
-        )
+    for directory in ("tests/components", "tests/invariants", "tests/playwright"):
+        assert any(path.is_relative_to(FRAMEWORK_ROOT / directory) for path in files)

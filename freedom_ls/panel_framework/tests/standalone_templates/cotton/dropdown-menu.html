@@ -1,6 +1,0 @@
-{% comment %}Test fixture: runs the panel framework without a host project's components. It keeps the props and slots the framework passes and drops the styling.{% endcomment %}
-<c-vars trigger="" class="" aria_label="Menu" menu_label="" trigger_class="" panel_class="" />
-<div class="{{ class }}">
-    <button type="button" aria-label="{{ aria_label }}" aria-haspopup="menu">{% if trigger %}{{ trigger }}{% else %}<c-icon name="more_options" />{% endif %}</button>
-    <div role="menu" aria-label="{{ menu_label|default:aria_label }}">{{ slot }}</div>
-</div>

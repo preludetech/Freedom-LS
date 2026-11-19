@@ -32,7 +32,7 @@ def test_message_is_inside_a_paragraph_with_no_heading() -> None:
 def test_slot_content_renders() -> None:
     html = render_cotton(
         '<c-panel-empty-state message="No results">'
-        '<c-button href="/new/">Create one</c-button>'
+        '<c-panel-button href="/new/">Create one</c-panel-button>'
         "</c-panel-empty-state>"
     )
 
@@ -52,7 +52,7 @@ def test_compact_size_is_a_muted_small_paragraph_with_no_icon() -> None:
 def test_compact_size_renders_the_slot() -> None:
     html = render_cotton(
         '<c-panel-empty-state size="compact" message="None">'
-        '<c-button href="/new/">Add</c-button></c-panel-empty-state>'
+        '<c-panel-button href="/new/">Add</c-panel-button></c-panel-empty-state>'
     )
 
     assert "Add" in html
