@@ -48,3 +48,10 @@ propagate; return `None` to say a request belongs to no site.
   database holding several sites, gets `freedom_ls_panel_framework.W002` from `migrate` or
   `manage.py check --database default`. Set `PANEL_FRAMEWORK_SITE_RESOLVER`, or silence W002 if
   every request really is one site.
+- A project that runs FLS's tests with `--strict-markers` must register the new
+  `needs_fls_host` marker, which `panel_framework` tests in `test_tables.py`,
+  `test_reference.py` and `components/test_data_table.py` carry. Add it to the project's
+  `[tool.pytest.ini_options] markers`:
+  `"needs_fls_host: needs FLS's real templates, icon set or URLconf; deselected when the panel framework's unit tests run on their own"`.
+  Without it, pytest fails to collect those three files. Do not deselect the marker: the tests
+  are portable and a downstream run keeps them.
