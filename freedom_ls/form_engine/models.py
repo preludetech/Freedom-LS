@@ -608,47 +608,64 @@ class FormProgress(SiteAwareModel):
         self.scores = scores
         self.save()
 
-    def compute_quiz_scores(self) -> dict[str, int]:
+    def _quiz_questions(self, path: SittingPath | None) -> list[FormQuestion]:
+        """The questions this quiz sitting is marked on.
+
+        A sitting with a served paper is marked on the questions it was served.
+        One without is marked on every question the form currently has.
+        """
+        if self.served_paper is None:
+            return [
+                child
+                for page in self.form.pages.all()
+                for child in page.children()
+                if child.content_type == "FORM_QUESTION"
+            ]
+        if path is None:
+            # Local import: conditions imports this module.
+            from .conditions import sitting_path
+
+            path = sitting_path(self)
+        return path.questions()
+
+    def compute_quiz_scores(self, path: SittingPath | None = None) -> dict[str, int]:
         """Score this attempt against the current marking rules, storing nothing.
 
         Scores are frozen at submission and never rescored, so a stored score can
         disagree with what the same answers would earn today. The results page
         re-derives a score to detect that, which it can only do without writing.
+
+        `path` is read only when the sitting has a served paper; pass one the
+        caller already built to save rebuilding it.
         """
         score = 0
         max_score = 0
 
-        for page in self.form.pages.all():
-            for child in page.children():
-                # Only process FormQuestion objects (skip FormContent)
-                if child.content_type != "FORM_QUESTION":
-                    continue
+        for question in self._quiz_questions(path):
+            # Count this question toward max_score
+            max_score += 1
 
-                question = child
+            # Check if user answered this question correctly
+            try:
+                answer = self.answers.get(question=question)
+                selected_option_ids = {o.id for o in answer.selected_options.all()}
+                if is_quiz_answer_correct(selected_option_ids, question.options.all()):
+                    score += 1
 
-                # Count this question toward max_score
-                max_score += 1
-
-                # Check if user answered this question correctly
-                try:
-                    answer = self.answers.get(question=question)
-                    selected_option_ids = {o.id for o in answer.selected_options.all()}
-                    if is_quiz_answer_correct(
-                        selected_option_ids, question.options.all()
-                    ):
-                        score += 1
-
-                except QuestionAnswer.DoesNotExist:
-                    # Question not answered, contributes 0 to score
-                    pass
+            except QuestionAnswer.DoesNotExist:
+                # Question not answered, contributes 0 to score
+                pass
 
         return {"score": score, "max_score": max_score}
 
-    def score_quiz(self):
+    def score_quiz(self, path: SittingPath | None = None) -> None:
         """
         Calculate quiz score by counting correct answers.
+
+        `path` is read only when the sitting has a served paper; pass one the
+        caller already built to save rebuilding it.
         """
-        self.scores = self.compute_quiz_scores()
+        self.scores = self.compute_quiz_scores(path)
         self.save()
 
     def score(self, path: SittingPath) -> None:
@@ -656,7 +673,7 @@ class FormProgress(SiteAwareModel):
         if self.form.strategy == FormStrategy.CATEGORY_VALUE_SUM:
             self.score_category_value_sum(path)
         elif self.form.strategy == FormStrategy.QUIZ:
-            self.score_quiz()
+            self.score_quiz(path)
         elif self.form.strategy == FormStrategy.UNSCORED:
             # An unscored form awards no marks at all, so there is nothing to
             # write. Completing one still stamps completed_time.
@@ -665,7 +682,7 @@ class FormProgress(SiteAwareModel):
         else:
             raise Exception(f"Unhandled Strategy: {self.form.strategy}")
 
-    def get_incorrect_quiz_answers(self):
+    def get_incorrect_quiz_answers(self, path: SittingPath | None = None) -> list[dict]:
         """
         Get a list of incorrect answers for a completed quiz.
 
@@ -677,6 +694,9 @@ class FormProgress(SiteAwareModel):
         Only returns results if:
         - form.strategy is QUIZ
 
+        `path` is read only when the sitting has a served paper; pass one the
+        caller already built to save rebuilding it.
+
         We will use this function in multiple places. Sometimes we'll want to show the incorrect answers to the teacher. Even if we dont want to show the answers to the learner, this function should work
         """
         incorrect_answers: list[dict] = []
@@ -684,50 +704,42 @@ class FormProgress(SiteAwareModel):
         if self.form.strategy != FormStrategy.QUIZ:
             return incorrect_answers
 
-        # Iterate through all pages and questions
-        for page in self.form.pages.all():
-            for child in page.children():
-                # Only process FormQuestion objects
-                if child.content_type != "FORM_QUESTION":
-                    continue
+        for question in self._quiz_questions(path):
+            # A free-text question has no options, so there is nothing to
+            # show as either the selected or the correct answer — it would
+            # render as an empty review card. Such a question is not meant to
+            # appear in a scored quiz in the first place.
+            if question.type in FREE_TEXT_QUESTION_TYPES:
+                continue
 
-                question = child
+            # A blank question stores no answer row at all, but it still
+            # counts toward max_score — so it has to be judged here as an
+            # empty selection, or the learner is marked down for a question
+            # the review list never names.
+            try:
+                answer = self.answers.get(question=question)
+            except QuestionAnswer.DoesNotExist:
+                selected_options = []
+            else:
+                selected_options = list(answer.selected_options.all())
+            selected_option_ids = {o.id for o in selected_options}
 
-                # A free-text question has no options, so there is nothing to
-                # show as either the selected or the correct answer — it would
-                # render as an empty review card. Such a question is not meant to
-                # appear in a scored quiz in the first place.
-                if question.type in FREE_TEXT_QUESTION_TYPES:
-                    continue
+            # Check if the answer is correct
+            is_correct = is_quiz_answer_correct(
+                selected_option_ids, question.options.all()
+            )
 
-                # A blank question stores no answer row at all, but it still
-                # counts toward max_score — so it has to be judged here as an
-                # empty selection, or the learner is marked down for a question
-                # the review list never names.
-                try:
-                    answer = self.answers.get(question=question)
-                except QuestionAnswer.DoesNotExist:
-                    selected_options = []
-                else:
-                    selected_options = list(answer.selected_options.all())
-                selected_option_ids = {o.id for o in selected_options}
+            if not is_correct:
+                # Get the correct option(s)
+                correct_options = list(question.options.filter(correct=True))
 
-                # Check if the answer is correct
-                is_correct = is_quiz_answer_correct(
-                    selected_option_ids, question.options.all()
+                incorrect_answers.append(
+                    {
+                        "question": question,
+                        "learner_selected": selected_options,
+                        "correct_options": correct_options,
+                    }
                 )
-
-                if not is_correct:
-                    # Get the correct option(s)
-                    correct_options = list(question.options.filter(correct=True))
-
-                    incorrect_answers.append(
-                        {
-                            "question": question,
-                            "learner_selected": selected_options,
-                            "correct_options": correct_options,
-                        }
-                    )
 
         return incorrect_answers
 

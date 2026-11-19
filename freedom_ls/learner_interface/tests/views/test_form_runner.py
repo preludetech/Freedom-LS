@@ -2499,6 +2499,162 @@ def test_a_changed_question_count_is_explained(mock_site_context, logged_in_clie
     assert "not been re-marked" in response.content.decode()
 
 
+@dataclass
+class PaperedResults:
+    """A learner's completed two-page quiz sitting with the paper it was served."""
+
+    course: Course
+    user: object
+    sitting: FormProgress
+    pages: list[FormPage]
+    questions: list[FormQuestion]
+    right_options: list[QuestionOption]
+    wrong_options: list[QuestionOption]
+
+
+@pytest.fixture
+def papered_results(mock_site_context) -> PaperedResults:
+    """Two single-question pages, both answered rightly, scored 2 of 2 on a paper serving both."""
+    form = FormFactory(
+        title="Papered Quiz", strategy=FormStrategy.QUIZ, quiz_pass_percentage=50
+    )
+    pages: list[FormPage] = [FormPageFactory(form=form, order=o) for o in range(2)]
+    questions: list[FormQuestion] = [
+        FormQuestionFactory(form_page=page, type="multiple_choice", order=0)
+        for page in pages
+    ]
+    right_options: list[QuestionOption] = [
+        QuestionOptionFactory(question=question, correct=True, order=0)
+        for question in questions
+    ]
+    wrong_options: list[QuestionOption] = [
+        QuestionOptionFactory(question=question, correct=False, order=1)
+        for question in questions
+    ]
+    course = course_with_form(form, slug="papered-course")
+    user = _registered_learner(course)
+    sitting = form_attempt(
+        course,
+        user,
+        form,
+        completed_time=timezone.now(),
+        scores={"score": 2, "max_score": 2},
+        served_paper=served_paper_of(
+            [
+                (page, [question])
+                for page, question in zip(pages, questions, strict=True)
+            ],
+            {
+                question: [right, wrong]
+                for question, right, wrong in zip(
+                    questions, right_options, wrong_options, strict=True
+                )
+            },
+        ),
+    )
+    for question, right in zip(questions, right_options, strict=True):
+        QuestionAnswerFactory(
+            form_progress=sitting, question=question
+        ).selected_options.add(right)
+    return PaperedResults(
+        course, user, sitting, pages, questions, right_options, wrong_options
+    )
+
+
+def _serve_only_the_first_question(results: PaperedResults) -> None:
+    results.sitting.served_paper = served_paper_of(
+        [(results.pages[0], [results.questions[0]])],
+        {results.questions[0]: [results.right_options[0], results.wrong_options[0]]},
+    )
+    results.sitting.scores = {"score": 1, "max_score": 1}
+    results.sitting.save()
+
+
+def _stored_state(sitting: FormProgress) -> tuple[object, object]:
+    stored = FormProgress.objects.get(pk=sitting.pk)
+    return stored.scores, stored.served_paper
+
+
+@pytest.mark.django_db
+def test_a_subset_paper_shows_no_outdated_notice(papered_results, logged_in_client):
+    _serve_only_the_first_question(papered_results)
+
+    response = _results(logged_in_client, papered_results.user, papered_results.course)
+
+    assert response.context["stored_score_outdated"] is False
+
+
+@pytest.mark.django_db
+def test_a_served_unanswered_question_deleted_after_completion_shows_no_notice(
+    papered_results, logged_in_client
+):
+    QuestionAnswer.objects.filter(question=papered_results.questions[1]).delete()
+    stored = _stored_state(papered_results.sitting)
+    papered_results.questions[1].delete()
+
+    response = _results(logged_in_client, papered_results.user, papered_results.course)
+
+    assert response.context["stored_score_outdated"] is False
+    assert _stored_state(papered_results.sitting) == stored
+
+
+@pytest.mark.django_db
+def test_a_served_page_deleted_after_completion_shows_no_notice(
+    papered_results, logged_in_client
+):
+    QuestionAnswer.objects.filter(question=papered_results.questions[1]).delete()
+    stored = _stored_state(papered_results.sitting)
+    papered_results.pages[1].delete()
+
+    response = _results(logged_in_client, papered_results.user, papered_results.course)
+
+    assert response.context["stored_score_outdated"] is False
+    assert _stored_state(papered_results.sitting) == stored
+
+
+@pytest.mark.django_db
+def test_a_served_option_deleted_after_completion_shows_no_notice(
+    papered_results, logged_in_client
+):
+    stored = _stored_state(papered_results.sitting)
+    papered_results.wrong_options[1].delete()
+
+    response = _results(logged_in_client, papered_results.user, papered_results.course)
+
+    assert response.context["stored_score_outdated"] is False
+    assert _stored_state(papered_results.sitting) == stored
+
+
+@pytest.mark.django_db
+def test_a_question_added_after_completion_shows_no_notice_for_a_sitting_with_a_paper(
+    papered_results, logged_in_client
+):
+    added = FormQuestionFactory(
+        form_page=papered_results.pages[0], type="multiple_choice", order=1
+    )
+    QuestionOptionFactory(question=added, correct=True)
+
+    response = _results(logged_in_client, papered_results.user, papered_results.course)
+
+    assert response.context["stored_score_outdated"] is False
+
+
+@pytest.mark.django_db
+def test_a_changed_correct_answer_with_nothing_missing_shows_the_notice(
+    papered_results, logged_in_client
+):
+    QuestionOption.objects.filter(pk=papered_results.right_options[0].pk).update(
+        correct=False
+    )
+    QuestionOption.objects.filter(pk=papered_results.wrong_options[0].pk).update(
+        correct=True
+    )
+
+    response = _results(logged_in_client, papered_results.user, papered_results.course)
+
+    assert response.context["stored_score_outdated"] is True
+
+
 @pytest.mark.django_db
 def test_a_completed_survey_does_not_promise_marking(
     mock_site_context, logged_in_client

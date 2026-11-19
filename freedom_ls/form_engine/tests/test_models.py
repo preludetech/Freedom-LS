@@ -317,6 +317,117 @@ def test_complete_writes_no_served_paper_for_a_non_quiz_form(mock_site_context):
     assert progress.served_paper is None
 
 
+@dataclass
+class TwoQuestionQuiz:
+    form: Form
+    first: FormQuestion
+    second: FormQuestion
+    first_right: QuestionOption
+    second_right: QuestionOption
+    progress: FormProgress
+
+
+@pytest.fixture
+def two_question_quiz(mock_site_context) -> TwoQuestionQuiz:
+    """A quiz of two single-option questions; the learner answered the first rightly."""
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=100)
+    page = FormPageFactory(form=form, order=0)
+    first: FormQuestion = FormQuestionFactory(
+        form_page=page, type="multiple_choice", order=0
+    )
+    second: FormQuestion = FormQuestionFactory(
+        form_page=page, type="multiple_choice", order=1
+    )
+    first_right = QuestionOptionFactory(question=first, correct=True, order=0)
+    second_right = QuestionOptionFactory(question=second, correct=True, order=0)
+    progress: FormProgress = FormProgressFactory(form=form)
+    QuestionAnswerFactory(form_progress=progress, question=first).selected_options.add(
+        first_right
+    )
+    return TwoQuestionQuiz(form, first, second, first_right, second_right, progress)
+
+
+def _serve_only_the_first_question(quiz: TwoQuestionQuiz) -> None:
+    page = quiz.first.form_page
+    quiz.progress.served_paper = served_paper_of(
+        [(page, [quiz.first])], {quiz.first: [quiz.first_right]}
+    )
+    quiz.progress.save()
+
+
+@pytest.mark.django_db
+def test_a_paper_that_omits_a_question_scores_only_the_served_question(
+    two_question_quiz,
+):
+    _serve_only_the_first_question(two_question_quiz)
+
+    two_question_quiz.progress.complete()
+
+    two_question_quiz.progress.refresh_from_db()
+    assert two_question_quiz.progress.scores == {"score": 1, "max_score": 1}
+
+
+@pytest.mark.django_db
+def test_a_paper_that_omits_a_question_makes_the_percentage_and_pass_follow_the_served_one(
+    two_question_quiz,
+):
+    _serve_only_the_first_question(two_question_quiz)
+    two_question_quiz.progress.complete()
+
+    two_question_quiz.progress.refresh_from_db()
+
+    assert two_question_quiz.progress.quiz_percentage() == 100
+    assert two_question_quiz.progress.passed() is True
+
+
+@pytest.mark.django_db
+def test_a_paper_that_omits_a_question_leaves_it_out_of_the_incorrect_answers(
+    two_question_quiz,
+):
+    _serve_only_the_first_question(two_question_quiz)
+    two_question_quiz.progress.complete()
+
+    incorrect = two_question_quiz.progress.get_incorrect_quiz_answers()
+
+    assert incorrect == []
+
+
+@pytest.mark.django_db
+def test_a_served_question_deleted_after_the_paper_was_written_shrinks_max_score(
+    two_question_quiz,
+):
+    two_question_quiz.progress.complete()
+    two_question_quiz.progress.refresh_from_db()
+    two_question_quiz.second_right.delete()
+    two_question_quiz.second.delete()
+
+    scores = two_question_quiz.progress.compute_quiz_scores()
+
+    assert scores == {"score": 1, "max_score": 1}
+
+
+@pytest.mark.django_db
+def test_a_sitting_with_no_paper_scores_over_the_whole_form(two_question_quiz):
+    scores = two_question_quiz.progress.compute_quiz_scores()
+
+    assert scores == {"score": 1, "max_score": 2}
+
+
+@pytest.mark.django_db
+def test_complete_scores_the_served_questions_and_still_writes_asked(
+    two_question_quiz,
+):
+    _serve_only_the_first_question(two_question_quiz)
+
+    two_question_quiz.progress.complete()
+
+    two_question_quiz.progress.refresh_from_db()
+    assert two_question_quiz.progress.asked is not None
+    assert two_question_quiz.progress.asked["questions"] == [
+        str(two_question_quiz.first.id)
+    ]
+
+
 # Tests for FormProgress.complete() idempotency.
 
 

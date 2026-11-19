@@ -60,7 +60,11 @@ from freedom_ls.deadlines.resolver import (
     course_deadlines,
     course_deadlines_for,
 )
-from freedom_ls.form_engine.conditions import SittingPath, current_path
+from freedom_ls.form_engine.conditions import (
+    SittingPath,
+    current_path,
+    sitting_path,
+)
 from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
 from freedom_ls.form_engine.page_flow import (
     CurrentPage,
@@ -2145,7 +2149,14 @@ def course_form_complete(request, course_slug, index):
         )
 
     # Get incorrect answers if this is a quiz with show_incorrect enabled
-    incorrect_answers = form_progress.get_incorrect_quiz_answers()
+    # Only a quiz sitting with a served paper is marked from a path; building
+    # one for any other sitting would load the form tree for nothing.
+    path = (
+        sitting_path(form_progress)
+        if form.strategy == FormStrategy.QUIZ and form_progress.served_paper is not None
+        else None
+    )
+    incorrect_answers = form_progress.get_incorrect_quiz_answers(path)
 
     # Only set for QUIZ forms; non-quiz forms do not have a numeric percentage.
     percentage = None
@@ -2157,8 +2168,14 @@ def course_form_complete(request, course_slug, index):
     # the marking rules changed can carry a score the review list below it
     # contradicts. The page has to own that rather than let the learner spot it.
     stored_score_outdated = False
-    if form.strategy == FormStrategy.QUIZ and form_progress.scores:
-        current_scores = form_progress.compute_quiz_scores()
+    # A served item missing from the form shrinks the recomputed score although
+    # marking is unchanged, so the stored mark is left unchallenged.
+    if (
+        form.strategy == FormStrategy.QUIZ
+        and form_progress.scores
+        and (path is None or not path.has_missing_served_items)
+    ):
+        current_scores = form_progress.compute_quiz_scores(path)
         # max_score too, not just score: a quiz that gained or lost a question
         # since the attempt shows a stale percentage the score alone cannot catch.
         stored_score_outdated = any(
