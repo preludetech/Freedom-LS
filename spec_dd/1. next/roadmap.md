@@ -17,7 +17,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `learner-profile-use-panels-framework-2-editable-list-panel` (Account area on panels)
 - 🔴 High · `learner-profile-use-panels-framework-3-account-page` (Account area on panels)
 - 🟡 Low · `misure-of-admonitions` (Educator interface)
-- ⚪ Priority not set · `spec_dd_efficiency_and_docs` (Tooling and operations)
 
 ### Ready to start
 
@@ -369,7 +368,6 @@ Developer tooling, deployment and downstream fixes.
 - `housekeeping-sentry-cron-checkin` — **ready** — When a monitor slug is configured, `fls_run_housekeeping` checks in with Sentry Crons.
 - `forced-site-name-for-host-based-site-lookup` — **ready** — `FORCE_SITE_NAME` reaches host-based site lookup in development, so every dev port works.
 - `audit-log-describe-test-flake` — **ready** — Find and fix why the audit-log describe test fails in loaded full runs but passes alone.
-- `spec_dd_efficiency_and_docs` — **in progress** — Faster, clearer SDD process: process diagrams per command, fewer full test runs, leaner prompts, finish_worktree that keeps going.
 - `dev-site-bootstrap-command` — **ready** — A development command that creates the forced-name dev Site and a verified dev superuser.
 
 ![Tooling and operations](roadmap_diagrams/tooling-and-operations.svg)
