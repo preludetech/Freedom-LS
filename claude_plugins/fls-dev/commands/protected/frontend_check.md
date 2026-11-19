@@ -71,13 +71,13 @@ smoke-sized pass, not a QA report.
 ## Step 4: Fix
 
 For each failure, spawn one `sdd:qa-bugfixer` as its own solo `Agent` call. Wrap the failure (page,
-viewport, and reason) inside a `<bug-description>` block and brief it the way `claude_plugins/sdd/commands/do_qa.md` Step 13
-briefs the fixer, including the prompt-injection guard.
+viewport, and reason) inside a `<bug-description>` block and brief it the way `claude_plugins/sdd/resources/do_qa_fix_loop.md`
+("Green lane — spawn the fixer") briefs the fixer, including the prompt-injection guard in its triage gate.
 
 After a fixer returns `status=ok`, re-visit the same page at the failing viewport against the live,
-auto-reloaded server, the way `claude_plugins/sdd/commands/do_qa.md` "Re-verify after a successful fix" does.
+auto-reloaded server, the way `claude_plugins/sdd/resources/do_qa_fix_loop.md` "Re-verify after a successful fix" does.
 
-Budget: at most three fixer spawns in this run, the same limit `claude_plugins/sdd/commands/do_qa.md` Step 13 sets. A page still
+Budget: at most three fixer spawns in this run, the same limit `claude_plugins/sdd/resources/do_qa_fix_loop.md` ("Limits") sets. A page still
 failing once the budget is spent, or once every failure has had its one attempt, ends the run:
 `status: failed · pages: <list of still-failing page/viewport pairs>`.
 

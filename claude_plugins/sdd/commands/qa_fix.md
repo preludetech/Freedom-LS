@@ -134,7 +134,7 @@ It returns `status=<ok|failed|blocked> slug=<slug> report=<path> commit=<hash|no
 - `ok`: the item is **fixed**, with that commit hash. A visual item is only fixed once Step 6
   has seen the fix on the page; until then it is **awaiting the visual check**.
 - `failed` or `blocked`: read its report, then undo its work as "Loop guard + revert" in
-  `claude_plugins/sdd/commands/do_qa.md` describes (`git revert --no-edit <hash>` solo when it
+  `claude_plugins/sdd/resources/do_qa_fix_loop.md` describes (`git revert --no-edit <hash>` solo when it
   committed, else restore the files its report lists). The item stays **open**, with the reason.
   One attempt per item.
 
@@ -155,9 +155,10 @@ Skip this step when no item is awaiting the visual check.
 
 Follow these parts of `claude_plugins/sdd/commands/do_qa.md` as they are written there: Rule 1
 (the Playwright MCP server), Rule 3 (batching safety), Steps 3 to 5 (the port, the dev server, the
-branch badge, the login), and from its Step 7 `### Capturing screenshots`, `### Layout probe` (with
-its per-run capture check), `### Before every screenshot: clear dev tooling` and
-`### Visual review`. Leave out their scratch-file records.
+branch badge, the login), and, from its Step 7, `### Capturing screenshots` and
+`claude_plugins/sdd/resources/do_qa_layout_review.md` (`## Capturing screenshots`, `## Layout probe` with
+its per-run capture check, `## Before every screenshot: clear dev tooling` and
+`## Visual review`). Leave out their scratch-file records.
 
 For each item awaiting the visual check, in file order, at each viewport it names:
 

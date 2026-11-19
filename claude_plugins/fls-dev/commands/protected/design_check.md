@@ -17,7 +17,7 @@ Done when the badge names the current branch.
 
 ## Step 2: Data
 
-For each design state, read its "how to reach it" line in the plan's design transcription. Set up the data it names the way `do_qa.md` Rule 2 does: `sdd:qa-data-helper`, as a solo `Agent` spawn.
+For each design state, read its "how to reach it" line in the plan's design transcription. Set up the data it names the way `claude_plugins/sdd/resources/do_qa_test_data.md` does: `sdd:qa-data-helper`, as a solo `Agent` spawn.
 
 Done when every state's "how to reach it" line resolves to a URL that renders the state's data.
 
@@ -29,7 +29,7 @@ For each design state: resize to its width by 900, navigate, and take a full-pag
 <project root>/.sdd-work/design_check_<state id>__<width>.png
 ```
 
-After the first screenshot, confirm the file exists at that path; the unpinned server has written custom filenames elsewhere (`claude_plugins/sdd/commands/do_qa.md` Step 7). When the file is missing, find where it went, delete it, and return `status: failed` naming the location.
+After the first screenshot, confirm the file exists at that path; the unpinned server has written custom filenames elsewhere (`claude_plugins/sdd/resources/do_qa_layout_review.md`, "Capturing screenshots"). When the file is missing, find where it went, delete it, and return `status: failed` naming the location.
 
 Done when every state has a file at its path.
 
