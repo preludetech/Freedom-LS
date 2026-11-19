@@ -29,7 +29,7 @@ COMPONENTS_DIR = TEMPLATES_DIR / "cotton"
 TAILWIND_COMPONENTS_CSS = FREEDOM_LS_PACKAGE_DIR.parent / "tailwind.components.css"
 FRAMEWORK_CSS = TEMPLATES_DIR.parent / "css" / "panel_framework.css"
 MODAL_HOST = TEMPLATES_DIR / "panel_framework" / "partials" / "modal_host.html"
-SIDE_PANEL_HOST = FREEDOM_LS_PACKAGE_DIR / "base" / "templates" / "_base_interface.html"
+SIDE_PANEL_HOST = TEMPLATES_DIR.parent / "css" / "minimal_shell.css"
 EDUCATOR_TEMPLATES_DIR = (
     FREEDOM_LS_PACKAGE_DIR / "educator_interface" / "templates" / "educator_interface"
 )

@@ -142,7 +142,7 @@ def _use_panel_test_templates(settings: pytest_django.fixtures.SettingsWrapper) 
     """Make panel_framework's test-only templates loadable, and its own
     templates win over any host's.
 
-    `test_interface.html` and `test_extra_oob_fragment.html` are test fixtures,
+    `test_extra_oob_fragment.html` and the other `test_*` templates are test fixtures,
     not app templates. They live here rather than in the app's template
     directory, where the app-directories loader would resolve them in every
     project that installs FLS. Prepending this directory keeps their template

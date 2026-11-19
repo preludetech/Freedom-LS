@@ -169,3 +169,20 @@
         height: 100vh;
     }
 }
+
+/* Element defaults for the tables the framework draws. The templates style
+ * their own markup with utilities but leave a cell's padding and colour to the
+ * page's element rules, so the shell supplies them. */
+@layer base {
+    table {
+        @apply w-full border-collapse;
+    }
+
+    th {
+        @apply px-4 py-3 text-left text-sm font-semibold text-muted;
+    }
+
+    td {
+        @apply px-4 py-3 text-sm text-on-surface;
+    }
+}

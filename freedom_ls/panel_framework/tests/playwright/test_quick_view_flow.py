@@ -12,12 +12,8 @@ from playwright.sync_api import Locator, Page, Request, Route, ViewportSize, exp
 
 from django.contrib.sites.models import Site
 
-from freedom_ls.tests.playwright_helpers import (
-    QA_VIEWPORTS,
-    assert_no_horizontal_overflow,
-)
-
 from ..helpers import make_stub
+from .helpers import QA_VIEWPORTS, assert_no_horizontal_overflow
 
 pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 

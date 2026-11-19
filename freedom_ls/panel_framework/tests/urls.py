@@ -24,7 +24,7 @@ def _framework_view(
         config=STUB_CONFIG,
         request=request,
         path_string=path_string,
-        template_name="panel_framework/test_interface.html",
+        template_name="panel_framework/minimal_shell.html",
         url_name="panel_framework_test:framework",
     )
 

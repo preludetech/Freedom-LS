@@ -78,3 +78,6 @@ test-results/
 # demo_content is the worked example authors copy as a template, so it never
 # carries the ingest machinery. Every real content repository commits its own.
 demo_content/**/_optimised/
+
+# The stylesheet the panel framework's minimal shell links, built by `npm run panel_framework_css`.
+freedom_ls/panel_framework/static/panel_framework/css/reference.css

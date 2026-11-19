@@ -1,0 +1,16 @@
+/* The input of the build that makes the stylesheet the minimal shell links:
+ * the reference theme, the framework stylesheet and the shell's layout rules,
+ * compiled with nothing from any host. */
+@import "tailwindcss" source(none);
+
+@import "../../css/reference_theme.css";
+@import "../../css/panel_framework.css";
+@import "../../css/minimal_shell.css";
+
+@source "../../templates";
+
+@layer base {
+    [x-cloak] {
+        display: none !important;
+    }
+}

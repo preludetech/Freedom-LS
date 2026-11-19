@@ -54,7 +54,7 @@ pytestmark = pytest.mark.django_db
 
 LIST_REGION_ID = "stubs-table"
 VARY_HEADERS = ("HX-Request", "HX-Target", "HX-History-Restore-Request")
-INTERFACE_TEMPLATE = "panel_framework/test_interface.html"
+INTERFACE_TEMPLATE = "panel_framework/minimal_shell.html"
 INTERFACE_URL_NAME = "panel_framework_test:interface"
 
 
@@ -1308,3 +1308,52 @@ def test_the_run_status_view_answers_404_for_a_run_of_another_site(
     response = call_view(request, path)
 
     assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# The minimal shell
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def shell_page(mock_site_context: Site) -> lxml.html.HtmlElement:
+    """The full-page response for the stub list, parsed."""
+    return lxml.html.fromstring(fetch("stubs").content.decode())
+
+
+@pytest.mark.django_db
+def test_the_shell_holds_the_navigation_and_the_main_region(
+    shell_page: lxml.html.HtmlElement,
+) -> None:
+    assert len(shell_page.cssselect("#interface-main #main-content")) == 1
+    assert len(shell_page.cssselect("dialog[data-shell-navigation] #sidebar-nav")) == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("host_id", ["app-modal", "quick-view", "scope-announcer"])
+def test_each_overlay_host_sits_outside_the_main_region(
+    shell_page: lxml.html.HtmlElement, host_id: str
+) -> None:
+    assert len(shell_page.cssselect(f"#{host_id}")) == 1
+    assert shell_page.cssselect(f"#interface-main #{host_id}") == []
+
+
+@pytest.mark.django_db
+def test_the_body_carries_the_csrf_header_for_htmx(
+    shell_page: lxml.html.HtmlElement,
+) -> None:
+    (body,) = shell_page.cssselect("body")
+
+    assert "X-CSRFToken" in body.get("hx-headers", "")
+
+
+@pytest.mark.django_db
+def test_the_framework_scripts_load_before_the_alpine_csp_build(
+    mock_site_context: Site,
+) -> None:
+    html = fetch("stubs").content.decode()
+    shell = html.index("panel_framework/js/shell-components.js")
+    components = html.index("panel_framework/js/alpine-components.js")
+    alpine = html.index("@alpinejs/csp")
+
+    assert shell < components < alpine

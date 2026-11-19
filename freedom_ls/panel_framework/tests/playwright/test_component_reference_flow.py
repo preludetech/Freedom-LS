@@ -19,12 +19,8 @@ from django.conf import settings
 from django.contrib.sites.models import Site
 from django.test import Client
 
-from freedom_ls.tests.playwright_helpers import (
-    QA_VIEWPORTS,
-    assert_no_horizontal_overflow,
-)
-
 from ..helpers import make_staff_user
+from .helpers import QA_VIEWPORTS, assert_no_horizontal_overflow
 
 pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 

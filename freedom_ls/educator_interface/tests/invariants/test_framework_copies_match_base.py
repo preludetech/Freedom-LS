@@ -5,6 +5,7 @@ original, so a fix to one (a new CSV formula trigger, say) reaches both.
 
 from __future__ import annotations
 
+import importlib.util
 import inspect
 import re
 from pathlib import Path
@@ -21,6 +22,7 @@ from freedom_ls.base.templatetags import pagination_tags as base_pagination_tags
 from freedom_ls.panel_framework import app_settings as framework_app_settings
 from freedom_ls.panel_framework import csv_safety as framework_csv_safety
 from freedom_ls.panel_framework import field_display as framework_field_display
+from freedom_ls.tests import playwright_helpers as base_playwright_helpers
 
 BASE_SCRIPT = (
     Path(base_app_settings.__file__).parent
@@ -37,6 +39,25 @@ FRAMEWORK_SCRIPT = (
     / "alpine-components.js"
 )
 
+FRAMEWORK_PLAYWRIGHT_HELPERS_PATH = (
+    Path(framework_app_settings.__file__).parent / "tests" / "playwright" / "helpers.py"
+)
+
+
+def _load_module_from_path(name: str, path: Path) -> ModuleType:
+    """Import a file by path, for a module the framework keeps out of its public names."""
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+framework_playwright_helpers = _load_module_from_path(
+    "framework_playwright_helpers", FRAMEWORK_PLAYWRIGHT_HELPERS_PATH
+)
+
 SAME_SOURCE = [
     (base_csv_safety.escape_csv_formula, framework_csv_safety.escape_csv_formula),
     (base_csv_import.EchoWriter, framework_csv_safety.EchoWriter),
@@ -46,6 +67,10 @@ SAME_SOURCE = [
         base_pagination_tags.pagination_suffix,
         framework_data_table_tags.pagination_suffix,
     ),
+    (
+        base_playwright_helpers.assert_no_horizontal_overflow,
+        framework_playwright_helpers.assert_no_horizontal_overflow,
+    ),
 ]
 
 SAME_VALUE = [
@@ -54,6 +79,7 @@ SAME_VALUE = [
     (base_csv_safety, framework_csv_safety, "_E164_PHONE_NUMBER"),
     (base_date_display, framework_field_display, "DATE_DISPLAY_FORMAT"),
     (base_date_display, framework_field_display, "DATETIME_DISPLAY_FORMAT"),
+    (base_playwright_helpers, framework_playwright_helpers, "QA_VIEWPORTS"),
 ]
 
 
