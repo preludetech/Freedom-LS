@@ -68,3 +68,7 @@ def test_pre_step_rebase_names_the_upstream_change_review() -> None:
 def test_upstream_change_text_lives_only_in_the_review_resource(text: str) -> None:
     assert text not in PRE_STEP_REBASE.read_text()
     assert text in UPSTREAM_REVIEW.read_text()
+
+
+def test_auto_resolve_list_prefixes_its_script_path_with_the_plugins_root() -> None:
+    assert "`<PLUGINS_ROOT>/`" in AUTO_RESOLVE.read_text()

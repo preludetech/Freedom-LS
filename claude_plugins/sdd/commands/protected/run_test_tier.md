@@ -10,6 +10,9 @@ Inputs from the caller: `<tier>` (`targeted`, `full` or `checkpoint`) and, for `
 `<diff>`: the selection arguments the tier definition accepts. `checkpoint` works out its own tier
 and `<diff>`, so a caller passes none.
 
+When `PLUGINS_ROOT`, resolved by `pre_step_rebase.md`'s "`PLUGINS_ROOT` rule", is not `.`, every
+`claude_plugins/sdd/scripts/` path in this file takes the prefix `<PLUGINS_ROOT>/`.
+
 ## Step 1: Find the tier definition
 
 Read `Test tiers` under `## Test Hooks` in `.claude/sdd/config.md` (`config.local.md` wins). For `checkpoint`, read the

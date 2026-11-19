@@ -131,3 +131,9 @@ def test_configured_flaky_test_guide_exists() -> None:
 
     assert match is not None
     assert (ROOT / match.group(1)).is_file()
+
+
+def test_run_test_tier_prefixes_its_script_paths_with_the_plugins_root() -> None:
+    text = (COMMANDS / "protected/run_test_tier.md").read_text()
+
+    assert "`<PLUGINS_ROOT>/`" in text

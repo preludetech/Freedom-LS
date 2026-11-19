@@ -9,3 +9,7 @@ During a rebase `theirs` is the branch's side and `ours` is main's.
    the SVGs, then run `python3 claude_plugins/sdd/scripts/roadmap.py "spec_dd/1. next/roadmap.md"`.
 2. `<own-spec-dir>/` → theirs
 3. `spec_dd/` → ours
+
+When `PLUGINS_ROOT`, resolved by `claude_plugins/sdd/commands/protected/pre_step_rebase.md`'s
+"`PLUGINS_ROOT` rule", is not `.`, the `claude_plugins/sdd/scripts/` path in entry 1 takes the
+prefix `<PLUGINS_ROOT>/`.
