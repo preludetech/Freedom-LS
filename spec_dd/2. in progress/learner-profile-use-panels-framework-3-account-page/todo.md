@@ -15,10 +15,13 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 3. Implementation and QA
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
+- [ ] (user) Decide whether the panel framework should offer a built-in 'close the dialog and toast, swap nothing' response: RemoveProfilePictureAction.handle_submit (accounts/panels/personal_details/actions.py) sets HX-Retarget: body and HX-Reswap: none by hand, because an empty 200 swapped into #app-modal-body reopened the dialog; keep it, or file a framework idea
+- [ ] (user) Check the plan deviations and fix the plan text if wanted: account actions live at personal-details/__panels/<panel>/__actions/<action> (not personal-details/__actions/<action>); test_organisation/import_contracts.toml gained an allowance for base/tests/components/test_header_avatar.py importing accounts.factories; test_organisation/mirroring_exemptions.txt gained a line for accounts/tests/test_allauth_pages.py
+- [ ] (user) Delete the stray migration 0008_learnerimport_learnerimportrow.py moved to /tmp/claude-1000/-home-sheena-workspace-lms-freedom-ls-worktrees-learner-profile-use-panels-framework-3-account-page/22d6ba45-d894-4bbe-b3fd-e9c4ef9695b3/scratchpad/ (an accidental stash pop restored it from stash@{0}, 'partial batch 9 from crashed implement_plan run' on educator-interface-8-bulk-operations, which is still in the stash list)
 
 ## 4. Documentation and pull request
 
