@@ -36,6 +36,7 @@ __all__ = [
     "DeleteAction",
     "EditAction",
     "EditableListAddAction",
+    "EditableListEditAction",
     "FormPanelAction",
     "ModalPanelAction",
     "PanelAction",
@@ -184,6 +185,13 @@ class PanelAction:
                 raise Http404 from None
 
         return ctx.once((type(self), ctx.base_url, self.row_param, value), load)
+
+    def get_hidden_fields(self, ctx: PanelContext) -> dict[str, str]:
+        """Row parameters the submit needs, posted as hidden inputs: the row
+        `row_param` names, for a row-scoped action."""
+        if self.row_param is None:
+            return {}
+        return {self.row_param: str(self.get_row_object(ctx).pk)}
 
     def get_capability(self, ctx: PanelContext) -> str | None:
         return self.capability
@@ -415,16 +423,21 @@ class FormPanelAction(ModalPanelAction):
         # renders the message.
         if form.is_bound and form.errors:
             self._add_choose_again_errors(ctx, form)
-        return form_fragment_context(
-            form,
-            form_title=self.get_form_title(ctx, form),
-            action_url=self.get_action_url(ctx),
-            submit_buttons=self.submit_buttons,
-            # A submitted form shows its errors; the empty message stands in
-            # only for the form a person has not yet filled in.
-            empty_message=None if form.is_bound else self.get_empty_message(ctx, form),
-            autofocus=self.autofocus_first_field,
-        )
+        return {
+            **form_fragment_context(
+                form,
+                form_title=self.get_form_title(ctx, form),
+                action_url=self.get_action_url(ctx),
+                submit_buttons=self.submit_buttons,
+                # A submitted form shows its errors; the empty message stands in
+                # only for the form a person has not yet filled in.
+                empty_message=(
+                    None if form.is_bound else self.get_empty_message(ctx, form)
+                ),
+                autofocus=self.autofocus_first_field,
+            ),
+            "hidden_fields": self.get_hidden_fields(ctx),
+        }
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         """The modal fragment for the form this request holds."""
@@ -597,13 +610,6 @@ class ConfirmAction(ModalPanelAction):
 
     def get_title(self, ctx: PanelContext) -> str:
         return self.label
-
-    def get_hidden_fields(self, ctx: PanelContext) -> dict[str, str]:
-        """Row parameters the submit needs, posted as hidden inputs: the row
-        `row_param` names, for a row-scoped action."""
-        if self.row_param is None:
-            return {}
-        return {self.row_param: str(self.get_row_object(ctx).pk)}
 
     def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
         """What the dialog's body says, beyond the title and the buttons."""
@@ -890,4 +896,38 @@ class EditableListAddAction(_EditableListAction, FormPanelAction):
             # Locks the parent so two adds for one parent run one after the other.
             type(parent)._default_manager.select_for_update().get(pk=parent.pk)
             entry = cast(forms.ModelForm, form).save()
+        return changed_response(self.get_success_events(entry))
+
+
+class _EditableListEntryAction(_EditableListAction):
+    renders_in_footer = False
+    row_param = "entry"
+
+    def get_row_queryset(self, ctx: PanelContext) -> QuerySet[Model]:
+        # Narrowed by the parent here as well, so an entry of another
+        # parent is out of reach even when get_entries() forgets the filter.
+        return self.panel.get_entries().filter(
+            **{self.panel.parent_field: ctx.instance}
+        )
+
+
+class EditableListEditAction(_EditableListEntryAction, FormPanelAction):
+    label = "Edit"
+    variant = "secondary"
+    action_name = "edit_entry"
+    capability_verb = "change"
+
+    def __init__(self, panel: EditableListPanel) -> None:
+        super().__init__(panel)
+        self.form_class = panel.get_form_class()
+        self.form_title = f"Edit {panel.get_noun()}"
+
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
+        return {**super().get_form_kwargs(ctx), "instance": self.get_row_object(ctx)}
+
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
+        model_form = cast(forms.ModelForm, form)
+        # Set back before the save: an edit never moves an entry to another parent.
+        setattr(model_form.instance, self.panel.parent_field, ctx.instance)
+        entry = model_form.save()
         return changed_response(self.get_success_events(entry))

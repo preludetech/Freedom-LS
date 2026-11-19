@@ -727,3 +727,15 @@ def test_the_data_table_actions_wrapper_carries_its_hook_class() -> None:
     source = (COMPONENTS_DIR / "data-table-actions.html").read_text()
 
     assert re.search(r'<div class="[^"]*\bpanel-data-table-actions\b', source)
+
+
+def test_every_entry_trigger_names_its_entry() -> None:
+    source = (
+        FREEDOM_LS_PACKAGE_DIR
+        / "panel_framework/templates/panel_framework/partials/editable_list_entry_triggers.html"
+    ).read_text()
+
+    triggers = re.findall(r"<c-modal-trigger\b", source)
+    named = re.findall(r"\baria_label=", source)
+
+    assert len(triggers) == len(named) != 0

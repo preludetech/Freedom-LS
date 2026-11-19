@@ -1,0 +1,2 @@
+{% comment %}The per-entry triggers, one file for every layout. Context: entry (edit_url, accessible_name). Each trigger names its entry so two buttons never share a bare verb.{% endcomment %}
+{% if entry.edit_url %}<c-modal-trigger size="small" variant="secondary" url="{{ entry.edit_url }}" label="Edit" aria_label="Edit {{ entry.accessible_name }}" />{% endif %}

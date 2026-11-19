@@ -13,6 +13,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from functools import cached_property
 from typing import Literal, TypedDict, cast
+from urllib.parse import urlencode
 
 from django import forms
 from django.core.exceptions import ImproperlyConfigured
@@ -22,6 +23,7 @@ from django.http import Http404, HttpRequest
 
 from freedom_ls.panel_framework.actions import (
     EditableListAddAction,
+    EditableListEditAction,
     EditAction,
     PanelAction,
     count_phrase,
@@ -642,21 +644,38 @@ class EditableListPanel(Panel):
         return list(self.get_entries())
 
     def get_actions(self) -> list[PanelAction]:
-        return [EditableListAddAction(self)]
+        return [EditableListAddAction(self), EditableListEditAction(self)]
 
     def get_context_data(self) -> dict[str, object]:
         """`loaded_entries` holds the model instances; the `entries` key holds
         plain dicts, so the template draws from static data alone."""
         context = super().get_context_data()
         add_trigger: dict[str, object] | None = None
+        edit_action: PanelAction | None = None
         for action in self.available_actions:
             if isinstance(action, EditableListAddAction):
                 add_trigger = action.get_trigger_context(self.ctx)
+            elif isinstance(action, EditableListEditAction):
+                edit_action = action
         entries = []
         for entry in self.loaded_entries:
             summary = self.get_summary(entry)
             entries.append(
-                {"pk": entry.pk, "title": summary.title, "detail": summary.detail}
+                {
+                    "pk": entry.pk,
+                    "title": summary.title,
+                    "detail": summary.detail,
+                    "accessible_name": (
+                        f"{summary.title}, {summary.detail}"
+                        if summary.detail
+                        else summary.title
+                    ),
+                    "edit_url": (
+                        self._entry_action_url(edit_action, entry)
+                        if edit_action
+                        else ""
+                    ),
+                }
             )
         context.update(
             {
@@ -668,3 +687,7 @@ class EditableListPanel(Panel):
             }
         )
         return context
+
+    def _entry_action_url(self, action: PanelAction, entry: Model) -> str:
+        row_param = cast(str, action.row_param)
+        return f"{action.get_action_url(self.ctx)}?{urlencode({row_param: entry.pk})}"

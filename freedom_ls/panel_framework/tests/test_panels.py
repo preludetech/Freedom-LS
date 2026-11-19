@@ -1127,7 +1127,7 @@ def test_an_editable_list_renders_entries_in_get_entries_order_with_detail(
     root = _entries_html(parent)
 
     assert [
-        " ".join(li.text_content().split())
+        " ".join(li.xpath("string(./div[1])").split())
         for li in root.xpath("//section[@data-panel='entries']//ul/li")
     ] == ["Alpha first", "Beta second"]
 
@@ -1221,3 +1221,56 @@ def test_an_editable_list_escapes_a_title_in_text_and_attributes(
         "<b>bold</b>"
         in root.xpath("//section[@data-panel='entries']//ul/li")[0].text_content()
     )
+
+
+@pytest.mark.parametrize(
+    ("detail", "name"),
+    [("", "Edit Alpha"), ("first note", "Edit Alpha, first note")],
+)
+def test_an_edit_trigger_is_named_for_its_entry(
+    mock_site_context: Site, detail: str, name: str
+) -> None:
+    parent = make_stub()
+    make_stub_entry(parent, "Alpha", detail)
+
+    root = _entries_html(parent)
+
+    assert root.xpath(
+        "//*[contains(@hx-get, '/__actions/edit_entry')]/@aria-label"
+    ) == [name]
+
+
+def test_an_edit_trigger_url_names_its_entry(mock_site_context: Site) -> None:
+    parent = make_stub()
+    entry = make_stub_entry(parent, "Alpha")
+
+    root = _entries_html(parent)
+
+    (url,) = root.xpath("//*[contains(@hx-get, '/__actions/edit_entry')]/@hx-get")
+    assert url.endswith(f"/__actions/edit_entry?entry={entry.pk}")
+
+
+def test_an_edit_trigger_keeps_a_quote_bearing_title_in_one_aria_label(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    make_stub_entry(parent, 'x" onfocus="alert(1)')
+
+    root = _entries_html(parent)
+
+    assert root.xpath("//*[@onfocus]") == []
+    assert root.xpath(
+        "//*[contains(@hx-get, '/__actions/edit_entry')]/@aria-label"
+    ) == ['Edit x" onfocus="alert(1)']
+
+
+def test_an_editable_list_shows_no_edit_trigger_when_the_edit_is_denied(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    make_stub_entry(parent, "Alpha")
+    RecordingCapabilityConfig.reset(answer=False)
+
+    root = _entries_html(parent)
+
+    assert root.xpath("//*[contains(@hx-get, '/__actions/edit_entry')]") == []

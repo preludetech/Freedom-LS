@@ -25,6 +25,7 @@ from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,
     DeleteAction,
     EditableListAddAction,
+    EditableListEditAction,
     EditAction,
     FormPanelAction,
     PanelAction,
@@ -52,6 +53,7 @@ from .helpers import (
     make_staff_user,
     make_stub,
     make_stub_child,
+    make_stub_entry,
     make_stub_file,
     make_stub_protected_child,
 )
@@ -2523,3 +2525,194 @@ def test_an_add_subclass_with_no_derived_capability_is_allowed_when_the_config_s
     panel = StubEditableListPanel(_entries_ctx(parent, request))
 
     assert _OpenAddAction(panel).has_permission(panel.ctx) is True
+
+
+def _edit_path(parent: StubModel) -> str:
+    return f"stubs/{parent.pk}/__tabs/entries/__actions/edit_entry"
+
+
+def _hidden_entry_values(response: HttpResponse) -> list[str]:
+    root = lxml.html.fromstring(f"<div>{response.content.decode()}</div>")
+    return [
+        str(value)
+        for value in root.xpath("//form//input[@type='hidden'][@name='entry']/@value")
+    ]
+
+
+class _NameForm(forms.Form):
+    name = forms.CharField()
+
+
+class _PlainFormAction(FormPanelAction):
+    label = "Rename"
+    action_name = "rename"
+    form_class = _NameForm
+
+
+class _RowFormAction(_PlainFormAction):
+    row_param = "item"
+
+    def get_row_queryset(self, ctx: PanelContext) -> QuerySet[Model]:
+        return cast(QuerySet[Model], StubModel.objects.all())
+
+
+@pytest.mark.django_db
+def test_a_row_scoped_edit_dialog_renders_its_entry_as_a_hidden_input_on_get(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    entry = make_stub_entry(parent, "Alpha", "note")
+
+    response = fetch(_edit_path(parent), data={"entry": str(entry.pk)}, htmx=True)
+
+    assert response.status_code == 200
+    assert _hidden_entry_values(response) == [str(entry.pk)]
+    assert 'value="Alpha"' in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_an_edit_post_saves_that_entry_and_fires_entry_changed_with_its_pk(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    entry = make_stub_entry(parent, "Alpha")
+
+    response = fetch(
+        _edit_path(parent),
+        method="post",
+        data={"entry": str(entry.pk), "title": "Renamed", "detail": "d"},
+        htmx=True,
+    )
+
+    entry.refresh_from_db()
+    assert response.status_code == 204
+    assert entry.title == "Renamed"
+    assert response["HX-Trigger"] == build_hx_trigger(
+        {"entryChanged": [str(entry.pk)]}, close_modal=True
+    )
+
+
+@pytest.mark.django_db
+def test_an_invalid_edit_answers_422_and_still_carries_the_hidden_entry(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    entry = make_stub_entry(parent, "Alpha")
+
+    response = fetch(
+        _edit_path(parent),
+        method="post",
+        data={"entry": str(entry.pk), "title": ""},
+        htmx=True,
+    )
+
+    assert response.status_code == 422
+    assert _hidden_entry_values(response) == [str(entry.pk)]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("method", ["get", "post"])
+@pytest.mark.parametrize("which", ["another_parent", "missing", "malformed"])
+def test_an_edit_for_an_entry_outside_the_parents_entries_is_a_404(
+    mock_site_context: Site, method: str, which: str
+) -> None:
+    parent = make_stub()
+    values = {
+        "another_parent": str(make_stub_entry(make_stub(), "Theirs").pk),
+        "missing": "999999",
+        "malformed": "not-a-pk",
+    }
+
+    response = fetch(
+        _edit_path(parent),
+        method=method,
+        data={"entry": values[which], "title": "x"},
+        htmx=True,
+    )
+
+    assert response.status_code == 404
+
+
+class _UnfilteredEntriesPanel(StubEditableListPanel):
+    def get_entries(self) -> QuerySet[Model]:
+        return cast(QuerySet[Model], StubEntry.objects.all())
+
+
+@pytest.mark.django_db
+def test_an_edit_narrows_to_the_parent_even_when_get_entries_forgets_the_filter(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    theirs = make_stub_entry(make_stub(), "Theirs")
+    request = RequestFactory().get("/", {"entry": str(theirs.pk)})
+    request.user = make_staff_user()
+    panel = _UnfilteredEntriesPanel(_entries_ctx(parent, request))
+
+    with pytest.raises(Http404):
+        EditableListEditAction(panel).get_row_object(panel.ctx)
+
+
+@pytest.mark.django_db
+def test_an_edit_post_that_names_another_parent_leaves_the_entry_under_its_parent(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    other = make_stub()
+    entry = make_stub_entry(parent, "Alpha")
+
+    fetch(
+        _edit_path(parent),
+        method="post",
+        data={"entry": str(entry.pk), "title": "Renamed", "parent": str(other.pk)},
+        htmx=True,
+    )
+
+    entry.refresh_from_db()
+    assert entry.parent == parent
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("method", ["get", "post"])
+def test_a_denied_edit_answers_403(mock_site_context: Site, method: str) -> None:
+    parent = make_stub()
+    entry = make_stub_entry(parent, "Alpha")
+    RecordingCapabilityConfig.reset(answer=False)
+
+    response = fetch(
+        _edit_path(parent),
+        method=method,
+        data={"entry": str(entry.pk), "title": "Renamed"},
+        htmx=True,
+    )
+
+    entry.refresh_from_db()
+    assert response.status_code == 403
+    assert entry.title == "Alpha"
+
+
+@pytest.mark.django_db
+def test_a_form_action_with_a_row_param_renders_the_row_as_a_hidden_input(
+    mock_site_context: Site,
+) -> None:
+    item = make_stub()
+    action = _RowFormAction()
+    request = RequestFactory().get("/", {"item": str(item.pk)})
+    ctx = _ctx(request)
+
+    root = lxml.html.fromstring(f"<div>{_render(action, ctx)}</div>")
+
+    assert root.xpath("//form//input[@type='hidden'][@name='item']/@value") == [
+        str(item.pk)
+    ]
+
+
+@pytest.mark.django_db
+def test_a_form_action_without_a_row_param_renders_no_hidden_input(
+    mock_site_context: Site,
+) -> None:
+    action = _PlainFormAction()
+    ctx = _ctx(RequestFactory().get("/"))
+
+    root = lxml.html.fromstring(f"<div>{_render(action, ctx)}</div>")
+
+    assert root.xpath("//form//input[@type='hidden']") == []

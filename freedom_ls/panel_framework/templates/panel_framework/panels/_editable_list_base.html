@@ -4,7 +4,9 @@
     {% if entries %}
         <c-panel-list>
             {% for entry in entries %}
-                <c-panel-list-row title="{{ entry.title }}" detail="{{ entry.detail }}" />
+                <c-panel-list-row title="{{ entry.title }}" detail="{{ entry.detail }}">
+                    {% include "panel_framework/partials/editable_list_entry_triggers.html" %}
+                </c-panel-list-row>
             {% endfor %}
         </c-panel-list>
     {% else %}
