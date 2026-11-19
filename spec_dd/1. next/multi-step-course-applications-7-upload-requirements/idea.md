@@ -33,7 +33,7 @@ qualification. Without this, applicants email them and the reviewer has no recor
 - Reviewers see and download every version on the review screen. The download is access-checked by the reviewer capability from `multi-step-course-applications-2-reviewers-and-inbox`. The applicant's own download is checked by ownership of the application.
 - Files are served as attachments, uncached, through one download route per audience.
 - Medical and identity documents get no special handling: the same storage, retention and access rules as every other upload.
-- No scanning hook is built, because a hook that pretends to scan is worse than none. `file-scanning` (no spec yet) must land before a deployment takes medical or identity documents in production. The design leaves room for it: a version row can gain a status column, and the download route is the single gate where a quarantine check sits.
+- Uploaded files are not scanned, and no scanning hook is built. File scanning is not planned. Format checks and re-encoding in `validate_and_sanitise` are the defence.
 - Per-type size or file-type limits are not built. The validator's limits are fixed, so a type could not enforce them.
 
 ## Open until the spec
@@ -42,7 +42,7 @@ qualification. Without this, applicants email them and the reviewer has no recor
 
 ## Out of scope
 
-- Scanning of any kind, and the `file-scanning` spec itself.
+- Scanning uploaded files.
 - Per-type size, file-type or expiry rules.
 - Anonymous (unclaimed) document upload.
 - Moving `validate_and_sanitise` to a neutral place; that can come with a second consumer such as `learner-public-profile-4-certificates`.

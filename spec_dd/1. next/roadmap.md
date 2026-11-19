@@ -220,7 +220,7 @@ Applications become steps an applicant works through over weeks, decided by a de
   - who sees an organisation move in the audit log (`multi-step-course-applications-2-reviewers-and-inbox`);
   - `add_learner` or `ensure_learner` (`multi-step-course-applications-3-approval-outcome`);
   - what a resolver failure does (`multi-step-course-applications-5-requirements-and-resolver`).
-- Out of scope: outside systems reporting a step done, provider lists and distance ranking, more than one sign-off. `file-scanning` (no spec yet) must land before production takes medical or identity documents.
+- Out of scope: outside systems reporting a step done, provider lists and distance ranking, more than one sign-off, and scanning uploaded files (not planned).
 - References: `research_review_foundations.md` and `research_help_and_recommendations.md` in the parent.
 
 ## Learner interface features
