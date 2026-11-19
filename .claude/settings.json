@@ -109,6 +109,7 @@
       "Bash(claude_plugins/sdd/scripts/qa_cleanup.sh:*)",
       "Bash(claude_plugins/sdd/scripts/qa_collect_screenshots.sh:*)",
       "Bash(claude_plugins/sdd/scripts/compress_screenshots.sh:*)",
+      "Bash(python3 claude_plugins/sdd/scripts/measure_prompt_size.py:*)",
       "Bash(claude_plugins/sdd/scripts/delete_sdd_work_files.sh:*)",
       "Bash(claude_plugins/sdd/scripts/land_on_main.sh:*)",
       "Bash(claude_plugins/fls-dev/scripts/concrete_pointer_move.sh:*)",

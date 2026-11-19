@@ -114,6 +114,9 @@ files exist, catches this.
    "Absent" means no byte-identical string is already in the list. The commands invoke these
    scripts by that path, so without the entries every call prompts, and a non-interactive agent
    returns `blocked` instead. Never remove or rewrite an entry here.
+   For each Python script the commands call by name (`measure_prompt_size.py`), add
+   `Bash(python3 <PLUGINS_ROOT>/claude_plugins/sdd/scripts/<name>.py:*)` if absent, with no `./`
+   prefix on the path when `PLUGINS_ROOT` is `.`. Same absent rule; same reason.
 3. Merge `"worktree": {"baseRef": "head"}` at the top level of `.claude/settings.json` when the
    `worktree` key is absent; never overwrite an existing `worktree` object. `baseRef` applies to
    every worktree Claude Code creates in the project: `head` branches a sub-agent's worktree
@@ -358,7 +361,8 @@ in-place edits.
 
 1. `sdd` is in `enabledPlugins`, and `.claude/settings.json` is valid JSON.
 2. `Skill(sdd:*)` is in `permissions.allow`, and so are the three entries from Step 1 item 2 for
-   every `.sh` under `${CLAUDE_PLUGIN_ROOT}/scripts/`.
+   every `.sh` under `${CLAUDE_PLUGIN_ROOT}/scripts/`, plus the `python3` entry from Step 1 item 2
+   for each Python script the commands call by name.
 3. `.claude/sdd/config.md` has a `## Worktree Scripts` section with the `Setup script`,
    `Teardown script`, `Parallel batches`, `Memory capacity`, `Batch memory (MB)` and `Worker memory (MB)` keys (blank values are valid).
 4. `.claude/sdd/config.md` has a `## Rebase Hooks` section with both `Rebase command` and
