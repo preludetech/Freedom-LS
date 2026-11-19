@@ -9,6 +9,7 @@ from typing import cast
 import pytest
 from pytest_django.fixtures import SettingsWrapper
 
+from django import forms
 from django.contrib.sites.models import Site
 from django.core.checks import CheckMessage, run_checks
 from django.core.management import call_command
@@ -21,16 +22,22 @@ from freedom_ls.panel_framework.checks import (
     check_site_resolver,
     check_task_backend,
     default_sort_errors,
+    editable_list_panel_errors,
     filter_key_errors,
     panel_errors,
     table_key_errors,
 )
 from freedom_ls.panel_framework.filters import BooleanFilter, TableFilter
-from freedom_ls.panel_framework.panels import DataTablePanel, Panel, PanelStack
+from freedom_ls.panel_framework.panels import (
+    DataTablePanel,
+    EditableListPanel,
+    Panel,
+    PanelStack,
+)
 from freedom_ls.panel_framework.views import ListViewConfig
 
 from .helpers import make_site
-from .stub_models import StubChild, StubModel
+from .stub_models import StubChild, StubEntry, StubModel
 from .stub_panels import StubDataTable
 
 
@@ -284,6 +291,170 @@ def test_a_descending_default_sort_on_a_sortable_column_raises_no_error() -> Non
 
     # Act
     errors = default_sort_errors(DescendingDefaultSortTablePanel)
+
+    # Assert
+    assert errors == []
+
+
+class _EntryForm(forms.ModelForm):
+    class Meta:
+        model = StubEntry
+        fields = ["title", "detail"]
+
+
+def test_editable_list_panel_itself_raises_no_error() -> None:
+    # Act
+    errors = editable_list_panel_errors(EditableListPanel)
+
+    # Assert
+    assert errors == []
+
+
+def test_a_well_formed_editable_list_panel_raises_no_error() -> None:
+    # Arrange
+    class WellFormedListPanel(EditableListPanel):
+        form_class = _EntryForm
+        parent_field = "parent"
+        max_entries = 3
+        layout = "table"
+
+    # Act
+    errors = editable_list_panel_errors(WellFormedListPanel)
+
+    # Assert
+    assert errors == []
+
+
+def test_an_editable_list_panel_without_form_class_raises_e009() -> None:
+    # Arrange
+    class NoFormListPanel(EditableListPanel):
+        parent_field = "parent"
+
+    # Act
+    errors = editable_list_panel_errors(NoFormListPanel)
+
+    # Assert
+    assert len(errors) == 1
+    assert errors[0].id == "freedom_ls_panel_framework.E009"
+    assert errors[0].obj is NoFormListPanel
+
+
+def test_an_editable_list_panel_with_a_plain_form_raises_e009() -> None:
+    # Arrange
+    PlainFormListPanel = type(
+        "PlainFormListPanel",
+        (EditableListPanel,),
+        {"form_class": forms.Form, "parent_field": "parent"},
+    )
+
+    # Act
+    errors = editable_list_panel_errors(PlainFormListPanel)
+
+    # Assert
+    assert len(errors) == 1
+    assert errors[0].id == "freedom_ls_panel_framework.E009"
+    assert errors[0].obj is PlainFormListPanel
+
+
+def test_a_parent_field_missing_from_the_model_raises_e009() -> None:
+    # Arrange
+    class MissingParentListPanel(EditableListPanel):
+        form_class = _EntryForm
+        parent_field = "no_such_field"
+
+    # Act
+    errors = editable_list_panel_errors(MissingParentListPanel)
+
+    # Assert
+    assert len(errors) == 1
+    assert errors[0].id == "freedom_ls_panel_framework.E009"
+    assert errors[0].obj is MissingParentListPanel
+
+
+def test_a_parent_field_that_is_not_a_foreign_key_raises_e009() -> None:
+    # Arrange
+    class NotForeignKeyListPanel(EditableListPanel):
+        form_class = _EntryForm
+        parent_field = "title"
+
+    # Act
+    errors = editable_list_panel_errors(NotForeignKeyListPanel)
+
+    # Assert
+    assert len(errors) == 1
+    assert errors[0].id == "freedom_ls_panel_framework.E009"
+    assert errors[0].obj is NotForeignKeyListPanel
+
+
+def test_a_form_that_lists_the_parent_field_raises_e009() -> None:
+    # Arrange
+    class ParentInFormListPanel(EditableListPanel):
+        class form_class(forms.ModelForm):  # noqa: N801
+            class Meta:
+                model = StubEntry
+                fields = ["parent", "title"]
+
+        parent_field = "parent"
+
+    # Act
+    errors = editable_list_panel_errors(ParentInFormListPanel)
+
+    # Assert
+    assert len(errors) == 1
+    assert errors[0].id == "freedom_ls_panel_framework.E009"
+    assert errors[0].obj is ParentInFormListPanel
+
+
+@pytest.mark.parametrize("max_entries", [0, -1, "3", True])
+def test_a_bad_max_entries_raises_e009(max_entries: object) -> None:
+    # Arrange
+    BadCapListPanel = type(
+        "BadCapListPanel",
+        (EditableListPanel,),
+        {
+            "form_class": _EntryForm,
+            "parent_field": "parent",
+            "max_entries": max_entries,
+        },
+    )
+
+    # Act
+    errors = editable_list_panel_errors(BadCapListPanel)
+
+    # Assert
+    assert len(errors) == 1
+    assert errors[0].id == "freedom_ls_panel_framework.E009"
+    assert errors[0].obj is BadCapListPanel
+
+
+@pytest.mark.parametrize("layout", ["grid", "", None])
+def test_a_bad_layout_raises_e009(layout: object) -> None:
+    # Arrange
+    BadLayoutListPanel = type(
+        "BadLayoutListPanel",
+        (EditableListPanel,),
+        {"form_class": _EntryForm, "parent_field": "parent", "layout": layout},
+    )
+
+    # Act
+    errors = editable_list_panel_errors(BadLayoutListPanel)
+
+    # Assert
+    assert len(errors) == 1
+    assert errors[0].id == "freedom_ls_panel_framework.E009"
+    assert errors[0].obj is BadLayoutListPanel
+
+
+def test_a_panel_that_overrides_get_form_class_raises_no_form_error() -> None:
+    # Arrange
+    class PerRequestFormListPanel(EditableListPanel):
+        parent_field = "parent"
+
+        def get_form_class(self) -> type[forms.ModelForm]:
+            return _EntryForm
+
+    # Act
+    errors = editable_list_panel_errors(PerRequestFormListPanel)
 
     # Assert
     assert errors == []

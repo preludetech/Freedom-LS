@@ -8,16 +8,19 @@ from importlib import import_module
 
 from django_cotton.compiler_regex import CottonCompiler
 
+from django import forms
 from django.apps import AppConfig
 from django.conf import settings
 from django.contrib.sites.models import Site
 from django.core.checks import CheckMessage, Error, Warning
+from django.core.exceptions import FieldDoesNotExist
+from django.db import models
 from django.template import Context, Template, TemplateDoesNotExist, TemplateSyntaxError
 from django.utils.module_loading import import_string
 
 from freedom_ls.panel_framework.config import PanelFrameworkConfig, config
 from freedom_ls.panel_framework.field_display import label_for_field
-from freedom_ls.panel_framework.panels import DataTablePanel, Panel
+from freedom_ls.panel_framework.panels import DataTablePanel, EditableListPanel, Panel
 from freedom_ls.panel_framework.tables import DataTable
 
 # Deferred: views.py imports panels.py and tables.py, not this module, so
@@ -26,6 +29,8 @@ from freedom_ls.panel_framework.views import ListViewConfig, ListViewPanel
 
 _TABLE_KEY_PATTERN = re.compile(r"^[a-z0-9_]+$")
 _RESERVED_FILTER_KEYS = {"q", "sort", "page", "export"}
+
+EDITABLE_LIST_PANEL_ERROR_ID = "freedom_ls_panel_framework.E009"
 
 # Backends that run a task inline or never: Django's own and the django_tasks
 # backport's. The backport is optional, so a path that does not import is
@@ -219,6 +224,7 @@ def check_panels(
     errors: list[CheckMessage] = []
     for panel_class in _all_subclasses(Panel):
         errors.extend(panel_errors(panel_class))
+        errors.extend(editable_list_panel_errors(panel_class))
         errors.extend(table_key_errors(panel_class))
         errors.extend(filter_key_errors(panel_class))
         errors.extend(default_sort_errors(panel_class))
@@ -443,3 +449,90 @@ def default_sort_errors(cls: type) -> list[CheckMessage]:
             obj=cls,
         )
     ]
+
+
+def _editable_list_error(
+    panel_class: type[Panel], message: str, hint: str
+) -> CheckMessage:
+    return Error(
+        f"{panel_class.__name__} {message}",
+        hint=hint,
+        id=EDITABLE_LIST_PANEL_ERROR_ID,
+        obj=panel_class,
+    )
+
+
+def _editable_list_form_errors(
+    panel_class: type[EditableListPanel],
+) -> list[CheckMessage]:
+    form_class = getattr(panel_class, "form_class", None)
+    if not (isinstance(form_class, type) and issubclass(form_class, forms.ModelForm)):
+        return [
+            _editable_list_error(
+                panel_class,
+                "has no form_class that is a ModelForm subclass.",
+                f"Set {panel_class.__name__}.form_class to a ModelForm.",
+            )
+        ]
+    parent_field = getattr(panel_class, "parent_field", None)
+    try:
+        field = form_class._meta.model._meta.get_field(parent_field or "")
+    except FieldDoesNotExist:
+        field = None
+    if not isinstance(field, models.ForeignKey):
+        return [
+            _editable_list_error(
+                panel_class,
+                f"has parent_field '{parent_field}', which is not a ForeignKey "
+                f"on '{form_class._meta.model._meta.label}'.",
+                "Set parent_field to the ForeignKey that points an entry at its parent.",
+            )
+        ]
+    if parent_field in form_class.base_fields:
+        return [
+            _editable_list_error(
+                panel_class,
+                f"has a form that lists the parent field '{parent_field}'.",
+                "Remove it from the form's fields: the panel sets the parent itself.",
+            )
+        ]
+    return []
+
+
+def editable_list_panel_errors(panel_class: type[Panel]) -> list[CheckMessage]:
+    """Validate one EditableListPanel subclass's form, parent field, cap and layout.
+
+    A subclass that overrides get_form_class() resolves its form per
+    request, and a check has no bound panel to call it on, so the form
+    conditions are skipped for it.
+    """
+    if (
+        not issubclass(panel_class, EditableListPanel)
+        or panel_class is EditableListPanel
+    ):
+        return []
+    errors: list[CheckMessage] = []
+    if panel_class.get_form_class is EditableListPanel.get_form_class:
+        errors.extend(_editable_list_form_errors(panel_class))
+    max_entries = panel_class.max_entries
+    if max_entries is not None and (
+        isinstance(max_entries, bool)
+        or not isinstance(max_entries, int)
+        or max_entries <= 0
+    ):
+        errors.append(
+            _editable_list_error(
+                panel_class,
+                f"has max_entries {max_entries!r}.",
+                "Set max_entries to None or an integer greater than 0.",
+            )
+        )
+    if panel_class.layout not in ("list", "table"):
+        errors.append(
+            _editable_list_error(
+                panel_class,
+                f"has layout {panel_class.layout!r}.",
+                "Set layout to 'list' or 'table'.",
+            )
+        )
+    return errors
