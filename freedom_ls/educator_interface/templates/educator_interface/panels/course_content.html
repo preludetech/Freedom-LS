@@ -6,7 +6,7 @@ outline: the panel says so instead.
 {% endcomment %}
 {% block panel_header %}
     {% if preview_available and course.table_of_contents_in_development %}
-        <div class="px-4 pt-4 sm:px-6">
+        <div class="px-4 pt-4 pb-4 sm:px-6">
             <c-callout tone="info">Learners can't see this outline yet. The course is marked as still in development.</c-callout>
         </div>
     {% endif %}
