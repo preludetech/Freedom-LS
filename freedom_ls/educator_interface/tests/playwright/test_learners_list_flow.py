@@ -180,7 +180,7 @@ def test_a_background_bulk_run_keeps_the_reader_on_the_table_until_it_finishes(
         else:
             route.fulfill(status=204)
 
-    page.route("**/bulk-runs/*/status/", status)
+    page.route("**/learners/__runs/*", status)
     # The CSP build of Alpine reports an unsupported directive expression
     # only as a page error.
     page_errors: list[str] = []
