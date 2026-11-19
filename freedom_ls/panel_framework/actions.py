@@ -474,15 +474,22 @@ class FormPanelAction(ModalPanelAction):
         return ctx.request.POST.get("action") == ADD_ANOTHER_BUTTON["value"]
 
     def add_another_response(
-        self, ctx: PanelContext, events: dict[str, list[str]], status_message: str
+        self,
+        ctx: PanelContext,
+        events: dict[str, list[str]],
+        status_message: str,
+        submit_buttons: list[dict[str, str]] | None = None,
     ) -> HttpResponse:
         """The dialog again with an empty form and a sentence saying what was
         just added. The events carry no closeModal, so the dialog stays open
-        while the panels behind it refresh."""
+        while the panels behind it refresh. `submit_buttons` replaces the
+        dialog's buttons when the save changed which of them still apply."""
         context = {
             **self.get_fragment_context(ctx, self.get_unbound_form(ctx)),
             "status_message": status_message,
         }
+        if submit_buttons is not None:
+            context["submit_buttons"] = submit_buttons
         html = render_to_string(
             self.get_fragment_template_name(), context, request=ctx.request
         )
@@ -897,6 +904,26 @@ class EditableListAddAction(_EditableListAction, FormPanelAction):
             ctx, title=self.form_title, message=self.panel.get_cap_line()
         )
 
+    def _offers_add_another(self, entry_count: int) -> bool:
+        """Not on the last free place: the dialog would stay open on a form that can only be refused."""
+        panel = self.panel
+        if not panel.add_another:
+            return False
+        return panel.max_entries is None or entry_count + 1 < panel.max_entries
+
+    def _submit_buttons(self, entry_count: int) -> list[dict[str, str]]:
+        if self._offers_add_another(entry_count):
+            return [ADD_ANOTHER_BUTTON, *self.submit_buttons]
+        return self.submit_buttons
+
+    def get_fragment_context(
+        self, ctx: PanelContext, form: forms.BaseForm
+    ) -> dict[str, object]:
+        return {
+            **super().get_fragment_context(ctx, form),
+            "submit_buttons": self._submit_buttons(len(self.panel.loaded_entries)),
+        }
+
     def render_fragment(self, ctx: PanelContext) -> HttpResponse:
         if self.panel.at_cap():
             return self._cap_refusal(ctx)
@@ -920,10 +947,19 @@ class EditableListAddAction(_EditableListAction, FormPanelAction):
             # Locks the parent so two adds for one parent run one after the other.
             type(parent)._default_manager.select_for_update().get(pk=parent.pk)
             # Counted again under the lock: the list the panel loaded may be one add out of date.
-            if self.panel.at_cap(self.panel.get_entries().count()):
+            count_before = self.panel.get_entries().count()
+            if self.panel.at_cap(count_before):
                 return self._cap_refusal(ctx)
             entry = cast(forms.ModelForm, form).save()
-        return changed_response(self.get_success_events(entry))
+        events = self.get_success_events(entry)
+        if self.wants_add_another(ctx) and self._offers_add_another(count_before):
+            return self.add_another_response(
+                ctx,
+                events,
+                f"Added {self.panel.get_summary(entry).title}.",
+                submit_buttons=self._submit_buttons(count_before + 1),
+            )
+        return changed_response(events)
 
 
 class _EditableListEntryAction(_EditableListAction):

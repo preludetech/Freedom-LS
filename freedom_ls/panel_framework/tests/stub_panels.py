@@ -773,6 +773,11 @@ class StubCappedEditableListPanel(StubEditableListPanel):
     max_entries = 2
 
 
+class StubAddAnotherEditableListPanel(StubEditableListPanel):
+    add_another = True
+    max_entries = 3
+
+
 class StubTabSet(TabSet):
     title = "Stub sections"
     children = {
@@ -789,6 +794,7 @@ class StubTabSet(TabSet):
         "upload": StubUploadPanel,
         "entries": StubEditableListPanel,
         "entries_capped": StubCappedEditableListPanel,
+        "entries_add_another": StubAddAnotherEditableListPanel,
     }
 
 

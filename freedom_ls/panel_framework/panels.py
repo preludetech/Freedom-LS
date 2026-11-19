@@ -616,6 +616,7 @@ class EditableListPanel(Panel):
     empty_message: str
     #: The most entries a parent may have; None for no limit.
     max_entries: int | None = None
+    add_another: bool = False
     layout: Literal["list", "table"] = "list"
 
     def __init__(self, ctx: PanelContext) -> None:

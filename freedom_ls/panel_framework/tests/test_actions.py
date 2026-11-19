@@ -4,6 +4,7 @@ permission checks, the htmx responses they send and the modal fragments they ren
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Mapping
 from typing import cast
 
@@ -2902,3 +2903,104 @@ def test_an_add_through_a_panel_loaded_before_the_last_place_filled_is_refused(
 
     assert response.status_code == 422
     assert StubEntry.objects.filter(parent=parent).count() == 2
+
+
+def _add_another_path(parent: StubModel) -> str:
+    return f"stubs/{parent.pk}/__tabs/entries_add_another/__actions/add_entry"
+
+
+def _add_another_entries(parent: StubModel, count: int) -> None:
+    for index in range(count):
+        make_stub_entry(parent, f"Entry {index}")
+
+
+@pytest.mark.django_db
+def test_the_add_dialog_omits_add_and_add_another_when_the_panel_does_not_set_it(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+
+    response = fetch(_add_path(parent), htmx=True)
+
+    assert "Add and add another" not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_the_add_dialog_offers_add_and_add_another_before_add(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+
+    html = fetch(_add_another_path(parent), htmx=True).content.decode()
+
+    assert re.search(r"Add and add another.*?Adding….*?\bAdd\s*<", html, re.S)
+
+
+@pytest.mark.django_db
+def test_the_add_dialog_omits_add_and_add_another_on_the_last_free_place(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    _add_another_entries(parent, 2)
+
+    response = fetch(_add_another_path(parent), htmx=True)
+
+    assert "Add and add another" not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_add_and_add_another_keeps_the_dialog_open_on_an_empty_form(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+
+    response = fetch(
+        _add_another_path(parent),
+        method="post",
+        data={"title": "First", "action": "add_another"},
+        htmx=True,
+    )
+
+    trigger = json.loads(response["HX-Trigger"])
+    assert response.status_code == 200
+    assert "Added First." in response.content.decode()
+    assert trigger["entryChanged"]["ids"] == [
+        str(StubEntry.objects.get(parent=parent).pk)
+    ]
+    assert "closeModal" not in trigger
+
+
+@pytest.mark.django_db
+def test_the_dialog_after_add_and_add_another_offers_only_add_on_the_last_free_place(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    _add_another_entries(parent, 1)
+
+    response = fetch(
+        _add_another_path(parent),
+        method="post",
+        data={"title": "Second", "action": "add_another"},
+        htmx=True,
+    )
+
+    assert "Add and add another" not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_add_and_add_another_on_the_last_free_place_saves_and_closes(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    _add_another_entries(parent, 2)
+
+    response = fetch(
+        _add_another_path(parent),
+        method="post",
+        data={"title": "Last", "action": "add_another"},
+        htmx=True,
+    )
+
+    assert response.status_code == 204
+    assert "closeModal" in json.loads(response["HX-Trigger"])
+    assert StubEntry.objects.filter(parent=parent, title="Last").exists()
