@@ -34,7 +34,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:document`: In `docs/how tos/theme-fls.md`, rename the `.alert` family to the `.callout` family, add `.callout-warning` and `.callout-icon`, and say it styles `<c-callout>` (spec, Documentation and downstream)
 - [x] (cmd) Run `/sdd:document`: In `docs/how tos/landing-pages.md`, say `<c-callout>` takes `tone`, not `level` (spec, Documentation and downstream)
 - [x] (cmd) Run `/sdd:document`: Replace every remaining reference to `c-panel-notice` or `c-callout level=` outside `spec_dd/3. done/` (grep `claude_plugins`, `.claude`, `docs`) with `<c-callout tone=…>` or `<c-panel-callout>` as fits, so no skill, brand guideline or how-to offers the old API (spec, Documentation and downstream; Success criteria)
-- [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
