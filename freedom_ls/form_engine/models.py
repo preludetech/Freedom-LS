@@ -642,10 +642,8 @@ class FormProgress(SiteAwareModel):
         max_score = 0
 
         for question in self._quiz_questions(path):
-            # Count this question toward max_score
             max_score += 1
 
-            # Check if user answered this question correctly
             try:
                 answer = self.answers.get(question=question)
                 selected_option_ids = {o.id for o in answer.selected_options.all()}
@@ -724,13 +722,11 @@ class FormProgress(SiteAwareModel):
                 selected_options = list(answer.selected_options.all())
             selected_option_ids = {o.id for o in selected_options}
 
-            # Check if the answer is correct
             is_correct = is_quiz_answer_correct(
                 selected_option_ids, question.options.all()
             )
 
             if not is_correct:
-                # Get the correct option(s)
                 correct_options = list(question.options.filter(correct=True))
 
                 incorrect_answers.append(
