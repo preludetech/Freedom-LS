@@ -147,9 +147,6 @@ def test_deactivating_then_reactivating_a_learner_from_its_settings_tab(
     )
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, educator_user, "organisation_admin", organisation)
-    # Editing the learner's name changes their user, which only a superuser may do.
-    educator_user.is_superuser = True
-    educator_user.save()
     page.goto(
         interface_url(
             live_server, organisation.slug, f"learners/{learner.pk}/__tabs/settings"
@@ -159,7 +156,6 @@ def test_deactivating_then_reactivating_a_learner_from_its_settings_tab(
     main = page.locator("#main-content")
     header = page.locator("#instance-header")
 
-    assert_no_space_below_field_row(page.locator("#learner-name-form"))
     expect(header.get_by_text("Active", exact=True)).to_have_count(0)
     main.get_by_role("button", name="Deactivate", exact=True).first.click()
     modal.get_by_role("button", name="Deactivate", exact=True).click()
@@ -174,6 +170,30 @@ def test_deactivating_then_reactivating_a_learner_from_its_settings_tab(
     expect(
         main.get_by_role("button", name="Deactivate", exact=True).first
     ).to_be_visible()
+
+
+def test_the_learner_name_form_on_the_settings_tab_has_no_space_below_its_field_row(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    learner = LearnerFactory(
+        organisation=organisation,
+        user__first_name="Ada",
+        user__last_name="Lovelace",
+    )
+    # Editing the learner's name changes their user, which only a superuser may do.
+    educator_user.is_superuser = True
+    educator_user.save()
+    page.goto(
+        interface_url(
+            live_server, organisation.slug, f"learners/{learner.pk}/__tabs/settings"
+        )
+    )
+
+    assert_no_space_below_field_row(page.locator("#learner-name-form"))
 
 
 def test_moving_a_learner_between_cohorts_carries_their_progress(
