@@ -1366,3 +1366,141 @@ def test_a_full_editable_list_still_renders_edit_and_remove_triggers(
 
     assert len(root.xpath("//*[contains(@hx-get, '/__actions/edit_entry')]")) == 2
     assert len(root.xpath("//*[contains(@hx-get, '/__actions/remove_entry')]")) == 2
+
+
+LIST_LAYOUT_TABS = ["entries", "entries_table"]
+
+
+def _layout_entries_html(parent: StubModel, tab: str) -> lxml.html.HtmlElement:
+    response = fetch(f"stubs/{parent.pk}/__tabs/{tab}", htmx=True)
+    return lxml.html.fromstring(f"<div>{response.content.decode()}</div>")
+
+
+def _entry_names(root: lxml.html.HtmlElement, verb: str) -> list[str]:
+    # The table layout draws each entry as a table row and as a card, so a name repeats.
+    names: list[str] = root.xpath(
+        f"//*[contains(@hx-get, '/__actions/{verb}_entry')]/@aria-label"
+    )
+    return list(dict.fromkeys(names))
+
+
+@pytest.mark.parametrize("tab", LIST_LAYOUT_TABS)
+def test_either_layout_orders_entries_by_get_entries(
+    mock_site_context: Site, tab: str
+) -> None:
+    parent = make_stub()
+    make_stub_entry(parent, "Beta", "second")
+    make_stub_entry(parent, "Alpha", "first")
+
+    root = _layout_entries_html(parent, tab)
+
+    assert _entry_names(root, "edit") == [
+        "Edit Alpha, first",
+        "Edit Beta, second",
+    ]
+
+
+@pytest.mark.parametrize("tab", LIST_LAYOUT_TABS)
+def test_either_layout_shows_an_entrys_title_and_detail(
+    mock_site_context: Site, tab: str
+) -> None:
+    parent = make_stub()
+    make_stub_entry(parent, "Alpha", "first note")
+
+    root = _layout_entries_html(parent, tab)
+
+    assert "Alpha" in root.text_content()
+    assert "first note" in root.text_content()
+
+
+@pytest.mark.parametrize("tab", LIST_LAYOUT_TABS)
+def test_either_layout_names_an_entry_without_detail_by_its_title(
+    mock_site_context: Site, tab: str
+) -> None:
+    parent = make_stub()
+    make_stub_entry(parent, "Alpha")
+
+    root = _layout_entries_html(parent, tab)
+
+    assert _entry_names(root, "remove") == ["Remove Alpha"]
+
+
+@pytest.mark.parametrize("tab", LIST_LAYOUT_TABS)
+def test_either_layout_shows_the_empty_message_and_one_add_trigger(
+    mock_site_context: Site, tab: str
+) -> None:
+    root = _layout_entries_html(make_stub(), tab)
+
+    assert "No entries yet." in root.text_content()
+    assert len(_add_triggers(root, "//*")) == 1
+
+
+@pytest.mark.parametrize(
+    ("tab", "count"), [("entries_capped", 2), ("entries_table", 2)]
+)
+def test_either_layout_shows_the_cap_line_when_full(
+    mock_site_context: Site, tab: str, count: int
+) -> None:
+    parent = make_stub()
+    for n in range(count):
+        make_stub_entry(parent, f"Entry {n}")
+
+    root = _layout_entries_html(parent, tab)
+
+    assert _cap_lines(root) == ["You can have up to 2. Remove one to add another."]
+
+
+def test_the_table_layout_is_a_table_named_by_the_panels_title(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    make_stub_entry(parent, "Alpha")
+
+    root = _layout_entries_html(parent, "entries_table")
+
+    (caption,) = root.xpath("//table/caption")
+    assert caption.text_content().strip() == "Entries"
+    assert root.xpath("//div[@role='region']/@aria-label") == ["Entries", "Entries"]
+
+
+def test_the_table_layout_has_a_column_header_cell_per_column(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    make_stub_entry(parent, "Alpha")
+
+    root = _layout_entries_html(parent, "entries_table")
+
+    assert root.xpath("//table/thead//th/@scope") == ["col", "col"]
+    assert " ".join(root.xpath("//table/thead//th[1]")[0].text_content().split()) == (
+        "Stub entry"
+    )
+
+
+def test_the_table_layout_has_an_edit_and_a_remove_button_per_entry(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    make_stub_entry(parent, "Alpha")
+    make_stub_entry(parent, "Beta")
+
+    root = _layout_entries_html(parent, "entries_table")
+
+    assert (
+        len(root.xpath("//table//*[contains(@hx-get, '/__actions/edit_entry')]")) == 2
+    )
+    assert (
+        len(root.xpath("//table//*[contains(@hx-get, '/__actions/remove_entry')]")) == 2
+    )
+
+
+def test_the_table_layout_states_the_entry_count(mock_site_context: Site) -> None:
+    parent = make_stub()
+    for title in ("Alpha", "Beta"):
+        make_stub_entry(parent, title)
+
+    root = _layout_entries_html(parent, "entries_table")
+
+    assert [p.text_content() for p in root.xpath("//*[@data-entry-count]")] == [
+        "2 stub entries"
+    ]

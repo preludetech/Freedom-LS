@@ -27,6 +27,7 @@ from freedom_ls.panel_framework.actions import (
     EditableListRemoveAction,
     EditAction,
     PanelAction,
+    count_noun,
     count_phrase,
 )
 from freedom_ls.panel_framework.bulk_actions import BulkAction
@@ -625,6 +626,8 @@ class EditableListPanel(Panel):
                 f"{type(self).__name__} lists a parent's entries and needs one."
             )
         super().__init__(ctx)
+        # The table runs to the card's edges, as a data table does; the list keeps the card's padding.
+        self.card_flush = self.layout == "table"
 
     def get_form_class(self) -> type[forms.ModelForm]:
         return self.form_class
@@ -719,6 +722,7 @@ class EditableListPanel(Panel):
                 "entries": entries,
                 "add_trigger": add_trigger,
                 "cap_line": cap_line,
+                "entry_count": count_noun(self.entry_model, len(self.loaded_entries)),
             }
         )
         return context

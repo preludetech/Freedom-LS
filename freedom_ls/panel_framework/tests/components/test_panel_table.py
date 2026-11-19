@@ -97,3 +97,25 @@ def test_with_cards_the_card_list_is_its_own_labelled_focusable_region() -> None
     assert [region.get("aria-label") for region in regions] == ["Rows", "Rows"]
     assert all(region.get("tabindex") == "0" for region in regions)
     assert regions[1].cssselect("ul[data-row-cards]")
+
+
+def test_with_cards_when_narrow_both_regions_switch_on_the_container_width() -> None:
+    document = _parse(
+        WITH_CARDS.replace('cards="true"', 'cards="true" cards_when_narrow="true"')
+    )
+
+    (container,) = document.cssselect("div.\\@container")
+    table_region, card_region = container.cssselect("[role=region]")
+    assert "@min-[58rem]:block" in table_region.get("class")
+    assert "@min-[58rem]:hidden" in card_region.get("class")
+    assert "md:block" not in table_region.get("class")
+    assert "md:hidden" not in card_region.get("class")
+
+
+def test_without_cards_when_narrow_both_regions_switch_on_the_viewport_width() -> None:
+    document = _parse(WITH_CARDS)
+
+    table_region, card_region = document.cssselect("[role=region]")
+    assert not document.cssselect("div.\\@container")
+    assert "md:block" in table_region.get("class")
+    assert "md:hidden" in card_region.get("class")

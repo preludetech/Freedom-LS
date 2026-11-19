@@ -103,6 +103,7 @@ class StubEntry(models.Model):
     class Meta:
         app_label = "freedom_ls_panel_framework"
         verbose_name = "stub entry"
+        verbose_name_plural = "stub entries"
 
     def __str__(self) -> str:
         return self.title
