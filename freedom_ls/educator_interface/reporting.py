@@ -515,7 +515,13 @@ class DashboardPanel(LazyBodyPanel):
         return context
 
     def get_loaded_context(self) -> dict[str, object]:
-        return {"figures": gathered_figures(self.visible_cohorts)}
+        figures = gathered_figures(self.visible_cohorts)
+        return {
+            "figures": figures,
+            "avatars": learner_avatars(
+                row.learner_id for row in figures.attention_rows
+            ),
+        }
 
 
 class LearnerCoursesPanel(Panel):

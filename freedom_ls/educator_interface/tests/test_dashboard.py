@@ -541,3 +541,92 @@ def test_the_bare_root_redirects_to_the_dashboard(
         "educator_interface:interface",
         kwargs={"organisation_slug": organisation.slug, "path_string": "dashboard"},
     )
+
+
+def _flagged_learner(cohort: Cohort, **user_fields):
+    return CohortMembershipFactory(
+        cohort=cohort, learner__user=UserFactory(**user_fields)
+    ).learner
+
+
+def _dashboard_pictures(response: HttpResponse) -> list[str]:
+    document = lxml.html.fromstring(response.content.decode())
+    return [
+        image.get("src") for image in document.cssselect("img[data-profile-picture]")
+    ]
+
+
+@pytest.mark.django_db
+def test_a_flagged_learner_with_a_picture_shows_it_on_the_dashboard(
+    educator: tuple[Organisation, AbstractBaseUser],
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
+    organisation, user = educator
+    pictured = UserFactory(with_profile_picture=True)
+    CohortMembershipFactory(
+        cohort=_registered_cohort(organisation), learner__user=pictured
+    )
+
+    response = _load_region(logged_in_client(user), organisation)
+
+    assert _dashboard_pictures(response) == [pictured.profile_picture_url]
+
+
+@pytest.mark.django_db
+def test_a_flagged_learner_without_a_picture_shows_initials_alone_on_the_dashboard(
+    educator: tuple[Organisation, AbstractBaseUser],
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
+    organisation, user = educator
+    _flagged_learner(_registered_cohort(organisation))
+
+    response = _load_region(logged_in_client(user), organisation)
+
+    assert _dashboard_pictures(response) == []
+    assert 'src="None"' not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_a_dashboard_row_whose_learner_cannot_be_resolved_shows_initials(
+    educator: tuple[Organisation, AbstractBaseUser],
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Deleting a Learner also drops the row from the cached figures, so the missing avatar is forced."""
+    organisation, user = educator
+    CohortMembershipFactory(
+        cohort=_registered_cohort(organisation),
+        learner__user=UserFactory(with_profile_picture=True),
+    )
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.reporting.learner_avatars",
+        lambda learner_ids: {},
+    )
+
+    response = _load_region(logged_in_client(user), organisation)
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert _dashboard_pictures(response) == []
+    assert len(document.cssselect("li span[class*='panel-avatar-']")) == 1
+
+
+@pytest.mark.django_db
+def test_more_flagged_learners_with_pictures_cost_no_more_queries_on_the_dashboard(
+    educator: tuple[Organisation, AbstractBaseUser],
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+    django_assert_max_num_queries,
+) -> None:
+    """Stays under the attention list cap, so every learner renders."""
+    organisation, user = educator
+    client = logged_in_client(user)
+    cohort = _registered_cohort(organisation)
+    _flagged_learner(cohort, with_profile_picture=True)
+    one_learner = _loaded_query_count(client, organisation)
+    for _ in range(5):
+        _flagged_learner(cohort, with_profile_picture=True)
+    cache.clear()
+
+    with django_assert_max_num_queries(one_learner):
+        response = _load_region(client, organisation)
+
+    assert len(_dashboard_pictures(response)) == 6
