@@ -199,10 +199,40 @@ def test_land_blocks_on_uncommitted_change_to_a_file_the_branch_changes(
     result = _run_script(["land"], layout.feature.path, layout.feature.env)
 
     # Assert
-    assert result.returncode == 3
-    assert "parked: README.md has uncommitted changes on main" in result.stdout
+    assert result.returncode == 4
+    assert "dirty: README.md has uncommitted changes on main" in result.stdout
+    assert "commit those paths in" in result.stdout
     assert layout.origin_main() == remote_tip
     assert (layout.main.path / "README.md").read_text() == "edited but not committed\n"
+
+
+def test_land_reports_dirty_path_before_parked_line_and_exits_3(
+    layout: Layout,
+) -> None:
+    # Arrange
+    layout.feature.write_text("conflict.txt", "feature side\n")
+    layout.feature.commit("feature side")
+    layout.main.write_text("conflict.txt", "main side\n")
+    layout.main.commit("main side")
+    merge = _run_git(
+        ["merge", "feature"], layout.main.path, layout.main.env, check=False
+    )
+    assert merge.returncode != 0
+    add_feature_commit(layout, "README.md")
+    layout.main.write_text("README.md", "edited but not committed\n")
+
+    # Act
+    result = _run_script(["land"], layout.feature.path, layout.feature.env)
+
+    # Assert
+    assert result.returncode == 3
+    lines = result.stdout.splitlines()
+    dirty_indexes = [i for i, line in enumerate(lines) if line.startswith("dirty: ")]
+    parked_index = next(
+        i for i, line in enumerate(lines) if line.startswith("parked: ")
+    )
+    assert any("dirty: README.md" in lines[i] for i in dirty_indexes)
+    assert max(dirty_indexes) < parked_index
 
 
 def test_sync_ignores_untracked_files_in_main_worktree(layout: Layout) -> None:
@@ -250,6 +280,65 @@ def test_sync_pushes_main_when_it_is_ahead_of_origin(layout: Layout) -> None:
     assert result.returncode == 0, result.stdout + result.stderr
     assert layout.origin_main() == local_tip
     assert "synced: pushed 1 local commit(s) on main to origin" in result.stdout
+
+
+def test_sync_pushes_main_when_it_is_ahead_and_no_worktree_has_it(
+    layout_without_main: Layout,
+) -> None:
+    # Arrange
+    base = layout_without_main.feature.rev_parse("HEAD")
+    local_tip = add_feature_commit(layout_without_main)
+    _run_git(
+        ["branch", "main", local_tip],
+        layout_without_main.feature.path,
+        layout_without_main.feature.env,
+    )
+    assert layout_without_main.origin_main() == base
+
+    # Act
+    result = _run_script(
+        ["sync"], layout_without_main.feature.path, layout_without_main.feature.env
+    )
+
+    # Assert
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "synced: pushed 1 local commit(s) on main to origin" in result.stdout
+    assert f"pushed: {local_tip} feature: add feature.txt" in result.stdout
+    assert layout_without_main.origin_main() == local_tip
+
+
+def test_sync_parks_when_origin_moves_during_the_push_of_main(
+    layout: Layout, tmp_path: Path
+) -> None:
+    # Arrange
+    local_tip = add_main_commit(layout)
+    moved = tmp_path / "moved.git"
+    _run_git(
+        ["init", "-q", "--bare", "-b", "main", str(moved)], tmp_path, layout.main.env
+    )
+    layout.feature.write_text("elsewhere.txt", "origin moved\n")
+    layout.feature.commit("origin moved")
+    _run_git(
+        ["push", "-q", str(moved), "HEAD:refs/heads/main"],
+        layout.feature.path,
+        layout.feature.env,
+    )
+    _run_git(
+        ["config", "remote.origin.pushurl", str(moved)],
+        layout.main.path,
+        layout.main.env,
+    )
+
+    # Act
+    result = _run_script(["sync"], layout.feature.path, layout.feature.env)
+
+    # Assert
+    assert result.returncode == 3
+    assert (
+        "parked: main has diverged from origin/main (origin moved during the push)"
+        in result.stdout
+    )
+    assert layout.main.rev_parse("main") == local_tip
 
 
 def test_sync_fast_forwards_main_when_it_is_behind_origin(layout: Layout) -> None:

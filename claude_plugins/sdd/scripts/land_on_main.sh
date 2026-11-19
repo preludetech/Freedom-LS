@@ -13,14 +13,30 @@
 #         fast-forward when it is behind).
 #   land: sync, then fast-forward origin/main to HEAD and fast-forward local main to match.
 #
-# Exit 0: done. Exit 3: the main worktree is mid-operation, diverged or holds an overlapping
-# uncommitted change; nothing was changed.
+# Exit 0: done. Exit 3: the main worktree is mid-operation, or main has diverged from origin
+# (including origin moving during the push of local main); nothing was changed.
+# Exit 4: the only problem is an uncommitted change on main to a file the landing would change;
+# nothing was changed. Commit those paths in the main worktree and re-run.
 # Exit 6: origin rejected a push. Exit 7: the branch is behind origin/main; rebase and retry.
 # Exit 8: main did not end up where it should. Exit 64: bad arguments or preconditions.
 
 set -euo pipefail
 
 MAIN=main
+
+# push_or_exit <refspec> <what was refused> <exit code when origin moved> <message for that case>
+push_or_exit() {
+    local refspec=$1 what=$2 moved_exit=$3 moved_message=$4 push_output
+    if ! push_output=$(git push origin "$refspec" 2>&1); then
+        echo "$push_output"
+        if grep -qiE 'non-fast-forward|fetch first' <<<"$push_output"; then
+            echo "$moved_message"
+            exit "$moved_exit"
+        fi
+        echo "rejected: origin refused $what"
+        exit 6
+    fi
+}
 
 usage() {
     echo "Usage: $0 sync | land" >&2
@@ -64,6 +80,7 @@ done < <(git worktree list --porcelain)
 echo "main-worktree: ${main_path:-none}"
 
 problems=()
+dirty=()
 if [[ -n "$main_path" ]]; then
     for head_file in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD; do
         if sha=$(git -C "$main_path" rev-parse -q --verify "$head_file" 2>/dev/null); then
@@ -92,7 +109,7 @@ if [[ -n "$main_path" ]]; then
     while IFS= read -r path; do
         [[ -z "$path" ]] && continue
         if grep -qxF -- "$path" <<<"$incoming"; then
-            problems+=("parked: $path has uncommitted changes on $MAIN and the landing changes it too")
+            dirty+=("dirty: $path has uncommitted changes on $MAIN and the landing changes it too")
         else
             carried=$((carried + 1))
         fi
@@ -117,10 +134,17 @@ if [[ "$stashes" -gt 0 ]]; then
     echo "stashes: $stashes"
 fi
 
+if [[ ${#dirty[@]} -gt 0 ]]; then
+    printf '%s\n' "${dirty[@]}"
+fi
 if [[ ${#problems[@]} -gt 0 ]]; then
     printf '%s\n' "${problems[@]}"
     echo "hint: finish or abort that in $main_path yourself, then re-run. Nothing was changed."
     exit 3
+fi
+if [[ ${#dirty[@]} -gt 0 ]]; then
+    echo "hint: commit those paths in $main_path, then re-run. Nothing was changed."
+    exit 4
 fi
 
 origin_sha=$(git rev-parse "refs/remotes/origin/$MAIN")
@@ -135,17 +159,12 @@ if git rev-parse -q --verify "refs/heads/$MAIN" >/dev/null; then
         exit 3
     fi
     if [[ "$ahead" -gt 0 ]]; then
-        if [[ -z "$main_path" ]]; then
-            echo "parked: $MAIN is ahead of origin/$MAIN by $ahead commit(s) and no worktree has it checked out"
-            echo "hint: push $MAIN yourself, then re-run. Nothing was changed."
-            exit 3
-        fi
-        if ! push_output=$(git -C "$main_path" push origin "$MAIN" 2>&1); then
-            echo "$push_output"
-            echo "rejected: origin refused the push of $MAIN"
-            exit 6
-        fi
+        # A successful push moves refs/remotes/origin/$MAIN, so list the commits first.
+        pushed_commits=$(git log --format='pushed: %H %s' "refs/remotes/origin/$MAIN..refs/heads/$MAIN")
+        push_or_exit "refs/heads/$MAIN:refs/heads/$MAIN" "the push of $MAIN" 3 \
+            "parked: $MAIN has diverged from origin/$MAIN (origin moved during the push)"
         echo "synced: pushed $ahead local commit(s) on $MAIN to origin"
+        echo "$pushed_commits"
     elif [[ "$behind" -gt 0 ]]; then
         if [[ -n "$main_path" ]]; then
             if ! ff_output=$(git -C "$main_path" merge --ff-only -q "refs/remotes/origin/$MAIN" 2>&1); then
@@ -175,15 +194,8 @@ fi
 if git merge-base --is-ancestor HEAD "refs/remotes/origin/$MAIN"; then
     echo "landed: nothing to land ($branch is already on origin/$MAIN)"
 else
-    if ! push_output=$(git push origin "HEAD:refs/heads/$MAIN" 2>&1); then
-        echo "$push_output"
-        if grep -qiE 'non-fast-forward|fetch first' <<<"$push_output"; then
-            echo "behind: origin/$MAIN moved during the landing; rebase and retry"
-            exit 7
-        fi
-        echo "rejected: origin refused the fast-forward of $MAIN"
-        exit 6
-    fi
+    push_or_exit "HEAD:refs/heads/$MAIN" "the fast-forward of $MAIN" 7 \
+        "behind: origin/$MAIN moved during the landing; rebase and retry"
     echo "landed: $head"
 fi
 
