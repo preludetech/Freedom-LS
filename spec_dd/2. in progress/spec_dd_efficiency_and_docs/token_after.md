@@ -44,5 +44,12 @@ Slice 11 (`do_qa.md` split). Resource paths are under `claude_plugins/sdd/resour
 | Layout file: "A timestamp as the on-disk name is fine ...", "... is how a lopsided page gets passed or a sound one failed" | none | Cut: rationale. |
 | Layout file: probe description paragraph | shortened paragraph | Merged. The ink rule and the overflow exceptions stay. |
 | Each moved file's opening "Read when ..." line | the pointer in `do_qa.md` | Merged: the trigger lives in `do_qa.md`. |
+| `pre_step_rebase.md` Step 3: Upstream-change scan, Step 4: Upstream-change review, Step 5: Act on the verdict, with their completion criteria | `claude_plugins/sdd/resources/upstream_change_review.md` (headings kept) | Moved. The trigger, "when Step 1's rebase returned `rebased: yes`", stays in `pre_step_rebase.md` under "After Step 2", with the earlier returns that stop before it. |
+| `pre_step_rebase.md` Step 3's `PLUGINS_ROOT` resolution (three-step rule, no `./` prefix) | `pre_step_rebase.md` "The `PLUGINS_ROOT` rule" | Kept in place, since `finish_worktree.md` cites it. The script name in its last sentence moved to the resource, which points at the rule. |
+| `finish_worktree.md` "the way `pre_step_rebase.md` Step 3 does" | the same line, now naming "`PLUGINS_ROOT` rule" | Pointer updated. |
+| `pre_step_rebase.md` Step 2 "the same way Step 1 does" config-reading sentence | `pre_step_rebase.md` Step 2 | Merged with Step 1's identical config-reading sentence. |
+| Tightened wording in the moved Steps 3 to 5 (stale-review rule, exit 3 explanation, retry rule, resume line, closing paragraph), the pause condition and the `PLUGINS_ROOT` rule | same places | Kept, shorter; no instruction dropped. |
 
 Size of the rows slice 11 touched, in approximate tokens (`token_baseline.md` rows before, `measure_prompt_size.py` after): `do_qa.md` 11144 to 5662, `design_check.md` 623 to 639, `frontend_check.md` 1074 to 1093, eight new `do_qa_*.md` files 0 to 5342. Total 12841 to 12736.
+
+Size of the rows slice 12 touched, in approximate tokens: `pre_step_rebase.md` 2005 to 1005, `upstream_change_review.md` 0 to 994, `finish_worktree.md` 4075 to 4077. Total 6080 to 6076.

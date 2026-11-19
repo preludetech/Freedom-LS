@@ -53,3 +53,18 @@ def test_auto_resolve_list_holds_each_entry(prefix: str, side: str) -> None:
 
     assert prefix in text
     assert side in text
+
+
+UPSTREAM_REVIEW = SDD / "resources/upstream_change_review.md"
+
+
+def test_pre_step_rebase_names_the_upstream_change_review() -> None:
+    assert "upstream_change_review.md" in PRE_STEP_REBASE.read_text()
+
+
+@pytest.mark.parametrize(
+    "text", ["upstream_change_scan.sh", "direction:", "sdd:sdd-worker"]
+)
+def test_upstream_change_text_lives_only_in_the_review_resource(text: str) -> None:
+    assert text not in PRE_STEP_REBASE.read_text()
+    assert text in UPSTREAM_REVIEW.read_text()

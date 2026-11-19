@@ -58,7 +58,7 @@ Any `paused` return first adds its item to `todo.md`, wherever the spec director
 
 # Step 0.5: Main-worktree preflight
 
-Resolve `PLUGINS_ROOT` the way `pre_step_rebase.md` Step 3 does. The script path is
+Resolve `PLUGINS_ROOT` by `pre_step_rebase.md`'s "`PLUGINS_ROOT` rule". The script path is
 `<PLUGINS_ROOT>/claude_plugins/sdd/scripts/land_on_main.sh`; when `PLUGINS_ROOT` is `.`, write it as
 `claude_plugins/sdd/scripts/land_on_main.sh` with no `./` prefix, so it matches the project's allow
 entry.
