@@ -80,7 +80,7 @@
 <text x="40.0" y="297.5" fill="#111827">learner-profile-use-panels-</text>
 <text x="40.0" y="312.5" fill="#111827">framework-2-editable-list-</text>
 <text x="40.0" y="327.5" fill="#111827">panel</text>
-<rect x="24.0" y="358.5" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<rect x="24.0" y="358.5" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M32.0,358.5 H30.0 A6,6 0 0 0 24.0,364.5 V402.5 A6,6 0 0 0 30.0,408.5 H32.0 Z" fill="#dc2626"/>
 <text x="40.0" y="380.5" fill="#111827">learner-profile-use-panels-</text>
 <text x="40.0" y="395.5" fill="#111827">framework-3-account-page</text>

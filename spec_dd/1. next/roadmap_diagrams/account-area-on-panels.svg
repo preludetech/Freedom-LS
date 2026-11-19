@@ -7,7 +7,7 @@
 <text x="40.0" y="80.0" fill="#111827">learner-profile-use-panels-</text>
 <text x="40.0" y="95.0" fill="#111827">framework-2-editable-list-</text>
 <text x="40.0" y="110.0" fill="#111827">panel</text>
-<rect x="354.0" y="58.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<rect x="354.0" y="58.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M362.0,58.0 H360.0 A6,6 0 0 0 354.0,64.0 V102.0 A6,6 0 0 0 360.0,108.0 H362.0 Z" fill="#dc2626"/>
 <text x="370.0" y="80.0" fill="#111827">learner-profile-use-panels-</text>
 <text x="370.0" y="95.0" fill="#111827">framework-3-account-page</text>

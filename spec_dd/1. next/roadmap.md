@@ -15,12 +15,12 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `sacaa-compliance-1-served-paper-record` (SACAA compliance)
 - 🔴 High · `extract_panels_framework-4-template-contract` (Panel framework extraction)
 - 🔴 High · `learner-profile-use-panels-framework-2-editable-list-panel` (Account area on panels)
+- 🔴 High · `learner-profile-use-panels-framework-3-account-page` (Account area on panels)
 - 🟡 Low · `misure-of-admonitions` (Educator interface)
 - ⚪ Priority not set · `spec_dd_efficiency_and_docs` (Tooling and operations)
 
 ### Ready to start
 
-- 🔴 High · `learner-profile-use-panels-framework-3-account-page` (Account area on panels)
 - 🔴 High · `profile-picture-on-id-rows` (Learner public profiles)
 - 🟠 Medium · `content-widget-longer-audio` (Audio content widgets)
 - 🟠 Medium · `content-widget-sayit-reveal-2-say-it-reveal` (Audio content widgets)
@@ -143,7 +143,7 @@ Priority: 🔴 High
 Every signed-in user's account pages move onto the panel framework before public-profile editing lands there. Parent: `learner-profile-use-panels-framework`.
 
 - `learner-profile-use-panels-framework-2-editable-list-panel` — **in progress** — A framework panel for a short list a user adds to, edits and removes from, lighter than a data table.
-- `learner-profile-use-panels-framework-3-account-page` — **ready** — Users edit their name and picture on panels in an account area; email and password pages share its shell.
+- `learner-profile-use-panels-framework-3-account-page` — **in progress** — Users edit their name and picture on panels in an account area; email and password pages share its shell.
 
 ![Account area on panels](roadmap_diagrams/account-area-on-panels.svg)
 
