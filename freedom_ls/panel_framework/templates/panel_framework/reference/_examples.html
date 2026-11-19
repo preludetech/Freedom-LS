@@ -494,7 +494,7 @@ somewhere on the page to land.
     <section class="space-y-6">
         <h2>Callout</h2>
 
-        <div id="callout-info">
+        <div id="callout-info" class="space-y-2">
             <p class="text-sm text-muted">A toned status box inside a page, panel or dialog. <code>tone</code> is <code>info</code> (default), <code>success</code>, <code>warning</code> or <code>error</code>; <code>title</code> adds a bold first line. A host project's own callout replaces this one, so the framework never calls the host's <code>&lt;c-callout&gt;</code> directly.</p>
             <c-panel-callout tone="info" title="Heads up">Changes apply to new enrolments only.</c-panel-callout>
         </div>
@@ -503,12 +503,12 @@ somewhere on the page to land.
             <c-panel-callout tone="warning" title="Check before continuing">This cohort has learners still in progress.</c-panel-callout>
         </div>
 
-        <div id="callout-error">
+        <div id="callout-error" class="space-y-2">
             <p class="text-sm text-muted">An <code>error</code> callout is an alert, so a screen reader announces it when it appears.</p>
             <c-panel-callout tone="error" title="Could not save">The name is already taken.</c-panel-callout>
         </div>
 
-        <div id="callout-success">
+        <div id="callout-success" class="space-y-2">
             <p class="text-sm text-muted">A <code>success</code> callout is a status, announced the same way.</p>
             <c-panel-callout tone="success">Changes saved.</c-panel-callout>
         </div>

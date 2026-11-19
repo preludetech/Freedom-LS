@@ -397,3 +397,17 @@ def test_dev_server_route_redirects_anonymous_to_admin_login() -> None:
     response = Client().get("/panel-framework/components/")
     assert response.status_code == 302
     assert response["Location"].startswith(reverse("admin:login"))
+
+
+@pytest.mark.parametrize("tone", ["info", "error", "success"])
+def test_reference_callout_wrapper_spaces_its_explanatory_line_from_the_callout(
+    tone: str,
+) -> None:
+    """The callout has no outer margin, so a wrapper holding an explanatory line
+    above it must space its children or the line touches the callout."""
+    from lxml import html as lxml_html
+
+    root = lxml_html.fromstring(_render_examples())
+    (wrapper,) = root.xpath(f'//div[@id="callout-{tone}"]')
+    assert wrapper.xpath("./p")
+    assert "space-y-" in wrapper.get("class", "")
