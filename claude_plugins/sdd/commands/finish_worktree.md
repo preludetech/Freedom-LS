@@ -198,6 +198,8 @@ on each pass, entered with its <blocker>:
         the list from rebase_auto_resolve.md, <own-spec-dir> = the spec's directory under
         spec_dd/3. done/ once Step 4 moved it, else its directory under spec_dd/2. in progress/
     map its result as Step 0's "Rebase results" does
+    # nothing lands before the PR check and the close-out commits
+    entered from Step 0: leave the loop and continue at Step 0.5
     follow the checkpoint run (Step 1)
     <script-path> land        → exit 0 leaves the loop; exit 7 is the next pass
 ```
