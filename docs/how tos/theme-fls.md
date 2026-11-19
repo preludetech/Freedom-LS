@@ -5,7 +5,7 @@ FreedomLS ships a three-tier theming model. Each tier is cheaper than the next, 
 | Tier | What it changes | When to use it |
 |------|-----------------|----------------|
 | 1 — CSS tokens | Colours, radii, fonts | 80% of rebrands. Write one `theme.css`, point `FLS_THEME` at it, rebuild. |
-| 2 — Component classes | Button shape/size, chip style, alert colour, surface appearance, the page header, the course card | The token values are right but one of the shared primitives needs adjusting. |
+| 2 — Component classes | Button shape/size, chip style, callout colour, surface appearance, the page header, the course card | The token values are right but one of the shared primitives needs adjusting. |
 | 3 — Template overrides | Cotton component markup and styling, page-shell blocks, full HTML structure | Anything specific to one component — including how it looks. |
 
 Defaults stay in the FLS main project: the shared primitives live in `tailwind.components.css`, and generic templates live in `freedom_ls/base/templates/` and their owning apps. A theme is sparse — it only ships what it overrides.
@@ -145,7 +145,7 @@ Every coloured background role has a paired `on-*` foreground. Always use the pa
 
 #### Status light tints
 
-Light tints are named replacements for ad-hoc opacity modifiers in chip and alert backgrounds. The paired `on-*-light` foregrounds are darker and legible on near-white tints (the normal `on-*` whites are not).
+Light tints are named replacements for ad-hoc opacity modifiers in chip and callout backgrounds. The paired `on-*-light` foregrounds are darker and legible on near-white tints (the normal `on-*` whites are not).
 
 | Role | Token | Default |
 |------|-------|---------|
@@ -254,7 +254,7 @@ An optional `--fls-course-accent-pattern` token adds a texture layer above every
 
 The Tier-2 surface is exactly the set of classes in `tailwind.components.css` at the FLS repo root. Their defaults live there — not in any theme. That set is:
 
-`.btn` and its variants, `.chip` and its variants, `.alert` and its variants, `.surface`, `.signup-panel`, `.header`, `.course-card`, `.course-accent-1`–`5`, `.course-progress-1`–`5`, and `.modal-backdrop-host`.
+`.btn` and its variants, `.chip` and its variants, `.callout` and its variants (`.callout-info`, `.callout-success`, `.callout-warning`, `.callout-error`) with the per-tone `.callout-icon` colour, which style `<c-callout>`, `.surface`, `.signup-panel`, `.header`, `.course-card`, `.course-accent-1`–`5`, `.course-progress-1`–`5`, and `.modal-backdrop-host`.
 
 Nothing else is re-openable this way. A component whose styling lives in its own template — every content widget, and the interface shell's side panel — is restyled at Tier 3 instead. A `theme.css` rule aiming at one of those loses: the template's own `<style>` block sits later in document order than the compiled bundle, so it wins within the same layer.
 
@@ -274,7 +274,7 @@ A theme extends a class by re-opening it inside `@layer components` in its `them
 
 The cascade order in `tailwind.input.css` is: default tokens → component classes → active theme. Because the active theme's `theme.css` is imported last, its `@layer components` declarations win over the defaults without needing `!important`.
 
-The `first_class` theme's `@layer components` block in `freedom_ls/themes/first_class/static/themes/first_class/theme.css` is the reference implementation for Tier-2 overrides. It overrides `.btn`, `.btn-secondary`, `.chip`, `.chip-*`, `.surface`, `.course-card`, `.signup-panel`, `.alert-*`, and `.header`.
+The `first_class` theme's `@layer components` block in `freedom_ls/themes/first_class/static/themes/first_class/theme.css` is the reference implementation for Tier-2 overrides. It overrides `.btn`, `.btn-secondary`, `.chip`, `.chip-*`, `.surface`, `.course-card`, `.signup-panel`, `.callout-*`, `.callout-icon`, and `.header`.
 
 ---
 
@@ -424,7 +424,7 @@ In a downstream project: add the `@import` for your theme's `theme.css` in `tail
 `freedom_ls/themes/first_class/` is a complete Tier-1 + Tier-2 example. It:
 
 - Overrides every token (brand, status, surfaces, shape, type) in `@theme { ... }`.
-- Reopens `.btn`, `.chip`, `.surface`, `.alert-*`, `.header`, and several other component classes in `@layer components { ... }` to apply the "Modern Altitude" brand treatment.
+- Reopens `.btn`, `.chip`, `.surface`, `.callout-*`, `.callout-icon`, `.header`, and several other component classes in `@layer components { ... }` to apply the "Modern Altitude" brand treatment.
 - Uses `@theme inline { ... }` to override header and side-panel component-tier tokens.
 - Adds a plain-CSS rule block (outside any `@layer`) for course-outline counter styling.
 
