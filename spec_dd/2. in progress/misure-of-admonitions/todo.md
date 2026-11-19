@@ -18,9 +18,11 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
+- [ ] (user) Fix the tests the full run after the QA fixes left failing: freedom_ls/panel_framework/tests/playwright/test_quick_view_flow.py::test_unsent_draft_asks_before_the_drawer_is_left (flaky: failed 2 of 5 isolated runs; check whether it also flakes on main before fixing)
+- [ ] (user) Decide whether to stage the dialog checks QA did not drive (Change role invalid choice, refused move, bulk-action warning, inline record form-level error, <c-callout> stripped from markdown), then run them by hand or ask for a follow-up QA pass; see qa_report.md General notes
 
 ## 4. Documentation and pull request
 
