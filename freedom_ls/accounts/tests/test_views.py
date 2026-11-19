@@ -27,6 +27,7 @@ from freedom_ls.accounts.tests._auth_page_helpers import (
     _alert_html,
     _header_html,
     _hrefs_to,
+    _login_errors_html,
     _next_param,
 )
 from freedom_ls.accounts.tests._completion_view_fixtures import STORED_PHONE_NUMBERS
@@ -289,19 +290,25 @@ def _post_login(client: Client, *, login: str, password: str, next_url: str):
 
 
 @pytest.mark.django_db
-def test_failed_login_shows_the_callout_inside_an_alert(mock_site_context, apply_url):
+def test_failed_login_shows_an_error_callout_then_the_signup_callout(
+    mock_site_context, apply_url
+):
     response = _post_login(
         Client(),
         login="nobody@example.com",
         password="wrong-password",  # pragma: allowlist secret
         next_url=apply_url,
     )
-    alert_html = _alert_html(response.content.decode())
+    html = response.content.decode()
+    alert_html = _alert_html(html)
+    errors_html = _login_errors_html(html)
 
     assert response.status_code == 200
-    assert alert_html
-    assert "New here?" in alert_html
-    assert "Create an account" in alert_html
+    assert "callout-error" in alert_html
+    assert "not correct" in alert_html
+    assert "New here?" not in alert_html
+    assert "New here?" in errors_html
+    assert "Create an account" in errors_html
 
 
 @pytest.mark.django_db
@@ -312,8 +319,8 @@ def test_callout_link_carries_next_and_the_typed_email(mock_site_context, apply_
         password="wrong-password",  # pragma: allowlist secret
         next_url=apply_url,
     )
-    alert_html = _alert_html(response.content.decode())
-    signup_hrefs = _hrefs_to(alert_html, "account_signup")
+    errors_html = _login_errors_html(response.content.decode())
+    signup_hrefs = _hrefs_to(errors_html, "account_signup")
 
     assert len(signup_hrefs) == 1
     query = parse_qs(urlparse(signup_hrefs[0]).query)
@@ -341,37 +348,32 @@ def test_callout_is_identical_for_a_known_and_an_unknown_email(
         next_url=apply_url,
     )
 
-    known_alert = _alert_html(known_response.content.decode())
-    unknown_alert = _alert_html(unknown_response.content.decode())
+    known_errors = _login_errors_html(known_response.content.decode())
+    unknown_errors = _login_errors_html(unknown_response.content.decode())
 
     assert (
-        known_alert.replace(quote_plus(known_email), quote_plus(unknown_email))
-        == unknown_alert
+        known_errors.replace(quote_plus(known_email), quote_plus(unknown_email))
+        == unknown_errors
     )
 
 
 @pytest.mark.django_db
 def test_callout_shows_on_a_blank_submit(mock_site_context, apply_url):
     response = _post_login(Client(), login="", password="", next_url=apply_url)
-    alert_html = _alert_html(response.content.decode())
-    signup_hrefs = _hrefs_to(alert_html, "account_signup")
+    errors_html = _login_errors_html(response.content.decode())
+    signup_hrefs = _hrefs_to(errors_html, "account_signup")
 
-    assert alert_html
-    assert "New here?" in alert_html
+    assert errors_html
+    assert "New here?" in errors_html
     assert len(signup_hrefs) == 1
     assert "email" not in parse_qs(urlparse(signup_hrefs[0]).query)
 
 
 @pytest.mark.django_db
 def test_callout_does_not_render_on_a_clean_get(login_page):
-    """A pre-existing, always-present toast region also carries role="alert".
-
-    So this checks the alert region nearest the top of the page (ours, when
-    the form has errors) rather than every role="alert" on the page.
-    """
     _, html = login_page
 
-    assert "New here?" not in _alert_html(html)
+    assert "New here?" not in _login_errors_html(html)
 
 
 @pytest.mark.django_db
@@ -385,9 +387,9 @@ def test_callout_is_hidden_when_signups_closed(mock_site_context, apply_url):
         next_url=apply_url,
     )
 
-    alert_html = _alert_html(response.content.decode())
-    assert alert_html
-    assert _hrefs_to(alert_html, "account_signup") == []
+    errors_html = _login_errors_html(response.content.decode())
+    assert errors_html
+    assert _hrefs_to(errors_html, "account_signup") == []
 
 
 @pytest.mark.django_db
@@ -399,10 +401,10 @@ def test_unusable_email_does_not_break_the_link(mock_site_context, apply_url):
         next_url=apply_url,
     )
     html = response.content.decode()
-    alert_html = _alert_html(html)
+    errors_html = _login_errors_html(html)
 
     assert "<script>" not in html
-    signup_hrefs = _hrefs_to(alert_html, "account_signup")
+    signup_hrefs = _hrefs_to(errors_html, "account_signup")
     assert len(signup_hrefs) == 1
     assert parse_qs(urlparse(signup_hrefs[0]).query).get("email") == ['"><script>']
 

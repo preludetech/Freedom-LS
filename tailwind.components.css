@@ -399,7 +399,7 @@
      * on-surface, and the success and warning icons take their dark on-*-light
      * shades, because the plain tone colours fail contrast on these tints. */
     .callout {
-        @apply p-3 rounded-md border text-on-surface
+        @apply p-4 rounded-md border text-on-surface
     }
 
     .callout-info {

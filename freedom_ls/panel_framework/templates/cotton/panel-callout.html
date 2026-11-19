@@ -14,10 +14,10 @@ Attributes:
 {% endcomment %}
 
 {% partialdef panel-callout-box %}
-<div class="rounded-md border p-3 text-on-surface {{ tint }}{% if class %} {{ class }}{% endif %}"{% if known_tone == "error" %} role="alert"{% elif known_tone == "success" %} role="status"{% endif %} {{ attrs }}>
-    <div class="flex items-start gap-2">
+<div class="rounded-md border p-4 text-on-surface {{ tint }}{% if class %} {{ class }}{% endif %}"{% if known_tone == "error" %} role="alert"{% elif known_tone == "success" %} role="status"{% endif %} {{ attrs }}>
+    <div class="flex items-start gap-3">
         <c-icon :name="known_tone" class="size-5 shrink-0 {{ icon_colour }}" />
-        <div class="min-w-0 space-y-2">
+        <div class="min-w-0 space-y-3">
             {% if title %}<strong class="block font-semibold">{{ title }}</strong>{% endif %}
             {{ slot }}
         </div>

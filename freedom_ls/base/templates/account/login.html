@@ -9,15 +9,19 @@
     {% element h1 %}{% trans "Log in" %}{% endelement %}
 
     {% if form.errors %}
-        <div role="alert" class="space-y-3">
-            {% for error in form.non_field_errors %}
-                <p class="text-error text-sm">{{ error }}</p>
-            {% endfor %}
+        <div data-testid="login-errors" class="space-y-3">
+            {% if form.non_field_errors %}
+                <c-callout tone="error">
+                    {% for error in form.non_field_errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                </c-callout>
+            {% endif %}
             {% if allow_signups %}
                 {% url_with_next "account_signup" email=form.data.login as signup_with_email_url %}
                 <c-callout tone="info" title="{% trans "New here?" %}">
                     <p>{% trans "If you don't have an account yet, create one and you'll be sent straight back to where you were." %}</p>
-                    <c-button href="{{ signup_with_email_url }}" variant="primary">{% trans "Create an account" %}</c-button>
+                    <c-button href="{{ signup_with_email_url }}" variant="primary" class="w-full">{% trans "Create an account" %}</c-button>
                 </c-callout>
             {% endif %}
         </div>

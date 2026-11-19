@@ -81,7 +81,7 @@ FLS already builds each of these, and the brand decisions above are encoded in t
 | A card or panel | `.surface`, or `<c-media-card>` for one with an image |
 | A status badge | `<c-panel-status-badge tone="success\|warning\|error\|info\|muted" label="…">`, on any screen: panel-framework pages, dashboards, learner-facing views. Choose it by what the badge says, not where it sits. If it names the state of a record (Active, Stalled, Draft), it's a status badge. It wraps `c-chip`, limits the tones to the five status meanings and keeps the badge legible in forced-colours mode. |
 | A label that isn't a status | `<c-chip variant="primary\|secondary\|success\|warning\|error\|info\|muted" size="xs">` for tags, levels and categories. `primary` and `secondary` live here because they carry no status meaning. The `.chip-success`, `.chip-warning`, `.chip-error` and `.chip-info` tints are the `-light` pairs. |
-| A callout in a page | `<c-callout level="info\|warning\|error\|success" title="…">` |
+| A callout in a page | `<c-callout tone="info\|warning\|error\|success" title="…">` |
 | A page a person cannot use (closed or blocked) | A large centred `<c-icon>` (`size-12`) with the explanation as plain text under it, never a callout box |
 | A callout in course content | `<c-admonition type="note\|tip\|important\|warning\|danger\|key_takeaways\|checklist">` |
 | A page wrapper | `<c-page width="wide\|narrow">` |
@@ -97,6 +97,10 @@ FLS already builds each of these, and the brand decisions above are encoded in t
 Where you do write utilities, keep to Tailwind's spacing scale and use `rounded-md` (`--fls-radius-md`) unless the component says otherwise. Padding, gaps, dialog footers and phone sizing are set by the panel-framework components; `Skill(fls-dev:panel-framework)` says what they do.
 
 **Buttons of one size are one height.** A variant changes a button's colour and outline, never its box: the secondary button's outline is drawn inside its box, so it sits level with a primary or error button beside it. This holds on every page, learner pages included.
+
+**A callout has room inside it.** `<c-callout>` keeps its icon, title, text and buttons well clear of its border, and puts space between the title, each paragraph and the button row. The `.callout` class sets this spacing for every callout; add no extra padding at the call site.
+
+**A form error that belongs to no single field is an error callout.** A failed login, a rejected submission or any `form.non_field_errors` message shows in `<c-callout tone="error">` above the form. A field's own error stays as text beside that field.
 
 **A button label fits on one line, down to a 375px phone.** Keep it to a verb and a noun ("Download errors", "Upload a corrected file"). A count or a sentence goes in the heading or text beside the button, not in the label. A label wraps only when no shorter wording names the action.
 
@@ -135,6 +139,8 @@ What QA checks in a screenshot of any FLS page.
 - Every deadline, close-date, time-limit or access-date line a learner sees ("Closes" included) has its own coloured icon and bold tier word, with the date in muted mono; none is plain text, and none sits inside another deadline's block.
 - Every expand chevron (menu button, disclosure, filter chip, accordion) points down while closed and up while open.
 - Items are separated by space: no box around each option, no box inside a box; a rule appears only at a card or dialog edge, a dialog header or footer, a table header, or between the rows of a ruled list of records.
+- A callout has clear space between its border and its content, and between its title, text and buttons; nothing inside it looks packed.
+- A form error that belongs to no single field sits in an error callout above the form, never as bare red text.
 - Buttons of one size are one height, whatever their variant: an outlined button is no taller than a filled one beside it.
 - Content lines up: blocks start and stop on their container's padding, buttons line up with the text above them, items of one kind share a column.
 

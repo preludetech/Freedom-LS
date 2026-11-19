@@ -23,17 +23,9 @@ def _header_html(html: str) -> str:
     return match.group(0)
 
 
-def _alert_html(html: str) -> str:
-    """The last `role="alert"` region, including whatever it nests, or "" if absent.
-
-    The base layout's always-present toast region also carries role="alert",
-    ahead of page content in the document, so the page's own alert (when
-    there is one) is the later of the two.
-    """
-    marker = html.rfind('role="alert"')
-    if marker == -1:
-        return ""
-    start = html.rfind("<div", 0, marker)
+def _enclosing_div_html(html: str, marker_index: int) -> str:
+    """The `<div>` that opens nearest before `marker_index`, with everything it nests."""
+    start = html.rfind("<div", 0, marker_index)
     depth = 0
     index = start
     while True:
@@ -49,6 +41,27 @@ def _alert_html(html: str) -> str:
             return html[start : next_close + len("</div>")]
         depth -= 1
         index = next_close
+
+
+def _login_errors_html(html: str) -> str:
+    """The login page's error group (error callout and signup offer), or "" if absent."""
+    marker = html.find('data-testid="login-errors"')
+    if marker == -1:
+        return ""
+    return _enclosing_div_html(html, marker)
+
+
+def _alert_html(html: str) -> str:
+    """The last `role="alert"` region, including whatever it nests, or "" if absent.
+
+    The base layout's always-present toast region also carries role="alert",
+    ahead of page content in the document, so the page's own alert (when
+    there is one) is the later of the two.
+    """
+    marker = html.rfind('role="alert"')
+    if marker == -1:
+        return ""
+    return _enclosing_div_html(html, marker)
 
 
 def _next_param(location: str) -> str | None:
