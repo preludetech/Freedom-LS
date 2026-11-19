@@ -20,6 +20,9 @@ from freedom_ls.educator_interface.events import (
     STAFF_CHANGED,
 )
 from freedom_ls.educator_interface.messaging import own_conversation_with
+from freedom_ls.educator_interface.panels.common.request import (
+    OrganisationScopedRequest,
+)
 from freedom_ls.educator_interface.paths import interface_path
 from freedom_ls.educator_interface.staff import current_role_entries
 from freedom_ls.educator_interface.user_display import email_below_name
@@ -38,7 +41,6 @@ from freedom_ls.panel_framework.views import StatusBadge
 
 if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
-    from freedom_ls.educator_interface.views import OrganisationScopedRequest
 
 
 def visible_registrations_with_progress(

@@ -16,10 +16,10 @@ from django.test import Client, RequestFactory
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.educator_interface.views import (
+from freedom_ls.educator_interface.panels.common.request import (
     LAST_ORGANISATION_SESSION_KEY,
-    interface,
 )
+from freedom_ls.educator_interface.views import interface
 from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.utils import assign_object_role

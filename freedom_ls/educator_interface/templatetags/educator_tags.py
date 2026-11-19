@@ -11,10 +11,12 @@ from django import template
 
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.avatars import PersonAvatar
+from freedom_ls.educator_interface.panels.common.request import (
+    OrganisationScopedRequest,
+)
 from freedom_ls.educator_interface.reporting import flag_badge, progress_status_badge
 from freedom_ls.educator_interface.views import (
     LearnerCourseSummary,
-    OrganisationScopedRequest,
     learner_course_summaries,
 )
 from freedom_ls.learner_management.models import Learner

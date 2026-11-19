@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from functools import reduce
 from operator import or_
-from typing import TYPE_CHECKING, cast
+from typing import cast
 
 from django.db.models import Q, QuerySet
 from django.http import HttpRequest
@@ -12,6 +12,9 @@ from django.http import HttpRequest
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.actions import audit_actions, audit_actions_by_group
 from freedom_ls.audit_log.models import AuditLogEntry
+from freedom_ls.educator_interface.panels.common.request import (
+    OrganisationScopedRequest,
+)
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
@@ -34,9 +37,6 @@ from freedom_ls.panel_framework.filters import (
     TableFilter,
 )
 from freedom_ls.role_based_permissions.loader import get_role_config
-
-if TYPE_CHECKING:
-    from freedom_ls.educator_interface.views import OrganisationScopedRequest
 
 
 class VisibleCourseFilter(RelatedChoiceFilter):

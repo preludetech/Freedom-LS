@@ -8,7 +8,7 @@ import statistics
 from collections import defaultdict
 from datetime import datetime
 from functools import cached_property
-from typing import TYPE_CHECKING, Literal, cast
+from typing import Literal, cast
 from uuid import UUID
 
 from django.db.models import Count, Prefetch, QuerySet
@@ -23,6 +23,9 @@ from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     LEARNER_CHANGED,
     REGISTRATION_CHANGED,
+)
+from freedom_ls.educator_interface.panels.common.request import (
+    OrganisationScopedRequest,
 )
 from freedom_ls.educator_interface.quick_views import (
     visible_registrations_with_progress,
@@ -71,9 +74,6 @@ from freedom_ls.reports.services import (
     request_cohort_report,
 )
 from freedom_ls.reports.statuses import ProgressStatus, progress_status
-
-if TYPE_CHECKING:
-    from freedom_ls.educator_interface.views import OrganisationScopedRequest
 
 #: How often the downloads region asks again while a report is being generated.
 REPORT_POLL_SECONDS = 3

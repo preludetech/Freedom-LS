@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import replace
-from typing import TYPE_CHECKING, NamedTuple, cast
+from typing import NamedTuple, cast
 from uuid import UUID
 
 from django import forms
@@ -66,6 +66,9 @@ from freedom_ls.educator_interface.forms import (
     course_target,
 )
 from freedom_ls.educator_interface.learner_import import check_import_gate
+from freedom_ls.educator_interface.panels.common.request import (
+    OrganisationScopedRequest,
+)
 from freedom_ls.educator_interface.staff import (
     ORGANISATION_SCOPE,
     RoleEntry,
@@ -192,9 +195,6 @@ from freedom_ls.role_based_permissions.exceptions import (
 from freedom_ls.role_based_permissions.loader import get_role_config
 from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
 from freedom_ls.role_based_permissions.utils import delete_role_rows_for
-
-if TYPE_CHECKING:
-    from freedom_ls.educator_interface.views import OrganisationScopedRequest
 
 
 def grantable_roles_for(request: HttpRequest) -> list[GrantableRole]:

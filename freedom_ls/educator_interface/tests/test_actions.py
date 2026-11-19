@@ -55,9 +55,12 @@ from freedom_ls.educator_interface.events import (
     REGISTRATION_CHANGED,
     STAFF_CHANGED,
 )
+from freedom_ls.educator_interface.panels.common.request import (
+    OrganisationScopedRequest,
+)
 from freedom_ls.educator_interface.staff import current_role_entries
 from freedom_ls.educator_interface.tests.helpers import course_per_reach_row
-from freedom_ls.educator_interface.views import CohortConfig, OrganisationScopedRequest
+from freedom_ls.educator_interface.views import CohortConfig
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,

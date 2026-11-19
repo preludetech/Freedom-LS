@@ -16,7 +16,9 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
-from freedom_ls.educator_interface.views import OrganisationSectionConfig
+from freedom_ls.educator_interface.panels.common.request import (
+    OrganisationSectionConfig,
+)
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
