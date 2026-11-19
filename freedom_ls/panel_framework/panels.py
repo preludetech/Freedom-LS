@@ -614,6 +614,8 @@ class EditableListPanel(Panel):
     #: name when empty.
     noun: str = ""
     empty_message: str
+    #: The most entries a parent may have; None for no limit.
+    max_entries: int | None = None
     layout: Literal["list", "table"] = "list"
 
     def __init__(self, ctx: PanelContext) -> None:
@@ -641,8 +643,19 @@ class EditableListPanel(Panel):
 
     @cached_property
     def loaded_entries(self) -> list[Model]:
-        # Evaluated once: the render and the Add trigger all read this list.
+        # Evaluated once: the render, the cap and the Add trigger all read this list.
         return list(self.get_entries())
+
+    def at_cap(self, count: int | None = None) -> bool:
+        """Whether `count` entries fill the list; the loaded entries when not given."""
+        if self.max_entries is None:
+            return False
+        return (
+            len(self.loaded_entries) if count is None else count
+        ) >= self.max_entries
+
+    def get_cap_line(self) -> str:
+        return f"You can have up to {self.max_entries}. Remove one to add another."
 
     def get_actions(self) -> list[PanelAction]:
         return [
@@ -656,6 +669,7 @@ class EditableListPanel(Panel):
         plain dicts, so the template draws from static data alone."""
         context = super().get_context_data()
         add_trigger: dict[str, object] | None = None
+        cap_line = ""
         edit_action: PanelAction | None = None
         remove_action: PanelAction | None = None
         for action in self.available_actions:
@@ -665,6 +679,12 @@ class EditableListPanel(Panel):
                 edit_action = action
             elif isinstance(action, EditableListRemoveAction):
                 remove_action = action
+        if self.at_cap() and any(
+            isinstance(action, EditableListAddAction)
+            and action.has_permission(self.ctx)
+            for action in self.get_actions()
+        ):
+            cap_line = self.get_cap_line()
         entries = []
         for entry in self.loaded_entries:
             summary = self.get_summary(entry)
@@ -697,6 +717,7 @@ class EditableListPanel(Panel):
                 "empty_message": self.empty_message,
                 "entries": entries,
                 "add_trigger": add_trigger,
+                "cap_line": cap_line,
             }
         )
         return context

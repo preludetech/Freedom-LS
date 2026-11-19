@@ -1313,3 +1313,56 @@ def test_an_editable_list_shows_no_edit_trigger_when_the_edit_is_denied(
     root = _entries_html(parent)
 
     assert root.xpath("//*[contains(@hx-get, '/__actions/edit_entry')]") == []
+
+
+def _capped_entries_html(parent: StubModel, count: int) -> lxml.html.HtmlElement:
+    for n in range(count):
+        make_stub_entry(parent, f"Entry {n}")
+    response = fetch(f"stubs/{parent.pk}/__tabs/entries_capped", htmx=True)
+    return lxml.html.fromstring(f"<div>{response.content.decode()}</div>")
+
+
+def _cap_lines(root: lxml.html.HtmlElement) -> list[str]:
+    return [
+        " ".join(line.text_content().split())
+        for line in root.xpath("//footer//*[@data-editable-list-cap]")
+    ]
+
+
+def test_a_full_editable_list_shows_the_cap_line_in_place_of_the_add_trigger(
+    mock_site_context: Site,
+) -> None:
+    root = _capped_entries_html(make_stub(), 2)
+
+    assert _cap_lines(root) == ["You can have up to 2. Remove one to add another."]
+    assert _add_triggers(root, "//*") == []
+
+
+def test_an_editable_list_below_its_cap_shows_the_add_trigger_and_no_cap_line(
+    mock_site_context: Site,
+) -> None:
+    root = _capped_entries_html(make_stub(), 1)
+
+    assert _cap_lines(root) == []
+    assert len(_add_triggers(root, "//footer")) == 1
+
+
+def test_a_full_editable_list_shows_neither_when_the_add_is_denied(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    RecordingCapabilityConfig.reset(answer=False)
+
+    root = _capped_entries_html(parent, 2)
+
+    assert _cap_lines(root) == []
+    assert _add_triggers(root, "//*") == []
+
+
+def test_a_full_editable_list_still_renders_edit_and_remove_triggers(
+    mock_site_context: Site,
+) -> None:
+    root = _capped_entries_html(make_stub(), 2)
+
+    assert len(root.xpath("//*[contains(@hx-get, '/__actions/edit_entry')]")) == 2
+    assert len(root.xpath("//*[contains(@hx-get, '/__actions/remove_entry')]")) == 2

@@ -889,6 +889,25 @@ class EditableListAddAction(_EditableListAction, FormPanelAction):
         self.form_class = panel.get_form_class()
         self.label = self.form_title = f"Add {panel.get_noun()}"
 
+    def is_offered(self, ctx: PanelContext) -> bool:
+        return not self.panel.at_cap()
+
+    def _cap_refusal(self, ctx: PanelContext) -> HttpResponse:
+        return refusal_response(
+            ctx, title=self.form_title, message=self.panel.get_cap_line()
+        )
+
+    def render_fragment(self, ctx: PanelContext) -> HttpResponse:
+        if self.panel.at_cap():
+            return self._cap_refusal(ctx)
+        return super().render_fragment(ctx)
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        # A full list answers the cap line, not the errors of a form nobody can submit.
+        if self.panel.at_cap():
+            return self._cap_refusal(ctx)
+        return super().handle_submit(ctx)
+
     def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
         # A new entry that already belongs to the parent, so the form
         # validates what will be saved, never the parent itself.
@@ -900,6 +919,9 @@ class EditableListAddAction(_EditableListAction, FormPanelAction):
         with transaction.atomic():
             # Locks the parent so two adds for one parent run one after the other.
             type(parent)._default_manager.select_for_update().get(pk=parent.pk)
+            # Counted again under the lock: the list the panel loaded may be one add out of date.
+            if self.panel.at_cap(self.panel.get_entries().count()):
+                return self._cap_refusal(ctx)
             entry = cast(forms.ModelForm, form).save()
         return changed_response(self.get_success_events(entry))
 

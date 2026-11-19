@@ -17,5 +17,6 @@
 {% endblock panel_body %}
 
 {% block panel_actions %}
+    {% if cap_line %}<p class="text-sm text-muted" tabindex="-1" data-editable-list-cap>{{ cap_line }}</p>{% endif %}
     {% if entries and add_trigger %}{% include "panel_framework/partials/editable_list_add_trigger.html" %}{% endif %}
 {% endblock panel_actions %}

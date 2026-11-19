@@ -61,6 +61,7 @@ from .helpers import (
 from .stub_models import StubEntry, StubFileModel, StubGrandchild, StubModel
 from .stub_panels import (
     RecordingCapabilityConfig,
+    StubCappedEditableListPanel,
     StubEditableListPanel,
     StubReadOnlyAction,
 )
@@ -2819,3 +2820,87 @@ def test_a_denied_remove_answers_403(mock_site_context: Site, method: str) -> No
 
     assert response.status_code == 403
     assert StubEntry.objects.filter(pk=entry.pk).exists()
+
+
+# -- The cap on an editable list -----------------------------------------
+
+CAP_LINE = "You can have up to 2. Remove one to add another."
+
+
+def _capped_path(parent: StubModel, action_name: str) -> str:
+    return f"stubs/{parent.pk}/__tabs/entries_capped/__actions/{action_name}"
+
+
+def _full_capped_parent() -> tuple[StubModel, StubEntry]:
+    parent = make_stub()
+    make_stub_entry(parent, "Alpha")
+    return parent, make_stub_entry(parent, "Beta")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("method", ["get", "post"])
+def test_an_add_at_the_cap_answers_422_with_the_cap_line_and_creates_nothing(
+    mock_site_context: Site, method: str
+) -> None:
+    parent, _ = _full_capped_parent()
+
+    response = fetch(
+        _capped_path(parent, "add_entry"),
+        method=method,
+        data={"title": "Third"},
+        htmx=True,
+    )
+
+    assert response.status_code == 422
+    assert CAP_LINE in response.content.decode()
+    assert StubEntry.objects.filter(parent=parent).count() == 2
+
+
+@pytest.mark.django_db
+def test_an_edit_at_the_cap_still_saves(mock_site_context: Site) -> None:
+    parent, entry = _full_capped_parent()
+
+    response = fetch(
+        _capped_path(parent, "edit_entry"),
+        method="post",
+        data={"entry": str(entry.pk), "title": "Renamed"},
+        htmx=True,
+    )
+
+    entry.refresh_from_db()
+    assert response.status_code == 204
+    assert entry.title == "Renamed"
+
+
+@pytest.mark.django_db
+def test_a_remove_at_the_cap_still_deletes(mock_site_context: Site) -> None:
+    parent, entry = _full_capped_parent()
+    pk = entry.pk
+
+    response = fetch(
+        _capped_path(parent, "remove_entry"),
+        method="post",
+        data={"entry": str(pk)},
+        htmx=True,
+    )
+
+    assert response.status_code == 204
+    assert not StubEntry.objects.filter(pk=pk).exists()
+
+
+@pytest.mark.django_db
+def test_an_add_through_a_panel_loaded_before_the_last_place_filled_is_refused(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    make_stub_entry(parent, "Alpha")
+    request = RequestFactory().post("/", {"title": "Third"})
+    request.user = make_staff_user()
+    panel = StubCappedEditableListPanel(_entries_ctx(parent, request))
+    assert len(panel.loaded_entries) == 1
+    make_stub_entry(parent, "Beta")
+
+    response = EditableListAddAction(panel).handle_submit(panel.ctx)
+
+    assert response.status_code == 422
+    assert StubEntry.objects.filter(parent=parent).count() == 2

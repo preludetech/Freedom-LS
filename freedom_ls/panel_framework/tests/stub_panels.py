@@ -769,6 +769,10 @@ class StubEditableListPanel(EditableListPanel):
         return EditableListSummary(title=entry.title, detail=entry.detail)
 
 
+class StubCappedEditableListPanel(StubEditableListPanel):
+    max_entries = 2
+
+
 class StubTabSet(TabSet):
     title = "Stub sections"
     children = {
@@ -784,6 +788,7 @@ class StubTabSet(TabSet):
         "compact": StubCompactTablePanel,
         "upload": StubUploadPanel,
         "entries": StubEditableListPanel,
+        "entries_capped": StubCappedEditableListPanel,
     }
 
 
