@@ -26,6 +26,7 @@ from django.db import connection
 from .helpers import use_temp_file_storage
 from .stub_models import (
     StubChild,
+    StubEntry,
     StubFileModel,
     StubGrandchild,
     StubModel,
@@ -63,6 +64,7 @@ def _panel_test_tables(django_db_setup, django_db_blocker):
     app_models["stubgrandchild"] = StubGrandchild
     app_models["stubprotectedchild"] = StubProtectedChild
     app_models["stubfilemodel"] = StubFileModel
+    app_models["stubentry"] = StubEntry
 
     # With --nomigrations the test database is built from the registered models,
     # stubs included, so only the tables that are missing get created, and only
@@ -73,6 +75,7 @@ def _panel_test_tables(django_db_setup, django_db_blocker):
         StubGrandchild,
         StubProtectedChild,
         StubFileModel,
+        StubEntry,
     ]
     with django_db_blocker.unblock():
         existing_tables = set(connection.introspection.table_names())
@@ -104,6 +107,7 @@ def _panel_test_tables(django_db_setup, django_db_blocker):
     with django_db_blocker.unblock(), connection.schema_editor() as editor:
         for model in reversed(created_models):
             editor.delete_model(model)
+    app_models.pop("stubentry", None)
     app_models.pop("stubfilemodel", None)
     app_models.pop("stubprotectedchild", None)
     app_models.pop("stubgrandchild", None)

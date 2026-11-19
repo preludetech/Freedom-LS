@@ -47,7 +47,7 @@ from freedom_ls.panel_framework.views import (
     sections_by_url_name,
 )
 
-from .helpers import make_stub, make_stub_child
+from .helpers import make_stub, make_stub_child, make_stub_entry
 from .stub_models import StubChild, StubModel
 from .stub_panels import (
     RecordingCapabilityConfig,
@@ -61,6 +61,7 @@ from .stub_panels import (
     StubDataTablePanel,
     StubDetailsPanel,
     StubDiscardBulkAction,
+    StubEditableListPanel,
     StubExportBulkAction,
     StubForbiddenBulkAction,
     StubHiddenPanel,
@@ -243,7 +244,7 @@ def test_a_panel_whose_capability_is_granted_renders_and_is_asked_about_the_inst
 
 
 def test_page_url_advances_through_tabs_not_stacks() -> None:
-    tabs = StubTabSet(_ctx())
+    tabs = StubTabSet(_ctx(instance=make_stub()))
 
     pair = next(child for child in tabs.get_children() if child.ctx.name == "pair")
     assert isinstance(pair, StubPairStack)
@@ -674,6 +675,7 @@ def test_a_hidden_tab_has_no_link(mock_site_context: Site) -> None:
         "Child rows",
         "Compact",
         "Upload",
+        "Entries",
     }
 
 
@@ -1093,3 +1095,132 @@ def test_child_rows_with_bulk_actions_fail_loudly() -> None:
 
     with pytest.raises(ImproperlyConfigured, match="bulk actions"):
         panel.get_context_data()
+
+
+# -- EditableListPanel ---------------------------------------------------
+
+
+class _CountingEntriesPanel(StubEditableListPanel):
+    calls = 0
+
+    def get_entries(self) -> QuerySet[Model]:
+        type(self).calls += 1
+        return super().get_entries()
+
+
+def _entries_html(parent: StubModel) -> lxml.html.HtmlElement:
+    response = fetch(f"stubs/{parent.pk}/__tabs/entries", htmx=True)
+    return lxml.html.fromstring(f"<div>{response.content.decode()}</div>")
+
+
+def _add_triggers(root: lxml.html.HtmlElement, within: str) -> list[object]:
+    found: list[object] = root.xpath(
+        f"{within}//*[contains(@hx-get, '/__actions/add_entry')]"
+    )
+    return found
+
+
+def test_an_editable_list_renders_entries_in_get_entries_order_with_detail(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    make_stub_entry(parent, "Beta", "second")
+    make_stub_entry(parent, "Alpha", "first")
+
+    root = _entries_html(parent)
+
+    assert [
+        " ".join(li.text_content().split())
+        for li in root.xpath("//section[@data-panel='entries']//ul/li")
+    ] == ["Alpha first", "Beta second"]
+
+
+def test_an_editable_list_shows_only_its_own_parents_entries(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    make_stub_entry(parent, "Mine")
+    make_stub_entry(make_stub(), "Theirs")
+
+    root = _entries_html(parent)
+
+    assert len(root.xpath("//section[@data-panel='entries']//ul/li")) == 1
+
+
+def test_an_empty_editable_list_shows_the_message_and_one_add_trigger_in_the_body(
+    mock_site_context: Site,
+) -> None:
+    root = _entries_html(make_stub())
+
+    assert "No entries yet." in root.text_content()
+    assert len(_add_triggers(root, "//div[@class]")) == 1
+    assert _add_triggers(root, "//footer") == []
+
+
+def test_an_editable_list_with_entries_has_the_add_trigger_in_the_footer(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    make_stub_entry(parent, "Alpha")
+
+    root = _entries_html(parent)
+
+    assert len(_add_triggers(root, "//footer")) == 1
+    assert len(_add_triggers(root, "//*")) == 1
+
+
+def test_an_editable_list_shows_no_add_trigger_when_the_add_is_denied(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    make_stub_entry(parent, "Alpha")
+    RecordingCapabilityConfig.reset(answer=False)
+
+    root = _entries_html(parent)
+
+    assert _add_triggers(root, "//*") == []
+
+
+def test_an_editable_list_without_a_parent_raises() -> None:
+    with pytest.raises(ImproperlyConfigured):
+        StubEditableListPanel(_ctx())
+
+
+def test_an_editable_list_reads_its_entries_once_per_render(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    make_stub_entry(parent, "Alpha")
+    _CountingEntriesPanel.calls = 0
+    panel = _CountingEntriesPanel(_ctx(instance=parent))
+
+    render_to_string(panel.template_name, panel.get_context_data())
+
+    assert _CountingEntriesPanel.calls == 1
+
+
+def test_an_editable_list_renders_five_entries_within_a_query_ceiling(
+    mock_site_context: Site, django_assert_max_num_queries
+) -> None:
+    parent = make_stub()
+    for n in range(5):
+        make_stub_entry(parent, f"Entry {n}")
+
+    with django_assert_max_num_queries(12):
+        _entries_html(parent)
+
+
+def test_an_editable_list_escapes_a_title_in_text_and_attributes(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    make_stub_entry(parent, 'x" onfocus="alert(1)', "<b>bold</b>")
+
+    root = _entries_html(parent)
+
+    assert root.xpath("//section[@data-panel='entries']//ul//b") == []
+    assert root.xpath("//*[@onfocus]") == []
+    assert (
+        "<b>bold</b>"
+        in root.xpath("//section[@data-panel='entries']//ul/li")[0].text_content()
+    )

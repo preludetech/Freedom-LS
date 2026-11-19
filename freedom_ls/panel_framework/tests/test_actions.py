@@ -24,6 +24,7 @@ from freedom_ls.panel_framework.actions import (
     ConfirmAction,
     CreateInstanceAction,
     DeleteAction,
+    EditableListAddAction,
     EditAction,
     FormPanelAction,
     PanelAction,
@@ -54,8 +55,13 @@ from .helpers import (
     make_stub_file,
     make_stub_protected_child,
 )
-from .stub_models import StubFileModel, StubGrandchild, StubModel
-from .stub_panels import RecordingCapabilityConfig, StubReadOnlyAction
+from .stub_models import StubEntry, StubFileModel, StubGrandchild, StubModel
+from .stub_panels import (
+    RecordingCapabilityConfig,
+    StubEditableListPanel,
+    StubReadOnlyAction,
+)
+from .view_helpers import fetch
 
 # -- Shared test form ---------------------------------------------------
 
@@ -2397,3 +2403,123 @@ def test_an_inline_422_asks_for_the_file_again_in_the_files_described_by_line(
     (line,) = root.xpath(f"//*[@id='{file_input.get('aria-describedby')}']")
     assert line.get("role") == "alert"
     assert CHOOSE_AGAIN_MESSAGE in line.text_content()
+
+
+# -- EditableListAddAction tests -----------------------------------------
+
+
+def _add_path(parent: StubModel) -> str:
+    return f"stubs/{parent.pk}/__tabs/entries/__actions/add_entry"
+
+
+def _entries_ctx(parent: StubModel, request: HttpRequest) -> PanelContext:
+    return PanelContext(
+        request=request,
+        instance=parent,
+        base_url=f"/stubs/{parent.pk}/__tabs/entries",
+        name="entries",
+        config=RecordingCapabilityConfig,
+    )
+
+
+class _OpenAddAction(EditableListAddAction):
+    derive_capability = False
+    capability = None
+
+
+@pytest.mark.django_db
+def test_a_valid_add_creates_the_entry_under_the_parent_and_answers_204(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+
+    response = fetch(
+        _add_path(parent),
+        method="post",
+        data={"title": "First", "detail": "note"},
+        htmx=True,
+    )
+
+    entry = StubEntry.objects.get(title="First")
+    assert response.status_code == 204
+    assert entry.parent == parent
+    assert response["HX-Trigger"] == build_hx_trigger(
+        {"entryChanged": [str(entry.pk)]}, close_modal=True
+    )
+
+
+@pytest.mark.django_db
+def test_an_invalid_add_answers_422_with_the_errors_and_the_typed_values(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+
+    response = fetch(
+        _add_path(parent),
+        method="post",
+        data={"title": "", "detail": "kept detail"},
+        htmx=True,
+    )
+
+    content = response.content.decode()
+    assert response.status_code == 422
+    assert "This field is required." in content
+    assert "kept detail" in content
+
+
+@pytest.mark.django_db
+def test_an_add_that_names_another_parent_saves_under_the_pages_parent(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    other = make_stub()
+
+    fetch(
+        _add_path(parent),
+        method="post",
+        data={"title": "Sneaky", "parent": str(other.pk)},
+        htmx=True,
+    )
+
+    assert StubEntry.objects.get(title="Sneaky").parent == parent
+
+
+@pytest.mark.django_db
+def test_the_add_asks_the_add_capability_of_the_parent(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+    panel = StubEditableListPanel(_entries_ctx(parent, request))
+
+    EditableListAddAction(panel).has_permission(panel.ctx)
+
+    assert RecordingCapabilityConfig.asked == [
+        ("freedom_ls_panel_framework.add_stubentry", parent)
+    ]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("method", ["get", "post"])
+def test_a_denied_add_answers_403(mock_site_context: Site, method: str) -> None:
+    parent = make_stub()
+    RecordingCapabilityConfig.reset(answer=False)
+
+    response = fetch(_add_path(parent), method=method, data={"title": "x"}, htmx=True)
+
+    assert response.status_code == 403
+    assert StubEntry.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_an_add_subclass_with_no_derived_capability_is_allowed_when_the_config_says_no(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    RecordingCapabilityConfig.reset(answer=False)
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+    panel = StubEditableListPanel(_entries_ctx(parent, request))
+
+    assert _OpenAddAction(panel).has_permission(panel.ctx) is True

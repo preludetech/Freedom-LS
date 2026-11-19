@@ -1,0 +1,19 @@
+{% extends "panel_framework/panels/panel.html" %}
+
+{% block panel_body %}
+    {% if entries %}
+        <c-panel-list>
+            {% for entry in entries %}
+                <c-panel-list-row title="{{ entry.title }}" detail="{{ entry.detail }}" />
+            {% endfor %}
+        </c-panel-list>
+    {% else %}
+        <c-panel-empty-state message="{{ empty_message }}">
+            {% if add_trigger %}{% include "panel_framework/partials/editable_list_add_trigger.html" %}{% endif %}
+        </c-panel-empty-state>
+    {% endif %}
+{% endblock panel_body %}
+
+{% block panel_actions %}
+    {% if entries and add_trigger %}{% include "panel_framework/partials/editable_list_add_trigger.html" %}{% endif %}
+{% endblock panel_actions %}

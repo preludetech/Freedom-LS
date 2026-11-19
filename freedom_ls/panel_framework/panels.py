@@ -10,7 +10,7 @@ from __future__ import annotations
 import datetime
 import re
 from collections.abc import Callable, Sequence
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from functools import cached_property
 from typing import Literal, TypedDict, cast
 
@@ -20,7 +20,12 @@ from django.core.paginator import Page
 from django.db.models import Model, QuerySet
 from django.http import Http404, HttpRequest
 
-from freedom_ls.panel_framework.actions import EditAction, PanelAction, count_phrase
+from freedom_ls.panel_framework.actions import (
+    EditableListAddAction,
+    EditAction,
+    PanelAction,
+    count_phrase,
+)
 from freedom_ls.panel_framework.bulk_actions import BulkAction
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.field_display import (
@@ -33,6 +38,8 @@ from freedom_ls.panel_framework.tables import DataTable, TableQuery
 
 __all__ = [
     "DataTablePanel",
+    "EditableListPanel",
+    "EditableListSummary",
     "InstanceDetailsPanel",
     "Panel",
     "PanelStack",
@@ -578,4 +585,86 @@ class InstanceDetailsPanel(Panel):
     def get_context_data(self) -> dict[str, object]:
         context = super().get_context_data()
         context["rows"] = self.get_rows()
+        return context
+
+
+@dataclass(frozen=True)
+class EditableListSummary:
+    """How one entry reads in the list: its name and an optional line under it."""
+
+    title: str
+    detail: str = ""
+
+
+class EditableListPanel(Panel):
+    """Lists the entries that belong to the bound parent and adds one through
+    a dialog.
+
+    A subclass names the form, the field that points an entry at its parent,
+    and how to find and summarise its entries.
+    """
+
+    template_name = "panel_framework/panels/editable_list.html"
+    form_class: type[forms.ModelForm]
+    parent_field: str
+    #: What one entry is called in the Add dialog; the entry model's verbose
+    #: name when empty.
+    noun: str = ""
+    empty_message: str
+    layout: Literal["list", "table"] = "list"
+
+    def __init__(self, ctx: PanelContext) -> None:
+        if ctx.instance is None:
+            raise ImproperlyConfigured(
+                f"{type(self).__name__} lists a parent's entries and needs one."
+            )
+        super().__init__(ctx)
+
+    def get_form_class(self) -> type[forms.ModelForm]:
+        return self.form_class
+
+    def get_entries(self) -> QuerySet[Model]:
+        raise NotImplementedError
+
+    def get_summary(self, entry: Model) -> EditableListSummary:
+        raise NotImplementedError
+
+    @property
+    def entry_model(self) -> type[Model]:
+        return self.get_form_class()._meta.model
+
+    def get_noun(self) -> str:
+        return self.noun or str(self.entry_model._meta.verbose_name)
+
+    @cached_property
+    def loaded_entries(self) -> list[Model]:
+        # Evaluated once: the render and the Add trigger all read this list.
+        return list(self.get_entries())
+
+    def get_actions(self) -> list[PanelAction]:
+        return [EditableListAddAction(self)]
+
+    def get_context_data(self) -> dict[str, object]:
+        """`loaded_entries` holds the model instances; the `entries` key holds
+        plain dicts, so the template draws from static data alone."""
+        context = super().get_context_data()
+        add_trigger: dict[str, object] | None = None
+        for action in self.available_actions:
+            if isinstance(action, EditableListAddAction):
+                add_trigger = action.get_trigger_context(self.ctx)
+        entries = []
+        for entry in self.loaded_entries:
+            summary = self.get_summary(entry)
+            entries.append(
+                {"pk": entry.pk, "title": summary.title, "detail": summary.detail}
+            )
+        context.update(
+            {
+                "layout": self.layout,
+                "noun": self.get_noun(),
+                "empty_message": self.empty_message,
+                "entries": entries,
+                "add_trigger": add_trigger,
+            }
+        )
         return context

@@ -19,6 +19,7 @@ time, after the ``_panel_test_tables`` fixture has registered it under the
 
 from __future__ import annotations
 
+import functools
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import ClassVar, cast
@@ -56,6 +57,8 @@ from freedom_ls.panel_framework.filters import (
 from freedom_ls.panel_framework.models import BulkActionRun
 from freedom_ls.panel_framework.panels import (
     DataTablePanel,
+    EditableListPanel,
+    EditableListSummary,
     Panel,
     PanelStack,
     TabSet,
@@ -105,6 +108,23 @@ class RecordingCapabilityConfig(SectionConfigBase):
 
 def _stub_model() -> type[Model]:
     return apps.get_model("freedom_ls_panel_framework", "stubmodel")
+
+
+def _stub_entry_model() -> type[Model]:
+    return apps.get_model("freedom_ls_panel_framework", "stubentry")
+
+
+@functools.cache
+def _stub_entry_form_class() -> type[forms.ModelForm]:
+    """Built on first use: the entry model resolves only after the test
+    tables are registered."""
+
+    class _StubEntryForm(forms.ModelForm):
+        class Meta:
+            model = _stub_entry_model()
+            fields = ["title", "detail"]
+
+    return _StubEntryForm
 
 
 def _stub_child_model() -> type[Model]:
@@ -727,6 +747,28 @@ class StubHiddenPanel(Panel):
         return False
 
 
+class StubEditableListPanel(EditableListPanel):
+    title = "Entries"
+    parent_field = "parent"
+    empty_message = "No entries yet."
+    refresh_events = ("entryChanged",)
+
+    def get_form_class(self) -> type[forms.ModelForm]:
+        # The stub entry model resolves only at call time, so the form cannot be a class attribute.
+        return _stub_entry_form_class()
+
+    def get_entries(self) -> QuerySet[Model]:
+        return cast(
+            QuerySet[Model],
+            _stub_entry_model()
+            .objects.filter(parent=self.instance)
+            .order_by("title", "pk"),
+        )
+
+    def get_summary(self, entry: Model) -> EditableListSummary:
+        return EditableListSummary(title=entry.title, detail=entry.detail)
+
+
 class StubTabSet(TabSet):
     title = "Stub sections"
     children = {
@@ -741,6 +783,7 @@ class StubTabSet(TabSet):
         "childrows": StubChildRowsTablePanel,
         "compact": StubCompactTablePanel,
         "upload": StubUploadPanel,
+        "entries": StubEditableListPanel,
     }
 
 

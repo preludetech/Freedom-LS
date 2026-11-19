@@ -4,7 +4,7 @@ import json
 from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
-from typing import cast
+from typing import TYPE_CHECKING, cast
 from urllib.parse import urlsplit
 
 from django import forms
@@ -25,6 +25,9 @@ from freedom_ls.panel_framework.events import build_hx_trigger
 from freedom_ls.panel_framework.forms import ReasonForm
 from freedom_ls.panel_framework.widgets import PanelClearableFileInput
 
+if TYPE_CHECKING:
+    from freedom_ls.panel_framework.panels import EditableListPanel
+
 __all__ = [
     "ADD_ANOTHER_BUTTON",
     "CHOOSE_AGAIN_MESSAGE",
@@ -32,6 +35,7 @@ __all__ = [
     "CreateInstanceAction",
     "DeleteAction",
     "EditAction",
+    "EditableListAddAction",
     "FormPanelAction",
     "ModalPanelAction",
     "PanelAction",
@@ -840,3 +844,50 @@ class ReasonMixin(PanelAction):
         """The submit once the reason is valid and on `ctx`: the next
         handle_submit in the MRO."""
         return super().handle_submit(ctx)
+
+
+class _EditableListAction(PanelAction):
+    """What the editable-list actions share: the bound panel, its events, and
+    a capability asked of the parent."""
+
+    #: False for a host subclass that states its own `capability`, or None
+    #: to allow whoever can reach the panel.
+    derive_capability: bool = True
+    capability_verb: str = ""
+
+    def __init__(self, panel: EditableListPanel) -> None:
+        self.panel = panel
+        self.success_events = panel.refresh_events
+
+    def get_capability(self, ctx: PanelContext) -> str | None:
+        if not self.derive_capability:
+            return self.capability
+        return _model_capability(self.panel.entry_model, self.capability_verb)
+
+    def permission_object(self, ctx: PanelContext) -> Model | None:
+        return ctx.instance
+
+
+class EditableListAddAction(_EditableListAction, FormPanelAction):
+    action_name = "add_entry"
+    capability_verb = "add"
+    submit_buttons = [{"label": "Add", "variant": "primary", "loading_text": "Adding…"}]
+
+    def __init__(self, panel: EditableListPanel) -> None:
+        super().__init__(panel)
+        self.form_class = panel.get_form_class()
+        self.label = self.form_title = f"Add {panel.get_noun()}"
+
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
+        # A new entry that already belongs to the parent, so the form
+        # validates what will be saved, never the parent itself.
+        new_entry = self.panel.entry_model(**{self.panel.parent_field: ctx.instance})
+        return {**super().get_form_kwargs(ctx), "instance": new_entry}
+
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
+        parent = cast(Model, ctx.instance)
+        with transaction.atomic():
+            # Locks the parent so two adds for one parent run one after the other.
+            type(parent)._default_manager.select_for_update().get(pk=parent.pk)
+            entry = cast(forms.ModelForm, form).save()
+        return changed_response(self.get_success_events(entry))

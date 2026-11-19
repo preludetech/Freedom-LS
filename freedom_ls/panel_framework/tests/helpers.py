@@ -19,7 +19,13 @@ from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.core.files.storage import FileSystemStorage
 
-from .stub_models import StubChild, StubFileModel, StubModel, StubProtectedChild
+from .stub_models import (
+    StubChild,
+    StubEntry,
+    StubFileModel,
+    StubModel,
+    StubProtectedChild,
+)
 
 _counter = itertools.count(1)
 
@@ -57,6 +63,13 @@ def make_stub(name: str | None = None, **kwargs: object) -> StubModel:
 def make_stub_child(parent: StubModel, **kwargs: object) -> StubChild:
     """Create a StubChild parented to ``parent``."""
     return cast(StubChild, StubChild.objects.create(parent=parent, **kwargs))
+
+
+def make_stub_entry(parent: StubModel, title: str, detail: str = "") -> StubEntry:
+    """Create a StubEntry under ``parent``."""
+    return cast(
+        StubEntry, StubEntry.objects.create(parent=parent, title=title, detail=detail)
+    )
 
 
 def make_stub_protected_child(

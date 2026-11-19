@@ -91,3 +91,18 @@ class StubFileModel(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+
+class StubEntry(models.Model):
+    """An entry that belongs to a StubModel, for the editable-list panel."""
+
+    parent = models.ForeignKey(StubModel, on_delete=models.CASCADE)
+    title = models.CharField(max_length=120)
+    detail = models.CharField(max_length=120, blank=True)
+
+    class Meta:
+        app_label = "freedom_ls_panel_framework"
+        verbose_name = "stub entry"
+
+    def __str__(self) -> str:
+        return self.title
