@@ -115,11 +115,11 @@ No screenshot.
 |-----|-------|--------|
 | B1 | Runner exit dialog backdrop does not cover the sticky footer | **FIXED** (commit: 4a16fef0e). Re-verified: dialog covers the footer, footer stays pinned while content scrolls at 375px |
 | B2 | Course outline shows stale "In progress" on the request that finalises an abandoned submit-on-exit sitting | **FIXED** (commit: 10a137049). Re-verified: outline shows "Needs retry" on the finalising response |
-| B3 | Two concurrent quiz starts create two sittings and score one as abandoned | **UNRESOLVED** (reason: the fix needs a design decision on what a second concurrent start does, reuse the open sitting or reject it, and how to enforce one open sitting per learner and item: a partial unique constraint needs a migration; row locking is the alternative) |
+| B3 | Two concurrent quiz starts create two sittings and score one as abandoned | **FIXED** (commit: 6cbb6ee2b) — Two concurrent quiz starts create two sittings and score one as abandoned. Starts now lock the course progress row and reuse a sitting opened in the last 10 seconds; proven by unit tests (no on-screen change) |
 
 ## General notes
 
-- **Not tested:** the downloadable cohort report PDF (11.1). It needs the background task worker, so only the on-screen report was checked. Test 9.7 was skipped, as above.
+- **Cohort report PDF (11.1):** generated after QA from the gather and render path directly (no task worker) and saved as [qa_cohort_report.pdf](qa_cohort_report.pdf). Learner A's quiz section shows 3/4 with Q3 listed wrong; learner B's section lists no removed or moved question. Learner B's three 0% submit-on-exit attempts are abandoned sittings from QA (test 7.3 and the B3 double start, before the fix). Test 9.7 was skipped, as above.
 - **Test 5 data changes:** the plan's Test 5 data changes (deleting Q4 Option A, moving Q4 to the survey's page 2) were made by the data helper. Only two `data_change` records were logged in the scratch file, so those two are not itemised in the table above. The test notes for 5.3, 5.5 and 10.1 describe them.
 - **Legacy numbering (6.2):** learner C's results label the wrong question "QUESTION 4". C has no served paper, so numbering follows the current authored page order after Test 4's page reorder. This is the legacy fallback and not a defect.
 - **Dev-only badge (tablet runner):** the dev-only branch badge covers the footer's Previous link at 768px. The link is present at x=64. This is dev tooling and not product.
@@ -140,4 +140,4 @@ No screenshot.
   - [cohort report](screenshots/page-cohort-report-1795107538562.png) (11.1)
 - **Pre-existing bugs:** all three bugs were assessed by the tester as pre-existing and unrelated to the served-paper change. Triage should confirm this.
 
-status: ok · reason: 3 bugs — 2 fixed, 1 unresolved; report rendered, screenshots verified
+status: ok · reason: 3 bugs — 3 fixed, 0 unresolved; report rendered, screenshots verified
