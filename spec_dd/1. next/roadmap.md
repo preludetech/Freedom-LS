@@ -11,7 +11,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### In progress
 
-- 🔴 High · `extract_panels_framework-3-standalone-backend` (Panel framework extraction)
 - 🔴 High · `extract_panels_framework-4-template-contract` (Panel framework extraction)
 - 🔴 High · `learner-profile-use-panels-framework-2-editable-list-panel` (Account area on panels, via `learner-public-profile`)
 - ⚪ Priority not set · `educator-interface-course-list-shows-too-much` (Educator interface)
@@ -64,9 +63,8 @@ Priority: 🔴 High
 
 The panel framework moves into its own installable package, because another Django project needs it. Parent: `extract_panels_framework`.
 
-- `extract_panels_framework-3-standalone-backend` — **in progress** — The framework's Python stops importing FLS: its own settings, CSV helpers and request-site hook, with standalone unit tests.
 - `extract_panels_framework-4-template-contract` — **in progress** — Templates, JS and CSS stop assuming FLS: a checked host contract, its own primitives and stylesheet, standalone browser tests.
-- `extract_panels_framework-5-package-and-install` — **blocked** by `extract_panels_framework-3-standalone-backend`, `extract_panels_framework-4-template-contract` — The public `django-panel-framework` repo, tagged `v0.1.0`. FLS installs it by git tag and drops the old table.
+- `extract_panels_framework-5-package-and-install` — **blocked** by `extract_panels_framework-4-template-contract` — The public `django-panel-framework` repo, tagged `v0.1.0`. FLS installs it by git tag and drops the old table.
 - `extract_panels_framework-6-claude-plugin` — **blocked** by `extract_panels_framework-5-package-and-install` — A generic `panel-framework` Claude Code plugin and developer doc in the package repo. `fls-dev` keeps only a pointer.
 
 ![Panel framework extraction](roadmap_diagrams/panel-framework-extraction.svg)
