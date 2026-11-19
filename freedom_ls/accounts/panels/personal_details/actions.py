@@ -16,6 +16,7 @@ from freedom_ls.accounts.forms import (
     remove_profile_picture,
 )
 from freedom_ls.accounts.models import User
+from freedom_ls.accounts.utils import get_own_user
 from freedom_ls.panel_framework.actions import ConfirmAction, EditAction, PanelAction
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.events import build_hx_trigger
@@ -42,9 +43,15 @@ def account_saved_response(
 ) -> HttpResponse:
     """200, not EditAction's 204: htmx drops a 204's body, and this body
     carries the re-rendered form. The queued message becomes the toast
-    through HtmxMessagesMiddleware."""
+    through HtmxMessagesMiddleware. The header avatar rides along out of band,
+    read afresh because the removal clears the picture with .update(), which
+    leaves ctx.instance holding the old one."""
     messages.success(ctx.request, message)
-    response = HttpResponse(html)
+    avatar = render_to_string(
+        "partials/header_avatar.html",
+        {"avatar_user": get_own_user(ctx.request), "oob": True},
+    )
+    response = HttpResponse(html + avatar)
     response["HX-Trigger"] = build_hx_trigger(
         action.get_success_events(ctx.instance), close_modal=close_modal
     )

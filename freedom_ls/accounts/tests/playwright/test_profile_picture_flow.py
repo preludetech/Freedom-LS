@@ -28,6 +28,22 @@ pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
 PICTURE_SRC = re.compile(r"profile_pictures/\d+/[0-9a-f]{32}\.webp")
 PICTURE_LABEL = re.compile(r"^Profile picture")
+NO_RELOAD_MARKER = "accountFlowMarker"
+
+
+def assert_header_avatar(
+    page: Page, *, name: str, initials: str, picture: bool
+) -> None:
+    """The header avatar shows the given state, and the page was not reloaded."""
+    avatar = page.locator("#header-avatar")
+    expect(avatar).to_contain_text(initials)
+    expect(avatar.locator("img[data-profile-picture]")).to_have_count(
+        1 if picture else 0
+    )
+    expect(
+        page.get_by_role("button", name=f"Open user menu for {name}")
+    ).to_be_visible()
+    assert page.evaluate(f"window.{NO_RELOAD_MARKER}") is True
 
 
 def test_change_the_name_inline_then_follow_the_sidebar(
@@ -44,6 +60,7 @@ def test_change_the_name_inline_then_follow_the_sidebar(
         )
     )
 
+    page.evaluate(f"window.{NO_RELOAD_MARKER} = true")
     page.get_by_label("First name").fill("Ada")
     page.get_by_label("Last name").fill("Lovelace")
     page.get_by_role("button", name="Save", exact=True).click()
@@ -51,6 +68,7 @@ def test_change_the_name_inline_then_follow_the_sidebar(
     expect(page.get_by_text("Name saved")).to_be_visible()
     expect(page.get_by_label("First name")).to_have_value("Ada")
     expect(page.get_by_label("Last name")).to_have_value("Lovelace")
+    assert_header_avatar(page, name="Ada Lovelace", initials="AL", picture=False)
     stored = User._base_manager.get(pk=logged_in_user.pk)
     assert (stored.first_name, stored.last_name) == ("Ada", "Lovelace")
 
@@ -63,6 +81,7 @@ def test_change_the_name_inline_then_follow_the_sidebar(
     preview = page.locator("main img[data-profile-picture]")
     expect(preview).to_have_attribute("src", PICTURE_SRC)
     saved_src = preview.get_attribute("src")
+    assert_header_avatar(page, name="Ada Lovelace", initials="AL", picture=True)
 
     page.get_by_label(PICTURE_LABEL).set_input_files(
         {"name": "notes.png", "mimeType": "image/png", "buffer": b"just some text"}
@@ -92,6 +111,7 @@ def test_change_the_name_inline_then_follow_the_sidebar(
     expect(page.get_by_text("Profile picture removed")).to_be_visible()
     expect(preview).to_have_count(0)
     expect(page.get_by_role("button", name="Remove picture")).to_have_count(0)
+    assert_header_avatar(page, name="Ada Lovelace", initials="AL", picture=False)
     assert User._base_manager.get(pk=logged_in_user.pk).profile_picture.name == ""
 
     page.get_by_role("navigation", name="Account").get_by_role(

@@ -8,6 +8,7 @@ real context processors, so these tests also cover the settings wiring.
 
 from __future__ import annotations
 
+import re
 from html.parser import HTMLParser
 
 import pytest
@@ -150,3 +151,27 @@ class TestProfilePicture:
 
         assert "<img" not in rendered
         assert 'src="None"' not in rendered
+
+
+@pytest.mark.django_db
+class TestAccountMenuItem:
+    def test_the_item_reads_account_and_links_to_the_account_area(
+        self, mock_site_context
+    ):
+        rendered = _render_menu(UserFactory())
+
+        assert re.search(
+            r'href="/accounts/profile/"[^>]*>\s*Account\s*<', rendered, re.DOTALL
+        )
+        assert "Profile" not in rendered
+
+    def test_the_trigger_is_named_by_hidden_text_not_an_aria_label(
+        self, mock_site_context
+    ):
+        user = UserFactory(first_name="Ada", last_name="Lovelace")
+
+        rendered = _render_menu(user)
+
+        trigger = rendered.split("<button", 1)[1].split(">", 1)[0]
+        assert "aria-label" not in trigger
+        assert "Open user menu for Ada Lovelace" in rendered

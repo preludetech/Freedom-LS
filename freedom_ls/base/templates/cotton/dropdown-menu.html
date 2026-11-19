@@ -13,7 +13,7 @@
             x-on:keydown.arrow-down.prevent="openFromTrigger"
             x-on:keydown.arrow-up.prevent="openFromTrigger"
             class="group/menu {{ trigger_class }}"
-            aria-label="{{ aria_label }}"
+            {% if aria_label %}aria-label="{{ aria_label }}"{% endif %}
             aria-haspopup="menu"
             x-bind:aria-expanded="open"
             x-ref="menuButton">

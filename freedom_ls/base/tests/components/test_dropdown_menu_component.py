@@ -42,6 +42,21 @@ class TestDropdownMenuComponent:
         menu = _element_with_attribute(result, 'role="menu"')
         assert 'aria-label="Switch organisation"' in menu
 
+    def test_trigger_label_defaults_to_menu(self) -> None:
+        result = _render(
+            "<c-dropdown-menu><c-button dropdown='true'>Item</c-button></c-dropdown-menu>"
+        )
+        assert 'aria-label="Menu"' in result
+
+    def test_trigger_has_no_aria_label_when_aria_label_is_empty(self) -> None:
+        result = _render(
+            '<c-dropdown-menu aria_label="" menu_label="User menu">'
+            "<c-button dropdown='true'>Item</c-button>"
+            "</c-dropdown-menu>"
+        )
+        trigger = result.split("<button", 1)[1].split(">", 1)[0]
+        assert "aria-label" not in trigger
+
     def test_menu_label_overrides_the_trigger_label(self) -> None:
         result = _render(
             '<c-dropdown-menu aria_label="Open user menu for Ada" '

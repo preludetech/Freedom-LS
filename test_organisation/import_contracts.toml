@@ -52,6 +52,7 @@ forbidden_modules = ["freedom_ls.accounts", "freedom_ls.api", "freedom_ls.api_ad
 ignore_imports = [
     # allowance: the user-model app's factories
     "freedom_ls.base.tests.components.test_analytics_events_partial -> freedom_ls.accounts.factories",
+    "freedom_ls.base.tests.components.test_header_avatar -> freedom_ls.accounts.factories",
     "freedom_ls.base.tests.components.test_header_bar_user_menu -> freedom_ls.accounts.factories",
     "freedom_ls.base.tests.invariants.test_error_pages -> freedom_ls.accounts.factories",
     # baseline

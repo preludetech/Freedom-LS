@@ -1020,6 +1020,7 @@ def test_every_kind_of_user_reads_and_saves_their_own_name_and_picture(
     assert saved.status_code == 200
     assert (user.first_name, user.last_name) == ("Grace", "Hopper")
     assert "Name saved" in saved.content.decode()
+    assert 'id="header-avatar"' in saved.content.decode()
 
     uploaded = client.post(
         f"{PERSONAL_DETAILS_PATH}/__panels/profile-picture/__actions/upload_profile_picture",
@@ -1031,6 +1032,7 @@ def test_every_kind_of_user_reads_and_saves_their_own_name_and_picture(
     assert uploaded.status_code == 200
     assert user.profile_picture
     assert "Profile picture saved" in uploaded.content.decode()
+    assert 'id="header-avatar"' in uploaded.content.decode()
 
 
 @pytest.mark.django_db

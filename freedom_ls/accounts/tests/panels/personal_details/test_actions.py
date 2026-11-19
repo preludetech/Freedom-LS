@@ -241,3 +241,56 @@ def test_the_remove_action_needs_the_remove_own_profile_picture_capability(
     action = RemoveProfilePictureAction()
 
     assert action.get_capability(None) == REMOVE_OWN_PROFILE_PICTURE
+
+
+def test_a_name_save_swaps_the_header_avatar_with_the_new_initials_and_name(
+    signed_in,
+):
+    client, _ = signed_in
+
+    response = client.post(
+        EDIT_NAME_URL,
+        {"first_name": "Grace", "last_name": "Hopper"},
+        headers={"HX-Request": "true"},
+    )
+
+    html = response.content.decode()
+    assert 'id="header-avatar"' in html
+    assert 'hx-swap-oob="true"' in html
+    assert "GH" in html
+    assert "Open user menu for Grace Hopper" in html
+
+
+def test_an_upload_swaps_the_header_avatar_with_the_new_picture(
+    mock_site_context, pathless_profile_picture_storage
+):
+    user = UserFactory()
+    client = Client()
+    client.force_login(user)
+
+    response = client.post(
+        UPLOAD_PICTURE_URL,
+        {"profile_picture": SimpleUploadedFile("me.jpg", jpeg_bytes())},
+        headers={"HX-Request": "true"},
+    )
+
+    user.refresh_from_db()
+    html = response.content.decode()
+    assert 'id="header-avatar"' in html
+    assert f'src="{user.profile_picture_url}"' in html.split('id="header-avatar"')[1]
+
+
+def test_a_removal_swaps_the_header_avatar_back_to_initials(
+    mock_site_context, pathless_profile_picture_storage
+):
+    user = UserFactory(
+        with_profile_picture=True, first_name="Ada", last_name="Lovelace"
+    )
+    client = Client()
+    client.force_login(user)
+
+    response = client.post(REMOVE_PICTURE_URL, headers={"HX-Request": "true"})
+
+    avatar = response.content.decode().split('id="header-avatar"')[1]
+    assert "AL" in avatar
+    assert "data-profile-picture" not in avatar
