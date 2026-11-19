@@ -788,7 +788,7 @@ def application_form_page(
         current = resolve_page(path, page_number)
 
     if not read_only:
-        form_progress.record_page_reached(page_number)
+        form_progress.record_page_reached(page_number, path)
     context = (
         page_context(
             form, current, form_progress, submission, url_for_page, read_only=read_only

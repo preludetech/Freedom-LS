@@ -361,13 +361,16 @@ class FormProgress(SiteAwareModel):
             )
         return self.quiz_percentage() >= self.form.quiz_pass_percentage
 
-    def record_page_reached(self, page_number: int) -> None:
+    def record_page_reached(self, page_number: int, path: SittingPath) -> None:
         """Remember that this sitting has been shown `page_number`.
 
-        Only ever moves forward: stepping back to an earlier page does not
-        forget the later one.
+        Only ever moves forward along the path: stepping back to an earlier
+        page does not forget the later one. The stored value stays an authored
+        page number, the same meaning it has for every form.
         """
-        if page_number <= self.furthest_page_reached:
+        if path.reached_position(page_number) <= path.reached_position(
+            self.furthest_page_reached
+        ):
             return
         self.furthest_page_reached = page_number
         self.save(update_fields=["furthest_page_reached", "last_updated_time"])
@@ -458,8 +461,10 @@ class FormProgress(SiteAwareModel):
             return
         # Local import: conditions imports this module.
         from .conditions import current_path
+        from .served_paper import ensure_served_paper
 
         with transaction.atomic():
+            ensure_served_paper(self)
             path = current_path(self)
             # Only this form's own off-path questions: an answer whose question
             # has since moved to another form is still an answer, and the admin

@@ -21,7 +21,7 @@ from freedom_ls.content_engine.factories import (
 )
 from freedom_ls.content_engine.models import ContentCollectionItem
 from freedom_ls.form_engine.factories import FormFactory
-from freedom_ls.form_engine.models import FormProgress
+from freedom_ls.form_engine.models import FormProgress, FormStrategy
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -186,6 +186,24 @@ class TestFinaliseStaleIncomplete:
         assert result.pk == open_attempt.pk
         open_attempt.refresh_from_db()
         assert open_attempt.completed_time is not None
+
+    def test_a_never_opened_submit_on_exit_quiz_sitting_is_completed_with_a_served_paper(
+        self, mock_site_context
+    ) -> None:
+        course = CourseFactory()
+        record: CourseProgress = CourseProgressFactory(course=course)
+        collection_item: ContentCollectionItem = ContentCollectionItemFactory(
+            collection_object=course,
+            child_object=FormFactory(submit_on_exit=True, strategy=FormStrategy.QUIZ),
+            order=0,
+        )
+        open_attempt = get_or_create_incomplete(record, collection_item)
+
+        finalise_stale_incomplete(record, collection_item)
+
+        open_attempt.refresh_from_db()
+        assert open_attempt.completed_time is not None
+        assert open_attempt.served_paper is not None
 
     def test_an_attempt_untouched_since_the_given_instant_stays_open(
         self, mock_site_context

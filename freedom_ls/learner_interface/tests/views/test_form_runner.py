@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import html
 import re
+from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import cast
 
@@ -16,8 +17,11 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import TopicFactory
 from freedom_ls.content_engine.models import Course
 from freedom_ls.content_engine.tests.helpers import collection_item_for
-from freedom_ls.deadlines.factories import CourseDeadlineConfigFactory
-from freedom_ls.form_engine.conditions import ServedPaper
+from freedom_ls.deadlines.factories import (
+    CourseDeadlineConfigFactory,
+    CoursePauseFactory,
+)
+from freedom_ls.form_engine.conditions import ServedPaper, current_path
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -25,6 +29,7 @@ from freedom_ls.form_engine.factories import (
     FormQuestionFactory,
     QuestionAnswerFactory,
     QuestionOptionFactory,
+    served_paper_of,
 )
 from freedom_ls.form_engine.models import (
     Form,
@@ -1121,6 +1126,227 @@ def test_form_start_on_a_non_quiz_form_leaves_the_served_paper_null(
     client.get(_form_start_url(course))
 
     assert _served_paper_of_sitting(form, user) is None
+
+
+def _paperless_quiz_sitting(client):
+    """A logged-in learner's open quiz sitting that has no served paper yet."""
+    user = UserFactory()
+    form = _make_quiz_form()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    sitting = form_attempt(course, user, form)
+    return course, form, sitting
+
+
+@pytest.mark.django_db
+def test_form_fill_page_get_writes_the_served_paper_of_an_open_quiz_sitting(
+    mock_site_context, client
+):
+    course, _form, sitting = _paperless_quiz_sitting(client)
+
+    client.get(_fill_page_url(course, 1))
+
+    sitting.refresh_from_db()
+    assert sitting.served_paper is not None
+
+
+@pytest.mark.django_db
+def test_form_fill_page_post_writes_the_served_paper_of_an_open_quiz_sitting(
+    mock_site_context, client
+):
+    course, _form, sitting = _paperless_quiz_sitting(client)
+
+    client.post(_fill_page_url(course, 1), {})
+
+    sitting.refresh_from_db()
+    assert sitting.served_paper is not None
+
+
+@pytest.mark.django_db
+def test_form_submit_and_exit_writes_the_served_paper_of_an_open_quiz_sitting(
+    mock_site_context, client
+):
+    course, _form, sitting = _paperless_quiz_sitting(client)
+    Form.objects.filter(pk=sitting.form_id).update(submit_on_exit=True)
+
+    client.post(_exit_url(course))
+
+    sitting.refresh_from_db()
+    assert sitting.served_paper is not None
+
+
+@pytest.mark.django_db
+def test_view_form_leaves_the_served_paper_null_and_shows_the_resume_page(
+    mock_site_context, client
+):
+    course, _form, sitting = _paperless_quiz_sitting(client)
+
+    response = client.get(_item_url(course))
+
+    sitting.refresh_from_db()
+    assert sitting.served_paper is None
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_a_form_fill_page_request_refused_by_a_paused_course_writes_no_served_paper(
+    mock_site_context, client
+):
+    course, _form, sitting = _paperless_quiz_sitting(client)
+    CoursePauseFactory(course_progress=sitting.course_attempt.course_progress)
+
+    client.get(_fill_page_url(course, 1))
+
+    sitting.refresh_from_db()
+    assert sitting.served_paper is None
+
+
+@dataclass
+class ServedRunner:
+    """A quiz sitting whose pages are served 3, 1, 2 and page one's questions swapped."""
+
+    course: Course
+    form: Form
+    sitting: FormProgress
+    pages: list[FormPage]
+    questions: dict[str, FormQuestion]
+
+
+@pytest.fixture
+def served_runner(mock_site_context, client) -> ServedRunner:
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    pages: list[FormPage] = [
+        FormPageFactory(form=form, order=order) for order in range(3)
+    ]
+    one_a: FormQuestion = FormQuestionFactory(
+        form_page=pages[0], type="short_text", order=0, required=False
+    )
+    one_b: FormQuestion = FormQuestionFactory(
+        form_page=pages[0], type="short_text", order=1, required=False
+    )
+    two: FormQuestion = FormQuestionFactory(
+        form_page=pages[1], type="short_text", order=0, required=False
+    )
+    three: FormQuestion = FormQuestionFactory(
+        form_page=pages[2], type="short_text", order=0, required=False
+    )
+    questions = {"one_a": one_a, "one_b": one_b, "two": two, "three": three}
+    user = UserFactory()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    sitting = form_attempt(course, user, form)
+    sitting.served_paper = served_paper_of(
+        [
+            (pages[2], [questions["three"]]),
+            (pages[0], [questions["one_b"], questions["one_a"]]),
+            (pages[1], [questions["two"]]),
+        ]
+    )
+    sitting.save()
+    return ServedRunner(course, form, sitting, pages, questions)
+
+
+@pytest.mark.django_db
+def test_form_start_redirects_to_the_first_served_pages_authored_number(
+    served_runner, client
+):
+    response = client.get(_form_start_url(served_runner.course))
+
+    assert response["Location"] == _fill_page_url(served_runner.course, 3)
+
+
+@pytest.mark.django_db
+def test_posting_a_page_redirects_to_the_next_served_page(served_runner, client):
+    response = client.post(_fill_page_url(served_runner.course, 3), {})
+
+    assert response["Location"] == _fill_page_url(served_runner.course, 1)
+
+
+@pytest.mark.django_db
+def test_the_runner_shows_served_page_and_question_numbers(served_runner, client):
+    response = client.get(_fill_page_url(served_runner.course, 1))
+
+    questions = served_runner.questions
+    assert response.context["page_position"] == 2
+    assert response.context["total_pages"] == 3
+    assert response.context["question_positions"] == {
+        questions["three"].id: 1,
+        questions["one_b"].id: 2,
+        questions["one_a"].id: 3,
+        questions["two"].id: 4,
+    }
+    assert [child.id for child in response.context["page_children"]] == [
+        questions["one_b"].id,
+        questions["one_a"].id,
+    ]
+
+
+@pytest.mark.django_db
+def test_previous_and_page_jump_urls_carry_authored_page_numbers(served_runner, client):
+    course = served_runner.course
+
+    response = client.get(_fill_page_url(course, 1))
+
+    assert response.context["previous_page_url"] == _fill_page_url(course, 3)
+    assert [
+        (link["number"], link["url"]) for link in response.context["page_links"]
+    ] == [
+        (1, _fill_page_url(course, 3)),
+        (2, _fill_page_url(course, 1)),
+        (3, _fill_page_url(course, 2)),
+    ]
+
+
+@pytest.mark.django_db
+def test_requesting_an_unserved_page_redirects_to_its_landing_page(
+    served_runner, client
+):
+    pages, questions = served_runner.pages, served_runner.questions
+    served_runner.sitting.served_paper = served_paper_of(
+        [
+            (pages[2], [questions["three"]]),
+            (pages[0], [questions["one_b"], questions["one_a"]]),
+        ]
+    )
+    served_runner.sitting.save()
+
+    response = client.get(_fill_page_url(served_runner.course, 2))
+
+    assert response.status_code == 302
+    assert response["Location"] == _fill_page_url(served_runner.course, 3)
+
+
+@pytest.mark.django_db
+def test_a_second_get_of_a_page_shows_the_same_paper(served_runner, client):
+    client.get(_fill_page_url(served_runner.course, 1))
+    paper = _served_paper_of_sitting(served_runner.form, served_runner.sitting.user)
+
+    client.get(_fill_page_url(served_runner.course, 1))
+
+    assert (
+        _served_paper_of_sitting(served_runner.form, served_runner.sitting.user)
+        == paper
+    )
+
+
+@pytest.mark.django_db
+def test_next_skips_a_served_page_deleted_mid_sitting(served_runner, client):
+    served_runner.pages[0].delete()
+
+    response = client.post(_fill_page_url(served_runner.course, 2), {})
+
+    assert response["Location"] == _fill_page_url(served_runner.course, 1)
+
+
+@pytest.mark.django_db
+def test_resume_skips_a_served_page_deleted_mid_sitting(served_runner, client):
+    served_runner.pages[2].delete()
+
+    response = client.get(_form_start_url(served_runner.course))
+
+    assert response["Location"] == _fill_page_url(served_runner.course, 1)
 
 
 # ---------------------------------------------------------------------------
@@ -3174,6 +3400,22 @@ def test_closed_form_start_is_sent_to_the_closed_notice(mock_site_context, clien
 
 @pytest.mark.django_db
 @time_machine.travel(AFTER_CLOSE, tick=False)
+def test_a_closed_form_fill_page_request_writes_no_served_paper(
+    mock_site_context, client
+):
+    course, _question, sitting = _closed_form_with_open_attempt(
+        client, submit_on_exit=False
+    )
+    Form.objects.filter(pk=sitting.form_id).update(strategy=FormStrategy.QUIZ)
+
+    client.get(_fill_page_url(course, 1))
+
+    sitting.refresh_from_db()
+    assert sitting.served_paper is None
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
 @pytest.mark.parametrize("submit_on_exit", [True, False])
 def test_closed_form_submit_and_exit_finalises_without_saving_posted_answers(
     mock_site_context, client, submit_on_exit
@@ -3553,7 +3795,7 @@ def test_start_screen_and_form_start_never_name_an_off_path_page(
     )
     answer.selected_options.set([no])
     QuestionAnswerFactory(form_progress=attempt, question=middle, text_answer="done")
-    attempt.record_page_reached(4)
+    attempt.record_page_reached(4, current_path(attempt))
     client.force_login(user)
     expected = reverse(
         "learner_interface:form_fill_page",

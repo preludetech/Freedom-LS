@@ -1972,7 +1972,7 @@ def _render_form_fill_page(
             index=index,
         )
 
-    form_progress.record_page_reached(current.number)
+    form_progress.record_page_reached(current.number, current.path)
 
     context = page_context(form, current, form_progress, submission, url_for_page) | {
         "course": course,
@@ -2047,6 +2047,7 @@ def form_fill_page(
             index=index,
         )
 
+    ensure_served_paper(form_progress)
     path = current_path(form_progress)
     landing = off_path_landing(path, page_number)
     if landing is not None:
@@ -2410,6 +2411,7 @@ def form_submit_and_exit(
         else None
     )
     if form_progress is not None:
+        ensure_served_paper(form_progress)
         # Nothing posted is saved once closed: the item has no later to resume in.
         # Save before completing, so score() sees the page the learner was on.
         posted = (

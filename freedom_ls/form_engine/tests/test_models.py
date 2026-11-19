@@ -19,6 +19,7 @@ from freedom_ls.form_engine.factories import (
     QuestionAnswerFactory,
     QuestionAnswerFileFactory,
     QuestionOptionFactory,
+    served_paper_of,
 )
 from freedom_ls.form_engine.models import (
     Form,
@@ -245,13 +246,75 @@ def test_get_current_page_number_skips_an_off_path_pages_unanswered_question(
 
 @pytest.mark.django_db
 def test_record_page_reached_remembers_the_furthest_page(mock_site_context):
-    form_progress: FormProgress = FormProgressFactory()
-    form_progress.record_page_reached(3)
+    form: Form = FormFactory()
+    for order in range(3):
+        FormPageFactory(form=form, order=order)
+    form_progress: FormProgress = FormProgressFactory(form=form)
+    form_progress.record_page_reached(3, current_path(form_progress))
 
-    form_progress.record_page_reached(1)
+    form_progress.record_page_reached(1, current_path(form_progress))
 
     form_progress.refresh_from_db()
     assert form_progress.furthest_page_reached == 3
+
+
+@pytest.fixture
+def served_out_of_order(mock_site_context):
+    """A quiz sitting served its three pages as 3, 1, 2."""
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ)
+    pages: list[FormPage] = [
+        FormPageFactory(form=form, order=order) for order in range(3)
+    ]
+    progress: FormProgress = FormProgressFactory(form=form)
+    progress.served_paper = served_paper_of(
+        [(pages[2], []), (pages[0], []), (pages[1], [])]
+    )
+    progress.save()
+    return progress
+
+
+@pytest.mark.django_db
+def test_record_page_reached_moves_forward_by_served_position(served_out_of_order):
+    served_out_of_order.record_page_reached(3, current_path(served_out_of_order))
+
+    served_out_of_order.record_page_reached(1, current_path(served_out_of_order))
+
+    served_out_of_order.refresh_from_db()
+    assert served_out_of_order.furthest_page_reached == 1
+
+
+@pytest.mark.django_db
+def test_record_page_reached_does_not_step_back_in_served_order(served_out_of_order):
+    served_out_of_order.record_page_reached(2, current_path(served_out_of_order))
+
+    served_out_of_order.record_page_reached(1, current_path(served_out_of_order))
+
+    served_out_of_order.refresh_from_db()
+    assert served_out_of_order.furthest_page_reached == 2
+
+
+@pytest.mark.django_db
+def test_complete_writes_the_served_paper_of_an_open_quiz_sitting(mock_site_context):
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ)
+    FormPageFactory(form=form, order=0)
+    progress: FormProgress = FormProgressFactory(form=form)
+
+    progress.complete()
+
+    progress.refresh_from_db()
+    assert progress.served_paper is not None
+
+
+@pytest.mark.django_db
+def test_complete_writes_no_served_paper_for_a_non_quiz_form(mock_site_context):
+    form: Form = FormFactory(strategy=FormStrategy.CATEGORY_VALUE_SUM)
+    FormPageFactory(form=form, order=0)
+    progress: FormProgress = FormProgressFactory(form=form)
+
+    progress.complete()
+
+    progress.refresh_from_db()
+    assert progress.served_paper is None
 
 
 # Tests for FormProgress.complete() idempotency.

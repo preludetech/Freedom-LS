@@ -20,6 +20,7 @@ from freedom_ls.form_engine.factories import (
     FormQuestionFactory,
     QuestionAnswerFactory,
     QuestionOptionFactory,
+    served_paper_of,
 )
 from freedom_ls.form_engine.models import (
     Form,
@@ -30,6 +31,7 @@ from freedom_ls.form_engine.models import (
 from freedom_ls.form_engine.paging import (
     answered_counts,
     build_page_links,
+    first_page_number_with_unanswered_required,
     page_accessibility_limit,
     rejected_answers_message,
     resume_page_number,
@@ -310,7 +312,7 @@ def test_resume_page_is_the_furthest_page_reached_when_nothing_on_it_is_answered
     candidate back in front of the page they had already finished."""
     form_progress = FormProgressFactory(form=four_page_form)
     _answer(form_progress, _question_on_page(four_page_form, 1))
-    form_progress.record_page_reached(2)
+    form_progress.record_page_reached(2, current_path(form_progress))
 
     assert resume_page_number(form_progress, current_path(form_progress)) == 2
 
@@ -320,7 +322,7 @@ def test_page_accessibility_limit_keeps_a_reached_page_after_stepping_back(
     mock_site_context, four_page_form
 ):
     form_progress = FormProgressFactory(form=four_page_form)
-    form_progress.record_page_reached(3)
+    form_progress.record_page_reached(3, current_path(form_progress))
 
     assert (
         page_accessibility_limit(
@@ -335,7 +337,7 @@ def test_page_links_keep_a_reached_page_clickable_after_stepping_back(
     mock_site_context, four_page_form
 ):
     form_progress = FormProgressFactory(form=four_page_form)
-    form_progress.record_page_reached(2)
+    form_progress.record_page_reached(2, current_path(form_progress))
 
     links = build_page_links(
         form_progress,
@@ -354,7 +356,8 @@ def test_resume_page_is_clamped_to_the_pages_the_form_still_has(
     """The reached-page record outlives a page an author deletes afterwards;
     resuming on it would be a permanent 404."""
     form_progress = FormProgressFactory(form=four_page_form)
-    form_progress.record_page_reached(4)
+    reloaded = FormProgress.objects.get(pk=form_progress.pk)
+    form_progress.record_page_reached(4, current_path(reloaded))
     four_page_form.pages.filter(order__gte=2).delete()
 
     assert resume_page_number(form_progress, current_path(form_progress)) == 2
@@ -485,7 +488,7 @@ def _choose(tail: GatedTail, option: QuestionOption) -> None:
 def test_resume_moves_a_reached_page_that_left_the_path_onto_the_path(gated_tail):
     _choose(gated_tail, gated_tail.no)
     _answer(gated_tail.sitting, gated_tail.first)
-    gated_tail.sitting.record_page_reached(3)
+    gated_tail.sitting.record_page_reached(3, current_path(gated_tail.sitting))
 
     assert resume_page_number(gated_tail.sitting, current_path(gated_tail.sitting)) == 2
 
@@ -514,7 +517,7 @@ def test_page_accessibility_limit_equals_the_resume_page_when_pages_are_skipped(
 ):
     _choose(gated_tail, gated_tail.no)
     _answer(gated_tail.sitting, gated_tail.first)
-    gated_tail.sitting.record_page_reached(4)
+    gated_tail.sitting.record_page_reached(4, current_path(gated_tail.sitting))
     path = current_path(gated_tail.sitting)
 
     assert page_accessibility_limit(
@@ -535,3 +538,118 @@ def test_answered_counts_leave_out_an_off_path_answer_and_question(gated_tail):
         "answered_other_pages": 2,
         "total_question_count": 2,
     }
+
+
+@pytest.fixture
+def served_three(four_page_form) -> FormProgress:
+    """A sitting on the first three pages of a form, served as pages 3, 1, 2."""
+    pages = list(four_page_form.pages.all())[:3]
+    progress: FormProgress = FormProgressFactory(form=four_page_form)
+    progress.served_paper = served_paper_of(
+        [(page, list(page.questions.all())) for page in (pages[2], pages[0], pages[1])]
+    )
+    progress.save()
+    return progress
+
+
+def _question_of_page(progress: FormProgress, page_number: int) -> FormQuestion:
+    return _question_on_page(progress.form, page_number)
+
+
+@pytest.mark.django_db
+def test_resume_lands_on_the_first_unanswered_page_in_served_order(served_three):
+    _answer(served_three, _question_of_page(served_three, 3))
+
+    assert resume_page_number(served_three, current_path(served_three)) == 1
+
+
+@pytest.mark.django_db
+def test_resume_lands_on_the_furthest_answered_served_page(served_three):
+    _answer(served_three, _question_of_page(served_three, 2))
+
+    assert resume_page_number(served_three, current_path(served_three)) == 2
+
+
+@pytest.mark.django_db
+def test_resume_lands_on_the_reached_page_when_it_is_furthest_served(served_three):
+    FormProgress.objects.filter(pk=served_three.pk).update(furthest_page_reached=1)
+    served_three.refresh_from_db()
+
+    assert resume_page_number(served_three, current_path(served_three)) == 1
+
+
+@pytest.mark.django_db
+def test_resume_clamps_a_reached_page_past_the_last_page(served_three):
+    FormProgress.objects.filter(pk=served_three.pk).update(furthest_page_reached=9)
+    served_three.refresh_from_db()
+
+    assert resume_page_number(served_three, current_path(served_three)) == 2
+
+
+@pytest.mark.django_db
+def test_page_links_list_served_order_with_served_labels_and_authored_urls(
+    served_three,
+):
+    path = current_path(served_three)
+
+    links = build_page_links(served_three, 3, lambda number: f"/p/{number}", path)
+
+    assert [(link["number"], link["url"]) for link in links] == [
+        (1, "/p/3"),
+        (2, "/p/1"),
+        (3, "/p/2"),
+    ]
+
+
+@pytest.mark.django_db
+def test_page_links_make_accessible_every_page_up_to_the_resume_page_by_served_position(
+    served_three,
+):
+    _answer(served_three, _question_of_page(served_three, 3))
+    _answer(served_three, _question_of_page(served_three, 1))
+    path = current_path(served_three)
+
+    links = build_page_links(served_three, 3, lambda number: f"/p/{number}", path)
+
+    assert [link["is_accessible"] for link in links] == [True, True, True]
+
+
+@pytest.mark.django_db
+def test_page_links_lock_pages_served_after_the_limit(served_three):
+    path = current_path(served_three)
+
+    links = build_page_links(served_three, 3, lambda number: f"/p/{number}", path)
+
+    assert [link["is_accessible"] for link in links] == [True, False, False]
+
+
+@pytest.mark.django_db
+def test_first_unanswered_required_after_a_page_follows_served_order(served_three):
+    unanswered = [
+        _question_of_page(served_three, 1),
+        _question_of_page(served_three, 3),
+    ]
+
+    assert (
+        first_page_number_with_unanswered_required(
+            current_path(served_three), unanswered, after=3
+        )
+        == 1
+    )
+
+
+@pytest.mark.django_db
+def test_first_unanswered_required_with_no_after_starts_at_the_first_served_page(
+    served_three,
+):
+    unanswered = [
+        _question_of_page(served_three, 1),
+        _question_of_page(served_three, 3),
+    ]
+
+    assert (
+        first_page_number_with_unanswered_required(
+            current_path(served_three), unanswered
+        )
+        == 3
+    )

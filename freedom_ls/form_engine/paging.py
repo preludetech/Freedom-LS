@@ -29,15 +29,15 @@ def _answered_ids(form_progress: FormProgress) -> set[UUID]:
     return set(form_progress.answers.values_list("question_id", flat=True))
 
 
-def _furthest_answered_page(path: SittingPath, answered_ids: set[UUID]) -> int:
-    """The highest on-path page number carrying an answer to an on-path question, or 0."""
-    return max(
+def _furthest_answered_page(path: SittingPath, answered_ids: set[UUID]) -> int | None:
+    """The page furthest along the path carrying an answer to an on-path question, if any."""
+    return next(
         (
             number
-            for number, page in path.numbered_pages()
+            for number, page in reversed(path.numbered_pages())
             if any(q.id in answered_ids for q in path.questions_of(page))
         ),
-        default=0,
+        None,
     )
 
 
@@ -46,18 +46,18 @@ def _resume_page_number(form_progress: FormProgress, path: SittingPath) -> int:
     if not numbered:
         return 1
     answered_ids = _answered_ids(form_progress)
-    candidate = min(
-        max(
-            form_progress.get_current_page_number(path, answered_ids),
-            _furthest_answered_page(path, answered_ids),
-            form_progress.furthest_page_reached,
-        ),
-        len(path.all_pages),
+    # furthest_page_reached is an authored number. It can outlive a page an
+    # author deleted and can name a page off the path, so it is clamped to
+    # the pages the form has and moved onto the path before it is compared.
+    reached = path.first_page_number_at_or_after(
+        min(form_progress.furthest_page_reached, len(path.all_pages))
     )
-    # furthest_page_reached is an authored number and may name a page the
-    # answers have since closed, so the candidate is moved onto the path.
-    landed = path.first_page_number_at_or_after(candidate)
-    return landed if landed is not None else numbered[-1][0]
+    candidates = (
+        form_progress.get_current_page_number(path, answered_ids),
+        _furthest_answered_page(path, answered_ids),
+        reached if reached is not None else numbered[-1][0],
+    )
+    return max((n for n in candidates if n is not None), key=path.page_position)
 
 
 def resume_page_number(form_progress: FormProgress, path: SittingPath) -> int:
@@ -79,8 +79,12 @@ def resume_page_number(form_progress: FormProgress, path: SittingPath) -> int:
 def page_accessibility_limit(
     form_progress: FormProgress, current_page_number: int, path: SittingPath
 ) -> int:
-    """The highest page number the page-jump nav may reach."""
-    return max(resume_page_number(form_progress, path), current_page_number)
+    """The page furthest along the path the page-jump nav may reach."""
+    return max(
+        resume_page_number(form_progress, path),
+        current_page_number,
+        key=path.page_position,
+    )
 
 
 def build_page_links(
@@ -101,7 +105,7 @@ def build_page_links(
             "title": page.title,
             "url": url_for_page(number),
             "is_current": number == current_page_number,
-            "is_accessible": number <= limit,
+            "is_accessible": path.page_position(number) <= path.page_position(limit),
         }
         for number, page in path.numbered_pages()
     ]
@@ -149,13 +153,13 @@ def unanswered_required_in_form(
 def first_page_number_with_unanswered_required(
     path: SittingPath, unanswered: list[FormQuestion], *, after: int = 0
 ) -> int | None:
-    """The lowest authored page number above `after` holding one of `unanswered`."""
+    """The first page after `after`, in path order, holding one of `unanswered`."""
     unanswered_ids = {question.id for question in unanswered}
     return next(
         (
             number
             for number, page in path.numbered_pages()
-            if number > after
+            if path.page_position(number) > path.reached_position(after)
             and any(q.id in unanswered_ids for q in path.questions_of(page))
         ),
         None,
