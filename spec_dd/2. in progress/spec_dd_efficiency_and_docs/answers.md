@@ -1,0 +1,13 @@
+# Answers: spec_dd_efficiency_and_docs
+
+Asked by `/sdd:start` before the spec was written.
+
+- Q: The idea ends with "We do need to run the full test suite": when should the full suite run in an SDD cycle? → A: At sensible checkpoints (the spec names them; targeted tests everywhere else) (asked up front)
+- Q: What format should the SDD process diagrams be? → A: `.drawio.svg`: editable in draw.io and renders inline on GitHub (asked up front)
+- Q: When finish_worktree hits flaky tests, where should the subagent's fix land? → A: Fix in the current branch (asked up front)
+- Q: For removing steps we don't use: besides address_pr_review, what should the spec do? → A: Remove address_pr_review; audit for other likely-unused commands and steps and list them as candidates for the user to confirm (asked up front)
+- Q: Which files are in scope for the token-efficiency pass? → A: Everything an SDD run loads: sdd commands, resources and agents, plus the ds and fls-dev skills and resources it reads; the generic/FLS split is kept (asked up front)
+- Q: What should still stop finish_worktree and ask the user? → A: Rebase conflicts in code (outside `spec_dd/`) and real, non-flaky test failures. A force-push: if finish_worktree can force-push, it does; otherwise it pauses, asks the user to force-push, then continues (asked up front)
+- Q: Should this spec take on `0. maybe/better-finish-worktree-command` (finishing several worktrees at once)? → A: No, leave it out (asked while research ran)
+- Q: finish_worktree stops today on a dirty main worktree and on an upstream change review of `direction: changed`. Keep those stops? → A: If the changes are only in the `spec_dd/` directory, continue. If code changes, pause (asked while research ran)
+- Q: How are the `.drawio.svg` diagrams produced and kept in sync? → A: Hand-authored in uncompressed draw.io XML, plus a check that every step heading of a command appears as a label in its diagram (asked while research ran)
