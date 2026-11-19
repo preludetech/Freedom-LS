@@ -6,7 +6,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 1. Spec
 
 - [x] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
-- [ ] (user) Run `git push origin spec_dd_efficiency_and_docs --force-with-lease --force-if-includes`, then re-run `/sdd:finish_worktree`
+- [x] (user) Run `git push origin spec_dd_efficiency_and_docs --force-with-lease --force-if-includes`, then re-run `/sdd:finish_worktree`
 - [ ] (user) Review the spec and edit where needed; after substantial hand edits, run `/sdd:spec_review`
 - [x] (user) Decide keep-or-remove for each line of unused_step_candidates.md
 - [ ] (user) Choose where `/sdd:commit_quickly` moves to out of sdd (e.g. the productivity plugin), and whether that is this spec or its own
