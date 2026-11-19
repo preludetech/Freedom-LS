@@ -1422,6 +1422,151 @@ document.addEventListener("htmx:afterSettle", (event) => {
     if (anchor) anchor.focus();
 });
 
+// An editable list's add, edit and remove open the shared dialog from a
+// trigger inside the list. The removed entry is gone from the refreshed list,
+// so its title and the entry to focus next can only be read from its trigger
+// before the dialog opens; that, with how the dialog ended, is kept here until
+// the list has refreshed.
+let pendingEntryAction = null;
+
+const entryModal = () => document.getElementById("app-modal");
+
+// The Edit trigger for an entry pk inside a panel that is laid out. A table
+// layout draws every entry twice (a row and a card), one of them hidden, so a
+// trigger without layout is skipped. The pk is compared, never put in a
+// selector.
+function visibleEditTrigger(panel, pk) {
+    if (!panel || !pk) return null;
+    const triggers = panel.querySelectorAll('[data-editable-list-action="edit_entry"]');
+    return Array.from(triggers).find(
+        (trigger) => trigger.dataset.entryPk === pk && trigger.offsetParent !== null,
+    ) || null;
+}
+
+function visibleAddTrigger(panel) {
+    if (!panel) return null;
+    const triggers = panel.querySelectorAll('[data-editable-list-action="add_entry"]');
+    return Array.from(triggers).find((trigger) => trigger.offsetParent !== null) || null;
+}
+
+document.addEventListener("htmx:beforeRequest", (event) => {
+    const { elt, target } = event.detail;
+    if (!elt || !elt.dataset || !elt.dataset.editableListAction) return;
+    if (!target || target.id !== "app-modal-body") return;
+    const panel = elt.closest("[data-panel]");
+    pendingEntryAction = {
+        trigger: elt,
+        action: elt.dataset.editableListAction,
+        panelId: panel ? panel.id : "",
+        title: elt.dataset.entryTitle || "",
+        focusAfterRemove: elt.dataset.focusAfterRemove || "",
+        confirmed: false,
+        closed: false,
+        refreshedTarget: null,
+        addedAnother: false,
+    };
+});
+
+// A trigger whose request failed opened no dialog.
+document.addEventListener("htmx:afterRequest", (event) => {
+    if (!pendingEntryAction || event.detail.elt !== pendingEntryAction.trigger) return;
+    if (event.detail.failed) pendingEntryAction = null;
+});
+
+// "Add and add another" swaps the dialog body with a status notice in it and
+// keeps the dialog open.
+document.addEventListener("htmx:afterSwap", (event) => {
+    const target = event.detail.target;
+    if (!pendingEntryAction || !target || target.id !== "app-modal-body") return;
+    if (target.querySelector("[data-status-message]")) pendingEntryAction.addedAnother = true;
+});
+
+// closeModal only ever follows a saved change.
+document.addEventListener("closeModal", () => {
+    if (pendingEntryAction) pendingEntryAction.confirmed = true;
+});
+
+// A dialog closed without a confirmed change (Cancel, Esc) ends the action.
+// After "Add and add another" the list changed behind the dialog, so focus
+// goes to the list's cap line or its Add trigger, as the original trigger may
+// have been replaced. close does not bubble, so it is caught on the way down,
+// and the focus waits a task so it lands after the dialog returns focus to
+// the trigger it opened from.
+// A confirmed change closes the dialog and refreshes the list, and which of
+// the two the browser reports first is not fixed. When the refresh came first
+// it left its focus target in `refreshedTarget`, which takes focus here;
+// otherwise the refresh finds the dialog already closed.
+document.addEventListener(
+    "close",
+    (event) => {
+        if (event.target !== entryModal() || !pendingEntryAction) return;
+        const { confirmed, addedAnother, panelId, refreshedTarget } = pendingEntryAction;
+        if (confirmed) {
+            if (!refreshedTarget) {
+                pendingEntryAction.closed = true;
+                return;
+            }
+            pendingEntryAction = null;
+            setTimeout(() => {
+                refreshedTarget.removeAttribute("data-focus-target");
+                refreshedTarget.focus();
+            }, 0);
+            return;
+        }
+        pendingEntryAction = null;
+        if (!addedAnother) return;
+        setTimeout(() => {
+            const panel = document.getElementById(panelId);
+            const target =
+                (panel && panel.querySelector("[data-editable-list-cap]")) ||
+                visibleAddTrigger(panel);
+            if (target) target.focus();
+        }, 0);
+    },
+    true,
+);
+
+// After a confirmed change the list refreshes; mark the element that takes
+// focus and announce the change. This runs before the generic focus fallback
+// below, which focuses the marked element once the old trigger is gone.
+document.addEventListener("htmx:afterSwap", (event) => {
+    const { target, requestConfig } = event.detail;
+    if (!pendingEntryAction || !pendingEntryAction.confirmed) return;
+    if (!target || target.id !== pendingEntryAction.panelId) return;
+    const modal = entryModal();
+    if (modal && modal.open) return;
+    const panel = document.getElementById(pendingEntryAction.panelId);
+    const detail = requestConfig && requestConfig.triggeringEvent
+        ? requestConfig.triggeringEvent.detail
+        : null;
+    const pk = String((detail && detail.ids && detail.ids[0]) ?? "");
+    const { action, title, focusAfterRemove } = pendingEntryAction;
+    let focusTarget = null;
+    let message = "";
+    if (action === "remove_entry") {
+        focusTarget = visibleEditTrigger(panel, focusAfterRemove) || visibleAddTrigger(panel);
+        message = "Removed " + title + ".";
+    } else {
+        const edit = visibleEditTrigger(panel, pk);
+        const entryTitle = edit ? edit.dataset.entryTitle : "";
+        if (action === "add_entry") {
+            focusTarget = (panel && panel.querySelector("[data-editable-list-cap]")) || edit;
+            message = "Added " + entryTitle + ".";
+        } else {
+            focusTarget = edit;
+            message = "Saved " + entryTitle + ".";
+        }
+    }
+    if (focusTarget) focusTarget.setAttribute("data-focus-target", "");
+    const announcer = document.getElementById("scope-announcer");
+    if (announcer) announcer.textContent = message;
+    if (pendingEntryAction.closed) {
+        pendingEntryAction = null;
+    } else {
+        pendingEntryAction.refreshedTarget = focusTarget;
+    }
+});
+
 // A confirmed row action closes the dialog, which refocuses its trigger; the
 // panel's own refresh then swaps that trigger out (a removed row, a card that
 // re-renders its buttons) and the browser drops focus to <body>. Whether focus
@@ -1471,6 +1616,12 @@ document.addEventListener("htmx:afterSwap", (event) => {
         : null;
     if (sameField) {
         sameField.focus();
+        return;
+    }
+    const marked = region.querySelector("[data-focus-target]");
+    if (marked) {
+        marked.removeAttribute("data-focus-target");
+        marked.focus();
         return;
     }
     let fallback = region.querySelector("[data-table-anchor]");

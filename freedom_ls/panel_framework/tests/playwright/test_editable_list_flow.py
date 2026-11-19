@@ -17,6 +17,7 @@ from freedom_ls.tests.playwright_helpers import (
 )
 
 from ..helpers import make_stub
+from ..stub_models import StubEntry
 
 pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
@@ -30,6 +31,7 @@ def test_editable_list_adds_edits_and_removes_without_a_page_load(
     parent = make_stub(name="Parent")
     modal = page.locator("#app-modal")
     panel = page.locator("[data-panel='entries']")
+    announcer = page.locator("#scope-announcer")
 
     page.goto(
         f"{live_server.url}/test-panel/framework/stubs/{parent.pk}/__tabs/entries"
@@ -37,7 +39,7 @@ def test_editable_list_adds_edits_and_removes_without_a_page_load(
     page.evaluate("window.pageLoadMarker = 'still here'")
     expect(panel.get_by_text("No entries yet.")).to_be_visible()
 
-    # Adding an entry shows it in the list.
+    # Adding an entry shows it, puts focus on it and announces it.
     panel.get_by_role("button", name="Add stub entry").click()
     modal.get_by_label("Title").fill("Alpha")
     modal.get_by_label("Detail").fill("first note")
@@ -45,8 +47,10 @@ def test_editable_list_adds_edits_and_removes_without_a_page_load(
     expect(modal).to_be_hidden()
     expect(panel.get_by_text("Alpha")).to_be_visible()
     expect(panel.get_by_text("No entries yet.")).to_have_count(0)
+    expect(panel.get_by_role("button", name="Edit Alpha, first note")).to_be_focused()
+    expect(announcer).to_have_text("Added Alpha.")
 
-    # Editing it shows the new title.
+    # Editing it shows the new title, puts focus on it and announces it.
     panel.get_by_role("button", name="Edit Alpha, first note").click()
     expect(modal.get_by_label("Title")).to_have_value("Alpha")
     modal.get_by_label("Title").fill("Beta")
@@ -54,17 +58,126 @@ def test_editable_list_adds_edits_and_removes_without_a_page_load(
     expect(modal).to_be_hidden()
     expect(panel.get_by_text("Beta")).to_be_visible()
     expect(panel.get_by_text("Alpha")).to_have_count(0)
+    expect(panel.get_by_role("button", name="Edit Beta, first note")).to_be_focused()
+    expect(announcer).to_have_text("Saved Beta.")
 
-    # Removing it shows the empty state.
+    # Cancelling an edit returns focus to its trigger and announces nothing.
+    panel.get_by_role("button", name="Edit Beta, first note").click()
+    expect(modal.get_by_label("Title")).to_have_value("Beta")
+    modal.get_by_role("button", name="Cancel").click()
+    expect(modal).to_be_hidden()
+    expect(panel.get_by_role("button", name="Edit Beta, first note")).to_be_focused()
+    expect(announcer).to_have_text("Saved Beta.")
+
+    for title in ("Cora", "Dina"):
+        panel.get_by_role("button", name="Add stub entry").click()
+        modal.get_by_label("Title").fill(title)
+        modal.get_by_role("button", name="Add", exact=True).click()
+        expect(modal).to_be_hidden()
+    expect(announcer).to_have_text("Added Dina.")
+
+    # Removing a middle entry focuses the next one's Edit trigger.
+    panel.get_by_role("button", name="Remove Cora").click()
+    modal.get_by_role("button", name="Remove", exact=True).click()
+    expect(modal).to_be_hidden()
+    expect(panel.get_by_text("Cora")).to_have_count(0)
+    expect(panel.get_by_role("button", name="Edit Dina")).to_be_focused()
+    expect(announcer).to_have_text("Removed Cora.")
+
+    # Removing the last entry focuses the previous one's Edit trigger.
+    panel.get_by_role("button", name="Remove Dina").click()
+    modal.get_by_role("button", name="Remove", exact=True).click()
+    expect(modal).to_be_hidden()
+    expect(panel.get_by_role("button", name="Edit Beta, first note")).to_be_focused()
+    expect(announcer).to_have_text("Removed Dina.")
+
+    # Removing the only entry focuses the empty state's Add trigger.
     panel.get_by_role("button", name="Remove Beta, first note").click()
     expect(modal.get_by_text("Removing Beta cannot be undone.")).to_be_visible()
     modal.get_by_role("button", name="Remove", exact=True).click()
     expect(modal).to_be_hidden()
     expect(panel.get_by_text("No entries yet.")).to_be_visible()
+    expect(panel.get_by_role("button", name="Add stub entry")).to_be_focused()
+    expect(announcer).to_have_text("Removed Beta.")
+
+    # An entry deleted behind the page's back is reported as unavailable.
+    panel.get_by_role("button", name="Add stub entry").click()
+    modal.get_by_label("Title").fill("Zed")
+    modal.get_by_role("button", name="Add", exact=True).click()
+    expect(modal).to_be_hidden()
+    expect(panel.get_by_role("button", name="Edit Zed")).to_be_visible()
+    StubEntry.objects.filter(title="Zed").delete()
+    panel.get_by_role("button", name="Edit Zed").click()
+    expect(modal.get_by_text("This is no longer available")).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(modal).to_be_hidden()
 
     # No step loaded a page.
     assert page.evaluate("window.pageLoadMarker") == "still here"
 
+    # A full list shows the cap line with focus on it and no Add trigger.
+    page.goto(
+        f"{live_server.url}/test-panel/framework/stubs/{parent.pk}/__tabs/entries_capped"
+    )
+    capped = page.locator("[data-panel='entries_capped']")
+    for title in ("One", "Two"):
+        capped.get_by_role("button", name="Add stub entry").click()
+        modal.get_by_label("Title").fill(title)
+        modal.get_by_role("button", name="Add", exact=True).click()
+        expect(modal).to_be_hidden()
+    expect(capped.locator("[data-editable-list-cap]")).to_be_focused()
+    expect(capped.get_by_role("button", name="Add stub entry")).to_have_count(0)
+    expect(announcer).to_have_text("Added Two.")
+
+    # "Add and add another" stays in the dialog and announces through its own notice.
+    empty_parent = make_stub(name="Empty parent")
+    page.goto(
+        f"{live_server.url}/test-panel/framework/stubs/{empty_parent.pk}/__tabs/entries_add_another"
+    )
+    another = page.locator("[data-panel='entries_add_another']")
+    another.get_by_role("button", name="Add stub entry").click()
+    modal.get_by_label("Title").fill("First")
+    modal.get_by_role("button", name="Add and add another").click()
+    expect(modal.locator("[data-status-message]")).to_have_text("Added First.")
+    expect(modal.get_by_label("Title")).to_be_focused()
+    expect(another.get_by_text("First")).to_be_visible()
+    expect(announcer).to_have_text("")
+    page.keyboard.press("Escape")
+    expect(modal).to_be_hidden()
+    expect(another.get_by_role("button", name="Add stub entry")).to_be_focused()
+
+    # The table layout focuses the visible trigger of an entry drawn twice.
+    table_parent = make_stub(name="Table parent")
+    page.goto(
+        f"{live_server.url}/test-panel/framework/stubs/{table_parent.pk}/__tabs/entries_table"
+    )
+    table = page.locator("[data-panel='entries_table']")
+    table.get_by_role("button", name="Add stub entry").click()
+    modal.get_by_label("Title").fill("Row")
+    modal.get_by_role("button", name="Add", exact=True).click()
+    expect(modal).to_be_hidden()
+    expect(table.get_by_role("button", name="Edit Row")).to_be_focused()
+    table.get_by_role("button", name="Remove Row").click()
+    modal.get_by_role("button", name="Remove", exact=True).click()
+    expect(modal).to_be_hidden()
+    expect(table.get_by_role("button", name="Add stub entry")).to_be_focused()
+    table.get_by_role("button", name="Add stub entry").click()
+    modal.get_by_label("Title").fill("Kept")
+    modal.get_by_role("button", name="Add", exact=True).click()
+    expect(modal).to_be_hidden()
+
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
         assert_no_horizontal_overflow(page)
+        for trigger in (
+            table.get_by_role("button", name="Add stub entry"),
+            table.get_by_role("button", name="Remove Kept"),
+        ):
+            trigger.click()
+            expect(modal).to_be_visible()
+            box = modal.bounding_box()
+            assert box is not None
+            assert box["x"] >= 0
+            assert box["x"] + box["width"] <= viewport["width"]
+            page.keyboard.press("Escape")
+            expect(modal).to_be_hidden()

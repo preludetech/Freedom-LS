@@ -690,7 +690,7 @@ class EditableListPanel(Panel):
         ):
             cap_line = self.get_cap_line()
         entries = []
-        for entry in self.loaded_entries:
+        for index, entry in enumerate(self.loaded_entries):
             summary = self.get_summary(entry)
             entries.append(
                 {
@@ -712,6 +712,7 @@ class EditableListPanel(Panel):
                         if remove_action
                         else ""
                     ),
+                    "focus_after_remove": self._focus_after_remove(index),
                 }
             )
         context.update(
@@ -726,6 +727,14 @@ class EditableListPanel(Panel):
             }
         )
         return context
+
+    def _focus_after_remove(self, index: int) -> str:
+        """The pk of the entry that takes focus once the entry at `index` is
+        gone: the next one, else the previous one, else nothing."""
+        neighbours = self.loaded_entries[index + 1 : index + 2] or (
+            self.loaded_entries[index - 1 : index] if index > 0 else []
+        )
+        return str(neighbours[0].pk) if neighbours else ""
 
     def _entry_action_url(self, action: PanelAction, entry: Model) -> str:
         row_param = cast(str, action.row_param)

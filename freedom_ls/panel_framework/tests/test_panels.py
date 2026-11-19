@@ -1504,3 +1504,87 @@ def test_the_table_layout_states_the_entry_count(mock_site_context: Site) -> Non
     assert [p.text_content() for p in root.xpath("//*[@data-entry-count]")] == [
         "2 stub entries"
     ]
+
+
+def _remove_trigger_focus_hooks(root: lxml.html.HtmlElement) -> list[str]:
+    hooks: list[str] = root.xpath(
+        "//*[@data-editable-list-action='remove_entry']/@data-focus-after-remove"
+    )
+    return hooks
+
+
+def test_a_remove_trigger_names_the_next_entry_to_focus(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    first = make_stub_entry(parent, "A")
+    middle = make_stub_entry(parent, "B")
+    last = make_stub_entry(parent, "C")
+
+    root = _entries_html(parent)
+
+    assert _remove_trigger_focus_hooks(root) == [
+        str(middle.pk),
+        str(last.pk),
+        str(middle.pk),
+    ]
+    assert first.pk != last.pk
+
+
+def test_the_last_entrys_remove_trigger_names_the_previous_entry(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    first = make_stub_entry(parent, "A")
+    make_stub_entry(parent, "B")
+
+    root = _entries_html(parent)
+
+    assert _remove_trigger_focus_hooks(root)[-1] == str(first.pk)
+
+
+def test_an_only_entrys_remove_trigger_names_no_entry_to_focus(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    make_stub_entry(parent, "A")
+
+    root = _entries_html(parent)
+
+    assert _remove_trigger_focus_hooks(root) == [""]
+
+
+def test_the_add_trigger_carries_its_action_hook(mock_site_context: Site) -> None:
+    root = _entries_html(make_stub())
+
+    assert root.xpath(
+        "//*[contains(@hx-get, '/__actions/add_entry')]/@data-editable-list-action"
+    ) == ["add_entry"]
+
+
+@pytest.mark.parametrize("verb", ["edit", "remove"])
+def test_an_entry_trigger_carries_its_action_pk_and_title_hooks(
+    mock_site_context: Site, verb: str
+) -> None:
+    parent = make_stub()
+    entry = make_stub_entry(parent, "Alpha", "first note")
+
+    root = _entries_html(parent)
+
+    (trigger,) = root.xpath(f"//*[contains(@hx-get, '/__actions/{verb}_entry')]")
+    assert trigger.get("data-editable-list-action") == f"{verb}_entry"
+    assert trigger.get("data-entry-pk") == str(entry.pk)
+    assert trigger.get("data-entry-title") == "Alpha"
+
+
+def test_a_quote_in_a_title_stays_one_escaped_entry_title_value(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    make_stub_entry(parent, 'x" onfocus="alert(1)')
+
+    root = _entries_html(parent)
+
+    assert root.xpath(
+        "//*[@data-editable-list-action='edit_entry']/@data-entry-title"
+    ) == ['x" onfocus="alert(1)']
