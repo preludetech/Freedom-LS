@@ -38,6 +38,10 @@ DIAGRAM_SOURCES: dict[str, tuple[str, ...]] = {
     "start": ("commands/start.md",),
     "spec_from_idea": ("commands/spec_from_idea.md",),
     "plan_from_spec": ("commands/plan_from_spec.md",),
+    "implement_plan": ("commands/implement_plan.md",),
+    "do_qa": ("commands/do_qa.md",),
+    "qa_fix": ("commands/qa_fix.md",),
+    "finish_worktree": ("commands/finish_worktree.md",),
 }
 # Sources named by the project's config instead of living in this plugin:
 # diagram -> (section, key) pairs in .claude/sdd/config.md.
