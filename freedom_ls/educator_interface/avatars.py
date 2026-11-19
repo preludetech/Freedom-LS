@@ -6,6 +6,7 @@ import dataclasses
 from collections.abc import Iterable
 from uuid import UUID
 
+from freedom_ls.accounts.models import User
 from freedom_ls.learner_management.models import Learner
 
 
@@ -36,4 +37,18 @@ def learner_avatars(learner_ids: Iterable[UUID]) -> dict[UUID, PersonAvatar]:
     return {
         learner.pk: PersonAvatar(learner.user.pk, learner.user.profile_picture_url)
         for learner in learners
+    }
+
+
+def user_picture_urls(user_pks: Iterable[int]) -> dict[int, str]:
+    """Picture URLs by user pk, in one query; only users with a picture are present.
+
+    Audit log callers already hold the user pk, so only the URL is returned.
+    """
+    pks = set(user_pks)
+    if not pks:
+        return {}
+    users = User.objects.filter(pk__in=pks).only("pk", "profile_picture")
+    return {
+        user.pk: url for user in users if (url := user.profile_picture_url) is not None
     }

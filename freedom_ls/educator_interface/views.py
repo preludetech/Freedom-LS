@@ -108,6 +108,7 @@ from freedom_ls.educator_interface.actions import (
     learner_state_actions,
     roles_grantable_on,
 )
+from freedom_ls.educator_interface.avatars import user_picture_urls
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     LEARNER_CHANGED,
@@ -908,16 +909,17 @@ _PERSON_TARGETS: tuple[type[User] | type[Learner] | type[StaffMember], ...] = (
 )
 
 
-def _attach_target_users(entries: Sequence[AuditLogEntry]) -> None:
-    """Set `target_is_person` and `target_user_pk` on every entry.
+def _attach_people(entries: Sequence[AuditLogEntry]) -> None:
+    """Set `target_is_person`, `target_user_pk` and the who and target pictures on every entry.
 
     A person target gets the live user's pk (None once the row is gone, so
     the template shows the neutral circle beside the stored label); any
     other target is not a person and renders as plain text. Keyed on the
     stored content type id against the registry's ids, so no entry's
     `target_content_type` relation is read, and one lookup per model type
-    regardless of the page size. No `is_active` filter: an inactive user
-    keeps their avatar.
+    regardless of the page size. The picture URLs follow the live user, so a
+    removed picture stops showing; both are None when there is no picture. No
+    `is_active` filter: an inactive user keeps their avatar.
     """
     person_models_by_type_id = {
         ContentType.objects.get_for_model(model).pk: model for model in _PERSON_TARGETS
@@ -934,9 +936,24 @@ def _attach_target_users(entries: Sequence[AuditLogEntry]) -> None:
     for model, typed in by_model.items():
         user_field = "pk" if model is User else "user_id"
         rows = model.objects.filter(pk__in={entry.target_object_id for entry in typed})
-        found = {str(pk): user_pk for pk, user_pk in rows.values_list("pk", user_field)}
+        found: dict[str, int] = {
+            str(pk): user_pk for pk, user_pk in rows.values_list("pk", user_field)
+        }
         for entry in typed:
             entry.target_user_pk = found.get(entry.target_object_id)
+    urls = user_picture_urls(
+        pk
+        for entry in entries
+        for pk in (entry.actor_id, entry.target_user_pk)
+        if pk is not None
+    )
+    for entry in entries:
+        entry.actor_picture_url = (
+            None if entry.actor_id is None else urls.get(entry.actor_id)
+        )
+        entry.target_picture_url = (
+            None if entry.target_user_pk is None else urls.get(entry.target_user_pk)
+        )
 
 
 def _export_when(row: Model) -> str:
@@ -993,7 +1010,7 @@ class AuditLogEntryTable(DataTable):
         query: TableQuery,
     ) -> Page:
         page_obj = super().get_rows(request, queryset, query)
-        _attach_target_users(list(page_obj.object_list))
+        _attach_people(list(page_obj.object_list))
         return page_obj
 
     @staticmethod
@@ -2807,7 +2824,7 @@ class OrganisationAuditLogTable(TargetedAuditLogEntryTable):
         page_obj = super(AuditLogEntryTable, cls).get_rows(request, queryset, query)
         summaries = [row for row in page_obj.object_list if row.run_id is not None]
         if not summaries:
-            _attach_target_users(list(page_obj.object_list))
+            _attach_people(list(page_obj.object_list))
             return page_obj
         organisation = cast(OrganisationScopedRequest, request).organisation
         run_ids = {row.run_id for row in summaries}
@@ -2828,7 +2845,7 @@ class OrganisationAuditLogTable(TargetedAuditLogEntryTable):
             row.run_entries = entries_by_run.get(row.run_id, [])
             row.run_entry_total = totals.get(row.run_id, 0)
             row.run_entries_more = row.run_entry_total - len(row.run_entries)
-        _attach_target_users(
+        _attach_people(
             [*page_obj.object_list, *(e for row in summaries for e in row.run_entries)]
         )
         return page_obj

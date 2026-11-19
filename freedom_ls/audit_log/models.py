@@ -108,9 +108,12 @@ class AuditLogEntry(SiteAwareModel):
     unscoped = AuditLogEntryQuerySet.as_manager()
 
     # Set by a screen on the entries it renders, never stored: whether the
-    # target is a person, and the live user's pk when the person still exists.
+    # target is a person, the live user's pk when the person still exists, and
+    # the live users' picture URLs, when they have one.
     target_is_person: bool
-    target_user_pk: object | None
+    target_user_pk: int | None
+    actor_picture_url: str | None
+    target_picture_url: str | None
 
     class Meta:
         # Django's own internals read through the base manager; naming the

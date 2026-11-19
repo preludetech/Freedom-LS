@@ -9092,9 +9092,32 @@ def test_more_learner_rows_with_pictures_cost_no_more_queries(
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures("mock_site_context")
-def test_the_audit_log_names_a_person_with_initials_alone() -> None:
+def test_the_audit_log_shows_the_who_and_target_pictures() -> None:
     organisation = OrganisationFactory()
-    person = cast(User, UserFactory(with_profile_picture=True))
+    actor = cast(User, UserFactory(with_profile_picture=True))
+    target = cast(User, UserFactory(with_profile_picture=True))
+    AuditLogEntryFactory(
+        organisation=organisation,
+        actor=actor,
+        actor_label=actor.display_name,
+        target=target,
+        target_label=target.display_name,
+    )
+
+    content = get_interface_page(
+        organisation, "audit-log", organisation_admin_viewer(organisation)
+    )
+
+    sources = profile_picture_sources(content)
+    assert actor.profile_picture_url in sources
+    assert target.profile_picture_url in sources
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("mock_site_context")
+def test_the_audit_log_names_a_person_without_a_picture_by_initials_alone() -> None:
+    organisation = OrganisationFactory()
+    person = cast(User, UserFactory())
     AuditLogEntryFactory(
         organisation=organisation,
         actor=person,
@@ -9107,8 +9130,133 @@ def test_the_audit_log_names_a_person_with_initials_alone() -> None:
         organisation, "audit-log", organisation_admin_viewer(organisation)
     )
 
-    assert person.display_name in content
     assert profile_picture_sources(content) == []
+    assert 'src="None"' not in content
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("mock_site_context")
+def test_the_audit_log_shows_a_deleted_actor_and_a_system_entry_without_a_picture() -> (
+    None
+):
+    organisation = OrganisationFactory()
+    AuditLogEntryFactory(
+        organisation=organisation,
+        actor=None,
+        actor_label="Gone Person",
+        target=organisation,
+        target_label="Spring cohort",
+    )
+    AuditLogEntryFactory(
+        organisation=organisation,
+        actor=None,
+        actor_label="",
+        target=organisation,
+        target_label="Autumn cohort",
+    )
+
+    content = get_interface_page(
+        organisation, "audit-log", organisation_admin_viewer(organisation)
+    )
+
+    assert profile_picture_sources(content) == []
+    assert "Gone Person" in content
+    assert "System" in content
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("mock_site_context")
+def test_the_audit_log_stops_showing_a_picture_once_it_is_removed() -> None:
+    organisation = OrganisationFactory()
+    actor = cast(User, UserFactory(with_profile_picture=True))
+    AuditLogEntryFactory(
+        organisation=organisation,
+        actor=actor,
+        actor_label=actor.display_name,
+        target=organisation,
+    )
+    actor.profile_picture.delete()
+
+    content = get_interface_page(
+        organisation, "audit-log", organisation_admin_viewer(organisation)
+    )
+
+    assert profile_picture_sources(content) == []
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("mock_site_context")
+def test_a_bulk_run_entry_in_the_audit_log_shows_its_actors_picture() -> None:
+    organisation = OrganisationFactory()
+    actor = cast(User, UserFactory(with_profile_picture=True))
+    learner = LearnerFactory(organisation=organisation)
+    run_id = uuid4()
+    record_entry(
+        action="learner.deactivated",
+        actor=actor,
+        target=learner,
+        target_label="Spring cohort",
+        organisation=organisation,
+        run_id=run_id,
+    )
+    record_run_summary(
+        action="bulk_action.completed",
+        run_id=run_id,
+        organisation=organisation,
+        actor=None,
+        counts={"changed": 1, "skipped": 0, "failed": 0},
+    )
+
+    content = get_interface_page(
+        organisation, "audit-log", organisation_admin_viewer(organisation)
+    )
+
+    assert actor.profile_picture_url in profile_picture_sources(content)
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("mock_site_context")
+def test_a_learners_history_tab_shows_the_actors_picture(
+    staff_client: Client,
+) -> None:
+    actor = cast(User, UserFactory(with_profile_picture=True))
+    learner = LearnerFactory()
+    _history_entry(learner, actor=actor, actor_label=actor.display_name)
+
+    document = _learner_page(staff_client, learner, "history")
+
+    sources = [
+        image.get("src") for image in document.cssselect("img[data-profile-picture]")
+    ]
+    assert actor.profile_picture_url in sources
+
+
+def _add_audit_entries_with_pictures(organisation: Organisation, count: int) -> None:
+    for _ in range(count):
+        actor = cast(User, UserFactory(with_profile_picture=True))
+        target = cast(User, UserFactory(with_profile_picture=True))
+        AuditLogEntryFactory(
+            organisation=organisation,
+            actor=actor,
+            actor_label=actor.display_name,
+            target=target,
+            target_label=target.display_name,
+        )
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("mock_site_context")
+def test_more_audit_entries_with_pictures_cost_no_more_queries(
+    django_assert_max_num_queries,
+) -> None:
+    content = page_after_adding_rows(
+        OrganisationFactory(),
+        "audit-log",
+        _add_audit_entries_with_pictures,
+        django_assert_max_num_queries,
+    )
+
+    assert len(profile_picture_sources(content)) >= 10
 
 
 LISTED_AND_DETAIL = [

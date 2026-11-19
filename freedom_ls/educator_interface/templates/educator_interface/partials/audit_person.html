@@ -3,10 +3,12 @@ A person as the audit log names them. `label` is the name stored on the
 entry; `user_pk` is the live user's pk, which picks the avatar colour so a
 person is the same colour here as in the learner and member tables. A user
 that no longer exists (label but no pk) keeps the stored name beside a
-neutral circle; no label and no pk is the system.
+neutral circle; no label and no pk is the system. `picture_url` is the live
+user's picture, or None when they have none, and is passed bound so None never
+renders as text.
 {% endcomment %}
 {% if user_pk %}
-    <c-panel-avatar-chip :name="label" :user_id="user_pk" />
+    <c-panel-avatar-chip :name="label" :user_id="user_pk" :picture_url="picture_url" />
 {% elif label %}
     <c-panel-avatar-chip :name="label" fallback_icon="user" />
 {% else %}
