@@ -77,6 +77,7 @@ from freedom_ls.form_engine.paging import (
     unanswered_required_in_form,
     unanswered_required_message,
 )
+from freedom_ls.form_engine.served_paper import ensure_served_paper
 from freedom_ls.form_engine.session_access import allow_anonymous_form_progress
 from freedom_ls.referral_tracking.conversions import record_conversion
 from freedom_ls.referral_tracking.models import ConversionKind
@@ -722,6 +723,7 @@ def _resume_url(app: CourseApplication, form_progress: FormProgress) -> str:
     A form with no pages has nothing to fill in, so the only place left to send
     the applicant is the page they submit from.
     """
+    ensure_served_paper(form_progress)
     path = current_path(form_progress)
     if path.last_page_number() is None:
         return reverse("course_applications:check_answers", kwargs={"pk": app.pk})
@@ -747,6 +749,7 @@ def application_form_page(
     if isinstance(owned, HttpResponse):
         return owned
     app, form, form_progress = owned
+    ensure_served_paper(form_progress)
     path = sitting_path(form_progress)
     landing = off_path_landing(path, page_number)
     if landing is not None:
@@ -803,7 +806,7 @@ def application_form_page(
             ),
         }
     )
-    if app.user_id is None and page_number == 1:
+    if app.user_id is None and current.position == 1:
         context["previous_page_url"] = reverse(
             "course_applications:applicant_details",
             kwargs={"course_slug": app.course.slug},
@@ -827,6 +830,7 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
     submitted = form_progress.completed_time is not None
     required_answers_error = ""
 
+    ensure_served_paper(form_progress)
     # Fills the answers cache once; the path is computed from it, and
     # existing_answers_dict then reads from it, so the loop below makes no
     # per-row queries.

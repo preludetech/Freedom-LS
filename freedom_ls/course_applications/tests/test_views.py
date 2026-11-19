@@ -7,6 +7,7 @@ import smtplib
 import threading
 import time
 from datetime import timedelta
+from typing import NamedTuple
 from unittest.mock import patch
 from urllib.parse import urlencode
 
@@ -36,7 +37,7 @@ from freedom_ls.accounts.factories import (
 from freedom_ls.accounts.models import LegalConsent, User
 from freedom_ls.accounts.tests._auth_page_helpers import _next_param
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import CourseVisibility
+from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.referral_tracking.factories import AttributionTouchFactory
 from freedom_ls.referral_tracking.models import Conversion, ConversionKind, TouchSource
 from freedom_ls.tests.app_guards import app_not_installed
@@ -69,8 +70,14 @@ from freedom_ls.form_engine.factories import (
     FormQuestionFactory,
     QuestionAnswerFactory,
     QuestionOptionFactory,
+    served_paper_of,
 )
-from freedom_ls.form_engine.models import FormProgress, FormStrategy
+from freedom_ls.form_engine.models import (
+    FormProgress,
+    FormQuestion,
+    FormStrategy,
+    QuestionOption,
+)
 from freedom_ls.form_engine.queries import page_questions
 from freedom_ls.form_engine.session_access import ANONYMOUS_FORM_PROGRESS_SESSION_KEY
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
@@ -4929,3 +4936,314 @@ class TestApplyConversion:
         assert response["Location"] == reverse(
             "course_applications:status", kwargs={"pk": app.pk}
         )
+
+
+# ---------------------------------------------------------------------------
+# A quiz application form follows its served paper
+# ---------------------------------------------------------------------------
+
+
+class QuizApplication(NamedTuple):
+    """An application whose quiz sitting is served page 3, page 1, then page 2."""
+
+    application: CourseApplication
+    course: Course
+    sitting: FormProgress
+    pick: FormQuestion
+    extra: FormQuestion
+    second: FormQuestion
+    third: FormQuestion
+    first_option: QuestionOption
+    second_option: QuestionOption
+
+
+def _quiz_application_form():
+    """A quiz application form of three pages, every question required but `extra`.
+
+    Page 1 holds `pick` (a multiple choice) and `extra`; pages 2 and 3 hold one
+    short text question each.
+    """
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    page_one = FormPageFactory(form=form, order=0, title="First authored")
+    pick = FormQuestionFactory(
+        form_page=page_one, type="multiple_choice", order=0, required=True
+    )
+    first_option = QuestionOptionFactory(question=pick, text="Alpha", order=0)
+    second_option = QuestionOptionFactory(question=pick, text="Omega", order=1)
+    extra = FormQuestionFactory(
+        form_page=page_one, type="short_text", order=1, required=False
+    )
+    page_two = FormPageFactory(form=form, order=1, title="Second authored")
+    second = FormQuestionFactory(
+        form_page=page_two, type="short_text", order=0, required=True
+    )
+    page_three = FormPageFactory(form=form, order=2, title="Third authored")
+    third = FormQuestionFactory(
+        form_page=page_three, type="short_text", order=0, required=True
+    )
+    course = CourseFactory(access_config={"access_type": "application_gated"})
+    course.application_form = form
+    course.save(update_fields=["application_form"])
+    return course, form, (pick, extra, second, third), (first_option, second_option)
+
+
+def _served_quiz_application(client, *, with_paper: bool = True) -> QuizApplication:
+    """A signed-in applicant's quiz sitting, served page 3, page 1, then page 2.
+
+    On page 1 the optional question comes before the multiple choice and its
+    options are served Omega before Alpha.
+    """
+    course, form, (pick, extra, second, third), (first_option, second_option) = (
+        _quiz_application_form()
+    )
+    app = _applied(client, course)
+    sitting = app.form_progress
+    if with_paper:
+        page_one, page_two, page_three = form.pages.all()
+        FormProgress.objects.filter(pk=sitting.pk).update(
+            served_paper=served_paper_of(
+                [
+                    (page_three, [third]),
+                    (page_one, [extra, pick]),
+                    (page_two, [second]),
+                ],
+                {pick: [second_option, first_option]},
+            )
+        )
+    else:
+        # Starting the application already served a paper; clear it.
+        FormProgress.objects.filter(pk=sitting.pk).update(served_paper=None)
+    sitting.refresh_from_db()
+    return QuizApplication(
+        app, course, sitting, pick, extra, second, third, first_option, second_option
+    )
+
+
+@pytest.fixture
+def quiz_application(client, mock_site_context) -> QuizApplication:
+    return _served_quiz_application(client)
+
+
+@pytest.fixture
+def paperless_quiz_application(client, mock_site_context) -> QuizApplication:
+    return _served_quiz_application(client, with_paper=False)
+
+
+def _paper_of(sitting: FormProgress):
+    sitting.refresh_from_db()
+    return sitting.served_paper
+
+
+@pytest.mark.django_db
+def test_the_resume_url_writes_the_served_paper_of_an_open_quiz_sitting(
+    client, paperless_quiz_application
+):
+    app = paperless_quiz_application.application
+
+    client.get(reverse("course_applications:status", kwargs={"pk": app.pk}))
+
+    assert _paper_of(paperless_quiz_application.sitting) is not None
+
+
+@pytest.mark.django_db
+def test_a_page_get_writes_the_served_paper_of_an_open_quiz_sitting(
+    client, paperless_quiz_application
+):
+    app = paperless_quiz_application.application
+
+    client.get(_page_url(app, 1))
+
+    assert _paper_of(paperless_quiz_application.sitting) is not None
+
+
+@pytest.mark.django_db
+def test_a_page_post_writes_the_served_paper_of_an_open_quiz_sitting(
+    client, paperless_quiz_application
+):
+    app = paperless_quiz_application.application
+
+    client.post(_page_url(app, 1), {})
+
+    assert _paper_of(paperless_quiz_application.sitting) is not None
+
+
+@pytest.mark.django_db
+def test_check_your_answers_writes_the_served_paper_of_an_open_quiz_sitting(
+    client, paperless_quiz_application
+):
+    app = paperless_quiz_application.application
+
+    client.get(_check_url(app))
+
+    assert _paper_of(paperless_quiz_application.sitting) is not None
+
+
+@pytest.mark.django_db
+def test_an_application_form_that_is_not_a_quiz_gets_no_served_paper(
+    client, mock_site_context
+):
+    course, _form = gated_course_with_form()
+    app = _applied(client, course)
+
+    client.get(_page_url(app, 1))
+
+    assert _paper_of(app.form_progress) is None
+
+
+@pytest.mark.django_db
+def test_a_visitor_who_does_not_own_the_application_writes_no_served_paper(
+    client, paperless_quiz_application
+):
+    app = paperless_quiz_application.application
+    client.force_login(UserFactory())
+
+    response = client.get(_page_url(app, 1))
+
+    assert response.status_code == 404
+    assert _paper_of(paperless_quiz_application.sitting) is None
+
+
+@pytest.mark.django_db
+def test_resuming_a_quiz_application_lands_on_the_first_served_page(
+    client, quiz_application
+):
+    app = quiz_application.application
+
+    response = client.get(reverse("course_applications:status", kwargs={"pk": app.pk}))
+
+    assert response["Location"] == _page_url(app, 3)
+
+
+@pytest.mark.django_db
+def test_posting_a_quiz_application_page_goes_to_the_next_served_page(
+    client, quiz_application
+):
+    app = quiz_application.application
+
+    response = client.post(
+        _page_url(app, 3), {f"question_{quiz_application.third.id}": "answer"}
+    )
+
+    assert response["Location"] == _page_url(app, 1)
+
+
+@pytest.mark.django_db
+def test_a_quiz_application_page_shows_its_options_in_served_order(
+    client, quiz_application
+):
+    body = client.get(_page_url(quiz_application.application, 1)).content.decode()
+
+    assert body.index("Omega") < body.index("Alpha")
+
+
+@pytest.mark.django_db
+def test_check_your_answers_lists_a_quiz_application_in_served_order(
+    client, quiz_application
+):
+    app = quiz_application.application
+
+    response = client.get(_check_url(app))
+
+    assert [s["title"] for s in response.context["sections"]] == [
+        "Third authored",
+        "First authored",
+        "Second authored",
+    ]
+    assert [s["number"] for s in response.context["sections"]] == [1, 2, 3]
+    assert [s["edit_url"] for s in response.context["sections"]] == [
+        _edit_url(app, 3),
+        _edit_url(app, 1),
+        _edit_url(app, 2),
+    ]
+
+
+@pytest.mark.django_db
+def test_check_your_answers_lists_a_served_page_questions_in_served_order(
+    client, quiz_application
+):
+    response = client.get(_check_url(quiz_application.application))
+
+    rows = response.context["sections"][1]["rows"]
+    assert [row["question"] for row in rows] == [
+        quiz_application.extra,
+        quiz_application.pick,
+    ]
+
+
+@pytest.mark.django_db
+def test_an_edit_that_leaves_a_required_question_unanswered_goes_to_the_next_served_page(
+    client, quiz_application
+):
+    app = quiz_application.application
+
+    response = client.post(
+        _edit_url(app, 3), {f"question_{quiz_application.third.id}": "answer"}
+    )
+
+    assert response["Location"] == _edit_url(app, 1)
+
+
+@pytest.fixture
+def answered_quiz_application(
+    client, quiz_application: QuizApplication
+) -> QuizApplication:
+    """The served quiz application with every required question answered."""
+    app = quiz_application.application
+    client.post(_page_url(app, 3), {f"question_{quiz_application.third.id}": "c"})
+    client.post(_page_url(app, 2), {f"question_{quiz_application.second.id}": "b"})
+    client.post(
+        _page_url(app, 1),
+        {f"question_{quiz_application.pick.id}": str(quiz_application.first_option.id)},
+    )
+    return quiz_application
+
+
+@pytest.mark.django_db
+def test_submitting_a_served_quiz_application_completes_the_sitting(
+    client, answered_quiz_application
+):
+    client.post(_check_url(answered_quiz_application.application))
+
+    answered_quiz_application.sitting.refresh_from_db()
+    assert answered_quiz_application.sitting.completed_time is not None
+
+
+def _anonymous_quiz_application(client):
+    """An anonymous applicant's quiz sitting, served page 3, page 1, then page 2."""
+    course, form, (pick, extra, second, third), (_first, _second_option) = (
+        _quiz_application_form()
+    )
+    _post_details(client, course)
+    app = CourseApplication.objects.get(course=course)
+    page_one, page_two, page_three = form.pages.all()
+    FormProgress.objects.filter(pk=app.form_progress_id).update(
+        served_paper=served_paper_of(
+            [(page_three, [third]), (page_one, [extra, pick]), (page_two, [second])]
+        )
+    )
+    return app
+
+
+@pytest.mark.django_db
+def test_an_anonymous_applicant_sees_the_details_back_link_on_the_first_served_page(
+    client, mock_site_context
+):
+    app = _anonymous_quiz_application(client)
+
+    response = client.get(_page_url(app, 3))
+
+    assert response.context["previous_page_url"] == reverse(
+        "course_applications:applicant_details",
+        kwargs={"course_slug": app.course.slug},
+    )
+
+
+@pytest.mark.django_db
+def test_an_anonymous_applicant_sees_the_previous_served_page_link_on_the_others(
+    client, mock_site_context
+):
+    app = _anonymous_quiz_application(client)
+
+    response = client.get(_page_url(app, 1))
+
+    assert response.context["previous_page_url"] == _page_url(app, 3)
