@@ -10,7 +10,7 @@ from django.contrib import messages
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 
-from freedom_ls.accounts.forms import UserForm
+from freedom_ls.accounts.forms import ProfilePictureForm, UserForm
 from freedom_ls.accounts.models import User
 from freedom_ls.panel_framework.actions import EditAction, PanelAction
 from freedom_ls.panel_framework.context import PanelContext
@@ -88,3 +88,16 @@ class EditNameAction(AccountEditAction):
 
     def __init__(self, user: User) -> None:
         super().__init__(user, form_class=UserForm, form_title="Name")
+
+
+class UploadProfilePictureAction(AccountEditAction):
+    label = "Upload picture"
+    action_name = "upload_profile_picture"
+    capability = CHANGE_OWN_PROFILE_PICTURE
+    template_name = "accounts/partials/profile_picture_form.html"
+    success_message = "Profile picture saved"
+
+    def __init__(self, user: User) -> None:
+        super().__init__(
+            user, form_class=ProfilePictureForm, form_title="Profile picture"
+        )

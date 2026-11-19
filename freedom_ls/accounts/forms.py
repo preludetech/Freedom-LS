@@ -15,7 +15,6 @@ from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from django.http import HttpRequest
-from django.utils.datastructures import MultiValueDict
 from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.site_aware_models.models import get_cached_site
@@ -57,39 +56,6 @@ class ProfilePictureForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ["profile_picture"]
-
-    def __init__(
-        self,
-        data: Mapping[str, str] | None = None,
-        files: MultiValueDict[str, UploadedFile] | None = None,
-        *,
-        instance: UserModel,
-    ) -> None:
-        super().__init__(data, files, instance=instance)
-        # Without a picture there is nothing to remove, so the checkbox is
-        # not rendered and a forged value is ignored.
-        if self.instance.profile_picture:
-            self.fields["remove_profile_picture"] = forms.BooleanField(
-                required=False, label="Remove profile picture"
-            )
-
-    def clean(self) -> dict[str, object] | None:
-        cleaned_data: dict[str, object] | None = super().clean()
-        if cleaned_data is None:
-            return cleaned_data
-        # A file that failed validation is absent from cleaned_data; putting
-        # a value back would blank the instance of an invalid form. A new
-        # file wins over the tick. False is what a model FileField reads as
-        # "clear this field". Whether a file arrived is read from the request,
-        # not from the type clean_profile_picture happens to return.
-        uploaded = self.files.get(self.add_prefix("profile_picture"))
-        if (
-            cleaned_data.get("remove_profile_picture")
-            and "profile_picture" in cleaned_data
-            and not isinstance(uploaded, UploadedFile)
-        ):
-            cleaned_data["profile_picture"] = False
-        return cleaned_data
 
     def clean_profile_picture(self) -> File | None:
         upload = self.cleaned_data.get("profile_picture")

@@ -1,0 +1,33 @@
+{% comment %}
+The profile picture upload form, and the upload action's GET, 200 and 422
+fragment. Context: form, action_url. The form targets itself, so a 422 swaps
+the error in place. The field error is one line under the input, role=alert,
+with the id Django names in the input's aria-describedby.
+{% endcomment %}
+{% with field=form.profile_picture %}
+<form id="account-picture-form"
+      hx-post="{{ action_url }}"
+      hx-target="#account-picture-form"
+      hx-swap="outerHTML"
+      hx-disabled-elt="find button[type='submit']"
+      hx-encoding="multipart/form-data"
+      enctype="multipart/form-data"
+      x-data="refocusAfterRequest"
+      data-refocus-id="{{ field.id_for_label }}"
+      x-on:htmx:after-request="refocus"
+      class="flex flex-col gap-3 space-y-0">
+    {% if form.non_field_errors %}
+        <c-panel-notice tone="error" data-error-summary tabindex="-1">{{ form.non_field_errors }}</c-panel-notice>
+    {% endif %}
+    <div class="form-field">
+        {{ field.label_tag }}
+        <div class="[&_input]:w-auto [&_input]:max-w-full [&_input]:border-0 [&_input]:p-0 [&_input]:shadow-none">{{ field }}</div>
+        <p id="{{ field.auto_id }}_helptext" class="text-sm text-muted">{{ field.help_text }}</p>
+        {% if field.errors %}<p id="{{ field.auto_id }}_error" role="alert" class="text-sm text-error">{{ field.errors|join:" " }}</p>{% endif %}
+    </div>
+    <div data-request-error tabindex="-1" hidden class="text-sm text-error [&_p]:text-error"></div>
+    <div>
+        <c-button type="submit" variant="primary" size="small" loading="true" loading_text="Saving…">Save picture</c-button>
+    </div>
+</form>
+{% endwith %}
