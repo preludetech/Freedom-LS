@@ -6,9 +6,8 @@ allowed-tools: Read, Edit, Bash
 
 # Outstanding items go in todo.md
 
-The user works from the spec's `todo.md`, not from the chat. An **outstanding** item that lives
-only in a reply is lost in the scroll, so `todo.md` is the ledger: anything the user must do or
-decide exists there, and the chat only points at it.
+`todo.md` is the ledger: anything the user must do or decide exists there, and the chat only points
+at it.
 
 ## What counts as outstanding
 

@@ -36,6 +36,4 @@ End every run with a one-line structured footer:
 ## If asked to tick a TODO
 When asked to tick or append a `todo.md`, **read the named helper file**
 (`claude_plugins/sdd/commands/protected/update_todo.md`, or `setup_todo_list.md` /
-`move_spec_to_in_progress.md` / `start_worktree.md` / `update_roadmap.md`) **and follow its steps literally**. Those helper files are the single source of
-truth for that logic; you cannot type the slash command yourself. (The
-`claude-code-authoring` skill says why subagents follow helper files instead of invoking commands.)
+`move_spec_to_in_progress.md` / `start_worktree.md` / `update_roadmap.md`) **and follow its steps literally**. You cannot type the slash command yourself.

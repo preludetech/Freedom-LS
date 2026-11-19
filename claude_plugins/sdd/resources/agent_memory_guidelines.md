@@ -1,8 +1,6 @@
 # Persistent Agent Memory Guidelines
 
-You have a persistent memory directory. Its contents persist across conversations.
-
-As you work, consult your memory files to build on previous experience. When you encounter a mistake that seems like it could be common, check your memory for relevant notes. If nothing is written yet, record what you learned.
+Your memory directory persists across conversations. As you work, consult your memory files. When you encounter a mistake that seems like it could be common, check your memory for relevant notes. If nothing is written yet, record what you learned.
 
 ## Guidelines
 

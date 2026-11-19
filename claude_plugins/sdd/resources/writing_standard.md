@@ -1,10 +1,8 @@
 # Writing an SDD artifact
 
-Every artifact in this workflow, whether idea, spec or plan, is written for the next step only. Its
-readers are the command that consumes it and the human who approves it. Nobody reads it to find out
-how you arrived at it.
-
-This file holds the rules for all of them. Each command adds the ones specific to its artifact.
+Every artifact in this workflow, whether idea, spec or plan, is written for the next step only: its
+readers are the command that consumes it and the human who approves it. Each command adds the rules
+specific to its artifact.
 
 ## Rewriting means replacing
 
@@ -21,12 +19,9 @@ Two passes, in this order.
 2. **Earning its place.** If removing a paragraph would not change a decision the next step has to
    make, remove it.
 
-Do not aim at a line count. A long artifact covering the material once is finished; a short one
-missing a requirement is not.
+Do not aim at a line count: a short artifact missing a requirement is not finished.
 
 ## Never write these
-
-Each of these has shown up in an artifact and made it worse.
 
 - **Process narration.** No "research status" preamble, no "what the research changed", no
   claim/verdict tables, no "an earlier draft said", no "the audit corrected this", no strikethrough

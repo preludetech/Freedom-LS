@@ -6,12 +6,9 @@ allowed-tools: Read, Edit, Write, Grep, Glob, AskUserQuestion, Skill
 
 # Capture feedback
 
-Feedback that stays in the conversation is lost at the end of it. This skill writes each general
-point as a rule into the project file that holds rules on that subject, so the next agent reads it
-before building, and QA fails on it after. A point about one feature goes into that feature's
-spec documents instead, so rule files stay short and true everywhere they apply. The in-progress spec's documents are rewritten to match, so
-the next QA run reads the feedback as the design and never undoes it. It runs before the fix, at
-depth 0.
+This skill writes each general point of feedback as a rule into the project file that holds rules
+on that subject. A point about one feature goes into that feature's spec documents instead. The
+in-progress spec's documents are rewritten to match. It runs before the fix, at depth 0.
 
 ## Inputs
 
@@ -32,7 +29,7 @@ A subagent cannot ask the user. Reached at depth 1 with a question to ask, retur
 
 Write the feedback as items. Each item holds:
 
-- **Observation**: what the user saw, one line, in their words where possible.
+- **Observation**: what the user saw, one line, in their words.
 - **Rule**: what to do, stated positively. "A control link takes the component for its job", not
   "don't underline control links".
 - **Level**: *general* or *feature*. A general rule holds across the whole scope of a rule file:
@@ -63,8 +60,8 @@ behaviour or copy. Three cases need the user before anything is written:
 - it seems mistaken: the screenshot, the code or the stylesheet shows something other than what
   the feedback describes.
 
-Ask once, with every question in one `AskUserQuestion` call, each question naming the item and
-the reading or the conflicting passage, with the reading you find most likely as the first option.
+Ask once, with every question in one `AskUserQuestion` call, each naming the item and the reading
+or conflicting passage, the most likely reading first.
 A repeat item whose rule is already in a file is a wording or placement failure: keep the passage's
 location for Step 3 and ask nothing.
 
@@ -78,9 +75,8 @@ Each general item goes into its target rule file, edited in place. Feature items
   sharpened: the leading word first, the component or principle named, one sentence per idea.
 - Otherwise the rule goes beside its neighbours, under the heading that already holds them. A
   table gets a row; a list gets a bullet; prose gets a sentence.
-- The rule names the component, principle or word it is about, in the file's own terms. A rule
-  in a file whose scope is the whole brand or product stays general. It names no feature,
-  screen or one-off value, so it reads true on every page the file covers.
+- The rule names the component, principle or word it is about, in the file's own terms, and no
+  feature, screen or one-off value, so it reads true on every page the file covers.
 - Rule files carry rules only: no date, no "feedback" heading, no attribution, no observation.
 
 Invoke `Skill(productivity:writing-for-agents)` and `Skill(productivity:unslop)` over each
@@ -108,10 +104,9 @@ feature item about a component also goes in that component's doc comment.
 - each plan's Design transcription: elements, order, hierarchy, copy and design checklist lines;
 - each QA plan's expected results and the design checklists copied into its tests.
 
-A checklist line becomes the checkable line for the new version, so QA passes the page the user
-asked for and fails the old one. The design itself stays as drawn: leave `design_screenshots/`,
-`design_source/`, `design.md` and research notes untouched. Where the spec documents now differ
-from the drawing, the spec documents hold, as `design.md` already says.
+A checklist line becomes the checkable line for the new version. The design itself stays as drawn:
+leave `design_screenshots/`, `design_source/`, `design.md` and research notes untouched. Where the
+spec documents now differ from the drawing, the spec documents hold.
 
 Done when no spec document still describes what an item replaced, and every feature item is in
 a spec document.

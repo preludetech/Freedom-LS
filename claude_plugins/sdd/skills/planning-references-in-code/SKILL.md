@@ -19,14 +19,8 @@ These all point at planning documents:
 | QA references | `QA §12.1`, `Regression for QA Bug 2`, `QA bug B1`, `bugs surfaced in qa_report.md` |
 | Paths into the spec tree | `spec_dd/2. in progress/order-tracking/3. frontend_qa.md` |
 
-They rot for three reasons:
-
-- **Numbers repeat.** Every effort has its own spec 1, slice 3, §4b and QA Bug 2. "Spec 6" names
-  a different document in every effort, so the reader can't tell which one it means.
-- **Documents move.** Spec directories move from `next` to `in progress` to archived, and sections get
-  renumbered, so a once-right path or number goes stale.
-- **The code is the source of truth once it ships.** A reason that lives only in a planning doc is
-  one the maintainer doesn't have. It belongs in the comment, or in git history.
+The code is the source of truth once it ships: a reason that lives only in a planning doc is one
+the maintainer doesn't have. It belongs in the comment, or in git history.
 
 **Rewrite each reference as the fact it stood for.** Open the document if needed, find what the
 reference meant, and write that down. If the comment was only a citation, delete it.
@@ -60,13 +54,6 @@ every action fires events from one fixed list instead of inventing names.
 {% comment %}Breadcrumbs (spec §6.1){% endcomment %}                          ← BAD
 {% comment %}Copy does NOT promise an email (spec §7.2, §10){% endcomment %}  ← BAD
 {% comment %}Copy does not promise an email: nothing sends one when the item publishes.{% endcomment %}  ← GOOD
-```
-
-Section numbers also turn a history comment into a puzzle:
-
-```python
-# §4c additions          ← BAD: means nothing once the diff is merged
-# §4d — submit_and_close          ← BAD heading above tests whose names already say it
 ```
 
 The same rule applies while you implement a plan: its slice and batch numbers and the spec's section

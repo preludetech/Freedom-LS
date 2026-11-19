@@ -9,26 +9,24 @@ allowed-tools: Read, Grep, Glob
 
 # Authoring Claude Code commands, skills, and agents
 
-This skill is the **single source of truth** for the Claude Code behaviour the SDD workflow depends
-on. Author against these constraints instead of restating them in every file.
+The Claude Code behaviour the SDD workflow depends on. Author against these constraints instead of
+restating them in every file.
 
 > **Target: Claude Code 2.1.x.** Per-agent/per-command `model:` frontmatter, `AskUserQuestion`,
-> non-nesting subagents, and "custom commands merged into skills" all hold on this line. No
-> runtime version check exists; this is a documented target.
+> non-nesting subagents, and "custom commands merged into skills" all hold on this line.
 
-For the *why* and the source citations behind each rule, see the `resources/` files:
-[subagents](resources/subagents.md), [model tiering](resources/model_tiering.md),
-[the fan-out recipe](resources/fanout_recipe.md), [interactive-CLI notes](resources/interactive_cli.md).
+Reasons and source citations: [subagents](resources/subagents.md),
+[model tiering](resources/model_tiering.md), [the fan-out recipe](resources/fanout_recipe.md),
+[interactive-CLI notes](resources/interactive_cli.md).
 
 ---
 
 ## Subagent limits (the load-bearing constraints)
 
-- **No nesting / no fan-out from a subagent.** The `Agent` tool is not exposed at depth 1, so a
-  subagent cannot spawn subagents. All fan-out happens at depth 0 (the orchestrator / main
-  thread). Keep orchestration flat. The depth-1 rule is this plugin's design choice, enforced when
-  `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` is `1`, since current Claude Code docs allow
-  deeper nesting by default.
+- **No nesting / no fan-out from a subagent.** The `Agent` tool is not exposed at depth 1. All
+  fan-out happens at depth 0 (the orchestrator / main thread). Keep orchestration flat. The depth-1
+  rule is this plugin's design choice, enforced when `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` is `1`,
+  since current Claude Code docs allow deeper nesting by default.
 - **Subagents can't type slash commands.** There is no `SlashCommand` tool inside a subagent.
   **Headline rule: prefer skills (or "read-and-follow this helper file") to slash commands for any
   reusable logic a subagent must run.** A subagent *can* read a helper `.md` and follow its steps; it
@@ -36,7 +34,6 @@ For the *why* and the source citations behind each rule, see the `resources/` fi
 - **Spawn-time input only.** The `Agent` tool's `prompt` string is the only channel for passing data
   in; mid-run messaging is unsupported (Agent Teams `SendMessage` is experimental and out of
   scope). Bake every input the worker needs into its prompt.
-- **Subagents can't ask the user.** `AskUserQuestion` is orchestrator-only — see Interactive notes.
 - **Subagents *can* use skills.** They auto-trigger by description, and an agent file's `skills:`
   frontmatter **preloads** full skill content at startup.
 - **Agent `.md` frontmatter:** `name` + `description` required; optional `tools`, `model`, `skills`,
@@ -49,9 +46,9 @@ For the *why* and the source citations behind each rule, see the `resources/` fi
 - **Per-agent `model:` frontmatter is the reliable knob.** Aliases `haiku` / `sonnet` / `opus`, a
   full dated ID (e.g. `claude-haiku-4-5`), or `inherit`. Default split: mechanical chores → `haiku`;
   non-interactive fan-out → `sonnet`; interactive authoring/review → the session model (depth 0).
-- **Inline-execution caveat (critical).** A command/helper file *read and followed inline*
-  (not invoked as a slash command) keeps the **caller's** model; its own `model:` frontmatter is
-  **inert**. Tiering lives on **spawnable agent files**, which always run on their own `model:`.
+- **Inline-execution caveat (critical).** A command/helper file *read and followed inline* keeps the
+  **caller's** model; its own `model:` frontmatter is **inert**. Tiering lives on **spawnable agent
+  files**, which always run on their own `model:`.
 - **Hook mode.** A command another command reads and follows inline at depth 0 is told so by a
   `mode: hook` input. In hook mode it skips its own pre-step rebase; it ticks a `todo.md` item only
   when that item names it, and keeps its commit step. Every command that can be a hook opens with
@@ -64,13 +61,11 @@ For the *why* and the source citations behind each rule, see the `resources/` fi
   and either commits its own work or ends with `changed: <paths>` for the caller to commit.
 - **`CLAUDE_CODE_SUBAGENT_MODEL` overrides everything.** If set, it forces one model for *all*
   subagents, flattening every per-agent `model:`. Leave it **unset (or `inherit`)** for tiering.
-- **Aliases vs pinned IDs.** Aliases (`haiku`/`sonnet`) advance over time; pin dated
-  IDs (e.g. `claude-haiku-4-5`) for reproducible automation.
+- **Aliases vs pinned IDs.** Aliases advance over time; pin dated IDs for reproducible automation.
 
 ## Fan-out at depth 0 — the resilience recipe
 
-Fan-out is only legal at depth 0. The resilient shape (full detail in
-[resources/fanout_recipe.md](resources/fanout_recipe.md)):
+The resilient shape (full detail in [resources/fanout_recipe.md](resources/fanout_recipe.md)):
 
 1. **Start the work at once**; never ask whether to. Bake what's already known into prompts; ask the
    user's questions at depth 0 while workers run, front-loaded and batched, never what research answers.
@@ -84,7 +79,7 @@ Fan-out is only legal at depth 0. The resilient shape (full detail in
 
 ## Interactive-CLI notes
 
-- **`AskUserQuestion` is orchestrator-only** — not available in Task-spawned subagents. Approval and
+- **Subagents can't ask the user.** `AskUserQuestion` is orchestrator-only. Approval and
   input-gathering gates must live at depth 0; subagents fail-fast with `status: blocked`.
 - **No enforced structured output in the CLI subagent path**; schema-validated JSON is SDK-only. Use
   **file-based hand-off** (fixed-name artifacts + a `status:` footer) as the durable contract.

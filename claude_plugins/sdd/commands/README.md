@@ -188,3 +188,18 @@ Rationale cut from the command files, one entry per command. Each command file s
 ### The helpers under `commands/protected/`
 
 - `start_worktree.md` makes the worktree from its own parent directory, with an absolute path and the current branch as the base, so the worktree can never land inside another one and always holds the move commit. `cd ..` first would branch it off the bare repo's `HEAD` instead of the branch that holds the move.
+
+### The `qa-bugfixer` agent
+
+- The report's `## Files modified` list drives two decisions in the depth-0 caller. If a modified file is imported by more than one view or app, the fix touched shared code, and adjacent pages get re-checked. A failed re-verification of a committed fix is undone with `git revert --no-edit <commit>`, which needs the hash, not the paths; for an uncommitted fix the caller restores the working tree from the created and modified lists, so the split has to be accurate either way.
+- The Step 5 targeted run omits `-x` because the orchestrator skips re-driving the regression layer on the strength of that run, so it has to be the whole tier. The commit hooks run the project's checks, not the test suite, so the targeted run is the regression proof.
+
+### The skills, agents and resources under `claude_plugins/sdd`
+
+- `capture-feedback`: feedback that stays in the conversation is lost at the end of it. Writing each general point as a rule into the file that holds rules on its subject means the next agent reads it before building and QA fails on it afterwards. A point about one feature goes into that feature's spec documents instead, so rule files stay short and true everywhere they apply. Rewriting the in-progress spec's documents to match means the next QA run reads the feedback as the design and never undoes it.
+- `planning-references-in-code`: references to planning documents rot. Numbers repeat, because every effort has its own spec 1, slice 3, section 4b and QA Bug 2, so "spec 6" names a different document in every effort. Documents move, since spec directories go from `next` to `in progress` to archived and sections get renumbered. A section number in a history comment (`§4c additions`) means nothing once the diff is merged.
+- `claude-code-authoring`: the `resources/` files carry the source citations and reasons behind each rule; the skill itself states the constraints only.
+- `domain_vocabulary.md`: a document that invents a synonym for an existing concept makes every later reader carry a translation table. Invented names survive into the code, and field, `related_name` and constraint names survive as database identifiers, where a wrong word costs a migration rather than an edit.
+- `outstanding-items`: the user works from the spec's `todo.md`, not from the chat, and an outstanding item that lives only in a reply is lost in the scroll.
+- `update-claude-project-settings`: `.claude/settings.json` is shared by everyone on the project and accumulates duplicate, overlapping or stale entries, while useful permissions sometimes live only in a developer's local settings.
+- `sdd-worker`: a worker has no `Bash` or rename tool and needs none, because the `status:` footer is the completeness contract (a shell-style temp-then-rename would need `mv`, which these workers deliberately lack). Workers and the mechanic fail fast and follow helper files instead of invoking slash commands for the reasons in the `claude-code-authoring` skill.

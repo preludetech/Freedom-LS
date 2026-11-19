@@ -5,9 +5,9 @@ The canonical explanation of the recipe SDD fan-out commands embed in compact fo
 ## Why a recipe is needed
 Claude Code's subagent model is **fire-and-forget and one-shot**: task in, single result out, in an
 isolated context, with **no mid-run messaging**, **no user prompting from a subagent**, and **no
-nesting**. Robustness is **designed into the workflow**, not delegated to a runtime feature. A command can also run in hook mode at depth 0, told so by `mode: hook`: read and
-followed inline when it lives in the caller's plugin, or invoked with the `Skill` tool when it
-lives in another one.
+nesting**. Robustness is designed into the workflow, not delegated to a runtime feature. A command
+can also run in hook mode at depth 0, told so by `mode: hook`: read and followed inline when it
+lives in the caller's plugin, or invoked with the `Skill` tool when it lives in another one.
 
 ## The recipe (depth-0 orchestrator over units U1…Un)
 
@@ -18,7 +18,6 @@ lives in another one.
    as early as possible, batched up to four per call, so the user answers while research runs.
    A question that depends on a unit's findings waits for that unit; nothing else waits on a
    question. As findings land, strike the questions they answer and ask the new ones they raise.
-   *(Patterns B1/B5.)*
 
    **What earns a question.** All three hold: the answer changes what gets built or written; no
    source file, the code, a finished unit or a running unit can answer it; and there is no default
@@ -42,13 +41,13 @@ lives in another one.
    or another worker's file before anything is asked.
 2. **One output path per unit.** Assign a deterministic path. Durable artifacts keep their real
    names (e.g. `research_<topic>.md`); intermediate outputs go in `.sdd-work/` at the
-   project root, named `<phase>_<unit-id>.md`. *(Pattern A2.)*
+   project root, named `<phase>_<unit-id>.md`.
 3. **Resume scan (before spawning).** For each unit, if its output file exists **and** ends with
-   `status: ok`, skip it. Spawn only missing/not-ok units. *(Pattern A3 — `todo.md` is the manifest.)*
+   `status: ok`, skip it. Spawn only missing/not-ok units.
 4. **One subagent per unit**, in parallel, via the `Agent` tool (`subagent_type: "sdd:sdd-worker"`,
    or `"sdd:sdd-mechanic"` for mechanical units). Pass the exact output path and baked-in inputs.
    **Never one worker looping over the whole batch**: a sibling's failure must not lose others'
-   work. *(Pattern A1.)*
+   work.
    **Memory capacity.** When `Worker memory (MB)` and `Memory capacity` under `## Worktree Scripts`
    in `.claude/sdd/config.md` (`config.local.md` wins) are both set, run
    `<Memory capacity> <Worker memory (MB)>` and spawn at most that many workers at first; as each
@@ -57,26 +56,22 @@ lives in another one.
 5. **Collect structured returns** and act per `status`:
    - `ok` → done.
    - `failed` → retry the **same** unit, ≤2 attempts, including the prior error in the retry brief.
-     *(Pattern A5.)*
    - `blocked` → the orchestrator supplies the listed `needs` from the source, the code or another
      unit's output where it can, and where it can't, asks in the command's question batch when the command can ask; a brief run as
      a hook of another command is instead recorded as skipped with its need, and the run continues. A command of this plugin read and followed in hook mode runs at depth 0 and still asks its own question batches. Then it
      **re-spawns a fresh worker** with the original brief + answers (pointing at any partial file).
-     *(B3/B4.)*
 6. **Synthesis is a separate step.** A later step reads the output **files** (pass paths, never dump
    contents into the orchestrator prompt) and produces the artifact, so it can be retried without
-   re-running workers. *(Pattern A6 — two-phase fan-in.)*
+   re-running workers.
 7. **Clean up on success.** When the phase artifact is finalised, delete the command's own scratch
    files by name, never the `.sdd-work/` directory, which other commands share. Durable
-   artifacts are **not** deleted. An abandoned `.sdd-work/` from an interrupted run is **intentional**:
+   artifacts are **not** deleted. An abandoned `.sdd-work/` from an interrupted run is intentional:
    it is what makes resume (step 3) cheap.
 
 ## Atomic writes & the completeness contract
-A worker emits its output in a **single `Write`** to the final path: the `Write` tool puts the whole
-file down in one operation, so a crash leaves the complete file or nothing, and a research/review
-worker needs **no `Bash`/rename tool**. Completeness is signalled **only** by the `status:` footer; the resume scan (step 3) re-runs
-any file that lacks it. (A shell-style temp-then-rename would require `mv`, which these workers
-deliberately don't have.) *(Pattern A2.)*
+A worker emits its output in a **single `Write`** to the final path, so a crash leaves the complete
+file or nothing, and a research/review worker needs **no `Bash`/rename tool**. Completeness is
+signalled **only** by the `status:` footer; the resume scan (step 3) re-runs any file that lacks it.
 
 Source: https://www.anthropic.com/engineering/multi-agent-research-system ·
 https://code.claude.com/docs/en/sub-agents · https://code.claude.com/docs/en/headless

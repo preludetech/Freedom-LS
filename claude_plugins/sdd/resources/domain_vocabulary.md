@@ -1,8 +1,7 @@
 # Domain vocabulary
 
 Specs, ideas, research notes and plans describe **this** system, so they use the words this system
-already uses. A document that invents a synonym for an existing concept makes every later reader
-carry a translation table.
+already uses.
 
 ## Look it up before you name it
 
@@ -19,8 +18,7 @@ that already has a name.
   corrupts every existing use.
 
 Where a concept is a model, the document's noun is the model class name and its attributes are the
-field names, in the identifiers it proposes as much as in its prose. Invented names survive into the code, and field, `related_name` and constraint names survive as
-database identifiers, where a wrong word costs a migration rather than an edit.
+field names, in the identifiers it proposes as much as in its prose.
 
 ## Coining a new word
 
@@ -30,7 +28,7 @@ already exist, then use that one word for that one concept.
 ## When a spec needs a Terminology section
 
 Only when a reader could get a word wrong: a term the spec coins, or one it uses in a narrower sense
-than the codebase does. A spec built entirely from words already in the code needs no section; listing them is padding.
+than the codebase does. A spec built entirely from words already in the code needs no section.
 
 When there is one, it holds those terms and nothing else, one line each, marked `coined` with its
 definition or `narrowed` with the source it comes from.
@@ -41,8 +39,8 @@ definition or `narrowed` with the source it comes from.
 | … | coined | … , no existing term because … |
 
 Each line is checkable: a `narrowed` term with no hits in the codebase is wrong, and a `coined` term
-that does have hits is a collision, which is worse. A long list of `coined` terms means the document
-is renaming things rather than building something.
+that does have hits is a collision. A long list of `coined` terms means the document is renaming
+things.
 
 ## Words borrowed from other systems
 

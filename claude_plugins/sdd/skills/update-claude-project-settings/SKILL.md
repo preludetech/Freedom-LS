@@ -5,20 +5,15 @@ description: Audit `.claude/settings.json` (shared project settings) for entries
 
 # Update Claude Project Settings
 
-`.claude/settings.json` is checked in and shared by everyone working on the project. It accumulates duplicate, overlapping, or stale entries, and useful permissions sometimes live only in a developer's local settings.
-
-This skill audits the shared file and proposes cleanups. `.claude/settings.local.json` is read for context (to spot permissions worth promoting) but **never edited**; local settings belong to the user.
-
-## Files
-
-- **Project (shared, committed) — edited by this skill:** `.claude/settings.json`
-- **Local (per-user, gitignored) — read only, never edited:** `.claude/settings.local.json`
+This skill audits the shared, committed `.claude/settings.json` and proposes cleanups.
+`.claude/settings.local.json` (per-user, gitignored) is read for context, to spot permissions worth
+promoting, but **never edited**; local settings belong to the user.
 
 ## Process
 
 ### 1. Read both files
 
-Read `.claude/settings.json` and `.claude/settings.local.json` in parallel. The local file is a reference only.
+Read `.claude/settings.json` and `.claude/settings.local.json` in parallel.
 
 ### 2. Audit `permissions.allow` in project settings for redundancy
 
@@ -38,7 +33,7 @@ Walk `permissions.allow` in `.claude/settings.local.json` and classify each entr
 - **Already covered** — a broader rule in project settings already grants this. No action needed; mention if the local pattern suggests project settings should be broadened.
 - **Keep local** — personal/exploratory/one-off (e.g. ad-hoc `curl` of a specific URL, exploratory WebFetch domains). Ignore.
 
-Do not propose any edits to the local file. Only suggest additions to `.claude/settings.json`.
+Only suggest additions to `.claude/settings.json`.
 
 ### 4. Ask the user, entry by entry
 
@@ -60,7 +55,6 @@ Summarise what was added, deleted, or rewritten in `.claude/settings.json`. Remi
 
 ## Notes
 
-- Never edit `.claude/settings.local.json`; it belongs to the user.
 - Never touch `deny` rules without explicit instruction; they are intentional safety boundaries.
 - Never touch hooks, `enabledPlugins`, or `disabledMcpjsonServers` without explicit instruction; they are usually environment-specific.
 - If a permission pattern looks too narrow or too broad to be useful project-wide, flag it and suggest a better pattern before adding.
