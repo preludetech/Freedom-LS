@@ -50,7 +50,8 @@ CONFIG_SOURCES: dict[str, tuple[tuple[str, str], ...]] = {
 }
 EXEMPT = frozenset({"overview"})
 
-FENCED_BLOCK = re.compile(r"^(```|~~~).*?^\1", re.MULTILINE | re.DOTALL)
+# A fence inside a list item is indented, so both fence lines may start with whitespace.
+FENCED_BLOCK = re.compile(r"^[ \t]*(```|~~~).*?^[ \t]*\1", re.MULTILINE | re.DOTALL)
 STEP_HEADING = re.compile(r"^#{1,3}\s+(Step \d+(?:\.\d+)?\b.*?)\s*$", re.MULTILINE)
 STEP_LABEL = re.compile(r"^Step (\d+(?:\.\d+)?)(?![\d.])")
 STEP_NUMBER = re.compile(r"^Step (\d+(?:\.\d+)?)")

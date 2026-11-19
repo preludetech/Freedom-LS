@@ -106,6 +106,14 @@ def test_heading_inside_a_fenced_block_needs_no_label(tmp_path: Path) -> None:
     assert (code, output) == (0, "")
 
 
+def test_heading_inside_an_indented_fenced_block_needs_no_label(tmp_path: Path) -> None:
+    command = COMMAND + "\n- An example:\n\n  ```\n# Step 7: Only a template\n  ```\n"
+
+    code, output = check(tmp_path, "covered", command)
+
+    assert (code, output) == (0, "")
+
+
 def test_label_with_line_break_and_non_breaking_space_matches(tmp_path: Path) -> None:
     code, output = check(tmp_path, "markup", COMMAND)
 
