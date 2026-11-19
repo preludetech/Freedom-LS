@@ -114,7 +114,7 @@ files exist, catches this.
    "Absent" means no byte-identical string is already in the list. The commands invoke these
    scripts by that path, so without the entries every call prompts, and a non-interactive agent
    returns `blocked` instead. Never remove or rewrite an entry here.
-   For each Python script the commands call by name (`measure_prompt_size.py`), add
+   For each Python script the commands call by name (`measure_prompt_size.py`, `full_run_record.py`), add
    `Bash(python3 <PLUGINS_ROOT>/claude_plugins/sdd/scripts/<name>.py:*)` if absent, with no `./`
    prefix on the path when `PLUGINS_ROOT` is `.`. Same absent rule; same reason.
 3. Merge `"worktree": {"baseRef": "head"}` at the top level of `.claude/settings.json` when the

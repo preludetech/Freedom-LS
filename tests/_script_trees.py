@@ -22,13 +22,20 @@ def write_tree(root: Path, files: dict[str, str]) -> None:
         path.write_text(contents, encoding="utf-8")
 
 
-def run_command(command: list[str], project: Path) -> subprocess.CompletedProcess[str]:
+def run_command(
+    command: list[str], project: Path, environment: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(  # noqa: S603
-        command, cwd=project, capture_output=True, text=True, check=False
+        command,
+        cwd=project,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
     )
 
 
 def run_script(
-    script: Path, project: Path, *args: str
+    script: Path, project: Path, *args: str, environment: dict[str, str] | None = None
 ) -> subprocess.CompletedProcess[str]:
-    return run_command([sys.executable, str(script), *args], project)
+    return run_command([sys.executable, str(script), *args], project, environment)
