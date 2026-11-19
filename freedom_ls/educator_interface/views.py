@@ -150,6 +150,7 @@ from freedom_ls.educator_interface.panels.common.badges import (
     active_status_badge,
     inactive_badge,
 )
+from freedom_ls.educator_interface.panels.common.ids import uuid_or_404
 from freedom_ls.educator_interface.panels.common.request import (
     LAST_ORGANISATION_SESSION_KEY,
     OrganisationScopedRequest,
@@ -1261,14 +1262,6 @@ class ViewConversationAction(PanelAction):
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         # Opening is a read; there is nothing to submit.
         raise Http404
-
-
-def uuid_or_404(raw: str | None) -> UUID:
-    """A pk from a query string or a URL; a 404 when it is not a UUID."""
-    try:
-        return UUID(raw or "")
-    except ValueError:
-        raise Http404("not a uuid") from None
 
 
 def _oversight_role_label(viewer: User, learner: Learner) -> str:
