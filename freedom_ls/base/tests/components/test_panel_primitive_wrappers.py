@@ -53,7 +53,80 @@ WRAPPER_PAIRS = [
 ]
 
 
-@pytest.mark.parametrize(("wrapper", "original"), WRAPPER_PAIRS)
+BUTTON_VARIANTS = [
+    "primary",
+    "secondary",
+    "ghost",
+    "link",
+    "accent",
+    "success",
+    "error",
+]
+
+BUTTON_PAIRS = [
+    pytest.param(
+        f'<c-panel-button variant="{variant}">Go</c-panel-button>',
+        f'<c-button variant="{variant}">Go</c-button>',
+        id=f"button-{variant}",
+    )
+    for variant in BUTTON_VARIANTS
+] + [
+    pytest.param(
+        '<c-panel-button size="small">Go</c-panel-button>',
+        '<c-button size="small">Go</c-button>',
+        id="button-small",
+    ),
+    pytest.param(
+        '<c-panel-button href="/x/">Go</c-panel-button>',
+        '<c-button href="/x/">Go</c-button>',
+        id="button-href",
+    ),
+    pytest.param(
+        '<c-panel-button loading="true" loading_text="Wait">Go</c-panel-button>',
+        '<c-button loading="true" loading_text="Wait">Go</c-button>',
+        id="button-loading",
+    ),
+    pytest.param(
+        '<c-panel-button dropdown="true">Go</c-panel-button>',
+        '<c-button dropdown="true">Go</c-button>',
+        id="button-dropdown",
+    ),
+    pytest.param(
+        '<c-panel-button dropdown="true" tone="error">Go</c-panel-button>',
+        '<c-button dropdown="true" tone="error">Go</c-button>',
+        id="button-dropdown-error-tone",
+    ),
+    pytest.param(
+        '<c-panel-button icon_left="user" icon_right="next">Go</c-panel-button>',
+        '<c-button icon_left="user" icon_right="next">Go</c-button>',
+        id="button-icons",
+    ),
+    pytest.param(
+        '<c-panel-button disabled="disabled">Go</c-panel-button>',
+        '<c-button disabled="disabled">Go</c-button>',
+        id="button-disabled",
+    ),
+    pytest.param(
+        '<c-panel-button hx-post="/x/" class="w-full">Go</c-panel-button>',
+        '<c-button hx-post="/x/" class="w-full">Go</c-button>',
+        id="button-htmx-attribute",
+    ),
+    pytest.param(
+        '<c-panel-button type="submit" form="f" id="i" name="n" value="v" '
+        'autofocus="true" aria_label="L" aria_describedby="d">Go</c-panel-button>',
+        '<c-button type="submit" form="f" id="i" name="n" value="v" '
+        'autofocus="true" aria_label="L" aria_describedby="d">Go</c-button>',
+        id="button-form-and-aria-props",
+    ),
+    pytest.param(
+        '<c-panel-button-group variant="right" class="ms-auto">Go</c-panel-button-group>',
+        '<c-button-group variant="right" class="ms-auto">Go</c-button-group>',
+        id="button-group-right-with-class",
+    ),
+]
+
+
+@pytest.mark.parametrize(("wrapper", "original"), [*WRAPPER_PAIRS, *BUTTON_PAIRS])
 def test_a_wrapper_renders_what_the_component_it_replaces_rendered(
     wrapper: str, original: str
 ) -> None:

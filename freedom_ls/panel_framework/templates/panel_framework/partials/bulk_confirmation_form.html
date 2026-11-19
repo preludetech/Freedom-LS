@@ -14,5 +14,5 @@
         {% endif %}
         <input type="hidden" name="expected_count" value="{{ expected_count }}">
         <input type="hidden" name="confirmed" value="1">
-        <c-button type="submit" variant="{{ action.confirm_variant }}" loading="true" loading_text="{{ action.loading_text|default:'Saving…' }}" :disabled="confirm_disabled" aria_describedby="{% if confirm_disabled_reason %}bulk-confirm-reason{% endif %}">{{ action.label }}</c-button>
+        <c-panel-button type="submit" variant="{{ action.confirm_variant }}" loading="true" loading_text="{{ action.loading_text|default:'Saving…' }}" :disabled="confirm_disabled" aria_describedby="{% if confirm_disabled_reason %}bulk-confirm-reason{% endif %}">{{ action.label }}</c-panel-button>
     </form>

@@ -21,10 +21,35 @@ PRIMITIVE_DEFAULTS = [
         ],
         id="panel-chip",
     ),
+    pytest.param(
+        '<c-panel-button variant="error" size="small" data-testid="x">Delete</c-panel-button>',
+        [
+            "panel-btn",
+            "panel-btn-error",
+            "panel-btn-sm",
+            'data-variant="error"',
+            'data-testid="x"',
+            "Delete",
+        ],
+        id="panel-button",
+    ),
+    pytest.param(
+        '<c-panel-button-group variant="right" class="ms-auto">Go</c-panel-button-group>',
+        ["flex justify-end", "ms-auto", "Go"],
+        id="panel-button-group",
+    ),
 ]
 
 PRIMITIVE_OVERRIDES = [
     pytest.param("panel-chip", "<c-panel-chip>Hi</c-panel-chip>", id="panel-chip"),
+    pytest.param(
+        "panel-button", "<c-panel-button>Hi</c-panel-button>", id="panel-button"
+    ),
+    pytest.param(
+        "panel-button-group",
+        "<c-panel-button-group>Hi</c-panel-button-group>",
+        id="panel-button-group",
+    ),
 ]
 
 
@@ -44,6 +69,11 @@ def test_a_primitive_renders_its_documented_props_and_slot(
             "<c-panel-chip>Hi</c-panel-chip>",
             {"panel-chip-xs"},
             id="panel-chip-has-no-default-size",
+        ),
+        pytest.param(
+            "<c-panel-button>Hi</c-panel-button>",
+            {"panel-btn-sm", " disabled", "autofocus", "aria-label"},
+            id="panel-button-has-no-default-size-or-flags",
         ),
     ],
 )

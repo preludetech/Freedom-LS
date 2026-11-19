@@ -24,11 +24,11 @@ when htmx swaps this fragment in.
             <div class="flex items-center gap-1">
                 <h2 class="flex-1 min-w-0 text-lg font-semibold">Filter</h2>
                 {% querystring request.GET reset_changes as reset_qs %}
-                <c-button variant="link" size="small" class="min-w-11"
+                <c-panel-button variant="link" size="small" class="min-w-11"
                           href="{{ page_url }}{{ reset_qs }}"
                           hx-get="{{ base_url }}{{ reset_qs }}"
                           hx-target="#{{ region_id }}"
-                          hx-swap="outerHTML">Reset</c-button>
+                          hx-swap="outerHTML">Reset</c-panel-button>
                 <c-panel-close-button />
             </div>
 
@@ -86,7 +86,7 @@ when htmx swaps this fragment in.
 
 
             <c-modal-footer cancel_click="close" class="sticky bottom-0 z-10 mt-auto -mx-4 -mb-4">
-                <c-button type="submit" variant="primary">Show results</c-button>
+                <c-panel-button type="submit" variant="primary">Show results</c-panel-button>
             </c-modal-footer>
         </form>
     </div>

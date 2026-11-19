@@ -108,6 +108,90 @@
         @apply text-xs px-2 py-0.5
     }
 
+    .panel-btn {
+        @apply inline-flex items-center justify-center gap-2 px-6 py-2 font-medium rounded-md
+               focus:outline-none focus:ring-2 focus:ring-offset-2
+               disabled:opacity-50 disabled:cursor-not-allowed
+               no-underline cursor-pointer transition-colors
+    }
+
+    .panel-btn-primary {
+        @apply bg-primary text-on-primary
+               hover:bg-primary-hover focus:ring-primary
+    }
+
+    /* The outline is an inset ring, not a border, so it adds no height or
+     * width and a secondary button is the size of every other variant. */
+    .panel-btn-secondary {
+        @apply bg-transparent text-primary inset-ring inset-ring-primary
+               hover:bg-primary/10 focus:ring-primary
+    }
+
+    .panel-btn-ghost {
+        @apply bg-transparent text-primary
+               hover:bg-primary/10 focus:ring-primary
+    }
+
+    /* Text-only link button: no background fill in any state. On hover the
+     * label intensifies in colour and scales up slightly. `transition` (not
+     * transition-colors) so both the colour and the scale animate. */
+    .panel-btn-link {
+        @apply bg-transparent text-primary font-semibold
+               hover:text-primary-hover focus:ring-primary
+               transition hover:scale-105
+    }
+
+    .panel-btn-accent {
+        @apply bg-accent text-on-accent
+               hover:bg-accent-hover focus:ring-accent
+    }
+
+    .panel-btn-success {
+        @apply bg-success text-on-success
+               hover:bg-success-hover focus:ring-success
+    }
+
+    .panel-btn-error {
+        @apply bg-error text-on-error
+               hover:bg-error-hover focus:ring-error
+    }
+
+    /* Small size: overrides .panel-btn padding (must come after it). */
+    .panel-btn.panel-btn-sm {
+        @apply px-2 py-1.5 text-sm
+    }
+
+    /* A button inside a data-table cell or phone card is the small size
+     * whatever it asked for, so row actions never crowd the row. The pair of
+     * classes outranks a theme's own `.panel-btn` padding. */
+    .panel-data-table td .panel-btn,
+    .panel-data-table-card .panel-btn {
+        @apply px-2 py-1.5 text-sm
+    }
+
+    /* Below md a button keeps its desktop look and gets a 44px-tall hit area
+     * from an invisible ::after centred on it, so a small button stays small
+     * to the eye and easy to tap. */
+    @media (width < 48rem) {
+        .panel-btn {
+            position: relative;
+        }
+        .panel-btn::after {
+            content: "";
+            position: absolute;
+            inset-inline: 0;
+            top: 50%;
+            height: 2.75rem;
+            translate: 0 -50%;
+        }
+    }
+
+    /* A dialog footer's Cancel and confirm are the decision the dialog asks
+     * for, at the bottom of the sheet under the thumb: 44px tall below md. */
+    [data-modal-footer] .panel-btn {
+        @apply max-md:min-h-11
+    }
+
     /* Modal scrim: the ::backdrop pseudo of a native <dialog>, whose own box stays
      * bg-transparent. Carries only the scrim look; positioning / transitions stay
      * on each element. */

@@ -382,10 +382,12 @@ def test_only_a_fragment_declaring_the_wide_size_widens_the_dialog() -> None:
 
 def test_every_dialog_ends_in_the_modal_footer_not_a_button_group() -> None:
     """A dialog's buttons sit in <c-modal-footer>, Cancel at the left and the
-    actions at the right; <c-button-group> is for buttons outside a dialog."""
+    actions at the right; <c-panel-button-group> is for buttons outside a dialog."""
     assert len(DIALOG_TEMPLATES) > 20
     offenders = [
-        path.name for path in DIALOG_TEMPLATES if "<c-button-group" in path.read_text()
+        path.name
+        for path in DIALOG_TEMPLATES
+        if re.search(r"<c-(panel-)?button-group", path.read_text())
     ]
 
     assert offenders == []
@@ -497,7 +499,7 @@ def test_no_control_link_is_hand_styled() -> None:
                     offenders.append(f"{relative}: {tag[:80]}")
                 elif tag.startswith("<a") and "{{ attrs }}" not in tag:
                     styled = "no-underline" in tokens or any(
-                        token.startswith("btn") for token in tokens
+                        token.startswith(("btn", "panel-btn")) for token in tokens
                     )
                     if not styled:
                         offenders.append(f"{relative}: {tag[:80]}")
@@ -534,10 +536,10 @@ def test_every_framework_action_trigger_is_small() -> None:
 
 
 def test_no_button_hand_writes_a_touch_height() -> None:
-    """A button looks the same at every width: the shared `.btn` rule gives it
+    """A button looks the same at every width: the shared `.panel-btn` rule gives it
     an invisible 44px hit area below md, and only the dialog footer's rule
     makes a button 44px to the eye. So no button carries `min-h-11` itself.
-    Dropdown menu items are not `.btn`, so they keep theirs."""
+    Dropdown menu items are not `.panel-btn`, so they keep theirs."""
     offenders = []
     roots = (
         TEMPLATES_DIR,
@@ -547,21 +549,22 @@ def test_no_button_hand_writes_a_touch_height() -> None:
     for root in roots:
         for path in sorted(root.rglob("*.html")):
             source = path.read_text()
-            for tag in re.findall(r"<c-button\b[^>]*>", source):
+            for tag in re.findall(r"<c-(?:panel-)?button\b[^>]*>", source):
                 if "min-h-11" in tag and "dropdown=" not in tag:
                     offenders.append(f"{path.name}: {tag[:80]}")
-            for classes in re.findall(r'class="(btn [^"]*)"', source):
+            for classes in re.findall(r'class="((?:panel-)?btn [^"]*)"', source):
                 if "min-h-11" in classes:
                     offenders.append(f"{path.name}: {classes}")
-            for trigger in re.findall(r'trigger_class="btn[^"]*"', source):
+            for trigger in re.findall(r'trigger_class="(?:panel-)?btn[^"]*"', source):
                 if "min-h-11" in trigger:
                     offenders.append(f"{path.name}: {trigger}")
     assert offenders == []
 
 
 def test_only_the_dialog_footer_makes_a_button_44px_tall_on_a_phone() -> None:
-    """Below md every `.btn` gets a 44px hit area from an invisible ::after,
-    and the one height rule for buttons is the dialog footer's."""
+    """Below md every `.btn` and `.panel-btn` gets a 44px hit area from an
+    invisible ::after, and the one height rule for buttons is the dialog
+    footer's."""
     css = TAILWIND_COMPONENTS_CSS.read_text()
     height_rules = re.findall(r"\n    ([^\n{]*\.btn[^\n{]*)\{[^}]*min-h-11", css)
 
@@ -569,6 +572,16 @@ def test_only_the_dialog_footer_makes_a_button_44px_tall_on_a_phone() -> None:
     assert re.search(r"\.btn::after \{[^}]*height: 2\.75rem", css)
     footer = (COMPONENTS_DIR / "modal-footer.html").read_text()
     assert "data-modal-footer" in footer
+
+
+def test_only_the_dialog_footer_makes_a_panel_button_44px_tall_on_a_phone() -> None:
+    """The framework stylesheet's one height rule for `.panel-btn` is the
+    dialog footer's, beside the hit area every `.panel-btn` gets below md."""
+    css = FRAMEWORK_CSS.read_text()
+    height_rules = re.findall(r"\n    ([^\n{]*\.panel-btn[^\n{]*)\{[^}]*min-h-11", css)
+
+    assert height_rules == ["[data-modal-footer] .panel-btn "]
+    assert re.search(r"\.panel-btn::after \{[^}]*height: 2\.75rem", css)
 
 
 def test_the_filter_sheet_has_a_close_control() -> None:

@@ -378,9 +378,13 @@ def test_an_action_the_user_may_not_run_is_in_neither_the_bar_nor_the_menu(
 def test_no_bar_button_takes_a_filled_variant(mock_site_context: Site) -> None:
     document = _render(_bulk_panel(_SEVEN_ACTIONS))
 
-    for button in document.cssselect("fieldset .btn"):
+    for button in document.cssselect("fieldset .panel-btn"):
         classes = button.get("class").split()
-        assert not {"btn-secondary", "btn-error", "btn-primary"} & set(classes)
+        assert not {
+            "panel-btn-secondary",
+            "panel-btn-error",
+            "panel-btn-primary",
+        } & set(classes)
 
 
 def test_a_bulk_table_without_controls_keeps_the_toolbars_row_height(

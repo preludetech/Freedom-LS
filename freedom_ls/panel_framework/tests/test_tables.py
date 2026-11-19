@@ -1088,7 +1088,7 @@ def test_export_link_of_a_stacked_table_serves_its_csv(
         if a.text_content().strip() == "Export CSV"
     ]
     assert len({a.get("href") for a in links}) == 1
-    assert all("btn-sm" in a.get("class").split() for a in links)
+    assert all("panel-btn-sm" in a.get("class").split() for a in links)
     assert all(a.cssselect("svg[data-icon='download']") for a in links)
     href = links[0].get("href").removeprefix("/test-panel/framework/")
     path_string, _, query = href.partition("?")
@@ -1908,11 +1908,11 @@ APPLIED_FILTER: list[str] = [
     'hx-swap="outerHTML" hx-target="#stub-table"]',
     'span [class="size-4 shrink-0"]',
     "text: Active only",
-    'a [class="btn btn-link btn-sm shrink-0 whitespace-nowrap" data-variant="link" '
+    'a [class="panel-btn panel-btn-link panel-btn-sm shrink-0 whitespace-nowrap" data-variant="link" '
     'href="/test-panel/framework/stubs/N/__tabs/default?stub-sort=name" '
     'hx-get="/test-panel/framework/stubs/N/__tabs/default?stub-sort=name" hx-swap="outerHTML" '
     'hx-target="#stub-table"] Clear all',
-    'a [class="btn btn-secondary btn-sm ml-auto shrink-0 whitespace-nowrap" '
+    'a [class="panel-btn panel-btn-secondary panel-btn-sm ml-auto shrink-0 whitespace-nowrap" '
     'data-variant="secondary" '
     'href="/test-panel/framework/stubs/N/__tabs/default?stub-kind=a&stub-sort=name&stub-export=csv"]',
     'span [aria-hidden="true" class="inline-flex"]',
@@ -1934,7 +1934,7 @@ APPLIED_FILTER: list[str] = [
     'path [d="M6 18L18 6M6 6l12 12" fill="none" stroke="currentColor" stroke-linecap="round" '
     'stroke-linejoin="round" stroke-width="1.5"]',
     'div [class="flex shrink-0 items-center gap-2"]',
-    'button [class="btn btn-secondary btn-sm" data-variant="secondary" type="button" '
+    'button [class="panel-btn panel-btn-secondary panel-btn-sm" data-variant="secondary" type="button" '
     'x-on:click="toggle"]',
     'span [aria-hidden="true" class="inline-flex"]',
     "text: Filter",
@@ -1979,7 +1979,7 @@ APPLIED_FILTER: list[str] = [
     'viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"]',
     'path [d="m4.5 15.75l7.5-7.5l7.5 7.5" fill="none" stroke="currentColor" '
     'stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"]',
-    'a [class="btn btn-secondary btn-sm" data-variant="secondary" '
+    'a [class="panel-btn panel-btn-secondary panel-btn-sm" data-variant="secondary" '
     'href="/test-panel/framework/stubs/N/__tabs/default?stub-kind=a&stub-sort=name&stub-export=csv"]',
     'span [aria-hidden="true" class="inline-flex"]',
     "text: Export CSV",
@@ -1996,7 +1996,7 @@ APPLIED_FILTER: list[str] = [
     'hx-target="#stub-table" method="get"]',
     'div [class="flex items-center gap-1"]',
     'h2 [class="flex-1 min-w-0 text-lg font-semibold"] Filter',
-    'a [class="btn btn-link btn-sm min-w-11" data-variant="link" '
+    'a [class="panel-btn panel-btn-link panel-btn-sm min-w-11" data-variant="link" '
     'href="/test-panel/framework/stubs/N/__tabs/default?stub-sort=name" '
     'hx-get="/test-panel/framework/stubs/N/__tabs/default?stub-sort=name" hx-swap="outerHTML" '
     'hx-target="#stub-table"] Reset',
@@ -2032,10 +2032,10 @@ APPLIED_FILTER: list[str] = [
     'border-t border-border px-6 py-4 max-sm:flex-wrap sticky bottom-0 z-10 mt-auto -mx-4 -mb-4" '
     'data-modal-footer=""]',
     'div [class="shrink-0"]',
-    'button [class="btn btn-secondary" data-variant="secondary" type="button" x-on:click="close"] '
+    'button [class="panel-btn panel-btn-secondary" data-variant="secondary" type="button" x-on:click="close"] '
     "Cancel",
     'div [class="flex min-w-0 flex-wrap items-center justify-end gap-3"]',
-    'button [class="btn btn-primary" data-variant="primary" type="submit"] Show results',
+    'button [class="panel-btn panel-btn-primary" data-variant="primary" type="submit"] Show results',
     "style [] @media (scripting: none) { #stub-sheet { display: block; position: static; opacity: "
     "1; transform: none; } }",
 ]
@@ -2110,7 +2110,7 @@ NO_FILTER_APPLIED: list[str] = [
     'hx-target="#stub-table"]',
     'span [class="size-4 shrink-0"]',
     "text: Active only",
-    'a [class="btn btn-secondary btn-sm ml-auto shrink-0 whitespace-nowrap" '
+    'a [class="panel-btn panel-btn-secondary panel-btn-sm ml-auto shrink-0 whitespace-nowrap" '
     'data-variant="secondary" '
     'href="/test-panel/framework/stubs/N/__tabs/default?stub-export=csv"]',
     'span [aria-hidden="true" class="inline-flex"]',
@@ -2123,7 +2123,7 @@ NO_FILTER_APPLIED: list[str] = [
     'div [class="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3 md:hidden" '
     'data-mobile-only="true" data-storage-key="stub-sheet" x-data="sidePanel"]',
     'div [class="flex shrink-0 items-center gap-2"]',
-    'button [class="btn btn-secondary btn-sm" data-variant="secondary" type="button" '
+    'button [class="panel-btn panel-btn-secondary panel-btn-sm" data-variant="secondary" type="button" '
     'x-on:click="toggle"]',
     'span [aria-hidden="true" class="inline-flex"]',
     "text: Filter",
@@ -2168,7 +2168,7 @@ NO_FILTER_APPLIED: list[str] = [
     'viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"]',
     'path [d="m4.5 15.75l7.5-7.5l7.5 7.5" fill="none" stroke="currentColor" '
     'stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"]',
-    'a [class="btn btn-secondary btn-sm" data-variant="secondary" '
+    'a [class="panel-btn panel-btn-secondary panel-btn-sm" data-variant="secondary" '
     'href="/test-panel/framework/stubs/N/__tabs/default?stub-export=csv"]',
     'span [aria-hidden="true" class="inline-flex"]',
     "text: Export CSV",
@@ -2185,7 +2185,7 @@ NO_FILTER_APPLIED: list[str] = [
     'hx-target="#stub-table" method="get"]',
     'div [class="flex items-center gap-1"]',
     'h2 [class="flex-1 min-w-0 text-lg font-semibold"] Filter',
-    'a [class="btn btn-link btn-sm min-w-11" data-variant="link" '
+    'a [class="panel-btn panel-btn-link panel-btn-sm min-w-11" data-variant="link" '
     'href="/test-panel/framework/stubs/N/__tabs/default?" '
     'hx-get="/test-panel/framework/stubs/N/__tabs/default?" hx-swap="outerHTML" '
     'hx-target="#stub-table"] Reset',
@@ -2221,10 +2221,10 @@ NO_FILTER_APPLIED: list[str] = [
     'border-t border-border px-6 py-4 max-sm:flex-wrap sticky bottom-0 z-10 mt-auto -mx-4 -mb-4" '
     'data-modal-footer=""]',
     'div [class="shrink-0"]',
-    'button [class="btn btn-secondary" data-variant="secondary" type="button" x-on:click="close"] '
+    'button [class="panel-btn panel-btn-secondary" data-variant="secondary" type="button" x-on:click="close"] '
     "Cancel",
     'div [class="flex min-w-0 flex-wrap items-center justify-end gap-3"]',
-    'button [class="btn btn-primary" data-variant="primary" type="submit"] Show results',
+    'button [class="panel-btn panel-btn-primary" data-variant="primary" type="submit"] Show results',
     "style [] @media (scripting: none) { #stub-sheet { display: block; position: static; opacity: "
     "1; transform: none; } }",
 ]

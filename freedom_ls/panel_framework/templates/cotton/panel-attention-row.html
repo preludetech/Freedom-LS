@@ -65,7 +65,7 @@ icon trails, so the DOM still holds only the one link to href.
     {% if trigger.strip %}{{ trigger }}{% elif quick_view_url %}{% include "panel_framework/partials/quick_view_button.html" with href=href url=quick_view_url label=subject extra_class="relative z-10" only %}{% endif %}
     {% if badge_label %}<c-panel-status-badge :tone="badge_tone" :label="badge_label" />{% endif %}
     {% if action_label and action_href %}
-        <c-button href="{{ action_href }}" variant="ghost" size="small" class="hidden md:inline-flex">{{ action_label }}<span class="sr-only"> {{ subject }}</span></c-button>
+        <c-panel-button href="{{ action_href }}" variant="ghost" size="small" class="hidden md:inline-flex">{{ action_label }}<span class="sr-only"> {{ subject }}</span></c-panel-button>
     {% endif %}
     <span aria-hidden="true" class="md:hidden text-muted"><c-icon name="next" class="size-5" /></span>
 </li>

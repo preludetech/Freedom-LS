@@ -29,21 +29,21 @@ replaces the form with that sentence and a Close button.
         <button type="submit" hidden tabindex="-1" aria-hidden="true"></button>
         {% for btn in submit_buttons %}
             {% if btn.name %}
-                <c-button type="submit"
+                <c-panel-button type="submit"
                           variant="{{ btn.variant }}"
                           loading="true"
                           loading_text="{{ btn.loading_text|default:'Saving…' }}"
                           name="{{ btn.name }}"
                           value="{{ btn.value }}">
                     {{ btn.label }}
-                </c-button>
+                </c-panel-button>
             {% else %}
-                <c-button type="submit"
+                <c-panel-button type="submit"
                           variant="{{ btn.variant }}"
                           loading="true"
                           loading_text="{{ btn.loading_text|default:'Saving…' }}">
                     {{ btn.label }}
-                </c-button>
+                </c-panel-button>
             {% endif %}
         {% endfor %}
     </c-modal-footer>

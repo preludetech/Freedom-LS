@@ -44,7 +44,7 @@ GOLDEN_INLINE_FORM_WITHOUT_FILE_FIELD = """
 
 
 data-variant="primary"
-class="btn btn-primary btn-sm "
+class="panel-btn panel-btn-primary panel-btn-sm "
 
 >
 

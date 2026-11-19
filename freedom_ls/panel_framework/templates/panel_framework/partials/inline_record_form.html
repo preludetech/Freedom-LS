@@ -27,7 +27,7 @@ aria-describedby.
                 {{ field }}
             </div>
         {% endfor %}
-        <c-button type="submit" variant="primary" size="small" loading="true" loading_text="Saving…">Save</c-button>
+        <c-panel-button type="submit" variant="primary" size="small" loading="true" loading_text="Saving…">Save</c-panel-button>
     </div>
     <div data-request-error tabindex="-1" hidden class="text-sm text-error [&_p]:text-error"></div>
     {% for field in form.visible_fields %}

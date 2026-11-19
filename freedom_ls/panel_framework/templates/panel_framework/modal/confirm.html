@@ -32,14 +32,14 @@ Blocks: title, hidden_fields, body, reason and confirm_button.
 
     <c-modal-footer focus_cancel="true" cancel_href="{{ page_url }}">
         {% block confirm_button %}
-            <c-button type="submit"
+            <c-panel-button type="submit"
                       variant="{{ confirm_variant }}"
                       loading="true"
                       loading_text="{{ loading_text }}"
                       disabled="{% if confirm_disabled_reason %}true{% endif %}"
                       aria_describedby="{% if confirm_disabled_reason %}confirm-disabled-reason{% endif %}">
                 {{ confirm_label }}
-            </c-button>
+            </c-panel-button>
         {% endblock confirm_button %}
     </c-modal-footer>
 </form>

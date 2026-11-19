@@ -15,4 +15,4 @@ layout:
   stack  one button per line, left-aligned, for a column of whole-row
          buttons.
 {% endcomment %}
-<div class="flex gap-2 [&_.btn]:whitespace-nowrap {% if layout == 'stack' %}flex-col items-start{% elif layout == 'line' %}flex-wrap items-center md:flex-nowrap{% else %}flex-wrap items-center{% endif %} {{ class }}" {{ attrs }}>{{ slot }}</div>
+<div class="flex gap-2 [&_.panel-btn]:whitespace-nowrap {% if layout == 'stack' %}flex-col items-start{% elif layout == 'line' %}flex-wrap items-center md:flex-nowrap{% else %}flex-wrap items-center{% endif %} {{ class }}" {{ attrs }}>{{ slot }}</div>

@@ -49,7 +49,7 @@ classes live in tailwind.components.css so a theme can retune both at once.
     <div class="{% if not flush|flag %}px-4 pb-4 sm:px-6 sm:pb-6 {% if title %}pt-2{% else %}pt-4 sm:pt-6{% endif %}{% endif %}">{{ slot }}</div>
     {% if actions.strip %}
         <footer class="border-t border-border px-4 py-3 sm:px-6">
-            <c-button-group variant="right">{{ actions }}</c-button-group>
+            <c-panel-button-group variant="right">{{ actions }}</c-panel-button-group>
         </footer>
     {% endif %}
 {% endpartialdef %}

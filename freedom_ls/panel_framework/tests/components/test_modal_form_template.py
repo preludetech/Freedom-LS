@@ -92,7 +92,7 @@ GOLDEN_FORM_WITHOUT_FILE_FIELD = """
 
 
 data-variant="secondary"
-class="btn btn-secondary "
+class="panel-btn panel-btn-secondary "
 x-on:click="cancel"
 >
 
@@ -124,7 +124,7 @@ Cancel
 
 
 data-variant="primary"
-class="btn btn-primary "
+class="panel-btn panel-btn-primary "
 
 >
 

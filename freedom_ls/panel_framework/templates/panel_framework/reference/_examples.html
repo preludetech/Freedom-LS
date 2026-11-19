@@ -25,8 +25,8 @@ somewhere on the page to land.
             <p class="text-sm text-muted">Use when the view offers up to three page-level actions.</p>
             <c-panel-page-header title="Cohort overview">
                 <c-slot name="actions">
-                    <c-button variant="secondary">Export</c-button>
-                    <c-button href="#page-header-with-actions" variant="primary" icon_left="add">Add learner</c-button>
+                    <c-panel-button variant="secondary">Export</c-panel-button>
+                    <c-panel-button href="#page-header-with-actions" variant="primary" icon_left="add">Add learner</c-panel-button>
                 </c-slot>
             </c-panel-page-header>
         </div>
@@ -256,7 +256,7 @@ somewhere on the page to land.
         <div id="card-with-header-action">
             <p class="text-sm text-muted">Use when the card links to a fuller view of the same data.</p>
             <c-panel-card title="Learners">
-                <c-slot name="header_action"><c-button variant="link" size="small" href="#card-with-header-action">View all</c-button></c-slot>
+                <c-slot name="header_action"><c-panel-button variant="link" size="small" href="#card-with-header-action">View all</c-panel-button></c-slot>
                 <p>9 learners shown.</p>
             </c-panel-card>
         </div>
@@ -266,8 +266,8 @@ somewhere on the page to land.
             <c-panel-card title="Confirm removal">
                 <p>Remove Thandi Mokoena from this cohort?</p>
                 <c-slot name="actions">
-                    <c-button variant="secondary">Cancel</c-button>
-                    <c-button variant="error">Remove</c-button>
+                    <c-panel-button variant="secondary">Cancel</c-panel-button>
+                    <c-panel-button variant="error">Remove</c-panel-button>
                 </c-slot>
             </c-panel-card>
         </div>
@@ -337,7 +337,7 @@ somewhere on the page to land.
                         </div>
                     </c-panel-filter-toggle>
                 </c-slot>
-                <c-slot name="actions"><c-button variant="secondary" size="small" class="ml-auto">Export</c-button></c-slot>
+                <c-slot name="actions"><c-panel-button variant="secondary" size="small" class="ml-auto">Export</c-panel-button></c-slot>
             </c-panel-toolbar>
         </div>
 
@@ -358,7 +358,7 @@ somewhere on the page to land.
                             <a href="#toolbar-applied" class="flex items-center gap-2 whitespace-nowrap rounded-md px-2 py-1 text-on-surface no-underline hover:bg-surface-2">Inactive</a>
                         </div>
                     </c-panel-filter-toggle>
-                    <c-button variant="link" size="small" class="shrink-0 whitespace-nowrap" href="#toolbar-applied">Clear all</c-button>
+                    <c-panel-button variant="link" size="small" class="shrink-0 whitespace-nowrap" href="#toolbar-applied">Clear all</c-panel-button>
                 </c-slot>
                 <c-slot name="mobile">
                     <c-panel-applied-filter label="Status: Inactive" remove_href="#toolbar-applied" />
@@ -408,7 +408,7 @@ somewhere on the page to land.
         <div id="empty-state-default">
             <p class="text-sm text-muted">Use when a panel has nothing to show yet.</p>
             <c-panel-empty-state icon="add" message="No learners yet.">
-                <c-button variant="primary">Add learner</c-button>
+                <c-panel-button variant="primary">Add learner</c-panel-button>
             </c-panel-empty-state>
         </div>
 

@@ -9,7 +9,7 @@ the visible label so the name still matches what is on screen. `size` and
 `class` reach the button unchanged, so a trigger inside a table cell or card
 takes size="small" like any other button there.
 {% endcomment %}
-<c-button variant="{{ variant }}"
+<c-panel-button variant="{{ variant }}"
           size="{{ size }}"
           class="{{ class }}"
           hx-get="{{ url }}"
@@ -17,4 +17,4 @@ takes size="small" like any other button there.
           hx-swap="innerHTML"
           hx-disabled-elt="this"
           aria_label="{{ aria_label }}"
-          aria-haspopup="dialog">{{ label }}</c-button>
+          aria-haspopup="dialog">{{ label }}</c-panel-button>

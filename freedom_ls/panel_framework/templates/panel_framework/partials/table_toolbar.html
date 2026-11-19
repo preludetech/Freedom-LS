@@ -37,7 +37,7 @@ work with JavaScript off.
             </fieldset>
         {% endfor %}
         <div class="flex justify-end border-t border-border pt-2">
-            <c-button type="submit" variant="primary" size="small">Apply</c-button>
+            <c-panel-button type="submit" variant="primary" size="small">Apply</c-panel-button>
         </div>
     </form>
 {% endpartialdef %}
@@ -158,18 +158,18 @@ reason, and is nothing below lg.
 
         {% if any_filter_set %}
             {% querystring request.GET clear_changes as clear_qs %}
-            <c-button variant="link" size="small" class="shrink-0 whitespace-nowrap"
+            <c-panel-button variant="link" size="small" class="shrink-0 whitespace-nowrap"
                       href="{{ page_url }}{{ clear_qs }}"
                       hx-get="{{ base_url }}{{ clear_qs }}"
                       hx-target="#{{ region_id }}"
-                      hx-swap="outerHTML">Clear all</c-button>
+                      hx-swap="outerHTML">Clear all</c-panel-button>
         {% endif %}
     </c-slot>
 
     <c-slot name="actions">
         {% if exports %}
             {% querystring request.GET export_changes as export_qs %}
-            <c-button variant="secondary" size="small" icon_left="download" class="ml-auto shrink-0 whitespace-nowrap" href="{{ base_url }}{{ export_qs }}">Export CSV</c-button>
+            <c-panel-button variant="secondary" size="small" icon_left="download" class="ml-auto shrink-0 whitespace-nowrap" href="{{ base_url }}{{ export_qs }}">Export CSV</c-panel-button>
         {% endif %}
     </c-slot>
 
@@ -197,7 +197,7 @@ reason, and is nothing below lg.
             {% endcomment %}
             <div class="flex shrink-0 items-center gap-2">
             {% if toolbar %}
-                <c-button type="button" variant="secondary" size="small" icon_left="filter" x-on:click="toggle">Filter</c-button>
+                <c-panel-button type="button" variant="secondary" size="small" icon_left="filter" x-on:click="toggle">Filter</c-panel-button>
             {% endif %}
             {% if sortable_columns %}
                 <c-dropdown-menu aria_label="Sort" menu_label="Sort by" trigger_class="btn btn-secondary btn-sm" panel_class="fixed w-56">
@@ -208,14 +208,14 @@ reason, and is nothing below lg.
                     {% for header in header_columns %}
                         {% if header.column.sortable %}
                             {% querystring request.GET header.changes as sort_qs %}
-                            <c-button dropdown="true"
+                            <c-panel-button dropdown="true"
                                       href="{{ page_url }}{{ sort_qs }}"
                                       hx-get="{{ base_url }}{{ sort_qs }}"
                                       hx-target="#{{ region_id }}"
                                       hx-swap="outerHTML"
                                       class="flex min-h-11 items-center justify-between {% if header.state %}text-on-surface font-semibold{% endif %}"
                                       aria-current="{% if header.state %}true{% else %}false{% endif %}"
-                                      icon_right="{% if header.state == 'asc' %}sort_asc{% elif header.state == 'desc' %}sort_desc{% endif %}">{{ header.column.header }}</c-button>
+                                      icon_right="{% if header.state == 'asc' %}sort_asc{% elif header.state == 'desc' %}sort_desc{% endif %}">{{ header.column.header }}</c-panel-button>
                         {% endif %}
                     {% endfor %}
                 </c-dropdown-menu>
@@ -224,7 +224,7 @@ reason, and is nothing below lg.
 
             {% if exports %}
                 {% querystring request.GET export_changes as export_qs %}
-                <c-button variant="secondary" size="small" icon_left="download" href="{{ base_url }}{{ export_qs }}">Export CSV</c-button>
+                <c-panel-button variant="secondary" size="small" icon_left="download" href="{{ base_url }}{{ export_qs }}">Export CSV</c-panel-button>
             {% endif %}
 
             {% if toolbar %}

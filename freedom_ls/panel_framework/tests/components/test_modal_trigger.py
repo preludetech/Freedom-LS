@@ -10,9 +10,9 @@ class TestModalTriggerSize:
         result = render_cotton(
             '<c-modal-trigger url="/x" label="Go" size="small" class="extra" />'
         )
-        assert "btn-sm" in result
+        assert "panel-btn-sm" in result
         assert "extra" in result
 
     def test_without_a_size_the_button_is_full_size(self) -> None:
         result = render_cotton('<c-modal-trigger url="/x" label="Go" />')
-        assert "btn-sm" not in result
+        assert "panel-btn-sm" not in result
