@@ -17,6 +17,18 @@ file writes. The `@source not-ignored:` spelling in the idea and in
 The `.venv` rows ran with uv's nested `.venv/.gitignore` (contents `*`) in place, the case a
 Tailwind issue reported as blocking `@source`.
 
+A second probe, from the repo root: `@source "./freedom_ls/**/templates/**/*.html";` followed by
+`@source not "./freedom_ls/panel_framework";` builds cleanly and drops the classes used only in framework
+templates (`animate-pulse`, `border-b-2`, `border-transparent`, `col-start-2` and others), 79 KB of
+output against 92 KB without the exclusion. So `@source not` on a directory works.
+
+A third probe added a positive `@source` of `freedom_ls/panel_framework/templates` after that
+exclusion, once relative and once absolute. Both builds came out identical to the excluded one
+(79 KB, no `animate-pulse`, no `col-start-2`). **A negated `@source` wins over any positive
+`@source` inside the same directory, regardless of order or path form.** FLS therefore cannot
+exclude the framework from its glob and re-add it through the generated file. Proving the generated
+file's coverage needs a separate build whose input has `source(none)` and only the generated file.
+
 `@source` paths resolve relative to the CSS file that contains them.
 
 The probe files were deleted after the run.
