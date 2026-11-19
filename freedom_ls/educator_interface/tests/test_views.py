@@ -9183,7 +9183,7 @@ def test_the_content_panel_shows_its_outline_only_for_an_available_course(
     )
 
     panel = document.cssselect("section[data-panel='content']")[0]
-    assert (len(panel.cssselect("#course-outline-caption")) == 1) is available
+    assert (len(panel.cssselect("#outline-table-caption")) == 1) is available
     assert (len(panel.cssselect("button[hx-get]")) > 0) is available
     assert (len(panel.cssselect("[data-testid='preview-withheld']")) == 1) is (
         not available
