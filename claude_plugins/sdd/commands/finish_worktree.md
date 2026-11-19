@@ -28,18 +28,31 @@ On `main` or `master`, stop: this command runs in a feature worktree only.
 # Step 0: Pre-step rebase
 
 Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps with `<tier>`:
-`full`. Any status other than `ok` is this command's own status; relay its reason and stop.
+`none`. The tests run once, in Step 1. Any status other than `ok` is this command's own status;
+relay its reason and stop.
 
-Two notes for its conflict resolution:
+A conflict in `spec_dd/1. next/` or in the spec's own directory resolves by the list in
+`claude_plugins/sdd/resources/rebase_auto_resolve.md`.
 
-- A conflict in `spec_dd/1. next/roadmap.md`, `spec_dd/1. next/priority.md` or
-  `spec_dd/1. next/roadmap_diagrams/` means two specs started or finished close together, or the
-  priorities changed: keep both sides' spec-bullet removals and priority moves, take either
-  side of "Up next" and the SVGs, then run `python3 claude_plugins/sdd/scripts/roadmap.py
-  "spec_dd/1. next/roadmap.md"`, which regenerates both.
-- A PR that was squash-merged on GitHub replays as conflicts, because the replayed commits are not
-  patch-identical to the squash. The rebase returns `blocked`; the human fix is to point the branch
-  at `origin/main` (the content is already there) and re-run. Do not automate that.
+A PR that was squash-merged on GitHub replays as conflicts, because the replayed commits are not
+patch-identical to the squash. The rebase returns `blocked`; the human fix is to point the branch
+at `origin/main` (the content is already there) and re-run. Do not automate that.
+
+## Rebase results
+
+Every rebase this command runs, here and in Step 7's loop, is read the same way:
+
+- `blocked` on a conflict outside the auto-resolve list → `status: blocked`, with its reason.
+- `failed · reason: push rejected: stale lease` → `git fetch origin`, then a pass of Step 7's
+  main-moved loop with blocker `stale lease`.
+- `blocked · reason: force-push needed: <command>` →
+  `status: paused · reason: force-push needed: <command>`. Re-running this command after the user
+  runs that command continues: the rebase finds the branch up to date.
+
+Any `paused` return first adds its item to `todo.md`, wherever the spec directory is at that point
+(`spec_dd/2. in progress/` or `spec_dd/3. done/`). Delegate to `sdd:sdd-mechanic`: read
+`claude_plugins/sdd/commands/protected/update_todo.md` and follow its steps with `<todo-path>` and
+`add_first:"user|<what to do>, then re-run `/sdd:finish_worktree`"`.
 
 # Step 0.5: Main-worktree preflight
 
@@ -59,25 +72,34 @@ otherwise makes local `main` equal `origin/main` (pushing when it is ahead, fast
 is behind). It never touches untracked files, and it prints `carried: <n>` for uncommitted
 tracked files the incoming commits leave alone; those do not block and need no mention until Step 8.
 
-- exit 0 → continue.
-- any other exit → `status: blocked · reason: <the script's output, verbatim>`. Stop.
+- exit 0 → continue. Keep any `synced: pushed` and `pushed:` lines for Step 8.
+- exit 4 (an uncommitted change on `main` to a file the landing changes) or any other exit →
+  `status: blocked · reason: <the script's output, verbatim>`. Stop.
 
 Running this before anything is committed finds a parked operation on `main` before the branch is
 touched, and keeps Step 7 from needing a second rebase when local `main` was ahead of `origin`.
 
-# Step 1: Full tier
+# Step 1: Checkpoint tier
 
-When Step 0's rebase reported `tier: full`, the branch is proven. Otherwise, first rebuild
-generated assets: read `.claude/sdd/config.md` (and `.claude/sdd/config.local.md`, whose values take
-precedence) under `## Test Hooks`, and when the `Pre-test rebuild` value is a non-blank path, run it
-from the project root. A non-zero exit is `status: failed · reason: pre-test rebuild failed: <its
-output>`. Blank, or the key absent, skips the rebuild. Built assets such as compiled CSS are often
-gitignored, so a branch that needed no rebase can still hold output older than its templates.
+This step is the checkpoint run. Step 7's main-moved loop follows it again after each rebase.
 
-Then delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/commands/protected/run_test_tier.md` and follow it with
-`<tier>`: `full`, returning the summary line and any failing test names. A failure is `status: failed · reason: full
-run failed before landing: <tests>`; nothing is moved or landed until a human fixes it. A rebased
-branch has also passed pre-commit; there is nothing to re-run for that.
+1. Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/commands/protected/run_test_tier.md` and
+   follow it with `<tier>`: `checkpoint` as far as its "Resolve the checkpoint tier" step, and
+   return the `tier:`, `diff:` and `why:` lines. `none` → the report line is
+   `tier: none · summary: <why>`; nothing else runs.
+2. `targeted` or `full` → first rebuild generated assets: read `.claude/sdd/config.md` (and
+   `.claude/sdd/config.local.md`, whose values take precedence) under `## Test Hooks`, and when the
+   `Pre-test rebuild` value is a non-blank path, run it from the project root. A non-zero exit is
+   `status: failed · reason: pre-test rebuild failed: <its output>`. Blank, or the key absent,
+   skips the rebuild. Built assets such as compiled CSS are often gitignored, so a branch that
+   needed no rebase can still hold output older than its templates. Then delegate to
+   `sdd:sdd-mechanic`: follow `run_test_tier.md` with the `<tier>` and `<diff>` as resolved,
+   returning the report line and any failing test names.
+3. Keep every report line for Step 8.
+
+A failure is `status: failed · reason: checkpoint run failed before landing: <tests>`; nothing is
+moved or landed until a human fixes it. A rebased branch has also passed pre-commit; there is
+nothing to re-run for that.
 
 # Step 2: Tear down any per-worktree resources
 
@@ -155,17 +177,38 @@ and any `.claude/settings.json` change from Step 5.
    (never with force) and fast-forwards the main worktree to what `origin` now holds. A rejected
    push changes nothing anywhere.
 
-3. **exit 7** → `origin/main` moved after Step 0. Read the `Rebase command` value from
-   `.claude/sdd/config.md` (and `.claude/sdd/config.local.md`, whose values take precedence) under
-   `## Rebase Hooks`, exactly as `pre_step_rebase.md` Step 1 does, follow that file once with `<tier>`: `full`, then run
-   `<script-path> land` again. Do not re-run the whole pre-step rebase: the spec directory is now
-   under `3. done/`, so its skip rule would return early, and an upstream-change review is
-   meaningless for a finished spec. A second exit 7 → `status: blocked · reason: origin/main keeps
-   moving; re-run when it settles`.
+3. **exit 7** → `origin/main` moved after Step 0.5. Run the main-moved loop below.
 
-4. **exit 3, 6 or 8** → `status: blocked · reason: <the script's output, verbatim>`. The close-out
-   commits are already on the branch and pushed, so re-running this command later picks up here:
-   Steps 3 to 6 find nothing left to do.
+4. **exit 3, 4, 6 or 8** → `status: blocked · reason: <the script's output, verbatim>`. The
+   close-out commits are already on the branch and pushed, so re-running this command later picks
+   up here: Steps 3 to 6 find nothing left to do.
+
+## The main-moved loop
+
+A pass is one turn of the loop. A pass is entered with a blocker: `origin/main` (exit 7 from
+`land`) or `stale lease` (a rebase reported it).
+
+```
+blocker = none; in_a_row = 0
+on each pass, entered with its <blocker>:
+    in_a_row = in_a_row + 1 if <blocker> == blocker else 1; blocker = <blocker>
+    # the fifth occurrence of one blocker is not retried
+    if in_a_row == 5: status: blocked · reason: <blocker> moved 5 times in a row
+    follow the Rebase command (## Rebase Hooks) with <tier>: none and <auto-resolve>:
+        the list from rebase_auto_resolve.md, <own-spec-dir> = the spec's directory under
+        spec_dd/3. done/ once Step 4 moved it, else its directory under spec_dd/2. in progress/
+    map its result as Step 0's "Rebase results" does
+    follow the checkpoint run (Step 1)
+    <script-path> land        → exit 0 leaves the loop; exit 7 is the next pass
+```
+
+Read the `Rebase command` value from `.claude/sdd/config.md` (and `.claude/sdd/config.local.md`,
+whose values take precedence) under `## Rebase Hooks`, exactly as `pre_step_rebase.md` Step 1 does.
+With `origin/main` as the blocker the reason reads `origin/main moved 5 times in a row`.
+
+Do not use the pre-step rebase here: it skips a spec already under `3. done/`, and no
+upstream-change review runs for a finished spec. After the loop's exit 0, any exit other than 7 is
+handled as item 4 above.
 
 # Step 8: Verify and report
 
@@ -181,7 +224,9 @@ Report:
 
 - the landed commit and the main worktree path the script printed
 - the PR number and state from Step 7, if any
-- whether the item 3 retry rebase was needed
+- the number of passes of the main-moved loop, and each auto-resolved conflict path with its side
+- the script's `synced: pushed` and `pushed:` lines, as "main pushed"
+- every test report line from Step 1
 - the `carried:` count, when the script printed one
 - the leftover batch worktrees removed, if any
 - that the worktree directory and the branch still exist; removing them is the `(user)` item that
@@ -190,7 +235,7 @@ Report:
 ## Return contract
 
 ```
-status: ok|failed|blocked · landed: yes|nothing|no · main: <sha> · reason: <short>
+status: ok|failed|blocked|paused · landed: yes|nothing|no · main: <sha> · reason: <short>
 ```
 
 `landed: nothing` means the branch was already contained in `origin/main` (for example, a PR

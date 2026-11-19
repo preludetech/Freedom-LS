@@ -28,3 +28,29 @@ def test_implement_plan_asks_for_the_full_tier_once() -> None:
 
 def test_plan_from_spec_does_not_promise_the_full_suite() -> None:
     assert "full test suite passing" not in (COMMANDS / "plan_from_spec.md").read_text()
+
+
+def test_finish_worktree_never_pairs_a_tier_input_with_full() -> None:
+    lines = (COMMANDS / "finish_worktree.md").read_text().splitlines()
+
+    assert [line for line in lines if TIER_FULL.search(line)] == []
+
+
+def test_finish_worktree_step_one_is_the_checkpoint_tier() -> None:
+    lines = (COMMANDS / "finish_worktree.md").read_text().splitlines()
+
+    assert "# Step 1: Checkpoint tier" in lines
+
+
+@pytest.mark.parametrize(
+    "wording",
+    [
+        "origin/main moved 5 times in a row",
+        "force-push needed:",
+        "stale lease",
+        "rebase_auto_resolve.md",
+        "status: ok|failed|blocked|paused",
+    ],
+)
+def test_finish_worktree_spells_the_wording(wording: str) -> None:
+    assert wording in (COMMANDS / "finish_worktree.md").read_text()
