@@ -85,7 +85,6 @@ from freedom_ls.educator_interface.tests.interface_walk import (
 from freedom_ls.educator_interface.views import (
     CohortDataTable,
     CourseDataTable,
-    active_status_badge,
     learner_status_badge,
 )
 from freedom_ls.form_engine.factories import (
@@ -7551,18 +7550,6 @@ def test_learner_status_badge_has_one_label_and_tone_per_state(
     mock_site_context, state: str, label: str, tone: str
 ):
     badge = learner_status_badge(_learner_in_state(state))
-
-    assert (badge.label, badge.tone) == (label, tone)
-
-
-@pytest.mark.parametrize(
-    ("is_active", "label", "tone"),
-    [(True, "Active", "success"), (False, "Inactive", "muted")],
-)
-def test_active_status_badge_has_one_label_and_tone_per_state(
-    is_active: bool, label: str, tone: str
-):
-    badge = active_status_badge(is_active)
 
     assert (badge.label, badge.tone) == (label, tone)
 
