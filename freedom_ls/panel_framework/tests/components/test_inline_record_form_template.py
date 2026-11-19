@@ -2,6 +2,7 @@ import lxml.html
 
 from django import forms
 from django.template.loader import render_to_string
+from django.test import override_settings
 
 from ..helpers import normalised_form_markup
 
@@ -91,8 +92,24 @@ def _render(form: forms.Form) -> str:
     )
 
 
+def _render_golden_candidate() -> str:
+    # The golden markup holds heroicons' SVGs, so pin the set: a concrete project
+    # running this suite may configure another one.
+    with override_settings(FREEDOM_LS_ICON_SET="heroicons"):
+        return _render(_TextFieldsForm())
+
+
 def test_a_form_without_a_file_field_renders_the_golden_markup() -> None:
-    html = _render(_TextFieldsForm())
+    html = _render_golden_candidate()
+
+    assert normalised_form_markup(html) == normalised_form_markup(
+        GOLDEN_INLINE_FORM_WITHOUT_FILE_FIELD
+    )
+
+
+@override_settings(FREEDOM_LS_ICON_SET="phosphor")
+def test_the_golden_comparison_holds_when_the_project_uses_another_icon_set() -> None:
+    html = _render_golden_candidate()
 
     assert normalised_form_markup(html) == normalised_form_markup(
         GOLDEN_INLINE_FORM_WITHOUT_FILE_FIELD

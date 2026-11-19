@@ -2,6 +2,7 @@ import lxml.html
 
 from django import forms
 from django.template.loader import render_to_string
+from django.test import override_settings
 
 from ..helpers import normalised_form_markup
 
@@ -248,16 +249,32 @@ def test_a_form_without_a_file_field_declares_no_encoding() -> None:
     assert form.get("enctype") is None
 
 
+def _render_form_without_file_field() -> str:
+    # The golden markup holds heroicons' SVGs, so pin the set: a concrete project
+    # running this suite may configure another one.
+    with override_settings(FREEDOM_LS_ICON_SET="heroicons"):
+        return render_to_string(
+            "panel_framework/modal/form.html",
+            {
+                "form": _TextFieldsForm(),
+                "form_title": "Add",
+                "action_url": "/x",
+                "submit_buttons": [{"label": "Save", "variant": "primary"}],
+            },
+        )
+
+
 def test_a_form_without_a_file_field_renders_as_it_always_did() -> None:
-    html = render_to_string(
-        "panel_framework/modal/form.html",
-        {
-            "form": _TextFieldsForm(),
-            "form_title": "Add",
-            "action_url": "/x",
-            "submit_buttons": [{"label": "Save", "variant": "primary"}],
-        },
+    html = _render_form_without_file_field()
+
+    assert normalised_form_markup(html) == normalised_form_markup(
+        GOLDEN_FORM_WITHOUT_FILE_FIELD
     )
+
+
+@override_settings(FREEDOM_LS_ICON_SET="phosphor")
+def test_the_golden_comparison_holds_when_the_project_uses_another_icon_set() -> None:
+    html = _render_form_without_file_field()
 
     assert normalised_form_markup(html) == normalised_form_markup(
         GOLDEN_FORM_WITHOUT_FILE_FIELD
