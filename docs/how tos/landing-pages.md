@@ -16,7 +16,8 @@ FLS ships nothing campaign-specific because there is no copy it could ship that 
 a campaign it knows nothing about.
 
 `<c-page>`, `<c-button>`, `<c-callout>`, `<c-chip>` and `<c-media-card>` are available and cover the
-small pieces. There are no hero, feature-grid, testimonial, FAQ or CTA-band components yet. Build
+small pieces. `<c-callout>` takes `tone` (`info`, `success`, `warning` or `error`; default `info`),
+not `level`. There are no hero, feature-grid, testimonial, FAQ or CTA-band components yet. Build
 those in your own app for now. `<c-accordion>` and `<c-pull-quote>` look like matches but belong to
 `content_engine`: they are tied to its sanitiser allowlist and expect a `content_instance`, so they
 will not work in a plain template.
