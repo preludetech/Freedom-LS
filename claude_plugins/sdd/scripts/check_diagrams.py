@@ -31,10 +31,19 @@ EXIT_USAGE = 64
 # files lists all of them.
 DIAGRAM_SOURCES: dict[str, tuple[str, ...]] = {
     "document": ("commands/document.md",),
+    "rebase": (
+        "commands/protected/pre_step_rebase.md",
+        "resources/upstream_change_review.md",
+    ),
+    "start": ("commands/start.md",),
+    "spec_from_idea": ("commands/spec_from_idea.md",),
+    "plan_from_spec": ("commands/plan_from_spec.md",),
 }
 # Sources named by the project's config instead of living in this plugin:
 # diagram -> (section, key) pairs in .claude/sdd/config.md.
-CONFIG_SOURCES: dict[str, tuple[tuple[str, str], ...]] = {}
+CONFIG_SOURCES: dict[str, tuple[tuple[str, str], ...]] = {
+    "rebase": (("Rebase Hooks", "Rebase command"),),
+}
 EXEMPT = frozenset({"overview"})
 
 FENCED_BLOCK = re.compile(r"^(```|~~~).*?^\1", re.MULTILINE | re.DOTALL)
