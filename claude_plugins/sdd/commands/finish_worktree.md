@@ -1,6 +1,6 @@
 ---
 description: Close out the current worktree: rebase, archive the spec, land the close-out on main and sync the main worktree
-allowed-tools: Bash, Read, Glob, Skill, Agent
+allowed-tools: Bash, Read, Glob, Skill, Agent, AskUserQuestion
 ---
 
 This command finishes a spec's worktree. It runs on the feature branch: it rebases the branch,
@@ -14,10 +14,12 @@ Two rules hold throughout:
 - Conflicts are only ever resolved here, in the feature worktree. `main` only moves by
   fast-forward, only to a commit `origin` already holds.
 - The main worktree is never cleaned up from this command. Never run `merge --abort`, `stash`,
-  `reset` or `checkout` there. Uncommitted work there stops this command only when it touches a
-  file the landing changes, or when an operation is in progress; then say what is parked, and a
-  human decides what it means. Any other uncommitted work on `main` is carried across the
-  fast-forward untouched and is no reason to stop or to ask.
+  `reset` or `checkout` there. The one exception is "A dirty main worktree" below: with the user's
+  consent, this command commits the named paths in the main worktree and pushes `main`. Uncommitted
+  work there stops this command only when it touches a file the landing changes, or when an
+  operation is in progress; then say what is parked, and a human decides what it means. Any other
+  uncommitted work on `main` is carried across the fast-forward untouched and is no reason to stop
+  or to ask.
 
 ```
 git branch --show-current
@@ -73,8 +75,9 @@ is behind). It never touches untracked files, and it prints `carried: <n>` for u
 tracked files the incoming commits leave alone; those do not block and need no mention until Step 8.
 
 - exit 0 → continue. Keep any `synced: pushed` and `pushed:` lines for Step 8.
-- exit 4 (an uncommitted change on `main` to a file the landing changes) or any other exit →
-  `status: blocked · reason: <the script's output, verbatim>`. Stop.
+- exit 4 (an uncommitted change on `main` to a file the landing changes) → "A dirty main
+  worktree" below.
+- any other exit → `status: blocked · reason: <the script's output, verbatim>`. Stop.
 
 Running this before anything is committed finds a parked operation on `main` before the branch is
 touched, and keeps Step 7 from needing a second rebase when local `main` was ahead of `origin`.
@@ -179,14 +182,17 @@ and any `.claude/settings.json` change from Step 5.
 
 3. **exit 7** → `origin/main` moved after Step 0.5. Run the main-moved loop below.
 
-4. **exit 3, 4, 6 or 8** → `status: blocked · reason: <the script's output, verbatim>`. The
+4. **exit 4** → "A dirty main worktree" below.
+
+5. **exit 3, 6 or 8** → `status: blocked · reason: <the script's output, verbatim>`. The
    close-out commits are already on the branch and pushed, so re-running this command later picks
    up here: Steps 3 to 6 find nothing left to do.
 
 ## The main-moved loop
 
 A pass is one turn of the loop. A pass is entered with a blocker: `origin/main` (exit 7 from
-`land`) or `stale lease` (a rebase reported it).
+`land`), `stale lease` (a rebase reported it) or `main worktree commit` (the main worktree commit
+below was pushed).
 
 ```
 blocker = none; in_a_row = 0
@@ -199,7 +205,8 @@ on each pass, entered with its <blocker>:
         spec_dd/3. done/ once Step 4 moved it, else its directory under spec_dd/2. in progress/
     map its result as Step 0's "Rebase results" does
     # nothing lands before the PR check and the close-out commits
-    entered from Step 0: leave the loop and continue at Step 0.5
+    entered before Step 7 (from Step 0, or from Step 0.5's exit 4): leave the loop and continue
+        at Step 0.5
     follow the checkpoint run (Step 1)
     <script-path> land        → exit 0 leaves the loop; exit 7 is the next pass
 ```
@@ -210,7 +217,41 @@ With `origin/main` as the blocker the reason reads `origin/main moved 5 times in
 
 Do not use the pre-step rebase here: it skips a spec already under `3. done/`, and no
 upstream-change review runs for a finished spec. After the loop's exit 0, any exit other than 7 is
-handled as item 4 above.
+handled as items 4 and 5 above.
+
+## A dirty main worktree
+
+Followed on exit 4 from `sync` (Step 0.5) or `land` (Step 7). `<paths>` are the script's `dirty:`
+lines and `<main>` is its `main-worktree:` line.
+
+1. Ask with `AskUserQuestion`: "The main worktree has uncommitted changes to files this landing
+   changes: `<paths>`. Another process may be working on them. Committing them here also pushes
+   that commit to `origin/main`." Options: "Commit and push them to main for me", "I'll commit
+   main, then continue".
+2. **I'll commit main, then continue** → return
+   `status: paused · reason: main worktree has uncommitted changes: <paths>`.
+3. **Commit and push them to main for me** → commit exactly those paths, as their own commit. The
+   message is fixed text, so the shell expands no branch name or path, and each path is its own
+   single-quoted argument after `--`:
+
+   ```
+   git -C '<main>' commit --only -m 'wip: uncommitted changes on main before a landing' -- '<path>' ['<path>' ...]
+   git -C '<main>' pull --rebase origin main
+   ```
+
+   `--only` commits the named paths and leaves every other change in the main worktree as it is.
+   - A hook rejects the commit → `paused` with its output. Never `--no-verify`.
+   - Git refuses to start `pull --rebase` because the main worktree holds other uncommitted
+     tracked changes → `status: paused · reason: main worktree commit <sha> made; other
+     uncommitted changes there block the rebase onto origin/main: <git's message>`. The commit
+     stays on local `main`.
+   - `pull --rebase` stops on a conflict → `git -C '<main>' rebase --abort`, then
+     `status: paused · reason: main worktree commit conflicts with origin/main: <paths>`. The
+     commit stays on local `main`.
+4. Otherwise `git -C '<main>' push origin main`, record "main-worktree commit <sha>: <paths>" for
+   Step 8, and enter the main-moved loop with blocker `main worktree commit`. A pass entered before
+   Step 7 rebases and continues at Step 0.5; a pass entered from Step 7 follows the checkpoint run
+   and lands.
 
 # Step 8: Verify and report
 
@@ -227,6 +268,7 @@ Report:
 - the landed commit and the main worktree path the script printed
 - the PR number and state from Step 7, if any
 - the number of passes of the main-moved loop, and each auto-resolved conflict path with its side
+- the main-worktree commit, when one was made: "main-worktree commit <sha>: <paths>"
 - the script's `synced: pushed` and `pushed:` lines, as "main pushed"
 - every test report line from Step 1
 - the `carried:` count, when the script printed one

@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.plugin_markdown import code_fragments
+
 pytestmark = pytest.mark.dev_tooling
 
 COMMANDS = Path(__file__).resolve().parents[1] / "claude_plugins/sdd/commands"
@@ -54,3 +56,32 @@ def test_finish_worktree_step_one_is_the_checkpoint_tier() -> None:
 )
 def test_finish_worktree_spells_the_wording(wording: str) -> None:
     assert wording in (COMMANDS / "finish_worktree.md").read_text()
+
+
+def test_finish_worktree_allows_asking_the_user() -> None:
+    text = (COMMANDS / "finish_worktree.md").read_text()
+    frontmatter = text.split("---")[1]
+    allowed = next(
+        line for line in frontmatter.splitlines() if line.startswith("allowed-tools:")
+    )
+
+    assert "AskUserQuestion" in allowed.split(": ", 1)[1].split(", ")
+
+
+@pytest.mark.parametrize(
+    "wording",
+    [
+        "Commit and push them to main for me",
+        "I'll commit main, then continue",
+        "main worktree has uncommitted changes:",
+    ],
+)
+def test_finish_worktree_spells_the_dirty_main_wording(wording: str) -> None:
+    assert wording in (COMMANDS / "finish_worktree.md").read_text()
+
+
+@pytest.mark.parametrize("forbidden", ["stash", "--no-verify"])
+def test_finish_worktree_runs_no_git_command_with(forbidden: str) -> None:
+    fragments = code_fragments((COMMANDS / "finish_worktree.md").read_text())
+
+    assert [f for f in fragments if "git" in f and forbidden in f] == []
