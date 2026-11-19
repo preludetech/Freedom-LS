@@ -21,6 +21,8 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### Ready to start
 
+- 🔴 High · `multi-step-course-applications-1-review-states` (Multi-step course applications)
+- 🔴 High · `multi-step-course-applications-10-recommendations-from-answers` (Multi-step course applications)
 - 🟠 Medium · `content-widget-longer-audio` (Audio content widgets)
 - 🟠 Medium · `content-widget-sayit-reveal-2-say-it-reveal` (Audio content widgets)
 - 🟠 Medium · `content-widget-sayit-reveal-4-audio-access-control` (Audio content widgets)
@@ -57,7 +59,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### Needs work on main first
 
-- 🔴 High · `multi-step-course-applications` (Forms and applications): cut it with `/sdd:roadmap multi-step-course-applications` (its idea lists six parts).
+None.
 
 ![Up next](roadmap_diagrams/up-next.svg)
 
@@ -187,19 +189,39 @@ Learners publish a profile to help them find work, and visitors browse an index 
 - Out of scope: educator views of profiles, Open Badges, generated completion certificates.
 - References: `research_existing_profile_code.md` and `research_comparable_systems.md` in the parent.
 
-## Forms and applications
+## Multi-step course applications
 
 Priority: 🔴 High
 
-Form engine features and the course application flow.
+Applications become steps an applicant works through over weeks, decided by a deployment's rules and cleared by organisation reviewers. Parent: `multi-step-course-applications`.
 
-- `form-engine-branch-logic-2-and-conditions` — **ready** — Show a page, question or content block only when several conditions all hold.
-- `multi-step-course-applications` — **ready** — Applicants complete requirements in any order, with reviewer verdicts, uploads and help requests. Before starting: cut it with `/sdd:roadmap multi-step-course-applications` (its idea lists six parts).
+- `multi-step-course-applications-1-review-states` — **ready** — Applications get a state and an organisation; applicants see where theirs stands and can withdraw.
+- `multi-step-course-applications-2-reviewers-and-inbox` — **blocked** by `multi-step-course-applications-1-review-states`, `educator-interface-refactor-1-scaffolding-and-common` — Organisation reviewers get an applications inbox and review screen, approve or reject, and move applications between organisations.
+- `multi-step-course-applications-3-approval-outcome` — **blocked** by `multi-step-course-applications-2-reviewers-and-inbox` — A deployment seam decides what approval does; FLS's default registers the applicant for the course.
+- `multi-step-course-applications-4-reopen-form` — **blocked** by `multi-step-course-applications-1-review-states` — Applicants reopen their submitted application form, answers prefilled, until it is approved.
+- `multi-step-course-applications-5-requirements-and-resolver` — **blocked** by `multi-step-course-applications-4-reopen-form` — Applicants work through a requirements page; a deployment resolver, or the course's fixed list, decides the requirements.
+- `multi-step-course-applications-6-reviewer-verdicts` — **blocked** by `multi-step-course-applications-3-approval-outcome`, `multi-step-course-applications-5-requirements-and-resolver` — Reviewers accept or turn down requirements with a reason, preview the consequence; requirements hold back approval or registration.
+- `multi-step-course-applications-7-upload-requirements` — **blocked** by `multi-step-course-applications-6-reviewer-verdicts` — Applicants upload documents for requirements, re-upload when asked, and see past uploads; reviewers see every version.
+- `multi-step-course-applications-8-choices` — **blocked** by `multi-step-course-applications-6-reviewer-verdicts` — The resolver offers either-or requirement groups; applicants switch options until one is accepted.
+- `multi-step-course-applications-9-help-requests` — **blocked** by `multi-step-course-applications-2-reviewers-and-inbox` — Applicants ask for a callback from any application page; reviewers are notified and a webhook feeds the CRM.
+- `multi-step-course-applications-10-recommendations-from-answers` — **ready** — A deployment producer turns application answers into recommended courses for the applicant.
 
-![Forms and applications](roadmap_diagrams/forms-and-applications.svg)
+![Multi-step course applications](roadmap_diagrams/multi-step-course-applications.svg)
 
 **Notes**
-- `multi-step-course-applications` builds on `educator-interface-full-polish/application-review-ui/`.
+- Order: `multi-step-course-applications-1-review-states` and `multi-step-course-applications-10-recommendations-from-answers` start now. Then `multi-step-course-applications-2-reviewers-and-inbox` and `multi-step-course-applications-4-reopen-form` run in parallel. `multi-step-course-applications-6-reviewer-verdicts` needs `multi-step-course-applications-3-approval-outcome` and `multi-step-course-applications-5-requirements-and-resolver`; `multi-step-course-applications-7-upload-requirements` and `multi-step-course-applications-8-choices` follow it, and `multi-step-course-applications-9-help-requests` can start once `multi-step-course-applications-2-reviewers-and-inbox` lands.
+- Collisions: `multi-step-course-applications-7-upload-requirements` and `multi-step-course-applications-8-choices` both change the reconcile step and the requirements page; whichever lands second rebases. `multi-step-course-applications-2-reviewers-and-inbox` adds `panels/applications/` and a line in `interface_config`, which the educator-interface refactor also edits.
+- Decided: no workflow graph. The resolver is a pure function of the application's data, re-run after every event by one reconcile function; superseded requirements are kept.
+- Decided: states are `TextChoices` and service functions, no FSM library. Reviewer and system actions go in `audit_log`, never the applicant's name. No `changes_requested` or `under_review` states.
+- Decided: reviewers hold a new organisation role checked with `can()`; each inbox is per organisation; the Django admin stays read-only.
+- Decided: what approval does is a deployment seam whose default registers the applicant. Anything beyond the application form, and approval itself, needs a claimed account.
+- Assumed: a new application takes the course's only owning organisation, else the site default. Re-applying after reject or withdraw makes a new application. No `application.*` webhooks except `application.help_requested`.
+- Open questions:
+  - who sees an organisation move in the audit log (`multi-step-course-applications-2-reviewers-and-inbox`);
+  - `add_learner` or `ensure_learner` (`multi-step-course-applications-3-approval-outcome`);
+  - what a resolver failure does (`multi-step-course-applications-5-requirements-and-resolver`).
+- Out of scope: outside systems reporting a step done, provider lists and distance ranking, more than one sign-off. `file-scanning` (no spec yet) must land before production takes medical or identity documents.
+- References: `research_review_foundations.md` and `research_help_and_recommendations.md` in the parent.
 
 ## Learner interface features
 
@@ -277,6 +299,16 @@ Due dates and course time limits, with consequences, pause, reminders and at-ris
   - reminder offsets and the educator rollup (`deadlines-5-reminders`);
   - the due-soon window (`deadlines-7-educator-at-risk`).
 - Out of scope: recertification, retakes, line-manager escalation, score penalties, SMS, calendar export.
+
+## Forms and applications
+
+Priority: 🟠 Medium
+
+Form engine features and the course application flow.
+
+- `form-engine-branch-logic-2-and-conditions` — **ready** — Show a page, question or content block only when several conditions all hold.
+
+![Forms and applications](roadmap_diagrams/forms-and-applications.svg)
 
 ## User communication
 
@@ -356,7 +388,6 @@ Org admins manage learners, cohorts, registrations and staff. Parent: `educator-
 **Notes**
 - Decided: deactivate, never delete. Admins grant only their own level and below, inside their own scope. Only `site_admin` grants `site_admin`.
 - Access rules: anything outside the user's scope returns 404. An action the user has lost permission for returns 403 with a message. Controls the user can't use are hidden. No new dependencies.
-- Not yet cut: `educator-interface-full-polish/application-review-ui/`, the application review workflow (a state machine on `CourseApplication`, a reviewer role, an inbox).
 - References: the mockups in `educator-interface-full-polish/Educator LMS Interface Design/` (layout only, not scope), and `brand-guidelines` and `fls-dev:panel-framework`.
 
 ## Tooling and operations

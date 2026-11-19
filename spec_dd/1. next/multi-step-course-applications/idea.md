@@ -1,3 +1,7 @@
+> This idea has been cut into 10 specs. Their order, dependencies, the decisions already taken and
+> the assumptions are in the "Multi-step course applications" section of `spec_dd/1. next/roadmap.md`. Start there.
+> The text below is the original brief and is kept as written.
+
 # Multi-step course applications
 
 Let a course's application be a set of steps the applicant works through in any order, over weeks
