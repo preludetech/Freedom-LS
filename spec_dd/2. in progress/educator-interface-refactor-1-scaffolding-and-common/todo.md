@@ -10,7 +10,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 2. Plan
 
-- [ ] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
+- [x] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
 - [ ] (user) Review both plans and edit where needed
 
 ## 3. Implementation and QA
@@ -23,6 +23,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 4. Documentation and pull request
 
 - [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [ ] (cmd) Run `/sdd:document`: correct the stale sibling ideas in `spec_dd/1. next/` (spec "Documentation and downstream"): specs 2 and 6 take `LazyBodyPanel` and `render_region` from `panel_framework.lazy_panels`; spec 3 no longer expects `_uuid_param` or `ShowInactiveFilter` in `common`; specs 5 and 6 find only `EducatorBulkAction` and `CoursePickerMixin` in `common/bulk_actions.py`
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
