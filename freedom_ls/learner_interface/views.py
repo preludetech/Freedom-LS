@@ -1486,6 +1486,16 @@ def view_course_item(request, course_slug, index):
         gated_record if paused else _ensure_player_course_progress(request.user, course)
     )
 
+    # Finalise any stale incomplete attempt for a submit-on-exit form before the
+    # outline is built, so the outline shows the finalised state. No-op for
+    # save-on-exit forms.
+    if isinstance(current_item, Form) and course_progress is not None and not paused:
+        finalise_stale_incomplete(
+            course_progress,
+            current_collection_item,
+            kept_if_untouched_since=_latest_pause_start(course_progress),
+        )
+
     # Sequential-unlock gate. Built here rather than inside _player_chrome_context
     # so the decision is made before anything is written, then handed on to the
     # chrome so the index is built once.
@@ -1804,15 +1814,6 @@ def view_form(
     incomplete_form_progress = None
     completed_form_progress = FormProgress.objects.none()
     if course_progress is not None:
-        # Finalise any stale incomplete attempt for submit-on-exit forms before
-        # reading progress state. No-op for save-on-exit forms.
-        if not paused:
-            finalise_stale_incomplete(
-                course_progress,
-                collection_item,
-                kept_if_untouched_since=_latest_pause_start(course_progress),
-            )
-
         # The learner's open attempt at this placement, if they have one. Not
         # created here -- the start screen reads, form_start writes.
         incomplete_form_progress = get_latest_incomplete(

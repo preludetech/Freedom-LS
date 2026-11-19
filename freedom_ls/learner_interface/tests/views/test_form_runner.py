@@ -4289,3 +4289,31 @@ def test_submit_and_exit_re_renders_a_rejected_page_along_the_path_its_saved_ans
 
     assert response.status_code == 422
     assert "Page 1 of 2" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_outline_on_finalising_response_shows_the_finalised_state(
+    mock_site_context, client
+):
+    """The start screen that finalises an abandoned submit-on-exit attempt draws the
+    outline from after the finalise. It used to show the item as in progress."""
+    user = UserFactory()
+    form = _make_quiz_form(submit_on_exit=True)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    response = client.get(
+        reverse(
+            "learner_interface:view_course_item",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    assert response.context["current_entry"]["status"] == "FAILED"
