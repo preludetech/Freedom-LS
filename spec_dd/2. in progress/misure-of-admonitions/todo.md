@@ -8,7 +8,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
 - [ ] (user) Review the spec and edit where needed; after substantial hand edits, run `/sdd:spec_review`
 - [ ] (user) Start PostgreSQL on port 6543, then re-run `bash .claude/fls-dev/scripts/install_dev.sh` from this worktree: the worktree setup could not create the branch database or run migrations
-- [ ] (user + cmd) Coordinate with extract_panels_framework-4-template-contract when the second of the two specs lands: drop its `panel-callout` primitive in favour of `panel-alert` (primitive list, terminology, HOST_CONTRACT.md rows, contract-test table, success-criteria grep, standalone dead-code list), and remove `panel-notice` from its non-primitive list. See spec "Documentation and downstream".
+- [ ] (user + cmd) Coordinate with extract_panels_framework-4-template-contract when the second of the two specs lands: its `panel-callout` primitive becomes the one this spec ships (token-utility default, no margin note), `panel-notice` leaves its non-primitive list, its HOST_CONTRACT.md row and contract-test row change, and its standalone dead-code list drops `cotton/callout.html`. See spec "Documentation and downstream".
 
 ## 2. Plan
 
