@@ -2988,7 +2988,7 @@ def test_the_dialog_after_add_and_add_another_offers_only_add_on_the_last_free_p
 
 
 @pytest.mark.django_db
-def test_add_and_add_another_on_the_last_free_place_saves_and_closes(
+def test_add_and_add_another_on_the_last_free_place_closes_the_dialog(
     mock_site_context: Site,
 ) -> None:
     parent = make_stub()
@@ -3003,4 +3003,20 @@ def test_add_and_add_another_on_the_last_free_place_saves_and_closes(
 
     assert response.status_code == 204
     assert "closeModal" in json.loads(response["HX-Trigger"])
+
+
+@pytest.mark.django_db
+def test_add_and_add_another_on_the_last_free_place_saves_the_entry(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    _add_another_entries(parent, 2)
+
+    fetch(
+        _add_another_path(parent),
+        method="post",
+        data={"title": "Last", "action": "add_another"},
+        htmx=True,
+    )
+
     assert StubEntry.objects.filter(parent=parent, title="Last").exists()
