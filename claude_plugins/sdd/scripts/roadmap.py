@@ -54,9 +54,9 @@ ENTRY_RE = re.compile(r"^- `(?P<dir>[^`]+)`")
 PRIORITY_LINE_RE = re.compile(r"^Priority: ")
 # One (colour, marker) per level, highest first; "Priority not set" has its own.
 PRIORITY_PALETTE = [
-    ("#dc2626", "🔴"),
-    ("#ea580c", "🟠"),
-    ("#ca8a04", "🟡"),
+    ("#991b1b", "🔴"),
+    ("#fb923c", "🟠"),
+    ("#facc15", "🟡"),
     ("#16a34a", "🟢"),
     ("#2563eb", "🔵"),
     ("#9333ea", "🟣"),
