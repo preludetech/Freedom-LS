@@ -11,6 +11,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### In progress
 
+- 🔴 High · `educator-interface-refactor-1-scaffolding-and-common` (Educator interface code layout, via `sacaa-compliance`)
 - 🔴 High · `sacaa-compliance-1-served-paper-record` (SACAA compliance)
 - 🔴 High · `extract_panels_framework-4-template-contract` (Panel framework extraction)
 - 🔴 High · `learner-profile-use-panels-framework-2-editable-list-panel` (Account area on panels)
@@ -18,7 +19,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### Ready to start
 
-- 🔴 High · `educator-interface-refactor-1-scaffolding-and-common` (Educator interface code layout, via `sacaa-compliance`)
 - 🔴 High · `learner-profile-use-panels-framework-3-account-page` (Account area on panels)
 - 🔴 High · `profile-picture-on-id-rows` (Learner public profiles)
 - 🟠 Medium · `content-widget-sayit-reveal-2-say-it-reveal` (Audio content widgets)
@@ -63,7 +63,7 @@ Priority: 🔴 High
 
 The educator interface's `views.py` and `actions.py` split into one `panels/<area>/` package per area, with tests mirrored. Parent: `educator-interface-refactor`.
 
-- `educator-interface-refactor-1-scaffolding-and-common` — **ready** — Creates `panels/` and `panels/common/` with the shared request, table, filter, action and report helpers, and their tests.
+- `educator-interface-refactor-1-scaffolding-and-common` — **in progress** — Creates `panels/` and `panels/common/` with the shared request, table, filter, action and report helpers, and their tests.
 - `educator-interface-refactor-2-dashboard-and-audit-log` — **blocked** by `educator-interface-refactor-1-scaffolding-and-common` — Moves the dashboard and audit log areas, including `HistoryPanel`, into `panels/`, with their tests.
 - `educator-interface-refactor-3-staff` — **blocked** by `educator-interface-refactor-1-scaffolding-and-common` — Moves the staff area's config, table, actions, role filter and quick view into `panels/staff/`, with its tests.
 - `educator-interface-refactor-4-course` — **blocked** by `educator-interface-refactor-1-scaffolding-and-common` — Moves the course area, including content preview, into `panels/course/`, with its tests.
