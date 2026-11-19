@@ -108,6 +108,7 @@
       "Bash(claude_plugins/sdd/scripts/compress_screenshots.sh:*)",
       "Bash(python3 claude_plugins/sdd/scripts/measure_prompt_size.py:*)",
       "Bash(python3 claude_plugins/sdd/scripts/full_run_record.py:*)",
+      "Bash(python3 claude_plugins/sdd/scripts/check_diagrams.py:*)",
       "Bash(claude_plugins/sdd/scripts/delete_sdd_work_files.sh:*)",
       "Bash(claude_plugins/sdd/scripts/land_on_main.sh:*)",
       "Bash(claude_plugins/fls-dev/scripts/concrete_pointer_move.sh:*)",

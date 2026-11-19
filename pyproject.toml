@@ -155,7 +155,13 @@ tests = [
     "tests/test_test_tiers.py",
     "tests/test_concrete_spec_integration.py",
     "tests/test_update_concrete_projects.py",
+    "tests/test_check_diagrams.py",
 ]
+
+# A diagram shows its command's steps; the check keeps the two in step.
+[[tool.test_tiers.tooling]]
+glob = "claude_plugins/**/*.drawio.svg"
+tests = ["tests/test_check_diagrams.py"]
 
 [tool.coverage.run]
 branch = true
