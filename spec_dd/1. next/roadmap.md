@@ -16,11 +16,11 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `extract_panels_framework-4-template-contract` (Panel framework extraction)
 - 🔴 High · `learner-profile-use-panels-framework-2-editable-list-panel` (Account area on panels)
 - 🔴 High · `learner-profile-use-panels-framework-3-account-page` (Account area on panels)
+- 🔴 High · `profile-picture-on-id-rows` (Learner public profiles)
 - 🟡 Low · `misure-of-admonitions` (Educator interface)
 
 ### Ready to start
 
-- 🔴 High · `profile-picture-on-id-rows` (Learner public profiles)
 - 🟠 Medium · `content-widget-longer-audio` (Audio content widgets)
 - 🟠 Medium · `content-widget-sayit-reveal-2-say-it-reveal` (Audio content widgets)
 - 🟠 Medium · `content-widget-sayit-reveal-4-audio-access-control` (Audio content widgets)
@@ -165,7 +165,7 @@ Priority: 🔴 High
 Learners publish a profile to help them find work, and visitors browse an index of them. Parent: `learner-public-profile`.
 
 - `learner-public-profile-2-profile-and-page` — **blocked** by `learner-profile-use-panels-framework-2-editable-list-panel`, `learner-profile-use-panels-framework-3-account-page` — Learners switch on a shareable public profile with blurb, work experience, place, open to work and links.
-- `profile-picture-on-id-rows` — **ready** — Educator dashboard, attention and audit log rows show the profile picture instead of initials.
+- `profile-picture-on-id-rows` — **in progress** — Educator dashboard, attention and audit log rows show the profile picture instead of initials.
 - `learner-public-profile-3-completed-courses` — **blocked** by `learner-public-profile-2-profile-and-page` — Courses a learner completed on the site appear on their public profile. The learner can hide each one.
 - `learner-public-profile-4-certificates` — **blocked** by `learner-public-profile-2-profile-and-page` — Learners upload self-reported certificates. Organisation staff upload certificates on the educator-interface learner page.
 - `learner-public-profile-5-index` — **blocked** by `learner-public-profile-3-completed-courses` — A public index of switched-on profiles, named per site, with search, filters and sorts.
