@@ -5,8 +5,9 @@
 #
 # Usage: upstream_change_scan.sh <old-base> <new-base> <spec-dir>
 #
-# Exit 0: no signal fired, nothing to review. Exit 2: at least one signal fired, a human-facing
-# review is due. Exit 64: bad arguments.
+# Exit 0: no signal fired, nothing to review. Exit 2: a signal fired and the upstream change holds
+# a path outside the spec root, so a human-facing review is due. Exit 3: a signal fired and every
+# upstream path is under the spec root, so nothing needs review. Exit 64: bad arguments.
 
 set -euo pipefail
 
@@ -24,6 +25,7 @@ NEW_BASE=$2
 SPEC_DIR=$3
 APP_STRUCTURE=docs/app_structure.md
 TRUNCATE_AT=400
+SPEC_ROOT=spec_dd
 
 for ref in "$OLD_BASE" "$NEW_BASE"; do
     if ! git rev-parse --verify --quiet "${ref}^{commit}" >/dev/null; then
@@ -37,15 +39,17 @@ if [[ ! -d "$SPEC_DIR" ]]; then
     exit 64
 fi
 
+# --no-renames lists a moved file under both its old and new path, so a code file moved under the
+# spec root still shows its removal from the code.
 upstream=()
 while IFS= read -r -d '' path; do
     upstream+=("$path")
-done < <(git diff -z --name-only "$OLD_BASE" "$NEW_BASE")
+done < <(git diff -z --no-renames --name-only "$OLD_BASE" "$NEW_BASE")
 
 own=()
 while IFS= read -r -d '' path; do
     own+=("$path")
-done < <(git diff -z --name-only "$NEW_BASE" HEAD)
+done < <(git diff -z --no-renames --name-only "$NEW_BASE" HEAD)
 
 # Strictly mechanical: any backticked span that names something on disk counts, whether or not
 # it was meant as a path. A directory span is expanded against upstream paths later, so a spec
@@ -167,6 +171,19 @@ for path in "${upstream[@]}"; do
     fi
 done
 
+# A change under the spec root cannot alter what a spec builds on, so a rebase that brought in
+# nothing else never pauses the spec.
+spec_only=no
+if [[ ${#upstream[@]} -gt 0 ]]; then
+    spec_only=yes
+    for path in "${upstream[@]}"; do
+        if [[ "$path" != "$SPEC_ROOT"/* ]]; then
+            spec_only=no
+            break
+        fi
+    done
+fi
+
 declare -A signal_set=()
 for path in "${overlap[@]}" "${shared_bases[@]}" "${conventions[@]}" "${done_specs[@]}"; do
     signal_set["$path"]=1
@@ -199,6 +216,7 @@ echo "- Old base: $OLD_BASE"
 echo "- New base: $NEW_BASE"
 echo "- Diffstat: $(git diff --stat "$OLD_BASE" "$NEW_BASE" | tail -1)"
 echo "- Commits: $(git rev-list --count "$OLD_BASE".."$NEW_BASE")"
+echo "- Spec-only: $spec_only"
 echo
 echo "## Commits"
 echo
@@ -240,6 +258,9 @@ else
 fi
 
 if [[ ${#signal_set[@]} -gt 0 ]]; then
+    if [[ "$spec_only" == yes ]]; then
+        exit 3
+    fi
     exit 2
 fi
 exit 0

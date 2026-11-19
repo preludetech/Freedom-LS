@@ -297,10 +297,64 @@ def test_new_done_spec_directory_flags_done_specs_signal(repo: GitRepo) -> None:
     result = _run_script([old_base, new_base, spec_dir], repo.path, repo.env)
 
     # Assert
-    assert result.returncode == 2
+    assert result.returncode == 3
+    assert "- Spec-only: yes" in result.stdout.splitlines()
     assert parse_section(result.stdout, "Done specs") == [
         "spec_dd/3. done/other_spec/idea.md"
     ]
+
+
+def test_done_spec_directory_with_code_path_is_not_spec_only(repo: GitRepo) -> None:
+    # Arrange
+    repo.write_text("unrelated.txt", "base\n")
+    old_base = repo.commit("base")
+    spec_dir = make_spec_dir(repo, "Nothing named here.\n")
+    repo.write_text("spec_dd/3. done/other_spec/idea.md", "an idea\n")
+    repo.write_text("unrelated.txt", "changed\n")
+    new_base = repo.commit("main finishes another spec and changes code")
+
+    # Act
+    result = _run_script([old_base, new_base, spec_dir], repo.path, repo.env)
+
+    # Assert
+    assert result.returncode == 2
+    assert "- Spec-only: no" in result.stdout.splitlines()
+
+
+def test_code_file_moved_into_done_spec_directory_is_not_spec_only(
+    repo: GitRepo,
+) -> None:
+    # Arrange
+    moved_body = "".join(f"line {n}\n" for n in range(20))
+    repo.write_text("lib/helper.py", moved_body)
+    old_base = repo.commit("base")
+    spec_dir = make_spec_dir(repo, "Nothing named here.\n")
+    (repo.path / "spec_dd/3. done/other_spec").mkdir(parents=True)
+    (repo.path / "lib/helper.py").rename(
+        repo.path / "spec_dd/3. done/other_spec/helper.py"
+    )
+    new_base = repo.commit("main moves a code file into a done spec")
+
+    # Act
+    result = _run_script([old_base, new_base, spec_dir], repo.path, repo.env)
+
+    # Assert
+    assert result.returncode == 2
+    assert "- Spec-only: no" in result.stdout.splitlines()
+
+
+def test_empty_upstream_change_is_not_spec_only(repo: GitRepo) -> None:
+    # Arrange
+    repo.write_text("unrelated.txt", "base\n")
+    old_base = repo.commit("base")
+    spec_dir = make_spec_dir(repo, "Nothing named here.\n")
+
+    # Act
+    result = _run_script([old_base, old_base, spec_dir], repo.path, repo.env)
+
+    # Assert
+    assert result.returncode == 0
+    assert "- Spec-only: no" in result.stdout.splitlines()
 
 
 def test_long_diff_is_truncated_with_a_marker(repo: GitRepo) -> None:

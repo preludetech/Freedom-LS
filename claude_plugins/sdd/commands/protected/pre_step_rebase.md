@@ -90,7 +90,9 @@ Delete any `.sdd-work/rebase_upstream_review.md` left behind by an earlier rebas
 fresh scan means a fresh review — a stale review from an interrupted run must never be reused
 against a different scan.
 
-- exit 0 → delete `.sdd-work/rebase_upstream_scan.md` by name. `status: ok · rebased: yes`. Stop.
+- exit 0 or 3 → delete `.sdd-work/rebase_upstream_scan.md` by name. `status: ok · rebased: yes`.
+  Stop. Exit 3 means every upstream path sits under the spec root, so no review worker is spawned
+  and nothing pauses.
 - exit 2 → go to Step 4.
 - any other exit → `status: failed · reason: upstream-change scan exited <code>: <its stderr>`.
   The caller stops.
