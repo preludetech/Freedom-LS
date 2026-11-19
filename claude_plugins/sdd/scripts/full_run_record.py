@@ -83,7 +83,7 @@ def read(project_root: Path) -> str | None:
         return None
     try:
         text = record_path(project_root, branch).read_text(encoding="utf-8").strip()
-    except (FileNotFoundError, UnicodeDecodeError):
+    except (OSError, UnicodeDecodeError):
         return None
     return text if FULL_SHA.fullmatch(text) else None
 

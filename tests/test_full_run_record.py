@@ -243,6 +243,18 @@ def test_unusable_record_resolves_to_full(project: Project, contents: str) -> No
     assert resolution["tier"] == "full"
 
 
+def test_record_that_cannot_be_read_resolves_to_full(project: Project) -> None:
+    # Arrange
+    commit_app_change(project)
+    project.record_file("feature").mkdir(parents=True)
+
+    # Act
+    resolution = project.resolve()
+
+    # Assert
+    assert resolution == {"tier": "full", "diff": "", "why": "no full-run record"}
+
+
 def test_record_taken_before_a_rebase_onto_a_moved_main_sees_what_main_changed(
     project: Project,
 ) -> None:
