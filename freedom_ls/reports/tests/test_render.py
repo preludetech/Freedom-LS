@@ -157,6 +157,12 @@ class TestBuildReportHtml:
         assert "Ada Lovelace" in html
         assert "Bo Kim" in html
 
+    def test_learner_names_carry_no_profile_picture(self) -> None:
+        """The PDF names a learner in text alone; the report data holds no picture to draw."""
+        html = build_report_html(full_report_data())
+
+        assert "data-profile-picture" not in html
+
     def test_flag_reason_identical_between_at_a_glance_and_learner_section(
         self,
     ) -> None:

@@ -32,7 +32,6 @@ from freedom_ls.educator_interface.reporting import (
     over_limit_message,
     progress_status_badge,
 )
-from freedom_ls.educator_interface.tests.helpers import organisation_admin_viewer
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -1541,17 +1540,75 @@ def test_the_attention_card_names_a_nameless_learner_by_their_email(logged_in_cl
     assert [_visible_text(a) for a in row.cssselect("a")] == ["nameless@example.com"]
 
 
-@pytest.mark.django_db
-def test_the_cohort_report_body_names_a_learner_with_initials_alone() -> None:
-    cohort = _seeded_report_cohort()
-    for membership in cohort.cohortmembership_set.select_related("learner__user"):
-        UserFactory._meta.model.objects.filter(pk=membership.learner.user_id).update(
-            profile_picture="profile_pictures/x.webp"
-        )
-    client = Client()
-    client.force_login(organisation_admin_viewer(cohort.organisation))
-
+def _report_body_pictures(client: Client, cohort: Cohort) -> list[str]:
     region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+    return [image.get("src") for image in region.cssselect("img[data-profile-picture]")]
 
-    assert region.cssselect("tbody a")
-    assert region.cssselect("img[data-profile-picture]") == []
+
+@pytest.mark.django_db
+class TestCohortReportBodyPictures:
+    def test_the_attention_list_and_the_summary_table_show_the_learners_picture(
+        self, logged_in_client
+    ) -> None:
+        cohort = _flag_cohort()
+        user = UserFactory(with_profile_picture=True)
+        CohortMembershipFactory(cohort=cohort, learner__user=user)
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        sources = _report_body_pictures(client, cohort)
+
+        assert sources == [user.profile_picture_url] * 2
+
+    def test_a_learner_without_a_picture_shows_initials_alone_in_both_places(
+        self, logged_in_client
+    ) -> None:
+        cohort = _flag_cohort()
+        _flagged_membership(cohort)
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        assert region.cssselect("img") == []
+        assert len(region.cssselect("span[class*='panel-avatar-']")) == 2
+        assert 'src="None"' not in lxml.html.tostring(region).decode()
+
+    def test_a_row_whose_learner_cannot_be_resolved_shows_initials(
+        self, logged_in_client, monkeypatch
+    ) -> None:
+        """A membership row cannot outlive its Learner, so the missing avatar is forced."""
+        cohort = _flag_cohort()
+        CohortMembershipFactory(
+            cohort=cohort, learner__user=UserFactory(with_profile_picture=True)
+        )
+        client = logged_in_client(_org_admin(cohort.organisation))
+        monkeypatch.setattr(
+            "freedom_ls.educator_interface.reporting.learner_avatars",
+            lambda learner_ids: {},
+        )
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        assert region.cssselect("img") == []
+        assert len(region.cssselect("span[class*='panel-avatar-']")) == 2
+
+    def test_more_learners_with_pictures_cost_no_more_queries(
+        self, logged_in_client, django_assert_max_num_queries
+    ) -> None:
+        cohort = _flag_cohort()
+        CohortMembershipFactory(
+            cohort=cohort, learner__user=UserFactory(with_profile_picture=True)
+        )
+        client = logged_in_client(_org_admin(cohort.organisation))
+        url = _body_url(cohort.organisation.slug, cohort.pk)
+        with CaptureQueriesContext(connection) as one_row:
+            _body_region(client, url)
+        for _ in range(5):
+            CohortMembershipFactory(
+                cohort=cohort, learner__user=UserFactory(with_profile_picture=True)
+            )
+        cache.clear()
+
+        with django_assert_max_num_queries(len(one_row.captured_queries)):
+            sources = _report_body_pictures(client, cohort)
+
+        assert len(sources) == 12

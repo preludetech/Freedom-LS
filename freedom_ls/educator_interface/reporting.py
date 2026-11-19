@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import itertools
 import statistics
 from collections import defaultdict
 from datetime import datetime
@@ -275,6 +276,18 @@ class CohortReportBodyPanel(LazyBodyPanel):
         return {
             "data": data,
             "confusions": _quiz_confusions(data),
+            # The attention list and the summary tables can name different
+            # learners, so one lookup covers both.
+            "avatars": learner_avatars(
+                itertools.chain(
+                    (learner.learner_id for learner in data.attention_list.learners),
+                    (
+                        row.learner_id
+                        for section in data.courses
+                        for row in section.learner_rows
+                    ),
+                )
+            ),
             "refresh_url": f"{self.ctx.base_url}?{LOADED_PARAM}=1&{REFRESH_PARAM}=1",
         }
 
