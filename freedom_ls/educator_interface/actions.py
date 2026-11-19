@@ -38,7 +38,6 @@ from freedom_ls.accounts.account_setup import (
 from freedom_ls.accounts.config import config as accounts_config
 from freedom_ls.accounts.models import User, display_name_for
 from freedom_ls.accounts.search import MIN_TERM_LENGTH, term_condition
-from freedom_ls.comms.notify import mark_notifications_read, raise_notification
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
@@ -55,13 +54,11 @@ from freedom_ls.educator_interface.forms import (
     CohortCourseRegistrationForm,
     CohortPickerForm,
     CohortSetForm,
-    CoursePickerForm,
     LearnerCourseRegistrationForm,
     LearnerNameForm,
     LearnerPickerForm,
     StaffEmailForm,
     choice_error,
-    course_target,
 )
 from freedom_ls.educator_interface.learner_import import check_import_gate
 from freedom_ls.educator_interface.panels.common.actions import (
@@ -71,6 +68,10 @@ from freedom_ls.educator_interface.panels.common.actions import (
     _picker_title,
     _register_title,
     _uuid_from,
+)
+from freedom_ls.educator_interface.panels.common.bulk_actions import (
+    CoursePickerMixin,
+    EducatorBulkAction,
 )
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
@@ -122,7 +123,6 @@ from freedom_ls.learner_management.queries import (
     ORGANISATION_ROLES,
     STAFF_ROLES,
     CourseNotOpenError,
-    can_on_any,
     cohort_course_count,
     cohort_is_empty,
     cohort_learner_count,
@@ -139,7 +139,6 @@ from freedom_ls.learner_management.queries import (
     members_keeping_access,
     other_grants_for,
     pickable_staff,
-    registerable_courses,
     role_target,
     staff_assignments,
     staff_of,
@@ -185,14 +184,10 @@ from freedom_ls.panel_framework.actions import (
 from freedom_ls.panel_framework.bulk_actions import (
     BulkCount,
     BulkOutcome,
-    PermittedBulkAction,
-    RecordedBulkAction,
     register_bulk_action,
 )
-from freedom_ls.panel_framework.bulk_runs import run_summary
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.events import build_hx_trigger
-from freedom_ls.panel_framework.models import BulkActionRun
 from freedom_ls.role_based_permissions.exceptions import (
     RefusalReason,
     RoleChangeRefused,
@@ -2777,43 +2772,6 @@ class ReactivateStaffMemberAction(StaffMemberStateAction):
         return staff_member_changed_response(user, ctx)
 
 
-class EducatorBulkAction(PermittedBulkAction[User]):
-    """A bulk action over the rows of an educator-interface table, scoped to
-    the organisation the request was made under.
-
-    Each object is changed with the same capability and service its
-    single-object action uses.
-    """
-
-    def has_permission(self, request: HttpRequest) -> bool:
-        scoped = cast("OrganisationScopedRequest", request)
-        return can_on_any(scoped.user, scoped.organisation, self.capability)
-
-    def scope_for_request(self, request: HttpRequest) -> Model | None:
-        return cast("OrganisationScopedRequest", request).organisation
-
-    def objects_for_keys(self, scope: Model | None, keys: list[str]) -> QuerySet:
-        # Narrowed to the run's organisation, so a key from another one can
-        # never be reached through a stored run.
-        return self.noun_model._base_manager.filter(
-            organisation=cast(Organisation, scope), pk__in=keys
-        )
-
-    def on_finished(self, run: BulkActionRun) -> None:
-        raise_notification(
-            user=run.requested_by,
-            category="bulk_action.finished",
-            target=run,
-            site_id=run.site_id,
-            data={"summary": run_summary(run)},
-        )
-
-    def on_result_shown(self, request: HttpRequest, run: BulkActionRun) -> None:
-        mark_notifications_read(
-            user=cast("User", request.user), target=run, site_id=run.site_id
-        )
-
-
 class LearnerBulkAction(EducatorBulkAction):
     """A bulk action over the rows of the learners table."""
 
@@ -3030,36 +2988,6 @@ class ReactivateLearnersBulkAction(LearnerStateBulkAction):
         return [
             "Their access returns through their existing cohorts and registrations."
         ]
-
-
-class CoursePickerMixin(RecordedBulkAction):
-    """The course picker the course registration actions share: its form,
-    and the picked course as a run stores it and reads it back. Declared on
-    RecordedBulkAction so the overrides type-check; list it before the
-    action in the bases."""
-
-    form_class = CoursePickerForm
-
-    def get_form(self, request: HttpRequest, data: QueryDict | None) -> forms.Form:
-        organisation = cast("OrganisationScopedRequest", request).organisation
-        return CoursePickerForm(
-            data,
-            queryset=registerable_courses(organisation),
-            organisation=organisation,
-        )
-
-    def target_json(self, cleaned_data: dict[str, object]) -> dict[str, str]:
-        return {"course": str(cast(Course, cleaned_data["course"]).pk)}
-
-    def resolve_target(
-        self, scope: Model | None, target: dict[str, str]
-    ) -> dict[str, object]:
-        organisation = cast(Organisation, scope)
-        course = get_object_or_404(
-            registerable_courses(organisation).prefetch_related("organisations"),
-            pk=target["course"],
-        )
-        return course_target(course, organisation)
 
 
 class CourseRegistrationBulkAction(CoursePickerMixin, LearnerBulkAction):

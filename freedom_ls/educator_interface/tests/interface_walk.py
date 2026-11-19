@@ -17,7 +17,7 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course
-from freedom_ls.educator_interface.actions import EducatorBulkAction
+from freedom_ls.educator_interface.panels.common.bulk_actions import EducatorBulkAction
 from freedom_ls.educator_interface.views import interface_config
 from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
 from freedom_ls.learner_management.models import Cohort, Learner
