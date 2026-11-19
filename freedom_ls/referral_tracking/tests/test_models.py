@@ -8,7 +8,7 @@ import pytest
 
 from django.contrib.sites.models import Site
 from django.db import IntegrityError, connection
-from django.db.models import ProtectedError, RestrictedError
+from django.db.models import Model, ProtectedError, RestrictedError
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.referral_tracking.counters import attribution_key_hash
@@ -195,8 +195,46 @@ def seqscan_off(db: None) -> None:
         cursor.execute("SET LOCAL enable_seqscan = off")
 
 
+_PLAN_ROW_COUNT = 2000
+
+
+def _analyse(model: type[Model]) -> None:
+    with connection.cursor() as cursor:
+        cursor.execute(f"ANALYZE {model._meta.db_table}")
+
+
+@pytest.fixture
+def analysed_conversions(seqscan_off, mock_site_context) -> None:
+    """Fill the conversion table with distinct codes and ANALYZE it.
+
+    An empty, unanalysed table gives the planner no reason to prefer one index over
+    another, so the plan tests need real statistics.
+    """
+    rows = ConversionFactory.build_batch(
+        _PLAN_ROW_COUNT,
+        user=UserFactory(),
+        object_id=factory.Sequence(str),
+        first_referral_code=factory.Sequence(lambda n: f"first{n}"),
+        last_referral_code=factory.Sequence(lambda n: f"last{n}"),
+    )
+    Conversion._base_manager.bulk_create(rows)
+    _analyse(Conversion)
+
+
+@pytest.fixture
+def analysed_touches(seqscan_off, mock_site_context) -> None:
+    """Fill the touch table with distinct referral codes and ANALYZE it."""
+    rows = AttributionTouchFactory.build_batch(
+        _PLAN_ROW_COUNT,
+        user=UserFactory(),
+        referral_code=factory.Sequence(lambda n: f"code{n}"),
+    )
+    AttributionTouch._base_manager.bulk_create(rows)
+    _analyse(AttributionTouch)
+
+
 @pytest.mark.django_db
-def test_the_touch_code_lookup_uses_the_upper_index(seqscan_off, site) -> None:
+def test_the_touch_code_lookup_uses_the_upper_index(analysed_touches, site) -> None:
     queryset = AttributionTouch._base_manager.filter(
         site=site, referral_code__iexact="abc"
     )
@@ -206,19 +244,8 @@ def test_the_touch_code_lookup_uses_the_upper_index(seqscan_off, site) -> None:
 
 @pytest.mark.django_db
 def test_the_code_in_play_lookup_uses_both_conversion_upper_indexes(
-    seqscan_off, mock_site_context, site
+    analysed_conversions, site
 ) -> None:
-    user = UserFactory()
-    rows = ConversionFactory.build_batch(
-        2000,
-        user=user,
-        object_id=factory.Sequence(str),
-        first_referral_code=factory.Sequence(lambda n: f"first{n}"),
-        last_referral_code=factory.Sequence(lambda n: f"last{n}"),
-    )
-    Conversion._base_manager.bulk_create(rows)
-    with connection.cursor() as cursor:
-        cursor.execute("ANALYZE freedom_ls_referral_tracking_conversion")
     queryset = with_code_in_play(Conversion._base_manager.filter(site=site), "abc")
 
     plan = queryset.explain()
@@ -228,7 +255,7 @@ def test_the_code_in_play_lookup_uses_both_conversion_upper_indexes(
 
 
 @pytest.mark.django_db
-def test_the_first_code_lookup_uses_its_upper_index(seqscan_off, site) -> None:
+def test_the_first_code_lookup_uses_its_upper_index(analysed_conversions, site) -> None:
     queryset = Conversion._base_manager.filter(
         site=site, first_referral_code__iexact="abc"
     )
@@ -237,7 +264,7 @@ def test_the_first_code_lookup_uses_its_upper_index(seqscan_off, site) -> None:
 
 
 @pytest.mark.django_db
-def test_the_last_code_lookup_uses_its_upper_index(seqscan_off, site) -> None:
+def test_the_last_code_lookup_uses_its_upper_index(analysed_conversions, site) -> None:
     queryset = Conversion._base_manager.filter(
         site=site, last_referral_code__iexact="abc"
     )
