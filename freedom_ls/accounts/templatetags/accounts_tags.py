@@ -11,6 +11,8 @@ from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.http import HttpRequest
 from django.urls import reverse
 
+from freedom_ls.accounts.sidebar import CurrentSidebarEntry, sidebar_entries
+
 register = template.Library()
 
 
@@ -34,3 +36,9 @@ def url_with_next(context: template.Context, url_name: str, **query: str) -> str
     if not extra:
         return url
     return f"{url}{'&' if '?' in url else '?'}{urlencode(extra)}"
+
+
+@register.simple_tag(takes_context=True)
+def account_sidebar_entries(context: template.Context) -> list[CurrentSidebarEntry]:
+    """The account area's sidebar entries, with the current page marked."""
+    return sidebar_entries(context["request"])

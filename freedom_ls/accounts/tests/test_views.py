@@ -943,126 +943,6 @@ def _picture_srcs(html: str) -> list[str]:
     return re.findall(r'<img data-profile-picture\s+src="([^"]+)"', html)
 
 
-def _profile_forms(html: str) -> tuple[str, str]:
-    """The picture form and the details form, in page order."""
-    forms = re.findall(r"<form method=\"POST\".*?</form>", html, re.DOTALL)
-    assert len(forms) == 2
-    return forms[0], forms[1]
-
-
-@pytest.mark.django_db
-def test_profile_page_renders_a_multipart_picture_form_with_a_described_image_input(
-    mock_site_context,
-):
-    client = Client()
-    client.force_login(UserFactory())
-
-    html = client.get(reverse("accounts:account_profile")).content.decode()
-    picture_form, _ = _profile_forms(html)
-
-    assert f'action="{reverse("accounts:account_profile_picture")}"' in picture_form
-    assert 'enctype="multipart/form-data"' in picture_form
-    assert 'accept="image/jpeg,image/png,image/webp"' in picture_form
-    assert 'aria-describedby="id_profile_picture_helptext"' in picture_form
-    assert "JPEG, PNG or WebP, up to 10 MB." in picture_form
-    assert "Save picture" in picture_form
-
-
-@pytest.mark.django_db
-def test_profile_page_details_form_is_separate_from_the_picture(mock_site_context):
-    client = Client()
-    client.force_login(UserFactory())
-
-    html = client.get(reverse("accounts:account_profile")).content.decode()
-    _, details_form = _profile_forms(html)
-
-    assert 'name="first_name"' in details_form
-    assert 'name="last_name"' in details_form
-    assert 'type="file"' not in details_form
-    assert "action=" not in details_form
-
-
-@pytest.mark.django_db
-def test_profile_page_shows_the_stored_names_in_the_inputs(mock_site_context):
-    client = Client()
-    client.force_login(UserFactory(first_name="Ada", last_name="Lovelace"))
-
-    html = client.get(reverse("accounts:account_profile")).content.decode()
-    _, details_form = _profile_forms(html)
-
-    assert 'value="Ada"' in details_form
-    assert 'value="Lovelace"' in details_form
-
-
-@pytest.mark.django_db
-def test_valid_details_post_stores_both_names(mock_site_context):
-    user = UserFactory(first_name="Ada", last_name="Lovelace")
-    client = Client()
-    client.force_login(user)
-
-    client.post(
-        reverse("accounts:account_profile"),
-        {"first_name": "Grace", "last_name": "Hopper"},
-    )
-
-    user.refresh_from_db()
-    assert (user.first_name, user.last_name) == ("Grace", "Hopper")
-
-
-@pytest.mark.django_db
-def test_blank_names_are_accepted_and_stored_blank(mock_site_context):
-    user = UserFactory(first_name="Ada", last_name="Lovelace")
-    client = Client()
-    client.force_login(user)
-
-    response = client.post(
-        reverse("accounts:account_profile"), {"first_name": "", "last_name": ""}
-    )
-
-    user.refresh_from_db()
-    assert response.status_code == 302
-    assert (user.first_name, user.last_name) == ("", "")
-
-
-@pytest.mark.django_db
-def test_a_first_name_over_200_characters_is_refused_and_nothing_is_stored(
-    mock_site_context,
-):
-    user = UserFactory(first_name="Ada", last_name="Lovelace")
-    client = Client()
-    client.force_login(user)
-
-    response = client.post(
-        reverse("accounts:account_profile"),
-        {"first_name": "A" * 201, "last_name": "Hopper"},
-    )
-
-    user.refresh_from_db()
-    assert response.status_code == 200
-    assert (user.first_name, user.last_name) == ("Ada", "Lovelace")
-
-
-@pytest.mark.django_db
-def test_saving_details_redirects_and_keeps_the_picture(
-    mock_site_context, pathless_profile_picture_storage
-):
-    user = UserFactory(
-        first_name="Ada", last_name="Lovelace", with_profile_picture=True
-    )
-    saved_name = user.profile_picture.name
-    client = Client()
-    client.force_login(user)
-    profile_url = reverse("accounts:account_profile")
-
-    response = client.post(profile_url, {"first_name": "Grace", "last_name": "Hopper"})
-    page = client.get(profile_url).content.decode()
-
-    user.refresh_from_db()
-    assert (response.status_code, response.url) == (302, profile_url)
-    assert (user.first_name, user.profile_picture.name) == ("Grace", saved_name)
-    assert "Profile saved" in page
-
-
 @pytest.mark.django_db
 def test_picture_url_refuses_get(mock_site_context):
     client = Client()
@@ -1094,12 +974,12 @@ def test_valid_picture_post_redirects_and_the_page_then_shows_the_picture(
         reverse("accounts:account_profile_picture"),
         {"profile_picture": SimpleUploadedFile("me.jpg", jpeg_bytes())},
     )
-    page = client.get(profile_url).content.decode()
+    page = client.get(profile_url, follow=True).content.decode()
 
     assert (response.status_code, response.url) == (302, profile_url)
     assert "Profile picture saved" in page
-    # The header trigger and the picture block.
-    assert len(_picture_srcs(page)) == 2
+    # The header trigger.
+    assert len(_picture_srcs(page)) == 1
 
 
 @pytest.mark.django_db
@@ -1128,7 +1008,7 @@ def test_refused_picture_re_renders_with_the_error_and_the_saved_state(
 
 
 @pytest.mark.django_db
-def test_removing_the_picture_shows_initials_and_drops_the_checkbox(
+def test_removing_the_picture_shows_initials(
     mock_site_context, pathless_profile_picture_storage
 ):
     user = UserFactory(
@@ -1137,16 +1017,145 @@ def test_removing_the_picture_shows_initials_and_drops_the_checkbox(
     client = Client()
     client.force_login(user)
     profile_url = reverse("accounts:account_profile")
-    before = client.get(profile_url).content.decode()
 
     response = client.post(
         reverse("accounts:account_profile_picture"),
         {"remove_profile_picture": "on"},
     )
-    after = client.get(profile_url).content.decode()
+    after = client.get(profile_url, follow=True).content.decode()
 
-    assert 'name="remove_profile_picture"' in before
     assert (response.status_code, response.url) == (302, profile_url)
     assert "Profile picture removed" in after
     assert _picture_srcs(after) == []
-    assert 'name="remove_profile_picture"' not in after
+
+
+PERSONAL_DETAILS_PATH = "/accounts/profile/personal-details"
+
+
+@pytest.mark.django_db
+def test_the_profile_url_redirects_to_personal_details(mock_site_context):
+    client = Client()
+    client.force_login(UserFactory())
+
+    response = client.get("/accounts/profile/")
+
+    assert response.status_code == 302
+    assert response.url == PERSONAL_DETAILS_PATH
+
+
+def test_the_profile_url_reverses_with_and_without_a_path():
+    assert reverse("accounts:account_profile") == "/accounts/profile/"
+    assert (
+        reverse("accounts:account_profile", kwargs={"path_string": "personal-details"})
+        == PERSONAL_DETAILS_PATH
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("get", "/accounts/profile/"),
+        ("get", PERSONAL_DETAILS_PATH),
+        ("get", f"{PERSONAL_DETAILS_PATH}/__panels/name"),
+        ("post", f"{PERSONAL_DETAILS_PATH}/__panels/name/__actions/edit_name"),
+    ],
+)
+def test_anonymous_requests_to_the_account_area_go_to_login(
+    mock_site_context, method, path
+):
+    response = getattr(Client(), method)(path)
+
+    assert response.status_code == 302
+    assert reverse("account_login") in response.url
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "make_user",
+    [
+        lambda: UserFactory(first_name="Ada", last_name="Lovelace"),
+        lambda: UserFactory(first_name="Ada", last_name="Lovelace", staff=True),
+        lambda: UserFactory(first_name="Ada", last_name="Lovelace", superuser=True),
+    ],
+    ids=["learner", "educator", "admin"],
+)
+def test_every_kind_of_user_reads_and_saves_their_own_name(
+    mock_site_context, make_user
+):
+    user = make_user()
+    client = Client()
+    client.force_login(user)
+
+    page = client.get(PERSONAL_DETAILS_PATH)
+    saved = client.post(
+        f"{PERSONAL_DETAILS_PATH}/__panels/name/__actions/edit_name",
+        {"first_name": "Grace", "last_name": "Hopper"},
+        headers={"HX-Request": "true"},
+    )
+
+    user.refresh_from_db()
+    assert page.status_code == 200
+    assert 'value="Ada"' in page.content.decode()
+    assert 'value="Lovelace"' in page.content.decode()
+    assert saved.status_code == 200
+    assert (user.first_name, user.last_name) == ("Grace", "Hopper")
+    assert "Name saved" in saved.content.decode()
+
+
+@pytest.mark.django_db
+def test_the_page_renders_the_account_shell(mock_site_context, site):
+    client = Client()
+    client.force_login(UserFactory())
+
+    response = client.get(PERSONAL_DETAILS_PATH)
+    html = response.content.decode()
+
+    assert re.search(r'<nav id="sidebar-nav"[^>]*aria-label="Account"', html)
+    assert re.search(r'<a href="/accounts/profile/"\s+aria-current="page"', html)
+    for element_id in (
+        "interface-main",
+        "main-content",
+        "instance-header",
+        "app-modal",
+        "app-modal-body",
+        "quick-view",
+        "scope-announcer",
+    ):
+        assert f'id="{element_id}"' in html
+    title = re.search(r"<title>(.*?)</title>", html, re.DOTALL)
+    assert title is not None
+    assert title.group(1).strip() == (
+        f"Personal details — {response.context['site_title']}"
+    )
+    assert html.count('aria-label="Open navigation panel"') == 1
+
+
+@pytest.mark.django_db
+def test_an_htmx_navigation_swaps_the_account_nav_after_the_framework_nav(
+    mock_site_context,
+):
+    client = Client()
+    client.force_login(UserFactory())
+
+    html = client.get(
+        PERSONAL_DETAILS_PATH,
+        headers={"HX-Request": "true", "HX-Target": "main-content"},
+    ).content.decode()
+
+    account_nav = html.rindex('aria-label="Account"')
+    assert 'hx-swap-oob="true"' in html[account_nav:]
+    assert html.index('aria-label="Sections"') < account_nav
+
+
+@pytest.mark.django_db
+def test_no_account_sidebar_link_is_an_htmx_link(mock_site_context):
+    client = Client()
+    client.force_login(UserFactory())
+
+    html = client.get(PERSONAL_DETAILS_PATH).content.decode()
+    nav = html[html.index('<nav id="sidebar-nav"') :]
+    nav = nav[: nav.index("</nav>")]
+
+    assert "hx-get" not in nav
+    assert "hx-boost" not in nav

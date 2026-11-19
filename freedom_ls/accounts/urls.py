@@ -7,13 +7,19 @@ app_name = "accounts"
 urlpatterns = [
     path(
         "profile/",
-        views.edit_profile,
+        views.account_area,
         name="account_profile",
     ),
+    # Before the catch-all, which would otherwise match it.
     path(
         "profile/picture/",
         views.edit_profile_picture,
         name="account_profile_picture",
+    ),
+    path(
+        "profile/<path:path_string>",
+        views.account_area,
+        name="account_profile",
     ),
     path(
         "legal/<str:doc_type>/",

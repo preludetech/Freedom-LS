@@ -13,6 +13,7 @@ from freedom_ls.accounts.tests import _completion_view_fixtures as fixtures
 ALWAYS_INCOMPLETE_PATH = (
     "freedom_ls.accounts.tests._completion_view_fixtures.AlwaysIncompleteForm"
 )
+PERSONAL_DETAILS_URL = "/accounts/profile/personal-details"
 PHONE_FORM_PATH = "freedom_ls.accounts.tests._completion_view_fixtures.PhoneNumberForm"
 
 
@@ -40,7 +41,7 @@ def test_superuser_passes_through_even_with_incomplete_forms(mock_site_context, 
     # Hit a non-exempt path; profile redirects-with-200 because allauth
     # email may not be verified, but the middleware should not redirect to
     # complete_registration.
-    response = client.get(reverse("accounts:account_profile"))
+    response = client.get(PERSONAL_DETAILS_URL)
     assert response.status_code == 200
 
 
@@ -51,7 +52,7 @@ def test_user_with_no_incomplete_forms_passes_through(mock_site_context, site):
     client = Client()
     client.force_login(user)
 
-    response = client.get(reverse("accounts:account_profile"))
+    response = client.get(PERSONAL_DETAILS_URL)
     assert response.status_code == 200
 
 
@@ -64,7 +65,7 @@ def test_user_with_incomplete_forms_redirected_to_completion(mock_site_context, 
     client = Client()
     client.force_login(user)
 
-    profile_url = reverse("accounts:account_profile")
+    profile_url = PERSONAL_DETAILS_URL
     response = client.get(profile_url)
     assert response.status_code == 302
     completion_url = reverse("accounts:complete_registration")
@@ -82,7 +83,7 @@ def test_get_by_incomplete_user_carries_own_path_as_next(mock_site_context, site
     client = Client()
     client.force_login(user)
 
-    profile_url = reverse("accounts:account_profile")
+    profile_url = PERSONAL_DETAILS_URL
     response = client.get(profile_url)
 
     completion_url = reverse("accounts:complete_registration")
@@ -101,7 +102,7 @@ def test_post_by_incomplete_user_redirects_without_next(mock_site_context, site)
     client = Client()
     client.force_login(user)
 
-    response = client.post(reverse("accounts:account_profile"))
+    response = client.post(PERSONAL_DETAILS_URL)
 
     completion_url = reverse("accounts:complete_registration")
     assert response.status_code == 302
@@ -122,7 +123,7 @@ def test_htmx_incomplete_user_gets_204_with_hx_redirect(mock_site_context, site)
     client = Client()
     client.force_login(user)
 
-    profile_url = reverse("accounts:account_profile")
+    profile_url = PERSONAL_DETAILS_URL
     response = client.get(profile_url, HTTP_HX_REQUEST="true")
 
     completion_url = reverse("accounts:complete_registration")
@@ -139,7 +140,7 @@ def test_settings_default_drives_forms_when_no_policy(mock_site_context, setting
     client = Client()
     client.force_login(user)
 
-    profile_url = reverse("accounts:account_profile")
+    profile_url = PERSONAL_DETAILS_URL
     response = client.get(profile_url)
     assert response.status_code == 302
     completion_url = reverse("accounts:complete_registration")
@@ -158,7 +159,7 @@ def test_policy_overrides_settings_additional_registration_forms(
     client = Client()
     client.force_login(user)
 
-    response = client.get(reverse("accounts:account_profile"))
+    response = client.get(PERSONAL_DETAILS_URL)
     assert response.status_code == 200
 
 
@@ -253,7 +254,7 @@ def test_substring_match_does_not_exempt(mock_site_context, site):
 
     # `accounts:account_profile` is not in EXEMPT_URL_NAMES, so the user
     # should be redirected to complete_registration.
-    profile_url = reverse("accounts:account_profile")
+    profile_url = PERSONAL_DETAILS_URL
     response = client.get(profile_url)
     assert response.status_code == 302
     completion_url = reverse("accounts:complete_registration")
@@ -273,7 +274,7 @@ def test_cache_short_circuits_second_request(mock_site_context, site):
     client.force_login(user)
 
     # First request: form is complete → user passes through to profile.
-    first = client.get(reverse("accounts:account_profile"))
+    first = client.get(PERSONAL_DETAILS_URL)
     assert first.status_code == 200
 
     # Mutate underlying state: an un-cached re-evaluation would now report
@@ -281,7 +282,7 @@ def test_cache_short_circuits_second_request(mock_site_context, site):
     fixtures.STORED_PHONE_NUMBERS.pop(user.pk, None)
 
     # Second request: cache returns the stale "complete" verdict.
-    second = client.get(reverse("accounts:account_profile"))
+    second = client.get(PERSONAL_DETAILS_URL)
     assert second.status_code == 200
 
 
@@ -297,13 +298,13 @@ def test_changing_dotted_paths_invalidates_cache(mock_site_context, site):
     client.force_login(user)
 
     # First, no forms → marked complete.
-    client.get(reverse("accounts:account_profile"))
+    client.get(PERSONAL_DETAILS_URL)
 
     # Now switch the policy.
     policy.additional_registration_forms = [ALWAYS_INCOMPLETE_PATH]
     policy.save()
 
-    profile_url = reverse("accounts:account_profile")
+    profile_url = PERSONAL_DETAILS_URL
     response = client.get(profile_url)
     assert response.status_code == 302
     completion_url = reverse("accounts:complete_registration")
@@ -328,7 +329,7 @@ def test_completion_submit_clears_cache(mock_site_context, site, settings):
     client.force_login(user)
 
     # Arrange: prime the cache with an "incomplete" verdict.
-    client.get(reverse("accounts:account_profile"))
+    client.get(PERSONAL_DETAILS_URL)
 
     # Act: submit the completion form.
     client.post(
@@ -337,5 +338,5 @@ def test_completion_submit_clears_cache(mock_site_context, site, settings):
     )
 
     # Assert: cache cleared — next request reaches the profile page.
-    response = client.get(reverse("accounts:account_profile"))
+    response = client.get(PERSONAL_DETAILS_URL)
     assert response.status_code == 200

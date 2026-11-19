@@ -8,10 +8,11 @@ from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory
 from django.utils.module_loading import import_string
 
-from freedom_ls.accounts.factories import SiteSignupPolicyFactory
+from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
 from freedom_ls.accounts.models import SiteSignupPolicy
 from freedom_ls.accounts.utils import (
     get_client_ip,
+    get_own_user,
     get_signup_policy_for_request,
 )
 from freedom_ls.site_aware_models.models import _CACHED_SITE_ATTR, _thread_locals
@@ -180,3 +181,17 @@ def test_get_signup_policy_for_request_uses_the_request_site_when_another_site_i
     setattr(request, _CACHED_SITE_ATTR, policy_site)
 
     assert get_signup_policy_for_request(request) == policy
+
+
+@pytest.mark.django_db
+def test_get_own_user_returns_a_different_object_with_the_same_pk(
+    rf, mock_site_context
+):
+    user = UserFactory()
+    request = rf.get("/")
+    request.user = user
+
+    own = get_own_user(request)
+
+    assert own is not user
+    assert own.pk == user.pk

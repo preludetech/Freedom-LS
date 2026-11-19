@@ -56,6 +56,7 @@ flowchart TB
     accounts --> base
     accounts --> mail
     accounts --> markdown_rendering
+    accounts --> panel_framework
     accounts --> site_aware_models
     accounts --> webhooks
     api --> base
@@ -311,7 +312,7 @@ flowchart TB
 
 | App | Runtime deps | Test-only deps |
 | --- | --- | --- |
-| accounts | api, base, mail, markdown_rendering, site_aware_models, webhooks | icons, organisations, referral_tracking |
+| accounts | api, base, mail, markdown_rendering, panel_framework, site_aware_models, webhooks | icons, organisations, referral_tracking |
 | api | base, site_aware_models | — |
 | api_admin | accounts, api, audit_log, site_aware_models | — |
 | audit_log | accounts, base, organisations, site_aware_models | — |

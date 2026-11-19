@@ -1,0 +1,41 @@
+{% extends "_base_interface.html" %}
+{% load static %}
+
+{% block extra_alpine_components %}
+<script defer src="{% static 'panel_framework/js/alpine-components.js' %}"></script>
+{% endblock extra_alpine_components %}
+
+{% block sidebar_storage_key %}sidebar-account{% endblock sidebar_storage_key %}
+
+{% comment %}
+The sidebar sits flush against the viewport's left edge with its own
+full-height rule on the right, and the content column carries its own
+padding instead of the shell's, as the panel pages do.
+{% endcomment %}
+{% block shell_class %}flex min-h-[calc(100dvh-var(--sidebar-top,0px))] flex-col{% endblock shell_class %}
+{% block grid_class %}flex-1{% endblock grid_class %}
+{% block sidebar_body_class %}lg:border-e lg:border-border{% endblock sidebar_body_class %}
+{% block main_class %}panel-canvas flex flex-col{% endblock main_class %}
+
+{% block sidebar_content %}
+    {% include "accounts/partials/sidebar_nav.html" with request=request only %}
+{% endblock sidebar_content %}
+
+{% block quick_view_host %}
+    {% include "panel_framework/partials/quick_view_host.html" %}
+{% endblock quick_view_host %}
+
+{% block modal_host %}
+    {% include "panel_framework/partials/modal_host.html" %}
+{% endblock modal_host %}
+
+{% comment %}
+Single-line so no whitespace leaks into the rendered <title>. The same partial
+feeds the OOB fragment on HTMX navigation, so both paths read identically.
+{% endcomment %}
+{% block head_title %}{% include "panel_framework/partials/document_title.html#document-title" with site_name=site_title %}{% endblock head_title %}
+
+{% block content %}
+    {% block account_main %}{% endblock account_main %}
+    {% include "panel_framework/partials/announcer_host.html" %}
+{% endblock content %}

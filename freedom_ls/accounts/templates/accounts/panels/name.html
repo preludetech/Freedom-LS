@@ -1,0 +1,9 @@
+{% extends "panel_framework/panels/panel.html" %}
+{% comment %}
+The user's first and last name as fields with Save. Context: rename (the
+edit action's form context).
+{% endcomment %}
+
+{% block panel_body %}
+    {% include "accounts/partials/name_form.html" with form=rename.form action_url=rename.action_url %}
+{% endblock panel_body %}

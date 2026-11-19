@@ -6,6 +6,9 @@ import pytest
 from allauth.core.context import request_context
 
 from django.template import Context, Template
+from django.urls import resolve
+
+from freedom_ls.accounts.sidebar import sidebar_entries
 
 
 def _render_url_with_next(request) -> str:
@@ -92,3 +95,16 @@ def test_url_with_next_reads_next_from_the_post_body(rf):
     assert rendered == (
         "/accounts/signup/?next=%2Fapplications%2Fapply%2Fx%2F&amp;email=a%40b.example"
     )
+
+
+def test_account_sidebar_entries_returns_the_entries_for_the_requests_page(rf):
+    request = rf.get("/accounts/email/")
+    request.resolver_match = resolve("/accounts/email/")
+    template = Template(
+        "{% load accounts_tags %}{% account_sidebar_entries as entries %}"
+        "{% for entry in entries %}{{ entry.label }}|{% endfor %}"
+    )
+
+    rendered = template.render(Context({"request": request}))
+
+    assert rendered == "".join(f"{e.label}|" for e in sidebar_entries(request))

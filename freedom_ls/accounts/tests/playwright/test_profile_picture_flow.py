@@ -1,22 +1,16 @@
-"""Browser flow for the account page: upload, replace, refuse, remove.
+"""Browser flow for the account area: the Personal details page and its sidebar.
 
 The Django test client covers what the server renders. What only a browser
-shows is covered here: the picture and details forms saving apart, choosing a
-file in the input, the saved picture in the picture block and in the header
-trigger, the refusal leaving that picture in place,
-and the layout at each viewport.
+shows is covered here: the name saving inline with its toast, the sidebar
+leading to allauth's pages, and the layout at each viewport.
 """
 
 from __future__ import annotations
-
-import re
 
 import pytest
 from playwright.sync_api import Page, expect
 
 from freedom_ls.accounts.models import User
-from freedom_ls.accounts.tests.profile_picture_samples import jpeg_bytes, png_bytes
-from freedom_ls.accounts.validators import WRONG_TYPE
 from freedom_ls.conftest import reverse_url
 from freedom_ls.tests.playwright_helpers import (
     QA_VIEWPORTS,
@@ -27,119 +21,37 @@ from freedom_ls.tests.playwright_helpers import (
 # data this test's connection committed.
 pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
-PICTURE_SRC = re.compile(r"profile_pictures/\d+/[0-9a-f]{32}\.webp")
 
-
-def test_upload_a_picture_then_a_refused_file(
+def test_change_the_name_inline_then_follow_the_sidebar(
     live_server, logged_in_page: Page, logged_in_user: User
 ) -> None:
     page = logged_in_page
     page.goto(reverse_url(live_server, "accounts:account_profile"))
 
+    expect(page).to_have_url(
+        reverse_url(
+            live_server,
+            "accounts:account_profile",
+            kwargs={"path_string": "personal-details"},
+        )
+    )
+
     page.get_by_label("First name").fill("Ada")
     page.get_by_label("Last name").fill("Lovelace")
     page.get_by_role("button", name="Save", exact=True).click()
 
-    expect(page.get_by_text("Profile saved")).to_be_visible()
+    expect(page.get_by_text("Name saved")).to_be_visible()
+    expect(page.get_by_label("First name")).to_have_value("Ada")
+    expect(page.get_by_label("Last name")).to_have_value("Lovelace")
+    stored = User._base_manager.get(pk=logged_in_user.pk)
+    assert (stored.first_name, stored.last_name) == ("Ada", "Lovelace")
 
-    page.get_by_label(re.compile(r"^Profile picture")).set_input_files(
-        {"name": "me.jpg", "mimeType": "image/jpeg", "buffer": jpeg_bytes()}
-    )
-    page.get_by_role("button", name="Save picture").click()
+    page.get_by_role("navigation", name="Account").get_by_role(
+        "link", name="Email"
+    ).click()
 
-    expect(page.get_by_text("Profile picture saved")).to_be_visible()
-    main = page.locator("main")
-    expect(main.get_by_text("Ada Lovelace")).to_be_visible()
-    expect(main.locator("img[data-profile-picture]")).to_have_attribute(
-        "src", PICTURE_SRC
-    )
-    header = page.locator("header")
-    expect(header.locator("img[data-profile-picture]")).to_have_attribute(
-        "src", PICTURE_SRC
-    )
-
-    first_src = main.locator("img[data-profile-picture]").get_attribute("src")
-
-    page.get_by_label(re.compile(r"^Profile picture")).set_input_files(
-        {"name": "new.png", "mimeType": "image/png", "buffer": png_bytes()}
-    )
-    page.get_by_role("button", name="Save picture").click()
-
-    expect(page.get_by_text("Profile picture saved")).to_be_visible()
-    expect(main.locator("img[data-profile-picture]")).to_have_attribute(
-        "src", PICTURE_SRC
-    )
-    expect(main.locator("img[data-profile-picture]")).not_to_have_attribute(
-        "src", first_src
-    )
-    replaced_src = main.locator("img[data-profile-picture]").get_attribute("src")
-    expect(header.locator("img[data-profile-picture]")).to_have_attribute(
-        "src", replaced_src
-    )
-
-    page.get_by_label(re.compile(r"^Profile picture")).set_input_files(
-        {"name": "notes.png", "mimeType": "image/png", "buffer": b"just some text"}
-    )
-    page.get_by_role("button", name="Save picture").click()
-
-    expect(page.get_by_text(WRONG_TYPE)).to_be_visible()
-    expect(main.locator("img[data-profile-picture]")).to_have_attribute(
-        "src", PICTURE_SRC
-    )
-    expect(header.locator("img[data-profile-picture]")).to_have_attribute(
-        "src", PICTURE_SRC
-    )
-
-    stored = User._base_manager.get(pk=logged_in_user.pk).profile_picture
-    stored.storage.delete(stored.name)
-    page.reload()
-
-    expect(main.get_by_text("AL", exact=True)).to_be_visible()
-    expect(header.get_by_text("AL", exact=True)).to_be_visible()
-    expect(page.locator("img[data-profile-picture]")).to_have_count(0)
-
-    page.get_by_label(re.compile(r"^Profile picture")).set_input_files(
-        {"name": "again.png", "mimeType": "image/png", "buffer": png_bytes()}
-    )
-    page.get_by_role("button", name="Save picture").click()
-
-    expect(page.get_by_text("Profile picture saved")).to_be_visible()
-    expect(main.locator("img[data-profile-picture]")).to_have_attribute(
-        "src", PICTURE_SRC
-    )
-
-    page.get_by_label(re.compile(r"^Remove profile picture")).check()
-    page.get_by_role("button", name="Save picture").click()
-
-    expect(page.get_by_text("Profile picture removed")).to_be_visible()
-    expect(main.get_by_text("Ada Lovelace")).to_be_visible()
-    expect(main.locator("img[data-profile-picture]")).to_have_count(0)
-    expect(header.locator("img[data-profile-picture]")).to_have_count(0)
-    expect(main.get_by_text("AL", exact=True)).to_be_visible()
-    expect(page.get_by_label(re.compile(r"^Remove profile picture"))).to_have_count(0)
+    expect(page).to_have_url(reverse_url(live_server, "account_email"))
 
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
         assert_no_horizontal_overflow(page)
-
-
-def test_refused_picture_error_lines_up_with_its_label(
-    live_server, logged_in_page: Page
-) -> None:
-    page = logged_in_page
-    page.set_viewport_size({"width": 1920, "height": 1080})
-    page.goto(reverse_url(live_server, "accounts:account_profile"))
-
-    page.get_by_label(re.compile(r"^Profile picture")).set_input_files(
-        {"name": "notes.png", "mimeType": "image/png", "buffer": b"just some text"}
-    )
-    page.get_by_role("button", name="Save picture").click()
-
-    error = page.get_by_text(WRONG_TYPE)
-    expect(error).to_be_visible()
-    label = page.locator("label[for='id_profile_picture']")
-    error_box = error.bounding_box()
-    label_box = label.bounding_box()
-    assert error_box is not None
-    assert label_box is not None
-    assert error_box["x"] == pytest.approx(label_box["x"], abs=1)

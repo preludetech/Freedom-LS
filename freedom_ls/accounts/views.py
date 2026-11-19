@@ -7,17 +7,23 @@ from django.contrib import messages
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.decorators import login_required
 from django.contrib.sites.models import Site
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
+from freedom_ls.panel_framework.views import (
+    NavGroup,
+    first_visible_section,
+    panel_framework_view,
+)
 from freedom_ls.site_aware_models.models import get_cached_site
 
 from . import forms
 from .legal_docs import get_legal_doc, render_legal_doc
 from .middleware import CACHE_SESSION_KEY
 from .models import User
+from .panels.personal_details.config import PersonalDetailsConfig
 from .registration_forms import (
     RegistrationFormProtocol,
     get_incomplete_forms,
@@ -53,21 +59,40 @@ def _render_profile(
     )
 
 
+class AccountAreaRequest(HttpRequest):
+    """The request as the panel framework reads it: it appends these
+    templates to a navigation response's out-of-band swaps."""
+
+    panel_extra_oob: list[str]
+
+
+ACCOUNT_AREA_NAV: list[NavGroup] = [
+    NavGroup(heading="Account", sections=[PersonalDetailsConfig]),
+]
+
+
 @login_required
-def edit_profile(request: HttpRequest) -> HttpResponse:
-    user = _own_user(request)
-    if request.method == "POST":
-        form = forms.UserForm(request.POST, instance=user)
-        if form.is_valid():
-            form.save()
-            messages.add_message(request, messages.SUCCESS, "Profile saved")
-            # The next request loads request.user afresh, so the header
-            # shows what was just saved.
-            return redirect("accounts:account_profile")
-    else:
-        form = forms.UserForm(instance=user)
-    picture_form = forms.ProfilePictureForm(instance=_own_user(request))
-    return _render_profile(request, form, picture_form)
+def account_area(
+    request: HttpRequest, path_string: str = ""
+) -> HttpResponse | StreamingHttpResponse:
+    """Serve the panel framework for the signed-in user's own account."""
+    if not path_string.strip("/"):
+        landing = first_visible_section(ACCOUNT_AREA_NAV, request)
+        if landing is None:
+            raise Http404
+        return redirect("accounts:account_profile", path_string=landing.url_name)
+    # The framework's navigation response swaps in its own one-entry
+    # #sidebar-nav; the account nav, appended after it, replaces it again.
+    cast(AccountAreaRequest, request).panel_extra_oob = [
+        "accounts/partials/sidebar_nav.html"
+    ]
+    return panel_framework_view(
+        ACCOUNT_AREA_NAV,
+        request,
+        path_string,
+        template_name="accounts/account_page.html",
+        url_name="accounts:account_profile",
+    )
 
 
 @login_required

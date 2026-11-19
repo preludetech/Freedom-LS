@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ipaddress
+from typing import cast
 
 from allauth.account.adapter import get_adapter
 
@@ -17,7 +18,7 @@ from django.urls import reverse
 from freedom_ls.site_aware_models.models import get_cached_site
 
 from .config import config
-from .models import SiteSignupPolicy
+from .models import SiteSignupPolicy, User
 
 
 def get_client_ip(request: HttpRequest) -> str:
@@ -177,3 +178,15 @@ def redirect_to_acquisition_auth(request: HttpRequest) -> HttpResponse:
         next_url=request.get_full_path(),
         auth_url=acquisition_auth_url(request),
     )
+
+
+def get_own_user(request: HttpRequest) -> User:
+    """A fresh copy of the signed-in user.
+
+    A ModelForm writes submitted values onto its instance while it validates,
+    and request.user is what the header renders, so a form gets its own copy
+    and a refused submission never shows there. The base manager, because the
+    lookup is by the signed-in user's own pk, which the session already
+    vouches for, and `objects` filters to the request's site.
+    """
+    return User._base_manager.get(pk=cast(int, request.user.pk))

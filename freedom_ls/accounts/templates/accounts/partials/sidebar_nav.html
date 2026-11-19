@@ -1,0 +1,21 @@
+{% load accounts_tags %}
+{% comment %}
+The account area's navigation: plain links, because the pages it reaches are
+a mix of panel pages and allauth pages that do not share a swap target.
+Context: request, oob.
+{% endcomment %}
+{% account_sidebar_entries as entries %}
+<nav id="sidebar-nav" class="mt-2" aria-label="Account"
+     {% if oob %}hx-swap-oob="true"{% endif %}>
+    <ul class="list-none ml-0 space-y-0.5">
+        {% for entry in entries %}
+            <li class="py-0">
+                <a href="{{ entry.url }}"
+                   {% if entry.is_current %}aria-current="page"{% endif %}
+                   class="group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-on-surface no-underline transition-colors hover:bg-surface-2 aria-[current]:bg-surface-2 aria-[current]:text-primary aria-[current]:font-semibold aria-[current]:shadow-[inset_2px_0_0_var(--color-primary)]">
+                    <span>{{ entry.label }}</span>
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+</nav>
