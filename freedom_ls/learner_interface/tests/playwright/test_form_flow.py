@@ -390,6 +390,37 @@ def test_footer_buttons_share_the_question_column_edges(
         )
 
 
+def test_exit_dialog_backdrop_covers_the_footer(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    """The exit dialog's backdrop sits over the footer, not under it.
+
+    The dialog lived inside the top bar's stacking context, so the footer
+    painted above the backdrop and stayed undimmed and clickable.
+    """
+    page = logged_in_page
+    course = _scored_quiz_course("Backdrop Course", "backdrop-course")
+    register_user_for_course(course, logged_in_user)
+    navigate_to_form(page, live_server, course)
+    start_form(page)
+
+    page.get_by_role("button", name="Exit test").click()
+    expect(page.get_by_role("dialog")).to_be_visible()
+
+    next_box = page.get_by_role("button", name="Next").bounding_box()
+    assert next_box is not None
+    footer_on_top = page.evaluate(
+        """([x, y]) => {
+            const top = document.elementFromPoint(x, y);
+            return top !== null && top.closest("[role=dialog]") === null;
+        }""",
+        [next_box["x"] + next_box["width"] / 2, next_box["y"] + next_box["height"] / 2],
+    )
+    assert footer_on_top is False
+
+
 @pytest.mark.browser_context_args(locale="en-ZA")
 def test_a_preselected_phone_country_does_not_count_as_an_answer(
     live_server,

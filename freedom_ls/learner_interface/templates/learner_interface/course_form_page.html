@@ -65,8 +65,8 @@ examRunnerForm scope (no intermediate x-data between them).
          data-answered-base="{{ answered_other_pages }}"
          class="h-screen flex flex-col overflow-hidden">
 
-        {% comment %}=== STICKY TOP BAR ==={% endcomment %}
-        <div class="flex-none sticky top-0 z-20">
+        {% comment %}=== TOP BAR (fixed in place by the flex column; no stacking context, so the dialogs inside it can cover the footer) ==={% endcomment %}
+        <div class="flex-none">
 
             {% comment %}Runner bar: 3-column — exit X (left), form title (centre), answered count (right){% endcomment %}
             <div class="flex items-center justify-between gap-2 px-4 py-3 bg-white border-b border-border">
@@ -290,7 +290,7 @@ examRunnerForm scope (no intermediate x-data between them).
 
 
         {% comment %}=== STICKY FOOTER ==={% endcomment %}
-        <div class="flex-none sticky bottom-0 z-20">
+        <div class="flex-none">
             <div class="bg-white border-t border-border px-4 py-3">
 
                 {% if previous_page_url %}
