@@ -11,7 +11,12 @@ from freedom_ls.accounts.utils import get_own_user
 from freedom_ls.panel_framework.actions import PanelAction
 from freedom_ls.panel_framework.panels import Panel
 
-from .actions import ACCOUNT_CHANGED, EditNameAction, UploadProfilePictureAction
+from .actions import (
+    ACCOUNT_CHANGED,
+    EditNameAction,
+    RemoveProfilePictureAction,
+    UploadProfilePictureAction,
+)
 
 
 class NamePanel(Panel):
@@ -47,7 +52,10 @@ class ProfilePicturePanel(Panel):
         return super().has_permission(request) and bool(self.available_actions)
 
     def get_actions(self) -> list[PanelAction]:
-        return [UploadProfilePictureAction(cast(User, self.instance))]
+        return [
+            UploadProfilePictureAction(cast(User, self.instance)),
+            RemoveProfilePictureAction(),
+        ]
 
     def get_context_data(self) -> dict[str, object]:
         context = super().get_context_data()

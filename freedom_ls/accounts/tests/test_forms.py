@@ -27,9 +27,11 @@ from freedom_ls.accounts.forms import (
     apply_signup_name_policy,
     honeypot_field,
     reject_honeypot,
+    remove_profile_picture,
     tripped_honeypot,
 )
 from freedom_ls.accounts.models import LegalConsent
+from freedom_ls.accounts.models import User as UserModel
 from freedom_ls.accounts.tests.profile_picture_samples import (
     gif_bytes,
     jpeg_bytes,
@@ -644,3 +646,63 @@ def test_profile_picture_form_has_no_removal_field_with_a_picture_stored(
     form = ProfilePictureForm(instance=UserFactory(with_profile_picture=True))
 
     assert "remove_profile_picture" not in form.fields
+
+
+@pytest.mark.django_db
+def test_remove_profile_picture_clears_the_field_and_deletes_the_file_on_commit(
+    mock_site_context,
+    pathless_profile_picture_storage,
+    django_capture_on_commit_callbacks,
+):
+    user = UserFactory(with_profile_picture=True)
+    stored_name = user.profile_picture.name
+    storage = user.profile_picture.storage
+
+    with django_capture_on_commit_callbacks(execute=False) as callbacks:
+        remove_profile_picture(user)
+    still_there_before_commit = storage.exists(stored_name)
+    callbacks[0]()
+
+    assert User._base_manager.get(pk=user.pk).profile_picture.name == ""
+    assert still_there_before_commit is True
+    assert storage.exists(stored_name) is False
+
+
+def _remove_then_roll_back(user: UserModel) -> None:
+    with transaction.atomic():
+        remove_profile_picture(user)
+        raise _RollBackError
+
+
+@pytest.mark.django_db
+def test_remove_profile_picture_keeps_the_file_when_the_removal_rolls_back(
+    mock_site_context,
+    pathless_profile_picture_storage,
+    django_capture_on_commit_callbacks,
+):
+    user = UserFactory(with_profile_picture=True)
+    stored_name = user.profile_picture.name
+    storage = user.profile_picture.storage
+
+    with (
+        django_capture_on_commit_callbacks(execute=True),
+        pytest.raises(_RollBackError),
+    ):
+        _remove_then_roll_back(user)
+
+    assert storage.exists(stored_name) is True
+    assert User._base_manager.get(pk=user.pk).profile_picture.name == stored_name
+
+
+@pytest.mark.django_db
+def test_remove_profile_picture_with_no_picture_deletes_nothing(
+    mock_site_context,
+    pathless_profile_picture_storage,
+    django_capture_on_commit_callbacks,
+):
+    user = UserFactory()
+
+    with django_capture_on_commit_callbacks(execute=True) as callbacks:
+        remove_profile_picture(user)
+
+    assert callbacks == []

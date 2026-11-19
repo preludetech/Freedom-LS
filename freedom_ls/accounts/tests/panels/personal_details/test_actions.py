@@ -16,7 +16,9 @@ from freedom_ls.accounts.panels.personal_details.actions import (
     ACCOUNT_CHANGED,
     CHANGE_OWN_NAME,
     CHANGE_OWN_PROFILE_PICTURE,
+    REMOVE_OWN_PROFILE_PICTURE,
     EditNameAction,
+    RemoveProfilePictureAction,
     UploadProfilePictureAction,
 )
 from freedom_ls.accounts.tests.profile_picture_samples import jpeg_bytes
@@ -27,6 +29,7 @@ pytestmark = pytest.mark.django_db
 EDIT_NAME_URL = "/accounts/profile/personal-details/__panels/name/__actions/edit_name"
 PICTURE_PANEL_URL = "/accounts/profile/personal-details/__panels/profile-picture"
 UPLOAD_PICTURE_URL = f"{PICTURE_PANEL_URL}/__actions/upload_profile_picture"
+REMOVE_PICTURE_URL = f"{PICTURE_PANEL_URL}/__actions/remove_profile_picture"
 
 
 @pytest.fixture
@@ -169,3 +172,72 @@ def test_the_upload_action_needs_the_change_own_profile_picture_capability(
     action = UploadProfilePictureAction(UserFactory())
 
     assert action.get_capability(None) == CHANGE_OWN_PROFILE_PICTURE
+
+
+def test_the_remove_trigger_is_absent_without_a_picture(signed_in):
+    client, _ = signed_in
+
+    response = client.get(PICTURE_PANEL_URL)
+
+    assert REMOVE_PICTURE_URL not in response.content.decode()
+
+
+def test_the_remove_trigger_is_present_with_a_picture(
+    mock_site_context, pathless_profile_picture_storage
+):
+    user = UserFactory(with_profile_picture=True)
+    client = Client()
+    client.force_login(user)
+
+    response = client.get(PICTURE_PANEL_URL)
+
+    assert REMOVE_PICTURE_URL in response.content.decode()
+
+
+def test_the_remove_dialog_has_an_error_tone_confirm_button_and_names_the_picture(
+    mock_site_context, pathless_profile_picture_storage
+):
+    user = UserFactory(with_profile_picture=True)
+    client = Client()
+    client.force_login(user)
+
+    response = client.get(REMOVE_PICTURE_URL)
+
+    html = response.content.decode()
+    assert response.status_code == 200
+    assert "Remove your profile picture?" in html
+    assert "Your current picture will be deleted" in html
+    assert "btn-error" in html
+    assert "Removing…" in html
+
+
+def test_a_confirmed_removal_deletes_the_file_and_closes_the_dialog(
+    mock_site_context,
+    pathless_profile_picture_storage,
+    django_capture_on_commit_callbacks,
+):
+    user = UserFactory(with_profile_picture=True)
+    stored_name = user.profile_picture.name
+    storage = user.profile_picture.storage
+    client = Client()
+    client.force_login(user)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = client.post(REMOVE_PICTURE_URL, headers={"HX-Request": "true"})
+
+    user.refresh_from_db()
+    assert response.status_code == 200
+    assert user.profile_picture.name == ""
+    assert storage.exists(stored_name) is False
+    assert "closeModal" in response["HX-Trigger"]
+    assert ACCOUNT_CHANGED in response["HX-Trigger"]
+    assert "Profile picture removed" in response.content.decode()
+    assert (response["HX-Retarget"], response["HX-Reswap"]) == ("body", "none")
+
+
+def test_the_remove_action_needs_the_remove_own_profile_picture_capability(
+    mock_site_context,
+):
+    action = RemoveProfilePictureAction()
+
+    assert action.get_capability(None) == REMOVE_OWN_PROFILE_PICTURE

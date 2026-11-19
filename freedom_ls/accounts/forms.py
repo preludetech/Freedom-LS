@@ -12,6 +12,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.core.files import File
 from django.core.files.base import ContentFile
+from django.core.files.storage import Storage
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from django.http import HttpRequest
@@ -20,6 +21,7 @@ from django.utils.translation import gettext_lazy as _
 from freedom_ls.site_aware_models.models import get_cached_site
 
 from .images import encode_profile_picture
+from .models import get_profile_picture_storage
 from .validators import validate_profile_picture
 
 if TYPE_CHECKING:
@@ -38,6 +40,46 @@ class UserForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ["first_name", "last_name"]
+
+
+def _lock_and_read_stored_profile_picture_name(pk: int) -> str:
+    """The picture name the database holds now, with the row locked.
+
+    The lock makes two saves of the same account run one after the
+    other, so the second reads the file the first wrote and deletes
+    it. Read without a lock, both would read the same old name and
+    one new file would be left with nothing pointing at it.
+
+    Read from the database, not from the form: validation has already
+    put the new file on the instance, and the name the form started
+    with is stale once another save commits. Through the base manager,
+    because `objects` filters to the request's site.
+    """
+    stored = (
+        User._base_manager.select_for_update()
+        .filter(pk=pk)
+        .values_list("profile_picture", flat=True)
+        .first()
+    )
+    return stored or ""
+
+
+def _delete_stored_picture_on_commit(storage: Storage, name: str) -> None:
+    # Deferred to commit: a change that rolls back keeps the row pointing at
+    # the old file, so the old file has to survive.
+    transaction.on_commit(lambda: storage.delete(name))
+
+
+def remove_profile_picture(user: UserModel) -> None:
+    """Clear the user's picture and delete its file once the clear commits.
+
+    Shares the row lock with ProfilePictureForm.save, so a removal and an
+    upload of the same account run one after the other."""
+    with transaction.atomic():
+        stored = _lock_and_read_stored_profile_picture_name(user.pk)
+        User._base_manager.filter(pk=user.pk).update(profile_picture="")
+    if stored:
+        _delete_stored_picture_on_commit(get_profile_picture_storage(), stored)
 
 
 class ProfilePictureForm(forms.ModelForm):
@@ -74,35 +116,11 @@ class ProfilePictureForm(forms.ModelForm):
             # unsaved form has nothing to hang that on.
             raise ValueError("ProfilePictureForm.save() does not support commit=False.")
         with transaction.atomic():
-            superseded = self._lock_and_read_stored_profile_picture_name()
+            superseded = _lock_and_read_stored_profile_picture_name(self.instance.pk)
             user: UserModel = super().save()
         if superseded and superseded != user.profile_picture.name:
-            storage = user.profile_picture.storage
-            # Deferred to commit: a save that rolls back keeps the row
-            # pointing at the old file, so the old file has to survive.
-            transaction.on_commit(lambda: storage.delete(superseded))
+            _delete_stored_picture_on_commit(user.profile_picture.storage, superseded)
         return user
-
-    def _lock_and_read_stored_profile_picture_name(self) -> str:
-        """The picture name the database holds now, with the row locked.
-
-        The lock makes two saves of the same account run one after the
-        other, so the second reads the file the first wrote and deletes
-        it. Read without a lock, both would read the same old name and
-        one new file would be left with nothing pointing at it.
-
-        Read from the database, not from the form: validation has already
-        put the new file on the instance, and the name the form started
-        with is stale once another save commits. Through the base manager,
-        because `objects` filters to the request's site.
-        """
-        stored = (
-            User._base_manager.select_for_update()
-            .filter(pk=self.instance.pk)
-            .values_list("profile_picture", flat=True)
-            .first()
-        )
-        return stored or ""
 
 
 def _get_request_or_none():

@@ -1,8 +1,9 @@
 """Browser flow for the account area: the Personal details page and its sidebar.
 
 The Django test client covers what the server renders. What only a browser
-shows is covered here: the name saving inline with its toast, the sidebar
-leading to allauth's pages, and the layout at each viewport.
+shows is covered here: the name and picture saving inline with their toasts,
+the picture removed through its confirmation, the sidebar leading to allauth's
+pages, and the layout at each viewport.
 """
 
 from __future__ import annotations
@@ -77,6 +78,21 @@ def test_change_the_name_inline_then_follow_the_sidebar(
     assert label_box is not None
     assert error_box["x"] == pytest.approx(label_box["x"], abs=1)
     expect(preview).to_have_attribute("src", saved_src)
+
+    page.get_by_role("button", name="Remove picture").click()
+
+    dialog = page.get_by_role("dialog", name="Remove your profile picture?")
+    expect(dialog).to_be_visible()
+    expect(dialog.get_by_role("button", name="Remove", exact=True)).to_have_class(
+        re.compile(r"\bbtn-error\b")
+    )
+    dialog.get_by_role("button", name="Remove", exact=True).click()
+
+    expect(page.locator("#app-modal")).not_to_have_attribute("open", "")
+    expect(page.get_by_text("Profile picture removed")).to_be_visible()
+    expect(preview).to_have_count(0)
+    expect(page.get_by_role("button", name="Remove picture")).to_have_count(0)
+    assert User._base_manager.get(pk=logged_in_user.pk).profile_picture.name == ""
 
     page.get_by_role("navigation", name="Account").get_by_role(
         "link", name="Email"

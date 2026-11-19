@@ -10,9 +10,13 @@ from django.contrib import messages
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 
-from freedom_ls.accounts.forms import ProfilePictureForm, UserForm
+from freedom_ls.accounts.forms import (
+    ProfilePictureForm,
+    UserForm,
+    remove_profile_picture,
+)
 from freedom_ls.accounts.models import User
-from freedom_ls.panel_framework.actions import EditAction, PanelAction
+from freedom_ls.panel_framework.actions import ConfirmAction, EditAction, PanelAction
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.events import build_hx_trigger
 
@@ -101,3 +105,32 @@ class UploadProfilePictureAction(AccountEditAction):
         super().__init__(
             user, form_class=ProfilePictureForm, form_title="Profile picture"
         )
+
+
+class RemoveProfilePictureAction(ConfirmAction):
+    label = "Remove picture"
+    action_name = "remove_profile_picture"
+    capability = REMOVE_OWN_PROFILE_PICTURE
+    success_events = (ACCOUNT_CHANGED,)
+    confirm_label = "Remove"
+    confirm_variant = "error"
+    loading_text = "Removing…"
+    template_name = "accounts/modal/remove_profile_picture_confirmation.html"
+
+    def get_title(self, ctx: PanelContext) -> str:
+        return "Remove your profile picture?"
+
+    def is_offered(self, ctx: PanelContext) -> bool:
+        return bool(cast(User, ctx.instance).profile_picture)
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        remove_profile_picture(cast(User, ctx.instance))
+        response = account_saved_response(
+            ctx, self, "", "Profile picture removed", close_modal=True
+        )
+        # The dialog closes on the closeModal event, but any swap that targets
+        # its body reopens it, and a 204 would drop the toast. Retargeting a
+        # swap of nothing at the body lets only the out-of-band toast land.
+        response["HX-Retarget"] = "body"
+        response["HX-Reswap"] = "none"
+        return response
