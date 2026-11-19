@@ -16,6 +16,7 @@ import pytest
 from django.conf import settings
 from django.core.management import call_command
 
+from freedom_ls.base.tests.tailwind_build import run_tailwind
 from freedom_ls.base.theming import FREEDOM_LS_PACKAGE_DIR
 
 pytestmark = pytest.mark.fls_internal
@@ -56,22 +57,14 @@ def reference_only_build(tmp_path_factory: pytest.TempPathFactory) -> str:
     """The output of a build from the reference theme and the generated file alone."""
     call_command("write_panel_framework_css", stdout=StringIO())
     build_dir = tmp_path_factory.mktemp("reference_only_build")
-    # Tailwind resolves `@import "tailwindcss"` from the input file's directory.
-    (build_dir / "node_modules").symlink_to(Path(settings.BASE_DIR) / "node_modules")
     input_css = build_dir / "input.css"
-    output_css = build_dir / "output.css"
     generated = Path(settings.BASE_DIR) / GENERATED_FILE_NAME
     input_css.write_text(
         '@import "tailwindcss" source(none);\n'
         f'@import "{REFERENCE_THEME.as_posix()}";\n'
         f'@import "{generated.as_posix()}";\n'
     )
-    subprocess.run(  # noqa: S603
-        ["npx", "@tailwindcss/cli", "-i", str(input_css), "-o", str(output_css)],  # noqa: S607
-        check=True,
-        cwd=settings.BASE_DIR,
-    )
-    return output_css.read_text()
+    return run_tailwind(build_dir, input_css)
 
 
 @pytest.mark.parametrize("rule", [".panel-surface", FRAMEWORK_ONLY_CLASS])
@@ -85,3 +78,20 @@ def test_the_compiled_stylesheet_contains_a_class_only_a_framework_template_uses
     None
 ):
     assert FRAMEWORK_ONLY_CLASS in COMPILED_CSS.read_text()
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        GENERATED_FILE_NAME,
+        "freedom_ls/panel_framework/static/panel_framework/css/reference.css",
+    ],
+)
+def test_a_generated_stylesheet_is_gitignored(path: str) -> None:
+    result = subprocess.run(  # noqa: S603
+        ["git", "check-ignore", "-q", path],  # noqa: S607
+        cwd=settings.BASE_DIR,
+        check=False,
+    )
+
+    assert result.returncode == 0
