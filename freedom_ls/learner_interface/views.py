@@ -80,6 +80,7 @@ from freedom_ls.form_engine.paging import (
     unanswered_required_message,
 )
 from freedom_ls.form_engine.queries import count_form_questions
+from freedom_ls.form_engine.served_paper import ensure_served_paper
 from freedom_ls.learner_management.learner_actions import self_register
 from freedom_ls.learner_management.queries import (
     is_course_open_to_organisation,
@@ -1910,6 +1911,7 @@ def form_start(request, course_slug, index):
 
     # Create a FormProgress instance if it doesn't yet exist
     form_progress = get_or_create_incomplete(course_progress, collection_item)
+    ensure_served_paper(form_progress)
 
     # Figure out what page of the form the user is on
     page_number = resume_page_number(form_progress, current_path(form_progress))

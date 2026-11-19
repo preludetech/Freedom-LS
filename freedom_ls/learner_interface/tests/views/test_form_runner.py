@@ -3,6 +3,7 @@ from __future__ import annotations
 import html
 import re
 from datetime import UTC, date, datetime
+from typing import cast
 
 import pytest
 import time_machine
@@ -16,6 +17,7 @@ from freedom_ls.content_engine.factories import TopicFactory
 from freedom_ls.content_engine.models import Course
 from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.deadlines.factories import CourseDeadlineConfigFactory
+from freedom_ls.form_engine.conditions import ServedPaper
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -26,6 +28,7 @@ from freedom_ls.form_engine.factories import (
 )
 from freedom_ls.form_engine.models import (
     Form,
+    FormPage,
     FormProgress,
     FormQuestion,
     FormStrategy,
@@ -1039,6 +1042,85 @@ def test_count_form_questions_returns_zero_for_form_with_no_questions(
     """count_form_questions returns 0 for a form with no questions."""
     form = FormFactory()
     assert count_form_questions(form) == 0
+
+
+def _form_start_url(course: Course) -> str:
+    return reverse(
+        "learner_interface:form_start",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+
+
+@pytest.fixture
+def started_quiz(mock_site_context, client):
+    """A registered, logged-in learner's quiz course with its form_start not yet visited."""
+    user = UserFactory()
+    form = _make_quiz_form()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    return course, form, user
+
+
+def _served_paper_of_sitting(form: Form, user) -> ServedPaper | None:
+    return cast(
+        "ServedPaper | None",
+        FormProgress.objects.get(form=form, user=user).served_paper,
+    )
+
+
+@pytest.mark.django_db
+def test_form_start_on_a_quiz_writes_the_served_paper(started_quiz, client):
+    course, form, user = started_quiz
+
+    client.get(_form_start_url(course))
+
+    served = _served_paper_of_sitting(form, user)
+    assert served is not None
+    assert [page["id"] for page in served["pages"]] == [
+        str(page.id) for page in form.pages.all()
+    ]
+
+
+@pytest.mark.django_db
+def test_a_second_form_start_leaves_the_served_paper_equal(started_quiz, client):
+    course, form, user = started_quiz
+    client.get(_form_start_url(course))
+    first = _served_paper_of_sitting(form, user)
+
+    client.get(_form_start_url(course))
+
+    assert _served_paper_of_sitting(form, user) == first
+
+
+@pytest.mark.django_db
+def test_reordering_pages_after_form_start_leaves_the_served_paper_equal(
+    started_quiz, client
+):
+    course, form, user = started_quiz
+    FormPageFactory(form=form, order=1)
+    client.get(_form_start_url(course))
+    first = _served_paper_of_sitting(form, user)
+    FormPage.objects.filter(form=form, order=0).update(order=5)
+
+    client.get(_form_start_url(course))
+
+    assert _served_paper_of_sitting(form, user) == first
+
+
+@pytest.mark.django_db
+def test_form_start_on_a_non_quiz_form_leaves_the_served_paper_null(
+    mock_site_context, client
+):
+    user = UserFactory()
+    form, _, _ = _make_two_page_form()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+
+    client.get(_form_start_url(course))
+
+    assert _served_paper_of_sitting(form, user) is None
 
 
 # ---------------------------------------------------------------------------

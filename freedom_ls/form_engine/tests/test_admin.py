@@ -62,6 +62,16 @@ def test_completed_time_is_not_editable(staff_client):
     assert "completed_time" not in response.context["adminform"].form.fields
 
 
+@pytest.mark.django_db
+def test_served_paper_is_read_only_on_the_form_progress_admin(staff_client):
+    progress = FormProgressFactory()
+
+    response = staff_client.get(reverse(CHANGE_URL_NAME, args=[progress.pk]))
+
+    assert "served_paper" not in response.context["adminform"].form.fields
+    assert "served_paper" in response.context["adminform"].readonly_fields
+
+
 FORM_ADMINS = [
     (FormAdmin, Form),
     (FormPageAdmin, FormPage),

@@ -316,6 +316,14 @@ class FormProgress(SiteAwareModel):
             "recorded when it completed"
         ),
     )
+    served_paper = models.JSONField(
+        null=True,
+        blank=True,
+        help_text=_(
+            "The pages, children and option order this sitting was served. "
+            "Written once, before the first page is shown."
+        ),
+    )
 
     class Meta:
         verbose_name_plural = "Form progress records"

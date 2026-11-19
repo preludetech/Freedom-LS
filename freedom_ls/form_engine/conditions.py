@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from typing import TypedDict
 from uuid import UUID
 
 from django.db.models import prefetch_related_objects
@@ -33,6 +34,22 @@ FORM_TREE_LOOKUPS = (
     "pages__questions__condition_option",
     "pages__text_items__condition_option",
 )
+
+# The tree plus each question's options: what a served paper orders.
+SERVED_TREE_LOOKUPS = (*FORM_TREE_LOOKUPS, "pages__questions__options")
+
+
+class ServedPage(TypedDict):
+    id: str
+    children: list[str]
+
+
+class ServedPaper(TypedDict):
+    """The stored shape of `FormProgress.served_paper`. Every id is a string uuid."""
+
+    seed: int
+    pages: list[ServedPage]
+    options: dict[str, list[str]]
 
 
 @dataclass(frozen=True, eq=False)

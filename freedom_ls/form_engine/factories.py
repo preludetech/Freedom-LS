@@ -1,11 +1,14 @@
 """Factories for form_engine models."""
 
+import secrets
+
 import factory
 
 from django.core.files.base import ContentFile
 from django.utils.text import slugify
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.form_engine.conditions import ServedPage, ServedPaper
 from freedom_ls.form_engine.models import (
     Form,
     FormContent,
@@ -114,3 +117,23 @@ class QuestionAnswerFileFactory(SiteAwareFactory):
     file = factory.LazyAttribute(
         lambda obj: ContentFile(b"stored bytes", name="file.jpg")
     )
+
+
+def served_paper_of(
+    pages: list[tuple[FormPage, list[FormContent | FormQuestion]]],
+    options: dict[FormQuestion, list[QuestionOption]] | None = None,
+) -> ServedPaper:
+    """A served paper holding exactly these pages, children and options, in this order."""
+    served_pages: list[ServedPage] = [
+        {"id": str(page.id), "children": [str(child.id) for child in children]}
+        for page, children in pages
+    ]
+    served_options = {
+        str(question.id): [str(option.id) for option in question_options]
+        for question, question_options in (options or {}).items()
+    }
+    return {
+        "seed": secrets.randbits(63),
+        "pages": served_pages,
+        "options": served_options,
+    }
