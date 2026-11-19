@@ -24,6 +24,7 @@ from freedom_ls.form_engine.factories import (
     QuestionAnswerFactory,
     QuestionAnswerFileFactory,
     QuestionOptionFactory,
+    served_paper_of,
 )
 from freedom_ls.form_engine.models import FormProgress, FormStrategy, QuestionAnswer
 from freedom_ls.form_engine.queries import form_questions
@@ -378,3 +379,43 @@ def test_answer_value_of_a_text_question_is_the_stored_text(
     answer = _answer(question_type, text_answer=stored)
 
     assert answer_value(answer) == expected
+
+
+def _open_quiz_sitting_of_two_questions():
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    page = FormPageFactory(form=form, order=0)
+    served = FormQuestionFactory(form_page=page, order=0)
+    unserved = FormQuestionFactory(form_page=page, order=1)
+    return FormProgressFactory(form=form), served, unserved
+
+
+def _loaded(progress: FormProgress) -> list[FormProgress]:
+    return list(
+        FormProgress.objects.filter(pk=progress.pk)
+        .select_related("form")
+        .prefetch_related("answers__selected_options", "answers__question")
+    )
+
+
+def test_off_path_question_ids_of_an_open_quiz_sitting_with_no_served_paper_leave_it_null(
+    mock_site_context,
+):
+    progress, _served, _unserved = _open_quiz_sitting_of_two_questions()
+
+    off_path = off_path_question_ids(_loaded(progress))
+
+    assert off_path[progress.pk] == frozenset()
+    progress.refresh_from_db()
+    assert progress.served_paper is None
+
+
+def test_off_path_question_ids_include_a_question_the_served_paper_omits(
+    mock_site_context,
+):
+    progress, served, unserved = _open_quiz_sitting_of_two_questions()
+    progress.served_paper = served_paper_of([(served.form_page, [served])])
+    progress.save()
+
+    off_path = off_path_question_ids(_loaded(progress))
+
+    assert off_path[progress.pk] == {unserved.id}

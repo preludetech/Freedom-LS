@@ -10,9 +10,11 @@ import pytest
 from django.utils import timezone
 
 from freedom_ls.form_engine.conditions import (
+    ServedPaper,
     answers_by_question,
     compute_path,
     current_path,
+    served_path,
     sitting_path,
 )
 from freedom_ls.form_engine.factories import (
@@ -23,6 +25,7 @@ from freedom_ls.form_engine.factories import (
     FormQuestionFactory,
     QuestionAnswerFactory,
     QuestionOptionFactory,
+    served_paper_of,
 )
 from freedom_ls.form_engine.models import (
     Form,
@@ -32,6 +35,7 @@ from freedom_ls.form_engine.models import (
     FormQuestion,
     QuestionOption,
 )
+from freedom_ls.form_engine.served_paper import build_served_paper
 
 pytestmark = pytest.mark.django_db
 
@@ -378,3 +382,367 @@ def test_a_second_compute_path_on_the_same_form_adds_only_the_answer_queries(
 
     with django_assert_max_num_queries(2):
         current_path(form_progress)
+
+
+@dataclass
+class ServedForm:
+    """Three authored pages: page one holds a question and a content block,
+    page two two questions, page three one question."""
+
+    form: Form
+    page_one: FormPage
+    page_two: FormPage
+    page_three: FormPage
+    q_one: FormQuestion
+    one_a: QuestionOption
+    one_b: QuestionOption
+    one_c: QuestionOption
+    content: FormContent
+    q_two: FormQuestion
+    q_three: FormQuestion
+    q_four: FormQuestion
+
+
+@pytest.fixture
+def served_form(mock_site_context) -> ServedForm:
+    form: Form = FormFactory()
+    page_one = FormPageFactory(form=form, order=0)
+    q_one = FormQuestionFactory(form_page=page_one, type="multiple_choice", order=0)
+    one_a = QuestionOptionFactory(question=q_one, value="a", order=0)
+    one_b = QuestionOptionFactory(question=q_one, value="b", order=1)
+    one_c = QuestionOptionFactory(question=q_one, value="c", order=2)
+    content = FormContentFactory(form_page=page_one, order=1)
+    page_two = FormPageFactory(form=form, order=1)
+    q_two = FormQuestionFactory(form_page=page_two, type="short_text", order=0)
+    q_three = FormQuestionFactory(form_page=page_two, type="short_text", order=1)
+    page_three = FormPageFactory(form=form, order=2)
+    q_four = FormQuestionFactory(form_page=page_three, type="short_text", order=0)
+    return ServedForm(
+        form=form,
+        page_one=page_one,
+        page_two=page_two,
+        page_three=page_three,
+        q_one=q_one,
+        one_a=one_a,
+        one_b=one_b,
+        one_c=one_c,
+        content=content,
+        q_two=q_two,
+        q_three=q_three,
+        q_four=q_four,
+    )
+
+
+def _reordered_paper(sf: ServedForm) -> ServedPaper:
+    """Pages three, one, two; page two's questions swapped; question one's
+    options c, a, b."""
+    return served_paper_of(
+        [
+            (sf.page_three, [sf.q_four]),
+            (sf.page_one, [sf.content, sf.q_one]),
+            (sf.page_two, [sf.q_three, sf.q_two]),
+        ],
+        {sf.q_one: [sf.one_c, sf.one_a, sf.one_b]},
+    )
+
+
+def test_served_path_of_a_built_paper_is_the_authored_path(
+    served_form: ServedForm,
+) -> None:
+    paper = build_served_paper(_fresh(served_form.form))
+
+    path = served_path(_fresh(served_form.form), paper)
+
+    assert [page.id for page in path.pages] == [
+        served_form.page_one.id,
+        served_form.page_two.id,
+        served_form.page_three.id,
+    ]
+    assert [child.id for child in path.children_of(served_form.page_one)] == [
+        served_form.q_one.id,
+        served_form.content.id,
+    ]
+    assert [o.id for o in path.options_of(served_form.q_one)] == [
+        served_form.one_a.id,
+        served_form.one_b.id,
+        served_form.one_c.id,
+    ]
+    assert path.has_missing_served_items is False
+
+
+def test_served_path_follows_the_served_page_child_and_option_order(
+    served_form: ServedForm,
+) -> None:
+    sf = served_form
+
+    path = served_path(_fresh(sf.form), _reordered_paper(sf))
+
+    assert [number for number, _ in path.numbered_pages()] == [3, 1, 2]
+    assert [page.id for page in path.pages] == [
+        sf.page_three.id,
+        sf.page_one.id,
+        sf.page_two.id,
+    ]
+    assert [q.id for q in path.questions()] == [
+        sf.q_four.id,
+        sf.q_one.id,
+        sf.q_three.id,
+        sf.q_two.id,
+    ]
+    assert path.question_positions() == {
+        sf.q_four.id: 1,
+        sf.q_one.id: 2,
+        sf.q_three.id: 3,
+        sf.q_two.id: 4,
+    }
+    assert [path.page_position(n) for n in (3, 1, 2)] == [1, 2, 3]
+    assert [child.id for child in path.children_of(sf.page_one)] == [
+        sf.content.id,
+        sf.q_one.id,
+    ]
+    assert [o.id for o in path.options_of(sf.q_one)] == [
+        sf.one_c.id,
+        sf.one_a.id,
+        sf.one_b.id,
+    ]
+
+
+def test_navigation_over_a_served_order_follows_served_positions(
+    served_form: ServedForm,
+) -> None:
+    path = served_path(_fresh(served_form.form), _reordered_paper(served_form))
+
+    assert path.next_page_number(3) == 1
+    assert path.next_page_number(1) == 2
+    assert path.next_page_number(2) is None
+    assert path.previous_page_number(2) == 1
+    assert path.previous_page_number(1) == 3
+    assert path.previous_page_number(3) is None
+    assert path.first_page_number_at_or_after(2) == 2
+    assert path.last_page_number() == 2
+    assert path.landing_page_number(1) == 2
+
+
+def test_a_number_off_a_served_path_lands_on_the_first_greater_number_else_the_last(
+    served_form: ServedForm,
+) -> None:
+    sf = served_form
+    paper = served_paper_of([(sf.page_three, [sf.q_four]), (sf.page_one, [sf.q_one])])
+    path = served_path(_fresh(sf.form), paper)
+
+    assert path.first_page_number_at_or_after(2) == 3
+    assert path.landing_page_number(2) == 3
+    assert path.next_page_number(2) == 3
+    assert path.previous_page_number(2) == 1
+    assert path.landing_page_number(4) == 1
+
+
+def test_a_served_paper_that_omits_a_page_and_a_question_leaves_them_off_the_path(
+    served_form: ServedForm,
+) -> None:
+    sf = served_form
+    paper = served_paper_of(
+        [(sf.page_one, [sf.q_one]), (sf.page_two, [sf.q_two])],
+    )
+
+    path = served_path(_fresh(sf.form), paper)
+
+    assert [number for number, _ in path.numbered_pages()] == [1, 2]
+    assert not path.has_question(sf.q_three.id)
+    assert not path.has_question(sf.q_four.id)
+    assert path.content_ids == frozenset()
+    assert path.has_missing_served_items is False
+
+
+def test_a_deleted_page_is_skipped_and_flagged(served_form: ServedForm) -> None:
+    sf = served_form
+    paper = build_served_paper(_fresh(sf.form))
+    sf.page_two.delete()
+
+    path = served_path(_fresh(sf.form), paper)
+
+    assert [page.id for page in path.pages] == [sf.page_one.id, sf.page_three.id]
+    assert path.has_missing_served_items is True
+
+
+def test_a_deleted_child_is_skipped_and_flagged(served_form: ServedForm) -> None:
+    sf = served_form
+    paper = build_served_paper(_fresh(sf.form))
+    sf.q_three.delete()
+
+    path = served_path(_fresh(sf.form), paper)
+
+    assert [q.id for q in path.questions_of(sf.page_two)] == [sf.q_two.id]
+    assert path.has_missing_served_items is True
+
+
+def test_a_deleted_option_is_skipped_and_flagged(served_form: ServedForm) -> None:
+    sf = served_form
+    paper = build_served_paper(_fresh(sf.form))
+    sf.one_b.delete()
+
+    path = served_path(_fresh(sf.form), paper)
+
+    assert [o.id for o in path.options_of(sf.q_one)] == [sf.one_a.id, sf.one_c.id]
+    assert path.has_missing_served_items is True
+
+
+def test_a_served_page_whose_children_are_all_gone_is_skipped(
+    served_form: ServedForm,
+) -> None:
+    sf = served_form
+    paper = build_served_paper(_fresh(sf.form))
+    sf.q_four.delete()
+
+    path = served_path(_fresh(sf.form), paper)
+
+    assert [page.id for page in path.pages] == [sf.page_one.id, sf.page_two.id]
+
+
+def test_a_page_that_was_empty_when_served_is_kept(served_form: ServedForm) -> None:
+    sf = served_form
+    empty_page = FormPageFactory(form=sf.form, order=3)
+    paper = build_served_paper(_fresh(sf.form))
+
+    path = served_path(_fresh(sf.form), paper)
+
+    assert [page.id for page in path.pages][-1] == empty_page.id
+    assert path.children_of(empty_page) == []
+    assert path.has_missing_served_items is False
+
+
+def test_a_question_moved_to_another_form_is_skipped(served_form: ServedForm) -> None:
+    sf = served_form
+    paper = build_served_paper(_fresh(sf.form))
+    sf.q_three.form_page = FormPageFactory(form=FormFactory(), order=0)
+    sf.q_three.save()
+
+    path = served_path(_fresh(sf.form), paper)
+
+    assert not path.has_question(sf.q_three.id)
+    assert path.has_missing_served_items is True
+
+
+def test_a_question_moved_to_another_page_of_the_form_stays_under_its_served_page(
+    served_form: ServedForm,
+) -> None:
+    sf = served_form
+    paper = build_served_paper(_fresh(sf.form))
+    sf.q_three.form_page = sf.page_three
+    sf.q_three.save()
+
+    path = served_path(_fresh(sf.form), paper)
+
+    assert [q.id for q in path.questions_of(sf.page_two)] == [
+        sf.q_two.id,
+        sf.q_three.id,
+    ]
+    assert [q.id for q in path.questions_of(sf.page_three)] == [sf.q_four.id]
+    assert path.has_missing_served_items is False
+
+
+def test_reached_position_of_a_number_on_the_path_is_its_position(
+    served_form: ServedForm,
+) -> None:
+    path = served_path(_fresh(served_form.form), _reordered_paper(served_form))
+
+    assert path.reached_position(3) == 1
+    assert path.reached_position(2) == 3
+
+
+def test_reached_position_of_a_number_off_the_path_counts_the_pages_before_its_landing(
+    served_form: ServedForm,
+) -> None:
+    sf = served_form
+    paper = served_paper_of([(sf.page_one, [sf.q_one]), (sf.page_three, [sf.q_four])])
+    path = served_path(_fresh(sf.form), paper)
+
+    assert path.reached_position(2) == 1
+    assert path.reached_position(0) == 0
+    assert path.reached_position(9) == 2
+
+
+def test_options_of_a_path_with_no_served_paper_is_the_option_order(
+    served_form: ServedForm,
+) -> None:
+    path = compute_path(_fresh(served_form.form), {})
+    question = path.questions()[0]
+
+    options = path.options_of(question)
+
+    assert [o.id for o in options] == [
+        served_form.one_a.id,
+        served_form.one_b.id,
+        served_form.one_c.id,
+    ]
+
+
+def _served_form_of_size(question_count: int) -> tuple[Form, ServedPaper]:
+    form: Form = FormFactory()
+    page = FormPageFactory(form=form, order=0)
+    for order in range(question_count):
+        question = FormQuestionFactory(
+            form_page=page, type="multiple_choice", order=order
+        )
+        QuestionOptionFactory(question=question, value="a", order=0)
+        QuestionOptionFactory(question=question, value="b", order=1)
+    return _fresh(form), build_served_paper(_fresh(form))
+
+
+def test_served_path_stays_within_a_query_bound_as_the_questions_grow(
+    mock_site_context, django_assert_max_num_queries
+) -> None:
+    form, paper = _served_form_of_size(12)
+
+    with django_assert_max_num_queries(8):
+        served_path(form, paper)
+
+
+def test_sitting_path_reads_the_served_paper_before_asked(
+    served_form: ServedForm,
+) -> None:
+    sf = served_form
+    form_progress = FormProgressFactory(
+        form=sf.form,
+        served_paper=_reordered_paper(sf),
+        asked=_full_asked(sf),
+    )
+
+    path = sitting_path(FormProgress.objects.get(pk=form_progress.pk))
+
+    assert [number for number, _ in path.numbered_pages()] == [3, 1, 2]
+
+
+def _full_asked(sf: ServedForm) -> dict[str, list[str]]:
+    return {
+        "pages": [str(sf.page_one.id)],
+        "questions": [str(sf.q_one.id)],
+        "content": [],
+    }
+
+
+def test_current_path_reads_the_served_paper(served_form: ServedForm) -> None:
+    form_progress = FormProgressFactory(
+        form=served_form.form, served_paper=_reordered_paper(served_form)
+    )
+
+    path = current_path(FormProgress.objects.get(pk=form_progress.pk))
+
+    assert [number for number, _ in path.numbered_pages()] == [3, 1, 2]
+
+
+def test_current_path_and_sitting_path_without_a_served_paper_are_the_computed_path(
+    branching_form: BranchingForm,
+) -> None:
+    form_progress = FormProgressFactory(form=branching_form.form)
+    _select(form_progress, branching_form.choice, branching_form.yes)
+    reloaded = FormProgress.objects.get(pk=form_progress.pk)
+
+    current = current_path(reloaded)
+    sitting = sitting_path(reloaded)
+
+    assert [number for number, _ in current.numbered_pages()] == [1, 2]
+    assert [number for number, _ in sitting.numbered_pages()] == [1, 2]
+    assert current.options_of(branching_form.choice) == list(
+        branching_form.choice.options.all()
+    )

@@ -19,6 +19,7 @@ from freedom_ls.form_engine.factories import (
     FormQuestionFactory,
     QuestionAnswerFactory,
     QuestionOptionFactory,
+    served_paper_of,
 )
 from freedom_ls.form_engine.models import (
     Form,
@@ -329,3 +330,40 @@ def test_form_questions_skip_a_question_on_another_forms_page(mock_site_context)
     questions = form_questions(_form_with_pages_prefetched(form))
 
     assert questions == [mine]
+
+
+def _open_quiz_sitting_of_two_questions() -> tuple[
+    FormProgress, FormQuestion, FormQuestion
+]:
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ)
+    page = FormPageFactory(form=form, order=0)
+    served = FormQuestionFactory(form_page=page, type="short_text", order=0)
+    unserved = FormQuestionFactory(form_page=page, type="short_text", order=1)
+    progress: FormProgress = FormProgressFactory(form=form)
+    return progress, cast(FormQuestion, served), cast(FormQuestion, unserved)
+
+
+@pytest.mark.django_db
+def test_reading_an_open_quiz_sitting_with_no_served_paper_leaves_it_null(
+    mock_site_context,
+):
+    progress, _served, _unserved = _open_quiz_sitting_of_two_questions()
+
+    groups = answer_groups(FormProgress.objects.get(pk=progress.pk))
+
+    assert [row.is_asked for group in groups for row in group.rows] == [True, True]
+    progress.refresh_from_db()
+    assert progress.served_paper is None
+
+
+@pytest.mark.django_db
+def test_a_served_paper_that_omits_a_question_marks_it_not_asked(mock_site_context):
+    progress, served, unserved = _open_quiz_sitting_of_two_questions()
+    progress.served_paper = served_paper_of([(served.form_page, [served])])
+    progress.save()
+
+    groups = answer_groups(FormProgress.objects.get(pk=progress.pk))
+
+    rows = {row.question.id: row for group in groups for row in group.rows}
+    assert rows[served.id].is_asked is True
+    assert rows[unserved.id].is_asked is False

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import TypedDict
+from typing import TypedDict, cast
 from uuid import UUID
 
 from django.db.models import prefetch_related_objects
@@ -54,11 +54,11 @@ class ServedPaper(TypedDict):
 
 @dataclass(frozen=True, eq=False)
 class SittingPath:
-    """The pages, questions and content blocks one sitting is asked, in authored order.
+    """The pages, questions and content blocks one sitting is asked, in the order it is asked them.
 
     Page numbers are authored indexes (the URL's numbers); positions are places
     among the on-path pages (what the learner reads). The two only coincide
-    when nothing is skipped.
+    when nothing is skipped and the pages are asked in authored order.
     """
 
     all_pages: tuple[FormPage, ...]
@@ -66,15 +66,25 @@ class SittingPath:
     children_by_page: Mapping[UUID, tuple[FormChild, ...]]
     question_ids: frozenset[UUID]
     content_ids: frozenset[UUID]
+    # Served option order per question; None when the sitting has no served paper.
+    served_options_by_question: Mapping[UUID, tuple[QuestionOption, ...]] | None = None
+    # True when the served paper names a page, child or option the form lacks.
+    has_missing_served_items: bool = False
+    _numbered: tuple[tuple[int, FormPage], ...] = field(init=False, repr=False)
     _page_positions: dict[int, int] = field(init=False, repr=False)
     _question_positions: dict[UUID, int] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
-        on_path_numbers = [number for number, _ in self.numbered_pages()]
+        authored = {
+            page.id: (number, page)
+            for number, page in enumerate(self.all_pages, start=1)
+        }
+        numbered = tuple(authored[page_id] for page_id in self.children_by_page)
+        object.__setattr__(self, "_numbered", numbered)
         object.__setattr__(
             self,
             "_page_positions",
-            {number: position for position, number in enumerate(on_path_numbers, 1)},
+            {number: position for position, (number, _) in enumerate(numbered, 1)},
         )
         object.__setattr__(
             self,
@@ -86,12 +96,8 @@ class SittingPath:
         )
 
     def numbered_pages(self) -> list[tuple[int, FormPage]]:
-        """(authored number, page) for each on-path page, in order."""
-        return [
-            (number, page)
-            for number, page in enumerate(self.all_pages, start=1)
-            if page.id in self.children_by_page
-        ]
+        """(authored number, page) for each on-path page, in the order the sitting meets them."""
+        return list(self._numbered)
 
     @property
     def pages(self) -> list[FormPage]:
@@ -129,14 +135,47 @@ class SittingPath:
         """The 1-based place of each on-path question among the on-path questions."""
         return self._question_positions
 
+    def _number_at(self, position: int) -> int | None:
+        """The authored number of the page at this position, or None when there is none."""
+        if not 1 <= position <= len(self._numbered):
+            return None
+        return self._numbered[position - 1][0]
+
+    def _first_number_above(self, number: int) -> int | None:
+        """The first page, in path order, whose authored number is greater than `number`."""
+        return next((n for n in self._page_positions if n > number), None)
+
     def next_page_number(self, after: int) -> int | None:
-        return next((n for n in self._page_positions if n > after), None)
+        if after in self._page_positions:
+            return self._number_at(self._page_positions[after] + 1)
+        return self._first_number_above(after)
 
     def previous_page_number(self, before: int) -> int | None:
+        if before in self._page_positions:
+            return self._number_at(self._page_positions[before] - 1)
         return next((n for n in reversed(self._page_positions) if n < before), None)
 
     def first_page_number_at_or_after(self, number: int) -> int | None:
-        return next((n for n in self._page_positions if n >= number), None)
+        if number in self._page_positions:
+            return number
+        return self._first_number_above(number)
+
+    def reached_position(self, number: int) -> int:
+        """How far along the path a sitting that reached authored page `number` has got.
+
+        A number off the path counts as every page before the one it would land
+        on, so a stored number an author's edit has shifted still compares.
+        """
+        if number in self._page_positions:
+            return self._page_positions[number]
+        landing = self._first_number_above(number)
+        return self.page_count if landing is None else self._page_positions[landing] - 1
+
+    def options_of(self, question: FormQuestion) -> list[QuestionOption]:
+        """The question's options in the order this sitting is served them."""
+        if self.served_options_by_question is None:
+            return list(question.options.all())
+        return list(self.served_options_by_question.get(question.id, ()))
 
     def last_page_number(self) -> int | None:
         """The last on-path page; None only for a form with no pages."""
@@ -229,6 +268,8 @@ def compute_path(form: Form, answers: Mapping[UUID, QuestionAnswer]) -> SittingP
 def _path(
     all_pages: tuple[FormPage, ...],
     children_by_page: Mapping[UUID, tuple[FormChild, ...]],
+    served_options_by_question: Mapping[UUID, tuple[QuestionOption, ...]] | None = None,
+    has_missing_served_items: bool = False,
 ) -> SittingPath:
     """Derive question_ids and content_ids from the children map."""
     children = [child for kids in children_by_page.values() for child in kids]
@@ -237,11 +278,57 @@ def _path(
         children_by_page=children_by_page,
         question_ids=frozenset(c.id for c in children if isinstance(c, FormQuestion)),
         content_ids=frozenset(c.id for c in children if isinstance(c, FormContent)),
+        served_options_by_question=served_options_by_question,
+        has_missing_served_items=has_missing_served_items,
     )
 
 
+def served_path(form: Form, served_paper: ServedPaper) -> SittingPath:
+    """The path a served paper records, rebuilt over the form's current tree.
+
+    An item missing from the form is skipped, whether it was deleted or
+    moved to another form. A question moved to another page of this form is
+    still shown under the page it was served on.
+    """
+    prefetch_related_objects([form], *SERVED_TREE_LOOKUPS)
+    all_pages = tuple(form.pages.all())
+    pages_by_id = {str(page.id): page for page in all_pages}
+    children_by_id = {str(c.id): c for page in all_pages for c in page.children()}
+    served_option_ids = served_paper["options"]
+    missing = False
+    children_by_page: dict[UUID, tuple[FormChild, ...]] = {}
+    served_options_by_question: dict[UUID, tuple[QuestionOption, ...]] = {}
+    for served_page in served_paper["pages"]:
+        page = pages_by_id.get(served_page["id"])
+        if page is None:
+            missing = True
+            continue
+        children = tuple(
+            children_by_id[i] for i in served_page["children"] if i in children_by_id
+        )
+        missing = missing or len(children) != len(served_page["children"])
+        # A page that was empty when served is kept, as compute_path keeps it;
+        # one whose children have all gone has nothing left to show.
+        if served_page["children"] and not children:
+            continue
+        children_by_page[page.id] = children
+        for child in children:
+            if not isinstance(child, FormQuestion):
+                continue
+            live = {str(option.id): option for option in child.options.all()}
+            served_ids = served_option_ids.get(str(child.id), [])
+            options = tuple(live[i] for i in served_ids if i in live)
+            missing = missing or len(options) != len(served_ids)
+            served_options_by_question[child.id] = options
+    return _path(all_pages, children_by_page, served_options_by_question, missing)
+
+
 def current_path(form_progress: FormProgress) -> SittingPath:
-    """The path the sitting's answers give right now."""
+    """The sitting's served paper when it has one, else the path its answers give right now."""
+    if form_progress.served_paper is not None:
+        return served_path(
+            form_progress.form, cast("ServedPaper", form_progress.served_paper)
+        )
     return compute_path(form_progress.form, answers_by_question(form_progress))
 
 
@@ -272,8 +359,13 @@ def sitting_path(
     form_progress: FormProgress,
     answers: Mapping[UUID, QuestionAnswer] | None = None,
 ) -> SittingPath:
-    """Frozen when the sitting recorded one, everything for an older completed
-    sitting, else computed from `answers` (read fresh when not given)."""
+    """The served paper when the sitting has one, whatever the form's strategy is
+    now; else frozen when the sitting recorded one, everything for an older
+    completed sitting, else computed from `answers` (read fresh when not given)."""
+    if form_progress.served_paper is not None:
+        return served_path(
+            form_progress.form, cast("ServedPaper", form_progress.served_paper)
+        )
     if form_progress.asked is not None:
         return frozen_path(form_progress.form, form_progress.asked)
     if form_progress.completed_time is not None:
