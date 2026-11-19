@@ -18,6 +18,7 @@ from django.test import override_settings
 from freedom_ls.panel_framework.checks import (
     REQUIRED_ICON_NAMES,
     check_icon_names,
+    check_reference_base_template,
     check_site_resolver,
     check_task_backend,
     default_sort_errors,
@@ -561,3 +562,23 @@ def test_fls_icon_component_raising_key_error_for_an_unknown_name_raises_e010(
 
     assert [message.id for message in messages] == ["freedom_ls_panel_framework.E010"]
     assert "no_such_semantic_icon" in messages[0].msg
+
+
+def test_a_reference_base_template_that_does_not_load_raises_e009(
+    settings: SettingsWrapper,
+) -> None:
+    settings.PANEL_REFERENCE_BASE_TEMPLATE = "no_such_base.html"
+
+    messages = check_reference_base_template(app_configs=None)
+
+    assert [message.id for message in messages] == ["freedom_ls_panel_framework.E009"]
+    assert "'no_such_base.html'" in messages[0].msg
+    assert "HOST_CONTRACT.md#reference-page" in (messages[0].hint or "")
+
+
+def test_the_default_reference_base_template_raises_no_message(
+    settings: SettingsWrapper,
+) -> None:
+    del settings.PANEL_REFERENCE_BASE_TEMPLATE
+
+    assert check_reference_base_template(app_configs=None) == []

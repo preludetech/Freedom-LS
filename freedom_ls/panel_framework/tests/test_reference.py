@@ -204,6 +204,20 @@ def test_staff_user_gets_200(client: Client, mock_site_context: object) -> None:
     assert response.status_code == 200
 
 
+def test_the_reference_page_under_the_minimal_shell_has_its_own_title_and_examples(
+    client: Client, mock_site_context: object
+) -> None:
+    client.force_login(make_staff_user())
+
+    html = client.get("/test-panel/components/").content.decode()
+
+    title = re.search(r"<title>\s*(.*?)\s*</title>", html, re.DOTALL)
+    main_start = html.index('id="interface-main"')
+    assert title is not None
+    assert title.group(1) == "Component reference"
+    assert main_start < html.index('id="table-default"')
+
+
 @pytest.mark.parametrize("component_name", COMPONENT_NAMES)
 def test_every_component_has_at_least_one_example_id(
     client: Client, mock_site_context: object, component_name: str

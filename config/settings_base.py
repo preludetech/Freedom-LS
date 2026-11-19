@@ -647,6 +647,9 @@ COURSE_ACCESS_BACKEND = (
 # FLS's per-request site cache in force there too.
 PANEL_FRAMEWORK_SITE_RESOLVER = "freedom_ls.site_aware_models.models.get_cached_site"
 
+# The component reference page extends this template, which keeps FLS's header and theme.
+PANEL_REFERENCE_BASE_TEMPLATE = "panel_reference_base.html"
+
 # content_engine resolves this at content-load to validate/normalize Course.access_config.
 # Unset → access_config is stored verbatim (still opaque). course_access registers the
 # default validator; a future backend with its own config keys swaps this string

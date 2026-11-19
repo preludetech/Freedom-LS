@@ -1,12 +1,5 @@
-{% extends "_base.html" %}
-{% load static %}
-
+{% extends reference_base_template %}
 {% block head_title %}Component reference{% endblock %}
-
-{% block extra_alpine_components %}
-    <script defer src="{% static 'panel_framework/js/alpine-components.js' %}"></script>
-{% endblock extra_alpine_components %}
-
 {% block content %}
     <c-panel-page>
         {% include "panel_framework/reference/_examples.html" %}

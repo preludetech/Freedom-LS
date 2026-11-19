@@ -43,11 +43,6 @@ urlpatterns = [
     # exposed here unconditionally so it can be tested without a real dev
     # server. Placed ahead of the catch-all below, which would otherwise
     # swallow it.
-    path(
-        "components/",
-        component_reference,
-        {"template_name": "panel_framework/test_component_reference.html"},
-        name="component_reference",
-    ),
+    path("components/", component_reference, name="component_reference"),
     re_path(r"^(?P<path_string>.*)$", _stub_view, name="interface"),
 ]

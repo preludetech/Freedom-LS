@@ -830,10 +830,6 @@ def test_every_cotton_tag_in_a_framework_template_is_a_framework_component() -> 
 
 INCLUDE_OR_EXTENDS_PATH = re.compile(r"\{%\s*(?:include|extends)\s+[\"']([^\"']+)[\"']")
 ALLOWED_TEMPLATE_PREFIXES = ("panel_framework/", "cotton/", "django/forms/")
-# The reference page still extends the host's base template.
-KNOWN_EXTERNAL_PATHS = {
-    "panel_framework/reference/component_reference.html": {"_base.html"}
-}
 FLS_APP_LABELS = (
     "accounts",
     "api",
@@ -886,8 +882,6 @@ def test_no_framework_template_includes_or_extends_a_path_outside_the_framework(
         for path in TEMPLATES_DIR.rglob("*.html")
         for target in INCLUDE_OR_EXTENDS_PATH.findall(path.read_text())
         if not target.startswith(ALLOWED_TEMPLATE_PREFIXES)
-        and target
-        not in KNOWN_EXTERNAL_PATHS.get(path.relative_to(TEMPLATES_DIR).as_posix(), ())
     }
 
     assert outside == set()

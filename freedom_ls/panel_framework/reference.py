@@ -24,6 +24,7 @@ from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.utils.safestring import SafeString
 
+from freedom_ls.panel_framework.config import config
 from freedom_ls.panel_framework.forms import ReasonForm
 from freedom_ls.panel_framework.panels import (
     BulkActionEntry,
@@ -334,6 +335,7 @@ def example_context(request: HttpRequest) -> dict[str, object]:
         "reason_dialogs": reason_dialogs,
         "lazy_panel": lazy_panel,
         "data_tables": data_tables,
+        "reference_base_template": config.PANEL_REFERENCE_BASE_TEMPLATE,
     }
 
 

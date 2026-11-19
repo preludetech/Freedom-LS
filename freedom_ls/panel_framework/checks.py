@@ -13,6 +13,7 @@ from django.conf import settings
 from django.contrib.sites.models import Site
 from django.core.checks import CheckMessage, Error, Warning
 from django.template import Context, Template, TemplateDoesNotExist, TemplateSyntaxError
+from django.template.loader import get_template
 from django.utils.module_loading import import_string
 
 from freedom_ls.panel_framework.config import PanelFrameworkConfig, config
@@ -190,6 +191,30 @@ def check_site_resolver(
             id="freedom_ls_panel_framework.W002",
         )
     ]
+
+
+def check_reference_base_template(
+    *,
+    app_configs: Sequence[AppConfig] | None,
+    **kwargs: object,
+) -> list[CheckMessage]:
+    """Report a PANEL_REFERENCE_BASE_TEMPLATE that does not load."""
+    name = config.PANEL_REFERENCE_BASE_TEMPLATE
+    try:
+        get_template(name)
+    except TemplateDoesNotExist:
+        return [
+            Error(
+                f"PANEL_REFERENCE_BASE_TEMPLATE = {name!r} does not exist.",
+                hint=(
+                    "Set PANEL_REFERENCE_BASE_TEMPLATE to a template that defines "
+                    "the head_title and content blocks; see "
+                    "HOST_CONTRACT.md#reference-page."
+                ),
+                id="freedom_ls_panel_framework.E009",
+            )
+        ]
+    return []
 
 
 def check_panels(

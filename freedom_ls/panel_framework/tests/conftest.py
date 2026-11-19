@@ -165,6 +165,15 @@ def _use_panel_test_templates(settings: pytest_django.fixtures.SettingsWrapper) 
     settings.TEMPLATES = templates
 
 
+@pytest.fixture(autouse=True)
+def _use_minimal_shell_for_reference(
+    settings: pytest_django.fixtures.SettingsWrapper,
+) -> None:
+    """The reference page extends the framework's own shell in every test,
+    whatever base the host project names."""
+    settings.PANEL_REFERENCE_BASE_TEMPLATE = "panel_framework/minimal_shell.html"
+
+
 # ---------------------------------------------------------------------------
 # Fixture: use panel_framework's own test URLs
 # ---------------------------------------------------------------------------
