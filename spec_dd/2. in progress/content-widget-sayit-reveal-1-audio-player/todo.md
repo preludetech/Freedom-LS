@@ -30,6 +30,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:document`: add an `audioFile` row (`content_engine`, `cotton/audio.html`) to the component inventory in `claude_plugins/fls-dev/skills/alpine-js/SKILL.md` (spec, Documentation and downstream)
 - [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
+- [x] (cmd) Fix the PR #256 code-review findings (stale audio events, long-label wrapping, unique respelling ids, always-announced error line, replay without re-fetch, shared c-content-error box, test tidy-ups)
+- [ ] (user) Decide who may play a course's audio: see `spec_dd/1. next/content-widget-sayit-reveal-4-audio-access-control/idea.md`
+- [ ] (user) Roadmap script reports a pre-existing problem: `spec_dd/1. next/spec_dd_efficiency_and_docs` has no roadmap bullet
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
 ## 5. Cleanup

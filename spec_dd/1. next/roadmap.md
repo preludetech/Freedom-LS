@@ -344,6 +344,7 @@ Course content that plays audio: clips, say-it-then-reveal practice and audio on
 - `content-widget-sayit-reveal-1-audio-player` — **in progress** — Authors embed audio clips in course content; learners play them with a labelled button, one at a time.
 - `content-widget-sayit-reveal-2-say-it-reveal` — **blocked** by `content-widget-sayit-reveal-1-audio-player` — Learners say an answer aloud, reveal it and hear it; audio also plays inside flashcard widget faces.
 - `content-widget-sayit-reveal-3-audio-on-revision-flashcards` — **blocked** by `content-widget-sayit-reveal-2-say-it-reveal`, `learner-interface-features-4-flashcards` — Scheduled revision flashcards carry audio that plays when the learner reveals the card.
+- `content-widget-sayit-reveal-4-audio-access-control` — **blocked** by `content-widget-sayit-reveal-1-audio-player` — Decide and enforce who may play a course's audio through its open redirect link.
 
 ![Audio content widgets](roadmap_diagrams/audio-content-widgets.svg)
 

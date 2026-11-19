@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import pytest
 
+from django.contrib.sites.models import Site
+
 from freedom_ls.content_engine.models import File, Topic
 
 pytestmark = pytest.mark.fls_internal
@@ -16,7 +18,9 @@ DEMO_WORDS = ["bravo", "charlie", "oscar", "romeo"]
 
 
 @pytest.mark.django_db
-def test_the_demo_mp3_files_load_as_audio(site, loaded_demo_content, mock_site_context):
+def test_the_demo_mp3_files_load_as_audio(
+    site: Site, loaded_demo_content: Site, mock_site_context: object
+) -> None:
     file_types = {
         file.file_path.rsplit("/", 1)[-1]: file.file_type
         for file in File.objects.filter(site=site, file_path__endswith=".mp3")
@@ -27,8 +31,8 @@ def test_the_demo_mp3_files_load_as_audio(site, loaded_demo_content, mock_site_c
 
 @pytest.mark.django_db
 def test_the_media_topic_renders_four_audio_widgets_without_red_boxes(
-    site, loaded_demo_content, mock_site_context
-):
+    site: Site, loaded_demo_content: Site, mock_site_context: object
+) -> None:
     topic = Topic.objects.get(site=site, title="Media")
 
     rendered = topic.rendered_content()

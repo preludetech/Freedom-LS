@@ -113,7 +113,11 @@ document.addEventListener("alpine:init", () => {
     function audioElement() {
         if (sharedAudio) return sharedAudio;
         sharedAudio = new Audio();
-        sharedAudio.addEventListener("playing", () => owner?._setState("playing"));
+        // Only a widget that is loading can start playing; a late event from
+        // a load that was stopped does not restart the stop icon.
+        sharedAudio.addEventListener("playing", () => {
+            if (owner?.loading) owner._setState("playing");
+        });
         sharedAudio.addEventListener("ended", () => owner?._setState("idle"));
         sharedAudio.addEventListener("pause", () => {
             // A src change can fire pause for the previous file after ownership
@@ -121,8 +125,10 @@ document.addEventListener("alpine:init", () => {
             if (owner && !owner.loading) owner._setState("idle");
         });
         // A failed load or play attempt; the button stays enabled so the next
-        // press retries.
-        sharedAudio.addEventListener("error", () => owner?._fail());
+        // press retries. A load the learner already stopped is not a failure.
+        sharedAudio.addEventListener("error", () => {
+            if (owner && !owner.idle) owner._fail();
+        });
         return sharedAudio;
     }
 
@@ -148,8 +154,15 @@ document.addEventListener("alpine:init", () => {
             this.failed = false;
             owner = this;
             this._setState("loading");
-            // src only, never <source type>: the stored mime type can be empty.
-            audio.src = this.$el.dataset.src;
+            const src = this.$el.dataset.src;
+            if (audio.getAttribute("src") === src && !audio.error) {
+                // The file is already loaded: replay it rather than fetch a
+                // freshly signed copy through the redirect.
+                audio.currentTime = 0;
+            } else {
+                // src only, never <source type>: the stored mime type can be empty.
+                audio.src = src;
+            }
             // Called synchronously inside the click so iOS treats it as user-initiated.
             audio.play().catch((error) => {
                 // AbortError means another press replaced this load; not a failure.

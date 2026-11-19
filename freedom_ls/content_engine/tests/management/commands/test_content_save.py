@@ -4216,5 +4216,5 @@ type: short_text
 @pytest.mark.parametrize("extension", [".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac"])
 def test_get_file_type_from_extension_types_every_audio_extension_as_audio(
     extension: str,
-):
+) -> None:
     assert get_file_type_from_extension(Path(f"clip{extension}")) == File.FileType.AUDIO

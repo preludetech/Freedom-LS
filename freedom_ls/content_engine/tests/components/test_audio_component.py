@@ -51,6 +51,7 @@ class TestResolvedAudioFile:
         )
 
         assert "Bravo" in html
+        assert "BRAH VOH" in html
         assert "data-src=" in html
 
     def test_unlisted_attribute_is_stripped(self, mock_site_context: object) -> None:
@@ -67,17 +68,32 @@ class TestRespelling:
     def test_respelling_renders_and_describes_the_button(
         self, mock_site_context: object
     ) -> None:
-        file_obj = _audio_file("audio/bravo.mp3")
+        _audio_file("audio/bravo.mp3")
 
         html = _render(
             '<c-audio src="audio/bravo.mp3" label="Bravo" respelling="BRAH VOH">'
             "</c-audio>"
         )
 
-        respelling_id = f"audio-respelling-{file_obj.pk}"
-        assert f'id="{respelling_id}"' in html
         assert "BRAH VOH" in html
-        assert f'aria-describedby="{respelling_id}"' in html
+        assert "x-id=\"['audio-respelling']\"" in html
+        assert "x-bind:id=\"$id('audio-respelling')\"" in html
+        assert "x-bind:aria-describedby=\"$id('audio-respelling')\"" in html
+
+    def test_two_widgets_on_one_file_share_no_server_rendered_id(
+        self, mock_site_context: object
+    ) -> None:
+        _audio_file("audio/bravo.mp3")
+
+        html = _render(
+            '<c-audio src="audio/bravo.mp3" label="Bravo" respelling="BRAH VOH">'
+            "</c-audio>\n\n"
+            '<c-audio src="audio/bravo.mp3" label="bravo" respelling="brah-voh">'
+            "</c-audio>"
+        )
+
+        assert ' id="audio-respelling' not in html
+        assert html.count("x-bind:id=\"$id('audio-respelling')\"") == 2
 
     def test_no_respelling_renders_no_respelling_element_or_description(
         self, mock_site_context: object
@@ -87,20 +103,23 @@ class TestRespelling:
         html = _render('<c-audio src="audio/bravo.mp3" label="Bravo"></c-audio>')
 
         assert "audio-respelling" not in html
-        assert "aria-describedby" not in html
+        assert 'x-bind:aria-describedby="null"' in html
 
 
 class TestErrorLine:
-    def test_widget_holds_a_status_line_for_a_failed_load(
+    def test_status_line_is_always_rendered_and_its_text_follows_failure(
         self, mock_site_context: object
     ) -> None:
         _audio_file("audio/bravo.mp3")
 
         html = _render('<c-audio src="audio/bravo.mp3" label="Bravo"></c-audio>')
 
-        assert 'role="status"' in html
-        assert 'x-show="failed"' in html
-        assert "Audio could not be played. Try again." in html
+        status_line = (
+            '<p role="status" x-text="failed ? '
+            "'Audio could not be played. Try again.' : ''\""
+        )
+        assert status_line in html
+        assert 'x-show="failed"' not in html
 
 
 class TestAuthorMistakes:

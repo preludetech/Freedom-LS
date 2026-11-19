@@ -61,6 +61,8 @@ PICTURE_TITLE = "Lone tree at dawn"
 BEEP_MP3 = Path(__file__).parent / "fixtures" / "beep.mp3"
 AUDIO_A_LABEL = "Alpha"
 AUDIO_B_LABEL = "Bravo"
+AUDIO_LONG_LABEL = "Good morning, how are you today?"
+AUDIO_LONG_RESPELLING = "GUD MOR-ning HOW AR YOO tuh-DAY"
 
 # A five-column table and a fenced code block: between them they set a
 # min-content width several times a phone's viewport.
@@ -185,7 +187,12 @@ def _browse_course(user: User) -> Course:
         )
     audio = (
         f'<c-audio src="audio/alpha.mp3" label="{AUDIO_A_LABEL}"></c-audio>\n\n'
-        f'<c-audio src="audio/bravo.mp3" label="{AUDIO_B_LABEL}"></c-audio>'
+        f'<c-audio src="audio/bravo.mp3" label="{AUDIO_B_LABEL}" '
+        'respelling="BRAH VOH"></c-audio>\n\n'
+        '<c-grid columns="2">\n\n'
+        f'<c-audio src="audio/bravo.mp3" label="{AUDIO_LONG_LABEL}" '
+        f'respelling="{AUDIO_LONG_RESPELLING}"></c-audio>\n\n'
+        "</c-grid>"
     )
     filler = "\n\n".join(
         f"Filler paragraph {i}. " + ("lorem ipsum dolor sit amet " * 30)
@@ -361,6 +368,23 @@ def test_learner_browses_a_course(
     page.keyboard.press("Space")
     expect(button_a).to_have_attribute("aria-pressed", "false")
     expect(button_a).to_be_focused()
+
+    # Pressing the same word again replays the loaded file without fetching it
+    # through the redirect a second time.
+    redirects_before = [url for url in requested if "/content/audio/" in url]
+    page.keyboard.press("Enter")
+    expect(button_a).to_have_attribute("aria-pressed", "true")
+    page.keyboard.press("Space")
+    expect(button_a).to_have_attribute("aria-pressed", "false")
+    assert [url for url in requested if "/content/audio/" in url] == redirects_before
+
+    # Two widgets on one file each describe their button with their own
+    # respelling.
+    expect(button_b).to_have_accessible_description("BRAH VOH")
+    expect(
+        page.get_by_role("button", name=f"Play pronunciation of {AUDIO_LONG_LABEL}")
+    ).to_have_accessible_description(AUDIO_LONG_RESPELLING)
+    expect(button_a).not_to_have_attribute("aria-describedby", re.compile(r".*"))
 
     # Back closes the mobile outline sheet without leaving the page.
     page.set_viewport_size({"width": 375, "height": 812})

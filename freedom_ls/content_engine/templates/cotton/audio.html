@@ -9,26 +9,25 @@ signature expires still works. The audio element is created by the audioFile
 Alpine component on first press, so nothing loads with the page.
 A missing or non-audio file, or an empty label, renders a red box naming the
 src instead. The respelling comes before the button in the DOM so it reads in
-order (word, respelling, button); the grid puts it under the word.
+order (word, respelling, button); the grid puts it under the word. Its id comes
+from Alpine's $id, so two widgets on the same file never share one.
+The status line is always in the DOM and only its text changes, so screen
+readers announce each failure.
 {% endcomment %}
 
 {% with file_obj=src|get_file_by_path:content_instance %}
   {% if not file_obj or file_obj.file_type != "AUDIO" %}
-    <div class="my-6 p-4 bg-error/10 border border-error/20 rounded-lg">
-      <p class="text-error">Audio not found: {{ src }}</p>
-    </div>
+    <c-content-error message="Audio not found: {{ src }}" />
   {% elif not label %}
-    <div class="my-6 p-4 bg-error/10 border border-error/20 rounded-lg">
-      <p class="text-error">Audio needs a label: {{ src }}</p>
-    </div>
+    <c-content-error message="Audio needs a label: {{ src }}" />
   {% else %}
-    <div class="my-6" x-data="audioFile">
-      <div class="grid grid-cols-[auto_auto] items-center justify-start gap-x-2 whitespace-nowrap">
-        <span class="col-start-1 row-start-1">{{ label }}</span>
-        {% if respelling %}<span id="audio-respelling-{{ file_obj.pk }}" class="col-start-1 row-start-2 text-muted">{{ respelling }}</span>{% endif %}
+    <div class="my-6" x-data="audioFile"{% if respelling %} x-id="['audio-respelling']"{% endif %}>
+      <div class="grid grid-cols-[minmax(0,auto)_auto] items-center justify-start gap-x-2">
+        <span class="col-start-1 row-start-1 min-w-0 break-words">{{ label }}</span>
+        {% if respelling %}<span x-bind:id="$id('audio-respelling')" class="col-start-1 row-start-2 min-w-0 break-words text-muted">{{ respelling }}</span>{% endif %}
         <c-button variant="ghost"
                   aria_label="Play pronunciation of {{ label }}"
-                  aria_describedby="{% if respelling %}audio-respelling-{{ file_obj.pk }}{% endif %}"
+                  x-bind:aria-describedby="{% if respelling %}$id('audio-respelling'){% else %}null{% endif %}"
                   x-bind:aria-pressed="playing"
                   x-on:click="toggle"
                   data-src="{% url 'content_engine:audio_file' file_obj.pk %}"
@@ -38,7 +37,7 @@ order (word, respelling, button); the grid puts it under the word.
           <span x-show="playing" x-cloak><c-icon name="audio_stop" class="size-5" /></span>
         </c-button>
       </div>
-      <p role="status" x-show="failed" x-transition x-cloak class="text-error text-sm">Audio could not be played. Try again.</p>
+      <p role="status" x-text="failed ? 'Audio could not be played. Try again.' : ''" class="text-error text-sm"></p>
     </div>
   {% endif %}
 {% endwith %}

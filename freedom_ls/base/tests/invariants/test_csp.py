@@ -3,6 +3,17 @@ import pytest
 from django.test import Client
 
 
+def _report_only_directives(client: Client) -> dict[str, str]:
+    """The home page's report-only CSP, keyed by directive name."""
+    response = client.get("/")
+    header = response.get("Content-Security-Policy-Report-Only", "")
+    return dict(
+        directive.strip().split(" ", 1)
+        for directive in header.split(";")
+        if directive.strip()
+    )
+
+
 @pytest.mark.django_db
 def test_csp_report_only_header_is_present(
     client: Client, mock_site_context: None
@@ -19,14 +30,7 @@ def test_csp_report_only_header_names_ga4_and_posthog_hosts(
     client: Client, mock_site_context: None
 ) -> None:
     """The report-only policy allows the GA4 and PostHog hosts each snippet needs."""
-    response = client.get("/")
-    header = response.get("Content-Security-Policy-Report-Only", "")
-
-    directives = dict(
-        directive.strip().split(" ", 1)
-        for directive in header.split(";")
-        if directive.strip()
-    )
+    directives = _report_only_directives(client)
 
     assert "https://www.googletagmanager.com" in directives["script-src"]
     assert "https://*.i.posthog.com" in directives["script-src"]
@@ -45,14 +49,7 @@ def test_csp_report_only_header_names_google_ads_hosts(
     client: Client, mock_site_context: None
 ) -> None:
     """The report-only policy allows the hosts Google Ads conversion tracking talks to."""
-    response = client.get("/")
-    header = response.get("Content-Security-Policy-Report-Only", "")
-
-    directives = dict(
-        directive.strip().split(" ", 1)
-        for directive in header.split(";")
-        if directive.strip()
-    )
+    directives = _report_only_directives(client)
 
     assert "https://www.googleadservices.com" in directives["script-src"]
     assert "https://www.google.com" in directives["script-src"]
@@ -82,14 +79,7 @@ def test_csp_report_only_header_names_meta_hosts(
     client: Client, mock_site_context: None
 ) -> None:
     """The report-only policy allows the hosts the Meta pixel talks to."""
-    response = client.get("/")
-    header = response.get("Content-Security-Policy-Report-Only", "")
-
-    directives = dict(
-        directive.strip().split(" ", 1)
-        for directive in header.split(";")
-        if directive.strip()
-    )
+    directives = _report_only_directives(client)
 
     assert "https://connect.facebook.net" in directives["script-src"]
 
@@ -104,14 +94,7 @@ def test_csp_report_only_header_names_tiktok_hosts(
     client: Client, mock_site_context: None
 ) -> None:
     """The report-only policy allows the hosts the TikTok pixel talks to."""
-    response = client.get("/")
-    header = response.get("Content-Security-Policy-Report-Only", "")
-
-    directives = dict(
-        directive.strip().split(" ", 1)
-        for directive in header.split(";")
-        if directive.strip()
-    )
+    directives = _report_only_directives(client)
 
     assert "https://analytics.tiktok.com" in directives["script-src"]
 
@@ -124,14 +107,7 @@ def test_csp_report_only_header_names_the_cdn_the_base_template_loads(
     client: Client, mock_site_context: None
 ) -> None:
     """The report-only policy allows the CDN htmx, Alpine and Chart.js load from."""
-    response = client.get("/")
-    header = response.get("Content-Security-Policy-Report-Only", "")
-
-    directives = dict(
-        directive.strip().split(" ", 1)
-        for directive in header.split(";")
-        if directive.strip()
-    )
+    directives = _report_only_directives(client)
 
     assert "https://cdn.jsdelivr.net" in directives["script-src"]
 
@@ -141,13 +117,6 @@ def test_csp_report_only_header_has_media_src_allowing_self(
     client: Client, mock_site_context: None
 ) -> None:
     """The report-only policy has a media-src directive that allows audio from 'self'."""
-    response = client.get("/")
-    header = response.get("Content-Security-Policy-Report-Only", "")
-
-    directives = dict(
-        directive.strip().split(" ", 1)
-        for directive in header.split(";")
-        if directive.strip()
-    )
+    directives = _report_only_directives(client)
 
     assert "'self'" in directives["media-src"]

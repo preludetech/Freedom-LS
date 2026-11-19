@@ -30,11 +30,6 @@ def _audio_url(file_obj: File) -> str:
     return reverse("content_engine:audio_file", args=[file_obj.pk])
 
 
-@pytest.fixture
-def client() -> Client:
-    return Client()
-
-
 class TestAudioFile:
     def test_audio_file_redirects_to_its_file_url(
         self, mock_site_context: object, client: Client
@@ -107,12 +102,3 @@ class TestAudioFile:
         response = client.post(_audio_url(file_obj))
 
         assert response.status_code == 405
-
-    def test_anonymous_client_is_redirected_to_the_file_not_to_login(
-        self, mock_site_context: object, client: Client
-    ) -> None:
-        file_obj = _audio_file()
-
-        response = client.get(_audio_url(file_obj))
-
-        assert response["Location"] == file_obj.file.url
