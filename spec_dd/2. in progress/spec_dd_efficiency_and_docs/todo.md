@@ -38,8 +38,8 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 4. Documentation and pull request
 
-- [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
-- [ ] (cmd) Document the rebase's `<auto-resolve>` argument, its `none` tier and the pre-commit run scoped to the branch's changes in `claude_plugins/django-stack/README.md` and `claude_plugins/django-stack/resources/test_tiers.md` (spec section "Documentation and downstream")
+- [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [x] (cmd) Document the rebase's `<auto-resolve>` argument, its `none` tier and the pre-commit run scoped to the branch's changes in `claude_plugins/django-stack/README.md` and `claude_plugins/django-stack/resources/test_tiers.md` (spec section "Documentation and downstream")
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
