@@ -55,8 +55,7 @@ class="panel-btn panel-btn-{{ variant }}{% if size == 'small' %} panel-btn-sm{% 
 {{ attrs }}
 >
 {% if loading %}
-{# HTMX puts .htmx-request on the element that triggered the request, which #}
-{# is an ancestor of these spans, so both states are driven from there.     #}
+{% comment %}HTMX puts .htmx-request on the element that triggered the request, which is an ancestor of these spans, so both states are driven from there.{% endcomment %}
 <span class="inline-flex items-center gap-2 [.htmx-request_&]:hidden">{% if icon_left %}<span aria-hidden="true" class="inline-flex"><c-icon :name="icon_left" class="size-5" /></span>{% endif %}{{ slot }}{% if icon_right %}<span aria-hidden="true" class="inline-flex"><c-icon :name="icon_right" class="size-5" /></span>{% endif %}</span>
 <span data-loading-label="{{ loading_text }}" class="hidden [.htmx-request_&]:inline-flex [.htmx-request_&]:items-center [.htmx-request_&]:gap-2"><c-icon name="loading" class="size-5 animate-spin" /> {{ loading_text }}</span>
 {% else %}
