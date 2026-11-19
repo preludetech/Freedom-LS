@@ -274,7 +274,7 @@ A theme extends a class by re-opening it inside `@layer components` in its `them
 
 The cascade order in `tailwind.input.css` is: default tokens → component classes → active theme. Because the active theme's `theme.css` is imported last, its `@layer components` declarations win over the defaults without needing `!important`.
 
-The `first_class` theme's `@layer components` block in `freedom_ls/themes/first_class/static/themes/first_class/theme.css` is the reference implementation for Tier-2 overrides. It overrides `.btn`, `.btn-secondary`, `.chip`, `.chip-*`, `.surface`, `.course-card`, `.signup-panel`, `.callout-*`, `.callout-icon`, and `.header`.
+The `first_class` theme's `@layer components` block in `freedom_ls/themes/first_class/static/themes/first_class/theme.css` is the reference implementation for Tier-2 overrides. It overrides `.btn`, `.btn-secondary`, `.chip`, `.chip-*`, `.surface`, `.course-card`, `.signup-panel`, `.callout-*`, and `.header`.
 
 ---
 
@@ -424,7 +424,7 @@ In a downstream project: add the `@import` for your theme's `theme.css` in `tail
 `freedom_ls/themes/first_class/` is a complete Tier-1 + Tier-2 example. It:
 
 - Overrides every token (brand, status, surfaces, shape, type) in `@theme { ... }`.
-- Reopens `.btn`, `.chip`, `.surface`, `.callout-*`, `.callout-icon`, `.header`, and several other component classes in `@layer components { ... }` to apply the "Modern Altitude" brand treatment.
+- Reopens `.btn`, `.chip`, `.surface`, `.callout-*`, `.header`, and several other component classes in `@layer components { ... }` to apply the "Modern Altitude" brand treatment.
 - Uses `@theme inline { ... }` to override header and side-panel component-tier tokens.
 - Adds a plain-CSS rule block (outside any `@layer`) for course-outline counter styling.
 
