@@ -6,6 +6,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 1. Spec
 
 - [x] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
+- [ ] (user) Push the rebased branch: run `git push origin HEAD --force-with-lease --force-if-includes` (the permission system blocked it for Claude)
 - [ ] (user) Decide what to change after reading upstream_change_review.md, then edit the idea, spec or plan it names
 - [ ] (user) Review the spec and edit where needed; after substantial hand edits, run `/sdd:spec_review`
 
