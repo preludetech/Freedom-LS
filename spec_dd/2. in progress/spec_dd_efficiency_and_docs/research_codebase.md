@@ -217,7 +217,7 @@ Evidence: ticks of `/sdd:*` items in `spec_dd/3. done/*/todo.md` (Grep of `[x] .
 - `capture_feedback` (17 lines): a thin wrapper over the `capture-feedback` skill.
 - `roadmap`: used. `init`: one-time.
 - Lower-value steps inside commands:
-  - `pre_step_rebase` Steps 3 to 5 (upstream-change scan and review worker) cost an agent spawn each time main changed something; it is unclear how often it returns `changed` (no records found in done specs).
+  - `pre_step_rebase` Steps 3 to 5 (upstream-change scan and review worker) cost an agent spawn each time main changed something; it returned `changed` in three done specs (`educator-interface-looks-good`, `educator-interface-6-cohort-administration`, `learner-facing-ux-refinements`), each with real plan or spec changes.
   - `finish_worktree` Step 5 `update-claude-project-settings` and Step 2 leftover batch worktree sweep.
   - `do_qa` "Full run after the last fix" and `qa_fix` Step 7 duplicate the `implement_plan` Step 3 and `finish_worktree` Step 1 full runs.
   - `Worker memory (MB):` is blank in `.claude/sdd/config.md:10`.
