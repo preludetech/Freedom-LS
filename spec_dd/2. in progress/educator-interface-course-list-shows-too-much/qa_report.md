@@ -1,112 +1,105 @@
-# Frontend QA report
+# Frontend QA report: educator-interface-course-list-shows-too-much
 
 ## Methodology
 
-- Screenshots were collected into `screenshots/` beside this report, and every referenced image exists there.
-- Viewports: desktop 1920x1080, mobile 375x812, tablet 768x1024.
-- The run used Playwright MCP against a dev server on its own port.
-- Plan: `3. frontend_qa.md` in this spec directory.
+- Playwright MCP at three viewports: desktop 1920x1080, mobile 375x812, tablet 768x1024.
+- Screenshots were collected into `screenshots/` beside this report, and every image referenced here exists there.
+- Before QA, a pre-step rebase onto main replayed 34 commits and resolved one conflict in `freedom_ls/educator_interface/forms.py`. The resolution kept main's `files` argument and the branch's `CourseChoiceField`. The full test suite then passed (15941 passed).
+- The rebase's front-end check was covered by this QA run itself, which visits the same plan URLs at all three viewports.
+- Dev-tool overlays (debug toolbar, branch badge) were hidden before shots.
+- Test plan: `3. frontend_qa.md` in this spec directory.
 
 ## Diff scoping
 
-- Class: FULL.
-- Changed files that triggered it:
-  - `freedom_ls/educator_interface/templates/educator_interface/panels/course_content.html`
-  - `freedom_ls/educator_interface/views.py`
-  - `freedom_ls/educator_interface/actions.py`
-  - `freedom_ls/learner_management/queries.py`
-  - `freedom_ls/content_engine/*`
-  - `demo_content/*`
-- Skipped: nothing.
+Classification: **FULL**. Skipped: nothing.
+
+Changed areas considered:
+- `freedom_ls/educator_interface/templates/...`
+- `freedom_ls/educator_interface/*.py`
+- `freedom_ls/learner_management/queries.py`
+- `freedom_ls/content_engine/*`
+- `demo_content/functionality_demo_organisation_course_northwind*`
 
 ## Smoke gate
 
-Outcome: pass. Pages checked: `/` and `/educator/organisations/harbour-college/courses`.
+Status: **pass**. Pages checked: `/`, `/educator/organisations/harbour-college/courses`. No failure URL or reason.
 
-## Test results
+## Results by test
 
-| Test id | Viewport | Status | Notes | Screenshot |
+| Test | Viewport | Status | Screenshot | Notes |
 |---|---|---|---|---|
-| 1.1 | desktop | pass | 15 courses over 2 pages: Harbour's own and Northwind's shared Workplace Safety Essentials (ids 1eb2b2d6, 26c2e0d5) and the no-organisation courses; no Forklift Safety Basics row. Step 4 (search for Forklift) not runnable: the Courses list has no search box. Content Widgets (no organisation) is absent too, likely unpublished, which predates this branch. | ![](screenshots/page-2026-11-17T22-27-37-149Z.png) |
-| 1.2 | desktop | pass | Shared Northwind course detail shows Details, Course content with outline (Course details, 1. Safety on site) and Preview buttons, Cohort and Direct registration panels. | ![](screenshots/page-2026-11-17T22-27-54-992Z.png) |
-| 1.2-preview-details | desktop | pass | Course details preview dialog titled 'Workplace Safety Essentials (Preview)', shows Northwind Logistics card. | ![](screenshots/page-2026-11-17T22-28-01-846Z.png) |
-| 1.2-preview-topic | desktop | pass | Topic preview 'Safety on site (Preview)' opens read-only. | ![](screenshots/page-2026-11-17T22-28-09-965Z.png) |
-| 1.3 | desktop | pass | Forklift Safety Basics detail URL under harbour-college returns 404 (Django DEBUG not-found page in dev). Its preview_course_details action URL returns 404 with HX-Request; the shared course's returns 200. | none |
-| 1.4-filters | desktop | pass | cohorts-course and learners-course filter selects each list 15 courses + All, including both Workplace Safety Essentials (Harbour 1eb2b2d6, Northwind shared 26c2e0d5) and no Forklift Safety Basics. Filter button could not be clicked by accessible name; options read from the DOM. | ![](screenshots/page-2026-11-17T22-29-07-747Z.png) |
-| 1.4-cohort-register | desktop | pass | QA Harbour Cohort register picker offers Northwind's shared course, not Forklift. Registered the cohort on 26c2e0d5; row shows Active in the cohort's Courses tab, DB confirms. | ![](screenshots/page-2026-11-17T22-29-41-634Z.png) |
-| 1.4-learner-register | desktop | pass | Sol Harbour's register-for-course picker: same 15 courses, both Workplace Safety Essentials, no Forklift. Closed without registering. | none |
-| 1.4-bulk-register | desktop | pass | Learners list bulk register-for-course with Sol Harbour selected: same picker contents. Cancelled. | ![](screenshots/page-2026-11-17T22-30-05-486Z.png) |
-| 1.4-picker-labels | desktop | fail | Every course picker and filter lists two options both labelled 'Workplace Safety Essentials' (Harbour's own and Northwind's shared) with nothing to tell them apart. The Courses list has the same two identical rows. See B1. | ![](screenshots/page-2026-11-17T22-29-41-634Z.png) |
-| 2.1 | desktop | pass | After revoking the share: Northwind's Workplace Safety Essentials still listed (1 active learner, QA Harbour Cohort); detail shows Details, Course content with 'Content preview isn't shared with your organisation.' and no outline or Preview buttons, plus both registration panels. preview_course_details and preview_content return 404. Register picker (checked on Sol Harbour's learner register action) no longer offers 26c2e0d5. | ![](screenshots/page-2026-11-17T22-30-42-023Z.png) |
-| 2.2 | desktop | pass | Learner Overview > Registrations panel: Reactivate on the inactive Workplace Safety Essentials row, then confirm: dialog stays open with 'This course is not open to the organisation.'; DB shows registration still inactive. | ![](screenshots/page-2026-11-17T22-32-15-189Z.png) |
-| 2.3 | desktop | pass | After restoring shared_with: detail shows the outline and 2 Preview buttons again; reactivating Sol Harbour's registration succeeds, row shows Active, DB is_active True. | ![](screenshots/page-2026-11-17T22-32-39-094Z.png) |
-| 3 | desktop | pass | Northwind educator's Courses list: 15 courses incl. Forklift Safety Basics (c358d156) and the shared Workplace Safety Essentials (26c2e0d5); no Harbour Workplace Safety Essentials row. Harbour's course URL under northwind-logistics returns 404. | ![](screenshots/page-2026-11-17T22-33-03-084Z.png) |
-| 4.1 | desktop | pass | qa_harbour_learner (registered through QA Harbour Cohort) sees Northwind's Workplace Safety Essentials on the dashboard and opens topic 1 'Safety on site' with its content. | ![](screenshots/page-2026-11-17T22-33-16-356Z.png) |
-| 4.2 | desktop | pass | qa_harbour_solo sees both Northwind public courses; Forklift Safety Basics detail offers 'Enrol for free'; enrolling opens topic 1 'Before you drive'. | ![](screenshots/page-2026-11-17T22-33-26-850Z.png) |
-| 1.1 | mobile | pass | Courses list page 2 renders as stacked cards; both Workplace Safety Essentials present, no Forklift. | ![](screenshots/page-2026-11-17T22-33-46-845Z.png) |
-| 1.1 | tablet | pass | Courses list table fits at 768px; both Workplace Safety Essentials rows present. | ![](screenshots/page-2026-11-17T22-33-54-091Z.png) |
-| 2.1 | mobile | pass | Share revoked again for this check: Course content panel shows the withheld message centred, no outline; registration panels stack as cards. | ![](screenshots/page-2026-11-17T22-34-12-583Z.png) |
-| 2.1 | tablet | pass | Withheld message in the Course content panel; layout matches the desktop panel order. | ![](screenshots/page-2026-11-17T22-34-10-401Z.png) |
+| 1.1 | desktop | pass | ![](screenshots/page-2026-11-19T04-43-47-759Z.png) | Page 1 of 2: ten no-organisation demo courses, no Forklift. The capture-check shot `page-2026-11-19T04-43-38-595Z.png` has the debug toolbar open, so it was re-shot after hiding it. |
+| 1.1 | desktop | pass | ![](screenshots/page-2026-11-19T04-44-00-596Z.png) | Page 2: Northwind Workplace Safety Essentials with muted "Shared by Northwind Logistics" line, Harbour's plain. 15 courses total, no Forklift Safety Basics on either page. |
+| 1.2 | desktop | pass | ![](screenshots/page-2026-11-19T04-44-19-613Z.png) | Shared Northwind course detail: Details, Course content outline (Course details and Safety on site, each with Preview), Cohort and Direct registration panels. |
+| 1.2 | desktop | pass | ![](screenshots/page-2026-11-19T04-44-28-222Z.png) | Course details preview dialog titled "Workplace Safety Essentials (Preview)", hero names Northwind Logistics, closes. See general note 2. |
+| 1.2 | desktop | pass | ![](screenshots/page-2026-11-19T04-44-46-308Z.png) | Topic preview "Safety on site (Preview)" is read-only (no inputs). See general note 3. |
+| 1.3 | desktop | pass | ![](screenshots/page-2026-11-19T04-45-04-186Z.png) | Forklift course detail URL returns 404. Direct preview_course_details action URL returns 404, while the same action on the shared course returns 200. No Forklift text leaked. See general note 1. |
+| 1.4 | desktop | pass | ![](screenshots/page-2026-11-19T04-45-31-496Z.png) | Cohorts course filter lists "Workplace Safety Essentials (Northwind Logistics)" and the plain "Workplace Safety Essentials", no Forklift. The learners list filter is identical: ![](screenshots/page-2026-11-19T04-45-36-754Z.png) |
+| 1.4 | desktop | pass | ![](screenshots/page-2026-11-19T04-46-01-141Z.png) | Cohort register picker ![](screenshots/page-2026-11-19T04-45-54-515Z.png) offers the owner-named shared course and Harbour's plain one, no Forklift. Registering on the shared course adds an Active row with "Shared by Northwind Logistics". |
+| 1.4 | desktop | pass | ![](screenshots/page-2026-11-19T04-46-32-923Z.png) | Solo learner register picker ![](screenshots/page-2026-11-19T04-46-23-369Z.png) and the bulk register picker on the learners list have the same contents, no Forklift. Both cancelled. |
+| 3 | desktop | pass | ![](screenshots/page-2026-11-19T04-47-06-812Z.png) | Northwind educator Courses list: Forklift Safety Basics and Northwind Workplace Safety Essentials (own, no Shared-by line) plus no-organisation courses, 15 total, no Harbour course. A Harbour course id under northwind-logistics returns 404. |
+| 4.1 | desktop | pass | ![](screenshots/page-2026-11-19T04-47-22-581Z.png) | qa_harbour_learner opens Northwind Workplace Safety Essentials from the dashboard, and topic "Safety on site" renders. |
+| 4.2 | desktop | pass | ![](screenshots/page-2026-11-19T04-47-43-819Z.png) | qa_harbour_solo browse lists both Northwind public courses. The Forklift detail offers "Enrol for free" ![](screenshots/page-2026-11-19T04-47-36-437Z.png), and joining opens the course topic. See general note 4. |
+| 1.1 | mobile | pass | ![](screenshots/page-2026-11-19T04-48-15-823Z.png) | Card layout, "Shared by Northwind Logistics" under the title inside the card, no horizontal scroll. The earlier shot `page-2026-11-19T04-48-08-354Z.png` had the fixed dev branch badge over that line, so it was re-shot with dev badges hidden. |
+| 1.1 | tablet | pass | ![](screenshots/page-2026-11-19T04-48-26-463Z.png) | Table layout, "Shared by Northwind Logistics" wraps inside the Title cell, page scrollWidth 768. |
+| 2.1 | desktop | pass | ![](screenshots/page-2026-11-19T04-50-57-965Z.png) | Share revoked. The Courses list still lists the Northwind course with its Shared-by line (held by the cohort registration). The detail shows Details and registration panels, and the Course content panel reads "Content preview isn't shared with your organisation." with no outline and no Preview buttons. Direct preview_course_details URL returns 404. |
+| 2.1 | desktop | pass | ![](screenshots/page-2026-11-19T04-51-11-895Z.png) | Solo learner register picker no longer offers Northwind Workplace Safety Essentials (only Harbour's plain one). Closed without registering. |
+| 2.1 | mobile | pass | ![](screenshots/page-2026-11-19T04-51-19-976Z.png) | Not-shared message centred in the Course content card, cards stack, no horizontal scroll. |
+| 2.1 | tablet | pass | ![](screenshots/page-2026-11-19T04-51-28-176Z.png) | Panels full width, tables fit, not-shared message centred. |
+| 2.2 | desktop | **fail** | ![](screenshots/page-2026-11-19T04-54-06-389Z.png) | The plan's step 2 cannot be followed: the Registrations row for the inactive registration on the no-longer-shared course shows no Reactivate button (registration-action-slot empty). See bug B1. |
+| 2.3 | desktop | pass | ![](screenshots/page-2026-11-19T04-54-28-856Z.png) | course.md restored with git checkout and content_save re-run, `git status -- demo_content` clean. The course detail outline and Preview buttons are back. The Reactivate button reappears on the row, and confirming reactivates it (row Active, Deactivate offered). |
 
 ## Design check
 
 No design states tested.
 
-## B1: Two courses with the same title are indistinguishable in the educator Courses list, filters and register pickers
+## B1: QA plan section 2.2 expects a Reactivate button the code now hides for an unavailable course
 
 Manifestations:
-- 1.4-picker-labels (desktop)
+- Test 2.2, desktop.
 
-Screenshots:
+Screenshot:
 
-![](screenshots/page-2026-11-17T22-29-41-634Z.png)
+![](screenshots/page-2026-11-19T04-54-06-389Z.png)
 
-![](screenshots/page-2026-11-17T22-27-37-149Z.png)
+Expected (per `3. frontend_qa.md` section 2.2): the Registrations row offers Reactivate. Pressing it and confirming keeps the dialog open with "This course is not open to the organisation."
 
-- Expected: When an organisation's own course and a course shared with it share a title, an educator can tell them apart (e.g. the owning organisation shown beside a shared course) before registering a cohort or learner.
-- Actual: The Courses list shows two 'Workplace Safety Essentials' rows, and the cohort/learner course filters and every register picker offer two identical 'Workplace Safety Essentials' options with no owner, slug or other distinguishing text.
+Actual: there is no Reactivate button on the row. `RegistrationRow.can_reactivate`, added in review-fix commit 2c318d39c ("Offer Reactivate only for a course available to the learner's organisation"), hides it. The server-side refusal still works when the `reactivate_registration` action is opened directly: confirming keeps the dialog open with "This course is not open to the organisation." and the row stays Inactive. The plan and the code disagree. Which is right is a product decision, and the plan likely needs updating to "no Reactivate is offered".
 
 ## Layout probe
 
-| Test id | Viewport | URL | Screenshot | Result |
+| Test | Viewport | URL | Screenshot | Result |
 |---|---|---|---|---|
-| 1.1 | desktop | `/educator/organisations/harbour-college/courses?courses-page=2` | [screenshot](screenshots/page-2026-11-17T22-27-37-149Z.png) | clean |
-| 1.2 | desktop | `/educator/organisations/harbour-college/courses/26c2e0d5-534f-40dc-86de-8218355233e5` | [screenshot](screenshots/page-2026-11-17T22-27-54-992Z.png) | clean |
-| 2.1 | desktop | `/educator/organisations/harbour-college/courses/26c2e0d5-534f-40dc-86de-8218355233e5` | [screenshot](screenshots/page-2026-11-17T22-30-42-023Z.png) | clean |
-| 2.3 | desktop | `/educator/organisations/harbour-college/learners/0a414a56-85ef-4125-85bb-496512cd50fd/__tabs/overview` | [screenshot](screenshots/page-2026-11-17T22-32-39-094Z.png) | clean |
-| 1.1 | mobile | `/educator/organisations/harbour-college/courses?courses-page=2` | [screenshot](screenshots/page-2026-11-17T22-33-46-845Z.png) | clean |
-| 1.1 | tablet | `/educator/organisations/harbour-college/courses?courses-page=2` | [screenshot](screenshots/page-2026-11-17T22-33-54-091Z.png) | clean |
-| 2.1 | mobile | `/educator/organisations/harbour-college/courses/26c2e0d5-534f-40dc-86de-8218355233e5` | [screenshot](screenshots/page-2026-11-17T22-34-12-583Z.png) | clean |
-| 2.1 | tablet | `/educator/organisations/harbour-college/courses/26c2e0d5-534f-40dc-86de-8218355233e5` | [screenshot](screenshots/page-2026-11-17T22-34-10-401Z.png) | clean |
+| 1.1 | desktop | /educator/organisations/harbour-college/courses | ![](screenshots/page-2026-11-19T04-43-38-595Z.png) | clean |
+| 1.1 | desktop | /educator/organisations/harbour-college/courses?courses-page=2 | ![](screenshots/page-2026-11-19T04-44-00-596Z.png) | clean |
+| 1.2 | desktop | /educator/organisations/harbour-college/courses/26c2e0d5-534f-40dc-86de-8218355233e5 | ![](screenshots/page-2026-11-19T04-44-19-613Z.png) | clean |
+| 1.1 | mobile | /educator/organisations/harbour-college/courses?courses-page=2 | ![](screenshots/page-2026-11-19T04-48-15-823Z.png) | clean |
+| 1.1 | tablet | /educator/organisations/harbour-college/courses?courses-page=2 | ![](screenshots/page-2026-11-19T04-48-26-463Z.png) | clean |
+| 2.1 | desktop | /educator/organisations/harbour-college/courses/26c2e0d5-534f-40dc-86de-8218355233e5 | ![](screenshots/page-2026-11-19T04-50-57-965Z.png) | clean |
+| 2.1 | mobile | /educator/organisations/harbour-college/courses/26c2e0d5-534f-40dc-86de-8218355233e5 | ![](screenshots/page-2026-11-19T04-51-19-976Z.png) | clean |
+| 2.1 | tablet | /educator/organisations/harbour-college/courses/26c2e0d5-534f-40dc-86de-8218355233e5 | ![](screenshots/page-2026-11-19T04-51-28-176Z.png) | clean |
 
 ## Data changes
 
-| # | Via | What |
+| What | Via | Files |
 |---|---|---|
-| 1 | sdd:qa-data-helper | create_demo_data --yes (DemoDev site, orgs, superuser), content_save demo_content DemoDev, QA educators for Harbour College and Northwind Logistics, QA Harbour Cohort with qa_harbour_learner, learner qa_harbour_solo |
-| 2 | test plan 2.1 | removed shared_with from demo_content/functionality_demo_organisation_course_northwind/course.md and re-ran content_save demo_content DemoDev (restored in 2.3) |
-| 3 | sdd:qa-data-helper | inactive LearnerCourseRegistration 7cf44571 for qa_harbour_solo on Northwind's Workplace Safety Essentials (26c2e0d5) |
-| 4 | test plan 2.3 | git checkout of the Northwind course.md and content_save demo_content DemoDev; share restored |
-| 5 | test plan 4.2 | qa_harbour_solo self-enrolled on Forklift Safety Basics |
-| 6 | test plan 2.1/2.3 repeat | share revoked and restored once more (course.md edit + content_save) for the mobile and tablet withheld-state check |
-| 7 | sdd:qa-data-helper | test plan 5.2 clean-up: deleted the 4 QA users with their role grants, staff and learner rows (incl. a third learner row for qa_harbour_solo under the DemoDev organisation created by the Forklift self-registration), QA Harbour Cohort with its membership and course registration, 2 learner course registrations and 5 progress rows; 36 rows |
+| Loaded demo_content into DemoDev | content_save (test plan section 0.2 seed) | none |
+| Created or reused QA educators (Harbour, Northwind), QA Harbour Cohort with qa_harbour_learner, and qa_harbour_solo. Removed a stale cohort registration and a stale solo registration left from prior-run data, plus their empty CourseProgress rows. | sdd:qa-data-helper | `freedom_ls/qa_helpers/management/commands/qa_create_org_course_scope_scenario.py` |
+| Deleted `shared_with:` from `demo_content/functionality_demo_organisation_course_northwind/course.md` and re-ran content_save (restored in 2.3) | test plan section 2.1 steps 1-2 | none |
+| Created inactive LearnerCourseRegistration 54e5c603-e33e-45f6-a4da-1df6304308c1 for qa_harbour_solo on Northwind Workplace Safety Essentials (unshared at the time) | sdd:qa-data-helper | `.claude/agent-memory/sdd-qa-data-helper/reference_org_course_registration.md` |
 
 ## Bug status
 
 | Bug | Title | Status |
 |---|---|---|
-| B1 | Two courses with the same title are indistinguishable in the educator Courses list, filters and register pickers | **FIXED** (commit: b05f9b5ce, 6462dece9, 31969e501) — Two courses with the same title are indistinguishable — after the fix: ![](screenshots/fixed/page-2026-11-18T10-04-35-192Z.png) ![](screenshots/fixed/page-2026-11-18T10-47-20-705Z.png) ![](screenshots/fixed/page-2026-11-18T10-05-14-394Z.png) ![](screenshots/fixed/fix-tablet-courses.png) ![](screenshots/fixed/fix-tablet-learners.png) ![](screenshots/fixed/fix-tablet-register.png) ![](screenshots/fixed/page-2026-11-18T10-49-19-320Z.png) ![](screenshots/fixed/fix-mobile-learners.png) ![](screenshots/fixed/fix-mobile-register.png) |
+| B1 | QA plan section 2.2 expects a Reactivate button the code now hides for an unavailable course | **UNRESOLVED** (reason: the QA plan and the code disagree on whether Reactivate shows for a course no longer available; choosing which is right is a product decision, so no auto-fix) |
 
 ## General notes
 
-- (a) 1.1 step 4 could not run: the educator Courses list has no search box, so the plan step assumes a control that does not exist.
-- (b) The plan's URLs omit the `organisations/` segment; the real paths are `/educator/organisations/<slug>/...`.
-- (c) The plan's 2.2 says "Course registrations", but reactivation lives in the learner Overview tab's "Registrations" panel.
-- (d) Content Widgets - Demo Reference (no owning organisation) does not appear in the Courses list, most likely because it is unpublished, which predates this branch.
-- (e) 2.1 step 6 was checked on a learner's register picker rather than a second cohort's (same registerable-course queryset).
-- (f) The Harbour learner's dashboard listed Northwind's courses but not Harbour's own organisation_learners Workplace Safety Essentials (not registered; outside this plan's scope, observation only).
-- (g) The Forklift self-enrolment created a second learner row for qa_harbour_solo under the DemoDev organisation (existing self-join behaviour, observation only).
-- (h) The cohort-list Filter button could not be clicked by accessible name in Playwright, so the filter options were read from the DOM.
-- (i) Django DEBUG is on in dev, so 404s render Django's debug not-found page rather than the interface's own.
+1. Test 1.3's "not-found page" is Django's DEBUG technical 404 in dev, raised by the educator interface view. That is correct for DEBUG.
+2. The course details preview dialog title is "Workplace Safety Essentials (Preview)" without the owner. The spec limits owner-naming in titles to register dialogs, so this passes.
+3. The topic preview's centred reading column comes from the earlier course-content-preview spec (max-w-reading) and is intended.
+4. A Harbour learner's self-enrolment on Northwind's unshared public course (test 4.2) does not appear on that learner's educator page. This is pre-existing behaviour, not this branch. The source probe (`.sdd-work/qa_probe_self-enrol-registration-hidden.md`) found that the educator panels do not filter by course: `LearnerRegistrationsPanel` queries `learner=<the Learner row viewed>` (`freedom_ls/educator_interface/views.py:838-842`). Self-enrol (`freedom_ls/learner_interface/views.py:1099-1105`) calls `own_organisation_for_course(request.user, course) or get_default_organisation(site)`. Harbour does not own the course (`freedom_ls/learner_management/queries.py:446-455`), so the result falls back to the default organisation. `self_register` then calls `ensure_learner(user, default_org)` (`freedom_ls/learner_management/learner_actions.py:348-372`), which finds or creates a separate Learner row and files the registration there. The public-course gate passes (`open_to_organisation_expression`, `queries.py:283-299`). The spec's `research_codebase.md` (lines 18-25) already records this fallback and says the write-path gate must not narrow so the self-join keeps working. The branch changes educator visibility only, not `self_register` or the Learner chosen. The probe did not read `visible_registrations_with_progress`, so the Courses tab narrowing is unchecked. It is a quirk worth a follow-up.
+5. The Northwind educator sees 0 active learners and cohorts on its own shared course although Harbour's cohort is registered. Counts are scoped to the viewing organisation, which is consistent with isolation.
 
-status: ok · reason: 1 bug — 1 fixed, 0 unresolved (owner named on shared courses, checked at desktop, tablet and mobile)
+status: ok · reason: 1 bug — 0 fixed, 1 unresolved (red lane: product decision); report rendered, screenshots verified

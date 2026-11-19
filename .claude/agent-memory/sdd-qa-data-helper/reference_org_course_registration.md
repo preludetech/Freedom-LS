@@ -73,3 +73,5 @@ The factory is `LearnerCourseRegistrationFactory` (model
 ## Leftover registration on an unshared course
 
 `LearnerCourseRegistration.clean()` runs `validate_course_open_to`, but `save()` does not call clean, so `LearnerCourseRegistrationFactory(site=..., learner=..., course=..., is_active=False)` creates a "left over from an earlier share" registration without touching `Course.organisations`.
+
+Field names on current branches: `LearnerCourseRegistration.course` (not `collection`); `CourseProgress` has `learner`/`learner_registration`, no `user`. An inactive registration mints NO CourseProgress (signal returns early on `not is_active`), so none is a "required companion". Used Nov 2026 for qa_harbour_solo on Workplace Safety Essentials (reactivate-refusal QA).

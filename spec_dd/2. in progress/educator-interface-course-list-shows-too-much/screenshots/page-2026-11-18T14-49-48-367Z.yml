@@ -1,0 +1,254 @@
+- generic [active] [ref=f16e1]:
+  - banner [ref=f16e2]:
+    - link [ref=f16e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f16e4]
+    - navigation [ref=f16e5]:
+      - generic [ref=f16e6]:
+        - generic [ref=f16e7]:
+          - button "Notifications, none new" [ref=f16e8]
+          - status:
+            - generic [ref=f16e12]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f16e14] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f16e15]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f16e16]:
+    - generic [ref=f16e20]:
+      - generic [ref=f16e24]:
+        - button "Open navigation panel" [ref=f16e25] [cursor=pointer]
+        - heading "Courses" [level=1] [ref=f16e29]
+      - generic [ref=f16e34]:
+        - list [ref=f16e36]:
+          - listitem [ref=f16e37]:
+            - generic [ref=f16e38]:
+              - link "Content Widgets - Demo Reference" [ref=f16e41] [cursor=pointer]:
+                - /url: /educator/organisations/northwind-logistics/courses/8bc127c1-edf1-4997-b7fc-35fdf8604f30
+              - generic [ref=f16e45]:
+                - generic [ref=f16e46]:
+                  - term [ref=f16e47]: Visibility
+                  - definition [ref=f16e48]: Coming soon
+                - generic [ref=f16e49]:
+                  - term [ref=f16e50]: Active Learners
+                  - definition [ref=f16e51]: "0"
+                - generic [ref=f16e52]:
+                  - term [ref=f16e53]: Cohorts
+                  - definition [ref=f16e54]:
+                    - img "None" [ref=f16e55]: —
+          - listitem [ref=f16e56]:
+            - generic [ref=f16e57]:
+              - link "Forklift Safety Basics" [ref=f16e60] [cursor=pointer]:
+                - /url: /educator/organisations/northwind-logistics/courses/c358d156-4f88-4ea7-ac1a-538ee8a47152
+              - generic [ref=f16e64]:
+                - generic [ref=f16e65]:
+                  - term [ref=f16e66]: Visibility
+                  - definition [ref=f16e67]: Published
+                - generic [ref=f16e68]:
+                  - term [ref=f16e69]: Active Learners
+                  - definition [ref=f16e70]: "0"
+                - generic [ref=f16e71]:
+                  - term [ref=f16e72]: Cohorts
+                  - definition [ref=f16e73]:
+                    - img "None" [ref=f16e74]: —
+          - listitem [ref=f16e75]:
+            - generic [ref=f16e76]:
+              - link "Functionality Demo - Application gated course" [ref=f16e79] [cursor=pointer]:
+                - /url: /educator/organisations/northwind-logistics/courses/271eeb30-94db-4261-b409-19888b0ead7d
+              - generic [ref=f16e83]:
+                - generic [ref=f16e84]:
+                  - term [ref=f16e85]: Visibility
+                  - definition [ref=f16e86]: Published
+                - generic [ref=f16e87]:
+                  - term [ref=f16e88]: Active Learners
+                  - definition [ref=f16e89]: "0"
+                - generic [ref=f16e90]:
+                  - term [ref=f16e91]: Cohorts
+                  - definition [ref=f16e92]:
+                    - img "None" [ref=f16e93]: —
+          - listitem [ref=f16e94]:
+            - generic [ref=f16e95]:
+              - link "Functionality Demo - Course Parts" [ref=f16e98] [cursor=pointer]:
+                - /url: /educator/organisations/northwind-logistics/courses/531adc02-f240-4c7b-87f7-956a804c1e22
+              - generic [ref=f16e102]:
+                - generic [ref=f16e103]:
+                  - term [ref=f16e104]: Visibility
+                  - definition [ref=f16e105]: Published
+                - generic [ref=f16e106]:
+                  - term [ref=f16e107]: Active Learners
+                  - definition [ref=f16e108]: "0"
+                - generic [ref=f16e109]:
+                  - term [ref=f16e110]: Cohorts
+                  - definition [ref=f16e111]:
+                    - img "None" [ref=f16e112]: —
+          - listitem [ref=f16e113]:
+            - generic [ref=f16e114]:
+              - link "Functionality Demo - Per-placement Due Dates" [ref=f16e117] [cursor=pointer]:
+                - /url: /educator/organisations/northwind-logistics/courses/4d63a96b-feff-4a38-8aac-44742a5da6bd
+              - generic [ref=f16e121]:
+                - generic [ref=f16e122]:
+                  - term [ref=f16e123]: Visibility
+                  - definition [ref=f16e124]: Published
+                - generic [ref=f16e125]:
+                  - term [ref=f16e126]: Active Learners
+                  - definition [ref=f16e127]: "0"
+                - generic [ref=f16e128]:
+                  - term [ref=f16e129]: Cohorts
+                  - definition [ref=f16e130]:
+                    - img "None" [ref=f16e131]: —
+          - listitem [ref=f16e132]:
+            - generic [ref=f16e133]:
+              - 'link "Functionality Demo - Price: currency without cents" [ref=f16e136] [cursor=pointer]':
+                - /url: /educator/organisations/northwind-logistics/courses/32da7dad-8f10-4eeb-8cf3-c4abcbe1d6c1
+              - generic [ref=f16e140]:
+                - generic [ref=f16e141]:
+                  - term [ref=f16e142]: Visibility
+                  - definition [ref=f16e143]: Published
+                - generic [ref=f16e144]:
+                  - term [ref=f16e145]: Active Learners
+                  - definition [ref=f16e146]: "0"
+                - generic [ref=f16e147]:
+                  - term [ref=f16e148]: Cohorts
+                  - definition [ref=f16e149]:
+                    - img "None" [ref=f16e150]: —
+          - listitem [ref=f16e151]:
+            - generic [ref=f16e152]:
+              - 'link "Functionality Demo - Price: expired sale" [ref=f16e155] [cursor=pointer]':
+                - /url: /educator/organisations/northwind-logistics/courses/5bf97798-9176-427a-97b7-6acec9ad650f
+              - generic [ref=f16e159]:
+                - generic [ref=f16e160]:
+                  - term [ref=f16e161]: Visibility
+                  - definition [ref=f16e162]: Published
+                - generic [ref=f16e163]:
+                  - term [ref=f16e164]: Active Learners
+                  - definition [ref=f16e165]: "0"
+                - generic [ref=f16e166]:
+                  - term [ref=f16e167]: Cohorts
+                  - definition [ref=f16e168]:
+                    - img "None" [ref=f16e169]: —
+          - listitem [ref=f16e170]:
+            - generic [ref=f16e171]:
+              - 'link "Functionality Demo - Price: fixed" [ref=f16e174] [cursor=pointer]':
+                - /url: /educator/organisations/northwind-logistics/courses/f5ce0728-70d2-4eaf-b4c4-bba906895941
+              - generic [ref=f16e178]:
+                - generic [ref=f16e179]:
+                  - term [ref=f16e180]: Visibility
+                  - definition [ref=f16e181]: Published
+                - generic [ref=f16e182]:
+                  - term [ref=f16e183]: Active Learners
+                  - definition [ref=f16e184]: "0"
+                - generic [ref=f16e185]:
+                  - term [ref=f16e186]: Cohorts
+                  - definition [ref=f16e187]:
+                    - img "None" [ref=f16e188]: —
+          - listitem [ref=f16e189]:
+            - generic [ref=f16e190]:
+              - 'link "Functionality Demo - Price: from" [ref=f16e193] [cursor=pointer]':
+                - /url: /educator/organisations/northwind-logistics/courses/ff6ecf0f-9885-4646-bb1c-c3727964cca4
+              - generic [ref=f16e197]:
+                - generic [ref=f16e198]:
+                  - term [ref=f16e199]: Visibility
+                  - definition [ref=f16e200]: Published
+                - generic [ref=f16e201]:
+                  - term [ref=f16e202]: Active Learners
+                  - definition [ref=f16e203]: "0"
+                - generic [ref=f16e204]:
+                  - term [ref=f16e205]: Cohorts
+                  - definition [ref=f16e206]:
+                    - img "None" [ref=f16e207]: —
+          - listitem [ref=f16e208]:
+            - generic [ref=f16e209]:
+              - 'link "Functionality Demo - Price: on request" [ref=f16e212] [cursor=pointer]':
+                - /url: /educator/organisations/northwind-logistics/courses/4b6c9adb-1821-4db6-9496-108f47c77dfe
+              - generic [ref=f16e216]:
+                - generic [ref=f16e217]:
+                  - term [ref=f16e218]: Visibility
+                  - definition [ref=f16e219]: Published
+                - generic [ref=f16e220]:
+                  - term [ref=f16e221]: Active Learners
+                  - definition [ref=f16e222]: "0"
+                - generic [ref=f16e223]:
+                  - term [ref=f16e224]: Cohorts
+                  - definition [ref=f16e225]:
+                    - img "None" [ref=f16e226]: —
+        - generic [ref=f16e227]:
+          - paragraph [ref=f16e228]: Showing 1–10 of 16 courses
+          - generic [ref=f16e229]:
+            - button "Previous" [disabled] [ref=f16e230]
+            - generic [ref=f16e234]: Page 1 of 2
+            - link "Next" [ref=f16e235] [cursor=pointer]:
+              - /url: /educator/organisations/northwind-logistics/courses?courses-page=2
+  - contentinfo [ref=f16e241]:
+    - generic [ref=f16e242]:
+      - paragraph [ref=f16e243]: © 2026 FirstClass
+      - navigation "Legal" [ref=f16e244]:
+        - link "Terms and Conditions" [ref=f16e245] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f16e246] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f16e247] [cursor=pointer]: educator-interface-course-list-shows-too-much
+  - list [ref=f16e249]:
+    - listitem [ref=f16e250]:
+      - link "Hide »" [ref=f16e251] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f16e252]:
+      - link "Toggle Theme" [ref=f16e253] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f16e256]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f16e257] [cursor=pointer]
+      - link "History /educator/organisations/northwind-logistics/courses" [ref=f16e258] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f16e259]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f16e260] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f16e261] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f16e262]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f16e263] [cursor=pointer]
+      - 'link "Time CPU: 181.10ms (989.30ms)" [ref=f16e264] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f16e265]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f16e266] [cursor=pointer]
+      - link "Settings" [ref=f16e267] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f16e268]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f16e269] [cursor=pointer]
+      - link "Headers" [ref=f16e270] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f16e271]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f16e272] [cursor=pointer]
+      - link "Request interface" [ref=f16e273] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f16e274]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f16e275] [cursor=pointer]
+      - link "SQL 20 queries in 811.03ms" [ref=f16e276] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f16e277]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f16e278] [cursor=pointer]
+      - link "Static files 14 files used" [ref=f16e279] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f16e280]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f16e281] [cursor=pointer]
+      - link "Templates educator_interface/interface.html" [ref=f16e282] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f16e283]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f16e284] [cursor=pointer]
+      - link "Alerts" [ref=f16e285] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f16e286]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f16e287] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f16e288] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f16e289]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f16e290] [cursor=pointer]
+      - link "Signals 130 receivers of 15 signals" [ref=f16e291] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f16e292]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f16e293] [cursor=pointer]
+      - link "Community" [ref=f16e294] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f16e295]:
+      - checkbox "Enable for next and successive requests" [ref=f16e296] [cursor=pointer]
+      - generic [ref=f16e297]: Intercept redirects
+    - listitem [ref=f16e298]:
+      - checkbox "Enable for next and successive requests" [ref=f16e299] [cursor=pointer]
+      - generic [ref=f16e300]: Profiling

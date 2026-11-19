@@ -1,0 +1,254 @@
+- generic [active] [ref=f8e1]:
+  - banner [ref=f8e2]:
+    - link [ref=f8e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f8e4]
+      - heading "FirstClass" [level=1] [ref=f8e5]
+    - navigation [ref=f8e6]:
+      - generic [ref=f8e7]:
+        - generic [ref=f8e8]:
+          - button "Notifications, none new" [ref=f8e9]
+          - status:
+            - generic [ref=f8e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f8e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f8e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f8e17]:
+    - generic [ref=f8e19]:
+      - dialog "Navigation" [ref=f8e20]:
+        - generic [ref=f8e22]:
+          - generic [ref=f8e23]:
+            - paragraph [ref=f8e24]: Organisation
+            - button "Switch organisation" [ref=f8e26] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f8e27]: HC
+              - generic "Harbour College" [ref=f8e28]
+          - navigation "Sections" [ref=f8e31]:
+            - heading "Teaching" [level=2] [ref=f8e32]
+            - list [ref=f8e33]:
+              - listitem [ref=f8e34]:
+                - link "Dashboard" [ref=f8e35] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/dashboard
+              - listitem [ref=f8e40]:
+                - link "Cohorts" [ref=f8e41] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/cohorts
+              - listitem [ref=f8e46]:
+                - link "Learners" [ref=f8e47] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/learners
+              - listitem [ref=f8e52]:
+                - link "Courses" [ref=f8e53] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/courses
+            - heading "Administration" [level=2] [ref=f8e58]
+            - list [ref=f8e59]:
+              - listitem [ref=f8e60]:
+                - link "Staff" [ref=f8e61] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/staff
+              - listitem [ref=f8e66]:
+                - link "Audit log" [ref=f8e67] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/audit-log
+          - generic [ref=f8e72]:
+            - generic [ref=f8e74]:
+              - generic [aria-hidden] [ref=f8e75]: DE
+              - generic [ref=f8e76]: demodev@email.com
+            - link "Account settings" [ref=f8e78] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f8e84]:
+        - heading "Courses" [level=1] [ref=f8e90]
+        - generic [ref=f8e95]:
+          - region "Courses" [ref=f8e97]:
+            - table [ref=f8e98]:
+              - caption [ref=f8e99]: Courses
+              - rowgroup [ref=f8e100]:
+                - row [ref=f8e101]:
+                  - columnheader "Title" [ref=f8e102]
+                  - columnheader "Visibility" [ref=f8e103]
+                  - columnheader "Interest" [ref=f8e104]
+                  - columnheader "Active Learners" [ref=f8e105]
+                  - columnheader "Active Cohorts" [ref=f8e106]
+                  - columnheader "Cohorts" [ref=f8e107]
+              - rowgroup [ref=f8e108]:
+                - row [ref=f8e109]:
+                  - cell [ref=f8e110]:
+                    - link "Content Widgets - Demo Reference" [ref=f8e111] [cursor=pointer]:
+                      - /url: /educator/organisations/harbour-college/courses/8bc127c1-edf1-4997-b7fc-35fdf8604f30
+                  - cell "Coming soon" [ref=f8e112]
+                  - cell "0" [ref=f8e113]
+                  - cell "0" [ref=f8e114]
+                  - cell "0" [ref=f8e115]
+                  - cell [ref=f8e116]:
+                    - img "None" [ref=f8e117]: —
+                - row [ref=f8e118]:
+                  - cell [ref=f8e119]:
+                    - link "Functionality Demo - Application gated course" [ref=f8e120] [cursor=pointer]:
+                      - /url: /educator/organisations/harbour-college/courses/271eeb30-94db-4261-b409-19888b0ead7d
+                  - cell "Published" [ref=f8e121]
+                  - cell "0" [ref=f8e122]
+                  - cell "0" [ref=f8e123]
+                  - cell "0" [ref=f8e124]
+                  - cell [ref=f8e125]:
+                    - img "None" [ref=f8e126]: —
+                - row [ref=f8e127]:
+                  - cell [ref=f8e128]:
+                    - link "Functionality Demo - Course Parts" [ref=f8e129] [cursor=pointer]:
+                      - /url: /educator/organisations/harbour-college/courses/531adc02-f240-4c7b-87f7-956a804c1e22
+                  - cell "Published" [ref=f8e130]
+                  - cell "0" [ref=f8e131]
+                  - cell "0" [ref=f8e132]
+                  - cell "0" [ref=f8e133]
+                  - cell [ref=f8e134]:
+                    - img "None" [ref=f8e135]: —
+                - row [ref=f8e136]:
+                  - cell [ref=f8e137]:
+                    - link "Functionality Demo - Per-placement Due Dates" [ref=f8e138] [cursor=pointer]:
+                      - /url: /educator/organisations/harbour-college/courses/4d63a96b-feff-4a38-8aac-44742a5da6bd
+                  - cell "Published" [ref=f8e139]
+                  - cell "0" [ref=f8e140]
+                  - cell "0" [ref=f8e141]
+                  - cell "0" [ref=f8e142]
+                  - cell [ref=f8e143]:
+                    - img "None" [ref=f8e144]: —
+                - row [ref=f8e145]:
+                  - cell [ref=f8e146]:
+                    - 'link "Functionality Demo - Price: currency without cents" [ref=f8e147] [cursor=pointer]':
+                      - /url: /educator/organisations/harbour-college/courses/32da7dad-8f10-4eeb-8cf3-c4abcbe1d6c1
+                  - cell "Published" [ref=f8e148]
+                  - cell "0" [ref=f8e149]
+                  - cell "0" [ref=f8e150]
+                  - cell "0" [ref=f8e151]
+                  - cell [ref=f8e152]:
+                    - img "None" [ref=f8e153]: —
+                - row [ref=f8e154]:
+                  - cell [ref=f8e155]:
+                    - 'link "Functionality Demo - Price: expired sale" [ref=f8e156] [cursor=pointer]':
+                      - /url: /educator/organisations/harbour-college/courses/5bf97798-9176-427a-97b7-6acec9ad650f
+                  - cell "Published" [ref=f8e157]
+                  - cell "0" [ref=f8e158]
+                  - cell "0" [ref=f8e159]
+                  - cell "0" [ref=f8e160]
+                  - cell [ref=f8e161]:
+                    - img "None" [ref=f8e162]: —
+                - row [ref=f8e163]:
+                  - cell [ref=f8e164]:
+                    - 'link "Functionality Demo - Price: fixed" [ref=f8e165] [cursor=pointer]':
+                      - /url: /educator/organisations/harbour-college/courses/f5ce0728-70d2-4eaf-b4c4-bba906895941
+                  - cell "Published" [ref=f8e166]
+                  - cell "0" [ref=f8e167]
+                  - cell "0" [ref=f8e168]
+                  - cell "0" [ref=f8e169]
+                  - cell [ref=f8e170]:
+                    - img "None" [ref=f8e171]: —
+                - row [ref=f8e172]:
+                  - cell [ref=f8e173]:
+                    - 'link "Functionality Demo - Price: from" [ref=f8e174] [cursor=pointer]':
+                      - /url: /educator/organisations/harbour-college/courses/ff6ecf0f-9885-4646-bb1c-c3727964cca4
+                  - cell "Published" [ref=f8e175]
+                  - cell "0" [ref=f8e176]
+                  - cell "0" [ref=f8e177]
+                  - cell "0" [ref=f8e178]
+                  - cell [ref=f8e179]:
+                    - img "None" [ref=f8e180]: —
+                - row [ref=f8e181]:
+                  - cell [ref=f8e182]:
+                    - 'link "Functionality Demo - Price: on request" [ref=f8e183] [cursor=pointer]':
+                      - /url: /educator/organisations/harbour-college/courses/4b6c9adb-1821-4db6-9496-108f47c77dfe
+                  - cell "Published" [ref=f8e184]
+                  - cell "0" [ref=f8e185]
+                  - cell "0" [ref=f8e186]
+                  - cell "0" [ref=f8e187]
+                  - cell [ref=f8e188]:
+                    - img "None" [ref=f8e189]: —
+                - row [ref=f8e190]:
+                  - cell [ref=f8e191]:
+                    - 'link "Functionality Demo - Price: range" [ref=f8e192] [cursor=pointer]':
+                      - /url: /educator/organisations/harbour-college/courses/be08d6a5-6777-4e2a-898f-eadc270746ab
+                  - cell "Published" [ref=f8e193]
+                  - cell "0" [ref=f8e194]
+                  - cell "0" [ref=f8e195]
+                  - cell "0" [ref=f8e196]
+                  - cell [ref=f8e197]:
+                    - img "None" [ref=f8e198]: —
+          - generic [ref=f8e199]:
+            - paragraph [ref=f8e200]: Showing 1–10 of 16 courses
+            - generic [ref=f8e201]:
+              - generic [ref=f8e202]: Page 1 of 2
+              - generic [ref=f8e203]:
+                - generic [ref=f8e204] [cursor=pointer]: "1"
+                - link "2" [ref=f8e205] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/courses?courses-page=2
+                - link "Next" [ref=f8e206] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/courses?courses-page=2
+  - contentinfo [ref=f8e209]:
+    - generic [ref=f8e210]:
+      - paragraph [ref=f8e211]: © 2026 FirstClass
+      - navigation "Legal" [ref=f8e212]:
+        - link "Terms and Conditions" [ref=f8e213] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f8e214] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f8e215] [cursor=pointer]: educator-interface-course-list-shows-too-much
+  - list [ref=f8e217]:
+    - listitem [ref=f8e218]:
+      - link "Hide »" [ref=f8e219] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e220]:
+      - link "Toggle Theme" [ref=f8e221] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e224]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e225] [cursor=pointer]
+      - link "History /educator/organisations/harbour-college/courses" [ref=f8e226] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e227]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e228] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f8e229] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e230]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e231] [cursor=pointer]
+      - 'link "Time CPU: 188.66ms (982.19ms)" [ref=f8e232] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f8e233]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e234] [cursor=pointer]
+      - link "Settings" [ref=f8e235] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e236]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e237] [cursor=pointer]
+      - link "Headers" [ref=f8e238] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e239]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e240] [cursor=pointer]
+      - link "Request interface" [ref=f8e241] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e242]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e243] [cursor=pointer]
+      - link "SQL 19 queries in 831.77ms" [ref=f8e244] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e245]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e246] [cursor=pointer]
+      - link "Static files 14 files used" [ref=f8e247] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e248]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e249] [cursor=pointer]
+      - link "Templates educator_interface/interface.html" [ref=f8e250] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e251]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e252] [cursor=pointer]
+      - link "Alerts" [ref=f8e253] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e254]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e255] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f8e256] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e257]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e258] [cursor=pointer]
+      - link "Signals 130 receivers of 15 signals" [ref=f8e259] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e260]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e261] [cursor=pointer]
+      - link "Community" [ref=f8e262] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e263]:
+      - checkbox "Enable for next and successive requests" [ref=f8e264] [cursor=pointer]
+      - generic [ref=f8e265]: Intercept redirects
+    - listitem [ref=f8e266]:
+      - checkbox "Enable for next and successive requests" [ref=f8e267] [cursor=pointer]
+      - generic [ref=f8e268]: Profiling

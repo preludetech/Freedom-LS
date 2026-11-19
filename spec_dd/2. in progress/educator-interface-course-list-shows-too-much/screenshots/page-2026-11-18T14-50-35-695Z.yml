@@ -1,0 +1,186 @@
+- generic [active] [ref=f24e1]:
+  - banner [ref=f24e2]:
+    - link [ref=f24e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f24e4]
+      - heading "FirstClass" [level=1] [ref=f24e5]
+    - navigation [ref=f24e6]:
+      - generic [ref=f24e7]:
+        - generic [ref=f24e8]:
+          - button "Notifications, none new" [ref=f24e9]
+          - status:
+            - generic [ref=f24e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f24e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f24e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f24e17]:
+    - generic [ref=f24e20]:
+      - navigation "Back" [ref=f24e22]:
+        - link "Courses" [ref=f24e23] [cursor=pointer]:
+          - /url: /educator/organisations/harbour-college/courses
+      - generic [ref=f24e27]:
+        - generic [ref=f24e32]:
+          - button "Open navigation panel" [ref=f24e33] [cursor=pointer]
+          - heading "Workplace Safety Essentials" [level=1] [ref=f24e37]
+        - generic [ref=f24e39]:
+          - generic [ref=f24e41]:
+            - heading "Details" [level=2] [ref=f24e44]
+            - generic [ref=f24e46]:
+              - generic [ref=f24e47]:
+                - term [ref=f24e48]: Title
+                - definition [ref=f24e49]: Workplace Safety Essentials
+              - generic [ref=f24e50]:
+                - term [ref=f24e51]: Subtitle
+                - definition [ref=f24e52]: An organisation course
+              - generic [ref=f24e53]:
+                - term [ref=f24e54]: Category
+                - definition [ref=f24e55]: Start here
+              - generic [ref=f24e56]:
+                - term [ref=f24e57]: Visibility
+                - definition [ref=f24e58]: Published
+              - generic [ref=f24e59]:
+                - term [ref=f24e60]: Lessons
+                - definition [ref=f24e61]: "1"
+          - generic [ref=f24e63]:
+            - heading "Course content" [level=2] [ref=f24e66]
+            - region "Course outline" [ref=f24e69]:
+              - table [ref=f24e70]:
+                - caption [ref=f24e71]: Course outline
+                - rowgroup [ref=f24e72]:
+                  - row [ref=f24e73]:
+                    - columnheader "#" [ref=f24e74]
+                    - columnheader "Title" [ref=f24e75]
+                    - columnheader "Type" [ref=f24e76]
+                    - columnheader "Actions" [ref=f24e77]
+                - rowgroup [ref=f24e79]:
+                  - row [ref=f24e80]:
+                    - cell [ref=f24e81]
+                    - cell "Course details" [ref=f24e82]
+                    - cell "Course" [ref=f24e85]
+                    - cell [ref=f24e86]:
+                      - button "Preview course details page" [ref=f24e88] [cursor=pointer]: Preview
+                  - row [ref=f24e89]:
+                    - cell "1." [ref=f24e90]
+                    - cell "Topic Safety on site" [ref=f24e91]:
+                      - generic [ref=f24e92]:
+                        - generic [ref=f24e93]: Topic
+                        - generic [ref=f24e97]: Safety on site
+                    - cell "Topic" [ref=f24e98]
+                    - cell [ref=f24e99]:
+                      - button "Preview Safety on site" [ref=f24e101] [cursor=pointer]: Preview
+          - generic [ref=f24e103]:
+            - heading "Cohort registrations" [level=2] [ref=f24e106]
+            - generic [ref=f24e108]:
+              - region "Cohort course registrations" [ref=f24e110]:
+                - table [ref=f24e111]:
+                  - caption [ref=f24e112]: Cohort course registrations
+                  - rowgroup [ref=f24e113]:
+                    - row [ref=f24e114]:
+                      - columnheader "Cohort" [ref=f24e115]
+                      - columnheader "Cohort status" [ref=f24e116]
+                      - columnheader "Status" [ref=f24e117]
+                      - columnheader "Registered" [ref=f24e118]
+                  - rowgroup [ref=f24e119]:
+                    - row [ref=f24e120]:
+                      - cell [ref=f24e121]:
+                        - link "QA Harbour Cohort" [ref=f24e122] [cursor=pointer]:
+                          - /url: /educator/organisations/harbour-college/cohorts/97e0f204-7eef-4c01-9f30-ca7709ef5082
+                      - cell "Active" [ref=f24e123]
+                      - cell "Active" [ref=f24e125]
+                      - cell "18 Nov 2026, 10:03" [ref=f24e127]:
+                        - time [ref=f24e128]:
+                          - generic [ref=f24e129]: 18 Nov 2026,
+                          - generic [ref=f24e130]: 10:03
+              - paragraph [ref=f24e132]: 1 cohort course registration
+          - generic [ref=f24e134]:
+            - heading "Direct registrations" [level=2] [ref=f24e137]
+            - region "Learner course registrations" [ref=f24e142]:
+              - table [ref=f24e143]:
+                - caption [ref=f24e144]: Learner course registrations
+                - rowgroup [ref=f24e145]:
+                  - row [ref=f24e146]:
+                    - columnheader [ref=f24e147]:
+                      - link "Learner" [ref=f24e148] [cursor=pointer]:
+                        - /url: /educator/organisations/harbour-college/courses/26c2e0d5-534f-40dc-86de-8218355233e5?learner_registrations-sort=-learner__user__first_name
+                    - columnheader "Status" [ref=f24e152]
+                    - columnheader "Registered" [ref=f24e153]
+                - rowgroup [ref=f24e154]:
+                  - row [ref=f24e155]:
+                    - cell [ref=f24e156]:
+                      - paragraph [ref=f24e158]: No learners are registered for this course yet. Learner registrations will appear here.
+  - contentinfo [ref=f24e161]:
+    - generic [ref=f24e162]:
+      - paragraph [ref=f24e163]: © 2026 FirstClass
+      - navigation "Legal" [ref=f24e164]:
+        - link "Terms and Conditions" [ref=f24e165] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f24e166] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f24e167] [cursor=pointer]: educator-interface-course-list-shows-too-much
+  - list [ref=f24e169]:
+    - listitem [ref=f24e170]:
+      - link "Hide »" [ref=f24e171] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e172]:
+      - link "Toggle Theme" [ref=f24e173] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e176]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e177] [cursor=pointer]
+      - link "History /educator/organisations/harbour-college/courses/26c2e0d5-534f-40dc-86de-8218355233e5" [ref=f24e178] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e179]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e180] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f24e181] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e182]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e183] [cursor=pointer]
+      - 'link "Time CPU: 127.44ms (152.66ms)" [ref=f24e184] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f24e185]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e186] [cursor=pointer]
+      - link "Settings" [ref=f24e187] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e188]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e189] [cursor=pointer]
+      - link "Headers" [ref=f24e190] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e191]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e192] [cursor=pointer]
+      - link "Request interface" [ref=f24e193] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e194]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e195] [cursor=pointer]
+      - link "SQL 24 queries in 23.97ms" [ref=f24e196] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e197]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e198] [cursor=pointer]
+      - link "Static files 14 files used" [ref=f24e199] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e200]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e201] [cursor=pointer]
+      - link "Templates educator_interface/interface.html" [ref=f24e202] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e203]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e204] [cursor=pointer]
+      - link "Alerts" [ref=f24e205] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e206]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e207] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f24e208] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e209]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e210] [cursor=pointer]
+      - link "Signals 130 receivers of 15 signals" [ref=f24e211] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e212]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e213] [cursor=pointer]
+      - link "Community" [ref=f24e214] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e215]:
+      - checkbox "Enable for next and successive requests" [ref=f24e216] [cursor=pointer]
+      - generic [ref=f24e217]: Intercept redirects
+    - listitem [ref=f24e218]:
+      - checkbox "Enable for next and successive requests" [ref=f24e219] [cursor=pointer]
+      - generic [ref=f24e220]: Profiling

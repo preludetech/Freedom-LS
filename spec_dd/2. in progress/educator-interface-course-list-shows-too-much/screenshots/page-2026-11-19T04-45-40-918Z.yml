@@ -1,0 +1,127 @@
+- generic [active] [ref=f8e1]:
+  - banner [ref=f8e2]:
+    - link [ref=f8e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f8e4]
+      - heading "FirstClass" [level=1] [ref=f8e5]
+    - navigation [ref=f8e6]:
+      - generic [ref=f8e7]:
+        - generic [ref=f8e8]:
+          - button "Messages" [ref=f8e9]
+          - status:
+            - generic [ref=f8e13]: Messages
+        - generic [ref=f8e14]:
+          - button "Notifications, none new" [ref=f8e15]
+          - status:
+            - generic [ref=f8e19]: Notifications, none new
+        - button "Open user menu for Hana Harbour" [ref=f8e21] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f8e22]: HH
+  - generic:
+    - status
+    - alert
+  - main [ref=f8e23]:
+    - generic [ref=f8e25]:
+      - dialog "Navigation" [ref=f8e26]:
+        - generic [ref=f8e28]:
+          - generic [ref=f8e29]:
+            - paragraph [ref=f8e30]: Organisation
+            - generic [ref=f8e31]:
+              - generic [aria-hidden] [ref=f8e32]: HC
+              - generic "Harbour College" [ref=f8e33]
+          - navigation "Sections" [ref=f8e34]:
+            - heading "Teaching" [level=2] [ref=f8e35]
+            - list [ref=f8e36]:
+              - listitem [ref=f8e37]:
+                - link "Dashboard" [ref=f8e38] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/dashboard
+              - listitem [ref=f8e43]:
+                - link "Cohorts" [ref=f8e44] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/cohorts
+              - listitem [ref=f8e49]:
+                - link "Learners" [ref=f8e50] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/learners
+              - listitem [ref=f8e55]:
+                - link "Courses" [ref=f8e56] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/courses
+            - heading "Administration" [level=2] [ref=f8e61]
+            - list [ref=f8e62]:
+              - listitem [ref=f8e63]:
+                - link "Staff" [ref=f8e64] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/staff
+              - listitem [ref=f8e69]:
+                - link "Audit log" [ref=f8e70] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/audit-log
+          - generic [ref=f8e75]:
+            - generic [ref=f8e77]:
+              - generic [aria-hidden] [ref=f8e78]: HH
+              - generic [ref=f8e79]:
+                - generic [ref=f8e80]: Hana Harbour
+                - generic [ref=f8e81]: qa_harbour_educator@email.com
+            - link "Account settings" [ref=f8e82] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f8e87]:
+        - navigation "Back" [ref=f8e89]:
+          - link "Cohorts" [ref=f8e90] [cursor=pointer]:
+            - /url: /educator/organisations/harbour-college/cohorts
+        - generic [ref=f8e94]:
+          - generic [ref=f8e96]:
+            - heading "QA Harbour Cohort" [level=1] [ref=f8e101]
+            - navigation "Cohort sections" [ref=f8e102]:
+              - list [ref=f8e103]:
+                - listitem [ref=f8e104]:
+                  - link "Overview" [ref=f8e105] [cursor=pointer]:
+                    - /url: /educator/organisations/harbour-college/cohorts/97e0f204-7eef-4c01-9f30-ca7709ef5082/__tabs/overview
+                - listitem [ref=f8e106]:
+                  - link "Learners 1" [ref=f8e107] [cursor=pointer]:
+                    - /url: /educator/organisations/harbour-college/cohorts/97e0f204-7eef-4c01-9f30-ca7709ef5082/__tabs/learners
+                    - text: Learners
+                    - generic [ref=f8e108]: "1"
+                - listitem [ref=f8e109]:
+                  - link "Courses 0" [ref=f8e110] [cursor=pointer]:
+                    - /url: /educator/organisations/harbour-college/cohorts/97e0f204-7eef-4c01-9f30-ca7709ef5082/__tabs/courses
+                    - text: Courses
+                    - generic [ref=f8e111]: "0"
+                - listitem [ref=f8e112]:
+                  - link "Report" [ref=f8e113] [cursor=pointer]:
+                    - /url: /educator/organisations/harbour-college/cohorts/97e0f204-7eef-4c01-9f30-ca7709ef5082/__tabs/report
+                - listitem [ref=f8e114]:
+                  - link "Settings" [ref=f8e115] [cursor=pointer]:
+                    - /url: /educator/organisations/harbour-college/cohorts/97e0f204-7eef-4c01-9f30-ca7709ef5082/__tabs/settings
+                - listitem [ref=f8e116]:
+                  - link "History" [ref=f8e117] [cursor=pointer]:
+                    - /url: /educator/organisations/harbour-college/cohorts/97e0f204-7eef-4c01-9f30-ca7709ef5082/__tabs/history
+          - generic [ref=f8e121]:
+            - generic [ref=f8e123]:
+              - heading "Details" [level=2] [ref=f8e126]
+              - generic [ref=f8e128]:
+                - generic [ref=f8e129]:
+                  - term [ref=f8e130]: Name
+                  - definition [ref=f8e131]: QA Harbour Cohort
+                - generic [ref=f8e132]:
+                  - term [ref=f8e133]: Status
+                  - definition [ref=f8e134]:
+                    - generic [ref=f8e135]: Active
+                - generic [ref=f8e136]:
+                  - term [ref=f8e137]: Created
+                  - definition [ref=f8e138]:
+                    - time [ref=f8e139]: 18 Nov 2026
+                - generic [ref=f8e140]:
+                  - term [ref=f8e141]: Learners
+                  - definition [ref=f8e142]: "1"
+                - generic [ref=f8e143]:
+                  - term [ref=f8e144]: Courses
+                  - definition [ref=f8e145]: "0"
+            - generic [ref=f8e147]:
+              - heading "Course completion" [level=2] [ref=f8e150]
+              - paragraph [ref=f8e153]: No courses registered.
+            - heading "Needs attention" [level=2] [ref=f8e158]
+  - contentinfo [ref=f8e170]:
+    - generic [ref=f8e171]:
+      - paragraph [ref=f8e172]: © 2026 FirstClass
+      - navigation "Legal" [ref=f8e173]:
+        - link "Terms and Conditions" [ref=f8e174] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f8e175] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f8e176] [cursor=pointer]: educator-interface-course-list-shows-too-much
+  - generic "Show toolbar" [ref=f8e178]: DJDT

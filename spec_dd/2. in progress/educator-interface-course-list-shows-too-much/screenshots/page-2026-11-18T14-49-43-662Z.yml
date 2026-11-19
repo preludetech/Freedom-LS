@@ -1,0 +1,254 @@
+- generic [active] [ref=f15e1]:
+  - banner [ref=f15e2]:
+    - link [ref=f15e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f15e4]
+    - navigation [ref=f15e5]:
+      - generic [ref=f15e6]:
+        - generic [ref=f15e7]:
+          - button "Notifications, none new" [ref=f15e8]
+          - status:
+            - generic [ref=f15e12]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f15e14] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f15e15]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f15e16]:
+    - generic [ref=f15e20]:
+      - generic [ref=f15e24]:
+        - button "Open navigation panel" [ref=f15e25] [cursor=pointer]
+        - heading "Courses" [level=1] [ref=f15e29]
+      - generic [ref=f15e34]:
+        - list [ref=f15e36]:
+          - listitem [ref=f15e37]:
+            - generic [ref=f15e38]:
+              - link "Content Widgets - Demo Reference" [ref=f15e41] [cursor=pointer]:
+                - /url: /educator/organisations/harbour-college/courses/8bc127c1-edf1-4997-b7fc-35fdf8604f30
+              - generic [ref=f15e45]:
+                - generic [ref=f15e46]:
+                  - term [ref=f15e47]: Visibility
+                  - definition [ref=f15e48]: Coming soon
+                - generic [ref=f15e49]:
+                  - term [ref=f15e50]: Active Learners
+                  - definition [ref=f15e51]: "0"
+                - generic [ref=f15e52]:
+                  - term [ref=f15e53]: Cohorts
+                  - definition [ref=f15e54]:
+                    - img "None" [ref=f15e55]: —
+          - listitem [ref=f15e56]:
+            - generic [ref=f15e57]:
+              - link "Functionality Demo - Application gated course" [ref=f15e60] [cursor=pointer]:
+                - /url: /educator/organisations/harbour-college/courses/271eeb30-94db-4261-b409-19888b0ead7d
+              - generic [ref=f15e64]:
+                - generic [ref=f15e65]:
+                  - term [ref=f15e66]: Visibility
+                  - definition [ref=f15e67]: Published
+                - generic [ref=f15e68]:
+                  - term [ref=f15e69]: Active Learners
+                  - definition [ref=f15e70]: "0"
+                - generic [ref=f15e71]:
+                  - term [ref=f15e72]: Cohorts
+                  - definition [ref=f15e73]:
+                    - img "None" [ref=f15e74]: —
+          - listitem [ref=f15e75]:
+            - generic [ref=f15e76]:
+              - link "Functionality Demo - Course Parts" [ref=f15e79] [cursor=pointer]:
+                - /url: /educator/organisations/harbour-college/courses/531adc02-f240-4c7b-87f7-956a804c1e22
+              - generic [ref=f15e83]:
+                - generic [ref=f15e84]:
+                  - term [ref=f15e85]: Visibility
+                  - definition [ref=f15e86]: Published
+                - generic [ref=f15e87]:
+                  - term [ref=f15e88]: Active Learners
+                  - definition [ref=f15e89]: "0"
+                - generic [ref=f15e90]:
+                  - term [ref=f15e91]: Cohorts
+                  - definition [ref=f15e92]:
+                    - img "None" [ref=f15e93]: —
+          - listitem [ref=f15e94]:
+            - generic [ref=f15e95]:
+              - link "Functionality Demo - Per-placement Due Dates" [ref=f15e98] [cursor=pointer]:
+                - /url: /educator/organisations/harbour-college/courses/4d63a96b-feff-4a38-8aac-44742a5da6bd
+              - generic [ref=f15e102]:
+                - generic [ref=f15e103]:
+                  - term [ref=f15e104]: Visibility
+                  - definition [ref=f15e105]: Published
+                - generic [ref=f15e106]:
+                  - term [ref=f15e107]: Active Learners
+                  - definition [ref=f15e108]: "0"
+                - generic [ref=f15e109]:
+                  - term [ref=f15e110]: Cohorts
+                  - definition [ref=f15e111]:
+                    - img "None" [ref=f15e112]: —
+          - listitem [ref=f15e113]:
+            - generic [ref=f15e114]:
+              - 'link "Functionality Demo - Price: currency without cents" [ref=f15e117] [cursor=pointer]':
+                - /url: /educator/organisations/harbour-college/courses/32da7dad-8f10-4eeb-8cf3-c4abcbe1d6c1
+              - generic [ref=f15e121]:
+                - generic [ref=f15e122]:
+                  - term [ref=f15e123]: Visibility
+                  - definition [ref=f15e124]: Published
+                - generic [ref=f15e125]:
+                  - term [ref=f15e126]: Active Learners
+                  - definition [ref=f15e127]: "0"
+                - generic [ref=f15e128]:
+                  - term [ref=f15e129]: Cohorts
+                  - definition [ref=f15e130]:
+                    - img "None" [ref=f15e131]: —
+          - listitem [ref=f15e132]:
+            - generic [ref=f15e133]:
+              - 'link "Functionality Demo - Price: expired sale" [ref=f15e136] [cursor=pointer]':
+                - /url: /educator/organisations/harbour-college/courses/5bf97798-9176-427a-97b7-6acec9ad650f
+              - generic [ref=f15e140]:
+                - generic [ref=f15e141]:
+                  - term [ref=f15e142]: Visibility
+                  - definition [ref=f15e143]: Published
+                - generic [ref=f15e144]:
+                  - term [ref=f15e145]: Active Learners
+                  - definition [ref=f15e146]: "0"
+                - generic [ref=f15e147]:
+                  - term [ref=f15e148]: Cohorts
+                  - definition [ref=f15e149]:
+                    - img "None" [ref=f15e150]: —
+          - listitem [ref=f15e151]:
+            - generic [ref=f15e152]:
+              - 'link "Functionality Demo - Price: fixed" [ref=f15e155] [cursor=pointer]':
+                - /url: /educator/organisations/harbour-college/courses/f5ce0728-70d2-4eaf-b4c4-bba906895941
+              - generic [ref=f15e159]:
+                - generic [ref=f15e160]:
+                  - term [ref=f15e161]: Visibility
+                  - definition [ref=f15e162]: Published
+                - generic [ref=f15e163]:
+                  - term [ref=f15e164]: Active Learners
+                  - definition [ref=f15e165]: "0"
+                - generic [ref=f15e166]:
+                  - term [ref=f15e167]: Cohorts
+                  - definition [ref=f15e168]:
+                    - img "None" [ref=f15e169]: —
+          - listitem [ref=f15e170]:
+            - generic [ref=f15e171]:
+              - 'link "Functionality Demo - Price: from" [ref=f15e174] [cursor=pointer]':
+                - /url: /educator/organisations/harbour-college/courses/ff6ecf0f-9885-4646-bb1c-c3727964cca4
+              - generic [ref=f15e178]:
+                - generic [ref=f15e179]:
+                  - term [ref=f15e180]: Visibility
+                  - definition [ref=f15e181]: Published
+                - generic [ref=f15e182]:
+                  - term [ref=f15e183]: Active Learners
+                  - definition [ref=f15e184]: "0"
+                - generic [ref=f15e185]:
+                  - term [ref=f15e186]: Cohorts
+                  - definition [ref=f15e187]:
+                    - img "None" [ref=f15e188]: —
+          - listitem [ref=f15e189]:
+            - generic [ref=f15e190]:
+              - 'link "Functionality Demo - Price: on request" [ref=f15e193] [cursor=pointer]':
+                - /url: /educator/organisations/harbour-college/courses/4b6c9adb-1821-4db6-9496-108f47c77dfe
+              - generic [ref=f15e197]:
+                - generic [ref=f15e198]:
+                  - term [ref=f15e199]: Visibility
+                  - definition [ref=f15e200]: Published
+                - generic [ref=f15e201]:
+                  - term [ref=f15e202]: Active Learners
+                  - definition [ref=f15e203]: "0"
+                - generic [ref=f15e204]:
+                  - term [ref=f15e205]: Cohorts
+                  - definition [ref=f15e206]:
+                    - img "None" [ref=f15e207]: —
+          - listitem [ref=f15e208]:
+            - generic [ref=f15e209]:
+              - 'link "Functionality Demo - Price: range" [ref=f15e212] [cursor=pointer]':
+                - /url: /educator/organisations/harbour-college/courses/be08d6a5-6777-4e2a-898f-eadc270746ab
+              - generic [ref=f15e216]:
+                - generic [ref=f15e217]:
+                  - term [ref=f15e218]: Visibility
+                  - definition [ref=f15e219]: Published
+                - generic [ref=f15e220]:
+                  - term [ref=f15e221]: Active Learners
+                  - definition [ref=f15e222]: "0"
+                - generic [ref=f15e223]:
+                  - term [ref=f15e224]: Cohorts
+                  - definition [ref=f15e225]:
+                    - img "None" [ref=f15e226]: —
+        - generic [ref=f15e227]:
+          - paragraph [ref=f15e228]: Showing 1–10 of 16 courses
+          - generic [ref=f15e229]:
+            - button "Previous" [disabled] [ref=f15e230]
+            - generic [ref=f15e234]: Page 1 of 2
+            - link "Next" [ref=f15e235] [cursor=pointer]:
+              - /url: /educator/organisations/harbour-college/courses?courses-page=2
+  - contentinfo [ref=f15e241]:
+    - generic [ref=f15e242]:
+      - paragraph [ref=f15e243]: © 2026 FirstClass
+      - navigation "Legal" [ref=f15e244]:
+        - link "Terms and Conditions" [ref=f15e245] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f15e246] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f15e247] [cursor=pointer]: educator-interface-course-list-shows-too-much
+  - list [ref=f15e249]:
+    - listitem [ref=f15e250]:
+      - link "Hide »" [ref=f15e251] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e252]:
+      - link "Toggle Theme" [ref=f15e253] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e256]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e257] [cursor=pointer]
+      - link "History /educator/organisations/harbour-college/courses" [ref=f15e258] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e259]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e260] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f15e261] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e262]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e263] [cursor=pointer]
+      - 'link "Time CPU: 204.96ms (973.58ms)" [ref=f15e264] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f15e265]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e266] [cursor=pointer]
+      - link "Settings" [ref=f15e267] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e268]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e269] [cursor=pointer]
+      - link "Headers" [ref=f15e270] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e271]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e272] [cursor=pointer]
+      - link "Request interface" [ref=f15e273] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e274]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e275] [cursor=pointer]
+      - link "SQL 19 queries in 807.25ms" [ref=f15e276] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e277]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e278] [cursor=pointer]
+      - link "Static files 14 files used" [ref=f15e279] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e280]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e281] [cursor=pointer]
+      - link "Templates educator_interface/interface.html" [ref=f15e282] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e283]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e284] [cursor=pointer]
+      - link "Alerts" [ref=f15e285] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e286]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e287] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f15e288] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e289]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e290] [cursor=pointer]
+      - link "Signals 130 receivers of 15 signals" [ref=f15e291] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e292]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e293] [cursor=pointer]
+      - link "Community" [ref=f15e294] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e295]:
+      - checkbox "Enable for next and successive requests" [ref=f15e296] [cursor=pointer]
+      - generic [ref=f15e297]: Intercept redirects
+    - listitem [ref=f15e298]:
+      - checkbox "Enable for next and successive requests" [ref=f15e299] [cursor=pointer]
+      - generic [ref=f15e300]: Profiling

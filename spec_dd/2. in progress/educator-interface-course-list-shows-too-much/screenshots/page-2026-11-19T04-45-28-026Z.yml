@@ -1,0 +1,156 @@
+- generic [ref=f6e1]:
+  - banner [ref=f6e2]:
+    - link [ref=f6e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f6e4]
+      - heading "FirstClass" [level=1] [ref=f6e5]
+    - navigation [ref=f6e6]:
+      - generic [ref=f6e7]:
+        - generic [ref=f6e8]:
+          - button "Messages, none unread" [ref=f6e175]
+          - status:
+            - generic [ref=f6e176]: Messages, none unread
+        - generic [ref=f6e14]:
+          - button "Notifications, none new" [ref=f6e15]
+          - status:
+            - generic [ref=f6e19]: Notifications, none new
+        - button "Open user menu for Hana Harbour" [ref=f6e21] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f6e22]: HH
+  - generic:
+    - status
+    - alert
+  - main [ref=f6e23]:
+    - generic [ref=f6e25]:
+      - dialog "Navigation" [ref=f6e26]:
+        - generic [ref=f6e28]:
+          - generic [ref=f6e29]:
+            - paragraph [ref=f6e30]: Organisation
+            - generic [ref=f6e31]:
+              - generic [aria-hidden] [ref=f6e32]: HC
+              - generic "Harbour College" [ref=f6e33]
+          - navigation "Sections" [ref=f6e34]:
+            - heading "Teaching" [level=2] [ref=f6e35]
+            - list [ref=f6e36]:
+              - listitem [ref=f6e37]:
+                - link "Dashboard" [ref=f6e38] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/dashboard
+              - listitem [ref=f6e43]:
+                - link "Cohorts" [ref=f6e44] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/cohorts
+              - listitem [ref=f6e49]:
+                - link "Learners" [ref=f6e50] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/learners
+              - listitem [ref=f6e55]:
+                - link "Courses" [ref=f6e56] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/courses
+            - heading "Administration" [level=2] [ref=f6e61]
+            - list [ref=f6e62]:
+              - listitem [ref=f6e63]:
+                - link "Staff" [ref=f6e64] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/staff
+              - listitem [ref=f6e69]:
+                - link "Audit log" [ref=f6e70] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/audit-log
+          - generic [ref=f6e75]:
+            - generic [ref=f6e77]:
+              - generic [aria-hidden] [ref=f6e78]: HH
+              - generic [ref=f6e79]:
+                - generic [ref=f6e80]: Hana Harbour
+                - generic [ref=f6e81]: qa_harbour_educator@email.com
+            - link "Account settings" [ref=f6e82] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f6e88]:
+        - generic [ref=f6e90]:
+          - heading "Cohorts" [level=1] [ref=f6e94]
+          - button "Create cohort" [ref=f6e96] [cursor=pointer]
+        - generic [ref=f6e101]:
+          - generic [ref=f6e102]:
+            - generic [ref=f6e104]:
+              - generic [ref=f6e105]: Search
+              - searchbox "Search" [ref=f6e107]
+            - group [ref=f6e109]:
+              - generic "Add filter" [ref=f6e110]
+              - generic [ref=f6e177]:
+                - group [ref=f6e178]:
+                  - generic "Show inactive" [ref=f6e179] [cursor=pointer]
+                - group [ref=f6e182]:
+                  - generic "Course" [active] [ref=f6e183] [cursor=pointer]
+                  - generic [ref=f6e186]:
+                    - link "Functionality Demo - Application gated course" [ref=f6e187] [cursor=pointer]:
+                      - /url: /educator/organisations/harbour-college/cohorts?cohorts-course=271eeb30-94db-4261-b409-19888b0ead7d
+                    - link "Functionality Demo - Course Parts" [ref=f6e189] [cursor=pointer]:
+                      - /url: /educator/organisations/harbour-college/cohorts?cohorts-course=531adc02-f240-4c7b-87f7-956a804c1e22
+                    - link "Functionality Demo - Per-placement Due Dates" [ref=f6e191] [cursor=pointer]:
+                      - /url: /educator/organisations/harbour-college/cohorts?cohorts-course=4d63a96b-feff-4a38-8aac-44742a5da6bd
+                    - 'link "Functionality Demo - Price: currency without cents" [ref=f6e193] [cursor=pointer]':
+                      - /url: /educator/organisations/harbour-college/cohorts?cohorts-course=32da7dad-8f10-4eeb-8cf3-c4abcbe1d6c1
+                    - 'link "Functionality Demo - Price: expired sale" [ref=f6e195] [cursor=pointer]':
+                      - /url: /educator/organisations/harbour-college/cohorts?cohorts-course=5bf97798-9176-427a-97b7-6acec9ad650f
+                    - 'link "Functionality Demo - Price: fixed" [ref=f6e197] [cursor=pointer]':
+                      - /url: /educator/organisations/harbour-college/cohorts?cohorts-course=f5ce0728-70d2-4eaf-b4c4-bba906895941
+                    - 'link "Functionality Demo - Price: from" [ref=f6e199] [cursor=pointer]':
+                      - /url: /educator/organisations/harbour-college/cohorts?cohorts-course=ff6ecf0f-9885-4646-bb1c-c3727964cca4
+                    - 'link "Functionality Demo - Price: on request" [ref=f6e201] [cursor=pointer]':
+                      - /url: /educator/organisations/harbour-college/cohorts?cohorts-course=4b6c9adb-1821-4db6-9496-108f47c77dfe
+                    - 'link "Functionality Demo - Price: range" [ref=f6e203] [cursor=pointer]':
+                      - /url: /educator/organisations/harbour-college/cohorts?cohorts-course=be08d6a5-6777-4e2a-898f-eadc270746ab
+                    - 'link "Functionality Demo - Price: sale with an end date" [ref=f6e205] [cursor=pointer]':
+                      - /url: /educator/organisations/harbour-college/cohorts?cohorts-course=b84611bc-091d-410d-b70a-df3382969eec
+                    - link "Functionality Demo - show end with Quiz" [ref=f6e207] [cursor=pointer]:
+                      - /url: /educator/organisations/harbour-college/cohorts?cohorts-course=812a4ab3-0833-4923-be2f-c4412fecd99b
+                    - link "Functionality Demo - show end with Topic" [ref=f6e209] [cursor=pointer]:
+                      - /url: /educator/organisations/harbour-college/cohorts?cohorts-course=3ff21a03-9d76-4700-bac9-46401a4429d2
+                    - link "Standard Markdown - Demo Finance" [ref=f6e211] [cursor=pointer]:
+                      - /url: /educator/organisations/harbour-college/cohorts?cohorts-course=7e724756-a349-4ef1-924b-ec9c26dcba45
+                    - link "Workplace Safety Essentials (Northwind Logistics)" [ref=f6e213] [cursor=pointer]:
+                      - /url: /educator/organisations/harbour-college/cohorts?cohorts-course=26c2e0d5-534f-40dc-86de-8218355233e5
+                    - link "Workplace Safety Essentials" [ref=f6e215] [cursor=pointer]:
+                      - /url: /educator/organisations/harbour-college/cohorts?cohorts-course=1eb2b2d6-7b7f-4c0e-9660-7893b1054b03
+          - status [ref=f6e114]
+          - region "Cohorts" [ref=f6e117]:
+            - table [ref=f6e118]:
+              - caption [ref=f6e119]: Cohorts
+              - rowgroup [ref=f6e120]:
+                - row [ref=f6e121]:
+                  - columnheader [ref=f6e122]:
+                    - checkbox "Select all on this page" [ref=f6e123] [cursor=pointer]
+                  - columnheader [ref=f6e124]:
+                    - link "Name" [ref=f6e125] [cursor=pointer]:
+                      - /url: /educator/organisations/harbour-college/cohorts?cohorts-sort=-name
+                  - columnheader "Status" [ref=f6e129]
+                  - columnheader [ref=f6e130]:
+                    - link "Learners" [ref=f6e131] [cursor=pointer]:
+                      - /url: /educator/organisations/harbour-college/cohorts?cohorts-sort=learner_count
+                  - columnheader "Courses" [ref=f6e135]
+                  - columnheader [ref=f6e136]:
+                    - link "Created" [ref=f6e137] [cursor=pointer]:
+                      - /url: /educator/organisations/harbour-college/cohorts?cohorts-sort=created_at
+              - rowgroup [ref=f6e141]:
+                - row [ref=f6e142]:
+                  - cell [ref=f6e143]:
+                    - checkbox "Select QA Harbour Cohort" [ref=f6e144] [cursor=pointer]
+                  - cell [ref=f6e145]:
+                    - generic [ref=f6e146]:
+                      - link "QA Harbour Cohort" [ref=f6e147] [cursor=pointer]:
+                        - /url: /educator/organisations/harbour-college/cohorts/97e0f204-7eef-4c01-9f30-ca7709ef5082
+                      - 'link "Quick view: QA Harbour Cohort" [ref=f6e148] [cursor=pointer]':
+                        - /url: /educator/organisations/harbour-college/cohorts/97e0f204-7eef-4c01-9f30-ca7709ef5082
+                  - cell "Active" [ref=f6e153]
+                  - cell "1" [ref=f6e155]
+                  - cell [ref=f6e156]:
+                    - img "None" [ref=f6e157]: —
+                  - cell "18 Nov 2026, 10:03" [ref=f6e158]:
+                    - time [ref=f6e159]:
+                      - generic [ref=f6e160]: 18 Nov 2026,
+                      - generic [ref=f6e161]: 10:03
+          - paragraph [ref=f6e163]: 1 cohort
+  - contentinfo [ref=f6e166]:
+    - generic [ref=f6e167]:
+      - paragraph [ref=f6e168]: © 2026 FirstClass
+      - navigation "Legal" [ref=f6e169]:
+        - link "Terms and Conditions" [ref=f6e170] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f6e171] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f6e172] [cursor=pointer]: educator-interface-course-list-shows-too-much
+  - generic "Show toolbar" [ref=f6e174]: DJDT

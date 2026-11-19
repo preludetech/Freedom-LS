@@ -1,0 +1,118 @@
+- generic [active] [ref=f27e1]:
+  - banner [ref=f27e2]:
+    - link [ref=f27e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f27e4]
+      - heading "FirstClass" [level=1] [ref=f27e5]
+    - navigation [ref=f27e6]:
+      - generic [ref=f27e7]:
+        - generic [ref=f27e8]:
+          - button "Notifications, none new" [ref=f27e9]
+          - status:
+            - generic [ref=f27e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f27e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f27e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f27e17]:
+    - generic [ref=f27e21]:
+      - generic [ref=f27e25]:
+        - button "Open navigation panel" [ref=f27e26] [cursor=pointer]
+        - heading "Dashboard" [level=1] [ref=f27e30]
+      - generic [ref=f27e34]:
+        - generic [ref=f27e35]:
+          - generic [ref=f27e36]:
+            - term [ref=f27e37]: Learners
+            - definition [ref=f27e38]: "1"
+            - definition [ref=f27e39]: Across 1 cohort
+          - link "1 cohort" [ref=f27e40] [cursor=pointer]:
+            - /url: /educator/organisations/harbour-college/cohorts
+            - generic [ref=f27e41]:
+              - term [ref=f27e42]: Cohorts
+              - definition [ref=f27e43]: "1"
+          - generic [ref=f27e44]:
+            - term [ref=f27e45]: Average progress
+            - definition [ref=f27e46]
+          - generic [ref=f27e49]:
+            - term [ref=f27e50]: Learners needing attention
+            - definition [ref=f27e51]
+        - generic [ref=f27e55]:
+          - region [ref=f27e56]:
+            - heading "Needs attention" [level=2] [ref=f27e59]
+          - region [ref=f27e67]:
+            - heading "Cohort progress" [level=2] [ref=f27e70]
+  - contentinfo [ref=f27e80]:
+    - generic [ref=f27e81]:
+      - paragraph [ref=f27e82]: © 2026 FirstClass
+      - navigation "Legal" [ref=f27e83]:
+        - link "Terms and Conditions" [ref=f27e84] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f27e85] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f27e86] [cursor=pointer]: educator-interface-course-list-shows-too-much
+  - list [ref=f27e88]:
+    - listitem [ref=f27e89]:
+      - link "Hide »" [ref=f27e90] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f27e91]:
+      - link "Toggle Theme" [ref=f27e92] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f27e95]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f27e96] [cursor=pointer]
+      - link "History /educator/organisations/harbour-college/dashboard" [ref=f27e97] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f27e98]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f27e99] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f27e100] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f27e101]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f27e102] [cursor=pointer]
+      - 'link "Time CPU: 74.24ms (93.91ms)" [ref=f27e103] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f27e104]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f27e105] [cursor=pointer]
+      - link "Settings" [ref=f27e106] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f27e107]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f27e108] [cursor=pointer]
+      - link "Headers" [ref=f27e109] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f27e110]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f27e111] [cursor=pointer]
+      - link "Request interface" [ref=f27e112] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f27e113]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f27e114] [cursor=pointer]
+      - link "SQL 18 queries in 17.90ms" [ref=f27e115] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f27e116]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f27e117] [cursor=pointer]
+      - link "Static files 14 files used" [ref=f27e118] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f27e119]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f27e120] [cursor=pointer]
+      - link "Templates educator_interface/interface.html" [ref=f27e121] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f27e122]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f27e123] [cursor=pointer]
+      - link "Alerts" [ref=f27e124] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f27e125]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f27e126] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f27e127] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f27e128]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f27e129] [cursor=pointer]
+      - link "Signals 130 receivers of 15 signals" [ref=f27e130] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f27e131]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f27e132] [cursor=pointer]
+      - link "Community" [ref=f27e133] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f27e134]:
+      - checkbox "Enable for next and successive requests" [ref=f27e135] [cursor=pointer]
+      - generic [ref=f27e136]: Intercept redirects
+    - listitem [ref=f27e137]:
+      - checkbox "Enable for next and successive requests" [ref=f27e138] [cursor=pointer]
+      - generic [ref=f27e139]: Profiling

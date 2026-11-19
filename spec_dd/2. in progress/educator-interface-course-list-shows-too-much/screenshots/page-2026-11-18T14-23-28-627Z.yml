@@ -1,0 +1,154 @@
+- generic [ref=f2e1]:
+  - banner [ref=f2e2]:
+    - link [ref=f2e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f2e4]
+      - heading "FirstClass" [level=1] [ref=f2e5]
+    - navigation [ref=f2e6]:
+      - generic [ref=f2e7]:
+        - generic [ref=f2e8]:
+          - button "Notifications, none new" [ref=f2e9]
+          - status:
+            - generic [ref=f2e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f2e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f2e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f2e17]:
+    - generic [ref=f2e19]:
+      - dialog "Navigation" [ref=f2e20]:
+        - generic [ref=f2e22]:
+          - generic [ref=f2e23]:
+            - paragraph [ref=f2e24]: Organisation
+            - button "Switch organisation" [ref=f2e26] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f2e27]: HC
+              - generic "Harbour College" [ref=f2e28]
+          - navigation "Sections" [ref=f2e31]:
+            - heading "Teaching" [level=2] [ref=f2e32]
+            - list [ref=f2e33]:
+              - listitem [ref=f2e34]:
+                - link "Dashboard" [ref=f2e35] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/dashboard
+              - listitem [ref=f2e40]:
+                - link "Cohorts" [ref=f2e41] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/cohorts
+              - listitem [ref=f2e46]:
+                - link "Learners" [ref=f2e47] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/learners
+              - listitem [ref=f2e52]:
+                - link "Courses" [ref=f2e53] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/courses
+            - heading "Administration" [level=2] [ref=f2e58]
+            - list [ref=f2e59]:
+              - listitem [ref=f2e60]:
+                - link "Staff" [ref=f2e61] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/staff
+              - listitem [ref=f2e66]:
+                - link "Audit log" [ref=f2e67] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/audit-log
+          - generic [ref=f2e72]:
+            - generic [ref=f2e74]:
+              - generic [aria-hidden] [ref=f2e75]: DE
+              - generic [ref=f2e76]: demodev@email.com
+            - link "Account settings" [ref=f2e78] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f2e83]:
+        - generic [ref=f2e84]:
+          - heading "Courses" [level=1] [ref=f2e90]
+          - generic [ref=f2e271]:
+            - region "Courses" [ref=f2e273]:
+              - table [ref=f2e274]:
+                - caption [ref=f2e275]: Courses
+                - rowgroup [ref=f2e276]:
+                  - row [ref=f2e277]:
+                    - columnheader "Title" [ref=f2e278]
+                    - columnheader "Visibility" [ref=f2e279]
+                    - columnheader "Interest" [ref=f2e280]
+                    - columnheader "Active Learners" [ref=f2e281]
+                    - columnheader "Active Cohorts" [ref=f2e282]
+                    - columnheader "Cohorts" [ref=f2e283]
+                - rowgroup [ref=f2e284]:
+                  - row [ref=f2e285]:
+                    - cell [ref=f2e286]:
+                      - 'link "Functionality Demo - Price: sale with an end date" [ref=f2e287] [cursor=pointer]':
+                        - /url: /educator/organisations/harbour-college/courses/b84611bc-091d-410d-b70a-df3382969eec
+                    - cell "Published" [ref=f2e288]
+                    - cell "0" [ref=f2e289]
+                    - cell "0" [ref=f2e290]
+                    - cell "0" [ref=f2e291]
+                    - cell [ref=f2e292]:
+                      - img "None" [ref=f2e293]: —
+                  - row [ref=f2e294]:
+                    - cell [ref=f2e295]:
+                      - link "Functionality Demo - show end with Quiz" [ref=f2e296] [cursor=pointer]:
+                        - /url: /educator/organisations/harbour-college/courses/812a4ab3-0833-4923-be2f-c4412fecd99b
+                    - cell "Published" [ref=f2e297]
+                    - cell "0" [ref=f2e298]
+                    - cell "0" [ref=f2e299]
+                    - cell "0" [ref=f2e300]
+                    - cell [ref=f2e301]:
+                      - img "None" [ref=f2e302]: —
+                  - row [ref=f2e303]:
+                    - cell [ref=f2e304]:
+                      - link "Functionality Demo - show end with Topic" [ref=f2e305] [cursor=pointer]:
+                        - /url: /educator/organisations/harbour-college/courses/3ff21a03-9d76-4700-bac9-46401a4429d2
+                    - cell "Published" [ref=f2e306]
+                    - cell "0" [ref=f2e307]
+                    - cell "0" [ref=f2e308]
+                    - cell "0" [ref=f2e309]
+                    - cell [ref=f2e310]:
+                      - img "None" [ref=f2e311]: —
+                  - row [ref=f2e312]:
+                    - cell [ref=f2e313]:
+                      - link "Standard Markdown - Demo Finance" [ref=f2e314] [cursor=pointer]:
+                        - /url: /educator/organisations/harbour-college/courses/7e724756-a349-4ef1-924b-ec9c26dcba45
+                    - cell "Published" [ref=f2e315]
+                    - cell "0" [ref=f2e316]
+                    - cell "0" [ref=f2e317]
+                    - cell "0" [ref=f2e318]
+                    - cell [ref=f2e319]:
+                      - img "None" [ref=f2e320]: —
+                  - row [ref=f2e321]:
+                    - cell [ref=f2e322]:
+                      - link "Workplace Safety Essentials" [ref=f2e323] [cursor=pointer]:
+                        - /url: /educator/organisations/harbour-college/courses/26c2e0d5-534f-40dc-86de-8218355233e5
+                      - paragraph [ref=f2e324]: Shared by Northwind Logistics
+                    - cell "Published" [ref=f2e325]
+                    - cell "0" [ref=f2e326]
+                    - cell "1" [ref=f2e327]
+                    - cell "1" [ref=f2e328]
+                    - cell [ref=f2e329]:
+                      - link "QA Harbour Cohort" [ref=f2e330] [cursor=pointer]:
+                        - /url: /educator/organisations/harbour-college/cohorts/97e0f204-7eef-4c01-9f30-ca7709ef5082
+                  - row [ref=f2e331]:
+                    - cell [ref=f2e332]:
+                      - link "Workplace Safety Essentials" [ref=f2e333] [cursor=pointer]:
+                        - /url: /educator/organisations/harbour-college/courses/1eb2b2d6-7b7f-4c0e-9660-7893b1054b03
+                    - cell "Published" [ref=f2e334]
+                    - cell "0" [ref=f2e335]
+                    - cell "1" [ref=f2e336]
+                    - cell "0" [ref=f2e337]
+                    - cell [ref=f2e338]:
+                      - img "None" [ref=f2e339]: —
+            - generic [ref=f2e340]:
+              - paragraph [ref=f2e341]: Showing 11–16 of 16 courses
+              - generic [ref=f2e342]:
+                - generic [ref=f2e343]: Page 2 of 2
+                - generic [ref=f2e344]:
+                  - link "Previous" [ref=f2e345] [cursor=pointer]:
+                    - /url: /educator/organisations/harbour-college/courses?courses-page=1
+                  - link "1" [ref=f2e346] [cursor=pointer]:
+                    - /url: /educator/organisations/harbour-college/courses?courses-page=1
+                  - generic [ref=f2e347] [cursor=pointer]: "2"
+        - generic [ref=f2e207]: Showing 11–16 of 16
+  - contentinfo [ref=f2e209]:
+    - generic [ref=f2e210]:
+      - paragraph [ref=f2e211]: © 2026 FirstClass
+      - navigation "Legal" [ref=f2e212]:
+        - link "Terms and Conditions" [ref=f2e213] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f2e214] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f2e215] [cursor=pointer]: educator-interface-course-list-shows-too-much
+  - generic "Show toolbar" [ref=f2e270]: DJDT

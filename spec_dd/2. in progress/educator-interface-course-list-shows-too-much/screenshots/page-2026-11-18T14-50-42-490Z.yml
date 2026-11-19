@@ -1,0 +1,201 @@
+- generic [active] [ref=f25e1]:
+  - banner [ref=f25e2]:
+    - link [ref=f25e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f25e4]
+      - heading "FirstClass" [level=1] [ref=f25e5]
+    - navigation [ref=f25e6]:
+      - generic [ref=f25e7]:
+        - generic [ref=f25e8]:
+          - button "Notifications, none new" [ref=f25e9]
+          - status:
+            - generic [ref=f25e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f25e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f25e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f25e17]:
+    - generic [ref=f25e20]:
+      - navigation "Back" [ref=f25e22]:
+        - link "Learners" [ref=f25e23] [cursor=pointer]:
+          - /url: /educator/organisations/harbour-college/learners
+      - generic [ref=f25e27]:
+        - generic [ref=f25e29]:
+          - generic [ref=f25e31]:
+            - generic [ref=f25e32]:
+              - button "Open navigation panel" [ref=f25e33] [cursor=pointer]
+              - heading "Lara Cohortson" [level=1] [ref=f25e37]
+            - paragraph [ref=f25e38]: qa_harbour_learner@email.com
+          - navigation "Learner sections" [ref=f25e39]:
+            - list [ref=f25e40]:
+              - listitem [ref=f25e41]:
+                - link "Overview" [ref=f25e42] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/learners/0d332bc9-eb8b-4fdd-afc4-d8f539713614/__tabs/overview
+              - listitem [ref=f25e43]:
+                - link "Courses" [ref=f25e44] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/learners/0d332bc9-eb8b-4fdd-afc4-d8f539713614/__tabs/courses
+              - listitem [ref=f25e45]:
+                - link "Messages" [ref=f25e46] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/learners/0d332bc9-eb8b-4fdd-afc4-d8f539713614/__tabs/messages
+              - listitem [ref=f25e47]:
+                - link "Settings" [ref=f25e48] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/learners/0d332bc9-eb8b-4fdd-afc4-d8f539713614/__tabs/settings
+              - listitem [ref=f25e49]:
+                - link "History" [ref=f25e50] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/learners/0d332bc9-eb8b-4fdd-afc4-d8f539713614/__tabs/history
+        - generic [ref=f25e54]:
+          - generic [ref=f25e56]:
+            - heading "Details" [level=2] [ref=f25e59]
+            - generic [ref=f25e61]:
+              - generic [ref=f25e62]:
+                - term [ref=f25e63]: Name
+                - definition [ref=f25e64]: Lara Cohortson
+              - generic [ref=f25e65]:
+                - term [ref=f25e66]: Email
+                - definition [ref=f25e67]: qa_harbour_learner@email.com
+              - generic [ref=f25e68]:
+                - term [ref=f25e69]: Status
+                - definition [ref=f25e70]:
+                  - generic [ref=f25e71]: Active
+              - generic [ref=f25e72]:
+                - term [ref=f25e73]: Date added
+                - definition [ref=f25e74]:
+                  - time [ref=f25e75]: 18 Nov 2026
+          - generic [ref=f25e77]:
+            - heading "Cohorts" [level=2] [ref=f25e80]
+            - generic [ref=f25e82]:
+              - generic [ref=f25e85]:
+                - generic [ref=f25e86]: Search
+                - searchbox "Search" [ref=f25e88]
+              - region "Cohorts" [ref=f25e90]:
+                - table [ref=f25e91]:
+                  - caption [ref=f25e92]: Cohorts
+                  - rowgroup [ref=f25e93]:
+                    - row [ref=f25e94]:
+                      - columnheader [ref=f25e95]:
+                        - link "Name" [ref=f25e96] [cursor=pointer]:
+                          - /url: /educator/organisations/harbour-college/learners/0d332bc9-eb8b-4fdd-afc4-d8f539713614/__tabs/overview?cohorts-sort=-name
+                      - columnheader "Status" [ref=f25e100]
+                      - columnheader [ref=f25e101]:
+                        - link "Learners" [ref=f25e102] [cursor=pointer]:
+                          - /url: /educator/organisations/harbour-college/learners/0d332bc9-eb8b-4fdd-afc4-d8f539713614/__tabs/overview?cohorts-sort=learner_count
+                      - columnheader "Courses" [ref=f25e106]
+                      - columnheader [ref=f25e107]:
+                        - link "Created" [ref=f25e108] [cursor=pointer]:
+                          - /url: /educator/organisations/harbour-college/learners/0d332bc9-eb8b-4fdd-afc4-d8f539713614/__tabs/overview?cohorts-sort=created_at
+                      - columnheader [ref=f25e112]:
+                        - link "Joined" [ref=f25e113] [cursor=pointer]:
+                          - /url: /educator/organisations/harbour-college/learners/0d332bc9-eb8b-4fdd-afc4-d8f539713614/__tabs/overview?cohorts-sort=joined_at
+                      - columnheader [ref=f25e117]
+                  - rowgroup [ref=f25e118]:
+                    - row [ref=f25e119]:
+                      - cell [ref=f25e120]:
+                        - generic [ref=f25e121]:
+                          - link "QA Harbour Cohort" [ref=f25e122] [cursor=pointer]:
+                            - /url: /educator/organisations/harbour-college/cohorts/97e0f204-7eef-4c01-9f30-ca7709ef5082
+                          - 'link "Quick view: QA Harbour Cohort" [ref=f25e123] [cursor=pointer]':
+                            - /url: /educator/organisations/harbour-college/cohorts/97e0f204-7eef-4c01-9f30-ca7709ef5082
+                      - cell "Active" [ref=f25e128]
+                      - cell "1" [ref=f25e130]
+                      - cell [ref=f25e131]:
+                        - list [ref=f25e132]:
+                          - listitem [ref=f25e133]:
+                            - text: Workplace Safety Essentials
+                            - paragraph [ref=f25e134]: Shared by Northwind Logistics
+                      - cell "18 Nov 2026, 10:03" [ref=f25e135]:
+                        - time [ref=f25e136]:
+                          - generic [ref=f25e137]: 18 Nov 2026,
+                          - generic [ref=f25e138]: 10:03
+                      - cell "18 Nov 2026, 10:03" [ref=f25e139]:
+                        - time [ref=f25e140]:
+                          - generic [ref=f25e141]: 18 Nov 2026,
+                          - generic [ref=f25e142]: 10:03
+                      - cell [ref=f25e143]:
+                        - generic [ref=f25e144]:
+                          - button "Remove from QA Harbour Cohort" [ref=f25e145] [cursor=pointer]: Remove
+                          - button "Move from QA Harbour Cohort" [ref=f25e146] [cursor=pointer]: Move
+              - paragraph [ref=f25e148]: 1 cohort
+            - button "Add to cohort" [ref=f25e151] [cursor=pointer]
+          - generic [ref=f25e153]:
+            - heading "Registrations" [level=2] [ref=f25e156]
+            - list [ref=f25e158]:
+              - listitem [ref=f25e159]:
+                - generic [ref=f25e160]:
+                  - text: Workplace Safety Essentials
+                  - paragraph [ref=f25e161]: via QA Harbour Cohort · Shared by Northwind Logistics
+                - generic [ref=f25e162]: Active
+  - contentinfo [ref=f25e166]:
+    - generic [ref=f25e167]:
+      - paragraph [ref=f25e168]: © 2026 FirstClass
+      - navigation "Legal" [ref=f25e169]:
+        - link "Terms and Conditions" [ref=f25e170] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f25e171] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f25e172] [cursor=pointer]: educator-interface-course-list-shows-too-much
+  - list [ref=f25e174]:
+    - listitem [ref=f25e175]:
+      - link "Hide »" [ref=f25e176] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f25e177]:
+      - link "Toggle Theme" [ref=f25e178] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f25e181]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f25e182] [cursor=pointer]
+      - link "History /educator/organisations/harbour-college/learners/0d332bc9-eb8b-4fdd-afc4-d8f539713614" [ref=f25e183] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f25e184]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f25e185] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f25e186] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f25e187]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f25e188] [cursor=pointer]
+      - 'link "Time CPU: 177.94ms (196.66ms)" [ref=f25e189] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f25e190]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f25e191] [cursor=pointer]
+      - link "Settings" [ref=f25e192] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f25e193]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f25e194] [cursor=pointer]
+      - link "Headers" [ref=f25e195] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f25e196]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f25e197] [cursor=pointer]
+      - link "Request interface" [ref=f25e198] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f25e199]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f25e200] [cursor=pointer]
+      - link "SQL 26 queries in 28.13ms" [ref=f25e201] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f25e202]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f25e203] [cursor=pointer]
+      - link "Static files 14 files used" [ref=f25e204] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f25e205]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f25e206] [cursor=pointer]
+      - link "Templates educator_interface/interface.html" [ref=f25e207] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f25e208]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f25e209] [cursor=pointer]
+      - link "Alerts" [ref=f25e210] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f25e211]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f25e212] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f25e213] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f25e214]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f25e215] [cursor=pointer]
+      - link "Signals 130 receivers of 15 signals" [ref=f25e216] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f25e217]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f25e218] [cursor=pointer]
+      - link "Community" [ref=f25e219] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f25e220]:
+      - checkbox "Enable for next and successive requests" [ref=f25e221] [cursor=pointer]
+      - generic [ref=f25e222]: Intercept redirects
+    - listitem [ref=f25e223]:
+      - checkbox "Enable for next and successive requests" [ref=f25e224] [cursor=pointer]
+      - generic [ref=f25e225]: Profiling

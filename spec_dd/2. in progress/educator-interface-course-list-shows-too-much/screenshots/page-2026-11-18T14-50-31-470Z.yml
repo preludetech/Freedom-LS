@@ -1,0 +1,219 @@
+- generic [active] [ref=f23e1]:
+  - banner [ref=f23e2]:
+    - link [ref=f23e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f23e4]
+      - heading "FirstClass" [level=1] [ref=f23e5]
+    - navigation [ref=f23e6]:
+      - generic [ref=f23e7]:
+        - generic [ref=f23e8]:
+          - button "Notifications, none new" [ref=f23e9]
+          - status:
+            - generic [ref=f23e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f23e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f23e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f23e17]:
+    - generic [ref=f23e21]:
+      - generic [ref=f23e25]:
+        - button "Open navigation panel" [ref=f23e26] [cursor=pointer]
+        - heading "Courses" [level=1] [ref=f23e30]
+      - generic [ref=f23e35]:
+        - region "Courses" [ref=f23e37]:
+          - table [ref=f23e38]:
+            - caption [ref=f23e39]: Courses
+            - rowgroup [ref=f23e40]:
+              - row [ref=f23e41]:
+                - columnheader "Title" [ref=f23e42]
+                - columnheader "Visibility" [ref=f23e43]
+                - columnheader "Interest" [ref=f23e44]
+                - columnheader "Active Learners" [ref=f23e45]
+                - columnheader "Active Cohorts" [ref=f23e46]
+                - columnheader "Cohorts" [ref=f23e47]
+            - rowgroup [ref=f23e48]:
+              - row [ref=f23e49]:
+                - cell [ref=f23e50]:
+                  - link "Content Widgets - Demo Reference" [ref=f23e51] [cursor=pointer]:
+                    - /url: /educator/organisations/northwind-logistics/courses/8bc127c1-edf1-4997-b7fc-35fdf8604f30
+                - cell "Coming soon" [ref=f23e52]
+                - cell "0" [ref=f23e53]
+                - cell "0" [ref=f23e54]
+                - cell "0" [ref=f23e55]
+                - cell [ref=f23e56]:
+                  - img "None" [ref=f23e57]: —
+              - row [ref=f23e58]:
+                - cell [ref=f23e59]:
+                  - link "Forklift Safety Basics" [ref=f23e60] [cursor=pointer]:
+                    - /url: /educator/organisations/northwind-logistics/courses/c358d156-4f88-4ea7-ac1a-538ee8a47152
+                - cell "Published" [ref=f23e61]
+                - cell "0" [ref=f23e62]
+                - cell "0" [ref=f23e63]
+                - cell "0" [ref=f23e64]
+                - cell [ref=f23e65]:
+                  - img "None" [ref=f23e66]: —
+              - row [ref=f23e67]:
+                - cell [ref=f23e68]:
+                  - link "Functionality Demo - Application gated course" [ref=f23e69] [cursor=pointer]:
+                    - /url: /educator/organisations/northwind-logistics/courses/271eeb30-94db-4261-b409-19888b0ead7d
+                - cell "Published" [ref=f23e70]
+                - cell "0" [ref=f23e71]
+                - cell "0" [ref=f23e72]
+                - cell "0" [ref=f23e73]
+                - cell [ref=f23e74]:
+                  - img "None" [ref=f23e75]: —
+              - row [ref=f23e76]:
+                - cell [ref=f23e77]:
+                  - link "Functionality Demo - Course Parts" [ref=f23e78] [cursor=pointer]:
+                    - /url: /educator/organisations/northwind-logistics/courses/531adc02-f240-4c7b-87f7-956a804c1e22
+                - cell "Published" [ref=f23e79]
+                - cell "0" [ref=f23e80]
+                - cell "0" [ref=f23e81]
+                - cell "0" [ref=f23e82]
+                - cell [ref=f23e83]:
+                  - img "None" [ref=f23e84]: —
+              - row [ref=f23e85]:
+                - cell [ref=f23e86]:
+                  - link "Functionality Demo - Per-placement Due Dates" [ref=f23e87] [cursor=pointer]:
+                    - /url: /educator/organisations/northwind-logistics/courses/4d63a96b-feff-4a38-8aac-44742a5da6bd
+                - cell "Published" [ref=f23e88]
+                - cell "0" [ref=f23e89]
+                - cell "0" [ref=f23e90]
+                - cell "0" [ref=f23e91]
+                - cell [ref=f23e92]:
+                  - img "None" [ref=f23e93]: —
+              - row [ref=f23e94]:
+                - cell [ref=f23e95]:
+                  - 'link "Functionality Demo - Price: currency without cents" [ref=f23e96] [cursor=pointer]':
+                    - /url: /educator/organisations/northwind-logistics/courses/32da7dad-8f10-4eeb-8cf3-c4abcbe1d6c1
+                - cell "Published" [ref=f23e97]
+                - cell "0" [ref=f23e98]
+                - cell "0" [ref=f23e99]
+                - cell "0" [ref=f23e100]
+                - cell [ref=f23e101]:
+                  - img "None" [ref=f23e102]: —
+              - row [ref=f23e103]:
+                - cell [ref=f23e104]:
+                  - 'link "Functionality Demo - Price: expired sale" [ref=f23e105] [cursor=pointer]':
+                    - /url: /educator/organisations/northwind-logistics/courses/5bf97798-9176-427a-97b7-6acec9ad650f
+                - cell "Published" [ref=f23e106]
+                - cell "0" [ref=f23e107]
+                - cell "0" [ref=f23e108]
+                - cell "0" [ref=f23e109]
+                - cell [ref=f23e110]:
+                  - img "None" [ref=f23e111]: —
+              - row [ref=f23e112]:
+                - cell [ref=f23e113]:
+                  - 'link "Functionality Demo - Price: fixed" [ref=f23e114] [cursor=pointer]':
+                    - /url: /educator/organisations/northwind-logistics/courses/f5ce0728-70d2-4eaf-b4c4-bba906895941
+                - cell "Published" [ref=f23e115]
+                - cell "0" [ref=f23e116]
+                - cell "0" [ref=f23e117]
+                - cell "0" [ref=f23e118]
+                - cell [ref=f23e119]:
+                  - img "None" [ref=f23e120]: —
+              - row [ref=f23e121]:
+                - cell [ref=f23e122]:
+                  - 'link "Functionality Demo - Price: from" [ref=f23e123] [cursor=pointer]':
+                    - /url: /educator/organisations/northwind-logistics/courses/ff6ecf0f-9885-4646-bb1c-c3727964cca4
+                - cell "Published" [ref=f23e124]
+                - cell "0" [ref=f23e125]
+                - cell "0" [ref=f23e126]
+                - cell "0" [ref=f23e127]
+                - cell [ref=f23e128]:
+                  - img "None" [ref=f23e129]: —
+              - row [ref=f23e130]:
+                - cell [ref=f23e131]:
+                  - 'link "Functionality Demo - Price: on request" [ref=f23e132] [cursor=pointer]':
+                    - /url: /educator/organisations/northwind-logistics/courses/4b6c9adb-1821-4db6-9496-108f47c77dfe
+                - cell "Published" [ref=f23e133]
+                - cell "0" [ref=f23e134]
+                - cell "0" [ref=f23e135]
+                - cell "0" [ref=f23e136]
+                - cell [ref=f23e137]:
+                  - img "None" [ref=f23e138]: —
+        - generic [ref=f23e139]:
+          - paragraph [ref=f23e140]: Showing 1–10 of 16 courses
+          - generic [ref=f23e141]:
+            - generic [ref=f23e142]: Page 1 of 2
+            - generic [ref=f23e143]:
+              - generic [ref=f23e144] [cursor=pointer]: "1"
+              - link "2" [ref=f23e145] [cursor=pointer]:
+                - /url: /educator/organisations/northwind-logistics/courses?courses-page=2
+              - link "Next" [ref=f23e146] [cursor=pointer]:
+                - /url: /educator/organisations/northwind-logistics/courses?courses-page=2
+  - contentinfo [ref=f23e149]:
+    - generic [ref=f23e150]:
+      - paragraph [ref=f23e151]: © 2026 FirstClass
+      - navigation "Legal" [ref=f23e152]:
+        - link "Terms and Conditions" [ref=f23e153] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f23e154] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f23e155] [cursor=pointer]: educator-interface-course-list-shows-too-much
+  - list [ref=f23e157]:
+    - listitem [ref=f23e158]:
+      - link "Hide »" [ref=f23e159] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f23e160]:
+      - link "Toggle Theme" [ref=f23e161] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f23e164]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f23e165] [cursor=pointer]
+      - link "History /educator/organisations/northwind-logistics/courses" [ref=f23e166] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f23e167]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f23e168] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f23e169] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f23e170]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f23e171] [cursor=pointer]
+      - 'link "Time CPU: 188.26ms (987.22ms)" [ref=f23e172] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f23e173]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f23e174] [cursor=pointer]
+      - link "Settings" [ref=f23e175] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f23e176]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f23e177] [cursor=pointer]
+      - link "Headers" [ref=f23e178] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f23e179]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f23e180] [cursor=pointer]
+      - link "Request interface" [ref=f23e181] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f23e182]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f23e183] [cursor=pointer]
+      - link "SQL 20 queries in 834.22ms" [ref=f23e184] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f23e185]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f23e186] [cursor=pointer]
+      - link "Static files 14 files used" [ref=f23e187] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f23e188]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f23e189] [cursor=pointer]
+      - link "Templates educator_interface/interface.html" [ref=f23e190] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f23e191]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f23e192] [cursor=pointer]
+      - link "Alerts" [ref=f23e193] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f23e194]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f23e195] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f23e196] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f23e197]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f23e198] [cursor=pointer]
+      - link "Signals 130 receivers of 15 signals" [ref=f23e199] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f23e200]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f23e201] [cursor=pointer]
+      - link "Community" [ref=f23e202] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f23e203]:
+      - checkbox "Enable for next and successive requests" [ref=f23e204] [cursor=pointer]
+      - generic [ref=f23e205]: Intercept redirects
+    - listitem [ref=f23e206]:
+      - checkbox "Enable for next and successive requests" [ref=f23e207] [cursor=pointer]
+      - generic [ref=f23e208]: Profiling

@@ -28,6 +28,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (user) Keep or discard the edits the QA data helper made to .claude/agent-memory/sdd-qa-data-helper/reference_empty_db_baseline.md and reference_org_course_registration.md (left unstaged; CLAUDE.md says not to use memory): `git checkout -- .claude/agent-memory/` to discard
 - [x] (user) Fix the QA plan 3. frontend_qa.md: 1.1 step 4 searches a Courses list that has no search box, its URLs omit the organisations/ segment, and 2.2 names a 'Course registrations' panel that is the learner Overview's 'Registrations' panel
 - [ ] (user) Look at freedom_ls/referral_tracking/tests/test_models.py::test_the_touch_code_lookup_uses_the_upper_index (from main, not this branch): it failed once in the full parallel run after the rebase (the planner picked another index) and passed 3 of 3 when re-run alone
+- [ ] (user) Decide whether Reactivate should show on a learner's Registrations row for a course no longer available to the organisation (code hides it since the PR 255 review fix; 3. frontend_qa.md §2.2 expects the button and a refusal in the dialog), then update the QA plan or the code to match
 
 ## 4. Documentation and pull request
 

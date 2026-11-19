@@ -1,0 +1,153 @@
+- generic [active] [ref=f13e1]:
+  - banner [ref=f13e2]:
+    - link [ref=f13e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f13e4]
+      - heading "FirstClass" [level=1] [ref=f13e5]
+    - navigation [ref=f13e6]:
+      - generic [ref=f13e7]:
+        - generic [ref=f13e8]:
+          - button "Notifications, none new" [ref=f13e9]
+          - status:
+            - generic [ref=f13e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f13e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f13e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f13e17]:
+    - generic [ref=f13e19]:
+      - dialog "Navigation" [ref=f13e20]:
+        - generic [ref=f13e22]:
+          - generic [ref=f13e23]:
+            - paragraph [ref=f13e24]: Organisation
+            - button "Switch organisation" [ref=f13e26] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f13e27]: HC
+              - generic "Harbour College" [ref=f13e28]
+          - navigation "Sections" [ref=f13e31]:
+            - heading "Teaching" [level=2] [ref=f13e32]
+            - list [ref=f13e33]:
+              - listitem [ref=f13e34]:
+                - link "Dashboard" [ref=f13e35] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/dashboard
+              - listitem [ref=f13e40]:
+                - link "Cohorts" [ref=f13e41] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/cohorts
+              - listitem [ref=f13e46]:
+                - link "Learners" [ref=f13e47] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/learners
+              - listitem [ref=f13e52]:
+                - link "Courses" [ref=f13e53] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/courses
+            - heading "Administration" [level=2] [ref=f13e58]
+            - list [ref=f13e59]:
+              - listitem [ref=f13e60]:
+                - link "Staff" [ref=f13e61] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/staff
+              - listitem [ref=f13e66]:
+                - link "Audit log" [ref=f13e67] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/audit-log
+          - generic [ref=f13e72]:
+            - generic [ref=f13e74]:
+              - generic [aria-hidden] [ref=f13e75]: DE
+              - generic [ref=f13e76]: demodev@email.com
+            - link "Account settings" [ref=f13e78] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f13e84]:
+        - heading "Dashboard" [level=1] [ref=f13e90]
+        - generic [ref=f13e94]:
+          - generic [ref=f13e95]:
+            - generic [ref=f13e96]:
+              - term [ref=f13e97]: Learners
+              - definition [ref=f13e98]: "1"
+              - definition [ref=f13e99]: Across 1 cohort
+            - link "1 cohort" [ref=f13e100] [cursor=pointer]:
+              - /url: /educator/organisations/harbour-college/cohorts
+              - generic [ref=f13e101]:
+                - term [ref=f13e102]: Cohorts
+                - definition [ref=f13e103]: "1"
+            - generic [ref=f13e104]:
+              - term [ref=f13e105]: Average progress
+              - definition [ref=f13e106]
+            - generic [ref=f13e109]:
+              - term [ref=f13e110]: Learners needing attention
+              - definition [ref=f13e111]
+          - generic [ref=f13e115]:
+            - region [ref=f13e116]:
+              - heading "Needs attention" [level=2] [ref=f13e119]
+            - region [ref=f13e127]:
+              - heading "Cohort progress" [level=2] [ref=f13e130]
+  - contentinfo [ref=f13e140]:
+    - generic [ref=f13e141]:
+      - paragraph [ref=f13e142]: © 2026 FirstClass
+      - navigation "Legal" [ref=f13e143]:
+        - link "Terms and Conditions" [ref=f13e144] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f13e145] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f13e146] [cursor=pointer]: educator-interface-course-list-shows-too-much
+  - list [ref=f13e148]:
+    - listitem [ref=f13e149]:
+      - link "Hide »" [ref=f13e150] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e151]:
+      - link "Toggle Theme" [ref=f13e152] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e155]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e156] [cursor=pointer]
+      - link "History /educator/organisations/harbour-college/dashboard" [ref=f13e157] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e158]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e159] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f13e160] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e161]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e162] [cursor=pointer]
+      - 'link "Time CPU: 77.94ms (97.68ms)" [ref=f13e163] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f13e164]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e165] [cursor=pointer]
+      - link "Settings" [ref=f13e166] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e167]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e168] [cursor=pointer]
+      - link "Headers" [ref=f13e169] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e170]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e171] [cursor=pointer]
+      - link "Request interface" [ref=f13e172] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e173]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e174] [cursor=pointer]
+      - link "SQL 18 queries in 17.50ms" [ref=f13e175] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e176]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e177] [cursor=pointer]
+      - link "Static files 14 files used" [ref=f13e178] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e179]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e180] [cursor=pointer]
+      - link "Templates educator_interface/interface.html" [ref=f13e181] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e182]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e183] [cursor=pointer]
+      - link "Alerts" [ref=f13e184] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e185]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e186] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f13e187] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e188]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e189] [cursor=pointer]
+      - link "Signals 130 receivers of 15 signals" [ref=f13e190] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e191]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e192] [cursor=pointer]
+      - link "Community" [ref=f13e193] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e194]:
+      - checkbox "Enable for next and successive requests" [ref=f13e195] [cursor=pointer]
+      - generic [ref=f13e196]: Intercept redirects
+    - listitem [ref=f13e197]:
+      - checkbox "Enable for next and successive requests" [ref=f13e198] [cursor=pointer]
+      - generic [ref=f13e199]: Profiling

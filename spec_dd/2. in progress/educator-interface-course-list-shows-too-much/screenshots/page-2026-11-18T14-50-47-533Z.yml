@@ -1,0 +1,157 @@
+- generic [active] [ref=f26e1]:
+  - banner [ref=f26e2]:
+    - link [ref=f26e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f26e4]
+      - heading "FirstClass" [level=1] [ref=f26e5]
+    - navigation [ref=f26e6]:
+      - generic [ref=f26e7]:
+        - generic [ref=f26e8]:
+          - button "Notifications, none new" [ref=f26e9]
+          - status:
+            - generic [ref=f26e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f26e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f26e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f26e17]:
+    - generic [ref=f26e20]:
+      - navigation "Back" [ref=f26e22]:
+        - link "Cohorts" [ref=f26e23] [cursor=pointer]:
+          - /url: /educator/organisations/harbour-college/cohorts
+      - generic [ref=f26e27]:
+        - generic [ref=f26e29]:
+          - generic [ref=f26e32]:
+            - button "Open navigation panel" [ref=f26e33] [cursor=pointer]
+            - heading "QA Harbour Cohort" [level=1] [ref=f26e37]
+          - navigation "Cohort sections" [ref=f26e38]:
+            - list [ref=f26e39]:
+              - listitem [ref=f26e40]:
+                - link "Overview" [ref=f26e41] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/cohorts/97e0f204-7eef-4c01-9f30-ca7709ef5082/__tabs/overview
+              - listitem [ref=f26e42]:
+                - link "Learners 1" [ref=f26e43] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/cohorts/97e0f204-7eef-4c01-9f30-ca7709ef5082/__tabs/learners
+                  - text: Learners
+                  - generic [ref=f26e44]: "1"
+              - listitem [ref=f26e45]:
+                - link "Courses 1" [ref=f26e46] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/cohorts/97e0f204-7eef-4c01-9f30-ca7709ef5082/__tabs/courses
+                  - text: Courses
+                  - generic [ref=f26e47]: "1"
+              - listitem [ref=f26e48]:
+                - link "Report" [ref=f26e49] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/cohorts/97e0f204-7eef-4c01-9f30-ca7709ef5082/__tabs/report
+              - listitem [ref=f26e50]:
+                - link "Settings" [ref=f26e51] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/cohorts/97e0f204-7eef-4c01-9f30-ca7709ef5082/__tabs/settings
+              - listitem [ref=f26e52]:
+                - link "History" [ref=f26e53] [cursor=pointer]:
+                  - /url: /educator/organisations/harbour-college/cohorts/97e0f204-7eef-4c01-9f30-ca7709ef5082/__tabs/history
+        - generic [ref=f26e57]:
+          - generic [ref=f26e59]:
+            - heading "Details" [level=2] [ref=f26e62]
+            - generic [ref=f26e64]:
+              - generic [ref=f26e65]:
+                - term [ref=f26e66]: Name
+                - definition [ref=f26e67]: QA Harbour Cohort
+              - generic [ref=f26e68]:
+                - term [ref=f26e69]: Status
+                - definition [ref=f26e70]:
+                  - generic [ref=f26e71]: Active
+              - generic [ref=f26e72]:
+                - term [ref=f26e73]: Created
+                - definition [ref=f26e74]:
+                  - time [ref=f26e75]: 18 Nov 2026
+              - generic [ref=f26e76]:
+                - term [ref=f26e77]: Learners
+                - definition [ref=f26e78]: "1"
+              - generic [ref=f26e79]:
+                - term [ref=f26e80]: Courses
+                - definition [ref=f26e81]: "1"
+          - generic [ref=f26e83]:
+            - heading "Course completion" [level=2] [ref=f26e86]
+            - list [ref=f26e88]:
+              - listitem [ref=f26e89]:
+                - generic [ref=f26e90]:
+                  - text: Workplace Safety Essentials
+                  - paragraph [ref=f26e91]: Shared by Northwind Logistics · 0 of 1 completed
+                - generic [ref=f26e94]:
+                  - progressbar "Workplace Safety Essentials completion" [ref=f26e95]: 0%
+                  - generic [ref=f26e96]: 0%
+          - heading "Needs attention" [level=2] [ref=f26e101]
+  - contentinfo [ref=f26e113]:
+    - generic [ref=f26e114]:
+      - paragraph [ref=f26e115]: © 2026 FirstClass
+      - navigation "Legal" [ref=f26e116]:
+        - link "Terms and Conditions" [ref=f26e117] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f26e118] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f26e119] [cursor=pointer]: educator-interface-course-list-shows-too-much
+  - list [ref=f26e121]:
+    - listitem [ref=f26e122]:
+      - link "Hide »" [ref=f26e123] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f26e124]:
+      - link "Toggle Theme" [ref=f26e125] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f26e128]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f26e129] [cursor=pointer]
+      - link "History /educator/organisations/harbour-college/cohorts/97e0f204-7eef-4c01-9f30-ca7709ef5082" [ref=f26e130] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f26e131]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f26e132] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f26e133] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f26e134]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f26e135] [cursor=pointer]
+      - 'link "Time CPU: 97.21ms (117.95ms)" [ref=f26e136] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f26e137]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f26e138] [cursor=pointer]
+      - link "Settings" [ref=f26e139] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f26e140]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f26e141] [cursor=pointer]
+      - link "Headers" [ref=f26e142] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f26e143]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f26e144] [cursor=pointer]
+      - link "Request interface" [ref=f26e145] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f26e146]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f26e147] [cursor=pointer]
+      - link "SQL 21 queries in 19.40ms" [ref=f26e148] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f26e149]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f26e150] [cursor=pointer]
+      - link "Static files 14 files used" [ref=f26e151] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f26e152]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f26e153] [cursor=pointer]
+      - link "Templates educator_interface/interface.html" [ref=f26e154] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f26e155]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f26e156] [cursor=pointer]
+      - link "Alerts" [ref=f26e157] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f26e158]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f26e159] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f26e160] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f26e161]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f26e162] [cursor=pointer]
+      - link "Signals 130 receivers of 15 signals" [ref=f26e163] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f26e164]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f26e165] [cursor=pointer]
+      - link "Community" [ref=f26e166] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f26e167]:
+      - checkbox "Enable for next and successive requests" [ref=f26e168] [cursor=pointer]
+      - generic [ref=f26e169]: Intercept redirects
+    - listitem [ref=f26e170]:
+      - checkbox "Enable for next and successive requests" [ref=f26e171] [cursor=pointer]
+      - generic [ref=f26e172]: Profiling
