@@ -13,7 +13,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 - 🔴 High · `extract_panels_framework-4-template-contract` (Panel framework extraction)
 - 🔴 High · `learner-profile-use-panels-framework-2-editable-list-panel` (Account area on panels, via `learner-public-profile`)
-- ⚪ Priority not set · `educator-interface-course-list-shows-too-much` (Educator interface)
 - ⚪ Priority not set · `misure-of-admonitions` (Educator interface)
 - ⚪ Priority not set · `sacaa-compliance-1-served-paper-record` (SACAA compliance)
 - ⚪ Priority not set · `content-widget-sayit-reveal-1-audio-player` (Audio content widgets)
@@ -139,7 +138,6 @@ Priority: ⚪ Priority not set
 
 Org admins manage learners, cohorts, registrations and staff. Parent: `educator-interface-full-polish`.
 
-- `educator-interface-course-list-shows-too-much` — **in progress** — The educator Courses page lists only the organisation's own courses, not other organisations' public ones.
 - `educator-interface-misc-polish` — **ready** — Polish found while walking the interface: optional learner names, cohort settings sub-panels, show and hide table columns, help icons, smaller mobile buttons.
 - `educator-interface-data-table-filter-design` — **ready** — One button per filter on data tables, instead of a single long drop-down. The UX still needs designing.
 - `audit-log-coverage-gaps` — **ready** — The audit log also records Django admin edits, system admin role changes and report downloads, and marks the date its history starts.
