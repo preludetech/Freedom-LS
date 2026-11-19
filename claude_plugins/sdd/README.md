@@ -5,7 +5,7 @@ tiering agents, the generic workflow command files, and the authoring/worktree/p
 It is the *scaffolding* for taking a feature from idea to merged PR. `sdd` needs the
 `productivity` plugin loaded, because its writing standard invokes `productivity:unslop`; nothing
 else project-specific reaches it except through the project's configuration in `.claude/sdd/config.md`
-(worktree scripts, rebase, design, test, plan review, review, documentation, QA and PR hooks, and
+(worktree scripts, rebase, design, test, plan review, review, documentation, QA hooks, and
 vocabulary sources). `/sdd:init` documents every key.
 
 Manifest name: `sdd`. Namespace: `/sdd:*`, `Skill(sdd:*)`.
@@ -15,15 +15,14 @@ Manifest name: `sdd`. Namespace: `/sdd:*`, `Skill(sdd:*)`.
 ### Commands (16 files)
 Flat under `commands/`: `README` (the workflow guide), `init`, `roadmap`, `register_design`, `start`,
 `spec_from_idea`, `spec_review`, `plan_from_spec`, `implement_plan`, `document`, `commit_quickly`,
-`make_pr_quickly`, `finish_worktree`, `address_pr_review`, `do_qa`, `qa_fix`.
+`make_pr_quickly`, `finish_worktree`, `capture_feedback`, `do_qa`, `qa_fix`.
 
 `/sdd:document` invokes the skills the project lists under `## Documentation Hooks` in
 `.claude/sdd/config.md`, in order, in hook mode, then executes the documentation items in `todo.md` and opens the pull request. Each hook is a skill that commits
 its own work, or names the files it changed for `/sdd:document` to commit. The plan review in
 `/sdd:plan_from_spec` runs its built-in dimensions plus the project's own briefs, which
 `## Plan Review Hooks` lists; `sdd` names none.
-`/sdd:address_pr_review` fetches review comments through the `Fetch PR comments` script under
-`## PR Hooks`, or with `gh` directly when the key is blank. `/sdd:start` creates the checklist and the worktree, enters it, registers a design when one is present and writes the spec, and writes the `QA command`
+`/sdd:start` creates the checklist and the worktree, enters it, registers a design when one is present and writes the spec, and writes the `QA command`
 under `## QA Hooks` into the checklist as the QA step, or a by-hand item when there is none.
 
 `/sdd:do_qa` runs a spec's QA plan in a browser. It reads `## QA Hooks`, `## QA Login` and

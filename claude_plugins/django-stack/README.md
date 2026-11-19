@@ -56,7 +56,7 @@ same way. It also migrates artifacts an older init baked in: the `$FLS_PLUGIN` s
 host project's own reviewer memory (the same convention `sdd` uses for `sdd-qa-data-helper`).
 
 ### Scripts
-`find_available_port.sh`, `generate_app_map.py`, `db_clear.sh`, `fetch_pr_comments.sh`,
+`find_available_port.sh`, `generate_app_map.py`, `db_clear.sh`,
 `kill_runserver.sh`, `install_pre_commit_hook.sh` (makes the shared git pre-commit hook run from
 whichever worktree commits), plus the hook scripts under `scripts/hooks/` (`ruff_fix.sh`,
 `post-edit-bandit.sh`, `security-guard.sh`).
@@ -83,4 +83,4 @@ server), `.lsp.json` (Pyright).
 ### Templates
 `ds:init` ships `templates/settings.json` (the generic permission baseline + the `SessionStart` hook)
 and `templates/wrapper_scripts/` (`claude.sh` launcher plus `find_available_port.sh`, `db_clear.sh`,
-`kill_runserver.sh`, `fetch_pr_comments.sh`).
+`kill_runserver.sh`).

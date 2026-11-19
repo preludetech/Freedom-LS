@@ -7,7 +7,7 @@ A step-by-step workflow from a rough idea to a merged pull request. Each step pr
 1. **Spec** → turn the idea into a researched, reviewed specification.
 2. **Plan** → turn the spec into an implementation plan and a QA plan, and review the plan.
 3. **Implementation and QA** → execute the plan, then run the QA plan.
-4. **Documentation and pull request** → run the documentation hooks, open the PR, address review feedback.
+4. **Documentation and pull request** → run the documentation hooks, open the PR.
 5. **Cleanup** → finish the worktree, then remove the worktree and branch.
 
 These are the five sections of the `todo.md` checklist. Capturing the idea comes before them.
@@ -94,7 +94,6 @@ Run `/sdd:document`. It reads `## Documentation Hooks` in `.claude/sdd/config.md
 ## Step 6: Pull request
 
 1. `/sdd:document` opens the pull request itself; run `/sdd:make_pr_quickly` to open it on its own. It runs `gh pr create --head <branch> --base main --title <branch> --body ""`, falling back to `gh pr view` when the pull request exists; it reads nothing else.
-2. Run `/sdd:address_pr_review` to work through review feedback. It fetches the comments through the `Fetch PR comments` script under `## PR Hooks` in `.claude/sdd/config.md`, or with `gh` directly when that key is blank.
 
 ## Step 7: Cleanup
 

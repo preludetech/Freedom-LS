@@ -60,7 +60,6 @@
       "Bash(git switch *)",
       "Bash(git remote *)",
       "Bash(.claude/ds/scripts/db_clear.sh:*)",
-      "Bash(.claude/ds/scripts/fetch_pr_comments.sh:*)",
       "Bash(.claude/ds/scripts/find_available_port.sh:*)",
       "Bash(.claude/ds/scripts/kill_runserver.sh:*)",
       "Bash(.claude/ds/scripts/reap_playwright_mcp.sh:*)",
@@ -73,7 +72,6 @@
       "Bash(.claude/fls-dev/scripts/rebuild_after_rebase.sh:*)",
 
       "Bash(bash .claude/ds/scripts/db_clear.sh:*)",
-      "Bash(bash .claude/ds/scripts/fetch_pr_comments.sh:*)",
       "Bash(bash .claude/ds/scripts/find_available_port.sh:*)",
       "Bash(bash .claude/ds/scripts/kill_runserver.sh:*)",
       "Bash(bash .claude/ds/scripts/reap_playwright_mcp.sh:*)",
@@ -85,7 +83,6 @@
       "Bash(bash .claude/fls-dev/scripts/install_dev.sh:*)",
       "Bash(bash .claude/fls-dev/scripts/rebuild_after_rebase.sh:*)",
       "Bash(./.claude/ds/scripts/db_clear.sh:*)",
-      "Bash(./.claude/ds/scripts/fetch_pr_comments.sh:*)",
       "Bash(./.claude/ds/scripts/find_available_port.sh:*)",
       "Bash(./.claude/ds/scripts/kill_runserver.sh:*)",
       "Bash(./.claude/ds/scripts/reap_playwright_mcp.sh:*)",

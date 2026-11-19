@@ -131,7 +131,7 @@ files exist, catches this.
 
 ## Step 2: Create or extend `.claude/sdd/config.md`
 
-`sdd` reads fourteen sections here at runtime. **Worktree Scripts**: the worktree helpers
+`sdd` reads these sections at runtime. **Worktree Scripts**: the worktree helpers
 (`protected/start_worktree.md`, `finish_worktree.md`) look here for the per-worktree setup and
 teardown scripts to run, and `/sdd:implement_plan` looks here for the `Parallel batches` count, `Memory capacity`, `Batch memory (MB)` and `Worker memory (MB)`. **Rebase Hooks**: the pre-step rebase helper
 (`protected/pre_step_rebase.md`) looks here for the rebase command and front-end check it follows
@@ -145,8 +145,7 @@ test standard its implementer reads and its batch review checks. **Documentation
 `/sdd:document` looks here for the skills it invokes, in order, after implementation and QA.
 They can come from any plugin. **QA Hooks**: `protected/setup_todo_list.md` looks here for the
 command that executes the QA plan, and writes it into the checklist; the QA command reads the other keys. **QA Login** and **QA Dev Data**: the QA command
-reads the admin login and the commands that reset development data. **Testing Skills**: the QA bug fixer loads these skills. **PR Hooks**:
-`/sdd:address_pr_review` looks here for the script that fetches a pull request's review comments.
+reads the admin login and the commands that reset development data. **Testing Skills**: the QA bug fixer loads these skills.
 **Rule Files**: `sdd:capture-feedback` looks here for the file each rule is written to, and the QA
 command walks the `## Visual checklist` section of each file listed.
 Everything else in this dir exists for
@@ -228,10 +227,6 @@ parity and future settings.
    ## Testing Skills
 
    -
-
-   ## PR Hooks
-
-   - Fetch PR comments:
 
    ## Rule Files
 
@@ -318,11 +313,6 @@ parity and future settings.
    of `<plugin>:<skill>` names, one per bullet, that the QA bug fixer loads before writing a test.
    An empty list means none. A section whose list is a lone `-` is empty.
 
-   A **Fetch PR comments** value points at a script, run from the project root, that prints a
-   pull request's comments as JSON (`issue_comments`, `reviews`, `inline_comments` with an
-   `is_outdated` field). Blank means "this project has no such script", and
-   `/sdd:address_pr_review` fetches them with `gh` directly.
-
    **Rule Files** is a list, not keyed. Each bullet is `<scope>: <path>`: a few words naming what
    the file's rules cover (a brand's visual system, its voice, one UI framework's pages) and the
    project file holding them. A file holds rules that hold across its whole scope; one feature's
@@ -338,7 +328,7 @@ parity and future settings.
    model class names and field names are the vocabulary of last resort.
 3. If it already exists, add the `## Worktree Scripts`, `## Rebase Hooks`, `## Design Hooks`, `## Test Hooks`,
    `## Plan Review Hooks`, `## Review Hooks`, `## Documentation Hooks`, `## QA Hooks`, `## QA Login`, `## QA Dev Data`,
-   `## Testing Skills`, `## PR Hooks`, `## Rule Files` and `## Vocabulary Sources` sections, and any key only if missing (including `Parallel batches`, `Memory capacity`, `Batch memory (MB)` and `Worker memory (MB)` under `## Worktree Scripts`), using the blank default. Preserve every existing value,
+   `## Testing Skills`, `## Rule Files` and `## Vocabulary Sources` sections, and any key only if missing (including `Parallel batches`, `Memory capacity`, `Batch memory (MB)` and `Worker memory (MB)` under `## Worktree Scripts`), using the blank default. Preserve every existing value,
    comment, and ordering.
 4. Tell the user in the summary to fill in the paths and the vocabulary sources themselves.
 
@@ -380,19 +370,17 @@ in-place edits.
    `Diff scoping`, `Data helper guide`, `Screenshot prep` and `Layout regions`, a `## QA Login` section with `Admin email`, `Admin
    password` and `Base URL`, a `## QA Dev Data` section with `Content reset`, `DB drop`, `DB create`
    and `Migrate`, and a `## Testing Skills` section (blank values and an empty list are valid).
-11. `.claude/sdd/config.md` has a `## PR Hooks` section with a `Fetch PR comments` key (a blank
-   value is valid).
-12. `.claude/sdd/config.md` has a `## Rule Files` section (an empty list is valid).
-13. `.claude/sdd/config.md` has a `## Vocabulary Sources` section (an empty list is valid).
-14. `.claude/sdd/config.local.md` and `.claude/worktrees/` are listed in `.gitignore`.
-15. `<PLUGINS_ROOT>/claude_plugins/sdd/` exists.
-16. `claude.sh` contains exactly **one** `--plugin-dir` line whose final path segment is `sdd`, and
+11. `.claude/sdd/config.md` has a `## Rule Files` section (an empty list is valid).
+12. `.claude/sdd/config.md` has a `## Vocabulary Sources` section (an empty list is valid).
+13. `.claude/sdd/config.local.md` and `.claude/worktrees/` are listed in `.gitignore`.
+14. `<PLUGINS_ROOT>/claude_plugins/sdd/` exists.
+15. `claude.sh` contains exactly **one** `--plugin-dir` line whose final path segment is `sdd`, and
    that line expands `$PLUGINS_ROOT` only if a `PLUGINS_ROOT=` assignment exists in the file.
-17. Every `--plugin-dir` path in `claude.sh` resolves to a directory that exists.
-18. `hooks` in `.claude/settings.json` is unchanged from before this command ran.
-19. `worktree.baseRef` is present in `.claude/settings.json`, and so are the three entries from
+16. Every `--plugin-dir` path in `claude.sh` resolves to a directory that exists.
+17. `hooks` in `.claude/settings.json` is unchanged from before this command ran.
+18. `worktree.baseRef` is present in `.claude/settings.json`, and so are the three entries from
    Step 1 item 4.
-20. Report every issue found.
+19. Report every issue found.
 
 ## Step 6: Summary and outstanding actions
 
@@ -400,8 +388,7 @@ Print what was done, then the outstanding actions: every Step 0 WARN, anything S
 and each worktree setting, allow entry or ignore line that was not merged.
 Point the user at `.claude/sdd/config.md` to fill in the Worktree Scripts Setup and Teardown paths, Parallel batches count and the Memory capacity command with its two sizes,
 the Rebase Hooks Rebase command and Front-end check paths, the Design Hooks Design check path, the Test Hooks Test tiers and Pre-test rebuild paths, the Plan Review Hooks and Documentation Hooks lists, the Review
-Hooks Comment standard and Test standard paths, the QA Hooks, QA Login, QA Dev Data and Testing Skills values, the PR Hooks Fetch PR
-comments path, and to list the project's Vocabulary Sources.
+Hooks Comment standard and Test standard paths, the QA Hooks, QA Login, QA Dev Data and Testing Skills values, and to list the project's Vocabulary Sources.
 
 If `claude.sh` has no `--plugin-dir` line whose final segment is `productivity`, list
 `run /productivity:init` as an outstanding action. This command never adds that line.

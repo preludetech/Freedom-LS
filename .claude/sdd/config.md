@@ -74,16 +74,11 @@
 - ds:playwright-tests
 - fls-dev:playwright-tests
 
-## PR Hooks
-
-- Fetch PR comments: .claude/ds/scripts/fetch_pr_comments.sh
-
 ## Rule Files
 
 - Brand visual system: .claude/skills/brand-guidelines/visual.md
 - Panel-framework pages (tables, actions, dialogs, the quick view): claude_plugins/fls-dev/skills/panel-framework/SKILL.md
 - Brand voice and copy: .claude/skills/brand-guidelines/voice.md
-- Panel framework pages: claude_plugins/fls-dev/skills/panel-framework/SKILL.md
 - Educator interface pages: claude_plugins/fls-dev/skills/educator-interface/SKILL.md
 
 ## Vocabulary Sources
