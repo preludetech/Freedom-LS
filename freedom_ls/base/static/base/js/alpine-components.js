@@ -164,7 +164,7 @@ document.addEventListener("alpine:init", () => {
         // preventDefault() marks this Escape as consumed so any other
         // layer listening for it (e.g. panel_framework's quick-view
         // drawer) knows not to treat the same keypress as its own
-        // dismissal. Capture-phase registration (see dropdown-menu.html)
+        // dismissal. Capture-phase registration (see the dropdown menu template)
         // runs this before any bubble-phase listener gets to inspect
         // event.defaultPrevented.
         onEscape(event) {

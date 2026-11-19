@@ -200,7 +200,7 @@ reason, and is nothing below lg.
                 <c-panel-button type="button" variant="secondary" size="small" icon_left="filter" x-on:click="toggle">Filter</c-panel-button>
             {% endif %}
             {% if sortable_columns %}
-                <c-dropdown-menu aria_label="Sort" menu_label="Sort by" trigger_class="btn btn-secondary btn-sm" panel_class="fixed w-56">
+                <c-panel-dropdown-menu aria_label="Sort" menu_label="Sort by" trigger_variant="secondary" trigger_size="small" panel_class="fixed w-56">
                     <c-slot name="trigger">
                         <span aria-hidden="true" class="inline-flex"><c-icon name="sort_neutral" class="size-5" /></span>
                         Sort
@@ -218,7 +218,7 @@ reason, and is nothing below lg.
                                       icon_right="{% if header.state == 'asc' %}sort_asc{% elif header.state == 'desc' %}sort_desc{% endif %}">{{ header.column.header }}</c-panel-button>
                         {% endif %}
                     {% endfor %}
-                </c-dropdown-menu>
+                </c-panel-dropdown-menu>
             {% endif %}
             </div>
 

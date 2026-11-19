@@ -6,6 +6,8 @@ original, so a fix to one (a new CSV formula trigger, say) reaches both.
 from __future__ import annotations
 
 import inspect
+import re
+from pathlib import Path
 from types import ModuleType
 
 import pytest
@@ -17,6 +19,21 @@ from freedom_ls.base import date_display as base_date_display
 from freedom_ls.panel_framework import app_settings as framework_app_settings
 from freedom_ls.panel_framework import csv_safety as framework_csv_safety
 from freedom_ls.panel_framework import field_display as framework_field_display
+
+BASE_SCRIPT = (
+    Path(base_app_settings.__file__).parent
+    / "static"
+    / "base"
+    / "js"
+    / "alpine-components.js"
+)
+FRAMEWORK_SCRIPT = (
+    Path(framework_app_settings.__file__).parent
+    / "static"
+    / "panel_framework"
+    / "js"
+    / "alpine-components.js"
+)
 
 SAME_SOURCE = [
     (base_csv_safety.escape_csv_formula, framework_csv_safety.escape_csv_formula),
@@ -60,3 +77,21 @@ def test_a_copied_constant_has_its_originals_value(
         f"{name} differs between {copy_module.__name__} and "
         f"{original_module.__name__}: change both."
     )
+
+
+def _component_body(script: Path, name: str) -> str:
+    """The source of an `Alpine.data(name, ...)` registration, up to its closing `}));`."""
+    source = script.read_text()
+    match = re.search(
+        rf'^( *)Alpine\.data\("{name}", \(\) => \(\{{\n(.*?)^\1\}}\)\);$',
+        source,
+        flags=re.DOTALL | re.MULTILINE,
+    )
+    assert match is not None, f"{script} does not register {name}"
+    return match.group(2)
+
+
+def test_panel_dropdown_menu_has_the_body_of_dropdown_menu() -> None:
+    assert _component_body(FRAMEWORK_SCRIPT, "panelDropdownMenu") == _component_body(
+        BASE_SCRIPT, "dropdownMenu"
+    ), "panelDropdownMenu and dropdownMenu have drifted: change both."

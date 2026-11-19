@@ -38,6 +38,20 @@ PRIMITIVE_DEFAULTS = [
         ["flex justify-end", "ms-auto", "Go"],
         id="panel-button-group",
     ),
+    pytest.param(
+        '<c-panel-dropdown-menu aria_label="More" trigger_variant="ghost" trigger_size="small" '
+        'panel_class="fixed w-64"><c-panel-button dropdown="true">Edit</c-panel-button>'
+        "<c-panel-dropdown-menu-separator /></c-panel-dropdown-menu>",
+        [
+            'x-data="panelDropdownMenu"',
+            "group/menu panel-btn panel-btn-ghost panel-btn-sm",
+            'aria-label="More"',
+            "fixed w-64",
+            'role="separator"',
+            "Edit",
+        ],
+        id="panel-dropdown-menu",
+    ),
 ]
 
 PRIMITIVE_OVERRIDES = [
@@ -49,6 +63,16 @@ PRIMITIVE_OVERRIDES = [
         "panel-button-group",
         "<c-panel-button-group>Hi</c-panel-button-group>",
         id="panel-button-group",
+    ),
+    pytest.param(
+        "panel-dropdown-menu",
+        "<c-panel-dropdown-menu>Hi</c-panel-dropdown-menu>",
+        id="panel-dropdown-menu",
+    ),
+    pytest.param(
+        "panel-dropdown-menu-separator",
+        "<c-panel-dropdown-menu-separator />",
+        id="panel-dropdown-menu-separator",
     ),
 ]
 
@@ -74,6 +98,11 @@ def test_a_primitive_renders_its_documented_props_and_slot(
             "<c-panel-button>Hi</c-panel-button>",
             {"panel-btn-sm", " disabled", "autofocus", "aria-label"},
             id="panel-button-has-no-default-size-or-flags",
+        ),
+        pytest.param(
+            "<c-panel-dropdown-menu>Hi</c-panel-dropdown-menu>",
+            {"panel-btn", "trigger_class"},
+            id="panel-dropdown-menu-without-trigger-variant-has-no-button-class",
         ),
     ],
 )

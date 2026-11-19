@@ -1187,6 +1187,167 @@ document.addEventListener("alpine:init", () => {
             return parents.every((rowId) => !this.collapsed[rowId]);
         },
     }));
+
+    // Dropdown menu component (cotton/panel-dropdown-menu.html)
+    Alpine.data("panelDropdownMenu", () => ({
+        open: false,
+        scrollYAtOpen: 0,
+        toggle(event) {
+            if (this.open) {
+                this.close();
+                return;
+            }
+            this.open = true;
+            // A click synthesised by Enter or Space carries detail 0. Only a
+            // keyboard open moves focus into the menu; a pointer open leaves
+            // focus on the trigger so the pointer stays in charge.
+            if (event && event.detail === 0) {
+                this.focusInitialItem();
+            }
+        },
+        openFromTrigger() {
+            this.open = true;
+            this.focusInitialItem();
+        },
+        close() {
+            this.open = false;
+        },
+        // A scroll event is delivered a frame after the scroll itself, so a
+        // trigger the browser scrolled into view for the click would close
+        // the menu it had just opened. Only a scroll that moves the page
+        // away from where it was at open closes the menu.
+        closeOnScroll() {
+            if (window.scrollY === this.scrollYAtOpen) return;
+            this.close();
+        },
+        // Menu items keep their natural tab stop, so Tab still walks the menu
+        // in DOM order; the arrow keys are an addition to that, not a
+        // replacement for it.
+        menuItems() {
+            const panel = this.$refs.menuPanel;
+            if (!panel) return [];
+            const items = panel.querySelectorAll(
+                '[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]'
+            );
+            return Array.from(items).filter((item) => !item.disabled);
+        },
+        focusInitialItem() {
+            const items = this.menuItems();
+            if (items.length === 0) return;
+            const checked = items.find(
+                (item) => item.getAttribute("aria-checked") === "true"
+            );
+            const trigger = this.$refs.menuButton;
+            // x-show only reveals the panel on the next tick; a hidden element
+            // cannot take focus. By then the user may already have tabbed on,
+            // so only take focus if it is still sitting on the trigger.
+            this.$nextTick(() => {
+                if (document.activeElement !== trigger) return;
+                (checked || items[0]).focus();
+            });
+        },
+        focusFirstItem() {
+            const items = this.menuItems();
+            if (items.length > 0) items[0].focus();
+        },
+        focusLastItem() {
+            const items = this.menuItems();
+            if (items.length > 0) items[items.length - 1].focus();
+        },
+        focusNextItem() {
+            this.moveFocus(1);
+        },
+        focusPreviousItem() {
+            this.moveFocus(-1);
+        },
+        moveFocus(step) {
+            const items = this.menuItems();
+            if (items.length === 0) return;
+            const current = items.indexOf(document.activeElement);
+            if (current === -1) {
+                // Focus is still on the trigger: enter the menu from the end
+                // the arrow points at.
+                (step > 0 ? items[0] : items[items.length - 1]).focus();
+                return;
+            }
+            items[(current + step + items.length) % items.length].focus();
+        },
+        // preventDefault() marks this Escape as consumed so any other
+        // layer listening for it (e.g. panel_framework's quick-view
+        // drawer) knows not to treat the same keypress as its own
+        // dismissal. Capture-phase registration (see the dropdown menu template)
+        // runs this before any bubble-phase listener gets to inspect
+        // event.defaultPrevented.
+        onEscape(event) {
+            if (!this.open) return;
+            this.open = false;
+            if (event) event.preventDefault();
+            if (this.$refs.menuButton) {
+                this.$refs.menuButton.focus();
+            }
+        },
+        positionMenu() {
+            if (this.open) {
+                const rect = this.$refs.menuButton.getBoundingClientRect();
+                const panel = this.$refs.menuPanel;
+                if (panel) {
+                    const gap = 8;
+                    panel.style.maxHeight = "";
+                    panel.style.overflowY = "";
+                    // A panel laid out in flow (the organisation switcher inside
+                    // the phone navigation sheet) is placed by the page, not here.
+                    if (getComputedStyle(panel).position !== "fixed") return;
+                    const menuWidth = panel.offsetWidth || 160;
+                    const menuHeight = panel.offsetHeight;
+                    const spaceBelow = window.innerHeight - rect.bottom - 2 * gap;
+                    const spaceAbove = rect.top - 2 * gap;
+
+                    let x = rect.right - menuWidth;
+                    if (x + menuWidth > window.innerWidth) x = window.innerWidth - menuWidth - gap;
+                    if (x < gap) x = gap;
+
+                    // Below when it fits, above when only that fits; when neither
+                    // does, the roomier side gets a capped, scrolling panel so no
+                    // item ends up off-screen.
+                    let y;
+                    if (menuHeight <= spaceBelow || spaceBelow >= spaceAbove) {
+                        y = rect.bottom + gap;
+                        if (menuHeight > spaceBelow) {
+                            panel.style.maxHeight = spaceBelow + "px";
+                            panel.style.overflowY = "auto";
+                        }
+                    } else {
+                        const height = Math.min(menuHeight, spaceAbove);
+                        if (menuHeight > spaceAbove) {
+                            panel.style.maxHeight = spaceAbove + "px";
+                            panel.style.overflowY = "auto";
+                        }
+                        y = rect.top - height - gap;
+                    }
+
+                    panel.style.top = y + "px";
+                    panel.style.left = x + "px";
+                }
+            }
+        },
+        init() {
+            // The panel is still display:none when the watcher fires, so it has no
+            // height to flip against until the next tick.
+            this.$watch("open", (isOpen) => {
+                if (isOpen) this.scrollYAtOpen = window.scrollY;
+                this.$nextTick(() => this.positionMenu());
+            });
+            // Options that hx-get into a target outside this dropdown (e.g.
+            // the organisation switcher, whose options swap #main-content
+            // while the dropdown itself lives in the sidebar) leave the
+            // panel visually open after the swap — nothing else closes it.
+            // Every other dropdown option navigates away or reloads the
+            // page, so this is a no-op for them.
+            this.$el.addEventListener("htmx:afterRequest", () => {
+                this.close();
+            });
+        },
+    }));
 });
 
 // Scroll a tab strip sideways just far enough to show its active tab whole.

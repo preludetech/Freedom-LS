@@ -1,0 +1,2 @@
+<c-vars trigger="" class="" aria_label="Menu" menu_label="" trigger_variant="" trigger_size="" panel_class="fixed w-40" />
+<c-dropdown-menu :class="class" :aria_label="aria_label" :menu_label="menu_label" :panel_class="panel_class" trigger_class="{% if trigger_variant %}btn btn-{{ trigger_variant }}{% if trigger_size == 'small' %} btn-sm{% endif %}{% else %}p-2 hover:bg-surface-2 rounded-md transition-colors{% endif %}">{% if trigger %}<c-slot name="trigger">{{ trigger }}</c-slot>{% endif %}{{ slot }}</c-dropdown-menu>

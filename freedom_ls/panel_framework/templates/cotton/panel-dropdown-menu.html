@@ -1,0 +1,105 @@
+{# djlint:off H037 H026 H021 #}
+<c-vars trigger=""
+        class=""
+        aria_label="Menu"
+        menu_label=""
+        trigger_variant=""
+        trigger_size=""
+        panel_class="fixed w-40" />
+
+<div class="relative inline-block {{ class }}" x-data="panelDropdownMenu">
+    {% comment %} 3-dots menu button {% endcomment %}
+    <button type="button"
+            x-on:click="toggle"
+            x-on:keydown.arrow-down.prevent="openFromTrigger"
+            x-on:keydown.arrow-up.prevent="openFromTrigger"
+            class="group/menu {% if trigger_variant %}panel-btn panel-btn-{{ trigger_variant }}{% if trigger_size == "small" %} panel-btn-sm{% endif %}{% else %}p-2 hover:bg-surface-2 rounded-md transition-colors{% endif %}"
+            aria-label="{{ aria_label }}"
+            aria-haspopup="menu"
+            x-bind:aria-expanded="open"
+            x-ref="menuButton">
+        {% if trigger %}
+            {{ trigger }}
+        {% else %}
+            <c-icon name="more_options" class="size-5" />
+        {% endif %}
+    </button>
+
+    {% comment %} Dropdown menu {% endcomment %}
+    {% comment %}
+    @claude The auto-close on window scroll below is shared by every
+    dropdown in the app. With the now-sticky header, the user menu and
+    its trigger remain on screen during scroll, so this close-on-scroll
+    fires more visibly. If the close proves too aggressive on the sticky
+    header specifically, scope the listener to non-sticky triggers in a follow-up.
+    {% endcomment %}
+    <div x-show="open"
+         x-cloak
+         x-on:click.away="close"
+         x-on:scroll.window="closeOnScroll"
+         x-on:keydown.escape.window.capture="onEscape"
+         x-on:keydown.arrow-down.prevent="focusNextItem"
+         x-on:keydown.arrow-up.prevent="focusPreviousItem"
+         x-on:keydown.home.prevent="focusFirstItem"
+         x-on:keydown.end.prevent="focusLastItem"
+         x-transition:enter="transition ease-out duration-100"
+         x-transition:enter-start="transform opacity-0 scale-95"
+         x-transition:enter-end="transform opacity-100 scale-100"
+         x-transition:leave="transition ease-in duration-75"
+         x-transition:leave-start="transform opacity-100 scale-100"
+         x-transition:leave-end="transform opacity-0 scale-95"
+         x-ref="menuPanel"
+         class="dropdown-panel {{ panel_class }} bg-surface border border-border rounded-md shadow-lg z-[9999]"
+         style="display: none">
+        <div class="py-1 space-y-1"
+             role="menu"
+             aria-label="{{ menu_label|default:aria_label }}">
+            {{ slot }}
+        </div>
+    </div>
+
+</div>
+
+{# djlint:on H037 H026 H021 #}
+
+{% comment %}
+The trigger is a `group/menu`, so a chevron in a custom trigger turns up
+while the menu is open with `group-aria-expanded/menu:rotate-180`.
+
+`panel_class` sizes and positions the panel: the default is a fixed popover
+160px wide, placed by panelDropdownMenu's positionMenu(); a caller that wants the
+panel in flow below md (the organisation switcher inside the navigation
+sheet) passes a static width for small screens and `lg:fixed` for large.
+
+The panel is a `role="menu"`, so everything passed in the slot must be a menu
+item: `<c-panel-button dropdown="true">` already is one, and a hand-written option
+needs `role="menuitem"`, `menuitemradio` or `menuitemcheckbox`. `menu_label`
+names the menu itself; it falls back to `aria_label` (the trigger's name).
+
+Usage Examples:
+
+  <!-- Default 3-dots icon -->
+  <c-panel-dropdown-menu>
+      <c-panel-button dropdown="true">Edit</c-panel-button>
+      <c-panel-button dropdown="true">Delete</c-panel-button>
+  </c-panel-dropdown-menu>
+
+  <!-- Custom trigger content -->
+  <c-panel-dropdown-menu trigger="Options">
+      <c-panel-button dropdown="true">Edit</c-panel-button>
+      <c-panel-button dropdown="true">Delete</c-panel-button>
+  </c-panel-dropdown-menu>
+
+  <!-- A rule between two groups of items -->
+  <c-panel-dropdown-menu>
+      <c-panel-button dropdown="true">Edit</c-panel-button>
+      <c-panel-dropdown-menu-separator />
+      <c-panel-button dropdown="true" tone="error">Delete</c-panel-button>
+  </c-panel-dropdown-menu>
+
+  <!-- Custom trigger with icon component -->
+  <c-panel-dropdown-menu trigger='<c-icon name="settings" class="size-5" />'>
+      <c-panel-button dropdown="true">Settings</c-panel-button>
+      <c-panel-button dropdown="true">Preferences</c-panel-button>
+  </c-panel-dropdown-menu>
+{% endcomment %}

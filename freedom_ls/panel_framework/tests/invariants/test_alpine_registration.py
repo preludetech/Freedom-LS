@@ -36,3 +36,18 @@ def test_every_component_a_framework_template_names_is_registered() -> None:
         "x-data names no framework script registers with Alpine.data(): "
         + "; ".join(unregistered)
     )
+
+
+def test_panel_dropdown_menu_is_registered_exactly_once() -> None:
+    registrations = [
+        name
+        for script in SCRIPTS
+        for name in REGISTRATION.findall(script.read_text())
+        if name == "panelDropdownMenu"
+    ]
+
+    assert registrations == ["panelDropdownMenu"]
+
+
+def test_the_framework_needs_no_host_supplied_component() -> None:
+    assert frozenset() == HOST_SUPPLIED_COMPONENTS

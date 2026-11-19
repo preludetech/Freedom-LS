@@ -1945,8 +1945,8 @@ APPLIED_FILTER: list[str] = [
     "21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 "
     '5.818V4.774c0-.54.384-1.006.917-1.096A48.3 48.3 0 0 1 12 3" fill="none" '
     'stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"]',
-    'div [class="relative inline-block" x-data="dropdownMenu"]',
-    'button [aria-haspopup="menu" aria-label="Sort" class="group/menu btn btn-secondary btn-sm" '
+    'div [class="relative inline-block" x-data="panelDropdownMenu"]',
+    'button [aria-haspopup="menu" aria-label="Sort" class="group/menu panel-btn panel-btn-secondary panel-btn-sm" '
     'type="button" x-bind:aria-expanded="open" x-on:click="toggle" '
     'x-on:keydown.arrow-down.prevent="openFromTrigger" '
     'x-on:keydown.arrow-up.prevent="openFromTrigger" x-ref="menuButton"]',
@@ -2134,8 +2134,8 @@ NO_FILTER_APPLIED: list[str] = [
     "21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 "
     '5.818V4.774c0-.54.384-1.006.917-1.096A48.3 48.3 0 0 1 12 3" fill="none" '
     'stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"]',
-    'div [class="relative inline-block" x-data="dropdownMenu"]',
-    'button [aria-haspopup="menu" aria-label="Sort" class="group/menu btn btn-secondary btn-sm" '
+    'div [class="relative inline-block" x-data="panelDropdownMenu"]',
+    'button [aria-haspopup="menu" aria-label="Sort" class="group/menu panel-btn panel-btn-secondary panel-btn-sm" '
     'type="button" x-bind:aria-expanded="open" x-on:click="toggle" '
     'x-on:keydown.arrow-down.prevent="openFromTrigger" '
     'x-on:keydown.arrow-up.prevent="openFromTrigger" x-ref="menuButton"]',

@@ -558,6 +558,9 @@ def test_no_button_hand_writes_a_touch_height() -> None:
             for trigger in re.findall(r'trigger_class="(?:panel-)?btn[^"]*"', source):
                 if "min-h-11" in trigger:
                     offenders.append(f"{path.name}: {trigger}")
+            for menu in re.findall(r"<c-panel-dropdown-menu\b[^>]*>", source):
+                if "trigger_variant=" in menu and "min-h-11" in menu:
+                    offenders.append(f"{path.name}: {menu[:80]}")
     assert offenders == []
 
 

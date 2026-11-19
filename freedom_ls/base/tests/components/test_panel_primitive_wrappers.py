@@ -126,7 +126,54 @@ BUTTON_PAIRS = [
 ]
 
 
-@pytest.mark.parametrize(("wrapper", "original"), [*WRAPPER_PAIRS, *BUTTON_PAIRS])
+ITEMS = '<c-panel-button dropdown="true">Edit</c-panel-button>'
+ORIGINAL_ITEMS = '<c-button dropdown="true">Edit</c-button>'
+
+DROPDOWN_PAIRS = [
+    pytest.param(
+        f'<c-panel-dropdown-menu aria_label="More actions" trigger_variant="{variant}" '
+        f'trigger_size="small" panel_class="fixed w-64">{ITEMS}</c-panel-dropdown-menu>',
+        f'<c-dropdown-menu aria_label="More actions" trigger_class="btn btn-{variant} btn-sm" '
+        f'panel_class="fixed w-64">{ORIGINAL_ITEMS}</c-dropdown-menu>',
+        id=f"dropdown-menu-{variant}-trigger",
+    )
+    for variant in ["ghost", "secondary"]
+] + [
+    pytest.param(
+        f"<c-panel-dropdown-menu>{ITEMS}</c-panel-dropdown-menu>",
+        f"<c-dropdown-menu>{ORIGINAL_ITEMS}</c-dropdown-menu>",
+        id="dropdown-menu-default-trigger",
+    ),
+    pytest.param(
+        f'<c-panel-dropdown-menu trigger_variant="ghost">{ITEMS}</c-panel-dropdown-menu>',
+        f'<c-dropdown-menu trigger_class="btn btn-ghost">{ORIGINAL_ITEMS}</c-dropdown-menu>',
+        id="dropdown-menu-variant-without-size",
+    ),
+    pytest.param(
+        f'<c-panel-dropdown-menu trigger="Options" menu_label="Sort by" class="ms-2">{ITEMS}</c-panel-dropdown-menu>',
+        f'<c-dropdown-menu trigger="Options" menu_label="Sort by" class="ms-2">{ORIGINAL_ITEMS}</c-dropdown-menu>',
+        id="dropdown-menu-trigger-prop",
+    ),
+    pytest.param(
+        '<c-panel-dropdown-menu><c-slot name="trigger">More <b>v</b></c-slot>'
+        f"{ITEMS}</c-panel-dropdown-menu>",
+        '<c-dropdown-menu><c-slot name="trigger">More <b>v</b></c-slot>'
+        f"{ORIGINAL_ITEMS}</c-dropdown-menu>",
+        id="dropdown-menu-trigger-slot",
+    ),
+    pytest.param(
+        f"<c-panel-dropdown-menu>{ITEMS}<c-panel-dropdown-menu-separator />"
+        f"{ITEMS}</c-panel-dropdown-menu>",
+        f"<c-dropdown-menu>{ORIGINAL_ITEMS}<c-dropdown-menu-separator />"
+        f"{ORIGINAL_ITEMS}</c-dropdown-menu>",
+        id="dropdown-menu-separator",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("wrapper", "original"), [*WRAPPER_PAIRS, *BUTTON_PAIRS, *DROPDOWN_PAIRS]
+)
 def test_a_wrapper_renders_what_the_component_it_replaces_rendered(
     wrapper: str, original: str
 ) -> None:
