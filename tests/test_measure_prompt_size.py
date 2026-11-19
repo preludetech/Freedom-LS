@@ -107,3 +107,42 @@ def test_url_and_plain_word_values_are_ignored(
     output = measure(tmp_path, [line])
 
     assert value not in output
+
+
+def test_file_reached_through_a_referenced_file_is_measured(tmp_path: Path) -> None:
+    # The script measures the plugin it sits in, so the chain needs a plugin of its own.
+    plugin = tmp_path / "claude_plugins" / "sdd"
+    write_tree(
+        plugin,
+        {
+            "scripts/measure_prompt_size.py": SCRIPT.read_text(encoding="utf-8"),
+            "commands/first.md": "Read `${CLAUDE_PLUGIN_ROOT}/extras/second.md`.\n",
+            "extras/second.md": "Run `${CLAUDE_PLUGIN_ROOT}/extras/third.sh`.\n",
+            "extras/third.sh": "echo hi\n",
+        },
+    )
+
+    result = run_script(
+        plugin / "scripts" / "measure_prompt_size.py",
+        tmp_path,
+        "--project-root",
+        str(tmp_path),
+    )
+
+    assert row_cells(result.stdout, "claude_plugins/sdd/extras/third.sh") is not None
+
+
+def test_key_set_in_the_local_config_replaces_the_shared_value(tmp_path: Path) -> None:
+    write_tree(
+        tmp_path,
+        {
+            "docs/shared.md": "shared\n",
+            "docs/local.md": "local\n",
+            ".claude/sdd/config.local.md": "## Hooks\n\n- Guide: docs/local.md\n",
+        },
+    )
+
+    output = measure(tmp_path, ["- Guide: docs/shared.md"])
+
+    assert row_cells(output, "docs/local.md") is not None
+    assert row_cells(output, "docs/shared.md") is None
