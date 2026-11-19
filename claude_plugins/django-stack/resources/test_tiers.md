@@ -5,7 +5,9 @@ live here and nowhere else.
 
 ## The tiers
 
-- **none.** No pytest. The step reports `tier: none` and moves on.
+- **none.** No pytest. The step reports `tier: none` and moves on. A caller passes it when it
+  runs its own tier afterwards (the rebase command does this). A targeted run whose wrapper prints
+  `tier: none` is reported as `none` too.
 - **targeted.** Run the wrapper with the step's diff:
 
   ```

@@ -100,6 +100,14 @@ Rationale cut from the prompt files an agent reads at run time.
   - Both push flags stay after the refspec because a rule that blocks `git push --force:*` is a
     prefix match, and `--force-with-lease` shares that prefix. `<branch>` is written out so the
     command cannot push a different branch when pasted elsewhere.
+  - A caller can pass `<auto-resolve>`: ordered `<path prefix> → theirs | ours | <instruction>`
+    entries, the first match deciding. Those paths are exempt from the rule against a wholesale
+    `--ours` or `--theirs` on a non-generated file, and the summary lists each path with the side
+    taken, so the caller can check them.
+  - `<tier>` may be `none`: the rebase runs no tests and the caller runs its own tier. A targeted
+    run that selects nothing reports `none` too.
+  - Pre-commit runs with `--from-ref origin/main --to-ref HEAD`, so it checks only the files the
+    branch changed, not the whole tree.
   - The command carries no `model:` frontmatter, so a caller that follows it inline runs it on its
     own model.
 - **Test tiers.** `--no-cov` makes the exit code mean pass or fail: in a project whose `addopts`
