@@ -7,6 +7,7 @@ so its embedded XML has the shape of a real diagram. The command files are writt
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -18,6 +19,14 @@ pytestmark = pytest.mark.dev_tooling
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "claude_plugins" / "sdd" / "scripts" / "check_diagrams.py"
 FIXTURES = Path(__file__).parent / "fixtures" / "check_diagrams"
+SDD_DIR = REPO_ROOT / "claude_plugins" / "sdd"
+GUIDE = SDD_DIR / "commands" / "README.md"
+DIAGRAMS_DIR = SDD_DIR / "docs" / "diagrams"
+EMBED = re.compile(r"\]\(\.\./docs/diagrams/([\w.-]+\.drawio\.svg)\)")
+
+# Collected at import time so each target and each diagram is its own test id.
+GUIDE_EMBEDS = EMBED.findall(GUIDE.read_text(encoding="utf-8"))
+DIAGRAM_FILES = sorted(path.name for path in DIAGRAMS_DIR.glob("*.drawio.svg"))
 
 COMMAND = """\
 # Command
@@ -119,3 +128,13 @@ def test_usage_error_exits_64(tmp_path: Path) -> None:
     result = run_script(SCRIPT, tmp_path, "--diagram", "only.drawio.svg")
 
     assert result.returncode == 64
+
+
+@pytest.mark.parametrize("target", sorted(set(GUIDE_EMBEDS)))
+def test_guide_embed_target_exists(target: str) -> None:
+    assert (DIAGRAMS_DIR / target).is_file()
+
+
+@pytest.mark.parametrize("diagram", DIAGRAM_FILES)
+def test_guide_embeds_each_diagram_exactly_once(diagram: str) -> None:
+    assert GUIDE_EMBEDS.count(diagram) == 1
