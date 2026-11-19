@@ -24,6 +24,8 @@ cat > "$hook" <<SHIM
 #!/usr/bin/env bash
 # $marker
 root="\$(git rev-parse --show-toplevel)"
+# Worktrees share this hook, so a branch or project without a config commits unchecked.
+[ -f "\$root/.pre-commit-config.yaml" ] || exit 0
 exec uv run --project "\$root" pre-commit hook-impl --config=.pre-commit-config.yaml \\
     --hook-type=pre-commit --hook-dir "\$(cd "\$(dirname "\$0")" && pwd)" -- "\$@"
 SHIM

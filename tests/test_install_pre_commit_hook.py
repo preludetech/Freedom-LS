@@ -71,6 +71,17 @@ def test_running_twice_leaves_the_shim_in_place(tmp_path: Path) -> None:
     assert SHIM_MARKER in hook_path(repo).read_text(encoding="utf-8")
 
 
+def test_the_shim_lets_a_commit_through_when_the_worktree_has_no_pre_commit_config(
+    tmp_path: Path,
+) -> None:
+    repo = git_repo(tmp_path)
+    run_command(["bash", str(SCRIPT)], repo)
+
+    result = run_command(["bash", str(hook_path(repo))], repo)
+
+    assert result.returncode == 0
+
+
 def test_refuses_to_overwrite_a_custom_hook(tmp_path: Path) -> None:
     repo = git_repo(tmp_path)
     hook = hook_path(repo)
