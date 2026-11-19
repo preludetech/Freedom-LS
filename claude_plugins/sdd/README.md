@@ -34,7 +34,7 @@ in the report.
 `/sdd:qa_fix` works through the `(user)` items a QA run left in `todo.md`. It researches each one,
 asks for one decision at a time, has `sdd:qa-bugfixer` make each code fix test-first, screenshots
 each fix that changes what a page shows into `screenshots/fixed/` and looks at it before calling it
-fixed, runs the full tier, and ticks what it closed. `/sdd:start` writes it into the checklist after the QA step.
+fixed, runs the checkpoint tier, and ticks what it closed. `/sdd:start` writes it into the checklist after the QA step.
 
 `/sdd:roadmap` owns the spec roadmap, `spec_dd/1. next/roadmap.md`: what is up next, then one
 section per feature listing its specs (in progress, ready or blocked), an SVG dependency diagram

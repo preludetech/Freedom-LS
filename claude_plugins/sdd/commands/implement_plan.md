@@ -121,7 +121,7 @@ After all batches are complete:
 
 1. Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/commands/protected/run_test_tier.md` and follow it with `<tier>`: `full`, returning the summary line and any failing test names.
 2. Write the summary: per batch, the Design check as passed, skipped or the surviving misses with their `fixes` count; the Batch review as findings, fix batches and leftovers, or "review skipped: no <key> hook"; per batch wave, its batches and where they ran (feature worktree or batch worktree path); the leftover worktrees removed, left or skipped; then the full-tier result and each success criterion (is it met?).
-3. If any criterion is unmet: fix it with a sub-agent (`subagent_type: "general-purpose"`, per-spawn `model: "sonnet"` — the same tier as the batch sub-agents, since fixes need Bash/Edit breadth). The fix sub-agent runs `targeted`, like any batch. Then repeat from step 1, so a fix is followed by another full run
+3. If any criterion is unmet: fix it with a sub-agent (`subagent_type: "general-purpose"`, per-spawn `model: "sonnet"` — the same tier as the batch sub-agents, since fixes need Bash/Edit breadth). The fix sub-agent re-runs each failing test by node ID as the tier definition's single test run until it passes, then follows `claude_plugins/sdd/commands/protected/run_test_tier.md` with `<tier>`: `targeted` and `<diff>`: `--range <sha before the fix>..HEAD`.
 4. Once everything passes: make the final commit via `sdd:sdd-mechanic`
 
 ## When to Stop and Ask

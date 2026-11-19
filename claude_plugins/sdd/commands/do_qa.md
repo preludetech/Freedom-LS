@@ -734,16 +734,16 @@ footer before the fix loop ran, so without this it contradicts the table below i
 Use `Edit` for both; do not re-render the whole report. If the Step 12 worker failed and there is no
 `qa_report.md`, skip this sub-step; the verdicts still reach Step 15.
 
-### Full run after the last fix
+### Checkpoint after the last fix
 
 When at least one bug is `FIXED` this run, spawn a **solo `sdd:sdd-mechanic`**. Brief it to read
-`claude_plugins/sdd/commands/protected/run_test_tier.md` and follow it with `<tier>` `full`, and to
-return the `tier: full` line and the names of any failing tests inline. It changes nothing and
+`claude_plugins/sdd/commands/protected/run_test_tier.md` and follow it with `<tier>` `checkpoint`, and to
+return the `tier:` line the helper reports and the names of any failing tests inline. It changes nothing and
 writes no file, so Step 16's cleanup list stays as it is.
 
 When tests fail, add this row to `## Bug status` (skip the edit if there is no `qa_report.md`):
 
-`**UNRESOLVED** — full run after the fixes left tests failing (reason: <test names>)`
+`**UNRESOLVED** — checkpoint run after the fixes left tests failing (reason: <test names>)`
 
 Step 15 files the matching todo item. The fixes stay committed. The report and the todo carry the
 failure to the human.
@@ -792,8 +792,8 @@ These six categories, and nothing else:
    `add:"<section>|user|Fix smoke gate failure: <short description> before re-running \`/<QA command>\`"`.
 4. A product or UX decision a bug turns on:
    `add:"<section>|user|Decide <the question>, then <what follows from it>"`.
-5. A failure in the full run after the QA fixes:
-   `add:"<section>|user|Fix the tests the full run after the QA fixes left failing: <test names>"`.
+5. A failure in the checkpoint run after the QA fixes:
+   `add:"<section>|user|Fix the tests the checkpoint run after the QA fixes left failing: <test names>"`.
 6. Anything else the run leaves outstanding for the user, as the `sdd:outstanding-items` skill
    defines it: a test it could not run that only they can stage, a decision it deferred to them.
    A file a helper created is not one of these; Step 17 commits it:

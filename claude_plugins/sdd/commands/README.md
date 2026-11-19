@@ -75,7 +75,7 @@ business: read its documentation and check `qa_report.md` for the outcome.
 
 Run `/sdd:qa_fix` when QA leaves `(user)` items in `todo.md`: a bug that turns on a decision, a fix
 that failed, a file to keep or delete. It researches each item, asks you for one decision at a
-time with a recommendation, then makes the fixes test-first, runs the full tier, ticks what it
+time with a recommendation, then makes the fixes test-first, runs the checkpoint tier, ticks what it
 closed and commits. An item you answer "Leave for later" stays unticked. A decision about how a
 page looks, behaves or reads goes through `sdd:capture-feedback` on the way. A fix that changes
 what a page shows counts as fixed only once a screenshot shows it; the screenshots land in

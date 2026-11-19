@@ -63,7 +63,7 @@ Structure the plan as a sequence of vertical slices, not horizontal layers. A sl
 
 - Make the first slice the thinnest one that runs end to end. Later slices widen it: more fields, more cases, permissions, error branches, edge cases.
 - Order slices by value and dependency. Each slice builds only on slices before it.
-- Each slice names the behaviour it delivers and the tests that prove it, so it can be implemented and committed alone with the full test suite passing.
+- Each slice names the behaviour it delivers and the tests that prove it, so it can be implemented and committed alone with its targeted tests passing.
 - Number slices consecutively from 1 (`### Slice 1`, `### Slice 2`, ...). A batch id in
   `implement_plan` is the slice number.
 - Every slice carries two lines after its behaviour line and before any `**Design states:**` line:
