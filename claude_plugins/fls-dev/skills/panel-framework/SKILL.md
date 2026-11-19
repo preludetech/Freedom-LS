@@ -289,7 +289,7 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
   only its title, body and hidden fields. `modal/message.html` states something and ends in a
   Close the footer focuses (refusals, "unavailable", empty messages). `modal/form.html` is a
   multi-field form. A multi-step dialog keeps its own template but still uses `<c-modal-body>`,
-  `partials/error_summary.html` and `<c-callout>`.
+  `partials/error_summary.html` and `<c-panel-callout>`.
 - A dialog ends in `<c-modal-footer>`: it renders its own Cancel at the left (`cancel`,
   `cancel_href`, `cancel_click`, `focus_cancel`), the actions in the default slot at the right, the
   primary last; three or more group at the right. No template writes a Cancel button or a `cancel`
@@ -297,8 +297,10 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
 - A footer's Cancel or Close calls `cancel()`: it drops the input and never asks to discard. Only
   the header close control and Esc call `requestClose()`, which goes through the dirty-form
   guard.
-- A notice inside a dialog or panel is `<c-callout tone title>` (`info`, `warning`, `error`,
-  `success`), never a hand-built `bg-error/10` box. The close control is
+- A notice inside a dialog or panel is `<c-panel-callout tone title>` in a framework template and
+  `<c-callout tone title>` in an FLS panel or dialog template (`info`, `warning`, `error`,
+  `success`), never a hand-built `bg-error/10` box. The framework never writes `<c-callout>`: a
+  host renders `<c-panel-callout>` as its own callout. The close control is
   `<c-panel-close-button>`.
 - Tone follows the effect. A confirm that deletes a row (Delete, Remove) is `error`; one that
   flips `is_active` (Deactivate, Reactivate) is `primary`, as the bulk actions are.
@@ -467,7 +469,8 @@ QA looks: `test_no_control_link_is_hand_styled`, `test_every_anchor_with_visible
 `test_no_dialog_pads_its_own_body`, `test_every_dialog_renders_one_modal_footer_outside_its_body`
 (one footer per step, none in a template that extends one),
 `test_no_dialog_template_hand_writes_what_a_component_owns` (no Cancel button, `text-sm`,
-`px-6 py-4`, `bg-error/10` or `<c-callout>`), `test_every_dialog_loading_text_ends_in_the_ellipsis_character`,
+`px-6 py-4`, `bg-error/10` or `<c-callout>`), `test_no_framework_template_calls_the_host_callout` (no `<c-callout>` in any framework
+template), `test_every_dialog_loading_text_ends_in_the_ellipsis_character`,
 `test_every_dialog_disables_only_its_own_submit_buttons`,
 `test_no_dialog_form_with_a_find_selector_holds_an_element_that_issues_its_own_request`,
 `test_no_educator_module_sets_the_modal_trigger_template_by_hand`,
@@ -477,6 +480,11 @@ and `test_every_expand_chevron_turns_when_its_control_opens`. In the browser,
 `educator_interface/tests/playwright/test_touch_targets.py` checks that a small button keeps its
 desktop height on a phone, that its hit area is 44px, and that a dialog footer's buttons are 44px tall.
 Run that file after any change to a panel template.
+
+`freedom_ls/base/tests/invariants/test_app_templates_use_app_components.py`
+(`test_app_templates_use_no_content_widget_or_callout_level`) fails on a content-engine widget such
+as `<c-admonition>`, or a `level=` on `<c-callout>` or `<c-panel-callout>`, in any app template
+outside the content engine.
 
 Three guards cover the standalone backend:
 
