@@ -1,0 +1,26 @@
+<c-vars variant="primary" size="" icon="" class="" />
+
+{% with computed_class=class|add:" panel-chip panel-chip-"|add:variant %}
+    <span class="{% if size %}panel-chip-{{ size }}{% endif %} {{ computed_class }}"
+          {{ attrs }}>
+        {% if icon %}
+            <c-icon :name="icon" class="size-4" />
+        {% endif %}
+        {{ slot }}
+    </span>
+{% endwith %}
+
+{% comment %}
+Usage Examples:
+
+  <c-panel-chip>Default chip</c-panel-chip>
+
+  <!-- Variants -->
+  <c-panel-chip variant="primary">Level 1</c-panel-chip>
+
+  <!-- Small size -->
+  <c-panel-chip variant="primary" size="xs">Level 2</c-panel-chip>
+
+  <!-- Additional classes -->
+  <c-panel-chip class="shrink-0">No shrink</c-panel-chip>
+{% endcomment %}

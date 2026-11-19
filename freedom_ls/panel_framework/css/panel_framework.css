@@ -70,6 +70,44 @@
         @apply md:py-2
     }
 
+    /* Chip / badge: a small rounded label. The variant picks the tint; `xs`
+     * is the compact size the status badge uses. */
+    .panel-chip {
+        @apply inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium rounded-lg
+    }
+
+    .panel-chip-primary {
+        @apply bg-primary/15 text-primary
+    }
+
+    .panel-chip-warning {
+        @apply bg-warning-light text-on-warning-light
+    }
+
+    .panel-chip-success {
+        @apply bg-success-light text-on-success-light
+    }
+
+    .panel-chip-error {
+        @apply bg-error-light text-on-error-light
+    }
+
+    .panel-chip-info {
+        @apply bg-info-light text-on-info-light
+    }
+
+    .panel-chip-secondary {
+        @apply bg-secondary/15 text-secondary
+    }
+
+    .panel-chip-muted {
+        @apply bg-surface-2 text-muted
+    }
+
+    .panel-chip-xs {
+        @apply text-xs px-2 py-0.5
+    }
+
     /* Modal scrim: the ::backdrop pseudo of a native <dialog>, whose own box stays
      * bg-transparent. Carries only the scrim look; positioning / transitions stay
      * on each element. */

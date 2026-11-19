@@ -1849,7 +1849,7 @@ APPLIED_FILTER: list[str] = [
     'div [class="hidden md:contents"]',
     'details [class="group relative shrink-0"]',
     'summary [class="list-none marker:hidden [&::-webkit-details-marker]:hidden"]',
-    'span [class="cursor-pointer chip chip-secondary"] Kind: Alpha',
+    'span [class="cursor-pointer panel-chip panel-chip-secondary"] Kind: Alpha',
     'a [aria-label="Remove Kind filter" class="inline-flex text-current no-underline '
     'hover:text-primary" href="/test-panel/framework/stubs/N/__tabs/default?stub-sort=name" '
     'hx-get="/test-panel/framework/stubs/N/__tabs/default?stub-sort=name" hx-swap="outerHTML" '
@@ -1884,7 +1884,7 @@ APPLIED_FILTER: list[str] = [
     "text: Beta",
     'details [class="group/add relative shrink-0"]',
     'summary [class="list-none marker:hidden [&::-webkit-details-marker]:hidden"]',
-    'span [class="cursor-pointer chip chip-secondary"] Add filter',
+    'span [class="cursor-pointer panel-chip panel-chip-secondary"] Add filter',
     'svg [aria-hidden="true" class="inline size-3 transition-transform group-open/add:rotate-180" '
     'data-icon="dropdown" height="24" viewbox="0 0 24 24" width="24" '
     'xmlns="http://www.w3.org/2000/svg"]',
@@ -1924,7 +1924,7 @@ APPLIED_FILTER: list[str] = [
     'stroke-linejoin="round" stroke-width="1.5"]',
     'div [class="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3 md:hidden" '
     'data-mobile-only="true" data-storage-key="stub-sheet" x-data="sidePanel"]',
-    'span [class="chip chip-secondary"] Kind: Alpha',
+    'span [class="panel-chip panel-chip-secondary"] Kind: Alpha',
     'a [aria-label="Remove Kind filter" class="inline-flex text-current no-underline '
     'hover:text-primary" href="/test-panel/framework/stubs/N/__tabs/default?stub-sort=name" '
     'hx-get="/test-panel/framework/stubs/N/__tabs/default?stub-sort=name" hx-swap="outerHTML" '
@@ -2063,7 +2063,7 @@ NO_FILTER_APPLIED: list[str] = [
     'div [class="hidden md:contents"]',
     'details [class="group relative shrink-0"]',
     'summary [class="list-none marker:hidden [&::-webkit-details-marker]:hidden"]',
-    'span [class="cursor-pointer chip chip-secondary"] Kind',
+    'span [class="cursor-pointer panel-chip panel-chip-secondary"] Kind',
     'svg [aria-hidden="true" class="inline size-3 transition-transform group-open:rotate-180" '
     'data-icon="dropdown" height="24" viewbox="0 0 24 24" width="24" '
     'xmlns="http://www.w3.org/2000/svg"]',
@@ -2086,7 +2086,7 @@ NO_FILTER_APPLIED: list[str] = [
     "text: Beta",
     'details [class="group/add relative shrink-0"]',
     'summary [class="list-none marker:hidden [&::-webkit-details-marker]:hidden"]',
-    'span [class="cursor-pointer chip chip-secondary"] Add filter',
+    'span [class="cursor-pointer panel-chip panel-chip-secondary"] Add filter',
     'svg [aria-hidden="true" class="inline size-3 transition-transform group-open/add:rotate-180" '
     'data-icon="dropdown" height="24" viewbox="0 0 24 24" width="24" '
     'xmlns="http://www.w3.org/2000/svg"]',

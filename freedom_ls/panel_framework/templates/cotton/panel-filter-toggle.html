@@ -30,10 +30,10 @@ default slot is the popover body.
 {% elif variant == "add" %}
     <details class="group/add relative shrink-0">
         <summary class="list-none marker:hidden [&::-webkit-details-marker]:hidden">
-            <c-chip variant="secondary" class="cursor-pointer">
+            <c-panel-chip variant="secondary" class="cursor-pointer">
                 {{ label }}
                 <c-icon name="dropdown" class="size-3 transition-transform group-open/add:rotate-180" />
-            </c-chip>
+            </c-panel-chip>
         </summary>
         {{ slot }}
     </details>
@@ -43,10 +43,10 @@ default slot is the popover body.
             {% if summary.strip %}
                 {{ summary }}
             {% else %}
-                <c-chip variant="secondary" class="cursor-pointer">
+                <c-panel-chip variant="secondary" class="cursor-pointer">
                     {{ label }}
                     <c-icon name="dropdown" class="size-3 transition-transform group-open:rotate-180" />
-                </c-chip>
+                </c-panel-chip>
             {% endif %}
         </summary>
         {{ slot }}

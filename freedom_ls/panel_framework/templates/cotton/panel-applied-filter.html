@@ -21,7 +21,7 @@ Attributes:
 and hx-swap to retract the filter without a full page load.
 {% endcomment %}
 
-<c-chip variant="secondary" class="{% if disclosure|flag %}cursor-pointer{% endif %}">
+<c-panel-chip variant="secondary" class="{% if disclosure|flag %}cursor-pointer{% endif %}">
     {{ label }}
     {% if remove_href %}
         <a href="{{ remove_href }}"
@@ -32,4 +32,4 @@ and hx-swap to retract the filter without a full page load.
         </a>
     {% endif %}
     {% if disclosure|flag %}<c-icon name="dropdown" class="size-3 transition-transform group-open:rotate-180" />{% endif %}
-</c-chip>
+</c-panel-chip>

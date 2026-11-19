@@ -134,11 +134,13 @@ def _reset_recording_capability_config():
 # ---------------------------------------------------------------------------
 
 _TEST_TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
+_FRAMEWORK_TEMPLATES_DIR = Path(__file__).resolve().parents[1] / "templates"
 
 
 @pytest.fixture(autouse=True)
 def _use_panel_test_templates(settings: pytest_django.fixtures.SettingsWrapper) -> None:
-    """Make panel_framework's test-only templates loadable.
+    """Make panel_framework's test-only templates loadable, and its own
+    templates win over any host's.
 
     `test_interface.html` and `test_extra_oob_fragment.html` are test fixtures,
     not app templates. They live here rather than in the app's template
@@ -146,11 +148,20 @@ def _use_panel_test_templates(settings: pytest_django.fixtures.SettingsWrapper) 
     project that installs FLS. Prepending this directory keeps their template
     names unchanged while confining them to the test run.
 
+    The framework's own template directory follows, ahead of every directory
+    the project configured, so a host that overrides a primitive (a
+    `cotton/panel-chip.html` of its own) never reaches the framework's own
+    tiers: they render the framework default.
+
     The copy is deliberate: mutating DIRS in place would neither trigger the
     template-engine reset nor be undone after the test.
     """
     templates = copy.deepcopy(settings.TEMPLATES)
-    templates[0]["DIRS"] = [str(_TEST_TEMPLATES_DIR), *templates[0]["DIRS"]]
+    templates[0]["DIRS"] = [
+        str(_TEST_TEMPLATES_DIR),
+        str(_FRAMEWORK_TEMPLATES_DIR),
+        *templates[0]["DIRS"],
+    ]
     settings.TEMPLATES = templates
 
 
