@@ -16,9 +16,10 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
+- [ ] (user) Allow deleting Gone Learner's CourseProgress (efb2ba71-…) and Learner (fc1c44ac-…) in the dev DB, which the permission system blocked during QA, then re-run QA Test 6.3–6.4 (a cached row whose Learner is gone shows initials); or accept the unit-test coverage and tick this
 
 ## 4. Documentation and pull request
 
