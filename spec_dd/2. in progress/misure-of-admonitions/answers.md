@@ -7,3 +7,4 @@ Asked by `/sdd:start` before the spec was written.
 - Q: Should a test enforce that content-engine cotton components are not used in app templates outside content rendering? → A: Yes, an invariant test (asked up front)
 - Q: Should the new alert support being dismissed by the user? → A: No, static only (asked up front)
 - Q: The panel framework already has `<c-panel-notice tone title>` (compact, used in 17 panel and dialog templates). How should the new page alert relate to it? → A: One component everywhere: the new alert in base replaces `c-panel-notice` too, and all its uses migrate (asked while research ran)
+- Q: How should the alert be named inside the panel framework, which `extract_panels_framework-4-template-contract` is pulling out into its own package? → A: Panel-specific components are named `panel-{name}`: framework templates call `<c-panel-alert>`, never `<c-alert>`, and nothing here may contradict spec 4 (given after the spec review)
