@@ -24,6 +24,9 @@ from freedom_ls.educator_interface.events import (
     LEARNER_CHANGED,
     REGISTRATION_CHANGED,
 )
+from freedom_ls.educator_interface.panels.common.report import (
+    report_over_limit_message,
+)
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
@@ -49,7 +52,6 @@ from freedom_ls.panel_framework.lazy_panels import (
     render_region,
 )
 from freedom_ls.panel_framework.panels import Panel, PanelStack
-from freedom_ls.panel_framework.views import StatusBadge
 from freedom_ls.reports.config import config as reports_config
 from freedom_ls.reports.gather import gather_learner_course_details
 from freedom_ls.reports.models import GeneratedReport
@@ -73,44 +75,10 @@ from freedom_ls.reports.services import (
     recent_cohort_reports,
     request_cohort_report,
 )
-from freedom_ls.reports.statuses import ProgressStatus, progress_status
 
 #: How often the downloads region asks again while a report is being generated.
 REPORT_POLL_SECONDS = 3
 DOWNLOAD_COHORT_REPORT = "freedom_ls_learner_management.download_cohort_report"
-
-PROGRESS_STATUS_TONES = {
-    ProgressStatus.NOT_STARTED: "muted",
-    ProgressStatus.IN_PROGRESS: "info",
-    ProgressStatus.COMPLETE: "success",
-}
-
-
-def progress_status_badge(completion_percentage: int) -> StatusBadge:
-    """The badge for a learner's progress status, from a recomputed completion."""
-    status = progress_status(completion_percentage)
-    return StatusBadge(tone=PROGRESS_STATUS_TONES[status], label=status.label)
-
-
-def flag_badge(flag: AtRiskFlag) -> StatusBadge:
-    """The badge for an at-risk flag."""
-    # A rule's severity is already a role token name, so it is the tone.
-    return StatusBadge(tone=flag.severity, label=flag.label)
-
-
-def report_over_limit_message(cohort: Cohort) -> str:
-    """Why no report can be generated for `cohort`, or "" while it is within the limit.
-
-    The limit is a resource guard the task enforces when it builds the
-    roster; checking the active learner count up front keeps the Downloads
-    card from offering a report that can only fail.
-    """
-    learner_count = cohort_learner_count(cohort)
-    limit = reports_config.REPORTS_MAX_LEARNERS
-    if learner_count <= limit:
-        return ""
-    return over_limit_message(cohort.name, learner_count, limit)
-
 
 #: How many finished reports the Downloads table lists.
 DOWNLOADS_LISTED = 5

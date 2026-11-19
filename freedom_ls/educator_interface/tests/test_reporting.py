@@ -29,10 +29,9 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     TopicFactory,
 )
-from freedom_ls.educator_interface.reporting import (
+from freedom_ls.educator_interface.panels.common.report import (
     PROGRESS_STATUS_TONES,
     flag_badge,
-    over_limit_message,
     progress_status_badge,
 )
 from freedom_ls.learner_management.factories import (
@@ -56,6 +55,7 @@ from freedom_ls.reports.report_data import (
     QuizColumn,
     QuizConfusion,
     SummaryTable,
+    over_limit_message,
 )
 from freedom_ls.reports.screen_cache import _cache_key
 from freedom_ls.reports.statuses import ProgressStatus
