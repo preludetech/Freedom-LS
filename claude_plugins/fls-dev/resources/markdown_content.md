@@ -28,6 +28,8 @@ html = topic.rendered_content()
 
 Includes `admonition.html`, `flashcard.html`, `accordion.html`, `youtube.html`, `picture.html`, `content-link.html`, `audio.html`.
 
+These widgets are for authored markdown only. App templates (pages, panels, dialogs) use `<c-callout tone="info|success|warning|error" title="...">` from `freedom_ls/base/templates/cotton/callout.html` instead of `<c-admonition>`.
+
 **Usage:**
 ```markdown
 <c-admonition type="note" title="Optional heading">Content here</c-admonition>
