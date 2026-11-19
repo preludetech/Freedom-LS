@@ -1,15 +1,1 @@
-{% comment %}
-Shared interface page title — rendered inside the _base_interface header so every
-interface styles its <h1> (and optional subtitle) identically. The wrapper keeps a
-stable id so HTMX-driven interfaces (educator) can OOB-swap it on navigation; pass
-oob=True on those fragment responses. When page_title is empty the wrapper renders
-empty and contributes no vertical space (margins live on the <h1>/<p>, not here).
-{% endcomment %}
-<hgroup id="page-title"{% if oob %} hx-swap-oob="true"{% endif %}>
-    {% if page_title %}
-        <h1 class="mt-3 tracking-tight">{{ page_title }}</h1>
-        {% if page_subtitle %}
-            <p class="mt-2 sm:text-lg text-muted">{{ page_subtitle }}</p>
-        {% endif %}
-    {% endif %}
-</hgroup>
+{% include "panel_framework/partials/page_title.html" %}

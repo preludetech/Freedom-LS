@@ -286,6 +286,25 @@ def test_navigation_bundle_names_the_page_and_the_site(
     assert _title_text(content) == f"Stubs — {mock_site_context.name}"
 
 
+def _title_for_context(**context: object) -> str:
+    """The navigation response's <title> text for a context built by hand."""
+    html = render_to_string(
+        "panel_framework/navigation_response.html",
+        {"main_template_name": "panel_framework/partials/page_title.html", **context},
+    )
+    return _title_text(html)
+
+
+def test_a_navigation_title_with_no_site_name_has_no_suffix_or_trailing_separator() -> (
+    None
+):
+    assert _title_for_context(heading="Stubs") == "Stubs"
+
+
+def test_a_navigation_title_with_a_site_name_ends_in_the_site_name() -> None:
+    assert _title_for_context(heading="Stubs", site_name="Acme") == "Stubs — Acme"
+
+
 @pytest.mark.django_db
 def test_navigation_title_names_the_scope_the_request_carries(
     mock_site_context: Site,

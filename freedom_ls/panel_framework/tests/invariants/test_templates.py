@@ -826,3 +826,78 @@ def test_every_cotton_tag_in_a_framework_template_is_a_framework_component() -> 
     }
 
     assert used - available - COTTON_SYNTAX_TAGS - HOST_SUPPLIED_COMPONENTS == set()
+
+
+INCLUDE_OR_EXTENDS_PATH = re.compile(r"\{%\s*(?:include|extends)\s+[\"']([^\"']+)[\"']")
+ALLOWED_TEMPLATE_PREFIXES = ("panel_framework/", "cotton/", "django/forms/")
+# The reference page still extends the host's base template.
+KNOWN_EXTERNAL_PATHS = {
+    "panel_framework/reference/component_reference.html": {"_base.html"}
+}
+FLS_APP_LABELS = (
+    "accounts",
+    "api",
+    "api_admin",
+    "audit_log",
+    "base",
+    "blog",
+    "comms",
+    "content_base",
+    "content_engine",
+    "course_access",
+    "course_applications",
+    "course_interest",
+    "course_recommendations",
+    "deadlines",
+    "deployment",
+    "educator_interface",
+    "form_engine",
+    "google_tag",
+    "health",
+    "hr_attributes",
+    "icons",
+    "learner_interface",
+    "learner_management",
+    "learner_progress",
+    "mail",
+    "markdown_rendering",
+    "messaging_policy",
+    "meta_pixel",
+    "organisations",
+    "referral_tracking",
+    "registration_rules",
+    "reports",
+    "role_based_permissions",
+    "site_aware_models",
+    "tiktok_pixel",
+    "webhooks",
+)
+# An app named in a template path, a URL namespace or a dotted module path.
+FLS_ONLY_NAMES = re.compile(
+    rf"\bfreedom_ls\b|\b(?:{'|'.join(FLS_APP_LABELS)})(?=/|:\w)|\bconversationChanged\b"
+)
+
+
+def test_no_framework_template_includes_or_extends_a_path_outside_the_framework() -> (
+    None
+):
+    outside = {
+        f"{path.relative_to(TEMPLATES_DIR).as_posix()}: {target}"
+        for path in TEMPLATES_DIR.rglob("*.html")
+        for target in INCLUDE_OR_EXTENDS_PATH.findall(path.read_text())
+        if not target.startswith(ALLOWED_TEMPLATE_PREFIXES)
+        and target
+        not in KNOWN_EXTERNAL_PATHS.get(path.relative_to(TEMPLATES_DIR).as_posix(), ())
+    }
+
+    assert outside == set()
+
+
+def test_no_framework_template_names_an_fls_app_or_an_fls_only_event() -> None:
+    offenders = {
+        f"{path.relative_to(TEMPLATES_DIR).as_posix()}: {name}"
+        for path in TEMPLATES_DIR.rglob("*.html")
+        for name in FLS_ONLY_NAMES.findall(path.read_text())
+    }
+
+    assert offenders == set()
