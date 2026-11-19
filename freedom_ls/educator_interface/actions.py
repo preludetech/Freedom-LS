@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import replace
 from typing import NamedTuple, cast
-from uuid import UUID
 
 from django import forms
 from django.contrib.auth.base_user import AbstractBaseUser
@@ -57,7 +56,6 @@ from freedom_ls.educator_interface.forms import (
     CohortPickerForm,
     CohortSetForm,
     CoursePickerForm,
-    EducatorReasonForm,
     LearnerCourseRegistrationForm,
     LearnerNameForm,
     LearnerPickerForm,
@@ -66,6 +64,14 @@ from freedom_ls.educator_interface.forms import (
     course_target,
 )
 from freedom_ls.educator_interface.learner_import import check_import_gate
+from freedom_ls.educator_interface.panels.common.actions import (
+    EducatorReasonMixin,
+    _action_params,
+    _empty_message,
+    _picker_title,
+    _register_title,
+    _uuid_from,
+)
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
@@ -166,7 +172,6 @@ from freedom_ls.panel_framework.actions import (
     FormPanelAction,
     ModalPanelAction,
     PanelAction,
-    ReasonMixin,
     changed_response,
     count_noun,
     count_phrase,
@@ -286,19 +291,6 @@ def has_grantable_roles(ctx: PanelContext) -> bool:
     return bool(grantable_roles_for(ctx.request))
 
 
-def _uuid_from(params: Mapping[str, str], name: str) -> UUID:
-    try:
-        return UUID(params.get(name, ""))
-    except ValueError:
-        raise Http404(f"No such {name}") from None
-
-
-def _action_params(request: HttpRequest) -> Mapping[str, str]:
-    """The parameters an action's trigger sent along: the form on a submit,
-    the query string otherwise."""
-    return request.POST if request.method == "POST" else request.GET
-
-
 def inactive_cohort_response(
     ctx: PanelContext, cohort: Cohort, blocked_phrase: str
 ) -> HttpResponse:
@@ -374,12 +366,6 @@ class RequiresActiveCohortMixin(PanelAction):
         overrides this, never handle_submit, so the guard above stays the
         one place the refusal lives."""
         return super().handle_submit(ctx)
-
-
-class EducatorReasonMixin(ReasonMixin):
-    """A reason dialog that words its field the educator way."""
-
-    reason_form_class = EducatorReasonForm
 
 
 class EditCohortAction(RequiresActiveCohortMixin, EditAction):
@@ -1223,41 +1209,6 @@ class MoveToCohortAction(MembershipAction):
             forms.ModelChoiceField, form.fields["destination"]
         ).queryset = _joinable_cohorts(ctx, learner)
         return render(ctx.request, self.template_name, context, status=422)
-
-
-def _empty_message(form: forms.BaseForm, field_name: str, message: str) -> str | None:
-    """`message` when the picker's field offers nothing, otherwise None."""
-    queryset = cast(forms.ModelChoiceField, form.fields[field_name]).queryset
-    return None if queryset is not None and queryset.exists() else message
-
-
-def _picker_title[M: Model](
-    form: forms.BaseForm,
-    field_name: str,
-    *,
-    unchosen: str,
-    chosen: Callable[[M], str],
-) -> str:
-    """The question a picker dialog asks: `chosen` names the valid choice the
-    form holds, `unchosen` stands until there is one."""
-    if form.is_bound and form.is_valid():
-        return f"{chosen(cast(M, form.cleaned_data[field_name]))}?"
-    return f"{unchosen}?"
-
-
-def _register_title(
-    form: forms.BaseForm, subject: str, organisation: Organisation
-) -> str:
-    """Title a register-for-a-course dialog for `subject` (a learner's or a
-    cohort's name), naming the course once one is chosen, as `organisation`
-    reads it."""
-
-    def chosen(course: Course) -> str:
-        return f"Register {subject} for {course.label_for(organisation)}"
-
-    return _picker_title(
-        form, "course", unchosen=f"Register {subject} for a course", chosen=chosen
-    )
 
 
 class AddToCohortAction(FormPanelAction):

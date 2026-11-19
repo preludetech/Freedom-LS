@@ -11,6 +11,7 @@ from __future__ import annotations
 import inspect
 
 from freedom_ls.educator_interface import actions
+from freedom_ls.educator_interface.panels.common import actions as common_actions
 from freedom_ls.panel_framework.actions import ReasonMixin
 
 
@@ -20,7 +21,7 @@ def _reason_actions() -> list[type[ReasonMixin]]:
         for _, cls in inspect.getmembers(actions, inspect.isclass)
         if issubclass(cls, ReasonMixin)
         and cls is not ReasonMixin
-        and cls is not actions.EducatorReasonMixin
+        and cls is not common_actions.EducatorReasonMixin
     ]
 
 
