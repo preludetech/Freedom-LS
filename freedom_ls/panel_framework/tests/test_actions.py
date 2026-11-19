@@ -2822,8 +2822,6 @@ def test_a_denied_remove_answers_403(mock_site_context: Site, method: str) -> No
     assert StubEntry.objects.filter(pk=entry.pk).exists()
 
 
-# -- The cap on an editable list -----------------------------------------
-
 CAP_LINE = "You can have up to 2. Remove one to add another."
 
 
