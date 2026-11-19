@@ -41,6 +41,7 @@ from freedom_ls.form_engine.models import (
 )
 from freedom_ls.form_engine.queries import attempt_completes_form
 from freedom_ls.form_engine.scoring import evaluate_quiz_answers
+from freedom_ls.form_engine.served_paper import served_child_ids
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
@@ -125,6 +126,10 @@ class FormProgressIndex:
     # Every form progress row, quiz or not: a completed survey sitting is in
     # completed_attempt_ids and must resolve here without a KeyError.
     learner_form_by_attempt_id: dict[UUID, tuple[UUID, UUID]]
+    # The children each completed sitting was served, for sittings that recorded a
+    # served paper. A completed sitting absent from this map is paired with every
+    # question of its form.
+    served_child_ids_by_attempt_id: dict[UUID, frozenset[UUID]]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -404,6 +409,7 @@ def fold_form_progress_rows(
     completed_form_ids_by_learner: dict[UUID, set[UUID]] = defaultdict(set)
     completed_attempt_ids: list[UUID] = []
     learner_form_by_attempt_id: dict[UUID, tuple[UUID, UUID]] = {}
+    served_child_ids_by_attempt_id: dict[UUID, frozenset[UUID]] = {}
     for fp in form_progress_rows:
         learner_id = (
             fp.course_attempt.course_progress.learner_id
@@ -426,6 +432,10 @@ def fold_form_progress_rows(
             if is_latest_completed and attempt_completes_form(fp):
                 completed_form_ids_by_learner[learner_id].add(fp.form_id)
             completed_attempt_ids.append(fp.id)
+            if fp.served_paper is not None:
+                served_child_ids_by_attempt_id[fp.id] = served_child_ids(
+                    fp.served_paper
+                )
 
     # The rows arrive newest-completed first; a reader of a learner's section
     # wants their sittings in the order they sat them. completed_attempt_ids is
@@ -440,6 +450,7 @@ def fold_form_progress_rows(
         completed_form_ids_by_learner=completed_form_ids_by_learner,
         completed_attempt_ids=completed_attempt_ids,
         learner_form_by_attempt_id=learner_form_by_attempt_id,
+        served_child_ids_by_attempt_id=served_child_ids_by_attempt_id,
     )
 
 
@@ -614,15 +625,20 @@ def build_sat_questions(
     # completed sitting with every question it covered instead, so a blank one is
     # judged as an empty selection rather than passed over.
     #
+    # A sitting is paired with the questions it was served, and with every
+    # question of its form when it recorded no paper.
+    #
     # A completed survey sitting is in completed_attempt_ids too; by_form yields
     # nothing for its form, so it contributes no pairs.
     pairs: list[tuple[UUID, FormQuestion]] = [
         (attempt_id, question)
         for attempt_id in forms.completed_attempt_ids
+        for served in [forms.served_child_ids_by_attempt_id.get(attempt_id)]
         for question in questions.by_form.get(
             forms.learner_form_by_attempt_id[attempt_id][1], []
         )
         if question.type not in FREE_TEXT_QUESTION_TYPES
+        if served is None or question.id in served
     ]
     answer_rows = [
         (

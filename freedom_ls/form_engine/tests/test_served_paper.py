@@ -21,6 +21,7 @@ from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
 from freedom_ls.form_engine.served_paper import (
     build_served_paper,
     ensure_served_paper,
+    served_child_ids,
 )
 
 
@@ -158,3 +159,20 @@ def test_ensure_served_paper_does_not_touch_last_updated_time(
     ensure_served_paper(progress)
 
     assert FormProgress.objects.get(pk=progress.pk).last_updated_time == before
+
+
+@pytest.mark.django_db
+def test_served_child_ids_holds_every_child_from_every_page_as_uuids(
+    quiz_form: Form,
+) -> None:
+    page_one, page_two = quiz_form.pages.all()
+    content = page_one.text_items.get()
+    question = page_one.questions.get()
+    unanswerable = page_two.questions.get()
+    paper = served_paper_of(
+        [(page_two, [unanswerable]), (page_one, [content, question])]
+    )
+
+    assert served_child_ids(paper) == frozenset(
+        {content.id, question.id, unanswerable.id}
+    )

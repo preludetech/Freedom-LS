@@ -8,6 +8,7 @@ scored the same way however the form is edited afterwards.
 from __future__ import annotations
 
 import secrets
+from uuid import UUID
 
 from django.db.models import prefetch_related_objects
 
@@ -30,6 +31,15 @@ def build_served_paper(form: Form) -> ServedPaper:
                     options[str(child.id)] = option_ids
     # Provenance only: nothing rebuilds an order from the seed.
     return {"seed": secrets.randbits(63), "pages": pages, "options": options}
+
+
+def served_child_ids(served_paper: ServedPaper) -> frozenset[UUID]:
+    """Every content block and question id the paper serves, on any page."""
+    return frozenset(
+        UUID(child_id)
+        for page in served_paper["pages"]
+        for child_id in page["children"]
+    )
 
 
 def ensure_served_paper(form_progress: FormProgress) -> None:

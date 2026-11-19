@@ -31,6 +31,7 @@ from freedom_ls.form_engine.factories import (
     FormQuestionFactory,
     QuestionAnswerFactory,
     QuestionOptionFactory,
+    served_paper_of,
 )
 from freedom_ls.form_engine.models import FormStrategy, QuestionType
 from freedom_ls.learner_management.factories import (
@@ -1013,6 +1014,7 @@ def _load_everything(cohort, site_id):
         "questions": questions,
         "tallies": tallies,
         "distractors": distractors,
+        "sat": sat,
     }
 
 
@@ -1243,3 +1245,84 @@ class TestLoadOrganisationLogoDataUri:
         organisation.logo.save("logo.png", ContentFile(truncated))
 
         assert load_organisation_logo_data_uri(organisation) is None
+
+
+class TestASittingIsPairedOnlyWithItsServedQuestions:
+    @pytest.fixture
+    def quiz_with_three_questions(self, mock_site_context):
+        course = CourseFactory()
+        quiz = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
+        _attach(course, quiz, order=0)
+        page = FormPageFactory(form=quiz, order=0)
+        questions = [
+            FormQuestionFactory(
+                form_page=page, type=QuestionType.MULTIPLE_CHOICE, order=index
+            )
+            for index in range(3)
+        ]
+        for question in questions:
+            QuestionOptionFactory(question=question, text="Right", correct=True)
+        _, records = _cohort_registered_for(course, learner_count=1)
+        return quiz, page, questions, records[0]
+
+    def _paired_question_ids(self, quiz, record):
+        cohort = record.cohort_registration.cohort
+        loaded = _load_everything(cohort, quiz.site_id)
+        return {question.id for _, question in loaded["sat"].pairs}
+
+    def test_a_sitting_with_a_subset_paper_is_paired_only_with_its_served_questions(
+        self, quiz_with_three_questions
+    ):
+        quiz, page, questions, record = quiz_with_three_questions
+        form_progress(
+            record,
+            quiz,
+            completed_time=timezone.now(),
+            served_paper=served_paper_of([(page, [questions[0], questions[2]])]),
+        )
+
+        paired = self._paired_question_ids(quiz, record)
+
+        assert paired == {questions[0].id, questions[2].id}
+
+    def test_a_served_question_since_removed_from_the_form_is_not_paired(
+        self, quiz_with_three_questions
+    ):
+        quiz, page, questions, record = quiz_with_three_questions
+        form_progress(
+            record,
+            quiz,
+            completed_time=timezone.now(),
+            served_paper=served_paper_of([(page, questions)]),
+        )
+        questions[1].delete()
+
+        paired = self._paired_question_ids(quiz, record)
+
+        assert paired == {questions[0].id, questions[2].id}
+
+    def test_a_sitting_with_no_paper_is_paired_with_every_question_of_its_form(
+        self, quiz_with_three_questions
+    ):
+        quiz, _, questions, record = quiz_with_three_questions
+        form_progress(record, quiz, completed_time=timezone.now())
+
+        paired = self._paired_question_ids(quiz, record)
+
+        assert paired == {question.id for question in questions}
+
+    def test_a_blank_served_question_is_paired_and_judged_incorrect(
+        self, quiz_with_three_questions
+    ):
+        quiz, page, questions, record = quiz_with_three_questions
+        form_progress(
+            record,
+            quiz,
+            completed_time=timezone.now(),
+            served_paper=served_paper_of([(page, [questions[0]])]),
+        )
+        cohort = record.cohort_registration.cohort
+
+        sat = _load_everything(cohort, quiz.site_id)["sat"]
+
+        assert list(sat.correctness.values()) == [False]

@@ -203,6 +203,7 @@ def a_progress_index(
         completed_form_ids_by_learner=completed_form_ids_by_learner or {},
         completed_attempt_ids=completed_attempt_ids or [],
         learner_form_by_attempt_id=learner_form_by_attempt_id or {},
+        served_child_ids_by_attempt_id={},
     )
     return ProgressIndex(
         topics=topics,
