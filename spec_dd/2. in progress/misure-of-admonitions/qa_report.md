@@ -123,7 +123,7 @@ Manifestations:
 | Bug | Status |
 |---|---|
 | B1 | **FIXED** (commit: a22b1b302) — Reference page: explanatory line touches the callout below it. Re-verified in the browser: 8px between each line and its callout ([screenshot](screenshots/page-2026-11-19T14-44-35-159Z.png)) |
-| — | **UNRESOLVED** — full run after the fixes left tests failing (reason: `freedom_ls/panel_framework/tests/playwright/test_quick_view_flow.py::test_unsent_draft_asks_before_the_drawer_is_left` failed in the full run; on its own it failed 2 of 5 runs, so it is flaky. This branch does not touch the quick-view code, but it was not checked against main) |
+| — | **FIXED** (commit: 75d3e9a9e) — full run after the fixes left tests failing: `test_quick_view_flow.py::test_unsent_draft_asks_before_the_drawer_is_left` was flaky. It read the discard prompt's heading and body edges in two separate calls while the drawer slid in; both are now read in one script run. 8 consecutive isolated passes after the fix |
 | B2 | **FIXED** (commit: a4f361c91) — Course content panel: in-development callout touches the outline table. Re-verified in the browser: 16px between the callout and the table ([screenshot](screenshots/page-2026-11-19T14-55-54-176Z.png)) |
 
 ## General notes
@@ -133,4 +133,4 @@ Manifestations:
 - The only console errors were expected 422 resource lines from validation responses.
 - The qa-data-helper also added `reference_admonition_scenarios_command.md` under `.claude/agent-memory/sdd-qa-data-helper/` and indexed it in that folder's `MEMORY.md`. The folder is tracked in the repo and already holds earlier QA runs' entries, so these are committed with the QA artifacts.
 
-status: ok · reason: 2 bugs — 2 fixed, 0 unresolved; report rendered, screenshots verified
+status: ok · reason: 2 bugs and 1 test failure — 3 fixed, 0 unresolved; report rendered, screenshots verified
