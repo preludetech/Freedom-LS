@@ -14,7 +14,7 @@ These are the five sections of the `todo.md` checklist. Capturing the idea comes
 
 ![The cycle from `/sdd:start` to `/sdd:finish_worktree` in `todo.md` order, with the two full-run points, the side commands and the test-tier legend.](../docs/diagrams/overview.drawio.svg)
 
-The overview has one box per command, in the order of the `todo.md` sections. A box with a diagram links to it. The red boxes are the two places a full test run can happen (see "When the full suite runs"). The plain grey boxes are commands you run when you need them. In the other diagrams, every `Step N` box carries its heading's text, and a legend in the corner gives the fill for each test tier.
+The overview has one box per command, in the order of the `todo.md` sections. A box with a diagram links to it. The red boxes are the two places a full test run can happen (see "When the full suite runs"). The plain grey boxes are commands you run when you need them. In the other diagrams, every `Step N` box carries its heading's text, and a legend gives the fill for each test tier. The `implement_plan`, `qa_fix` and `finish_worktree` diagrams each hold several flowcharts: one main flow of the steps, and one chart per sub-flow. A box with double sides in one chart has a chart of its own, titled with the same name. In those three, the fill also says who does the work: white for the orchestrator, orange for a sub-agent, purple for a hook, green for you.
 
 > `/sdd:start` is the entry point: it creates the `todo.md` checklist next to the spec/idea **and** an isolated worktree, moves the session into the worktree, registers a design when `design_prompt.md` is present and writes the spec. When it ends, the session is already inside the worktree, so everything after it runs there.
 
@@ -92,9 +92,9 @@ An optional suffix argument (`/sdd:plan_from_spec <spec> 2b`) selects a second p
 
 ### Implement
 
-![The `/sdd:implement_plan` flow: reading the plan, batch waves with targeted runs, the Design check, the Batch review with the Comment standard and Test standard hooks, and the full run in Step 3.](../docs/diagrams/implement_plan.drawio.svg)
+![The `/sdd:implement_plan` flow as six flowcharts: the main flow of Steps 0 to 7, then one chart each for a batch wave, the batch sub-agent, the Design check, the Batch review and the final verification with its full run.](../docs/diagrams/implement_plan.drawio.svg)
 
-The orchestrator reads the plan and forms batch waves from the batches whose predecessors are done. Each batch sub-agent implements its steps, runs a targeted test run and commits. After a batch, the Design check compares screenshots with the design, and the Batch review applies the `Comment standard` and `Test standard` hooks to the added lines. Step 3 runs the full test tier once, at the end.
+The orchestrator reads the plan and forms batch waves from the batches whose predecessors are done. Each batch sub-agent implements its steps, runs a targeted test run and commits. After a batch, the Design check compares screenshots with the design, and the Batch review applies the `Comment standard` and `Test standard` hooks to the added lines. Step 3 runs the full test tier once, at the end. The main flow is the chart at the top left; the batch wave, the batch sub-agent, the Design check, the Batch review and the final verification each have their own chart.
 
 Run `/implement_plan` to execute the implementation plan. It runs batch waves: up to `Parallel batches` (the key in `.claude/sdd/config.md`) independent batches at a time, each in its own batch worktree. When the batches are done it continues into the QA command. An optional suffix argument (`/implement_plan 2b`) selects the plan `2b. plan.md`, commits its batches as `[batch 2b.N]` and resumes only from those commits. Without a suffix, it runs `2. plan.md` with `[batch N]` commits. After each slice that builds a designed screen, it runs the design check through the `Design check` hook in `.claude/sdd/config.md`, and sends any design misses (unmet lines of the plan's design checklist) to fix batches.
 
@@ -123,9 +123,9 @@ The `qa-bugfixer` agent's report lists its `## Files modified`, and the depth-0 
 
 ### Decide and fix
 
-![The `/sdd:qa_fix` flow: collect open items, research each, ask one decision at a time, fix test-first, check visual fixes on the page, checkpoint run, record and commit.](../docs/diagrams/qa_fix.drawio.svg)
+![The `/sdd:qa_fix` flow as four flowcharts: the main flow of Steps 0 to 10, then one chart each for fixing one item, the qa-bugfixer sub-agent and checking one visual fix on the page.](../docs/diagrams/qa_fix.drawio.svg)
 
-The orchestrator collects the open items and researches each, with one worker per item when there are four or more. It asks you one question per item, then fixes test-first. A fix that changes a page is checked in a browser and screenshotted. A checkpoint run and the todo update close the command.
+The orchestrator collects the open items and researches each, with one worker per item when there are four or more. It asks you one question per item, then fixes test-first. A fix that changes a page is checked in a browser and screenshotted. A checkpoint run and the todo update close the command. The main flow is the chart on the left; fixing one item, the `qa-bugfixer` and the visual check each have their own chart.
 
 Run `/sdd:qa_fix` when QA leaves `(user)` items in `todo.md`: a bug that turns on a decision, a fix
 that failed, a file to keep or delete. It researches each item, asks you for one decision at a
@@ -159,9 +159,9 @@ Run `/sdd:document`. It reads `## Documentation Hooks` in `.claude/sdd/config.md
 
 Once the PR is approved (or already merged), run `/sdd:finish_worktree`. It rebases, archives the spec and its roadmap row, lands the close-out on `main` by fast-forward push and brings the main worktree up to date. It stops, changing nothing on `main`, if the main worktree has uncommitted work or an operation in progress. Nobody runs `git merge` in the main worktree by hand. Then remove the worktree and delete the branch.
 
-![The `/sdd:finish_worktree` flow: pre-step rebase, main-worktree preflight, checkpoint tier with the flaky-test loop, teardown, todo and roadmap, close-out commit, and landing on main with the main-moved loop.](../docs/diagrams/finish_worktree.drawio.svg)
+![The `/sdd:finish_worktree` flow as six flowcharts: the main flow of Steps 0 to 8 with its stopping states, then one chart each for the checkpoint run, flaky tests, landing on main, the main-moved loop and a dirty main worktree.](../docs/diagrams/finish_worktree.drawio.svg)
 
-The command rebases the branch, runs the checkpoint tier and tears down per-worktree resources. It archives the spec, removes the roadmap row, commits the close-out and lands the branch on `main` by fast-forward. When `origin/main` moves in the meantime, the main-moved loop rebases and tests again. "How `finish_worktree` recovers" lists what the command fixes by itself and what stops it.
+The command rebases the branch, runs the checkpoint tier and tears down per-worktree resources. It archives the spec, removes the roadmap row, commits the close-out and lands the branch on `main` by fast-forward. When `origin/main` moves in the meantime, the main-moved loop rebases and tests again. The main flow is the chart at the top left, with each stopping state to its right; the checkpoint run, flaky tests, landing on main, the main-moved loop and a dirty main worktree each have their own chart. "How `finish_worktree` recovers" lists what the command fixes by itself and what stops it.
 
 Two choices behind the order. Step 0.5 runs the main-worktree sync before anything is committed, so a parked operation on `main` is found before the branch is touched, and Step 7 does not need a second rebase when local `main` was ahead of `origin`. The pre-test rebuild runs even when the branch needed no rebase, because built assets such as compiled CSS are often gitignored: a branch can hold output older than its templates.
 
@@ -274,6 +274,7 @@ Each diagram is an `.drawio.svg` file: an SVG that GitHub renders, with the draw
 
 1. Open the file in draw.io and save it. The save keeps the embedded XML.
 2. Run `python3 claude_plugins/sdd/scripts/check_diagrams.py`. It fails when a `Step N` heading in a command has no label starting with the same text, or when a `Step N` label names a step the command lacks. Rename the label with the heading. `overview` is exempt, so none of its labels starts with `Step`.
+3. Keep each flowchart small. When a step holds a loop, a retry or a sub-agent's own steps, draw that as a separate flowchart in the same file, under its own title, and leave one double-sided box named after it in the main flow.
 
 To write a diagram as XML instead, save uncompressed draw.io XML (`<mxfile><diagram><mxGraphModel>…`) as `.sdd-work/diagram_<name>.drawio` in the project, export it, delete the source by name and run the check:
 
