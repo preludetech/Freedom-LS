@@ -38,13 +38,26 @@ Step 1 describes (the plain run when there is no tier definition). `none` runs n
 
 ## Step 3: Record a full run
 
-After any `full` tier finishes, whoever asked for it, record it. `<verdict>` is `pass` when the
-tier definition's verdict is a pass, `incomplete` when it reports unfinished tests, and `fail`
-otherwise.
+Applies to every `full` tier, whoever asked for it: a `full` the caller passed, one Step 2
+resolved, and the plain run of a project with no tier definition.
+
+Before the run starts, note the commit it tests:
 
 ```
-python3 claude_plugins/sdd/scripts/full_run_record.py write --verdict <verdict>
+python3 claude_plugins/sdd/scripts/full_run_record.py start
 ```
+
+`<sha>` is the value on its `sha:` line, empty when the tree is dirty.
+
+After the run finishes, record it. `<verdict>` is `pass` when the tier definition's verdict is a
+pass, `incomplete` when it reports unfinished tests, and `fail` otherwise.
+
+```
+python3 claude_plugins/sdd/scripts/full_run_record.py write --verdict <verdict> --sha "<sha>"
+```
+
+The script records `<sha>` only when HEAD is still that commit and the tree is clean. A commit
+another process made during the run leaves no record, so the next checkpoint is a full run.
 
 ## Step 4: Report
 

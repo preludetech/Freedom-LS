@@ -198,7 +198,7 @@ Step 1's full run wrote the record, so a pass usually runs the tests main's new 
 
 The report line names the tier that ran and why, for example `tier: none · summary: no test-visible change since full green at abc1234`. A skipped run never reads as a pass.
 
-**The full-run record** is one file per branch, `.sdd-work/full_run_record_<branch>.txt`, holding a commit SHA. It is gitignored and lives in the worktree. `commands/protected/run_test_tier.md` writes it through `scripts/full_run_record.py write` after any full run, whoever asked for it. Only a passing full run on a clean working tree writes it. A failed run, an incomplete run, a skip or a run on a dirty tree writes nothing.
+**The full-run record** is one file per branch, `.sdd-work/full_run_record_<branch>.txt`, holding a commit SHA. It is gitignored and lives in the worktree. `commands/protected/run_test_tier.md` writes it through `scripts/full_run_record.py write` after any full run, whoever asked for it. Only a passing full run on a clean working tree writes it, and it names the commit the run started on. A failed run, an incomplete run, a skip or a run on a dirty tree writes nothing. Neither does a run during which another process committed to the branch, because that commit was never tested.
 
 CI runs the full suite on the pull request as well.
 

@@ -4,7 +4,13 @@
 Verbs:
     read                          print the recorded commit SHA, or nothing
     resolve [--selector CMD]      print the `tier:`, `diff:` and `why:` lines for a checkpoint
-    write --verdict VERDICT       record HEAD after a passing full run on a clean tree
+    start                         print `sha: <HEAD>` before a full run, or `sha:` on a dirty tree
+    write --verdict VERDICT --sha SHA
+                                  record SHA, the commit `start` printed, after a passing full run
+
+A full run takes minutes and other processes commit to the same worktree meanwhile, so the record
+names the commit the run started on. `write` records nothing when HEAD moved or the tree changed
+during the run.
 
 The record is one file per branch under `.sdd-work/`. A checkpoint compares HEAD with the
 recorded commit through the project's tier selector, so a branch that has not changed anything a
@@ -147,19 +153,41 @@ def resolve(project_root: Path, selector: list[str] | None) -> Resolution:
     return Resolution("full", "", f"the selector escalates over {sha[:7]}..HEAD")
 
 
-def write(project_root: Path, verdict: Verdict) -> str:
-    """Record HEAD after a passing full run on a clean tree. Returns what happened."""
+def tracked_tree_is_clean(project_root: Path) -> bool:
+    # Untracked files do not count: a stray one would otherwise force a full run at every
+    # checkpoint.
+    status = git(project_root, "status", "--porcelain", "--untracked-files=no")
+    return not status.stdout.strip()
+
+
+def head(project_root: Path) -> str:
+    return git(project_root, "rev-parse", "HEAD").stdout.strip()
+
+
+def start(project_root: Path) -> str:
+    """The commit a full run is about to test, or "" when the tracked tree is dirty."""
+    return head(project_root) if tracked_tree_is_clean(project_root) else ""
+
+
+def write(project_root: Path, verdict: Verdict, sha: str) -> str:
+    """Record `sha`, the commit `start` printed before a passing full run.
+
+    Nothing is recorded unless HEAD is still that commit and the tree is still clean, so the
+    record never names a commit the run did not test. Returns what happened.
+    """
     if verdict != "pass":
         return f"not recorded: verdict {verdict}"
     branch = current_branch(project_root)
     if branch is None:
         return "not recorded: HEAD is detached"
-    # Untracked files do not block the record: a stray one would otherwise force a full run
-    # at every checkpoint.
-    status = git(project_root, "status", "--porcelain", "--untracked-files=no")
-    if status.stdout.strip():
+    if not sha:
+        return "not recorded: the run started on a dirty tree"
+    if not FULL_SHA.fullmatch(sha):
+        return "not recorded: --sha is not a full commit SHA"
+    if head(project_root) != sha:
+        return "not recorded: HEAD moved during the run"
+    if not tracked_tree_is_clean(project_root):
         return "not recorded: working tree not clean"
-    sha = git(project_root, "rev-parse", "HEAD").stdout.strip()
     path = record_path(project_root, branch)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(f"{sha}\n", encoding="utf-8")
@@ -194,12 +222,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--project-root", type=Path, default=Path.cwd())
     verbs = parser.add_subparsers(dest="verb", required=True)
     verbs.add_parser("read")
+    verbs.add_parser("start")
     resolve_parser = verbs.add_parser("resolve")
     resolve_parser.add_argument("--selector")
     write_parser = verbs.add_parser("write")
     write_parser.add_argument(
         "--verdict", required=True, choices=["pass", "fail", "incomplete"]
     )
+    write_parser.add_argument("--sha", required=True)
     return parser
 
 
@@ -221,8 +251,10 @@ def main() -> int:
         sys.stdout.write(
             f"tier: {resolution.tier}\ndiff: {resolution.diff}\nwhy: {resolution.why}\n"
         )
+    elif args.verb == "start":
+        sys.stdout.write(f"sha: {start(project_root)}".rstrip() + "\n")
     else:
-        sys.stdout.write(f"{write(project_root, args.verdict)}\n")
+        sys.stdout.write(f"{write(project_root, args.verdict, args.sha.strip())}\n")
     return 0
 
 

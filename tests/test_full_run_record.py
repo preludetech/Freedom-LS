@@ -69,8 +69,12 @@ class Project:
     def resolve(self) -> dict[str, str]:
         return parse(self.script("resolve", "--selector", SELECTOR))
 
+    def start(self) -> str:
+        """The `sha:` value `start` prints: HEAD on a clean tree, else empty."""
+        return parse(self.script("start"))["sha"]
+
     def record_green(self) -> None:
-        self.script("write", "--verdict", "pass")
+        self.script("write", "--verdict", "pass", "--sha", self.start())
 
 
 def parse(output: str) -> dict[str, str]:
@@ -318,11 +322,69 @@ def test_write_leaves_no_record_unless_the_run_passed_on_a_clean_branch(
     if scenario == "detached":
         project.git("checkout", "-q", "--detach")
 
+    head = project.git("rev-parse", "HEAD")
+
     # Act
-    output = project.script("write", "--verdict", verdict)
+    output = project.script("write", "--verdict", verdict, "--sha", head)
 
     # Assert
     assert output.startswith("not recorded")
+    assert not (project.path / ".sdd-work").exists()
+
+
+def test_start_prints_head_on_a_clean_tracked_tree(project: Project) -> None:
+    # Arrange
+    head = commit_app_change(project)
+
+    # Act
+    output = project.script("start")
+
+    # Assert
+    assert output == f"sha: {head}\n"
+
+
+def test_start_prints_no_commit_on_a_dirty_tree(project: Project) -> None:
+    # Arrange
+    commit_app_change(project)
+    project.write("pkg/alpha/services.py", "uncommitted\n")
+
+    # Act
+    output = project.script("start")
+
+    # Assert
+    assert output == "sha:\n"
+
+
+def test_write_leaves_no_record_when_a_commit_landed_during_the_run(
+    project: Project,
+) -> None:
+    # Arrange
+    commit_app_change(project)
+    started = project.start()
+    commit_app_change(project, "committed mid-run\n")
+
+    # Act
+    output = project.script("write", "--verdict", "pass", "--sha", started)
+
+    # Assert
+    assert output == "not recorded: HEAD moved during the run\n"
+    assert not (project.path / ".sdd-work").exists()
+
+
+def test_write_leaves_no_record_when_the_run_started_on_a_dirty_tree(
+    project: Project,
+) -> None:
+    # Arrange
+    commit_app_change(project)
+    project.write("pkg/alpha/services.py", "uncommitted\n")
+    started = project.start()
+    project.git("checkout", "--", "pkg/alpha/services.py")
+
+    # Act
+    output = project.script("write", "--verdict", "pass", "--sha", started)
+
+    # Assert
+    assert output == "not recorded: the run started on a dirty tree\n"
     assert not (project.path / ".sdd-work").exists()
 
 
@@ -335,8 +397,10 @@ def test_write_records_head_on_a_clean_tracked_tree(
     if stray_untracked_file:
         project.write("scratch.txt", "stray\n")
 
+    started = project.start()
+
     # Act
-    output = project.script("write", "--verdict", "pass")
+    output = project.script("write", "--verdict", "pass", "--sha", started)
 
     # Assert
     assert output == f"recorded: {head}\n"
