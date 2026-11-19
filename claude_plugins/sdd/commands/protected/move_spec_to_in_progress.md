@@ -45,7 +45,7 @@ run `/sdd:roadmap` to sync").
 
 Make a git commit with plain `git commit`. This commit captures the `todo.md`
 created in the previous `/sdd:start` step, the directory move, and the roadmap edit from Step 2.5
-(stage `spec_dd/1. next/roadmap.md` and `spec_dd/1. next/roadmap_diagrams/` by path when they changed). Lead the subject with the spec
+(stage `spec_dd/1. next/roadmap.md`, `spec_dd/1. next/priority.md` and `spec_dd/1. next/roadmap_diagrams/` by path when they changed). Lead the subject with the spec
 directory name, as every SDD commit does — e.g. `interested_login: start the spec`.
 
 Do not push. This runs on the current branch before any worktree exists, and that branch is usually

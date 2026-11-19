@@ -1,23 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="958" height="255" viewBox="0 0 958 255" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12">
+<svg xmlns="http://www.w3.org/2000/svg" width="958" height="277" viewBox="0 0 958 277" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12">
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4b5563"/></marker></defs>
-<rect width="958" height="255" fill="#ffffff"/>
+<rect width="958" height="277" fill="#ffffff"/>
 <text x="24" y="38" font-size="15" font-weight="bold" fill="#111827">Audio content widgets</text>
 <path d="M274.0,83.0 C314.0,83.0 314.0,112.5 354.0,112.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M604.0,112.5 C644.0,112.5 644.0,124.5 684.0,124.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M274.0,158.5 C314.0,158.5 314.0,158.5 354.0,158.5 L604.0,158.5 C644.0,158.5 644.0,124.5 684.0,124.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <rect x="24.0" y="58.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
-<text x="34.0" y="80.0" fill="#111827">content-widget-sayit-reveal-1-</text>
-<text x="34.0" y="95.0" fill="#111827">audio-player</text>
+<path d="M32.0,58.0 H30.0 A6,6 0 0 0 24.0,64.0 V102.0 A6,6 0 0 0 30.0,108.0 H32.0 Z" fill="#9ca3af"/>
+<text x="40.0" y="80.0" fill="#111827">content-widget-sayit-reveal-1-</text>
+<text x="40.0" y="95.0" fill="#111827">audio-player</text>
 <rect x="354.0" y="87.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<text x="364.0" y="109.5" fill="#111827">content-widget-sayit-reveal-2-</text>
-<text x="364.0" y="124.5" fill="#111827">say-it-reveal</text>
+<path d="M362.0,87.5 H360.0 A6,6 0 0 0 354.0,93.5 V131.5 A6,6 0 0 0 360.0,137.5 H362.0 Z" fill="#9ca3af"/>
+<text x="370.0" y="109.5" fill="#111827">content-widget-sayit-reveal-2-</text>
+<text x="370.0" y="124.5" fill="#111827">say-it-reveal</text>
 <rect x="684.0" y="99.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<text x="694.0" y="121.5" fill="#111827">content-widget-sayit-reveal-3-</text>
-<text x="694.0" y="136.5" fill="#111827">audio-on-revision-flashcards</text>
+<path d="M692.0,99.5 H690.0 A6,6 0 0 0 684.0,105.5 V143.5 A6,6 0 0 0 690.0,149.5 H692.0 Z" fill="#9ca3af"/>
+<text x="700.0" y="121.5" fill="#111827">content-widget-sayit-reveal-3-</text>
+<text x="700.0" y="136.5" fill="#111827">audio-on-revision-flashcards</text>
 <rect x="24.0" y="126.0" width="250" height="65" rx="6" fill="#ffffff" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="5 4"/>
-<text x="34.0" y="148.0" fill="#111827">learner-interface-features-4-</text>
-<text x="34.0" y="163.0" fill="#111827">flashcards</text>
-<text x="34.0" y="178.0" fill="#6b7280" font-style="italic">Learner interface features</text>
+<path d="M32.0,126.0 H30.0 A6,6 0 0 0 24.0,132.0 V185.0 A6,6 0 0 0 30.0,191.0 H32.0 Z" fill="#9ca3af"/>
+<text x="40.0" y="148.0" fill="#111827">learner-interface-features-4-</text>
+<text x="40.0" y="163.0" fill="#111827">flashcards</text>
+<text x="40.0" y="178.0" fill="#6b7280" font-style="italic">Learner interface features</text>
 <rect x="24.0" y="215" width="16" height="12" rx="3" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <text x="46.0" y="225" fill="#374151">in progress</text>
 <rect x="154.3" y="215" width="16" height="12" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
@@ -28,4 +32,13 @@
 <text x="488.0" y="225" fill="#374151">blocked</text>
 <rect x="567.1" y="215" width="16" height="12" rx="3" fill="#ffffff" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="5 4"/>
 <text x="589.1" y="225" fill="#374151">other feature</text>
+<text x="24" y="247" fill="#374151">Priority:</text>
+<rect x="101.7" y="237" width="16" height="12" rx="3" fill="#dc2626"/>
+<text x="123.7" y="247" fill="#374151">High</text>
+<rect x="180.9" y="237" width="16" height="12" rx="3" fill="#ea580c"/>
+<text x="202.9" y="247" fill="#374151">Medium</text>
+<rect x="274.7" y="237" width="16" height="12" rx="3" fill="#ca8a04"/>
+<text x="296.7" y="247" fill="#374151">Low</text>
+<rect x="346.6" y="237" width="16" height="12" rx="3" fill="#9ca3af"/>
+<text x="368.6" y="247" fill="#374151">Priority not set</text>
 </svg>

@@ -41,7 +41,9 @@ fixed, runs the full tier, and ticks what it closed. `/sdd:start` writes it into
 section per feature listing its specs (in progress, ready or blocked), an SVG dependency diagram
 and lean notes. With no argument it syncs the file with the spec directories; with a directory it
 cuts a big idea into ordered sibling specs and adds them as a feature. `scripts/roadmap.py` derives
-statuses, "Up next" and the diagrams.
+statuses, "Up next" and the diagrams. `spec_dd/1. next/priority.md` lists specs and efforts under
+priority headings; the script orders and colours the roadmap by it, and a spec is always at least
+as high as anything that depends on it.
 
 `/sdd:register_design [dir] <design artifact link>` records a Design Artifact on the spec the current
 branch is working on (on `main`, on the spec or cut effort's parent you name), and commits it to the

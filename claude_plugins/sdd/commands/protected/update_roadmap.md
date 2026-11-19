@@ -35,7 +35,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/roadmap.py "<roadmap-path>"
 ```
 
 It sets every status, unblocks specs whose blockers are done, regenerates "Up next", redraws
-`roadmap_diagrams/*.svg` and retires a feature with no specs left. Retiring a feature that names a
+`roadmap_diagrams/*.svg`, keeps `priority.md` complete and retires a feature with no specs left. Retiring a feature that names a
 parent writes its section to `<parent>/spec-order.md` and prints
 `effort retired: <parent path>`. The caller moves that directory to `3. done/`; this helper does
 not.
@@ -46,6 +46,6 @@ helper's to fix. Relay it; the next `/sdd:roadmap` sync fixes it.
 ## Step 3: Report
 
 A few lines: which bullets were removed, which were not found, the script's output verbatim
-(including any `effort retired:` line), and the files changed: the roadmap and
-`roadmap_diagrams/`. End with the footer `status: ok|failed|blocked` · `reason: <short>`. Script
+(including any `effort retired:` line), and the files changed: the roadmap,
+`priority.md` and `roadmap_diagrams/`. End with the footer `status: ok|failed|blocked` · `reason: <short>`. Script
 problems alone do not make the status `failed`.

@@ -11,6 +11,11 @@ The roadmap's feature sections are the source. Each run:
 - retires a feature section that has no spec bullets left, archiving it to
   ``<parent>/spec-order.md`` when it names a parent;
 - regenerates the "Up next" section;
+- reads the priority file (``priority.md`` beside the roadmap), creating it when missing, adds
+  every roadmap item it lacks under "Priority not set" and drops entries for directories that are
+  gone; works out each spec's effective priority (the highest of its own entry, its effort
+  parent's entry and every spec that depends on it), orders "Up next" and the feature sections by
+  it and marks each with the level's colour;
 - writes one SVG per feature, plus ``up-next.svg``, into ``<stem>_diagrams/``.
 
 Problems it cannot fix (directories with no bullet, bullets for directories that exist nowhere,
@@ -42,6 +47,28 @@ IMAGE_RE = re.compile(r"^!\[[^\]]*\]\([^)]*_diagrams/[^)]*\.svg\)$")
 PRECURSOR = "Before starting:"
 REMOVED = "\0removed"
 
+PRIORITY_FILE = "priority.md"
+NOT_SET = "Priority not set"
+DEFAULT_LEVELS = ["High", "Medium", "Low"]
+ENTRY_RE = re.compile(r"^- `(?P<dir>[^`]+)`")
+PRIORITY_LINE_RE = re.compile(r"^Priority: ")
+# One (colour, marker) per level, highest first; "Priority not set" has its own.
+PRIORITY_PALETTE = [
+    ("#dc2626", "🔴"),
+    ("#ea580c", "🟠"),
+    ("#ca8a04", "🟡"),
+    ("#16a34a", "🟢"),
+    ("#2563eb", "🔵"),
+    ("#9333ea", "🟣"),
+]
+NOT_SET_STYLE = ("#9ca3af", "⚪")
+PRIORITY_SKELETON = """# Spec priority
+
+Highest priority first. Each `##` heading is a priority level; list spec directories or effort
+parents under it, most important first. An effort parent covers every spec in its feature that has
+no entry of its own. A spec is at least as high as any spec that depends on it. The roadmap script
+adds anything missing under "Priority not set"; move it from there to the level it belongs in."""
+
 UP_NEXT_LEVELS = 3
 
 # Diagram geometry.
@@ -53,6 +80,8 @@ PAD_Y = 10
 MARGIN = 24
 TITLE_H = 34
 LEGEND_H = 40
+LEGEND_ROW_H = 22
+BAR_W = 8
 WRAP_CHARS = 30
 WAYPOINT_H = 6
 GRID_COLS = 3
@@ -120,6 +149,151 @@ class Section:
             if match:
                 return match.group(1)
         return None
+
+
+@dataclass(frozen=True)
+class Rank:
+    """Where a spec sits in the priority order. Lower sorts first."""
+
+    level: int
+    position: int
+    source: str
+
+    @property
+    def order(self) -> tuple[int, int]:
+        return (self.level, self.position)
+
+
+@dataclass
+class Priority:
+    preamble: list[str]
+    levels: list[str]
+    entries: dict[str, list[str]]
+
+    @property
+    def headings(self) -> list[str]:
+        return [*self.levels, NOT_SET]
+
+    def style(self, level: int) -> tuple[str, str]:
+        if level >= len(self.levels):
+            return NOT_SET_STYLE
+        return PRIORITY_PALETTE[min(level, len(PRIORITY_PALETTE) - 1)]
+
+    def label(self, rank: Rank) -> str:
+        return f"{self.style(rank.level)[1]} {self.headings[rank.level]}"
+
+    def ranks(self) -> dict[str, Rank]:
+        out: dict[str, Rank] = {}
+        position = 0
+        for level, heading in enumerate(self.headings):
+            for name in self.entries[heading]:
+                out.setdefault(name, Rank(level, position, name))
+                position += 1
+        return out
+
+    def render(self) -> str:
+        lines = trim_blank(self.preamble)
+        for heading in self.headings:
+            lines += ["", f"## {heading}", ""]
+            lines += [f"- `{name}`" for name in self.entries[heading]]
+        return "\n".join(trim_blank(collapse_blank(lines))) + "\n"
+
+
+def read_priority(path: Path) -> Priority:
+    if path.exists():
+        text = path.read_text()
+    else:
+        text = (
+            PRIORITY_SKELETON
+            + "\n"
+            + "".join(f"\n## {level}\n" for level in [*DEFAULT_LEVELS, NOT_SET])
+        )
+    preamble, sections = split_sections(text)
+    levels: list[str] = []
+    entries: dict[str, list[str]] = {NOT_SET: []}
+    for section in sections:
+        if section.name != NOT_SET and section.name not in entries:
+            levels.append(section.name)
+            entries[section.name] = []
+        for line in section.lines:
+            match = ENTRY_RE.match(line)
+            if match:
+                entries[section.name].append(match.group("dir"))
+    return Priority(preamble, levels, entries)
+
+
+def maintain_priority(
+    priority: Priority,
+    sections: list[Section],
+    existing: set[str],
+    notices: list[str],
+    problems: list[str],
+) -> None:
+    """Drop entries for gone directories and repeats, and list uncovered roadmap items."""
+    seen: set[str] = set()
+    for heading in priority.headings:
+        kept: list[str] = []
+        for name in priority.entries[heading]:
+            if name in seen:
+                problems.append(f"{name} is listed more than once in {PRIORITY_FILE}")
+                continue
+            seen.add(name)
+            if name not in existing:
+                notices.append(f"dropped priority entry: {name}")
+                continue
+            kept.append(name)
+        priority.entries[heading] = kept
+    if len(priority.levels) > len(PRIORITY_PALETTE):
+        problems.append(
+            f"{PRIORITY_FILE} has more than {len(PRIORITY_PALETTE)} priority levels"
+        )
+
+    listed = {n for names in priority.entries.values() for n in names}
+    for section in sections:
+        parent = section.parent
+        if parent:
+            uncovered = [s.dir for s in section.specs if s.dir not in listed]
+            if uncovered and parent not in listed:
+                priority.entries[NOT_SET].append(parent)
+                listed.add(parent)
+                notices.append(f"priority not set: {parent}")
+            continue
+        for spec in section.specs:
+            if spec.dir not in listed:
+                priority.entries[NOT_SET].append(spec.dir)
+                listed.add(spec.dir)
+                notices.append(f"priority not set: {spec.dir}")
+
+
+def effective_ranks(
+    priority: Priority, sections: list[Section], specs: dict[str, Spec]
+) -> dict[str, Rank]:
+    """Each spec's rank: its own entry, else its feature parent's, raised by its dependents."""
+    entries = priority.ranks()
+    lowest = Rank(len(priority.levels), len(entries), "")
+    own: dict[str, Rank] = {}
+    for section in sections:
+        for spec in section.specs:
+            own[spec.dir] = (
+                entries.get(spec.dir) or entries.get(section.parent or "") or lowest
+            )
+
+    dependents: dict[str, list[str]] = {d: [] for d in specs}
+    for spec in specs.values():
+        for dep in spec.deps:
+            if dep in specs:
+                dependents[dep].append(spec.dir)
+
+    def best(name: str, seen: frozenset[str]) -> Rank:
+        rank = own[name]
+        for child in dependents[name]:
+            if child not in seen:
+                candidate = best(child, seen | {name})
+                if candidate.order < rank.order:
+                    rank = candidate
+        return rank
+
+    return {name: best(name, frozenset()) for name in specs}
 
 
 def slugify(text: str) -> str:
@@ -264,6 +438,8 @@ def draw_svg(
     edges: list[tuple[str, str]],
     states: dict[str, str],
     captions: dict[str, str],
+    bars: dict[str, str],
+    priority_legend: list[tuple[str, str]],
     layer: dict[str, int] | None = None,
 ) -> str:
     # Specs with no edge sit in a grid under the graph, so they never read as a dependency chain.
@@ -329,7 +505,13 @@ def draw_svg(
         legend_x.append(cursor)
         cursor += 22 + len(label) * CHAR_W + 28
     width = max(width, cursor + MARGIN)
-    height = MARGIN + TITLE_H + body_h + 24 + LEGEND_H
+    priority_x: list[float] = []
+    cursor = float(MARGIN + len("Priority:") * CHAR_W + 12)
+    for _, label in priority_legend:
+        priority_x.append(cursor)
+        cursor += 22 + len(label) * CHAR_W + 28
+    width = max(width, cursor + MARGIN)
+    height = MARGIN + TITLE_H + body_h + 24 + LEGEND_H + LEGEND_ROW_H
 
     out = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width:.0f}" height="{height:.0f}" '
@@ -374,15 +556,22 @@ def draw_svg(
             f'<rect x="{x:.1f}" y="{y:.1f}" width="{BOX_W}" height="{h:.0f}" rx="6" '
             f'fill="{fill}" stroke="{stroke}" stroke-width="1.5"{dash_attr}/>'
         )
+        if node in bars:
+            out.append(
+                f'<path d="M{x + BAR_W:.1f},{y:.1f} H{x + 6:.1f} A6,6 0 0 0 {x:.1f},{y + 6:.1f} '
+                f'V{y + h - 6:.1f} A6,6 0 0 0 {x + 6:.1f},{y + h:.1f} H{x + BAR_W:.1f} Z" '
+                f'fill="{bars[node]}"/>'
+            )
+        tx = x + BAR_W + 8
         ty = y + PAD_Y + LINE_H - 3
         for line in labels[node]:
             out.append(
-                f'<text x="{x + 10:.1f}" y="{ty:.1f}" fill="#111827">{escape(line)}</text>'
+                f'<text x="{tx:.1f}" y="{ty:.1f}" fill="#111827">{escape(line)}</text>'
             )
             ty += LINE_H
         if node in captions:
             out.append(
-                f'<text x="{x + 10:.1f}" y="{ty:.1f}" fill="#6b7280" font-style="italic">'
+                f'<text x="{tx:.1f}" y="{ty:.1f}" fill="#6b7280" font-style="italic">'
                 f"{escape(captions[node])}</text>"
             )
 
@@ -394,6 +583,17 @@ def draw_svg(
         out.append(
             f'<rect x="{lx}" y="{ly}" width="16" height="12" rx="3" fill="{fill}" '
             f'stroke="{stroke}" stroke-width="1.5"{dash_attr}/>'
+        )
+        out.append(
+            f'<text x="{lx + 22}" y="{ly + 10}" fill="#374151">{escape(label)}</text>'
+        )
+    ly += LEGEND_ROW_H
+    if priority_legend:
+        out.append(f'<text x="{MARGIN}" y="{ly + 10}" fill="#374151">Priority:</text>')
+    for i, (colour, label) in enumerate(priority_legend):
+        lx = priority_x[i]
+        out.append(
+            f'<rect x="{lx}" y="{ly}" width="16" height="12" rx="3" fill="{colour}"/>'
         )
         out.append(
             f'<text x="{lx + 22}" y="{ly + 10}" fill="#374151">{escape(label)}</text>'
@@ -443,22 +643,41 @@ def up_next_graph(
     return nodes, edges, states, level
 
 
-def build_up_next(specs: list[Spec], has_diagram: bool, diagram_dir: str) -> list[str]:
+def build_up_next(
+    sections: list[Section],
+    priority: Priority,
+    ranks: dict[str, Rank],
+    has_diagram: bool,
+    diagram_dir: str,
+) -> list[str]:
+    parents = {s.dir: section.parent for section in sections for s in section.specs}
+    specs = sorted(
+        (s for section in sections for s in section.specs),
+        key=lambda s: (*ranks[s.dir].order, s.dir),
+    )
+
+    def bullet(spec: Spec, suffix: str = "") -> str:
+        rank = ranks[spec.dir]
+        via = ""
+        if rank.source not in (spec.dir, parents[spec.dir], ""):
+            via = f", via `{rank.source}`"
+        return f"- {priority.label(rank)} · `{spec.dir}` ({spec.feature}{via}){suffix}"
+
     def bullets(items: list[str]) -> list[str]:
         return items or ["None."]
 
-    in_progress = sorted(
-        f"- `{s.dir}` ({s.feature})" for s in specs if s.state == "in progress"
-    )
-    ready = sorted(f"- `{s.dir}` ({s.feature})" for s in specs if s.state == "ready")
-    needs = sorted(
-        f"- `{s.dir}` ({s.feature}): {s.precursor}"
-        for s in specs
-        if s.state == "needs main"
+    in_progress = [bullet(s) for s in specs if s.state == "in progress"]
+    ready = [bullet(s) for s in specs if s.state == "ready"]
+    needs = [bullet(s, f": {s.precursor}") for s in specs if s.state == "needs main"]
+    legend = " · ".join(
+        f"{priority.style(i)[1]} {h}" for i, h in enumerate(priority.headings)
     )
     lines = [
         "",
-        "Generated by the sdd roadmap script from the feature sections below. Do not edit by hand.",
+        "Generated by the sdd roadmap script from the feature sections below and "
+        f"`{PRIORITY_FILE}`. Do not edit by hand.",
+        "",
+        f"Priority: {legend}",
         "",
         "### In progress",
         "",
@@ -490,6 +709,8 @@ def main(argv: list[str]) -> int:
 
     waiting = list_dirs(next_dir) - {diagram_dir_name}
     in_progress = list_dirs(spec_root / IN_PROGRESS_DIR)
+    existing = waiting | in_progress
+    priority_path = next_dir / PRIORITY_FILE
     done = done_names(spec_root / DONE_DIR)
     problems: list[str] = []
     notices: list[str] = []
@@ -568,19 +789,39 @@ def main(argv: list[str]) -> int:
     ):
         problems.append("cycle: " + " -> ".join(cycle))
 
+    # Priority.
+    priority = read_priority(priority_path)
+    maintain_priority(priority, features, existing, notices, problems)
+    priority_path.write_text(priority.render())
+    ranks = effective_ranks(priority, features, specs)
+    features.sort(key=lambda f: min(ranks[s.dir].order for s in f.specs))
+    specs = {s.dir: s for section in features for s in section.specs}
+    bars = {d: priority.style(r.level)[0] for d, r in ranks.items()}
+    priority_legend = [
+        (priority.style(i)[0], h) for i, h in enumerate(priority.headings)
+    ]
+
     # Diagrams.
     diagram_dir.mkdir(exist_ok=True)
     written: set[str] = set()
     for section in features:
         nodes, edges, states, captions = feature_graph(section, specs)
         image = f"![{section.name}]({diagram_dir_name}/{slugify(section.name)}.svg)"
-        body = [ln for ln in section.lines if not IMAGE_RE.match(ln)]
+        body = [
+            ln
+            for ln in section.lines
+            if not IMAGE_RE.match(ln) and not PRIORITY_LINE_RE.match(ln)
+        ]
+        top = min((ranks[s.dir] for s in section.specs), key=lambda r: r.order)
+        body = [f"Priority: {priority.label(top)}", "", *body]
         if nodes and not any(
             find_cycles({n: [d for d, s in edges if s == n] for n in nodes})
         ):
             filename = f"{slugify(section.name)}.svg"
             (diagram_dir / filename).write_text(
-                draw_svg(section.name, nodes, edges, states, captions)
+                draw_svg(
+                    section.name, nodes, edges, states, captions, bars, priority_legend
+                )
             )
             written.add(filename)
             last = max(i for i, ln in enumerate(body) if BULLET_RE.match(ln))
@@ -591,7 +832,7 @@ def main(argv: list[str]) -> int:
     has_up_next = bool(edges) and not problems_with_cycles(problems)
     if has_up_next:
         (diagram_dir / "up-next.svg").write_text(
-            draw_svg("Up next", nodes, edges, states, {}, level)
+            draw_svg("Up next", nodes, edges, states, {}, bars, priority_legend, level)
         )
         written.add("up-next.svg")
     for stale in diagram_dir.glob("*.svg"):
@@ -603,7 +844,7 @@ def main(argv: list[str]) -> int:
     out += [
         "",
         UP_NEXT_HEADING,
-        *build_up_next(list(specs.values()), has_up_next, diagram_dir_name),
+        *build_up_next(features, priority, ranks, has_up_next, diagram_dir_name),
     ]
     for section in features:
         out += [section.heading, "", *collapse_blank(trim_blank(section.lines)), ""]

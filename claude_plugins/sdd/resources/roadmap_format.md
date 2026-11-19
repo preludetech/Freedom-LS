@@ -2,7 +2,7 @@
 
 `spec_dd/1. next/roadmap.md` says what is being built next. It lists every spec in
 `spec_dd/1. next/` and `spec_dd/2. in progress/`, grouped by feature, with its state and a
-dependency diagram per feature. `/sdd:roadmap` writes it. `protected/update_roadmap.md` removes a
+dependency diagram per feature, ordered by the priority file beside it (see "Priority"). `/sdd:roadmap` writes it. `protected/update_roadmap.md` removes a
 finished spec. `/sdd:start` reads a spec's blockers and precursor. `scripts/roadmap.py` normalises
 it and draws the diagrams.
 
@@ -16,15 +16,18 @@ It is the *spec* roadmap. `docs/product/roadmap.md` is the product roadmap and i
    and is not discussed in notes. The roadmap is about what comes next.
 3. **One bullet per directory.** Every top-level directory in `1. next/` and `2. in progress/` has
    exactly one spec bullet, except an effort parent, which a feature names on its `Parent:` line,
-   and `roadmap_diagrams/`, which holds the SVGs. `0. noop/` and `3. done/` are not indexed.
+   and `roadmap_diagrams/`, which holds the SVGs. `priority.md` is a file, not a spec. `0. noop/`
+   and `3. done/` are not indexed.
 4. **Every spec belongs to a feature.** A feature is a `##` section: a cut effort, or a group of
    standalone specs about the same area. A spec that fits nowhere gets a new feature.
 5. **The script owns the derived parts.** `python3 claude_plugins/sdd/scripts/roadmap.py
    "spec_dd/1. next/roadmap.md"` sets each bullet's status from its directory's location, drops
-   done specs from bullets and `blocked by` lists, regenerates "Up next", writes one SVG per feature
-   (every feature, even one with a single spec) and `up-next.svg` into
-   `spec_dd/1. next/roadmap_diagrams/` and retires an emptied feature. Run it after every edit.
-   Hand edits go in scopes, `blocked by` lists, precursors, feature intros and notes.
+   done specs from bullets and `blocked by` lists, maintains `priority.md`, orders the feature
+   sections and "Up next" by priority, writes each feature's `Priority:` line, regenerates "Up
+   next", writes one SVG per feature (every feature, even one with a single spec) and
+   `up-next.svg` into `spec_dd/1. next/roadmap_diagrams/` and retires an emptied feature. Run it
+   after every edit. Hand edits go in scopes, `blocked by` lists, precursors, feature intros,
+   notes and `priority.md`.
 6. **Notes stay lean.** At most about ten one-line bullets per feature: build order and which specs
    run in parallel, collisions between specs, decisions and assumptions every spec in the feature
    relies on, open questions with the spec that owns each, one line of out-of-scope and one line of
@@ -33,6 +36,48 @@ It is the *spec* roadmap. `docs/product/roadmap.md` is the product roadmap and i
 7. **A precursor keeps a spec off "Ready to start".** A precursor is work that has to happen on
    main before `/sdd:start` can branch a worktree off it, such as a cut. Sync writes one for a
    directory that needs a cut (below); a person may write one for any other job.
+
+## Priority
+
+`spec_dd/1. next/priority.md` says what matters most. People edit it; the script keeps it
+complete.
+
+```markdown
+# Spec priority
+
+<one paragraph on how to use the file>
+
+## High
+
+- `some-effort-parent`
+- `some-standalone-spec`
+
+## Medium
+
+## Low
+
+## Priority not set
+
+- `another-effort-parent`
+```
+
+- Each `##` heading is a priority level, highest first. The level names are the file's own: rename,
+  add or remove levels freely, up to six. `## Priority not set` is fixed and always ranks last.
+- An entry is a spec directory or an effort parent (a feature's `Parent:`). A parent entry covers
+  every spec in that feature with no entry of its own. Order inside a level counts: higher in the
+  list is more important.
+- **A spec inherits priority from its dependents.** Its effective priority is the highest of its
+  own entry, its parent's entry and the effective priority of every spec that lists it, directly or
+  through a chain, in `blocked by`. A high-priority spec makes all its prerequisites high too,
+  wherever they sit in the file.
+- The script creates the file when it is missing, adds every roadmap item it lacks under
+  `## Priority not set` (the effort parent for a cut effort, the directory for anything else) and
+  drops entries whose directory is gone. Listing a name twice is a `PROBLEM:`.
+- The roadmap shows priority in colour: one marker per level (🔴 🟠 🟡 🟢 🔵 🟣 by position, ⚪ for
+  not set). Each "Up next" bullet starts with its effective level and names the entry it inherited
+  from (`via` …) when that is not its own or its parent's. Each feature gets a derived
+  `Priority:` line with its highest level, and features are ordered by it. In the diagrams the box
+  fill is still the status and a coloured bar on the left edge is the priority.
 
 ## Bullet grammar
 
@@ -73,6 +118,8 @@ What is being built next, by feature. Maintained by `/sdd:roadmap`; the format i
 (generated by the script)
 
 ## Deadlines
+
+Priority: 🔴 High (generated by the script)
 
 Due dates and course time limits, with pause, reminders and at-risk views. Parent: `deadlines`.
 

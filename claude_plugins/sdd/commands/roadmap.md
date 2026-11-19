@@ -10,8 +10,9 @@ with its state, its blockers and a dependency diagram. It runs at **depth 0**.
 
 Read `${CLAUDE_PLUGIN_ROOT}/resources/roadmap_format.md` first. It defines the file's shape, how a
 directory is classified, and the bullet grammar. Everything below assumes it. The script
-`${CLAUDE_PLUGIN_ROOT}/scripts/roadmap.py` derives statuses, "Up next" and the diagrams; never
-write those by hand.
+`${CLAUDE_PLUGIN_ROOT}/scripts/roadmap.py` derives statuses, "Up next", the priority order and
+colours and the diagrams; never write those by hand. The priority itself lives in
+`spec_dd/1. next/priority.md`, which the owner edits.
 
 Two modes:
 
@@ -57,7 +58,7 @@ skill explains why).
 ## S1: Read
 
 Read `spec_dd/1. next/roadmap.md`. If it does not exist, start from the skeleton in the format
-file. List the top-level directories of `spec_dd/1. next/` and `spec_dd/2. in progress/`, and the
+file. Read `spec_dd/1. next/priority.md` if it exists. List the top-level directories of `spec_dd/1. next/` and `spec_dd/2. in progress/`, and the
 names in `spec_dd/3. done/` (each is `<timestamp>_<name>`; match dependencies on the `_<name>`
 suffix).
 
@@ -103,7 +104,8 @@ reason becomes the bullet's precursor: `` Before starting: cut it with `/sdd:roa
 ## S5: Confirm
 
 Print the diff: adds (with their features), drops, blocker corrections, precursors added, format
-fixes and unresolved dependencies. A drop whose directory is neither done nor in progress is
+fixes and unresolved dependencies. Say that new items will land under "Priority not set" in
+`priority.md` for the owner to place. A drop whose directory is neither done nor in progress is
 called out on its own line. With the `apply` argument, continue to S6. Otherwise one
 `AskUserQuestion`: apply, or stop.
 
@@ -117,7 +119,8 @@ and tighten any notes that break the format rules. Then run:
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/roadmap.py "spec_dd/1. next/roadmap.md"
 ```
 
-Fix every `PROBLEM:` it prints and run it again until it prints `status: ok`. If it prints
+It also prints `priority not set: <name>` for each entry it added to `priority.md` and
+`dropped priority entry: <name>` for each it removed; relay them. Fix every `PROBLEM:` it prints and run it again until it prints `status: ok`. If it prints
 `effort retired: <parent>`, move that parent to `3. done/` as `/sdd:finish_worktree` Step 4.5
 does. Read `roadmap_diagrams/up-next.svg` and each feature SVG you changed as images, and check
 the names are readable and nothing overlaps.
@@ -128,8 +131,8 @@ Delete this run's `.sdd-work/roadmap_entry_*.md` files by name.
 
 ## S8: Commit
 
-Delegate to `sdd:sdd-mechanic`: stage `spec_dd/1. next/roadmap.md` and
-`spec_dd/1. next/roadmap_diagrams/`, and commit with
+Delegate to `sdd:sdd-mechanic`: stage `spec_dd/1. next/roadmap.md`,
+`spec_dd/1. next/priority.md` and `spec_dd/1. next/roadmap_diagrams/`, and commit with
 `git commit`, subject `roadmap: sync the spec roadmap`. Push only when the branch is not
 `main` or `master`. Roadmap bookkeeping normally happens on `main` with no worktree, as in
 `protected/move_spec_to_in_progress.md`, which commits there without pushing.
@@ -260,7 +263,8 @@ Delegate to `sdd:sdd-mechanic`, with the cut file's path:
 
 Run S1 to S6. The new children classify as effort children from their header lines, the parent
 as an effort parent from its blockquote. The parent's old bullet goes: the cut was its precursor.
-The new feature section carries the children's bullets and the cut file's Notes.
+The new feature section carries the children's bullets and the cut file's Notes. The parent's
+entry in `priority.md`, if it had one as a standalone spec, now covers the children; leave it.
 
 ## C8: Clean up
 
