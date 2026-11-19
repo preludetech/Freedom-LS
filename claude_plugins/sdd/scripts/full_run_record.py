@@ -132,7 +132,10 @@ def selected_tier(project_root: Path, selector: list[str], *diff: str) -> Tier:
 def resolve(project_root: Path, selector: list[str] | None) -> Resolution:
     if selector is None:
         return Resolution("full", "", "no tier selector")
-    if selected_tier(project_root, selector, "--range", "origin/main..HEAD") == "none":
+    # --working-tree adds uncommitted edits, which a range alone would leave out of a "nothing
+    # changed" answer.
+    branch_diff = ("--range", "origin/main..HEAD", "--working-tree")
+    if selected_tier(project_root, selector, *branch_diff) == "none":
         return Resolution("none", "", "the branch holds no test-visible change")
     sha = read(project_root)
     if sha is None:
@@ -140,8 +143,7 @@ def resolve(project_root: Path, selector: list[str] | None) -> Resolution:
     if not commit_exists(project_root, sha):
         return Resolution("full", "", f"recorded commit {sha[:7]} no longer resolves")
     # `git diff A..HEAD` compares two trees, so the range still works after a rebase moved
-    # the recorded commit off the branch. --working-tree adds uncommitted edits, which the
-    # range alone would leave out of a "nothing changed" answer.
+    # the recorded commit off the branch.
     diff = ("--range", f"{sha}..HEAD", "--working-tree")
     tier = selected_tier(project_root, selector, *diff)
     if tier == "none":

@@ -145,6 +145,20 @@ def test_spec_only_branch_with_no_record_resolves_to_none(project: Project) -> N
     assert resolution["why"] == "the branch holds no test-visible change"
 
 
+def test_spec_only_branch_with_an_uncommitted_app_edit_resolves_to_full(
+    project: Project,
+) -> None:
+    # Arrange
+    commit_spec_change(project)
+    project.write("pkg/alpha/services.py", "edited\n")
+
+    # Act
+    resolution = project.resolve()
+
+    # Assert
+    assert resolution == {"tier": "full", "diff": "", "why": "no full-run record"}
+
+
 def test_spec_only_change_after_a_record_resolves_to_none_naming_the_commit(
     project: Project,
 ) -> None:
