@@ -20,7 +20,9 @@ _cotton_compiler = CottonCompiler()
 def _normalised(source: str, **context: object) -> str:
     rendered = Template(_cotton_compiler.process(source)).render(Context(context))
     fragment = lxml_html.fragment_fromstring(rendered, create_parent="div")
-    return re.sub(r"\s+", " ", lxml_html.tostring(fragment, encoding="unicode")).strip()
+    text = re.sub(r"\s+", " ", lxml_html.tostring(fragment, encoding="unicode")).strip()
+    # An end-of-file newline in a wrapper file trails the rendered output as one space.
+    return re.sub(r" </div>$", "</div>", text)
 
 
 WRAPPER_PAIRS = [
