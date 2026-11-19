@@ -1,44 +1,107 @@
-"""Tests for the <c-callout /> cotton component's text colours."""
+"""Tests for the <c-callout /> cotton component."""
 
+import lxml.html
 import pytest
 from django_cotton.compiler_regex import CottonCompiler
+from lxml.html import HtmlElement
 
 from django.template import Context, Template
 
 _cotton_compiler = CottonCompiler()
+
+TONES = ["info", "success", "warning", "error"]
 
 
 def _render(template_string: str) -> str:
     return Template(_cotton_compiler.process(template_string)).render(Context())
 
 
-@pytest.mark.parametrize("level", ["warning", "success"])
-def test_callout_text_is_not_the_background_only_status_colour(level: str) -> None:
-    """Sand and Forest used as text on their own pale tint were barely readable."""
-    result = _render(f'<c-callout level="{level}" title="Heads up">Body</c-callout>')
-
-    assert f'class="text-{level}' not in result
-    assert f"text-xl font-semibold text-{level} " not in result
-    assert f"text-on-{level}-light" in result
+def _box(template_string: str) -> HtmlElement:
+    [box] = lxml.html.fromstring(f"<div>{_render(template_string)}</div>").xpath("./*")
+    return box
 
 
-def test_callout_puts_a_passed_class_on_its_box() -> None:
-    result = _render(
-        '<c-callout level="warning" class="mx-auto max-w-reading">Body</c-callout>'
+def _svg_markup(box: HtmlElement) -> str:
+    [svg] = box.xpath(".//svg")
+    markup: str = lxml.html.tostring(svg, encoding="unicode")
+    return markup
+
+
+@pytest.mark.parametrize("tone", TONES)
+def test_callout_puts_its_tone_classes_on_the_box(tone: str) -> None:
+    box = _box(f'<c-callout tone="{tone}">Body</c-callout>')
+
+    assert box.get("class").split()[:2] == ["callout", f"callout-{tone}"]
+
+
+@pytest.mark.parametrize("tone", TONES)
+def test_callout_renders_the_icon_of_its_tone(tone: str) -> None:
+    box = _box(f'<c-callout tone="{tone}">Body</c-callout>')
+    expected = _box(f'<div><c-icon name="{tone}" /></div>')
+
+    [expected_path] = expected.xpath(".//svg//path")
+    [path] = box.xpath(".//svg//path")
+    assert path.get("d") == expected_path.get("d")
+
+
+@pytest.mark.parametrize("attrs", ['tone="purple"', ""])
+def test_callout_renders_as_info_for_an_unknown_or_missing_tone(attrs: str) -> None:
+    box = _box(f"<c-callout {attrs}>Body</c-callout>")
+    info = _box('<c-callout tone="info">Body</c-callout>')
+
+    assert box.get("class").split()[:2] == ["callout", "callout-info"]
+    assert _svg_markup(box) == _svg_markup(info)
+    assert box.get("role") is None
+
+
+@pytest.mark.parametrize(
+    ("tone", "role"),
+    [("error", "alert"), ("success", "status"), ("info", None), ("warning", None)],
+)
+def test_callout_role_follows_its_tone(tone: str, role: str | None) -> None:
+    box = _box(f'<c-callout tone="{tone}">Body</c-callout>')
+
+    assert box.get("role") == role
+
+
+def test_callout_title_is_a_strong_and_not_a_heading() -> None:
+    box = _box('<c-callout tone="info" title="Heads up">Body</c-callout>')
+
+    assert [s.text for s in box.xpath(".//strong")] == ["Heads up"]
+    assert not box.xpath(".//h1|.//h2|.//h3|.//h4|.//h5|.//h6")
+
+
+def test_callout_without_a_title_renders_no_strong() -> None:
+    box = _box('<c-callout tone="info">Body</c-callout>')
+
+    assert not box.xpath(".//strong")
+
+
+def test_callout_puts_a_passed_class_in_the_boxs_one_class_attribute() -> None:
+    box = _box(
+        '<c-callout tone="warning" class="mx-auto max-w-reading">Body</c-callout>'
     )
 
-    assert "rounded-r-lg mx-auto max-w-reading" in result
+    assert box.get("class").split() == [
+        "callout",
+        "callout-warning",
+        "mx-auto",
+        "max-w-reading",
+    ]
 
 
-def test_callout_default_margin_is_dropped_when_the_caller_passes_one() -> None:
-    """The default my-6 used to stay beside a caller's my-0 and win in the CSS."""
-    result = _render('<c-callout level="info" class="my-0">Body</c-callout>')
+def test_callout_puts_id_and_data_testid_on_the_box() -> None:
+    box = _box(
+        '<c-callout tone="info" id="note" data-testid="note-box">Body</c-callout>'
+    )
 
-    assert "my-6" not in result
-    assert "my-0" in result
+    assert box.get("id") == "note"
+    assert box.get("data-testid") == "note-box"
 
 
-def test_callout_keeps_its_default_margin_when_the_caller_passes_no_margin() -> None:
-    result = _render('<c-callout level="info" class="mx-auto">Body</c-callout>')
+@pytest.mark.parametrize("tone", TONES)
+def test_callout_icon_is_aria_hidden(tone: str) -> None:
+    box = _box(f'<c-callout tone="{tone}">Body</c-callout>')
 
-    assert 'class="my-6 p-4' in result
+    [svg] = box.xpath(".//svg")
+    assert svg.get("aria-hidden") == "true"

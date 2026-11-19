@@ -9,11 +9,9 @@
             <h1>Your details</h1>
 
             {% if form.non_field_errors %}
-                <div data-testid="details-errors" role="alert">
-                    <c-callout level="error" title="We couldn't use those details">
-                        {% for error in form.non_field_errors %}{{ error }} {% endfor %}
-                    </c-callout>
-                </div>
+                <c-callout tone="error" title="We couldn't use those details" data-testid="details-errors">
+                    {% for error in form.non_field_errors %}{{ error }} {% endfor %}
+                </c-callout>
             {% endif %}
 
             {# One submission at a time: a double-clicked Next must not make two applicants. #}

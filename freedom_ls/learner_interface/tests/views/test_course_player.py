@@ -4470,7 +4470,7 @@ def test_the_closed_notice_is_not_a_callout(closing_topic_course):
     assert not [
         node
         for node in content.iter()
-        if "border-l-4" in (node.get("class") or "").split()
+        if "callout" in (node.get("class") or "").split()
     ]
 
 

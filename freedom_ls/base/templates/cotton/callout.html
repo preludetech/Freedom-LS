@@ -1,37 +1,36 @@
-<c-vars level="info" title="" class="" />
+<c-vars tone="info" title="" class="" />
 
 {% comment %}
-Callout component for displaying informational alerts and notices.
-Supports levels: info, warning, error, success
+A static, toned status box in an app page, panel or dialog: a tone icon, an
+optional bold first line and the slot. It has no outer margin, so the parent
+spaces its children, and no text size, so it reads at its context's size.
+
+Attributes:
+  tone   info (default), success, warning or error. Any other value renders
+         as info. `error` is an alert and `success` a status, so a screen
+         reader announces each when it appears; `info` and `warning` are read
+         in place.
+  title  A bold first line. Not a heading: its right level depends on where
+         the callout sits.
+
+The `.callout` theme classes carry the colours, so a theme restyles every
+callout in one place. Course content uses <c-admonition>, not this.
 {% endcomment %}
 
-{% partialdef callout_box %}
-<div class="{% if "my-" not in class %}my-6 {% endif %}p-4 {{ bg }} border-l-4 {{ border }} rounded-r-lg{% if class %} {{ class }}{% endif %}">
-    {% if title %}
-    <h4 class="text-xl font-semibold {{ title_color }} mb-2">
-        <c-icon :name="icon" class="size-5 mr-2" />{{ title }}
-    </h4>
-    {% endif %}
-    <div class="{{ text }} px-4 space-y-4 pt-2">
-        {{ slot }}
+{% partialdef callout-box %}
+<div class="callout callout-{{ known_tone }}{% if class %} {{ class }}{% endif %}"{% if known_tone == "error" %} role="alert"{% elif known_tone == "success" %} role="status"{% endif %} {{ attrs }}>
+    <div class="flex items-start gap-2">
+        <c-icon :name="known_tone" class="callout-icon size-5 shrink-0" />
+        <div class="min-w-0 space-y-2">
+            {% if title %}<strong class="block font-semibold">{{ title }}</strong>{% endif %}
+            {{ slot }}
+        </div>
     </div>
 </div>
 {% endpartialdef %}
 
-{% if level == "info" %}
-    {% with bg="bg-primary/10" border="border-primary" text="text-on-surface" title_color="text-on-surface" icon="info" %}
-        {% partial callout_box %}
-    {% endwith %}
-{% elif level == "warning" %}
-    {% with bg="bg-warning/10" border="border-warning" text="text-on-warning-light" title_color="text-on-warning-light" icon="warning" %}
-        {% partial callout_box %}
-    {% endwith %}
-{% elif level == "error" %}
-    {% with bg="bg-error/10" border="border-error" text="text-error" title_color="text-error" icon="error" %}
-        {% partial callout_box %}
-    {% endwith %}
-{% elif level == "success" %}
-    {% with bg="bg-success/10" border="border-success" text="text-on-success-light" title_color="text-on-success-light" icon="success" %}
-        {% partial callout_box %}
-    {% endwith %}
+{% if tone == "success" or tone == "warning" or tone == "error" %}
+    {% with known_tone=tone %}{% partial callout-box %}{% endwith %}
+{% else %}
+    {% with known_tone="info" %}{% partial callout-box %}{% endwith %}
 {% endif %}

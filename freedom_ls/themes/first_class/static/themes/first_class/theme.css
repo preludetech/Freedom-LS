@@ -162,16 +162,20 @@
         @apply bg-white;
     }
 
-    .alert-success {
+    .callout-success {
         @apply bg-success-light border-success/30 text-on-success-light;
     }
 
-    .alert-error {
+    .callout-error {
         @apply bg-error-light border-error/30 text-on-error-light;
     }
 
-    .alert-info {
+    .callout-info {
         @apply bg-info-light border-info/30 text-on-info-light;
+    }
+
+    .callout-warning {
+        @apply bg-warning-light border-warning/30 text-on-warning-light;
     }
 
     /* first_class reads as a clean white bar: no drop shadow, just a subtle

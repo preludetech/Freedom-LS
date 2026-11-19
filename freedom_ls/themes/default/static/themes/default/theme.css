@@ -33,7 +33,7 @@
     --color-on-info: #FFFFFF;
 
     /* Status — light tints (named replacements for ad-hoc /15 opacity
-     * modifiers in chip/alert backgrounds). Tailwind v3 *-50 values. */
+     * modifiers in chip/callout backgrounds). Tailwind v3 *-50 values. */
     --color-success-light: #F0FFF4;
     --color-warning-light: #FFFFF0;
     --color-error-light: #FFF5F5;

@@ -395,21 +395,43 @@
         @apply text-xs px-2 py-0.5
     }
 
-    /* Alert family — feedback callouts (success / error / info). */
-    .alert {
-        @apply block px-4 py-3 rounded-md border text-on-surface
+    /* Callout family: the toned status box <c-callout> renders. Text stays
+     * on-surface, and the success and warning icons take their dark on-*-light
+     * shades, because the plain tone colours fail contrast on these tints. */
+    .callout {
+        @apply p-3 rounded-md border text-on-surface
     }
 
-    .alert-success {
-        @apply bg-success/10 border-success/30 text-on-surface
+    .callout-info {
+        @apply bg-info/10 border-info/20
     }
 
-    .alert-error {
-        @apply bg-error/10 border-error/30 text-on-surface
+    .callout-success {
+        @apply bg-success/10 border-success/20
     }
 
-    .alert-info {
-        @apply bg-info/10 border-info/30 text-on-surface
+    .callout-warning {
+        @apply bg-warning/10 border-warning/20
+    }
+
+    .callout-error {
+        @apply bg-error/10 border-error/20
+    }
+
+    .callout-info .callout-icon {
+        @apply text-info
+    }
+
+    .callout-success .callout-icon {
+        @apply text-on-success-light
+    }
+
+    .callout-warning .callout-icon {
+        @apply text-on-warning-light
+    }
+
+    .callout-error .callout-icon {
+        @apply text-error
     }
 
     /* Site header bar. Default treatment is a drop shadow that deepens on

@@ -23,7 +23,7 @@
             {% include "course_applications/partials/claim_link_notice.html" with application=application %}
 
             {% if required_answers_error %}
-                <c-callout level="error">{{ required_answers_error }}</c-callout>
+                <c-callout tone="error">{{ required_answers_error }}</c-callout>
             {% endif %}
 
             {% for section in sections %}
@@ -77,7 +77,7 @@
             {% endfor %}
 
             {% if submitted %}
-                <c-callout level="success">
+                <c-callout tone="success">
                     Your application has been submitted. You will hear back once it has been reviewed.
                 </c-callout>
                 <c-button href="{% url 'course_applications:status' pk=application.pk %}">

@@ -58,7 +58,7 @@
                     {% include "form_engine/inputs/file_upload.html" with answer_file=answer.answer_file %}
                 {% endwith %}
             {% else %}
-                <c-callout level="error">ERROR! UNHANDLED FORM TYPE {{ question.type }}</c-callout>
+                <c-callout tone="error">ERROR! UNHANDLED FORM TYPE {{ question.type }}</c-callout>
             {% endif %}
         </div>
         {% if rejected %}
