@@ -15,7 +15,6 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.audit_log.factories import AuditLogEntryFactory
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.educator_interface.filters import (
     AuditActionFilter,
     AuditActorFilter,
@@ -23,9 +22,14 @@ from freedom_ls.educator_interface.filters import (
     LearnerCourseFilter,
     LearnerStatusFilter,
     StaffRoleFilter,
-    VisibleCourseFilter,
 )
-from freedom_ls.educator_interface.tests.helpers import course_per_reach_row
+from freedom_ls.educator_interface.panels.common.filters import VisibleCourseFilter
+from freedom_ls.educator_interface.tests.helpers import (
+    COURSE_REACH_ROWS,
+    _any_request,
+    _educator_request,
+    course_per_reach_row,
+)
 from freedom_ls.educator_interface.views import (
     AuditLogEntryTable,
     CohortDataTable,
@@ -44,66 +48,7 @@ from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.panel_framework.filters import TableFilter, ToggleFilter
 from freedom_ls.panel_framework.tables import TableQuery
 
-
-@pytest.fixture(autouse=True)
-def _site_context(mock_site_context):
-    """Every test here builds site-aware objects."""
-
-
-def _educator_request(site_aware_request: RequestFactory, organisation):
-    educator = LearnerFactory(user__staff=True).user
-    grantor = LearnerFactory(user__superuser=True).user
-    assign_role(grantor, educator, "organisation_admin", organisation)
-    request = site_aware_request.get("/")
-    request.user = educator
-    request.organisation = organisation
-    return request
-
-
-def _any_request():
-    """For a filter whose apply() reads nothing from the request."""
-    return RequestFactory().get("/")
-
-
-@pytest.mark.django_db
-def test_visible_course_filter_offers_only_courses_visible_to_the_educator(
-    site_aware_request,
-):
-    organisation = OrganisationFactory()
-    published = CourseFactory(title="Published Course")
-    CourseFactory(title="Hidden Course", visibility=CourseVisibility.HIDDEN)
-    request = _educator_request(site_aware_request, organisation)
-
-    choices = VisibleCourseFilter(
-        "course", "Course", lookup="course_registrations__course"
-    ).get_choices(request)
-
-    assert choices == [(str(published.pk), "Published Course")]
-
-
-@pytest.mark.django_db
-def test_visible_course_filter_keeps_a_cohort_with_an_active_registration():
-    course = CourseFactory()
-    cohort = CohortFactory()
-    CohortCourseRegistrationFactory(cohort=cohort, course=course, is_active=True)
-
-    result = VisibleCourseFilter(
-        "course", "Course", lookup="course_registrations__course"
-    ).apply(_any_request(), Cohort.objects.all(), [str(course.pk)])
-
-    assert list(result) == [cohort]
-
-
-@pytest.mark.django_db
-def test_visible_course_filter_drops_a_cohort_whose_registration_is_inactive():
-    course = CourseFactory()
-    CohortCourseRegistrationFactory(course=course, is_active=False)
-
-    result = VisibleCourseFilter(
-        "course", "Course", lookup="course_registrations__course"
-    ).apply(_any_request(), Cohort.objects.all(), [str(course.pk)])
-
-    assert list(result) == []
+pytestmark = pytest.mark.usefixtures("_site_context")
 
 
 # the table hides inactive cohorts only while it offers the toggle
@@ -738,31 +683,6 @@ def test_the_audit_log_filters_on_the_when_parameter(audit_request):
     assert list(rows) == [recent]
 
 
-COURSE_REACH_ROWS = [
-    ("no_owner", True),
-    ("owned", True),
-    ("shared", True),
-    ("held", True),
-    ("unreached", False),
-]
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize(("row", "offered"), COURSE_REACH_ROWS)
-def test_visible_course_filter_offers_a_course_only_when_it_reaches_the_organisation(
-    site_aware_request, row: str, offered: bool
-):
-    organisation = OrganisationFactory()
-    courses = course_per_reach_row(organisation)
-    request = _educator_request(site_aware_request, organisation)
-
-    choices = VisibleCourseFilter(
-        "course", "Course", lookup="course_registrations__course"
-    ).get_choices(request)
-
-    assert (str(courses[row].pk) in [pk for pk, _ in choices]) is offered
-
-
 @pytest.mark.django_db
 @pytest.mark.parametrize(("row", "offered"), COURSE_REACH_ROWS)
 def test_learner_course_filter_offers_a_course_only_when_it_reaches_the_organisation(
@@ -775,26 +695,3 @@ def test_learner_course_filter_offers_a_course_only_when_it_reaches_the_organisa
     choices = _course_filter().get_choices(request)
 
     assert (str(courses[row].pk) in [pk for pk, _ in choices]) is offered
-
-
-@pytest.mark.django_db
-def test_course_filter_names_the_owner_of_a_course_another_organisation_owns(
-    site_aware_request,
-):
-    """Two courses with one title stayed indistinguishable in the choices."""
-    organisation = OrganisationFactory(name="Harbour College")
-    own = CourseFactory(title="Workplace Safety Essentials", slug="safety-own")
-    own.organisations.add(organisation)
-    shared = CourseFactory(title="Workplace Safety Essentials", slug="safety-shared")
-    shared.organisations.add(OrganisationFactory(name="Northwind Logistics"))
-    shared.shared_with.add(organisation)
-    request = _educator_request(site_aware_request, organisation)
-
-    choices = VisibleCourseFilter(
-        "course", "Course", lookup="course_registrations__course"
-    ).get_choices(request)
-
-    assert sorted(label for _, label in choices) == [
-        "Workplace Safety Essentials",
-        "Workplace Safety Essentials (Northwind Logistics)",
-    ]

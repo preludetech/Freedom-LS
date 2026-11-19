@@ -9,7 +9,7 @@ import lxml.html
 from pytest_django.fixtures import DjangoAssertNumQueries
 
 from django.db import connection
-from django.test import Client
+from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
@@ -23,6 +23,7 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
+from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.utils import assign_object_role
@@ -117,3 +118,27 @@ def course_per_reach_row(organisation: Organisation) -> dict[str, Course]:
         "held": held,
         "unreached": unreached,
     }
+
+
+def _educator_request(site_aware_request: RequestFactory, organisation):
+    educator = LearnerFactory(user__staff=True).user
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator, "organisation_admin", organisation)
+    request = site_aware_request.get("/")
+    request.user = educator
+    request.organisation = organisation
+    return request
+
+
+def _any_request():
+    """For a filter whose apply() reads nothing from the request."""
+    return RequestFactory().get("/")
+
+
+COURSE_REACH_ROWS = [
+    ("no_owner", True),
+    ("owned", True),
+    ("shared", True),
+    ("held", True),
+    ("unreached", False),
+]

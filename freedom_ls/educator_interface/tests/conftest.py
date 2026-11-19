@@ -25,3 +25,8 @@ def panel_request(site_aware_request):
         return request
 
     return _make
+
+
+@pytest.fixture
+def _site_context(mock_site_context):
+    """Every test here builds site-aware objects."""
