@@ -20,7 +20,7 @@ These are the five sections of the `todo.md` checklist. Capturing the idea comes
 
 ## Step 0: The spec roadmap
 
-`spec_dd/1. next/roadmap.md` is the spec roadmap: what is being built next. It opens with "Up next" (specs in progress, specs ready to start, specs that need work on main first, and a diagram of the next three levels of dependencies), then has one section per feature: every spec waiting or in flight with its state, an SVG dependency diagram and lean notes. Specs are always named by directory name, and finished work is left out. `docs/product/roadmap.md` is the product roadmap, a different file.
+`spec_dd/1. next/roadmap.md` is the spec roadmap: what is being built next. It opens with "Up next" (specs in progress, specs ready to start, specs that need work on main first, and a diagram of the next four levels of dependencies), then has one section per feature: every spec waiting or in flight with its state, an SVG dependency diagram and lean notes. Specs are always named by directory name, and finished work is left out. `docs/product/roadmap.md` is the product roadmap, a different file.
 
 - `/sdd:roadmap` with no argument syncs the file with the directories: adds bullets for new directories, drops finished ones, and runs `scripts/roadmap.py` to set statuses, regenerate "Up next" and redraw the diagrams.
 - `/sdd:roadmap <dir>` cuts an idea that is too big for one SDD run into ordered sibling specs, each with a decision-complete `idea.md` under `spec_dd/1. next/`, and adds them to the roadmap as a feature with its diagram and notes. The cut goes by user-visible outcome, never by line count.

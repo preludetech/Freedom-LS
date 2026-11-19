@@ -69,7 +69,7 @@ parents under it, most important first. An effort parent covers every spec in it
 no entry of its own. A spec is at least as high as any spec that depends on it. The roadmap script
 adds anything missing under "Priority not set"; move it from there to the level it belongs in."""
 
-UP_NEXT_LEVELS = 3
+UP_NEXT_LEVELS = 4
 
 # Diagram geometry.
 BOX_W = 250
@@ -627,16 +627,29 @@ def up_next_graph(
         for dep in spec.deps:
             if dep in specs:
                 dependents[dep].append(spec.dir)
-    level: dict[str, int] = {}
-    frontier = [d for d, s in specs.items() if s.status != "blocked" and dependents[d]]
-    for d in frontier:
-        level[d] = 0
-    for depth in range(1, UP_NEXT_LEVELS):
-        frontier = sorted(
-            {c for d in frontier for c in dependents[d] if c not in level}
-        )
-        for d in frontier:
-            level[d] = depth
+    # A spec's column is the longest chain of unfinished specs before it, so every spec sits to
+    # the right of everything it waits on. Specs more than UP_NEXT_LEVELS columns out are left off.
+    depth: dict[str, int] = {}
+
+    def column(d: str, seen: frozenset[str]) -> int:
+        if d in depth:
+            return depth[d]
+        spec = specs[d]
+        deps = [p for p in spec.deps if p in specs and p not in seen]
+        value = 0
+        for p in deps:
+            value = max(value, column(p, seen | {d}) + 1)
+        depth[d] = value
+        return value
+
+    for d in specs:
+        column(d, frozenset())
+    level = {
+        d: n
+        for d, n in depth.items()
+        if n < UP_NEXT_LEVELS
+        and (n > 0 or any(depth[c] < UP_NEXT_LEVELS for c in dependents[d]))
+    }
     nodes = [d for d in specs if d in level]
     edges = [(dep, s) for s in nodes for dep in specs[s].deps if dep in level]
     states = {n: specs[n].state for n in nodes}
