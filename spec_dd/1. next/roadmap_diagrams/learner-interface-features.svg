@@ -4,11 +4,11 @@
 <text x="24" y="38" font-size="15" font-weight="bold" fill="#111827">Learner interface features</text>
 <path d="M274.0,83.0 C314.0,83.0 314.0,83.0 354.0,83.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <rect x="24.0" y="58.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,58.0 H30.0 A6,6 0 0 0 24.0,64.0 V102.0 A6,6 0 0 0 30.0,108.0 H32.0 Z" fill="#9ca3af"/>
+<path d="M32.0,58.0 H30.0 A6,6 0 0 0 24.0,64.0 V102.0 A6,6 0 0 0 30.0,108.0 H32.0 Z" fill="#ea580c"/>
 <text x="40.0" y="80.0" fill="#111827">learner-interface-features-3-</text>
 <text x="40.0" y="95.0" fill="#111827">revision-questions</text>
 <rect x="354.0" y="58.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M362.0,58.0 H360.0 A6,6 0 0 0 354.0,64.0 V102.0 A6,6 0 0 0 360.0,108.0 H362.0 Z" fill="#9ca3af"/>
+<path d="M362.0,58.0 H360.0 A6,6 0 0 0 354.0,64.0 V102.0 A6,6 0 0 0 360.0,108.0 H362.0 Z" fill="#ea580c"/>
 <text x="370.0" y="80.0" fill="#111827">learner-interface-features-4-</text>
 <text x="370.0" y="95.0" fill="#111827">flashcards</text>
 <rect x="24.0" y="144.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>

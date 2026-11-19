@@ -11,50 +11,103 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### In progress
 
+- 🔴 High · `sacaa-compliance-1-served-paper-record` (SACAA compliance)
 - 🔴 High · `extract_panels_framework-4-template-contract` (Panel framework extraction)
-- 🔴 High · `learner-profile-use-panels-framework-2-editable-list-panel` (Account area on panels, via `learner-public-profile`)
-- ⚪ Priority not set · `misure-of-admonitions` (Educator interface)
-- ⚪ Priority not set · `sacaa-compliance-1-served-paper-record` (SACAA compliance)
-- ⚪ Priority not set · `content-widget-sayit-reveal-1-audio-player` (Audio content widgets)
+- 🔴 High · `learner-profile-use-panels-framework-2-editable-list-panel` (Account area on panels)
+- 🟡 Low · `misure-of-admonitions` (Educator interface)
 
 ### Ready to start
 
-- 🔴 High · `learner-profile-use-panels-framework-3-account-page` (Account area on panels, via `learner-public-profile`)
+- 🔴 High · `educator-interface-refactor-1-scaffolding-and-common` (Educator interface code layout, via `sacaa-compliance`)
+- 🔴 High · `learner-profile-use-panels-framework-3-account-page` (Account area on panels)
 - 🔴 High · `profile-picture-on-id-rows` (Learner public profiles)
-- ⚪ Priority not set · `audit-log-coverage-gaps` (Educator interface)
-- ⚪ Priority not set · `educator-interface-data-table-filter-design` (Educator interface)
-- ⚪ Priority not set · `educator-interface-misc-polish` (Educator interface)
-- ⚪ Priority not set · `educator-interface-more polish` (Educator interface)
-- ⚪ Priority not set · `educator-interface-refactor-1-scaffolding-and-common` (Educator interface code layout)
-- ⚪ Priority not set · `user-communication-2-notification-email` (User communication)
-- ⚪ Priority not set · `user-communication-6-moderation` (User communication)
-- ⚪ Priority not set · `user-communication-help-desk` (User communication)
-- ⚪ Priority not set · `deadlines-4-learner-self-pause` (Deadlines)
-- ⚪ Priority not set · `deadlines-5-reminders` (Deadlines)
-- ⚪ Priority not set · `deadlines-6-educator-management` (Deadlines)
-- ⚪ Priority not set · `deadlines-7-educator-at-risk` (Deadlines)
-- ⚪ Priority not set · `corporate-job-course-recommendations-4-educator-interface-screens` (Registration rules)
-- ⚪ Priority not set · `corporate-job-course-recommendations-5-attribute-csv-import` (Registration rules)
-- ⚪ Priority not set · `referral-tracking-marketing-channels` (Referral tracking and marketing)
-- ⚪ Priority not set · `referral-tracking-external-referer-first-touch` (Referral tracking and marketing)
-- ⚪ Priority not set · `server-side-conversion-tracking` (Referral tracking and marketing)
-- ⚪ Priority not set · `cookie-banner` (Referral tracking and marketing)
-- ⚪ Priority not set · `landing-page-component-kit` (Referral tracking and marketing)
-- ⚪ Priority not set · `lead-capture-forms` (Referral tracking and marketing)
-- ⚪ Priority not set · `form-engine-branch-logic-2-and-conditions` (Forms and applications)
+- 🟠 Medium · `content-widget-sayit-reveal-2-say-it-reveal` (Audio content widgets)
+- 🟠 Medium · `content-widget-sayit-reveal-4-audio-access-control` (Audio content widgets)
+- 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
+- 🟠 Medium · `deadlines-4-learner-self-pause` (Deadlines)
+- 🟠 Medium · `deadlines-5-reminders` (Deadlines)
+- 🟠 Medium · `deadlines-6-educator-management` (Deadlines)
+- 🟠 Medium · `deadlines-7-educator-at-risk` (Deadlines)
+- 🟠 Medium · `form-engine-branch-logic-2-and-conditions` (Forms and applications)
+- 🟠 Medium · `user-communication-2-notification-email` (User communication)
+- 🟠 Medium · `user-communication-6-moderation` (User communication)
+- 🟠 Medium · `user-communication-help-desk` (User communication)
+- 🟠 Medium · `corporate-job-course-recommendations-4-educator-interface-screens` (Registration rules)
+- 🟠 Medium · `corporate-job-course-recommendations-5-attribute-csv-import` (Registration rules)
+- 🟠 Medium · `referral-tracking-marketing-channels` (Referral tracking and marketing)
+- 🟠 Medium · `referral-tracking-external-referer-first-touch` (Referral tracking and marketing)
+- 🟠 Medium · `server-side-conversion-tracking` (Referral tracking and marketing)
+- 🟠 Medium · `cookie-banner` (Referral tracking and marketing)
+- 🟡 Low · `audit-log-coverage-gaps` (Educator interface)
+- 🟡 Low · `educator-interface-data-table-filter-design` (Educator interface)
+- 🟡 Low · `educator-interface-misc-polish` (Educator interface)
+- 🟡 Low · `educator-interface-more polish` (Educator interface)
+- 🟡 Low · `landing-page-component-kit` (Referral tracking and marketing)
+- 🟡 Low · `lead-capture-forms` (Referral tracking and marketing)
+- 🟡 Low · `dev-site-bootstrap-command` (Tooling and operations)
+- 🟡 Low · `forced-site-name-for-host-based-site-lookup` (Tooling and operations)
+- 🟡 Low · `from-address-system-check` (Tooling and operations)
 - ⚪ Priority not set · `learner-interface-features-2-test-out` (Learner interface features)
-- ⚪ Priority not set · `learner-interface-features-3-revision-questions` (Learner interface features)
 - ⚪ Priority not set · `learner-interface-features-5-protected-video` (Learner interface features)
-- ⚪ Priority not set · `from-address-system-check` (Tooling and operations)
 - ⚪ Priority not set · `housekeeping-sentry-cron-checkin` (Tooling and operations)
-- ⚪ Priority not set · `forced-site-name-for-host-based-site-lookup` (Tooling and operations)
-- ⚪ Priority not set · `dev-site-bootstrap-command` (Tooling and operations)
 
 ### Needs work on main first
 
-- ⚪ Priority not set · `multi-step-course-applications` (Forms and applications): cut it with `/sdd:roadmap multi-step-course-applications` (its idea lists six parts).
+- 🔴 High · `multi-step-course-applications` (Forms and applications): cut it with `/sdd:roadmap multi-step-course-applications` (its idea lists six parts).
 
 ![Up next](roadmap_diagrams/up-next.svg)
+
+## Educator interface code layout
+
+Priority: 🔴 High
+
+The educator interface's `views.py` and `actions.py` split into one `panels/<area>/` package per area, with tests mirrored. Parent: `educator-interface-refactor`.
+
+- `educator-interface-refactor-1-scaffolding-and-common` — **ready** — Creates `panels/` and `panels/common/` with the shared request, table, filter, action and report helpers, and their tests.
+- `educator-interface-refactor-2-dashboard-and-audit-log` — **blocked** by `educator-interface-refactor-1-scaffolding-and-common` — Moves the dashboard and audit log areas, including `HistoryPanel`, into `panels/`, with their tests.
+- `educator-interface-refactor-3-staff` — **blocked** by `educator-interface-refactor-1-scaffolding-and-common` — Moves the staff area's config, table, actions, role filter and quick view into `panels/staff/`, with its tests.
+- `educator-interface-refactor-4-course` — **blocked** by `educator-interface-refactor-1-scaffolding-and-common` — Moves the course area, including content preview, into `panels/course/`, with its tests.
+- `educator-interface-refactor-5-learner` — **blocked** by `educator-interface-refactor-1-scaffolding-and-common`, `educator-interface-refactor-2-dashboard-and-audit-log` — Moves the learner area, membership actions and import views into `panels/learner/`, breaks the learner/cohort cycle, and migrates stored bulk-action paths.
+- `educator-interface-refactor-6-cohort` — **blocked** by `educator-interface-refactor-5-learner` — Moves the cohort area, including reports and report download, into `panels/cohort/`, and migrates stored bulk-action paths.
+- `educator-interface-refactor-7-cleanup` — **blocked** by `educator-interface-refactor-3-staff`, `educator-interface-refactor-4-course`, `educator-interface-refactor-6-cohort` — Deletes the emptied flat modules, trims `views.py` to the shell, and sweeps up old paths, docs and baselines.
+
+![Educator interface code layout](roadmap_diagrams/educator-interface-code-layout.svg)
+
+**Notes**
+- `educator-interface-refactor-1-scaffolding-and-common` runs first. Then `-2-dashboard-and-audit-log`, `-3-staff` and `-4-course` run in parallel. `-5-learner` follows `-2`, `-6-cohort` follows `-5`, and `-7-cleanup` comes last.
+- Collisions: the parallel specs all cut ranges from `views.py`, `actions.py`, `test_views.py` and `test_actions.py`, and add lines to one import block. Each removes only its own ranges, so the conflicts stay mechanical.
+- Land the effort before `extract_panels_framework-5-package-and-install` and before the specs that add educator panels (`deadlines-6-educator-management`, `deadlines-7-educator-at-risk`, `corporate-job-course-recommendations-4-educator-interface-screens`, `audit-log-coverage-gaps`). Otherwise rebase them onto it.
+- Decided: a pure move. URL names, paths, the app label and template paths stay. There's no re-export shim. Each spec repoints every import and `mock.patch` string for what it moves.
+- Decided: an area holds `config.py`, `data_tables.py`, `data_table_panels.py`, `panels.py`, `instance_view.py` (a file), `actions.py`, `bulk_actions.py`, `filters.py` and `quick_view.py`, each only where it has content. Every `__init__.py` is empty.
+- Decided: a spec that moves registered bulk actions adds a new data migration rewriting `BulkActionRun.action_path`, with a reverse, and sets `requires_migrations: true`.
+- Decided: tests move with their code to `tests/panels/<area>/test_<module>.py`. `invariants/`, `playwright/` and `migrations/` stay where they are.
+- Assumed: `course` and `staff` are two areas. A cross-subclassed table lives in the area whose rows it lists. Learner import views go in `learner/import_views.py`.
+- Out of scope: any behaviour, UI, URL or template change, and the flat domain modules (`forms.py`, `staff.py`, `learner_import.py`, `messaging.py`).
+- References: `research_code_inventory.md`, `research_collisions.md` and `research_downstream_imports.md`, all in the parent.
+
+## SACAA compliance
+
+Priority: 🔴 High
+
+Quiz randomisation and a per-attempt record of the paper served, for training organisations audited by SACAA. Parent: `sacaa-compliance`.
+
+- `sacaa-compliance-1-served-paper-record` — **in progress** — Every quiz attempt records the exact pages, questions and option order it served, and is scored only on those.
+- `sacaa-compliance-2-shuffle` — **blocked** by `sacaa-compliance-1-served-paper-record` — Authors opt a quiz into shuffling pages, questions and answer options; locked options and keep-together groups stay put.
+- `sacaa-compliance-3-question-pools` — **blocked** by `sacaa-compliance-2-shuffle` — Authors set a quiz page to draw N of its questions per attempt; every learner is scored out of the same total.
+- `sacaa-compliance-4-attempt-review` — **blocked** by `sacaa-compliance-1-served-paper-record`, `educator-interface-refactor-5-learner` — Educators open one learner's quiz attempt and see the paper served, answers and score; the form export carries the served order.
+
+![SACAA compliance](roadmap_diagrams/sacaa-compliance.svg)
+
+**Notes**
+- Build order: `sacaa-compliance-1-served-paper-record` first, then `sacaa-compliance-2-shuffle`, then `sacaa-compliance-3-question-pools`. `sacaa-compliance-4-attempt-review` runs beside them once `educator-interface-refactor-5-learner` lands.
+- Collisions: `sacaa-compliance-2-shuffle` and `sacaa-compliance-3-question-pools` both change the form schema, validator and `content_save`, so they run in series. `sacaa-compliance-1-served-paper-record` and `form-engine-branch-logic-2-and-conditions` both change `conditions.py`; whichever lands second rebases. `learner-interface-features-1-question-sections` also touches the `FormQuestion` schema.
+- Decided: randomisation is opt-in per quiz form and off by default; existing quizzes behave exactly as today.
+- Decided: one seed per attempt and the served paper saved at attempt start; a retake is a new attempt with a fresh draw and order.
+- Decided: scoring, results, export and review read the served paper, never a re-derived shuffle or the whole form, and a draw keeps `max_score` the same for every attempt.
+- Assumption: randomisation applies to quiz forms only, which already ban `when` conditions, so shuffles and draws cannot break a condition.
+- Assumption: no SACAA text found mandates a randomisation mechanic; the client's ATO manual is the audit reference, so the effort ships common practice.
+- Out of scope: exam time limits, retake waiting periods, frozen copies of question text (`content_snapshots`, paused), difficulty-weighted draws, banks shared across forms, draws by course section.
+- References: `sacaa-compliance/research_sacaa_requirements.md` and `sacaa-compliance/research_form_engine_seams.md`.
 
 ## Panel framework extraction
 
@@ -132,81 +185,73 @@ Learners publish a profile to help them find work, and visitors browse an index 
 - Out of scope: educator views of profiles, Open Badges, generated completion certificates.
 - References: `research_existing_profile_code.md` and `research_comparable_systems.md` in the parent.
 
-## Educator interface
+## Forms and applications
 
-Priority: ⚪ Priority not set
+Priority: 🔴 High
 
-Org admins manage learners, cohorts, registrations and staff. Parent: `educator-interface-full-polish`.
+Form engine features and the course application flow.
 
-- `educator-interface-misc-polish` — **ready** — Polish found while walking the interface: optional learner names, cohort settings sub-panels, show and hide table columns, help icons, smaller mobile buttons.
-- `educator-interface-data-table-filter-design` — **ready** — One button per filter on data tables, instead of a single long drop-down. The UX still needs designing.
-- `audit-log-coverage-gaps` — **ready** — The audit log also records Django admin edits, system admin role changes and report downloads, and marks the date its history starts.
-- `misure-of-admonitions` — **in progress** — Learner and educator pages use theme-appropriate alerts instead of the content engine's admonition component, which stays for content only.
-- `educator-interface-more polish` — **ready** — Educators resend staff invitations and see who hasn't accepted. They also get linked dashboard figures, message sending from the learner tab, and one new-message flow.
+- `form-engine-branch-logic-2-and-conditions` — **ready** — Show a page, question or content block only when several conditions all hold.
+- `multi-step-course-applications` — **ready** — Applicants complete requirements in any order, with reviewer verdicts, uploads and help requests. Before starting: cut it with `/sdd:roadmap multi-step-course-applications` (its idea lists six parts).
 
-![Educator interface](roadmap_diagrams/educator-interface.svg)
+![Forms and applications](roadmap_diagrams/forms-and-applications.svg)
 
 **Notes**
-- Decided: deactivate, never delete. Admins grant only their own level and below, inside their own scope. Only `site_admin` grants `site_admin`.
-- Access rules: anything outside the user's scope returns 404. An action the user has lost permission for returns 403 with a message. Controls the user can't use are hidden. No new dependencies.
-- Not yet cut: `educator-interface-full-polish/application-review-ui/`, the application review workflow (a state machine on `CourseApplication`, a reviewer role, an inbox).
-- References: the mockups in `educator-interface-full-polish/Educator LMS Interface Design/` (layout only, not scope), and `brand-guidelines` and `fls-dev:panel-framework`.
+- `multi-step-course-applications` builds on `educator-interface-full-polish/application-review-ui/`.
 
-## Educator interface code layout
+## Learner interface features
 
-Priority: ⚪ Priority not set
+Priority: 🟠 Medium
 
-The educator interface's `views.py` and `actions.py` split into one `panels/<area>/` package per area, with tests mirrored. Parent: `educator-interface-refactor`.
+Test out of sections, revise with spaced repetition and flashcards, and watch access-controlled video. Parent: `learner-interface-features`.
 
-- `educator-interface-refactor-1-scaffolding-and-common` — **ready** — Creates `panels/` and `panels/common/` with the shared request, table, filter, action and report helpers, and their tests.
-- `educator-interface-refactor-2-dashboard-and-audit-log` — **blocked** by `educator-interface-refactor-1-scaffolding-and-common` — Moves the dashboard and audit log areas, including `HistoryPanel`, into `panels/`, with their tests.
-- `educator-interface-refactor-3-staff` — **blocked** by `educator-interface-refactor-1-scaffolding-and-common` — Moves the staff area's config, table, actions, role filter and quick view into `panels/staff/`, with its tests.
-- `educator-interface-refactor-4-course` — **blocked** by `educator-interface-refactor-1-scaffolding-and-common` — Moves the course area, including content preview, into `panels/course/`, with its tests.
-- `educator-interface-refactor-5-learner` — **blocked** by `educator-interface-refactor-1-scaffolding-and-common`, `educator-interface-refactor-2-dashboard-and-audit-log` — Moves the learner area, membership actions and import views into `panels/learner/`, breaks the learner/cohort cycle, and migrates stored bulk-action paths.
-- `educator-interface-refactor-6-cohort` — **blocked** by `educator-interface-refactor-5-learner` — Moves the cohort area, including reports and report download, into `panels/cohort/`, and migrates stored bulk-action paths.
-- `educator-interface-refactor-7-cleanup` — **blocked** by `educator-interface-refactor-3-staff`, `educator-interface-refactor-4-course`, `educator-interface-refactor-6-cohort` — Deletes the emptied flat modules, trims `views.py` to the shell, and sweeps up old paths, docs and baselines.
+- `learner-interface-features-2-test-out` — **ready** — Learners take a pretest and skip sections they already know; the skip is recorded as its own kind of completion.
+- `learner-interface-features-3-revision-questions` — **ready** — Learners revise questions from finished sections, scheduled by spaced repetition, with explanations and weak sections highlighted.
+- `learner-interface-features-4-flashcards` — **blocked** by `learner-interface-features-3-revision-questions` — Authors add flashcards to sections; learners rate their confidence and the revision schedule brings them back.
+- `learner-interface-features-5-protected-video` — **ready** — Course content embeds video that only learners with access to the course can play; shared links stop working.
 
-![Educator interface code layout](roadmap_diagrams/educator-interface-code-layout.svg)
+![Learner interface features](roadmap_diagrams/learner-interface-features.svg)
 
 **Notes**
-- `educator-interface-refactor-1-scaffolding-and-common` runs first. Then `-2-dashboard-and-audit-log`, `-3-staff` and `-4-course` run in parallel. `-5-learner` follows `-2`, `-6-cohort` follows `-5`, and `-7-cleanup` comes last.
-- Collisions: the parallel specs all cut ranges from `views.py`, `actions.py`, `test_views.py` and `test_actions.py`, and add lines to one import block. Each removes only its own ranges, so the conflicts stay mechanical.
-- Land the effort before `extract_panels_framework-5-package-and-install` and before the specs that add educator panels (`deadlines-6-educator-management`, `deadlines-7-educator-at-risk`, `corporate-job-course-recommendations-4-educator-interface-screens`, `audit-log-coverage-gaps`). Otherwise rebase them onto it.
-- Decided: a pure move. URL names, paths, the app label and template paths stay. There's no re-export shim. Each spec repoints every import and `mock.patch` string for what it moves.
-- Decided: an area holds `config.py`, `data_tables.py`, `data_table_panels.py`, `panels.py`, `instance_view.py` (a file), `actions.py`, `bulk_actions.py`, `filters.py` and `quick_view.py`, each only where it has content. Every `__init__.py` is empty.
-- Decided: a spec that moves registered bulk actions adds a new data migration rewriting `BulkActionRun.action_path`, with a reverse, and sets `requires_migrations: true`.
-- Decided: tests move with their code to `tests/panels/<area>/test_<module>.py`. `invariants/`, `playwright/` and `migrations/` stay where they are.
-- Assumed: `course` and `staff` are two areas. A cross-subclassed table lives in the area whose rows it lists. Learner import views go in `learner/import_views.py`.
-- Out of scope: any behaviour, UI, URL or template change, and the flat domain modules (`forms.py`, `staff.py`, `learner_import.py`, `messaging.py`).
-- References: `research_code_inventory.md`, `research_collisions.md` and `research_downstream_imports.md`, all in the parent.
-
-## User communication
-
-Priority: ⚪ Priority not set
-
-Notifications and direct messaging between learners and educators. Parent: `user-communication`.
-
-- `user-communication-2-notification-email` — **ready** — Email delivery. Per-category immediate, daily, weekly or off preferences, quiet hours, unsubscribe, and a digest sweep in housekeeping.
-- `user-communication-6-moderation` — **ready** — Users report a message or block a user. Site admins work a report queue and can hide messages. Nothing is hard deleted.
-- `user-communication-8-realtime` — **blocked** by `user-communication-6-moderation` — Optional Django Channels push for the unread badge and open threads. Off by default, with polling as the fallback.
-- `user-communication-help-desk` — **ready** — Learners ask for help about specific content from the course player. Requests land in a shared queue that educators pick up.
-
-![User communication](roadmap_diagrams/user-communication.svg)
-
-**Notes**
-- `user-communication-2-notification-email` and `user-communication-6-moderation` run in parallel. UI specs build to the design registered in `user-communication/design.md`.
-- Email contract: a backend re-reads the notification when it sends and skips it if read. Updating a notification queues nothing. Messages raise no notification, so message email needs its own trigger.
-- Decided: polling is the transport. Messaging permissions are layered and closed by default, through a swappable policy class. Moderation is report, hide and block.
-- `user-communication-help-desk` needs its own queue model, because a `Conversation` is between exactly two users.
-- Assumed: configuration is edited in the Django admin. Conversations are one-to-one with no read receipts. Background work passes `site_id` explicitly.
+- Order is set by dependencies only. `learner-interface-features-2-test-out` and `learner-interface-features-3-revision-questions` run in parallel after `learner-interface-features-1-question-sections`. `learner-interface-features-5-protected-video` can start any time.
+- Collision: `learner-interface-features-2-test-out` adds a new kind of completion, and `learner-interface-features-3-revision-questions` adds a section's questions to the bank when the section completes. Whichever lands second makes test-out completion count.
+- Decided: design questions (what a section is, the pretest's shape, the scheduler, the video host) are settled in each spec's own research, not in the cut. Flashcards are their own spec.
+- Assumed: the `youtube` component stays as it is beside protected video.
 - Open questions:
-  - where the report queue lives (`user-communication-6-moderation`);
-  - what a digest holds and where a user's timezone comes from (`user-communication-2-notification-email`).
-- Out of scope: announcements, forums, group conversations, SMS and push, reply-by-email.
+  - what a section is (`learner-interface-features-1-question-sections`);
+  - the pretest's shape, how a skip is recorded and reported, renewal registrations, and the "recertification not planned" lines here and in `docs/product/roadmap.md` (`learner-interface-features-2-test-out`);
+  - scheduler, explanations, and history when an author edits a question (`learner-interface-features-3-revision-questions`);
+  - video host and build or buy (`learner-interface-features-5-protected-video`).
+- Out of scope: the other features in section 4 of `research_learner_features.md`.
+- References: `research_learner_features.md` and `research_question_model.md` in the parent.
+
+## Audio content widgets
+
+Priority: 🟠 Medium
+
+Course content that plays audio: clips, say-it-then-reveal practice and audio on revision flashcards. Parent: `content-widget-sayit-reveal`.
+
+- `content-widget-sayit-reveal-2-say-it-reveal` — **ready** — Learners say an answer aloud, reveal it and hear it; audio also plays inside flashcard widget faces.
+- `content-widget-sayit-reveal-3-audio-on-revision-flashcards` — **blocked** by `content-widget-sayit-reveal-2-say-it-reveal`, `learner-interface-features-4-flashcards` — Scheduled revision flashcards carry audio that plays when the learner reveals the card.
+- `content-widget-sayit-reveal-4-audio-access-control` — **ready** — Decide and enforce who may play a course's audio through its open redirect link.
+
+![Audio content widgets](roadmap_diagrams/audio-content-widgets.svg)
+
+**Notes**
+- Order: `content-widget-sayit-reveal-1-audio-player`, then `content-widget-sayit-reveal-2-say-it-reveal`; `content-widget-sayit-reveal-3-audio-on-revision-flashcards` waits for `learner-interface-features-4-flashcards` too.
+- Decided: say-it-then-reveal is a self-check; no microphone, no speech recognition, nothing recorded.
+- Decided: audio is the author's recorded files, loaded as course media (the loader already stores audio); no text-to-speech.
+- Decided: until scheduled flashcards land, courses practise with the static `c-flashcard` widget, which gains audio.
+- Assumed: mp3 recommended; nothing plays on page load, only on a Reveal click; each clip has a visible text alternative.
+- Assumed: the in-page widgets store nothing and have no self-rating; the letter list is `c-audio` inside existing layout widgets.
+- Assumed: FLS demo content shows each widget with a few licensed clips; the phonetic-alphabet course belongs to the concrete project.
+- Open: demo clip source and licence (`content-widget-sayit-reveal-1-audio-player`); how a card names its clip (`content-widget-sayit-reveal-3-audio-on-revision-flashcards`).
+- Out of scope: speech recognition, text-to-speech, recording the learner, speed control.
+- References: `research_content_media.md` and `research_audio_widgets.md` in the parent.
 
 ## Deadlines
 
-Priority: ⚪ Priority not set
+Priority: 🟠 Medium
 
 Due dates and course time limits, with consequences, pause, reminders and at-risk views. Parent: `deadlines`.
 
@@ -234,9 +279,33 @@ Due dates and course time limits, with consequences, pause, reminders and at-ris
   - the due-soon window (`deadlines-7-educator-at-risk`).
 - Out of scope: recertification, retakes, line-manager escalation, score penalties, SMS, calendar export.
 
+## User communication
+
+Priority: 🟠 Medium
+
+Notifications and direct messaging between learners and educators. Parent: `user-communication`.
+
+- `user-communication-2-notification-email` — **ready** — Email delivery. Per-category immediate, daily, weekly or off preferences, quiet hours, unsubscribe, and a digest sweep in housekeeping.
+- `user-communication-6-moderation` — **ready** — Users report a message or block a user. Site admins work a report queue and can hide messages. Nothing is hard deleted.
+- `user-communication-8-realtime` — **blocked** by `user-communication-6-moderation` — Optional Django Channels push for the unread badge and open threads. Off by default, with polling as the fallback.
+- `user-communication-help-desk` — **ready** — Learners ask for help about specific content from the course player. Requests land in a shared queue that educators pick up.
+
+![User communication](roadmap_diagrams/user-communication.svg)
+
+**Notes**
+- `user-communication-2-notification-email` and `user-communication-6-moderation` run in parallel. UI specs build to the design registered in `user-communication/design.md`.
+- Email contract: a backend re-reads the notification when it sends and skips it if read. Updating a notification queues nothing. Messages raise no notification, so message email needs its own trigger.
+- Decided: polling is the transport. Messaging permissions are layered and closed by default, through a swappable policy class. Moderation is report, hide and block.
+- `user-communication-help-desk` needs its own queue model, because a `Conversation` is between exactly two users.
+- Assumed: configuration is edited in the Django admin. Conversations are one-to-one with no read receipts. Background work passes `site_id` explicitly.
+- Open questions:
+  - where the report queue lives (`user-communication-6-moderation`);
+  - what a digest holds and where a user's timezone comes from (`user-communication-2-notification-email`).
+- Out of scope: announcements, forums, group conversations, SMS and push, reply-by-email.
+
 ## Registration rules
 
-Priority: ⚪ Priority not set
+Priority: 🟠 Medium
 
 Rules that register or recommend courses based on a learner's HR attributes. Parent: `corporate-job-course-recommendations`.
 
@@ -253,7 +322,7 @@ Rules that register or recommend courses based on a learner's HR attributes. Par
 
 ## Referral tracking and marketing
 
-Priority: ⚪ Priority not set
+Priority: 🟠 Medium
 
 Where signups come from, and what visitors are told about tracking.
 
@@ -271,98 +340,29 @@ Where signups come from, and what visitors are told about tracking.
 - `referral-attribution-over-time` adds three app-structure edges to approve at plan time, and expects a consent-gate spec that doesn't exist yet.
 - The `referral-tracking-*` specs and `landing-page-component-kit` are pull-ins from First-Class-LMS. `landing-page-component-kit` first needs a decision on whether FLS owns marketing pages.
 
-## Forms and applications
+## Educator interface
 
-Priority: ⚪ Priority not set
+Priority: 🟡 Low
 
-Form engine features and the course application flow.
+Org admins manage learners, cohorts, registrations and staff. Parent: `educator-interface-full-polish`.
 
-- `form-engine-branch-logic-2-and-conditions` — **ready** — Show a page, question or content block only when several conditions all hold.
-- `multi-step-course-applications` — **ready** — Applicants complete requirements in any order, with reviewer verdicts, uploads and help requests. Before starting: cut it with `/sdd:roadmap multi-step-course-applications` (its idea lists six parts).
+- `educator-interface-misc-polish` — **ready** — Polish found while walking the interface: optional learner names, cohort settings sub-panels, show and hide table columns, help icons, smaller mobile buttons.
+- `educator-interface-data-table-filter-design` — **ready** — One button per filter on data tables, instead of a single long drop-down. The UX still needs designing.
+- `audit-log-coverage-gaps` — **ready** — The audit log also records Django admin edits, system admin role changes and report downloads, and marks the date its history starts.
+- `misure-of-admonitions` — **in progress** — Learner and educator pages use theme-appropriate alerts instead of the content engine's admonition component, which stays for content only.
+- `educator-interface-more polish` — **ready** — Educators resend staff invitations and see who hasn't accepted. They also get linked dashboard figures, message sending from the learner tab, and one new-message flow.
 
-![Forms and applications](roadmap_diagrams/forms-and-applications.svg)
-
-**Notes**
-- `multi-step-course-applications` builds on `educator-interface-full-polish/application-review-ui/`.
-
-## SACAA compliance
-
-Priority: ⚪ Priority not set
-
-Quiz randomisation and a per-attempt record of the paper served, for training organisations audited by SACAA. Parent: `sacaa-compliance`.
-
-- `sacaa-compliance-1-served-paper-record` — **in progress** — Every quiz attempt records the exact pages, questions and option order it served, and is scored only on those.
-- `sacaa-compliance-2-shuffle` — **blocked** by `sacaa-compliance-1-served-paper-record` — Authors opt a quiz into shuffling pages, questions and answer options; locked options and keep-together groups stay put.
-- `sacaa-compliance-3-question-pools` — **blocked** by `sacaa-compliance-2-shuffle` — Authors set a quiz page to draw N of its questions per attempt; every learner is scored out of the same total.
-- `sacaa-compliance-4-attempt-review` — **blocked** by `sacaa-compliance-1-served-paper-record`, `educator-interface-refactor-5-learner` — Educators open one learner's quiz attempt and see the paper served, answers and score; the form export carries the served order.
-
-![SACAA compliance](roadmap_diagrams/sacaa-compliance.svg)
+![Educator interface](roadmap_diagrams/educator-interface.svg)
 
 **Notes**
-- Build order: `sacaa-compliance-1-served-paper-record` first, then `sacaa-compliance-2-shuffle`, then `sacaa-compliance-3-question-pools`. `sacaa-compliance-4-attempt-review` runs beside them once `educator-interface-refactor-5-learner` lands.
-- Collisions: `sacaa-compliance-2-shuffle` and `sacaa-compliance-3-question-pools` both change the form schema, validator and `content_save`, so they run in series. `sacaa-compliance-1-served-paper-record` and `form-engine-branch-logic-2-and-conditions` both change `conditions.py`; whichever lands second rebases. `learner-interface-features-1-question-sections` also touches the `FormQuestion` schema.
-- Decided: randomisation is opt-in per quiz form and off by default; existing quizzes behave exactly as today.
-- Decided: one seed per attempt and the served paper saved at attempt start; a retake is a new attempt with a fresh draw and order.
-- Decided: scoring, results, export and review read the served paper, never a re-derived shuffle or the whole form, and a draw keeps `max_score` the same for every attempt.
-- Assumption: randomisation applies to quiz forms only, which already ban `when` conditions, so shuffles and draws cannot break a condition.
-- Assumption: no SACAA text found mandates a randomisation mechanic; the client's ATO manual is the audit reference, so the effort ships common practice.
-- Out of scope: exam time limits, retake waiting periods, frozen copies of question text (`content_snapshots`, paused), difficulty-weighted draws, banks shared across forms, draws by course section.
-- References: `sacaa-compliance/research_sacaa_requirements.md` and `sacaa-compliance/research_form_engine_seams.md`.
-
-## Learner interface features
-
-Priority: ⚪ Priority not set
-
-Test out of sections, revise with spaced repetition and flashcards, and watch access-controlled video. Parent: `learner-interface-features`.
-
-- `learner-interface-features-2-test-out` — **ready** — Learners take a pretest and skip sections they already know; the skip is recorded as its own kind of completion.
-- `learner-interface-features-3-revision-questions` — **ready** — Learners revise questions from finished sections, scheduled by spaced repetition, with explanations and weak sections highlighted.
-- `learner-interface-features-4-flashcards` — **blocked** by `learner-interface-features-3-revision-questions` — Authors add flashcards to sections; learners rate their confidence and the revision schedule brings them back.
-- `learner-interface-features-5-protected-video` — **ready** — Course content embeds video that only learners with access to the course can play; shared links stop working.
-
-![Learner interface features](roadmap_diagrams/learner-interface-features.svg)
-
-**Notes**
-- Order is set by dependencies only. `learner-interface-features-2-test-out` and `learner-interface-features-3-revision-questions` run in parallel after `learner-interface-features-1-question-sections`. `learner-interface-features-5-protected-video` can start any time.
-- Collision: `learner-interface-features-2-test-out` adds a new kind of completion, and `learner-interface-features-3-revision-questions` adds a section's questions to the bank when the section completes. Whichever lands second makes test-out completion count.
-- Decided: design questions (what a section is, the pretest's shape, the scheduler, the video host) are settled in each spec's own research, not in the cut. Flashcards are their own spec.
-- Assumed: the `youtube` component stays as it is beside protected video.
-- Open questions:
-  - what a section is (`learner-interface-features-1-question-sections`);
-  - the pretest's shape, how a skip is recorded and reported, renewal registrations, and the "recertification not planned" lines here and in `docs/product/roadmap.md` (`learner-interface-features-2-test-out`);
-  - scheduler, explanations, and history when an author edits a question (`learner-interface-features-3-revision-questions`);
-  - video host and build or buy (`learner-interface-features-5-protected-video`).
-- Out of scope: the other features in section 4 of `research_learner_features.md`.
-- References: `research_learner_features.md` and `research_question_model.md` in the parent.
-
-## Audio content widgets
-
-Priority: ⚪ Priority not set
-
-Course content that plays audio: clips, say-it-then-reveal practice and audio on revision flashcards. Parent: `content-widget-sayit-reveal`.
-
-- `content-widget-sayit-reveal-1-audio-player` — **in progress** — Authors embed audio clips in course content; learners play them with a labelled button, one at a time.
-- `content-widget-sayit-reveal-2-say-it-reveal` — **blocked** by `content-widget-sayit-reveal-1-audio-player` — Learners say an answer aloud, reveal it and hear it; audio also plays inside flashcard widget faces.
-- `content-widget-sayit-reveal-3-audio-on-revision-flashcards` — **blocked** by `content-widget-sayit-reveal-2-say-it-reveal`, `learner-interface-features-4-flashcards` — Scheduled revision flashcards carry audio that plays when the learner reveals the card.
-- `content-widget-sayit-reveal-4-audio-access-control` — **blocked** by `content-widget-sayit-reveal-1-audio-player` — Decide and enforce who may play a course's audio through its open redirect link.
-
-![Audio content widgets](roadmap_diagrams/audio-content-widgets.svg)
-
-**Notes**
-- Order: `content-widget-sayit-reveal-1-audio-player`, then `content-widget-sayit-reveal-2-say-it-reveal`; `content-widget-sayit-reveal-3-audio-on-revision-flashcards` waits for `learner-interface-features-4-flashcards` too.
-- Decided: say-it-then-reveal is a self-check; no microphone, no speech recognition, nothing recorded.
-- Decided: audio is the author's recorded files, loaded as course media (the loader already stores audio); no text-to-speech.
-- Decided: until scheduled flashcards land, courses practise with the static `c-flashcard` widget, which gains audio.
-- Assumed: mp3 recommended; nothing plays on page load, only on a Reveal click; each clip has a visible text alternative.
-- Assumed: the in-page widgets store nothing and have no self-rating; the letter list is `c-audio` inside existing layout widgets.
-- Assumed: FLS demo content shows each widget with a few licensed clips; the phonetic-alphabet course belongs to the concrete project.
-- Open: demo clip source and licence (`content-widget-sayit-reveal-1-audio-player`); how a card names its clip (`content-widget-sayit-reveal-3-audio-on-revision-flashcards`).
-- Out of scope: speech recognition, text-to-speech, recording the learner, speed control.
-- References: `research_content_media.md` and `research_audio_widgets.md` in the parent.
+- Decided: deactivate, never delete. Admins grant only their own level and below, inside their own scope. Only `site_admin` grants `site_admin`.
+- Access rules: anything outside the user's scope returns 404. An action the user has lost permission for returns 403 with a message. Controls the user can't use are hidden. No new dependencies.
+- Not yet cut: `educator-interface-full-polish/application-review-ui/`, the application review workflow (a state machine on `CourseApplication`, a reviewer role, an inbox).
+- References: the mockups in `educator-interface-full-polish/Educator LMS Interface Design/` (layout only, not scope), and `brand-guidelines` and `fls-dev:panel-framework`.
 
 ## Tooling and operations
 
-Priority: ⚪ Priority not set
+Priority: 🟡 Low
 
 Developer tooling, deployment and downstream fixes.
 

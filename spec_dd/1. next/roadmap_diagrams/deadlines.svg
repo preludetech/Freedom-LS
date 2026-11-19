@@ -3,17 +3,17 @@
 <rect width="958" height="247" fill="#ffffff"/>
 <text x="24" y="38" font-size="15" font-weight="bold" fill="#111827">Deadlines</text>
 <rect x="24.0" y="58.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,58.0 H30.0 A6,6 0 0 0 24.0,64.0 V87.0 A6,6 0 0 0 30.0,93.0 H32.0 Z" fill="#9ca3af"/>
+<path d="M32.0,58.0 H30.0 A6,6 0 0 0 24.0,64.0 V87.0 A6,6 0 0 0 30.0,93.0 H32.0 Z" fill="#ea580c"/>
 <text x="40.0" y="80.0" fill="#111827">deadlines-4-learner-self-pause</text>
 <rect x="354.0" y="58.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M362.0,58.0 H360.0 A6,6 0 0 0 354.0,64.0 V87.0 A6,6 0 0 0 360.0,93.0 H362.0 Z" fill="#9ca3af"/>
+<path d="M362.0,58.0 H360.0 A6,6 0 0 0 354.0,64.0 V87.0 A6,6 0 0 0 360.0,93.0 H362.0 Z" fill="#ea580c"/>
 <text x="370.0" y="80.0" fill="#111827">deadlines-5-reminders</text>
 <rect x="684.0" y="58.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M692.0,58.0 H690.0 A6,6 0 0 0 684.0,64.0 V102.0 A6,6 0 0 0 690.0,108.0 H692.0 Z" fill="#9ca3af"/>
+<path d="M692.0,58.0 H690.0 A6,6 0 0 0 684.0,64.0 V102.0 A6,6 0 0 0 690.0,108.0 H692.0 Z" fill="#ea580c"/>
 <text x="700.0" y="80.0" fill="#111827">deadlines-6-educator-</text>
 <text x="700.0" y="95.0" fill="#111827">management</text>
 <rect x="24.0" y="126.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,126.0 H30.0 A6,6 0 0 0 24.0,132.0 V155.0 A6,6 0 0 0 30.0,161.0 H32.0 Z" fill="#9ca3af"/>
+<path d="M32.0,126.0 H30.0 A6,6 0 0 0 24.0,132.0 V155.0 A6,6 0 0 0 30.0,161.0 H32.0 Z" fill="#ea580c"/>
 <text x="40.0" y="148.0" fill="#111827">deadlines-7-educator-at-risk</text>
 <rect x="24.0" y="185" width="16" height="12" rx="3" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <text x="46.0" y="195" fill="#374151">in progress</text>
