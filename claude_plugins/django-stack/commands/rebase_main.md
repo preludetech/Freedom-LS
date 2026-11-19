@@ -7,8 +7,11 @@ Rebase the current branch onto `main`, resolve conflicts, verify the result, and
 runs to completion without asking for confirmation; it stops only to report `status: ok`,
 `status: failed`, or `status: blocked`.
 
-Input from the caller: `<tier>`, `targeted` or `full`. Run by hand or without a value, it is
-`targeted`.
+Input from the caller:
+
+- `<tier>`: `none`, `targeted` or `full`. Run by hand or without a value, it is `targeted`.
+- `<auto-resolve>` (optional): an ordered list of `<path prefix> → theirs | ours | <instruction>`
+  entries. The first entry whose prefix matches a conflicted path decides it.
 
 ## Step 1: Check the branch
 
@@ -107,11 +110,16 @@ git rebase origin/main
 If the rebase stops on a conflict:
 
 1. Run `git diff --name-only --diff-filter=U` to list the conflicted files.
-2. Read each one and resolve it from the surrounding code, keeping both sides' intent where
+2. Resolve each path an `<auto-resolve>` entry matches as the entry says, then stage it:
+   `theirs` is `git checkout --theirs -- <path>`, `ours` is `git checkout --ours -- <path>`, and an
+   instruction is carried out step by step. A path the chosen side deleted is `git rm`ed. Note each
+   path and its side for Step 11. These paths are exempt from the rule below against `--ours` and
+   `--theirs` on a non-generated file; the rule stays for every other path.
+3. Read each remaining one and resolve it from the surrounding code, keeping both sides' intent where
    possible and the branch's own logic where its change was clearly intentional.
-3. Stage the resolved file with `git add <file>`.
-4. Continue with `GIT_EDITOR=true git rebase --continue`.
-5. Repeat until the rebase completes.
+4. Stage the resolved file with `git add <file>`.
+5. Continue with `GIT_EDITOR=true git rebase --continue`.
+6. Repeat until the rebase completes.
 
 Rules on top of that loop:
 
@@ -189,6 +197,8 @@ uv run manage.py migrate
 
 Follow `${CLAUDE_PLUGIN_ROOT}/resources/test_tiers.md`; every command below is one of its tiers.
 
+`<tier>` is `none` → report `tier: none` and go to Step 10. The caller runs its own tier.
+
 `<tier>` is `full` → run the full tier.
 
 `<tier>` is `targeted` →
@@ -217,10 +227,10 @@ Three attempts. If the run still fails after that, stop with `status: failed`.
 ## Step 10: Pre-commit
 
 ```
-uv run pre-commit run --all-files
+uv run pre-commit run --from-ref origin/main --to-ref HEAD
 ```
 
-Fix any failures and re-run until clean.
+This checks the files the branch changed. Fix any failures and re-run until clean.
 
 ## Step 11: Summarise
 
@@ -228,6 +238,7 @@ Report:
 
 - how many commits were replayed
 - any conflicts that were resolved, and how
+- each auto-resolved path and the side it took
 - the tier that ran, and any test failures that were fixed
 - the lost-change check's result
 
@@ -242,8 +253,16 @@ git push origin HEAD --force-with-lease --force-if-includes
 Push without asking, once tests and pre-commit are clean. Keep both flags after the refspec: a rule
 that blocks `git push --force:*` is a prefix match, and `--force-with-lease` shares that prefix.
 
-If the push is rejected, the remote moved since Step 3's fetch. Stop with `status: failed`. Never
-retry with plain `--force`.
+Write `<branch>` out as the name Step 1 printed, so the command cannot push a different branch when
+pasted elsewhere. If the push is refused, read the refusal:
+
+- `stale info` (the lease is stale): the remote moved since Step 3's fetch. Stop with
+  `status: failed · reason: push rejected: stale lease`.
+- The permission system declined the command, or the remote rejected the push as protected: stop
+  with `status: blocked · reason: force-push needed: git push origin <branch> --force-with-lease
+  --force-if-includes`, with `<branch>` written out.
+
+Never retry with plain `--force`.
 
 ## Return contract
 

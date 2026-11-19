@@ -9,7 +9,7 @@ inline, on the caller's model and tool grants.
 
 Inputs from the caller: `<spec-dir>` and `<todo-path>` when already known; otherwise `<spec-dir>` is
 the directory under `spec_dd/2. in progress/` named after the current branch (none or several is
-`status: failed` with the reason), and `<todo-path>` is its `todo.md`. Optionally `<tier>`, `targeted` or `full`:
+`status: failed` with the reason), and `<todo-path>` is its `todo.md`. Optionally `<tier>`, `none`, `targeted` or `full`:
 the test tier the rebase runs.
 
 ## Step 0: Skip conditions
@@ -43,7 +43,8 @@ precedence). Under `## Rebase Hooks`, look at the `Rebase command` value:
 
 - blank, or the file or section absent → `status: ok · reason: no rebase command`. Stop.
 - a non-blank path → read that file and follow its steps here with `<tier>`: the value the caller
-  passed, or `targeted` when it passed none.
+  passed, or `targeted` when it passed none, and `<auto-resolve>`: the list in
+  `claude_plugins/sdd/resources/rebase_auto_resolve.md`, with `<own-spec-dir>` set to `<spec-dir>`.
 
 Once it returns:
 
