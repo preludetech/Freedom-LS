@@ -90,7 +90,7 @@ Components live in `freedom_ls/panel_framework/templates/cotton/`: `data-table`,
 `data-table-card`, `data-table-actions`, `data-table-cells/{text,link,datetime,date,badge,related_list}`,
 `modal-header`, `modal-body`, `modal-footer`, `modal-trigger`, `quick-view-trigger` and the
 `panel-*` set (`panel-page-header`, `panel-toolbar`, `panel-search-field`, `panel-filter-toggle`,
-`panel-applied-filter`, `panel-notice`, `panel-close-button`, `panel-table`, `panel-table-card`,
+`panel-applied-filter`, `panel-close-button`, `panel-table`, `panel-table-card`,
 `panel-list`, `panel-list-row`, `panel-heading`, `panel-empty-state`, `panel-person-link`, `panel-avatar-chip`,
 `panel-attention-list`, `panel-attention-row`, `panel-stat-row`, `panel-stat-tile`,
 `panel-status-badge`, `panel-definition-list`, `panel-definition-row`, `panel-card`,
@@ -289,7 +289,7 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
   only its title, body and hidden fields. `modal/message.html` states something and ends in a
   Close the footer focuses (refusals, "unavailable", empty messages). `modal/form.html` is a
   multi-field form. A multi-step dialog keeps its own template but still uses `<c-modal-body>`,
-  `partials/error_summary.html` and `<c-panel-notice>`.
+  `partials/error_summary.html` and `<c-callout>`.
 - A dialog ends in `<c-modal-footer>`: it renders its own Cancel at the left (`cancel`,
   `cancel_href`, `cancel_click`, `focus_cancel`), the actions in the default slot at the right, the
   primary last; three or more group at the right. No template writes a Cancel button or a `cancel`
@@ -297,8 +297,8 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
 - A footer's Cancel or Close calls `cancel()`: it drops the input and never asks to discard. Only
   the header close control and Esc call `requestClose()`, which goes through the dirty-form
   guard.
-- A notice inside a dialog or panel is `<c-panel-notice tone title>` (`info`, `warning`, `error`,
-  `success`), never `<c-callout>` or a hand-built `bg-error/10` box. The close control is
+- A notice inside a dialog or panel is `<c-callout tone title>` (`info`, `warning`, `error`,
+  `success`), never a hand-built `bg-error/10` box. The close control is
   `<c-panel-close-button>`.
 - Tone follows the effect. A confirm that deletes a row (Delete, Remove) is `error`; one that
   flips `is_active` (Deactivate, Reactivate) is `primary`, as the bulk actions are.

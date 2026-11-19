@@ -18,7 +18,7 @@ empty_message (with form_title) replaces the form when there is no cohort to mov
       hx-disabled-elt="#app-modal-body button[type='submit']">
     <c-modal-body>
         {% if refusal %}
-            <c-panel-notice tone="error" data-error-summary tabindex="-1">{{ refusal }}</c-panel-notice>
+            <c-callout tone="error" data-error-summary tabindex="-1">{{ refusal }}</c-callout>
         {% endif %}
         <input type="hidden" name="{{ other_side.name }}" value="{{ other_side.value }}">
         <p>Current cohort: {{ cohort }}</p>

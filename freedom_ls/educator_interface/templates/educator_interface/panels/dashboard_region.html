@@ -40,7 +40,7 @@ cohorts, inline, is_organisation_admin; when loaded, figures and avatars
             {% if is_loaded %}
                 {% if figures.figures_as_of %}<p class="text-sm text-muted">Figures as of <c-datetime :value="figures.figures_as_of" /></p>{% endif %}
                 {% for excluded in figures.excluded %}
-                    <c-panel-notice tone="warning">{{ excluded.message }}</c-panel-notice>
+                    <c-callout tone="warning">{{ excluded.message }}</c-callout>
                 {% endfor %}
             {% endif %}
 

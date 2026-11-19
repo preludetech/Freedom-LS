@@ -7,7 +7,7 @@ error_count, errors_url. Optional: heading_count, which adds the title and
 the fix-or-continue line above the rows; upload_url, which adds the "Upload
 a corrected file" link beside the download.
 {% endcomment %}
-<c-panel-notice tone="warning" title="{% if heading_count %}{{ heading_count }} row{{ heading_count|pluralize }} with errors will not be added.{% endif %}" data-error-block>
+<c-callout tone="warning" title="{% if heading_count %}{{ heading_count }} row{{ heading_count|pluralize }} with errors will not be added.{% endif %}" data-error-block>
     {% if heading_count %}
         <p class="mt-1">Fix them in your file and upload it again, or add the other rows now.</p>
     {% endif %}
@@ -36,4 +36,4 @@ a corrected file" link beside the download.
     {% if error_count > error_rows|length %}
         <p class="mt-2">Showing the first {{ error_rows|length }} of {{ error_count }}. Download the error rows to see them all.</p>
     {% endif %}
-</c-panel-notice>
+</c-callout>

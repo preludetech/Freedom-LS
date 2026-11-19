@@ -9,8 +9,8 @@ organisation, last_organisation_admin, grantor_is_site_level.
 {% block body %}
     <p>They keep their roles but can do nothing in {{ organisation.name }} until reactivated.</p>
     {% if last_organisation_admin and grantor_is_site_level %}
-        <c-panel-notice tone="warning">
+        <c-callout tone="warning">
             {{ staff_member.display_name }} is the only organisation admin. After this, nobody in the organisation can administer it until you add one.
-        </c-panel-notice>
+        </c-callout>
     {% endif %}
 {% endblock body %}
