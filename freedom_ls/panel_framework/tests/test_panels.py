@@ -1097,9 +1097,6 @@ def test_child_rows_with_bulk_actions_fail_loudly() -> None:
         panel.get_context_data()
 
 
-# -- EditableListPanel ---------------------------------------------------
-
-
 class _CountingEntriesPanel(StubEditableListPanel):
     calls = 0
 
