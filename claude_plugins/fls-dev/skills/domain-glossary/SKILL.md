@@ -242,6 +242,7 @@ Do not give these a second meaning.
 | **role**, bare **title** | Reserved, not in use. `role` is a permission role (`assign_object_role`), and a bare `title` is a content title. | `JobTitle` / `job_title` for what a learner does at work. |
 | **start date** | `organisation_start_date` is the hire date: when the learner started at the organisation, not at a course. | For a course, `started_at` on `CourseProgress`. |
 | **suspend** | Retired. Pausing a learner's course is a `CoursePause`; the verbs are `paused` and `resumed`. | pause, `CoursePause` |
+| **callout** | `<c-callout>` (`freedom_ls/base/templates/cotton/callout.html`): a static, toned status box in an app page, panel or dialog. Framework templates call `<c-panel-callout>`, which FLS overrides with a thin wrapper around `<c-callout>`. | **admonition** for the box in authored course content (`<c-admonition>`); **toast** for the dismissible, fixed-position message from Django's messages framework; **notification** for a `Notification` row. "Alert" is only the ARIA role (`role="alert"`), never a component name. |
 
 ## Prose vs. code
 
