@@ -627,7 +627,7 @@ def test_plain_get_has_no_announcer_fragment(mock_site_context: Site) -> None:
 
     html = fetch(_panel_path(stub.pk)).content.decode()
 
-    assert "hx-swap-oob" not in html
+    assert lxml.html.fromstring(html).cssselect("[hx-swap-oob]") == []
 
 
 def test_search_form_hidden_inputs_carry_other_state(mock_site_context: Site) -> None:
