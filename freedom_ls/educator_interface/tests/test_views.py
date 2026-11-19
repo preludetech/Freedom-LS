@@ -60,8 +60,7 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course as CourseModel
-from freedom_ls.content_engine.models import CourseAudience
-from freedom_ls.content_engine.models import File
+from freedom_ls.content_engine.models import CourseAudience, File
 from freedom_ls.educator_interface import views as educator_views
 from freedom_ls.educator_interface.actions import DeactivateLearnersBulkAction
 from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
