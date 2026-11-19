@@ -14,8 +14,14 @@
 <text x="700.0" y="80.0" fill="#111827">forced-site-name-for-host-</text>
 <text x="700.0" y="95.0" fill="#111827">based-site-lookup</text>
 <rect x="24.0" y="126.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,126.0 H30.0 A6,6 0 0 0 24.0,132.0 V155.0 A6,6 0 0 0 30.0,161.0 H32.0 Z" fill="#ca8a04"/>
-<text x="40.0" y="148.0" fill="#111827">dev-site-bootstrap-command</text>
+<path d="M32.0,126.0 H30.0 A6,6 0 0 0 24.0,132.0 V155.0 A6,6 0 0 0 30.0,161.0 H32.0 Z" fill="#9ca3af"/>
+<text x="40.0" y="148.0" fill="#111827">audit-log-describe-test-flake</text>
+<rect x="354.0" y="126.0" width="250" height="35" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+<path d="M362.0,126.0 H360.0 A6,6 0 0 0 354.0,132.0 V155.0 A6,6 0 0 0 360.0,161.0 H362.0 Z" fill="#9ca3af"/>
+<text x="370.0" y="148.0" fill="#111827">spec_dd_efficiency_and_docs</text>
+<rect x="684.0" y="126.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M692.0,126.0 H690.0 A6,6 0 0 0 684.0,132.0 V155.0 A6,6 0 0 0 690.0,161.0 H692.0 Z" fill="#ca8a04"/>
+<text x="700.0" y="148.0" fill="#111827">dev-site-bootstrap-command</text>
 <rect x="24.0" y="185" width="16" height="12" rx="3" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <text x="46.0" y="195" fill="#374151">in progress</text>
 <rect x="154.3" y="185" width="16" height="12" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>

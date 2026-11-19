@@ -39,3 +39,5 @@ adds anything missing under "Priority not set"; move it from there to the level 
 
 - `learner-interface-features`
 - `housekeeping-sentry-cron-checkin`
+- `audit-log-describe-test-flake`
+- `spec_dd_efficiency_and_docs`

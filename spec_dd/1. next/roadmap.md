@@ -16,11 +16,13 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `extract_panels_framework-4-template-contract` (Panel framework extraction)
 - 🔴 High · `learner-profile-use-panels-framework-2-editable-list-panel` (Account area on panels)
 - 🟡 Low · `misure-of-admonitions` (Educator interface)
+- ⚪ Priority not set · `spec_dd_efficiency_and_docs` (Tooling and operations)
 
 ### Ready to start
 
 - 🔴 High · `learner-profile-use-panels-framework-3-account-page` (Account area on panels)
 - 🔴 High · `profile-picture-on-id-rows` (Learner public profiles)
+- 🟠 Medium · `content-widget-longer-audio` (Audio content widgets)
 - 🟠 Medium · `content-widget-sayit-reveal-2-say-it-reveal` (Audio content widgets)
 - 🟠 Medium · `content-widget-sayit-reveal-4-audio-access-control` (Audio content widgets)
 - 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
@@ -39,6 +41,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🟠 Medium · `server-side-conversion-tracking` (Referral tracking and marketing)
 - 🟠 Medium · `cookie-banner` (Referral tracking and marketing)
 - 🟡 Low · `audit-log-coverage-gaps` (Educator interface)
+- 🟡 Low · `bulk-run-audit-summary` (Educator interface)
 - 🟡 Low · `educator-interface-data-table-filter-design` (Educator interface)
 - 🟡 Low · `educator-interface-misc-polish` (Educator interface)
 - 🟡 Low · `educator-interface-more polish` (Educator interface)
@@ -50,6 +53,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - ⚪ Priority not set · `learner-interface-features-2-test-out` (Learner interface features)
 - ⚪ Priority not set · `learner-interface-features-5-protected-video` (Learner interface features)
 - ⚪ Priority not set · `housekeeping-sentry-cron-checkin` (Tooling and operations)
+- ⚪ Priority not set · `audit-log-describe-test-flake` (Tooling and operations)
 
 ### Needs work on main first
 
@@ -93,14 +97,14 @@ Quiz randomisation and a per-attempt record of the paper served, for training or
 
 - `sacaa-compliance-1-served-paper-record` — **in progress** — Every quiz attempt records the exact pages, questions and option order it served, and is scored only on those.
 - `sacaa-compliance-2-shuffle` — **blocked** by `sacaa-compliance-1-served-paper-record` — Authors opt a quiz into shuffling pages, questions and answer options; locked options and keep-together groups stay put.
-- `sacaa-compliance-3-question-pools` — **blocked** by `sacaa-compliance-2-shuffle` — Authors set a quiz page to draw N of its questions per attempt; every learner is scored out of the same total.
-- `sacaa-compliance-4-attempt-review` — **blocked** by `sacaa-compliance-1-served-paper-record`, `educator-interface-refactor-5-learner` — Educators open one learner's quiz attempt and see the paper served, answers and score; the form export carries the served order.
+- `sacaa-compliance-3-question-pools` — **blocked** by `sacaa-compliance-2-shuffle` — Authors set a quiz page to draw N questions per attempt; every learner is scored out of the same total.
+- `sacaa-compliance-4-attempt-review` — **blocked** by `sacaa-compliance-1-served-paper-record`, `educator-interface-refactor-5-learner` — Educators see one learner's quiz attempt: paper served, answers and score. The form export carries the served order.
 
 ![SACAA compliance](roadmap_diagrams/sacaa-compliance.svg)
 
 **Notes**
 - Build order: `sacaa-compliance-1-served-paper-record` first, then `sacaa-compliance-2-shuffle`, then `sacaa-compliance-3-question-pools`. `sacaa-compliance-4-attempt-review` runs beside them once `educator-interface-refactor-5-learner` lands.
-- Collisions: `sacaa-compliance-2-shuffle` and `sacaa-compliance-3-question-pools` both change the form schema, validator and `content_save`, so they run in series. `sacaa-compliance-1-served-paper-record` and `form-engine-branch-logic-2-and-conditions` both change `conditions.py`; whichever lands second rebases. `learner-interface-features-1-question-sections` also touches the `FormQuestion` schema.
+- Collisions: `sacaa-compliance-2-shuffle` and `sacaa-compliance-3-question-pools` both change the form schema, validator and `content_save`, so they run in series. `sacaa-compliance-1-served-paper-record` and `form-engine-branch-logic-2-and-conditions` both change `conditions.py`; whichever lands second rebases.
 - Decided: randomisation is opt-in per quiz form and off by default; existing quizzes behave exactly as today.
 - Decided: one seed per attempt and the served paper saved at attempt start; a retake is a new attempt with a fresh draw and order.
 - Decided: scoring, results, export and review read the served paper, never a re-derived shuffle or the whole form, and a draw keeps `max_score` the same for every attempt.
@@ -122,13 +126,11 @@ The panel framework moves into its own installable package, because another Djan
 ![Panel framework extraction](roadmap_diagrams/panel-framework-extraction.svg)
 
 **Notes**
-- `extract_panels_framework-1-gather-generic-code` runs alone, after `design_educator-interface-bulk-action`. Specs touching `educator_interface`, `comms`, `reports` or `learner_management` must rebase onto it, and onto `extract_panels_framework-5-package-and-install` once that changes the import prefix.
-- `extract_panels_framework-2-new-capabilities` and `extract_panels_framework-3-standalone-backend` run in parallel. Both edit `tests/conftest.py`.
+- Specs touching `educator_interface`, `comms`, `reports` or `learner_management` rebase onto `extract_panels_framework-5-package-and-install` once it changes the import prefix.
 - Decided: a public MIT repo released by git tag; no PyPI and no submodule. App label `panel_framework` starting from a clean `0001`, and no data is migrated. FLS pins it with a PEP 508 git URL in `[project].dependencies`.
 - Decided: multi-site stays. A settings-declared site resolver defaults to `get_current_site`.
 - Assumed: there is no shared core package. If one turns out to be needed, stop and say so. The package ships overridable primitives, and the host schedules the bulk-run sweep.
 - Open questions:
-  - where `sidePanel` and `refreshTimer` live (`extract_panels_framework-1-gather-generic-code`);
   - how package primitives avoid clashing with host components (`extract_panels_framework-4-template-contract`);
   - the uv editable-install spike (`extract_panels_framework-5-package-and-install`).
 - The other project must not install the package before `extract_panels_framework-5-package-and-install`.
@@ -146,8 +148,8 @@ Every signed-in user's account pages move onto the panel framework before public
 ![Account area on panels](roadmap_diagrams/account-area-on-panels.svg)
 
 **Notes**
-- Order: `learner-profile-use-panels-framework-1-file-upload-actions` and `learner-profile-use-panels-framework-2-editable-list-panel` run in parallel. `learner-profile-use-panels-framework-3-account-page` follows `learner-profile-use-panels-framework-1-file-upload-actions`.
-- Collisions: both framework specs edit panel framework actions and form templates, as do `extract_panels_framework-2-new-capabilities` and `extract_panels_framework-4-template-contract`. Whichever lands second rebases.
+- Order: `learner-profile-use-panels-framework-3-account-page` can start now, beside `learner-profile-use-panels-framework-2-editable-list-panel`.
+- Collisions: `learner-profile-use-panels-framework-2-editable-list-panel` and `extract_panels_framework-4-template-contract` both edit panel framework actions and form templates. Whichever lands second rebases.
 - Decided: the profile picture form already on the plain account page moves onto a panel in `learner-profile-use-panels-framework-3-account-page`.
 - Decided: email and password pages keep allauth's views and forms and only move into the account area's shell. Registration, legal and sign-in flows stay as they are.
 - Decided: from `learner-public-profile-2-profile-and-page` on, public-profile editing is panels in the account area, with lists on the editable list panel.
@@ -162,7 +164,7 @@ Priority: 🔴 High
 
 Learners publish a profile to help them find work, and visitors browse an index of them. Parent: `learner-public-profile`.
 
-- `learner-public-profile-2-profile-and-page` — **blocked** by `learner-profile-use-panels-framework-2-editable-list-panel`, `learner-profile-use-panels-framework-3-account-page` — Learners switch on a public profile with blurb, work experience, place, open to work and links, shareable at its own link.
+- `learner-public-profile-2-profile-and-page` — **blocked** by `learner-profile-use-panels-framework-2-editable-list-panel`, `learner-profile-use-panels-framework-3-account-page` — Learners switch on a shareable public profile with blurb, work experience, place, open to work and links.
 - `profile-picture-on-id-rows` — **ready** — Educator dashboard, attention and audit log rows show the profile picture instead of initials.
 - `learner-public-profile-3-completed-courses` — **blocked** by `learner-public-profile-2-profile-and-page` — Courses a learner completed on the site appear on their public profile. The learner can hide each one.
 - `learner-public-profile-4-certificates` — **blocked** by `learner-public-profile-2-profile-and-page` — Learners upload self-reported certificates. Organisation staff upload certificates on the educator-interface learner page.
@@ -213,12 +215,11 @@ Test out of sections, revise with spaced repetition and flashcards, and watch ac
 ![Learner interface features](roadmap_diagrams/learner-interface-features.svg)
 
 **Notes**
-- Order is set by dependencies only. `learner-interface-features-2-test-out` and `learner-interface-features-3-revision-questions` run in parallel after `learner-interface-features-1-question-sections`. `learner-interface-features-5-protected-video` can start any time.
+- Order is set by dependencies only. `learner-interface-features-2-test-out` and `learner-interface-features-3-revision-questions` run in parallel. `learner-interface-features-5-protected-video` can start any time.
 - Collision: `learner-interface-features-2-test-out` adds a new kind of completion, and `learner-interface-features-3-revision-questions` adds a section's questions to the bank when the section completes. Whichever lands second makes test-out completion count.
 - Decided: design questions (what a section is, the pretest's shape, the scheduler, the video host) are settled in each spec's own research, not in the cut. Flashcards are their own spec.
 - Assumed: the `youtube` component stays as it is beside protected video.
 - Open questions:
-  - what a section is (`learner-interface-features-1-question-sections`);
   - the pretest's shape, how a skip is recorded and reported, renewal registrations, and the "recertification not planned" lines here and in `docs/product/roadmap.md` (`learner-interface-features-2-test-out`);
   - scheduler, explanations, and history when an author edits a question (`learner-interface-features-3-revision-questions`);
   - video host and build or buy (`learner-interface-features-5-protected-video`).
@@ -233,19 +234,19 @@ Course content that plays audio: clips, say-it-then-reveal practice and audio on
 
 - `content-widget-sayit-reveal-2-say-it-reveal` — **ready** — Learners say an answer aloud, reveal it and hear it; audio also plays inside flashcard widget faces.
 - `content-widget-sayit-reveal-3-audio-on-revision-flashcards` — **blocked** by `content-widget-sayit-reveal-2-say-it-reveal`, `learner-interface-features-4-flashcards` — Scheduled revision flashcards carry audio that plays when the learner reveals the card.
+- `content-widget-longer-audio` — **ready** — A listening-exercise card with title, seek bar and elapsed time, for longer audio clips in course content.
 - `content-widget-sayit-reveal-4-audio-access-control` — **ready** — Decide and enforce who may play a course's audio through its open redirect link.
 
 ![Audio content widgets](roadmap_diagrams/audio-content-widgets.svg)
 
 **Notes**
-- Order: `content-widget-sayit-reveal-1-audio-player`, then `content-widget-sayit-reveal-2-say-it-reveal`; `content-widget-sayit-reveal-3-audio-on-revision-flashcards` waits for `learner-interface-features-4-flashcards` too.
 - Decided: say-it-then-reveal is a self-check; no microphone, no speech recognition, nothing recorded.
 - Decided: audio is the author's recorded files, loaded as course media (the loader already stores audio); no text-to-speech.
 - Decided: until scheduled flashcards land, courses practise with the static `c-flashcard` widget, which gains audio.
 - Assumed: mp3 recommended; nothing plays on page load, only on a Reveal click; each clip has a visible text alternative.
 - Assumed: the in-page widgets store nothing and have no self-rating; the letter list is `c-audio` inside existing layout widgets.
 - Assumed: FLS demo content shows each widget with a few licensed clips; the phonetic-alphabet course belongs to the concrete project.
-- Open: demo clip source and licence (`content-widget-sayit-reveal-1-audio-player`); how a card names its clip (`content-widget-sayit-reveal-3-audio-on-revision-flashcards`).
+- Open: how a card names its clip (`content-widget-sayit-reveal-3-audio-on-revision-flashcards`).
 - Out of scope: speech recognition, text-to-speech, recording the learner, speed control.
 - References: `research_content_media.md` and `research_audio_widgets.md` in the parent.
 
@@ -257,20 +258,18 @@ Due dates and course time limits, with consequences, pause, reminders and at-ris
 
 - `deadlines-4-learner-self-pause` — **ready** — Learners pause and resume their own course within the policy's limits, giving a reason.
 - `deadlines-5-reminders` — **ready** — A housekeeping sweep sends learners reminders, educators rolled-up overdue notices, and fires a `deadline.missed` webhook.
-- `deadlines-6-educator-management` — **ready** — In the educator interface, staff set deadlines, extend them (also in bulk), and pause or resume courses. Every change is audit-logged.
+- `deadlines-6-educator-management` — **ready** — Staff set and extend deadlines (also in bulk) and pause or resume courses in the educator interface, all audit-logged.
 - `deadlines-7-educator-at-risk` — **ready** — Overdue and due-soon learners appear in Needs attention and on the dashboard, and the cohort report gets an at-risk rule.
 
 ![Deadlines](roadmap_diagrams/deadlines.svg)
 
 **Notes**
-- `deadlines-7-educator-at-risk` runs beside `deadlines-3-extensions-and-pause`. `deadlines-4-learner-self-pause`, `deadlines-5-reminders` and `deadlines-6-educator-management` run in parallel after it.
-- Collisions:
-  - `deadlines-3-extensions-and-pause` and `deadlines-4-learner-self-pause` both edit the player gates.
-  - `deadlines-7-educator-at-risk` edits `reports/at_risk.py`.
+- `deadlines-4-learner-self-pause`, `deadlines-5-reminders`, `deadlines-6-educator-management` and `deadlines-7-educator-at-risk` run in parallel.
+- Collision: `deadlines-7-educator-at-risk` edits `reports/at_risk.py`.
 - Decided: pause stops the clock and nothing opens while paused. Learners self-pause with no approval. Once a time limit ends access, only staff can restore it. Policy lives in the Django admin.
 - Assumed: a deadline attaches to the placement (`ContentCollectionItem`). The start is `CourseProgress.created_at`. The most permissive deadline wins. Ending access leaves `is_active` alone.
 - Assumed notifications: staff pauses and extensions notify the learner; self-pauses don't. Reminders stay in-app until `user-communication-2-notification-email` lands.
-- Resolved by `deadlines-3-extensions-and-pause`:
+- Settled in code:
   - Records: `CoursePause` (one open per course progress record, with a reason, optional planned resume date and the resume fields) and `DeadlineExtension` (`days` on a collection item, the time limit or the whole course). Staff act on the course progress record through `pause_course`, `resume_course`, `announce_planned_resume` and `extend_deadline` in `freedom_ls/deadlines/actions.py`.
   - Shift rule: whole days, rounded up, added to the deadline's local date. It is computed when read, never stored, and an open pause counts up to now. It applies to an item only if the item was unmet when the shift began. Extensions stack by addition.
   - Pause limits (`learners_may_pause`, `max_pauses`, `max_pause_days`) are stored and resolved in the policy but enforced by nobody yet (`deadlines-4-learner-self-pause`).
@@ -286,9 +285,9 @@ Priority: 🟠 Medium
 Notifications and direct messaging between learners and educators. Parent: `user-communication`.
 
 - `user-communication-2-notification-email` — **ready** — Email delivery. Per-category immediate, daily, weekly or off preferences, quiet hours, unsubscribe, and a digest sweep in housekeeping.
-- `user-communication-6-moderation` — **ready** — Users report a message or block a user. Site admins work a report queue and can hide messages. Nothing is hard deleted.
+- `user-communication-6-moderation` — **ready** — Users report messages or block users. Site admins work a report queue and hide messages. Nothing is hard deleted.
 - `user-communication-8-realtime` — **blocked** by `user-communication-6-moderation` — Optional Django Channels push for the unread badge and open threads. Off by default, with polling as the fallback.
-- `user-communication-help-desk` — **ready** — Learners ask for help about specific content from the course player. Requests land in a shared queue that educators pick up.
+- `user-communication-help-desk` — **ready** — Learners ask for help on specific content from the course player, into a shared queue educators pick up.
 
 ![User communication](roadmap_diagrams/user-communication.svg)
 
@@ -336,8 +335,7 @@ Where signups come from, and what visitors are told about tracking.
 ![Referral tracking and marketing](roadmap_diagrams/referral-tracking-and-marketing.svg)
 
 **Notes**
-- `referral-tracking-external-referer-first-touch` must agree with the touch list in `referral-attribution-over-time`.
-- `referral-attribution-over-time` adds three app-structure edges to approve at plan time, and expects a consent-gate spec that doesn't exist yet.
+- `referral-tracking-external-referer-first-touch` must agree with the existing attribution touch list.
 - The `referral-tracking-*` specs and `landing-page-component-kit` are pull-ins from First-Class-LMS. `landing-page-component-kit` first needs a decision on whether FLS owns marketing pages.
 
 ## Educator interface
@@ -346,11 +344,12 @@ Priority: 🟡 Low
 
 Org admins manage learners, cohorts, registrations and staff. Parent: `educator-interface-full-polish`.
 
-- `educator-interface-misc-polish` — **ready** — Polish found while walking the interface: optional learner names, cohort settings sub-panels, show and hide table columns, help icons, smaller mobile buttons.
+- `educator-interface-misc-polish` — **ready** — Interface polish: optional learner names, cohort settings sub-panels, show and hide table columns, help icons, smaller mobile buttons.
 - `educator-interface-data-table-filter-design` — **ready** — One button per filter on data tables, instead of a single long drop-down. The UX still needs designing.
-- `audit-log-coverage-gaps` — **ready** — The audit log also records Django admin edits, system admin role changes and report downloads, and marks the date its history starts.
+- `audit-log-coverage-gaps` — **ready** — The audit log also records Django admin edits, system admin role changes and report downloads, and marks where history starts.
 - `misure-of-admonitions` — **in progress** — Learner and educator pages use theme-appropriate alerts instead of the content engine's admonition component, which stays for content only.
-- `educator-interface-more polish` — **ready** — Educators resend staff invitations and see who hasn't accepted. They also get linked dashboard figures, message sending from the learner tab, and one new-message flow.
+- `bulk-run-audit-summary` — **ready** — Bulk actions write one run summary with folded per-object entries in the Audit log, and take an optional reason.
+- `educator-interface-more polish` — **ready** — Educators resend staff invitations and see who hasn't accepted, plus linked dashboard figures, learner-tab messaging and one new-message flow.
 
 ![Educator interface](roadmap_diagrams/educator-interface.svg)
 
@@ -369,6 +368,8 @@ Developer tooling, deployment and downstream fixes.
 - `from-address-system-check` — **ready** — A `mail` system check warns when the email backend really delivers but `DEFAULT_FROM_EMAIL` is blank.
 - `housekeeping-sentry-cron-checkin` — **ready** — When a monitor slug is configured, `fls_run_housekeeping` checks in with Sentry Crons.
 - `forced-site-name-for-host-based-site-lookup` — **ready** — `FORCE_SITE_NAME` reaches host-based site lookup in development, so every dev port works.
+- `audit-log-describe-test-flake` — **ready** — Find and fix why the audit-log describe test fails in loaded full runs but passes alone.
+- `spec_dd_efficiency_and_docs` — **in progress** — Faster, clearer SDD process: process diagrams per command, fewer full test runs, leaner prompts, finish_worktree that keeps going.
 - `dev-site-bootstrap-command` — **ready** — A development command that creates the forced-name dev Site and a verified dev superuser.
 
 ![Tooling and operations](roadmap_diagrams/tooling-and-operations.svg)
