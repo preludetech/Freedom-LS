@@ -1,0 +1,15 @@
+{% extends "accounts/_account_shell.html" %}
+{% comment %}
+allauth's page templates fill `content` themselves, which replaces the shell's
+own `content` block, so this layout adds no wrapper inside it: the padding and
+width come through main_class. The shell's own mobile navigation toggle shows
+here, since these pages have no panel header to carry one. The live region
+sits in a host block because the shell's `content` block, which normally
+carries it, is replaced.
+{% endcomment %}
+{% block main_class %}flex flex-col max-w-2xl px-4 py-6 sm:px-6 space-y-6{% endblock main_class %}
+
+{% block quick_view_host %}
+    {{ block.super }}
+    {% include "panel_framework/partials/announcer_host.html" %}
+{% endblock quick_view_host %}
