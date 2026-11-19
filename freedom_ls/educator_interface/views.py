@@ -147,6 +147,10 @@ from freedom_ls.educator_interface.messaging import (
     other_educator_conversations,
     own_conversation_with,
 )
+from freedom_ls.educator_interface.panels.common.badges import (
+    active_status_badge,
+    inactive_badge,
+)
 from freedom_ls.educator_interface.panels.common.request import (
     LAST_ORGANISATION_SESSION_KEY,
     OrganisationScopedRequest,
@@ -1457,21 +1461,6 @@ def learner_status_badge(learner: Learner) -> StatusBadge:
     """The badge for a learner's status: Active, Pending or Inactive."""
     status = learner_status(learner)
     return StatusBadge(_LEARNER_STATUS_TONES[status], status.label)
-
-
-def active_status_badge(is_active: bool) -> StatusBadge:
-    """The badge for an `is_active` flag, shown by `<c-panel-status-badge>`."""
-    if is_active:
-        return StatusBadge("success", "Active")
-    return StatusBadge("muted", "Inactive")
-
-
-def inactive_badge(is_active: bool) -> StatusBadge | None:
-    """A page header's badge for an `is_active` flag: Active is the default
-    state and shows nothing, so only Inactive is drawn."""
-    if is_active:
-        return None
-    return StatusBadge("muted", "Inactive")
 
 
 class CohortDetailsPanel(InstanceDetailsPanel):

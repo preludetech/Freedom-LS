@@ -20,6 +20,7 @@ from freedom_ls.educator_interface.events import (
     STAFF_CHANGED,
 )
 from freedom_ls.educator_interface.messaging import own_conversation_with
+from freedom_ls.educator_interface.panels.common.badges import active_status_badge
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
@@ -67,13 +68,6 @@ def _learner_status_badge(learner: Learner) -> StatusBadge:
     from freedom_ls.educator_interface.views import learner_status_badge
 
     return learner_status_badge(learner)
-
-
-def _active_status_badge(is_active: bool) -> StatusBadge:
-    """The Active/Inactive badge, imported when called for the same reason."""
-    from freedom_ls.educator_interface.views import active_status_badge
-
-    return active_status_badge(is_active)
 
 
 class LearnerQuickView(QuickView):
@@ -144,7 +138,7 @@ class CohortQuickView(QuickView):
         request = cast("OrganisationScopedRequest", self.request)
         return {
             "cohort": cohort,
-            "status_badge": _active_status_badge(cohort.is_active),
+            "status_badge": active_status_badge(cohort.is_active),
             "learner_count": cohort_learner_count(cohort),
             "courses": [
                 registration.course.label_for(request.organisation)
