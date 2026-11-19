@@ -95,8 +95,8 @@ from freedom_ls.learner_progress.attempts import (
     completed_attempts,
     finalise_stale_incomplete,
     get_latest_incomplete,
-    get_or_create_incomplete,
     sittings_at_placement,
+    start_attempt,
 )
 from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 from freedom_ls.learner_progress.queries import (
@@ -1906,16 +1906,13 @@ def form_start(request, course_slug, index):
             index=index,
         )
 
-    # Finalise any stale incomplete attempt for submit-on-exit forms before
-    # get_or_create_incomplete runs. No-op for save-on-exit forms.
-    finalise_stale_incomplete(
+    # Finalise a stale incomplete attempt (submit-on-exit forms only), then resume
+    # or create the sitting, serialised per record so concurrent starts share one.
+    form_progress = start_attempt(
         course_progress,
         collection_item,
         kept_if_untouched_since=_latest_pause_start(course_progress),
     )
-
-    # Create a FormProgress instance if it doesn't yet exist
-    form_progress = get_or_create_incomplete(course_progress, collection_item)
     ensure_served_paper(form_progress)
 
     # Figure out what page of the form the user is on

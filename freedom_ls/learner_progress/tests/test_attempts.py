@@ -28,9 +28,11 @@ from freedom_ls.learner_management.factories import (
     CohortMembershipFactory,
 )
 from freedom_ls.learner_progress.attempts import (
+    START_REUSE_WINDOW,
     finalise_stale_incomplete,
     get_or_create_incomplete,
     sittings_at_placement,
+    start_attempt,
 )
 from freedom_ls.learner_progress.factories import (
     CourseFormAttemptFactory,
@@ -250,6 +252,52 @@ class TestFinaliseStaleIncomplete:
         )
 
         assert finalise_stale_incomplete(record, collection_item) is None
+
+
+@pytest.fixture
+def submit_on_exit_placement(mock_site_context):
+    course = CourseFactory()
+    record: CourseProgress = CourseProgressFactory(course=course)
+    collection_item: ContentCollectionItem = ContentCollectionItemFactory(
+        collection_object=course,
+        child_object=FormFactory(submit_on_exit=True),
+        order=0,
+    )
+    return record, collection_item
+
+
+@pytest.mark.django_db
+class TestStartAttempt:
+    def test_a_second_start_inside_the_window_reuses_the_open_sitting(
+        self, submit_on_exit_placement
+    ) -> None:
+        """Two starts together (a double click, two tabs) used to score the first
+        sitting as abandoned and open a second."""
+        record, collection_item = submit_on_exit_placement
+        first = start_attempt(record, collection_item)
+
+        second = start_attempt(record, collection_item)
+
+        assert second.pk == first.pk
+        first.refresh_from_db()
+        assert first.completed_time is None
+        assert FormProgress.objects.count() == 1
+
+    def test_a_start_after_the_window_finalises_the_old_sitting(
+        self, submit_on_exit_placement
+    ) -> None:
+        record, collection_item = submit_on_exit_placement
+        first = start_attempt(record, collection_item)
+        FormProgress.objects.filter(pk=first.pk).update(
+            start_time=timezone.now() - START_REUSE_WINDOW - timedelta(seconds=1)
+        )
+
+        second = start_attempt(record, collection_item)
+
+        first.refresh_from_db()
+        assert first.completed_time is not None
+        assert second.pk != first.pk
+        assert second.completed_time is None
 
 
 @pytest.mark.django_db

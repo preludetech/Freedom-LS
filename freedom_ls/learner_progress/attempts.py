@@ -16,15 +16,20 @@ apart, and it cannot tell a course attempt from a standalone one.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import cast
 
 from django.db import transaction
 from django.db.models import QuerySet
+from django.utils import timezone
 
 from freedom_ls.content_engine.models import ContentCollectionItem
 from freedom_ls.form_engine.models import Form, FormProgress
 from freedom_ls.learner_progress.models import CourseFormAttempt, CourseProgress
+
+# A sitting opened this recently is reused by a second start rather than finalised:
+# a double click or two tabs opened together belong to one sitting.
+START_REUSE_WINDOW = timedelta(seconds=10)
 
 
 def get_latest_incomplete(
@@ -130,6 +135,35 @@ def finalise_stale_incomplete(
         return None
     incomplete.complete()
     return incomplete
+
+
+def start_attempt(
+    course_progress: CourseProgress,
+    collection_item: ContentCollectionItem,
+    *,
+    kept_if_untouched_since: datetime | None = None,
+) -> FormProgress:
+    """Begin, or resume, the learner's sitting at this placement.
+
+    Runs under a lock on the course progress row, so two starts for one record
+    serialise instead of each finalising the other's brand-new sitting. An open
+    sitting started within `START_REUSE_WINDOW` is reused untouched; an older one
+    is finalised first for submit-on-exit forms (see `finalise_stale_incomplete`).
+    """
+    with transaction.atomic():
+        CourseProgress.objects.select_for_update().get(pk=course_progress.pk)
+        open_sitting = get_latest_incomplete(course_progress, collection_item)
+        recently_started = (
+            open_sitting is not None
+            and open_sitting.start_time >= timezone.now() - START_REUSE_WINDOW
+        )
+        if not recently_started:
+            finalise_stale_incomplete(
+                course_progress,
+                collection_item,
+                kept_if_untouched_since=kept_if_untouched_since,
+            )
+        return get_or_create_incomplete(course_progress, collection_item)
 
 
 @dataclass(frozen=True)

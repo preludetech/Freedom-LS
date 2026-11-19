@@ -3,7 +3,7 @@ from __future__ import annotations
 import html
 import re
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import cast
 
 import lxml.html
@@ -51,6 +51,7 @@ from freedom_ls.learner_interface.utils import form_start_page_buttons, get_cour
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_management.tests.helpers import register_user_for_course
 from freedom_ls.learner_progress.attempts import (
+    START_REUSE_WINDOW,
     get_latest_incomplete,
     get_or_create_incomplete,
 )
@@ -453,6 +454,9 @@ def test_form_start_finalises_stale_incomplete_for_submit_on_exit(
     # Create a stale incomplete attempt
     stale = form_attempt(course, user, form)
     assert stale.completed_time is None
+    FormProgress.objects.filter(pk=stale.pk).update(
+        start_time=timezone.now() - START_REUSE_WINDOW - timedelta(seconds=1)
+    )
 
     client.force_login(user)
     url = reverse(
