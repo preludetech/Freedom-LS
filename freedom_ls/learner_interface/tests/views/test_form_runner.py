@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import cast
 
+import lxml.html
 import pytest
 import time_machine
 
@@ -38,6 +39,7 @@ from freedom_ls.form_engine.models import (
     FormQuestion,
     FormStrategy,
     QuestionAnswer,
+    QuestionOption,
 )
 from freedom_ls.form_engine.queries import count_form_questions
 from freedom_ls.learner_interface.tests.helpers import (
@@ -1329,6 +1331,107 @@ def test_a_second_get_of_a_page_shows_the_same_paper(served_runner, client):
         _served_paper_of_sitting(served_runner.form, served_runner.sitting.user)
         == paper
     )
+
+
+@dataclass
+class ServedOptions:
+    """A one-page quiz sitting whose three option questions are served options reversed."""
+
+    course: Course
+    sitting: FormProgress
+    questions: dict[str, FormQuestion]
+    options: dict[str, list[QuestionOption]]
+
+
+@pytest.fixture
+def served_options_runner(mock_site_context, client) -> ServedOptions:
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    page: FormPage = FormPageFactory(form=form, order=0)
+    questions: dict[str, FormQuestion] = {}
+    options: dict[str, list[QuestionOption]] = {}
+    for order, question_type in enumerate(
+        ["multiple_choice", "checkboxes", "dropdown"]
+    ):
+        question: FormQuestion = FormQuestionFactory(
+            form_page=page, type=question_type, order=order, required=False
+        )
+        questions[question_type] = question
+        options[question_type] = [
+            QuestionOptionFactory(
+                question=question, text=f"{question_type} {n}", order=n
+            )
+            for n in range(3)
+        ]
+    user = UserFactory()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    sitting = form_attempt(course, user, form)
+    sitting.served_paper = served_paper_of(
+        [(page, list(questions.values()))],
+        {
+            questions[kind]: [options[kind][2], options[kind][0], options[kind][1]]
+            for kind in questions
+        },
+    )
+    sitting.save()
+    return ServedOptions(course, sitting, questions, options)
+
+
+def _rendered_option_values(response, question: FormQuestion) -> list[str]:
+    """The option ids a question's inputs carry, top to bottom."""
+    document = lxml.html.fromstring(response.content)
+    return [
+        element.get("value")
+        for element in document.cssselect(
+            f"input[name='question_{question.id}'], "
+            f"select[name='question_{question.id}'] option"
+        )
+        if element.get("value")
+    ]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("kind", ["multiple_choice", "checkboxes", "dropdown"])
+def test_each_option_question_renders_its_options_in_served_order(
+    served_options_runner, client, kind
+):
+    options = served_options_runner.options[kind]
+
+    response = client.get(_fill_page_url(served_options_runner.course, 1))
+
+    assert _rendered_option_values(response, served_options_runner.questions[kind]) == [
+        str(options[2].id),
+        str(options[0].id),
+        str(options[1].id),
+    ]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("kind", ["multiple_choice", "checkboxes", "dropdown"])
+def test_a_served_option_deleted_mid_sitting_is_not_rendered(
+    served_options_runner, client, kind
+):
+    options = served_options_runner.options[kind]
+    options[0].delete()
+
+    response = client.get(_fill_page_url(served_options_runner.course, 1))
+
+    assert _rendered_option_values(response, served_options_runner.questions[kind]) == [
+        str(options[2].id),
+        str(options[1].id),
+    ]
+
+
+@pytest.mark.django_db
+def test_a_second_get_renders_the_same_option_order(served_options_runner, client):
+    question = served_options_runner.questions["multiple_choice"]
+    url = _fill_page_url(served_options_runner.course, 1)
+    first = _rendered_option_values(client.get(url), question)
+
+    second = client.get(url)
+
+    assert _rendered_option_values(second, question) == first
 
 
 @pytest.mark.django_db

@@ -1,5 +1,6 @@
-{% load fls_base_filters %}
-{% for option in question.options.all %}
+{% load fls_base_filters form_engine_tags %}
+{% question_options as options %}
+{% for option in options %}
     <label class="group relative flex items-start gap-3 p-3 rounded-md border border-border cursor-pointer
                    has-[:checked]:border-primary has-[:checked]:bg-primary/5
                    hover:bg-surface-2 transition-colors"

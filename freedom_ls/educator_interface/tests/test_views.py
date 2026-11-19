@@ -8603,6 +8603,34 @@ def test_opening_a_form_preview_renders_every_question_type_disabled(
     assert document.cssselect("button[type='submit']") == []
 
 
+@pytest.mark.django_db
+def test_a_form_preview_lists_options_and_the_dropdown_answer_key_as_authored(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    form = FormFactory(title="Intake")
+    page = FormPageFactory(form=form, order=0)
+    question = FormQuestionFactory(form_page=page, type="dropdown", order=0)
+    QuestionOptionFactory(question=question, text="Second", order=1, correct=True)
+    QuestionOptionFactory(question=question, text="First", order=0)
+    QuestionOptionFactory(question=question, text="Third", order=2, correct=True)
+    course, item = _course_with_form(form)
+    url = _preview_url(staff_client, organisation, course)
+
+    response = staff_client.get(f"{url}?item={item.pk}", HTTP_HX_REQUEST="true")
+
+    document = lxml.html.fromstring(response.content)
+    options = [
+        o.text_content() for o in document.cssselect("select option") if o.get("value")
+    ]
+    key = [li.text_content() for li in document.cssselect("ul.list-none li")]
+    assert options == ["First", "Second", "Third"]
+    assert [" ".join(text.split()) for text in key] == [
+        "Correct answer: Second",
+        "Correct answer: Third",
+    ]
+
+
 def _three_page_form(title: str = "Survey") -> tuple[Model, Model]:
     """A survey whose second page is shown only on one answer; returns the
     form and that second page."""

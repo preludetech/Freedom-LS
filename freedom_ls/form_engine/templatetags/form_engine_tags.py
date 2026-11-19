@@ -26,7 +26,8 @@ from freedom_ls.form_engine.uploads import (
 if TYPE_CHECKING:
     from django.http import HttpRequest
 
-    from freedom_ls.form_engine.models import FormQuestion
+    from freedom_ls.form_engine.conditions import SittingPath
+    from freedom_ls.form_engine.models import FormQuestion, QuestionOption
 
 register = template.Library()
 
@@ -57,6 +58,20 @@ def _country_for_an_empty_question(
         # person's choice and outranks a guess.
         return submitted_phone_country(question, request.POST)
     return browser_country(request.headers.get("Accept-Language", "")) or ""
+
+
+@register.simple_tag(takes_context=True)
+def question_options(context: Context) -> list[QuestionOption]:
+    """The options of the question being drawn, in the order this sitting is served them.
+
+    Reads `question` and `sitting_path` from the context. A page drawn with
+    no sitting behind it has no path and shows the options as authored.
+    """
+    question = context["question"]
+    path: SittingPath | None = context.get("sitting_path")
+    if path is None:
+        return list(question.options.all())
+    return path.options_of(question)
 
 
 @register.simple_tag(takes_context=True)

@@ -8,17 +8,20 @@ from django.template import Context, Template
 from django.template.loader import render_to_string
 from django.test import RequestFactory
 
+from freedom_ls.form_engine.conditions import served_path
 from freedom_ls.form_engine.enums import QuestionType
 from freedom_ls.form_engine.factories import (
     FormPageFactory,
     FormQuestionFactory,
     QuestionAnswerFactory,
     QuestionOptionFactory,
+    served_paper_of,
 )
-from freedom_ls.form_engine.models import FormQuestion
+from freedom_ls.form_engine.models import FormPage, FormQuestion, QuestionOption
 from freedom_ls.form_engine.templatetags.form_engine_tags import (
     answer_display,
     phone_field_state,
+    question_options,
 )
 from freedom_ls.form_engine.typed_answers import RejectedAnswer
 
@@ -651,3 +654,42 @@ def test_no_error_rendered_when_rejected_answers_is_empty(mock_site_context):
 
     assert "aria-invalid" not in markup
     assert f"question_{question.id}_error" not in markup
+
+
+@pytest.fixture
+def served_options(mock_site_context):
+    """A multiple-choice question whose sitting is served its options reversed."""
+    page: FormPage = FormPageFactory(order=0)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=page, type="multiple_choice", order=0
+    )
+    alpha: QuestionOption = QuestionOptionFactory(
+        question=question, text="Alpha", order=0
+    )
+    beta: QuestionOption = QuestionOptionFactory(
+        question=question, text="Beta", order=1
+    )
+    paper = served_paper_of([(page, [question])], {question: [beta, alpha]})
+    return question, served_path(page.form, paper)
+
+
+@pytest.mark.django_db
+def test_question_options_follow_the_served_order_when_a_path_is_in_the_context(
+    served_options,
+):
+    question, path = served_options
+
+    options = question_options(Context({"question": question, "sitting_path": path}))
+
+    assert [option.text for option in options] == ["Beta", "Alpha"]
+
+
+@pytest.mark.django_db
+def test_question_options_are_authored_order_when_no_path_is_in_the_context(
+    served_options,
+):
+    question, _path = served_options
+
+    options = question_options(Context({"question": question}))
+
+    assert [option.text for option in options] == ["Alpha", "Beta"]

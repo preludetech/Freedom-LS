@@ -1,4 +1,5 @@
-{% load fls_base_filters %}
+{% load fls_base_filters form_engine_tags %}
+{% question_options as options %}
 <label class="sr-only" for="question_{{ question.id }}">{{ question.rendered_question }}</label>
 <select id="question_{{ question.id }}"
         name="question_{{ question.id }}"
@@ -8,8 +9,8 @@
         {% if read_only %}disabled{% endif %}
         {% if rejected %}aria-invalid="true" aria-describedby="question_{{ question.id }}_error"{% endif %}>
     <option value=""></option>
-    {% for option in question.options.all %}
+    {% for option in options %}
         <option value="{{ option.id }}" {% if existing_answers|length > 0 %}{% with answer=existing_answers|get_dict_item:question.id %}{% if answer and option in answer.selected_options.all %}selected{% endif %}{% endwith %}{% endif %}>{{ option.text }}</option>
     {% endfor %}
 </select>
-{% if show_answer_key %}<ul class="mt-2 list-none flex flex-col gap-1">{% for option in question.options.all %}{% if option.correct %}<li><c-correct-answer-mark option_text="{{ option.text }}" /></li>{% endif %}{% endfor %}</ul>{% endif %}
+{% if show_answer_key %}<ul class="mt-2 list-none flex flex-col gap-1">{% for option in options %}{% if option.correct %}<li><c-correct-answer-mark option_text="{{ option.text }}" /></li>{% endif %}{% endfor %}</ul>{% endif %}

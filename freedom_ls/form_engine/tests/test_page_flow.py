@@ -221,6 +221,18 @@ def test_context_names_the_next_page_when_there_is_one(two_page_form, sitting):
 
 
 @pytest.mark.django_db
+def test_context_carries_the_path_it_was_built_from(two_page_form, sitting):
+    path = full_path(two_page_form)
+    current = resolve_page(path, 1)
+
+    context = page_context(
+        two_page_form, current, sitting, PageSubmission(), _url_for_page
+    )
+
+    assert context["sitting_path"] is path
+
+
+@pytest.mark.django_db
 def test_context_has_no_next_page_on_the_last_page(two_page_form, sitting):
     current = resolve_page(full_path(two_page_form), 2)
 

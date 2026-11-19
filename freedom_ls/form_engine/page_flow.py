@@ -190,6 +190,7 @@ def page_context(
         "next_page_url": next_page_url,
         "has_next_page": next_page_url is not None,
         "read_only": read_only,
+        "sitting_path": current.path,
         "page_children": current.path.children_of(current.page),
         "question_positions": current.path.question_positions(),
         "existing_answers": form_progress.existing_answers_dict(current.questions),

@@ -1,4 +1,5 @@
-{% load fls_base_filters %}
+{% load fls_base_filters form_engine_tags %}
+{% question_options as options %}
 {% comment %}
 `relative` on the option labels keeps the sr-only input positioned within its
 label so it scrolls with the label. Without it the absolutely-positioned input
@@ -9,7 +10,7 @@ from a multi-select one: round for radios, square for checkboxes. It is driven
 off the sr-only input via group-has-[:checked], so the input stays the single
 source of truth and keyboard/AT behaviour is untouched.
 {% endcomment %}
-{% for option in question.options.all %}
+{% for option in options %}
     <label class="group relative flex items-start gap-3 p-3 rounded-md border border-border cursor-pointer
                    has-[:checked]:border-primary has-[:checked]:bg-primary/5
                    hover:bg-surface-2 transition-colors"
