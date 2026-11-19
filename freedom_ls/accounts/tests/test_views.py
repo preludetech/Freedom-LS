@@ -983,6 +983,66 @@ def test_profile_page_details_form_is_separate_from_the_picture(mock_site_contex
 
 
 @pytest.mark.django_db
+def test_profile_page_shows_the_stored_names_in_the_inputs(mock_site_context):
+    client = Client()
+    client.force_login(UserFactory(first_name="Ada", last_name="Lovelace"))
+
+    html = client.get(reverse("accounts:account_profile")).content.decode()
+    _, details_form = _profile_forms(html)
+
+    assert 'value="Ada"' in details_form
+    assert 'value="Lovelace"' in details_form
+
+
+@pytest.mark.django_db
+def test_valid_details_post_stores_both_names(mock_site_context):
+    user = UserFactory(first_name="Ada", last_name="Lovelace")
+    client = Client()
+    client.force_login(user)
+
+    client.post(
+        reverse("accounts:account_profile"),
+        {"first_name": "Grace", "last_name": "Hopper"},
+    )
+
+    user.refresh_from_db()
+    assert (user.first_name, user.last_name) == ("Grace", "Hopper")
+
+
+@pytest.mark.django_db
+def test_blank_names_are_accepted_and_stored_blank(mock_site_context):
+    user = UserFactory(first_name="Ada", last_name="Lovelace")
+    client = Client()
+    client.force_login(user)
+
+    response = client.post(
+        reverse("accounts:account_profile"), {"first_name": "", "last_name": ""}
+    )
+
+    user.refresh_from_db()
+    assert response.status_code == 302
+    assert (user.first_name, user.last_name) == ("", "")
+
+
+@pytest.mark.django_db
+def test_a_first_name_over_200_characters_is_refused_and_nothing_is_stored(
+    mock_site_context,
+):
+    user = UserFactory(first_name="Ada", last_name="Lovelace")
+    client = Client()
+    client.force_login(user)
+
+    response = client.post(
+        reverse("accounts:account_profile"),
+        {"first_name": "A" * 201, "last_name": "Hopper"},
+    )
+
+    user.refresh_from_db()
+    assert response.status_code == 200
+    assert (user.first_name, user.last_name) == ("Ada", "Lovelace")
+
+
+@pytest.mark.django_db
 def test_saving_details_redirects_and_keeps_the_picture(
     mock_site_context, pathless_profile_picture_storage
 ):
