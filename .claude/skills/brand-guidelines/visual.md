@@ -81,9 +81,9 @@ FLS already builds each of these, and the brand decisions above are encoded in t
 | A card or panel | `.surface`, or `<c-media-card>` for one with an image |
 | A status badge | `<c-panel-status-badge tone="success\|warning\|error\|info\|muted" label="…">`, on any screen: panel-framework pages, dashboards, learner-facing views. Choose it by what the badge says, not where it sits. If it names the state of a record (Active, Stalled, Draft), it's a status badge. It wraps `c-chip`, limits the tones to the five status meanings and keeps the badge legible in forced-colours mode. |
 | A label that isn't a status | `<c-chip variant="primary\|secondary\|success\|warning\|error\|info\|muted" size="xs">` for tags, levels and categories. `primary` and `secondary` live here because they carry no status meaning. The `.chip-success`, `.chip-warning`, `.chip-error` and `.chip-info` tints are the `-light` pairs. |
-| A callout in a page | `<c-callout tone="info\|warning\|error\|success" title="…">` |
+| A callout in a page, panel or dialog | `<c-callout tone="info\|warning\|error\|success" title="…">` |
 | A page a person cannot use (closed or blocked) | A large centred `<c-icon>` (`size-12`) with the explanation as plain text under it, never a callout box |
-| A callout in course content | `<c-admonition type="note\|tip\|important\|warning\|danger\|key_takeaways\|checklist">` |
+| A callout in course content (`c-admonition` is for course content only; everywhere else use `c-callout`) | `<c-admonition type="note\|tip\|important\|warning\|danger\|key_takeaways\|checklist">` |
 | A page wrapper | `<c-page width="wide\|narrow">` |
 | A date or a date-time | `<c-date :value="…" />` / `<c-datetime :value="…" />`; a deadline in the learner's own zone is `{% local_time %}`. `voice.md` says how dates read |
 | A learner deadline, time limit, close date or access date ("Deadline", "Missed deadline", "Closes", "Closed", "Access ends", "Access ended") | `<c-deadline-label tier="…" layout="inline\|stacked\|minimal">`, the one style for any deadline a learner sees: coloured icon, bold tier word, date in `text-muted font-mono`. Each date is its own label, a separate element under the one before it, never text inside another label's slot. Lines in the same block share one layout; none is plain text |
@@ -166,7 +166,7 @@ The base layer, the components and the active theme supply most of the styling:
                 Fork it on GitHub
             </c-button>
 
-            <c-callout level="info" title="Note">
+            <c-callout tone="info" title="Note">
                 FreedomLS uses Django's Sites framework for multi-tenancy.
             </c-callout>
 
