@@ -7,33 +7,35 @@ adds anything missing under "Priority not set"; move it from there to the level 
 
 ## High
 
+- `sacaa-compliance`
 - `extract_panels_framework`
+- `learner-profile-use-panels-framework`
 - `learner-public-profile`
+- `multi-step-course-applications`
 
 ## Medium
 
-## Low
-
-## Priority not set
-
-- `educator-interface-full-polish`
 - `educator-interface-refactor`
-- `user-communication`
+- `content-widget-sayit-reveal`
 - `deadlines`
+- `form-engine-branch-logic-2-and-conditions`
+- `user-communication`
 - `corporate-job-course-recommendations`
 - `referral-tracking-marketing-channels`
 - `referral-tracking-external-referer-first-touch`
 - `server-side-conversion-tracking`
 - `cookie-banner`
+
+## Low
+
+- `educator-interface-full-polish`
 - `landing-page-component-kit`
 - `lead-capture-forms`
-- `form-engine-branch-logic-2-and-conditions`
-- `multi-step-course-applications`
-- `sacaa-compliance`
-- `learner-interface-features`
-- `content-widget-sayit-reveal`
-- `learner-profile-use-panels-framework`
-- `from-address-system-check`
-- `housekeeping-sentry-cron-checkin`
-- `forced-site-name-for-host-based-site-lookup`
 - `dev-site-bootstrap-command`
+- `forced-site-name-for-host-based-site-lookup`
+- `from-address-system-check`
+
+## Priority not set
+
+- `learner-interface-features`
+- `housekeeping-sentry-cron-checkin`
