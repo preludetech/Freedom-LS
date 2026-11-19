@@ -17,10 +17,13 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 3. Implementation and QA
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
+- [ ] (user) Decide whether `boolean_true` and `boolean_false` join `REQUIRED_ICON_NAMES` in `freedom_ls/panel_framework/checks.py`: `_details_value.html` picks them inside an `{% if %}`, so the icon check misses them (HOST_CONTRACT.md lists them by hand); if yes, add them there and to the extra names in `freedom_ls/panel_framework/tests/invariants/test_icon_names.py`
+- [ ] (user) Decide whether to amend the spec's success-criteria greps: `_base\.html` matches the framework's own `_main_base.html`/`_panel_base.html` (the invariant uses `(?<![\w])_base\.html`), and the `FREEDOM_LS_PACKAGE_DIR` grep matches the invariant's own regex in `test_templates.py`
+- [ ] (user) `freedom_ls/webhooks/tests/test_admin.py::TestWebhookEndpointFormTransformation::test_saving_endpoint_with_transformation_fields` resolves example.com over DNS and failed once in the full run (passes on rerun); decide whether to make it network-free (unrelated to this branch)
 
 ## 4. Documentation and pull request
 
