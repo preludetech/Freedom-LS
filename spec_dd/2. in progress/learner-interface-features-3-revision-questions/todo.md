@@ -7,6 +7,8 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 - [ ] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
 - [ ] (user) Review the spec and edit where needed; after substantial hand edits, run `/sdd:spec_review`
+- [ ] (user) This branch was cut from `sacaa-compliance-2-shuffle`, not main, and carries 9 of its commits; decide whether to rebase onto main (dropping them) before the spec is written
+- [ ] (user) Run `/sdd:roadmap` on main to add a bullet for the new idea `educator-revision-analytics`
 
 ## 2. Plan
 
