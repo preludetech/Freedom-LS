@@ -5,7 +5,7 @@
 Learners can have public profiles. This is primarily to help them find work.
 
 For learners we need:
-(should we use the panels framework for the user-profile and these settings?)
+(decided: yes, profile editing is panels in the account area; see "Account area on panels" in `spec_dd/1. next/roadmap.md`)
 - profile pics
 - allow them to turn their public profile on/off
 - allow "public profile" to be named something else in concrete implementations. This is a Site setting. Eg "Talent Database"
