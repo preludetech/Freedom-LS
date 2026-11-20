@@ -89,8 +89,8 @@ Actual: on the allauth set-password page the grey canvas is painted by an ancest
 ## Bug status
 
 - **FIXED** (commit: 422ace948) — Forgot password? link indented 8px from the Password card's field edge. Re-verified: link text and labels now share x=49 at tablet.
-- **UNRESOLVED** — Layout probe flags /accounts/password/set/ (reason: no visible misalignment, since the heading text and the card share a left edge at every viewport. The probe reads the card as content because this allauth page's grey canvas comes from an ancestor, not from its own full-width element as on the educator panel pages. Someone needs to decide whether to restructure the page so the probe passes, or accept the flag.)
-- **UNRESOLVED** — targeted run after the fixes left tests failing (reason: freedom_ls/base/tests/invariants/test_app_templates_use_app_components.py::test_app_templates_use_no_content_widget_or_callout_level[accounts/templates/accounts/partials/profile_picture_form.html]: the template uses `c-panel-notice` where the invariant expects `<c-callout>`. The B1 fix did not touch this file. 15443 passed, 1 failed, 1 skipped.)
+- **WONTFIX** — Layout probe flags /accounts/password/set/ (reason: accepted; no visible misalignment, and passing the probe would mean overriding allauth's page templates)
+- **FIXED** (commit: 013c7f8c1) — targeted run after the fixes left tests failing: profile_picture_form.html and the educator panel and dialog templates now use `<c-panel-callout>`, guarded by `test_no_fls_panel_template_calls_the_site_callout`; targeted run after the fix: 15649 passed, 0 failed, 1 skipped
 
 ## General notes
 
@@ -100,4 +100,4 @@ Actual: on the allauth set-password page the grey canvas is painted by an ancest
 - Records for tests 2 (in part), 6, 7, 5.6 and 7.3 have no screenshot (`screenshot_path` null).
 - The plan's Test 5.6 and 5.7 used the no-password user created by the QA data helper.
 
-status: ok · reason: 2 bugs — 1 fixed, 1 unresolved; targeted run after the fix has 1 failing invariant test; report rendered, screenshots verified
+status: ok · reason: 3 items — 2 fixed, 1 wontfix, 0 unresolved; targeted run after the fixes passes
