@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
 
 from django.contrib.auth.models import AnonymousUser
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
@@ -14,6 +17,7 @@ if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
 
 from freedom_ls.course_applications.factories import CourseApplicationFactory
+from freedom_ls.course_applications.models import CourseApplication
 from freedom_ls.form_engine.factories import FormProgressFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.utils import get_default_organisation
@@ -119,29 +123,142 @@ class TestGetApplicationForCourse:
         assert result is None
 
 
+def _created_ago(application, days: int):
+    """Backdate `application` so creation order is not left to the clock."""
+    CourseApplication.objects.filter(pk=application.pk).update(
+        created_at=timezone.now() - timedelta(days=days)
+    )
+    return application
+
+
 @pytest.mark.django_db
-class TestGetActiveApplications:
-    """get_active_applications returns the user's applications."""
+class TestGetDashboardApplications:
+    """get_dashboard_applications lists what the user's dashboard panel shows."""
 
     def test_anonymous_user_returns_empty_queryset_with_no_query(
         self, mock_site_context, django_assert_num_queries
     ):
         """Anonymous user returns an empty queryset without hitting the database."""
-        from freedom_ls.course_applications.queries import get_active_applications
+        from freedom_ls.course_applications.queries import get_dashboard_applications
 
         with django_assert_num_queries(0):
-            result = list(get_active_applications(AnonymousUser()))
+            result = list(get_dashboard_applications(AnonymousUser()))
 
         assert result == []
 
     def test_lists_every_course_the_user_applied_to(self, mock_site_context):
-        from freedom_ls.course_applications.queries import get_active_applications
+        from freedom_ls.course_applications.queries import get_dashboard_applications
 
         user = UserFactory()
         first = CourseApplicationFactory(user=user)
         second = CourseApplicationFactory(user=user)
 
-        assert set(get_active_applications(user)) == {first, second}
+        assert set(get_dashboard_applications(user)) == {first, second}
+
+    def test_a_withdrawn_application_is_never_listed(self, mock_site_context):
+        from freedom_ls.course_applications.queries import get_dashboard_applications
+
+        user = UserFactory()
+        CourseApplicationFactory(user=user, withdrawn=True)
+
+        assert list(get_dashboard_applications(user)) == []
+
+    def test_a_rejected_application_is_listed_while_nothing_newer_exists(
+        self, mock_site_context
+    ):
+        from freedom_ls.course_applications.queries import get_dashboard_applications
+
+        user = UserFactory()
+        rejected = CourseApplicationFactory(user=user, rejected=True)
+
+        assert list(get_dashboard_applications(user)) == [rejected]
+
+    @pytest.mark.parametrize(
+        "newer_traits",
+        [{}, {"approved": True}, {"rejected": True}, {"withdrawn": True}],
+    )
+    def test_a_newer_application_for_the_course_hides_the_rejection(
+        self, mock_site_context, newer_traits
+    ):
+        from freedom_ls.course_applications.queries import get_dashboard_applications
+
+        user = UserFactory()
+        course = CourseFactory()
+        old = _created_ago(
+            CourseApplicationFactory(user=user, course=course, rejected=True), 2
+        )
+        CourseApplicationFactory(user=user, course=course, **newer_traits)
+
+        assert old not in get_dashboard_applications(user)
+
+    def test_another_users_newer_application_does_not_hide_the_rejection(
+        self, mock_site_context
+    ):
+        from freedom_ls.course_applications.queries import get_dashboard_applications
+
+        user = UserFactory()
+        course = CourseFactory()
+        rejected = _created_ago(
+            CourseApplicationFactory(user=user, course=course, rejected=True), 2
+        )
+        CourseApplicationFactory(user=UserFactory(), course=course)
+
+        assert list(get_dashboard_applications(user)) == [rejected]
+
+    def test_a_newer_application_on_another_course_does_not_hide_the_rejection(
+        self, mock_site_context
+    ):
+        from freedom_ls.course_applications.queries import get_dashboard_applications
+
+        user = UserFactory()
+        rejected = _created_ago(CourseApplicationFactory(user=user, rejected=True), 2)
+        other = CourseApplicationFactory(user=user)
+
+        assert set(get_dashboard_applications(user)) == {rejected, other}
+
+    def test_another_sites_newer_application_does_not_hide_the_rejection(
+        self, mock_site_context
+    ):
+        from django.contrib.sites.models import Site
+
+        from freedom_ls.course_applications.queries import get_dashboard_applications
+
+        user = UserFactory()
+        course = CourseFactory()
+        rejected = _created_ago(
+            CourseApplicationFactory(user=user, course=course, rejected=True), 2
+        )
+        other_site = Site.objects.create(domain="other.example.com", name="Other")
+        CourseApplicationFactory(user=user, course=course, site=other_site)
+
+        assert list(get_dashboard_applications(user)) == [rejected]
+
+    def test_open_applications_come_first_then_approved_and_rejected_newest_first(
+        self, mock_site_context
+    ):
+        from freedom_ls.course_applications.queries import get_dashboard_applications
+
+        user = UserFactory()
+        old_open = _created_ago(CourseApplicationFactory(user=user), 5)
+        new_rejected = _created_ago(
+            CourseApplicationFactory(user=user, rejected=True), 1
+        )
+        old_approved = _created_ago(
+            CourseApplicationFactory(user=user, approved=True), 4
+        )
+        new_open = _created_ago(
+            CourseApplicationFactory(
+                user=user, form_progress=FormProgressFactory(user=user)
+            ),
+            2,
+        )
+
+        assert list(get_dashboard_applications(user)) == [
+            new_open,
+            old_open,
+            new_rejected,
+            old_approved,
+        ]
 
 
 @pytest.mark.django_db

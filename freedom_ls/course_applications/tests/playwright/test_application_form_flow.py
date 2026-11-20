@@ -70,7 +70,7 @@ def test_an_applicant_can_fill_in_attach_change_and_submit(
     # says the application is unfinished, and the status page -- the "View my
     # application" CTA's destination -- offers a way back into the form.
     logged_in_page.goto(reverse_url(live_server, "learner_interface:dashboard"))
-    expect(logged_in_page.get_by_text("Incomplete")).to_be_visible()
+    expect(logged_in_page.get_by_text("Not submitted")).to_be_visible()
     # The rows line up with their heading rather than sitting in the list's
     # default indent.
     heading_box = logged_in_page.get_by_role(
@@ -117,8 +117,8 @@ def test_an_applicant_can_fill_in_attach_change_and_submit(
         reverse_url(live_server, "learner_interface:dashboard")
     )
     expect(logged_in_page.get_by_text("has been submitted")).to_be_visible()
-    expect(logged_in_page.get_by_text("Pending review", exact=True)).to_be_visible()
-    expect(logged_in_page.get_by_text("Incomplete")).to_be_hidden()
+    expect(logged_in_page.get_by_text("Waiting for review", exact=True)).to_be_visible()
+    expect(logged_in_page.get_by_text("Not submitted")).to_be_hidden()
 
     # A submitted application offers no way back into the answers.
     logged_in_page.goto(
@@ -253,7 +253,7 @@ def test_an_anonymous_visitor_can_apply_from_details_to_submit(
 
     # The dashboard lists the unfinished draft and resumes it on page 1.
     page.goto(reverse_url(live_server, "learner_interface:dashboard"))
-    expect(page.get_by_text("Incomplete")).to_be_visible()
+    expect(page.get_by_text("Not submitted")).to_be_visible()
     page.get_by_role("link", name="Continue application").click()
     expect(page.get_by_label("Your name")).to_be_visible()
 
@@ -337,7 +337,7 @@ def test_the_claim_link_from_the_details_step_signs_a_second_browser_in_on_the_d
         other_page.get_by_role("link", name="Continue application").click()
         expect(other_page.get_by_label("Your name")).to_be_visible()
         other_page.goto(reverse_url(live_server, "learner_interface:dashboard"))
-        expect(other_page.get_by_text("Incomplete")).to_be_visible()
+        expect(other_page.get_by_text("Not submitted")).to_be_visible()
         expect(other_page.get_by_role("link", name="Sign in")).to_be_hidden()
     finally:
         other_context.close()
@@ -406,6 +406,31 @@ def test_send_again_from_the_notice_says_a_new_link_went(
     expect(notice.get_by_role("button", name="Send again")).to_have_count(0)
     assert page.url == form_page_url
     assert len(mail.outbox) == 1
+
+
+@pytest.mark.playwright
+# transaction=True so the Playwright browser (separate connection) sees committed data
+@pytest.mark.django_db(transaction=True)
+def test_a_rejected_row_offers_apply_again_into_a_new_application(
+    live_server, logged_in_page: Page, logged_in_user, mock_site_context
+):
+    course, _form = gated_course_with_form()
+    rejected = CourseApplicationFactory(
+        user=logged_in_user, course=course, rejected=True
+    )
+    dashboard_url = reverse_url(live_server, "learner_interface:dashboard")
+    panel = logged_in_page.locator("#applications-page")
+
+    logged_in_page.goto(dashboard_url)
+    expect(panel.get_by_text("Not approved")).to_be_visible()
+    panel.get_by_role("link", name="Apply again").click()
+
+    expect(logged_in_page).to_have_url(re.compile(r"/application/.+/page/1/"))
+    logged_in_page.goto(dashboard_url)
+    expect(panel.get_by_text("Not approved")).to_have_count(0)
+    expect(panel.get_by_text("Not submitted")).to_be_visible()
+    assert CourseApplication.objects.filter(user=logged_in_user).count() == 2
+    assert CourseApplication.objects.get(pk=rejected.pk).state == "rejected"
 
 
 @pytest.mark.playwright

@@ -271,10 +271,10 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
         learner_interface renders each contribution generically via render_to_string
         and never reads context keys — it never imports course_applications.
         """
-        from freedom_ls.course_applications.queries import get_active_applications
+        from freedom_ls.course_applications.queries import get_dashboard_applications
 
         page = Paginator(
-            get_active_applications(user), APPLICATIONS_PAGE_SIZE
+            get_dashboard_applications(user), APPLICATIONS_PAGE_SIZE
         ).get_page(1)
         return self._applications_panel(page, own_swap=False)
 
@@ -288,9 +288,11 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
         so neither is listed here.
         """
         if request.user.is_authenticated:
-            from freedom_ls.course_applications.queries import get_active_applications
+            from freedom_ls.course_applications.queries import (
+                get_dashboard_applications,
+            )
 
-            applications = get_active_applications(request.user)
+            applications = get_dashboard_applications(request.user)
         else:
             from freedom_ls.course_applications.anonymous_session import (
                 owned_applications,

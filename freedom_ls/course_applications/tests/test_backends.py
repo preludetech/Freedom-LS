@@ -510,29 +510,59 @@ class TestDashboardPartialRendering:
 
         assert expected_url in rendered
 
-    def test_an_application_with_no_form_is_pending_review(self, mock_site_context):
+    def test_an_application_with_no_form_reads_waiting_for_review(
+        self, mock_site_context
+    ):
         rendered = _render_panel(CourseApplicationFactory())
 
-        assert "Pending review" in rendered
-        assert "Incomplete" not in rendered
+        assert "Waiting for review" in rendered
+        assert "Not submitted" not in rendered
 
-    def test_a_draft_application_is_incomplete_not_pending(self, mock_site_context):
+    def test_a_draft_application_reads_not_submitted(self, mock_site_context):
         """An application nobody has submitted is not waiting on a reviewer;
         it is waiting on the applicant, and the dashboard has to say so."""
         rendered = _render_panel(_application_with_sitting())
 
-        assert "Incomplete" in rendered
-        assert "Pending review" not in rendered
+        assert "Not submitted" in rendered
+        assert "Waiting for review" not in rendered
 
-    def test_a_submitted_application_is_pending_review(self, mock_site_context):
+    def test_a_submitted_application_reads_waiting_for_review(self, mock_site_context):
         app = _application_with_sitting()
         app.form_progress.complete()
         submit_application(app)
 
         rendered = _render_panel(app)
 
-        assert "Pending review" in rendered
-        assert "Incomplete" not in rendered
+        assert "Waiting for review" in rendered
+        assert "Not submitted" not in rendered
+
+    def test_an_approved_application_reads_approved_and_offers_view(
+        self, mock_site_context
+    ):
+        rendered = _render_panel(CourseApplicationFactory(approved=True))
+
+        assert "Approved" in rendered
+        assert "View my application" in rendered
+        assert "Apply again" not in rendered
+
+    def test_a_rejected_row_offers_the_message_view_and_apply_again(
+        self, mock_site_context
+    ):
+        app = CourseApplicationFactory(rejected=True, rejection_message="Too early.")
+
+        rendered = _render_panel(app)
+
+        assert "Not approved" in rendered
+        assert "Read the reviewer's message" in rendered
+        assert "View my application" in rendered
+        assert "Apply again" in rendered
+        assert (
+            reverse(
+                "course_applications:apply", kwargs={"course_slug": app.course.slug}
+            )
+            in rendered
+        )
+        assert "Too early." not in rendered
 
     def test_a_submitted_row_offers_view_my_application(self, mock_site_context):
         app = _application_with_sitting()
@@ -575,6 +605,22 @@ class TestDashboardPartialRendering:
         assert "<b>" not in rendered
         assert rendered.count("A &lt;b&gt; &quot;quoted&quot; title") >= 3
 
+    def test_the_panel_issues_no_query_per_row(
+        self, mock_site_context, django_assert_max_num_queries
+    ):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        user = UserFactory()
+        CourseApplicationFactory(user=user, rejected=True)
+        with CaptureQueriesContext(connection) as one_row:
+            _render_panel_for(user)
+        CourseApplicationFactory(user=user, approved=True)
+        CourseApplicationFactory(user=user)
+
+        with django_assert_max_num_queries(len(one_row)):
+            _render_panel_for(user)
+
 
 def _application_with_sitting():
     from freedom_ls.form_engine.factories import FormFactory, FormProgressFactory
@@ -588,12 +634,16 @@ def _application_with_sitting():
 
 
 def _render_panel(app) -> str:
+    return _render_panel_for(app.user)
+
+
+def _render_panel_for(user) -> str:
     from django.template.loader import render_to_string
 
     from freedom_ls.course_applications.backends import ApplicationCourseAccessBackend
 
     contribution = ApplicationCourseAccessBackend().get_dashboard_contributions(
-        user=app.user
+        user=user
     )[0]
     return render_to_string(
         contribution.template_name,
@@ -1074,7 +1124,7 @@ class TestApplicationRowShell:
     def test_the_row_shows_the_application_status_chip(self, row):
         rendered, _ = row
 
-        assert "Pending review" in rendered or "Incomplete" in rendered
+        assert "Waiting for review" in rendered or "Not submitted" in rendered
 
     def test_the_details_link_points_at_the_course_page(self, row):
         rendered, course = row
