@@ -82,7 +82,6 @@ from freedom_ls.educator_interface.tests.helpers import (
     _interface_url,
     _record_run,
     _row_details,
-    course_per_reach_row,
     get_interface_page,
     organisation_admin_viewer,
     page_after_adding_rows,
@@ -7208,52 +7207,6 @@ def test_a_learners_history_tab_shows_the_actors_picture(
         image.get("src") for image in document.cssselect("img[data-profile-picture]")
     ]
     assert actor.profile_picture_url in sources
-
-
-LISTED_AND_DETAIL = [
-    ("no_owner", True),
-    ("owned", True),
-    ("shared", True),
-    ("held", True),
-    ("unreached", False),
-]
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize(("row", "reached"), LISTED_AND_DETAIL)
-def test_the_courses_list_holds_a_course_only_when_it_reaches_the_organisation(
-    mock_site_context: Site,
-    logged_in_client: Callable[[User], Client],
-    row: str,
-    reached: bool,
-):
-    organisation = OrganisationFactory()
-    courses = course_per_reach_row(organisation)
-    client = logged_in_client(organisation_admin_viewer(organisation))
-
-    response = client.get(_interface_url(organisation.slug, "courses"))
-
-    assert response.status_code == 200
-    assert (str(courses[row].pk) in response.content.decode()) is reached
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize(("row", "reached"), LISTED_AND_DETAIL)
-def test_the_course_detail_url_answers_only_for_a_course_that_reaches_the_organisation(
-    mock_site_context: Site,
-    logged_in_client: Callable[[User], Client],
-    row: str,
-    reached: bool,
-):
-    organisation = OrganisationFactory()
-    courses = course_per_reach_row(organisation)
-    client = logged_in_client(organisation_admin_viewer(organisation))
-
-    response = client.get(
-        _interface_url(organisation.slug, f"courses/{courses[row].pk}")
-    )
-
-    assert response.status_code == (200 if reached else 404)
 
 
 def _shared_and_own_course_world() -> tuple[Organisation, CourseModel, CourseModel]:

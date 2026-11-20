@@ -159,15 +159,7 @@ from freedom_ls.educator_interface.panels.common.tables import (
     _learner_column,
     _registration_columns,
 )
-from freedom_ls.educator_interface.panels.course.content_preview import (
-    CourseContentPanel,
-)
-from freedom_ls.educator_interface.panels.course.data_tables import (
-    CourseCohortRegistrationDataTable,
-    CourseDataTable,
-    CourseLearnerRegistrationDataTable,
-)
-from freedom_ls.educator_interface.panels.course.panels import CourseDetailsPanel
+from freedom_ls.educator_interface.panels.course.config import CourseConfig
 from freedom_ls.educator_interface.panels.dashboard.config import DashboardConfig
 from freedom_ls.educator_interface.paths import interface_path
 from freedom_ls.educator_interface.quick_views import (
@@ -208,7 +200,6 @@ from freedom_ls.learner_management.queries import (
     cohort_counts,
     cohort_educators,
     cohorts_visible_to,
-    courses_visible_to,
     learner_status,
     learners_visible_to,
     organisations_accessible_to,
@@ -1534,57 +1525,6 @@ class LearnerConfig(OrganisationSectionConfig, ListViewConfig):
         organisation = cast(OrganisationScopedRequest, request).organisation
         if (
             not learners_visible_to(request.user, organisation, include_inactive=True)
-            .filter(pk=instance.pk)
-            .exists()
-        ):
-            raise OrganisationScopeDenied
-
-
-class CourseCohortRegistrationsPanel(DataTablePanel):
-    title = "Cohort registrations"
-    data_table = CourseCohortRegistrationDataTable
-    table_key = "cohort_registrations"
-
-    def get_queryset(self, request: HttpRequest) -> QuerySet:
-        return super().get_queryset(request).filter(course=self.instance)
-
-
-class CourseLearnerRegistrationsPanel(DataTablePanel):
-    title = "Direct registrations"
-    data_table = CourseLearnerRegistrationDataTable
-    table_key = "learner_registrations"
-
-    def get_queryset(self, request: HttpRequest) -> QuerySet:
-        return super().get_queryset(request).filter(course=self.instance)
-
-
-class CoursePanelStack(PanelStack):
-    children = {
-        "details": CourseDetailsPanel,
-        "content": CourseContentPanel,
-        "cohorts": CourseCohortRegistrationsPanel,
-        "learners": CourseLearnerRegistrationsPanel,
-    }
-
-
-class CourseInstanceView(InstanceView):
-    panel = CoursePanelStack
-
-
-class CourseConfig(OrganisationSectionConfig, ListViewConfig):
-    url_name = "courses"
-    menu_label = "Courses"
-    icon = "course"
-    model = Course
-    list_view = CourseDataTable
-    table_key = "courses"
-    instance_view = CourseInstanceView
-
-    @classmethod
-    def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
-        organisation = cast(OrganisationScopedRequest, request).organisation
-        if (
-            not courses_visible_to(request.user, organisation)
             .filter(pk=instance.pk)
             .exists()
         ):
