@@ -112,7 +112,7 @@ def test_the_name_and_picture_forms_save_with_javascript_off(
     context.close()
 
 
-def test_change_the_name_inline_then_follow_the_sidebar(
+def test_change_the_name_picture_email_and_password_on_panels(
     live_server, logged_in_page: Page, logged_in_user: User
 ) -> None:
     page = logged_in_page
@@ -187,12 +187,74 @@ def test_change_the_name_inline_then_follow_the_sidebar(
     assert_header_avatar(page, name="Ada Lovelace", initials="AL", picture=False)
     assert User._base_manager.get(pk=logged_in_user.pk).profile_picture.name == ""
 
-    page.get_by_role("navigation", name="Account").get_by_role(
-        "link", name="Email"
-    ).click()
+    for panel in ("name", "profile-picture", "password"):
+        assert_submit_in_card_footer(page, panel)
 
-    expect(page).to_have_url(reverse_url(live_server, "account_email"))
+    emails = page.locator('[data-panel="email-addresses"]')
+    emails.get_by_role("button", name="Add email").click()
+    dialog = page.get_by_role("dialog", name="Add an email address")
+    dialog.get_by_label("Email").fill("second@example.com")
+    dialog.get_by_role("button", name="Add email").click()
+
+    row = emails.locator('[data-testid="email-address-row"]').filter(
+        has_text="second@example.com"
+    )
+    expect(row).to_contain_text("Unverified")
+    expect(emails.locator('input[type="radio"]')).to_have_count(0)
+    row_box = row.bounding_box()
+    remove = row.get_by_role("button", name="Remove second@example.com")
+    remove_box = remove.bounding_box()
+    assert row_box is not None
+    assert remove_box is not None
+    # The row's own actions sit on the row's line, not under the list.
+    assert row_box["y"] <= remove_box["y"] <= row_box["y"] + row_box["height"]
+
+    remove.click()
+    dialog = page.get_by_role("dialog", name="Remove second@example.com?")
+    dialog.get_by_role("button", name="Remove", exact=True).click()
+    expect(row).to_have_count(0)
+
+    password = page.locator('[data-panel="password"]')
+    password.get_by_label("Current password").fill("not-the-password")
+    password.get_by_label(re.compile(r"^New password:?$")).fill(
+        "a-new-long-passphrase-2"
+    )
+    password.get_by_label("New password (again)").fill("a-new-long-passphrase-2")
+    password.get_by_role("button", name="Change password").click()
+    expect(password.get_by_role("alert")).to_be_visible()
+
+    assert page.evaluate(f"window.{NO_RELOAD_MARKER} === true")
 
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
         assert_no_horizontal_overflow(page)
+        if viewport["width"] < 1024:
+            assert_toggle_in_heading_row(page)
+
+
+def assert_submit_in_card_footer(page: Page, panel: str) -> None:
+    """A panel form's submit sits in the card footer, under the fields."""
+    section = page.locator(f'[data-panel="{panel}"]')
+    submit = section.locator("footer button[type=submit]")
+    expect(submit).to_have_count(1)
+    form = section.locator("form")
+    form_box = form.first.bounding_box()
+    submit_box = submit.bounding_box()
+    assert form_box is not None
+    assert submit_box is not None
+    assert submit_box["y"] >= form_box["y"] + form_box["height"]
+
+
+def assert_toggle_in_heading_row(page: Page) -> None:
+    """The navigation toggle sits at the left of the page heading, centred
+    on its line."""
+    toggle = page.get_by_role("button", name="Open navigation panel")
+    heading = page.locator("#interface-main h1").first
+    toggle_box = toggle.bounding_box()
+    heading_box = heading.bounding_box()
+    assert toggle_box is not None
+    assert heading_box is not None
+    assert toggle_box["x"] + toggle_box["width"] <= heading_box["x"]
+    toggle_middle = toggle_box["y"] + toggle_box["height"] / 2
+    heading_middle = heading_box["y"] + heading_box["height"] / 2
+    assert toggle_middle == pytest.approx(heading_middle, abs=6)

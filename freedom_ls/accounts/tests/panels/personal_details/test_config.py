@@ -14,7 +14,9 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.accounts.panels.personal_details.actions import (
     ACCOUNT_CAPABILITIES,
+    CHANGE_OWN_EMAIL_ADDRESSES,
     CHANGE_OWN_NAME,
+    CHANGE_OWN_PASSWORD,
     CHANGE_OWN_PROFILE_PICTURE,
     REMOVE_OWN_PROFILE_PICTURE,
 )
@@ -48,17 +50,25 @@ def test_authorise_instance_is_a_404_for_another_users_row(request_for):
         PersonalDetailsConfig.authorise_instance(request_for, UserFactory())
 
 
-def test_the_capabilities_are_the_three_own_account_names():
+def test_the_capabilities_are_the_own_account_names():
     assert {
         CHANGE_OWN_NAME,
         CHANGE_OWN_PROFILE_PICTURE,
         REMOVE_OWN_PROFILE_PICTURE,
+        CHANGE_OWN_EMAIL_ADDRESSES,
+        CHANGE_OWN_PASSWORD,
     } == ACCOUNT_CAPABILITIES
 
 
 @pytest.mark.parametrize(
     "capability",
-    [CHANGE_OWN_NAME, CHANGE_OWN_PROFILE_PICTURE, REMOVE_OWN_PROFILE_PICTURE],
+    [
+        CHANGE_OWN_NAME,
+        CHANGE_OWN_PROFILE_PICTURE,
+        REMOVE_OWN_PROFILE_PICTURE,
+        CHANGE_OWN_EMAIL_ADDRESSES,
+        CHANGE_OWN_PASSWORD,
+    ],
 )
 def test_has_capability_grants_each_name_on_the_users_own_row(
     request_for, user, capability

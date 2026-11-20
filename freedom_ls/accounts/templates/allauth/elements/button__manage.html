@@ -1,0 +1,19 @@
+{% load allauth %}
+{% comment %} djlint:off {% endcomment %}
+{% comment %}
+A button on an allauth management page. It sits in a card footer, so it is
+the small size, as every panel footer button is.
+{% endcomment %}
+<c-button
+    variant="primary"
+    size="small"
+    href="{{ attrs.href }}"
+    form="{{ attrs.form }}"
+    id="{{ attrs.id }}"
+    name="{{ attrs.name }}"
+    value="{{ attrs.value }}"
+    type="{{ attrs.type }}"
+>
+{% slot %}
+{% endslot %}
+</c-button>

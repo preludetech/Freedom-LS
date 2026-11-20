@@ -7,10 +7,12 @@ from typing import cast
 
 import lxml.html
 import pytest
+from allauth.account.models import EmailAddress
 
 from django.contrib.sites.models import Site
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import Client
+from django.test import Client, override_settings
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -20,6 +22,8 @@ from freedom_ls.accounts.panels.personal_details.actions import (
     ACCOUNT_CHANGED,
     CHANGE_OWN_NAME,
     CHANGE_OWN_PROFILE_PICTURE,
+    EMAIL_ADDRESSES_CHANGED,
+    PASSWORD_CHANGED,
     REMOVE_OWN_PROFILE_PICTURE,
     EditNameAction,
     RemoveProfilePictureAction,
@@ -393,3 +397,280 @@ def test_a_plain_picture_post_saves_and_redirects_to_the_page(
     user.refresh_from_db()
     assert (response.status_code, response["Location"]) == (303, PERSONAL_DETAILS_URL)
     assert user.profile_picture.name.endswith(".webp")
+
+
+PAGE_URL = "/accounts/profile/personal-details"
+EMAIL_PANEL_URL = f"{PAGE_URL}/__panels/email-addresses"
+ADD_EMAIL_URL = f"{EMAIL_PANEL_URL}/__actions/add_email"
+MAKE_PRIMARY_URL = f"{EMAIL_PANEL_URL}/__actions/make_primary_email"
+RESEND_URL = f"{EMAIL_PANEL_URL}/__actions/resend_email_verification"
+REMOVE_EMAIL_URL = f"{EMAIL_PANEL_URL}/__actions/remove_email"
+CHANGE_PASSWORD_URL = f"{PAGE_URL}/__panels/password/__actions/change_password"
+OLD_PASSWORD = "an-old-long-passphrase-1"  # noqa: S105  # pragma: allowlist secret
+NEW_PASSWORD = "a-new-long-passphrase-2"  # noqa: S105  # pragma: allowlist secret
+HTMX = {"HX-Request": "true"}
+
+
+@pytest.fixture
+def with_addresses(
+    signed_in: tuple[Client, User],
+) -> tuple[Client, User, EmailAddress, EmailAddress]:
+    client, user = signed_in
+    primary, _ = EmailAddress.objects.update_or_create(
+        user=user, email=user.email, defaults={"primary": True, "verified": True}
+    )
+    secondary = EmailAddress.objects.create(
+        user=user, email="second@example.com", primary=False, verified=False
+    )
+    return client, user, primary, secondary
+
+
+def _document(client: Client) -> lxml.html.HtmlElement:
+    return lxml.html.fromstring(client.get(PAGE_URL).content.decode())
+
+
+def test_the_page_stacks_the_email_addresses_and_password_panels(with_addresses):
+    client, *_ = with_addresses
+
+    names = [
+        section.get("data-panel")
+        for section in _document(client).cssselect("section[data-panel]")
+    ]
+
+    assert names[-2:] == ["email-addresses", "password"]
+
+
+def test_each_address_is_a_row_with_its_own_actions_and_no_radio(with_addresses):
+    client, _, primary, secondary = with_addresses
+
+    panel = _document(client).cssselect('section[data-panel="email-addresses"]')[0]
+    rows = {
+        row.cssselect("span.font-medium")[0].text_content(): row
+        for row in panel.cssselect('[data-testid="email-address-row"]')
+    }
+
+    assert panel.cssselect('input[type="radio"]') == []
+    assert set(rows) == {primary.email, secondary.email}
+    primary_text = rows[primary.email].text_content()
+    assert "Primary" in primary_text
+    assert "Verified" in primary_text
+    assert "Remove" not in primary_text
+    secondary_text = rows[secondary.email].text_content()
+    assert "Unverified" in secondary_text
+    assert "Resend verification" in secondary_text
+    assert "Remove" in secondary_text
+
+
+def test_add_email_sits_in_the_email_panel_footer(with_addresses):
+    client, *_ = with_addresses
+
+    panel = _document(client).cssselect('section[data-panel="email-addresses"]')[0]
+
+    (trigger,) = panel.cssselect("footer button[hx-get]")
+    assert trigger.get("hx-get").endswith("/__actions/add_email")
+
+
+def test_adding_an_address_stores_it_unverified_and_sends_a_verification(
+    with_addresses, mailoutbox
+):
+    client, user, *_ = with_addresses
+
+    response = client.post(ADD_EMAIL_URL, {"email": "new@example.com"}, headers=HTMX)
+
+    added = EmailAddress.objects.get(user=user, email="new@example.com")
+    assert response.status_code == 200
+    assert not added.verified
+    assert len(mailoutbox) == 1
+    assert EMAIL_ADDRESSES_CHANGED in response["HX-Trigger"]
+    assert "closeModal" in response["HX-Trigger"]
+    assert "new@example.com" in response.content.decode()
+
+
+def test_adding_an_address_already_on_the_account_is_refused(with_addresses):
+    client, _, _, secondary = with_addresses
+
+    response = client.post(ADD_EMAIL_URL, {"email": secondary.email}, headers=HTMX)
+
+    assert response.status_code == 422
+
+
+def test_making_a_verified_address_primary_moves_the_primary(with_addresses):
+    client, user, primary, secondary = with_addresses
+    secondary.verified = True
+    secondary.save()
+
+    response = client.post(MAKE_PRIMARY_URL, {"email": secondary.pk}, headers=HTMX)
+
+    secondary.refresh_from_db()
+    primary.refresh_from_db()
+    user.refresh_from_db()
+    assert response.status_code == 200
+    assert secondary.primary
+    assert not primary.primary
+    assert user.email == secondary.email
+    assert EMAIL_ADDRESSES_CHANGED in response["HX-Trigger"]
+
+
+def test_an_unverified_address_is_not_made_primary(with_addresses):
+    client, _, primary, secondary = with_addresses
+
+    client.post(MAKE_PRIMARY_URL, {"email": secondary.pk}, headers=HTMX)
+
+    primary.refresh_from_db()
+    assert primary.primary
+
+
+def test_resending_a_verification_sends_an_email(with_addresses, mailoutbox):
+    client, _, _, secondary = with_addresses
+
+    response = client.post(RESEND_URL, {"email": secondary.pk}, headers=HTMX)
+
+    assert response.status_code == 200
+    assert [message.to for message in mailoutbox] == [[secondary.email]]
+
+
+def test_the_remove_dialog_is_an_error_tone_confirmation_naming_the_address(
+    with_addresses,
+):
+    client, _, _, secondary = with_addresses
+
+    response = client.get(REMOVE_EMAIL_URL, {"email": secondary.pk}, headers=HTMX)
+
+    html = response.content.decode()
+    assert response.status_code == 200
+    assert f"Remove {secondary.email}?" in html
+    assert "btn-error" in html
+
+
+def test_removing_a_secondary_address_deletes_it(with_addresses):
+    client, _, _, secondary = with_addresses
+
+    response = client.post(REMOVE_EMAIL_URL, {"email": secondary.pk}, headers=HTMX)
+
+    assert response.status_code == 200
+    assert not EmailAddress.objects.filter(pk=secondary.pk).exists()
+    assert "closeModal" in response["HX-Trigger"]
+
+
+def test_the_primary_address_is_not_removed(with_addresses):
+    client, _, primary, _ = with_addresses
+
+    client.post(REMOVE_EMAIL_URL, {"email": primary.pk}, headers=HTMX)
+
+    assert EmailAddress.objects.filter(pk=primary.pk).exists()
+
+
+@pytest.mark.parametrize("url", [MAKE_PRIMARY_URL, RESEND_URL, REMOVE_EMAIL_URL])
+def test_another_users_address_is_not_found(with_addresses, url):
+    client, *_ = with_addresses
+    stranger = EmailAddress.objects.create(
+        user=cast(User, UserFactory()), email="stranger@example.com", verified=True
+    )
+
+    response = client.post(url, {"email": stranger.pk}, headers=HTMX)
+
+    assert response.status_code == 404
+    assert EmailAddress.objects.filter(pk=stranger.pk).exists()
+
+
+def test_the_manage_email_rate_limit_applies(with_addresses):
+    client, _, _, secondary = with_addresses
+    cache.clear()
+
+    with override_settings(ACCOUNT_RATE_LIMITS={"manage_email": "1/m/user"}):
+        client.post(RESEND_URL, {"email": secondary.pk}, headers=HTMX)
+        response = client.post(RESEND_URL, {"email": secondary.pk}, headers=HTMX)
+
+    assert response.status_code == 429
+
+
+def _with_password(client: Client, user: User) -> None:
+    user.set_password(OLD_PASSWORD)
+    user.save()
+    client.force_login(user)
+
+
+def test_the_password_panel_has_its_submit_in_the_footer(signed_in):
+    client, user = signed_in
+    _with_password(client, user)
+
+    panel = _document(client).cssselect('section[data-panel="password"]')[0]
+
+    assert panel.cssselect("form#account-password-form button") == []
+    (submit,) = panel.cssselect("footer button[type=submit]")
+    assert submit.get("form") == "account-password-form"
+    assert "Change password" in submit.text_content()
+    assert panel.cssselect('a[href="/accounts/password/reset/"]')
+
+
+def test_changing_the_password_keeps_the_session_signed_in(signed_in):
+    client, user = signed_in
+    _with_password(client, user)
+
+    response = client.post(
+        CHANGE_PASSWORD_URL,
+        {
+            "oldpassword": OLD_PASSWORD,
+            "password1": NEW_PASSWORD,
+            "password2": NEW_PASSWORD,
+        },
+        headers=HTMX,
+    )
+
+    user.refresh_from_db()
+    assert response.status_code == 200
+    assert user.check_password(NEW_PASSWORD)
+    assert PASSWORD_CHANGED in response["HX-Trigger"]
+    assert client.get(PAGE_URL).status_code == 200
+
+
+def test_a_wrong_current_password_is_refused_under_its_field(signed_in):
+    client, user = signed_in
+    _with_password(client, user)
+
+    response = client.post(
+        CHANGE_PASSWORD_URL,
+        {
+            "oldpassword": "wrong-passphrase",  # pragma: allowlist secret
+            "password1": NEW_PASSWORD,
+            "password2": NEW_PASSWORD,
+        },
+        headers=HTMX,
+    )
+
+    user.refresh_from_db()
+    assert response.status_code == 422
+    assert user.check_password(OLD_PASSWORD)
+    root = lxml.html.fromstring(response.content.decode())
+    assert root.cssselect('p[role="alert"]#id_oldpassword_error')
+
+
+def test_a_user_with_no_password_sets_one(signed_in):
+    client, user = signed_in
+    user.set_unusable_password()
+    user.save()
+    client.force_login(user)
+
+    panel = _document(client).cssselect('section[data-panel="password"]')[0]
+    assert "Set password" in panel.cssselect("h2")[0].text_content()
+
+    response = client.post(
+        CHANGE_PASSWORD_URL,
+        {"password1": NEW_PASSWORD, "password2": NEW_PASSWORD},
+        headers=HTMX,
+    )
+
+    user.refresh_from_db()
+    assert response.status_code == 200
+    assert user.check_password(NEW_PASSWORD)
+
+
+def test_the_password_labels_are_in_sentence_case(signed_in):
+    client, user = signed_in
+    _with_password(client, user)
+
+    panel = _document(client).cssselect('section[data-panel="password"]')[0]
+    labels = [label.text_content() for label in panel.cssselect("label")]
+
+    assert "Current password:" in labels
+    assert "New password (again):" in labels

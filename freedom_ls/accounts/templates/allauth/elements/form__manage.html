@@ -1,0 +1,13 @@
+{% load allauth %}
+{% comment %} djlint:off {% endcomment %}
+{% comment %}
+An allauth management page's form, drawn as a panel card on the canvas: the
+fields in the card body, the buttons in the card footer. The form wraps the
+whole card, so the footer buttons submit it with no form= attribute.
+{% endcomment %}
+<form method="{{ attrs.method }}"{% if attrs.action %} action="{{ attrs.action }}"{% endif %} class="space-y-0">
+    <c-panel-card>
+        <div class="flex flex-col gap-3">{% slot body %}{% endslot %}</div>
+        <c-slot name="actions">{% slot actions %}{% endslot %}</c-slot>
+    </c-panel-card>
+</form>

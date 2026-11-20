@@ -53,9 +53,18 @@ def _post_signup(client: Client, email: str):
 
 
 def _post_change_password(client: Client, old_password: str):
+    # The Password panel's change action, which keeps allauth's
+    # change_password rate limit.
     return client.post(
-        reverse("account_change_password"),
-        {
+        reverse(
+            "accounts:account_profile",
+            kwargs={
+                "path_string": "personal-details/__panels/password/"
+                "__actions/change_password"
+            },
+        ),
+        headers={"HX-Request": "true"},
+        data={
             "oldpassword": old_password,
             "password1": "Sup3rS3cretPass!",  # pragma: allowlist secret
             "password2": "Sup3rS3cretPass!",  # pragma: allowlist secret

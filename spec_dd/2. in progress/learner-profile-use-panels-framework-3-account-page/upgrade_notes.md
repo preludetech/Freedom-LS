@@ -7,6 +7,13 @@ changed_template_paths:
   - freedom_ls/panel_framework/templates/panel_framework/partials/inline_record_form.html
   - freedom_ls/base/templates/allauth/layouts/manage.html  # deleted; replaced by freedom_ls/accounts/templates/allauth/layouts/manage.html
   - freedom_ls/accounts/templates/accounts/profile.html  # deleted
+  - freedom_ls/accounts/templates/allauth/elements/h1__manage.html  # new
+  - freedom_ls/accounts/templates/allauth/elements/form__manage.html  # new
+  - freedom_ls/accounts/templates/allauth/elements/button__manage.html  # new
+  - freedom_ls/panel_framework/templates/panel_framework/partials/inline_record_form_submit.html  # new
+  - freedom_ls/educator_interface/templates/educator_interface/panels/learner_name.html
+  - freedom_ls/educator_interface/templates/educator_interface/panels/cohort_name.html
+  - freedom_ls/accounts/templates/accounts/partials/profile_picture_form.html
 requires_settings_change: false
 changed_settings: []
 requires_package_upgrade: false
@@ -37,10 +44,27 @@ requires_tailwind_rebuild: true
   longer rendered; move its customisations into the new templates under
   `freedom_ls/accounts/templates/accounts/` (`account_page.html`, `_account_shell.html`,
   `panels/name.html`, `panels/profile_picture.html`, `partials/`).
+- Email addresses and the password are panels on Personal details now. The account sidebar no
+  longer lists Email or Password. allauth's `/accounts/email/` and `/accounts/password/change/`
+  redirect to Personal details; their URL names (`account_email`, `account_change_password`)
+  still reverse to the same paths. `/accounts/password/set/` keeps allauth's page (an application
+  claim sends users there with a `next`), drawn by the manage layout. The redirect
+  patterns live in `freedom_ls.accounts.urls`, so **include `freedom_ls.accounts.urls` before
+  `allauth.urls`** under the same prefix in your root URLconf, or allauth's own pages keep
+  answering.
 - `allauth/layouts/manage.html` moved from `freedom_ls/base/templates/` to
-  `freedom_ls/accounts/templates/`, and now renders the allauth pages (email, password and so on)
-  inside the account area's sidebar layout. A downstream override at the same template path still
-  wins, but it now replaces the sidebar layout.
+  `freedom_ls/accounts/templates/`, and renders allauth's remaining management pages
+  (connections, two-factor, sessions) in the account shell, shaped like a panel page: the heading
+  as the header band with the navigation toggle beside it (`allauth/elements/h1__manage.html`),
+  each form as a card with its buttons in the footer (`form__manage.html`, `button__manage.html`).
+  A downstream override at the same template path still wins, but it now replaces that layout.
+- A panel form's submit button sits in the card footer. `inline_record_form.html` no longer renders
+  Save: render `panel_framework/partials/inline_record_form_submit.html` (`form_id`, optional
+  `label`) in the panel template's `panel_actions` block after `{{ block.super }}`. The form's
+  `hx-disabled-elt` and `hx-indicator` point at `#<form_id>-submit`. A panel template that
+  includes the inline form and leaves `panel_actions` alone now has no Save button, and the
+  invariant `panel_framework/tests/invariants/test_panel_form_buttons.py` fails on any panel body
+  that renders a submit.
 
 ## Manual steps
 
@@ -51,7 +75,10 @@ requires_tailwind_rebuild: true
 - If you override `cotton/dropdown-menu.html`, note it now omits `aria-label` when `aria_label` is
   empty.
 - If you override `panel_framework/partials/inline_record_form.html`, its `<form>` class changed from
-  `space-y-3` to `flex flex-col gap-3 space-y-0`.
+  `space-y-3` to `flex flex-col gap-3 space-y-0`, its field row lost `items-end`, and its Save
+  button moved out (see Breaking changes).
+- Move `path("accounts/", include("freedom_ls.accounts.urls"))` above
+  `path("accounts/", include("allauth.urls"))` in your root URLconf.
 - An inline form in a panel now also works with JavaScript off. `inline_record_form.html` gained
   `method="post"`, `action="{{ action_url }}"` and `{% csrf_token %}`; an override of it, or a
   template that renders its own inline form, needs the same three. A `FormPanelAction` with

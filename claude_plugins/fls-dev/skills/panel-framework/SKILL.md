@@ -431,11 +431,16 @@ the selection clears. Every control stays inside the bar at 375px.
   (`renders_in_footer = False`), not a dialog. Dialogs are for confirmations and multi-field forms.
 - A form in a panel puts its submit button(s) in the card footer (the `actions` slot,
   right-aligned above the rule, where Deactivate sits), never beside or under the fields. The
-  fields and their error lines stay in the body. An inline form panel extends
-  `panels/inline_form_panel.html`, which renders `partials/inline_record_form.html` in the body and
-  `partials/inline_record_form_submit.html` in the footer; the submit names its form with `form=`,
-  so the form posts with JavaScript off, and the form points `hx-indicator` and `hx-disabled-elt`
-  at it.
+  fields and their error lines stay in the body. An inline form panel renders
+  `partials/inline_record_form.html` in `panel_body` and fills `panel_actions` with
+  `{{ block.super }}` then `partials/inline_record_form_submit.html` (`form_id`, optional `label`).
+  The submit names its form with `form=`, so the form posts with JavaScript off and the button
+  survives a 422 swapping the form; the form points `hx-indicator` and `hx-disabled-elt` at the
+  button's id (`<form_id>-submit`). A form the framework does not render follows the same shape.
+- On an allauth management page (`allauth/layouts/manage.html`), allauth's layout-specific
+  elements carry the panel shape: `allauth/elements/h1__manage.html` draws the heading as the
+  header band with the toggle, `form__manage.html` draws each form as a card with its buttons in
+  the footer, and `button__manage.html` makes those buttons small.
 - An inline form works with JavaScript off: `partials/inline_record_form.html` carries a method,
   an action and a CSRF token, and a `FormPanelAction` with `renders_in_footer = False` answers a
   POST that has no `HX-Request` header with a 303 to the page, the save or the field errors as a
@@ -585,6 +590,12 @@ Four guards cover the standalone backend:
   `templates/panel_framework/icons/<name>.html`. `uv run manage.py check` reports E010 for a name
   `c-panel-icon` cannot render and W003 for one it renders empty. When a framework template draws
   a new icon, add its name there and its body template beside the others.
+
+`tests/invariants/test_panel_form_buttons.py` fails on any panel template whose `panel_body`, or a
+template it includes, renders a submit button. `accounts/tests/test_allauth_pages.py` checks an
+allauth management page puts the toggle and the `<h1>` in one row of the header band and its form
+in a card with the buttons in the footer, and `accounts/tests/playwright/test_profile_picture_flow.py`
+measures footer placement and the toggle's position beside the heading at phone and tablet widths.
 
 Three more files sit beside the template invariants in `tests/invariants/`:
 

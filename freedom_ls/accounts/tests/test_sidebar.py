@@ -30,33 +30,39 @@ def _request_on(rf: RequestFactory, view_name: str) -> HttpRequest:
     return request
 
 
-def test_entries_come_in_order(rf):
+def test_personal_details_is_the_first_and_only_required_entry(rf):
     labels = [
-        entry.label for entry in sidebar_entries(_request_on(rf, "account_email"))
+        entry.label
+        for entry in sidebar_entries(_request_on(rf, "accounts:account_profile"))
     ]
 
-    assert labels[:3] == ["Personal details", "Email", "Password"]
+    # Email and Password are panels on Personal details, not entries; the rest
+    # are allauth's optional pages, absent unless their apps are installed.
+    assert labels == ["Personal details"]
 
 
-@pytest.mark.parametrize(
-    ("view_name", "current_label"),
-    [
-        ("accounts:account_profile", "Personal details"),
-        ("account_email", "Email"),
-        ("account_change_password", "Password"),
-        ("account_set_password", "Password"),
-    ],
-)
-def test_the_entry_for_the_page_is_current(rf, view_name, current_label):
-    entries = sidebar_entries(_request_on(rf, view_name))
+def test_the_entry_for_the_page_is_current(rf):
+    entries = sidebar_entries(_request_on(rf, "accounts:account_profile"))
 
-    assert [e.label for e in entries if e.is_current] == [current_label]
+    assert [e.label for e in entries if e.is_current] == ["Personal details"]
 
 
 def test_an_entry_carries_its_url(rf):
-    entries = {e.label: e for e in sidebar_entries(_request_on(rf, "account_email"))}
+    (entry,) = sidebar_entries(_request_on(rf, "accounts:account_profile"))
 
-    assert entries["Email"].url == "/accounts/email/"
+    assert entry.url == "/accounts/profile/"
+
+
+def test_an_entry_is_current_for_its_other_url_names(rf, monkeypatch):
+    monkeypatch.setattr(
+        sidebar,
+        "SIDEBAR_ENTRIES",
+        [SidebarEntry("Log in", "account_login", also_current_for=("account_signup",))],
+    )
+
+    (entry,) = sidebar_entries(_request_on(rf, "account_signup"))
+
+    assert entry.is_current
 
 
 def test_an_optional_entry_whose_url_does_not_reverse_is_left_out(rf, monkeypatch):

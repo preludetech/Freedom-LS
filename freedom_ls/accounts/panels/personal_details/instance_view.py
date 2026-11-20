@@ -5,12 +5,22 @@ from __future__ import annotations
 from freedom_ls.panel_framework.panels import PanelStack
 from freedom_ls.panel_framework.views import InstanceView
 
-from .panels import NamePanel, ProfilePicturePanel
+from .panels import (
+    EmailAddressesPanel,
+    NamePanel,
+    PasswordPanel,
+    ProfilePicturePanel,
+)
 
 
 class PersonalDetailsStack(PanelStack):
     title = "Personal details"
-    children = {"name": NamePanel, "profile-picture": ProfilePicturePanel}
+    children = {
+        "name": NamePanel,
+        "profile-picture": ProfilePicturePanel,
+        "email-addresses": EmailAddressesPanel,
+        "password": PasswordPanel,
+    }
 
 
 class PersonalDetailsInstanceView(InstanceView):

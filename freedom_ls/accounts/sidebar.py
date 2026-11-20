@@ -31,12 +31,6 @@ class CurrentSidebarEntry:
 
 SIDEBAR_ENTRIES: list[SidebarEntry] = [
     SidebarEntry("Personal details", "accounts:account_profile"),
-    SidebarEntry("Email", "account_email"),
-    SidebarEntry(
-        "Password",
-        "account_change_password",
-        also_current_for=("account_set_password",),
-    ),
     SidebarEntry("Account connections", "socialaccount_connections", optional=True),
     SidebarEntry("Two-factor authentication", "mfa_index", optional=True),
     SidebarEntry("Sessions", "usersessions_list", optional=True),

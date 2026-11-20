@@ -1,30 +1,44 @@
-"""Tests for allauth's account-management pages inside the account shell."""
+"""Tests for allauth's account-management pages: the email and password pages
+redirect to Personal details, and the remaining ones render in the account
+shell shaped like the panel pages."""
 
 from __future__ import annotations
 
-import re
 from typing import cast
 
+import lxml.html
 import pytest
 from allauth.account.models import EmailAddress
 
-from django.contrib import messages
-from django.contrib.messages.storage import default_storage
 from django.contrib.sites.models import Site
-from django.http import HttpResponse
-from django.test import Client
+from django.template import Engine, RequestContext, Template
+from django.template.base import Origin
+from django.test import Client, RequestFactory
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 
 SHELL_HOSTS = [
-    'id="interface-main"',
-    'id="app-modal"',
-    'id="app-modal-body"',
-    'id="quick-view"',
-    'id="scope-announcer"',
+    "interface-main",
+    "app-modal",
+    "app-modal-body",
+    "quick-view",
+    "scope-announcer",
 ]
+
+# A management page as allauth writes one: a heading element, then a form
+# element with a body and a submit button among its actions.
+STUB_MANAGE_PAGE = """{% extends "allauth/layouts/manage.html" %}{% load allauth %}
+{% block head_title %}Sessions{% endblock head_title %}
+{% block content %}
+    {% element h1 %}Sessions{% endelement %}
+    {% element form method="post" action="/stub/" %}
+        {% slot body %}<p>Your signed-in sessions.</p>{% endslot %}
+        {% slot actions %}{% element button type="submit" %}Sign out the others{% endelement %}{% endslot %}
+    {% endelement %}
+{% endblock content %}
+"""
 
 
 @pytest.fixture
@@ -38,56 +52,40 @@ def signed_in(db: None, mock_site_context: Site) -> tuple[Client, User]:
     return client, user
 
 
-def _current_entry_hrefs(html: str) -> list[str]:
-    nav = re.search(r'<nav id="sidebar-nav".*?</nav>', html, re.DOTALL)
-    assert nav, "page has no account sidebar"
-    return re.findall(r'<a href="([^"]*)"\s+aria-current="page"', nav.group(0))
-
-
-@pytest.mark.parametrize(
-    "url_name",
-    ["account_email", "account_change_password", "account_set_password"],
-)
-def test_management_page_renders_in_the_account_shell(signed_in, url_name):
-    client, user = signed_in
-    if url_name == "account_set_password":
-        user.set_unusable_password()
-        user.save()
-        client.force_login(user)
-    elif url_name == "account_change_password":
-        user.set_password("a-long-passphrase-1")
-        user.save()
-        client.force_login(user)
+@pytest.mark.parametrize("url_name", ["account_email", "account_change_password"])
+def test_the_email_and_password_pages_redirect_to_personal_details(
+    signed_in: tuple[Client, User], url_name: str
+) -> None:
+    client, _ = signed_in
 
     response = client.get(reverse(url_name))
+
+    assert response.status_code == 302
+    assert response["Location"] == reverse(
+        "accounts:account_profile", kwargs={"path_string": "personal-details"}
+    )
+
+
+def test_the_set_password_page_still_answers_for_a_user_with_no_password(
+    signed_in: tuple[Client, User],
+) -> None:
+    """A claimed application sends its new user here with a `next`."""
+    client, user = signed_in
+    user.set_unusable_password()
+    user.save()
+    client.force_login(user)
+
+    response = client.get(reverse("account_set_password"), {"next": "/somewhere/"})
+
     html = response.content.decode()
-
     assert response.status_code == 200
-    assert 'aria-label="Account"' in html
-    assert len(_current_entry_hrefs(html)) == 1
-    for host in SHELL_HOSTS:
-        assert host in html
-    assert html.count('aria-label="Open navigation panel"') == 1
-    assert "<h1" in html
+    assert 'id="sidebar-nav"' in html
+    assert "data-page-header" in html
 
 
-def test_success_message_on_the_email_page_renders_as_a_toast(signed_in):
-    client, _ = signed_in
-    request = client.get(reverse("account_email")).wsgi_request
-    storage = default_storage(request)
-    storage.add(messages.SUCCESS, "Primary email address set.")
-    response = HttpResponse()
-    storage.update(response)
-    for name, morsel in response.cookies.items():
-        client.cookies[name] = morsel
-
-    html = client.get(reverse("account_email")).content.decode()
-
-    assert "Primary email address set." in html
-    assert "toast-region-polite" in html
-
-
-def test_reauthenticate_page_has_no_account_sidebar(signed_in):
+def test_reauthenticate_page_has_no_account_sidebar(
+    signed_in: tuple[Client, User],
+) -> None:
     client, _ = signed_in
 
     response = client.get(reverse("account_reauthenticate"))
@@ -96,17 +94,60 @@ def test_reauthenticate_page_has_no_account_sidebar(signed_in):
     assert 'id="sidebar-nav"' not in response.content.decode()
 
 
-def test_management_page_navigation_toggle_is_not_in_a_centred_wrapper(signed_in):
-    """The toggle used to sit in a centred max-w-7xl wrapper inside the narrow column.
+@pytest.fixture
+def stub_manage_page(signed_in: tuple[Client, User]) -> lxml.html.HtmlElement:
+    _, user = signed_in
+    request = RequestFactory().get("/stub/")
+    request.user = user
+    # allauth reads the layout from the template names in the extends chain,
+    # so the stub needs a name of its own.
+    template = Template(
+        STUB_MANAGE_PAGE,
+        origin=Origin(name="stub_manage_page.html", template_name="stub.html"),
+        engine=Engine.get_default(),
+    )
+    html = template.render(RequestContext(request))
+    return lxml.html.fromstring(html)
 
-    That wrapper shrank to fit and centred itself, so the toggle sat well to
-    the right of the page's own heading below the lg breakpoint.
-    """
-    client, _ = signed_in
 
-    html = client.get(reverse("account_email")).content.decode()
-    main = html[html.index('id="interface-main"') : html.index("<footer")]
+def test_a_management_page_renders_in_the_account_shell(
+    stub_manage_page: lxml.html.HtmlElement,
+) -> None:
+    assert stub_manage_page.cssselect('nav#sidebar-nav[aria-label="Account"]')
+    for host in SHELL_HOSTS:
+        assert stub_manage_page.get_element_by_id(host) is not None
 
-    assert "max-w-7xl" not in main
-    assert "mx-auto" not in main[: main.index("<h1")]
-    assert main.count('aria-label="Open navigation panel"') == 1
+
+def test_a_management_page_puts_the_toggle_in_the_heading_row(
+    stub_manage_page: lxml.html.HtmlElement,
+) -> None:
+    (toggle,) = stub_manage_page.cssselect('button[aria-label="Open navigation panel"]')
+    (heading,) = stub_manage_page.cssselect("#interface-main h1")
+
+    assert toggle.getparent() is heading.getparent()
+    assert heading.text_content().strip() == "Sessions"
+    band = toggle.getparent().getparent()
+    assert band.get("data-page-header") is not None
+    assert "panel-surface" in band.get("class").split()
+
+
+def test_a_management_page_sits_on_the_panel_canvas(
+    stub_manage_page: lxml.html.HtmlElement,
+) -> None:
+    main = stub_manage_page.get_element_by_id("interface-main")
+
+    assert "panel-canvas" in main.get("class").split()
+
+
+def test_a_management_page_form_is_a_card_with_its_buttons_in_the_footer(
+    stub_manage_page: lxml.html.HtmlElement,
+) -> None:
+    (form,) = stub_manage_page.cssselect('form[action="/stub/"]')
+    (card,) = form.cssselect(".panel-surface")
+    (submit,) = form.cssselect('button[type="submit"]')
+
+    assert "Your signed-in sessions." in card.text_content()
+    assert submit.getparent().tag == "footer" or any(
+        ancestor.tag == "footer" for ancestor in submit.iterancestors()
+    )
+    assert "btn-sm" in submit.get("class").split()

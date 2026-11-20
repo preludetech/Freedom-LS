@@ -1,25 +1,19 @@
 {% extends "accounts/_account_shell.html" %}
 {% comment %}
+The layout of allauth's remaining management pages (connections, two-factor,
+sessions), shaped like the panel pages: the header band, the canvas and cards.
 allauth's page templates fill `content` themselves, which replaces the shell's
-own `content` block, so this layout adds no wrapper inside it: the padding and
-width come through main_class. The shell's own mobile navigation toggle shows
-here, since these pages have no panel header to carry one. The live region
-sits in a host block because the shell's `content` block, which normally
-carries it, is replaced.
+own `content` block, so this layout shapes their parts through allauth's
+layout-specific elements instead: allauth/elements/h1__manage.html draws the
+heading as the header band, with the mobile navigation toggle at the left of
+the heading on its line, and form__manage.html draws each form as a card
+with its buttons in the card footer. The column's children other than the
+band take the canvas gutter. The live region sits in a host block because the
+shell's `content` block, which normally carries it, is replaced.
 {% endcomment %}
-{% comment %}
-The content header is the toggle and the page title directly in the column,
-without the shell's centred width wrapper, which would shrink to fit and
-centre inside this narrow column. The toggle is the one the panel pages draw,
-so every page of the account area shows the same control. It is hidden from lg
-up, so the heading is the first thing on a desktop page.
-{% endcomment %}
-{% block content_header %}
-    <div class="flex lg:hidden">{% include "panel_framework/partials/panel_toggle.html" %}</div>
-    {% include "partials/page_title.html" %}
-{% endblock content_header %}
+{% block content_header %}{% endblock content_header %}
 
-{% block main_class %}flex flex-col max-w-2xl px-4 py-6 sm:px-6 space-y-6{% endblock main_class %}
+{% block main_class %}panel-canvas flex flex-col gap-6 pb-6 [&>:not([data-page-header])]:mx-4 sm:[&>:not([data-page-header])]:mx-6 lg:[&>:not([data-page-header])]:mx-8{% endblock main_class %}
 
 {% block quick_view_host %}
     {{ block.super }}

@@ -67,8 +67,9 @@ urlpatterns = [
     # path("content_preview/", include("content_engine.preview_urls")),
     path("educator/", include("freedom_ls.educator_interface.urls")),
     path("", include("freedom_ls.deployment.urls")),
-    path("accounts/", include("allauth.urls")),
+    # Before allauth.urls: it redirects allauth's email and password pages.
     path("accounts/", include("freedom_ls.accounts.urls")),
+    path("accounts/", include("allauth.urls")),
     *_blog_urlpatterns,
     *(
         [path("api/v1/", include("freedom_ls.api.urls"))]

@@ -157,7 +157,7 @@ resolves attempts through `learner_progress/attempts.py`, never through `FormPro
 
 | Term | Defined at | Means |
 | --- | --- | --- |
-| **account area** (coined) | `accounts/sidebar.py` | The signed-in user's own settings pages, which share the account shell and its sidebar: Personal details, Email, Password. It applies to every signed-in user, learner, educator or admin. |
+| **account area** (coined) | `accounts/sidebar.py` | The signed-in user's own settings pages, which share the account shell and its sidebar: Personal details (name, profile picture, email addresses and password panels), plus allauth's optional management pages when their apps are installed. It applies to every signed-in user, learner, educator or admin. |
 | **Personal details** | `accounts/panels/personal_details/` | The private page in the account area where users edit their own details. Not the public profile: "profile" is kept for the coming public profile, so don't call this page "Profile". |
 
 ## Messaging: `freedom_ls/messaging_policy/`, `freedom_ls/learner_management/queries.py`

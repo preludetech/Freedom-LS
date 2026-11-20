@@ -5,6 +5,13 @@ from . import views
 app_name = "accounts"
 
 urlpatterns = [
+    # allauth's email and change-password pages are panels on Personal
+    # details now. These answer first only where this URLconf is included
+    # before allauth.urls; allauth's own URL names still reverse to the same
+    # paths. allauth's set-password page stays: flows such as an application
+    # claim send a user there with a `next` to return to.
+    path("email/", views.personal_details_redirect),
+    path("password/change/", views.personal_details_redirect),
     path(
         "profile/",
         views.account_area,

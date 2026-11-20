@@ -1,0 +1,15 @@
+{% load allauth %}
+{% comment %} djlint:off {% endcomment %}
+{% comment %}
+An allauth management page's heading, drawn as the panel pages' header band:
+the band runs the full width of the content column, with the mobile
+navigation toggle at the left of the heading, on its line. allauth looks this
+template up for any {% element h1 %} on a page that extends
+allauth/layouts/manage.html.
+{% endcomment %}
+<div data-page-header class="panel-surface border-b border-border px-4 pt-4 pb-5 sm:px-6 lg:px-8">
+    <div class="flex items-center gap-3">
+        {% include "panel_framework/partials/panel_toggle.html" %}
+        <h1 class="min-w-0 tracking-tight">{% slot %}{% endslot %}</h1>
+    </div>
+</div>

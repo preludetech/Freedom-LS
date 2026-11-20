@@ -66,6 +66,15 @@ def account_area(
     )
 
 
+def personal_details_redirect(request: HttpRequest) -> HttpResponse:
+    """allauth's email and change-password pages, which the Personal details
+    page's panels replace. Links in allauth's emails and templates land
+    there."""
+    return redirect(
+        "accounts:account_profile", path_string=PersonalDetailsConfig.url_name
+    )
+
+
 def legal_doc_view(request: HttpRequest, doc_type: str) -> HttpResponse:
     if doc_type not in {"terms", "privacy"}:
         raise Http404
