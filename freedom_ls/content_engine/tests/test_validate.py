@@ -13,6 +13,7 @@ from freedom_ls.content_engine.validate import (
     validate_children_lists,
     validate_due_date_placements,
     validate_form_conditions,
+    validate_form_shuffle,
     validate_question_sections,
 )
 
@@ -1750,3 +1751,207 @@ def test_a_target_the_loader_skips_fails_in_both_modes(
     assert len(errors) == 1
     assert "content_save skips this file" in errors[0]
     assert "outside the directory" not in errors[0]
+
+
+# Cross-file validation of a form's `group` and `locked` settings.
+
+_QUIZ_FIELDS = "quiz_show_incorrect: true\nquiz_pass_percentage: 50\n"
+
+
+def _quiz_question(
+    text: str, group: str | None = None, locked_option: bool = False
+) -> str:
+    group_line = f"group: {group}\n" if group else ""
+    locked_line = "    locked: true\n" if locked_option else ""
+    return (
+        f"---\nquestion: {text}\ntype: multiple_choice\n{group_line}"
+        f'options:\n  - text: "Yes"\n    value: "yes"\n    correct: true\n'
+        f'{locked_line}  - text: "No"\n    value: "no"\n'
+    )
+
+
+def _quiz_content(text: str, group: str | None = None) -> str:
+    group_line = f"group: {group}\n" if group else ""
+    return f"---\ncontent: {text}\n{group_line}"
+
+
+def _quiz_with_pages(
+    directory: Path, pages: list[str], quiz_fields: str = _QUIZ_FIELDS
+) -> None:
+    _gated_form(
+        directory,
+        {
+            f"{i}. page.yaml": _page(f"Page {i}", body)
+            for i, body in enumerate(pages, 1)
+        },
+        strategy="QUIZ",
+        quiz_fields=quiz_fields,
+    )
+
+
+def _shuffle_errors(directory: Path) -> list[str]:
+    parsed = [
+        item
+        for file_path in get_all_files(directory)
+        if file_path.suffix in {".md", ".yaml", ".yml"}
+        for item in parse_single_file(file_path)
+    ]
+    return validate_form_shuffle(parsed)
+
+
+def test_group_on_a_non_quiz_form_fails_naming_the_strategy(tmp_path: Path) -> None:
+    _gated_form(
+        tmp_path,
+        {
+            "1. first.yaml": _page(
+                "First", "---\nquestion: Name?\ntype: short_text\ngroup: a\n"
+            )
+        },
+    )
+
+    (error,) = _shuffle_errors(tmp_path)
+
+    assert "Invalid shuffle setting" in error
+    assert "group is only allowed on QUIZ forms (this form is UNSCORED)." in error
+    assert "Remove group, or change the form's strategy to QUIZ." in error
+
+
+def test_locked_option_on_a_non_quiz_form_fails(tmp_path: Path) -> None:
+    _gated_form(
+        tmp_path,
+        {
+            "1. first.yaml": _page(
+                "First",
+                "---\nquestion: Pick\ntype: multiple_choice\noptions:\n"
+                '  - text: "Yes"\n    value: "yes"\n    locked: true\n',
+            )
+        },
+    )
+
+    (error,) = _shuffle_errors(tmp_path)
+
+    assert 'option "Yes" is locked, but shuffle_options is off' in error
+
+
+def test_locked_option_with_shuffle_options_off_fails_naming_the_fix(
+    tmp_path: Path,
+) -> None:
+    _quiz_with_pages(tmp_path, [_quiz_question("Q1", locked_option=True)])
+
+    (error,) = _shuffle_errors(tmp_path)
+
+    assert 'option "Yes" is locked, but shuffle_options is off for this form' in error
+    assert "Set shuffle_options: true in the form front matter" in error
+
+
+def test_locked_option_with_shuffle_options_on_passes(tmp_path: Path) -> None:
+    _quiz_with_pages(
+        tmp_path,
+        [_quiz_question("Q1", locked_option=True)],
+        quiz_fields=_QUIZ_FIELDS + "shuffle_options: true\n",
+    )
+
+    assert _shuffle_errors(tmp_path) == []
+
+
+def test_group_on_two_pages_fails_naming_both_page_titles(tmp_path: Path) -> None:
+    _quiz_with_pages(tmp_path, [_quiz_question("Q1", "a"), _quiz_question("Q2", "a")])
+
+    (error,) = _shuffle_errors(tmp_path)
+
+    assert 'group "a" is used on page "Page 1" and page "Page 2".' in error
+    assert "A group stays on one page." in error
+
+
+def test_group_on_three_pages_gives_one_error_per_later_page(tmp_path: Path) -> None:
+    _quiz_with_pages(tmp_path, [_quiz_question(f"Q{i}", "a") for i in range(3)])
+
+    errors = _shuffle_errors(tmp_path)
+
+    assert len(errors) == 2
+
+
+def test_split_group_fails_naming_the_child_between_its_members(
+    tmp_path: Path,
+) -> None:
+    _quiz_with_pages(
+        tmp_path,
+        [_quiz_question("Q1", "a") + _quiz_question("Q2") + _quiz_question("Q3", "a")],
+    )
+
+    (error,) = _shuffle_errors(tmp_path)
+
+    assert 'group "a" is split: question "Q2" sits between its members.' in error
+    assert 'give question "Q2" the same group' in error
+
+
+def test_split_group_reports_once_however_many_runs_follow(tmp_path: Path) -> None:
+    _quiz_with_pages(
+        tmp_path,
+        [
+            _quiz_question("Q1", "a")
+            + _quiz_question("Q2")
+            + _quiz_question("Q3", "a")
+            + _quiz_question("Q4")
+            + _quiz_question("Q5", "a")
+        ],
+    )
+
+    errors = _shuffle_errors(tmp_path)
+
+    assert len(errors) == 1
+
+
+def test_several_errors_in_one_form_are_all_reported(tmp_path: Path) -> None:
+    _quiz_with_pages(
+        tmp_path,
+        [
+            _quiz_question("Q1", "a", locked_option=True)
+            + _quiz_question("Q2")
+            + _quiz_question("Q3", "a"),
+            _quiz_question("Q4", "a"),
+        ],
+    )
+
+    errors = _shuffle_errors(tmp_path)
+
+    assert len(errors) == 3
+
+
+def test_one_member_group_passes(tmp_path: Path) -> None:
+    _quiz_with_pages(tmp_path, [_quiz_question("Q1", "a") + _quiz_question("Q2")])
+
+    assert _shuffle_errors(tmp_path) == []
+
+
+def test_group_with_shuffle_questions_off_passes(tmp_path: Path) -> None:
+    _quiz_with_pages(tmp_path, [_quiz_question("Q1", "a") + _quiz_question("Q2", "a")])
+
+    assert _shuffle_errors(tmp_path) == []
+
+
+def test_group_with_no_content_block_passes(tmp_path: Path) -> None:
+    _quiz_with_pages(
+        tmp_path,
+        [_quiz_question("Q1", "a") + _quiz_question("Q2", "a") + _quiz_question("Q3")],
+        quiz_fields=_QUIZ_FIELDS + "shuffle_questions: true\n",
+    )
+
+    assert _shuffle_errors(tmp_path) == []
+
+
+def test_group_starting_with_a_question_passes(tmp_path: Path) -> None:
+    _quiz_with_pages(
+        tmp_path,
+        [_quiz_question("Q1", "a") + _quiz_content("Note", "a")],
+        quiz_fields=_QUIZ_FIELDS + "shuffle_questions: true\n",
+    )
+
+    assert _shuffle_errors(tmp_path) == []
+
+
+def test_validate_lists_a_shuffle_error_in_the_report(tmp_path: Path) -> None:
+    _quiz_with_pages(tmp_path, [_quiz_question("Q1", locked_option=True)])
+
+    with pytest.raises(ValueError, match="Invalid shuffle setting"):
+        validate(tmp_path)
