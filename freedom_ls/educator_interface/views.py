@@ -393,6 +393,9 @@ class LearnerCohortDataTable(CohortDataTable):
     or not, with search, sort and pagination but no filters. `joined_at` is
     annotated by the panel that lists them."""
 
+    # Joined and the Remove/Move buttons need more room than a tablet or the
+    # space beside the quick view gives.
+    cards_when_narrow = True
     empty_message = (
         "This learner is not in any cohorts yet. Their cohorts will appear here."
     )

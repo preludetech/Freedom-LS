@@ -606,6 +606,28 @@ def test_add_to_cohort_sits_under_the_learners_cohorts_panel(staff_client: Clien
 
 
 @pytest.mark.django_db
+def test_the_learners_cohorts_table_shows_as_cards_when_its_panel_is_narrow(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    CohortMembershipFactory(
+        cohort=CohortFactory(organisation=organisation), learner=learner
+    )
+    page_url = _interface_url(organisation.slug, f"learners/{learner.pk}")
+
+    document = _get_document(staff_client, page_url)
+
+    (panel,) = document.cssselect("section[data-panel='cohorts']")
+    (wrapper,) = panel.cssselect("[data-table-layout]")
+    (region,) = wrapper.cssselect("[role='region']")
+    (cards,) = wrapper.xpath("./ul")
+    assert "@container" in wrapper.get("class", "").split()
+    assert "@min-[58rem]:block" in region.get("class", "").split()
+    assert "@min-[58rem]:hidden" in cards.get("class", "").split()
+
+
+@pytest.mark.django_db
 def test_register_for_a_course_sits_on_the_learners_courses_tab(staff_client: Client):
     organisation = OrganisationFactory()
     learner = LearnerFactory(organisation=organisation)

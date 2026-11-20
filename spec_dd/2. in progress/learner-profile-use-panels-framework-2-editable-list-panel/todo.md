@@ -24,8 +24,8 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Editable list: Edit and Remove sit in an item footer under each list row and card (a `footer` slot on `<c-panel-list-row>` and `<c-panel-table-card>`), and the desktop table's actions column keeps the pair on one line; QA plan Test 1 checks it
 - [x] (user) Decide whether to move `learner_registrations.html`'s Deactivate/Reactivate button from the list row's trailing slot into the row's item footer, as the new panel-framework rule says
 - [x] (user) Decide whether to fix `test_saving_one_entry_twice_announces_both_saves`: under `-n 4` load it fails about one run in three (announcer reads `['Saved Alpha.', '']`), on the committed code before the item-footer change too
-- [ ] (user) Decide whether to keep or delete the untracked QA data command `freedom_ls/qa_helpers/management/commands/qa_create_learner_registrations_panel.py` (builds a learner with active, inactive and cohort registrations for the Registrations panel; re-runnable as a reset; no test)
-- [ ] (user) Decide whether to fix the learner Overview tab's Cohorts table at 768px: its columns don't fit, so it scrolls sideways and hides Joined and the Remove/Move buttons, where the panel-framework rule says a table that doesn't fit shows as cards (`cards_when_narrow`). It predates this branch, which does not touch that panel
+- [x] (user) Decide whether to keep or delete the untracked QA data command `freedom_ls/qa_helpers/management/commands/qa_create_learner_registrations_panel.py` (builds a learner with active, inactive and cohort registrations for the Registrations panel; re-runnable as a reset; no test)
+- [x] (user) Decide whether to fix the learner Overview tab's Cohorts table at 768px: its columns don't fit, so it scrolls sideways and hides Joined and the Remove/Move buttons, where the panel-framework rule says a table that doesn't fit shows as cards (`cards_when_narrow`). It predates this branch, which does not touch that panel
 
 ## 4. Documentation and pull request
 
