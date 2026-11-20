@@ -120,8 +120,13 @@ the state block under an h2, and no withdraw: the address is not yet proven.
             {% else %}
                 <h1>Check your email</h1>
                 <p>
-                    Your application for <strong>{{ application.course.title }}</strong> is in.
-                    Before anyone reviews it, confirm your email address.
+                    {% if application.is_open %}
+                        Your application for <strong>{{ application.course.title }}</strong> is in.
+                        Before anyone reviews it, confirm your email address.
+                    {% else %}
+                        Your application for <strong>{{ application.course.title }}</strong> has been decided.
+                        Confirm your email address to keep it on your account.
+                    {% endif %}
                 </p>
                 {% include "course_applications/partials/claim_link_notice.html" with notice_next_url=status_url %}
                 <h2>

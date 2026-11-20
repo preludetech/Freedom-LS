@@ -1,7 +1,7 @@
 {% extends "_base.html" %}
 
 {% block head_title %}
-    {% if is_submitted == False %}Continue{% else %}Finish{% endif %} your application
+    {% if is_decided %}Confirm your email address{% elif is_submitted == False %}Continue your application{% else %}Finish your application{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -9,7 +9,7 @@
         <div class="space-y-6">
             {% if claim_state == "confirm" %}
                 <h1>
-                    {% if is_submitted %}Finish{% else %}Continue{% endif %} your application for {{ course.title }}
+                    {% if is_decided %}Confirm your email address for your application to {{ course.title }}{% elif is_submitted %}Finish your application for {{ course.title }}{% else %}Continue your application for {{ course.title }}{% endif %}
                 </h1>
                 <p>
                     Press Confirm to verify <strong>{{ applicant_email }}</strong>.

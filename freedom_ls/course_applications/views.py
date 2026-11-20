@@ -1069,6 +1069,7 @@ def claim_application(request: HttpRequest, token: str) -> HttpResponse:
             link.applicant,
             applicant_email=link.applicant.email,
             is_submitted=is_submitted,
+            is_decided=not application.is_open,
             held_application=held_application,
             returns_to_application=(
                 not is_submitted and held_application != "submitted"

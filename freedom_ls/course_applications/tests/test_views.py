@@ -3512,6 +3512,24 @@ def test_claim_of_a_draft_application_renders_the_confirm_page(client, claimable
 
 
 @pytest.mark.django_db
+def test_claim_get_of_a_rejected_application_does_not_say_to_finish_it(
+    client, claimable
+):
+    """The confirm page heading used to tell the person to finish an
+    application that had already been decided."""
+    CourseApplication.objects.filter(pk=claimable.pk).update(
+        state=CourseApplication.State.REJECTED,
+        submitted_at=timezone.now(),
+        decided_at=timezone.now(),
+        rejection_message="Not this time.",
+    )
+
+    body = client.get(_claim_url(claimable.anonymous_applicant)).content.decode()
+
+    assert ("Finish your application" in body, "Confirm" in body) == (False, True)
+
+
+@pytest.mark.django_db
 def test_claim_get_of_a_draft_says_the_application_continues(client, claimable_draft):
     response = client.get(_claim_url(claimable_draft.anonymous_applicant))
 
@@ -5924,6 +5942,26 @@ class TestDecidedApplicationStatusPage:
         assert "Check your email" in body
         assert "Not this time." in body
         assert "Apply again" not in body
+
+    def test_an_unclaimed_rejected_application_claim_notice_does_not_say_it_awaits_review(
+        self, client, mock_site_context
+    ):
+        """The claim notice above a decision used to say "Before anyone reviews
+        it", contradicting the decision shown right below it."""
+        app = _anonymous_draft(client)
+        CourseApplication.objects.filter(pk=app.pk).update(
+            state=CourseApplication.State.REJECTED,
+            submitted_at=timezone.now(),
+            decided_at=timezone.now(),
+            rejection_message="Not this time.",
+        )
+
+        body = client.get(_status_url(app)).content.decode()
+
+        assert ("Check your email" in body, "Before anyone reviews it" in body) == (
+            True,
+            False,
+        )
 
     def test_the_status_page_reads_what_reject_application_stored(
         self, client, mock_site_context
