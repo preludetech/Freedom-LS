@@ -628,6 +628,22 @@ class StubConfirmReasonAction(ReasonMixin, ConfirmAction):
         return changed_response({})
 
 
+class StubRequiredReasonAction(StubConfirmReasonAction):
+    """A test-only confirm dialog whose reason must be filled in; confirming
+    marks the instance inactive."""
+
+    label = "Suspend Item"
+    action_name = "suspend_item"
+    reason_required = True
+
+    def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
+        assert ctx.instance is not None
+        type(ctx.instance)._default_manager.filter(pk=ctx.instance.pk).update(
+            is_active=False
+        )
+        return changed_response({})
+
+
 class StubReadOnlyAction(PanelAction):
     """A test-only read-only modal fragment: a heading with no form, proving
     that a PanelAction needs neither a form nor a delete confirmation to open
@@ -651,6 +667,7 @@ class StubDetailsPanel(Panel):
             StubRefusedDeleteAction(success_url="/test-panel/framework/stubs"),
             StubReadOnlyAction(),
             StubConfirmReasonAction(),
+            StubRequiredReasonAction(),
         ]
 
 

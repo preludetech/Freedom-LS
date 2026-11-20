@@ -142,6 +142,38 @@ def test_refused_delete_moves_focus_to_its_error_notice(
     expect(notice).to_be_focused()
 
 
+def test_empty_required_reason_keeps_dialog_open_with_error_until_filled(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    """A required reason is checked on the server only, since the field has no
+    browser-side `required`. An empty submit must swap the 422 response into
+    the open dialog with the error under the field and perform nothing; a
+    typed reason then closes the dialog and runs the action."""
+    stub = make_stub(name="Needs reason")
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/{stub.pk}/__tabs/details")
+
+    page.get_by_role("button", name="Suspend Item").click()
+    modal = page.locator("#app-modal")
+    dialog = page.get_by_role("dialog", name="Suspend Item")
+    reason = dialog.get_by_label("Reason")
+    expect(reason).to_be_visible()
+
+    dialog.get_by_role("button", name="Suspend Item").click()
+    expect(modal).to_be_visible()
+    expect(dialog.get_by_text("This field is required.")).to_be_visible()
+    stub.refresh_from_db()
+    assert stub.is_active
+
+    reason.fill("No longer needed")
+    dialog.get_by_role("button", name="Suspend Item").click()
+    expect(modal).to_be_hidden()
+    stub.refresh_from_db()
+    assert not stub.is_active
+
+
 @pytest.mark.parametrize(
     "viewport", [{"width": 1920, "height": 1080}, {"width": 375, "height": 812}]
 )
