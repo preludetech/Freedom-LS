@@ -288,7 +288,8 @@ def served_path(form: Form, served_paper: ServedPaper) -> SittingPath:
 
     An item missing from the form is skipped, whether it was deleted or
     moved to another form. A question moved to another page of this form is
-    still shown under the page it was served on.
+    still shown under the page it was served on. A question none of whose
+    served options remain, or that was served with none, shows its live options.
     """
     prefetch_related_objects([form], *SERVED_TREE_LOOKUPS)
     all_pages = tuple(form.pages.all())
@@ -319,7 +320,9 @@ def served_path(form: Form, served_paper: ServedPaper) -> SittingPath:
             served_ids = served_option_ids.get(str(child.id), [])
             options = tuple(live[i] for i in served_ids if i in live)
             missing = missing or len(options) != len(served_ids)
-            served_options_by_question[child.id] = options
+            # With none of its served options left, the question would offer
+            # nothing to choose, so it falls back to its live options.
+            served_options_by_question[child.id] = options or tuple(live.values())
     return _path(all_pages, children_by_page, served_options_by_question, missing)
 
 

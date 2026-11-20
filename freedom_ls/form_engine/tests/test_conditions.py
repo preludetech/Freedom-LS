@@ -587,6 +587,51 @@ def test_a_deleted_option_is_skipped_and_flagged(served_form: ServedForm) -> Non
     assert path.has_missing_served_items is True
 
 
+def test_a_question_whose_served_options_are_all_gone_shows_its_live_options(
+    served_form: ServedForm,
+) -> None:
+    sf = served_form
+    paper = build_served_paper(_fresh(sf.form))
+    for option in (sf.one_a, sf.one_b, sf.one_c):
+        option.delete()
+    new_y = QuestionOptionFactory(question=sf.q_one, value="y", order=1)
+    new_x = QuestionOptionFactory(question=sf.q_one, value="x", order=0)
+
+    path = served_path(_fresh(sf.form), paper)
+
+    assert [o.id for o in path.options_of(sf.q_one)] == [new_x.id, new_y.id]
+    assert path.has_missing_served_items is True
+
+
+def test_a_question_served_with_no_options_shows_the_options_it_gained(
+    served_form: ServedForm,
+) -> None:
+    sf = served_form
+    paper = build_served_paper(_fresh(sf.form))
+    gained = QuestionOptionFactory(question=sf.q_two, value="gained", order=0)
+
+    path = served_path(_fresh(sf.form), paper)
+
+    assert [o.id for o in path.options_of(sf.q_two)] == [gained.id]
+    assert path.has_missing_served_items is False
+
+
+def test_an_option_added_beside_surviving_served_options_is_not_shown(
+    served_form: ServedForm,
+) -> None:
+    sf = served_form
+    paper = build_served_paper(_fresh(sf.form))
+    QuestionOptionFactory(question=sf.q_one, value="d", order=3)
+
+    path = served_path(_fresh(sf.form), paper)
+
+    assert [o.id for o in path.options_of(sf.q_one)] == [
+        sf.one_a.id,
+        sf.one_b.id,
+        sf.one_c.id,
+    ]
+
+
 def test_a_served_page_whose_children_are_all_gone_is_skipped(
     served_form: ServedForm,
 ) -> None:
