@@ -3,7 +3,7 @@
 Companion to ``qa_create_course_cohort_registrations``. The educator course page
 renders two independent paginators; that command feeds "Cohort registrations",
 this one feeds "Direct registrations"
-(``CourseLearnerRegistrationDataTable``, ``freedom_ls/educator_interface/views.py``).
+(``CourseLearnerRegistrationDataTable``, ``freedom_ls/educator_interface/panels/course/data_tables.py``).
 
 Rows here are ``LearnerCourseRegistration`` -- **individual** grants, not
 cohort-granted ones. A cohort registration does mint a ``CourseProgress`` per
@@ -39,7 +39,9 @@ import djclick as click
 from django.contrib.sites.models import Site
 
 from freedom_ls.content_engine.models import Course
-from freedom_ls.educator_interface.views import CourseLearnerRegistrationDataTable
+from freedom_ls.educator_interface.panels.course.data_tables import (
+    CourseLearnerRegistrationDataTable,
+)
 from freedom_ls.learner_management.models import LearnerCourseRegistration
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation

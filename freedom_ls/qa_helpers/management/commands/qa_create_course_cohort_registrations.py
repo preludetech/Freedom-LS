@@ -7,7 +7,8 @@ Registrations"). The cohort one cannot be exercised on a stock dev database
 because no ``CohortCourseRegistration`` row exists at all, so the table is
 empty and its paginator never renders.
 
-IMPORTANT -- what a row is. ``CourseCohortRegistrationDataTable`` paginates
+IMPORTANT -- what a row is. ``CourseCohortRegistrationDataTable``
+(``freedom_ls/educator_interface/panels/course/data_tables.py``) paginates
 ``CohortCourseRegistration`` rows, i.e. **one row per registered cohort**. The
 size of a cohort makes no difference: a cohort of five hundred learners is
 still one row. Paging this table therefore needs many *cohorts* registered to
@@ -47,7 +48,9 @@ import djclick as click
 from django.contrib.sites.models import Site
 
 from freedom_ls.content_engine.models import Course
-from freedom_ls.educator_interface.views import CourseCohortRegistrationDataTable
+from freedom_ls.educator_interface.panels.course.data_tables import (
+    CourseCohortRegistrationDataTable,
+)
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,

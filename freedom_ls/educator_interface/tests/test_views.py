@@ -71,6 +71,11 @@ from freedom_ls.educator_interface.messaging import OwnConversation
 from freedom_ls.educator_interface.panels.audit_log.data_tables import (
     OrganisationAuditLogTable,
 )
+from freedom_ls.educator_interface.panels.course.data_tables import (
+    CourseCohortRegistrationDataTable,
+    CourseDataTable,
+    CourseLearnerRegistrationDataTable,
+)
 from freedom_ls.educator_interface.tests.helpers import (
     QUERY_BUDGET,
     _audit_log_rows,
@@ -93,7 +98,6 @@ from freedom_ls.educator_interface.tests.interface_walk import (
 )
 from freedom_ls.educator_interface.views import (
     CohortDataTable,
-    CourseDataTable,
     learner_status_badge,
 )
 from freedom_ls.form_engine.factories import (
@@ -6932,10 +6936,10 @@ EDUCATOR_TABLES: list[type[DataTable]] = [
     educator_views.CohortLearnerDataTable,
     educator_views.CohortDataTable,
     educator_views.LearnerCohortDataTable,
-    educator_views.CourseDataTable,
+    CourseDataTable,
     educator_views.CohortCourseRegistrationDataTable,
-    educator_views.CourseCohortRegistrationDataTable,
-    educator_views.CourseLearnerRegistrationDataTable,
+    CourseCohortRegistrationDataTable,
+    CourseLearnerRegistrationDataTable,
     educator_views.StaffDataTable,
     OrganisationAuditLogTable,
 ]
