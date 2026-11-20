@@ -7,15 +7,17 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
+from django.test import Client
+
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
+from freedom_ls.role_based_permissions.utils import assign_object_role
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser
     from django.contrib.sites.models import Site
-    from django.test import Client
 
     from freedom_ls.learner_management.models import Cohort
 
@@ -67,3 +69,18 @@ def role_holder_client(
 @pytest.fixture
 def organisation(mock_site_context: Site) -> Organisation:
     return cast(Organisation, OrganisationFactory())
+
+
+@pytest.fixture
+def educator_client(logged_in_client):
+    """Factory: a logged-in staff educator holding ``role`` on ``target`` --
+    the organisation for a role holder, a cohort for a grant-only educator."""
+
+    def _make(
+        target: Organisation | Cohort, role: str = "organisation_admin"
+    ) -> Client:
+        educator = UserFactory(staff=True)
+        assign_object_role(educator, target, role)
+        return cast(Client, logged_in_client(educator))
+
+    return _make

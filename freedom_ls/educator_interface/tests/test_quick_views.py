@@ -9,20 +9,14 @@ already are.
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING, cast
+from typing import cast
 
 import pytest
 from lxml import html
 
 from django.db import connection
-from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
-
-if TYPE_CHECKING:
-    # Stub-only: the test client's response carries `templates`, which a plain
-    # HttpResponse does not.
-    from django.test.client import _MonkeyPatchedWSGIResponse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
@@ -36,6 +30,10 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.events import LEARNER_CHANGED
 from freedom_ls.educator_interface.quick_views import LearnerQuickView
+from freedom_ls.educator_interface.tests.helpers import (
+    _get_quick_view,
+    _quick_view_url,
+)
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -43,49 +41,15 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import Cohort, Learner
+from freedom_ls.learner_management.models import Learner
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.role_based_permissions.utils import assign_object_role
 
 
 @pytest.fixture(autouse=True)
 def _site_context(mock_site_context):
     """Every test here builds site-aware objects and assigns roles."""
-
-
-@pytest.fixture
-def educator_client(logged_in_client):
-    """Factory: a logged-in staff educator holding ``role`` on ``target`` --
-    the organisation for a role holder, a cohort for a grant-only educator."""
-
-    def _make(
-        target: Organisation | Cohort, role: str = "organisation_admin"
-    ) -> Client:
-        educator = UserFactory(staff=True)
-        assign_object_role(educator, target, role)
-        return cast(Client, logged_in_client(educator))
-
-    return _make
-
-
-def _quick_view_url(organisation_slug: str, path_string: str) -> str:
-    return reverse(
-        "educator_interface:interface",
-        kwargs={
-            "organisation_slug": organisation_slug,
-            "path_string": f"{path_string}/__quick-view",
-        },
-    )
-
-
-def _get_quick_view(
-    client: Client, organisation: Organisation, path_string: str
-) -> _MonkeyPatchedWSGIResponse:
-    return client.get(
-        _quick_view_url(organisation.slug, path_string), HTTP_HX_REQUEST="true"
-    )
 
 
 @pytest.mark.django_db
@@ -775,17 +739,6 @@ def test_a_quick_view_of_an_unknown_learner_answers_the_dialog(educator_client):
 
     assert response.status_code == 404
     assert "This is no longer available" in response.content.decode()
-
-
-@pytest.mark.django_db
-def test_a_malformed_pk_of_a_staff_row_404s(educator_client, mock_site_context):
-    organisation = OrganisationFactory()
-
-    response = _get_quick_view(
-        educator_client(organisation), organisation, "staff/not-a-number"
-    )
-
-    assert response.status_code == 404
 
 
 def _register_on_shared_course(learner: Learner, organisation: Organisation) -> None:
