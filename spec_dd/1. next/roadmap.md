@@ -15,13 +15,13 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `sacaa-compliance-2-shuffle` (SACAA compliance)
 - 🔴 High · `learner-profile-use-panels-framework-3-account-page` (Account area on panels)
 - 🔴 High · `multi-step-course-applications-1-review-states` (Multi-step course applications)
+- 🟠 Medium · `educator-interface-refactor-3-staff` (Educator interface code layout)
 - 🟠 Medium · `content-widget-longer-audio` (Audio content widgets)
 - 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
 
 ### Ready to start
 
 - 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
-- 🟠 Medium · `educator-interface-refactor-3-staff` (Educator interface code layout)
 - 🟠 Medium · `educator-interface-refactor-4-course` (Educator interface code layout)
 - 🟠 Medium · `content-widget-sayit-reveal-2-say-it-reveal` (Audio content widgets)
 - 🟠 Medium · `content-widget-sayit-reveal-4-audio-access-control` (Audio content widgets)
@@ -68,7 +68,7 @@ Priority: 🔴 High
 The educator interface's `views.py` and `actions.py` split into one `panels/<area>/` package per area, with tests mirrored. Parent: `educator-interface-refactor`.
 
 - `educator-interface-refactor-2-dashboard-and-audit-log` — **in progress** — Moves the dashboard and audit log areas, including `HistoryPanel`, into `panels/`, with their tests.
-- `educator-interface-refactor-3-staff` — **ready** — Moves the staff area's config, table, actions, role filter and quick view into `panels/staff/`, with its tests.
+- `educator-interface-refactor-3-staff` — **in progress** — Moves the staff area's config, table, actions, role filter and quick view into `panels/staff/`, with its tests.
 - `educator-interface-refactor-4-course` — **ready** — Moves the course area, including content preview, into `panels/course/`, with its tests.
 - `educator-interface-refactor-5-learner` — **blocked** by `educator-interface-refactor-2-dashboard-and-audit-log` — Moves the learner area, membership actions and import views into `panels/learner/`, breaks the learner/cohort cycle, and migrates stored bulk-action paths.
 - `educator-interface-refactor-6-cohort` — **blocked** by `educator-interface-refactor-5-learner` — Moves the cohort area, including reports and report download, into `panels/cohort/`, and migrates stored bulk-action paths.
