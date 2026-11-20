@@ -253,6 +253,82 @@ def test_learner_seeks_a_clip_by_touch(
     expect(_elapsed(page)).to_have_text(re.compile(r"0:(29|30)"))
 
 
+def _to_seconds(clock: str) -> int:
+    minutes, seconds = clock.split(":")
+    return int(minutes) * 60 + int(seconds)
+
+
+def test_only_one_clip_or_speak_button_plays_at_a_time(
+    live_server,
+    live_server_site,
+    mock_site_context,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    _open_clips(live_server, page, logged_in_user)
+    play_a = page.get_by_role("button", name=f"Play {FIRST_CLIP}")
+    play_b = page.get_by_role("button", name=f"Play {SECOND_CLIP}")
+    speak = page.get_by_role("button", name="Beep")
+
+    play_a.click()
+    expect(play_a).to_have_attribute("aria-pressed", "true")
+    expect(_elapsed(page)).not_to_have_text("0:00")
+    play_a.click()
+    expect(play_a).to_have_attribute("aria-pressed", "false")
+    paused_at = _elapsed(page).inner_text()
+
+    # Starting clip B leaves the paused clip A where it was.
+    play_b.click()
+    expect(play_b).to_have_attribute("aria-pressed", "true")
+    expect(play_a).to_have_attribute("aria-pressed", "false")
+    expect(_elapsed(page)).to_have_text(paused_at)
+
+    # The speak button pauses clip B, which keeps its time.
+    expect(_elapsed(page, SECOND_CLIP)).not_to_have_text("0:00")
+    speak.click()
+    expect(speak).to_have_attribute("aria-pressed", "true")
+    expect(play_b).to_have_attribute("aria-pressed", "false")
+    held = _elapsed(page, SECOND_CLIP).inner_text()
+    assert held != "0:00"
+    page.wait_for_timeout(500)
+    expect(_elapsed(page, SECOND_CLIP)).to_have_text(held)
+
+    # Clip A resumes from where it paused, never from the start.
+    play_a.click()
+    expect(play_a).to_have_attribute("aria-pressed", "true")
+    expect(speak).to_have_attribute("aria-pressed", "false")
+    expect(_elapsed(page)).not_to_have_text("0:00")
+    expect(_elapsed(page)).not_to_have_text(re.compile(r"^0:00$"))
+    resumed = _elapsed(page).inner_text()
+    assert _to_seconds(resumed) >= _to_seconds(paused_at)
+
+
+def test_pressing_the_speak_button_stops_a_playing_clip_and_back(
+    live_server,
+    live_server_site,
+    mock_site_context,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    _open_clips(live_server, page, logged_in_user)
+    play_a = page.get_by_role("button", name=f"Play {FIRST_CLIP}")
+    speak = page.get_by_role("button", name="Beep")
+
+    play_a.click()
+    expect(play_a).to_have_attribute("aria-pressed", "true")
+    speak.click()
+    expect(play_a).to_have_attribute("aria-pressed", "false")
+    expect(play_a.locator("[data-icon='media_play']")).to_be_visible()
+    expect(speak).to_have_attribute("aria-pressed", "true")
+
+    play_a.click()
+    expect(play_a).to_have_attribute("aria-pressed", "true")
+    expect(speak).to_have_attribute("aria-pressed", "false")
+    expect(speak.locator("[data-icon='audio_play']")).to_be_visible()
+
+
 def test_clip_fits_every_viewport(
     live_server,
     live_server_site,

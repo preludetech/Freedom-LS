@@ -111,6 +111,9 @@ document.addEventListener("alpine:init", () => {
     // Alpine hands each method a fresh scope proxy, so `this` is not a stable
     // identity; widgets are compared by this id instead.
     let nextAudioFileId = 0;
+    // The one widget whose audio is playing or loading, as {id, pause}.
+    // Starting any widget pauses this one first.
+    let activeAudio = null;
 
     function audioElement() {
         if (sharedAudio) return sharedAudio;
@@ -156,10 +159,20 @@ document.addEventListener("alpine:init", () => {
             // Never stops, so a second call while playing restarts the clip.
             _start(src) {
                 const audio = audioElement();
-                if (owner) {
-                    owner.failed = false;
-                    owner._setState("idle");
-                }
+                if (activeAudio && activeAudio.id !== this._id) activeAudio.pause();
+                const id = this._id;
+                activeAudio = {
+                    id,
+                    pause: () => {
+                        // A later audioFile may already own the shared element; then
+                        // this handle is stale and must not stop it.
+                        if (owner?._id !== id) return;
+                        sharedAudio.pause();
+                        sharedAudio.currentTime = 0;
+                        owner.failed = false;
+                        owner._setState("idle");
+                    },
+                };
                 this.failed = false;
                 owner = this;
                 this._setState("loading");
@@ -182,6 +195,7 @@ document.addEventListener("alpine:init", () => {
                 audio.pause();
                 audio.currentTime = 0;
                 this._setState("idle");
+                if (activeAudio?.id === this._id) activeAudio = null;
             },
             _sounding() {
                 return owner?._id === this._id && !this.idle;
@@ -191,6 +205,7 @@ document.addEventListener("alpine:init", () => {
                     sharedAudio.pause();
                     owner = null;
                 }
+                if (activeAudio?.id === this._id) activeAudio = null;
             },
             _fail() {
                 this.failed = true;
@@ -267,9 +282,6 @@ document.addEventListener("alpine:init", () => {
     // Unlike audioFile, each clip owns its element so a long recording keeps
     // its position while another clip plays.
     let nextAudioClipId = 0;
-    // The one widget whose audio is playing or loading, as {id, pause}.
-    // Starting any widget pauses this one first.
-    let activeAudio = null;
     // Audio elements live outside Alpine's reactive data: a proxied media
     // element misbehaves, and each clip keeps its own so a paused clip keeps
     // its buffer.
