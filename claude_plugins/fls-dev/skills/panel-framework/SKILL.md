@@ -395,8 +395,11 @@ the selection clears. Every control stays inside the bar at 375px.
 ### Adding and editing records
 
 - Adding a record by hand is a form for one record with "Add" and "Add and add another"
-  (`CreateInstanceAction.submit_buttons` is the shape), so a person adds one, reads the outcome
-  and adds the next. A textarea that asks for one record per line is an import wearing a form's
+  so a person adds one, reads the outcome and adds the next. `ADD_ANOTHER_BUTTON` is the one
+  "Add and add another" button. In `form_valid`, `wants_add_another(ctx)` detects it and
+  `add_another_response(ctx, events, "Added <name>.")` returns the dialog again with an empty form
+  and that status message, keeping it open while the panels behind it refresh. Put the button
+  ahead of "Add" in `submit_buttons` (`CreateInstanceAction` does). A textarea that asks for one record per line is an import wearing a form's
   clothes; a list goes to an import page with a preview.
 - A record's own name is a field with a Save button on its Settings panel, posted inline to the
   `edit` action (`renders_in_footer = False`), not a dialog.
