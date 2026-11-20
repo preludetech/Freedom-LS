@@ -440,3 +440,11 @@ def test_reference_editable_list_cap_example_hides_the_add_trigger() -> None:
     block = _example_block(_render_examples(), "editable-list-cap")
     assert "data-editable-list-cap" in block
     assert 'data-editable-list-action="add_entry"' not in block
+
+
+def test_reference_editable_list_cap_example_shows_the_sentence_the_panel_renders() -> (
+    None
+):
+    """The cap example used to word the cap line differently from the panel."""
+    block = _example_block(_render_examples(), "editable-list-cap")
+    assert "You can have up to 3. Remove one to add another." in block

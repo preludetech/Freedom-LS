@@ -600,6 +600,11 @@ class EditableListSummary:
     detail: str = ""
 
 
+def editable_list_cap_line(max_entries: int | None) -> str:
+    """The sentence an editable list shows in place of its Add trigger at the cap."""
+    return f"You can have up to {max_entries}. Remove one to add another."
+
+
 class EditableListPanel(Panel):
     """Lists the entries that belong to the bound parent and adds one through
     a dialog.
@@ -659,7 +664,7 @@ class EditableListPanel(Panel):
         ) >= self.max_entries
 
     def get_cap_line(self) -> str:
-        return f"You can have up to {self.max_entries}. Remove one to add another."
+        return editable_list_cap_line(self.max_entries)
 
     def get_actions(self) -> list[PanelAction]:
         return [

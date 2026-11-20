@@ -33,6 +33,7 @@ from freedom_ls.panel_framework.panels import (
 from freedom_ls.panel_framework.tables import Column, DataTable
 
 from .actions import CHOOSE_AGAIN_MESSAGE, field_error_count
+from .panels import editable_list_cap_line
 from .widgets import PanelClearableFileInput
 
 __all__ = [
@@ -408,7 +409,7 @@ def example_context(request: HttpRequest) -> dict[str, object]:
             region_id="editable-list-cap-region",
             layout="list",
             entries=_editable_list_entries(contacts),
-            cap_line="You can add up to 3 contacts. Remove one to add another.",
+            cap_line=editable_list_cap_line(3),
         ),
         "table": _render_editable_list(
             region_id="editable-list-table-region",
