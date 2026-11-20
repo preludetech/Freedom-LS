@@ -24,6 +24,7 @@ from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.audit_log.writer import record_entry, record_run_summary
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseAudience
+from freedom_ls.content_engine.models import Course as CourseModel
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -273,3 +274,11 @@ def _audit_log_document(
     staff_client: Client, organisation: Organisation
 ) -> lxml.html.HtmlElement:
     return _get_document(staff_client, _audit_log_url(organisation))
+
+
+def _content_action_url(
+    organisation: Organisation, course: CourseModel, action: str
+) -> str:
+    return _interface_url(
+        organisation.slug, f"courses/{course.pk}/__panels/content/__actions/{action}"
+    )

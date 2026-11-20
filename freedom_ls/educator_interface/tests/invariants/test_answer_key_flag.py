@@ -19,4 +19,6 @@ def test_show_answer_key_is_set_only_by_the_educator_preview() -> None:
         and "show_answer_key" in path.read_text()
     }
 
-    assert mentions == allowed_templates | {"educator_interface/views.py"}
+    assert mentions == allowed_templates | {
+        "educator_interface/panels/course/content_preview.py"
+    }

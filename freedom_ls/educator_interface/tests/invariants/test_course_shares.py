@@ -32,13 +32,15 @@ from freedom_ls.content_engine.management.commands.content_save import (
 )
 from freedom_ls.content_engine.models import Course, CourseAudience
 from freedom_ls.content_engine.tests.helpers import write_organisation_course
-from freedom_ls.educator_interface.tests.helpers import organisation_admin_viewer
+from freedom_ls.educator_interface.tests.helpers import (
+    _content_action_url,
+    organisation_admin_viewer,
+)
 from freedom_ls.educator_interface.tests.test_actions import (
     _learner_reregister_url,
     _post,
 )
 from freedom_ls.educator_interface.tests.test_views import (
-    _content_action_url,
     _export_csv,
     _interface_url,
     _learner_page,
