@@ -1,4 +1,4 @@
-# Research: asking for help and recommendations from application answers
+# Research: asking for help
 
 Read-only research for cutting `idea.md` into specs. Sources: the two ideas named below, `freedom_ls/` code as of 2026-11-19.
 
@@ -119,40 +119,7 @@ Option 1 is better. It is also useful for any later plain form. Count it as part
 
 The `phone-number-form-field` spec says `multi-step-course-applications` was blocked on it. That block is lifted.
 
-## 5. Recommendations
-
-**`RecommendedCourse`** (`freedom_ls/course_recommendations/models.py`): `user` FK, `course` FK, `created_at`. Unique on `(site, user, course)`. A commented-out `form_progress` FK remains in the file. No source, ranking, reason or expiry (decision from the recommend-outcome spec). It is keyed on `User`, not `Learner`.
-
-**Where rows are produced today:**
-
-- Staff in the Django admin (`course_recommendations/admin.py`), and QA commands.
-- The recommend outcome of registration rules (`freedom_ls/registration_rules/`): a `RegistrationRule` with `outcome="recommend"`, evaluated in `evaluation.py`, scheduled by `signals.py` and `tasks.py`. Provenance is `RuleRecommendation` in `registration_rules/models.py`. A recommendation with a `RuleRecommendation` is rule-made. One with none is staff-made and rules never touch it. Deleting the last `RuleRecommendation` deletes the `RecommendedCourse`.
-- `freedom_ls/course_recommendations/queries.py::clear_registered_recommendations` deletes recommendations for courses the user is registered for, "whoever made them". This applies to a producer from application answers too.
-
-**Is there a pluggable producer seam? No, not for recommendations.**
-
-- `registration_rules/loader.py::get_rule_kind` plus `REGISTRATION_RULE_KINDS` is a pluggable seam, but for rule kinds. `AttributeRuleKind.matching_learners(state)` (`registration_rules/kinds.py`) returns a `QuerySet[Learner]`. It decides who matches from HR attributes (job title, department, location) and is keyed on `Learner` and organisation.
-- The registration-rules engine runs from learner and attribute changes. It does not know of application answers or of applicants who are not yet `Learner`s.
-- `course_recommendations` has no producer setting, no loader and no `*Decision`. The idea says "the same seam as the resolver", meaning the house pattern (`COURSE_ACCESS_BACKEND`, `MESSAGING_POLICY`: loader, return value, boot-time check, conformance tests). That seam does not exist yet for recommendations. **This spec must create it**, so it is larger than the idea suggests.
-
-**Reuse or new seam?** Two choices for the spec:
-
-1. A new setting such as `APPLICATION_RECOMMENDER` in `course_applications` (or `course_recommendations`), naming a class with one method taking the application and returning the courses to recommend. FLS reconciles the result against `RecommendedCourse` rows. Matches the resolver pattern and does not touch registration rules. Recommended.
-2. A new rule kind in `registration_rules`. Does not fit: kinds select `Learner`s by HR attributes, per organisation, with a rule model and admin. An applicant is often not a `Learner`.
-
-**What a producer reading application answers needs:**
-
-- The `CourseApplication` (it gives `user`, `anonymous_applicant`, `form_progress`, `course`). The producer reads the answers from `form_progress`, as the lead-monitoring API does.
-- A `User` to attach rows to. `RecommendedCourse.user` is not nullable. **An anonymous applicant has no `User`, so no row can exist.** Rows can only be made once the application has a `user`: signed in at start, or after the claim link is followed (`claims.attach_to_user` in `freedom_ls/course_applications/claims.py`, `adopt_anonymous_applications_on_login` in `receivers.py`). The spec must say: recompute when the application gains a `user`. Making `user` nullable on `RecommendedCourse` is a bigger change that touches the dashboard and the clear logic, so avoid it.
-- A learner need not exist. Nothing in `RecommendedCourse` or `get_recommended_courses(user)` requires a `Learner`, so this works. The dashboard section is filtered by `CourseAccessBackend.filter_visible` (`freedom_ls/learner_interface/views.py::_visible_recommendations`), which is what hides non-visible courses.
-- A re-run trigger: a signal on answer save, on the application gaining a `user`, and on review events if the producer reads verdicts. `receivers.py` already has `touch_application_on_answer_change`, a place to hang this. Run it as a task after commit, like registration rules.
-- Ownership for reconcile. When an applicant changes "e-learning" to "in-person", the producer's earlier rows must go and new ones appear, but staff-made and rule-made rows for the same user must stay. The registration-rules approach (`RuleRecommendation` per rule) shows the problem. The new producer needs its own provenance row (for example `ApplicationRecommendation(application, recommendation)`), or a source field on `RecommendedCourse`. The recommend-outcome spec rejected adding a source field there (decision 3 and "carries no source"), so a provenance table in `course_applications` is the consistent option, with `course_recommendations` gaining no new dependency. If a rule and the application producer both recommend the same course, the shared row must survive until the last holder lets go. That is the same many-owners rule the recommend-outcome spec settled.
-- The unregistered check. `clear_registered_recommendations` removes a recommendation once the user registers. The producer must not re-add one for a course the user is registered for. Reuse `registered_course_pairs` (`freedom_ls/learner_management/queries.py`).
-- Site and organisation: `RecommendedCourse` is site-aware but has no organisation. Fine.
-
-**Where the learner sees recommendations:** the dashboard, "Recommended courses" section, in `freedom_ls/learner_interface/views.py` (`_visible_recommendations`, `_recommended_section`, around lines 248 and 477) and `dashboard_sections.py`. Paginated. A signed-in applicant who is not registered sees it there. An applicant with no `User` sees nothing, so the application pages themselves may need to show "courses we suggest for you". That is a UI decision the spec must make explicitly. The idea does not ask for it.
-
-## 6. Size and dependencies
+## 5. Size and dependencies
 
 **Help requests can ship before application requirements exist.**
 
@@ -164,14 +131,6 @@ The `phone-number-form-field` spec says `multi-step-course-applications` was blo
 - Add: the field helpers (section 4), a webhook type (section 3), optionally a notification category (section 2), and abuse protection for anonymous posts. The existing `honeypot_field()` and `reject_honeypot` in `freedom_ls/accounts/forms.py` (used by `ApplicantEmailForm`) and a rate limit like the claim-email one give a pattern.
 - Medium size on its own, assuming the field helper is a small extraction.
 
-**Recommendations can ship independently of review states and requirements.**
-
-- It reads form answers only. Answers exist now (`form_progress`, `QuestionAnswer`). The idea's study-mode question is just a form question, so branch logic is not needed.
-- It does not depend on application states or the resolver. If the producer is to read reviewer verdicts later, add that then. Design the producer's input as "the application", so it can read more as the application grows.
-- Hard dependencies are the three things above: the new producer seam (section 5), a provenance row for the many-owners rule, and the `User` limit for anonymous applicants. The last one is the main product risk: an anonymous applicant sees no recommendations until claiming.
-- Medium size, and larger than help requests because the seam and provenance are new. A first cut limited to signed-in applicants and the claimed case, with the "applicant gains a user" trigger, is a sensible boundary.
-- Order between the two does not matter. Neither needs the other. Help requests need application-review's organisation and reviewer role, and recommendations need nothing from the idea's earlier steps.
-
 ## References
 
 - `spec_dd/1. next/multi-step-course-applications/idea.md`
@@ -179,15 +138,11 @@ The `phone-number-form-field` spec says `multi-step-course-applications` was blo
 - `spec_dd/1. next/lead-capture-forms/idea.md`
 - `spec_dd/1. next/educator-interface-full-polish/application-review-ui/idea.md`
 - `spec_dd/3. done/2026-11-12_16:29_phone-number-form-field/1. spec.md`
-- `spec_dd/3. done/2026-10-25_21:23_corporate-job-course-recommendations-3-recommend-outcome/1. spec.md`
 - `spec_dd/3. done/2026-11-05_12:26_apis-for-lead-monitoring-2-course-applications/1. spec.md`
 - `claude_plugins/fls-dev/skills/notifications/SKILL.md`
 - `freedom_ls/webhooks/events.py`, `freedom_ls/base/webhook_event_types.py`
 - `freedom_ls/comms/notify.py`, `freedom_ls/base/notification_categories.py`
 - `freedom_ls/form_engine/phone_numbers.py`
-- `freedom_ls/course_recommendations/models.py`, `freedom_ls/course_recommendations/queries.py`
-- `freedom_ls/registration_rules/loader.py`, `freedom_ls/registration_rules/kinds.py`, `freedom_ls/registration_rules/evaluation.py`
 - `freedom_ls/course_applications/models.py`, `freedom_ls/course_applications/receivers.py`, `freedom_ls/course_applications/forms.py`
-- `freedom_ls/learner_interface/views.py`
 
 status: ok

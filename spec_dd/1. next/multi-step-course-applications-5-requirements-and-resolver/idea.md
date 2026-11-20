@@ -1,6 +1,6 @@
 # Application requirements and the requirement resolver
 
-Spec 5 of 12 in the Multi-step course applications effort. Read the "Multi-step course applications" section of
+Spec 5 of 11 in the Multi-step course applications effort. Read the "Multi-step course applications" section of
 `spec_dd/1. next/roadmap.md` first: it holds the build order, what this spec depends on and may
 run beside, the decisions already taken and the assumptions every idea in the effort makes.
 

@@ -1,6 +1,6 @@
 # Applicants pick onward courses
 
-Spec 12 of 12 in the Multi-step course applications effort. Read the "Multi-step course applications" section of
+Spec 11 of 11 in the Multi-step course applications effort. Read the "Multi-step course applications" section of
 `spec_dd/1. next/roadmap.md` first: it holds the build order, what this spec depends on and may
 run beside, the decisions already taken and the assumptions every idea in the effort makes.
 
@@ -20,7 +20,7 @@ and the reviewer matches it to the onward list by eye.
 ## What is settled
 
 - The switch is authored on the intake course's content and is off by default. With it off only the
-  reviewer chooses, as `multi-step-course-applications-11-intake-courses` leaves it.
+  reviewer chooses, as `multi-step-course-applications-10-intake-courses` leaves it.
 - With it on, an applicant with a claimed account sees the intake course's onward courses on their
   status page and picks any number of them. Each shows the course and the organisation.
 - Picks are open from the moment the application exists, before and after approval.
@@ -50,7 +50,7 @@ and the reviewer matches it to the onward list by eye.
 
 ## Resources
 
-- `spec_dd/1. next/multi-step-course-applications-11-intake-courses/idea.md`: intake courses, onward
+- `spec_dd/1. next/multi-step-course-applications-10-intake-courses/idea.md`: intake courses, onward
   courses and the registrations section.
 - `spec_dd/1. next/multi-step-course-applications/intake_courses_case.md`.
 - `spec_dd/1. next/multi-step-course-applications-1-review-states/idea.md`: the status page and what

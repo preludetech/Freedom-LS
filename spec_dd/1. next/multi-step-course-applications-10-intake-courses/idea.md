@@ -1,6 +1,6 @@
 # Intake courses
 
-Spec 11 of 12 in the Multi-step course applications effort. Read the "Multi-step course applications" section of
+Spec 10 of 11 in the Multi-step course applications effort. Read the "Multi-step course applications" section of
 `spec_dd/1. next/roadmap.md` first: it holds the build order, what this spec depends on and may
 run beside, the decisions already taken and the assumptions every idea in the effort makes.
 
@@ -56,6 +56,8 @@ clicks. FLS records the result.
 
 - The review screen of an approved application for an intake course gains a registrations section. It
   lists every onward course, with the organisation, and shows which the applicant is registered for.
+- The reviewer chooses from the applicant's answers, which the review screen already shows. FLS
+  suggests no course to the reviewer and recommends none to the applicant.
 - Each onward course has a register action. It makes the applicant a `Learner` in that organisation
   through `ensure_learner` and registers them through `register_for_course`, with the reviewer as
   actor. The existing audit entries and webhooks cover it. No new notification is added, because the
@@ -87,7 +89,7 @@ clicks. FLS records the result.
 - Enforcing an order between onward courses. The reviewer registers the second when the learner is
   ready for it.
 - Payments, discounts and bundle prices. The price shown is the intake course's own.
-- The applicant picking onward courses (`multi-step-course-applications-12-applicant-picks-onward-courses`).
+- The applicant picking onward courses (`multi-step-course-applications-11-applicant-picks-onward-courses`).
 - Holding registrations back for requirements (`multi-step-course-applications-6-reviewer-verdicts`).
 
 ## Resources

@@ -1,7 +1,7 @@
 # The case behind intake courses
 
-A second case for the effort, added after the cut. `multi-step-course-applications-11-intake-courses`
-and `multi-step-course-applications-12-applicant-picks-onward-courses` build it.
+A second case for the effort, added after the cut. `multi-step-course-applications-10-intake-courses`
+and `multi-step-course-applications-11-applicant-picks-onward-courses` build it.
 
 ## The case
 
@@ -32,6 +32,7 @@ a discount.
 | --- | --- |
 | Apply for something that is not one course | An intake course |
 | Say where applicants may end up | The intake course's onward courses, in content |
+| The applicant's answers decide the courses | The reviewer reads the answers and registers. Nothing is recommended to the applicant |
 | Several courses, at one partner or several | The reviewer registers each onward course separately |
 | The second course waits for the first | The reviewer registers it later |
 | A partner must agree | The reviewer asks, then registers |

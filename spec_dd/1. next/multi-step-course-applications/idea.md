@@ -1,4 +1,4 @@
-> This idea has been cut into 12 specs. Their order, dependencies, the decisions already taken and
+> This idea has been cut into 11 specs. Their order, dependencies, the decisions already taken and
 > the assumptions are in the "Multi-step course applications" section of `spec_dd/1. next/roadmap.md`. Start there.
 > The text below is the original brief and is kept as written.
 
@@ -13,7 +13,7 @@ decided so far. FLS owns the machinery. A downstream project owns the rules that
 An aviation deployment. An applicant says what qualifications they already hold. Depending on the
 answer they may have to sit an exam at a centre near them, and they need a medical from a specialist
 doctor who is also near them. They pick a way of studying, e-learning or in-person lectures, and that
-changes which courses we recommend. They upload documents along the way: licences, logbooks, medical
+changes which courses they are registered for. They upload documents along the way: licences, logbooks, medical
 certificates. These are often hard to find, so they arrive in any order. Some steps come after the
 application is approved.
 
@@ -39,8 +39,6 @@ Nearby work this builds on:
   qualifications and branch on the answer".
 - `file-scanning`: content scanning for uploaded files.
 - `phone-number-form-field`: needed by the ask-for-help contact form.
-- `RecommendedCourse` and the recommend outcome in
-  `corporate-job-course-recommendations-3-recommend-outcome`.
 
 ## Application requirements
 
@@ -210,17 +208,20 @@ own CRM.
 Anonymous applicants have no `User`, so this cannot be built on `comms` direct messaging. A request
 hangs off the `CourseApplication`, which already covers both kinds of applicant.
 
-## Recommendations from application answers
+## Courses from application answers
 
-The way of studying an applicant chooses changes which courses we recommend. Those recommendations are
-`RecommendedCourse` rows made by a pluggable producer, the same seam as the resolver. FLS does not grow
-a second recommendation mechanism.
+Applicants are registered for courses. Nothing is recommended to them. What an applicant says, such
+as the way of studying they chose and the qualifications they hold, decides which courses they take.
+A reviewer reads the answers and registers the applicant for those courses.
+
+Where the application is for something broader than one course, the course applied for is an intake
+course and the courses the applicant can end up in are its onward courses. `intake_courses_case.md`
+has the case and the decisions.
 
 ## What stays in the downstream project
 
 - The qualification types and the rules mapping them to exams and medicals, as a requirement resolver
 - The lists of exam centres and medical examiners, and the "nearest to you" ranking
-- The study-mode-to-course mapping
 - Its own document types
 - Its wording, through template overrides
 
@@ -240,7 +241,6 @@ already looks like this:
    reopening a completed form sitting
 4. Upload requirements outside form sittings, with rejection reasons, choices and upload history
 5. Asking for help
-6. Recommendations from application answers
 
 `file-scanning` should land before a deployment takes medical or identity documents in production.
 

@@ -1,6 +1,6 @@
 # Applicant help requests
 
-Spec 9 of 12 in the Multi-step course applications effort. Read the "Multi-step course applications" section of
+Spec 9 of 11 in the Multi-step course applications effort. Read the "Multi-step course applications" section of
 `spec_dd/1. next/roadmap.md` first: it holds the build order, what this spec depends on and may
 run beside, the decisions already taken and the assumptions every idea in the effort makes.
 
@@ -38,7 +38,7 @@ Applicants stall mid-form on things only a person can answer: which documents co
 
 ## Resources
 
-- `spec_dd/1. next/multi-step-course-applications/research_help_and_recommendations.md`, sections 1 to 4 and 6
+- `spec_dd/1. next/multi-step-course-applications/research_help_requests.md`, sections 1 to 5
 - `spec_dd/1. next/multi-step-course-applications/idea.md`, "Asking for help"
 - `claude_plugins/fls-dev/skills/notifications/SKILL.md`
 - `freedom_ls/form_engine/phone_numbers.py`

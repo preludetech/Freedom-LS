@@ -1,6 +1,6 @@
 # Reviewer verdicts on requirements
 
-Spec 6 of 12 in the Multi-step course applications effort. Read the "Multi-step course applications" section of
+Spec 6 of 11 in the Multi-step course applications effort. Read the "Multi-step course applications" section of
 `spec_dd/1. next/roadmap.md` first: it holds the build order, what this spec depends on and may
 run beside, the decisions already taken and the assumptions every idea in the effort makes.
 
@@ -32,7 +32,7 @@ Requirements are only a to-do list for the applicant until a reviewer can clear 
 
 - An application cannot be approved while a requirement that holds back approval is not accepted.
 - After approval, while requirements that hold back registration are outstanding, the application sits in a new state, "approved, conditions outstanding". The approval outcome from `multi-step-course-applications-3-approval-outcome` runs when the last such requirement is accepted, with that reviewer as the actor.
-- On an intake course (`multi-step-course-applications-11-intake-courses`) approval registers nobody, so requirements that hold back registration hold back the reviewer's onward course registrations instead. The register actions stay unavailable, with the reason shown, until the last such requirement is accepted.
+- On an intake course (`multi-step-course-applications-10-intake-courses`) approval registers nobody, so requirements that hold back registration hold back the reviewer's onward course registrations instead. The register actions stay unavailable, with the reason shown, until the last such requirement is accepted.
 - Requirements that hold nothing do not affect either step.
 - The application-level "changes requested" state from the old draft is not built. Only the requirement is turned down.
 
@@ -56,10 +56,10 @@ Requirements are only a to-do list for the applicant until a reviewer can clear 
 
 ## Resources
 
-- `spec_dd/1. next/multi-step-course-applications-11-intake-courses/idea.md`: intake courses and the registrations section whose actions this spec holds back.
+- `spec_dd/1. next/multi-step-course-applications-10-intake-courses/idea.md`: intake courses and the registrations section whose actions this spec holds back.
 - `spec_dd/1. next/multi-step-course-applications/idea.md`: "Application requirements" and "Reviewer verdicts", and the rejected-qualification walk-through.
 - `spec_dd/1. next/multi-step-course-applications-5-requirements-and-resolver/research_requirements_and_forms.md`: sections 5 and 6 (reconcile hook, verdict inside the same transaction).
 - `spec_dd/1. next/multi-step-course-applications/research_review_foundations.md`: sections 2 and 4 (`course_access` and what accepted means, `audit_log`).
 - `spec_dd/1. next/multi-step-course-applications-7-upload-requirements/research_uploads.md`: section 6 (document types and reasons).
-- `spec_dd/1. next/multi-step-course-applications/research_help_and_recommendations.md`: section 2 (notifications for verdicts).
+- `spec_dd/1. next/multi-step-course-applications/research_help_requests.md`: section 2 (notifications for verdicts).
 - `claude_plugins/fls-dev/skills/notifications/SKILL.md`.
