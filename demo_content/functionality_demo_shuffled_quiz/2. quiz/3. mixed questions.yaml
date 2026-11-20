@@ -1,0 +1,41 @@
+---
+content_type: FORM_PAGE
+title: Mixed questions
+uuid: 7fb5f7bf-0638-4542-a8a0-98dd73d1aa50
+---
+options:
+- correct: true
+  text: Mars
+  uuid: 21bf9566-c18c-4bc7-8768-e468a69b0e92
+  value: mars
+- text: The Moon
+  uuid: 8c9a0235-e977-44ab-b100-8cc48a2379a6
+  value: moon
+- correct: true
+  text: Venus
+  uuid: 9b3f1d9f-44e1-4921-a662-9881b76ff690
+  value: venus
+- text: The Sun
+  uuid: 49c790a1-ceee-41ac-992d-c3921d414d8e
+  value: sun
+question: Which of these are planets?
+type: checkboxes
+uuid: 03c66c98-ebbd-4cdb-8340-ed2567a5e8d7
+---
+options:
+- text: Venus
+  uuid: 34fa2590-5e13-46b1-98cc-270cb8fab94c
+  value: venus
+- correct: true
+  text: Earth
+  uuid: 5973908d-25d5-4c85-8fa9-73f568d630ad
+  value: earth
+- text: Mars
+  uuid: d0fc946e-9e46-4f7f-9875-04a370331f86
+  value: mars
+- text: Jupiter
+  uuid: fd556808-fafe-4885-baeb-3eb056f889e6
+  value: jupiter
+question: Which planet is third from the Sun?
+type: dropdown
+uuid: e4bb99f8-6e4e-40df-b684-ff9f3f88f122

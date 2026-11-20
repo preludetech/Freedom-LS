@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450" role="img" aria-label="Landscape placeholder">
+  <rect width="800" height="450" fill="#2B6CB0"/>
+  <rect x="0" y="300" width="800" height="150" fill="#1A2332"/>
+  <circle cx="650" cy="110" r="60" fill="#F6E05E"/>
+  <text x="400" y="230" font-family="Inter, sans-serif" font-size="48" font-weight="700" fill="#F7F8FA" text-anchor="middle">Landscape 800×450</text>
+</svg>

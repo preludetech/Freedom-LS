@@ -1,0 +1,56 @@
+---
+content_type: FORM_PAGE
+title: The solar system
+uuid: aa4e6641-a3cc-44a4-ab76-29f01610c375
+---
+options:
+- correct: true
+  text: Mercury
+  uuid: 58e3e725-d27c-4f5c-88da-4c40fe9f17b7
+  value: mercury
+- text: Venus
+  uuid: 3393ffa0-3040-4dd8-84ee-3ade4bfb882e
+  value: venus
+- text: Earth
+  uuid: 283b2ec2-8c0a-4b5e-af79-b4a1eaa2175f
+  value: earth
+- text: Mars
+  uuid: e46b7c0c-8b21-42eb-92ec-8f18dc5dcb38
+  value: mars
+question: Which planet is closest to the Sun?
+type: multiple_choice
+uuid: af6ab299-fe27-4a85-8f4b-76ff8389cab2
+---
+options:
+- text: Jupiter
+  uuid: 7d528bf6-85a7-4d15-ac14-ba6d8865224d
+  value: jupiter
+- text: Saturn
+  uuid: 13e64b44-b2bb-4878-8a01-ae304d59cb3e
+  value: saturn
+- text: Neptune
+  uuid: 495da6b1-f4e1-46f7-85e5-7d121fbe8d8f
+  value: neptune
+- correct: true
+  locked: true
+  text: All of the above
+  uuid: 54e3a62c-e9e2-4981-9957-ba1f2def029e
+  value: all
+question: Which of these are planets?
+type: multiple_choice
+uuid: 90333340-5235-42df-b99b-3836e33b362d
+---
+options:
+- correct: true
+  text: Jupiter
+  uuid: e05a1f14-ff03-4d58-a0e5-82407d20af14
+  value: jupiter
+- text: Saturn
+  uuid: 75bb03d0-e4c5-40e6-a3ab-8052aa250842
+  value: saturn
+- text: Earth
+  uuid: 9b694813-6b49-4d05-9d40-38f533fe63de
+  value: earth
+question: Which planet is the largest?
+type: multiple_choice
+uuid: 1c6afcae-86f9-4d90-9da5-4fcf1270078d

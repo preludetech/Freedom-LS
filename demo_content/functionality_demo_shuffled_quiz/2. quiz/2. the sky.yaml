@@ -1,0 +1,73 @@
+---
+content_type: FORM_PAGE
+title: The sky
+uuid: bc4b7e1c-52ea-4e08-a6ba-0006fe02afc8
+---
+options:
+- correct: true
+  text: Blue
+  uuid: e5225e03-c1fc-4bd2-be69-db514aad74ba
+  value: blue
+- text: Green
+  uuid: 320bc911-dd5b-4b69-923e-f3dad3f0657f
+  value: green
+- text: Purple
+  uuid: a9df0030-cb5d-421e-9c3e-c07248577eb7
+  value: purple
+question: What colour is the sky at midday?
+type: multiple_choice
+uuid: 6101eb66-18ce-42c1-9966-33ac61fe00da
+---
+content: |-
+  Look at the picture, then answer the next two questions.
+
+  <c-picture src="../images/landscape.svg" alt="A blue sky over a dark horizon with a yellow sun in the upper right"></c-picture>
+group: sky-picture
+uuid: f0fd3ba1-196d-4f21-8fb6-4dad5c836063
+---
+group: sky-picture
+options:
+- correct: true
+  text: The Sun
+  uuid: 12edcc8a-5e70-481e-8d8a-0b80063862c6
+  value: sun
+- text: The Moon
+  uuid: ac91ff08-f7f7-4b37-ae37-fc5dbcfa6118
+  value: moon
+- text: A planet
+  uuid: 96c6a2a2-b51a-44f3-aba0-ee3854f148d9
+  value: planet
+question: What is the yellow shape in the picture?
+type: multiple_choice
+uuid: 4999b532-a0da-4547-a617-c159218ebb3c
+---
+group: sky-picture
+options:
+- correct: true
+  text: Upper right
+  uuid: d0b0cdb4-c054-4abf-be61-09f7579a5247
+  value: upper_right
+- text: Lower left
+  uuid: 81a58cff-8db8-43fe-aa36-c3d535e9455b
+  value: lower_left
+- text: Centre
+  uuid: 6c76d4f2-95d4-4024-a948-c44110e70b3e
+  value: centre
+question: Where is the yellow shape in the picture?
+type: multiple_choice
+uuid: 56f19380-bec7-4639-8133-65ffb4d4c46f
+---
+options:
+- correct: true
+  text: The Earth
+  uuid: cffc2b67-21a9-433d-b84a-4ef346d4bea2
+  value: earth
+- text: The Sun
+  uuid: a3b79850-b943-4966-a5e8-f49dd82b134b
+  value: sun
+- text: Mars
+  uuid: 19518d68-5dcc-4ed7-a4b0-2ce7b63c6b1b
+  value: mars
+question: What does the Moon orbit?
+type: multiple_choice
+uuid: a10c7751-cd64-449f-a1ca-aa851cfab3b7
