@@ -1486,16 +1486,6 @@ def view_course_item(request, course_slug, index):
         gated_record if paused else _ensure_player_course_progress(request.user, course)
     )
 
-    # Finalise any stale incomplete attempt for a submit-on-exit form before the
-    # outline is built, so the outline shows the finalised state. No-op for
-    # save-on-exit forms.
-    if isinstance(current_item, Form) and course_progress is not None and not paused:
-        finalise_stale_incomplete(
-            course_progress,
-            current_collection_item,
-            kept_if_untouched_since=_latest_pause_start(course_progress),
-        )
-
     # Sequential-unlock gate. Built here rather than inside _player_chrome_context
     # so the decision is made before anything is written, then handed on to the
     # chrome so the index is built once.
@@ -1532,6 +1522,33 @@ def view_course_item(request, course_slug, index):
         else None
     )
 
+    entry = current_entry(course_index)
+    closed = entry is not None and entry["status"] == CLOSED
+
+    # Finalise a stale open attempt at a submit-on-exit form (a no-op for
+    # save-on-exit forms) only once the gates above have let the learner in and
+    # the item is open, then rebuild the outline so it shows the finalised state.
+    if (
+        isinstance(current_item, Form)
+        and course_progress is not None
+        and not paused
+        and not closed
+        and finalise_stale_incomplete(
+            course_progress,
+            current_collection_item,
+            kept_if_untouched_since=_latest_pause_start(course_progress),
+        )
+        is not None
+    ):
+        player_index = _player_course_index(
+            request.user,
+            course,
+            index,
+            course_progress,
+            outline_mode=_outline_mode(decision),
+        )
+        course_index = player_index.rows
+
     # Player chrome context shared by topic and form item pages: the outline
     # with the current item marked, the containing part (for breadcrumb / title),
     # the CourseProgress (for the header progress bar / %), and the 1-based index.
@@ -1549,8 +1566,7 @@ def view_course_item(request, course_slug, index):
         outline_mode=_outline_mode(decision),
     )
 
-    entry = current_entry(course_index)
-    if entry is not None and entry["status"] == CLOSED:
+    if entry is not None and closed:
         return _render_closed_notice(
             request,
             entry=entry,

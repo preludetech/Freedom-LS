@@ -3645,6 +3645,22 @@ def test_closed_form_page_post_is_refused_and_saves_no_answers(
 
 @pytest.mark.django_db
 @time_machine.travel(AFTER_CLOSE, tick=False)
+def test_opening_a_closed_submit_on_exit_form_leaves_its_open_sitting_open(
+    mock_site_context: object, client: Client
+) -> None:
+    course, _question, attempt = _closed_form_with_open_attempt(
+        client, submit_on_exit=True
+    )
+
+    response = client.get(_item_url(course))
+
+    assert response.status_code == 200
+    attempt.refresh_from_db()
+    assert attempt.completed_time is None
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
 def test_closed_form_start_is_sent_to_the_closed_notice(mock_site_context, client):
     course, _question, _attempt = _closed_form_with_open_attempt(
         client, submit_on_exit=False
