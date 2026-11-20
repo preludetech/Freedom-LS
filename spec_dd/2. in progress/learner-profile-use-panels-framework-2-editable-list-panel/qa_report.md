@@ -69,8 +69,8 @@ Actual: `reference.py` hard-codes "You can add up to 3 contacts. Remove one to a
 | Test id | Viewport | URL | Screenshot | Result |
 |---|---|---|---|---|
 | 1 | desktop | /panel-framework/components/ | [element-2026-11-20T00-34-06-314Z.png](screenshots/element-2026-11-20T00-34-06-314Z.png) | clean |
-| 1 | mobile | /panel-framework/components/ | [page-2026-11-20T00-34-47-727Z.png](screenshots/page-2026-11-20T00-34-47-727Z.png) | clean |
-| 1 | tablet | /panel-framework/components/ | [page-2026-11-20T00-35-03-722Z.png](screenshots/page-2026-11-20T00-35-03-722Z.png) | clean |
+| 1 | mobile | /panel-framework/components/ | [page-2026-11-20T00-34-47-727Z.png](screenshots/page-2026-11-20T00-34-47-727Z.png) | B1 (pre-fix screenshot; the probe missed the stretched Edit button) |
+| 1 | tablet | /panel-framework/components/ | [page-2026-11-20T00-35-03-722Z.png](screenshots/page-2026-11-20T00-35-03-722Z.png) | B1 (pre-fix screenshot; the probe missed the stretched Edit button) |
 | 2 | mobile | /educator/organisations/demodev/cohorts | [page-2026-11-20T00-35-58-114Z.png](screenshots/page-2026-11-20T00-35-58-114Z.png) | clean |
 
 The probe flags nothing for test 1 at mobile and tablet, but those same screenshots show the B1 card fault. The probe checks overflow and clipping, not button grouping.
@@ -89,6 +89,7 @@ The scratch records do not name the agent call or command that made each change,
 ## Bug status
 
 - **FIXED** (commit: c75fecb66) — Editable list table layout: card view splits the Edit and Remove buttons across grid cells. `<c-panel-table-card>` gained a `content` slot rendered under the title and outside the label/value grid; re-checked at 375: title, detail, then Edit and Remove together on one row. The data-table cards example and the cohorts list cards are unchanged. ![](screenshots/page-2026-11-20T00-58-10-129Z.png)
+  - Re-checked 2026-11-20 after `08e076f26` (item footer). The B1 screenshots above predate that fix. At 375 and 768, in `#editable-list-default`, `#editable-list-cap` and `#editable-list-table`, every entry's Edit (41px) and Remove (69px) share a top inside `[data-item-footer]`. They sit under the detail and are left-aligned with the title, and neither is full width. At 1920 the table row keeps them on one line. QA plan Test 1 step 6 now makes this a blocking, measured check. After the fix: ![](screenshots/fixed/editable-list-table-375.png) ![](screenshots/fixed/editable-list-table-768.png) ![](screenshots/fixed/editable-list-default-375.png) ![](screenshots/fixed/editable-list-default-768.png) ![](screenshots/fixed/editable-list-cap-375.png) ![](screenshots/fixed/editable-list-cap-768.png) ![](screenshots/fixed/editable-list-table-1920.png)
 - **FIXED** (commit: 12ddce5a7) — Component reference cap example shows a different sentence from the panel's real cap line. The panel and the reference now share `editable_list_cap_line`; the example reads "You can have up to 3. Remove one to add another."
 - **FIXED** (commit: 77a4ade6a) — Learner Registrations panel: Deactivate/Reactivate sat in the row's trailing slot. It now sits in the row's item footer under the course title and detail; the badge stays alone at the right and a cohort row has no footer. — after the fix: ![](screenshots/fixed/page-2026-11-20T08-44-05-992Z.png) ![](screenshots/fixed/page-2026-11-20T08-44-19-925Z.png) ![](screenshots/fixed/page-2026-11-20T08-44-33-485Z.png)
 - **FIXED** (commit: e580ec962) — `test_saving_one_entry_twice_announces_both_saves` raced the announcer's 50 ms refill under load; it now waits for all three recorded changes before asserting.
