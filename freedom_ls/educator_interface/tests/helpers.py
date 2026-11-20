@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import copy
+import uuid
+from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, cast
 
 import lxml.html
 from pytest_django.fixtures import DjangoAssertNumQueries
 
 from django.db import connection
+from django.db.models import Model
 from django.http import HttpRequest
 from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
@@ -16,6 +19,9 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
+from freedom_ls.audit_log.factories import AuditLogEntryFactory
+from freedom_ls.audit_log.models import AuditLogEntry
+from freedom_ls.audit_log.writer import record_entry, record_run_summary
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseAudience
 from freedom_ls.learner_management.factories import (
@@ -184,3 +190,86 @@ def _bulk_text(response: _MonkeyPatchedWSGIResponse) -> str:
     return " ".join(
         lxml.html.fromstring(response.content.decode()).text_content().split()
     )
+
+
+QUERY_BUDGET = 60
+
+
+def _get_document(client: Client, url: str) -> lxml.html.HtmlElement:
+    response = client.get(url)
+    assert response.status_code == 200
+    return lxml.html.fromstring(response.content.decode())
+
+
+def _history_entry(learner: Learner, **overrides: object) -> AuditLogEntry:
+    return cast(
+        AuditLogEntry,
+        AuditLogEntryFactory(
+            target=learner,
+            organisation=learner.organisation,
+            action="learner.deactivated",
+            **overrides,
+        ),
+    )
+
+
+def _visible_text(element: lxml.html.HtmlElement) -> str:
+    """The text of `element` without the avatar chip's inline stylesheet."""
+    clone = copy.deepcopy(element)
+    for style in clone.cssselect("style"):
+        style.drop_tree()
+    return str(clone.text_content()).strip()
+
+
+def _entry_rows(document: lxml.html.HtmlElement, selector: str) -> list[list[str]]:
+    """Each entry row's data cells, without its toggle cell or its detail row."""
+    return [
+        [_visible_text(cell) for cell in row.cssselect("td")][1:]
+        for row in document.cssselect(f"{selector} tbody tr:not([data-row-detail])")
+    ]
+
+
+def _row_details(document: lxml.html.HtmlElement, selector: str) -> list[str]:
+    """The text of each row detail, in row order."""
+    return [
+        " ".join(row.text_content().split())
+        for row in document.cssselect(f"{selector} tbody tr[data-row-detail]")
+    ]
+
+
+def _audit_log_url(organisation: Organisation) -> str:
+    return _interface_url(organisation.slug, "audit-log")
+
+
+def _audit_log_rows(document: lxml.html.HtmlElement) -> list[list[str]]:
+    return _entry_rows(document, "body")
+
+
+def _record_run(
+    organisation: Organisation,
+    learners: Sequence[object],
+    run_id: uuid.UUID,
+    target_label: str = "Spring cohort",
+) -> None:
+    for learner in learners:
+        record_entry(
+            action="learner.deactivated",
+            actor=None,
+            target=cast(Model, learner),
+            target_label=target_label,
+            organisation=organisation,
+            run_id=run_id,
+        )
+    record_run_summary(
+        action="bulk_action.completed",
+        run_id=run_id,
+        organisation=organisation,
+        actor=None,
+        counts={"changed": len(learners), "skipped": 0, "failed": 0},
+    )
+
+
+def _audit_log_document(
+    staff_client: Client, organisation: Organisation
+) -> lxml.html.HtmlElement:
+    return _get_document(staff_client, _audit_log_url(organisation))

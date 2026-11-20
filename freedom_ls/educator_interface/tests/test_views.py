@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import copy
 import csv
 import io
 import json
 import uuid
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
@@ -72,6 +71,17 @@ from freedom_ls.educator_interface.learner_import import (
 )
 from freedom_ls.educator_interface.messaging import OwnConversation
 from freedom_ls.educator_interface.tests.helpers import (
+    QUERY_BUDGET,
+    _audit_log_document,
+    _audit_log_rows,
+    _audit_log_url,
+    _entry_rows,
+    _get_document,
+    _history_entry,
+    _interface_url,
+    _record_run,
+    _row_details,
+    _visible_text,
     course_per_reach_row,
     get_interface_page,
     organisation_admin_viewer,
@@ -142,25 +152,10 @@ from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.site_context import drop_ambient_request, site_context
 
-QUERY_BUDGET = 60
-
 if TYPE_CHECKING:
     from pytest_django.fixtures import SettingsWrapper
 
     from django.test.client import _MonkeyPatchedWSGIResponse
-
-
-def _interface_url(organisation_slug: str, path_string: str) -> str:
-    return reverse(
-        "educator_interface:interface",
-        kwargs={"organisation_slug": organisation_slug, "path_string": path_string},
-    )
-
-
-def _get_document(client: Client, url: str) -> lxml.html.HtmlElement:
-    response = client.get(url)
-    assert response.status_code == 200
-    return lxml.html.fromstring(response.content.decode())
 
 
 @pytest.mark.django_db
@@ -2057,42 +2052,6 @@ def test_the_history_tab_renders_its_empty_state(staff_client: Client):
 
     template_names = [t.name for t in response.templates]
     assert "panel_framework/partials/table_empty.html" in template_names
-
-
-def _history_entry(learner: Learner, **overrides: object) -> AuditLogEntry:
-    return cast(
-        AuditLogEntry,
-        AuditLogEntryFactory(
-            target=learner,
-            organisation=learner.organisation,
-            action="learner.deactivated",
-            **overrides,
-        ),
-    )
-
-
-def _visible_text(element: lxml.html.HtmlElement) -> str:
-    """The text of `element` without the avatar chip's inline stylesheet."""
-    clone = copy.deepcopy(element)
-    for style in clone.cssselect("style"):
-        style.drop_tree()
-    return str(clone.text_content()).strip()
-
-
-def _entry_rows(document: lxml.html.HtmlElement, selector: str) -> list[list[str]]:
-    """Each entry row's data cells, without its toggle cell or its detail row."""
-    return [
-        [_visible_text(cell) for cell in row.cssselect("td")][1:]
-        for row in document.cssselect(f"{selector} tbody tr:not([data-row-detail])")
-    ]
-
-
-def _row_details(document: lxml.html.HtmlElement, selector: str) -> list[str]:
-    """The text of each row detail, in row order."""
-    return [
-        " ".join(row.text_content().split())
-        for row in document.cssselect(f"{selector} tbody tr[data-row-detail]")
-    ]
 
 
 def _history_rows(document: lxml.html.HtmlElement) -> list[list[str]]:
@@ -4208,14 +4167,6 @@ def test_a_learner_registration_shows_on_the_learner_history_tab(staff_client: C
     assert [row[2] for row in rows] == ["Learner registered for course Algebra"]
 
 
-def _audit_log_url(organisation: Organisation) -> str:
-    return _interface_url(organisation.slug, "audit-log")
-
-
-def _audit_log_rows(document: lxml.html.HtmlElement) -> list[list[str]]:
-    return _entry_rows(document, "body")
-
-
 @pytest.mark.django_db
 def test_the_audit_log_shows_when_as_day_month_year_and_24_hour_time(
     staff_client: Client,
@@ -4418,30 +4369,6 @@ def test_the_filtered_audit_log_empty_state_offers_a_clear_link(staff_client: Cl
     assert "Clear filters" in html
 
 
-def _record_run(
-    organisation: Organisation,
-    learners: Sequence[object],
-    run_id: uuid.UUID,
-    target_label: str = "Spring cohort",
-) -> None:
-    for learner in learners:
-        record_entry(
-            action="learner.deactivated",
-            actor=None,
-            target=cast(Model, learner),
-            target_label=target_label,
-            organisation=organisation,
-            run_id=run_id,
-        )
-    record_run_summary(
-        action="bulk_action.completed",
-        run_id=run_id,
-        organisation=organisation,
-        actor=None,
-        counts={"changed": len(learners), "skipped": 0, "failed": 0},
-    )
-
-
 @pytest.mark.django_db
 def test_a_bulk_run_is_one_audit_log_row_listing_fifty_entries_and_the_rest(
     staff_client: Client,
@@ -4533,12 +4460,6 @@ def _avatar_slot(cell: lxml.html.HtmlElement) -> str | None:
             if name.startswith("panel-avatar-"):
                 return name
     return None
-
-
-def _audit_log_document(
-    staff_client: Client, organisation: Organisation
-) -> lxml.html.HtmlElement:
-    return _get_document(staff_client, _audit_log_url(organisation))
 
 
 @pytest.mark.django_db
