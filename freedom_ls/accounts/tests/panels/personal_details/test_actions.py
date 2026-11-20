@@ -674,3 +674,14 @@ def test_the_password_labels_are_in_sentence_case(signed_in):
 
     assert "Current password:" in labels
     assert "New password (again):" in labels
+
+
+def test_the_forgot_password_link_is_plain_text_not_a_padded_button(signed_in):
+    """The link used to be a padded btn-link, so its text sat 8px right of the field edge."""
+    client, user = signed_in
+    _with_password(client, user)
+
+    panel = _document(client).cssselect('section[data-panel="password"]')[0]
+
+    (link,) = panel.cssselect('a[href="/accounts/password/reset/"]')
+    assert "btn" not in (link.get("class") or "").split()
