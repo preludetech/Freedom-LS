@@ -153,6 +153,13 @@ resolves attempts through `learner_progress/attempts.py`, never through `FormPro
 | **course share** (coined) | `Course.shared_with` | An owning organisation naming another organisation in `shared_with:`. That organisation's educators then use the course as the owners' do; `available_to_organisation_expression` / `is_course_available_to_organisation` (`learner_management/queries.py`) read it. Not "grant", which is a role assignment. |
 | `SiteAwareModel` / `SiteAwareModelBase` / `SiteAwareManager` | `site_aware_models/models.py` | The base model and manager that apply the site filter. |
 
+## Account area — `freedom_ls/accounts/`
+
+| Term | Defined at | Means |
+| --- | --- | --- |
+| **account area** (coined) | `accounts/sidebar.py` | The signed-in user's own settings pages, which share the account shell and its sidebar: Personal details, Email, Password. It applies to every signed-in user, learner, educator or admin. |
+| **Personal details** | `accounts/panels/personal_details/` | The private page in the account area where users edit their own details. Not the public profile: "profile" is kept for the coming public profile, so don't call this page "Profile". |
+
 ## Messaging: `freedom_ls/messaging_policy/`, `freedom_ls/learner_management/queries.py`
 
 | Term | Defined at | Means |
