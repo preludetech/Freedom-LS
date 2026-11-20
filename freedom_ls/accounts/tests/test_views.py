@@ -291,8 +291,8 @@ def _post_login(client: Client, *, login: str, password: str, next_url: str):
 
 @pytest.mark.django_db
 def test_failed_login_shows_an_error_callout_then_the_signup_callout(
-    mock_site_context, apply_url
-):
+    mock_site_context: object, apply_url: str
+) -> None:
     response = _post_login(
         Client(),
         login="nobody@example.com",

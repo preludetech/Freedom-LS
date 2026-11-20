@@ -469,7 +469,7 @@ QA looks: `test_no_control_link_is_hand_styled`, `test_every_anchor_with_visible
 `test_no_dialog_pads_its_own_body`, `test_every_dialog_renders_one_modal_footer_outside_its_body`
 (one footer per step, none in a template that extends one),
 `test_no_dialog_template_hand_writes_what_a_component_owns` (no Cancel button, `text-sm`,
-`px-6 py-4`, `bg-error/10` or `<c-callout>`), `test_no_framework_template_calls_the_host_callout` (no `<c-callout>` in any framework
+`px-6 py-4` or `bg-error/10`), `test_no_framework_template_calls_the_host_callout` (no `<c-callout>` in any framework
 template), `test_every_dialog_loading_text_ends_in_the_ellipsis_character`,
 `test_every_dialog_disables_only_its_own_submit_buttons`,
 `test_no_dialog_form_with_a_find_selector_holds_an_element_that_issues_its_own_request`,

@@ -21,7 +21,7 @@ replaces the form with that sentence and a Close button.
 {% endif %}
 {% include "panel_framework/partials/error_summary.html" %}
 
-    {% include "partials/form.html" %}
+    {% include "partials/form.html" with hide_non_field_errors=True %}
     </c-modal-body>
 
     <c-modal-footer>

@@ -611,6 +611,20 @@ def test_error_summary_does_not_count_a_form_level_error_as_a_field(
     assert "to fix" not in content
 
 
+@pytest.mark.django_db
+def test_a_form_level_error_is_announced_once(mock_site_context: Site) -> None:
+    """The error summary shows a non-field error; the form below it does not repeat it."""
+    action = StubFormLevelErrorCreateAction()
+    request = RequestFactory().post("/", {"name": "Anything"})
+    request.user = make_staff_user()
+
+    response = action.handle_submit(_ctx(request, None, "/items"))
+
+    content = response.content.decode()
+    assert content.count('role="alert"') == 1
+    assert content.count("These values cannot be combined.") == 1
+
+
 class _PlainForm(forms.Form):
     name = forms.CharField()
     colour = forms.CharField(required=False)

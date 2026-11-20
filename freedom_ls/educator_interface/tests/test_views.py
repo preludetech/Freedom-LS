@@ -8228,7 +8228,7 @@ def test_course_content_callout_shows_only_while_in_development(
 @pytest.mark.django_db
 def test_course_content_callout_has_space_below_it_before_the_table(
     staff_client: Client,
-):
+) -> None:
     """The in-development callout's wrapper had top padding only, so the callout touched the table."""
     course = CourseFactory(table_of_contents_in_development=True)
 

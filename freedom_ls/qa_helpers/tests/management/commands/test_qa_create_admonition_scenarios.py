@@ -33,7 +33,9 @@ from freedom_ls.qa_helpers.management.commands.qa_create_admonition_scenarios im
 pytestmark = [pytest.mark.django_db, pytest.mark.dev_tooling]
 
 
-def test_solo_org_drops_other_staff_and_keeps_staff_elsewhere(mock_site_context):
+def test_solo_org_drops_other_staff_and_keeps_staff_elsewhere(
+    mock_site_context: Site,
+) -> None:
     site: Site = Site.objects.get_current()
     viewer = UserFactory(site=site, is_superuser=True)
     solo = OrganisationFactory(site=site, name="QA Solo Org", slug=SOLO_ORG_SLUG)
@@ -48,7 +50,9 @@ def test_solo_org_drops_other_staff_and_keeps_staff_elsewhere(mock_site_context)
     assert StaffMember._base_manager.filter(pk=elsewhere.pk).exists()
 
 
-def test_move_learner_is_left_in_the_source_cohort_only(mock_site_context):
+def test_move_learner_is_left_in_the_source_cohort_only(
+    mock_site_context: Site,
+) -> None:
     site: Site = Site.objects.get_current()
     organisation = OrganisationFactory(site=site)
     learner = LearnerFactory(

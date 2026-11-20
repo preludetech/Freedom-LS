@@ -33,3 +33,13 @@ def test_form_partial_does_not_hand_build_the_error_box() -> None:
     )
 
     assert "bg-error/10" not in html
+
+
+def test_form_partial_leaves_out_non_field_errors_when_asked() -> None:
+    html = render_to_string(
+        "partials/form.html",
+        {"form": _form_with_non_field_error(), "hide_non_field_errors": True},
+    )
+
+    assert "The two dates overlap." not in html
+    assert 'role="alert"' not in html

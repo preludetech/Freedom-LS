@@ -224,7 +224,10 @@ def test_reference_shows_a_callout_in_each_tone(tone: str) -> None:
     block = block[: block.index("</div>")]
     role = ROLE_BY_TONE[tone]
 
-    assert (f'role="{role}"' in block) is (role is not None)
+    if role is None:
+        assert "role=" not in block
+    else:
+        assert f'role="{role}"' in block
 
 
 def _example_block(html: str, example_id: str) -> str:

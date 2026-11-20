@@ -79,7 +79,6 @@ from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
 QA_LOGIN = "demodev@email.com"
-WIDGETS_COURSE_PK = "8bc127c1-edf1-4997-b7fc-35fdf8604f30"
 PAUSED_SLUG = "functionality-demo-course-parts"
 ENDED_SLUG = "functionality-demo-show-end-with-topic"
 QUIZ_SLUG = "functionality-demo-show-end-with-quiz"
@@ -145,7 +144,7 @@ def _registration_and_record(
 
 
 def _ensure_widgets_toc(site: Site) -> None:
-    course = Course._base_manager.get(pk=WIDGETS_COURSE_PK, site=site)
+    course = _course(site, "content-widgets-demo-reference")
     old = course.table_of_contents_in_development
     Course._base_manager.filter(pk=course.pk).update(
         table_of_contents_in_development=True
@@ -265,7 +264,7 @@ def _ensure_delete_cohorts(site: Site, org: Organisation) -> None:
 
 
 def _ensure_move_learner(site: Site) -> User:
-    user = User._base_manager.filter(email=MOVE_LEARNER_EMAIL).first()
+    user = User._base_manager.filter(site=site, email=MOVE_LEARNER_EMAIL).first()
     if user is None:
         user = cast(
             User,
