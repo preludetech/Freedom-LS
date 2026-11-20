@@ -16,12 +16,14 @@ from freedom_ls.audit_log.factories import AuditLogEntryFactory
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.educator_interface.filters import (
-    AuditActionFilter,
-    AuditActorFilter,
     LearnerCohortFilter,
     LearnerCourseFilter,
     LearnerStatusFilter,
     StaffRoleFilter,
+)
+from freedom_ls.educator_interface.panels.audit_log.filters import (
+    AuditActionFilter,
+    AuditActorFilter,
 )
 from freedom_ls.educator_interface.panels.common.filters import VisibleCourseFilter
 from freedom_ls.educator_interface.tests.helpers import (

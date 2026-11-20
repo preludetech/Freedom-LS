@@ -116,8 +116,6 @@ from freedom_ls.educator_interface.events import (
 )
 from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
 from freedom_ls.educator_interface.filters import (
-    AuditActionFilter,
-    AuditActorFilter,
     LearnerCohortFilter,
     LearnerCourseFilter,
     LearnerStatusFilter,
@@ -144,6 +142,10 @@ from freedom_ls.educator_interface.messaging import (
     OwnConversation,
     other_educator_conversations,
     own_conversation_with,
+)
+from freedom_ls.educator_interface.panels.audit_log.filters import (
+    AuditActionFilter,
+    AuditActorFilter,
 )
 from freedom_ls.educator_interface.panels.common.badges import (
     active_status_badge,
