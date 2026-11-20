@@ -519,3 +519,113 @@ def test_a_question_without_the_sections_key_parses() -> None:
     )
 
     assert question.sections is None
+
+
+_KNOBS = ["shuffle_pages", "shuffle_questions", "shuffle_options"]
+
+
+@pytest.mark.parametrize("knob", _KNOBS)
+@pytest.mark.parametrize("strategy", ["UNSCORED", "CATEGORY_VALUE_SUM"])
+def test_a_shuffle_knob_on_a_non_quiz_form_is_rejected(
+    knob: str, strategy: str
+) -> None:
+    with pytest.raises(
+        ValidationError, match=f"{knob} should only be set when strategy is QUIZ"
+    ):
+        Form.model_validate(
+            {
+                "content_type": "FORM",
+                "file_path": "forms/survey/form.md",
+                "title": "Survey",
+                "strategy": strategy,
+                knob: True,
+            }
+        )
+
+
+@pytest.mark.parametrize("knob", _KNOBS)
+def test_a_shuffle_knob_on_a_quiz_form_parses(knob: str) -> None:
+    form = Form.model_validate(
+        {
+            "content_type": "FORM",
+            "file_path": "forms/quiz/form.md",
+            "title": "Quiz",
+            "strategy": "QUIZ",
+            "quiz_show_incorrect": True,
+            "quiz_pass_percentage": 70,
+            knob: True,
+        }
+    )
+
+    assert getattr(form, knob) is True
+
+
+@pytest.mark.parametrize("knob", _KNOBS)
+def test_a_shuffle_knob_in_a_page_header_is_rejected(knob: str) -> None:
+    with pytest.raises(ValidationError):
+        FormPage.model_validate(
+            {
+                "content_type": "FORM_PAGE",
+                "file_path": "forms/quiz/1. page.yaml",
+                "title": "Page",
+                knob: True,
+            }
+        )
+
+
+_GROUPABLE = [
+    pytest.param(
+        FormQuestion,
+        {
+            "content_type": "FORM_QUESTION",
+            "file_path": "forms/quiz/1. page.yaml",
+            "question": "What is a part?",
+            "type": "short_text",
+        },
+        id="question",
+    ),
+    pytest.param(
+        FormContent,
+        {
+            "content_type": "FORM_CONTENT",
+            "file_path": "forms/quiz/1. page.yaml",
+            "content": "Read this first",
+        },
+        id="content",
+    ),
+]
+
+
+@pytest.mark.parametrize("group", ["", "   ", " a", "a ", "a" * 101])
+@pytest.mark.parametrize(("model", "payload"), _GROUPABLE)
+def test_a_blank_padded_or_overlong_group_is_rejected(
+    model: type[FormQuestion | FormContent], payload: dict[str, str], group: str
+) -> None:
+    with pytest.raises(ValidationError):
+        model.model_validate({**payload, "group": group})
+
+
+@pytest.mark.parametrize(("model", "payload"), _GROUPABLE)
+def test_a_group_name_parses(
+    model: type[FormQuestion | FormContent], payload: dict[str, str]
+) -> None:
+    item = model.model_validate({**payload, "group": "a"})
+
+    assert item.group == "a"
+
+
+def test_a_locked_option_parses() -> None:
+    question = FormQuestion.model_validate(
+        {
+            "content_type": "FORM_QUESTION",
+            "file_path": "forms/quiz/1. page.yaml",
+            "question": "Pick one",
+            "type": "multiple_choice",
+            "options": [
+                {"text": "A", "value": 1, "locked": True},
+                {"text": "B", "value": 2},
+            ],
+        }
+    )
+
+    assert [o.locked for o in question.options or []] == [True, False]

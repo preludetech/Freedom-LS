@@ -55,6 +55,26 @@ def _reject_bare_sections(value: object) -> object:
     return value
 
 
+def _check_group(value: str | None) -> str | None:
+    """A blank or padded group name is almost always a typo, and two
+    spellings of one name would split a keep-together group silently."""
+    if value is None:
+        return None
+    if not value.strip():
+        raise ValueError("group is empty. Give it a name, or remove the key.")
+    if value != value.strip():
+        raise ValueError(
+            f'group "{value}" has leading or trailing spaces. Remove them.'
+        )
+    return value
+
+
+GROUP_DESCRIPTION = (
+    "Keep-together group: children of one page sharing this name stay "
+    "together, in authored order, when the page's questions shuffle. QUIZ forms only"
+)
+
+
 class Form(
     BaseContentModel,
     MarkdownContentModel,
@@ -86,6 +106,18 @@ class Form(
         False,
         description="If True, leaving the test mid-attempt finalises and scores it. Default False.",
     )
+    shuffle_pages: bool = Field(
+        False,
+        description="QUIZ only. If True, each sitting serves the pages in a random order. Default False.",
+    )
+    shuffle_questions: bool = Field(
+        False,
+        description="QUIZ only. If True, each sitting serves each page's questions in a random order. Default False.",
+    )
+    shuffle_options: bool = Field(
+        False,
+        description="QUIZ only. If True, each sitting serves each question's options in a random order. Default False.",
+    )
 
     @model_validator(mode="after")
     def validate_quiz_fields(self):
@@ -110,6 +142,16 @@ class Form(
                 raise ValueError(
                     f"quiz_pass_percentage should only be set when strategy is QUIZ (in {self.file_path})"
                 )
+            knobs = {
+                "shuffle_pages": self.shuffle_pages,
+                "shuffle_questions": self.shuffle_questions,
+                "shuffle_options": self.shuffle_options,
+            }
+            for name, is_on in knobs.items():
+                if is_on:
+                    raise ValueError(
+                        f"{name} should only be set when strategy is QUIZ (in {self.file_path})"
+                    )
         return self
 
 
@@ -189,11 +231,17 @@ class QuestionOption(BaseModel):
     correct: bool | None = Field(
         None, description="Used in Quizzes: Is this the correct answer?"
     )
+    locked: bool = Field(
+        False,
+        description="Used in shuffled quizzes: keep this option at its authored position",
+    )
 
 
 class FormContent(BaseBaseContentModel, content_type=ContentType.FORM_CONTENT):
     content: str = Field(..., description="Text")
     when: Condition | None = Field(None, description=WHEN_DESCRIPTION)
+    group: str | None = Field(None, max_length=100, description=GROUP_DESCRIPTION)
+    _group_is_clean = field_validator("group")(_check_group)
 
 
 class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION):
@@ -231,6 +279,8 @@ class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION)
         ),
     )
     when: Condition | None = Field(None, description=WHEN_DESCRIPTION)
+    group: str | None = Field(None, max_length=100, description=GROUP_DESCRIPTION)
+    _group_is_clean = field_validator("group")(_check_group)
     sections: list[Path] | None = Field(None, description=SECTIONS_DESCRIPTION)
     _sections_not_bare = field_validator("sections", mode="before")(
         _reject_bare_sections
