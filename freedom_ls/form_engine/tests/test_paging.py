@@ -541,7 +541,7 @@ def test_answered_counts_leave_out_an_off_path_answer_and_question(gated_tail):
 
 
 @pytest.fixture
-def served_three(four_page_form) -> FormProgress:
+def served_three(four_page_form: Form) -> FormProgress:
     """A sitting on the first three pages of a form, served as pages 3, 1, 2."""
     pages = list(four_page_form.pages.all())[:3]
     progress: FormProgress = FormProgressFactory(form=four_page_form)

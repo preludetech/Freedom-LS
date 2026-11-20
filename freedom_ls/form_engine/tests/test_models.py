@@ -259,7 +259,7 @@ def test_record_page_reached_remembers_the_furthest_page(mock_site_context):
 
 
 @pytest.fixture
-def served_out_of_order(mock_site_context):
+def served_out_of_order(mock_site_context: object) -> FormProgress:
     """A quiz sitting served its three pages as 3, 1, 2."""
     form: Form = FormFactory(strategy=FormStrategy.QUIZ)
     pages: list[FormPage] = [
@@ -328,7 +328,7 @@ class TwoQuestionQuiz:
 
 
 @pytest.fixture
-def two_question_quiz(mock_site_context) -> TwoQuestionQuiz:
+def two_question_quiz(mock_site_context: object) -> TwoQuestionQuiz:
     """A quiz of two single-option questions; the learner answered the first rightly."""
     form: Form = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=100)
     page = FormPageFactory(form=form, order=0)

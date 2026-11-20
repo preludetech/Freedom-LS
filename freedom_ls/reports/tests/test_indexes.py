@@ -9,6 +9,8 @@ did.
 
 from __future__ import annotations
 
+from uuid import UUID
+
 import pytest
 import time_machine
 from PIL import Image
@@ -33,7 +35,13 @@ from freedom_ls.form_engine.factories import (
     QuestionOptionFactory,
     served_paper_of,
 )
-from freedom_ls.form_engine.models import FormStrategy, QuestionType
+from freedom_ls.form_engine.models import (
+    Form,
+    FormPage,
+    FormQuestion,
+    FormStrategy,
+    QuestionType,
+)
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -1249,12 +1257,14 @@ class TestLoadOrganisationLogoDataUri:
 
 class TestASittingIsPairedOnlyWithItsServedQuestions:
     @pytest.fixture
-    def quiz_with_three_questions(self, mock_site_context):
-        course = CourseFactory()
-        quiz = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
+    def quiz_with_three_questions(
+        self, mock_site_context: object
+    ) -> tuple[Form, FormPage, list[FormQuestion], CourseProgress]:
+        course: Course = CourseFactory()
+        quiz: Form = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
         _attach(course, quiz, order=0)
-        page = FormPageFactory(form=quiz, order=0)
-        questions = [
+        page: FormPage = FormPageFactory(form=quiz, order=0)
+        questions: list[FormQuestion] = [
             FormQuestionFactory(
                 form_page=page, type=QuestionType.MULTIPLE_CHOICE, order=index
             )
@@ -1265,9 +1275,10 @@ class TestASittingIsPairedOnlyWithItsServedQuestions:
         _, records = _cohort_registered_for(course, learner_count=1)
         return quiz, page, questions, records[0]
 
-    def _paired_question_ids(self, quiz, record):
-        cohort = record.cohort_registration.cohort
-        loaded = _load_everything(cohort, quiz.site_id)
+    def _paired_question_ids(self, quiz: Form, record: CourseProgress) -> set[UUID]:
+        registration = record.cohort_registration
+        assert registration is not None
+        loaded = _load_everything(registration.cohort, quiz.site_id)
         return {question.id for _, question in loaded["sat"].pairs}
 
     def test_a_sitting_with_a_subset_paper_is_paired_only_with_its_served_questions(

@@ -73,6 +73,7 @@ from freedom_ls.form_engine.factories import (
     served_paper_of,
 )
 from freedom_ls.form_engine.models import (
+    Form,
     FormProgress,
     FormQuestion,
     FormStrategy,
@@ -4957,37 +4958,48 @@ class QuizApplication(NamedTuple):
     second_option: QuestionOption
 
 
-def _quiz_application_form():
+def _quiz_application_form() -> tuple[
+    Course,
+    Form,
+    tuple[FormQuestion, FormQuestion, FormQuestion, FormQuestion],
+    tuple[QuestionOption, QuestionOption],
+]:
     """A quiz application form of three pages, every question required but `extra`.
 
     Page 1 holds `pick` (a multiple choice) and `extra`; pages 2 and 3 hold one
     short text question each.
     """
-    form = FormFactory(strategy=FormStrategy.QUIZ)
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ)
     page_one = FormPageFactory(form=form, order=0, title="First authored")
-    pick = FormQuestionFactory(
+    pick: FormQuestion = FormQuestionFactory(
         form_page=page_one, type="multiple_choice", order=0, required=True
     )
-    first_option = QuestionOptionFactory(question=pick, text="Alpha", order=0)
-    second_option = QuestionOptionFactory(question=pick, text="Omega", order=1)
-    extra = FormQuestionFactory(
+    first_option: QuestionOption = QuestionOptionFactory(
+        question=pick, text="Alpha", order=0
+    )
+    second_option: QuestionOption = QuestionOptionFactory(
+        question=pick, text="Omega", order=1
+    )
+    extra: FormQuestion = FormQuestionFactory(
         form_page=page_one, type="short_text", order=1, required=False
     )
     page_two = FormPageFactory(form=form, order=1, title="Second authored")
-    second = FormQuestionFactory(
+    second: FormQuestion = FormQuestionFactory(
         form_page=page_two, type="short_text", order=0, required=True
     )
     page_three = FormPageFactory(form=form, order=2, title="Third authored")
-    third = FormQuestionFactory(
+    third: FormQuestion = FormQuestionFactory(
         form_page=page_three, type="short_text", order=0, required=True
     )
-    course = CourseFactory(access_config={"access_type": "application_gated"})
+    course: Course = CourseFactory(access_config={"access_type": "application_gated"})
     course.application_form = form
     course.save(update_fields=["application_form"])
     return course, form, (pick, extra, second, third), (first_option, second_option)
 
 
-def _served_quiz_application(client, *, with_paper: bool = True) -> QuizApplication:
+def _served_quiz_application(
+    client: Client, *, with_paper: bool = True
+) -> QuizApplication:
     """A signed-in applicant's quiz sitting, served page 3, page 1, then page 2.
 
     On page 1 the optional question comes before the multiple choice and its
@@ -5020,16 +5032,18 @@ def _served_quiz_application(client, *, with_paper: bool = True) -> QuizApplicat
 
 
 @pytest.fixture
-def quiz_application(client, mock_site_context) -> QuizApplication:
+def quiz_application(client: Client, mock_site_context: object) -> QuizApplication:
     return _served_quiz_application(client)
 
 
 @pytest.fixture
-def paperless_quiz_application(client, mock_site_context) -> QuizApplication:
+def paperless_quiz_application(
+    client: Client, mock_site_context: object
+) -> QuizApplication:
     return _served_quiz_application(client, with_paper=False)
 
 
-def _paper_of(sitting: FormProgress):
+def _paper_of(sitting: FormProgress) -> object:
     sitting.refresh_from_db()
     return sitting.served_paper
 
@@ -5185,7 +5199,7 @@ def test_an_edit_that_leaves_a_required_question_unanswered_goes_to_the_next_ser
 
 @pytest.fixture
 def answered_quiz_application(
-    client, quiz_application: QuizApplication
+    client: Client, quiz_application: QuizApplication
 ) -> QuizApplication:
     """The served quiz application with every required question answered."""
     app = quiz_application.application
@@ -5208,13 +5222,13 @@ def test_submitting_a_served_quiz_application_completes_the_sitting(
     assert answered_quiz_application.sitting.completed_time is not None
 
 
-def _anonymous_quiz_application(client):
+def _anonymous_quiz_application(client: Client) -> CourseApplication:
     """An anonymous applicant's quiz sitting, served page 3, page 1, then page 2."""
     course, form, (pick, extra, second, third), (_first, _second_option) = (
         _quiz_application_form()
     )
     _post_details(client, course)
-    app = CourseApplication.objects.get(course=course)
+    app: CourseApplication = CourseApplication.objects.get(course=course)
     page_one, page_two, page_three = form.pages.all()
     FormProgress.objects.filter(pk=app.form_progress_id).update(
         served_paper=served_paper_of(

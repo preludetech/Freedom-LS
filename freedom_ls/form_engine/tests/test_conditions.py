@@ -404,7 +404,7 @@ class ServedForm:
 
 
 @pytest.fixture
-def served_form(mock_site_context) -> ServedForm:
+def served_form(mock_site_context: object) -> ServedForm:
     form: Form = FormFactory()
     page_one = FormPageFactory(form=form, order=0)
     q_one = FormQuestionFactory(form_page=page_one, type="multiple_choice", order=0)

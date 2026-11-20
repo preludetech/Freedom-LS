@@ -26,7 +26,7 @@ from freedom_ls.form_engine.served_paper import (
 
 
 @pytest.fixture
-def quiz_form(mock_site_context) -> Form:
+def quiz_form(mock_site_context: object) -> Form:
     form: Form = FormFactory(strategy=FormStrategy.QUIZ)
     page_one = FormPageFactory(form=form, order=0)
     page_two = FormPageFactory(form=form, order=1)

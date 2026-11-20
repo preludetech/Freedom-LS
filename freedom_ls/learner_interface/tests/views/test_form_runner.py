@@ -10,11 +10,13 @@ import lxml.html
 import pytest
 import time_machine
 
+from django.http import HttpResponse
 from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import TopicFactory
 from freedom_ls.content_engine.models import Course
 from freedom_ls.content_engine.tests.helpers import collection_item_for
@@ -1063,9 +1065,11 @@ def _form_start_url(course: Course) -> str:
 
 
 @pytest.fixture
-def started_quiz(mock_site_context, client):
+def started_quiz(
+    mock_site_context: object, client: Client
+) -> tuple[Course, Form, User]:
     """A registered, logged-in learner's quiz course with its form_start not yet visited."""
-    user = UserFactory()
+    user: User = UserFactory()
     form = _make_quiz_form()
     course = course_with_form(form)
     register_user_for_course(course, user)
@@ -1073,7 +1077,7 @@ def started_quiz(mock_site_context, client):
     return course, form, user
 
 
-def _served_paper_of_sitting(form: Form, user) -> ServedPaper | None:
+def _served_paper_of_sitting(form: Form, user: User) -> ServedPaper | None:
     return cast(
         "ServedPaper | None",
         FormProgress.objects.get(form=form, user=user).served_paper,
@@ -1134,7 +1138,7 @@ def test_form_start_on_a_non_quiz_form_leaves_the_served_paper_null(
     assert _served_paper_of_sitting(form, user) is None
 
 
-def _paperless_quiz_sitting(client):
+def _paperless_quiz_sitting(client: Client) -> tuple[Course, Form, FormProgress]:
     """A logged-in learner's open quiz sitting that has no served paper yet."""
     user = UserFactory()
     form = _make_quiz_form()
@@ -1220,7 +1224,7 @@ class ServedRunner:
 
 
 @pytest.fixture
-def served_runner(mock_site_context, client) -> ServedRunner:
+def served_runner(mock_site_context: object, client: Client) -> ServedRunner:
     form = FormFactory(strategy=FormStrategy.QUIZ)
     pages: list[FormPage] = [
         FormPageFactory(form=form, order=order) for order in range(3)
@@ -1348,7 +1352,7 @@ class ServedOptions:
 
 
 @pytest.fixture
-def served_options_runner(mock_site_context, client) -> ServedOptions:
+def served_options_runner(mock_site_context: object, client: Client) -> ServedOptions:
     form = FormFactory(strategy=FormStrategy.QUIZ)
     page: FormPage = FormPageFactory(form=form, order=0)
     questions: dict[str, FormQuestion] = {}
@@ -1382,7 +1386,9 @@ def served_options_runner(mock_site_context, client) -> ServedOptions:
     return ServedOptions(course, sitting, questions, options)
 
 
-def _rendered_option_values(response, question: FormQuestion) -> list[str]:
+def _rendered_option_values(
+    response: HttpResponse, question: FormQuestion
+) -> list[str]:
     """The option ids a question's inputs carry, top to bottom."""
     document = lxml.html.fromstring(response.content)
     return [
@@ -2517,7 +2523,7 @@ class PaperedResults:
 
 
 @pytest.fixture
-def papered_results(mock_site_context) -> PaperedResults:
+def papered_results(mock_site_context: object) -> PaperedResults:
     """Two single-question pages, both answered rightly, scored 2 of 2 on a paper serving both."""
     form = FormFactory(
         title="Papered Quiz", strategy=FormStrategy.QUIZ, quiz_pass_percentage=50

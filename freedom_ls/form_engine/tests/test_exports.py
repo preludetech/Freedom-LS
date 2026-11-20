@@ -26,7 +26,13 @@ from freedom_ls.form_engine.factories import (
     QuestionOptionFactory,
     served_paper_of,
 )
-from freedom_ls.form_engine.models import FormProgress, FormStrategy, QuestionAnswer
+from freedom_ls.form_engine.models import (
+    Form,
+    FormProgress,
+    FormQuestion,
+    FormStrategy,
+    QuestionAnswer,
+)
 from freedom_ls.form_engine.queries import form_questions
 
 pytestmark = pytest.mark.django_db
@@ -381,12 +387,15 @@ def test_answer_value_of_a_text_question_is_the_stored_text(
     assert answer_value(answer) == expected
 
 
-def _open_quiz_sitting_of_two_questions():
-    form = FormFactory(strategy=FormStrategy.QUIZ)
+def _open_quiz_sitting_of_two_questions() -> tuple[
+    FormProgress, FormQuestion, FormQuestion
+]:
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ)
     page = FormPageFactory(form=form, order=0)
-    served = FormQuestionFactory(form_page=page, order=0)
-    unserved = FormQuestionFactory(form_page=page, order=1)
-    return FormProgressFactory(form=form), served, unserved
+    served: FormQuestion = FormQuestionFactory(form_page=page, order=0)
+    unserved: FormQuestion = FormQuestionFactory(form_page=page, order=1)
+    progress: FormProgress = FormProgressFactory(form=form)
+    return progress, served, unserved
 
 
 def _loaded(progress: FormProgress) -> list[FormProgress]:

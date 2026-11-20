@@ -8,7 +8,7 @@ from django.template import Context, Template
 from django.template.loader import render_to_string
 from django.test import RequestFactory
 
-from freedom_ls.form_engine.conditions import served_path
+from freedom_ls.form_engine.conditions import SittingPath, served_path
 from freedom_ls.form_engine.enums import QuestionType
 from freedom_ls.form_engine.factories import (
     FormPageFactory,
@@ -657,7 +657,7 @@ def test_no_error_rendered_when_rejected_answers_is_empty(mock_site_context):
 
 
 @pytest.fixture
-def served_options(mock_site_context):
+def served_options(mock_site_context: object) -> tuple[FormQuestion, SittingPath]:
     """A multiple-choice question whose sitting is served its options reversed."""
     page: FormPage = FormPageFactory(order=0)
     question: FormQuestion = FormQuestionFactory(
