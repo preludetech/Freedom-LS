@@ -11,6 +11,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### In progress
 
+- 🔴 High · `educator-interface-refactor-2-dashboard-and-audit-log` (Educator interface code layout, via `sacaa-compliance`)
 - 🔴 High · `sacaa-compliance-1-served-paper-record` (SACAA compliance)
 - 🔴 High · `extract_panels_framework-4-template-contract` (Panel framework extraction)
 - 🔴 High · `learner-profile-use-panels-framework-2-editable-list-panel` (Account area on panels)
@@ -19,7 +20,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### Ready to start
 
-- 🔴 High · `educator-interface-refactor-2-dashboard-and-audit-log` (Educator interface code layout, via `sacaa-compliance`)
 - 🔴 High · `multi-step-course-applications-1-review-states` (Multi-step course applications)
 - 🔴 High · `multi-step-course-applications-10-recommendations-from-answers` (Multi-step course applications)
 - 🟠 Medium · `educator-interface-refactor-3-staff` (Educator interface code layout)
@@ -70,7 +70,7 @@ Priority: 🔴 High
 
 The educator interface's `views.py` and `actions.py` split into one `panels/<area>/` package per area, with tests mirrored. Parent: `educator-interface-refactor`.
 
-- `educator-interface-refactor-2-dashboard-and-audit-log` — **ready** — Moves the dashboard and audit log areas, including `HistoryPanel`, into `panels/`, with their tests.
+- `educator-interface-refactor-2-dashboard-and-audit-log` — **in progress** — Moves the dashboard and audit log areas, including `HistoryPanel`, into `panels/`, with their tests.
 - `educator-interface-refactor-3-staff` — **ready** — Moves the staff area's config, table, actions, role filter and quick view into `panels/staff/`, with its tests.
 - `educator-interface-refactor-4-course` — **ready** — Moves the course area, including content preview, into `panels/course/`, with its tests.
 - `educator-interface-refactor-5-learner` — **blocked** by `educator-interface-refactor-2-dashboard-and-audit-log` — Moves the learner area, membership actions and import views into `panels/learner/`, breaks the learner/cohort cycle, and migrates stored bulk-action paths.
