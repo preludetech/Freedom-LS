@@ -26,7 +26,7 @@ The line ranges below are main's, taken before `extract_panels_framework-1-gathe
 
 **No `actions.py`, `bulk_actions.py`, `filters.py` or `quick_view.py`** in this area, because the course section has none of those on main. The two preview actions are course-only and live in `content_preview.py`, as the research tree says. No bulk action moves, so `BulkActionRun.action_path` is untouched. **This spec adds no migration** and does not set `requires_migrations`.
 
-**Imports come from `panels/common/`**, which `educator-interface-refactor-1-scaffolding-and-common` creates: `OrganisationSectionConfig` and `OrganisationScopedRequest` from `common/request.py`, `_interface_link`, `_learner_column`, `_registration_columns` and `RelationLinkColumn` from `common/tables.py`, `uuid_or_404` from `common/ids.py`, and `VisibleCourseFilter` and `ShowInactiveFilter` from `common/filters.py`. The course area imports no other area. It must not import `cohort/`, `learner/` or `staff/`.
+**Imports come from `panels/common/`**, which `educator-interface-refactor-1-scaffolding-and-common` creates: `OrganisationSectionConfig` and `OrganisationScopedRequest` from `common/request.py`, `_interface_link`, `_learner_column` and `_registration_columns` from `common/tables.py`, `uuid_or_404` from `common/ids.py`, and `VisibleCourseFilter` from `common/filters.py`. The course area imports no other area. It must not import `cohort/`, `learner/` or `staff/`.
 
 **Repointed here**, with no re-export shim and no old path left:
 - the course imports in `views.py` (the import block and `interface_config`, which names `CourseConfig`);

@@ -23,7 +23,7 @@ Line ranges below are main's, before `extract_panels_framework-1-gather-generic-
 
 **Dashboard, to `panels/dashboard/`:**
 - `config.py` takes `DashboardConfig` (`views.py` 2436-2441).
-- `panels.py` takes `DashboardPanel` and everything in `reporting.py` from `InlineFigures` through `gathered_figures` (`reporting.py` 332-560). It imports `LazyBodyPanel` and `render_region` from `panels/common/report.py`, not from `reporting.py`.
+- `panels.py` takes `DashboardPanel` and everything in `reporting.py` from `InlineFigures` through `gathered_figures` (`reporting.py` 332-560). It imports `LazyBodyPanel` and `render_region` from `freedom_ls.panel_framework.lazy_panels`, not from `reporting.py`.
 - The tests move from `tests/test_dashboard.py` to `tests/panels/dashboard/test_panels.py`, and any test of `DashboardConfig` goes to `tests/panels/dashboard/test_config.py`. Any dashboard test inside `tests/test_reporting.py` moves to `test_panels.py` too. Today there are only two mentions of the dashboard in that file, so check whether it has any.
 - `LearnerCoursesPanel`, the cohort report classes and the shared report helpers stay in `reporting.py`. They belong to siblings.
 

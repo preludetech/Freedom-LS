@@ -53,7 +53,7 @@ come from `educator-interface-refactor-1-scaffolding-and-common`):
   `ReactivateLearnersBulkAction`, `CourseRegistrationBulkAction`, `RegisterForCourseBulkAction`,
   `DeactivateRegistrationBulkAction` and `ResendSetupEmailBulkAction` (A:3161-3577 minus
   `CoursePickerMixin`, which `educator-interface-refactor-1-scaffolding-and-common` places in
-  `panels/common/bulk_actions.py`). Seven are registered with `@register_bulk_action`.
+  `panels/common/bulk_actions.py` beside `EducatorBulkAction`, the only other name there). Seven are registered with `@register_bulk_action`.
 - `filters.py`: `LearnerStatusFilter`, `LearnerCohortFilter`, `LearnerCourseFilter`.
 - `quick_view.py`: `LearnerQuickView`. `visible_registrations_with_progress` goes with it and the
   cohort quick view imports it from there.
