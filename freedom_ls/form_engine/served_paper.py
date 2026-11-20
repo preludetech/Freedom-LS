@@ -8,17 +8,65 @@ scored the same way however the form is edited afterwards.
 from __future__ import annotations
 
 import secrets
+from collections.abc import Callable, Sequence
+from random import Random
 from uuid import UUID
 
 from django.db.models import prefetch_related_objects
 
 from .conditions import SERVED_TREE_LOOKUPS, ServedPage, ServedPaper
-from .models import Form, FormProgress, FormQuestion, FormStrategy
+from .models import (
+    Form,
+    FormProgress,
+    FormQuestion,
+    FormStrategy,
+    QuestionOption,
+)
+
+
+def new_seed() -> int:
+    """The seed a new served paper is shuffled from. Tests patch this, never `random`."""
+    return secrets.randbits(63)
+
+
+def _scope_rng(seed: int, scope: str) -> Random:
+    # One private generator per scope, so editing one page or question
+    # leaves every other scope's order unchanged for the same seed.
+    return Random(f"{seed}:{scope}")  # noqa: S311 - ordering, not security
+
+
+def shuffle_with_locks[T](
+    items: Sequence[T], is_locked: Callable[[T], bool], rng: Random
+) -> list[T]:
+    """Locked items keep their index; the rest are shuffled into the free positions.
+
+    Shuffling everything and swapping the locked ones back would bias where
+    the free items land.
+    """
+    free_positions = [i for i, item in enumerate(items) if not is_locked(item)]
+    free_items = [items[i] for i in free_positions]
+    rng.shuffle(free_items)
+    result = list(items)
+    for position, item in zip(free_positions, free_items, strict=True):
+        result[position] = item
+    return result
+
+
+def _served_options(
+    question: FormQuestion, form: Form, seed: int
+) -> list[QuestionOption]:
+    options = list(question.options.all())
+    if not form.shuffle_options:
+        return options
+    return shuffle_with_locks(
+        options, lambda o: o.locked, _scope_rng(seed, f"options:{question.id}")
+    )
 
 
 def build_served_paper(form: Form) -> ServedPaper:
     """The paper a sitting starting now is served: the form's current tree in authored order."""
     prefetch_related_objects([form], *SERVED_TREE_LOOKUPS)
+    seed = new_seed()
     pages: list[ServedPage] = []
     options: dict[str, list[str]] = {}
     for page in form.pages.all():
@@ -26,11 +74,13 @@ def build_served_paper(form: Form) -> ServedPaper:
         pages.append({"id": str(page.id), "children": [str(c.id) for c in children]})
         for child in children:
             if isinstance(child, FormQuestion):
-                option_ids = [str(o.id) for o in child.options.all()]
+                option_ids = [str(o.id) for o in _served_options(child, form, seed)]
                 if option_ids:
                     options[str(child.id)] = option_ids
-    # Provenance only: nothing rebuilds an order from the seed.
-    return {"seed": secrets.randbits(63), "pages": pages, "options": options}
+    # The seed drives the one-time shuffle when the paper is written.
+    # `random.shuffle` output is not stable across Python versions, so nothing
+    # rebuilds an order from it; the stored lists are the record.
+    return {"seed": seed, "pages": pages, "options": options}
 
 
 def served_child_ids(served_paper: ServedPaper) -> frozenset[UUID]:

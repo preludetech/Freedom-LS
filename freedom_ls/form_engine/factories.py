@@ -1,7 +1,5 @@
 """Factories for form_engine models."""
 
-import secrets
-
 import factory
 
 from django.core.files.base import ContentFile
@@ -20,6 +18,7 @@ from freedom_ls.form_engine.models import (
     QuestionAnswerFile,
     QuestionOption,
 )
+from freedom_ls.form_engine.served_paper import new_seed
 from freedom_ls.site_aware_models.factories import SiteAwareFactory
 
 
@@ -133,7 +132,7 @@ def served_paper_of(
         for question, question_options in (options or {}).items()
     }
     return {
-        "seed": secrets.randbits(63),
+        "seed": new_seed(),
         "pages": served_pages,
         "options": served_options,
     }
