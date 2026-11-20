@@ -8,8 +8,10 @@ row's main value on top, then its other values labelled. The slot holds
 The `content` slot holds free content (a detail line, a row of buttons). It
 sits under the main value and outside the label/value grid, which would
 otherwise turn each child into its own grid cell.
+
+Other attributes (a data-* hook, say) land on the <li>.
 {% endcomment %}
-<li class="px-4 py-4 sm:px-6">
+<li class="px-4 py-4 sm:px-6" {{ attrs }}>
     <p class="min-w-0 break-words font-bold">{{ primary }}</p>
     {% if content %}<div class="mt-1">{{ content }}</div>{% endif %}
     <c-panel-definition-list layout="inline" class="mt-3 empty:hidden">{{ slot }}</c-panel-definition-list>

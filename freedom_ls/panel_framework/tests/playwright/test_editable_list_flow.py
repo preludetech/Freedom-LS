@@ -181,3 +181,36 @@ def test_editable_list_adds_edits_and_removes_without_a_page_load(
             assert box["x"] + box["width"] <= viewport["width"]
             page.keyboard.press("Escape")
             expect(modal).to_be_hidden()
+
+
+def test_editable_list_without_an_edit_trigger_announces_and_focuses_the_entry(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    """A person who may add and remove but not change still hears which entry
+    changed, and focus lands on that entry's own trigger."""
+    parent = make_stub(name="No edit parent")
+    modal = page.locator("#app-modal")
+    panel = page.locator("[data-panel='entries_no_edit']")
+    announcer = page.locator("#scope-announcer")
+    page.goto(
+        f"{live_server.url}/test-panel/framework/stubs/{parent.pk}/__tabs/entries_no_edit"
+    )
+
+    for title in ("Alpha", "Beta"):
+        panel.get_by_role("button", name="Add stub entry").click()
+        modal.get_by_label("Title").fill(title)
+        modal.get_by_role("button", name="Add", exact=True).click()
+        expect(modal).to_be_hidden()
+        expect(announcer).to_have_text(f"Added {title}.")
+        expect(panel.get_by_role("button", name=f"Remove {title}")).to_be_focused()
+    expect(panel.get_by_role("button", name="Edit Alpha")).to_have_count(0)
+
+    # Removing an entry focuses the next entry's Remove trigger.
+    panel.get_by_role("button", name="Remove Alpha").click()
+    modal.get_by_role("button", name="Remove", exact=True).click()
+    expect(modal).to_be_hidden()
+    expect(announcer).to_have_text("Removed Alpha.")
+    expect(panel.get_by_role("button", name="Remove Beta")).to_be_focused()

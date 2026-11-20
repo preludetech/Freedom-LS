@@ -1598,6 +1598,25 @@ def test_an_entry_trigger_carries_its_action_pk_and_title_hooks(
     assert trigger.get("data-entry-title") == "Alpha"
 
 
+@pytest.mark.parametrize(("tab", "drawn"), [("entries", 1), ("entries_table", 2)])
+def test_each_drawing_of_an_entry_carries_its_pk_and_title(
+    mock_site_context: Site, tab: str, drawn: int
+) -> None:
+    """The script reads a changed entry's title from the entry itself, since
+    a person who may add but not change has no Edit trigger to read it from.
+    The table layout draws each entry as a row and as a card."""
+    parent = make_stub()
+    entry = make_stub_entry(parent, "Alpha", "first note")
+
+    root = _layout_entries_html(parent, tab)
+
+    drawings = root.xpath("//*[@data-editable-list-entry]")
+    assert len(drawings) == drawn
+    for drawing in drawings:
+        assert drawing.get("data-entry-pk") == str(entry.pk)
+        assert drawing.get("data-entry-title") == "Alpha"
+
+
 def test_a_quote_in_a_title_stays_one_escaped_entry_title_value(
     mock_site_context: Site,
 ) -> None:
@@ -1609,6 +1628,10 @@ def test_a_quote_in_a_title_stays_one_escaped_entry_title_value(
     assert root.xpath(
         "//*[@data-editable-list-action='edit_entry']/@data-entry-title"
     ) == ['x" onfocus="alert(1)']
+    assert root.xpath("//*[@data-editable-list-entry]/@data-entry-title") == [
+        'x" onfocus="alert(1)'
+    ]
+    assert not root.xpath("//*[@onfocus]")
 
 
 @pytest.mark.parametrize(

@@ -1431,16 +1431,31 @@ let pendingEntryAction = null;
 
 const entryModal = () => document.getElementById("app-modal");
 
-// The Edit trigger for an entry pk inside a panel that is laid out. A table
-// layout draws every entry twice (a row and a card), one of them hidden, so a
-// trigger without layout is skipped. The pk is compared, never put in a
-// selector.
-function visibleEditTrigger(panel, pk) {
+// The first element matching `selector` inside a panel that is laid out and
+// belongs to entry `pk`. A table layout draws every entry twice (a row and a
+// card), one of them hidden, so an element without layout is skipped. The pk
+// is compared, never put in a selector.
+function visibleForEntry(panel, pk, selector) {
     if (!panel || !pk) return null;
-    const triggers = panel.querySelectorAll('[data-editable-list-action="edit_entry"]');
-    return Array.from(triggers).find(
-        (trigger) => trigger.dataset.entryPk === pk && trigger.offsetParent !== null,
+    return Array.from(panel.querySelectorAll(selector)).find(
+        (element) => element.dataset.entryPk === pk && element.offsetParent !== null,
     ) || null;
+}
+
+// An entry's own title, read from the entry, not a trigger: a person who may
+// add but not change an entry has no Edit trigger.
+function entryTitle(panel, pk) {
+    const entry = visibleForEntry(panel, pk, "[data-editable-list-entry]");
+    return entry ? entry.dataset.entryTitle : "";
+}
+
+// The trigger that takes focus for an entry: its Edit trigger, else its
+// Remove trigger, whichever this person is offered.
+function entryFocusTarget(panel, pk) {
+    return (
+        visibleForEntry(panel, pk, '[data-editable-list-action="edit_entry"]') ||
+        visibleForEntry(panel, pk, '[data-editable-list-action="remove_entry"]')
+    );
 }
 
 function visibleAddTrigger(panel) {
@@ -1566,18 +1581,17 @@ document.addEventListener("htmx:afterSwap", (event) => {
     let focusTarget = null;
     let message = "";
     if (action === "remove_entry") {
-        focusTarget = visibleEditTrigger(panel, focusAfterRemove) || visibleAddTrigger(panel);
+        focusTarget = entryFocusTarget(panel, focusAfterRemove) || visibleAddTrigger(panel);
         message = "Removed " + title + ".";
+    } else if (action === "add_entry") {
+        focusTarget =
+            (panel && panel.querySelector("[data-editable-list-cap]")) ||
+            entryFocusTarget(panel, pk) ||
+            visibleAddTrigger(panel);
+        message = "Added " + entryTitle(panel, pk) + ".";
     } else {
-        const edit = visibleEditTrigger(panel, pk);
-        const entryTitle = edit ? edit.dataset.entryTitle : "";
-        if (action === "add_entry") {
-            focusTarget = (panel && panel.querySelector("[data-editable-list-cap]")) || edit;
-            message = "Added " + entryTitle + ".";
-        } else {
-            focusTarget = edit;
-            message = "Saved " + entryTitle + ".";
-        }
+        focusTarget = entryFocusTarget(panel, pk);
+        message = "Saved " + entryTitle(panel, pk) + ".";
     }
     if (focusTarget) focusTarget.setAttribute("data-focus-target", "");
     const announcer = document.getElementById("scope-announcer");

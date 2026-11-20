@@ -6,14 +6,14 @@
             <c-panel-table caption="{{ title }}" cards="true" cards_when_narrow="true">
                 <c-slot name="head"><tr><th scope="col">{{ noun|capfirst }}</th><th scope="col"><span class="sr-only">Actions</span></th></tr></c-slot>
                 {% for entry in entries %}
-                    <tr>
+                    <tr data-editable-list-entry data-entry-pk="{{ entry.pk }}" data-entry-title="{{ entry.title }}">
                         <td><span class="font-medium">{{ entry.title }}</span>{% if entry.detail %}<p class="text-sm text-muted">{{ entry.detail }}</p>{% endif %}</td>
                         <td><c-data-table-actions>{% include "panel_framework/partials/editable_list_entry_triggers.html" %}</c-data-table-actions></td>
                     </tr>
                 {% endfor %}
                 <c-slot name="card_rows">
                     {% for entry in entries %}
-                        <c-panel-table-card primary="{{ entry.title }}">
+                        <c-panel-table-card primary="{{ entry.title }}" data-editable-list-entry data-entry-pk="{{ entry.pk }}" data-entry-title="{{ entry.title }}">
                             <c-slot name="content">
                                 {% if entry.detail %}<p class="text-sm text-muted">{{ entry.detail }}</p>{% endif %}
                                 <c-data-table-actions class="mt-3">{% include "panel_framework/partials/editable_list_entry_triggers.html" %}</c-data-table-actions>
@@ -27,7 +27,7 @@
     {% elif entries %}
         <c-panel-list>
             {% for entry in entries %}
-                <c-panel-list-row title="{{ entry.title }}" detail="{{ entry.detail }}">
+                <c-panel-list-row title="{{ entry.title }}" detail="{{ entry.detail }}" data-editable-list-entry data-entry-pk="{{ entry.pk }}" data-entry-title="{{ entry.title }}">
                     {% include "panel_framework/partials/editable_list_entry_triggers.html" %}
                 </c-panel-list-row>
             {% endfor %}

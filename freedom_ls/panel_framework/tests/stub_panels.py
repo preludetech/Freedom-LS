@@ -37,6 +37,7 @@ from freedom_ls.panel_framework.actions import (
     ConfirmAction,
     CreateInstanceAction,
     DeleteAction,
+    EditableListEditAction,
     FormPanelAction,
     PanelAction,
     ReasonMixin,
@@ -783,6 +784,18 @@ class StubTableEditableListPanel(StubEditableListPanel):
     max_entries = 2
 
 
+class StubNoEditEditableListPanel(StubEditableListPanel):
+    """Adds and removes but never edits, as for a person who may add an
+    entry but not change one."""
+
+    def get_actions(self) -> list[PanelAction]:
+        return [
+            action
+            for action in super().get_actions()
+            if not isinstance(action, EditableListEditAction)
+        ]
+
+
 class StubTabSet(TabSet):
     title = "Stub sections"
     children = {
@@ -801,6 +814,7 @@ class StubTabSet(TabSet):
         "entries_capped": StubCappedEditableListPanel,
         "entries_add_another": StubAddAnotherEditableListPanel,
         "entries_table": StubTableEditableListPanel,
+        "entries_no_edit": StubNoEditEditableListPanel,
     }
 
 
