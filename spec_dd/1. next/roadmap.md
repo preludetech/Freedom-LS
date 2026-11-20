@@ -11,7 +11,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### In progress
 
-- 🔴 High · `educator-interface-refactor-1-scaffolding-and-common` (Educator interface code layout, via `sacaa-compliance`)
 - 🔴 High · `sacaa-compliance-1-served-paper-record` (SACAA compliance)
 - 🔴 High · `extract_panels_framework-4-template-contract` (Panel framework extraction)
 - 🔴 High · `learner-profile-use-panels-framework-2-editable-list-panel` (Account area on panels)
@@ -20,8 +19,11 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### Ready to start
 
+- 🔴 High · `educator-interface-refactor-2-dashboard-and-audit-log` (Educator interface code layout, via `sacaa-compliance`)
 - 🔴 High · `multi-step-course-applications-1-review-states` (Multi-step course applications)
 - 🔴 High · `multi-step-course-applications-10-recommendations-from-answers` (Multi-step course applications)
+- 🟠 Medium · `educator-interface-refactor-3-staff` (Educator interface code layout)
+- 🟠 Medium · `educator-interface-refactor-4-course` (Educator interface code layout)
 - 🟠 Medium · `content-widget-longer-audio` (Audio content widgets)
 - 🟠 Medium · `content-widget-sayit-reveal-2-say-it-reveal` (Audio content widgets)
 - 🟠 Medium · `content-widget-sayit-reveal-4-audio-access-control` (Audio content widgets)
@@ -68,11 +70,10 @@ Priority: 🔴 High
 
 The educator interface's `views.py` and `actions.py` split into one `panels/<area>/` package per area, with tests mirrored. Parent: `educator-interface-refactor`.
 
-- `educator-interface-refactor-1-scaffolding-and-common` — **in progress** — Creates `panels/` and `panels/common/` with the shared request, table, filter, action and report helpers, and their tests.
-- `educator-interface-refactor-2-dashboard-and-audit-log` — **blocked** by `educator-interface-refactor-1-scaffolding-and-common` — Moves the dashboard and audit log areas, including `HistoryPanel`, into `panels/`, with their tests.
-- `educator-interface-refactor-3-staff` — **blocked** by `educator-interface-refactor-1-scaffolding-and-common` — Moves the staff area's config, table, actions, role filter and quick view into `panels/staff/`, with its tests.
-- `educator-interface-refactor-4-course` — **blocked** by `educator-interface-refactor-1-scaffolding-and-common` — Moves the course area, including content preview, into `panels/course/`, with its tests.
-- `educator-interface-refactor-5-learner` — **blocked** by `educator-interface-refactor-1-scaffolding-and-common`, `educator-interface-refactor-2-dashboard-and-audit-log` — Moves the learner area, membership actions and import views into `panels/learner/`, breaks the learner/cohort cycle, and migrates stored bulk-action paths.
+- `educator-interface-refactor-2-dashboard-and-audit-log` — **ready** — Moves the dashboard and audit log areas, including `HistoryPanel`, into `panels/`, with their tests.
+- `educator-interface-refactor-3-staff` — **ready** — Moves the staff area's config, table, actions, role filter and quick view into `panels/staff/`, with its tests.
+- `educator-interface-refactor-4-course` — **ready** — Moves the course area, including content preview, into `panels/course/`, with its tests.
+- `educator-interface-refactor-5-learner` — **blocked** by `educator-interface-refactor-2-dashboard-and-audit-log` — Moves the learner area, membership actions and import views into `panels/learner/`, breaks the learner/cohort cycle, and migrates stored bulk-action paths.
 - `educator-interface-refactor-6-cohort` — **blocked** by `educator-interface-refactor-5-learner` — Moves the cohort area, including reports and report download, into `panels/cohort/`, and migrates stored bulk-action paths.
 - `educator-interface-refactor-7-cleanup` — **blocked** by `educator-interface-refactor-3-staff`, `educator-interface-refactor-4-course`, `educator-interface-refactor-6-cohort` — Deletes the emptied flat modules, trims `views.py` to the shell, and sweeps up old paths, docs and baselines.
 
@@ -194,7 +195,7 @@ Priority: 🔴 High
 Applications become steps an applicant works through over weeks, decided by a deployment's rules and cleared by organisation reviewers. Parent: `multi-step-course-applications`.
 
 - `multi-step-course-applications-1-review-states` — **ready** — Applications get a state and an organisation; applicants see where theirs stands and can withdraw.
-- `multi-step-course-applications-2-reviewers-and-inbox` — **blocked** by `multi-step-course-applications-1-review-states`, `educator-interface-refactor-1-scaffolding-and-common` — Organisation reviewers get an applications inbox and review screen, approve or reject, and move applications between organisations.
+- `multi-step-course-applications-2-reviewers-and-inbox` — **blocked** by `multi-step-course-applications-1-review-states` — Organisation reviewers get an applications inbox and review screen, approve or reject, and move applications between organisations.
 - `multi-step-course-applications-3-approval-outcome` — **blocked** by `multi-step-course-applications-2-reviewers-and-inbox` — A deployment seam decides what approval does; FLS's default registers the applicant for the course.
 - `multi-step-course-applications-4-reopen-form` — **blocked** by `multi-step-course-applications-1-review-states` — Applicants reopen their submitted application form, answers prefilled, until it is approved.
 - `multi-step-course-applications-5-requirements-and-resolver` — **blocked** by `multi-step-course-applications-4-reopen-form` — Applicants work through a requirements page; a deployment resolver, or the course's fixed list, decides the requirements.
