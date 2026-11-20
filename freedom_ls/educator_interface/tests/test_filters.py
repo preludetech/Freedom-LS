@@ -21,6 +21,9 @@ from freedom_ls.educator_interface.filters import (
     LearnerStatusFilter,
     StaffRoleFilter,
 )
+from freedom_ls.educator_interface.panels.audit_log.data_tables import (
+    AuditLogEntryTable,
+)
 from freedom_ls.educator_interface.panels.audit_log.filters import (
     AuditActionFilter,
     AuditActorFilter,
@@ -33,7 +36,6 @@ from freedom_ls.educator_interface.tests.helpers import (
     course_per_reach_row,
 )
 from freedom_ls.educator_interface.views import (
-    AuditLogEntryTable,
     CohortDataTable,
     StaffDataTable,
 )

@@ -70,6 +70,9 @@ from freedom_ls.educator_interface.learner_import import (
     run_learner_import,
 )
 from freedom_ls.educator_interface.messaging import OwnConversation
+from freedom_ls.educator_interface.panels.audit_log.data_tables import (
+    OrganisationAuditLogTable,
+)
 from freedom_ls.educator_interface.tests.helpers import (
     QUERY_BUDGET,
     _audit_log_document,
@@ -7428,7 +7431,7 @@ EDUCATOR_TABLES: list[type[DataTable]] = [
     educator_views.CourseCohortRegistrationDataTable,
     educator_views.CourseLearnerRegistrationDataTable,
     educator_views.StaffDataTable,
-    educator_views.OrganisationAuditLogTable,
+    OrganisationAuditLogTable,
 ]
 
 
