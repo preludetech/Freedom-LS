@@ -198,28 +198,31 @@ Applications become steps an applicant works through over weeks, decided by a de
 - `multi-step-course-applications-3-approval-outcome` — **blocked** by `multi-step-course-applications-2-reviewers-and-inbox` — A deployment seam decides what approval does; FLS's default registers the applicant for the course.
 - `multi-step-course-applications-4-reopen-form` — **blocked** by `multi-step-course-applications-1-review-states` — Applicants reopen their submitted application form, answers prefilled, until it is approved.
 - `multi-step-course-applications-5-requirements-and-resolver` — **blocked** by `multi-step-course-applications-4-reopen-form` — Applicants work through a requirements page; a deployment resolver, or the course's fixed list, decides the requirements.
-- `multi-step-course-applications-6-reviewer-verdicts` — **blocked** by `multi-step-course-applications-3-approval-outcome`, `multi-step-course-applications-5-requirements-and-resolver` — Reviewers accept or turn down requirements with a reason, preview the consequence; requirements hold back approval or registration.
+- `multi-step-course-applications-6-reviewer-verdicts` — **blocked** by `multi-step-course-applications-5-requirements-and-resolver`, `multi-step-course-applications-11-intake-courses` — Reviewers accept or turn down requirements with a reason, preview the consequence; requirements hold back approval or registration.
 - `multi-step-course-applications-7-upload-requirements` — **blocked** by `multi-step-course-applications-6-reviewer-verdicts` — Applicants upload documents for requirements, re-upload when asked, and see past uploads; reviewers see every version.
 - `multi-step-course-applications-8-choices` — **blocked** by `multi-step-course-applications-6-reviewer-verdicts` — The resolver offers either-or requirement groups; applicants switch options until one is accepted.
 - `multi-step-course-applications-9-help-requests` — **blocked** by `multi-step-course-applications-2-reviewers-and-inbox` — Applicants ask for a callback from any application page; reviewers are notified and a webhook feeds the CRM.
 - `multi-step-course-applications-10-recommendations-from-answers` — **ready** — A deployment producer turns application answers into recommended courses for the applicant.
+- `multi-step-course-applications-11-intake-courses` — **blocked** by `multi-step-course-applications-3-approval-outcome` — Authors mark a course apply-only and list its onward courses; reviewers register approved applicants for them.
+- `multi-step-course-applications-12-applicant-picks-onward-courses` — **blocked** by `multi-step-course-applications-11-intake-courses` — Applicants for an intake course pick the onward courses they want; reviewers see the picks.
 
 ![Multi-step course applications](roadmap_diagrams/multi-step-course-applications.svg)
 
 **Notes**
-- Order: `multi-step-course-applications-1-review-states` and `multi-step-course-applications-10-recommendations-from-answers` start now. Then `multi-step-course-applications-2-reviewers-and-inbox` and `multi-step-course-applications-4-reopen-form` run in parallel. `multi-step-course-applications-6-reviewer-verdicts` needs `multi-step-course-applications-3-approval-outcome` and `multi-step-course-applications-5-requirements-and-resolver`; `multi-step-course-applications-7-upload-requirements` and `multi-step-course-applications-8-choices` follow it, and `multi-step-course-applications-9-help-requests` can start once `multi-step-course-applications-2-reviewers-and-inbox` lands.
+- Order: `multi-step-course-applications-1-review-states` and `multi-step-course-applications-10-recommendations-from-answers` start now. Then `multi-step-course-applications-2-reviewers-and-inbox` and `multi-step-course-applications-4-reopen-form` run in parallel. `multi-step-course-applications-11-intake-courses` follows `multi-step-course-applications-3-approval-outcome`. `multi-step-course-applications-6-reviewer-verdicts` needs it and `multi-step-course-applications-5-requirements-and-resolver`; `multi-step-course-applications-7-upload-requirements` and `multi-step-course-applications-8-choices` follow it, and `multi-step-course-applications-9-help-requests` can start once `multi-step-course-applications-2-reviewers-and-inbox` lands.
 - Collisions: `multi-step-course-applications-7-upload-requirements` and `multi-step-course-applications-8-choices` both change the reconcile step and the requirements page; whichever lands second rebases. `multi-step-course-applications-2-reviewers-and-inbox` adds `panels/applications/` and a line in `interface_config`, which the educator-interface refactor also edits.
 - Decided: no workflow graph. The resolver is a pure function of the application's data, re-run after every event by one reconcile function; superseded requirements are kept.
 - Decided: states are `TextChoices` and service functions, no FSM library. Reviewer and system actions go in `audit_log`, never the applicant's name. No `changes_requested` or `under_review` states.
 - Decided: reviewers hold a new organisation role checked with `can()`; each inbox is per organisation; the Django admin stays read-only.
 - Decided: what approval does is a deployment seam whose default registers the applicant. Anything beyond the application form, and approval itself, needs a claimed account.
+- Decided: an intake course is applied for and never registered for. Its content lists onward courses, and a reviewer registers the applicant for each by hand; nothing picks an organisation, enforces course order or prices a bundle.
 - Assumed: a new application takes the course's only owning organisation, else the site default. Re-applying after reject or withdraw makes a new application. No `application.*` webhooks except `application.help_requested`.
 - Open questions:
   - who sees an organisation move in the audit log (`multi-step-course-applications-2-reviewers-and-inbox`);
   - `add_learner` or `ensure_learner` (`multi-step-course-applications-3-approval-outcome`);
   - what a resolver failure does (`multi-step-course-applications-5-requirements-and-resolver`).
 - Out of scope: outside systems reporting a step done, provider lists and distance ranking, more than one sign-off, and scanning uploaded files (not planned).
-- References: `research_review_foundations.md` and `research_help_and_recommendations.md` in the parent.
+- References: `research_review_foundations.md`, `research_help_and_recommendations.md` and `intake_courses_case.md` in the parent.
 
 ## Learner interface features
 
