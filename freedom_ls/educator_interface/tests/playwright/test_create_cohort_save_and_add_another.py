@@ -47,3 +47,38 @@ def test_save_and_add_another_keeps_the_dialog_open_and_save_opens_the_last_coho
     assert Cohort.objects.filter(
         organisation=organisation, name="First Cohort"
     ).exists()
+
+
+def test_wrapped_dialog_footer_keeps_its_actions_at_the_right_edge(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """On a phone the footer wraps; the actions row used to start at the left.
+
+    The actions wrapper was only as wide as its content, so its right alignment
+    did nothing once it dropped onto its own row below Cancel.
+    """
+    page = educator_logged_in_page
+    organisation = OrganisationFactory()
+    educator_user.is_superuser = True
+    educator_user.save()
+    page.set_viewport_size({"width": 375, "height": 812})
+    page.goto(interface_url(live_server, organisation.slug, "cohorts"))
+
+    page.get_by_role("button", name="Create cohort").first.click()
+    footer = page.locator("#app-modal [data-modal-footer]:visible")
+    expect(footer).to_be_visible()
+
+    save = footer.get_by_role("button", name="Save", exact=True)
+    cancel = footer.get_by_role("button", name="Cancel")
+    save_box = save.bounding_box()
+    cancel_box = cancel.bounding_box()
+    footer_box = footer.bounding_box()
+    assert save_box is not None
+    assert cancel_box is not None
+    assert footer_box is not None
+    assert save_box["y"] > cancel_box["y"], "the footer should wrap at 375px"
+    # The footer's right padding is px-6 (24px).
+    content_right = footer_box["x"] + footer_box["width"] - 24
+    assert abs(save_box["x"] + save_box["width"] - content_right) <= 1

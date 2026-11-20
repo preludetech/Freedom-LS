@@ -2034,7 +2034,7 @@ APPLIED_FILTER: list[str] = [
     'div [class="shrink-0"]',
     'button [class="panel-btn panel-btn-secondary" data-variant="secondary" type="button" x-on:click="close"] '
     "Cancel",
-    'div [class="flex min-w-0 flex-wrap items-center justify-end gap-3"]',
+    'div [class="flex min-w-0 grow flex-wrap items-center justify-end gap-3"]',
     'button [class="panel-btn panel-btn-primary" data-variant="primary" type="submit"] Show results',
     "style [] @media (scripting: none) { #stub-sheet { display: block; position: static; opacity: "
     "1; transform: none; } }",
@@ -2223,7 +2223,7 @@ NO_FILTER_APPLIED: list[str] = [
     'div [class="shrink-0"]',
     'button [class="panel-btn panel-btn-secondary" data-variant="secondary" type="button" x-on:click="close"] '
     "Cancel",
-    'div [class="flex min-w-0 flex-wrap items-center justify-end gap-3"]',
+    'div [class="flex min-w-0 grow flex-wrap items-center justify-end gap-3"]',
     'button [class="panel-btn panel-btn-primary" data-variant="primary" type="submit"] Show results',
     "style [] @media (scripting: none) { #stub-sheet { display: block; position: static; opacity: "
     "1; transform: none; } }",

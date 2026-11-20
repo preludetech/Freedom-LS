@@ -23,5 +23,5 @@ It stays in view because only the body between it and the header scrolls.
             <c-panel-button type="button" variant="secondary" x-on:click="{{ cancel_click }}" autofocus="{{ focus_cancel }}" aria_describedby="{{ cancel_describedby }}">{{ cancel }}</c-panel-button>
         {% endif %}
     </div>
-    <div class="flex min-w-0 flex-wrap items-center justify-end gap-3">{{ slot }}</div>
+    <div class="flex min-w-0 grow flex-wrap items-center justify-end gap-3">{{ slot }}</div>
 </footer>

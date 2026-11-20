@@ -106,7 +106,7 @@ Cancel
 
 
     </div>
-    <div class="flex min-w-0 flex-wrap items-center justify-end gap-3">
+    <div class="flex min-w-0 grow flex-wrap items-center justify-end gap-3">
 
         <button type="submit" hidden tabindex="-1" aria-hidden="true"></button>
 
