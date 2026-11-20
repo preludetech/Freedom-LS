@@ -558,6 +558,7 @@ def test_the_audit_log_what_filter_is_a_grouped_checklist_with_one_apply(
         "Course progress",
         "Cohorts",
         "Staff and roles",
+        "Applications",
         "Other",
     ]
     assert toolbar_form.xpath(".//button[@type='submit'][normalize-space()='Apply']")

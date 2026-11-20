@@ -17,3 +17,7 @@ class ApplicationStateError(ApplicationTransitionError):
 
 class UnclaimedApplicationError(ApplicationTransitionError):
     """The application has no account yet, so a decision on it has nobody to reach."""
+
+
+class RejectionMessageError(ApplicationTransitionError):
+    """The rejection message is empty once stripped, or longer than the cap."""

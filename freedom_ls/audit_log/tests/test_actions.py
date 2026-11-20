@@ -28,6 +28,19 @@ def test_staff_member_added_is_registered_under_staff_and_roles():
     assert (action.label, action.group) == ("Staff member added", "Staff and roles")
 
 
+@pytest.mark.parametrize(
+    ("code", "label"),
+    [
+        ("application.approved", "Application approved"),
+        ("application.rejected", "Application rejected"),
+    ],
+)
+def test_application_decisions_are_registered_under_applications(code, label):
+    action = get_audit_action(code)
+
+    assert (action.label, action.group) == (label, "Applications")
+
+
 def test_get_audit_action_falls_back_to_a_label_of_the_code():
     action = get_audit_action("widget.exploded")
 
@@ -104,6 +117,16 @@ def test_validate_action_names_the_valid_codes_for_an_unknown_one():
             "registration.reactivated",
             {"course": "Algebra", "self_service": True},
             "Algebra (self-registered)",
+        ),
+        (
+            "application.approved",
+            {"from": "submitted", "to": "approved"},
+            "From submitted to approved",
+        ),
+        (
+            "application.rejected",
+            {"from": "submitted", "to": "rejected"},
+            "From submitted to rejected",
         ),
         (
             "role.assigned",

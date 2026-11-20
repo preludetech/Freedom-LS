@@ -26,6 +26,7 @@ NOUNS = frozenset(
         "conversation",
         "api_key",
         "audit_log",
+        "application",
     }
 )
 
@@ -51,6 +52,8 @@ VERBS = frozenset(
         "resumed",
         "extended",
         "exported",
+        "approved",
+        "rejected",
     }
 )
 
@@ -72,6 +75,7 @@ NOUN_GROUPS = {
     "deadline": "Course progress",
     "role": "Staff and roles",
     "staff_member": "Staff and roles",
+    "application": "Applications",
 }
 
 

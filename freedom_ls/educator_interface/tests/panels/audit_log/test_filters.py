@@ -139,6 +139,7 @@ def test_the_action_choices_are_grouped_under_the_fixed_headings_in_order(
         "Course progress",
         "Cohorts",
         "Staff and roles",
+        "Applications",
         "Other",
     ]
     assert dict(dict(groups)["Cohort membership"])["cohort_membership.moved"] == (

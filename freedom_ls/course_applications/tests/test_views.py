@@ -60,7 +60,10 @@ from freedom_ls.course_applications.models import (
     claim_link_max_age,
 )
 from freedom_ls.course_applications.queries import organisation_for_new_application
-from freedom_ls.course_applications.transitions import submit_application
+from freedom_ls.course_applications.transitions import (
+    reject_application,
+    submit_application,
+)
 from freedom_ls.course_applications.views import (
     _details_in_flight_key,
     _start_application,
@@ -5759,3 +5762,83 @@ class TestClosedApplicationAcceptsNoWrites:
         app.refresh_from_db()
         assert response["Location"] == _status_url(app)
         assert app.state == state
+
+
+@pytest.mark.django_db
+class TestDecidedApplicationStatusPage:
+    def test_an_approved_application_shows_the_decision_and_no_withdraw(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        app = CourseApplicationFactory(user=user, approved=True)
+        client.force_login(user)
+
+        body = client.get(_status_url(app)).content.decode()
+
+        assert "Your application was approved" in body
+        assert "was approved on" in body
+        assert _withdraw_url(app) not in body
+
+    def test_a_rejected_application_shows_the_message_and_offers_apply_again(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        app = CourseApplicationFactory(user=user, rejected=True)
+        client.force_login(user)
+
+        body = client.get(_status_url(app)).content.decode()
+
+        assert "Your application was not approved" in body
+        assert "Message from the reviewer" in body
+        assert "Not this time." in body
+        assert "You can apply again." in body
+        assert (
+            reverse(
+                "course_applications:apply", kwargs={"course_slug": app.course.slug}
+            )
+            in body
+        )
+        assert _withdraw_url(app) not in body
+
+    def test_a_rejection_message_is_escaped_and_keeps_its_line_breaks(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        app = CourseApplicationFactory(
+            user=user, rejected=True, rejection_message="<script>x</script>\nSecond"
+        )
+        client.force_login(user)
+
+        body = client.get(_status_url(app)).content.decode()
+
+        assert "<script>x</script>" not in body
+        assert "&lt;script&gt;x&lt;/script&gt;<br>Second" in body
+
+    def test_an_unclaimed_rejected_application_shows_message_beside_claim_notice(
+        self, client, mock_site_context
+    ):
+        app = _anonymous_draft(client)
+        CourseApplication.objects.filter(pk=app.pk).update(
+            state=CourseApplication.State.REJECTED,
+            submitted_at=timezone.now(),
+            decided_at=timezone.now(),
+            rejection_message="Not this time.",
+        )
+
+        body = client.get(_status_url(app)).content.decode()
+
+        assert "Check your email" in body
+        assert "Not this time." in body
+        assert "Apply again" not in body
+
+    def test_the_status_page_reads_what_reject_application_stored(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        app = CourseApplicationFactory(user=user)
+        reject_application(app, actor=UserFactory(), message="  Come back in spring.  ")
+        client.force_login(user)
+
+        body = client.get(_status_url(app)).content.decode()
+
+        assert "Come back in spring." in body

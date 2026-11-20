@@ -24,6 +24,7 @@ AUDIT_ACTION_GROUPS: tuple[str, ...] = (
     "Course progress",
     "Cohorts",
     "Staff and roles",
+    "Applications",
     "Other",
 )
 
@@ -97,6 +98,10 @@ def _describe_move(entry: AuditLogEntry) -> str:
 
 def _describe_rename(entry: AuditLogEntry) -> str:
     return f"From {entry.details.get('old', '')} to {entry.details.get('new', '')}"
+
+
+def _describe_state_change(entry: AuditLogEntry) -> str:
+    return f"From {entry.details.get('from', '')} to {entry.details.get('to', '')}"
 
 
 def _describe_learner_added(entry: AuditLogEntry) -> str:
@@ -247,6 +252,18 @@ FLS_AUDIT_ACTIONS: tuple[AuditAction, ...] = (
     ),
     AuditAction(
         "staff_member.reactivated", "Staff member reactivated", group="Staff and roles"
+    ),
+    AuditAction(
+        "application.approved",
+        "Application approved",
+        _describe_state_change,
+        group="Applications",
+    ),
+    AuditAction(
+        "application.rejected",
+        "Application rejected",
+        _describe_state_change,
+        group="Applications",
     ),
     AuditAction(
         "bulk_action.completed", "Bulk action completed", _describe_run_summary

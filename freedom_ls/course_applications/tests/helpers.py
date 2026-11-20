@@ -14,6 +14,7 @@ from django.test import RequestFactory
 from django.urls import reverse
 from rest_framework.test import APIClient
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.course_applications.anonymous_session import (
     remember_anonymous_applicant,
@@ -22,6 +23,12 @@ from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import (
     AnonymousApplicant,
     CourseApplication,
+)
+from freedom_ls.course_applications.transitions import (
+    approve_application,
+    reject_application,
+    submit_application,
+    withdraw_application,
 )
 from freedom_ls.form_engine.factories import (
     FormFactory,
@@ -34,6 +41,36 @@ from freedom_ls.form_engine.factories import (
 )
 from freedom_ls.form_engine.models import FormProgress, FormStrategy
 from freedom_ls.tests.site_context import site_context
+
+#: One call shape per state-changing function, so a test can run any of them
+#: from any state: the reviewer functions get a fresh reviewer and a valid message.
+TRANSITION_CALLS: dict[str, Callable[[CourseApplication], CourseApplication]] = {
+    "submit_application": submit_application,
+    "withdraw_application": withdraw_application,
+    "approve_application": lambda application: approve_application(
+        application, actor=UserFactory()
+    ),
+    "reject_application": lambda application: reject_application(
+        application, actor=UserFactory(), message="Not this time."
+    ),
+}
+
+#: The state and the timestamp field each function writes.
+TRANSITION_RESULTS: dict[str, tuple[CourseApplication.State, str]] = {
+    "submit_application": (CourseApplication.State.SUBMITTED, "submitted_at"),
+    "withdraw_application": (CourseApplication.State.WITHDRAWN, "withdrawn_at"),
+    "approve_application": (CourseApplication.State.APPROVED, "decided_at"),
+    "reject_application": (CourseApplication.State.REJECTED, "decided_at"),
+}
+
+#: Factory arguments that build a claimed application in each state.
+APPLICATION_IN_STATE: dict[str, dict[str, object]] = {
+    "draft": {"state": CourseApplication.State.DRAFT, "submitted_at": None},
+    "submitted": {},
+    "approved": {"approved": True},
+    "rejected": {"rejected": True},
+    "withdrawn": {"withdrawn": True},
+}
 
 
 def _add_employer_case(form: FormFactory, page_one: FormPageFactory) -> None:

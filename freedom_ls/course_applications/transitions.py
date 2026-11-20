@@ -16,9 +16,14 @@ from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.writer import record_entry
 from freedom_ls.course_applications.exceptions import (
     ApplicationStateError,
+    RejectionMessageError,
     UnclaimedApplicationError,
 )
-from freedom_ls.course_applications.models import OPEN_STATES, CourseApplication
+from freedom_ls.course_applications.models import (
+    OPEN_STATES,
+    REJECTION_MESSAGE_MAX_LENGTH,
+    CourseApplication,
+)
 
 State = CourseApplication.State
 
@@ -90,3 +95,29 @@ def submit_application(application: CourseApplication) -> CourseApplication:
 def withdraw_application(application: CourseApplication) -> CourseApplication:
     """Close an open application on the applicant's behalf."""
     return _move(application, State.WITHDRAWN)
+
+
+def approve_application(
+    application: CourseApplication, *, actor: User
+) -> CourseApplication:
+    """Approve a submitted application, and audit who did."""
+    return _move(application, State.APPROVED, actor=actor, require_user=True)
+
+
+def reject_application(
+    application: CourseApplication, *, actor: User, message: str
+) -> CourseApplication:
+    """Reject a submitted application with the message the applicant will read.
+
+    The message is trimmed before it is checked and stored, and is checked
+    before the row is locked.
+    """
+    stripped = message.strip()
+    if not stripped or len(stripped) > REJECTION_MESSAGE_MAX_LENGTH:
+        raise RejectionMessageError
+    return _move(
+        application,
+        State.REJECTED,
+        extra={"rejection_message": stripped},
+        actor=actor,
+    )

@@ -11,12 +11,18 @@
 What the page shows, by state:
   draft      the chip, "Continue application" back into the form, and withdraw
   submitted  the chip, the submission date, and withdraw
+  approved   the chip and the decision date
+  rejected   the chip, the decision date, the reviewer's message and apply again
   withdrawn  the chip and the withdrawal date
 An unclaimed applicant sees "Check your email" and the claim notice first, then
 the state block under an h2, and no withdraw: the address is not yet proven.
 {% endcomment %}
 
 {% block content %}
+    {% partialdef state_heading %}
+        {% if application.state == application.State.WITHDRAWN %}You withdrew your application{% elif application.state == application.State.APPROVED %}Your application was approved{% elif application.state == application.State.REJECTED %}Your application was not approved{% else %}Your application{% endif %}
+    {% endpartialdef %}
+
     {% partialdef state_block %}
         {% if application.state == application.State.DRAFT %}
             <p>
@@ -29,6 +35,20 @@ the state block under an h2, and no withdraw: the address is not yet proven.
                 is waiting for review. The decision will show here.
             </p>
             <p class="text-muted">Submitted <c-date :value="application.submitted_at" />.</p>
+        {% elif application.state == application.State.APPROVED %}
+            <p>
+                Your application for <strong>{{ application.course.title }}</strong>
+                was approved on <c-date :value="application.decided_at" />.
+            </p>
+        {% elif application.state == application.State.REJECTED %}
+            <p>
+                Your application for <strong>{{ application.course.title }}</strong>
+                was not approved on <c-date :value="application.decided_at" />.
+            </p>
+            <c-callout tone="info" title="Message from the reviewer">{{ application.rejection_message|linebreaksbr }}</c-callout>
+            {% if application.is_email_verified %}
+                <p>You can apply again.</p>
+            {% endif %}
         {% elif application.state == application.State.WITHDRAWN %}
             <p>
                 You withdrew your application for <strong>{{ application.course.title }}</strong> on
@@ -93,7 +113,7 @@ the state block under an h2, and no withdraw: the address is not yet proven.
         <div class="space-y-6">
             {% if application.is_email_verified %}
                 <h1>
-                    {% if application.state == application.State.WITHDRAWN %}You withdrew your application{% else %}Your application{% endif %}
+                    {% partial state_heading %}
                 </h1>
                 <div>{% include "course_applications/partials/application_state_badge.html" %}</div>
                 {% partial state_block %}
@@ -105,7 +125,7 @@ the state block under an h2, and no withdraw: the address is not yet proven.
                 </p>
                 {% include "course_applications/partials/claim_link_notice.html" with notice_next_url=status_url %}
                 <h2>
-                    {% if application.state == application.State.WITHDRAWN %}You withdrew your application{% else %}Your application{% endif %}
+                    {% partial state_heading %}
                 </h2>
                 <div>{% include "course_applications/partials/application_state_badge.html" %}</div>
                 {% partial state_block %}
@@ -120,8 +140,10 @@ the state block under an h2, and no withdraw: the address is not yet proven.
                 </div>
             {% endif %}
 
-            {% if application.state == application.State.WITHDRAWN and application.is_email_verified %}
-                <c-button href="{% url 'course_applications:apply' course_slug=application.course.slug %}">Apply again</c-button>
+            {% if application.is_email_verified %}
+                {% if application.state == application.State.WITHDRAWN or application.state == application.State.REJECTED %}
+                    <c-button href="{% url 'course_applications:apply' course_slug=application.course.slug %}">Apply again</c-button>
+                {% endif %}
             {% endif %}
 
             <c-button href="{% url 'learner_interface:dashboard' %}">
