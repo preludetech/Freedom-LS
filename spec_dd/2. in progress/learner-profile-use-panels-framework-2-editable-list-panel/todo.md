@@ -15,10 +15,12 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 3. Implementation and QA
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
+- [ ] (user) Review the departures from the plan and keep or revert each: `modal-trigger.html` forwards extra attributes with `:attrs` because cotton does not expand `{{ attrs }}`; the editable-list browser flow uses a separate parent per capped, add-another and table tab because all four stub panels share one entry model; `StubEntry` gained `verbose_name_plural`; the component-reference browser test's section count went from 19 to 20. No action is needed if all four stand.
+- [ ] (user) Decide whether to look into a 404 on `/test-panel/framework/stubs/1/__tabs/entries/__actions/edit_entry` that showed up once in a heavily loaded full run of `test_editable_list_flow.py`. It has not shown up since the focus-race fix (`97b5aeeb4`); if it comes back, open a bug for it.
 
 ## 4. Documentation and pull request
 
