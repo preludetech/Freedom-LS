@@ -605,6 +605,38 @@ def editable_list_cap_line(max_entries: int | None) -> str:
     return f"You can have up to {max_entries}. Remove one to add another."
 
 
+def neighbour_index(index: int, length: int) -> int | None:
+    """The index of the entry that takes focus once the entry at `index` of
+    `length` is gone: the next one, else the previous one, else None."""
+    if index + 1 < length:
+        return index + 1
+    return index - 1 if index > 0 else None
+
+
+def editable_list_entry(
+    *,
+    pk: object,
+    summary: EditableListSummary,
+    edit_url: str,
+    remove_url: str,
+    focus_after_remove: object,
+) -> dict[str, object]:
+    """One entry as the editable list's template draws it. Each trigger is
+    named by the title and detail together, so two entries with one title
+    still differ."""
+    return {
+        "pk": pk,
+        "title": summary.title,
+        "detail": summary.detail,
+        "accessible_name": (
+            f"{summary.title}, {summary.detail}" if summary.detail else summary.title
+        ),
+        "edit_url": edit_url,
+        "remove_url": remove_url,
+        "focus_after_remove": focus_after_remove,
+    }
+
+
 class EditableListPanel(Panel):
     """Lists the entries that belong to the bound parent and adds one through
     a dialog.
@@ -696,29 +728,22 @@ class EditableListPanel(Panel):
             cap_line = self.get_cap_line()
         entries = []
         for index, entry in enumerate(self.loaded_entries):
-            summary = self.get_summary(entry)
             entries.append(
-                {
-                    "pk": entry.pk,
-                    "title": summary.title,
-                    "detail": summary.detail,
-                    "accessible_name": (
-                        f"{summary.title}, {summary.detail}"
-                        if summary.detail
-                        else summary.title
-                    ),
-                    "edit_url": (
+                editable_list_entry(
+                    pk=entry.pk,
+                    summary=self.get_summary(entry),
+                    edit_url=(
                         self._entry_action_url(edit_action, entry)
                         if edit_action
                         else ""
                     ),
-                    "remove_url": (
+                    remove_url=(
                         self._entry_action_url(remove_action, entry)
                         if remove_action
                         else ""
                     ),
-                    "focus_after_remove": self._focus_after_remove(index),
-                }
+                    focus_after_remove=self._focus_after_remove(index),
+                )
             )
         context.update(
             {
@@ -736,10 +761,8 @@ class EditableListPanel(Panel):
     def _focus_after_remove(self, index: int) -> str:
         """The pk of the entry that takes focus once the entry at `index` is
         gone: the next one, else the previous one, else nothing."""
-        neighbours = self.loaded_entries[index + 1 : index + 2] or (
-            self.loaded_entries[index - 1 : index] if index > 0 else []
-        )
-        return str(neighbours[0].pk) if neighbours else ""
+        neighbour = neighbour_index(index, len(self.loaded_entries))
+        return "" if neighbour is None else str(self.loaded_entries[neighbour].pk)
 
     def _entry_action_url(self, action: PanelAction, entry: Model) -> str:
         row_param = cast(str, action.row_param)

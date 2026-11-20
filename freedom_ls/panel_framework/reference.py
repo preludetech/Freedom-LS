@@ -32,8 +32,13 @@ from freedom_ls.panel_framework.panels import (
 )
 from freedom_ls.panel_framework.tables import Column, DataTable
 
-from .actions import CHOOSE_AGAIN_MESSAGE, field_error_count
-from .panels import editable_list_cap_line
+from .actions import CHOOSE_AGAIN_MESSAGE, count_phrase, field_error_count
+from .panels import (
+    EditableListSummary,
+    editable_list_cap_line,
+    editable_list_entry,
+    neighbour_index,
+)
 from .widgets import PanelClearableFileInput
 
 __all__ = [
@@ -283,23 +288,19 @@ def _render_reason_dialog(
 def _editable_list_entries(
     people: Sequence[tuple[str, str]], *, editable: bool = True
 ) -> list[dict[str, object]]:
-    """Entries in the shape `EditableListPanel.get_context_data` builds, from
-    `(title, detail)` pairs."""
+    """Entries built by the panel's own helper, from `(title, detail)` pairs
+    numbered from 1."""
     entries: list[dict[str, object]] = []
     for index, (title, detail) in enumerate(people):
-        neighbours = people[index + 1 : index + 2] or people[index - 1 : index]
+        neighbour = neighbour_index(index, len(people))
         entries.append(
-            {
-                "pk": index + 1,
-                "title": title,
-                "detail": detail,
-                "accessible_name": f"{title}, {detail}" if detail else title,
-                "edit_url": "#" if editable else "",
-                "remove_url": "#" if editable else "",
-                "focus_after_remove": (
-                    (people.index(neighbours[0]) + 1) if neighbours else ""
-                ),
-            }
+            editable_list_entry(
+                pk=index + 1,
+                summary=EditableListSummary(title=title, detail=detail),
+                edit_url="#" if editable else "",
+                remove_url="#" if editable else "",
+                focus_after_remove="" if neighbour is None else neighbour + 1,
+            )
         )
     return entries
 
@@ -323,7 +324,7 @@ def _render_editable_list(
         "region_template_name": "",
         "refresh_events": [],
         "layout": layout,
-        "noun": "contacts",
+        "noun": "contact",
         "empty_message": "No emergency contacts yet.",
         "entries": entries,
         "add_trigger": (
@@ -332,11 +333,7 @@ def _render_editable_list(
             else {"label": "Add contact", "variant": "secondary", "action_url": "#"}
         ),
         "cap_line": cap_line,
-        "entry_count": (
-            f"{len(entries)} contact"
-            if len(entries) == 1
-            else f"{len(entries)} contacts"
-        ),
+        "entry_count": count_phrase(len(entries), "contact", "contacts"),
     }
     return render_to_string("panel_framework/panels/editable_list.html", context)
 

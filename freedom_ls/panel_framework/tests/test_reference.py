@@ -448,3 +448,15 @@ def test_reference_editable_list_cap_example_shows_the_sentence_the_panel_render
     """The cap example used to word the cap line differently from the panel."""
     block = _example_block(_render_examples(), "editable-list-cap")
     assert "You can have up to 3. Remove one to add another." in block
+
+
+def test_reference_editable_list_table_heads_its_column_with_the_singular_noun() -> (
+    None
+):
+    """A real panel heads the column with its noun, which is singular; the
+    example used to say "Contacts"."""
+    html = _render_examples()
+    block = html[html.index('id="editable-list-table"') :]
+    first_header = re.search(r"<thead>.*?<th[^>]*>(.*?)</th>", block, re.S)
+    assert first_header is not None
+    assert first_header.group(1).strip() == "Contact"

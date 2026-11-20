@@ -31,6 +31,7 @@ from freedom_ls.panel_framework.panels import (
     Panel,
     PanelStack,
     TabSet,
+    neighbour_index,
     promote_bulk_actions,
 )
 from freedom_ls.panel_framework.tables import Column, DataTable, ExportColumn
@@ -1608,3 +1609,13 @@ def test_a_quote_in_a_title_stays_one_escaped_entry_title_value(
     assert root.xpath(
         "//*[@data-editable-list-action='edit_entry']/@data-entry-title"
     ) == ['x" onfocus="alert(1)']
+
+
+@pytest.mark.parametrize(
+    ("index", "length", "expected"),
+    [(0, 3, 1), (1, 3, 2), (2, 3, 1), (0, 1, None)],
+)
+def test_neighbour_index_is_the_next_entry_else_the_previous_else_none(
+    index: int, length: int, expected: int | None
+) -> None:
+    assert neighbour_index(index, length) == expected
