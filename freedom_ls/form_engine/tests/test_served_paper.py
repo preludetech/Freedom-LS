@@ -12,6 +12,8 @@ import pytest
 
 from django.utils import timezone
 
+from freedom_ls.content_base.schema import ContentType
+from freedom_ls.form_engine import schema
 from freedom_ls.form_engine import served_paper as served_paper_module
 from freedom_ls.form_engine.factories import (
     FormContentFactory,
@@ -22,11 +24,12 @@ from freedom_ls.form_engine.factories import (
     QuestionOptionFactory,
     served_paper_of,
 )
-from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
+from freedom_ls.form_engine.models import Form, FormProgress, FormQuestion, FormStrategy
 from freedom_ls.form_engine.served_paper import (
     build_served_paper,
     ensure_served_paper,
     served_child_ids,
+    shuffle_units,
     shuffle_with_locks,
 )
 
@@ -378,3 +381,160 @@ def test_build_served_paper_option_order_ignores_the_shuffle_pages_knob(
     pages_off = build_served_paper(Form.objects.get(pk=form.pk))["options"]
 
     assert pages_off == pages_on
+
+
+def _schema_children(groups: list[str | None]) -> list[schema.FormContent]:
+    return [
+        schema.FormContent(
+            content_type=ContentType.FORM_CONTENT,
+            file_path=f"c{i}.md",
+            content=f"c{i}",
+            group=g,
+            meta=None,
+            uuid=None,
+            when=None,
+        )
+        for i, g in enumerate(groups)
+    ]
+
+
+@pytest.mark.parametrize(
+    ("groups", "expected_sizes"),
+    [
+        ([None, None, None], [1, 1, 1]),
+        ([None, "a", "a", None], [1, 2, 1]),
+        (["a", "a", "b", "b", "b"], [2, 3]),
+        (["a", None, "a"], [1, 1, 1]),
+    ],
+)
+def test_shuffle_units_on_schema_children_groups_runs_and_leaves_the_rest_alone(
+    groups: list[str | None], expected_sizes: list[int]
+) -> None:
+    children = _schema_children(groups)
+
+    units = shuffle_units(children)
+
+    assert [len(u) for u in units] == expected_sizes
+    assert [c for unit in units for c in unit] == children
+
+
+@pytest.mark.django_db
+def test_shuffle_units_on_model_rows_treats_a_blank_group_as_ungrouped(
+    mock_site_context: object,
+) -> None:
+    page = FormPageFactory()
+    plain = FormContentFactory(form_page=page, order=0)
+    first = FormQuestionFactory(form_page=page, order=1, group="g")
+    second = FormContentFactory(form_page=page, order=2, group="g")
+    last = FormQuestionFactory(form_page=page, order=3)
+
+    units = shuffle_units(page.children())
+
+    assert units == [[plain], [first, second], [last]]
+
+
+@pytest.fixture
+def grouped_page_form(mock_site_context: object) -> Form:
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ, shuffle_questions=True)
+    page = FormPageFactory(form=form, order=0)
+    for i, group in enumerate(["", "g", "g", "g", "", "", "h", "h", ""]):
+        FormQuestionFactory(form_page=page, order=i, group=group, question=f"q{i}")
+    return form
+
+
+def _served_questions(form: Form) -> list[str]:
+    paper = build_served_paper(Form.objects.get(pk=form.pk))
+    by_id = {str(q.id): q.question for q in FormQuestion.objects.all()}
+    return [by_id[child_id] for child_id in paper["pages"][0]["children"]]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("seed", range(30))
+def test_build_served_paper_with_shuffle_questions_keeps_a_group_together_in_order(
+    grouped_page_form: Form, monkeypatch: pytest.MonkeyPatch, seed: int
+) -> None:
+    monkeypatch.setattr(served_paper_module, "new_seed", lambda: seed)
+
+    served = _served_questions(grouped_page_form)
+
+    start = served.index("q1")
+    assert served[start : start + 3] == ["q1", "q2", "q3"]
+    start = served.index("q6")
+    assert served[start : start + 2] == ["q6", "q7"]
+    assert sorted(served) == sorted(f"q{i}" for i in range(9))
+
+
+@pytest.mark.django_db
+def test_build_served_paper_with_shuffle_questions_off_keeps_a_group_in_authored_order(
+    grouped_page_form: Form, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(served_paper_module, "new_seed", lambda: 5)
+    grouped_page_form.shuffle_questions = False
+    grouped_page_form.save()
+
+    served = _served_questions(grouped_page_form)
+
+    assert served == [f"q{i}" for i in range(9)]
+
+
+@pytest.mark.django_db
+def test_build_served_paper_adding_a_question_to_one_page_leaves_other_pages_unchanged(
+    mock_site_context: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(served_paper_module, "new_seed", lambda: 31)
+    form: Form = FormFactory(
+        strategy=FormStrategy.QUIZ, shuffle_pages=True, shuffle_questions=True
+    )
+    pages = [FormPageFactory(form=form, order=i) for i in range(3)]
+    for page in pages:
+        for i in range(6):
+            FormQuestionFactory(form_page=page, order=i)
+    before = build_served_paper(Form.objects.get(pk=form.pk))
+
+    FormQuestionFactory(form_page=pages[0], order=6)
+    after = build_served_paper(Form.objects.get(pk=form.pk))
+
+    assert [p["id"] for p in after["pages"]] == [p["id"] for p in before["pages"]]
+    before_children = {p["id"]: p["children"] for p in before["pages"]}
+    after_children = {p["id"]: p["children"] for p in after["pages"]}
+    assert after_children[str(pages[1].id)] == before_children[str(pages[1].id)]
+    assert after_children[str(pages[2].id)] == before_children[str(pages[2].id)]
+
+
+@pytest.mark.django_db
+def test_build_served_paper_with_every_knob_on_serves_permutations_of_the_authored_lists(
+    mock_site_context: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(served_paper_module, "new_seed", lambda: 8)
+    form: Form = FormFactory(
+        strategy=FormStrategy.QUIZ,
+        shuffle_pages=True,
+        shuffle_questions=True,
+        shuffle_options=True,
+    )
+    for p in range(3):
+        page = FormPageFactory(form=form, order=p)
+        for q in range(4):
+            question = FormQuestionFactory(form_page=page, order=q)
+            for o in range(4):
+                QuestionOptionFactory(question=question, order=o)
+    form = Form.objects.get(pk=form.pk)
+    authored_pages = [str(p.id) for p in form.pages.all()]
+    authored_children = {
+        str(p.id): [str(c.id) for c in p.children()] for p in form.pages.all()
+    }
+    authored_options = {
+        str(q.id): [str(o.id) for o in q.options.all()]
+        for q in FormQuestion.objects.all()
+    }
+
+    paper = build_served_paper(form)
+
+    assert sorted(p["id"] for p in paper["pages"]) == sorted(authored_pages)
+    for served_page in paper["pages"]:
+        assert sorted(served_page["children"]) == sorted(
+            authored_children[served_page["id"]]
+        )
+    assert paper["options"].keys() == authored_options.keys()
+    for question_id, option_ids in paper["options"].items():
+        assert sorted(option_ids) == sorted(authored_options[question_id])

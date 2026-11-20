@@ -10,13 +10,15 @@ from __future__ import annotations
 import secrets
 from collections.abc import Callable, Sequence
 from random import Random
+from typing import Protocol
 from uuid import UUID
 
 from django.db.models import prefetch_related_objects
 
-from .conditions import SERVED_TREE_LOOKUPS, ServedPage, ServedPaper
+from .conditions import SERVED_TREE_LOOKUPS, FormChild, ServedPage, ServedPaper
 from .models import (
     Form,
+    FormPage,
     FormProgress,
     FormQuestion,
     FormStrategy,
@@ -63,6 +65,34 @@ def _served_options(
     )
 
 
+class Groupable(Protocol):
+    @property
+    def group(self) -> str | None: ...
+
+
+def shuffle_units[T: Groupable](children: Sequence[T]) -> list[list[T]]:
+    """Split a page's children into the lists that move as one when the page shuffles.
+
+    A run of consecutive children sharing a group is one unit, in authored
+    order; every other child is a unit of its own. Schema items carry None
+    for no group and model rows carry "", so both count as ungrouped.
+    """
+    units: list[list[T]] = []
+    for child in children:
+        if child.group and units and units[-1][0].group == child.group:
+            units[-1].append(child)
+        else:
+            units.append([child])
+    return units
+
+
+def _served_children(page: FormPage, form: Form, seed: int) -> list[FormChild]:
+    units = shuffle_units(page.children())
+    if form.shuffle_questions:
+        _scope_rng(seed, f"page:{page.id}").shuffle(units)
+    return [child for unit in units for child in unit]
+
+
 def build_served_paper(form: Form) -> ServedPaper:
     """The paper a sitting starting now is served, shuffled as the form's knobs say."""
     prefetch_related_objects([form], *SERVED_TREE_LOOKUPS)
@@ -73,7 +103,7 @@ def build_served_paper(form: Form) -> ServedPaper:
     pages: list[ServedPage] = []
     options: dict[str, list[str]] = {}
     for page in page_rows:
-        children = page.children()
+        children = _served_children(page, form, seed)
         pages.append({"id": str(page.id), "children": [str(c.id) for c in children]})
         for child in children:
             if isinstance(child, FormQuestion):
