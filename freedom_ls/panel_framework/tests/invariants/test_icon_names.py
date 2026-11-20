@@ -23,6 +23,12 @@ PRIMITIVE_DRAWN_NAMES = {
     "error",
     "success",
 }
+# Names a template picks at render time inside an `{% if %}`, so no template
+# spells them as a literal `c-icon name=` (a details row of kind boolean).
+RENDER_TIME_NAMES = {
+    "boolean_true",
+    "boolean_false",
+}
 
 
 def _names_in_templates() -> set[str]:
@@ -37,6 +43,6 @@ def _names_in_templates() -> set[str]:
 
 
 def test_required_icon_names_equal_the_names_the_templates_draw() -> None:
-    derived = _names_in_templates() | PRIMITIVE_DRAWN_NAMES
+    derived = _names_in_templates() | PRIMITIVE_DRAWN_NAMES | RENDER_TIME_NAMES
 
     assert derived ^ REQUIRED_ICON_NAMES == set()

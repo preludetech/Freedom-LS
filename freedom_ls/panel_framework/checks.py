@@ -44,6 +44,8 @@ _NON_DURABLE_BACKEND_PATHS = (
 REQUIRED_ICON_NAMES: frozenset[str] = frozenset(
     {
         "add",
+        "boolean_false",
+        "boolean_true",
         "check",
         "close",
         "download",

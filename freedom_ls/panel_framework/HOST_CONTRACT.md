@@ -148,6 +148,8 @@ in this block. The block equals `REQUIRED_ICON_NAMES` in `checks.py`.
 
 ```
 add
+boolean_false
+boolean_true
 check
 close
 download
@@ -178,9 +180,6 @@ warning
 `manage.py check` renders each name through the host's `c-icon`. A name that raises is error
 `freedom_ls_panel_framework.E010`. A name that renders nothing is warning
 `freedom_ls_panel_framework.W003`.
-
-The check misses two names. A details row of kind boolean renders `boolean_true` or `boolean_false`,
-chosen at render time, so neither is in the block. The host's `c-icon` must draw both.
 
 Names that host data supplies (a sidebar item's `icon`, an empty state's `icon`) belong to the host.
 
