@@ -10,7 +10,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 2. Plan
 
-- [ ] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
+- [x] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
 - [ ] (user) Review both plans and edit where needed
 
 ## 3. Implementation and QA
@@ -23,6 +23,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 4. Documentation and pull request
 
 - [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [ ] (cmd) In `claude_plugins/fls-dev/resources/markdown_content.md`: add the `c-audio-clip` widget beside `c-audio` (spec: Documentation and downstream)
+- [ ] (cmd) In `claude_plugins/fls-dev/skills/alpine-js/SKILL.md`: add an `audioClip` row to the Alpine components table and note the page-level active audio handle shared with `audioFile` (spec: Documentation and downstream)
+- [ ] (cmd) In `claude_plugins/fls-dev/skills/icon-usage/` (SKILL.md and resources that list semantic names): add `media_play` and `media_pause` (spec: Documentation and downstream)
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
