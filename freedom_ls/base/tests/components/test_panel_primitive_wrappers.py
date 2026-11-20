@@ -186,9 +186,10 @@ def _pair(name: str, attributes: str = "", body: str = "Text") -> tuple[str, str
 
 REMAINING_PAIRS = [
     pytest.param(
-        *_pair("callout", f'level="{level}" title="Heading"'), id=f"callout-{level}"
+        *_pair("callout", f'tone="{tone}" title="Heading" data-testid="x"'),
+        id=f"callout-{tone}",
     )
-    for level in ["info", "warning", "error", "success"]
+    for tone in ["info", "warning", "error", "success"]
 ] + [
     pytest.param(*_pair("callout", 'class="mt-2"'), id="callout-caller-margin"),
     pytest.param(*_pair("callout"), id="callout-defaults"),

@@ -78,8 +78,8 @@ PRIMITIVE_DEFAULTS = [
         id="panel-pagination",
     ),
     pytest.param(
-        '<c-panel-callout level="warning" title="Careful" class="mt-2">Body</c-panel-callout>',
-        ["bg-warning/10", "border-warning", "Careful", "mt-2", "Body"],
+        '<c-panel-callout tone="warning" title="Careful" class="mt-2">Body</c-panel-callout>',
+        ["bg-warning/10", "border-warning/20", "Careful", "mt-2", "Body"],
         id="panel-callout",
     ),
     pytest.param(

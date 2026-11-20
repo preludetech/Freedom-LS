@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import re
-
 import lxml.html
 import pytest
 
-from ..cotton_helpers import render_cotton, render_framework_default
+from ..cotton_helpers import render_framework_default
 
 TONES = ["info", "success", "warning", "error"]
 
@@ -20,12 +18,6 @@ def _default(attrs: str = "", slot: str = "Careful") -> lxml.html.HtmlElement:
 
 def _classes(element: lxml.html.HtmlElement) -> list[str]:
     return (element.get("class") or "").split()
-
-
-def _normalised(html: str) -> str:
-    """Serialise parsed HTML with runs of whitespace collapsed."""
-    markup = lxml.html.tostring(lxml.html.fromstring(html), encoding="unicode")
-    return re.sub(r"\s+", " ", markup).replace("> <", "><").strip()
 
 
 def test_the_framework_default_renders_without_a_callout_class() -> None:
@@ -84,14 +76,3 @@ def test_framework_default_renders_the_title_escaped_once() -> None:
 
     assert "We couldn&#x27;t save" in html or "We couldn't save" in html
     assert "&amp;" not in html
-
-
-@pytest.mark.needs_fls_host
-@pytest.mark.parametrize("tone", TONES)
-def test_under_fls_panel_callout_renders_the_same_html_as_callout(tone: str) -> None:
-    attrs = f'tone="{tone}" title="We couldn\'t save" class="mt-4" data-testid="x"'
-
-    panel = render_cotton(f"<c-panel-callout {attrs}>Body</c-panel-callout>")
-    host = render_cotton(f"<c-callout {attrs}>Body</c-callout>")
-
-    assert _normalised(panel) == _normalised(host)

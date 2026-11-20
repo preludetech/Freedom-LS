@@ -211,7 +211,7 @@ framework's JavaScript and stylesheet select on them.
 | `panel-button` (`panel-button.html`) | `variant` `type` `href` `form` `id` `name` `value` `disabled` `autofocus` `aria_label` `aria_describedby` `dropdown` `class` `tone` `size` `icon_left` `icon_right` `loading` `loading_text` | default | classes `panel-btn`, `panel-btn-<variant>`, `panel-btn-sm`, or the host's own button classes with the framework's `.panel-btn` rules copied onto them (see below); `data-variant`; `data-loading-label` on the loading span | `<c-button :variant="variant" :href="href" :attrs="attrs">{{ slot }}</c-button>` |
 | `panel-button-group` (`panel-button-group.html`) | `variant` `class` | default | none | `<c-button-group :variant="variant" :class="class">{{ slot }}</c-button-group>` |
 | `panel-chip` (`panel-chip.html`) | `variant` `size` `icon` `class` | default | classes `panel-chip`, `panel-chip-<variant>`, `panel-chip-<size>` | `<c-chip :variant="variant" :size="size" :icon="icon" :attrs="attrs">{{ slot }}</c-chip>` |
-| `panel-callout` (`panel-callout.html`) | `level` `title` `class` | default | none | `<c-callout :level="level" :title="title" :class="class">{{ slot }}</c-callout>` |
+| `panel-callout` (`panel-callout.html`) | `tone` `title` `class` | default | `role="alert"` on `error` and `role="status"` on `success`; extra attributes pass through `{{ attrs }}` | `<c-callout :tone="tone" :title="title" :class="class" :attrs="attrs">{{ slot }}</c-callout>` |
 | `panel-back-link` (`panel-back-link.html`) | `href` `class` | default | the anchor passes `hx-*` attributes through `{{ attrs }}`; `breadcrumbs.html` relies on it | `<c-back-link :href="href" :attrs="attrs">{{ slot }}</c-back-link>` |
 | `panel-pagination` (`panel-pagination.html`) | `page_obj` `base_url` `table_id` `sort_by` `sort_order` `search_query` `extra_params` `page_param_name` `push_url` `links` `page_url` `class` | none | the `hx-get`, `hx-target` and `hx-push-url` attributes on each page control; class `panel-pagination` | `<c-pagination :page_obj="page_obj" :base_url="base_url" :table_id="table_id" :links="links" />` |
 | `panel-dropdown-menu` (`panel-dropdown-menu.html`) | `trigger` `class` `aria_label` `menu_label` `trigger_variant` `trigger_size` `panel_class` | default; `trigger` as a named slot | an Alpine component on the wrapper (`panelDropdownMenu`, or the host's own) with `x-ref` `menuButton` and `menuPanel`; the `role="menu"` wrapper | `<c-dropdown-menu :aria_label="aria_label" :class="class">{{ slot }}</c-dropdown-menu>` |
@@ -231,7 +231,8 @@ Notes that do not fit a row:
 - `panel-dropdown-menu`: `trigger_variant` and `trigger_size` are the trigger button's `variant` and
   `size`. A wrapper maps them to whatever its own button takes. The framework passes `size="small"` to
   get the small button.
-- `panel-callout` is for pages. Inside a panel or a dialog the framework uses `panel-notice`.
+- `panel-callout` serves pages, panels and dialogs alike. `tone` is `info` (default), `success`,
+  `warning` or `error`; any other value renders as `info`.
 - `panel-date` with `short` always renders the day and month ("3 Nov") and no year. `panel-date` and
   `panel-datetime` format with Django's `date` filter (`j M Y`, and `H:i` for the time) in the current
   time zone.
