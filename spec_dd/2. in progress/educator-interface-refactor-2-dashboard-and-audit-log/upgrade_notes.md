@@ -21,7 +21,7 @@ A downstream project that imports one of these names from its old module must sw
 
 From `freedom_ls.educator_interface.reporting` to `freedom_ls.educator_interface.panels.dashboard.panels`:
 
-- `InlineFigures`, `CohortFlags`, `FlaggedLearnerRow`, `CohortProgressRow`, `ExcludedCohort`, `GatheredFigures`
+- `InlineFigures`, `CohortFlags`, `FlaggedLearnerRow`, `CohortProgressRow`, `ExcludedCohort`, `GatheredFigures`, `CohortGather`
 - `visible_active_cohorts`, `inline_figures`, `gathered_figures`
 - `DashboardPanel`
 - private helpers `_gather_visible`, `_average_progress`, `_flagged_learner_rows`, `_cohort_rows`

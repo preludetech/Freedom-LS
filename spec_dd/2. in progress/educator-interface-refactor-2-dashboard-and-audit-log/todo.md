@@ -21,6 +21,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (user) Review the code and the QA report
 - [ ] (user) Push the rebased branch with `git push origin HEAD --force-with-lease --force-if-includes`: the permission system declined the force-push after the rebase onto main, so origin still holds the pre-rebase branch. Once it is pushed, the remote branch matches the local one.
 - [ ] (user) Write a frontend QA plan (`3. frontend_qa.md`) or skip QA: none exists, so `/sdd:do_qa` has nothing to run. The spec makes no UI changes, so skipping it is reasonable.
+- [ ] (user) `_gather_visible` in `freedom_ls/educator_interface/panels/dashboard/panels.py` runs one `cohort_learner_count` query for each visible cohort over REPORTS_MAX_LEARNERS. Count them all in one grouped `CohortMembership` query (from before this PR, found in the PR #265 review).
 
 ## 4. Documentation and pull request
 
