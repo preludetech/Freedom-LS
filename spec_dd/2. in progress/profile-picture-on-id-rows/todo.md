@@ -26,7 +26,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
 - [x] (cmd) Document `panel-attention-row`'s new `picture_url` attribute with an example in `freedom_ls/panel_framework/templates/panel_framework/reference/_examples.html` (spec: "Documentation and downstream")
 - [x] (cmd) Document `panel-attention-row`'s `picture_url` (passed bound, empty shows initials) in `claude_plugins/fls-dev/skills/panel-framework/SKILL.md` (spec: "Documentation and downstream")
-- [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
 ## 5. Cleanup
