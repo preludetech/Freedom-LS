@@ -91,3 +91,19 @@ def test_reauthenticate_page_has_no_account_sidebar(signed_in):
 
     assert response.status_code == 200
     assert 'id="sidebar-nav"' not in response.content.decode()
+
+
+def test_management_page_navigation_toggle_is_not_in_a_centred_wrapper(signed_in):
+    """The toggle used to sit in a centred max-w-7xl wrapper inside the narrow column.
+
+    That wrapper shrank to fit and centred itself, so the toggle sat well to
+    the right of the page's own heading below the lg breakpoint.
+    """
+    client, _ = signed_in
+
+    html = client.get(reverse("account_email")).content.decode()
+    main = html[html.index('id="interface-main"') : html.index("<footer")]
+
+    assert "max-w-7xl" not in main
+    assert "mx-auto" not in main[: main.index("<h1")]
+    assert main.count('aria-label="Open navigation panel"') == 1

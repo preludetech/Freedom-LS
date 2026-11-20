@@ -7,6 +7,24 @@ here, since these pages have no panel header to carry one. The live region
 sits in a host block because the shell's `content` block, which normally
 carries it, is replaced.
 {% endcomment %}
+{% comment %}
+The content header is the toggle and the page title directly in the column,
+without the shell's centred width wrapper, which would shrink to fit and
+centre inside this narrow column. The toggle is hidden from lg up, so the
+heading is the first thing on a desktop page.
+{% endcomment %}
+{% block content_header %}
+    <div class="lg:hidden">
+        <button x-on:click="toggle"
+                x-bind:aria-expanded="open"
+                class="-ms-3 shrink-0 p-3 rounded-md text-muted hover:text-on-surface hover:bg-surface-2 transition-colors cursor-pointer"
+                aria-label="Open navigation panel">
+            <c-icon name="table_of_contents" class="size-5" />
+        </button>
+    </div>
+    {% include "partials/page_title.html" %}
+{% endblock content_header %}
+
 {% block main_class %}flex flex-col max-w-2xl px-4 py-6 sm:px-6 space-y-6{% endblock main_class %}
 
 {% block quick_view_host %}

@@ -1091,3 +1091,21 @@ def test_no_account_sidebar_link_is_an_htmx_link(mock_site_context):
 
     assert "hx-get" not in nav
     assert "hx-boost" not in nav
+
+
+@pytest.mark.django_db
+def test_personal_details_has_no_empty_content_header_band(mock_site_context):
+    """The page header band used to sit under an empty padded shell header.
+
+    The shell's own content header (a centred wrapper with a padded <header>
+    and an empty title) rendered above the panel's page header on every width.
+    """
+    client = Client()
+    client.force_login(UserFactory())
+
+    html = client.get(PERSONAL_DETAILS_PATH).content.decode()
+    main = html[html.index('id="interface-main"') : html.index("<footer")]
+
+    assert "max-w-7xl" not in main
+    assert '<header class="pt-4' not in main
+    assert main.count('id="page-title"') == 1

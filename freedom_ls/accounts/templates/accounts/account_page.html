@@ -1,11 +1,14 @@
 {% extends "accounts/_account_shell.html" %}
 
 {% comment %}
-Panel pages draw their own navigation toggle in the page header
-(_main_base.html), so the shell's toggle is emptied here to keep a page from
-showing two. Pages that extend the shell directly keep the base toggle.
+Panel pages draw their own navigation toggle and page header band
+(_main_base.html), so the shell's content header is reduced to the empty
+#page-title region: no toggle (a page would show two) and no padded band above
+the page header. Navigation responses still swap that region out of band.
 {% endcomment %}
-{% block panel_toggle %}{% endblock panel_toggle %}
+{% block content_header %}
+    {% include "partials/page_title.html" %}
+{% endblock content_header %}
 
 {% block account_main %}
     {% include main_template_name with main=main request=request csrf_token=csrf_token only %}
