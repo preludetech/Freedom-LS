@@ -1,136 +1,103 @@
 # Frontend QA report: account area on panels
 
+Test plan: `3. frontend_qa.md`. Dev server on port 8099. Run class FULL (desktop 1920x1080, mobile 375x812, tablet 768x1024).
+
 ## Methodology
 
-The plan in `3. frontend_qa.md` was run in a browser against the dev server. Desktop (1920x1080) covered every test. Mobile (375x812) and tablet (768x1024) re-ran the tests the plan marks as viewports. Screenshots were collected into `screenshots/` beside this report, and every image linked below exists there. The folder also holds accessibility snapshots (`.yml`) and console logs that no record links to. The smoke gate passed, so no steps were skipped.
+Screenshots were collected into `screenshots/` beside this report. Every image linked below exists there. The run did not abort at the smoke gate, so every step ran. Results come from the structured records in `.sdd-work/qa_scratch.jsonl`.
 
 ## Diff scoping
 
-Class: **FULL**. Changed files that triggered it: `freedom_ls/accounts/**`, `freedom_ls/base/templates/**`, `freedom_ls/panel_framework/templates/panel_framework/partials/inline_record_form.html`, `freedom_ls/educator_interface/tests/playwright/test_learner_page_flow.py`, `freedom_ls/tests/playwright_helpers.py`, `docs/app_structure.md`, `test_organisation/*`.
-
-Skipped: nothing. Everything ran: desktop, mobile and tablet.
+Class: FULL. Changed files that triggered it: `freedom_ls/accounts/**`, `freedom_ls/base/templates/**`, `freedom_ls/panel_framework/**`, `freedom_ls/educator_interface/templates/**`, `config/urls.py`, and docs and spec files. Skipped: nothing. Desktop, mobile and tablet passes all ran.
 
 ## Smoke gate
 
-Outcome: **pass**. Pages loaded: `/` and `/accounts/profile/personal-details`. No failure URL or reason.
+Status: pass. Pages loaded: `/` and `/accounts/profile/personal-details`. No failure.
+
+## Design check
+
+No design states tested. The plan had no design-comparison tests.
 
 ## Results summary
 
-Passed: tests 1.1, 1.2-1.5 (functional), 2.1-2.5, 3.1-3.5, 4.1-4.5, 5.2-5.5, 6.1-6.3, 7.1-7.4, 8.1-8.3, mobile 1.4, 3.5 and 4.2.
+| Test | Desktop | Mobile | Tablet | Notes |
+|---|---|---|---|---|
+| 1 Account area loads | pass | pass (1-nav pass) | pass | |
+| 2 Inline name change | pass | | | |
+| 3 Picture upload | pass | pass | pass | |
+| 4 Remove picture | pass | pass | | |
+| 5 Email and Password panels | pass | pass | pass | |
+| 5-align (Forgot password? alignment) | fail | fail | fail | Bug B1 |
+| 5.6 No-password user | pass | | | |
+| 5.7 `/accounts/password/set/` | pass | pass | | Layout probe flags, bug B2 |
+| 6 Entrance layout pages | pass | | | |
+| 6.3 Reauthenticate | pass | | | |
+| 7 Roles (7.3 included) | pass | | | 7.4 not applicable |
+| 8 Educator name form | pass | | | |
+| 9 Panels, footers, heading row | pass | pass | pass | |
 
-Failed: six shell layout checks, all from one root cause, bug B1:
-
-- 1.3-shell desktop
-- 5.1 desktop
-- 1.4 mobile (recorded as a pass; the band is noted in its notes)
-- 1.3/3.5 tablet
-- 5.6 mobile
-- 5.1 tablet
-
-Notes on deviations that are not bugs:
-
-- Test 3.1 (upload): the button reads "Uploading…" rather than the plan's "Saving…". This is the panel-framework rule for a form that sends a file, and the plan's wording predates that rule.
-- Test 2.4 (201 characters): the input has `maxlength=200`, so typing is cut at 200 and saved. The 422 path was checked by removing `maxlength`: one red line, `aria-invalid=true`, no toast, header unchanged.
-- Test 1.4 (mobile): with the navigation sheet open the layout probe reports stacked/overlap. That is the open modal sheet, drawn the same way in the educator interface.
-
-## Bug B1: Account shell renders an empty content-header band above the page
+## Bug B1: Forgot password? link indented 8px from the Password card's field edge
 
 Manifestations:
+- `5-align`, desktop
+- `5-align`, tablet
+- `5-align`, mobile
 
-- 1.3-shell, desktop
-- 1.4, mobile
-- 1.3/3.5, tablet
-- 5.1, desktop
-- 5.6, mobile
-- 5.1, tablet
+![](screenshots/page-2026-11-20T10-09-59-444Z.png)
+![](screenshots/page-2026-11-20T10-16-34-880Z.png)
+![](screenshots/page-2026-11-20T10-13-00-981Z.png)
 
-Screenshots:
+Expected: the link's text starts at the same left edge as the Password card's labels and inputs.
 
-Personal details, desktop (empty 56px band y 76-132):
+Actual: the link is rendered as `btn btn-link btn-sm`, whose 8px horizontal padding puts its text 8px right of the field edge at every viewport (desktop x=321 vs 313, tablet x=57 vs 49, mobile x=41 vs 33).
 
-![](screenshots/page-2026-11-19T23-17-56-359Z.png)
+## Bug B2: Layout probe flags /accounts/password/set/: header band ink starts at the column edge, content at the card
 
-Educator panel page for comparison (h1 at y=92 against 168 here):
+Manifestations:
+- `5.7`, desktop (header ink x=256, content x=288, 32px)
+- `5.7`, mobile (header ink x=0, content x=16, 16px)
 
-![](screenshots/page-2026-11-19T23-21-41-518Z.png)
+![](screenshots/page-2026-11-20T10-15-00-624Z.png)
+![](screenshots/page-2026-11-20T10-15-15-463Z.png)
 
-Email, desktop (h1 at y=180, about 70px below the sidebar's first entry at y=108):
+Expected: probe regions line up as on the educator panel pages, where the grey canvas is its own full-width element.
 
-![](screenshots/page-2026-11-19T23-21-02-566Z.png)
-
-Email, mobile (toggle centred at x=162, h1 at x=16):
-
-![](screenshots/page-2026-11-19T23-26-14-833Z.png)
-
-Email, tablet (toggle centred at x=310, h1 at x=24):
-
-![](screenshots/page-2026-11-19T23-26-40-787Z.png)
-
-Personal details, tablet:
-
-![](screenshots/page-2026-11-19T23-26-33-222Z.png)
-
-**Expected:** Personal details starts its page header band directly under the top bar, like the educator panel pages. The spec says the shell's content_header toggle renders only on pages with no `main_template_name` (allauth pages). allauth pages show the navigation toggle left-aligned with the content below `lg`, and no empty band at desktop where the toggle is hidden.
-
-**Actual:** `accounts/_account_shell.html` keeps `_base_interface.html`'s content_header: a `max-w-7xl mx-auto` wrapper, a header with `pt-4 pb-8 sm:pb-10`, an `lg:hidden` toggle and an empty `#page-title`.
-
-- On Personal details, `account_page.html` only empties `panel_toggle`. That leaves a 56px empty grey band above the header at every width.
-- On allauth pages, `manage.html` sets `main_class` to a flex-col. The wrapper shrinks and centres, so the toggle sits centred (x=162 at 375px, x=310 at 768px) above a left-aligned h1. At desktop a 56px empty band pushes the h1 about 70px below the sidebar's first entry.
-
-Functionally the pages work: navigation, aria-current, one toggle, no horizontal scroll.
+Actual: on the allauth set-password page the grey canvas is painted by an ancestor, so the probe reads the card (x=288 desktop, x=16 mobile) as content against the band at x=256/0. Visually the heading text and the card share a left edge, as on Personal details and the educator pages.
 
 ## Layout probe
 
 | Test id | Viewport | URL | Screenshot | Result |
 |---|---|---|---|---|
-| 1.1 | desktop | / | [link](screenshots/page-2026-11-19T23-17-45-118Z.png) | clean |
-| 1.3 | desktop | /accounts/profile/personal-details | [link](screenshots/page-2026-11-19T23-17-56-359Z.png) | clean |
-| 2.2 | desktop | /accounts/profile/personal-details | [link](screenshots/page-2026-11-19T23-18-26-852Z.png) | clean |
-| 2.4 | desktop | /accounts/profile/personal-details | [link](screenshots/page-2026-11-19T23-18-56-730Z.png) | clean |
-| 3.1 | desktop | /accounts/profile/personal-details | [link](screenshots/page-2026-11-19T23-19-38-375Z.png) | clean |
-| 3.3 | desktop | /accounts/profile/personal-details | [link](screenshots/page-2026-11-19T23-19-54-701Z.png) | clean |
-| 4.2 | desktop | /accounts/profile/personal-details | [link](screenshots/page-2026-11-19T23-20-24-772Z.png) | clean |
-| 4.4 | desktop | /accounts/profile/personal-details | [link](screenshots/page-2026-11-19T23-20-50-012Z.png) | clean |
-| 5.1 | desktop | /accounts/email/ | [link](screenshots/page-2026-11-19T23-21-02-566Z.png) | clean (the probe passed, but the empty header band is recorded as B1) |
-| 5.3 | desktop | /accounts/password/change/ | [link](screenshots/page-2026-11-19T23-22-12-107Z.png) | clean (same empty band above the h1, B1) |
-| 6.3 | desktop | /accounts/reauthenticate/ | [link](screenshots/page-2026-11-19T23-23-07-454Z.png) | clean |
-| 8.1 | desktop | /educator/organisations/demodev/learners/&lt;pk&gt;/__tabs/settings | [link](screenshots/page-2026-11-19T23-24-37-213Z.png) | clean |
-| 1.4 | mobile | /accounts/profile/personal-details | [link](screenshots/page-2026-11-19T23-25-09-051Z.png) | clean |
-| 3.5 | mobile | /accounts/profile/personal-details | [link](screenshots/page-2026-11-19T23-25-45-563Z.png) | clean |
-| 4.2 | mobile | /accounts/profile/personal-details | [link](screenshots/page-2026-11-19T23-25-59-582Z.png) | clean |
-| 5.6 | mobile | /accounts/email/ | [link](screenshots/page-2026-11-19T23-26-14-833Z.png) | misaligned: header ink starts at x=162, content at x=16 (-146px) (B1) |
-| 1.3 | tablet | /accounts/profile/personal-details | [link](screenshots/page-2026-11-19T23-26-33-222Z.png) | clean (probe passed; empty band recorded as B1) |
-| 5.1 | tablet | /accounts/email/ | [link](screenshots/page-2026-11-19T23-26-40-787Z.png) | misaligned: header ink starts at x=310, content at x=24 (-286px) (B1) |
-
-## Design check
-
-No design states tested.
+| 1 | desktop | `/accounts/profile/personal-details` | ![](screenshots/page-2026-11-20T10-05-54-902Z.png) | clean |
+| 3 | desktop | `/accounts/profile/personal-details` | ![](screenshots/page-2026-11-20T10-08-26-417Z.png) | clean |
+| 5 | desktop | `/accounts/profile/personal-details` | ![](screenshots/page-2026-11-20T10-09-59-444Z.png) | clean |
+| 6.3 | desktop | `/accounts/reauthenticate/` | ![](screenshots/page-2026-11-20T10-10-37-178Z.png) | clean |
+| 8 | desktop | `/educator/organisations/demodev/cohorts/<id>/__tabs/settings` | ![](screenshots/page-2026-11-20T10-12-15-476Z.png) | clean |
+| 1 | mobile | `/accounts/profile/personal-details` | ![](screenshots/page-2026-11-20T10-13-00-981Z.png) | clean |
+| 9 | mobile | `/educator/organisations/demodev/learners/<id>/__tabs/settings` | ![](screenshots/page-2026-11-20T10-13-40-822Z.png) | clean |
+| 5.7 | desktop | `/accounts/password/set/` | ![](screenshots/page-2026-11-20T10-15-00-624Z.png) | fail: misaligned: header ink starts at x=256, content at x=288 (32px) |
+| 5.7 | mobile | `/accounts/password/set/` | ![](screenshots/page-2026-11-20T10-15-15-463Z.png) | fail: misaligned: header ink starts at x=0, content at x=16 (16px) |
+| 1 | tablet | `/accounts/profile/personal-details` | ![](screenshots/page-2026-11-20T10-16-34-880Z.png) | clean |
+| 9 | tablet | `/educator/organisations/demodev/cohorts/<id>/__tabs/settings` | ![](screenshots/page-2026-11-20T10-16-46-435Z.png) | clean |
 
 ## Data changes
 
-| What changed | Agent call or command | Files written |
+| What changed | Made by | Files written |
 |---|---|---|
-| Re-seeded the emptied dev database (demo sites, cohorts and accounts) | `create_demo_data --yes` | none |
-| Created educator `qa.single.org.educator@example.com` / `testpass123` (organisation_admin on DemoDev) | `qa_create_single_org_educator` | none |
-| Gave learner `demodev_s2@email.com` an unusable password, for the set-password page | database edit (no command recorded) | none |
-| Created learner `demodev_incomplete_reg@email.com` (password = email), then set DemoDev's `SiteSignupPolicy.additional_registration_forms` back to `[]` so other learners are not gated | `qa_create_incomplete_registration_learner` | none |
-
-QA-created state also left behind, recorded in test notes: the secondary address `qa-secondary@example.com` on the QA login (test 5.2). The QA name and picture were restored to their original (blank) state in tests 2.5 and 4.4, and the learner name was restored to `demodev_s10` in 8.3.
+| Created qa-learner@example.com (pk 73, learner, testpass123), qa-educator@example.com (pk 75, organisation_admin on DemoDev, testpass123) and qa-nopassword@example.com (pk 74, unusable password) on the DemoDev site, each with a verified primary email and legal consents; added qa_login_session to mint a session cookie for the no-password user. | `sdd:qa-data-helper` | `freedom_ls/qa_helpers/management/commands/qa_create_account_page_users.py`, `freedom_ls/qa_helpers/management/commands/qa_login_session.py` |
 
 ## Bug status
 
-| Bug | Title | Status |
-|---|---|---|
-| B1 | Account shell renders an empty content-header band above the page | **FIXED** (commit: 61b70d7af) |
-
-Re-verified in the browser after the fix: Personal details' header band starts under the top bar (h1 at y=92, as on the educator panel pages) at 1920, 768 and 375 wide. On the Email and Password pages the allauth h1 starts at y=124 at desktop (was 180), and below lg the toggle's icon shares the content's left edge (x=16 at 375, x=24 at 768). The probe still reports a 12px "misaligned" flag there: it measures the toggle's transparent button box (x=4), whose `-ms-3` offsets the padding so the icon lines up. ![](screenshots/page-2026-11-20T00-01-57-811Z.png) ![](screenshots/page-2026-11-20T00-01-48-363Z.png)
+- **FIXED** (commit: 422ace948) — Forgot password? link indented 8px from the Password card's field edge. Re-verified: link text and labels now share x=49 at tablet.
+- **UNRESOLVED** — Layout probe flags /accounts/password/set/ (reason: no visible misalignment, since the heading text and the card share a left edge at every viewport. The probe reads the card as content because this allauth page's grey canvas comes from an ancestor, not from its own full-width element as on the educator panel pages. Someone needs to decide whether to restructure the page so the probe passes, or accept the flag.)
+- **UNRESOLVED** — targeted run after the fixes left tests failing (reason: freedom_ls/base/tests/invariants/test_app_templates_use_app_components.py::test_app_templates_use_no_content_widget_or_callout_level[accounts/templates/accounts/partials/profile_picture_form.html]: the template uses `c-panel-notice` where the invariant expects `<c-callout>`. The B1 fix did not touch this file. 15443 passed, 1 failed, 1 skipped.)
 
 ## General notes
 
-- No design states, so no design comparison ran.
-- The plan's "Saving…" wording for the picture upload (3.1) is out of date. The button says "Uploading…" for file forms under the panel-framework rule. The plan could be updated.
-- The 201-character test needs `maxlength` removed in devtools, because the browser blocks that input. The server-side 422 path is the part under test.
-- Test 4.5 (side effect: remove from tab one, confirm in tab two) answered 200 with no error page and the picture stayed removed.
-- Screenshot `page-2026-11-19T23-25-00-000Z.png` (test 8.3) has no layout record. It is linked from the test record only.
+- Test 7.4 was not applicable: the DemoDev signup policy has no extra registration forms.
+- No connections, MFA or sessions pages are enabled, so Test 9 covered Personal details, `/accounts/password/set/` and the learner and cohort Settings tabs only. Connections, MFA and sessions URLs return 404, matching the sidebar.
+- Tests 2, 4, 6, 7 and 8 ran at desktop only, as the plan marks only Tests 1, 3, 5 and 9 for viewports. Test 4 was also re-checked at mobile and Test 5.7 at mobile.
+- Records for tests 2 (in part), 6, 7, 5.6 and 7.3 have no screenshot (`screenshot_path` null).
+- The plan's Test 5.6 and 5.7 used the no-password user created by the QA data helper.
 
-status: ok · reason: 1 bug — 1 fixed, 0 unresolved; report rendered, screenshots verified
+status: ok · reason: 2 bugs — 1 fixed, 1 unresolved; targeted run after the fix has 1 failing invariant test; report rendered, screenshots verified
