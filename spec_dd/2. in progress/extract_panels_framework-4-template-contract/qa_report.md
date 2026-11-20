@@ -114,7 +114,7 @@ Actual: At 768 the Learners list renders cards with no column headers. The toolb
 ## Bug status
 
 - B1: **FIXED** (commit: 87d3591a9) — Minimal shell leaves form controls, h3 headings and table row rules unstyled. Re-verified on the minimal-shell server: every field has a 1px border and 12px padding, labels sit above, h3 weight 600, toolbar search fields bordered.
-- B2: **UNRESOLVED** — Educator interface returns 500 under section 4's template order (framework c-panel-icon has no 'home') (reason: decision needed. Either amend section 4 of the plan, because that template order now shadows FLS's c-panel-icon wrapper the same way it shadows panel-btn and panel-chip, or change the documented contract that an unknown c-panel-icon name raises TemplateDoesNotExist. That contract is a deliberate HOST_CONTRACT rule.)
+- B2: **FIXED** (commit: f1e58f530) — Educator interface returns 500 under section 4's template order (framework c-panel-icon has no 'home'). Decision: the plan was wrong, not the code. Section 4 of `3. frontend_qa.md` no longer opens the educator interface under the framework-first template order, which shadows FLS's c-panel-icon wrapper; the HOST_CONTRACT rule that an unknown icon name raises stands.
 - B3: **FIXED** (commit: be8c7665d) — Dialog footer actions start at the left edge when the footer wraps at 375. Re-verified: at 375 Save ends at x=350 (the footer padding edge); the desktop Deactivate dialog footer is unchanged.
 - B4: **FIXED** (commit: a442c4c37) — No sort control at 768 when the Learners table shows as cards. Re-verified: at 768 the toolbar shows the Sort menu and choosing Last active re-sorts; at 1920 the column headers sort and no extra Sort button shows; 375 unchanged.
 
@@ -143,7 +143,7 @@ Records not tied to a bug passed unless marked.
 
 ## General notes
 
-- **No main baseline.** The `main` baseline server for section 1's side-by-side comparison was not run (test 0.3). Building, migrating and seeding the main worktree was blocked by the permission classifier, because it changes another worktree. Section 1 was therefore judged against the 1.3 checklist alone, not compared pixel for pixel against main. A same-looking-as-main claim is not established by this run. The notes on B3 and B4 that call them "pre-existing" rest on the template files being unchanged from main apart from the renames, not on a rendered comparison.
+- **No main baseline.** (Since removed from the plan: QA never touches `main`.) The `main` baseline server for section 1's side-by-side comparison was not run (test 0.3). Building, migrating and seeding the main worktree was blocked by the permission classifier, because it changes another worktree. Section 1 was therefore judged against the 1.3 checklist alone, not compared pixel for pixel against main. A same-looking-as-main claim is not established by this run. The notes on B3 and B4 that call them "pre-existing" rest on the template files being unchanged from main apart from the renames, not on a rendered comparison.
 - **Section 4 skips.** 4.dropdown, 4.quickview, 4.dialog and 4.csrf had nothing to act on. These are skips, not passes.
   - 4.dropdown: the reference page has no dropdown menu example (no panelDropdownMenu, dropdownMenu or role=menu on it).
   - 4.quickview: the quick view trigger is a static button with no `hx-get`, so clicking it opens nothing.
@@ -164,4 +164,4 @@ Records not tied to a bug passed unless marked.
 - **Shell landmark.** The minimal shell has no `<main>` landmark, though the spec names `#interface-main` as the region. This is tangential and has no action attached.
 - **Test fixtures.** The QA cohort and its 50 learner memberships remain in the dev database (see Data changes).
 
-status: ok · reason: 4 bugs — 3 fixed, 1 unresolved; report rendered, screenshots verified
+status: ok · reason: 4 bugs — 4 fixed, 0 unresolved; report rendered, screenshots verified
