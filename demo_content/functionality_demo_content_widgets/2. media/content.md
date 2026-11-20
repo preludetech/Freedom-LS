@@ -88,3 +88,18 @@ Play a recorded word with `c-audio`. `src` is the audio file and `label` is the 
 <c-audio src="audio/romeo.mp3" label="Romeo" respelling="ROW-me-oh" symbol="R"></c-audio>
 
 </c-grid>
+
+
+## Audio clip
+
+Play a longer recording with `c-audio-clip`. `src` is the audio file, `title` is the optional heading above the player, `kind` is the optional label such as "Listening exercise", and whatever you write inside the tag becomes a collapsible transcript.
+
+<c-audio-clip src="audio/gettysburg.mp3" title="The Gettysburg Address" kind="Listening exercise">
+
+Four score and seven years ago our fathers brought forth upon this continent, a new nation, conceived in Liberty, and dedicated to the proposition that all men are created equal.
+
+Now we are engaged in a great civil war, testing whether that nation, or any nation so conceived, and so dedicated, can long endure. We are met on a great battle-field of that war. We have come to dedicate a portion of that field, as a final resting place for those who here gave their lives, that that nation might live. It is altogether fitting and proper that we should do this.
+
+</c-audio-clip>
+
+<c-audio-clip src="audio/gettysburg.mp3" title="The Gettysburg Address"></c-audio-clip>

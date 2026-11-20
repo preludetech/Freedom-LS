@@ -25,3 +25,10 @@ romeo.mp3
   Licence: CC0 1.0
   Retrieved: 2026-11-18
   Conversion: ffmpeg -i En-ca-Romeo.oga -af silenceremove=start_periods=1:start_threshold=-50dB,areverse,silenceremove=start_periods=1:start_threshold=-50dB,areverse -ac 1 -b:a 64k romeo.mp3
+
+gettysburg.mp3
+  Source page: https://commons.wikimedia.org/wiki/File:LibriVox_-_Everrett_Copy_of_the_Gettysburg_Address_-_Michael_Scherer.ogg
+  Author: Abraham Lincoln (text), read aloud by Michael Scherer for LibriVox
+  Licence: Public domain (the 1864 Everett copy of the text; LibriVox recordings are dedicated to the public domain)
+  Retrieved: 2026-11-20
+  Conversion: ffmpeg -i LibriVox_-_Everrett_Copy_of_the_Gettysburg_Address_-_Michael_Scherer.ogg -ac 1 -b:a 48k gettysburg.mp3
