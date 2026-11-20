@@ -307,6 +307,8 @@ document.addEventListener("alpine:init", () => {
         state: "paused", // paused | loading | playing | failed
         elapsed: 0,
         duration: null, // the stored length until the element reports its own
+        pendingSeek: null, // a seek made before the element had metadata
+        dragging: false, // true between the first input and the change of a drag
 
         init() {
             const stored = parseFloat(this.$el.dataset.duration);
@@ -333,6 +335,46 @@ document.addEventListener("alpine:init", () => {
         get showPlayIcon() {
             return this.state === "paused" || this.state === "failed";
         },
+        get seekMax() {
+            return this.duration ?? 0;
+        },
+        get seekDisabled() {
+            return this.duration === null;
+        },
+        // floor() makes this change at most once a second during playback
+        get valueText() {
+            const elapsed = spokenDuration(this.elapsed);
+            return this.duration === null ? elapsed : `${elapsed} of ${spokenDuration(this.duration)}`;
+        },
+        get playedStyle() {
+            return { "--played": `${this.duration ? (this.elapsed / this.duration) * 100 : 0}%` };
+        },
+
+        seekInput(event) {
+            this.dragging = true;
+            this.elapsed = Number(event.target.value);
+        },
+        seekChange(event) {
+            this.dragging = false;
+            this._seekTo(Number(event.target.value));
+        },
+        seekKey(event) {
+            // step="any" leaves the browser's arrow step undefined, so arrows are handled here.
+            const delta = { ArrowLeft: -5, ArrowRight: 5 }[event.key];
+            if (delta === undefined || this.seekDisabled) return;
+            event.preventDefault();
+            this._seekTo(Math.min(Math.max(this.elapsed + delta, 0), this.seekMax));
+        },
+        _seekTo(seconds) {
+            this.elapsed = seconds;
+            const audio = clipElements.get(this._id);
+            if (!audio || audio.readyState < HTMLMediaElement.HAVE_METADATA) {
+                this.pendingSeek = seconds;
+                return;
+            }
+            // No play() here, so a paused clip stays paused.
+            audio.currentTime = seconds;
+        },
 
         toggle() {
             if (this.state === "playing" || this.state === "loading") {
@@ -350,10 +392,20 @@ document.addEventListener("alpine:init", () => {
             audio.addEventListener("playing", () => { this.state = "playing"; });
             audio.addEventListener("waiting", () => { if (!audio.paused) this.state = "loading"; });
             audio.addEventListener("pause", () => { if (this.state !== "failed") this.state = "paused"; });
-            audio.addEventListener("timeupdate", () => { this.elapsed = audio.currentTime; });
-            // The stored length is an estimate for some VBR files; the element's own is exact.
+            // Assigning src resets currentTime to 0; while a seek is pending or
+            // being dragged the saved position must not be overwritten.
+            audio.addEventListener("timeupdate", () => {
+                if (!this.dragging && this.pendingSeek === null) this.elapsed = audio.currentTime;
+            });
             audio.addEventListener("loadedmetadata", () => {
+                // The stored length is an estimate for some VBR files; the element's own is exact.
                 if (Number.isFinite(audio.duration)) this.duration = audio.duration;
+                if (this.pendingSeek !== null) {
+                    audio.currentTime = this.pendingSeek;
+                    this.pendingSeek = null;
+                }
+                // A max that grew from 0 leaves the browser's clamped value behind.
+                this.$refs.seek.value = this.elapsed;
             });
             audio.addEventListener("ended", () => {
                 audio.currentTime = 0;

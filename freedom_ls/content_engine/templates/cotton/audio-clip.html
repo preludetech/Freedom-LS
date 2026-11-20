@@ -19,7 +19,10 @@ signature expires still works. Each clip owns its audio element, created by the
 audioClip Alpine component on first play, so nothing loads with the page and
 two clips never share a position.
 The total comes from the stored duration_seconds; a file without one shows
---:-- and a seek bar that stays disabled. Both time figures are hidden from
+--:-- and a seek bar that stays disabled until the audio element reports its
+own length. Arrow keys seek by five seconds in the component, because the
+range's step is "any". A seek made before the audio has loaded is applied once
+its metadata arrives. Both time figures are hidden from
 screen readers, which read the seek bar's aria-valuetext instead.
 A missing or non-audio file, or an empty title, renders a red box naming the
 src instead. The status line is always in the DOM and only its text changes,
@@ -57,11 +60,14 @@ so screen readers announce each change.
           <div class="flex items-center gap-3">
             <input type="range" min="0" step="any" value="0"
                    {% if file_obj.duration_seconds is not None %}max="{{ file_obj.duration_seconds|unlocalize }}"{% endif %}
-                   disabled
+                   {% if file_obj.duration_seconds is None %}disabled{% endif %}
+                   x-bind:max="seekMax" x-bind:value="elapsed" x-bind:disabled="seekDisabled"
+                   x-bind:aria-valuetext="valueText" x-bind:style="playedStyle"
+                   x-on:input="seekInput" x-on:change="seekChange" x-on:keydown="seekKey"
                    aria-label="Seek {{ title }}"
                    aria-valuetext="{{ 0|clip_value_text:file_obj.duration_seconds }}"
                    x-ref="seek"
-                   class="h-11 min-w-0 flex-1 accent-primary">
+                   class="h-11 min-w-0 flex-1 accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
             <span aria-hidden="true" class="shrink-0 text-sm tabular-nums">
               <span x-text="elapsedText">{{ 0|clip_time:file_obj.duration_seconds }}</span>
               <span class="text-muted">/ <span x-text="totalText">{% if file_obj.duration_seconds is None %}--:--{% else %}{{ file_obj.duration_seconds|clip_time:file_obj.duration_seconds }}{% endif %}</span></span>

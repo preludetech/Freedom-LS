@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Locator, Page, Route, expect
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 
@@ -19,6 +20,10 @@ from freedom_ls.content_engine.factories import (
 from freedom_ls.content_engine.models import Course, File
 from freedom_ls.learner_interface.tests.playwright.helpers import form_item_url
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
+from freedom_ls.tests.playwright_helpers import (
+    QA_VIEWPORTS,
+    assert_no_horizontal_overflow,
+)
 
 # transaction=True so the live server's own DB connection sees the fixture
 # data this test's connection committed.
@@ -30,6 +35,7 @@ BEEP_MP3 = FIXTURES / "beep.mp3"
 
 FIRST_CLIP = "Dialogue one"
 SECOND_CLIP = "Dialogue two"
+THIRD_CLIP = "Dialogue three"
 
 
 def _audio_file(name: str, source: Path, duration_seconds: float | None) -> None:
@@ -44,8 +50,11 @@ def _audio_file(name: str, source: Path, duration_seconds: float | None) -> None
     )
 
 
-def _clip_course(user: User) -> Course:
-    """A free course whose one topic holds two clips and one speak button."""
+def _clip_course(user: User, third_clip_duration: float | None = None) -> Course:
+    """A free course whose one topic holds three clips and one speak button.
+
+    The third clip's stored duration is ``third_clip_duration``, null by default.
+    """
     course: Course = CourseFactory(
         title="Clip Course",
         slug="clip-course",
@@ -55,10 +64,12 @@ def _clip_course(user: User) -> Course:
     LearnerCourseRegistrationFactory(learner__user=user, course=course, is_active=True)
     _audio_file("one", TONE_MP3, 30.0)
     _audio_file("two", TONE_MP3, 30.0)
+    _audio_file("three", TONE_MP3, third_clip_duration)
     _audio_file("beep", BEEP_MP3, None)
     content = (
         f'<c-audio-clip src="audio/one.mp3" title="{FIRST_CLIP}"></c-audio-clip>\n\n'
         f'<c-audio-clip src="audio/two.mp3" title="{SECOND_CLIP}"></c-audio-clip>\n\n'
+        f'<c-audio-clip src="audio/three.mp3" title="{THIRD_CLIP}"></c-audio-clip>\n\n'
         '<c-audio src="audio/beep.mp3" label="Beep"></c-audio>'
     )
     topic = TopicFactory(title="Clip Topic", slug="clip-topic", content=content)
@@ -100,3 +111,159 @@ def test_learner_plays_and_pauses_a_clip(
     paused_at = elapsed.inner_text()
     page.wait_for_timeout(1000)
     expect(elapsed).to_have_text(paused_at)
+
+
+def _seek_bar(page: Page, title: str = FIRST_CLIP) -> Locator:
+    return page.get_by_role("slider", name=f"Seek {title}")
+
+
+def _elapsed(page: Page, title: str = FIRST_CLIP) -> Locator:
+    return page.get_by_role("group", name=title).locator("[x-text='elapsedText']")
+
+
+def _serve_with_ranges(route: Route) -> None:
+    """Answer a media request the way a real media server does, honouring Range.
+
+    The live server's static handler ignores Range, so a seek past the buffered
+    part of the file cannot be satisfied without this. The route sits on the
+    audio endpoint and answers with the file itself: a browser does not route
+    the redirect's target.
+    """
+    body = TONE_MP3.read_bytes()
+    requested = route.request.headers.get("range")
+    headers = {"Content-Type": "audio/mpeg", "Accept-Ranges": "bytes"}
+    if requested is None:
+        route.fulfill(status=200, headers=headers, body=body)
+        return
+    start_text, _, end_text = requested.removeprefix("bytes=").partition("-")
+    start = int(start_text)
+    end = int(end_text) if end_text else len(body) - 1
+    headers["Content-Range"] = f"bytes {start}-{end}/{len(body)}"
+    route.fulfill(status=206, headers=headers, body=body[start : end + 1])
+
+
+def _open_clips(live_server, page: Page, user: User) -> None:
+    course = _clip_course(user)
+    page.route("**/content/audio/**", _serve_with_ranges)
+    page.goto(form_item_url(live_server, course, "view_course_item"))
+
+
+def test_learner_seeks_a_clip_by_keyboard_and_mouse(
+    live_server,
+    live_server_site,
+    mock_site_context,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    _open_clips(live_server, page, logged_in_user)
+    seek = _seek_bar(page)
+    elapsed = _elapsed(page)
+    play = page.get_by_role("button", name=f"Play {FIRST_CLIP}")
+
+    # A seek before the first Play is kept and applied once the audio loads.
+    seek.fill("10")
+    expect(elapsed).to_have_text("0:10")
+    play.click()
+    expect(play).to_have_attribute("aria-pressed", "true")
+    expect(elapsed).not_to_have_text("0:00")
+    expect(elapsed).not_to_have_text(re.compile(r"0:0\d"))
+    play.click()
+    expect(play).to_have_attribute("aria-pressed", "false")
+
+    # Seeking while paused stays paused, and the slider speaks the time.
+    seek.focus()
+    seek.press("Home")
+    expect(elapsed).to_have_text("0:00")
+    seek.press("ArrowRight")
+    expect(elapsed).to_have_text("0:05")
+    seek.press("ArrowRight")
+    expect(elapsed).to_have_text("0:10")
+    seek.press("ArrowLeft")
+    expect(elapsed).to_have_text("0:05")
+    expect(seek).to_have_attribute("aria-valuetext", "5 seconds of 30 seconds")
+    seek.press("End")
+    expect(elapsed).to_have_text("0:30")
+    expect(play).to_have_attribute("aria-pressed", "false")
+
+    # A click at the right edge reaches the end of the bar.
+    seek.press("Home")
+    box = seek.bounding_box()
+    assert box is not None
+    page.mouse.click(box["x"] + box["width"] - 2, box["y"] + box["height"] / 2)
+    expect(elapsed).to_have_text(re.compile(r"0:(29|30)"))
+    expect(play).to_have_attribute("aria-pressed", "false")
+
+
+def test_clip_seeked_near_the_end_returns_to_the_start(
+    live_server,
+    live_server_site,
+    mock_site_context,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    _open_clips(live_server, page, logged_in_user)
+    play = page.get_by_role("button", name=f"Play {FIRST_CLIP}")
+
+    _seek_bar(page).fill("28")
+    play.click()
+
+    expect(play).to_have_attribute("aria-pressed", "false", timeout=10_000)
+    expect(_elapsed(page)).to_have_text("0:00")
+
+
+def test_clip_without_a_stored_duration_enables_its_seek_bar_after_play(
+    live_server,
+    live_server_site,
+    mock_site_context,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    _open_clips(live_server, page, logged_in_user)
+    seek = _seek_bar(page, THIRD_CLIP)
+    group = page.get_by_role("group", name=THIRD_CLIP)
+
+    expect(seek).to_be_disabled()
+    expect(group).to_contain_text("--:--")
+
+    page.get_by_role("button", name=f"Play {THIRD_CLIP}").click()
+
+    expect(seek).to_be_enabled()
+    expect(group).to_contain_text("0:30")
+
+
+@pytest.mark.browser_context_args(has_touch=True)
+def test_learner_seeks_a_clip_by_touch(
+    live_server,
+    live_server_site,
+    mock_site_context,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    _open_clips(live_server, page, logged_in_user)
+    seek = _seek_bar(page)
+
+    box = seek.bounding_box()
+    assert box is not None
+    page.touchscreen.tap(box["x"] + box["width"] - 2, box["y"] + box["height"] / 2)
+
+    expect(_elapsed(page)).to_have_text(re.compile(r"0:(29|30)"))
+
+
+def test_clip_fits_every_viewport(
+    live_server,
+    live_server_site,
+    mock_site_context,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    _open_clips(live_server, page, logged_in_user)
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        expect(_seek_bar(page)).to_be_visible()
+        assert_no_horizontal_overflow(page)

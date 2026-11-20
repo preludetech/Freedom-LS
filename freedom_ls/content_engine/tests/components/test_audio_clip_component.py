@@ -98,6 +98,15 @@ class TestResolvedClip:
         assert total_el.text_content() == "--:--"
         assert _seek(tree).get("disabled") is not None
 
+    def test_known_duration_leaves_the_seek_bar_enabled(
+        self, mock_site_context: object
+    ) -> None:
+        _audio_file(198.4)
+
+        tree = _tree(CLIP.format(extra=""))
+
+        assert _seek(tree).get("disabled") is None
+
     def test_kind_renders_when_given(self, mock_site_context: object) -> None:
         _audio_file()
 
