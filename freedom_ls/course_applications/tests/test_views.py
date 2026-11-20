@@ -4427,6 +4427,40 @@ def test_form_page_notice_shows_not_sent_when_the_send_was_refused(
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    "state",
+    [CourseApplication.State.WITHDRAWN, CourseApplication.State.REJECTED],
+)
+def test_read_only_form_page_never_says_submitted_for_an_unsubmitted_state(
+    client, mock_site_context, state
+):
+    """The read-only notice used to say "submitted" for a withdrawn or rejected application."""
+    application = _anonymous_draft(client)
+    user = UserFactory()
+    client.force_login(user)
+    now = timezone.now()
+    CourseApplication.objects.filter(pk=application.pk).update(
+        user=user,
+        anonymous_applicant=None,
+        state=state,
+        withdrawn_at=now if state == CourseApplication.State.WITHDRAWN else None,
+        decided_at=now if state == CourseApplication.State.REJECTED else None,
+        submitted_at=now if state == CourseApplication.State.REJECTED else None,
+        rejection_message="Not a fit."
+        if state == CourseApplication.State.REJECTED
+        else "",
+    )
+
+    body = client.get(_page_url(application, 1)).content.decode()
+    notice = lxml.html.fromstring(body).xpath(
+        "string(//*[@data-testid='read-only-notice'])"
+    )
+
+    assert notice.strip()
+    assert "submitted" not in notice
+
+
+@pytest.mark.django_db
 def test_form_page_notice_names_the_applicants_address(client, mock_site_context):
     application = _anonymous_draft(client)
 
