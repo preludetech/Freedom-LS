@@ -70,15 +70,15 @@ def test_wrapped_dialog_footer_keeps_its_actions_at_the_right_edge(
     footer = page.locator("#app-modal [data-modal-footer]:visible")
     expect(footer).to_be_visible()
 
-    save = footer.get_by_role("button", name="Save", exact=True)
+    add = footer.get_by_role("button", name="Add", exact=True)
     cancel = footer.get_by_role("button", name="Cancel")
-    save_box = save.bounding_box()
+    add_box = add.bounding_box()
     cancel_box = cancel.bounding_box()
     footer_box = footer.bounding_box()
-    assert save_box is not None
+    assert add_box is not None
     assert cancel_box is not None
     assert footer_box is not None
-    assert save_box["y"] > cancel_box["y"], "the footer should wrap at 375px"
+    assert add_box["y"] > cancel_box["y"], "the footer should wrap at 375px"
     # The footer's right padding is px-6 (24px).
     content_right = footer_box["x"] + footer_box["width"] - 24
-    assert abs(save_box["x"] + save_box["width"] - content_right) <= 1
+    assert abs(add_box["x"] + add_box["width"] - content_right) <= 1
