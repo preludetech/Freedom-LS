@@ -530,3 +530,32 @@ def test_the_cohort_learners_table_is_cards_with_its_buttons_in_view_on_a_tablet
         assert box is not None
         assert box["x"] + box["width"] <= 768
     assert_no_horizontal_overflow(page)
+
+
+def test_learners_table_at_tablet_width_offers_the_sort_menu_while_it_shows_cards(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """At 768px the table is cards with no column headers, and the toolbar had
+    no Sort menu, so the list could not be sorted. Sort shows exactly while the
+    cards do and gives way to the column headers once the table returns.
+    """
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    LearnerFactory(organisation=organisation)
+    page.set_viewport_size({"width": 768, "height": 1024})
+
+    page.goto(interface_url(live_server, organisation.slug, "learners"))
+    main = page.locator("#main-content")
+
+    expect(main.locator("[data-row-cards], ul.divide-y").first).to_be_visible()
+    expect(main.get_by_role("columnheader").first).to_be_hidden()
+    expect(main.get_by_role("button", name="Sort", exact=True)).to_be_visible()
+
+    page.set_viewport_size({"width": 1920, "height": 1080})
+
+    expect(main.get_by_role("columnheader").first).to_be_visible()
+    expect(main.get_by_role("button", name="Sort", exact=True)).to_be_hidden()
