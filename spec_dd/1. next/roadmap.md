@@ -17,6 +17,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `learner-profile-use-panels-framework-3-account-page` (Account area on panels)
 - 🔴 High · `multi-step-course-applications-1-review-states` (Multi-step course applications)
 - 🟠 Medium · `content-widget-longer-audio` (Audio content widgets)
+- 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
 
 ### Ready to start
 
@@ -25,7 +26,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🟠 Medium · `educator-interface-refactor-4-course` (Educator interface code layout)
 - 🟠 Medium · `content-widget-sayit-reveal-2-say-it-reveal` (Audio content widgets)
 - 🟠 Medium · `content-widget-sayit-reveal-4-audio-access-control` (Audio content widgets)
-- 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
 - 🟠 Medium · `deadlines-4-learner-self-pause` (Deadlines)
 - 🟠 Medium · `deadlines-5-reminders` (Deadlines)
 - 🟠 Medium · `deadlines-6-educator-management` (Deadlines)
@@ -78,7 +78,7 @@ The educator interface's `views.py` and `actions.py` split into one `panels/<are
 ![Educator interface code layout](roadmap_diagrams/educator-interface-code-layout.svg)
 
 **Notes**
-- `educator-interface-refactor-1-scaffolding-and-common` runs first. Then `-2-dashboard-and-audit-log`, `-3-staff` and `-4-course` run in parallel. `-5-learner` follows `-2`, `-6-cohort` follows `-5`, and `-7-cleanup` comes last.
+- `educator-interface-refactor-3-staff` and `educator-interface-refactor-4-course` run in parallel with `educator-interface-refactor-2-dashboard-and-audit-log`. `educator-interface-refactor-5-learner` and then `educator-interface-refactor-6-cohort` follow it, and `educator-interface-refactor-7-cleanup` comes last.
 - Collisions: the parallel specs all cut ranges from `views.py`, `actions.py`, `test_views.py` and `test_actions.py`, and add lines to one import block. Each removes only its own ranges, so the conflicts stay mechanical.
 - Land the effort before `extract_panels_framework-5-package-and-install` and before the specs that add educator panels (`deadlines-6-educator-management`, `deadlines-7-educator-at-risk`, `corporate-job-course-recommendations-4-educator-interface-screens`, `audit-log-coverage-gaps`). Otherwise rebase them onto it.
 - Decided: a pure move. URL names, paths, the app label and template paths stay. There's no re-export shim. Each spec repoints every import and `mock.patch` string for what it moves.
@@ -102,8 +102,8 @@ Quiz randomisation and a per-attempt record of the paper served, for training or
 ![SACAA compliance](roadmap_diagrams/sacaa-compliance.svg)
 
 **Notes**
-- Build order: `sacaa-compliance-1-served-paper-record` first, then `sacaa-compliance-2-shuffle`, then `sacaa-compliance-3-question-pools`. `sacaa-compliance-4-attempt-review` runs beside them once `educator-interface-refactor-5-learner` lands.
-- Collisions: `sacaa-compliance-2-shuffle` and `sacaa-compliance-3-question-pools` both change the form schema, validator and `content_save`, so they run in series. `sacaa-compliance-1-served-paper-record` and `form-engine-branch-logic-2-and-conditions` both change `conditions.py`; whichever lands second rebases.
+- Build order: `sacaa-compliance-2-shuffle`, then `sacaa-compliance-3-question-pools`. `sacaa-compliance-4-attempt-review` runs beside them once `educator-interface-refactor-5-learner` lands.
+- Collisions: `sacaa-compliance-2-shuffle` and `sacaa-compliance-3-question-pools` both change the form schema, validator and `content_save`, so they run in series.
 - Decided: randomisation is opt-in per quiz form and off by default; existing quizzes behave exactly as today.
 - Decided: one seed per attempt and the served paper saved at attempt start; a retake is a new attempt with a fresh draw and order.
 - Decided: scoring, results, export and review read the served paper, never a re-derived shuffle or the whole form, and a draw keeps `max_score` the same for every attempt.
@@ -128,9 +128,7 @@ The panel framework moves into its own installable package, because another Djan
 - Decided: a public MIT repo released by git tag; no PyPI and no submodule. App label `panel_framework` starting from a clean `0001`, and no data is migrated. FLS pins it with a PEP 508 git URL in `[project].dependencies`.
 - Decided: multi-site stays. A settings-declared site resolver defaults to `get_current_site`.
 - Assumed: there is no shared core package. If one turns out to be needed, stop and say so. The package ships overridable primitives, and the host schedules the bulk-run sweep.
-- Open questions:
-  - how package primitives avoid clashing with host components (`extract_panels_framework-4-template-contract`);
-  - the uv editable-install spike (`extract_panels_framework-5-package-and-install`).
+- Open: the uv editable-install spike (`extract_panels_framework-5-package-and-install`).
 - The other project must not install the package before `extract_panels_framework-5-package-and-install`.
 - References: `research_packaging_and_distribution.md` and `research_coupling_audit.md`, both in the parent.
 
@@ -146,12 +144,10 @@ Every signed-in user's account pages move onto the panel framework before public
 ![Account area on panels](roadmap_diagrams/account-area-on-panels.svg)
 
 **Notes**
-- Order: `learner-profile-use-panels-framework-3-account-page` can start now, beside `learner-profile-use-panels-framework-2-editable-list-panel`.
-- Collisions: `learner-profile-use-panels-framework-2-editable-list-panel` and `extract_panels_framework-4-template-contract` both edit panel framework actions and form templates. Whichever lands second rebases.
 - Decided: the profile picture form already on the plain account page moves onto a panel in `learner-profile-use-panels-framework-3-account-page`.
 - Decided: email and password pages keep allauth's views and forms and only move into the account area's shell. Registration, legal and sign-in flows stay as they are.
 - Decided: from `learner-public-profile-2-profile-and-page` on, public-profile editing is panels in the account area, with lists on the editable list panel.
-- Assumed: the account shell extends the general interface base, follows the host contract from `extract_panels_framework-4-template-contract`, and rebases across `extract_panels_framework-5-package-and-install`.
+- Assumed: the account shell extends the general interface base, follows the panel framework's host template contract, and rebases across `extract_panels_framework-5-package-and-install`.
 - Assumed: account self-edits write no audit entries, and anyone but the owner gets 404.
 - Out of scope: MFA, sessions and social-account pages; rewriting allauth views.
 - References: `research_panel_framework_fit.md` in the parent.
@@ -227,7 +223,7 @@ Priority: 🟠 Medium
 Test out of sections, revise with spaced repetition and flashcards, and watch access-controlled video. Parent: `learner-interface-features`.
 
 - `learner-interface-features-2-test-out` — **ready** — Learners take a pretest and skip sections they already know; the skip is recorded as its own kind of completion.
-- `learner-interface-features-3-revision-questions` — **ready** — Learners revise questions from finished sections, scheduled by spaced repetition, with explanations and weak sections highlighted.
+- `learner-interface-features-3-revision-questions` — **in progress** — Learners revise questions from finished sections, scheduled by spaced repetition, with explanations and weak sections highlighted.
 - `learner-interface-features-4-flashcards` — **blocked** by `learner-interface-features-3-revision-questions` — Authors add flashcards to sections; learners rate their confidence and the revision schedule brings them back.
 - `learner-interface-features-5-protected-video` — **ready** — Course content embeds video that only learners with access to the course can play; shared links stop working.
 
