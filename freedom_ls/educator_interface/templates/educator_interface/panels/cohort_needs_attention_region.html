@@ -6,13 +6,10 @@
         <c-panel-attention-list>
             {% for learner in attention.learners %}
                 {% resolve_url_path_template learner 'educator_interface:interface' 'learners/{learner_id}' as learner_url %}
-                {% with avatar=avatars|lookup:learner.learner_id %}
-                    {% firstof avatar.user_pk learner.learner_id as avatar_user_id %}
-                    {% firstof avatar.picture_url "" as avatar_picture_url %}
-                    <c-panel-attention-row :subject="learner.full_name" :href="learner_url" :user_id="avatar_user_id" :picture_url="avatar_picture_url">
-                        {% include "educator_interface/partials/learner_badges.html" with completion_percentage=learner.completion_percentage flags=learner.flags %}
-                    </c-panel-attention-row>
-                {% endwith %}
+                {% learner_avatar avatars learner.learner_id as avatar %}
+                <c-panel-attention-row :subject="learner.full_name" :href="learner_url" :user_id="avatar.user_id" :picture_url="avatar.picture_url">
+                    {% include "educator_interface/partials/learner_badges.html" with completion_percentage=learner.completion_percentage flags=learner.flags %}
+                </c-panel-attention-row>
             {% endfor %}
         </c-panel-attention-list>
         {% include "reports/partials/cap_disclosure.html" with shown=attention.shown total=attention.total noun="learners flagged" %}

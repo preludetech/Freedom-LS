@@ -8,6 +8,8 @@ from uuid import UUID, uuid4
 import pytest
 from pytest_django.fixtures import DjangoAssertNumQueries
 
+from django.contrib.sites.models import Site
+
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.educator_interface.avatars import learner_avatars, user_picture_urls
 from freedom_ls.learner_management.factories import LearnerFactory
@@ -24,7 +26,7 @@ def test_no_learner_ids_makes_no_query(
 
 
 @pytest.mark.django_db
-def test_a_generator_of_ids_is_read_once(mock_site_context) -> None:
+def test_a_generator_of_ids_is_read_once(mock_site_context: Site) -> None:
     learner = LearnerFactory()
     ids: Iterator[UUID] = (pk for pk in [learner.pk])
 
@@ -35,7 +37,7 @@ def test_a_generator_of_ids_is_read_once(mock_site_context) -> None:
 
 @pytest.mark.django_db
 def test_a_learner_id_maps_to_its_users_pk_and_picture_url(
-    mock_site_context, django_assert_num_queries: DjangoAssertNumQueries
+    mock_site_context: Site, django_assert_num_queries: DjangoAssertNumQueries
 ) -> None:
     user = UserFactory(with_profile_picture=True)
     learner = LearnerFactory(user=user)
@@ -49,14 +51,14 @@ def test_a_learner_id_maps_to_its_users_pk_and_picture_url(
 
 
 @pytest.mark.django_db
-def test_an_unknown_learner_id_is_absent(mock_site_context) -> None:
+def test_an_unknown_learner_id_is_absent(mock_site_context: Site) -> None:
     avatars = learner_avatars([uuid4()])
 
     assert avatars == {}
 
 
 @pytest.mark.django_db
-def test_a_user_without_a_picture_has_no_picture_url(mock_site_context) -> None:
+def test_a_user_without_a_picture_has_no_picture_url(mock_site_context: Site) -> None:
     learner = LearnerFactory(user=UserFactory())
 
     avatars = learner_avatars([learner.pk])
@@ -75,7 +77,7 @@ def test_no_user_pks_makes_no_query(
 
 
 @pytest.mark.django_db
-def test_a_generator_of_user_pks_is_read_once(mock_site_context) -> None:
+def test_a_generator_of_user_pks_is_read_once(mock_site_context: Site) -> None:
     user = UserFactory(with_profile_picture=True)
     pks: Iterator[int] = (pk for pk in [user.pk])
 
@@ -86,7 +88,7 @@ def test_a_generator_of_user_pks_is_read_once(mock_site_context) -> None:
 
 @pytest.mark.django_db
 def test_a_user_with_a_picture_maps_to_their_picture_url(
-    mock_site_context, django_assert_num_queries: DjangoAssertNumQueries
+    mock_site_context: Site, django_assert_num_queries: DjangoAssertNumQueries
 ) -> None:
     user = UserFactory(with_profile_picture=True)
 
@@ -98,7 +100,7 @@ def test_a_user_with_a_picture_maps_to_their_picture_url(
 
 @pytest.mark.django_db
 def test_a_user_without_a_picture_and_an_unknown_pk_are_absent(
-    mock_site_context,
+    mock_site_context: Site,
 ) -> None:
     user = UserFactory()
 

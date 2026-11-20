@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import cast
@@ -10,6 +11,7 @@ from uuid import uuid4
 import lxml.html
 import pytest
 import time_machine
+from pytest_django.fixtures import DjangoAssertNumQueries, SettingsWrapper
 
 from django.core.cache import cache
 from django.core.files.base import ContentFile
@@ -21,6 +23,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
@@ -771,7 +774,7 @@ class TestNeedsAttentionCard:
         assert "REPORTS_MAX_LEARNERS" not in text
 
 
-def _flagged_membership(cohort, **user_fields) -> CohortMembership:
+def _flagged_membership(cohort: Cohort, **user_fields: object) -> CohortMembership:
     return cast(
         CohortMembership,
         CohortMembershipFactory(
@@ -804,7 +807,9 @@ def _avatar_slot(element: lxml.html.HtmlElement) -> str:
 
 @pytest.mark.django_db
 class TestNeedsAttentionPictures:
-    def test_a_flagged_learner_with_a_picture_shows_it(self, logged_in_client):
+    def test_a_flagged_learner_with_a_picture_shows_it(
+        self, logged_in_client: Callable[[User], Client]
+    ) -> None:
         cohort = _flag_cohort()
         user = UserFactory(with_profile_picture=True)
         CohortMembershipFactory(cohort=cohort, learner__user=user)
@@ -815,8 +820,8 @@ class TestNeedsAttentionPictures:
         assert sources == [user.profile_picture_url]
 
     def test_a_flagged_learner_without_a_picture_shows_initials_alone(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[User], Client]
+    ) -> None:
         cohort = _flag_cohort()
         _flagged_membership(cohort)
         client = logged_in_client(_org_admin(cohort.organisation))
@@ -829,8 +834,10 @@ class TestNeedsAttentionPictures:
         assert 'src="None"' not in lxml.html.tostring(region).decode()
 
     def test_a_row_whose_learner_cannot_be_resolved_shows_initials(
-        self, logged_in_client, monkeypatch
-    ):
+        self,
+        logged_in_client: Callable[[User], Client],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         """A membership row cannot outlive its Learner, so the missing avatar is forced."""
         cohort = _flag_cohort()
         CohortMembershipFactory(
@@ -849,7 +856,9 @@ class TestNeedsAttentionPictures:
         assert region.cssselect("img") == []
         assert len(region.cssselect("span[class*='panel-avatar-']")) == 1
 
-    def test_the_picture_shows_on_a_warm_cached_load(self, logged_in_client):
+    def test_the_picture_shows_on_a_warm_cached_load(
+        self, logged_in_client: Callable[[User], Client]
+    ) -> None:
         cohort = _flag_cohort()
         user = UserFactory(with_profile_picture=True)
         CohortMembershipFactory(cohort=cohort, learner__user=user)
@@ -861,8 +870,10 @@ class TestNeedsAttentionPictures:
         assert sources == [user.profile_picture_url]
 
     def test_more_flagged_learners_with_pictures_cost_no_more_queries(
-        self, logged_in_client, django_assert_max_num_queries
-    ):
+        self,
+        logged_in_client: Callable[[User], Client],
+        django_assert_max_num_queries: DjangoAssertNumQueries,
+    ) -> None:
         cohort = _flag_cohort()
         CohortMembershipFactory(
             cohort=cohort, learner__user=UserFactory(with_profile_picture=True)
@@ -882,11 +893,18 @@ class TestNeedsAttentionPictures:
 
         assert len(sources) == 6
 
+    @pytest.mark.parametrize("use_thousand_separator", [False, True])
     def test_an_attention_row_and_the_learners_table_row_share_a_colour_slot(
-        self, logged_in_client
-    ):
+        self,
+        logged_in_client: Callable[[User], Client],
+        settings: SettingsWrapper,
+        use_thousand_separator: bool,
+    ) -> None:
+        settings.USE_THOUSAND_SEPARATOR = use_thousand_separator
         cohort = _flag_cohort()
-        membership = _flagged_membership(cohort, first_name="Zed", last_name="Zebra")
+        membership = _flagged_membership(
+            cohort, pk=1234, first_name="Zed", last_name="Zebra"
+        )
         client = logged_in_client(_org_admin(cohort.organisation))
         region = _attention_region(
             client, _attention_url(cohort.organisation.slug, cohort.pk)
@@ -1548,7 +1566,7 @@ def _report_body_pictures(client: Client, cohort: Cohort) -> list[str]:
 @pytest.mark.django_db
 class TestCohortReportBodyPictures:
     def test_the_attention_list_and_the_summary_table_show_the_learners_picture(
-        self, logged_in_client
+        self, logged_in_client: Callable[[User], Client]
     ) -> None:
         cohort = _flag_cohort()
         user = UserFactory(with_profile_picture=True)
@@ -1560,7 +1578,7 @@ class TestCohortReportBodyPictures:
         assert sources == [user.profile_picture_url] * 2
 
     def test_a_learner_without_a_picture_shows_initials_alone_in_both_places(
-        self, logged_in_client
+        self, logged_in_client: Callable[[User], Client]
     ) -> None:
         cohort = _flag_cohort()
         _flagged_membership(cohort)
@@ -1573,7 +1591,9 @@ class TestCohortReportBodyPictures:
         assert 'src="None"' not in lxml.html.tostring(region).decode()
 
     def test_a_row_whose_learner_cannot_be_resolved_shows_initials(
-        self, logged_in_client, monkeypatch
+        self,
+        logged_in_client: Callable[[User], Client],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A membership row cannot outlive its Learner, so the missing avatar is forced."""
         cohort = _flag_cohort()
@@ -1592,7 +1612,9 @@ class TestCohortReportBodyPictures:
         assert len(region.cssselect("span[class*='panel-avatar-']")) == 2
 
     def test_more_learners_with_pictures_cost_no_more_queries(
-        self, logged_in_client, django_assert_max_num_queries
+        self,
+        logged_in_client: Callable[[User], Client],
+        django_assert_max_num_queries: DjangoAssertNumQueries,
     ) -> None:
         cohort = _flag_cohort()
         CohortMembershipFactory(

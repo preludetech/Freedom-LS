@@ -10,6 +10,7 @@ from typing import cast
 
 import lxml.html
 import pytest
+from pytest_django.fixtures import DjangoAssertNumQueries
 
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
@@ -29,7 +30,7 @@ from freedom_ls.learner_management.factories import (
     CohortFactory,
     CohortMembershipFactory,
 )
-from freedom_ls.learner_management.models import Cohort
+from freedom_ls.learner_management.models import Cohort, CohortMembership, Learner
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
@@ -543,10 +544,14 @@ def test_the_bare_root_redirects_to_the_dashboard(
     )
 
 
-def _flagged_learner(cohort: Cohort, **user_fields):
-    return CohortMembershipFactory(
-        cohort=cohort, learner__user=UserFactory(**user_fields)
-    ).learner
+def _flagged_learner(cohort: Cohort, **user_fields: object) -> Learner:
+    membership = cast(
+        CohortMembership,
+        CohortMembershipFactory(
+            cohort=cohort, learner__user=UserFactory(**user_fields)
+        ),
+    )
+    return membership.learner
 
 
 def _dashboard_pictures(response: HttpResponse) -> list[str]:
@@ -614,7 +619,7 @@ def test_a_dashboard_row_whose_learner_cannot_be_resolved_shows_initials(
 def test_more_flagged_learners_with_pictures_cost_no_more_queries_on_the_dashboard(
     educator: tuple[Organisation, AbstractBaseUser],
     logged_in_client: Callable[[AbstractBaseUser], Client],
-    django_assert_max_num_queries,
+    django_assert_max_num_queries: DjangoAssertNumQueries,
 ) -> None:
     """Stays under the attention list cap, so every learner renders."""
     organisation, user = educator

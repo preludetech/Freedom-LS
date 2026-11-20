@@ -32,13 +32,10 @@ refresh_url.
                 <c-panel-attention-list>
                     {% for learner in data.attention_list.learners %}
                         {% resolve_url_path_template learner 'educator_interface:interface' 'learners/{learner_id}' as learner_url %}
-                        {% with avatar=avatars|lookup:learner.learner_id %}
-                            {% firstof avatar.user_pk learner.learner_id as avatar_user_id %}
-                            {% firstof avatar.picture_url "" as avatar_picture_url %}
-                            <c-panel-attention-row :subject="learner.full_name" :href="learner_url" :user_id="avatar_user_id" :picture_url="avatar_picture_url">
-                                {% include "educator_interface/partials/learner_badges.html" with completion_percentage=learner.completion_percentage flags=learner.flags %}
-                            </c-panel-attention-row>
-                        {% endwith %}
+                        {% learner_avatar avatars learner.learner_id as avatar %}
+                        <c-panel-attention-row :subject="learner.full_name" :href="learner_url" :user_id="avatar.user_id" :picture_url="avatar.picture_url">
+                            {% include "educator_interface/partials/learner_badges.html" with completion_percentage=learner.completion_percentage flags=learner.flags %}
+                        </c-panel-attention-row>
                     {% endfor %}
                 </c-panel-attention-list>
                 {% include "reports/partials/cap_disclosure.html" with shown=data.attention_list.shown total=data.attention_list.total noun="learners flagged" %}
@@ -77,7 +74,7 @@ refresh_url.
                                 {% for row in table.rows %}
                                     {% resolve_url_path_template row 'educator_interface:interface' 'learners/{learner_id}' as learner_url %}
                                     <tr>
-                                        <th scope="row" class="sticky left-0 min-w-64 bg-surface text-left whitespace-nowrap">{% with avatar=avatars|lookup:row.learner_id %}{% firstof avatar.user_pk row.learner_id as avatar_user_id %}{% firstof avatar.picture_url "" as avatar_picture_url %}<c-panel-person-link :name="row.full_name" :user_id="avatar_user_id" :picture_url="avatar_picture_url" :href="learner_url" />{% endwith %}</th>
+                                        <th scope="row" class="sticky left-0 min-w-64 bg-surface text-left whitespace-nowrap">{% learner_avatar avatars row.learner_id as avatar %}<c-panel-person-link :name="row.full_name" :user_id="avatar.user_id" :picture_url="avatar.picture_url" :href="learner_url" /></th>
                                         {% if not table.continued %}
                                             <td class="whitespace-nowrap">
                                                 {% progress_status_badge row.completion_percentage as status_badge %}

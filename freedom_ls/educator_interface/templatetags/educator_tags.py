@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import dataclasses
 from collections.abc import Mapping
 from typing import cast
+from uuid import UUID
 
 from django import template
 
 from freedom_ls.content_engine.models import Course
+from freedom_ls.educator_interface.avatars import PersonAvatar
 from freedom_ls.educator_interface.reporting import flag_badge, progress_status_badge
 from freedom_ls.educator_interface.views import (
     LearnerCourseSummary,
@@ -63,7 +66,25 @@ def course_label_tag(context: template.Context, course: Course) -> str:
     return course.label_for(organisation)
 
 
-@register.filter
-def lookup[K, V](mapping: Mapping[K, V], key: K) -> V | None:
-    """`mapping[key]`, or None when absent, for a key held in a template variable."""
-    return mapping.get(key)
+@dataclasses.dataclass(frozen=True)
+class RowAvatar:
+    """An id-only row's avatar, ready to bind: the colour key as a plain
+    (never localized) string, and the picture URL, empty for initials."""
+
+    user_id: str
+    picture_url: str
+
+
+@register.simple_tag(name="learner_avatar")
+def learner_avatar_tag(avatars: object, learner_id: UUID) -> RowAvatar:
+    """The avatar for a row that holds only a learner id, for
+    `{% learner_avatar avatars row.learner_id as avatar %}`.
+
+    `avatars` maps learner id to PersonAvatar. An unresolved learner, or no
+    `avatars` in the context at all, gives the learner id as the colour key
+    and initials.
+    """
+    avatar = avatars.get(learner_id) if isinstance(avatars, Mapping) else None
+    if not isinstance(avatar, PersonAvatar):
+        return RowAvatar(str(learner_id), "")
+    return RowAvatar(str(avatar.user_pk), avatar.picture_url or "")

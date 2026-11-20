@@ -40,9 +40,13 @@ customisations on top of the new versions:
 - `cotton/panel-attention-row.html` takes a new `picture_url` attribute (default empty, which shows
   initials) and forwards it to `c-panel-person-link`.
 - The three panel region templates now read an `avatars` context value (filled by the panels in
-  `freedom_ls/educator_interface/reporting.py`) through the new `lookup` filter in
-  `educator_tags`, and pass `:user_id` and `:picture_url` from it. An override that keeps the old
-  markup still renders, with initials and the old avatar colour.
+  `freedom_ls/educator_interface/reporting.py`) through the new `learner_avatar` tag in
+  `educator_tags` (`{% learner_avatar avatars row.learner_id as avatar %}`), and pass
+  `:user_id="avatar.user_id"` and `:picture_url="avatar.picture_url"` from it. An override that
+  keeps the old markup still renders, with initials and the old avatar colour.
+- If your project subclasses one of those panels and overrides `get_loaded_context`, add the
+  `avatars` key (built with `freedom_ls.educator_interface.avatars.learner_avatars`) to show
+  pictures. Without it the rows still render, with initials.
 - `partials/audit_person.html` takes a `picture_url`; the audit `who`, `target` and run-entry
   detail templates pass `actor_picture_url` / `target_picture_url`, which the audit log tables now
   set on each `AuditLogEntry` they render.

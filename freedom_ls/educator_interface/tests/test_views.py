@@ -17,6 +17,7 @@ from uuid import uuid4
 import lxml.html
 import pytest
 import time_machine
+from pytest_django.fixtures import DjangoAssertNumQueries
 
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
@@ -9247,7 +9248,7 @@ def _add_audit_entries_with_pictures(organisation: Organisation, count: int) -> 
 @pytest.mark.django_db
 @pytest.mark.usefixtures("mock_site_context")
 def test_more_audit_entries_with_pictures_cost_no_more_queries(
-    django_assert_max_num_queries,
+    django_assert_max_num_queries: DjangoAssertNumQueries,
 ) -> None:
     content = page_after_adding_rows(
         OrganisationFactory(),
