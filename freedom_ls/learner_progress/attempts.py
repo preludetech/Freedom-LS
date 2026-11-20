@@ -147,17 +147,19 @@ def start_attempt(
 
     Runs under a lock on the course progress row, so two starts for one record
     serialise instead of each finalising the other's brand-new sitting. An open
-    sitting started within `START_REUSE_WINDOW` is reused untouched; an older one
-    is finalised first for submit-on-exit forms (see `finalise_stale_incomplete`).
+    sitting started within `START_REUSE_WINDOW` and not yet answered is reused
+    untouched, since that is a double start; any other is finalised first for
+    submit-on-exit forms (see `finalise_stale_incomplete`).
     """
     with transaction.atomic():
         CourseProgress.objects.select_for_update().get(pk=course_progress.pk)
         open_sitting = get_latest_incomplete(course_progress, collection_item)
-        recently_started = (
+        double_start = (
             open_sitting is not None
             and open_sitting.start_time >= timezone.now() - START_REUSE_WINDOW
+            and not open_sitting.answers.exists()
         )
-        if not recently_started:
+        if not double_start:
             finalise_stale_incomplete(
                 course_progress,
                 collection_item,

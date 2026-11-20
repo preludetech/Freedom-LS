@@ -20,7 +20,7 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
 )
 from freedom_ls.content_engine.models import ContentCollectionItem
-from freedom_ls.form_engine.factories import FormFactory
+from freedom_ls.form_engine.factories import FormFactory, QuestionAnswerFactory
 from freedom_ls.form_engine.models import FormProgress, FormStrategy
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -255,7 +255,9 @@ class TestFinaliseStaleIncomplete:
 
 
 @pytest.fixture
-def submit_on_exit_placement(mock_site_context):
+def submit_on_exit_placement(
+    mock_site_context: object,
+) -> tuple[CourseProgress, ContentCollectionItem]:
     course = CourseFactory()
     record: CourseProgress = CourseProgressFactory(course=course)
     collection_item: ContentCollectionItem = ContentCollectionItemFactory(
@@ -269,7 +271,7 @@ def submit_on_exit_placement(mock_site_context):
 @pytest.mark.django_db
 class TestStartAttempt:
     def test_a_second_start_inside_the_window_reuses_the_open_sitting(
-        self, submit_on_exit_placement
+        self, submit_on_exit_placement: tuple[CourseProgress, ContentCollectionItem]
     ) -> None:
         """Two starts together (a double click, two tabs) used to score the first
         sitting as abandoned and open a second."""
@@ -283,8 +285,22 @@ class TestStartAttempt:
         assert first.completed_time is None
         assert FormProgress.objects.count() == 1
 
+    def test_a_start_inside_the_window_finalises_a_sitting_already_answered(
+        self, submit_on_exit_placement: tuple[CourseProgress, ContentCollectionItem]
+    ) -> None:
+        """A learner who answered, left and pressed Start again is not a double click."""
+        record, collection_item = submit_on_exit_placement
+        first = start_attempt(record, collection_item)
+        QuestionAnswerFactory(form_progress=first)
+
+        second = start_attempt(record, collection_item)
+
+        first.refresh_from_db()
+        assert first.completed_time is not None
+        assert second.pk != first.pk
+
     def test_a_start_after_the_window_finalises_the_old_sitting(
-        self, submit_on_exit_placement
+        self, submit_on_exit_placement: tuple[CourseProgress, ContentCollectionItem]
     ) -> None:
         record, collection_item = submit_on_exit_placement
         first = start_attempt(record, collection_item)
