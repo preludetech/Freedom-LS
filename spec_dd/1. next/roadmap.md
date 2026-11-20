@@ -13,7 +13,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 - 🔴 High · `educator-interface-refactor-2-dashboard-and-audit-log` (Educator interface code layout, via `sacaa-compliance`)
 - 🔴 High · `sacaa-compliance-2-shuffle` (SACAA compliance)
-- 🔴 High · `learner-profile-use-panels-framework-3-account-page` (Account area on panels)
 - 🔴 High · `multi-step-course-applications-1-review-states` (Multi-step course applications)
 - 🟠 Medium · `educator-interface-refactor-3-staff` (Educator interface code layout)
 - 🟠 Medium · `educator-interface-refactor-4-course` (Educator interface code layout)
@@ -23,6 +22,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 ### Ready to start
 
 - 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
+- 🔴 High · `learner-public-profile-2-profile-and-page` (Learner public profiles)
 - 🟠 Medium · `content-widget-sayit-reveal-2-say-it-reveal` (Audio content widgets)
 - 🟠 Medium · `content-widget-sayit-reveal-4-audio-access-control` (Audio content widgets)
 - 🟠 Medium · `deadlines-4-learner-self-pause` (Deadlines)
@@ -131,32 +131,13 @@ The panel framework moves into its own installable package, because another Djan
 - The other project must not install the package before `extract_panels_framework-5-package-and-install`.
 - References: `research_packaging_and_distribution.md` and `research_coupling_audit.md`, both in the parent.
 
-## Account area on panels
-
-Priority: 🔴 High
-
-Every signed-in user's account pages move onto the panel framework before public-profile editing lands there. Parent: `learner-profile-use-panels-framework`.
-
-- `learner-profile-use-panels-framework-3-account-page` — **in progress** — Users edit their name and picture on panels in an account area; email and password pages share its shell.
-
-![Account area on panels](roadmap_diagrams/account-area-on-panels.svg)
-
-**Notes**
-- Decided: the profile picture form already on the plain account page moves onto a panel in `learner-profile-use-panels-framework-3-account-page`.
-- Decided: email and password pages keep allauth's views and forms and only move into the account area's shell. Registration, legal and sign-in flows stay as they are.
-- Decided: from `learner-public-profile-2-profile-and-page` on, public-profile editing is panels in the account area, with lists on the editable list panel.
-- Assumed: the account shell extends the general interface base, follows the panel framework's host template contract, and rebases across `extract_panels_framework-5-package-and-install`.
-- Assumed: account self-edits write no audit entries, and anyone but the owner gets 404.
-- Out of scope: MFA, sessions and social-account pages; rewriting allauth views.
-- References: `research_panel_framework_fit.md` in the parent.
-
 ## Learner public profiles
 
 Priority: 🔴 High
 
 Learners publish a profile to help them find work, and visitors browse an index of them. Parent: `learner-public-profile`.
 
-- `learner-public-profile-2-profile-and-page` — **blocked** by `learner-profile-use-panels-framework-3-account-page` — Learners switch on a shareable public profile with blurb, work experience, place, open to work and links.
+- `learner-public-profile-2-profile-and-page` — **ready** — Learners switch on a shareable public profile with blurb, work experience, place, open to work and links.
 - `learner-public-profile-3-completed-courses` — **blocked** by `learner-public-profile-2-profile-and-page` — Courses a learner completed on the site appear on their public profile. The learner can hide each one.
 - `learner-public-profile-4-certificates` — **blocked** by `learner-public-profile-2-profile-and-page` — Learners upload self-reported certificates. Organisation staff upload certificates on the educator-interface learner page.
 - `learner-public-profile-5-index` — **blocked** by `learner-public-profile-3-completed-courses` — A public index of switched-on profiles, named per site, with search, filters and sorts.

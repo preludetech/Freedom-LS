@@ -9,7 +9,6 @@ adds anything missing under "Priority not set"; move it from there to the level 
 
 - `sacaa-compliance`
 - `extract_panels_framework`
-- `learner-profile-use-panels-framework`
 - `learner-public-profile`
 - `multi-step-course-applications`
 
