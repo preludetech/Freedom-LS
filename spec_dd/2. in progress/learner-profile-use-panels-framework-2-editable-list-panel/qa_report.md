@@ -90,6 +90,8 @@ The scratch records do not name the agent call or command that made each change,
 
 - **FIXED** (commit: c75fecb66) — Editable list table layout: card view splits the Edit and Remove buttons across grid cells. `<c-panel-table-card>` gained a `content` slot rendered under the title and outside the label/value grid; re-checked at 375: title, detail, then Edit and Remove together on one row. The data-table cards example and the cohorts list cards are unchanged. ![](screenshots/page-2026-11-20T00-58-10-129Z.png)
 - **FIXED** (commit: 12ddce5a7) — Component reference cap example shows a different sentence from the panel's real cap line. The panel and the reference now share `editable_list_cap_line`; the example reads "You can have up to 3. Remove one to add another."
+- **FIXED** (commit: 77a4ade6a) — Learner Registrations panel: Deactivate/Reactivate sat in the row's trailing slot. It now sits in the row's item footer under the course title and detail; the badge stays alone at the right and a cohort row has no footer. — after the fix: ![](screenshots/fixed/page-2026-11-20T08-44-05-992Z.png) ![](screenshots/fixed/page-2026-11-20T08-44-19-925Z.png) ![](screenshots/fixed/page-2026-11-20T08-44-33-485Z.png)
+- **FIXED** (commit: e580ec962) — `test_saving_one_entry_twice_announces_both_saves` raced the announcer's 50 ms refill under load; it now waits for all three recorded changes before asserting.
 
 ## General notes
 
@@ -101,4 +103,4 @@ The scratch records do not name the agent call or command that made each change,
 - `EditableListPanel`'s add, edit, remove, cap and focus behaviour is only covered by the pytest-Playwright flow, as the plan says. No dev page uses it yet.
 - Screenshots in the folder that no record references: `page-2026-11-20T00-34-42-380Z.png`, `page-2026-11-20T00-34-56-321Z.png` and `element-2026-11-20T00-36-24-380Z.png`.
 
-status: ok · reason: 2 bugs — 2 fixed, 0 unresolved; report rendered, screenshots verified
+status: ok · reason: 4 bugs — 4 fixed, 0 unresolved; report rendered, screenshots verified
