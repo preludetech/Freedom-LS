@@ -177,6 +177,12 @@ which site a request belongs to. The host says so through a setting.
 - A table row's buttons sit in columns by what they act on. A button for one item in a cell sits
   in its own column, on the same line as its item; the buttons that act on the whole row take the
   last column. One cell never stacks both kinds.
+- A list row's or card's buttons for its own entry sit in the entry's item footer: the `footer`
+  slot of `<c-panel-list-row>` or `<c-panel-table-card>`, under the title and detail, left edge on
+  the title's left edge, inside `<c-data-table-actions>`. Each button is as wide as its label; none
+  stretches to fill the line or shares a line with the detail. The row's trailing slot holds a
+  badge, figure or progress bar, never the entry's buttons. A desktop table row keeps its buttons
+  in its actions cell.
 - On a card, a button for one item sits under that item, inside the item's block; the card never
   gathers every item's buttons under one shared label. Where the same label repeats for several
   items, each button's accessible name names its item ("Deactivate Organisation admin").
@@ -574,6 +580,9 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
   phone; only a dialog footer's buttons are full size, and 44px tall on a phone. Each button's
   variant matches its place (outline in rows, cards, toolbar and pager; text-only in the selection
   bar). Buttons that sit together have a gap between them.
+- A list row's or card's Edit, Remove and other entry buttons sit in a footer under the entry's
+  title and detail: every entry's buttons start at the title's left edge, the same distance under
+  its text, side by side, each as wide as its label.
 - Every control has padding on all sides and a select's chevron sits clear of its edge; at the
   phone viewport a button is as wide as its label.
 - In a card, the fields have clear space between them, more than between the items of one value,
