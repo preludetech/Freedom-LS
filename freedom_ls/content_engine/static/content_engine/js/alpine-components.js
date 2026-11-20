@@ -387,12 +387,28 @@ document.addEventListener("alpine:init", () => {
         _seekTo(seconds) {
             this.elapsed = seconds;
             const audio = clipElements.get(this._id);
-            if (!audio || audio.readyState < HTMLMediaElement.HAVE_METADATA) {
+            if (!audio || !this._isSeekable(audio, seconds)) {
                 this.pendingSeek = seconds;
                 return;
             }
             // No play() here, so a paused clip stays paused.
             audio.currentTime = seconds;
+        },
+        // A host that ignores Range only makes the buffered part seekable, and
+        // the browser drops a seek to anywhere else.
+        _isSeekable(audio, seconds) {
+            if (audio.readyState < HTMLMediaElement.HAVE_METADATA) return false;
+            const ranges = audio.seekable;
+            for (let i = 0; i < ranges.length; i++) {
+                if (seconds >= ranges.start(i) && seconds <= ranges.end(i)) return true;
+            }
+            return false;
+        },
+        // Applies the saved seek once the audio can reach it.
+        _applyPendingSeek(audio) {
+            if (this.pendingSeek === null || !this._isSeekable(audio, this.pendingSeek)) return;
+            audio.currentTime = this.pendingSeek;
+            this.pendingSeek = null;
         },
 
         toggle() {
@@ -419,13 +435,12 @@ document.addEventListener("alpine:init", () => {
             audio.addEventListener("loadedmetadata", () => {
                 // The stored length is an estimate for some VBR files; the element's own is exact.
                 if (Number.isFinite(audio.duration)) this.duration = audio.duration;
-                if (this.pendingSeek !== null) {
-                    audio.currentTime = this.pendingSeek;
-                    this.pendingSeek = null;
-                }
+                this._applyPendingSeek(audio);
                 // A max that grew from 0 leaves the browser's clamped value behind.
                 this.$refs.seek.value = this.elapsed;
             });
+            // More of the file arrived, which may make a saved seek reachable.
+            audio.addEventListener("progress", () => this._applyPendingSeek(audio));
             audio.addEventListener("ended", () => {
                 audio.currentTime = 0;
                 this.elapsed = 0;

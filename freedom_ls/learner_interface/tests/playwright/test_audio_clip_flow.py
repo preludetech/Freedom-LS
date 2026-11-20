@@ -478,3 +478,38 @@ def test_retry_that_fails_again_announces_the_error_again(
 
     expect(status).to_have_text("This audio couldn't load.")
     expect(try_again).to_be_visible()
+
+
+def _serve_without_ranges(route: Route) -> None:
+    """Answer every media request with the whole file as a plain 200, ignoring Range."""
+    route.fulfill(
+        status=200,
+        headers={"Content-Type": "audio/mpeg"},
+        body=TONE_MP3.read_bytes(),
+    )
+
+
+def test_seek_before_play_is_kept_when_the_host_ignores_range(
+    live_server,
+    live_server_site,
+    mock_site_context,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    """A seek made before the audio loaded used to be dropped, so playback began at 0:00.
+
+    The seek was applied when the metadata arrived, before the target was
+    seekable on a host that does not honour Range.
+    """
+    page = logged_in_page
+    course = _clip_course(logged_in_user)
+    page.route("**/content/audio/**", _serve_without_ranges)
+    page.goto(form_item_url(live_server, course, "view_course_item"))
+    play = page.get_by_role("button", name=f"Play {FIRST_CLIP}")
+
+    _seek_bar(page).fill("20")
+    play.click()
+
+    expect(play).to_have_attribute("aria-pressed", "true", timeout=10_000)
+    page.wait_for_timeout(1500)
+    assert _to_seconds(_elapsed(page).inner_text()) >= 20
