@@ -33,7 +33,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 - [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
 - [x] (cmd) Update the `fls-dev` skills that name moved or renamed things, from the spec's "Documentation and downstream" section: `claude_plugins/fls-dev/skills/panel-framework/SKILL.md` (the `c-panel-*` primitive names, the stylesheet at `freedom_ls/panel_framework/css/panel_framework.css`, the drift guard's new copies: `pagination_suffix`, the Playwright helpers and `panelDropdownMenu`), `claude_plugins/fls-dev/skills/alpine-js/SKILL.md` (add `panelDropdownMenu`), `claude_plugins/fls-dev/skills/icon-usage/SKILL.md` (`REQUIRED_ICON_NAMES` and its check), `claude_plugins/fls-dev/skills/testing/SKILL.md` and `claude_plugins/fls-dev/skills/playwright-tests/SKILL.md` (the standalone run now covers the component and invariant tiers; the framework's own Playwright helpers). Generic plugins stay untouched
-- [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
