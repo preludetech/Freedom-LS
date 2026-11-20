@@ -1878,14 +1878,33 @@ def test_the_registrations_card_names_the_cohort_of_a_cohort_registration(
 
 
 @pytest.mark.django_db
-def test_a_registration_row_without_an_action_keeps_an_empty_action_slot(
+def test_a_registration_rows_button_sits_in_the_rows_item_footer(
     staff_client: Client,
 ):
-    """A cohort registration has no button, and its badge sat in the button column.
+    """The Deactivate button sat in the row's trailing slot beside the badge.
 
-    Every row keeps a fixed-width action slot after the badge, empty when the
-    viewer cannot act on the row, so the badges share one column.
+    It belongs in the row's item footer under the title, and the badge stays
+    in the trailing slot, outside the footer.
     """
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    LearnerCourseRegistrationFactory(
+        learner=learner, course=CourseFactory(title="Geometry")
+    )
+
+    document = _learner_page(staff_client, learner, "overview")
+
+    (row,) = document.cssselect("[data-testid='registration-row']")
+    (footer,) = row.cssselect("[data-item-footer]")
+    assert "Deactivate" in footer.text_content()
+    assert "Individual" not in footer.text_content()
+    assert not row.cssselect("[data-testid='registration-action-slot']")
+
+
+@pytest.mark.django_db
+def test_a_registration_row_without_an_action_has_no_item_footer(
+    staff_client: Client,
+):
+    """A cohort registration has no button, so its row renders no empty footer."""
     organisation = OrganisationFactory()
     learner = LearnerFactory(organisation=organisation)
     cohort = CohortFactory(organisation=organisation)
@@ -1893,22 +1912,11 @@ def test_a_registration_row_without_an_action_keeps_an_empty_action_slot(
     CohortCourseRegistrationFactory(
         cohort=cohort, course=CourseFactory(title="Algebra")
     )
-    LearnerCourseRegistrationFactory(
-        learner=learner, course=CourseFactory(title="Geometry")
-    )
 
     document = _learner_page(staff_client, learner, "overview")
 
-    rows = document.cssselect("[data-testid='registration-row']")
-    assert len(rows) == 2
-    slots = [row.cssselect("[data-testid='registration-action-slot']") for row in rows]
-    assert all(len(slot) == 1 for slot in slots)
-    cohort_row_slot = next(
-        slot[0]
-        for row, slot in zip(rows, slots, strict=True)
-        if "via" in row.text_content()
-    )
-    assert cohort_row_slot.text_content().strip() == ""
+    (row,) = document.cssselect("[data-testid='registration-row']")
+    assert not row.cssselect("[data-item-footer]")
 
 
 @pytest.mark.django_db
