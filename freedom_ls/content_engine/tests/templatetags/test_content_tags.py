@@ -12,9 +12,12 @@ from freedom_ls.content_engine.models import ArticleVisibility
 from freedom_ls.content_engine.templatetags.content_tags import (
     admonition_config,
     admonition_icon,
+    clip_time,
+    clip_value_text,
     get_content_by_path,
     get_published_article_by_path,
     respelling_parts,
+    spoken_duration,
 )
 from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import Form
@@ -397,3 +400,45 @@ class TestRespellingParts:
         parts = respelling_parts("")
 
         assert parts == []
+
+
+class TestClipTime:
+    @pytest.mark.parametrize(
+        ("seconds", "total", "expected"),
+        [
+            (0, 198, "0:00"),
+            (198, 198, "3:18"),
+            (72.9, 198, "1:12"),
+            (0, 3725, "0:00:00"),
+            (3725, 3725, "1:02:05"),
+            (65, None, "1:05"),
+        ],
+    )
+    def test_formats_by_the_total(
+        self, seconds: float, total: float | None, expected: str
+    ) -> None:
+        assert clip_time(seconds, total) == expected
+
+
+class TestSpokenDuration:
+    @pytest.mark.parametrize(
+        ("seconds", "expected"),
+        [
+            (0, "0 seconds"),
+            (1, "1 second"),
+            (61, "1 minute 1 second"),
+            (72, "1 minute 12 seconds"),
+            (198, "3 minutes 18 seconds"),
+            (3605, "1 hour 5 seconds"),
+        ],
+    )
+    def test_spells_out_the_units(self, seconds: float, expected: str) -> None:
+        assert spoken_duration(seconds) == expected
+
+
+class TestClipValueText:
+    def test_reads_elapsed_of_total(self) -> None:
+        assert clip_value_text(72, 198) == "1 minute 12 seconds of 3 minutes 18 seconds"
+
+    def test_without_a_total_reads_only_elapsed(self) -> None:
+        assert clip_value_text(72, None) == "1 minute 12 seconds"

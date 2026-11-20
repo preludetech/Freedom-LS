@@ -11,6 +11,7 @@
  * - `flashcard`       — two-sided flip card (cotton/flashcard.html)
  * - `audioFile`       — one shared audio element for speak buttons (cotton/audio.html)
  * - `audioReveal`     — say it, then reveal (cotton/audio-reveal.html)
+ * - `audioClip`       — one audio element per clip, with seeking (cotton/audio-clip.html)
  */
 
 document.addEventListener("alpine:init", () => {
@@ -261,4 +262,66 @@ document.addEventListener("alpine:init", () => {
         };
     });
 
+    // Audio clip component (cotton/audio-clip.html).
+    //
+    // Unlike audioFile, each clip owns its element so a long recording keeps
+    // its position while another clip plays.
+    let nextAudioClipId = 0;
+
+    // m:ss under an hour, h:mm:ss from an hour up, chosen from the total; both
+    // values floored so elapsed never reads past the total.
+    function formatClipTime(seconds, total) {
+        const whole = Math.floor(seconds);
+        const pad = (n) => String(n).padStart(2, "0");
+        if (total !== null && Math.floor(total) >= 3600) {
+            const hours = Math.floor(whole / 3600);
+            const minutes = Math.floor((whole % 3600) / 60);
+            return `${hours}:${pad(minutes)}:${pad(whole % 60)}`;
+        }
+        return `${Math.floor(whole / 60)}:${pad(whole % 60)}`;
+    }
+
+    // "1 minute 12 seconds": floored, singular for 1, zero units left out, 0 is "0 seconds".
+    function spokenDuration(seconds) {
+        const whole = Math.floor(seconds);
+        const units = [
+            [Math.floor(whole / 3600), "hour"],
+            [Math.floor((whole % 3600) / 60), "minute"],
+            [whole % 60, "second"],
+        ];
+        const parts = units
+            .filter(([value]) => value > 0)
+            .map(([value, unit]) => `${value} ${unit}${value === 1 ? "" : "s"}`);
+        return parts.length ? parts.join(" ") : "0 seconds";
+    }
+
+    Alpine.data("audioClip", () => ({
+        _id: `clip-${nextAudioClipId++}`,
+        state: "paused", // paused | loading | playing | failed
+        elapsed: 0,
+        duration: null, // the stored length until the element reports its own
+
+        init() {
+            const stored = parseFloat(this.$el.dataset.duration);
+            this.duration = Number.isFinite(stored) ? stored : null;
+        },
+        get playing() {
+            return this.state === "playing";
+        },
+        get loading() {
+            return this.state === "loading";
+        },
+        get failed() {
+            return this.state === "failed";
+        },
+        get elapsedText() {
+            return formatClipTime(this.elapsed, this.duration);
+        },
+        get totalText() {
+            return this.duration === null ? "--:--" : formatClipTime(this.duration, this.duration);
+        },
+        get statusText() {
+            return "";
+        },
+    }));
 });

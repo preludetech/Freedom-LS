@@ -1,0 +1,67 @@
+<c-vars src="" title="" kind="" />
+
+{% load content_tags l10n %}
+
+{% comment %}
+A card for one longer recording (a listening exercise, a lecture excerpt): the
+title in bold with an optional kind at its right, a seek bar and the elapsed
+and total time.
+
+Attributes:
+  src    File path of the audio file, looked up via get_file_by_path.
+  title  The visible name. Required: it names the group and the seek bar.
+  kind   Optional short label at the right of the title, set in mono, such as
+         "Listening exercise".
+The slot, when given, is the transcript.
+
+data-src holds the redirect URL, never a signed one, so playback after the
+signature expires still works. Each clip owns its audio element, created by the
+audioClip Alpine component on first play, so nothing loads with the page and
+two clips never share a position.
+The total comes from the stored duration_seconds; a file without one shows
+--:-- and a seek bar that stays disabled. Both time figures are hidden from
+screen readers, which read the seek bar's aria-valuetext instead.
+A missing or non-audio file, or an empty title, renders a red box naming the
+src instead. The status line is always in the DOM and only its text changes,
+so screen readers announce each change.
+{% endcomment %}
+
+{% with file_obj=src|get_file_by_path:content_instance %}
+  {% if not file_obj or file_obj.file_type != "AUDIO" %}
+    <c-content-error message="Audio not found: {{ src }}" />
+  {% elif not title %}
+    <c-content-error message="Audio needs a title: {{ src }}" />
+  {% else %}
+    <div class="group my-6"
+         x-data="audioClip"
+         x-id="['audio-clip-title']"
+         x-bind:data-state="state"
+         role="group"
+         x-bind:aria-labelledby="$id('audio-clip-title')"
+         data-src="{% url 'content_engine:audio_file' file_obj.pk %}"
+         data-duration="{% if file_obj.duration_seconds is not None %}{{ file_obj.duration_seconds|unlocalize }}{% endif %}">
+      <div class="flex items-start gap-3 rounded-lg border border-border bg-surface p-3">
+        <div class="min-w-0 flex-1">
+          <div class="flex items-baseline gap-2">
+            <span x-bind:id="$id('audio-clip-title')" title="{{ title }}" class="min-w-0 flex-1 truncate font-bold">{{ title }}</span>
+            {% if kind.strip %}<span class="shrink-0 font-mono text-xs text-muted">{{ kind }}</span>{% endif %}
+          </div>
+          <div class="flex items-center gap-3">
+            <input type="range" min="0" step="any" value="0"
+                   {% if file_obj.duration_seconds is not None %}max="{{ file_obj.duration_seconds|unlocalize }}"{% endif %}
+                   disabled
+                   aria-label="Seek {{ title }}"
+                   aria-valuetext="{{ 0|clip_value_text:file_obj.duration_seconds }}"
+                   x-ref="seek"
+                   class="h-11 min-w-0 flex-1 accent-primary">
+            <span aria-hidden="true" class="shrink-0 text-sm tabular-nums">
+              <span x-text="elapsedText">{{ 0|clip_time:file_obj.duration_seconds }}</span>
+              <span class="text-muted">/ <span x-text="totalText">{% if file_obj.duration_seconds is None %}--:--{% else %}{{ file_obj.duration_seconds|clip_time:file_obj.duration_seconds }}{% endif %}</span></span>
+            </span>
+          </div>
+        </div>
+      </div>
+      <p role="status" class="sr-only" x-text="statusText"></p>
+    </div>
+  {% endif %}
+{% endwith %}

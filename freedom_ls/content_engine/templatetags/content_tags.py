@@ -241,3 +241,48 @@ def get_published_article_by_path(
         .published()
         .first()
     )
+
+
+@register.filter
+def clip_time(seconds: float, total: float | None) -> str:
+    """Format *seconds* as ``m:ss``, or ``h:mm:ss`` when *total* is an hour or more.
+
+    Both values are floored so elapsed time never reads past the total at the
+    end of a clip. With no *total* the result is ``m:ss``. The audio clip's
+    Alpine helper applies the same rules so server and browser text agree.
+    """
+    whole = int(seconds)
+    if total is not None and int(total) >= 3600:
+        hours, remainder = divmod(whole, 3600)
+        minutes, secs = divmod(remainder, 60)
+        return f"{hours}:{minutes:02d}:{secs:02d}"
+    minutes, secs = divmod(whole, 60)
+    return f"{minutes}:{secs:02d}"
+
+
+@register.filter
+def spoken_duration(seconds: float) -> str:
+    """Spell *seconds* out for screen readers, e.g. ``1 minute 12 seconds``.
+
+    Floored, singular for 1, zero units left out, and ``0 seconds`` for zero.
+    """
+    whole = int(seconds)
+    hours, remainder = divmod(whole, 3600)
+    minutes, secs = divmod(remainder, 60)
+    parts = [
+        f"{value} {unit}{'' if value == 1 else 's'}"
+        for value, unit in ((hours, "hour"), (minutes, "minute"), (secs, "second"))
+        if value
+    ]
+    return " ".join(parts) or "0 seconds"
+
+
+@register.filter
+def clip_value_text(seconds: float, total: float | None) -> str:
+    """The seek bar's ``aria-valuetext``: ``<elapsed> of <total>`` in words.
+
+    With no *total* it is just the spoken elapsed time.
+    """
+    if total is None:
+        return spoken_duration(seconds)
+    return f"{spoken_duration(seconds)} of {spoken_duration(total)}"
