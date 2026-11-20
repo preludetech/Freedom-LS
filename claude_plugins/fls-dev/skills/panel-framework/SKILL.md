@@ -350,10 +350,12 @@ panel with framework actions that call the other app's forms and flows.
 - A footer's Cancel or Close calls `cancel()`: it drops the input and never asks to discard. Only
   the header close control and Esc call `requestClose()`, which goes through the dirty-form
   guard.
-- A notice inside a dialog or panel is `<c-panel-callout tone title>` in a framework template and
-  `<c-callout tone title>` in an FLS panel or dialog template (`info`, `warning`, `error`,
-  `success`), never a hand-built `bg-error/10` box. The framework never writes `<c-callout>`: a
-  host renders `<c-panel-callout>` as its own callout. The close control is
+- A notice on a panel-framework page is `<c-panel-callout tone title>` (`info`, `warning`,
+  `error`, `success`): in a panel, a dialog, a sheet, a quick view and a panel form's error
+  summary, in a framework template and in an FLS template alike. Panel-framework templates use
+  panel widgets. `<c-callout>` is for the rest of the site and `<c-admonition>` for markdown
+  content only; neither goes in a panel-framework template. Never a hand-built `bg-error/10` box.
+  A host renders `<c-panel-callout>` as its own callout. The close control is
   `<c-panel-close-button>`.
 - Tone follows the effect. A confirm that deletes a row (Delete, Remove) is `error`; one that
   flips `is_active` (Deactivate, Reactivate) is `primary`, as the bulk actions are.

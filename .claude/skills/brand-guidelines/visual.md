@@ -81,7 +81,7 @@ FLS already builds each of these, and the brand decisions above are encoded in t
 | A card or panel | `.surface`, or `<c-media-card>` for one with an image |
 | A status badge | `<c-panel-status-badge tone="success\|warning\|error\|info\|muted" label="…">`, on any screen: panel-framework pages, dashboards, learner-facing views. Choose it by what the badge says, not where it sits. If it names the state of a record (Active, Stalled, Draft), it's a status badge. It wraps `c-chip`, limits the tones to the five status meanings and keeps the badge legible in forced-colours mode. |
 | A label that isn't a status | `<c-chip variant="primary\|secondary\|success\|warning\|error\|info\|muted" size="xs">` for tags, levels and categories. `primary` and `secondary` live here because they carry no status meaning. The `.chip-success`, `.chip-warning`, `.chip-error` and `.chip-info` tints are the `-light` pairs. |
-| A callout in a page, panel or dialog | `<c-callout tone="info\|warning\|error\|success" title="…">` |
+| A callout on a page outside the panel framework | `<c-callout tone="info\|warning\|error\|success" title="…">`. On a panel-framework page (a panel, dialog, sheet or quick view) it is `<c-panel-callout>`, as `Skill(fls-dev:panel-framework)` says |
 | A page a person cannot use (closed or blocked) | A large centred `<c-icon>` (`size-12`) with the explanation as plain text under it, never a callout box |
 | A callout in course content (`c-admonition` is for course content only; everywhere else use `c-callout`) | `<c-admonition type="note\|tip\|important\|warning\|danger\|key_takeaways\|checklist">` |
 | A page wrapper | `<c-page width="wide\|narrow">` |
@@ -102,7 +102,7 @@ Where you do write utilities, keep to Tailwind's spacing scale and use `rounded-
 
 **A list inside a callout lines its bullets up with the callout's title.** Each bullet or number sits at the left edge of the text column, under the title's first letter, with no extra indent. `<c-callout>` sets this for any `<ul>` or `<ol>` in its slot; write a bare list at the call site, with no list or margin classes.
 
-**A form error that belongs to no single field is an error callout.** A failed login, a rejected submission or any `form.non_field_errors` message shows in `<c-callout tone="error">` above the form. A field's own error stays as text beside that field.
+**A form error that belongs to no single field is an error callout.** A failed login, a rejected submission or any `form.non_field_errors` message shows in an error callout above the form: `<c-callout tone="error">` outside the panel framework, `<c-panel-callout tone="error">` in a panel-framework template. A field's own error stays as text beside that field.
 
 **A button label fits on one line, down to a 375px phone.** Keep it to a verb and a noun ("Download errors", "Upload a corrected file"). A count or a sentence goes in the heading or text beside the button, not in the label. A label wraps only when no shorter wording names the action.
 
