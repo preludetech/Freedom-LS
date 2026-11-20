@@ -3838,6 +3838,38 @@ def test_claim_get_with_nothing_held_says_nothing_is_discarded(client, claimable
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("closed", [{"rejected": True}, {"withdrawn": True}])
+def test_claim_get_over_only_a_held_closed_application_holds_nothing(
+    client, claimable_draft, closed
+):
+    user = UserFactory(email=claimable_draft.anonymous_applicant.email)
+    EmailAddressFactory(user=user)
+    CourseApplicationFactory(user=user, course=claimable_draft.course, **closed)
+
+    response = client.get(_claim_url(claimable_draft.anonymous_applicant))
+
+    assert response.context["held_application"] == ""
+
+
+@pytest.mark.django_db
+def test_claim_post_of_a_rejected_application_leaves_the_account_holding_both(
+    client, mock_site_context
+):
+    incoming = CourseApplicationFactory(anonymous=True, rejected=True)
+    _stamp_consent(incoming.anonymous_applicant)
+    user = UserFactory(email=incoming.anonymous_applicant.email)
+    EmailAddressFactory(user=user)
+    held = CourseApplicationFactory(user=user, course=incoming.course)
+
+    response = _claim(client, incoming)
+
+    incoming.refresh_from_db()
+    assert response.status_code == 302
+    assert client.session["_auth_user_id"] == str(user.pk)
+    assert set(CourseApplication.objects.filter(user=user)) == {held, incoming}
+
+
+@pytest.mark.django_db
 def test_claim_get_for_a_passwordless_account_says_a_password_comes_next(
     client, claimable_for_passwordless_user
 ):

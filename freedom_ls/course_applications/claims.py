@@ -19,6 +19,8 @@ from freedom_ls.accounts.models import LegalConsent, User
 from freedom_ls.course_applications.applicant_email import normalise_email
 from freedom_ls.course_applications.erasure import erase_anonymous_applicant
 from freedom_ls.course_applications.models import (
+    ACTIVE_STATES,
+    CLOSED_STATES,
     AnonymousApplicant,
     CourseApplication,
     claim_link_max_age,
@@ -333,13 +335,17 @@ def attach_to_user(
     """Hand an anonymous application, its sitting and its applicant to an account.
 
     Returns the application the account holds for the course afterwards. An
-    account holds one application per course, so when it already holds one,
-    one of the two goes: a submitted application beats a draft, and between
+    account holds at most one active application per course, so when it
+    already holds one and the incoming application is active too, one of the
+    two goes: a submitted or approved application beats a draft, and between
     two drafts the incoming one stays, because the applicant has just been
     working on it. A draft the account loses goes with its sitting. An
     incoming application that loses goes with its applicant, as if it had
     never been made; the consent it carried was already written to the
-    account by the caller.
+    account by the caller. A closed incoming application (rejected or
+    withdrawn) is history, not a competing request: it attaches beside
+    whatever the account holds, and the account's closed applications never
+    block or lose to an incoming one.
 
     One transaction, with the account's row locked, so two attachments for
     one course cannot both find the account empty: the second waits, then
@@ -350,14 +356,20 @@ def attach_to_user(
         # the account holds none; the user row is the one lock both see.
         list(User._base_manager.filter(pk=user.pk).select_for_update())
         held: CourseApplication | None = (
-            CourseApplication.objects.select_for_update(of=("self",))
+            None
+            if application.state in CLOSED_STATES
+            else CourseApplication.objects.select_for_update(of=("self",))
             .select_related("form_progress")
-            .filter(user=user, course_id=application.course_id)
+            .filter(
+                user=user,
+                course_id=application.course_id,
+                state__in=ACTIVE_STATES,
+            )
             .exclude(pk=application.pk)
             .first()
         )
         if held is not None:
-            if held.is_submitted:
+            if held.state != CourseApplication.State.DRAFT:
                 # A request already made stands; the incoming one could only
                 # repeat or precede it, so it goes with its applicant.
                 erase_anonymous_applicant(applicant)

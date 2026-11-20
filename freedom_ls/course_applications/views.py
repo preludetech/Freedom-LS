@@ -1054,8 +1054,14 @@ def claim_application(request: HttpRequest, token: str) -> HttpResponse:
             if owner is not None
             else None
         )
+        if held is not None and held.state not in ACTIVE_STATES:
+            held = None
         held_application = (
-            "" if held is None else ("submitted" if held.is_submitted else "draft")
+            ""
+            if held is None
+            else (
+                "draft" if held.state == CourseApplication.State.DRAFT else "submitted"
+            )
         )
         return _render_claim(
             request,

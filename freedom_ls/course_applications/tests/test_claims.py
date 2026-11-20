@@ -635,6 +635,112 @@ def test_attaching_to_an_account_holding_nothing_reports_no_draft_discarded(
     assert result == AttachResult(application=incoming, discarded_draft=False)
 
 
+def _anonymous_with_state_for(email: str, **state):
+    application = CourseApplicationFactory(anonymous=True, **state)
+    applicant = application.anonymous_applicant
+    applicant.email = email
+    applicant.save(update_fields=["email"])
+    return application
+
+
+@pytest.mark.parametrize("closed", [{"rejected": True}, {"withdrawn": True}])
+@pytest.mark.parametrize("held_state", ["draft", "submitted", "approved"])
+def test_a_closed_claim_attaches_beside_any_active_held_application(
+    account_with_user, rf, closed, held_state
+):
+    incoming = _anonymous_with_state_for("taken@example.com", **closed)
+    held = CourseApplicationFactory(
+        user=account_with_user,
+        course=incoming.course,
+        **(
+            {
+                "form_progress": FormProgressFactory(
+                    user=account_with_user, completed_time=None
+                )
+            }
+            if held_state == "draft"
+            else {"approved": held_state == "approved"}
+        ),
+    )
+
+    outcome = attach_claimed_application(rf.get("/"), incoming, link_version=0)
+
+    incoming.refresh_from_db()
+    held.refresh_from_db()
+    assert outcome == ClaimOutcome(
+        account_with_user, application=incoming, must_set_password=False
+    )
+    assert (incoming.user, held.user, held.state) == (
+        account_with_user,
+        account_with_user,
+        held_state,
+    )
+
+
+def test_a_closed_claim_beside_a_held_draft_leaves_the_draft_and_its_sitting(
+    account_with_user, rf
+):
+    incoming = _anonymous_with_state_for("taken@example.com", rejected=True)
+    held = _held_draft(account_with_user, incoming.course)
+
+    result = attach_to_user(incoming, incoming.anonymous_applicant, account_with_user)
+
+    assert result == AttachResult(application=incoming, discarded_draft=False)
+    assert CourseApplication.objects.filter(pk=held.pk).exists()
+    assert FormProgress.objects.filter(pk=held.form_progress_id).exists()
+
+
+@pytest.mark.parametrize("incoming_kind", ["draft", "submitted"])
+@pytest.mark.parametrize("held_kwargs", [{}, {"approved": True}])
+def test_an_active_claim_over_a_submitted_or_approved_held_application_is_erased(
+    account_with_user, incoming_kind, held_kwargs
+):
+    incoming = (
+        _anonymous_draft_for("taken@example.com")
+        if incoming_kind == "draft"
+        else _anonymous_with_state_for("taken@example.com")
+    )
+    applicant_pk = incoming.anonymous_applicant_id
+    held = CourseApplicationFactory(
+        user=account_with_user, course=incoming.course, **held_kwargs
+    )
+
+    result = attach_to_user(incoming, incoming.anonymous_applicant, account_with_user)
+
+    assert result == AttachResult(application=held, discarded_draft=False)
+    assert not CourseApplication.objects.filter(pk=incoming.pk).exists()
+    assert not AnonymousApplicant.objects.filter(pk=applicant_pk).exists()
+
+
+def test_a_submitted_claim_over_a_held_draft_replaces_the_draft_and_its_sitting(
+    account_with_user,
+):
+    incoming = _anonymous_with_state_for("taken@example.com")
+    held = _held_draft(account_with_user, incoming.course)
+    held_sitting_pk = held.form_progress_id
+
+    result = attach_to_user(incoming, incoming.anonymous_applicant, account_with_user)
+
+    assert result == AttachResult(application=incoming, discarded_draft=True)
+    assert not CourseApplication.objects.filter(pk=held.pk).exists()
+    assert not FormProgress.objects.filter(pk=held_sitting_pk).exists()
+
+
+@pytest.mark.parametrize("closed", [{"rejected": True}, {"withdrawn": True}])
+def test_a_held_closed_application_never_blocks_or_loses_to_an_active_claim(
+    account_with_user, closed
+):
+    incoming = _anonymous_draft_for("taken@example.com")
+    held = CourseApplicationFactory(
+        user=account_with_user, course=incoming.course, **closed
+    )
+
+    result = attach_to_user(incoming, incoming.anonymous_applicant, account_with_user)
+
+    assert result == AttachResult(application=incoming, discarded_draft=False)
+    assert CourseApplication.objects.filter(pk=held.pk).exists()
+
+
 @pytest.mark.django_db(transaction=True)
 def test_two_claims_for_one_address_and_course_at_once_leave_one_application(
     mock_site_context,
