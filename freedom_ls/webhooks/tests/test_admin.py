@@ -1,3 +1,5 @@
+import socket
+from collections.abc import Iterator
 from unittest.mock import patch
 
 import httpx
@@ -248,6 +250,18 @@ class TestWebhookSecretAdmin:
 @pytest.mark.django_db
 class TestWebhookEndpointFormTransformation:
     """Tests for transformation fields in WebhookEndpointForm."""
+
+    @pytest.fixture(autouse=True)
+    def _resolve_to_public_address(self) -> Iterator[None]:
+        """Resolve every hostname to a public address, so URL validation runs
+        its SSRF check without a real DNS lookup."""
+        with patch(
+            "freedom_ls.webhooks.models.socket.getaddrinfo",
+            return_value=[
+                (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("93.184.216.34", 443))
+            ],
+        ):
+            yield
 
     def test_form_includes_transformation_fields(
         self, mock_site_context: object
