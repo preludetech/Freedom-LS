@@ -15,8 +15,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 3. Implementation and QA
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [ ] (user) Decide on QA: this spec has no `3. frontend_qa.md` (the plan's Playwright run covers the Staff flows and passed), so either tick the `/sdd:do_qa` and `/sdd:qa_fix` items as not needed, or write a QA plan and run `/sdd:do_qa`
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
 
