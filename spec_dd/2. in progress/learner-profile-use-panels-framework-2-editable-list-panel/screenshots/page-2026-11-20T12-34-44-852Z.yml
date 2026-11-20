@@ -1,0 +1,200 @@
+- generic [active] [ref=f4e1]:
+  - banner [ref=f4e2]:
+    - link [ref=f4e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f4e4]
+      - heading "FirstClass" [level=1] [ref=f4e5]
+    - navigation [ref=f4e6]:
+      - generic [ref=f4e7]:
+        - generic [ref=f4e8]:
+          - button "Notifications, none new" [ref=f4e9]
+          - status:
+            - generic [ref=f4e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f4e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f4e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f4e17]:
+    - generic [ref=f4e19]:
+      - dialog "Navigation" [ref=f4e20]:
+        - generic [ref=f4e22]:
+          - generic [ref=f4e23]:
+            - paragraph [ref=f4e24]: Organisation
+            - button "Switch organisation" [ref=f4e26] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f4e27]: D
+              - generic "DemoDev" [ref=f4e28]
+          - navigation "Sections" [ref=f4e31]:
+            - heading "Teaching" [level=2] [ref=f4e32]
+            - list [ref=f4e33]:
+              - listitem [ref=f4e34]:
+                - link "Dashboard" [ref=f4e35] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/dashboard
+              - listitem [ref=f4e40]:
+                - link "Cohorts" [ref=f4e41] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+              - listitem [ref=f4e46]:
+                - link "Learners" [ref=f4e47] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+              - listitem [ref=f4e52]:
+                - link "Courses" [ref=f4e53] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+            - heading "Administration" [level=2] [ref=f4e58]
+            - list [ref=f4e59]:
+              - listitem [ref=f4e60]:
+                - link "Staff" [ref=f4e61] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/staff
+              - listitem [ref=f4e66]:
+                - link "Audit log" [ref=f4e67] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/audit-log
+          - generic [ref=f4e72]:
+            - generic [ref=f4e74]:
+              - generic [aria-hidden] [ref=f4e75]: DE
+              - generic [ref=f4e76]: demodev@email.com
+            - link "Account settings" [ref=f4e78] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f4e84]:
+        - generic [ref=f4e86]:
+          - heading "Cohorts" [level=1] [ref=f4e90]
+          - button "Create cohort" [ref=f4e92] [cursor=pointer]
+        - generic [ref=f4e97]:
+          - generic [ref=f4e98]:
+            - generic [ref=f4e100]:
+              - generic [ref=f4e101]: Search
+              - searchbox "Search" [ref=f4e103]
+            - group [ref=f4e105]:
+              - generic "Add filter" [ref=f4e106]
+          - status [ref=f4e110]
+          - region "Cohorts" [ref=f4e113]:
+            - table [ref=f4e114]:
+              - caption [ref=f4e115]: Cohorts
+              - rowgroup [ref=f4e116]:
+                - row [ref=f4e117]:
+                  - columnheader [ref=f4e118]:
+                    - checkbox "Select all on this page" [ref=f4e119] [cursor=pointer]
+                  - columnheader [ref=f4e120]:
+                    - link "Name" [ref=f4e121] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts?cohorts-sort=-name
+                  - columnheader "Status" [ref=f4e125]
+                  - columnheader [ref=f4e126]:
+                    - link "Learners" [ref=f4e127] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts?cohorts-sort=learner_count
+                  - columnheader "Courses" [ref=f4e131]
+                  - columnheader [ref=f4e132]:
+                    - link "Created" [ref=f4e133] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts?cohorts-sort=created_at
+              - rowgroup [ref=f4e137]:
+                - row [ref=f4e138]:
+                  - cell [ref=f4e139]:
+                    - checkbox "Select Cohort 2025.03.04" [ref=f4e140] [cursor=pointer]
+                  - cell [ref=f4e141]:
+                    - generic [ref=f4e142]:
+                      - link "Cohort 2025.03.04" [ref=f4e143] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/256a088e-f875-44df-8878-a1beeee623ee
+                      - 'link "Quick view: Cohort 2025.03.04" [ref=f4e144] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/cohorts/256a088e-f875-44df-8878-a1beeee623ee
+                  - cell "Active" [ref=f4e149]
+                  - cell "50" [ref=f4e151]
+                  - cell [ref=f4e152]:
+                    - img "None" [ref=f4e153]: —
+                  - cell "19 Nov 2026, 08:27" [ref=f4e154]:
+                    - time [ref=f4e155]:
+                      - generic [ref=f4e156]: 19 Nov 2026,
+                      - generic [ref=f4e157]: 08:27
+                - row [ref=f4e158]:
+                  - cell [ref=f4e159]:
+                    - checkbox "Select Cohort 2025.04.06" [ref=f4e160] [cursor=pointer]
+                  - cell [ref=f4e161]:
+                    - generic [ref=f4e162]:
+                      - link "Cohort 2025.04.06" [ref=f4e163] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/4fd6972d-40e7-4c44-a3ce-16e77e25ea0f
+                      - 'link "Quick view: Cohort 2025.04.06" [ref=f4e164] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/cohorts/4fd6972d-40e7-4c44-a3ce-16e77e25ea0f
+                  - cell "Active" [ref=f4e169]
+                  - cell "0" [ref=f4e171]
+                  - cell [ref=f4e172]:
+                    - img "None" [ref=f4e173]: —
+                  - cell "19 Nov 2026, 08:27" [ref=f4e174]:
+                    - time [ref=f4e175]:
+                      - generic [ref=f4e176]: 19 Nov 2026,
+                      - generic [ref=f4e177]: 08:27
+                - row [ref=f4e178]:
+                  - cell [ref=f4e179]:
+                    - checkbox "Select QA Editable Alpha" [ref=f4e180] [cursor=pointer]
+                  - cell [ref=f4e181]:
+                    - generic [ref=f4e182]:
+                      - link "QA Editable Alpha" [ref=f4e183] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/b7463eab-2ccd-44aa-b41d-6cae37e27c6c
+                      - 'link "Quick view: QA Editable Alpha" [ref=f4e184] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/cohorts/b7463eab-2ccd-44aa-b41d-6cae37e27c6c
+                  - cell "Active" [ref=f4e189]
+                  - cell "0" [ref=f4e191]
+                  - cell [ref=f4e192]:
+                    - img "None" [ref=f4e193]: —
+                  - cell "20 Nov 2026, 00:35" [ref=f4e194]:
+                    - time [ref=f4e195]:
+                      - generic [ref=f4e196]: 20 Nov 2026,
+                      - generic [ref=f4e197]: 00:35
+                - row [ref=f4e198]:
+                  - cell [ref=f4e199]:
+                    - checkbox "Select QA Editable Beta" [ref=f4e200] [cursor=pointer]
+                  - cell [ref=f4e201]:
+                    - generic [ref=f4e202]:
+                      - link "QA Editable Beta" [ref=f4e203] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/59b71b29-93bc-4064-8d06-15e672bd7dfd
+                      - 'link "Quick view: QA Editable Beta" [ref=f4e204] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/cohorts/59b71b29-93bc-4064-8d06-15e672bd7dfd
+                  - cell "Active" [ref=f4e209]
+                  - cell "1" [ref=f4e211]
+                  - cell [ref=f4e212]:
+                    - img "None" [ref=f4e213]: —
+                  - cell "20 Nov 2026, 00:35" [ref=f4e214]:
+                    - time [ref=f4e215]:
+                      - generic [ref=f4e216]: 20 Nov 2026,
+                      - generic [ref=f4e217]: 00:35
+                - row [ref=f4e218]:
+                  - cell [ref=f4e219]:
+                    - checkbox "Select QA Editable Gamma" [ref=f4e220] [cursor=pointer]
+                  - cell [ref=f4e221]:
+                    - generic [ref=f4e222]:
+                      - link "QA Editable Gamma" [ref=f4e223] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/a92633ca-6275-44ef-bd8f-ae97a00111d2
+                      - 'link "Quick view: QA Editable Gamma" [ref=f4e224] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/cohorts/a92633ca-6275-44ef-bd8f-ae97a00111d2
+                  - cell "Active" [ref=f4e229]
+                  - cell "0" [ref=f4e231]
+                  - cell [ref=f4e232]:
+                    - img "None" [ref=f4e233]: —
+                  - cell "20 Nov 2026, 00:36" [ref=f4e234]:
+                    - time [ref=f4e235]:
+                      - generic [ref=f4e236]: 20 Nov 2026,
+                      - generic [ref=f4e237]: 00:36
+                - row [ref=f4e238]:
+                  - cell [ref=f4e239]:
+                    - checkbox "Select QA Registrations Cohort" [ref=f4e240] [cursor=pointer]
+                  - cell [ref=f4e241]:
+                    - generic [ref=f4e242]:
+                      - link "QA Registrations Cohort" [ref=f4e243] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/5fde2522-a82e-457c-93c1-d469d286dc27
+                      - 'link "Quick view: QA Registrations Cohort" [ref=f4e244] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/cohorts/5fde2522-a82e-457c-93c1-d469d286dc27
+                  - cell "Active" [ref=f4e249]
+                  - cell "1" [ref=f4e251]
+                  - cell [ref=f4e252]:
+                    - list [ref=f4e253]:
+                      - listitem [ref=f4e254]: Standard Markdown - Demo Finance
+                  - cell "20 Nov 2026, 08:42" [ref=f4e255]:
+                    - time [ref=f4e256]:
+                      - generic [ref=f4e257]: 20 Nov 2026,
+                      - generic [ref=f4e258]: 08:42
+          - paragraph [ref=f4e260]: 6 cohorts
+  - contentinfo [ref=f4e263]:
+    - generic [ref=f4e264]:
+      - paragraph [ref=f4e265]: © 2026 FirstClass
+      - navigation "Legal" [ref=f4e266]:
+        - link "Terms and Conditions" [ref=f4e267] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f4e268] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f4e269] [cursor=pointer]: learner-profile-use-panels-framework-2-editable-list-panel
+  - generic "Show toolbar" [ref=f4e271]: DJDT

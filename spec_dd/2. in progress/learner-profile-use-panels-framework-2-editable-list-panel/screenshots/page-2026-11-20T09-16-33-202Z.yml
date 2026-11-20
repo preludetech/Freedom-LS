@@ -1,0 +1,196 @@
+- generic [active] [ref=f1e1]:
+  - banner [ref=f1e2]:
+    - link [ref=f1e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f1e4]
+      - heading "FirstClass" [level=1] [ref=f1e5]
+    - navigation [ref=f1e6]:
+      - generic [ref=f1e7]:
+        - generic [ref=f1e8]:
+          - button "Notifications, none new" [ref=f1e9]
+          - status:
+            - generic [ref=f1e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f1e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f1e16]: DE
+  - generic:
+    - status:
+      - generic [ref=f1e17]:
+        - paragraph [ref=f1e22]: Successfully signed in as demodev@email.com.
+        - button "Dismiss notification" [ref=f1e23]
+    - alert
+  - main [ref=f1e26]:
+    - generic [ref=f1e29]:
+      - navigation "Back" [ref=f1e31]:
+        - link "Learners" [ref=f1e32] [cursor=pointer]:
+          - /url: /educator/organisations/demodev/learners
+      - generic [ref=f1e36]:
+        - generic [ref=f1e38]:
+          - generic [ref=f1e40]:
+            - generic [ref=f1e41]:
+              - button "Open navigation panel" [ref=f1e42] [cursor=pointer]
+              - heading "Registrations QA" [level=1] [ref=f1e46]
+            - paragraph [ref=f1e47]: qa_registrations@example.com
+          - navigation "Learner sections" [ref=f1e48]:
+            - list [ref=f1e49]:
+              - listitem [ref=f1e50]:
+                - link "Overview" [ref=f1e51] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners/c3427fea-203f-4613-a48c-c40173d6e32c/__tabs/overview
+              - listitem [ref=f1e52]:
+                - link "Courses" [ref=f1e53] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners/c3427fea-203f-4613-a48c-c40173d6e32c/__tabs/courses
+              - listitem [ref=f1e54]:
+                - link "Messages" [ref=f1e55] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners/c3427fea-203f-4613-a48c-c40173d6e32c/__tabs/messages
+              - listitem [ref=f1e56]:
+                - link "Settings" [ref=f1e57] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners/c3427fea-203f-4613-a48c-c40173d6e32c/__tabs/settings
+              - listitem [ref=f1e58]:
+                - link "History" [ref=f1e59] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners/c3427fea-203f-4613-a48c-c40173d6e32c/__tabs/history
+        - generic [ref=f1e63]:
+          - generic [ref=f1e65]:
+            - heading "Details" [level=2] [ref=f1e68]
+            - generic [ref=f1e70]:
+              - generic [ref=f1e71]:
+                - term [ref=f1e72]: Name
+                - definition [ref=f1e73]: Registrations QA
+              - generic [ref=f1e74]:
+                - term [ref=f1e75]: Email
+                - definition [ref=f1e76]: qa_registrations@example.com
+              - generic [ref=f1e77]:
+                - term [ref=f1e78]: Status
+                - definition [ref=f1e79]:
+                  - generic [ref=f1e80]: Active
+              - generic [ref=f1e81]:
+                - term [ref=f1e82]: Date added
+                - definition [ref=f1e83]:
+                  - time [ref=f1e84]: 20 Nov 2026
+          - generic [ref=f1e86]:
+            - heading "Cohorts" [level=2] [ref=f1e89]
+            - generic [ref=f1e91]:
+              - generic [ref=f1e94]:
+                - generic [ref=f1e95]: Search
+                - searchbox "Search" [ref=f1e97]
+              - list [ref=f1e99]:
+                - listitem [ref=f1e100]:
+                  - generic [ref=f1e101]:
+                    - generic [ref=f1e104]:
+                      - link "QA Registrations Cohort" [ref=f1e105] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/5fde2522-a82e-457c-93c1-d469d286dc27
+                      - 'link "Quick view: QA Registrations Cohort" [ref=f1e106] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/cohorts/5fde2522-a82e-457c-93c1-d469d286dc27
+                    - generic [ref=f1e114]:
+                      - generic [ref=f1e115]:
+                        - term [ref=f1e116]: Status
+                        - definition [ref=f1e117]:
+                          - generic [ref=f1e118]: Active
+                      - generic [ref=f1e119]:
+                        - term [ref=f1e120]: Learners
+                        - definition [ref=f1e121]: "1"
+                      - generic [ref=f1e122]:
+                        - term [ref=f1e123]: Courses
+                        - definition [ref=f1e124]:
+                          - list [ref=f1e125]:
+                            - listitem [ref=f1e126]: Standard Markdown - Demo Finance
+                      - generic [ref=f1e127]:
+                        - term
+                        - definition [ref=f1e128]:
+                          - generic [ref=f1e129]:
+                            - button "Remove from QA Registrations Cohort" [ref=f1e130] [cursor=pointer]: Remove
+                            - button "Move from QA Registrations Cohort" [ref=f1e131] [cursor=pointer]: Move
+              - paragraph [ref=f1e133]: 1 cohort
+            - button "Add to cohort" [ref=f1e136] [cursor=pointer]
+          - generic [ref=f1e138]:
+            - heading "Registrations" [level=2] [ref=f1e141]
+            - list [ref=f1e143]:
+              - listitem [ref=f1e144]:
+                - generic [ref=f1e145]:
+                  - text: Functionality Demo - show end with Quiz
+                  - paragraph [ref=f1e146]: Individual
+                  - button "Reactivate" [ref=f1e149] [cursor=pointer]
+                - generic [ref=f1e150]: Inactive
+              - listitem [ref=f1e152]:
+                - generic [ref=f1e153]:
+                  - text: Functionality Demo - show end with Topic
+                  - paragraph [ref=f1e154]: Individual
+                  - button "Deactivate" [ref=f1e157] [cursor=pointer]
+                - generic [ref=f1e158]: Active
+              - listitem [ref=f1e160]:
+                - generic [ref=f1e161]:
+                  - text: Standard Markdown - Demo Finance
+                  - paragraph [ref=f1e162]: via QA Registrations Cohort
+                - generic [ref=f1e163]: Active
+  - contentinfo [ref=f1e167]:
+    - generic [ref=f1e168]:
+      - paragraph [ref=f1e169]: © 2026 FirstClass
+      - navigation "Legal" [ref=f1e170]:
+        - link "Terms and Conditions" [ref=f1e171] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f1e172] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f1e173] [cursor=pointer]: learner-profile-use-panels-framework-2-editable-list-panel
+  - list [ref=f1e175]:
+    - listitem [ref=f1e176]:
+      - link "Hide »" [ref=f1e177] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e178]:
+      - link "Toggle Theme" [ref=f1e179] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e182]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e183] [cursor=pointer]
+      - link "History /educator/organisations/demodev/learners/c3427fea-203f-4613-a48c-c40173d6e32c/" [ref=f1e184] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e185]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e186] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f1e187] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e188]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e189] [cursor=pointer]
+      - 'link "Time CPU: 377.58ms (421.18ms)" [ref=f1e190] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f1e191]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e192] [cursor=pointer]
+      - link "Settings" [ref=f1e193] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e194]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e195] [cursor=pointer]
+      - link "Headers" [ref=f1e196] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e197]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e198] [cursor=pointer]
+      - link "Request interface" [ref=f1e199] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e200]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e201] [cursor=pointer]
+      - link "SQL 31 queries in 39.20ms" [ref=f1e202] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e203]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e204] [cursor=pointer]
+      - link "Static files 14 files used" [ref=f1e205] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e206]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e207] [cursor=pointer]
+      - link "Templates educator_interface/interface.html" [ref=f1e208] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e209]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e210] [cursor=pointer]
+      - link "Alerts" [ref=f1e211] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e212]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e213] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f1e214] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e215]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e216] [cursor=pointer]
+      - link "Signals 130 receivers of 15 signals" [ref=f1e217] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e218]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e219] [cursor=pointer]
+      - link "Community" [ref=f1e220] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e221]:
+      - checkbox "Enable for next and successive requests" [ref=f1e222] [cursor=pointer]
+      - generic [ref=f1e223]: Intercept redirects
+    - listitem [ref=f1e224]:
+      - checkbox "Enable for next and successive requests" [ref=f1e225] [cursor=pointer]
+      - generic [ref=f1e226]: Profiling

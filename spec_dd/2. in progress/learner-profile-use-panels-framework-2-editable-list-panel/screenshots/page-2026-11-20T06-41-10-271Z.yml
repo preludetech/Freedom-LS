@@ -1,0 +1,869 @@
+- generic [ref=f4e1]:
+  - banner [ref=f4e2]:
+    - link [ref=f4e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f4e4]
+    - navigation [ref=f4e5]:
+      - generic [ref=f4e6]:
+        - generic [ref=f4e7]:
+          - button "Notifications, none new" [ref=f4e8]
+          - status:
+            - generic [ref=f4e12]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f4e14] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f4e15]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f4e16]:
+    - generic [ref=f4e18]:
+      - generic [ref=f4e19]:
+        - heading "Page header" [level=2] [ref=f4e20]
+        - generic [ref=f4e21]:
+          - paragraph [ref=f4e22]: Use when a view needs only its heading.
+          - heading "Cohort overview" [level=1] [ref=f4e27]
+        - generic [ref=f4e28]:
+          - paragraph [ref=f4e29]: Use when the view offers up to three page-level actions.
+          - generic [ref=f4e30]:
+            - heading "Cohort overview" [level=1] [ref=f4e34]
+            - generic [ref=f4e35]:
+              - button "Export" [ref=f4e36] [cursor=pointer]
+              - link "Add learner" [ref=f4e37] [cursor=pointer]:
+                - /url: "#page-header-with-actions"
+        - generic [ref=f4e41]:
+          - paragraph [ref=f4e42]: Use when the heading needs a status, a secondary identifier and a stat row alongside it.
+          - generic [ref=f4e43]:
+            - generic [ref=f4e44]:
+              - generic [ref=f4e46]:
+                - heading "Foundations 2026" [level=1] [ref=f4e47]
+                - generic [ref=f4e48]: Active
+              - generic [ref=f4e49]: cohort-2026-foundations
+            - generic [ref=f4e51]:
+              - generic [ref=f4e52]:
+                - term [ref=f4e53]: Learners
+                - definition [ref=f4e54]: "42"
+              - generic [ref=f4e55]:
+                - term [ref=f4e56]: Average progress
+                - definition [ref=f4e57]: 68%
+        - generic [ref=f4e58]:
+          - paragraph [ref=f4e59]: Use when the header sits inside content that already owns an h1 and h2.
+          - heading "Section heading" [level=3] [ref=f4e64]
+      - generic [ref=f4e65]:
+        - heading "Stat tile" [level=2] [ref=f4e66]
+        - generic [ref=f4e67]:
+          - paragraph [ref=f4e68]: Use when the tiles carry their own card border, e.g. a dashboard's headline figures.
+          - generic [ref=f4e69]:
+            - generic [ref=f4e70]:
+              - paragraph [ref=f4e71]: Use when a boxed figure improved since the last period.
+              - generic [ref=f4e72]:
+                - term [ref=f4e73]: Active learners
+                - definition [ref=f4e74]: "128"
+                - definition [ref=f4e75]: Up 4 this week
+            - generic [ref=f4e79]:
+              - paragraph [ref=f4e80]: Use when a boxed figure worsened since the last period.
+              - generic [ref=f4e81]:
+                - term [ref=f4e82]: At risk
+                - definition [ref=f4e83]: "9"
+                - definition [ref=f4e84]: Down 2 this week
+        - generic [ref=f4e88]:
+          - paragraph [ref=f4e89]: Use when the tiles sit inside a container that already has a border, e.g. a page header's stats slot.
+          - generic [ref=f4e90]:
+            - generic [ref=f4e91]:
+              - term [ref=f4e92]: Learners
+              - definition [ref=f4e93]: "42"
+            - generic [ref=f4e94]:
+              - term [ref=f4e95]: Cohorts
+              - definition [ref=f4e96]: "3"
+        - generic [ref=f4e97]:
+          - paragraph [ref=f4e98]:
+            - text: Use
+            - code [ref=f4e99]: href
+            - text: when the figure opens the list it counts;
+            - code [ref=f4e100]: selected
+            - text: marks the tile whose list is showing.
+          - generic [ref=f4e101]:
+            - link [ref=f4e102] [cursor=pointer]:
+              - /url: "#stat-tile-link"
+              - generic [ref=f4e103]:
+                - term [ref=f4e104]: Cohorts
+                - definition [ref=f4e105]: "3"
+            - link [ref=f4e106] [cursor=pointer]:
+              - /url: "#stat-tile-link"
+              - generic [ref=f4e107]:
+                - term [ref=f4e108]: Errors
+                - definition [ref=f4e109]: "2"
+        - generic [ref=f4e110]:
+          - paragraph [ref=f4e111]: Use when the counted figure is itself a percentage, e.g. an "Average progress" tile.
+          - generic [ref=f4e112]:
+            - term [ref=f4e113]: Average progress
+            - definition [ref=f4e114]: 68%
+            - definition [ref=f4e115]:
+              - generic [ref=f4e116]:
+                - progressbar "Average progress" [ref=f4e117]: 68%
+                - generic [ref=f4e118]: 68%
+      - generic [ref=f4e119]:
+        - heading "Status badge" [level=2] [ref=f4e120]
+        - generic [ref=f4e121]:
+          - generic [ref=f4e122]:
+            - paragraph [ref=f4e123]: Use for a state in good standing.
+            - generic [ref=f4e124]: Active
+          - generic [ref=f4e125]:
+            - paragraph [ref=f4e126]: Use for a state that needs a look.
+            - generic [ref=f4e127]: Needs attention
+          - generic [ref=f4e128]:
+            - paragraph [ref=f4e129]: Use for a state that has failed or been blocked.
+            - generic [ref=f4e130]: Blocked
+          - generic [ref=f4e131]:
+            - paragraph [ref=f4e132]: Use for a neutral, informational state.
+            - generic [ref=f4e133]: Draft
+          - generic [ref=f4e134]:
+            - paragraph [ref=f4e135]: Use for the default, when no tone is given, or for an unrecognised tone.
+            - generic [ref=f4e136]: Archived
+      - generic [ref=f4e137]:
+        - heading "Avatar chip" [level=2] [ref=f4e138]
+        - generic [ref=f4e139]:
+          - generic [ref=f4e140]:
+            - paragraph [ref=f4e141]: Use in a list row.
+            - generic [ref=f4e142]:
+              - generic [aria-hidden] [ref=f4e143]: TM
+              - generic [ref=f4e144]:
+                - generic [ref=f4e145]: Thandi Mokoena
+                - generic [ref=f4e146]: Learner
+          - generic [ref=f4e147]:
+            - paragraph [ref=f4e148]: Use in a profile header.
+            - generic [ref=f4e149]:
+              - generic [aria-hidden] [ref=f4e150]: TM
+              - generic [ref=f4e151]:
+                - generic [ref=f4e152]: Thandi Mokoena
+                - generic [ref=f4e153]: thandi@example.com
+          - generic [ref=f4e154]:
+            - paragraph [ref=f4e155]: "Use when the person has a profile picture: pass its URL bound as picture_url."
+            - generic [ref=f4e156]:
+              - generic [aria-hidden] [ref=f4e157]: TM
+              - generic [ref=f4e158]:
+                - generic [ref=f4e159]: Thandi Mokoena
+                - generic [ref=f4e160]: Learner
+          - generic [ref=f4e161]:
+            - paragraph [ref=f4e162]: "Use when the name has only one word: initials fall back to its first letter."
+            - generic [ref=f4e163]:
+              - generic [aria-hidden] [ref=f4e164]: C
+              - generic [ref=f4e165]: Cher
+          - generic [ref=f4e167]:
+            - paragraph [ref=f4e168]: "Use when the person is gone or is the system: a neutral circle holds the icon."
+            - generic [ref=f4e169]: System
+      - generic [ref=f4e178]:
+        - heading "Attention list" [level=2] [ref=f4e179]
+        - generic [ref=f4e180]:
+          - paragraph [ref=f4e181]: Use for a list of learners who each need a nudge.
+          - list [ref=f4e182]:
+            - listitem [ref=f4e183]:
+              - link "Thandi Mokoena 4 days idle" [ref=f4e188] [cursor=pointer]:
+                - /url: "#attention-row-target"
+                - generic [ref=f4e189]:
+                  - generic [aria-hidden] [ref=f4e190]: TM
+                  - generic [ref=f4e191]:
+                    - generic [ref=f4e192]: Thandi Mokoena
+                    - generic [ref=f4e193]: 4 days idle
+              - generic [ref=f4e194]: Stalled
+            - listitem [ref=f4e198]:
+              - link "Sipho Nkosi Last active 6 days ago" [ref=f4e203] [cursor=pointer]:
+                - /url: "#attention-row-target"
+                - generic [ref=f4e204]:
+                  - generic [aria-hidden] [ref=f4e205]: SN
+                  - generic [ref=f4e206]:
+                    - generic [ref=f4e207]: Sipho Nkosi
+                    - generic [ref=f4e208]: Last active 6 days ago
+        - generic [ref=f4e212]:
+          - paragraph [ref=f4e213]: Use when the row is about a cohort-level issue rather than a person, so a severity icon leads instead of an avatar.
+          - list [ref=f4e214]:
+            - listitem [ref=f4e215]:
+              - generic [ref=f4e220]:
+                - link "Foundations cohort" [ref=f4e221] [cursor=pointer]:
+                  - /url: "#attention-row-target"
+                - paragraph [ref=f4e222]: Completion rate dropped 12% this week
+        - generic [ref=f4e226]:
+          - paragraph [ref=f4e227]:
+            - text: Use when a row needs per-cohort detail under the reason and one control beside it. The trigger must be a button with
+            - code [ref=f4e228]: relative z-10
+            - text: and a name that includes the subject.
+          - list [ref=f4e229]:
+            - listitem [ref=f4e230]:
+              - generic [ref=f4e234]:
+                - link "Thandi Mokoena" [ref=f4e236] [cursor=pointer]:
+                  - /url: "#attention-row-target"
+                - paragraph [ref=f4e238]: "Foundations cohort: 20% complete"
+              - 'button "Quick view: Thandi Mokoena" [ref=f4e239]'
+        - generic [ref=f4e247]: Attention row target
+        - generic [ref=f4e248]: Attention row action
+      - generic [ref=f4e249]:
+        - heading "Progress bar" [level=2] [ref=f4e250]
+        - generic [ref=f4e251]:
+          - paragraph [ref=f4e252]: Use when the percentage next to the bar is enough on its own.
+          - generic [ref=f4e253]:
+            - progressbar "Progress" [ref=f4e254]: 42%
+            - generic [ref=f4e255]: 42%
+        - generic [ref=f4e256]:
+          - paragraph [ref=f4e257]: Use when the bar needs a visible caption, not just an accessible name.
+          - generic [ref=f4e258]:
+            - generic [ref=f4e259]: Course progress
+            - progressbar "Course progress" [ref=f4e260]: 68%
+            - generic [ref=f4e261]: 68%
+      - generic [ref=f4e262]:
+        - heading "Card" [level=2] [ref=f4e263]
+        - generic [ref=f4e264]:
+          - paragraph [ref=f4e265]: Use for a plain panel body.
+          - generic [ref=f4e266]:
+            - generic [ref=f4e268]:
+              - heading "Recent activity" [level=2] [ref=f4e269]
+              - paragraph [ref=f4e270]: Last 7 days
+            - paragraph [ref=f4e272]: No activity yet.
+        - generic [ref=f4e273]:
+          - paragraph [ref=f4e274]: Use when a card sits directly on the page (not inside a panel's own section), so assistive tech can jump to it.
+          - region [ref=f4e275]:
+            - heading "Cohort summary" [level=2] [ref=f4e278]
+            - paragraph [ref=f4e280]: 42 learners, 3 cohorts.
+        - generic [ref=f4e281]:
+          - paragraph [ref=f4e282]: Use when the card links to a fuller view of the same data.
+          - generic [ref=f4e283]:
+            - generic [ref=f4e284]:
+              - heading "Learners" [level=2] [ref=f4e286]
+              - link "View all" [ref=f4e288] [cursor=pointer]:
+                - /url: "#card-with-header-action"
+            - paragraph [ref=f4e290]: 9 learners shown.
+        - generic [ref=f4e291]:
+          - paragraph [ref=f4e292]: Use when the card body needs a confirming action.
+          - generic [ref=f4e293]:
+            - heading "Confirm removal" [level=2] [ref=f4e296]
+            - paragraph [ref=f4e298]: Remove Thandi Mokoena from this cohort?
+            - generic [ref=f4e300]:
+              - button "Cancel" [ref=f4e301] [cursor=pointer]
+              - button "Remove" [ref=f4e302] [cursor=pointer]
+      - generic [ref=f4e303]:
+        - heading "Definition list" [level=2] [ref=f4e304]
+        - generic [ref=f4e305]:
+          - paragraph [ref=f4e306]: Use for one label/value pair inside a definition list.
+          - generic [ref=f4e308]:
+            - term [ref=f4e309]: Name
+            - definition [ref=f4e310]: Thandi Mokoena
+        - generic [ref=f4e311]:
+          - paragraph [ref=f4e312]:
+            - text: Use
+            - code [ref=f4e313]: layout="inline"
+            - text: for a dense list where each label sits beside its value, such as a table row shown as a card.
+          - generic [ref=f4e314]:
+            - generic [ref=f4e315]:
+              - term [ref=f4e316]: Name
+              - definition [ref=f4e317]: Thandi Mokoena
+            - generic [ref=f4e318]:
+              - term [ref=f4e319]: Email
+              - definition [ref=f4e320]: thandi@example.com
+        - generic [ref=f4e321]:
+          - paragraph [ref=f4e322]: Use for a short set of fields, two to a row from md.
+          - generic [ref=f4e323]:
+            - generic [ref=f4e324]:
+              - term [ref=f4e325]: Name
+              - definition [ref=f4e326]: Thandi Mokoena
+            - generic [ref=f4e327]:
+              - term [ref=f4e328]: Email
+              - definition [ref=f4e329]: thandi@example.com
+        - generic [ref=f4e330]:
+          - paragraph [ref=f4e331]: Use for the default instance-details layout, three to a row from md.
+          - generic [ref=f4e332]:
+            - generic [ref=f4e333]:
+              - term [ref=f4e334]: Name
+              - definition [ref=f4e335]: Thandi Mokoena
+            - generic [ref=f4e336]:
+              - term [ref=f4e337]: Email
+              - definition [ref=f4e338]: thandi@example.com
+            - generic [ref=f4e339]:
+              - term [ref=f4e340]: Cohort
+              - definition [ref=f4e341]: Foundations 2026
+        - generic [ref=f4e342]:
+          - paragraph [ref=f4e343]: Use for a wide set of short fields, four to a row from md.
+          - generic [ref=f4e344]:
+            - generic [ref=f4e345]:
+              - term [ref=f4e346]: Name
+              - definition [ref=f4e347]: Thandi Mokoena
+            - generic [ref=f4e348]:
+              - term [ref=f4e349]: Email
+              - definition [ref=f4e350]: thandi@example.com
+            - generic [ref=f4e351]:
+              - term [ref=f4e352]: Cohort
+              - definition [ref=f4e353]: Foundations 2026
+            - generic [ref=f4e354]:
+              - term [ref=f4e355]: Status
+              - definition [ref=f4e356]: Active
+      - generic [ref=f4e357]:
+        - heading "Toolbar" [level=2] [ref=f4e358]
+        - generic [ref=f4e359]:
+          - paragraph [ref=f4e360]: "Use above a table: the search form, then each filter as a popover. The \"Clear all\" link and the actions sit at the end of the row."
+          - generic [ref=f4e363]:
+            - generic [ref=f4e364]: Search learners
+            - searchbox "Search learners" [ref=f4e366]
+        - generic [ref=f4e367]:
+          - paragraph [ref=f4e368]: "Use once a filter is applied: the toggle's summary names the applied value and carries a remove link. Below md the applied chips move to the mobile row."
+          - generic [ref=f4e369]:
+            - generic [ref=f4e371]:
+              - generic [ref=f4e372]: Search learners
+              - searchbox "Search learners" [ref=f4e374]
+            - generic [ref=f4e376]:
+              - text: "Status: Inactive"
+              - 'link "Remove filter: Status: Inactive" [ref=f4e377] [cursor=pointer]':
+                - /url: "#toolbar-applied"
+        - generic [ref=f4e380]:
+          - generic [ref=f4e381]:
+            - paragraph [ref=f4e382]: "Use when the filter is applied: the summary slot names the value."
+            - group [ref=f4e383]:
+              - 'generic "Status: Inactive" [ref=f4e384]'
+          - generic [ref=f4e388]:
+            - paragraph [ref=f4e389]: Use when the filter is available but not applied.
+            - group [ref=f4e390]:
+              - generic "Status" [ref=f4e391]
+        - generic [ref=f4e395]:
+          - paragraph [ref=f4e396]: Use when the field sits somewhere the label needs to stay visible, e.g. a plain search page.
+          - generic [ref=f4e397]:
+            - generic [ref=f4e398]: Search learners
+            - searchbox "Search learners" [ref=f4e400]
+        - generic [ref=f4e401]:
+          - paragraph [ref=f4e402]: Use inside a toolbar, where the icon and placeholder already carry the field's purpose visually.
+          - generic [ref=f4e403]:
+            - generic [ref=f4e404]: Search learners
+            - searchbox "Search learners" [ref=f4e406]
+        - generic [ref=f4e407]:
+          - paragraph [ref=f4e408]: Use for one active filter's chip, with a remove link that works without JavaScript.
+          - generic [ref=f4e409]:
+            - text: "Status: Inactive"
+            - 'link "Remove filter: Status: Inactive" [ref=f4e410] [cursor=pointer]':
+              - /url: "#applied-filter-default"
+      - generic [ref=f4e413]:
+        - heading "Empty state" [level=2] [ref=f4e414]
+        - generic [ref=f4e415]:
+          - paragraph [ref=f4e416]: Use when a panel has nothing to show yet.
+          - generic [ref=f4e417]:
+            - paragraph [ref=f4e421]: No learners yet.
+            - button "Add learner" [ref=f4e422] [cursor=pointer]
+        - generic [ref=f4e423]:
+          - paragraph [ref=f4e424]: "Use for a section inside a panel: a muted line, no icon."
+          - paragraph [ref=f4e426]: No reports yet.
+      - generic [ref=f4e427]:
+        - heading "Skeleton" [level=2] [ref=f4e428]
+        - generic [ref=f4e429]:
+          - paragraph [ref=f4e431]: Use while a text-shaped region, e.g. a definition list, is loading.
+          - paragraph [ref=f4e437]: Use while a stat tile is loading.
+          - paragraph [ref=f4e441]: Use while an attention row is loading.
+      - generic [ref=f4e448]:
+        - heading "Table" [level=2] [ref=f4e449]
+        - generic [ref=f4e450]:
+          - paragraph [ref=f4e451]: Use for a short static table with no sorting, filtering or selection.
+          - region "Generated reports" [ref=f4e452]:
+            - table [ref=f4e453]:
+              - caption [ref=f4e454]: Generated reports
+              - rowgroup [ref=f4e455]:
+                - row [ref=f4e456]:
+                  - columnheader "Generated" [ref=f4e457]
+                  - columnheader "By" [ref=f4e458]
+              - rowgroup [ref=f4e459]:
+                - row [ref=f4e460]:
+                  - cell "12 Nov 2026" [ref=f4e461]
+                  - cell "Thandi Mokoena" [ref=f4e462]
+                - row [ref=f4e463]:
+                  - cell "5 Nov 2026" [ref=f4e464]
+                  - cell "Sipho Nkosi" [ref=f4e465]
+        - generic [ref=f4e466]:
+          - paragraph [ref=f4e467]: Use when a phone should get each row as a card with its values labelled.
+          - region "Import rows" [ref=f4e468]:
+            - list [ref=f4e469]:
+              - listitem [ref=f4e470]:
+                - paragraph [ref=f4e471]: thandi@example.com
+                - generic [ref=f4e473]:
+                  - term [ref=f4e474]: Line
+                  - definition [ref=f4e475]: "2"
+              - listitem [ref=f4e476]:
+                - paragraph [ref=f4e477]: sipho@example.com
+                - generic [ref=f4e479]:
+                  - term [ref=f4e480]: Line
+                  - definition [ref=f4e481]: "3"
+        - generic [ref=f4e482]:
+          - paragraph [ref=f4e483]: "Use for a block that can hold more than about ten rows: the height is capped and the header stays in view."
+          - region "Error rows" [ref=f4e484]:
+            - table [ref=f4e485]:
+              - caption [ref=f4e486]: Error rows
+              - rowgroup [ref=f4e487]:
+                - row [ref=f4e488]:
+                  - columnheader "Line" [ref=f4e489]
+                  - columnheader "Reason" [ref=f4e490]
+              - rowgroup [ref=f4e491]:
+                - row [ref=f4e492]:
+                  - cell "2" [ref=f4e493]
+                  - cell "Not a valid email address." [ref=f4e494]
+                - row [ref=f4e495]:
+                  - cell "3" [ref=f4e496]
+                  - cell "Not a valid email address." [ref=f4e497]
+      - generic [ref=f4e498]:
+        - heading "List and heading" [level=2] [ref=f4e499]
+        - generic [ref=f4e500]:
+          - paragraph [ref=f4e501]:
+            - text: "Rows of records inside a panel: the title, a muted detail under it, trailing controls, then the figure at the end. With"
+            - code [ref=f4e502]: href
+            - text: the whole row is one link.
+          - list [ref=f4e503]:
+            - listitem [ref=f4e504]:
+              - generic [ref=f4e505]:
+                - link "Introduction to Python" [ref=f4e506] [cursor=pointer]:
+                  - /url: "#"
+                - paragraph [ref=f4e507]: via Cohort A
+              - generic [ref=f4e508]: 80%
+            - listitem [ref=f4e512]:
+              - generic [ref=f4e513]:
+                - text: Data analysis
+                - paragraph [ref=f4e514]: Individual
+              - generic [ref=f4e515]: Active
+        - generic [ref=f4e517]:
+          - paragraph [ref=f4e518]: The heading of a section inside a panel or quick view.
+          - heading "Staff" [level=3] [ref=f4e519]
+      - generic [ref=f4e520]:
+        - heading "Notice" [level=2] [ref=f4e521]
+        - generic [ref=f4e522]:
+          - paragraph [ref=f4e523]:
+            - text: A compact boxed sentence inside a panel or dialog.
+            - code [ref=f4e524]: tone
+            - text: is
+            - code [ref=f4e525]: info
+            - text: (default),
+            - code [ref=f4e526]: warning
+            - text: ","
+            - code [ref=f4e527]: error
+            - text: or
+            - code [ref=f4e528]: success
+            - text: ;
+            - code [ref=f4e529]: title
+            - text: adds a bold first line.
+          - generic [ref=f4e530]:
+            - strong [ref=f4e531]: Heads up
+            - text: Changes apply to new enrolments only.
+        - generic [ref=f4e533]:
+          - strong [ref=f4e534]: Check before continuing
+          - text: This cohort has learners still in progress.
+        - generic [ref=f4e535]:
+          - paragraph [ref=f4e536]:
+            - text: An
+            - code [ref=f4e537]: error
+            - text: notice is an alert, so a screen reader announces it when it appears.
+          - alert [ref=f4e538]:
+            - strong [ref=f4e539]: Could not save
+            - text: The name is already taken.
+        - generic [ref=f4e540]:
+          - paragraph [ref=f4e541]:
+            - text: A
+            - code [ref=f4e542]: success
+            - text: notice is a status, announced the same way.
+          - status [ref=f4e543]: Changes saved.
+      - generic [ref=f4e544]:
+        - heading "File field" [level=2] [ref=f4e545]
+        - generic [ref=f4e546]:
+          - paragraph [ref=f4e547]: "A dialog form's file field with a stored file: the current file's name, a Remove checkbox and the file input."
+          - generic [ref=f4e551]:
+            - generic [ref=f4e552]:
+              - generic [ref=f4e553]: "Title:"
+              - textbox "Title:" [ref=f4e554]: First aid
+            - generic [ref=f4e555]:
+              - generic [ref=f4e556]: "Attachment:"
+              - paragraph [ref=f4e557]: "Current file: first-aid-certificate.pdf"
+              - generic [ref=f4e558]:
+                - checkbox "Remove first-aid-certificate.pdf" [ref=f4e559] [cursor=pointer]
+                - text: Remove
+                - generic [ref=f4e560]: first-aid-certificate.pdf
+              - button "Attachment:" [ref=f4e561] [cursor=pointer]
+        - generic [ref=f4e562]:
+          - paragraph [ref=f4e563]: "The same form after a failed save: a browser never keeps a chosen file, so the field asks for it again."
+          - generic [ref=f4e566]:
+            - alert [ref=f4e567]:
+              - paragraph [ref=f4e568]: 2 fields to fix.
+            - generic [ref=f4e569]:
+              - generic [ref=f4e570]:
+                - generic [ref=f4e571]: "Title:"
+                - textbox "Title:" [invalid] [ref=f4e572]
+                - list [ref=f4e574]:
+                  - listitem [ref=f4e575]: This field is required.
+              - generic [ref=f4e576]:
+                - generic [ref=f4e577]: "Attachment:"
+                - paragraph [ref=f4e578]: "Current file: first-aid-certificate.pdf"
+                - generic [ref=f4e579]:
+                  - checkbox "Remove first-aid-certificate.pdf" [ref=f4e580] [cursor=pointer]
+                  - text: Remove
+                  - generic [ref=f4e581]: first-aid-certificate.pdf
+                - button "Attachment:" [ref=f4e582] [cursor=pointer]
+                - list [ref=f4e584]:
+                  - listitem [ref=f4e585]: Choose the file again. It is not kept when the form has errors.
+        - generic [ref=f4e586]:
+          - paragraph [ref=f4e587]: A required file field in an inline form, which posts as multipart.
+          - generic [ref=f4e589]:
+            - generic [ref=f4e590]:
+              - generic [ref=f4e591]: "Attachment:"
+              - button "Attachment:" [ref=f4e592] [cursor=pointer]
+            - button "Save" [ref=f4e593] [cursor=pointer]
+      - generic [ref=f4e595]:
+        - heading "Callout" [level=2] [ref=f4e596]
+        - generic [ref=f4e597]:
+          - paragraph [ref=f4e598]: "Use for a page-level note. This is `c-callout`; the kit builds nothing new here."
+          - generic [ref=f4e599]:
+            - heading "Heads up" [level=4] [ref=f4e600]
+            - paragraph [ref=f4e604]: Callouts are an existing base component, listed here for completeness.
+      - generic [ref=f4e605]:
+        - heading "Reason dialog" [level=2] [ref=f4e606]
+        - generic [ref=f4e607]:
+          - paragraph [ref=f4e608]:
+            - text: Use
+            - code [ref=f4e609]: reason_required
+            - text: "when the action must record why it was taken: an empty reason is refused."
+          - generic [ref=f4e610]:
+            - generic [ref=f4e611]:
+              - heading "Archive this report" [level=2] [ref=f4e612]
+              - link "Close" [ref=f4e613] [cursor=pointer]:
+                - /url: /panel-framework/components/
+            - generic [ref=f4e616]:
+              - generic [ref=f4e617]:
+                - paragraph [ref=f4e618]: Archive this report?
+                - generic [ref=f4e620]:
+                  - generic [ref=f4e621]: "Reason:"
+                  - textbox "Reason:" [ref=f4e622]
+              - generic [ref=f4e623]:
+                - link "Cancel" [active] [ref=f4e625] [cursor=pointer]:
+                  - /url: /panel-framework/components/
+                - button "Archive" [ref=f4e627] [cursor=pointer]
+        - generic [ref=f4e629]:
+          - paragraph [ref=f4e630]:
+            - text: Use
+            - code [ref=f4e631]: reason_choices
+            - text: when the reasons come from a fixed list; the text field then holds optional details.
+          - generic [ref=f4e632]:
+            - generic [ref=f4e633]:
+              - heading "Archive this report" [level=2] [ref=f4e634]
+              - link "Close" [ref=f4e635] [cursor=pointer]:
+                - /url: /panel-framework/components/
+            - generic [ref=f4e638]:
+              - generic [ref=f4e639]:
+                - paragraph [ref=f4e640]: Archive this report?
+                - generic [ref=f4e641]:
+                  - generic [ref=f4e642]:
+                    - generic [ref=f4e643]: "Reason:"
+                    - combobox "Reason:" [ref=f4e644] [cursor=pointer]:
+                      - option "Choose a reason" [selected]
+                      - option "Duplicate"
+                      - option "Out of date"
+                  - generic [ref=f4e645]:
+                    - generic [ref=f4e646]: "Details (optional):"
+                    - textbox "Details (optional):" [ref=f4e647]
+              - generic [ref=f4e648]:
+                - link "Cancel" [ref=f4e650] [cursor=pointer]:
+                  - /url: /panel-framework/components/
+                - button "Archive" [ref=f4e652] [cursor=pointer]
+        - generic [ref=f4e654]:
+          - paragraph [ref=f4e655]: Use both when a reason must be chosen and explained.
+          - generic [ref=f4e656]:
+            - generic [ref=f4e657]:
+              - heading "Archive this report" [level=2] [ref=f4e658]
+              - link "Close" [ref=f4e659] [cursor=pointer]:
+                - /url: /panel-framework/components/
+            - generic [ref=f4e662]:
+              - generic [ref=f4e663]:
+                - paragraph [ref=f4e664]: Archive this report?
+                - generic [ref=f4e665]:
+                  - generic [ref=f4e666]:
+                    - generic [ref=f4e667]: "Reason:"
+                    - combobox "Reason:" [ref=f4e668] [cursor=pointer]:
+                      - option "Choose a reason" [selected]
+                      - option "Duplicate"
+                      - option "Out of date"
+                  - generic [ref=f4e669]:
+                    - generic [ref=f4e670]: "Details:"
+                    - textbox "Details:" [ref=f4e671]
+              - generic [ref=f4e672]:
+                - link "Cancel" [ref=f4e674] [cursor=pointer]:
+                  - /url: /panel-framework/components/
+                - button "Archive" [ref=f4e676] [cursor=pointer]
+      - generic [ref=f4e678]:
+        - heading "Lazy panel" [level=2] [ref=f4e679]
+        - generic [ref=f4e680]:
+          - paragraph [ref=f4e681]:
+            - text: Use
+            - code [ref=f4e682]: show_as_of
+            - text: "when the loaded body is gathered at a moment the reader should know: the stamp sits above the body."
+          - generic [ref=f4e683]:
+            - paragraph [ref=f4e684]:
+              - text: As of
+              - time [ref=f4e685]:
+                - generic [ref=f4e686]: 15 Jan 2026,
+                - generic [ref=f4e687]: 09:30
+              - text: UTC
+            - paragraph [ref=f4e688]: Three reports are waiting for review.
+      - generic [ref=f4e689]:
+        - heading "Data table" [level=2] [ref=f4e690]
+        - generic [ref=f4e691]:
+          - paragraph [ref=f4e692]:
+            - text: Use
+            - code [ref=f4e693]: row_detail_template_name
+            - text: when a row has more to say than its columns fit.
+          - generic [ref=f4e694]:
+            - list [ref=f4e696]:
+              - listitem [ref=f4e697]:
+                - button "More about Quarterly report" [ref=f4e699]
+                - generic [ref=f4e703]:
+                  - generic [ref=f4e704]: Quarterly report
+                  - generic [ref=f4e707]:
+                    - term [ref=f4e708]: Status
+                    - definition [ref=f4e709]: Published
+              - listitem [ref=f4e710]:
+                - button "More about Onboarding checklist" [ref=f4e712]
+                - generic [ref=f4e716]:
+                  - generic [ref=f4e717]: Onboarding checklist
+                  - generic [ref=f4e720]:
+                    - term [ref=f4e721]: Status
+                    - definition [ref=f4e722]: Draft
+              - listitem [ref=f4e723]:
+                - button "More about Annual review" [ref=f4e725]
+                - generic [ref=f4e729]:
+                  - generic [ref=f4e730]: Annual review
+                  - generic [ref=f4e733]:
+                    - term [ref=f4e734]: Status
+                    - definition [ref=f4e735]: Archived
+            - paragraph [ref=f4e737]: 3 items
+        - generic [ref=f4e738]:
+          - paragraph [ref=f4e739]:
+            - text: Use
+            - code [ref=f4e740]: has_child_rows
+            - text: when rows nest under a group row whose chevron hides them;
+            - code [ref=f4e741]: get_row_template_name
+            - text: turns a row into a note.
+          - generic [ref=f4e742]:
+            - list [ref=f4e744]:
+              - listitem [ref=f4e745]:
+                - button "Handbook" [expanded] [ref=f4e747]
+                - generic [ref=f4e751]:
+                  - generic [ref=f4e752]: Handbook
+                  - generic [ref=f4e755]:
+                    - term [ref=f4e756]: Status
+                    - definition [ref=f4e757]: Published
+              - listitem [ref=f4e758]:
+                - button "Getting started" [expanded] [ref=f4e760]
+                - generic [ref=f4e764]:
+                  - generic [ref=f4e765]: Getting started
+                  - generic [ref=f4e768]:
+                    - term [ref=f4e769]: Status
+                    - definition [ref=f4e770]: Published
+              - listitem [ref=f4e771]:
+                - generic [ref=f4e773]:
+                  - generic [ref=f4e774]: Welcome
+                  - generic [ref=f4e777]:
+                    - term [ref=f4e778]: Status
+                    - definition [ref=f4e779]: Published
+              - listitem [ref=f4e780]:
+                - generic [ref=f4e782]:
+                  - generic [ref=f4e783]: First steps
+                  - generic [ref=f4e786]:
+                    - term [ref=f4e787]: Status
+                    - definition [ref=f4e788]: Draft
+              - listitem [ref=f4e789]:
+                - generic [ref=f4e791]:
+                  - generic [ref=f4e792]: Glossary
+                  - generic [ref=f4e795]:
+                    - term [ref=f4e796]: Status
+                    - definition [ref=f4e797]: Published
+              - listitem [ref=f4e798]:
+                - paragraph [ref=f4e801]: Updated each quarter
+              - listitem [ref=f4e802]:
+                - generic [ref=f4e804]:
+                  - generic [ref=f4e805]: Appendix
+                  - generic [ref=f4e808]:
+                    - term [ref=f4e809]: Status
+                    - definition [ref=f4e810]: Draft
+            - paragraph [ref=f4e812]: 2 items
+        - generic [ref=f4e813]:
+          - paragraph [ref=f4e814]:
+            - text: Use
+            - code [ref=f4e815]: compact
+            - text: when rows are short and many, so more of them fit on screen.
+          - generic [ref=f4e816]:
+            - list [ref=f4e818]:
+              - listitem [ref=f4e819]:
+                - generic [ref=f4e820]:
+                  - generic [ref=f4e821]: Quarterly report
+                  - generic [ref=f4e824]:
+                    - term [ref=f4e825]: Status
+                    - definition [ref=f4e826]: Published
+              - listitem [ref=f4e827]:
+                - generic [ref=f4e828]:
+                  - generic [ref=f4e829]: Onboarding checklist
+                  - generic [ref=f4e832]:
+                    - term [ref=f4e833]: Status
+                    - definition [ref=f4e834]: Draft
+              - listitem [ref=f4e835]:
+                - generic [ref=f4e836]:
+                  - generic [ref=f4e837]: Annual review
+                  - generic [ref=f4e840]:
+                    - term [ref=f4e841]: Status
+                    - definition [ref=f4e842]: Archived
+            - paragraph [ref=f4e844]: 3 items
+      - generic [ref=f4e845]:
+        - heading "Editable list" [level=2] [ref=f4e846]
+        - generic [ref=f4e847]:
+          - paragraph [ref=f4e848]: Use when a person keeps a short list of entries that each fit on a line, edited in place.
+          - generic [ref=f4e850]:
+            - heading "Emergency contacts" [level=2] [ref=f4e853]
+            - list [ref=f4e855]:
+              - listitem [ref=f4e856]:
+                - generic [ref=f4e857]:
+                  - text: Nomsa Dlamini
+                  - paragraph [ref=f4e858]: Mother, 082 555 0101
+                  - generic [ref=f4e860]:
+                    - button "Edit Nomsa Dlamini, Mother, 082 555 0101" [ref=f4e861] [cursor=pointer]: Edit
+                    - button "Remove Nomsa Dlamini, Mother, 082 555 0101" [ref=f4e862] [cursor=pointer]: Remove
+              - listitem [ref=f4e863]:
+                - generic [ref=f4e864]:
+                  - text: Pieter van Wyk
+                  - paragraph [ref=f4e865]: Neighbour, 083 555 0142
+                  - generic [ref=f4e867]:
+                    - button "Edit Pieter van Wyk, Neighbour, 083 555 0142" [ref=f4e868] [cursor=pointer]: Edit
+                    - button "Remove Pieter van Wyk, Neighbour, 083 555 0142" [ref=f4e869] [cursor=pointer]: Remove
+              - listitem [ref=f4e870]:
+                - generic [ref=f4e871]:
+                  - text: Aisha Patel
+                  - generic [ref=f4e873]:
+                    - button "Edit Aisha Patel" [ref=f4e874] [cursor=pointer]: Edit
+                    - button "Remove Aisha Patel" [ref=f4e875] [cursor=pointer]: Remove
+            - button "Add contact" [ref=f4e878] [cursor=pointer]
+        - generic [ref=f4e879]:
+          - paragraph [ref=f4e880]:
+            - text: Use
+            - code [ref=f4e881]: empty_message
+            - text: to say what the list holds when it has no entries; the Add trigger sits beneath it.
+          - generic [ref=f4e883]:
+            - heading "Emergency contacts" [level=2] [ref=f4e886]
+            - generic [ref=f4e888]:
+              - paragraph [ref=f4e889]: No emergency contacts yet.
+              - button "Add contact" [ref=f4e890] [cursor=pointer]
+        - generic [ref=f4e891]:
+          - paragraph [ref=f4e892]: "Use a cap when the list may hold only so many entries: the Add trigger gives way to a sentence saying why."
+          - generic [ref=f4e894]:
+            - heading "Emergency contacts" [level=2] [ref=f4e897]
+            - list [ref=f4e899]:
+              - listitem [ref=f4e900]:
+                - generic [ref=f4e901]:
+                  - text: Nomsa Dlamini
+                  - paragraph [ref=f4e902]: Mother, 082 555 0101
+                  - generic [ref=f4e904]:
+                    - button "Edit Nomsa Dlamini, Mother, 082 555 0101" [ref=f4e905] [cursor=pointer]: Edit
+                    - button "Remove Nomsa Dlamini, Mother, 082 555 0101" [ref=f4e906] [cursor=pointer]: Remove
+              - listitem [ref=f4e907]:
+                - generic [ref=f4e908]:
+                  - text: Pieter van Wyk
+                  - paragraph [ref=f4e909]: Neighbour, 083 555 0142
+                  - generic [ref=f4e911]:
+                    - button "Edit Pieter van Wyk, Neighbour, 083 555 0142" [ref=f4e912] [cursor=pointer]: Edit
+                    - button "Remove Pieter van Wyk, Neighbour, 083 555 0142" [ref=f4e913] [cursor=pointer]: Remove
+              - listitem [ref=f4e914]:
+                - generic [ref=f4e915]:
+                  - text: Aisha Patel
+                  - generic [ref=f4e917]:
+                    - button "Edit Aisha Patel" [ref=f4e918] [cursor=pointer]: Edit
+                    - button "Remove Aisha Patel" [ref=f4e919] [cursor=pointer]: Remove
+            - paragraph [ref=f4e922]: You can have up to 3. Remove one to add another.
+        - generic [ref=f4e923]:
+          - paragraph [ref=f4e924]: Use the table layout when each entry carries enough detail to read as a row.
+          - generic [ref=f4e926]:
+            - heading "Emergency contacts" [level=2] [ref=f4e929]
+            - generic [ref=f4e931]:
+              - region "Emergency contacts" [ref=f4e933]:
+                - list [ref=f4e934]:
+                  - listitem [ref=f4e935]:
+                    - paragraph [ref=f4e936]: Nomsa Dlamini
+                    - paragraph [ref=f4e938]: Mother, 082 555 0101
+                    - generic [ref=f4e940]:
+                      - button "Edit Nomsa Dlamini, Mother, 082 555 0101" [ref=f4e941] [cursor=pointer]: Edit
+                      - button "Remove Nomsa Dlamini, Mother, 082 555 0101" [ref=f4e942] [cursor=pointer]: Remove
+                  - listitem [ref=f4e943]:
+                    - paragraph [ref=f4e944]: Pieter van Wyk
+                    - paragraph [ref=f4e946]: Neighbour, 083 555 0142
+                    - generic [ref=f4e948]:
+                      - button "Edit Pieter van Wyk, Neighbour, 083 555 0142" [ref=f4e949] [cursor=pointer]: Edit
+                      - button "Remove Pieter van Wyk, Neighbour, 083 555 0142" [ref=f4e950] [cursor=pointer]: Remove
+                  - listitem [ref=f4e951]:
+                    - paragraph [ref=f4e952]: Aisha Patel
+                    - generic [ref=f4e954]:
+                      - button "Edit Aisha Patel" [ref=f4e955] [cursor=pointer]: Edit
+                      - button "Remove Aisha Patel" [ref=f4e956] [cursor=pointer]: Remove
+              - paragraph [ref=f4e958]: 3 contacts
+            - button "Add contact" [ref=f4e961] [cursor=pointer]
+  - contentinfo [ref=f4e962]:
+    - generic [ref=f4e963]:
+      - paragraph [ref=f4e964]: © 2026 FirstClass
+      - navigation "Legal" [ref=f4e965]:
+        - link "Terms and Conditions" [ref=f4e966] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f4e967] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f4e968] [cursor=pointer]: learner-profile-use-panels-framework-2-editable-list-panel
+  - list [ref=f4e970]:
+    - listitem [ref=f4e971]:
+      - link "Hide »" [ref=f4e972] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e973]:
+      - link "Toggle Theme" [ref=f4e974] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e977]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e978] [cursor=pointer]
+      - link "History /panel-framework/components/" [ref=f4e979] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e980]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e981] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f4e982] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e983]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e984] [cursor=pointer]
+      - 'link "Time CPU: 435.81ms (452.24ms)" [ref=f4e985] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f4e986]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e987] [cursor=pointer]
+      - link "Settings" [ref=f4e988] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e989]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e990] [cursor=pointer]
+      - link "Headers" [ref=f4e991] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e992]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e993] [cursor=pointer]
+      - link "Request component_reference" [ref=f4e994] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e995]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e996] [cursor=pointer]
+      - link "SQL 11 queries in 14.71ms" [ref=f4e997] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e998]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e999] [cursor=pointer]
+      - link "Static files 10 files used" [ref=f4e1000] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e1001]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e1002] [cursor=pointer]
+      - link "Templates panel_framework/reference/_reason_dialog.html" [ref=f4e1003] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e1004]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e1005] [cursor=pointer]
+      - link "Alerts 2 alerts" [ref=f4e1006] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e1007]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e1008] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f4e1009] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e1010]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e1011] [cursor=pointer]
+      - link "Signals 130 receivers of 15 signals" [ref=f4e1012] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e1013]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e1014] [cursor=pointer]
+      - link "Community" [ref=f4e1015] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e1016]:
+      - checkbox "Enable for next and successive requests" [ref=f4e1017] [cursor=pointer]
+      - generic [ref=f4e1018]: Intercept redirects
+    - listitem [ref=f4e1019]:
+      - checkbox "Enable for next and successive requests" [ref=f4e1020] [cursor=pointer]
+      - generic [ref=f4e1021]: Profiling
