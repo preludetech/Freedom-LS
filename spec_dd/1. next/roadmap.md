@@ -16,6 +16,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🟠 Medium · `educator-interface-refactor-3-staff` (Educator interface code layout)
 - 🟠 Medium · `educator-interface-refactor-4-course` (Educator interface code layout)
 - 🟠 Medium · `content-widget-longer-audio` (Audio content widgets)
+- 🟠 Medium · `content-widget-sayit-reveal-2-say-it-reveal` (Audio content widgets)
 - 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
 - ⚪ Priority not set · `extract-semantic-icons-app-1-standalone-app` (Semantic icons extraction)
 
@@ -24,7 +25,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `educator-interface-refactor-5-learner` (Educator interface code layout, via `sacaa-compliance`)
 - 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
 - 🔴 High · `learner-public-profile-2-profile-and-page` (Learner public profiles)
-- 🟠 Medium · `content-widget-sayit-reveal-2-say-it-reveal` (Audio content widgets)
 - 🟠 Medium · `content-widget-sayit-reveal-4-audio-access-control` (Audio content widgets)
 - 🟠 Medium · `deadlines-4-learner-self-pause` (Deadlines)
 - 🟠 Medium · `deadlines-5-reminders` (Deadlines)
@@ -225,7 +225,7 @@ Priority: 🟠 Medium
 
 Course content that plays audio: clips, say-it-then-reveal practice and audio on revision flashcards. Parent: `content-widget-sayit-reveal`.
 
-- `content-widget-sayit-reveal-2-say-it-reveal` — **ready** — Learners say an answer aloud, reveal it and hear it; audio also plays inside flashcard widget faces.
+- `content-widget-sayit-reveal-2-say-it-reveal` — **in progress** — Learners say an answer aloud, reveal it and hear it; audio also plays inside flashcard widget faces.
 - `content-widget-sayit-reveal-3-audio-on-revision-flashcards` — **blocked** by `content-widget-sayit-reveal-2-say-it-reveal`, `learner-interface-features-4-flashcards` — Scheduled revision flashcards carry audio that plays when the learner reveals the card.
 - `content-widget-longer-audio` — **in progress** — A listening-exercise card with title, seek bar and elapsed time, for longer audio clips in course content.
 - `content-widget-sayit-reveal-4-audio-access-control` — **ready** — Decide and enforce who may play a course's audio through its open redirect link.

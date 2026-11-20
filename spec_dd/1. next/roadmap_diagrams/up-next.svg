@@ -130,7 +130,7 @@
 <path d="M362.0,621.0 H360.0 A6,6 0 0 0 354.0,627.0 V665.0 A6,6 0 0 0 360.0,671.0 H362.0 Z" fill="#fb923c"/>
 <text x="370.0" y="643.0" fill="#111827">learner-interface-features-4-</text>
 <text x="370.0" y="658.0" fill="#111827">flashcards</text>
-<rect x="24.0" y="691.5" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<rect x="24.0" y="691.5" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M32.0,691.5 H30.0 A6,6 0 0 0 24.0,697.5 V735.5 A6,6 0 0 0 30.0,741.5 H32.0 Z" fill="#fb923c"/>
 <text x="40.0" y="713.5" fill="#111827">content-widget-sayit-reveal-2-</text>
 <text x="40.0" y="728.5" fill="#111827">say-it-reveal</text>
