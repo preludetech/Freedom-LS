@@ -302,6 +302,10 @@ class _EntryForm(forms.ModelForm):
         fields = ["title", "detail"]
 
 
+# The event every list below sends, so each test fails on one condition only.
+_REFRESH_EVENTS = ("entryChanged",)
+
+
 def test_editable_list_panel_itself_raises_no_error() -> None:
     # Act
     errors = editable_list_panel_errors(EditableListPanel)
@@ -313,6 +317,7 @@ def test_editable_list_panel_itself_raises_no_error() -> None:
 def test_a_well_formed_editable_list_panel_raises_no_error() -> None:
     # Arrange
     class WellFormedListPanel(EditableListPanel):
+        refresh_events = _REFRESH_EVENTS
         form_class = _EntryForm
         parent_field = "parent"
         max_entries = 3
@@ -328,6 +333,7 @@ def test_a_well_formed_editable_list_panel_raises_no_error() -> None:
 def test_an_editable_list_panel_without_form_class_raises_e009() -> None:
     # Arrange
     class NoFormListPanel(EditableListPanel):
+        refresh_events = _REFRESH_EVENTS
         parent_field = "parent"
 
     # Act
@@ -344,7 +350,11 @@ def test_an_editable_list_panel_with_a_plain_form_raises_e009() -> None:
     PlainFormListPanel = type(
         "PlainFormListPanel",
         (EditableListPanel,),
-        {"form_class": forms.Form, "parent_field": "parent"},
+        {
+            "refresh_events": _REFRESH_EVENTS,
+            "form_class": forms.Form,
+            "parent_field": "parent",
+        },
     )
 
     # Act
@@ -359,6 +369,7 @@ def test_an_editable_list_panel_with_a_plain_form_raises_e009() -> None:
 def test_a_parent_field_missing_from_the_model_raises_e009() -> None:
     # Arrange
     class MissingParentListPanel(EditableListPanel):
+        refresh_events = _REFRESH_EVENTS
         form_class = _EntryForm
         parent_field = "no_such_field"
 
@@ -374,6 +385,7 @@ def test_a_parent_field_missing_from_the_model_raises_e009() -> None:
 def test_a_parent_field_that_is_not_a_foreign_key_raises_e009() -> None:
     # Arrange
     class NotForeignKeyListPanel(EditableListPanel):
+        refresh_events = _REFRESH_EVENTS
         form_class = _EntryForm
         parent_field = "title"
 
@@ -389,6 +401,8 @@ def test_a_parent_field_that_is_not_a_foreign_key_raises_e009() -> None:
 def test_a_form_that_lists_the_parent_field_raises_e009() -> None:
     # Arrange
     class ParentInFormListPanel(EditableListPanel):
+        refresh_events = _REFRESH_EVENTS
+
         class form_class(forms.ModelForm):  # noqa: N801
             class Meta:
                 model = StubEntry
@@ -412,6 +426,7 @@ def test_a_bad_max_entries_raises_e009(max_entries: object) -> None:
         "BadCapListPanel",
         (EditableListPanel,),
         {
+            "refresh_events": _REFRESH_EVENTS,
             "form_class": _EntryForm,
             "parent_field": "parent",
             "max_entries": max_entries,
@@ -433,7 +448,12 @@ def test_a_bad_layout_raises_e009(layout: object) -> None:
     BadLayoutListPanel = type(
         "BadLayoutListPanel",
         (EditableListPanel,),
-        {"form_class": _EntryForm, "parent_field": "parent", "layout": layout},
+        {
+            "refresh_events": _REFRESH_EVENTS,
+            "form_class": _EntryForm,
+            "parent_field": "parent",
+            "layout": layout,
+        },
     )
 
     # Act
@@ -445,9 +465,26 @@ def test_a_bad_layout_raises_e009(layout: object) -> None:
     assert errors[0].obj is BadLayoutListPanel
 
 
+def test_an_editable_list_panel_without_refresh_events_raises_e009() -> None:
+    # Arrange
+    class NoRefreshListPanel(EditableListPanel):
+        form_class = _EntryForm
+        parent_field = "parent"
+
+    # Act
+    errors = editable_list_panel_errors(NoRefreshListPanel)
+
+    # Assert
+    assert len(errors) == 1
+    assert errors[0].id == "freedom_ls_panel_framework.E009"
+    assert errors[0].obj is NoRefreshListPanel
+    assert "refresh_events" in errors[0].msg
+
+
 def test_a_panel_that_overrides_get_form_class_raises_no_form_error() -> None:
     # Arrange
     class PerRequestFormListPanel(EditableListPanel):
+        refresh_events = _REFRESH_EVENTS
         parent_field = "parent"
 
         def get_form_class(self) -> type[forms.ModelForm]:

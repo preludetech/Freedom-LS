@@ -21,7 +21,8 @@ components; `Skill(fls-dev:frontend-styling)` owns the theme tokens.
   `DataTablePanel`, `InstanceDetailsPanel` and `EditableListPanel` are the shapes.
   `EditableListPanel` is a short list of the entries that belong to the page's instance, each
   with Edit and Remove and one Add trigger. A subclass sets `form_class` (or overrides
-  `get_form_class()`), `parent_field`, `empty_message`, and implements `get_entries()` and
+  `get_form_class()`), `parent_field`, `empty_message`, `refresh_events` (the check fails
+  without it, since the list would never show a change), and implements `get_entries()` and
   `get_summary(entry)`, which returns an `EditableListSummary(title, detail)`. `max_entries`
   caps the list (the cap line replaces the Add trigger), `noun` names an entry in the dialogs,
   and `layout` is `"list"` (default) or `"table"`.

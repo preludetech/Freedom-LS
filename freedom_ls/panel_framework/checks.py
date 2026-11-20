@@ -500,7 +500,8 @@ def _editable_list_form_errors(
 
 
 def editable_list_panel_errors(panel_class: type[Panel]) -> list[CheckMessage]:
-    """Validate one EditableListPanel subclass's form, parent field, cap and layout.
+    """Validate one EditableListPanel subclass's form, parent field, cap,
+    refresh events and layout.
 
     A subclass that overrides get_form_class() resolves its form per
     request, and a check has no bound panel to call it on, so the form
@@ -525,6 +526,17 @@ def editable_list_panel_errors(panel_class: type[Panel]) -> list[CheckMessage]:
                 panel_class,
                 f"has max_entries {max_entries!r}.",
                 "Set max_entries to None or an integer greater than 0.",
+            )
+        )
+    if not panel_class.refresh_events:
+        # Add, edit and remove send these events; with none, the list on
+        # screen never shows the change.
+        errors.append(
+            _editable_list_error(
+                panel_class,
+                "has no refresh_events.",
+                "Set refresh_events to the event its add, edit and remove "
+                "send, so the list refreshes after each change.",
             )
         )
     if panel_class.layout not in ("list", "table"):
