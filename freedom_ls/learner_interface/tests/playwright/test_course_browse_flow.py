@@ -20,6 +20,7 @@ from PIL import Image
 from playwright.sync_api import FloatRect, Locator, Page, ViewportSize, expect
 from pytest_django.live_server_helper import LiveServer
 
+from django.apps import apps
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 
@@ -40,6 +41,7 @@ from freedom_ls.learner_interface.templatetags.course_storage_keys import (
 from freedom_ls.learner_interface.tests.helpers import set_due_date, topic_completion
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
 from freedom_ls.tests.app_guards import app_not_installed
 from freedom_ls.tests.playwright_helpers import (
@@ -1131,3 +1133,52 @@ def test_back_does_not_bounce_between_the_course_and_its_application(
     page.get_by_role("link", name="Back").click()
 
     expect(page).to_have_url(dashboard_url)
+
+
+@pytest.mark.skipif(
+    app_not_installed("freedom_ls.course_applications"),
+    reason="course_applications not installed",
+)
+def test_previous_application_link_label_stays_on_one_line(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+    mock_site_context,
+) -> None:
+    """The "View your previous application" label used to wrap at 375px."""
+    # Resolved through the app registry: learner_interface tests may not import
+    # course_applications directly.
+    application_model = apps.get_model(
+        "freedom_ls_course_applications", "CourseApplication"
+    )
+
+    page = logged_in_page
+    course = CourseFactory(
+        title="Closed Application Course",
+        slug="closed-application-course",
+        access_config={"access_type": "application_gated"},
+    )
+    application_model.objects.create(
+        user=logged_in_user,
+        course=course,
+        organisation=get_default_organisation(course.site),
+        state=application_model.State.WITHDRAWN,
+        withdrawn_at=timezone.now(),
+    )
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto(_detail_url(live_server, course))
+        link = page.get_by_role("link", name="View your previous application")
+        expect(link).to_be_visible()
+        line_height = link.evaluate("el => parseFloat(getComputedStyle(el).lineHeight)")
+        box = link.bounding_box()
+        assert box is not None
+        padding = link.evaluate(
+            "el => parseFloat(getComputedStyle(el).paddingTop)"
+            " + parseFloat(getComputedStyle(el).paddingBottom)"
+        )
+        assert box["height"] <= line_height + padding + 1, (
+            f"label wraps at {viewport['width']}px: height {box['height']}"
+        )
+        assert_no_horizontal_overflow(page)
