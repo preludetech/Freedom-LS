@@ -1,0 +1,119 @@
+- generic [ref=f44e146]:
+  - banner [ref=f44e147]:
+    - link [ref=f44e148] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f44e149]
+      - heading "FirstClass" [level=1] [ref=f44e150]
+    - navigation [ref=f44e151]:
+      - generic [ref=f44e152]:
+        - generic [ref=f44e153]:
+          - button "Notifications, 3 new" [ref=f44e154]
+          - status:
+            - generic [ref=f44e158]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f44e159]: "3"
+        - button "Open user menu for Demo" [ref=f44e161] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f44e162]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f44e1]:
+    - generic [ref=f44e3]:
+      - dialog "Navigation" [ref=f44e4]:
+        - generic [ref=f44e6]:
+          - generic [ref=f44e7]:
+            - paragraph [ref=f44e8]: Organisation
+            - button "Switch organisation" [ref=f44e10] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f44e11]: D
+              - generic "DemoDev" [ref=f44e12]
+          - navigation "Sections" [ref=f44e15]:
+            - heading "Teaching" [level=2] [ref=f44e16]
+            - list [ref=f44e17]:
+              - listitem [ref=f44e18]:
+                - link "Dashboard" [ref=f44e19] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/dashboard
+              - listitem [ref=f44e24]:
+                - link "Cohorts" [ref=f44e25] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+              - listitem [ref=f44e30]:
+                - link "Learners" [ref=f44e31] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+              - listitem [ref=f44e36]:
+                - link "Courses" [ref=f44e37] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+            - heading "Administration" [level=2] [ref=f44e42]
+            - list [ref=f44e43]:
+              - listitem [ref=f44e44]:
+                - link "Staff" [ref=f44e45] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/staff
+              - listitem [ref=f44e50]:
+                - link "Audit log" [ref=f44e51] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/audit-log
+          - generic [ref=f44e56]:
+            - generic [ref=f44e58]:
+              - generic [aria-hidden] [ref=f44e59]: DE
+              - generic [ref=f44e60]:
+                - generic [ref=f44e61]: Demo
+                - generic [ref=f44e62]: demodev@email.com
+            - link "Account settings" [ref=f44e63] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f44e68]:
+        - navigation "Back" [ref=f44e70]:
+          - link "Cohorts" [ref=f44e71] [cursor=pointer]:
+            - /url: /educator/organisations/demodev/cohorts
+        - generic [ref=f44e75]:
+          - generic [ref=f44e77]:
+            - heading "QA Delete Cascade Cohort" [level=1] [ref=f44e82]
+            - navigation "Cohort sections" [ref=f44e83]:
+              - list [ref=f44e84]:
+                - listitem [ref=f44e85]:
+                  - link "Overview" [ref=f44e86] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/2a3d6408-6646-4950-bb54-765356f6bde9/__tabs/overview
+                - listitem [ref=f44e87]:
+                  - link "Learners 0" [ref=f44e88] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/2a3d6408-6646-4950-bb54-765356f6bde9/__tabs/learners
+                    - text: Learners
+                    - generic [ref=f44e89]: "0"
+                - listitem [ref=f44e90]:
+                  - link "Courses 0" [ref=f44e91] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/2a3d6408-6646-4950-bb54-765356f6bde9/__tabs/courses
+                    - text: Courses
+                    - generic [ref=f44e92]: "0"
+                - listitem [ref=f44e93]:
+                  - link "Report" [ref=f44e94] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/2a3d6408-6646-4950-bb54-765356f6bde9/__tabs/report
+                - listitem [ref=f44e95]:
+                  - link "Settings" [active] [ref=f44e96] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/2a3d6408-6646-4950-bb54-765356f6bde9/__tabs/settings
+                - listitem [ref=f44e97]:
+                  - link "History" [ref=f44e98] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/2a3d6408-6646-4950-bb54-765356f6bde9/__tabs/history
+          - generic [ref=f44e163]:
+            - generic [ref=f44e165]:
+              - heading "Name" [level=2] [ref=f44e168]
+              - generic [ref=f44e171]:
+                - generic [ref=f44e172]:
+                  - generic [ref=f44e173]: "Name:"
+                  - textbox "Name:" [ref=f44e174]: QA Delete Cascade Cohort
+                - button "Save" [ref=f44e175] [cursor=pointer]
+            - generic [ref=f44e178]:
+              - generic [ref=f44e179]:
+                - heading "Staff" [level=2] [ref=f44e181]
+                - button "Add staff member" [ref=f44e183] [cursor=pointer]
+              - paragraph [ref=f44e185]: No staff assigned to this cohort.
+            - generic [ref=f44e187]:
+              - heading "Status" [level=2] [ref=f44e190]
+              - paragraph [ref=f44e193]: Deactivating stops this cohort's registrations from giving access to its courses. Learners keep their place and their progress.
+              - generic [ref=f44e195]:
+                - button "Deactivate" [ref=f44e196] [cursor=pointer]
+                - button "Delete" [ref=f44e197] [cursor=pointer]
+        - generic [ref=f44e144]: Showing Settings
+  - contentinfo [ref=f44e198]:
+    - generic [ref=f44e199]:
+      - paragraph [ref=f44e200]: © 2026 FirstClass
+      - navigation "Legal" [ref=f44e201]:
+        - link "Terms and Conditions" [ref=f44e202] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f44e203] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f44e204] [cursor=pointer]: misure-of-admonitions
+  - generic "Show toolbar" [ref=f44e206]: DJDT

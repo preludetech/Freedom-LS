@@ -1,0 +1,38 @@
+- generic [active] [ref=f13e1]:
+  - banner [ref=f13e2]:
+    - link [ref=f13e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f13e4]
+      - heading "FirstClass" [level=1] [ref=f13e5]
+    - navigation [ref=f13e6]:
+      - generic [ref=f13e7]:
+        - generic [ref=f13e8]:
+          - button "Notifications, 3 new" [ref=f13e9]
+          - status:
+            - generic [ref=f13e13]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f13e14]: "3"
+        - button "Open user menu for Demo" [ref=f13e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f13e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f13e18]:
+    - generic [ref=f13e20]:
+      - heading "Your application" [level=1] [ref=f13e21]
+      - paragraph [ref=f13e22]:
+        - text: Your application for
+        - strong [ref=f13e23]: Functionality Demo - Application gated course
+        - text: has been received and is currently pending review.
+      - paragraph [ref=f13e24]: A reviewer will assess your application. You will be notified once a decision has been made. No action is required from you at this time.
+      - link "Back to dashboard" [ref=f13e25] [cursor=pointer]:
+        - /url: /
+  - contentinfo [ref=f13e26]:
+    - generic [ref=f13e27]:
+      - paragraph [ref=f13e28]: © 2026 FirstClass
+      - navigation "Legal" [ref=f13e29]:
+        - link "Terms and Conditions" [ref=f13e30] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f13e31] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f13e32] [cursor=pointer]: misure-of-admonitions
+  - generic "Show toolbar" [ref=f13e34]: DJDT

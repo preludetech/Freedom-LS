@@ -1,0 +1,80 @@
+- generic [active] [ref=f8e1]:
+  - banner [ref=f8e2]:
+    - link [ref=f8e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f8e4]
+      - heading "FirstClass" [level=1] [ref=f8e5]
+    - navigation [ref=f8e6]:
+      - generic [ref=f8e7]:
+        - generic [ref=f8e8]:
+          - button "Notifications, 3 new" [ref=f8e9]
+          - status:
+            - generic [ref=f8e13]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f8e14]: "3"
+        - button "Open user menu for Demo" [ref=f8e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f8e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f8e18]:
+    - generic [ref=f8e20]:
+      - dialog "Course outline" [ref=f8e21]:
+        - generic [ref=f8e24]:
+          - generic [ref=f8e25]:
+            - paragraph [ref=f8e26]: Course outline
+            - paragraph [ref=f8e27]: Functionality Demo - show end with Quiz
+            - generic [ref=f8e29]:
+              - progressbar "Progress for Functionality Demo - show end with Quiz" [ref=f8e30]: 0%
+              - generic [ref=f8e31]: 0% complete
+          - navigation "Course outline" [ref=f8e32]:
+            - list [ref=f8e33]:
+              - listitem [ref=f8e34]:
+                - generic [ref=f8e35]:
+                  - generic [ref=f8e36]: "1."
+                  - generic [ref=f8e37]: Completed
+                  - link "Content title 2 - Before Quiz" [ref=f8e42] [cursor=pointer]:
+                    - /url: /courses/functionality-demo-show-end-with-quiz/1/
+              - listitem [ref=f8e43]:
+                - generic [ref=f8e44]:
+                  - generic [ref=f8e45]: "2."
+                  - generic [ref=f8e46]: Not started
+                  - generic [ref=f8e50]: Mid course Quiz
+              - listitem [ref=f8e51]:
+                - generic [ref=f8e52]:
+                  - generic [ref=f8e53]: "3."
+                  - generic [ref=f8e54]: Locked
+                  - generic [ref=f8e58]: Content title 4 - After quiz
+              - listitem [ref=f8e59]:
+                - generic [ref=f8e60]:
+                  - generic [ref=f8e61]: "4."
+                  - generic [ref=f8e62]: Locked
+                  - generic [ref=f8e66]: End course Quiz
+      - generic [ref=f8e67]:
+        - navigation "Breadcrumb" [ref=f8e72]:
+          - list [ref=f8e73]:
+            - listitem [ref=f8e74]:
+              - link "Functionality Demo - show end with Quiz" [ref=f8e75] [cursor=pointer]:
+                - /url: /courses/functionality-demo-show-end-with-quiz/detail/
+            - listitem [ref=f8e76]:
+              - generic [aria-hidden] [ref=f8e77]: ">"
+              - generic "Mid course Quiz" [ref=f8e78]
+        - generic [ref=f8e80]:
+          - heading "Mid course Quiz" [level=1] [ref=f8e85]
+          - generic [ref=f8e86]:
+            - generic [ref=f8e87]: 6 questions
+            - generic [ref=f8e90]: 2 pages
+          - generic [ref=f8e93]:
+            - link "Previous" [ref=f8e95] [cursor=pointer]:
+              - /url: /courses/functionality-demo-show-end-with-quiz/1/
+            - link "Start Form" [ref=f8e99] [cursor=pointer]:
+              - /url: /courses/functionality-demo-show-end-with-quiz/2/start_form
+  - contentinfo [ref=f8e103]:
+    - generic [ref=f8e104]:
+      - paragraph [ref=f8e105]: © 2026 FirstClass
+      - navigation "Legal" [ref=f8e106]:
+        - link "Terms and Conditions" [ref=f8e107] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f8e108] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f8e109] [cursor=pointer]: misure-of-admonitions
+  - generic "Show toolbar" [ref=f8e111]: DJDT

@@ -20,9 +20,13 @@ On the named site (default DemoDev), idempotently:
    ``QA Delete Blocked Cohort`` (empty, for the two-tab blocked-delete race).
 5. In ``demodev``: cohorts ``QA Move Source`` (holding ``qa-move-learner@email.com``)
    and ``QA Move Destination`` (empty), for the refused-move race.
+6. In ``demodev``: ``qa-cohort-staff@email.com`` as an active staff member holding
+   exactly one role, ``cohort_viewer`` on cohort ``Cohort 2025.03.04``, so that
+   cohort's Settings > Staff panel shows a "Change role" button offering
+   ``cohort_admin``.
 
-The QA login's password is never touched. The move learner's password is
-``testpass123``.
+The QA login's password and roles are never touched. The move learner's and the
+cohort staff member's password is ``testpass123``.
 
 Usage:
     uv run python manage.py qa_create_admonition_scenarios [--site-name DemoDev]
@@ -56,6 +60,7 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
 )
 from freedom_ls.learner_management.models import (
+    Cohort,
     CohortMembership,
     Learner,
     LearnerCourseRegistration,
@@ -90,6 +95,9 @@ MOVE_SOURCE = "QA Move Source"
 MOVE_DESTINATION = "QA Move Destination"
 MOVE_LEARNER_EMAIL = "qa-move-learner@email.com"
 MOVE_LEARNER_PASSWORD = "testpass123"  # noqa: S105  # pragma: allowlist secret  # dev-only QA credential
+STAFF_COHORT = "Cohort 2025.03.04"
+COHORT_STAFF_EMAIL = "qa-cohort-staff@email.com"
+COHORT_STAFF_ROLE = "cohort_viewer"
 SEED_REASON = "QA seed: admonitions"
 
 
@@ -263,26 +271,27 @@ def _ensure_delete_cohorts(site: Site, org: Organisation) -> None:
     )
 
 
-def _ensure_move_learner(site: Site) -> User:
-    user = User._base_manager.filter(site=site, email=MOVE_LEARNER_EMAIL).first()
+def _ensure_verified_user(site: Site, email: str, first: str, last: str) -> User:
+    """A user with a verified primary email and password MOVE_LEARNER_PASSWORD,
+    set only when the user is first created."""
+    user = User._base_manager.filter(site=site, email=email).first()
     if user is None:
         user = cast(
             User,
-            UserFactory(
-                site=site,
-                email=MOVE_LEARNER_EMAIL,
-                first_name="Morgan",
-                last_name="Mover",
-            ),
+            UserFactory(site=site, email=email, first_name=first, last_name=last),
         )
         user.set_password(MOVE_LEARNER_PASSWORD)
         user.save(update_fields=["password"])
     EmailAddress.objects.update_or_create(
         user=user,
-        email=MOVE_LEARNER_EMAIL,
+        email=email,
         defaults={"verified": True, "primary": True},
     )
     return user
+
+
+def _ensure_move_learner(site: Site) -> User:
+    return _ensure_verified_user(site, MOVE_LEARNER_EMAIL, "Morgan", "Mover")
 
 
 def _ensure_move_cohorts(site: Site, org: Organisation) -> None:
@@ -301,6 +310,34 @@ def _ensure_move_cohorts(site: Site, org: Organisation) -> None:
     click.echo(
         f"[6] {MOVE_SOURCE} pk {source.pk} holds learner pk {learner.pk} "
         f"({MOVE_LEARNER_EMAIL}); {MOVE_DESTINATION} pk {destination.pk}"
+    )
+
+
+def _ensure_cohort_staff(site: Site, org: Organisation, actor: User) -> None:
+    cohort = Cohort._base_manager.filter(
+        site=site, organisation=org, name=STAFF_COHORT
+    ).first()
+    if cohort is None:
+        raise click.ClickException(
+            f"Cohort '{STAFF_COHORT}' not in {org.slug}; run create_demo_data."
+        )
+    user = _ensure_verified_user(site, COHORT_STAFF_EMAIL, "Casey", "Cohortstaff")
+    # Any other role this user holds (e.g. a cohort_admin left by a QA "Change
+    # role" run) is removed, so the row starts as cohort_viewer again.
+    others = ObjectRoleAssignment._base_manager.filter(user=user).exclude(
+        object_id=str(cohort.pk), role=COHORT_STAFF_ROLE
+    )
+    if others.exists():
+        click.echo(f"[7] Removed other role rows: {others.delete()}")
+    member = ensure_staff_member(user, org)
+    if not member.is_active:
+        member.is_active = True
+        member.save(update_fields=["is_active"])
+    assignment = assign_object_role(user, cohort, COHORT_STAFF_ROLE, assigned_by=actor)
+    click.echo(
+        f"[7] {COHORT_STAFF_EMAIL} (user pk {user.pk}) staff member pk {member.pk} "
+        f"holds {COHORT_STAFF_ROLE} (assignment pk {assignment.pk}) on "
+        f"{cohort.name} pk {cohort.pk}"
     )
 
 
@@ -335,4 +372,5 @@ def command(site_name: str) -> None:
         _ensure_solo_org(site, user)
         _ensure_delete_cohorts(site, org)
         _ensure_move_cohorts(site, org)
+        _ensure_cohort_staff(site, org, user)
     click.echo(f"Done. {QA_LOGIN}'s password was not changed.")

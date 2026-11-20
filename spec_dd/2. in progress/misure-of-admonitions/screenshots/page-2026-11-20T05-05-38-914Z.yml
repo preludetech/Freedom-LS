@@ -1,0 +1,84 @@
+- generic [ref=f9e1]:
+  - generic:
+    - status
+    - alert
+  - main [ref=f9e2]:
+    - generic [ref=f9e3]:
+      - generic [ref=f9e4]:
+        - generic [ref=f9e5]:
+          - button "Exit test" [ref=f9e7]
+          - heading "Mid course Quiz" [level=2] [ref=f9e10]
+          - generic [ref=f9e11]: 0 of 6 answered
+        - generic [ref=f9e12]:
+          - generic [ref=f9e13]: Page 1 of 2
+          - navigation "Form pages" [ref=f9e17]:
+            - link "Page 1 (current)" [ref=f9e18] [cursor=pointer]:
+              - /url: /courses/functionality-demo-show-end-with-quiz/2/fill_form/1
+            - generic "Page 2 (not yet accessible)" [ref=f9e19]
+      - generic [ref=f9e21]:
+        - generic [ref=f9e22]:
+          - heading "Mid course Quiz — Page 1 of 2" [level=1] [ref=f9e23]
+          - generic [ref=f9e24]: Page 1 of 2
+          - generic [ref=f9e25]:
+            - heading "Page 1" [active] [level=2] [ref=f9e26]
+            - paragraph [ref=f9e27]: Something Something
+        - generic [ref=f9e28]:
+          - group "1. Some question blah blah (required)" [ref=f9e29]:
+            - generic [ref=f9e30]:
+              - generic [ref=f9e31]: "1."
+              - paragraph [ref=f9e32]: Some question blah blah
+              - text: "*"
+              - generic [ref=f9e33]: (required)
+            - generic [ref=f9e34]:
+              - generic [ref=f9e35] [cursor=pointer]:
+                - radio "CORRECT" [ref=f9e36]
+                - generic [ref=f9e39]: CORRECT
+              - generic [ref=f9e40] [cursor=pointer]:
+                - radio "option 2 text" [ref=f9e41]
+                - generic [ref=f9e44]: option 2 text
+              - generic [ref=f9e45] [cursor=pointer]:
+                - radio "option 3 text" [ref=f9e46]
+                - generic [ref=f9e49]: option 3 text
+          - generic [ref=f9e50]:
+            - paragraph [ref=f9e51]: "Considering blah blah, answer the following:"
+            - figure "Example of a graph Expand" [ref=f9e53]:
+              - img "Graph example" [ref=f9e54]
+              - generic [ref=f9e56]:
+                - paragraph [ref=f9e57]:
+                  - generic [ref=f9e58]: Example of a graph
+                - button "Expand" [ref=f9e59] [cursor=pointer]
+          - group "2. Some question blah blah (required)" [ref=f9e63]:
+            - generic [ref=f9e64]:
+              - generic [ref=f9e65]: "2."
+              - paragraph [ref=f9e66]: Some question blah blah
+              - text: "*"
+              - generic [ref=f9e67]: (required)
+            - generic [ref=f9e68]:
+              - generic [ref=f9e69] [cursor=pointer]:
+                - radio "option 1 text" [ref=f9e70]
+                - generic [ref=f9e73]: option 1 text
+              - generic [ref=f9e74] [cursor=pointer]:
+                - radio "option 2 text" [ref=f9e75]
+                - generic [ref=f9e78]: option 2 text
+              - generic [ref=f9e79] [cursor=pointer]:
+                - radio "CORRECT" [ref=f9e80]
+                - generic [ref=f9e83]: CORRECT
+          - group "3. Some question blah blah (required)" [ref=f9e84]:
+            - generic [ref=f9e85]:
+              - generic [ref=f9e86]: "3."
+              - paragraph [ref=f9e87]: Some question blah blah
+              - text: "*"
+              - generic [ref=f9e88]: (required)
+            - generic [ref=f9e89]:
+              - generic [ref=f9e90] [cursor=pointer]:
+                - radio "option 1 text" [ref=f9e91]
+                - generic [ref=f9e94]: option 1 text
+              - generic [ref=f9e95] [cursor=pointer]:
+                - radio "CORRECT" [ref=f9e96]
+                - generic [ref=f9e99]: CORRECT
+              - generic [ref=f9e100] [cursor=pointer]:
+                - radio "option 3 text" [ref=f9e101]
+                - generic [ref=f9e104]: option 3 text
+      - button "Next" [ref=f9e109] [cursor=pointer]
+  - generic [ref=f9e112] [cursor=pointer]: misure-of-admonitions
+  - generic "Show toolbar" [ref=f9e114]: DJDT

@@ -1,0 +1,84 @@
+- generic [active] [ref=f14e1]:
+  - banner [ref=f14e2]:
+    - link [ref=f14e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f14e4]
+      - heading "FirstClass" [level=1] [ref=f14e5]
+    - navigation [ref=f14e6]:
+      - generic [ref=f14e7]:
+        - generic [ref=f14e8]:
+          - button "Notifications, 3 new" [ref=f14e9]
+          - status:
+            - generic [ref=f14e13]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f14e14]: "3"
+        - button "Open user menu for Demo" [ref=f14e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f14e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f14e18]:
+    - generic [ref=f14e20]:
+      - link "Back" [ref=f14e21] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f14e26]:
+        - generic [ref=f14e27]: Reference
+        - heading "Functionality Demo - Course Parts" [level=1] [ref=f14e28]
+        - paragraph [ref=f14e29]: Demonstrating course organisation with parts
+        - generic [ref=f14e31]:
+          - generic [ref=f14e35]:
+            - paragraph [ref=f14e36]: Lessons
+            - paragraph [ref=f14e37]: 5 lessons
+          - generic [ref=f14e41]:
+            - paragraph [ref=f14e42]: Time limit
+            - paragraph [ref=f14e43]: 90 days
+          - generic [ref=f14e47]:
+            - paragraph [ref=f14e48]: Enrolment
+            - paragraph [ref=f14e49]: Free · open
+      - generic [ref=f14e50]:
+        - complementary [ref=f14e51]:
+          - generic [ref=f14e53]:
+            - generic [ref=f14e54]:
+              - paragraph [ref=f14e55]: Free · open to everyone
+              - paragraph [ref=f14e56]: One click. No credit card.
+            - generic [ref=f14e62]:
+              - text: Your educator paused this course. It resumes on
+              - time [ref=f14e63]: 3 Dec 2026
+              - text: . Your progress is saved. Your deadlines move by the time paused.
+            - generic [ref=f14e64]:
+              - heading "This course includes" [level=3] [ref=f14e65]
+              - list [ref=f14e66]:
+                - listitem [ref=f14e67]: 5 lessons
+                - listitem [ref=f14e68]: Includes assessments
+        - generic [ref=f14e70]:
+          - heading "Course content" [level=2] [ref=f14e71]
+          - navigation "Course outline" [ref=f14e73]:
+            - list [ref=f14e74]:
+              - listitem [ref=f14e75]:
+                - button "1. Paused Getting Started Paused" [ref=f14e76] [cursor=pointer]:
+                  - generic [ref=f14e77]:
+                    - generic [ref=f14e78]: "1."
+                    - generic [ref=f14e79]: Paused
+                    - generic [ref=f14e83]: Getting Started
+                    - generic [ref=f14e84]: Paused
+              - listitem [ref=f14e92]:
+                - button "2. Locked Core Concepts" [ref=f14e93] [cursor=pointer]:
+                  - generic [ref=f14e94]:
+                    - generic [ref=f14e95]: "2."
+                    - generic [ref=f14e96]: Locked
+                    - generic [ref=f14e100]: Core Concepts
+              - listitem [ref=f14e106]:
+                - button "3. Locked Wrapping Up" [ref=f14e107] [cursor=pointer]:
+                  - generic [ref=f14e108]:
+                    - generic [ref=f14e109]: "3."
+                    - generic [ref=f14e110]: Locked
+                    - generic [ref=f14e114]: Wrapping Up
+  - contentinfo [ref=f14e120]:
+    - generic [ref=f14e121]:
+      - paragraph [ref=f14e122]: © 2026 FirstClass
+      - navigation "Legal" [ref=f14e123]:
+        - link "Terms and Conditions" [ref=f14e124] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f14e125] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f14e126] [cursor=pointer]: misure-of-admonitions
+  - generic "Show toolbar" [ref=f14e128]: DJDT

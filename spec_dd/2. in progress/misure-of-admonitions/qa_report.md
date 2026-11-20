@@ -1,136 +1,149 @@
-# QA report: misure-of-admonitions
+# Frontend QA report: theme-fit callouts for app pages
+
+Plan: `3. frontend_qa.md`. No bugs were found. Every test that ran passed; two were skipped (4.4, 6.8).
+
+## Results
+
+Viewports: desktop 1920x1080, tablet 768x1024, mobile 375x812. The plan names 1280 px for desktop; the command's standard 1920 was used. A dash means that test was not run at that viewport.
+
+| Test | Desktop | Tablet | Mobile |
+|---|---|---|---|
+| 1 login "New here?" callout | pass | - | pass |
+| 2 learner form errors ("Missing answers") | pass | - | pass |
+| 2.4 invalid answers (run on the application form) | pass | - | - |
+| 2.5 callouts go away after valid answers | pass | - | - |
+| 3.1 "We couldn't use those details" | pass | - | - |
+| 3.2 check your answers, missing answer | pass | - | - |
+| 3.3 submitted, success callout | pass | - | pass |
+| 3.4 submitted, info callout | pass | - | pass |
+| 4.1 paused course | pass | pass | pass |
+| 4.2 access-ended course | pass | - | pass |
+| 4.3 neither paused nor ended | pass | - | - |
+| 4.4 closed topic | skip | - | - |
+| 5 in-development outline | pass | pass | pass |
+| 6.1 Change role invalid choice | pass | - | - |
+| 6.2 only organisation admin warning | - | pass | pass |
+| 6.3 delete with dependents | pass | - | pass |
+| 6.4 blocked delete | pass | - | - |
+| 6.5 refused move | pass | - | - |
+| 6.6 bulk action warning | pass | - | - |
+| 6.7 "Save and add another" success | pass | - | - |
+| 6.8 inline record form error | skip | - | - |
+| 7.1 dashboard excluded-data / too-large warning | pass (no message to show) | - | - |
+| 7.2 unreadable import file | pass | - | pass |
+| 7.3 import with bad rows | pass | pass | - |
+| 7.4 only staff member | pass | pass | pass |
+| 8 panel framework reference page | pass | pass | pass |
+| 9.1 first_class, login | pass | - | - |
+| 9.3 first_class, application success | pass | - | - |
+| 9.4 default theme restored | pass | - | - |
+| 9.6 first_class, only-admin warning | pass | - | - |
+| 9.8 first_class, reference page | pass | - | - |
+| 10.1 admonitions unchanged | pass | - | - |
+| 10.2 toast is not a callout | pass | - | - |
+| 10.3 `<c-callout>` in markdown stripped | pass | - | - |
 
 ## Methodology
 
-Manual Playwright MCP run against a dev server on port 8383, using the default theme. Test 9 used a rebuild with `FLS_THEME=first_class`. Screenshots were collected into `screenshots/` beside this report, and every image referenced below exists there. The QA plan is `3. frontend_qa.md`.
+The dev server ran on port 8629, launched by this run. Test 9 restarted it with `FLS_THEME=first_class` (after `FLS_THEME=first_class npm run tailwind_build`) and then back on the default theme. Screenshots were collected into `screenshots/` beside this report, and every image referenced below exists there. The accessibility checks (one non-toast `alert` region, focus placement) and computed sizes were read from the page; per-test details are in the layout rows and notes below.
 
 ## Diff scoping
 
-- Class: FULL.
-- Triggering files: `templates/*.html` across base, course_applications, educator_interface, form_engine, learner_interface and panel_framework; `tailwind.components.css`; `themes/*/theme.css`.
-- Nothing was skipped by scoping.
-- Mobile and tablet were checked by measurement on a subset of pages (Tests 1, 3.3, 4.2, 7.3 and 8), not for every test.
+Class: FULL. The triggering changes are template, static, `.html` and `.css` changes across base, course_applications, educator_interface, form_engine, learner_interface, panel_framework and themes. Nothing was skipped on scoping grounds. Not every test was repeated at all three viewports; the table shows which were.
 
 ## Smoke gate
 
-Status: pass. Pages checked: `/` and `/panel-framework/components/`. No failure URL or reason.
+Passed. Pages loaded: `/` and `/panel-framework/components/`.
 
 ## Design check
 
 No design states tested.
 
-## B1: Reference page: explanatory line touches the callout below it
-
-Manifestations:
-- Test 8, desktop
-- Test 9, desktop (first_class theme)
-
-![](screenshots/page-2026-11-19T14-14-00-868Z.png)
-![](screenshots/page-2026-11-19T14-29-22-311Z.png)
-
-- Expected: visible space between each callout and its neighbours (QA checklist). The short explanatory line above the info, error and success examples sits clear of the box.
-- Actual: in `panel_framework/reference/_examples.html`, each `#callout-<tone>` wrapper div stacks a `<p class="text-sm text-muted">` directly on the callout with no spacing class. The line and the box touch (0px gap) for info, error and success.
-
-## B2: Course content panel: in-development callout touches the outline table
-
-Manifestations:
-- Test 5, desktop
-
-![](screenshots/page-2026-11-19T14-21-19-120Z.png)
-
-- Expected: the "Learners can't see this outline yet" info callout sits inside the panel's padding with space below it (QA plan Test 5).
-- Actual: `educator_interface/panels/course_content.html` wraps the callout in `px-4 pt-4 sm:px-6` with no bottom padding. The callout's bottom edge meets the data table's header row (0px gap: callout bottom 562px, table top 562px).
-
 ## Layout probe
+
+Every row is clean (no flags).
 
 | Test | Viewport | URL | Screenshot | Result |
 |---|---|---|---|---|
-| 1 | desktop | /accounts/login/ | [shot](screenshots/page-2026-11-19T14-13-13-326Z.png) | clean |
-| 1 | mobile | /accounts/login/ | [shot](screenshots/page-2026-11-19T14-13-28-269Z.png) | clean |
-| 1 | tablet | /accounts/login/ | measured only | clean |
-| 8 | desktop | /panel-framework/components/ | [shot](screenshots/page-2026-11-19T14-14-00-868Z.png) | clean |
-| 8 | mobile | /panel-framework/components/ | measured only | clean |
-| 8 | tablet | /panel-framework/components/ | [shot](screenshots/page-2026-11-19T14-14-21-380Z.png) | clean |
-| 7.2 | desktop | /educator/organisations/demodev/learners/import/ | [shot](screenshots/page-2026-11-19T14-15-30-910Z.png) | clean |
-| 7.3 | desktop | /educator/organisations/demodev/learners/import/<id>/ | [shot](screenshots/page-2026-11-19T14-15-48-214Z.png) | clean |
-| 7.3 | tablet | /educator/organisations/demodev/learners/import/<id>/ | [shot](screenshots/page-2026-11-19T14-15-58-146Z.png) | clean |
-| 7.3 | mobile | /educator/organisations/demodev/learners/import/<id>/ | measured only | clean |
-| 2 | desktop | /applications/application/<id>/page/1/ | [shot](screenshots/page-2026-11-19T14-16-36-053Z.png) | clean |
-| 3.4 | desktop | /applications/application/<id>/page/1/ | [shot](screenshots/page-2026-11-19T14-18-25-855Z.png) | clean |
-| 3.3 | mobile | /applications/application/<id>/check-your-answers/ | [shot](screenshots/page-2026-11-19T14-18-34-012Z.png) | clean |
-| 3.1 | desktop | /applications/apply/functionality-demo-application-gated-course/your-details/ | [shot](screenshots/page-anon-details-1795097947130.png) | clean |
-| 5 | desktop | /educator/organisations/demodev/courses/8bc127c1-edf1-4997-b7fc-35fdf8604f30 | [shot](screenshots/page-2026-11-19T14-21-19-120Z.png) | clean |
-| 10.1 | desktop | .../courses/8bc127c1-.../__panels/content/__actions/preview_content | [shot](screenshots/page-2026-11-19T14-21-00-043Z.png) | clean |
-| 10.2 | desktop | /accounts/profile/ | [shot](screenshots/page-2026-11-19T14-22-22-197Z.png) | clean |
-| 6.7 | desktop | /educator/organisations/demodev/learners (Add learner dialog) | [shot](screenshots/page-2026-11-19T14-23-00-196Z.png) | clean |
-| 4.1 | desktop | /courses/functionality-demo-course-parts/detail/ | [shot](screenshots/page-2026-11-19T14-23-26-601Z.png) | clean |
-| 4.2 | mobile | /courses/functionality-demo-show-end-with-topic/detail/ | [shot](screenshots/page-2026-11-19T14-23-35-089Z.png) | clean |
-| 7.4 | desktop | /educator/organisations/qa-solo-org/staff | [shot](screenshots/page-2026-11-19T14-23-52-194Z.png) | clean |
-| 6.2 | desktop | /educator/organisations/qa-solo-org/staff (Deactivate role dialog) | [shot](screenshots/page-2026-11-19T14-24-37-346Z.png) | clean |
-| 6.3 | desktop | /educator/organisations/demodev/cohorts/<QA Delete Cascade>/__tabs/settings (Delete dialog) | [shot](screenshots/page-2026-11-19T14-25-54-993Z.png) | clean |
-| 6.4 | desktop | Delete dialog for Cohort 2025.03.04 (50 learners) | [shot](screenshots/page-2026-11-19T14-26-17-198Z.png) | clean |
-| 9 | desktop | /panel-framework/components/ (first_class theme) | [shot](screenshots/page-2026-11-19T14-29-22-311Z.png) | clean |
+| 1 | desktop | `/accounts/login/` | [page-2026-11-20T05-04-40-296Z.png](screenshots/page-2026-11-20T05-04-40-296Z.png) | clean |
+| 8 | desktop | `/panel-framework/components/` | [page-2026-11-20T05-05-19-278Z.png](screenshots/page-2026-11-20T05-05-19-278Z.png) | clean |
+| 2 | desktop | `/courses/functionality-demo-show-end-with-quiz/2/fill_form/1` | [page-2026-11-20T05-05-56-997Z.png](screenshots/page-2026-11-20T05-05-56-997Z.png) | clean |
+| 3.1 | desktop | `/applications/apply/functionality-demo-application-gated-course/your-details/` | [page-2026-11-20T05-08-00-211Z.png](screenshots/page-2026-11-20T05-08-00-211Z.png) | clean |
+| 4.1 | desktop | `/courses/functionality-demo-course-parts/detail/` | [page-2026-11-20T05-08-12-312Z.png](screenshots/page-2026-11-20T05-08-12-312Z.png) | clean |
+| 4.2 | desktop | `/courses/functionality-demo-show-end-with-topic/detail/` | [page-2026-11-20T05-08-23-217Z.png](screenshots/page-2026-11-20T05-08-23-217Z.png) | clean |
+| 2.4 | desktop | `/applications/application/<id>/page/1/` | [page-2026-11-20T05-08-55-180Z.png](screenshots/page-2026-11-20T05-08-55-180Z.png) | clean |
+| 3.2 | desktop | `/applications/application/<id>/check-your-answers/` | [page-2026-11-20T05-09-46-790Z.png](screenshots/page-2026-11-20T05-09-46-790Z.png) | clean |
+| 3.3 | desktop | `/applications/application/<id>/check-your-answers/` | [page-2026-11-20T05-10-22-439Z.png](screenshots/page-2026-11-20T05-10-22-439Z.png) | clean |
+| 3.4 | desktop | `/applications/application/<id>/page/1/` | [page-2026-11-20T05-10-32-139Z.png](screenshots/page-2026-11-20T05-10-32-139Z.png) | clean |
+| 5 | desktop | `/educator/organisations/demodev/courses/<content-widgets>` | [page-2026-11-20T05-10-53-712Z.png](screenshots/page-2026-11-20T05-10-53-712Z.png) | clean |
+| 7.4 | desktop | `/educator/organisations/qa-solo-org/staff` | [page-2026-11-20T05-11-17-695Z.png](screenshots/page-2026-11-20T05-11-17-695Z.png) | clean |
+| 6.3 | desktop | `/educator/organisations/demodev/cohorts/<cascade>/__tabs/settings` (delete dialog) | [page-2026-11-20T05-12-35-517Z.png](screenshots/page-2026-11-20T05-12-35-517Z.png) | clean |
+| 6.4 | desktop | `/educator/organisations/demodev/cohorts/<blocked>/__tabs/settings` (delete dialog) | [page-2026-11-20T05-14-44-525Z.png](screenshots/page-2026-11-20T05-14-44-525Z.png) | clean |
+| 6.7 | desktop | `/educator/organisations/demodev/cohorts/<blocked>/__tabs/learners` (Add learner dialog) | [page-2026-11-20T05-13-24-942Z.png](screenshots/page-2026-11-20T05-13-24-942Z.png) | clean |
+| 6.1 | desktop | `/educator/organisations/demodev/cohorts/<2025.03.04>/__tabs/settings` (Change role dialog) | [page-2026-11-20T05-15-14-962Z.png](screenshots/page-2026-11-20T05-15-14-962Z.png) | clean |
+| 6.5 | desktop | `/educator/organisations/demodev/cohorts/<QA Move Source>/__tabs/learners` (Move dialog) | [page-2026-11-20T05-17-26-182Z.png](screenshots/page-2026-11-20T05-17-26-182Z.png) | clean |
+| 6.6 | desktop | `/educator/organisations/demodev/learners` (bulk Deactivate dialog) | [page-2026-11-20T05-18-16-736Z.png](screenshots/page-2026-11-20T05-18-16-736Z.png) | clean |
+| 7.2 | desktop | `/educator/organisations/demodev/learners/import/` | [page-2026-11-20T05-19-51-966Z.png](screenshots/page-2026-11-20T05-19-51-966Z.png) | clean |
+| 7.3 | desktop | `/educator/organisations/demodev/learners/import/<id>/` | [page-2026-11-20T05-20-10-209Z.png](screenshots/page-2026-11-20T05-20-10-209Z.png) | clean |
+| 10.1 | desktop | `/educator/organisations/demodev/courses/<content-widgets>` (Interactive Widgets preview) | [page-2026-11-20T05-20-58-480Z.png](screenshots/page-2026-11-20T05-20-58-480Z.png) | clean |
+| 10.2 | desktop | `/accounts/profile/` | [page-2026-11-20T05-21-19-938Z.png](screenshots/page-2026-11-20T05-21-19-938Z.png) | clean |
+| 4.1 | mobile | `/courses/functionality-demo-course-parts/detail/` | [page-2026-11-20T05-22-54-134Z.png](screenshots/page-2026-11-20T05-22-54-134Z.png) | clean |
+| 4.2 | mobile | `/courses/functionality-demo-show-end-with-topic/detail/` | [page-2026-11-20T05-22-56-501Z.png](screenshots/page-2026-11-20T05-22-56-501Z.png) | clean |
+| 5 | mobile | `/educator/organisations/demodev/courses/<content-widgets>` | [page-2026-11-20T05-22-59-103Z.png](screenshots/page-2026-11-20T05-22-59-103Z.png) | clean |
+| 7.4 | mobile | `/educator/organisations/qa-solo-org/staff` | [page-2026-11-20T05-23-01-604Z.png](screenshots/page-2026-11-20T05-23-01-604Z.png) | clean |
+| 8 | mobile | `/panel-framework/components/` | [page-2026-11-20T05-23-04-057Z.png](screenshots/page-2026-11-20T05-23-04-057Z.png) | clean |
+| 3.4 | mobile | `/applications/application/<id>/page/1/` | [page-2026-11-20T05-23-06-426Z.png](screenshots/page-2026-11-20T05-23-06-426Z.png) | clean |
+| 3.3 | mobile | `/applications/application/<id>/check-your-answers/` | [page-2026-11-20T05-23-08-692Z.png](screenshots/page-2026-11-20T05-23-08-692Z.png) | clean |
+| 2 | mobile | `/courses/functionality-demo-show-end-with-quiz/2/fill_form/1` | [page-2026-11-20T05-25-17-179Z.png](screenshots/page-2026-11-20T05-25-17-179Z.png) | clean |
+| 6.2 | mobile | `/educator/organisations/qa-solo-org/staff` (Deactivate role sheet) | [page-2026-11-20T05-25-56-502Z.png](screenshots/page-2026-11-20T05-25-56-502Z.png) | clean |
+| 6.3 | mobile | `/educator/organisations/demodev/cohorts/<cascade>/__tabs/settings` (Delete sheet) | [page-2026-11-20T05-26-02-064Z.png](screenshots/page-2026-11-20T05-26-02-064Z.png) | clean |
+| 7.2 | mobile | `/educator/organisations/demodev/learners/import/` | [page-2026-11-20T05-25-36-999Z.png](screenshots/page-2026-11-20T05-25-36-999Z.png) | clean |
+| 1 | mobile | `/accounts/login/` | [page-2026-11-20T05-26-18-516Z.png](screenshots/page-2026-11-20T05-26-18-516Z.png) | clean |
+| 4.1 | tablet | `/courses/functionality-demo-course-parts/detail/` | [page-2026-11-20T05-26-36-054Z.png](screenshots/page-2026-11-20T05-26-36-054Z.png) | clean |
+| 5 | tablet | `/educator/organisations/demodev/courses/<content-widgets>` | [page-2026-11-20T05-26-38-145Z.png](screenshots/page-2026-11-20T05-26-38-145Z.png) | clean |
+| 7.4 | tablet | `/educator/organisations/qa-solo-org/staff` | [page-2026-11-20T05-26-40-147Z.png](screenshots/page-2026-11-20T05-26-40-147Z.png) | clean |
+| 8 | tablet | `/panel-framework/components/` | [page-2026-11-20T05-26-42-206Z.png](screenshots/page-2026-11-20T05-26-42-206Z.png) | clean |
+| 6.2 | tablet | `/educator/organisations/qa-solo-org/staff` (Deactivate role dialog) | [page-2026-11-20T05-26-46-921Z.png](screenshots/page-2026-11-20T05-26-46-921Z.png) | clean |
+| 7.3 | tablet | `/educator/organisations/demodev/learners/import/<id>/` | [page-2026-11-20T05-26-49-815Z.png](screenshots/page-2026-11-20T05-26-49-815Z.png) | clean |
+| 9.1 | desktop | `/accounts/login/` (first_class) | [page-2026-11-20T05-27-43-156Z.png](screenshots/page-2026-11-20T05-27-43-156Z.png) | clean |
+| 9.3 | desktop | `/applications/application/<id>/check-your-answers/` (first_class) | [page-2026-11-20T05-27-29-072Z.png](screenshots/page-2026-11-20T05-27-29-072Z.png) | clean |
+| 9.6 | desktop | `/educator/organisations/qa-solo-org/staff` (first_class, Deactivate role dialog) | [page-2026-11-20T05-27-33-350Z.png](screenshots/page-2026-11-20T05-27-33-350Z.png) | clean |
+| 9.8 | desktop | `/panel-framework/components/` (first_class) | [page-2026-11-20T05-27-27-549Z.png](screenshots/page-2026-11-20T05-27-27-549Z.png) | clean |
 
 ## Data changes
 
-| What | Via | Files |
+| What changed | Made by | Files written |
 |---|---|---|
-| Set `table_of_contents_in_development=True` on "Content Widgets - Demo Reference" (and further scenarios, see the helper's report) | sdd:qa-data-helper | none |
-| New idempotent command `qa_create_admonition_scenarios`: Content Widgets course marked in development; demodev made a DemoDev learner with a paused course (Course Parts), an ended access (show end with Topic) and a quiz course; org "QA Solo Org" with demodev as only staff/admin; cohorts QA Delete Cascade/Blocked; learner Morgan Mover with QA Move Source/Destination cohorts | sdd:qa-data-helper | `freedom_ls/qa_helpers/management/commands/qa_create_admonition_scenarios.py`, `freedom_ls/qa_helpers/tests/management/commands/test_qa_create_admonition_scenarios.py` |
-| Added learner qa-callout-add-1795098174531@example.com to DemoDev; imported nothing (Test 7.3 preview was not confirmed) | manual (Add learner dialog during Test 6.7) | none |
-
-## Test results
-
-| Test | Viewport | Status | Notes | Screenshot |
-|---|---|---|---|---|
-| 1 | desktop | pass | Info callout "New here?" with icon, bold 16px title, 16px on-surface body, 1px border, 6px radius, button inside, 12px gap below the error sentence. | [shot](screenshots/page-2026-11-19T14-13-13-326Z.png) |
-| 1 | mobile | pass | Callout 343px wide in a 375px viewport, no sideways scroll. | [shot](screenshots/page-2026-11-19T14-13-28-269Z.png) |
-| 1 | tablet | pass | Measured only: callout 416px, document scrollWidth equals viewport. | measured only |
-| 8 | desktop | fail | Info, warning, error and success in order, each with its own icon and role (error=alert, success=status). No Notice section. The `<c-callout>` in the intro is intentional escaped sample text. FAIL: the explanatory line above the info, error and success examples touches the callout (0px gap). See B1. | [shot](screenshots/page-2026-11-19T14-14-00-868Z.png) |
-| 8 | tablet | pass | Callouts span the container (24-744px), no sideways scroll. Mobile measured 16-359px, no sideways scroll. | [shot](screenshots/page-2026-11-19T14-14-21-380Z.png) |
-| 7.2 | desktop | pass | Empty file upload: error callout "The file could not be uploaded." role=alert, focused on load, bulleted list indented inside the box, 16px text. The only console entry is the expected 422 resource line. | [shot](screenshots/page-2026-11-19T14-15-30-910Z.png) |
-| 7.3 | desktop | pass | CSV with 3 bad rows: warning callout "3 rows with errors will not be added." above the row errors. Buttons and table are inside the box. | [shot](screenshots/page-2026-11-19T14-15-48-214Z.png) |
-| 7.3 | tablet | pass | Callout spans the container, no sideways scroll. Mobile measured 16-359px, scrollWidth 375. | [shot](screenshots/page-2026-11-19T14-15-58-146Z.png) |
-| 2 | desktop | pass | Exercised on the application form (same form_engine answer_errors partial). "Missing answers" error callout has role=alert on the callout itself (data-testid required-answers-error) and is the only visible alert region. 24px space above and below. "Invalid answers" callout appears for an invalid email. Valid answers clear the callouts. | [shot](screenshots/page-2026-11-19T14-16-36-053Z.png) |
-| 3.4 | desktop | pass | Submitted application's form page shows an info callout "This application has been submitted and can no longer be changed.", 24px spacing. | [shot](screenshots/page-2026-11-19T14-18-25-855Z.png) |
-| 3.3 | desktop | pass | Check-your-answers after submit: success callout role=status, dark green icon, then the "Your application" button 24px below. | none |
-| 3.3 | mobile | pass | Success callout 16-359px, no sideways scroll. Tablet measured 24-744px, clean probe. | [shot](screenshots/page-2026-11-19T14-18-34-012Z.png) |
-| 3.1 | desktop | pass | Anonymous applicant, honeypot filled to force a form-level error: error callout "We couldn't use those details", role=alert and data-testid=details-errors on the callout itself, the only visible alert region. | [shot](screenshots/page-anon-details-1795097947130.png) |
-| 5 | desktop | fail | Info callout "Learners can't see this outline yet..." renders inside the panel padding, 16px below the "Course content" header. Its bottom edge touches the data table header row (0px gap). The wrapper has no bottom padding. See B2. | [shot](screenshots/page-2026-11-19T14-21-19-120Z.png) |
-| 5.3 | desktop | pass | The nine other DemoDev courses (not in development) show no callout on their educator course page. | none |
-| 10.1 | desktop | pass | Admonitions in the Interactive Widgets preview keep the content-engine component (role=note, rounded-lg tinted box, no .callout class). content_engine is unchanged by this branch. See General notes. | [shot](screenshots/page-2026-11-19T14-21-00-043Z.png) |
-| 10.2 | desktop | pass | Saving the profile shows the "Profile saved" toast in a position:fixed region, bottom right, with a dismiss button. It is not a callout. | [shot](screenshots/page-2026-11-19T14-22-22-197Z.png) |
-| 10.3 | desktop | skip | Not driven in the browser: no demo content contains `<c-callout>`, and authoring content is outside this QA run. Markdown sanitising is covered by the content_engine tests. | none |
-| 6.7 | desktop | pass | "Add and add another" shows a success callout (role=status) above the fields, 14px text matching the dialog's labels, 16px gap to the fields. | [shot](screenshots/page-2026-11-19T14-23-00-196Z.png) |
-| 4.1 | desktop | pass | Paused registration: info callout "Your educator paused this course. It resumes on 3 Dec 2026..." in the enrolment card, 16px above and below. | [shot](screenshots/page-2026-11-19T14-23-26-601Z.png) |
-| 4.2 | desktop | pass | Ended access: warning callout "Your access to this course ended on ...", dark amber icon, 16px above and below. | none |
-| 4.2 | mobile | pass | Warning callout fits the card (41-334px), no sideways scroll. | [shot](screenshots/page-2026-11-19T14-23-35-089Z.png) |
-| 4.3 | desktop | pass | Price: fixed course detail shows no callout. | none |
-| 4.4 | desktop | pass | Closed-topic notice covered by `test_the_closed_notice_is_not_a_callout`. The demo has no closed topic, so the browser step was skipped as the plan allows. | none |
-| 7.4 | desktop | pass | Only staff member: info callout above the staff table, 24px below the page header and clear of the table. | [shot](screenshots/page-2026-11-19T14-23-52-194Z.png) |
-| 6.2 | desktop | pass | Only-admin warning callout in the Deactivate role dialog, 14px text, dark amber icon, 16px above and below. Dialog cancelled. | [shot](screenshots/page-2026-11-19T14-24-37-346Z.png) |
-| 6.3 | desktop | pass | Cascade delete: error callout titled "This will also delete:" with a disc list indented inside the box, 14px dialog text. Cancelled. | [shot](screenshots/page-2026-11-19T14-25-54-993Z.png) |
-| 6.4 | desktop | pass | Blocked delete opened in the real modal by pointing a Delete trigger at the 50-learner cohort's delete action (the app hides Delete on non-empty cohorts). Error callout role=alert holds the reason, data-error-summary and tabindex=-1 kept, no confirm button. On this GET open focus starts on Cancel. The focus-on-callout behaviour belongs to the 422 race path, whose attributes are unchanged from main and were not driven. | [shot](screenshots/page-2026-11-19T14-26-17-198Z.png) |
-| 6.5 | desktop | skip | The refused move needs a two-tab race. A second-tab move hit the "no longer in QA Move Source" branch instead of the refusal callout. The move_confirmation template only swapped c-panel-notice for c-callout with attributes unchanged. | none |
-| 6.6 | desktop | skip | Bulk Deactivate of 2 and of all 53 learners showed no warning: the warning callout needs a "notice" the demo data does not produce. | none |
-| 6.1 | desktop | skip | Change role with an invalid choice needs a forged POST. | none |
-| 6.8 | desktop | skip | Inline record forms only raise field errors with demo data, so no form-level error is reachable. | none |
-| 7.1 | desktop | pass | DemoDev dashboard shows no excluded-data or too-large region, so no callout is expected and none renders. | none |
-| 9 | desktop | pass | FLS_THEME=first_class build: every tone, warning included, takes first_class's light tint and darker tone text (info rgb(235,248,255)/rgb(42,67,101), warning rgb(255,255,240)/rgb(116,66,16), error rgb(255,245,245)/rgb(116,42,42), success rgb(240,255,244)/rgb(34,84,61)). All readable, none unstyled. Only the reference page was revisited; the B1 spacing bug shows here too. | [shot](screenshots/page-2026-11-19T14-29-22-311Z.png) |
+| Ran the existing `qa_reset_course_application` for demodev@email.com on functionality-demo-application-gated-course: deleted CourseApplication 5c147a49-cbdb-405c-9564-f9513e7e264e and its FormProgress c66ffdbf-2f5f-465a-aa94-2eaa74231801 (and the uploaded file), so a new application could be started. | `sdd:qa-data-helper` | none |
+| Re-ran the branch's own QA seed command: paused and ended registrations, quiz readiness, QA Solo Org, delete and move cohorts (idempotent). | `qa_create_admonition_scenarios` (existing) | none |
+| Extended `qa_create_admonition_scenarios` with step 7: user qa-cohort-staff@email.com (pk 74) as a demodev staff member holding cohort_viewer on Cohort 2025.03.04, so the cohort Staff panel shows "Change role". | `sdd:qa-data-helper` | `freedom_ls/qa_helpers/management/commands/qa_create_admonition_scenarios.py` |
+| Re-ran the seed after a stale delete confirm removed QA Delete Blocked Cohort (the helper's re-run had emptied it mid-race); recreated it as pk b3c04881-efb5-458f-ae79-f155492fb5c2. Added learner qa-callout-blocker@example.com through the UI (Add learner dialog) for the 6.4 race and 6.7. | `qa_create_admonition_scenarios` (existing), plus the educator UI | none |
+| Added qa-move-learner@email.com to QA Move Destination through the Add learner dialog for the 6.5 race (re-running the seed resets it). | educator UI (QA action) | none |
 
 ## Bug status
 
-| Bug | Status |
-|---|---|
-| B1 | **FIXED** (commit: a22b1b302) — Reference page: explanatory line touches the callout below it. Re-verified in the browser: 8px between each line and its callout ([screenshot](screenshots/page-2026-11-19T14-44-35-159Z.png)) |
-| — | **FIXED** (commit: 75d3e9a9e) — full run after the fixes left tests failing: `test_quick_view_flow.py::test_unsent_draft_asks_before_the_drawer_is_left` was flaky. It read the discard prompt's heading and body edges in two separate calls while the drawer slid in; both are now read in one script run. 8 consecutive isolated passes after the fix |
-| B2 | **FIXED** (commit: a4f361c91) — Course content panel: in-development callout touches the outline table. Re-verified in the browser: 16px between the callout and the table ([screenshot](screenshots/page-2026-11-19T14-55-54-176Z.png)) |
+There are no bugs.
 
 ## General notes
 
-- Skipped tests: 6.1 (needs a forged POST), 6.5 (needs a two-tab race), 6.6 (demo data produces no bulk-confirmation notice), 6.8 (no form-level error reachable with demo data), 10.3 (no demo content contains `<c-callout>`; sanitising is covered by content_engine tests).
-- Test 10.1: the QA plan's "left stripe and larger title" wording for admonitions is out of date versus main. content_engine is unchanged on this branch (git diff empty), so this is not a regression.
-- The only console errors were expected 422 resource lines from validation responses.
-- The qa-data-helper also added `reference_admonition_scenarios_command.md` under `.claude/agent-memory/sdd-qa-data-helper/` and indexed it in that folder's `MEMORY.md`. The folder is tracked in the repo and already holds earlier QA runs' entries, so these are committed with the QA artifacts.
+Not tested:
+- 4.4 skipped, as the plan allows: the demo has no closed topic.
+- 6.7 form-level half: not reachable from the UI. No educator add dialog has a non-field error path. A duplicate cohort name lands on the Name field as plain red text, which is the expected field-error behaviour. Not a defect of this branch.
+- 6.8 skipped: the only inline record forms (cohort name, learner name, the reference page's file-field example) have no form-level error path. The panel-callout rendering of `non_field_errors` is covered by the component tests.
+- 7.1 had no message to show: the DemoDev dashboard loaded fully with no excluded-data or too-large region, and the step is conditional.
+- Tablet and mobile were run for a subset of tests (see the results table), not every test at all three viewports. 6.2 was checked at tablet and mobile only, not at desktop (its first_class check, 9.6, was at desktop).
+- Test 2 step 4 ("Invalid answers") was run as 2.4 on the application form, because the quiz has no number question. It uses the same form_engine `answer_errors` partial.
 
-status: ok · reason: 2 bugs and 1 test failure — 3 fixed, 0 unresolved; report rendered, screenshots verified
+Observations with no action attached:
+- The warning tint is pale or khaki on grey surfaces (the enrolment card in 4.2, the panel canvas in 7.3, and the reference page in 8). It still reads as a box and the text is readable.
+- The Change role error (6.1) renders its single message as a one-item bulleted list beside the icon. The template prints `form.new_role.errors`, an errorlist `<ul>`, and the global `ul` rule styles it. The template is unchanged by this branch, so this is pre-existing.
+- The plan's description of admonitions (10.1: "a left stripe and a larger title") is out of date. Admonitions have no left stripe and a 14px label, the same size as the body. `cotton/admonition.html` is not touched by this branch, so the look is unchanged.
+- A signed-in applicant is redirected to the dashboard on submit (3.3), so the success callout was checked by reopening Check your answers.
+- Browser `required` validation had to be bypassed (`novalidate`, or changing an input type) to reach the server-side form errors in 2, 2.4 and 3.2.
+- The race scenarios (6.4, 6.5, 6.6) were driven with two browser tabs, or by bumping the dialog's `expected_count` for 6.6.
+- 3.1 was run as an anonymous visitor in a second browser context (only anonymous applicants see "Your details"), with the hidden honeypot field filled to force the form-level error.
+- 10.3: no demo content holds `<c-callout>`, so it was checked with a read-only `render_markdown` call in the Django shell. The tag renders as plain text content, with no leftover tag. `c-callout` is absent from `MARKDOWN_ALLOWED_TAGS`.
+- The kill script needed a second call to free the first_class server's port: the first call reported the process killed but it kept the port.
+- Console: only the expected 422 resource lines, plus Chrome's warning about the unparseable number value in 2.4.
+
+status: ok · reason: report rendered, 0 bugs documented

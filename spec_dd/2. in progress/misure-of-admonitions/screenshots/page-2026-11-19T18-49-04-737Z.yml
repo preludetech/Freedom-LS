@@ -1,0 +1,220 @@
+- generic [active] [ref=f21e1]:
+  - banner [ref=f21e2]:
+    - link [ref=f21e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f21e4]
+      - heading "FirstClass" [level=1] [ref=f21e5]
+    - navigation [ref=f21e6]:
+      - generic [ref=f21e7]:
+        - generic [ref=f21e8]:
+          - button "Notifications, 3 new" [ref=f21e9]
+          - status:
+            - generic [ref=f21e13]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f21e14]: "3"
+        - button "Open user menu for Demo" [ref=f21e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f21e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f21e18]:
+    - generic [ref=f21e22]:
+      - generic [ref=f21e26]:
+        - button "Open navigation panel" [ref=f21e27] [cursor=pointer]
+        - heading "Courses" [level=1] [ref=f21e31]
+      - generic [ref=f21e36]:
+        - region "Courses" [ref=f21e38]:
+          - table [ref=f21e39]:
+            - caption [ref=f21e40]: Courses
+            - rowgroup [ref=f21e41]:
+              - row [ref=f21e42]:
+                - columnheader "Title" [ref=f21e43]
+                - columnheader "Visibility" [ref=f21e44]
+                - columnheader "Interest" [ref=f21e45]
+                - columnheader "Active Learners" [ref=f21e46]
+                - columnheader "Active Cohorts" [ref=f21e47]
+                - columnheader "Cohorts" [ref=f21e48]
+            - rowgroup [ref=f21e49]:
+              - row [ref=f21e50]:
+                - cell [ref=f21e51]:
+                  - link "Content Widgets - Demo Reference" [ref=f21e52] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/courses/8bc127c1-edf1-4997-b7fc-35fdf8604f30
+                - cell "Coming soon" [ref=f21e53]
+                - cell "0" [ref=f21e54]
+                - cell "0" [ref=f21e55]
+                - cell "0" [ref=f21e56]
+                - cell [ref=f21e57]:
+                  - img "None" [ref=f21e58]: —
+              - row [ref=f21e59]:
+                - cell [ref=f21e60]:
+                  - link "Functionality Demo - Application gated course" [ref=f21e61] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/courses/271eeb30-94db-4261-b409-19888b0ead7d
+                - cell "Published" [ref=f21e62]
+                - cell "0" [ref=f21e63]
+                - cell "0" [ref=f21e64]
+                - cell "0" [ref=f21e65]
+                - cell [ref=f21e66]:
+                  - img "None" [ref=f21e67]: —
+              - row [ref=f21e68]:
+                - cell [ref=f21e69]:
+                  - link "Functionality Demo - Course Parts" [ref=f21e70] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22
+                - cell "Published" [ref=f21e71]
+                - cell "0" [ref=f21e72]
+                - cell "1" [ref=f21e73]
+                - cell "0" [ref=f21e74]
+                - cell [ref=f21e75]:
+                  - img "None" [ref=f21e76]: —
+              - row [ref=f21e77]:
+                - cell [ref=f21e78]:
+                  - link "Functionality Demo - Per-placement Due Dates" [ref=f21e79] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/courses/4d63a96b-feff-4a38-8aac-44742a5da6bd
+                - cell "Published" [ref=f21e80]
+                - cell "0" [ref=f21e81]
+                - cell "0" [ref=f21e82]
+                - cell "0" [ref=f21e83]
+                - cell [ref=f21e84]:
+                  - img "None" [ref=f21e85]: —
+              - row [ref=f21e86]:
+                - cell [ref=f21e87]:
+                  - 'link "Functionality Demo - Price: currency without cents" [ref=f21e88] [cursor=pointer]':
+                    - /url: /educator/organisations/demodev/courses/32da7dad-8f10-4eeb-8cf3-c4abcbe1d6c1
+                - cell "Published" [ref=f21e89]
+                - cell "0" [ref=f21e90]
+                - cell "0" [ref=f21e91]
+                - cell "0" [ref=f21e92]
+                - cell [ref=f21e93]:
+                  - img "None" [ref=f21e94]: —
+              - row [ref=f21e95]:
+                - cell [ref=f21e96]:
+                  - 'link "Functionality Demo - Price: expired sale" [ref=f21e97] [cursor=pointer]':
+                    - /url: /educator/organisations/demodev/courses/5bf97798-9176-427a-97b7-6acec9ad650f
+                - cell "Published" [ref=f21e98]
+                - cell "0" [ref=f21e99]
+                - cell "0" [ref=f21e100]
+                - cell "0" [ref=f21e101]
+                - cell [ref=f21e102]:
+                  - img "None" [ref=f21e103]: —
+              - row [ref=f21e104]:
+                - cell [ref=f21e105]:
+                  - 'link "Functionality Demo - Price: fixed" [ref=f21e106] [cursor=pointer]':
+                    - /url: /educator/organisations/demodev/courses/f5ce0728-70d2-4eaf-b4c4-bba906895941
+                - cell "Published" [ref=f21e107]
+                - cell "0" [ref=f21e108]
+                - cell "0" [ref=f21e109]
+                - cell "0" [ref=f21e110]
+                - cell [ref=f21e111]:
+                  - img "None" [ref=f21e112]: —
+              - row [ref=f21e113]:
+                - cell [ref=f21e114]:
+                  - 'link "Functionality Demo - Price: from" [ref=f21e115] [cursor=pointer]':
+                    - /url: /educator/organisations/demodev/courses/ff6ecf0f-9885-4646-bb1c-c3727964cca4
+                - cell "Published" [ref=f21e116]
+                - cell "0" [ref=f21e117]
+                - cell "0" [ref=f21e118]
+                - cell "0" [ref=f21e119]
+                - cell [ref=f21e120]:
+                  - img "None" [ref=f21e121]: —
+              - row [ref=f21e122]:
+                - cell [ref=f21e123]:
+                  - 'link "Functionality Demo - Price: on request" [ref=f21e124] [cursor=pointer]':
+                    - /url: /educator/organisations/demodev/courses/4b6c9adb-1821-4db6-9496-108f47c77dfe
+                - cell "Published" [ref=f21e125]
+                - cell "0" [ref=f21e126]
+                - cell "0" [ref=f21e127]
+                - cell "0" [ref=f21e128]
+                - cell [ref=f21e129]:
+                  - img "None" [ref=f21e130]: —
+              - row [ref=f21e131]:
+                - cell [ref=f21e132]:
+                  - 'link "Functionality Demo - Price: range" [ref=f21e133] [cursor=pointer]':
+                    - /url: /educator/organisations/demodev/courses/be08d6a5-6777-4e2a-898f-eadc270746ab
+                - cell "Published" [ref=f21e134]
+                - cell "0" [ref=f21e135]
+                - cell "0" [ref=f21e136]
+                - cell "0" [ref=f21e137]
+                - cell [ref=f21e138]:
+                  - img "None" [ref=f21e139]: —
+        - generic [ref=f21e140]:
+          - paragraph [ref=f21e141]: Showing 1–10 of 14 courses
+          - generic [ref=f21e142]:
+            - generic [ref=f21e143]: Page 1 of 2
+            - generic [ref=f21e144]:
+              - generic [ref=f21e145] [cursor=pointer]: "1"
+              - link "2" [ref=f21e146] [cursor=pointer]:
+                - /url: /educator/organisations/demodev/courses?courses-page=2
+              - link "Next" [ref=f21e147] [cursor=pointer]:
+                - /url: /educator/organisations/demodev/courses?courses-page=2
+  - contentinfo [ref=f21e150]:
+    - generic [ref=f21e151]:
+      - paragraph [ref=f21e152]: © 2026 FirstClass
+      - navigation "Legal" [ref=f21e153]:
+        - link "Terms and Conditions" [ref=f21e154] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f21e155] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f21e156] [cursor=pointer]: misure-of-admonitions
+  - list [ref=f21e158]:
+    - listitem [ref=f21e159]:
+      - link "Hide »" [ref=f21e160] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f21e161]:
+      - link "Toggle Theme" [ref=f21e162] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f21e165]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f21e166] [cursor=pointer]
+      - link "History /educator/organisations/demodev/courses" [ref=f21e167] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f21e168]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f21e169] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f21e170] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f21e171]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f21e172] [cursor=pointer]
+      - 'link "Time CPU: 396.37ms (1050.06ms)" [ref=f21e173] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f21e174]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f21e175] [cursor=pointer]
+      - link "Settings" [ref=f21e176] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f21e177]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f21e178] [cursor=pointer]
+      - link "Headers" [ref=f21e179] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f21e180]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f21e181] [cursor=pointer]
+      - link "Request interface" [ref=f21e182] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f21e183]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f21e184] [cursor=pointer]
+      - link "SQL 19 queries in 294.00ms" [ref=f21e185] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f21e186]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f21e187] [cursor=pointer]
+      - link "Static files 14 files used" [ref=f21e188] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f21e189]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f21e190] [cursor=pointer]
+      - link "Templates educator_interface/interface.html" [ref=f21e191] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f21e192]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f21e193] [cursor=pointer]
+      - link "Alerts" [ref=f21e194] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f21e195]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f21e196] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f21e197] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f21e198]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f21e199] [cursor=pointer]
+      - link "Signals 130 receivers of 15 signals" [ref=f21e200] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f21e201]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f21e202] [cursor=pointer]
+      - link "Community" [ref=f21e203] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f21e204]:
+      - checkbox "Enable for next and successive requests" [ref=f21e205] [cursor=pointer]
+      - generic [ref=f21e206]: Intercept redirects
+    - listitem [ref=f21e207]:
+      - checkbox "Enable for next and successive requests" [ref=f21e208] [cursor=pointer]
+      - generic [ref=f21e209]: Profiling

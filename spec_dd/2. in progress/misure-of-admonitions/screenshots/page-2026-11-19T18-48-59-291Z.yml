@@ -1,0 +1,145 @@
+- generic [active] [ref=f20e1]:
+  - banner [ref=f20e2]:
+    - link [ref=f20e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f20e4]
+      - heading "FirstClass" [level=1] [ref=f20e5]
+    - navigation [ref=f20e6]:
+      - generic [ref=f20e7]:
+        - generic [ref=f20e8]:
+          - button "Notifications, 3 new" [ref=f20e9]
+          - status:
+            - generic [ref=f20e13]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f20e14]: "3"
+        - button "Open user menu for Demo" [ref=f20e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f20e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f20e18]:
+    - generic [ref=f20e20]:
+      - link "Back" [ref=f20e21] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f20e26]:
+        - heading "Functionality Demo - Application gated course" [level=1] [ref=f20e27]
+        - paragraph [ref=f20e28]: A course you have to apply for
+        - generic [ref=f20e30]:
+          - generic [ref=f20e34]:
+            - paragraph [ref=f20e35]: Lessons
+            - paragraph [ref=f20e36]: 1 lesson
+          - generic [ref=f20e42]:
+            - paragraph [ref=f20e43]: Price
+            - paragraph [ref=f20e44]:
+              - generic [ref=f20e45]:
+                - generic [ref=f20e46]: "Original price:"
+                - text: ZAR1,499.00
+                - generic [ref=f20e47]: "Now:"
+                - text: ZAR999.00
+          - generic [ref=f20e51]:
+            - paragraph [ref=f20e52]: Enrolment
+            - paragraph [ref=f20e53]: By application
+      - generic [ref=f20e54]:
+        - complementary [ref=f20e55]:
+          - generic [ref=f20e57]:
+            - paragraph [ref=f20e58]:
+              - generic [ref=f20e59]:
+                - generic [ref=f20e60]: "Original price:"
+                - text: ZAR1,499.00
+                - generic [ref=f20e61]: "Now:"
+                - text: ZAR999.00 incl. VAT
+            - generic [ref=f20e62]:
+              - paragraph [ref=f20e63]: Application required
+              - paragraph [ref=f20e64]: Apply and we'll review your request.
+            - link "View my application" [ref=f20e65] [cursor=pointer]:
+              - /url: /applications/status/5c147a49-cbdb-405c-9564-f9513e7e264e/
+            - generic [ref=f20e66]:
+              - heading "This course includes" [level=3] [ref=f20e67]
+              - list [ref=f20e68]:
+                - listitem [ref=f20e69]: 1 lesson
+        - generic [ref=f20e70]:
+          - generic [ref=f20e71]:
+            - heading "About this course" [level=2] [ref=f20e72]
+            - paragraph [ref=f20e74]: Places on this course are limited, so we ask everyone to apply. Filling in the application takes about five minutes.
+          - generic [ref=f20e75]:
+            - heading "Course content" [level=2] [ref=f20e76]
+            - navigation "Course outline" [ref=f20e78]:
+              - list [ref=f20e79]:
+                - listitem [ref=f20e80]:
+                  - generic [ref=f20e81]:
+                    - generic [ref=f20e82]: "1."
+                    - generic [ref=f20e83]: Locked
+                    - generic [ref=f20e87]: Welcome
+  - contentinfo [ref=f20e88]:
+    - generic [ref=f20e89]:
+      - paragraph [ref=f20e90]: © 2026 FirstClass
+      - navigation "Legal" [ref=f20e91]:
+        - link "Terms and Conditions" [ref=f20e92] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f20e93] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f20e94] [cursor=pointer]: misure-of-admonitions
+  - list [ref=f20e96]:
+    - listitem [ref=f20e97]:
+      - link "Hide »" [ref=f20e98] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f20e99]:
+      - link "Toggle Theme" [ref=f20e100] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f20e103]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f20e104] [cursor=pointer]
+      - link "History /courses/functionality-demo-application-gated-course/detail/" [ref=f20e105] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f20e106]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f20e107] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f20e108] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f20e109]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f20e110] [cursor=pointer]
+      - 'link "Time CPU: 196.37ms (456.62ms)" [ref=f20e111] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f20e112]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f20e113] [cursor=pointer]
+      - link "Settings" [ref=f20e114] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f20e115]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f20e116] [cursor=pointer]
+      - link "Headers" [ref=f20e117] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f20e118]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f20e119] [cursor=pointer]
+      - link "Request course_detail" [ref=f20e120] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f20e121]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f20e122] [cursor=pointer]
+      - link "SQL 23 queries in 142.20ms" [ref=f20e123] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f20e124]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f20e125] [cursor=pointer]
+      - link "Static files 10 files used" [ref=f20e126] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f20e127]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f20e128] [cursor=pointer]
+      - link "Templates learner_interface/course_detail.html" [ref=f20e129] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f20e130]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f20e131] [cursor=pointer]
+      - link "Alerts" [ref=f20e132] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f20e133]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f20e134] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f20e135] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f20e136]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f20e137] [cursor=pointer]
+      - link "Signals 130 receivers of 15 signals" [ref=f20e138] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f20e139]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f20e140] [cursor=pointer]
+      - link "Community" [ref=f20e141] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f20e142]:
+      - checkbox "Enable for next and successive requests" [ref=f20e143] [cursor=pointer]
+      - generic [ref=f20e144]: Intercept redirects
+    - listitem [ref=f20e145]:
+      - checkbox "Enable for next and successive requests" [ref=f20e146] [cursor=pointer]
+      - generic [ref=f20e147]: Profiling

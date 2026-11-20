@@ -1,0 +1,86 @@
+- generic [active] [ref=f7e1]:
+  - banner [ref=f7e2]:
+    - link [ref=f7e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f7e4]
+      - heading "FirstClass" [level=1] [ref=f7e5]
+    - navigation [ref=f7e6]:
+      - generic [ref=f7e7]:
+        - generic [ref=f7e8]:
+          - button "Notifications, 3 new" [ref=f7e9]
+          - status:
+            - generic [ref=f7e13]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f7e14]: "3"
+        - button "Open user menu for Demo" [ref=f7e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f7e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f7e18]:
+    - generic [ref=f7e20]:
+      - link "Back" [ref=f7e21] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f7e26]:
+        - generic [ref=f7e27]: Assessment
+        - heading "Functionality Demo - show end with Quiz" [level=1] [ref=f7e28]
+        - paragraph [ref=f7e29]: A tour of the content system
+        - generic [ref=f7e31]:
+          - generic [ref=f7e35]:
+            - paragraph [ref=f7e36]: Lessons
+            - paragraph [ref=f7e37]: 2 lessons
+          - generic [ref=f7e41]:
+            - paragraph [ref=f7e42]: Enrolment
+            - paragraph [ref=f7e43]: Free · open
+      - generic [ref=f7e44]:
+        - complementary [ref=f7e45]:
+          - generic [ref=f7e47]:
+            - generic [ref=f7e48]:
+              - paragraph [ref=f7e49]: Free · open to everyone
+              - paragraph [ref=f7e50]: One click. No credit card.
+            - link "Start course" [ref=f7e51] [cursor=pointer]:
+              - /url: /courses/functionality-demo-show-end-with-quiz/1/
+            - generic [ref=f7e52]:
+              - heading "This course includes" [level=3] [ref=f7e53]
+              - list [ref=f7e54]:
+                - listitem [ref=f7e55]: 2 lessons
+                - listitem [ref=f7e56]: Includes assessments
+        - generic [ref=f7e57]:
+          - generic [ref=f7e58]:
+            - heading "About this course" [level=2] [ref=f7e59]
+            - paragraph [ref=f7e61]: A much longer description of the course. Lorem ipsum text here
+          - generic [ref=f7e62]:
+            - heading "Course content" [level=2] [ref=f7e63]
+            - navigation "Course outline" [ref=f7e65]:
+              - list [ref=f7e66]:
+                - listitem [ref=f7e67]:
+                  - generic [ref=f7e68]:
+                    - generic [ref=f7e69]: "1."
+                    - generic [ref=f7e70]: Completed
+                    - link "Content title 2 - Before Quiz" [ref=f7e75] [cursor=pointer]:
+                      - /url: /courses/functionality-demo-show-end-with-quiz/1/
+                - listitem [ref=f7e76]:
+                  - generic [ref=f7e77]:
+                    - generic [ref=f7e78]: "2."
+                    - generic [ref=f7e79]: Not started
+                    - link "Mid course Quiz" [ref=f7e84] [cursor=pointer]:
+                      - /url: /courses/functionality-demo-show-end-with-quiz/2/
+                - listitem [ref=f7e85]:
+                  - generic [ref=f7e86]:
+                    - generic [ref=f7e87]: "3."
+                    - generic [ref=f7e88]: Locked
+                    - generic [ref=f7e92]: Content title 4 - After quiz
+                - listitem [ref=f7e93]:
+                  - generic [ref=f7e94]:
+                    - generic [ref=f7e95]: "4."
+                    - generic [ref=f7e96]: Locked
+                    - generic [ref=f7e100]: End course Quiz
+  - contentinfo [ref=f7e101]:
+    - generic [ref=f7e102]:
+      - paragraph [ref=f7e103]: © 2026 FirstClass
+      - navigation "Legal" [ref=f7e104]:
+        - link "Terms and Conditions" [ref=f7e105] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f7e106] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f7e107] [cursor=pointer]: misure-of-admonitions
+  - generic "Show toolbar" [ref=f7e109]: DJDT

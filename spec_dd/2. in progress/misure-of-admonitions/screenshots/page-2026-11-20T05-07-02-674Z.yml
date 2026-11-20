@@ -1,0 +1,81 @@
+- generic [active] [ref=f12e1]:
+  - banner [ref=f12e2]:
+    - link [ref=f12e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f12e4]
+      - heading "FirstClass" [level=1] [ref=f12e5]
+    - navigation [ref=f12e6]:
+      - generic [ref=f12e7]:
+        - generic [ref=f12e8]:
+          - button "Notifications, 3 new" [ref=f12e9]
+          - status:
+            - generic [ref=f12e13]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f12e14]: "3"
+        - button "Open user menu for Demo" [ref=f12e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f12e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f12e18]:
+    - generic [ref=f12e20]:
+      - link "Back" [ref=f12e21] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f12e26]:
+        - heading "Functionality Demo - Application gated course" [level=1] [ref=f12e27]
+        - paragraph [ref=f12e28]: A course you have to apply for
+        - generic [ref=f12e30]:
+          - generic [ref=f12e34]:
+            - paragraph [ref=f12e35]: Lessons
+            - paragraph [ref=f12e36]: 1 lesson
+          - generic [ref=f12e42]:
+            - paragraph [ref=f12e43]: Price
+            - paragraph [ref=f12e44]:
+              - generic [ref=f12e45]:
+                - generic [ref=f12e46]: "Original price:"
+                - text: ZAR1,499.00
+                - generic [ref=f12e47]: "Now:"
+                - text: ZAR999.00
+          - generic [ref=f12e51]:
+            - paragraph [ref=f12e52]: Enrolment
+            - paragraph [ref=f12e53]: By application
+      - generic [ref=f12e54]:
+        - complementary [ref=f12e55]:
+          - generic [ref=f12e57]:
+            - paragraph [ref=f12e58]:
+              - generic [ref=f12e59]:
+                - generic [ref=f12e60]: "Original price:"
+                - text: ZAR1,499.00
+                - generic [ref=f12e61]: "Now:"
+                - text: ZAR999.00 incl. VAT
+            - generic [ref=f12e62]:
+              - paragraph [ref=f12e63]: Application required
+              - paragraph [ref=f12e64]: Apply and we'll review your request.
+            - link "View my application" [ref=f12e65] [cursor=pointer]:
+              - /url: /applications/status/5c147a49-cbdb-405c-9564-f9513e7e264e/
+            - generic [ref=f12e66]:
+              - heading "This course includes" [level=3] [ref=f12e67]
+              - list [ref=f12e68]:
+                - listitem [ref=f12e69]: 1 lesson
+        - generic [ref=f12e70]:
+          - generic [ref=f12e71]:
+            - heading "About this course" [level=2] [ref=f12e72]
+            - paragraph [ref=f12e74]: Places on this course are limited, so we ask everyone to apply. Filling in the application takes about five minutes.
+          - generic [ref=f12e75]:
+            - heading "Course content" [level=2] [ref=f12e76]
+            - navigation "Course outline" [ref=f12e78]:
+              - list [ref=f12e79]:
+                - listitem [ref=f12e80]:
+                  - generic [ref=f12e81]:
+                    - generic [ref=f12e82]: "1."
+                    - generic [ref=f12e83]: Locked
+                    - generic [ref=f12e87]: Welcome
+  - contentinfo [ref=f12e88]:
+    - generic [ref=f12e89]:
+      - paragraph [ref=f12e90]: © 2026 FirstClass
+      - navigation "Legal" [ref=f12e91]:
+        - link "Terms and Conditions" [ref=f12e92] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f12e93] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f12e94] [cursor=pointer]: misure-of-admonitions
+  - generic "Show toolbar" [ref=f12e96]: DJDT
