@@ -294,6 +294,10 @@ def test_saving_one_entry_twice_announces_both_saves(
         expect(announcer).to_have_text("Saved Alpha.")
         expect(panel.get_by_role("button", name="Edit Alpha")).to_be_focused()
 
+    # The announcer clears and refills a moment after the list refreshes, so
+    # wait for the observer to have seen all three changes before comparing.
+    page.wait_for_function("window.announced.length >= 3")
+
     # The region starts empty, so only the second save has a text to clear.
     assert page.evaluate("window.announced") == [
         "Saved Alpha.",
