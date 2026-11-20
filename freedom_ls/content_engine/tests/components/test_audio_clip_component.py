@@ -209,3 +209,59 @@ class TestErrorState:
 
         (button,) = tree.xpath("//button[@aria-label='Try again: The talk']")
         assert button.get("x-on:click") == "retry"
+
+
+class TestTranscript:
+    def test_transcript_renders_a_toggle_and_a_markdown_panel(
+        self, mock_site_context: object
+    ) -> None:
+        _audio_file()
+        markup = (
+            '<c-audio-clip src="audio/talk.mp3" title="The talk">\n\n'
+            "First paragraph.\n\nSecond paragraph.\n\n</c-audio-clip>"
+        )
+
+        tree = _tree(markup)
+
+        (toggle,) = tree.xpath("//button[@*[name()='x-on:click']='toggleTranscript']")
+        assert "Show transcript" in toggle.text_content()
+        (panel,) = tree.xpath("//div[@x-show='transcriptOpen']")
+        assert [p.text_content() for p in panel.xpath(".//p")] == [
+            "First paragraph.",
+            "Second paragraph.",
+        ]
+
+    def test_whitespace_only_slot_renders_no_toggle_or_panel(
+        self, mock_site_context: object
+    ) -> None:
+        _audio_file()
+
+        tree = _tree(
+            '<c-audio-clip src="audio/talk.mp3" title="The talk">\n\n \n\n</c-audio-clip>'
+        )
+
+        assert not tree.xpath("//button[@*[name()='x-on:click']='toggleTranscript']")
+        assert not tree.xpath("//div[@x-show='transcriptOpen']")
+
+    def test_no_slot_renders_no_toggle(self, mock_site_context: object) -> None:
+        _audio_file()
+
+        tree = _tree(CLIP.format(extra=""))
+
+        assert not tree.xpath("//button[@*[name()='x-on:click']='toggleTranscript']")
+
+    def test_script_and_event_handler_in_the_transcript_are_stripped(
+        self, mock_site_context: object
+    ) -> None:
+        _audio_file()
+        markup = (
+            '<c-audio-clip src="audio/talk.mp3" title="The talk">\n\n'
+            'Safe words <script>alert("xss")</script>'
+            '<img src="x" onerror="alert(1)">\n\n</c-audio-clip>'
+        )
+
+        html = _render(markup)
+
+        assert "Safe words" in html
+        assert "<script" not in html
+        assert "onerror" not in html

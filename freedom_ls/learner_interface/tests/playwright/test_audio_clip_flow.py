@@ -36,6 +36,7 @@ BEEP_MP3 = FIXTURES / "beep.mp3"
 FIRST_CLIP = "Dialogue one"
 SECOND_CLIP = "Dialogue two"
 THIRD_CLIP = "Dialogue three"
+TRANSCRIPT = "Anna: Good morning. Ben: Good morning, how are you?"
 
 
 def _audio_file(name: str, source: Path, duration_seconds: float | None) -> None:
@@ -67,7 +68,8 @@ def _clip_course(user: User, third_clip_duration: float | None = None) -> Course
     _audio_file("three", TONE_MP3, third_clip_duration)
     _audio_file("beep", BEEP_MP3, None)
     content = (
-        f'<c-audio-clip src="audio/one.mp3" title="{FIRST_CLIP}"></c-audio-clip>\n\n'
+        f'<c-audio-clip src="audio/one.mp3" title="{FIRST_CLIP}">\n\n{TRANSCRIPT}\n\n'
+        "</c-audio-clip>\n\n"
         f'<c-audio-clip src="audio/two.mp3" title="{SECOND_CLIP}"></c-audio-clip>\n\n'
         f'<c-audio-clip src="audio/three.mp3" title="{THIRD_CLIP}"></c-audio-clip>\n\n'
         '<c-audio src="audio/beep.mp3" label="Beep"></c-audio>'
@@ -329,6 +331,59 @@ def test_pressing_the_speak_button_stops_a_playing_clip_and_back(
     expect(speak.locator("[data-icon='audio_play']")).to_be_visible()
 
 
+def _transcript_toggle(page: Page, title: str = FIRST_CLIP) -> Locator:
+    return page.get_by_role("group", name=title).get_by_role(
+        "button", name=re.compile("transcript$")
+    )
+
+
+def test_learner_opens_and_closes_a_transcript(
+    live_server,
+    live_server_site,
+    mock_site_context,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    _open_clips(live_server, page, logged_in_user)
+    toggle = _transcript_toggle(page)
+    text = page.get_by_text(TRANSCRIPT)
+
+    expect(toggle).to_have_text("Show transcript")
+    expect(toggle).to_have_attribute("aria-expanded", "false")
+    expect(text).to_be_hidden()
+    expect(_transcript_toggle(page, SECOND_CLIP)).to_have_count(0)
+
+    toggle.click()
+    expect(toggle).to_have_text("Hide transcript")
+    expect(toggle).to_have_attribute("aria-expanded", "true")
+    expect(text).to_be_visible()
+
+    toggle.click()
+    expect(toggle).to_have_attribute("aria-expanded", "false")
+    expect(text).to_be_hidden()
+
+
+def test_transcript_opens_at_once_with_reduced_motion(
+    live_server,
+    live_server_site,
+    mock_site_context,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    page.emulate_media(reduced_motion="reduce")
+    _open_clips(live_server, page, logged_in_user)
+
+    _transcript_toggle(page).click()
+
+    # No auto-waiting: the panel must be fully open straight after the click.
+    panel = page.get_by_text(TRANSCRIPT)
+    assert panel.is_visible()
+    height = panel.evaluate("el => el.parentElement.getBoundingClientRect().height")
+    assert height >= panel.evaluate("el => el.parentElement.scrollHeight")
+
+
 def test_clip_fits_every_viewport(
     live_server,
     live_server_site,
@@ -338,6 +393,8 @@ def test_clip_fits_every_viewport(
 ) -> None:
     page = logged_in_page
     _open_clips(live_server, page, logged_in_user)
+    _transcript_toggle(page).click()
+    expect(page.get_by_text(TRANSCRIPT)).to_be_visible()
 
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
@@ -378,6 +435,27 @@ def test_failed_clip_shows_an_error_and_retries_from_its_position(
     expect(_elapsed(page)).not_to_have_text(re.compile(r"0:0\d"))
     expect(_elapsed(page)).not_to_have_text("0:00")
     assert _to_seconds(_elapsed(page).inner_text()) >= 10
+
+
+def test_transcript_opens_in_the_error_state(
+    live_server,
+    live_server_site,
+    mock_site_context,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    course = _clip_course(logged_in_user)
+    page.route("**/content/audio/**", lambda route: route.abort())
+    page.goto(form_item_url(live_server, course, "view_course_item"))
+
+    page.get_by_role("button", name=f"Play {FIRST_CLIP}").click()
+    expect(
+        page.get_by_role("group", name=FIRST_CLIP).get_by_role("status")
+    ).to_have_text("This audio couldn't load.")
+    _transcript_toggle(page).click()
+
+    expect(page.get_by_text(TRANSCRIPT)).to_be_visible()
 
 
 def test_retry_that_fails_again_announces_the_error_again(

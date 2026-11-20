@@ -12,7 +12,10 @@ Attributes:
   title  The visible name. Required: it names the group and the seek bar.
   kind   Optional short label at the right of the title, set in mono, such as
          "Listening exercise".
-The slot, when given, is the transcript.
+The slot, when given, is the transcript: markdown, shown under a Show
+transcript toggle that works in every state, the error state included. A slot
+of only whitespace renders no toggle. The panel's x-show hides it from
+assistive technology while collapsed.
 
 data-src holds the redirect URL, never a signed one, so playback after the
 signature expires still works. Each clip owns its audio element, created by the
@@ -82,6 +85,18 @@ from the saved position.
               <c-button variant="secondary" size="small" aria_label="Try again: {{ title }}" x-on:click="retry">Try again</c-button>
             </div>
           </div>
+          {% if slot.strip %}
+            <c-button variant="link" size="small" x-on:click="toggleTranscript"
+                      x-bind:aria-expanded="transcriptOpen" x-bind:aria-controls="$id('audio-clip-transcript')"
+                      class="group/transcript gap-1">
+              <c-icon name="dropdown" class="size-4 group-aria-expanded/transcript:rotate-180 motion-safe:transition-[rotate]" />
+              <span x-text="transcriptToggleText">Show transcript</span>
+            </c-button>
+            <div x-bind:id="$id('audio-clip-transcript')" x-show="transcriptOpen" x-collapse x-cloak
+                 class="mt-2 space-y-4 text-sm motion-reduce:transition-none!">
+              {% markdown slot %}
+            </div>
+          {% endif %}
         </div>
       </div>
     </div>

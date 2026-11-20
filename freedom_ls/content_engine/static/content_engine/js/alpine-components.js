@@ -321,6 +321,7 @@ document.addEventListener("alpine:init", () => {
         duration: null, // the stored length until the element reports its own
         pendingSeek: null, // a seek made before the element had metadata
         dragging: false, // true between the first input and the change of a drag
+        transcriptOpen: false,
 
         init() {
             const stored = parseFloat(this.$el.dataset.duration);
@@ -340,6 +341,12 @@ document.addEventListener("alpine:init", () => {
         },
         get totalText() {
             return this.duration === null ? "--:--" : formatClipTime(this.duration, this.duration);
+        },
+        get transcriptToggleText() {
+            return this.transcriptOpen ? "Hide transcript" : "Show transcript";
+        },
+        toggleTranscript() {
+            this.transcriptOpen = !this.transcriptOpen;
         },
         get statusText() {
             return this.failed ? "This audio couldn't load." : "";
