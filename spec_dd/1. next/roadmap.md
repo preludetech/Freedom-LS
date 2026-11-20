@@ -13,7 +13,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 - 🔴 High · `educator-interface-refactor-2-dashboard-and-audit-log` (Educator interface code layout, via `sacaa-compliance`)
 - 🔴 High · `sacaa-compliance-2-shuffle` (SACAA compliance)
-- 🔴 High · `learner-profile-use-panels-framework-2-editable-list-panel` (Account area on panels)
 - 🔴 High · `learner-profile-use-panels-framework-3-account-page` (Account area on panels)
 - 🔴 High · `multi-step-course-applications-1-review-states` (Multi-step course applications)
 - 🟠 Medium · `content-widget-longer-audio` (Audio content widgets)
@@ -138,7 +137,6 @@ Priority: 🔴 High
 
 Every signed-in user's account pages move onto the panel framework before public-profile editing lands there. Parent: `learner-profile-use-panels-framework`.
 
-- `learner-profile-use-panels-framework-2-editable-list-panel` — **in progress** — A framework panel for a short list a user adds to, edits and removes from, lighter than a data table.
 - `learner-profile-use-panels-framework-3-account-page` — **in progress** — Users edit their name and picture on panels in an account area; email and password pages share its shell.
 
 ![Account area on panels](roadmap_diagrams/account-area-on-panels.svg)
@@ -158,7 +156,7 @@ Priority: 🔴 High
 
 Learners publish a profile to help them find work, and visitors browse an index of them. Parent: `learner-public-profile`.
 
-- `learner-public-profile-2-profile-and-page` — **blocked** by `learner-profile-use-panels-framework-2-editable-list-panel`, `learner-profile-use-panels-framework-3-account-page` — Learners switch on a shareable public profile with blurb, work experience, place, open to work and links.
+- `learner-public-profile-2-profile-and-page` — **blocked** by `learner-profile-use-panels-framework-3-account-page` — Learners switch on a shareable public profile with blurb, work experience, place, open to work and links.
 - `learner-public-profile-3-completed-courses` — **blocked** by `learner-public-profile-2-profile-and-page` — Courses a learner completed on the site appear on their public profile. The learner can hide each one.
 - `learner-public-profile-4-certificates` — **blocked** by `learner-public-profile-2-profile-and-page` — Learners upload self-reported certificates. Organisation staff upload certificates on the educator-interface learner page.
 - `learner-public-profile-5-index` — **blocked** by `learner-public-profile-3-completed-courses` — A public index of switched-on profiles, named per site, with search, filters and sorts.
