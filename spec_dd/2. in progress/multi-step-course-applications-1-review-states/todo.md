@@ -16,7 +16,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
 - [ ] (user) Decide whether a withdrawn draft's check-your-answers page should hide its Edit links: today it still shows them, though every write redirects to the status page (`application_check_answers` keeps `submitted = app.is_submitted`); if yes, gate the links on `can_submit` too
