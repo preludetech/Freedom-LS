@@ -116,6 +116,31 @@ def test_component_reference_flow(
         assert heights[f"{size} secondary"] == heights[f"{size} primary"]
         assert heights[f"{size} error"] == heights[f"{size} primary"]
 
+    # Form controls, h3 headings and table row rules are styled by the shell's
+    # own base layer: an input once had no border or padding, its label sat
+    # beside it, an h3 rendered at body weight and body rows had no rule.
+    page.set_viewport_size({"width": 1920, "height": 1080})
+    reason_field = page.locator("#reason-dialog-required").locator("[name=reason]")
+    reason_label = page.locator("#reason-dialog-required label").first
+    field_style = reason_field.evaluate(
+        "el => { const s = getComputedStyle(el);"
+        " return [s.borderTopWidth, s.paddingTop, s.display]; }"
+    )
+    assert field_style[0] != "0px"
+    assert field_style[1] != "0px"
+    assert reason_label.evaluate("el => getComputedStyle(el).display") == "block"
+    label_box = reason_label.bounding_box()
+    field_box = reason_field.bounding_box()
+    assert label_box is not None
+    assert field_box is not None
+    assert label_box["y"] + label_box["height"] <= field_box["y"] + 1
+    heading_weight = page.locator("#page-header-level-3 h3").evaluate(
+        "el => getComputedStyle(el).fontWeight"
+    )
+    assert int(heading_weight) >= 600
+    body_row = page.locator("#data-table-child-rows tbody tr").first
+    assert body_row.evaluate("el => getComputedStyle(el).borderBottomWidth") != "0px"
+
     # The child-rows example's chevron closes and opens the rows under it.
     page.set_viewport_size(QA_VIEWPORTS[2])
     child_table = page.locator("#data-table-child-rows table")

@@ -170,7 +170,7 @@
     }
 }
 
-/* Element defaults for the tables and headings the framework draws. The
+/* Element defaults for the tables, headings and form controls the framework draws. The
  * templates style their own markup with utilities but leave a cell's padding
  * and colour, and a heading's size and weight, to the page's element rules, so
  * the shell supplies them. Tailwind's preflight resets headings to inherit, so
@@ -184,8 +184,28 @@
         @apply text-lg sm:text-xl lg:text-3xl font-bold text-on-surface;
     }
 
+    h3 {
+        @apply font-semibold text-on-surface;
+    }
+
     table {
         @apply w-full border-collapse;
+    }
+
+    tbody tr {
+        @apply border-b border-border last:border-b-0;
+    }
+
+    label {
+        @apply block text-sm font-medium text-muted mb-1;
+    }
+
+    input:not([type="checkbox"], [type="radio"], [type="hidden"], [type="submit"], [type="button"]),
+    textarea,
+    select {
+        @apply w-full px-3 py-2 border border-border rounded-md shadow-sm
+               focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary
+               disabled:bg-surface-2 disabled:cursor-not-allowed;
     }
 
     th {
