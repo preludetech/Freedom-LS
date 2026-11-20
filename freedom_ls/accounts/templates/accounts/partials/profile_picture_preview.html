@@ -1,0 +1,9 @@
+{% comment %}
+The stored profile picture, or the initials, on the Profile picture panel.
+Context: stored_user, oob. A name save sends it out of band, so the initials
+follow the name without the panel, and a file chosen in its form, being
+re-rendered.
+{% endcomment %}
+<div id="account-picture-preview"{% if oob %} hx-swap-oob="true"{% endif %}>
+    <c-panel-avatar-chip size="xl" name_hidden="true" :name="stored_user.display_name" :initials="stored_user.initials" :user_id="stored_user.pk" :picture_url="stored_user.profile_picture_url" />
+</div>

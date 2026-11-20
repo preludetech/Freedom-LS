@@ -47,6 +47,30 @@ def assert_header_avatar(
     assert page.evaluate(f"window.{NO_RELOAD_MARKER}") is True
 
 
+def test_a_name_save_keeps_the_picture_the_user_has_chosen(
+    live_server, logged_in_page: Page, logged_in_user: User
+) -> None:
+    page = logged_in_page
+    page.goto(
+        reverse_url(
+            live_server,
+            "accounts:account_profile",
+            kwargs={"path_string": "personal-details"},
+        )
+    )
+    page.get_by_label(PICTURE_LABEL).set_input_files(
+        {"name": "me.jpg", "mimeType": "image/jpeg", "buffer": jpeg_bytes()}
+    )
+
+    page.get_by_label("First name").fill("Grace")
+    page.get_by_label("Last name").fill("Hopper")
+    page.get_by_role("button", name="Save", exact=True).click()
+
+    expect(page.get_by_text("Name saved")).to_be_visible()
+    expect(page.locator("#account-picture-preview")).to_contain_text("GH")
+    assert page.get_by_label(PICTURE_LABEL).evaluate("input => input.files.length") == 1
+
+
 def test_change_the_name_inline_then_follow_the_sidebar(
     live_server, logged_in_page: Page, logged_in_user: User
 ) -> None:

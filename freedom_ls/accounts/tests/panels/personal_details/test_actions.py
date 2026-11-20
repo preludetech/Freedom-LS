@@ -56,7 +56,32 @@ def test_a_valid_save_stores_the_names_and_re_renders_the_form_with_them(signed_
     assert 'value="Grace"' in html
     assert 'value="Hopper"' in html
     assert "Name saved" in html
-    assert ACCOUNT_CHANGED in response["HX-Trigger"]
+
+
+def test_a_name_save_does_not_refresh_the_picture_panel(signed_in):
+    client, _ = signed_in
+
+    response = client.post(
+        EDIT_NAME_URL,
+        {"first_name": "Grace", "last_name": "Hopper"},
+        headers={"HX-Request": "true"},
+    )
+
+    assert ACCOUNT_CHANGED not in response["HX-Trigger"]
+
+
+def test_a_name_save_swaps_the_picture_preview_with_the_new_initials(signed_in):
+    client, _ = signed_in
+
+    response = client.post(
+        EDIT_NAME_URL,
+        {"first_name": "Grace", "last_name": "Hopper"},
+        headers={"HX-Request": "true"},
+    )
+
+    preview = response.content.decode().split('id="account-picture-preview"')[1]
+    assert preview.startswith(' hx-swap-oob="true"')
+    assert "GH" in preview
 
 
 def test_blank_names_are_accepted_and_stored_blank(signed_in):

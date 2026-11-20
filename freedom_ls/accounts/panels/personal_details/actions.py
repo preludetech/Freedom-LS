@@ -40,18 +40,26 @@ def account_saved_response(
     message: str,
     *,
     close_modal: bool = False,
+    swap_picture_preview: bool = False,
 ) -> HttpResponse:
     """200, not EditAction's 204: htmx drops a 204's body, and this body
     carries the re-rendered form. The queued message becomes the toast
     through HtmxMessagesMiddleware. The header avatar rides along out of band,
     read afresh because the removal clears the picture with .update(), which
-    leaves ctx.instance holding the old one."""
+    leaves ctx.instance holding the old one. `swap_picture_preview` sends the
+    Profile picture panel's preview the same way, for a save that changes it
+    without refreshing that panel."""
     messages.success(ctx.request, message)
-    avatar = render_to_string(
-        "partials/header_avatar.html",
-        {"avatar_user": get_own_user(ctx.request), "oob": True},
+    user = get_own_user(ctx.request)
+    out_of_band = render_to_string(
+        "partials/header_avatar.html", {"avatar_user": user, "oob": True}
     )
-    response = HttpResponse(html + avatar)
+    if swap_picture_preview:
+        out_of_band += render_to_string(
+            "accounts/partials/profile_picture_preview.html",
+            {"stored_user": user, "oob": True},
+        )
+    response = HttpResponse(html + out_of_band)
     response["HX-Trigger"] = build_hx_trigger(
         action.get_success_events(ctx.instance), close_modal=close_modal
     )
@@ -64,15 +72,22 @@ class AccountEditAction(EditAction):
     renders_in_footer = False
     autofocus_first_field = False
     success_message: str
+    #: On for a save that changes the picture preview without firing the
+    #: Profile picture panel's refresh event.
+    swaps_picture_preview: bool = False
 
     def __init__(
-        self, user: User, form_class: type[forms.ModelForm], form_title: str
+        self,
+        user: User,
+        form_class: type[forms.ModelForm],
+        form_title: str,
+        success_events: tuple[str, ...],
     ) -> None:
         super().__init__(
             form_class=form_class,
             form_title=form_title,
             instance=user,
-            success_events=(ACCOUNT_CHANGED,),
+            success_events=success_events,
         )
 
     def get_capability(self, ctx: PanelContext) -> str | None:
@@ -87,7 +102,13 @@ class AccountEditAction(EditAction):
             self.get_fragment_context(ctx, self.get_unbound_form(ctx)),
             request=ctx.request,
         )
-        return account_saved_response(ctx, self, html, self.success_message)
+        return account_saved_response(
+            ctx,
+            self,
+            html,
+            self.success_message,
+            swap_picture_preview=self.swaps_picture_preview,
+        )
 
 
 class EditNameAction(AccountEditAction):
@@ -96,9 +117,14 @@ class EditNameAction(AccountEditAction):
     capability = CHANGE_OWN_NAME
     template_name = "accounts/partials/name_form.html"
     success_message = "Name saved"
+    # The preview shows the name's initials, but the panel's refresh event
+    # would re-render its upload form and drop a file the user has chosen.
+    swaps_picture_preview = True
 
     def __init__(self, user: User) -> None:
-        super().__init__(user, form_class=UserForm, form_title="Name")
+        super().__init__(
+            user, form_class=UserForm, form_title="Name", success_events=()
+        )
 
 
 class UploadProfilePictureAction(AccountEditAction):
@@ -110,7 +136,10 @@ class UploadProfilePictureAction(AccountEditAction):
 
     def __init__(self, user: User) -> None:
         super().__init__(
-            user, form_class=ProfilePictureForm, form_title="Profile picture"
+            user,
+            form_class=ProfilePictureForm,
+            form_title="Profile picture",
+            success_events=(ACCOUNT_CHANGED,),
         )
 
 

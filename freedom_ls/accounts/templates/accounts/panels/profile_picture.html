@@ -7,7 +7,7 @@ Context: stored_user, upload (the upload action's form context).
 
 {% block panel_body %}
     <div class="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
-        <c-panel-avatar-chip size="xl" name_hidden="true" :name="stored_user.display_name" :initials="stored_user.initials" :user_id="stored_user.pk" :picture_url="stored_user.profile_picture_url" />
+        {% include "accounts/partials/profile_picture_preview.html" with stored_user=stored_user only %}
         <div class="w-full min-w-0">
             {% include "accounts/partials/profile_picture_form.html" with form=upload.form action_url=upload.action_url %}
         </div>
