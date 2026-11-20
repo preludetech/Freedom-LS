@@ -417,6 +417,11 @@ the selection clears. Every control stays inside the bar at 375px.
 - A record's own name is a field with a Save button on its Settings panel, posted inline to the
   `edit` action (`renders_in_footer = False`), not a dialog.
   Dialogs are for confirmations and multi-field forms.
+- An inline form works with JavaScript off: `partials/inline_record_form.html` carries a method,
+  an action and a CSRF token, and a `FormPanelAction` with `renders_in_footer = False` answers a
+  POST that has no `HX-Request` header with a 303 to the page, the save or the field errors as a
+  flash. A template that renders its own inline form carries the same three, and a test that
+  reads such an action's fragment sends `HX-Request: true`.
 - Entering an email for a person who may already exist searches as you type and offers the
   matches, so the person picks rather than remembers.
 - An inline form in a panel (a record's name on its Settings tab) shows a field error as one line

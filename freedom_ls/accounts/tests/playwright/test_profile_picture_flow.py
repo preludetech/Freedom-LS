@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Browser, Page, expect
 
 from freedom_ls.accounts.models import User
 from freedom_ls.accounts.tests.profile_picture_samples import jpeg_bytes
@@ -69,6 +69,44 @@ def test_a_name_save_keeps_the_picture_the_user_has_chosen(
     expect(page.get_by_text("Name saved")).to_be_visible()
     expect(page.locator("#account-picture-preview")).to_contain_text("GH")
     assert page.get_by_label(PICTURE_LABEL).evaluate("input => input.files.length") == 1
+
+
+def test_the_name_and_picture_forms_save_with_javascript_off(
+    live_server, browser: Browser, logged_in_page: Page, logged_in_user: User
+) -> None:
+    context = browser.new_context(
+        java_script_enabled=False,
+        storage_state=logged_in_page.context.storage_state(),
+    )
+    page = context.new_page()
+    personal_details = reverse_url(
+        live_server,
+        "accounts:account_profile",
+        kwargs={"path_string": "personal-details"},
+    )
+    page.goto(personal_details)
+
+    page.get_by_label("First name").fill("Grace")
+    page.get_by_label("Last name").fill("Hopper")
+    page.get_by_role("button", name="Save", exact=True).click()
+
+    expect(page).to_have_url(personal_details)
+    expect(page.get_by_text("Name saved")).to_be_visible()
+    expect(page.get_by_label("First name")).to_have_value("Grace")
+
+    page.get_by_label(PICTURE_LABEL).set_input_files(
+        {"name": "me.jpg", "mimeType": "image/jpeg", "buffer": jpeg_bytes()}
+    )
+    page.get_by_role("button", name="Save picture").click()
+
+    expect(page).to_have_url(personal_details)
+    expect(page.get_by_text("Profile picture saved")).to_be_visible()
+    expect(page.locator("main img[data-profile-picture]")).to_have_attribute(
+        "src", PICTURE_SRC
+    )
+    stored = User._base_manager.get(pk=logged_in_user.pk)
+    assert stored.first_name == "Grace"
+    context.close()
 
 
 def test_change_the_name_inline_then_follow_the_sidebar(
@@ -138,6 +176,11 @@ def test_change_the_name_inline_then_follow_the_sidebar(
     expect(page.get_by_text("Profile picture removed")).to_be_visible()
     expect(preview).to_have_count(0)
     expect(page.get_by_role("button", name="Remove picture")).to_have_count(0)
+    # The refresh removed the button the closing dialog had refocused; focus
+    # must land somewhere in the panel, not fall back to <body>.
+    assert page.evaluate(
+        "document.activeElement.closest('[data-panel=\"profile-picture\"]') !== null"
+    )
     assert_header_avatar(page, name="Ada Lovelace", initials="AL", picture=False)
     assert User._base_manager.get(pk=logged_in_user.pk).profile_picture.name == ""
 

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, cast
 from urllib.parse import urlsplit
 
 from django import forms
+from django.contrib import messages
 from django.core.exceptions import (
     NON_FIELD_ERRORS,
     ImproperlyConfigured,
@@ -16,7 +17,13 @@ from django.core.exceptions import (
 from django.db import transaction
 from django.db.models import Model, QuerySet
 from django.db.models.deletion import ProtectedError, RestrictedError
-from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed
+from django.http import (
+    Http404,
+    HttpRequest,
+    HttpResponse,
+    HttpResponseNotAllowed,
+    HttpResponseRedirect,
+)
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 
@@ -319,6 +326,21 @@ class ModalPanelAction(PanelAction):
     trigger_template_name = "panel_framework/partials/modal_trigger.html"
 
 
+def _page_redirect(ctx: PanelContext) -> HttpResponse:
+    """303, so a refresh or Back cannot post the form again."""
+    return HttpResponseRedirect(ctx.page_url or ctx.base_url, status=303)
+
+
+def _flash_error_lines(form: forms.BaseForm) -> list[str]:
+    """A refused form's errors as flash lines. Each field error names its
+    field, because a flash sits away from the field it is about."""
+    lines = [str(error) for error in form.non_field_errors()]
+    for name, errors in form.errors.items():
+        if name in form.fields:
+            lines.extend(f"{form[name].label}: {error}" for error in errors)
+    return lines
+
+
 class FormPanelAction(ModalPanelAction):
     """An action whose dialog is a form.
 
@@ -447,12 +469,28 @@ class FormPanelAction(ModalPanelAction):
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         """Process form submission."""
         form = self.get_form(ctx)
+        plain_inline_post = self._is_plain_inline_post(ctx)
         if form.is_valid():
-            return self.form_valid(ctx, form)
+            response = self.form_valid(ctx, form)
+            return _page_redirect(ctx) if plain_inline_post else response
         # Here as well as in get_fragment_context, for a form_invalid override
         # that renders without it.
         self._add_choose_again_errors(ctx, form)
+        if plain_inline_post:
+            for message in _flash_error_lines(form):
+                messages.error(ctx.request, message)
+            return _page_redirect(ctx)
         return self.form_invalid(ctx, form)
+
+    def _is_plain_inline_post(self, ctx: PanelContext) -> bool:
+        """Whether a form rendered in a panel was posted by the browser
+        itself, with JavaScript off. The fragment an htmx post swaps in would
+        then be the whole page, so the answer is the page the form sits on,
+        with the outcome as a flash."""
+        return (
+            not self.renders_in_footer
+            and ctx.request.headers.get("HX-Request") != "true"
+        )
 
     def _add_choose_again_errors(self, ctx: PanelContext, form: forms.BaseForm) -> None:
         """A browser cannot be handed a file back, so a re-rendered file input

@@ -2,10 +2,14 @@
 The profile picture upload form, and the upload action's GET, 200 and 422
 fragment. Context: form, action_url. The form targets itself, so a 422 swaps
 the error in place. The field error is one line under the input, role=alert,
-with the id Django names in the input's aria-describedby.
+with the id Django names in the input's aria-describedby. With JavaScript off
+the form posts plainly, which is why it carries a method, an action and a CSRF
+token; the action then redirects to the page with the outcome as a flash.
 {% endcomment %}
 {% with field=form.profile_picture %}
 <form id="account-picture-form"
+      method="post"
+      action="{{ action_url }}"
       hx-post="{{ action_url }}"
       hx-target="#account-picture-form"
       hx-swap="outerHTML"
@@ -16,6 +20,7 @@ with the id Django names in the input's aria-describedby.
       data-refocus-id="{{ field.id_for_label }}"
       x-on:htmx:after-request="refocus"
       class="flex flex-col gap-3 space-y-0">
+    {% csrf_token %}
     {% if form.non_field_errors %}
         <c-panel-notice tone="error" data-error-summary tabindex="-1">{{ form.non_field_errors }}</c-panel-notice>
     {% endif %}

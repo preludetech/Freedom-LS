@@ -10,6 +10,8 @@ from ..helpers import normalised_form_markup
 # The loading text reads "Saving…" (the single ellipsis character), so this is not a byte copy of a render that read "Saving...".
 GOLDEN_INLINE_FORM_WITHOUT_FILE_FIELD = """
 <form id="stub-form"
+      method="post"
+      action="/x"
       hx-post="/x"
       hx-target="#stub-form"
       hx-swap="outerHTML"

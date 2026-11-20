@@ -31,6 +31,8 @@ requires_tailwind_rebuild: true
   now routes to `freedom_ls.accounts.views.account_area`.
 - `ProfilePictureForm` no longer has a `remove_profile_picture` checkbox field. Removal goes through
   `freedom_ls.accounts.forms.remove_profile_picture(user)`.
+- `ProfilePictureForm` refuses a submit with no file ("Choose a picture first."). It used to
+  validate and save nothing.
 - The template `accounts/profile.html` is deleted. An override of it in a downstream project is no
   longer rendered; move its customisations into the new templates under
   `freedom_ls/accounts/templates/accounts/` (`account_page.html`, `_account_shell.html`,
@@ -50,5 +52,11 @@ requires_tailwind_rebuild: true
   empty.
 - If you override `panel_framework/partials/inline_record_form.html`, its `<form>` class changed from
   `space-y-3` to `flex flex-col gap-3 space-y-0`.
+- An inline form in a panel now also works with JavaScript off. `inline_record_form.html` gained
+  `method="post"`, `action="{{ action_url }}"` and `{% csrf_token %}`; an override of it, or a
+  template that renders its own inline form, needs the same three. A `FormPanelAction` with
+  `renders_in_footer = False` answers a POST that has no `HX-Request` header with a 303 to the
+  page, the outcome as a flash. A test that posts to such an action and reads the fragment must
+  send `HX-Request: true`.
 - Search your project for `account_profile_picture`, `edit_profile` and `accounts/profile.html` and
   update each reference as described above.

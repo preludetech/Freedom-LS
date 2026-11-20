@@ -6,12 +6,15 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Mapping
+from dataclasses import replace
 from typing import cast
 
 import lxml.html
 import pytest
 
 from django import forms
+from django.contrib.messages import get_messages
+from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.sites.models import Site
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -2236,7 +2239,7 @@ class _PrefixedUploadAction(StubUploadFormAction):
 def _post_upload(
     action: FormPanelAction, post: dict[str, object]
 ) -> lxml.html.HtmlElement:
-    request = RequestFactory().post("/", post)
+    request = RequestFactory().post("/", post, headers={"HX-Request": "true"})
     request.user = make_staff_user()
     response = action.handle_submit(_ctx(request))
     assert response.status_code == 422
@@ -2392,7 +2395,9 @@ def test_a_multipart_post_to_an_inline_form_action_reaches_form_valid_with_the_f
     None
 ):
     request = RequestFactory().post(
-        "/", {"name": "Ada", "attachment": _upload(b"payload")}
+        "/",
+        {"name": "Ada", "attachment": _upload(b"payload")},
+        headers={"HX-Request": "true"},
     )
     _InlineUploadAction.received.clear()
 
@@ -2409,7 +2414,9 @@ def test_a_multipart_post_to_an_inline_edit_action_saves_the_file(
 ) -> None:
     item = make_stub_file(name="Record")
     request = RequestFactory().post(
-        "/", {"name": "Record", "attachment": _upload(b"payload")}
+        "/",
+        {"name": "Record", "attachment": _upload(b"payload")},
+        headers={"HX-Request": "true"},
     )
     request.user = make_staff_user()
 
@@ -3078,3 +3085,48 @@ def test_add_and_add_another_on_the_last_free_place_saves_the_entry(
     )
 
     assert StubEntry.objects.filter(parent=parent, title="Last").exists()
+
+
+def _plain_post(post: dict[str, object]) -> HttpRequest:
+    """A POST as a browser with JavaScript off sends it: no HX-Request header."""
+    request = RequestFactory().post("/", post)
+    request.session = {}
+    request._messages = FallbackStorage(request)
+    return request
+
+
+def _page_ctx(request: HttpRequest) -> PanelContext:
+    return replace(_ctx(request), page_url="/the-page")
+
+
+def test_a_plain_post_to_an_inline_form_action_saves_and_redirects_to_the_page() -> (
+    None
+):
+    request = _plain_post({"name": "Ada", "attachment": _upload()})
+    _InlineUploadAction.received.clear()
+
+    response = _InlineUploadAction().handle_submit(_page_ctx(request))
+
+    assert (response.status_code, response["Location"]) == (303, "/the-page")
+    assert len(_InlineUploadAction.received) == 1
+
+
+def test_a_refused_plain_post_to_an_inline_form_action_redirects_with_its_errors() -> (
+    None
+):
+    request = _plain_post({"name": "Ada"})
+
+    response = _InlineUploadAction().handle_submit(_page_ctx(request))
+
+    assert (response.status_code, response["Location"]) == (303, "/the-page")
+    assert [str(message) for message in get_messages(request)] == [
+        "Attachment: This field is required."
+    ]
+
+
+def test_a_plain_post_to_a_dialog_form_action_still_answers_with_the_fragment() -> None:
+    request = _plain_post({"name": "Ada", "attachment": _upload()})
+
+    response = StubUploadFormAction().handle_submit(_page_ctx(request))
+
+    assert response.content == b"saved"

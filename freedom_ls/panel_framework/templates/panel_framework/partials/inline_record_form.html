@@ -9,8 +9,13 @@ message alone, role=alert, with the id Django names in the input's
 aria-describedby. The form spaces its children with a flex gap, not space-y: the
 hidden request-error element is the last child, and sibling margins would leave
 12px under the field row, where a gap is only laid out between visible children.
+With JavaScript off the form posts plainly, which is why it carries a method, an
+action and a CSRF token; the action then redirects to the page with the outcome
+as a flash.
 {% endcomment %}
 <form id="{{ form_id }}"
+      method="post"
+      action="{{ action_url }}"
       hx-post="{{ action_url }}"
       hx-target="#{{ form_id }}"
       hx-swap="outerHTML"
@@ -19,6 +24,7 @@ hidden request-error element is the last child, and sibling margins would leave
       data-refocus-id="{{ form.visible_fields.0.id_for_label }}"
       x-on:htmx:after-request="refocus"
       class="flex flex-col gap-3 space-y-0">
+    {% csrf_token %}
     {% if form.non_field_errors %}
         <c-panel-callout tone="error" data-error-summary tabindex="-1">{{ form.non_field_errors }}</c-panel-callout>
     {% endif %}

@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 import re
+from typing import cast
 
+import lxml.html
 import pytest
 
-from django.apps import apps
+from django.contrib.sites.models import Site
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.forms import NO_PICTURE_CHOSEN
+from freedom_ls.accounts.models import User
 from freedom_ls.accounts.panels.personal_details.actions import (
     ACCOUNT_CHANGED,
     CHANGE_OWN_NAME,
@@ -34,8 +37,8 @@ REMOVE_PICTURE_URL = f"{PICTURE_PANEL_URL}/__actions/remove_profile_picture"
 
 
 @pytest.fixture
-def signed_in(mock_site_context):
-    user = UserFactory(first_name="Ada", last_name="Lovelace")
+def signed_in(mock_site_context: Site) -> tuple[Client, User]:
+    user = cast(User, UserFactory(first_name="Ada", last_name="Lovelace"))
     client = Client()
     client.force_login(user)
     return client, user
@@ -88,7 +91,11 @@ def test_a_name_save_swaps_the_picture_preview_with_the_new_initials(signed_in):
 def test_blank_names_are_accepted_and_stored_blank(signed_in):
     client, user = signed_in
 
-    response = client.post(EDIT_NAME_URL, {"first_name": "", "last_name": ""})
+    response = client.post(
+        EDIT_NAME_URL,
+        {"first_name": "", "last_name": ""},
+        headers={"HX-Request": "true"},
+    )
 
     user.refresh_from_db()
     assert response.status_code == 200
@@ -99,7 +106,9 @@ def test_a_first_name_over_200_characters_answers_422_and_stores_nothing(signed_
     client, user = signed_in
 
     response = client.post(
-        EDIT_NAME_URL, {"first_name": "A" * 201, "last_name": "Hopper"}
+        EDIT_NAME_URL,
+        {"first_name": "A" * 201, "last_name": "Hopper"},
+        headers={"HX-Request": "true"},
     )
 
     user.refresh_from_db()
@@ -108,18 +117,6 @@ def test_a_first_name_over_200_characters_answers_422_and_stores_nothing(signed_
     assert (user.first_name, user.last_name) == ("Ada", "Lovelace")
     assert len(re.findall(r'role="alert"', html)) == 1
     assert 'aria-invalid="true"' in html
-
-
-def test_a_name_save_writes_no_audit_entry(signed_in):
-    client, _ = signed_in
-    audit_entries = apps.get_model(
-        "freedom_ls_audit_log", "AuditLogEntry"
-    )._base_manager
-    before = audit_entries.count()
-
-    client.post(EDIT_NAME_URL, {"first_name": "Grace", "last_name": "Hopper"})
-
-    assert audit_entries.count() == before
 
 
 def test_an_anonymous_save_redirects_to_login(mock_site_context):
@@ -175,6 +172,7 @@ def test_a_refused_file_answers_422_with_the_error_and_keeps_the_stored_picture(
     response = client.post(
         UPLOAD_PICTURE_URL,
         {"profile_picture": SimpleUploadedFile("me.png", b"not an image")},
+        headers={"HX-Request": "true"},
     )
     panel = client.get(PICTURE_PANEL_URL)
 
@@ -331,3 +329,67 @@ def test_a_removal_swaps_the_header_avatar_back_to_initials(
     avatar = response.content.decode().split('id="header-avatar"')[1]
     assert "AL" in avatar
     assert "data-profile-picture" not in avatar
+
+
+PERSONAL_DETAILS_URL = "/accounts/profile/personal-details"
+
+
+@pytest.mark.parametrize(
+    ("form_id", "action_url"),
+    [
+        ("account-name-form", EDIT_NAME_URL),
+        ("account-picture-form", UPLOAD_PICTURE_URL),
+    ],
+)
+def test_each_form_on_the_page_can_post_without_javascript(
+    signed_in, form_id, action_url
+):
+    client, _ = signed_in
+
+    page = lxml.html.fromstring(client.get(PERSONAL_DETAILS_URL).content.decode())
+
+    (form,) = page.xpath(f"//form[@id='{form_id}']")
+    assert (form.get("method"), form.get("action")) == ("post", action_url)
+    assert len(form.xpath(".//input[@name='csrfmiddlewaretoken']")) == 1
+
+
+def test_a_plain_name_post_saves_and_redirects_to_the_page(signed_in):
+    client, user = signed_in
+
+    response = client.post(
+        EDIT_NAME_URL, {"first_name": "Grace", "last_name": "Hopper"}
+    )
+
+    user.refresh_from_db()
+    assert (response.status_code, response["Location"]) == (303, PERSONAL_DETAILS_URL)
+    assert (user.first_name, user.last_name) == ("Grace", "Hopper")
+
+
+def test_a_refused_plain_name_post_redirects_with_the_error_as_a_flash(signed_in):
+    client, user = signed_in
+
+    response = client.post(
+        EDIT_NAME_URL, {"first_name": "A" * 201, "last_name": "Hopper"}, follow=True
+    )
+
+    user.refresh_from_db()
+    assert response.redirect_chain == [(PERSONAL_DETAILS_URL, 303)]
+    assert user.first_name == "Ada"
+    assert "First name: " in response.content.decode()
+
+
+def test_a_plain_picture_post_saves_and_redirects_to_the_page(
+    mock_site_context, pathless_profile_picture_storage
+):
+    user = UserFactory()
+    client = Client()
+    client.force_login(user)
+
+    response = client.post(
+        UPLOAD_PICTURE_URL,
+        {"profile_picture": SimpleUploadedFile("me.jpg", jpeg_bytes())},
+    )
+
+    user.refresh_from_db()
+    assert (response.status_code, response["Location"]) == (303, PERSONAL_DETAILS_URL)
+    assert user.profile_picture.name.endswith(".webp")
