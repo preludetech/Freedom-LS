@@ -18,7 +18,13 @@ components; `Skill(fls-dev:frontend-styling)` owns the theme tokens.
 
 - `panels.py`: a `Panel` subclass is a definition (model, fields, children, template); an instance
   is bound fresh per request from a `PanelContext` and is what renders. `PanelStack`, `TabSet`,
-  `DataTablePanel` and `InstanceDetailsPanel` are the shapes.
+  `DataTablePanel`, `InstanceDetailsPanel` and `EditableListPanel` are the shapes.
+  `EditableListPanel` is a short list of the entries that belong to the page's instance, each
+  with Edit and Remove and one Add trigger. A subclass sets `form_class` (or overrides
+  `get_form_class()`), `parent_field`, `empty_message`, and implements `get_entries()` and
+  `get_summary(entry)`, which returns an `EditableListSummary(title, detail)`. `max_entries`
+  caps the list (the cap line replaces the Add trigger), `noun` names an entry in the dialogs,
+  and `layout` is `"list"` (default) or `"table"`.
 - `views.py`: `ListViewConfig` (a section's table page, with its quick view) and
   `ObjectViewConfig` / `InstanceView` (one record's page, with its tabs). `StatusBadge` and
   `HeaderStat` feed the page header.
@@ -56,6 +62,10 @@ components; `Skill(fls-dev:frontend-styling)` owns the theme tokens.
   hooks take `ctx`, and the action's URL is `action_url` in every fragment. A GET to an action
   with no `template_name` answers 405. `CreateInstanceAction`'s form never takes the page's
   instance.
+  `EditableListPanel.get_actions()` returns `EditableListAddAction`, `EditableListEditAction`
+  and `EditableListRemoveAction`. Each derives its capability from the entry model
+  (`add_`, `change_`, `delete_<model>`) and asks it of the parent instance; a subclass sets
+  `derive_capability = False` to state its own `capability` (or `None`).
 - `context.py`: `PanelContext`. `ctx.once(key, load)` reads a value once per request; the key
   names everything the value depends on, because every context of the request shares the store.
 - `filters.py`: declared table filters, applied on top of search and sort, in `PanelAction`'s shape.
@@ -252,10 +262,17 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
   detail under it in `text-sm text-muted` ("via Group A", "Individual"), the figure at the end in
   `tabular-nums`. Values are never joined into a sentence with dashes, and one word names a
   relation everywhere ("via", never "via" in one place and "through" in another).
-- An ordered list with an action on each entry is a data table inside `.panel-data-table`: one
-  `<tr>` per entry with its number, title and type in cells and its action in a
-  `<c-data-table-actions>` cell, spaced by the table's own row padding. It is never a flex list
-  with `gap-*` between rows and a button at the far end.
+- A numbered list with an action on each entry (the course outline) is a data table inside
+  `.panel-data-table`: one `<tr>` per entry with its number, title and type in cells and its
+  action in a `<c-data-table-actions>` cell, spaced by the table's own row padding. It is never a
+  flex list with `gap-*` between rows and a button at the far end. A short list of records the
+  user adds to, edits and removes is an `EditableListPanel`, not a hand-built table.
+- After an `EditableListPanel` add, edit or remove, focus lands on a named element and a polite
+  announcement is made in `#scope-announcer` (`pendingEntryAction` in `alpine-components.js`).
+  Add focuses the cap line when the add filled the list, else the new entry's Edit trigger
+  ("Added <title>."). Edit focuses that entry's Edit trigger ("Saved <title>."). Remove focuses
+  the next entry's Edit trigger, else the previous one's, else the Add trigger ("Removed
+  <title>."). A dialog closed without a change returns focus to its trigger.
 - A group row carries the row-detail chevron (`size-8`, `aria-expanded`, `aria-controls` naming
   its child rows) beside its title, and its children are the indented rows under it, open by
   default. An empty group shows its note as a child row.
@@ -486,7 +503,9 @@ template), `test_every_dialog_loading_text_ends_in_the_ellipsis_character`,
 `test_no_educator_module_sets_the_modal_trigger_template_by_hand`,
 `test_no_template_hand_writes_a_table_outside_the_table_components`,
 `test_no_button_hand_writes_a_touch_height`, `test_only_the_dialog_footer_makes_a_button_44px_tall_on_a_phone`
-and `test_every_expand_chevron_turns_when_its_control_opens`. In the browser,
+`test_every_expand_chevron_turns_when_its_control_opens` and
+`test_every_entry_trigger_names_its_entry` (every `<c-modal-trigger>` in
+`editable_list_entry_triggers.html` passes an `aria_label` naming its entry). In the browser,
 `educator_interface/tests/playwright/test_touch_targets.py` checks that a small button keeps its
 desktop height on a phone, that its hit area is 44px, and that a dialog footer's buttons are 44px tall.
 Run that file after any change to a panel template.
@@ -571,8 +590,9 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
   view while the page scrolls.
 - The table toolbar is one row at tablet and desktop widths; the search field is the part that
   shrinks.
-- An ordered list with per-entry actions is a data table: rows spaced by their cell padding only,
-  the chevron and the small action button inside the row next to its text.
+- A numbered list with per-entry actions (the course outline) is a data table: rows spaced by
+  their cell padding only, the chevron and the small action button inside the row next to its text.
+  A short editable list is an `EditableListPanel`.
 - A preview dialog is titled "<title> (Preview)" with its type chip and carries no "this is a
   preview" callout; the dialog shows its scrollbar and a bottom fade while more content lies
   below.
