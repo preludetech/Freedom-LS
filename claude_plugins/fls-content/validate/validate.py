@@ -25,11 +25,13 @@ The path can either be a file or a directory. if it is a directory then recurse 
 """
 
 import functools
+import itertools
 import logging
 import os.path
 import re
 import sys
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 import frontmatter
@@ -1092,16 +1094,22 @@ def _section_problem(
     return None
 
 
-def _condition_error(
-    file_path: Path, target: str, problem: str, fix: str, field: str = "when"
+def _form_error(
+    file_path: Path,
+    target: str,
+    problem: str,
+    fix: str,
+    field: str = "when",
+    header: str = "Invalid condition",
 ) -> str:
-    """Build the error block for an invalid `when` or a duplicated `slug`.
+    """Build the error block for an invalid `when`, a duplicated `slug` or a
+    bad shuffle setting.
 
     Same header/field/problem/fix layout as `_reference_error`.
     """
     return "\n".join(
         [
-            f"\n❌ Invalid condition in {file_path}",
+            f"\n❌ {header} in {file_path}",
             "",
             f"  • Field: {target} → {field}",
             f"    Problem: {problem}",
@@ -1119,23 +1127,77 @@ def _target_label(item: _FormSection, block_number: int) -> str:
     return f"content block {block_number}"
 
 
+_FormChildSection = FormContent | FormQuestion
+
+
+@dataclass(frozen=True)
+class _PageSections:
+    page: FormPage | None  # None only for a page file with no FORM_PAGE section
+    # The page file's sections in file order, each with the label error
+    # messages name it by.
+    sections: list[tuple[_FormSection, str]]
+
+    @property
+    def children(self) -> list[tuple[_FormChildSection, str]]:
+        return [(s, label) for s, label in self.sections if not isinstance(s, FormPage)]
+
+
+@dataclass(frozen=True)
+class _FormPages:
+    form: Form
+    pages: list[_PageSections]
+
+
+def _form_pages(all_parsed: Sequence[BaseBaseContentModel]) -> list[_FormPages]:
+    """Each form with its page files' sections, labelled.
+
+    Page order is the one content_save assigns: the page files sorted as
+    paths, so `10. x.yaml` comes before `2. y.yaml`. Content blocks are
+    numbered per page file, as _target_label names them.
+    """
+    forms = {
+        item.file_path.parent: item for item in all_parsed if isinstance(item, Form)
+    }
+    sections_by_file: dict[Path, list[_FormSection]] = {}
+    for item in all_parsed:
+        if isinstance(item, (FormPage, FormContent, FormQuestion)):
+            sections_by_file.setdefault(item.file_path, []).append(item)
+
+    result: list[_FormPages] = []
+    for form_dir, form in forms.items():
+        pages: list[_PageSections] = []
+        for page_file in sorted(f for f in sections_by_file if f.parent == form_dir):
+            block_number = 0
+            labelled: list[tuple[_FormSection, str]] = []
+            page: FormPage | None = None
+            for item in sections_by_file[page_file]:
+                if isinstance(item, FormContent):
+                    block_number += 1
+                if isinstance(item, FormPage):
+                    page = item
+                labelled.append((item, _target_label(item, block_number)))
+            pages.append(_PageSections(page=page, sections=labelled))
+        result.append(_FormPages(form=form, pages=pages))
+    return result
+
+
 def _slug_owners(
-    page_files: list[Path], sections_by_file: dict[Path, list[_FormSection]]
+    pages: list[_PageSections],
 ) -> tuple[dict[str, tuple[int, FormQuestion]], list[str]]:
     """Map each declared slug to its first question and page index, plus an
     error for every later question that reuses a slug."""
     owners: dict[str, tuple[int, FormQuestion]] = {}
     errors: list[str] = []
-    for page_index, page_file in enumerate(page_files):
-        for item in sections_by_file[page_file]:
+    for page_index, page in enumerate(pages):
+        for item, label in page.sections:
             if not isinstance(item, FormQuestion) or item.slug is None:
                 continue
             if item.slug in owners:
                 first_file = owners[item.slug][1].file_path
                 errors.append(
-                    _condition_error(
+                    _form_error(
                         item.file_path,
-                        _target_label(item, 0),
+                        label,
                         f'slug "{item.slug}" is declared twice: in {first_file} '
                         f"and {item.file_path}.",
                         "Give each question its own slug.",
@@ -1198,35 +1260,21 @@ def _condition_problem(
 def validate_form_conditions(all_parsed: Sequence[BaseBaseContentModel]) -> list[str]:
     """Check every `when` against the questions the same form declares earlier.
 
-    Page order is the one content_save assigns: the page files sorted as
-    paths, so `10. x.yaml` comes before `2. y.yaml`. Every error is reported,
-    never just the first.
+    Every error is reported, never just the first.
     """
     errors: list[str] = []
-    forms = {
-        item.file_path.parent: item for item in all_parsed if isinstance(item, Form)
-    }
-    sections_by_file: dict[Path, list[_FormSection]] = {}
-    for item in all_parsed:
-        if isinstance(item, (FormPage, FormContent, FormQuestion)):
-            sections_by_file.setdefault(item.file_path, []).append(item)
-
-    for form_dir, form in forms.items():
-        page_files = sorted(f for f in sections_by_file if f.parent == form_dir)
+    for form_pages in _form_pages(all_parsed):
+        form = form_pages.form
         gated: list[tuple[int, _FormSection, Condition, str]] = []
-        for page_index, page_file in enumerate(page_files):
-            block_number = 0
-            for item in sections_by_file[page_file]:
-                if isinstance(item, FormContent):
-                    block_number += 1
+        for page_index, page in enumerate(form_pages.pages):
+            for item, label in page.sections:
                 if item.when is not None:
-                    label = _target_label(item, block_number)
                     gated.append((page_index, item, item.when, label))
         if form.strategy == FormStrategy.QUIZ:
             if gated:
                 _, first, _, target = gated[0]
                 errors.append(
-                    _condition_error(
+                    _form_error(
                         first.file_path,
                         target,
                         "when is not allowed in a QUIZ form.",
@@ -1234,12 +1282,139 @@ def validate_form_conditions(all_parsed: Sequence[BaseBaseContentModel]) -> list
                     )
                 )
             continue
-        slug_owner, duplicate_errors = _slug_owners(page_files, sections_by_file)
+        slug_owner, duplicate_errors = _slug_owners(form_pages.pages)
         errors.extend(duplicate_errors)
         for page_index, item, condition, target in gated:
             problem = _condition_problem(condition, page_index, slug_owner)
             if problem is not None:
-                errors.append(_condition_error(item.file_path, target, *problem))
+                errors.append(_form_error(item.file_path, target, *problem))
+    return errors
+
+
+def _shuffle_error(
+    item: _FormChildSection, label: str, problem: str, fix: str, field: str
+) -> str:
+    return _form_error(
+        item.file_path,
+        label,
+        problem,
+        fix,
+        field=field,
+        header="Invalid shuffle setting",
+    )
+
+
+def _locked_option_errors(
+    child: _FormChildSection, label: str, form: Form
+) -> list[str]:
+    """One error per locked option on a question of a form that never shuffles
+    its options. A content block has no options."""
+    if not isinstance(child, FormQuestion) or form.shuffle_options:
+        return []
+    return [
+        _shuffle_error(
+            child,
+            label,
+            f'option "{option.text}" is locked, but shuffle_options is off for '
+            "this form, so it never moves.",
+            "Set shuffle_options: true in the form front matter, or remove locked.",
+            "options",
+        )
+        for option in child.options or []
+        if option.locked
+    ]
+
+
+def _first_member_of_each_group(
+    children: list[tuple[_FormChildSection, str]],
+) -> dict[str, tuple[_FormChildSection, str]]:
+    """The first (child, label) of each distinct group on the page, by group."""
+    first: dict[str, tuple[_FormChildSection, str]] = {}
+    for child, label in children:
+        if child.group:
+            first.setdefault(child.group, (child, label))
+    return first
+
+
+def _split_group_errors(children: list[tuple[_FormChildSection, str]]) -> list[str]:
+    """One error per group that opens a second run on this page, naming the
+    first child after its first run."""
+    errors: list[str] = []
+    ended_by: dict[
+        str, str
+    ] = {}  # group -> label of the child that ended its first run
+    reported: set[str] = set()
+    runs = [
+        list(run) for _, run in itertools.groupby(children, key=lambda c: c[0].group)
+    ]
+    for run, next_run in itertools.pairwise([*runs, []]):
+        child, label = run[0]
+        group = child.group
+        if not group:
+            continue
+        if group not in ended_by:
+            if next_run:
+                ended_by[group] = next_run[0][1]
+        elif group not in reported:
+            errors.append(
+                _shuffle_error(
+                    child,
+                    label,
+                    f'group "{group}" is split: {ended_by[group]} sits between '
+                    "its members.",
+                    f"Move the members together, or give {ended_by[group]} the "
+                    "same group.",
+                    "group",
+                )
+            )
+            reported.add(group)
+    return errors
+
+
+def validate_form_shuffle(all_parsed: Sequence[BaseBaseContentModel]) -> list[str]:
+    """Check group and locked against the form's strategy and shuffle knobs.
+
+    Every error is reported, never just the first.
+    """
+    errors: list[str] = []
+    for form_pages in _form_pages(all_parsed):
+        form = form_pages.form
+        is_quiz = form.strategy == FormStrategy.QUIZ
+        first_page_of_group: dict[str, tuple[int, str]] = {}  # group -> (index, title)
+        for page_index, page in enumerate(form_pages.pages):
+            children = page.children
+            for child, label in children:
+                errors.extend(_locked_option_errors(child, label, form))
+                if child.group and not is_quiz:
+                    errors.append(
+                        _shuffle_error(
+                            child,
+                            label,
+                            "group is only allowed on QUIZ forms (this form is "
+                            f"{form.strategy}).",
+                            "Remove group, or change the form's strategy to QUIZ.",
+                            "group",
+                        )
+                    )
+            if not is_quiz or page.page is None:
+                continue
+            errors.extend(_split_group_errors(children))
+            # A group repeats within a page; one cross-page error per later page is enough.
+            for group, (child, label) in _first_member_of_each_group(children).items():
+                first_index, first_title = first_page_of_group.setdefault(
+                    group, (page_index, page.page.title)
+                )
+                if first_index != page_index:
+                    errors.append(
+                        _shuffle_error(
+                            child,
+                            label,
+                            f'group "{group}" is used on page "{first_title}" '
+                            f'and page "{page.page.title}". A group stays on one page.',
+                            "Rename one of the groups, or move its members onto one page.",
+                            "group",
+                        )
+                    )
     return errors
 
 
@@ -1344,6 +1519,8 @@ def validate(path):
     for message in validate_due_date_placements(all_parsed):
         failed_files.append((path, message))
     for message in validate_form_conditions(all_parsed):
+        failed_files.append((path, message))
+    for message in validate_form_shuffle(all_parsed):
         failed_files.append((path, message))
     for message in validate_question_sections(all_parsed):
         failed_files.append((path, message))

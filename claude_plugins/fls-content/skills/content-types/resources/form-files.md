@@ -18,6 +18,9 @@ A form lives in a **numbered subdirectory** (e.g. `03. quiz/`) containing:
 | `quiz_show_incorrect` | `bool` | Conditional | Required when `strategy: QUIZ`; **must be absent** for `CATEGORY_VALUE_SUM` and `UNSCORED` |
 | `quiz_pass_percentage` | `int` (0–100) | Conditional | Required when `strategy: QUIZ`; **must be absent** for `CATEGORY_VALUE_SUM` and `UNSCORED` |
 | `submit_on_exit` | `bool` | No (default `false`) | If `true`, partial attempt is finalised on navigation away |
+| `shuffle_pages` | `bool` | No (default `false`) | QUIZ only. Each sitting serves the pages in a random order. See "Shuffling a quiz" below |
+| `shuffle_questions` | `bool` | No (default `false`) | QUIZ only. Each sitting serves each page's questions in a random order. `group` keeps questions together |
+| `shuffle_options` | `bool` | No (default `false`) | QUIZ only. Each sitting serves each question's options in a random order. `locked` pins an option |
 | `sections` | `list[path]` | No | Paths to the topic markdown files or `part.yaml` files the questions test, relative to `form.md`'s directory. Questions inherit this list unless they set their own `sections:` |
 | `subtitle` | `str` | No | Optional subtitle |
 | `description` | `str` | No | Optional description |
@@ -26,6 +29,8 @@ A form lives in a **numbered subdirectory** (e.g. `03. quiz/`) containing:
 | `due_days_after_registration` | `int` (>= 0) | No | Due this many days after the learner registers for the course. Not allowed together with `due_date`. |
 | `due_time` | `str` | No | Quoted 24-hour `"HH:MM"`. Needs `due_date` or `due_days_after_registration`. Without it the form is due at the end of that day. |
 | `uuid` | `str` | No | Written by `content_save` — **omit on new files** |
+
+A shuffle knob set to `true` on a `CATEGORY_VALUE_SUM` or `UNSCORED` form fails validation with `<knob> should only be set when strategy is QUIZ`. The knobs go in `form.md` only, never in a page header.
 
 Due-date fields follow the same rules as on a topic (see `topic-files.md`, "Due dates"). Write them in
 `form.md`; a `children:` entry can replace them for one placement (see `course-files.md`, "Due dates per
@@ -127,6 +132,7 @@ The parser selects `FORM_QUESTION` when a subsequent section contains a `questio
 | `slug` | `str` | No | The name a later `when` uses to refer to this question. Lowercase letters, digits and underscores only (`^[a-z0-9_]+$`), at most 100 characters, unique within the form. Only needed on a question that a `when` points at |
 | `when` | mapping | No | Show this question only when an earlier answer matches. See "Conditional pages, questions and content (`when`)" below |
 | `sections` | `list[path]` | No | Paths to the topic markdown files or `part.yaml` files this question tests, relative to the page yaml's directory. Overrides the form's `sections:` for this question; `sections: []` means none. See the `sections` section below |
+| `group` | `str` | No | QUIZ forms only. Keep-together group: children of one page that share this name stay together, in authored order, when the page's questions shuffle. See "Shuffling a quiz" below |
 | `uuid` | `str` | No | Written by `content_save` — **omit on new files** |
 | `meta` | `dict` | No | Optional metadata |
 | `tags` | `list[str]` | No | Optional tags |
@@ -138,6 +144,7 @@ Each option in `options`:
 | `text` | `str` | Yes | Display text |
 | `value` | `int` or `str` | Yes | Stored value |
 | `correct` | `bool` | No | For QUIZ strategy — marks the correct answer |
+| `locked` | `bool` | No (default `false`) | Used in shuffled quizzes: keep this option at its authored position while the others shuffle. Only valid when the form sets `shuffle_options: true` |
 | `uuid` | `str` | No | Written by `content_save` |
 
 ### Multiple-choice question example
@@ -278,6 +285,7 @@ The parser selects `FORM_CONTENT` when a subsequent section has a `content` key 
 |---|---|---|
 | `content` | `str` | Yes |
 | `when` | mapping | No |
+| `group` | `str` | No |
 | `uuid` | `str` | No |
 
 ### Example
@@ -356,6 +364,67 @@ question: What is your employer's name?
 type: short_text
 required: true
 ```
+
+---
+
+## Shuffling a quiz
+
+Three independent `form.md` knobs shuffle a `QUIZ` form once per sitting. All default to `false`:
+
+- `shuffle_pages: true` serves the pages in a random order.
+- `shuffle_questions: true` serves each page's questions and content blocks in a random order. It never moves a question to another page.
+- `shuffle_options: true` serves each question's options in a random order.
+
+Two controls keep a shuffled quiz correct.
+
+**`locked` on an option** keeps that option at its authored position while the others shuffle. Use it for "All of the above" and "None of these", which only make sense last:
+
+```yaml
+options:
+  - text: "Red"
+    value: red
+  - text: "Blue"
+    value: blue
+    correct: true
+  - text: "All of the above"
+    value: all
+    locked: true
+```
+
+**`group` on a content block or question** keeps a stimulus with its questions. Children of one page that share a `group` name form one block, in authored order, and the block moves as one when the page's questions shuffle:
+
+```yaml
+---
+content: |-
+  Look at the picture, then answer the next two questions.
+
+  <c-picture src="../images/shuffled-quiz-picture.svg" alt="..."></c-picture>
+group: sky-picture
+---
+group: sky-picture
+question: What is the yellow shape in the picture?
+type: multiple_choice
+```
+
+The validator checks:
+
+- `group` is only allowed on `QUIZ` forms.
+- `locked: true` needs `shuffle_options: true` on the form. Otherwise the option never moves, and the error says so.
+- A `group` name must not be empty or have leading or trailing spaces.
+- A `group` stays on one page. The same name on two pages is an error.
+- A group's members must be next to each other. Another child between them is an error naming that child.
+- A one-member group is valid. So is a group with no content block. Groups are a no-op when `shuffle_questions` is off, but they are still allowed.
+
+Writing a shuffled form:
+
+- **Reword "All of the above" and "None of these", else lock it, else turn `shuffle_options` off.** A lock fixes a position, not a meaning. "Both A and B" and "Both of the first two" still break when options move.
+- **No positional references.** Don't write "see question 3", "the diagram above" or "option (b)". Order changes per learner.
+- **Group a stimulus with its questions.** Don't rely on a passage sitting above the questions it supports.
+- **When `shuffle_pages` is on, put instructions in the form body** (the markdown after the `form.md` front matter), not on the first page. Any page can come first.
+- Authored page numbers still show in page URLs, even when the served order differs.
+- Shuffling is not proctoring. It makes copying harder and nothing more.
+
+Example: `demo_content/functionality_demo_shuffled_quiz/` has a `QUIZ` with all three knobs on, a locked option, and a `sky-picture` group made of a picture block and its two questions, next to ungrouped questions.
 
 ---
 

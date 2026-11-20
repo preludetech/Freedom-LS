@@ -1003,6 +1003,68 @@ def test_a_blank_or_padded_group_fails(tmp_path: Path, group: str) -> None:
     assert_validator_fails(result, "group")
 
 
+def test_a_group_on_a_non_quiz_form_fails(tmp_path: Path) -> None:
+    form_dir = write_shuffle_form(
+        tmp_path,
+        "strategy: CATEGORY_VALUE_SUM\n",
+        "---\nquestion: Why?\ntype: short_text\ngroup: reading\n",
+    )
+
+    result = run_validator(form_dir)
+
+    assert_validator_fails(result, "group is only allowed on QUIZ forms")
+
+
+def test_a_locked_option_with_shuffle_options_off_fails(tmp_path: Path) -> None:
+    form_dir = write_shuffle_form(
+        tmp_path,
+        QUIZ_HEADER,
+        "---\nquestion: Pick one\ntype: multiple_choice\n"
+        "options:\n  - text: A\n    value: a\n    correct: true\n"
+        "  - text: None of the above\n    value: z\n    locked: true\n",
+    )
+
+    result = run_validator(form_dir)
+
+    assert_validator_fails(
+        result,
+        'option "None of the above" is locked, but shuffle_options is off',
+    )
+
+
+def test_a_split_group_fails(tmp_path: Path) -> None:
+    form_dir = write_shuffle_form(
+        tmp_path,
+        QUIZ_HEADER + "shuffle_questions: true\n",
+        "---\nquestion: First?\ntype: short_text\ngroup: reading\n"
+        "---\nquestion: Between?\ntype: short_text\n"
+        "---\nquestion: Last?\ntype: short_text\ngroup: reading\n",
+    )
+
+    result = run_validator(form_dir)
+
+    assert_validator_fails(result, 'group "reading" is split')
+
+
+def test_a_group_on_two_pages_fails(tmp_path: Path) -> None:
+    form_dir = write_shuffle_form(
+        tmp_path,
+        QUIZ_HEADER + "shuffle_questions: true\n",
+        "---\nquestion: First?\ntype: short_text\ngroup: reading\n",
+    )
+    (form_dir / "2. other.yaml").write_text(
+        "---\ncontent_type: FORM_PAGE\ntitle: Other\n---\n"
+        "question: Second?\ntype: short_text\ngroup: reading\n",
+        encoding="utf-8",
+    )
+
+    result = run_validator(form_dir)
+
+    assert_validator_fails(
+        result, 'group "reading" is used on page "Page" and page "Other"'
+    )
+
+
 # ---------------------------------------------------------------------------
 # price
 # ---------------------------------------------------------------------------
