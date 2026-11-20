@@ -7,7 +7,6 @@ from django.test import override_settings
 
 from ..helpers import normalised_form_markup
 
-# The loading text reads "Saving…" (the single ellipsis character), so this is not a byte copy of a render that read "Saving...".
 GOLDEN_INLINE_FORM_WITHOUT_FILE_FIELD = """
 <form id="stub-form"
       method="post"
@@ -15,65 +14,22 @@ GOLDEN_INLINE_FORM_WITHOUT_FILE_FIELD = """
       hx-post="/x"
       hx-target="#stub-form"
       hx-swap="outerHTML"
-      hx-disabled-elt="find button[type='submit']"
+      hx-disabled-elt="#stub-form-submit"
+      hx-indicator="#stub-form-submit"
       x-data="refocusAfterRequest"
       data-refocus-id="id_name"
       x-on:htmx:after-request="refocus"
       class="flex flex-col gap-3 space-y-0">
-
-    <div class="flex flex-wrap items-end gap-3">
-
+    <div class="flex flex-wrap gap-3">
             <div class="form-field min-w-48 grow">
                 <label for="id_name">Name:</label>
                 <input type="text" name="name" required id="id_name">
             </div>
-
             <div class="form-field min-w-48 grow">
                 <label for="id_note">Note:</label>
                 <input type="text" name="note" required id="id_note">
             </div>
-
-
-
-
-<button
-
-
-
-
- type="submit"
-
-
-
-
-data-variant="primary"
-class="panel-btn panel-btn-primary panel-btn-sm "
-
->
-
-
-
-<span class="inline-flex items-center gap-2 [.htmx-request_&]:hidden">Save</span>
-<span class="hidden [.htmx-request_&]:inline-flex [.htmx-request_&]:items-center [.htmx-request_&]:gap-2">
-
-
-
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="inline size-5 animate-spin" aria-hidden="true" data-icon="loading"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
-
-
- Saving…</span>
-
-</button>
-
-
-
-
     </div>
-
-
-
-
-
 </form>
 """
 
@@ -142,3 +98,36 @@ def test_the_request_error_holder_is_empty_and_inside_the_form() -> None:
     assert holder.get("tabindex") == "-1"
     assert holder.get("hidden") is not None
     assert holder.text_content() == ""
+
+
+def test_the_form_holds_no_submit_button() -> None:
+    root = lxml.html.fromstring(_render(_TextFieldsForm()))
+
+    assert root.cssselect("button") == []
+
+
+def _render_submit(**extra: str) -> lxml.html.HtmlElement:
+    html = render_to_string(
+        "panel_framework/partials/inline_record_form_submit.html",
+        {"form_id": "stub-form", **extra},
+    )
+    return lxml.html.fromstring(html)
+
+
+def test_the_footer_submit_names_its_form_and_carries_the_id_the_form_points_at() -> (
+    None
+):
+    button = _render_submit()
+
+    assert button.tag == "button"
+    assert button.get("type") == "submit"
+    assert button.get("form") == "stub-form"
+    assert button.get("id") == "stub-form-submit"
+    assert "Save" in button.text_content()
+    assert button.cssselect("[data-loading-label='Saving…']")
+
+
+def test_the_footer_submit_takes_its_own_label() -> None:
+    button = _render_submit(label="Save picture")
+
+    assert "Save picture" in button.text_content()

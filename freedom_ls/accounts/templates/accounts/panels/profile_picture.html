@@ -1,6 +1,7 @@
 {% extends "panel_framework/panels/panel.html" %}
 {% comment %}
-The stored profile picture, or the initials, above the upload form. The
+The stored profile picture, or the initials, beside the upload form, with
+Remove picture and Save picture in the card footer. The
 preview sits outside the form so a refused upload swaps only the form.
 Context: stored_user, upload (the upload action's form context).
 {% endcomment %}
@@ -13,3 +14,8 @@ Context: stored_user, upload (the upload action's form context).
         </div>
     </div>
 {% endblock panel_body %}
+
+{% block panel_actions %}
+    {{ block.super }}
+    {% include "panel_framework/partials/inline_record_form_submit.html" with form_id="account-picture-form" label="Save picture" %}
+{% endblock panel_actions %}

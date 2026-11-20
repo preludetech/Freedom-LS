@@ -1449,7 +1449,9 @@ def test_the_settings_tab_offers_add_staff_member_beside_its_staff_heading(
     )
     assert "btn-sm" in trigger.get("class").split()
     footer_urls = {
-        b.get("hx-get") for b in document.cssselect("section[data-panel] footer button")
+        b.get("hx-get")
+        for b in document.cssselect("section[data-panel] footer button")
+        if b.get("hx-get")
     }
     assert not any(url.endswith("/__actions/add_staff_member") for url in footer_urls)
 

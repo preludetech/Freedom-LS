@@ -4,7 +4,9 @@ fragment. Context: form, action_url. The form targets itself, so a 422 swaps
 the error in place. The field error is one line under the input, role=alert,
 with the id Django names in the input's aria-describedby. With JavaScript off
 the form posts plainly, which is why it carries a method, an action and a CSRF
-token; the action then redirects to the page with the outcome as a flash.
+token; the action then redirects to the page with the outcome as a flash. The
+form holds no button: Save picture is in the panel's card footer, naming this
+form with form=, and hx-indicator and hx-disabled-elt point at it.
 {% endcomment %}
 {% with field=form.profile_picture %}
 <form id="account-picture-form"
@@ -13,7 +15,8 @@ token; the action then redirects to the page with the outcome as a flash.
       hx-post="{{ action_url }}"
       hx-target="#account-picture-form"
       hx-swap="outerHTML"
-      hx-disabled-elt="find button[type='submit']"
+      hx-disabled-elt="#account-picture-form-submit"
+      hx-indicator="#account-picture-form-submit"
       hx-encoding="multipart/form-data"
       enctype="multipart/form-data"
       x-data="refocusAfterRequest"
@@ -31,8 +34,5 @@ token; the action then redirects to the page with the outcome as a flash.
         {% if field.errors %}<p id="{{ field.auto_id }}_error" role="alert" class="text-sm text-error">{{ field.errors|join:" " }}</p>{% endif %}
     </div>
     <div data-request-error tabindex="-1" hidden class="text-sm text-error [&_p]:text-error"></div>
-    <div>
-        <c-button type="submit" variant="primary" size="small" loading="true" loading_text="Saving…">Save picture</c-button>
-    </div>
 </form>
 {% endwith %}

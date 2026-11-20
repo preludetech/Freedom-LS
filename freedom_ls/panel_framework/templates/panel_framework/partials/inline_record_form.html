@@ -1,17 +1,21 @@
 {% comment %}
-A record's own fields with one Save button, posted inline to its edit action
-from a Settings panel rather than a dialog. Returned by the action's GET and
-its 422 too. Context: form, action_url, form_id. The form targets itself, so a
-422 swaps the errors in place; a save answers 204 and the panel's own refresh
-re-renders it with the saved values, with focus returned to the first field
-by id. The fields sit in one row with Save at its end, lined up on the inputs. A field error is one line under the row: the
-message alone, role=alert, with the id Django names in the input's
-aria-describedby. The form spaces its children with a flex gap, not space-y: the
-hidden request-error element is the last child, and sibling margins would leave
-12px under the field row, where a gap is only laid out between visible children.
-With JavaScript off the form posts plainly, which is why it carries a method, an
-action and a CSRF token; the action then redirects to the page with the outcome
-as a flash.
+A record's own fields, posted inline to its edit action from a Settings panel
+rather than a dialog. Returned by the action's GET and its 422 too. Context:
+form, action_url, form_id. The form holds no button: its submit is
+partials/inline_record_form_submit.html, which the panel renders in the card
+footer and which names this form with form=, so the submit works with
+JavaScript off and survives the form being swapped. The form points
+hx-indicator and hx-disabled-elt at that button by id, so the button shows
+its loading label and is disabled while the request runs. The form targets
+itself, so a 422 swaps the errors in place; a save answers 204 (or 200 with
+the re-rendered form) and focus returns to the first field by id. A field
+error is one line under the field row: the message alone, role=alert, with
+the id Django names in the input's aria-describedby. The form spaces its
+children with a flex gap, not space-y: the hidden request-error element is the
+last child, and sibling margins would leave 12px under the field row, where a
+gap is only laid out between visible children. With JavaScript off the form
+posts plainly, which is why it carries a method, an action and a CSRF token;
+the action then redirects to the page with the outcome as a flash.
 {% endcomment %}
 <form id="{{ form_id }}"
       method="post"
@@ -19,7 +23,8 @@ as a flash.
       hx-post="{{ action_url }}"
       hx-target="#{{ form_id }}"
       hx-swap="outerHTML"
-      hx-disabled-elt="find button[type='submit']"{% if form.is_multipart %} hx-encoding="multipart/form-data" enctype="multipart/form-data"{% endif %}
+      hx-disabled-elt="#{{ form_id }}-submit"
+      hx-indicator="#{{ form_id }}-submit"{% if form.is_multipart %} hx-encoding="multipart/form-data" enctype="multipart/form-data"{% endif %}
       x-data="refocusAfterRequest"
       data-refocus-id="{{ form.visible_fields.0.id_for_label }}"
       x-on:htmx:after-request="refocus"
@@ -28,14 +33,13 @@ as a flash.
     {% if form.non_field_errors %}
         <c-panel-callout tone="error" data-error-summary tabindex="-1">{{ form.non_field_errors }}</c-panel-callout>
     {% endif %}
-    <div class="flex flex-wrap items-end gap-3">
+    <div class="flex flex-wrap gap-3">
         {% for field in form.visible_fields %}
             <div class="form-field min-w-48 grow">
                 {{ field.label_tag }}
                 {{ field }}
             </div>
         {% endfor %}
-        <c-panel-button type="submit" variant="primary" size="small" loading="true" loading_text="Saving…">Save</c-panel-button>
     </div>
     <div data-request-error tabindex="-1" hidden class="text-sm text-error [&_p]:text-error"></div>
     {% for field in form.visible_fields %}

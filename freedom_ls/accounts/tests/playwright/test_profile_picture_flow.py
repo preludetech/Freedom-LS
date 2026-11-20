@@ -74,9 +74,12 @@ def test_a_name_save_keeps_the_picture_the_user_has_chosen(
 def test_the_name_and_picture_forms_save_with_javascript_off(
     live_server, browser: Browser, logged_in_page: Page, logged_in_user: User
 ) -> None:
+    # Tall enough that the footer buttons sit above the bottom-right toast,
+    # which nothing dismisses with JavaScript off.
     context = browser.new_context(
         java_script_enabled=False,
         storage_state=logged_in_page.context.storage_state(),
+        viewport={"width": 1280, "height": 1400},
     )
     page = context.new_page()
     personal_details = reverse_url(

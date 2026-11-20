@@ -538,8 +538,11 @@ somewhere on the page to land.
         </div>
 
         <div id="file-field-inline" hx-disable>
-            <p class="text-sm text-muted">A required file field in an inline form, which posts as multipart.</p>
-            {% include "panel_framework/partials/inline_record_form.html" with form=file_field_inline_form form_id="file-field-inline-form" action_url="#file-field-inline" %}
+            <p class="text-sm text-muted">A required file field in an inline form, which posts as multipart. Its Save sits in the card footer.</p>
+            <c-panel-card title="Attachment">
+                {% include "panel_framework/partials/inline_record_form.html" with form=file_field_inline_form form_id="file-field-inline-form" action_url="#file-field-inline" %}
+                <c-slot name="actions">{% include "panel_framework/partials/inline_record_form_submit.html" with form_id="file-field-inline-form" %}</c-slot>
+            </c-panel-card>
         </div>
     </section>
 

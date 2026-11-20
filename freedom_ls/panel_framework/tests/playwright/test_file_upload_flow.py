@@ -45,6 +45,11 @@ def _submit_button(container: Locator) -> Locator:
     return container.locator("button[type=submit]:not([hidden])")
 
 
+def _inline_submit_button(page: Page) -> Locator:
+    # The inline form's Save sits in the card footer, outside the form.
+    return page.locator("#stub-upload-form-submit")
+
+
 def _held_request(page: Page, held: list[Route], index: int) -> Route:
     """The index-th parked request, once the browser has sent it."""
     while len(held) <= index:
@@ -146,7 +151,7 @@ def test_inline_form_reads_uploading_while_a_file_goes_up(
     _open_upload_tab(page, live_server)
     held = _hold_requests(page, "upload_inline")
     form = page.locator("#stub-upload-form")
-    save = _submit_button(form)
+    save = _inline_submit_button(page)
 
     _submit_with_file(form, save)
 
@@ -164,7 +169,7 @@ def test_inline_form_reads_saving_when_no_file_is_chosen(
     _open_upload_tab(page, live_server)
     held = _hold_requests(page, "upload_inline")
     form = page.locator("#stub-upload-form")
-    save = _submit_button(form)
+    save = _inline_submit_button(page)
 
     _submit_without_file(form, save)
 
@@ -182,7 +187,7 @@ def test_inline_form_reads_saving_after_a_failed_upload_is_cleared(
     _open_upload_tab(page, live_server)
     held = _hold_requests(page, "upload_inline")
     form = page.locator("#stub-upload-form")
-    save = _submit_button(form)
+    save = _inline_submit_button(page)
 
     _submit_with_file(form, save)
     expect(save).to_have_text("Uploading…", use_inner_text=True)
@@ -243,7 +248,7 @@ def test_inline_form_shows_the_request_error_and_keeps_what_was_typed(
     _open_upload_tab(page, live_server)
     held = _hold_requests(page, "upload_inline")
     form = page.locator("#stub-upload-form")
-    save = _submit_button(form)
+    save = _inline_submit_button(page)
 
     _submit_with_file(form, save)
     _held_request(page, held, 0).fulfill(status=status, body="Server error")
@@ -420,7 +425,7 @@ def test_request_error_message_is_drawn_in_the_holder_error_colour(
     inline = container_selector == "#stub-upload-form"
     held = _hold_requests(page, "upload_inline" if inline else "upload")
     container = page.locator("#stub-upload-form") if inline else _open_dialog(page)
-    save = _submit_button(container)
+    save = _inline_submit_button(page) if inline else _submit_button(container)
 
     _submit_with_file(container, save)
     _held_request(page, held, 0).fulfill(status=500, body="Server error")

@@ -20,11 +20,17 @@ document.addEventListener("htmx:beforeRequest", (event) => {
     const uploading = Array.from(form.querySelectorAll("input[type=file]")).some(
         (input) => input.files.length > 0,
     );
-    form.querySelectorAll("button[type=submit] [data-loading-label]").forEach((span) => {
-        // The span holds the spinner and then the text; only the text changes.
-        span.lastChild.textContent =
-            " " + (uploading ? UPLOADING_LABEL : span.dataset.loadingLabel);
-    });
+    // form.elements includes a submit outside the form that names it with
+    // form=, as a panel's footer Save does.
+    Array.from(form.elements)
+        .filter((element) => element.type === "submit")
+        .forEach((button) => {
+            button.querySelectorAll("[data-loading-label]").forEach((span) => {
+                // The span holds the spinner and then the text; only the text changes.
+                span.lastChild.textContent =
+                    " " + (uploading ? UPLOADING_LABEL : span.dataset.loadingLabel);
+            });
+        });
 });
 
 const REQUEST_ERROR_TOO_LARGE =
