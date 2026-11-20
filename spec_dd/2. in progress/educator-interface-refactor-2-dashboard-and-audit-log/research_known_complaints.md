@@ -1,0 +1,24 @@
+# Known complaints about large move/split refactors, with mitigations
+
+Drawn from well-documented tool behaviour and common developer experience. I did not run live searches. The URLs are the official docs that back each point.
+
+| Complaint | Why it bites | Mitigation for this spec |
+|---|---|---|
+| Unreviewable diff | A move of ~1,000 lines of code plus tests shows as all-deleted and all-added. Reviewers cannot tell a move from an edit. | Keep it a pure move. Make the move commits contain no edits beyond imports. Put import repointing in a separate commit. Tell reviewers to use `git diff --color-moved=dimmed-zebra` or `git show -M -C`. List the moved class names in the PR description. |
+| Lost git blame / history | `git blame` credits the mover. `git log` stops at the new path when a file is split. Rename detection fails when a file is cut into pieces (similarity under 50%). | Add the move commit to `.git-blame-ignore-revs`. GitHub honours that file automatically. Anyone can use `git blame --ignore-revs-file`. Use `git blame -M -C -C` to follow code across files. Keep the move in its own commit, with no reformatting. |
+| Broken downstream imports (no shim) | Callers outside the repo, such as installed host projects, fail with ImportError. Missed in-repo callers (templatetags, `qa_helpers`, docs) fail at import time or at runtime. | The clean break is intended. `grep` for every moved name, including dotted-path strings such as settings, `action_path` and string-based imports. Run the whole suite plus `manage.py check`. Record the break in the upgrade notes. |
+| Merge conflicts with parallel branches | Sibling specs edit `views.py`, `filters.py` and `test_views.py` while this spec deletes ranges from them. Git cannot follow an edit to code that has moved. | Remove only your own ranges. Merge in order, and rebase and re-check line ranges just before the move. Move by class name, not by line number. After rebasing, re-grep to find edits that landed on the old copy. |
+| `mock.patch` target silently ineffective | `patch("pkg.old.Name")` raises AttributeError when the name is gone. It does nothing useful when the name still exists but is no longer the one the code under test looks up. `monkeypatch.setattr(module, "Name", ...)` on the wrong module is silent. A patched `educator_views.X` tuple can still hit a stale re-import. | Patch where the name is looked up, not where it is defined. Use `monkeypatch.setattr(..., raising=True)`, which is the default. Add an assertion that the patched path is exercised, such as a mock called-check. Mutation-check one patch by removing it and confirming the test fails. Grep for `educator_views\.` and every `patch(` string. |
+| Test collection breakage | Same-named test files in different directories (`test_filters.py`) collide under pytest's default `prepend` import mode without `__init__.py`. A stale `.pyc` or `__pycache__` can hide a missing file. Missing `conftest.py` fixtures after a move produce "fixture not found" errors. | Give every test directory an empty `__init__.py`, as the spec says. Compare `pytest --collect-only -q` counts before and after, and they must match. Check that fixtures from `conftest.py` are still visible from the new directories. Update `mirroring_baseline.txt` in the same change. |
+| Over-fragmented packages | Many 30-line modules make navigation harder. Every area gets four files plus tests, and the layout reads as ceremony. | Follow the fixed layout (`config`, `panels`, `data_tables`, `data_table_panels`, `filters`). Create a file only when it has content, and don't create stubs. Keep the empty `__init__.py`. |
+| Import-cycle surprises | Code that sat in one module often relied on definition order. Splitting exposes cycles, for example area to `reporting.py` and back, or `views.py` importing the config while the config imports from `views.py`. Django app-loading cycles appear at startup. | The areas import only `panels/common/` and `panel_framework`. Never import a sibling area. Move the shared helpers into `common` first, which is spec 1's job. If a cycle appears, don't paper over it with a function-level import. Move the shared piece down a level. Run `manage.py check` and import each new module in isolation (`python -c "import ..."`). |
+
+## References
+
+- Python docs, "Where to patch": https://docs.python.org/3/library/unittest.mock.html#where-to-patch
+- Git blame options (`--ignore-revs-file`, `-M`, `-C`): https://git-scm.com/docs/git-blame
+- GitHub, ignoring commits in the blame view: https://docs.github.com/en/repositories/working-with-files/using-files/viewing-a-file#ignore-commits-in-the-blame-view
+- Git diff `--color-moved`: https://git-scm.com/docs/git-diff#Documentation/git-diff.txt---color-movedltmodegt
+- pytest import modes and duplicate test basenames: https://docs.pytest.org/en/stable/explanation/pythonpath.html
+
+status: ok
