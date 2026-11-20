@@ -300,3 +300,74 @@ def test_saving_one_entry_twice_announces_both_saves(
         "",
         "Saved Alpha.",
     ]
+
+
+@pytest.mark.parametrize("tab", ["entries", "entries_table"])
+def test_each_list_row_and_card_lays_its_buttons_out_in_a_tidy_footer(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+    tab: str,
+) -> None:
+    """Every entry's Edit and Remove sit side by side under its title and
+    detail, starting at the title's left edge, each as wide as its label, at
+    the same offset on every entry whether or not it has a detail."""
+    parent = make_stub(name="Parent")
+    entries_and_details = {
+        "Nomsa Dlamini": "Mother, 082 555 0101",
+        "Pieter van Wyk": "Neighbour, 083 555 0142",
+        "Aisha": "",
+    }
+    for title, detail in entries_and_details.items():
+        make_stub_entry(parent, title, detail)
+
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/{parent.pk}/__tabs/{tab}")
+
+    page.wait_for_load_state("networkidle")
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        entries = page.locator("li[data-editable-list-entry]:visible")
+        if tab == "entries_table" and entries.count() == 0:
+            # A wide container shows the table: the pair stays on one line in the last cell.
+            for title in entries_and_details:
+                edit_box = page.get_by_role(
+                    "button", name=f"Edit {title}"
+                ).bounding_box()
+                remove_box = page.get_by_role(
+                    "button", name=f"Remove {title}"
+                ).bounding_box()
+                assert edit_box is not None
+                assert remove_box is not None
+                assert edit_box["y"] == pytest.approx(remove_box["y"], abs=1)
+            continue
+        assert entries.count() == len(entries_and_details)
+        offsets: set[int] = set()
+        for title, detail in entries_and_details.items():
+            entry = entries.filter(has=page.get_by_role("button", name=f"Edit {title}"))
+            title_box = entry.get_by_text(title, exact=True).bounding_box()
+            text_box = (
+                entry.get_by_text(detail, exact=True).bounding_box()
+                if detail
+                else title_box
+            )
+            edit_box = entry.get_by_role("button", name=f"Edit {title}").bounding_box()
+            remove_box = entry.get_by_role(
+                "button", name=f"Remove {title}"
+            ).bounding_box()
+            entry_box = entry.bounding_box()
+            assert title_box is not None
+            assert text_box is not None
+            assert edit_box is not None
+            assert remove_box is not None
+            assert entry_box is not None
+            assert edit_box["y"] == pytest.approx(remove_box["y"], abs=1)
+            gap_under_text = edit_box["y"] - (text_box["y"] + text_box["height"])
+            assert 8 <= gap_under_text <= 16
+            assert edit_box["x"] == pytest.approx(title_box["x"], abs=1)
+            assert remove_box["x"] > edit_box["x"] + edit_box["width"]
+            for box in (edit_box, remove_box):
+                assert box["width"] < entry_box["width"] / 4
+            offsets.add(round(edit_box["x"] - entry_box["x"]))
+        assert len(offsets) == 1

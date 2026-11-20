@@ -1128,7 +1128,7 @@ def test_an_editable_list_renders_entries_in_get_entries_order_with_detail(
     root = _entries_html(parent)
 
     assert [
-        " ".join(li.xpath("string(./div[1])").split())
+        " ".join(li.xpath("./div[1]/*[not(@data-item-footer)]//text()")).strip()
         for li in root.xpath("//section[@data-panel='entries']//ul/li")
     ] == ["Alpha first", "Beta second"]
 
@@ -1615,6 +1615,31 @@ def test_each_drawing_of_an_entry_carries_its_pk_and_title(
     for drawing in drawings:
         assert drawing.get("data-entry-pk") == str(entry.pk)
         assert drawing.get("data-entry-title") == "Alpha"
+
+
+@pytest.mark.parametrize("tab", ["entries", "entries_table"])
+def test_a_list_row_or_card_puts_its_buttons_in_an_item_footer(
+    mock_site_context: Site, tab: str
+) -> None:
+    """In a list row and a phone card the Edit and Remove buttons sit together
+    in the entry's footer, under the detail; the detail is never a grid cell
+    beside them."""
+    parent = make_stub()
+    make_stub_entry(parent, "Alpha", "first note")
+
+    root = _layout_entries_html(parent, tab)
+
+    (entry,) = root.xpath("//li[@data-editable-list-entry]")
+    (footer,) = entry.cssselect("[data-item-footer]")
+    assert [
+        trigger.get("data-editable-list-action")
+        for trigger in footer.xpath(".//*[@data-editable-list-action]")
+    ] == ["edit_entry", "remove_entry"]
+    (detail,) = entry.xpath(".//p[normalize-space()='first note']")
+    assert not detail.xpath("ancestor::dl")
+    assert not footer.xpath("ancestor::dl")
+    in_order = list(entry.iter())
+    assert in_order.index(detail) < in_order.index(footer)
 
 
 def test_a_quote_in_a_title_stays_one_escaped_entry_title_value(

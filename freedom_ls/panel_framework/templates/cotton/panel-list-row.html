@@ -13,8 +13,13 @@ Attributes:
           with a trailing "next" icon below md (default none: plain text).
   class   Extra classes for the <li>.
 
-The default slot holds the trailing controls (a badge, a button, a progress
+The default slot holds the trailing content (a badge, a figure, a progress
 bar). It sits above the stretched link so its controls stay clickable.
+
+The `footer` slot is the item footer: the buttons that act on this entry
+(Edit, Remove), inside <c-data-table-actions>. It sits under the title and
+detail, its left edge on the title's, so every row's buttons line up whatever
+the detail's length.
 {% endcomment %}
 
 <li class="relative flex items-center gap-3 py-3 {{ class }}" {{ attrs }}>
@@ -25,6 +30,7 @@ bar). It sits above the stretched link so its controls stay clickable.
             <span class="font-medium">{{ title }}</span>
         {% endif %}
         {% if detail %}<p class="text-sm text-muted">{{ detail }}</p>{% endif %}
+        {% if footer %}<div data-item-footer class="relative z-10 mt-3">{{ footer }}</div>{% endif %}
     </div>
     {% if slot.strip %}<div class="relative z-10 flex shrink-0 items-center gap-2">{{ slot }}</div>{% endif %}
     {% if figure != "" %}<span class="shrink-0 tabular-nums">{{ figure }}</span>{% endif %}

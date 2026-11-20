@@ -119,3 +119,27 @@ def test_without_cards_when_narrow_both_regions_switch_on_the_viewport_width() -
     assert not document.cssselect("div.\\@container")
     assert "md:block" in table_region.get("class")
     assert "md:hidden" in card_region.get("class")
+
+
+def test_a_card_footer_slot_renders_after_the_card_content() -> None:
+    document = _parse(
+        """
+        <c-panel-table-card primary="Ada">
+            <c-slot name="content"><p>Mother</p></c-slot>
+            <c-slot name="footer"><button>Edit</button></c-slot>
+        </c-panel-table-card>
+        """
+    )
+
+    (card,) = document.cssselect("li")
+    (footer,) = card.cssselect("[data-item-footer]")
+    assert footer.text_content() == "Edit"
+    assert footer.getparent() is card
+    assert card.index(footer) == len(card) - 1
+    assert card.cssselect("dl") == []
+
+
+def test_a_card_without_a_footer_slot_has_no_footer() -> None:
+    document = _parse(WITH_CARDS)
+
+    assert document.cssselect("[data-item-footer]") == []

@@ -99,3 +99,22 @@ def test_attributes_pass_through_to_the_row() -> None:
         _row('title="A" data-testid="registration-row"').get("data-testid")
         == "registration-row"
     )
+
+
+def test_a_footer_slot_renders_under_the_title_and_detail() -> None:
+    row = _row(
+        'title="Intro course" detail="via Cohort A"',
+        '<c-slot name="footer"><button>Edit</button></c-slot>',
+    )
+
+    (footer,) = row.cssselect("[data-item-footer]")
+    assert footer.text_content() == "Edit"
+    title_block = footer.getparent()
+    assert title_block.cssselect("p")[0].text == "via Cohort A"
+    assert title_block.index(footer) == len(title_block) - 1
+
+
+def test_a_row_without_a_footer_slot_has_no_footer() -> None:
+    row = _row('title="Intro course"', "<span>badge</span>")
+
+    assert row.cssselect("[data-item-footer]") == []
