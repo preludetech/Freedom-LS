@@ -47,7 +47,6 @@ from the saved position.
          x-bind:data-state="state"
          role="group"
          x-bind:aria-labelledby="$id('audio-clip-title')"
-         data-src="{% url 'content_engine:audio_file' file_obj.pk %}"
          data-duration="{% if file_obj.duration_seconds is not None %}{{ file_obj.duration_seconds|unlocalize }}{% endif %}">
       <div class="flex items-start gap-3 rounded-lg border border-border bg-surface p-3 group-data-[state=failed]:border-error group-data-[state=failed]:bg-error-light group-data-[state=failed]:text-on-error-light">
         <c-button variant="primary" aria_label="Play {{ title }}" x-ref="play"
