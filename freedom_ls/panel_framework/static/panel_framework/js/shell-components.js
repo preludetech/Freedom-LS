@@ -105,7 +105,11 @@ document.addEventListener("alpine:init", () => {
 
             // Position the docked panel below the header bar (consumed by the
             // CSS var on the dialog).
-            const top = this.$el.getBoundingClientRect().top;
+            // Document offset, not viewport offset: a reload restores the
+            // scroll position before this runs, and the viewport offset would
+            // then be short by the scroll distance and inflate the dialog's
+            // height to the whole page.
+            const top = this.$el.getBoundingClientRect().top + window.scrollY;
             this.$el.style.setProperty("--sidebar-top", top + "px");
 
             // Single point every dismiss route (Escape, scrim, programmatic,
@@ -235,7 +239,11 @@ document.addEventListener("alpine:init", () => {
                 // — goes stale across a resize that crosses this
                 // breakpoint without a reload. Recapture it here, by which
                 // point the header has already re-rendered at its new width.
-                const top = this.$el.getBoundingClientRect().top;
+                // Document offset, not viewport offset: a reload restores the
+            // scroll position before this runs, and the viewport offset would
+            // then be short by the scroll distance and inflate the dialog's
+            // height to the whole page.
+            const top = this.$el.getBoundingClientRect().top + window.scrollY;
                 this.$el.style.setProperty("--sidebar-top", top + "px");
                 // Reset to the correct mode for the new breakpoint.
                 if (this.dialog.open) this.dialog.close();

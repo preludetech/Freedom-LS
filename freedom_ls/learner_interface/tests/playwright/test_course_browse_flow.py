@@ -809,6 +809,37 @@ def test_missed_deadline_row_keeps_its_title_visible_in_the_desktop_sidebar(
     assert _box(title_box)["width"] > 0
 
 
+def test_desktop_outline_stays_viewport_height_after_reloading_a_scrolled_page(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    """The outline used to grow to the page's height when a reload restored a scroll."""
+    page = logged_in_page
+    course = CourseFactory(title="Long Course", slug="long-course")
+    topic = TopicFactory(
+        title="Long Topic",
+        slug="long-topic",
+        content="\n\n".join(f"Paragraph {n} of the long topic." for n in range(300)),
+    )
+    ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
+    LearnerCourseRegistrationFactory(
+        learner__user=logged_in_user, course=course, is_active=True
+    )
+
+    page.set_viewport_size({"width": 1920, "height": 1080})
+    page.goto(_item_url(live_server, course, 1))
+    page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+    page.wait_for_function("window.scrollY > 1000")
+    page.reload()
+    page.wait_for_function("window.scrollY > 1000")
+
+    outline = page.locator("dialog.side-panel-dialog").first
+    expect(outline).to_be_visible()
+    assert _box(outline)["height"] <= 1080
+    assert _box(outline)["y"] >= 0
+
+
 def test_mobile_outline_sheet_and_drawer_stay_within_the_viewport(
     live_server,
     logged_in_page: Page,
