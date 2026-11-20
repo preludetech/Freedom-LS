@@ -11,6 +11,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 2. Plan
 
 - [x] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
+- [ ] (user) Force-push the branch, rebased onto main locally: `git push origin sacaa-compliance-2-shuffle --force-with-lease --force-if-includes`
 - [ ] (user) Review both plans and edit where needed
 
 ## 3. Implementation and QA
