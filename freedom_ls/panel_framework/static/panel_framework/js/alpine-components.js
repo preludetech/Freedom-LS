@@ -1450,7 +1450,22 @@ function visibleAddTrigger(panel) {
 }
 
 document.addEventListener("htmx:beforeRequest", (event) => {
-    const { elt, target } = event.detail;
+    const { elt, target, requestConfig } = event.detail;
+    if (pendingEntryAction && elt && elt.closest("#app-modal")) {
+        pendingEntryAction.submitted = true;
+    }
+    // A refresh of the list that starts once the dialog has submitted is the
+    // answer to this action. One that started earlier (the previous change's
+    // slow refresh) shows the list as it was, and must not be taken for it.
+    if (
+        pendingEntryAction &&
+        pendingEntryAction.submitted &&
+        requestConfig &&
+        target &&
+        target.id === pendingEntryAction.panelId
+    ) {
+        requestConfig.answersEntryAction = true;
+    }
     if (!elt || !elt.dataset || !elt.dataset.editableListAction) return;
     if (!target || target.id !== "app-modal-body") return;
     const panel = elt.closest("[data-panel]");
@@ -1460,9 +1475,11 @@ document.addEventListener("htmx:beforeRequest", (event) => {
         panelId: panel ? panel.id : "",
         title: elt.dataset.entryTitle || "",
         focusAfterRemove: elt.dataset.focusAfterRemove || "",
+        submitted: false,
         confirmed: false,
         closed: false,
         refreshedTarget: null,
+        settled: false,
         addedAnother: false,
     };
 });
@@ -1492,25 +1509,14 @@ document.addEventListener("closeModal", () => {
 // have been replaced. close does not bubble, so it is caught on the way down,
 // and the focus waits a task so it lands after the dialog returns focus to
 // the trigger it opened from.
-// A confirmed change closes the dialog and refreshes the list, and which of
-// the two the browser reports first is not fixed. When the refresh came first
-// it left its focus target in `refreshedTarget`, which takes focus here;
-// otherwise the refresh finds the dialog already closed.
 document.addEventListener(
     "close",
     (event) => {
         if (event.target !== entryModal() || !pendingEntryAction) return;
-        const { confirmed, addedAnother, panelId, refreshedTarget } = pendingEntryAction;
+        const { confirmed, addedAnother, panelId } = pendingEntryAction;
         if (confirmed) {
-            if (!refreshedTarget) {
-                pendingEntryAction.closed = true;
-                return;
-            }
-            pendingEntryAction = null;
-            setTimeout(() => {
-                refreshedTarget.removeAttribute("data-focus-target");
-                refreshedTarget.focus();
-            }, 0);
+            pendingEntryAction.closed = true;
+            finishEntryAction();
             return;
         }
         pendingEntryAction = null;
@@ -1526,6 +1532,23 @@ document.addEventListener(
     true,
 );
 
+// A confirmed change closes the dialog and refreshes the list, and which of
+// the two finishes first is not fixed. Focus is placed only once both have,
+// and a task later: the dialog's own focus return to its trigger, and
+// htmx's focus restore after a swap, have both run by then and cannot take
+// focus back from the entry that should have it.
+function finishEntryAction() {
+    const action = pendingEntryAction;
+    if (!action || !action.closed || !action.settled) return;
+    pendingEntryAction = null;
+    setTimeout(() => {
+        const target = action.refreshedTarget;
+        if (!target || !target.isConnected) return;
+        target.removeAttribute("data-focus-target");
+        target.focus();
+    }, 0);
+}
+
 // After a confirmed change the list refreshes; mark the element that takes
 // focus and announce the change. This runs before the generic focus fallback
 // below, which focuses the marked element once the old trigger is gone.
@@ -1533,8 +1556,7 @@ document.addEventListener("htmx:afterSwap", (event) => {
     const { target, requestConfig } = event.detail;
     if (!pendingEntryAction || !pendingEntryAction.confirmed) return;
     if (!target || target.id !== pendingEntryAction.panelId) return;
-    const modal = entryModal();
-    if (modal && modal.open) return;
+    if (!requestConfig || !requestConfig.answersEntryAction) return;
     const panel = document.getElementById(pendingEntryAction.panelId);
     const detail = requestConfig && requestConfig.triggeringEvent
         ? requestConfig.triggeringEvent.detail
@@ -1560,11 +1582,17 @@ document.addEventListener("htmx:afterSwap", (event) => {
     if (focusTarget) focusTarget.setAttribute("data-focus-target", "");
     const announcer = document.getElementById("scope-announcer");
     if (announcer) announcer.textContent = message;
-    if (pendingEntryAction.closed) {
-        pendingEntryAction = null;
-    } else {
-        pendingEntryAction.refreshedTarget = focusTarget;
-    }
+    pendingEntryAction.refreshedTarget = focusTarget;
+});
+
+// htmx restores focus to the element that held it before a swap while it
+// settles, so the entry action finishes only after that.
+document.addEventListener("htmx:afterSettle", (event) => {
+    const { requestConfig } = event.detail;
+    if (!pendingEntryAction || !pendingEntryAction.confirmed) return;
+    if (!requestConfig || !requestConfig.answersEntryAction) return;
+    pendingEntryAction.settled = true;
+    finishEntryAction();
 });
 
 // A confirmed row action closes the dialog, which refocuses its trigger; the
