@@ -30,6 +30,13 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) In `claude_plugins/fls-dev/skills/panel-framework/SKILL.md`: say that `get_hidden_fields` now lives on `PanelAction` and that `modal/form.html` renders it, and that `<c-panel-table>` takes `cards_when_narrow` (spec: Requirements, Actions and Templates)
 - [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
+- [x] (cmd) Code review PR 262: read the entry's title and focus target from the entry itself, so add and edit announce and focus correctly when there is no Edit trigger
+- [x] (cmd) Code review PR 262: a slow refresh from an earlier "Add and add another" must not be taken for the answer to a later Add
+- [x] (cmd) Code review PR 262: announce an identical change again (clear the live region before setting it)
+- [x] (cmd) Code review PR 262: E009 requires `refresh_events` on every `EditableListPanel` subclass
+- [x] (cmd) Code review PR 262: Remove and Delete refuse a row a RESTRICT foreign key still points at, in place of a 500
+- [x] (cmd) Code review PR 262: `reference.py` builds its entries with the panel's own helpers in place of repeating them
+- [x] (cmd) Code review PR 262: the reference example's table header reads the singular noun ("Contact")
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
 ## 5. Cleanup
