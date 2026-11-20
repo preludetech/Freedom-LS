@@ -1,0 +1,101 @@
+- generic [active] [ref=f18e1]:
+  - banner [ref=f18e2]:
+    - link [ref=f18e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f18e4]
+      - heading "FirstClass" [level=1] [ref=f18e5]
+    - navigation [ref=f18e6]:
+      - generic [ref=f18e7]:
+        - generic [ref=f18e8]:
+          - button "Notifications, 3 new" [ref=f18e9]
+          - status:
+            - generic [ref=f18e13]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f18e14]: "3"
+        - button "Open user menu for Demo" [ref=f18e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f18e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f18e18]:
+    - generic [ref=f18e20]:
+      - link "Back" [ref=f18e21] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f18e26]:
+        - generic [ref=f18e27]: Start here
+        - heading "Functionality Demo - show end with Topic" [level=1] [ref=f18e28]
+        - paragraph [ref=f18e29]: A tour of the content system
+        - generic [ref=f18e31]:
+          - generic [ref=f18e35]:
+            - paragraph [ref=f18e36]: Lessons
+            - paragraph [ref=f18e37]: 6 lessons
+          - generic [ref=f18e41]:
+            - paragraph [ref=f18e42]: Enrolment
+            - paragraph [ref=f18e43]: Free · open
+      - generic [ref=f18e44]:
+        - complementary [ref=f18e45]:
+          - generic [ref=f18e47]:
+            - generic [ref=f18e48]:
+              - paragraph [ref=f18e49]: Free · open to everyone
+              - paragraph [ref=f18e50]: One click. No credit card.
+            - generic [ref=f18e55]:
+              - text: Your access to this course ended on
+              - time [ref=f18e56]: 11 Nov 2026, 01:59
+              - text: . Your progress is saved. Ask your educator to restore it.
+            - generic [ref=f18e57]:
+              - heading "This course includes" [level=3] [ref=f18e58]
+              - list [ref=f18e59]:
+                - listitem [ref=f18e60]: 6 lessons
+                - listitem [ref=f18e61]: Includes assessments
+        - generic [ref=f18e62]:
+          - generic [ref=f18e63]:
+            - heading "About this course" [level=2] [ref=f18e64]
+            - paragraph [ref=f18e66]: A much longer description of the course. Lorem ipsum text here
+          - generic [ref=f18e67]:
+            - heading "Course content" [level=2] [ref=f18e68]
+            - navigation "Course outline" [ref=f18e70]:
+              - list [ref=f18e71]:
+                - listitem [ref=f18e72]:
+                  - generic [ref=f18e73]:
+                    - generic [ref=f18e74]: "1."
+                    - generic [ref=f18e75]: Locked
+                    - generic [ref=f18e79]: Content title 1
+                - listitem [ref=f18e80]:
+                  - generic [ref=f18e81]:
+                    - generic [ref=f18e82]: "2."
+                    - generic [ref=f18e83]: Locked
+                    - generic [ref=f18e87]: Callouts
+                - listitem [ref=f18e88]:
+                  - generic [ref=f18e89]:
+                    - generic [ref=f18e90]: "3."
+                    - generic [ref=f18e91]: Locked
+                    - generic [ref=f18e95]: Course Feedback Survey
+                - listitem [ref=f18e96]:
+                  - generic [ref=f18e97]:
+                    - generic [ref=f18e98]: "4."
+                    - generic [ref=f18e99]: Locked
+                    - generic [ref=f18e103]: Pictures
+                - listitem [ref=f18e104]:
+                  - generic [ref=f18e105]:
+                    - generic [ref=f18e106]: "5."
+                    - generic [ref=f18e107]: Locked
+                    - generic [ref=f18e111]: YouTube Videos
+                - listitem [ref=f18e112]:
+                  - generic [ref=f18e113]:
+                    - generic [ref=f18e114]: "6."
+                    - generic [ref=f18e115]: Locked
+                    - generic [ref=f18e119]: Markdown Tables
+                - listitem [ref=f18e120]:
+                  - generic [ref=f18e121]:
+                    - generic [ref=f18e122]: "7."
+                    - generic [ref=f18e123]: Locked
+                    - generic [ref=f18e127]: Code Snippets
+  - contentinfo [ref=f18e128]:
+    - generic [ref=f18e129]:
+      - paragraph [ref=f18e130]: © 2026 FirstClass
+      - navigation "Legal" [ref=f18e131]:
+        - link "Terms and Conditions" [ref=f18e132] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f18e133] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f18e134] [cursor=pointer]: misure-of-admonitions
+  - generic "Show toolbar" [ref=f18e136]: DJDT

@@ -1,0 +1,139 @@
+- generic [active] [ref=f10e1]:
+  - banner [ref=f10e2]:
+    - link [ref=f10e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f10e4]
+      - heading "FirstClass" [level=1] [ref=f10e5]
+    - navigation [ref=f10e6]:
+      - generic [ref=f10e7]:
+        - generic [ref=f10e8]:
+          - button "Notifications, 3 new" [ref=f10e9]
+          - status:
+            - generic [ref=f10e13]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f10e14]: "3"
+        - button "Open user menu for Demo" [ref=f10e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f10e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f10e18]:
+    - generic [ref=f10e20]:
+      - dialog "Course outline" [ref=f10e21]:
+        - generic [ref=f10e24]:
+          - generic [ref=f10e25]:
+            - paragraph [ref=f10e26]: Course outline
+            - paragraph [ref=f10e27]: Functionality Demo - show end with Quiz
+            - generic [ref=f10e29]:
+              - progressbar "Progress for Functionality Demo - show end with Quiz" [ref=f10e30]: 25%
+              - generic [ref=f10e31]: 25% complete
+          - navigation "Course outline" [ref=f10e32]:
+            - list [ref=f10e33]:
+              - listitem [ref=f10e34]:
+                - generic [ref=f10e35]:
+                  - generic [ref=f10e36]: "1."
+                  - generic [ref=f10e37]: Completed
+                  - generic [ref=f10e41]: Content title 2 - Before Quiz
+              - listitem [ref=f10e42]:
+                - generic [ref=f10e43]:
+                  - generic [ref=f10e44]: "2."
+                  - generic [ref=f10e45]: In progress
+                  - link "Mid course Quiz" [ref=f10e50] [cursor=pointer]:
+                    - /url: /courses/functionality-demo-show-end-with-quiz/2/
+              - listitem [ref=f10e51]:
+                - generic [ref=f10e52]:
+                  - generic [ref=f10e53]: "3."
+                  - generic [ref=f10e54]: Locked
+                  - generic [ref=f10e58]: Content title 4 - After quiz
+              - listitem [ref=f10e59]:
+                - generic [ref=f10e60]:
+                  - generic [ref=f10e61]: "4."
+                  - generic [ref=f10e62]: Locked
+                  - generic [ref=f10e66]: End course Quiz
+      - generic [ref=f10e67]:
+        - generic [ref=f10e69]:
+          - navigation "Breadcrumb" [ref=f10e72]:
+            - list [ref=f10e73]:
+              - listitem [ref=f10e74]:
+                - link "Functionality Demo - show end with Quiz" [ref=f10e75] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-show-end-with-quiz/detail/
+              - listitem [ref=f10e76]:
+                - generic [aria-hidden] [ref=f10e77]: ">"
+                - generic "Content title 2 - Before Quiz" [ref=f10e78]
+          - heading "Content title 2 - Before Quiz" [level=1] [ref=f10e81]
+        - generic [ref=f10e83]:
+          - generic [ref=f10e84]:
+            - paragraph [ref=f10e85]: This is perfectly normal markdown content.
+            - heading "H1" [level=2] [ref=f10e86]
+            - heading "H2" [level=3] [ref=f10e87]
+            - heading "H3" [level=4] [ref=f10e88]
+            - list [ref=f10e89]:
+              - listitem [ref=f10e90]: an
+              - listitem [ref=f10e91]: ordered
+              - listitem [ref=f10e92]: list
+            - heading "H4" [level=5] [ref=f10e93]
+            - list [ref=f10e94]:
+              - listitem [ref=f10e95]: a
+              - listitem [ref=f10e96]: numbered
+              - listitem [ref=f10e97]: list
+            - heading "Custom components" [level=2] [ref=f10e98]
+            - paragraph [ref=f10e99]:
+              - text: These are defined using Cotton components. Add it to the
+              - code [ref=f10e100]: MARKDOWN_ALLOWED_TAGS
+              - text: setting.
+            - paragraph [ref=f10e101]: "To make a new component you need to: - make a new cotton component"
+            - figure "Example of a graph Expand" [ref=f10e103]:
+              - img "Graph example" [ref=f10e104]
+              - generic [ref=f10e106]:
+                - paragraph [ref=f10e107]:
+                  - generic [ref=f10e108]: Example of a graph
+                - button "Expand" [ref=f10e109] [cursor=pointer]
+            - paragraph [ref=f10e113]: And a video.
+            - figure [ref=f10e114]:
+              - iframe [ref=f10e116]:
+                - generic [ref=f11e1]:
+                  - generic "YouTube Video Player" [ref=f11e3]
+                  - generic [ref=f11e5]:
+                    - generic:
+                      - generic:
+                        - generic [ref=f11e6] [cursor=pointer]
+                        - button "Play video" [ref=f11e10] [cursor=pointer]
+                        - button "Hide player controls" [ref=f11e12] [cursor=pointer]
+                        - generic [ref=f11e14]:
+                          - generic [ref=f11e21]:
+                            - generic [ref=f11e22]:
+                              - link "Getting Git 02 01 what is a graph" [ref=f11e23] [cursor=pointer]:
+                                - /url: https://www.youtube.com/watch?v=IjfSA3kMQP0
+                              - link "Prelude" [ref=f11e24] [cursor=pointer]:
+                                - /url: /channel/UC88j-XU_h22lqc5Ozftnk4w
+                            - generic [ref=f11e26]:
+                              - button [ref=f11e27] [cursor=pointer]
+                              - generic [ref=f11e29]:
+                                - generic: Prelude
+                                - generic: 26 subscribers
+                          - generic [ref=f11e30]:
+                            - button "Share" [ref=f11e33] [cursor=pointer]
+                            - link "Watch on YouTube" [ref=f11e44] [cursor=pointer]:
+                              - /url: https://www.youtube.com/watch?v=IjfSA3kMQP0
+                              - generic [ref=f11e45]: Watch on
+            - text: last chapter
+            - paragraph [ref=f10e117]: "A link to a form, rather than a topic:"
+            - text: the Mid course Quiz
+            - note "Callout" [ref=f10e118]:
+              - generic [ref=f10e124]:
+                - paragraph [ref=f10e125]: You can put normal markdown content in here.
+                - list [ref=f10e126]:
+                  - listitem [ref=f10e127]: one
+                  - listitem [ref=f10e128]: two
+                  - listitem [ref=f10e129]: three
+          - link "Next" [ref=f10e131] [cursor=pointer]:
+            - /url: /courses/functionality-demo-show-end-with-quiz/2/
+  - contentinfo [ref=f10e135]:
+    - generic [ref=f10e136]:
+      - paragraph [ref=f10e137]: © 2026 FirstClass
+      - navigation "Legal" [ref=f10e138]:
+        - link "Terms and Conditions" [ref=f10e139] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f10e140] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f10e141] [cursor=pointer]: misure-of-admonitions
+  - generic "Show toolbar" [ref=f10e143]: DJDT

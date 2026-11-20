@@ -1,0 +1,117 @@
+- generic [active] [ref=f41e1]:
+  - banner [ref=f41e2]:
+    - link [ref=f41e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f41e4]
+      - heading "FirstClass" [level=1] [ref=f41e5]
+    - navigation [ref=f41e6]:
+      - generic [ref=f41e7]:
+        - generic [ref=f41e8]:
+          - button "Notifications, 3 new" [ref=f41e9]
+          - status:
+            - generic [ref=f41e13]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f41e14]: "3"
+        - button "Open user menu for Demo" [ref=f41e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f41e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f41e18]:
+    - generic [ref=f41e20]:
+      - dialog "Navigation" [ref=f41e21]:
+        - generic [ref=f41e23]:
+          - generic [ref=f41e24]:
+            - paragraph [ref=f41e25]: Organisation
+            - button "Switch organisation" [ref=f41e27] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f41e28]: QO
+              - generic "QA Solo Org" [ref=f41e29]
+          - navigation "Sections" [ref=f41e32]:
+            - heading "Teaching" [level=2] [ref=f41e33]
+            - list [ref=f41e34]:
+              - listitem [ref=f41e35]:
+                - link "Dashboard" [ref=f41e36] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-solo-org/dashboard
+              - listitem [ref=f41e41]:
+                - link "Cohorts" [ref=f41e42] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-solo-org/cohorts
+              - listitem [ref=f41e47]:
+                - link "Learners" [ref=f41e48] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-solo-org/learners
+              - listitem [ref=f41e53]:
+                - link "Courses" [ref=f41e54] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-solo-org/courses
+            - heading "Administration" [level=2] [ref=f41e59]
+            - list [ref=f41e60]:
+              - listitem [ref=f41e61]:
+                - link "Staff" [ref=f41e62] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-solo-org/staff
+              - listitem [ref=f41e67]:
+                - link "Audit log" [ref=f41e68] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-solo-org/audit-log
+          - generic [ref=f41e73]:
+            - generic [ref=f41e75]:
+              - generic [aria-hidden] [ref=f41e76]: DE
+              - generic [ref=f41e77]:
+                - generic [ref=f41e78]: Demo
+                - generic [ref=f41e79]: demodev@email.com
+            - link "Account settings" [ref=f41e80] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f41e86]:
+        - generic [ref=f41e88]:
+          - heading "Staff" [level=1] [ref=f41e92]
+          - button "Add staff member" [ref=f41e94] [cursor=pointer]
+        - generic [ref=f41e95]:
+          - generic [ref=f41e96]: You're the only staff member here. Add another organisation admin so the organisation doesn't depend on one account.
+          - generic [ref=f41e104]:
+            - generic [ref=f41e105]:
+              - generic [ref=f41e107]:
+                - generic [ref=f41e108]: Search
+                - searchbox "Search" [ref=f41e110]
+              - group [ref=f41e112]:
+                - 'generic "Role: All roles" [ref=f41e113]'
+            - region "Staff members" [ref=f41e118]:
+              - table [ref=f41e119]:
+                - caption [ref=f41e120]: Staff members
+                - rowgroup [ref=f41e121]:
+                  - row [ref=f41e122]:
+                    - columnheader [ref=f41e123]:
+                      - link "Staff member" [ref=f41e124] [cursor=pointer]:
+                        - /url: /educator/organisations/qa-solo-org/staff?staff-sort=-first_name
+                    - columnheader "Roles" [ref=f41e128]
+                    - columnheader "Role actions" [ref=f41e129]
+                    - columnheader "Staff member actions" [ref=f41e130]
+                - rowgroup [ref=f41e131]:
+                  - row [ref=f41e132]:
+                    - 'cell "Demo demodev@email.com You Quick view: Demo" [ref=f41e133]':
+                      - generic [ref=f41e134]:
+                        - generic [ref=f41e135]:
+                          - generic [ref=f41e137]:
+                            - generic [aria-hidden] [ref=f41e138]: D
+                            - generic [ref=f41e139]:
+                              - generic [ref=f41e140]: Demo
+                              - generic [ref=f41e141]: demodev@email.com
+                          - generic [ref=f41e142]: You
+                        - 'link "Quick view: Demo" [ref=f41e144] [cursor=pointer]':
+                          - /url: /educator/organisations/qa-solo-org/staff/7/__quick-view
+                    - cell "Organisation admin Whole organisation" [ref=f41e149]:
+                      - list [ref=f41e150]:
+                        - listitem [ref=f41e151]:
+                          - generic [ref=f41e152]: Organisation admin
+                          - generic "Whole organisation" [ref=f41e153]
+                    - cell [ref=f41e154]:
+                      - list [ref=f41e155]:
+                        - listitem [ref=f41e156]:
+                          - button "Deactivate Organisation admin for Demo" [ref=f41e158] [cursor=pointer]: Deactivate role
+                    - cell [ref=f41e159]:
+                      - button "Add role for Demo" [ref=f41e161] [cursor=pointer]: Add role
+            - paragraph [ref=f41e163]: 1 staff member
+  - contentinfo [ref=f41e166]:
+    - generic [ref=f41e167]:
+      - paragraph [ref=f41e168]: © 2026 FirstClass
+      - navigation "Legal" [ref=f41e169]:
+        - link "Terms and Conditions" [ref=f41e170] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f41e171] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f41e172] [cursor=pointer]: misure-of-admonitions
+  - generic "Show toolbar" [ref=f41e174]: DJDT

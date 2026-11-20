@@ -23,6 +23,10 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (user) Review the code and the QA report
 - [x] (user) Fix the tests the full run after the QA fixes left failing: freedom_ls/panel_framework/tests/playwright/test_quick_view_flow.py::test_unsent_draft_asks_before_the_drawer_is_left (flaky: failed 2 of 5 isolated runs; check whether it also flakes on main before fixing)
 - [x] (user) Decide whether to stage the dialog checks QA did not drive (Change role invalid choice, refused move, bulk-action warning, inline record form-level error, <c-callout> stripped from markdown), then run them by hand or ask for a follow-up QA pass; see qa_report.md General notes
+- [ ] (user) Decide what to do about QA bug: callout title touches a bare-text body, so 'Missing answers', 'Invalid answers', 'We couldn't use those details' and the reference examples show no space between title and text (TDD: failing test first, then fix; the reverted attempt 77516fff6 used last:mb-0, which zeroes the margin in exactly this case; see qa_report.md Bug status B1)
+- [ ] (user) Decide what to do about QA bug: the educator course outline stays a table at 768 despite its Preview action column (TDD: failing test first, then fix; see qa_report.md Bug status B3)
+- [ ] (user) Decide whether the course outline counts as 'a table with action columns' (cards at 768) or 'an ordered list with per-entry actions' (stays a data table) under the panel-framework visual checklist, then change the outline or reword the checklist to match
+- [ ] (user) Decide whether a dialog's form-level error should show only in the error summary (current behaviour since a49f805b7) or also as an error callout, then update `2. plan.md` Slice 2's Decision and `3. frontend_qa.md` Test 6.7 to match
 
 ## 4. Documentation and pull request
 

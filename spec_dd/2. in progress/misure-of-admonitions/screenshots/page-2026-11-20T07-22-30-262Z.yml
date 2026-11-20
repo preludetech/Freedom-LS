@@ -1,0 +1,121 @@
+- generic [active] [ref=f24e1]:
+  - banner [ref=f24e2]:
+    - link [ref=f24e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f24e4]
+    - navigation [ref=f24e5]:
+      - generic [ref=f24e6]:
+        - generic [ref=f24e7]:
+          - button "Notifications, 3 new" [ref=f24e8]
+          - status:
+            - generic [ref=f24e12]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f24e13]: "3"
+        - button "Open user menu for Demo" [ref=f24e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f24e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f24e17]:
+    - generic [ref=f24e20]:
+      - navigation "Back" [ref=f24e22]:
+        - link "Courses" [ref=f24e23] [cursor=pointer]:
+          - /url: /educator/organisations/demodev/courses
+      - generic [ref=f24e27]:
+        - generic [ref=f24e32]:
+          - button "Open navigation panel" [ref=f24e33] [cursor=pointer]
+          - heading "Content Widgets - Demo Reference" [level=1] [ref=f24e37]
+        - generic [ref=f24e39]:
+          - generic [ref=f24e41]:
+            - heading "Details" [level=2] [ref=f24e44]
+            - generic [ref=f24e46]:
+              - generic [ref=f24e47]:
+                - term [ref=f24e48]: Title
+                - definition [ref=f24e49]: Content Widgets - Demo Reference
+              - generic [ref=f24e50]:
+                - term [ref=f24e51]: Subtitle
+                - definition [ref=f24e52]: A working reference for content authors
+              - generic [ref=f24e53]:
+                - term [ref=f24e54]: Visibility
+                - definition [ref=f24e55]: Coming soon
+              - generic [ref=f24e56]:
+                - term [ref=f24e57]: Lessons
+                - definition [ref=f24e58]: "5"
+          - generic [ref=f24e60]:
+            - heading "Course content" [level=2] [ref=f24e63]
+            - generic [ref=f24e64]:
+              - generic [ref=f24e65]: Learners can't see this outline yet. The course is marked as still in development.
+              - generic [ref=f24e71]:
+                - list [ref=f24e73]:
+                  - listitem [ref=f24e74]:
+                    - generic [ref=f24e76]:
+                      - generic [ref=f24e77]: Course details
+                      - generic [ref=f24e80]: Course
+                      - button "Preview course details page" [ref=f24e82] [cursor=pointer]: Preview
+                  - listitem [ref=f24e83]:
+                    - generic [ref=f24e85]:
+                      - generic [ref=f24e86]:
+                        - generic [ref=f24e87]: "1."
+                        - generic [ref=f24e88]:
+                          - generic [ref=f24e89]: Topic
+                          - generic [ref=f24e93]: Annotation and Emphasis
+                      - generic [ref=f24e94]: Topic
+                      - button "Preview Annotation and Emphasis" [ref=f24e96] [cursor=pointer]: Preview
+                  - listitem [ref=f24e97]:
+                    - generic [ref=f24e99]:
+                      - generic [ref=f24e100]:
+                        - generic [ref=f24e101]: "2."
+                        - generic [ref=f24e102]:
+                          - generic [ref=f24e103]: Topic
+                          - generic [ref=f24e107]: Media
+                      - generic [ref=f24e108]: Topic
+                      - button "Preview Media" [ref=f24e110] [cursor=pointer]: Preview
+                  - listitem [ref=f24e111]:
+                    - generic [ref=f24e113]:
+                      - generic [ref=f24e114]:
+                        - generic [ref=f24e115]: "3."
+                        - generic [ref=f24e116]:
+                          - generic [ref=f24e117]: Topic
+                          - generic [ref=f24e121]: Structured Content
+                      - generic [ref=f24e122]: Topic
+                      - button "Preview Structured Content" [ref=f24e124] [cursor=pointer]: Preview
+                  - listitem [ref=f24e125]:
+                    - generic [ref=f24e127]:
+                      - generic [ref=f24e128]:
+                        - generic [ref=f24e129]: "4."
+                        - generic [ref=f24e130]:
+                          - generic [ref=f24e131]: Topic
+                          - generic [ref=f24e135]: Interactive Widgets
+                      - generic [ref=f24e136]: Topic
+                      - button "Preview Interactive Widgets" [ref=f24e138] [cursor=pointer]: Preview
+                  - listitem [ref=f24e139]:
+                    - generic [ref=f24e141]:
+                      - generic [ref=f24e142]:
+                        - generic [ref=f24e143]: "5."
+                        - generic [ref=f24e144]:
+                          - generic [ref=f24e145]: Topic
+                          - generic [ref=f24e149]: Cards
+                      - generic [ref=f24e150]: Topic
+                      - button "Preview Cards" [ref=f24e152] [cursor=pointer]: Preview
+                - paragraph [ref=f24e154]: 5 course outline items
+          - generic [ref=f24e156]:
+            - heading "Cohort registrations" [level=2] [ref=f24e159]
+            - list [ref=f24e163]:
+              - listitem [ref=f24e164]:
+                - paragraph [ref=f24e166]: No cohorts are registered for this course yet. Cohort registrations will appear here.
+          - generic [ref=f24e168]:
+            - heading "Direct registrations" [level=2] [ref=f24e171]
+            - generic [ref=f24e173]:
+              - button "Sort" [ref=f24e178] [cursor=pointer]
+              - list [ref=f24e183]:
+                - listitem [ref=f24e184]:
+                  - paragraph [ref=f24e186]: No learners are registered for this course yet. Learner registrations will appear here.
+  - contentinfo [ref=f24e189]:
+    - generic [ref=f24e190]:
+      - paragraph [ref=f24e191]: © 2026 FirstClass
+      - navigation "Legal" [ref=f24e192]:
+        - link "Terms and Conditions" [ref=f24e193] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f24e194] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f24e195] [cursor=pointer]: misure-of-admonitions
+  - generic "Show toolbar" [ref=f24e197]: DJDT

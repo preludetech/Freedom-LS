@@ -1,0 +1,84 @@
+- generic [ref=f10e1]:
+  - generic:
+    - status
+    - alert
+  - main [ref=f10e2]:
+    - generic [ref=f10e3]:
+      - generic [ref=f10e4]:
+        - generic [ref=f10e5]:
+          - button "Exit test" [ref=f10e7]
+          - heading "Mid course Quiz" [level=2] [ref=f10e10]
+          - generic [ref=f10e11]: 0 of 6 answered
+        - generic [ref=f10e12]:
+          - generic [ref=f10e13]: Page 1 of 2
+          - navigation "Form pages" [ref=f10e17]:
+            - link "Page 1 (current)" [ref=f10e18] [cursor=pointer]:
+              - /url: /courses/functionality-demo-show-end-with-quiz/2/fill_form/1
+            - generic "Page 2 (not yet accessible)" [ref=f10e19]
+      - generic [ref=f10e21]:
+        - generic [ref=f10e22]:
+          - heading "Mid course Quiz — Page 1 of 2" [level=1] [ref=f10e23]
+          - generic [ref=f10e24]: Page 1 of 2
+          - generic [ref=f10e25]:
+            - heading "Page 1" [active] [level=2] [ref=f10e26]
+            - paragraph [ref=f10e27]: Something Something
+        - generic [ref=f10e28]:
+          - group "1. Some question blah blah (required)" [ref=f10e29]:
+            - generic [ref=f10e30]:
+              - generic [ref=f10e31]: "1."
+              - paragraph [ref=f10e32]: Some question blah blah
+              - text: "*"
+              - generic [ref=f10e33]: (required)
+            - generic [ref=f10e34]:
+              - generic [ref=f10e35] [cursor=pointer]:
+                - radio "CORRECT" [ref=f10e36]
+                - generic [ref=f10e39]: CORRECT
+              - generic [ref=f10e40] [cursor=pointer]:
+                - radio "option 2 text" [ref=f10e41]
+                - generic [ref=f10e44]: option 2 text
+              - generic [ref=f10e45] [cursor=pointer]:
+                - radio "option 3 text" [ref=f10e46]
+                - generic [ref=f10e49]: option 3 text
+          - generic [ref=f10e50]:
+            - paragraph [ref=f10e51]: "Considering blah blah, answer the following:"
+            - figure "Example of a graph Expand" [ref=f10e53]:
+              - img "Graph example" [ref=f10e54]
+              - generic [ref=f10e56]:
+                - paragraph [ref=f10e57]:
+                  - generic [ref=f10e58]: Example of a graph
+                - button "Expand" [ref=f10e59] [cursor=pointer]
+          - group "2. Some question blah blah (required)" [ref=f10e63]:
+            - generic [ref=f10e64]:
+              - generic [ref=f10e65]: "2."
+              - paragraph [ref=f10e66]: Some question blah blah
+              - text: "*"
+              - generic [ref=f10e67]: (required)
+            - generic [ref=f10e68]:
+              - generic [ref=f10e69] [cursor=pointer]:
+                - radio "option 1 text" [ref=f10e70]
+                - generic [ref=f10e73]: option 1 text
+              - generic [ref=f10e74] [cursor=pointer]:
+                - radio "option 2 text" [ref=f10e75]
+                - generic [ref=f10e78]: option 2 text
+              - generic [ref=f10e79] [cursor=pointer]:
+                - radio "CORRECT" [ref=f10e80]
+                - generic [ref=f10e83]: CORRECT
+          - group "3. Some question blah blah (required)" [ref=f10e84]:
+            - generic [ref=f10e85]:
+              - generic [ref=f10e86]: "3."
+              - paragraph [ref=f10e87]: Some question blah blah
+              - text: "*"
+              - generic [ref=f10e88]: (required)
+            - generic [ref=f10e89]:
+              - generic [ref=f10e90] [cursor=pointer]:
+                - radio "option 1 text" [ref=f10e91]
+                - generic [ref=f10e94]: option 1 text
+              - generic [ref=f10e95] [cursor=pointer]:
+                - radio "CORRECT" [ref=f10e96]
+                - generic [ref=f10e99]: CORRECT
+              - generic [ref=f10e100] [cursor=pointer]:
+                - radio "option 3 text" [ref=f10e101]
+                - generic [ref=f10e104]: option 3 text
+      - button "Next" [ref=f10e109] [cursor=pointer]
+  - generic [ref=f10e112] [cursor=pointer]: misure-of-admonitions
+  - generic "Show toolbar" [ref=f10e114]: DJDT

@@ -1,0 +1,398 @@
+- generic [active] [ref=f16e1]:
+  - banner [ref=f16e2]:
+    - link [ref=f16e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f16e4]
+      - heading "FirstClass" [level=1] [ref=f16e5]
+    - navigation [ref=f16e6]:
+      - generic [ref=f16e7]:
+        - generic [ref=f16e8]:
+          - button "Notifications, 3 new" [ref=f16e9]
+          - status:
+            - generic [ref=f16e13]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f16e14]: "3"
+        - button "Open user menu for Demo" [ref=f16e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f16e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f16e18]:
+    - generic [ref=f16e20]:
+      - paragraph [ref=f16e21]: Application for Functionality Demo - Application gated course
+      - heading "About you" [level=1] [ref=f16e22]
+      - navigation "Application pages" [ref=f16e23]:
+        - generic [ref=f16e24]: "1"
+        - link "2" [ref=f16e25] [cursor=pointer]:
+          - /url: /applications/application/e50cea60-4357-4d99-b265-cc4342c9e779/page/2/
+        - link "3" [ref=f16e26] [cursor=pointer]:
+          - /url: /applications/application/e50cea60-4357-4d99-b265-cc4342c9e779/page/3/
+        - link "4" [ref=f16e27] [cursor=pointer]:
+          - /url: /applications/application/e50cea60-4357-4d99-b265-cc4342c9e779/page/4/
+      - generic [ref=f16e28]: This application has been submitted and can no longer be changed.
+      - generic [ref=f16e33]:
+        - paragraph [ref=f16e35]: We ask about your experience so we can pitch the first few weeks right. Nothing here rules you out.
+        - group "1. What is your full name? (required)" [ref=f16e36]:
+          - generic [ref=f16e37]:
+            - generic [ref=f16e38]: "1."
+            - paragraph [ref=f16e39]: What is your full name?
+            - text: "*"
+            - generic [ref=f16e40]: (required)
+          - generic [ref=f16e41]:
+            - paragraph [ref=f16e43]: What is your full name?
+            - textbox "What is your full name?" [disabled] [ref=f16e44]: Demo Dev
+        - group "2. What is your date of birth? (required)" [ref=f16e45]:
+          - generic [ref=f16e46]:
+            - generic [ref=f16e47]: "2."
+            - paragraph [ref=f16e48]: What is your date of birth?
+            - text: "*"
+            - generic [ref=f16e49]: (required)
+          - generic [ref=f16e50]:
+            - paragraph [ref=f16e52]: What is your date of birth?
+            - textbox "What is your date of birth?" [disabled] [ref=f16e53]: 1990-01-01
+        - group "3. What is your email address? (required)" [ref=f16e54]:
+          - generic [ref=f16e55]:
+            - generic [ref=f16e56]: "3."
+            - paragraph [ref=f16e57]: What is your email address?
+            - text: "*"
+            - generic [ref=f16e58]: (required)
+          - generic [ref=f16e59]:
+            - paragraph [ref=f16e61]: What is your email address?
+            - textbox "What is your email address?" [disabled] [ref=f16e62]: demodev@email.com
+        - group "4. What is your phone number?" [ref=f16e63]:
+          - generic [ref=f16e64]:
+            - generic [ref=f16e65]: "4."
+            - paragraph [ref=f16e66]: What is your phone number?
+          - generic [ref=f16e68]:
+            - generic [ref=f16e69]:
+              - generic [ref=f16e70]: Country
+              - combobox "Country" [disabled] [ref=f16e71]:
+                - option "Choose a country"
+                - option "Afghanistan (+93)"
+                - option "Åland Islands (+358)"
+                - option "Albania (+355)"
+                - option "Algeria (+213)"
+                - option "American Samoa (+1)"
+                - option "Andorra (+376)"
+                - option "Angola (+244)"
+                - option "Anguilla (+1)"
+                - option "Antigua & Barbuda (+1)"
+                - option "Argentina (+54)"
+                - option "Armenia (+374)"
+                - option "Aruba (+297)"
+                - option "Ascension Island (+247)"
+                - option "Australia (+61)"
+                - option "Austria (+43)"
+                - option "Azerbaijan (+994)"
+                - option "Bahamas (+1)"
+                - option "Bahrain (+973)"
+                - option "Bangladesh (+880)"
+                - option "Barbados (+1)"
+                - option "Belarus (+375)"
+                - option "Belgium (+32)"
+                - option "Belize (+501)"
+                - option "Benin (+229)"
+                - option "Bermuda (+1)"
+                - option "Bhutan (+975)"
+                - option "Bolivia (+591)"
+                - option "Bosnia & Herzegovina (+387)"
+                - option "Botswana (+267)"
+                - option "Brazil (+55)"
+                - option "British Indian Ocean Territory (+246)"
+                - option "British Virgin Islands (+1)"
+                - option "Brunei (+673)"
+                - option "Bulgaria (+359)"
+                - option "Burkina Faso (+226)"
+                - option "Burundi (+257)"
+                - option "Cambodia (+855)"
+                - option "Cameroon (+237)"
+                - option "Canada (+1)"
+                - option "Cape Verde (+238)"
+                - option "Caribbean Netherlands (+599)"
+                - option "Cayman Islands (+1)"
+                - option "Central African Republic (+236)"
+                - option "Chad (+235)"
+                - option "Chile (+56)"
+                - option "China (+86)"
+                - option "Christmas Island (+61)"
+                - option "Cocos (Keeling) Islands (+61)"
+                - option "Colombia (+57)"
+                - option "Comoros (+269)"
+                - option "Congo - Brazzaville (+242)"
+                - option "Congo - Kinshasa (+243)"
+                - option "Cook Islands (+682)"
+                - option "Costa Rica (+506)"
+                - option "Côte d’Ivoire (+225)"
+                - option "Croatia (+385)"
+                - option "Cuba (+53)"
+                - option "Curaçao (+599)"
+                - option "Cyprus (+357)"
+                - option "Czechia (+420)"
+                - option "Denmark (+45)"
+                - option "Djibouti (+253)"
+                - option "Dominica (+1)"
+                - option "Dominican Republic (+1)"
+                - option "Ecuador (+593)"
+                - option "Egypt (+20)"
+                - option "El Salvador (+503)"
+                - option "Equatorial Guinea (+240)"
+                - option "Eritrea (+291)"
+                - option "Estonia (+372)"
+                - option "Eswatini (+268)"
+                - option "Ethiopia (+251)"
+                - option "Falkland Islands (+500)"
+                - option "Faroe Islands (+298)"
+                - option "Fiji (+679)"
+                - option "Finland (+358)"
+                - option "France (+33)"
+                - option "French Guiana (+594)"
+                - option "French Polynesia (+689)"
+                - option "Gabon (+241)"
+                - option "Gambia (+220)"
+                - option "Georgia (+995)"
+                - option "Germany (+49)"
+                - option "Ghana (+233)"
+                - option "Gibraltar (+350)"
+                - option "Greece (+30)"
+                - option "Greenland (+299)"
+                - option "Grenada (+1)"
+                - option "Guadeloupe (+590)"
+                - option "Guam (+1)"
+                - option "Guatemala (+502)"
+                - option "Guernsey (+44)"
+                - option "Guinea (+224)"
+                - option "Guinea-Bissau (+245)"
+                - option "Guyana (+592)"
+                - option "Haiti (+509)"
+                - option "Honduras (+504)"
+                - option "Hong Kong SAR China (+852)"
+                - option "Hungary (+36)"
+                - option "Iceland (+354)"
+                - option "India (+91)"
+                - option "Indonesia (+62)"
+                - option "Iran (+98)"
+                - option "Iraq (+964)"
+                - option "Ireland (+353)"
+                - option "Isle of Man (+44)"
+                - option "Israel (+972)"
+                - option "Italy (+39)"
+                - option "Jamaica (+1)"
+                - option "Japan (+81)"
+                - option "Jersey (+44)"
+                - option "Jordan (+962)"
+                - option "Kazakhstan (+7)"
+                - option "Kenya (+254)"
+                - option "Kiribati (+686)"
+                - option "Kosovo (+383)"
+                - option "Kuwait (+965)"
+                - option "Kyrgyzstan (+996)"
+                - option "Laos (+856)"
+                - option "Latvia (+371)"
+                - option "Lebanon (+961)"
+                - option "Lesotho (+266)"
+                - option "Liberia (+231)"
+                - option "Libya (+218)"
+                - option "Liechtenstein (+423)"
+                - option "Lithuania (+370)"
+                - option "Luxembourg (+352)"
+                - option "Macao SAR China (+853)"
+                - option "Madagascar (+261)"
+                - option "Malawi (+265)"
+                - option "Malaysia (+60)"
+                - option "Maldives (+960)"
+                - option "Mali (+223)"
+                - option "Malta (+356)"
+                - option "Marshall Islands (+692)"
+                - option "Martinique (+596)"
+                - option "Mauritania (+222)"
+                - option "Mauritius (+230)"
+                - option "Mayotte (+262)"
+                - option "Mexico (+52)"
+                - option "Micronesia (+691)"
+                - option "Moldova (+373)"
+                - option "Monaco (+377)"
+                - option "Mongolia (+976)"
+                - option "Montenegro (+382)"
+                - option "Montserrat (+1)"
+                - option "Morocco (+212)"
+                - option "Mozambique (+258)"
+                - option "Myanmar (Burma) (+95)"
+                - option "Namibia (+264)"
+                - option "Nauru (+674)"
+                - option "Nepal (+977)"
+                - option "Netherlands (+31)"
+                - option "New Caledonia (+687)"
+                - option "New Zealand (+64)"
+                - option "Nicaragua (+505)"
+                - option "Niger (+227)"
+                - option "Nigeria (+234)"
+                - option "Niue (+683)"
+                - option "Norfolk Island (+672)"
+                - option "North Korea (+850)"
+                - option "North Macedonia (+389)"
+                - option "Northern Mariana Islands (+1)"
+                - option "Norway (+47)"
+                - option "Oman (+968)"
+                - option "Pakistan (+92)"
+                - option "Palau (+680)"
+                - option "Palestinian Territories (+970)"
+                - option "Panama (+507)"
+                - option "Papua New Guinea (+675)"
+                - option "Paraguay (+595)"
+                - option "Peru (+51)"
+                - option "Philippines (+63)"
+                - option "Poland (+48)"
+                - option "Portugal (+351)"
+                - option "Puerto Rico (+1)"
+                - option "Qatar (+974)"
+                - option "Réunion (+262)"
+                - option "Romania (+40)"
+                - option "Russia (+7)"
+                - option "Rwanda (+250)"
+                - option "Samoa (+685)"
+                - option "San Marino (+378)"
+                - option "São Tomé & Príncipe (+239)"
+                - option "Saudi Arabia (+966)"
+                - option "Senegal (+221)"
+                - option "Serbia (+381)"
+                - option "Seychelles (+248)"
+                - option "Sierra Leone (+232)"
+                - option "Singapore (+65)"
+                - option "Sint Maarten (+1)"
+                - option "Slovakia (+421)"
+                - option "Slovenia (+386)"
+                - option "Solomon Islands (+677)"
+                - option "Somalia (+252)"
+                - option "South Africa (+27)"
+                - option "South Korea (+82)"
+                - option "South Sudan (+211)"
+                - option "Spain (+34)"
+                - option "Sri Lanka (+94)"
+                - option "St. Barthélemy (+590)"
+                - option "St. Helena (+290)"
+                - option "St. Kitts & Nevis (+1)"
+                - option "St. Lucia (+1)"
+                - option "St. Martin (+590)"
+                - option "St. Pierre & Miquelon (+508)"
+                - option "St. Vincent & Grenadines (+1)"
+                - option "Sudan (+249)"
+                - option "Suriname (+597)"
+                - option "Svalbard & Jan Mayen (+47)"
+                - option "Sweden (+46)"
+                - option "Switzerland (+41)"
+                - option "Syria (+963)"
+                - option "Taiwan (+886)"
+                - option "Tajikistan (+992)"
+                - option "Tanzania (+255)"
+                - option "Thailand (+66)"
+                - option "Timor-Leste (+670)"
+                - option "Togo (+228)"
+                - option "Tokelau (+690)"
+                - option "Tonga (+676)"
+                - option "Trinidad & Tobago (+1)"
+                - option "Tristan da Cunha (+290)"
+                - option "Tunisia (+216)"
+                - option "Türkiye (+90)"
+                - option "Turkmenistan (+993)"
+                - option "Turks & Caicos Islands (+1)"
+                - option "Tuvalu (+688)"
+                - option "U.S. Virgin Islands (+1)"
+                - option "Uganda (+256)"
+                - option "Ukraine (+380)"
+                - option "United Arab Emirates (+971)"
+                - option "United Kingdom (+44)"
+                - option "United States (+1)" [selected]
+                - option "Uruguay (+598)"
+                - option "Uzbekistan (+998)"
+                - option "Vanuatu (+678)"
+                - option "Vatican City (+39)"
+                - option "Venezuela (+58)"
+                - option "Vietnam (+84)"
+                - option "Wallis & Futuna (+681)"
+                - option "Western Sahara (+212)"
+                - option "Yemen (+967)"
+                - option "Zambia (+260)"
+                - option "Zimbabwe (+263)"
+            - generic [ref=f16e72]:
+              - generic [ref=f16e73]: Phone number
+              - textbox "Phone number" [disabled] [ref=f16e74]
+              - paragraph [ref=f16e75]: "For example: 201-555-0123"
+        - group "5. Share a link to your portfolio, GitHub profile or LinkedIn, if you have one" [ref=f16e76]:
+          - generic [ref=f16e77]:
+            - generic [ref=f16e78]: "5."
+            - paragraph [ref=f16e79]: Share a link to your portfolio, GitHub profile or LinkedIn, if you have one
+          - generic [ref=f16e80]:
+            - paragraph [ref=f16e82]: Share a link to your portfolio, GitHub profile or LinkedIn, if you have one
+            - textbox "Share a link to your portfolio, GitHub profile or LinkedIn, if you have one" [disabled] [ref=f16e83]
+        - group "6. How many years have you been writing software? (required)" [ref=f16e84]:
+          - generic [ref=f16e85]:
+            - generic [ref=f16e86]: "6."
+            - paragraph [ref=f16e87]: How many years have you been writing software?
+            - text: "*"
+            - generic [ref=f16e88]: (required)
+          - generic [ref=f16e89]:
+            - paragraph [ref=f16e91]: How many years have you been writing software?
+            - spinbutton "How many years have you been writing software?" [disabled] [ref=f16e92]: "5"
+        - group "7. How did you hear about this course? (required)" [ref=f16e93]:
+          - generic [ref=f16e94]:
+            - generic [ref=f16e95]: "7."
+            - paragraph [ref=f16e96]: How did you hear about this course?
+            - text: "*"
+            - generic [ref=f16e97]: (required)
+          - generic [ref=f16e98]:
+            - generic [ref=f16e99] [cursor=pointer]:
+              - radio "From a friend or colleague" [disabled] [ref=f16e100]
+              - generic [ref=f16e103]: From a friend or colleague
+            - generic [ref=f16e104] [cursor=pointer]:
+              - radio "A search engine" [checked] [disabled] [ref=f16e105]
+              - generic [ref=f16e108]: A search engine
+            - generic [ref=f16e109] [cursor=pointer]:
+              - radio "Social media" [disabled] [ref=f16e110]
+              - generic [ref=f16e113]: Social media
+            - generic [ref=f16e114] [cursor=pointer]:
+              - radio "Somewhere else" [disabled] [ref=f16e115]
+              - generic [ref=f16e118]: Somewhere else
+        - group "8. Is your employer paying for this course? (required)" [ref=f16e119]:
+          - generic [ref=f16e120]:
+            - generic [ref=f16e121]: "8."
+            - paragraph [ref=f16e122]: Is your employer paying for this course?
+            - text: "*"
+            - generic [ref=f16e123]: (required)
+          - generic [ref=f16e124]:
+            - generic [ref=f16e125] [cursor=pointer]:
+              - radio "Yes" [checked] [disabled] [ref=f16e126]
+              - generic [ref=f16e129]: "Yes"
+            - generic [ref=f16e130] [cursor=pointer]:
+              - radio "No" [disabled] [ref=f16e131]
+              - generic [ref=f16e134]: "No"
+        - group "9. Which of these interest you?" [ref=f16e135]:
+          - generic [ref=f16e136]:
+            - generic [ref=f16e137]: "9."
+            - paragraph [ref=f16e138]: Which of these interest you?
+          - paragraph [ref=f16e139]: Select all that apply.
+          - generic [ref=f16e140]:
+            - generic [ref=f16e141] [cursor=pointer]:
+              - checkbox "Building web applications" [disabled] [ref=f16e142]
+              - generic [ref=f16e146]: Building web applications
+            - generic [ref=f16e147] [cursor=pointer]:
+              - checkbox "Data and analytics" [disabled] [ref=f16e148]
+              - generic [ref=f16e152]: Data and analytics
+            - generic [ref=f16e153] [cursor=pointer]:
+              - checkbox "Infrastructure and deployment" [disabled] [ref=f16e154]
+              - generic [ref=f16e158]: Infrastructure and deployment
+        - group "10. Why do you want to take this course?" [ref=f16e159]:
+          - generic [ref=f16e160]:
+            - generic [ref=f16e161]: "10."
+            - paragraph [ref=f16e162]: Why do you want to take this course?
+          - generic [ref=f16e163]:
+            - paragraph [ref=f16e165]: Why do you want to take this course?
+            - textbox "Why do you want to take this course?" [disabled] [ref=f16e166]
+  - contentinfo [ref=f16e167]:
+    - generic [ref=f16e168]:
+      - paragraph [ref=f16e169]: © 2026 FirstClass
+      - navigation "Legal" [ref=f16e170]:
+        - link "Terms and Conditions" [ref=f16e171] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f16e172] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f16e173] [cursor=pointer]: misure-of-admonitions
+  - generic "Show toolbar" [ref=f16e175]: DJDT

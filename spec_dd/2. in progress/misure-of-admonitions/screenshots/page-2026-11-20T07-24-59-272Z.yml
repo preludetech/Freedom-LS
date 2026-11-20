@@ -1,0 +1,109 @@
+- generic [active] [ref=f34e1]:
+  - banner [ref=f34e2]:
+    - link [ref=f34e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f34e4]
+      - heading "FirstClass" [level=1] [ref=f34e5]
+    - navigation [ref=f34e6]:
+      - generic [ref=f34e7]:
+        - generic [ref=f34e8]:
+          - button "Notifications, 3 new" [ref=f34e9]
+          - status:
+            - generic [ref=f34e13]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f34e14]: "3"
+        - button "Open user menu for Demo" [ref=f34e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f34e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f34e18]:
+    - generic [ref=f34e20]:
+      - generic [ref=f34e21]:
+        - paragraph [ref=f34e22]: Application for Functionality Demo - Application gated course
+        - heading "Check your answers" [level=1] [ref=f34e23]
+      - region [ref=f34e24]:
+        - heading "About you" [level=2] [ref=f34e26]
+        - generic [ref=f34e27]:
+          - generic [ref=f34e28]:
+            - term [ref=f34e29]:
+              - paragraph [ref=f34e30]: What is your full name?
+            - definition [ref=f34e31]: Demo Dev
+          - generic [ref=f34e32]:
+            - term [ref=f34e33]:
+              - paragraph [ref=f34e34]: What is your date of birth?
+            - definition [ref=f34e35]: Jan. 1, 1990
+          - generic [ref=f34e36]:
+            - term [ref=f34e37]:
+              - paragraph [ref=f34e38]: What is your email address?
+            - definition [ref=f34e39]: demodev@email.com
+          - generic [ref=f34e40]:
+            - term [ref=f34e41]:
+              - paragraph [ref=f34e42]: What is your phone number?
+            - definition [ref=f34e43]: Not answered
+          - generic [ref=f34e44]:
+            - term [ref=f34e45]:
+              - paragraph [ref=f34e46]: Share a link to your portfolio, GitHub profile or LinkedIn, if you have one
+            - definition [ref=f34e47]: Not answered
+          - generic [ref=f34e48]:
+            - term [ref=f34e49]:
+              - paragraph [ref=f34e50]: How many years have you been writing software?
+            - definition [ref=f34e51]: "5"
+          - generic [ref=f34e52]:
+            - term [ref=f34e53]:
+              - paragraph [ref=f34e54]: How did you hear about this course?
+            - definition [ref=f34e55]: From a friend or colleague
+          - generic [ref=f34e56]:
+            - term [ref=f34e57]:
+              - paragraph [ref=f34e58]: Is your employer paying for this course?
+            - definition [ref=f34e59]: "No"
+          - generic [ref=f34e60]:
+            - term [ref=f34e61]:
+              - paragraph [ref=f34e62]: Which of these interest you?
+            - definition [ref=f34e63]: Building web applications
+          - generic [ref=f34e64]:
+            - term [ref=f34e65]:
+              - paragraph [ref=f34e66]: Why do you want to take this course?
+            - definition [ref=f34e67]: To learn.
+      - region [ref=f34e68]:
+        - heading "Supporting documents" [level=2] [ref=f34e70]
+        - generic [ref=f34e71]:
+          - generic [ref=f34e72]:
+            - term [ref=f34e73]:
+              - paragraph [ref=f34e74]: Upload a scan of your ID or a recent certificate
+            - definition [ref=f34e75]:
+              - generic [ref=f34e76]:
+                - generic [ref=f34e77]: id.pdf
+                - generic [ref=f34e78]: (193 bytes)
+                - link "Download id.pdf" [ref=f34e79] [cursor=pointer]:
+                  - /url: /forms/answer-file/c25880da-8247-47d7-91b6-648a42d64fbe/
+                  - text: Download
+                  - generic [ref=f34e83]: id.pdf
+          - generic [ref=f34e84]:
+            - term [ref=f34e85]:
+              - paragraph [ref=f34e86]: Is there anything else we should know?
+            - definition [ref=f34e87]: Not answered
+      - region [ref=f34e88]:
+        - heading "Availability" [level=2] [ref=f34e90]
+        - generic [ref=f34e91]:
+          - generic [ref=f34e92]:
+            - term [ref=f34e93]:
+              - paragraph [ref=f34e94]: What time of day do you prefer for live sessions?
+            - definition [ref=f34e95]: 10 a.m.
+          - generic [ref=f34e96]:
+            - term [ref=f34e97]:
+              - paragraph [ref=f34e98]: Which time zone are you usually in?
+            - definition [ref=f34e99]: Hawaii-Aleutian (UTC-10)
+      - status [ref=f34e100]:
+        - generic [ref=f34e101]: Your application has been submitted. You will hear back once it has been reviewed.
+      - link "Your application" [ref=f34e105] [cursor=pointer]:
+        - /url: /applications/status/c154f056-3967-41df-a5e9-c8fa94c202c3/
+  - contentinfo [ref=f34e106]:
+    - generic [ref=f34e107]:
+      - paragraph [ref=f34e108]: © 2026 FirstClass
+      - navigation "Legal" [ref=f34e109]:
+        - link "Terms and Conditions" [ref=f34e110] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f34e111] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f34e112] [cursor=pointer]: misure-of-admonitions
+  - generic "Show toolbar" [ref=f34e114]: DJDT

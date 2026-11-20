@@ -1,0 +1,93 @@
+- generic [active] [ref=f9e1]:
+  - banner [ref=f9e2]:
+    - link [ref=f9e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f9e4]
+      - heading "FirstClass" [level=1] [ref=f9e5]
+    - navigation [ref=f9e6]:
+      - generic [ref=f9e7]:
+        - generic [ref=f9e8]:
+          - button "Notifications, 3 new" [ref=f9e9]
+          - status:
+            - generic [ref=f9e13]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f9e14]: "3"
+        - button "Open user menu for Demo" [ref=f9e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f9e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f9e18]:
+    - generic [ref=f9e20]:
+      - dialog "Course outline" [ref=f9e21]:
+        - generic [ref=f9e24]:
+          - generic [ref=f9e25]:
+            - paragraph [ref=f9e26]: Course outline
+            - paragraph [ref=f9e27]: Functionality Demo - show end with Quiz
+            - generic [ref=f9e29]:
+              - progressbar "Progress for Functionality Demo - show end with Quiz" [ref=f9e30]: 25%
+              - generic [ref=f9e31]: 25% complete
+          - navigation "Course outline" [ref=f9e32]:
+            - list [ref=f9e33]:
+              - listitem [ref=f9e34]:
+                - generic [ref=f9e35]:
+                  - generic [ref=f9e36]: "1."
+                  - generic [ref=f9e37]: Completed
+                  - link "Content title 2 - Before Quiz" [ref=f9e42] [cursor=pointer]:
+                    - /url: /courses/functionality-demo-show-end-with-quiz/1/
+              - listitem [ref=f9e43]:
+                - generic [ref=f9e44]:
+                  - generic [ref=f9e45]: "2."
+                  - generic [ref=f9e46]: In progress
+                  - generic [ref=f9e50]: Mid course Quiz
+              - listitem [ref=f9e51]:
+                - generic [ref=f9e52]:
+                  - generic [ref=f9e53]: "3."
+                  - generic [ref=f9e54]: Locked
+                  - generic [ref=f9e58]: Content title 4 - After quiz
+              - listitem [ref=f9e59]:
+                - generic [ref=f9e60]:
+                  - generic [ref=f9e61]: "4."
+                  - generic [ref=f9e62]: Locked
+                  - generic [ref=f9e66]: End course Quiz
+      - generic [ref=f9e67]:
+        - navigation "Breadcrumb" [ref=f9e72]:
+          - list [ref=f9e73]:
+            - listitem [ref=f9e74]:
+              - link "Functionality Demo - show end with Quiz" [ref=f9e75] [cursor=pointer]:
+                - /url: /courses/functionality-demo-show-end-with-quiz/detail/
+            - listitem [ref=f9e76]:
+              - generic [aria-hidden] [ref=f9e77]: ">"
+              - generic "Mid course Quiz" [ref=f9e78]
+        - generic [ref=f9e80]:
+          - heading "Mid course Quiz" [level=1] [ref=f9e85]
+          - generic [ref=f9e86]:
+            - generic [ref=f9e87]: 6 questions
+            - generic [ref=f9e90]: 2 pages
+          - region [ref=f9e93]:
+            - heading "Previous attempts" [level=2] [ref=f9e94]
+            - generic [ref=f9e95]:
+              - generic [ref=f9e96]:
+                - time [ref=f9e98]: 20 Nov 2026
+                - generic [ref=f9e99]:
+                  - generic [ref=f9e100]: 0%
+                  - generic [ref=f9e101]: (0 / 6)
+              - generic [ref=f9e102]:
+                - time [ref=f9e104]: 20 Nov 2026
+                - generic [ref=f9e105]:
+                  - generic [ref=f9e106]: 17%
+                  - generic [ref=f9e107]: (1 / 6)
+          - generic [ref=f9e108]:
+            - link "Previous" [ref=f9e110] [cursor=pointer]:
+              - /url: /courses/functionality-demo-show-end-with-quiz/1/
+            - link "Try Again" [ref=f9e114] [cursor=pointer]:
+              - /url: /courses/functionality-demo-show-end-with-quiz/2/start_form
+  - contentinfo [ref=f9e118]:
+    - generic [ref=f9e119]:
+      - paragraph [ref=f9e120]: © 2026 FirstClass
+      - navigation "Legal" [ref=f9e121]:
+        - link "Terms and Conditions" [ref=f9e122] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f9e123] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f9e124] [cursor=pointer]: misure-of-admonitions
+  - generic "Show toolbar" [ref=f9e126]: DJDT

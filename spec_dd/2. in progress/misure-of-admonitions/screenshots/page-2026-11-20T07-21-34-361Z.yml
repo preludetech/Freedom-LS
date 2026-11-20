@@ -1,0 +1,86 @@
+- generic [active] [ref=f19e1]:
+  - banner [ref=f19e2]:
+    - link [ref=f19e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f19e4]
+      - heading "FirstClass" [level=1] [ref=f19e5]
+    - navigation [ref=f19e6]:
+      - generic [ref=f19e7]:
+        - generic [ref=f19e8]:
+          - button "Notifications, 3 new" [ref=f19e9]
+          - status:
+            - generic [ref=f19e13]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f19e14]: "3"
+        - button "Open user menu for Demo" [ref=f19e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f19e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f19e18]:
+    - generic [ref=f19e20]:
+      - link "Back" [ref=f19e21] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f19e26]:
+        - generic [ref=f19e27]: Assessment
+        - heading "Functionality Demo - show end with Quiz" [level=1] [ref=f19e28]
+        - paragraph [ref=f19e29]: A tour of the content system
+        - generic [ref=f19e31]:
+          - generic [ref=f19e35]:
+            - paragraph [ref=f19e36]: Lessons
+            - paragraph [ref=f19e37]: 2 lessons
+          - generic [ref=f19e41]:
+            - paragraph [ref=f19e42]: Enrolment
+            - paragraph [ref=f19e43]: Free · open
+      - generic [ref=f19e44]:
+        - complementary [ref=f19e45]:
+          - generic [ref=f19e47]:
+            - generic [ref=f19e48]:
+              - paragraph [ref=f19e49]: Free · open to everyone
+              - paragraph [ref=f19e50]: One click. No credit card.
+            - link "Continue" [ref=f19e51] [cursor=pointer]:
+              - /url: /courses/functionality-demo-show-end-with-quiz/1/
+            - generic [ref=f19e52]:
+              - heading "This course includes" [level=3] [ref=f19e53]
+              - list [ref=f19e54]:
+                - listitem [ref=f19e55]: 2 lessons
+                - listitem [ref=f19e56]: Includes assessments
+        - generic [ref=f19e57]:
+          - generic [ref=f19e58]:
+            - heading "About this course" [level=2] [ref=f19e59]
+            - paragraph [ref=f19e61]: A much longer description of the course. Lorem ipsum text here
+          - generic [ref=f19e62]:
+            - heading "Course content" [level=2] [ref=f19e63]
+            - navigation "Course outline" [ref=f19e65]:
+              - list [ref=f19e66]:
+                - listitem [ref=f19e67]:
+                  - generic [ref=f19e68]:
+                    - generic [ref=f19e69]: "1."
+                    - generic [ref=f19e70]: Completed
+                    - link "Content title 2 - Before Quiz" [ref=f19e75] [cursor=pointer]:
+                      - /url: /courses/functionality-demo-show-end-with-quiz/1/
+                - listitem [ref=f19e76]:
+                  - generic [ref=f19e77]:
+                    - generic [ref=f19e78]: "2."
+                    - generic [ref=f19e79]: In progress
+                    - link "Mid course Quiz" [ref=f19e84] [cursor=pointer]:
+                      - /url: /courses/functionality-demo-show-end-with-quiz/2/
+                - listitem [ref=f19e85]:
+                  - generic [ref=f19e86]:
+                    - generic [ref=f19e87]: "3."
+                    - generic [ref=f19e88]: Locked
+                    - generic [ref=f19e92]: Content title 4 - After quiz
+                - listitem [ref=f19e93]:
+                  - generic [ref=f19e94]:
+                    - generic [ref=f19e95]: "4."
+                    - generic [ref=f19e96]: Locked
+                    - generic [ref=f19e100]: End course Quiz
+  - contentinfo [ref=f19e101]:
+    - generic [ref=f19e102]:
+      - paragraph [ref=f19e103]: © 2026 FirstClass
+      - navigation "Legal" [ref=f19e104]:
+        - link "Terms and Conditions" [ref=f19e105] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f19e106] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f19e107] [cursor=pointer]: misure-of-admonitions
+  - generic "Show toolbar" [ref=f19e109]: DJDT

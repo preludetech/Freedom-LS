@@ -1,0 +1,124 @@
+- generic [active] [ref=f40e1]:
+  - banner [ref=f40e2]:
+    - link [ref=f40e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f40e4]
+      - heading "FirstClass" [level=1] [ref=f40e5]
+    - navigation [ref=f40e6]:
+      - generic [ref=f40e7]:
+        - generic [ref=f40e8]:
+          - button "Notifications, 3 new" [ref=f40e9]
+          - status:
+            - generic [ref=f40e13]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f40e14]: "3"
+        - button "Open user menu for Demo" [ref=f40e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f40e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f40e18]:
+    - generic [ref=f40e20]:
+      - dialog "Navigation" [ref=f40e21]:
+        - generic [ref=f40e23]:
+          - generic [ref=f40e24]:
+            - paragraph [ref=f40e25]: Organisation
+            - button "Switch organisation" [ref=f40e27] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f40e28]: D
+              - generic "DemoDev" [ref=f40e29]
+          - navigation "Sections" [ref=f40e32]:
+            - heading "Teaching" [level=2] [ref=f40e33]
+            - list [ref=f40e34]:
+              - listitem [ref=f40e35]:
+                - link "Dashboard" [ref=f40e36] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/dashboard
+              - listitem [ref=f40e41]:
+                - link "Cohorts" [ref=f40e42] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+              - listitem [ref=f40e47]:
+                - link "Learners" [ref=f40e48] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+              - listitem [ref=f40e53]:
+                - link "Courses" [ref=f40e54] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+            - heading "Administration" [level=2] [ref=f40e59]
+            - list [ref=f40e60]:
+              - listitem [ref=f40e61]:
+                - link "Staff" [ref=f40e62] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/staff
+              - listitem [ref=f40e67]:
+                - link "Audit log" [ref=f40e68] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/audit-log
+          - generic [ref=f40e73]:
+            - generic [ref=f40e75]:
+              - generic [aria-hidden] [ref=f40e76]: DE
+              - generic [ref=f40e77]:
+                - generic [ref=f40e78]: Demo
+                - generic [ref=f40e79]: demodev@email.com
+            - link "Account settings" [ref=f40e80] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f40e85]:
+        - navigation "Back" [ref=f40e87]:
+          - link "Cohorts" [ref=f40e88] [cursor=pointer]:
+            - /url: /educator/organisations/demodev/cohorts
+        - generic [ref=f40e92]:
+          - generic [ref=f40e94]:
+            - heading "Cohort 2025.03.04" [level=1] [ref=f40e99]
+            - navigation "Cohort sections" [ref=f40e100]:
+              - list [ref=f40e101]:
+                - listitem [ref=f40e102]:
+                  - link "Overview" [ref=f40e103] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/0fca569d-35af-4d99-9326-fe019ab737dc/__tabs/overview
+                - listitem [ref=f40e104]:
+                  - link "Learners 50" [ref=f40e105] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/0fca569d-35af-4d99-9326-fe019ab737dc/__tabs/learners
+                    - text: Learners
+                    - generic [ref=f40e106]: "50"
+                - listitem [ref=f40e107]:
+                  - link "Courses 0" [ref=f40e108] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/0fca569d-35af-4d99-9326-fe019ab737dc/__tabs/courses
+                    - text: Courses
+                    - generic [ref=f40e109]: "0"
+                - listitem [ref=f40e110]:
+                  - link "Report" [ref=f40e111] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/0fca569d-35af-4d99-9326-fe019ab737dc/__tabs/report
+                - listitem [ref=f40e112]:
+                  - link "Settings" [ref=f40e113] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/0fca569d-35af-4d99-9326-fe019ab737dc/__tabs/settings
+                - listitem [ref=f40e114]:
+                  - link "History" [ref=f40e115] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/0fca569d-35af-4d99-9326-fe019ab737dc/__tabs/history
+          - generic [ref=f40e119]:
+            - generic [ref=f40e121]:
+              - heading "Details" [level=2] [ref=f40e124]
+              - generic [ref=f40e126]:
+                - generic [ref=f40e127]:
+                  - term [ref=f40e128]: Name
+                  - definition [ref=f40e129]: Cohort 2025.03.04
+                - generic [ref=f40e130]:
+                  - term [ref=f40e131]: Status
+                  - definition [ref=f40e132]:
+                    - generic [ref=f40e133]: Active
+                - generic [ref=f40e134]:
+                  - term [ref=f40e135]: Created
+                  - definition [ref=f40e136]:
+                    - time [ref=f40e137]: 19 Nov 2026
+                - generic [ref=f40e138]:
+                  - term [ref=f40e139]: Learners
+                  - definition [ref=f40e140]: "50"
+                - generic [ref=f40e141]:
+                  - term [ref=f40e142]: Courses
+                  - definition [ref=f40e143]: "0"
+            - generic [ref=f40e145]:
+              - heading "Course completion" [level=2] [ref=f40e148]
+              - paragraph [ref=f40e151]: No courses registered.
+            - heading "Needs attention" [level=2] [ref=f40e156]
+  - contentinfo [ref=f40e168]:
+    - generic [ref=f40e169]:
+      - paragraph [ref=f40e170]: © 2026 FirstClass
+      - navigation "Legal" [ref=f40e171]:
+        - link "Terms and Conditions" [ref=f40e172] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f40e173] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f40e174] [cursor=pointer]: misure-of-admonitions
+  - generic "Show toolbar" [ref=f40e176]: DJDT

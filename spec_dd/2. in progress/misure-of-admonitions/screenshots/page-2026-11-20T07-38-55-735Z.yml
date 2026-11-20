@@ -1,0 +1,52 @@
+- generic [active] [ref=f27e1]:
+  - banner [ref=f27e2]:
+    - link [ref=f27e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f27e4]
+      - heading "FirstClass" [level=1] [ref=f27e5]
+    - navigation [ref=f27e6]:
+      - generic [ref=f27e7]:
+        - link "Login" [ref=f27e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f27e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=f27e10]:
+    - generic [ref=f27e11]:
+      - heading "Log in" [level=1] [ref=f27e12]
+      - generic [ref=f27e13]:
+        - alert [ref=f27e14]:
+          - paragraph [ref=f27e19]: The email address and/or password you specified are not correct.
+        - generic [ref=f27e24]:
+          - strong [ref=f27e25]: New here?
+          - paragraph [ref=f27e26]: If you don't have an account yet, create one and you'll be sent straight back to where you were.
+          - link "Create an account" [ref=f27e27] [cursor=pointer]:
+            - /url: /accounts/signup/?email=nobody-qa-xyz%40email.com
+      - generic [ref=f27e28]:
+        - paragraph [ref=f27e29]:
+          - generic [ref=f27e30]: "Email:"
+          - textbox "Email:" [ref=f27e31]:
+            - /placeholder: Email address
+            - text: nobody-qa-xyz@email.com
+        - paragraph [ref=f27e32]:
+          - generic [ref=f27e33]: "Password:"
+          - textbox "Password:" [ref=f27e34]:
+            - /placeholder: Password
+        - link "Forgot your password?" [ref=f27e36] [cursor=pointer]:
+          - /url: /accounts/password/reset/
+        - paragraph [ref=f27e37]:
+          - generic [ref=f27e38]: "Remember Me:"
+          - checkbox "Remember Me:" [ref=f27e39] [cursor=pointer]
+        - button "Log in" [ref=f27e41] [cursor=pointer]
+  - contentinfo [ref=f27e42]:
+    - generic [ref=f27e43]:
+      - paragraph [ref=f27e44]: © 2026 FirstClass
+      - navigation "Legal" [ref=f27e45]:
+        - link "Terms and Conditions" [ref=f27e46] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f27e47] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f27e48] [cursor=pointer]: misure-of-admonitions
+  - generic "Show toolbar" [ref=f27e50]: DJDT

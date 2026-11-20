@@ -1,0 +1,56 @@
+- generic [active] [ref=f13e1]:
+  - banner [ref=f13e2]:
+    - link [ref=f13e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f13e4]
+      - heading "FirstClass" [level=1] [ref=f13e5]
+    - navigation [ref=f13e6]:
+      - generic [ref=f13e7]:
+        - generic [ref=f13e8]:
+          - button "Notifications, 3 new" [ref=f13e9]
+          - status:
+            - generic [ref=f13e13]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f13e14]: "3"
+        - button "Open user menu for Demo" [ref=f13e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f13e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f13e18]:
+    - generic [ref=f13e19]:
+      - generic [ref=f13e20]:
+        - heading "Profile" [level=1] [ref=f13e21]
+        - generic [ref=f13e22]:
+          - generic [ref=f13e23]:
+            - generic [aria-hidden] [ref=f13e25]: DE
+            - generic [ref=f13e26]:
+              - paragraph [ref=f13e27]: Demo
+              - generic [ref=f13e28]:
+                - generic [ref=f13e29]: Profile picture
+                - button "Profile picture" [ref=f13e31] [cursor=pointer]
+                - paragraph [ref=f13e32]: JPEG, PNG or WebP, up to 10 MB. Square pictures work best; others are cropped to the centre.
+              - button "Save picture" [ref=f13e33] [cursor=pointer]
+          - generic [ref=f13e34]:
+            - generic [ref=f13e35]:
+              - generic [ref=f13e36]: "First name:"
+              - textbox "First name:" [ref=f13e37]: Demo
+            - generic [ref=f13e38]:
+              - generic [ref=f13e39]: "Last name:"
+              - textbox "Last name:" [ref=f13e40]
+            - button "Save" [ref=f13e41] [cursor=pointer]
+      - navigation [ref=f13e42]:
+        - link "Change Email" [ref=f13e43] [cursor=pointer]:
+          - /url: /accounts/email/
+        - link "Change Password" [ref=f13e44] [cursor=pointer]:
+          - /url: /accounts/password/change/
+        - button "Sign Out" [ref=f13e46] [cursor=pointer]
+  - contentinfo [ref=f13e47]:
+    - generic [ref=f13e48]:
+      - paragraph [ref=f13e49]: © 2026 FirstClass
+      - navigation "Legal" [ref=f13e50]:
+        - link "Terms and Conditions" [ref=f13e51] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f13e52] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f13e53] [cursor=pointer]: misure-of-admonitions
+  - generic "Show toolbar" [ref=f13e55]: DJDT

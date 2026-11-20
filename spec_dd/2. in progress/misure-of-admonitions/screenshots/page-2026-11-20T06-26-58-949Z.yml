@@ -1,0 +1,141 @@
+- generic [ref=f2e1]:
+  - banner [ref=f2e2]:
+    - link [ref=f2e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f2e4]
+      - heading "FirstClass" [level=1] [ref=f2e5]
+    - navigation [ref=f2e6]:
+      - generic [ref=f2e7]:
+        - generic [ref=f2e8]:
+          - button "Notifications, 3 new" [ref=f2e9]
+          - status:
+            - generic [ref=f2e13]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f2e14]: "3"
+        - button "Open user menu for Demo" [ref=f2e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f2e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f2e18]:
+    - generic [ref=f2e19]:
+      - generic [ref=f2e20]:
+        - dialog "Navigation" [ref=f2e21]:
+          - generic [ref=f2e23]:
+            - generic [ref=f2e24]:
+              - paragraph [ref=f2e25]: Organisation
+              - button "Switch organisation" [ref=f2e27] [cursor=pointer]:
+                - generic [aria-hidden] [ref=f2e28]: D
+                - generic "DemoDev" [ref=f2e29]
+            - navigation "Sections" [ref=f2e32]:
+              - heading "Teaching" [level=2] [ref=f2e33]
+              - list [ref=f2e34]:
+                - listitem [ref=f2e35]:
+                  - link "Dashboard" [ref=f2e36] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/dashboard
+                - listitem [ref=f2e41]:
+                  - link "Cohorts" [ref=f2e42] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts
+                - listitem [ref=f2e47]:
+                  - link "Learners" [ref=f2e48] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/learners
+                - listitem [ref=f2e53]:
+                  - link "Courses" [ref=f2e54] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/courses
+              - heading "Administration" [level=2] [ref=f2e59]
+              - list [ref=f2e60]:
+                - listitem [ref=f2e61]:
+                  - link "Staff" [ref=f2e62] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/staff
+                - listitem [ref=f2e67]:
+                  - link "Audit log" [ref=f2e68] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/audit-log
+            - generic [ref=f2e73]:
+              - generic [ref=f2e75]:
+                - generic [aria-hidden] [ref=f2e76]: DE
+                - generic [ref=f2e77]:
+                  - generic [ref=f2e78]: Demo
+                  - generic [ref=f2e79]: demodev@email.com
+              - link "Account settings" [ref=f2e80] [cursor=pointer]:
+                - /url: /accounts/profile/
+        - generic [ref=f2e85]:
+          - navigation "Back" [ref=f2e87]:
+            - link "Cohorts" [ref=f2e88] [cursor=pointer]:
+              - /url: /educator/organisations/demodev/cohorts
+          - generic [ref=f2e92]:
+            - generic [ref=f2e94]:
+              - heading "QA Delete Cascade Cohort" [level=1] [ref=f2e99]
+              - navigation "Cohort sections" [ref=f2e100]:
+                - list [ref=f2e101]:
+                  - listitem [ref=f2e102]:
+                    - link "Overview" [ref=f2e103] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/2a3d6408-6646-4950-bb54-765356f6bde9/__tabs/overview
+                  - listitem [ref=f2e104]:
+                    - link "Learners 0" [ref=f2e105] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/2a3d6408-6646-4950-bb54-765356f6bde9/__tabs/learners
+                      - text: Learners
+                      - generic [ref=f2e106]: "0"
+                  - listitem [ref=f2e107]:
+                    - link "Courses 0" [ref=f2e108] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/2a3d6408-6646-4950-bb54-765356f6bde9/__tabs/courses
+                      - text: Courses
+                      - generic [ref=f2e109]: "0"
+                  - listitem [ref=f2e110]:
+                    - link "Report" [ref=f2e111] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/2a3d6408-6646-4950-bb54-765356f6bde9/__tabs/report
+                  - listitem [ref=f2e112]:
+                    - link "Settings" [ref=f2e113] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/2a3d6408-6646-4950-bb54-765356f6bde9/__tabs/settings
+                  - listitem [ref=f2e114]:
+                    - link "History" [ref=f2e115] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/2a3d6408-6646-4950-bb54-765356f6bde9/__tabs/history
+            - generic [ref=f2e119]:
+              - generic [ref=f2e121]:
+                - heading "Name" [level=2] [ref=f2e124]
+                - generic [ref=f2e127]:
+                  - generic [ref=f2e128]:
+                    - generic [ref=f2e129]: "Name:"
+                    - textbox "Name:" [ref=f2e130]: QA Delete Cascade Cohort
+                  - button "Save" [ref=f2e131] [cursor=pointer]
+              - generic [ref=f2e134]:
+                - generic [ref=f2e135]:
+                  - heading "Staff" [level=2] [ref=f2e137]
+                  - button "Add staff member" [ref=f2e139] [cursor=pointer]
+                - paragraph [ref=f2e141]: No staff assigned to this cohort.
+              - generic [ref=f2e143]:
+                - heading "Status" [level=2] [ref=f2e146]
+                - paragraph [ref=f2e149]: Deactivating stops this cohort's registrations from giving access to its courses. Learners keep their place and their progress.
+                - generic [ref=f2e151]:
+                  - button "Deactivate" [ref=f2e152] [cursor=pointer]
+                  - button "Delete" [ref=f2e153] [cursor=pointer]
+      - dialog [ref=f2e218]:
+        - status [ref=f2e219]
+        - generic [ref=f2e220]:
+          - generic [ref=f2e221]:
+            - heading "Delete QA Delete Cascade Cohort?" [level=2] [ref=f2e222]
+            - button "Close" [ref=f2e223] [cursor=pointer]
+          - generic [ref=f2e226]:
+            - generic [ref=f2e227]:
+              - paragraph [ref=f2e228]: Deleting this cohort cannot be undone.
+              - alert [ref=f2e229]:
+                - generic [ref=f2e233]:
+                  - strong [ref=f2e234]: "This will also delete:"
+                  - list [ref=f2e235]:
+                    - listitem [ref=f2e236]: 1 cohort deadline config
+                    - listitem [ref=f2e237]: 1 cohort messaging config
+              - generic [ref=f2e239]:
+                - generic [ref=f2e240]: "Reason (optional):"
+                - textbox "Reason (optional):" [ref=f2e241]
+                - paragraph [ref=f2e242]: Only staff can see this. It is shown in the history.
+            - generic [ref=f2e243]:
+              - button "Cancel" [active] [ref=f2e245] [cursor=pointer]
+              - button "Delete" [ref=f2e247] [cursor=pointer]
+  - contentinfo [ref=f2e156]:
+    - generic [ref=f2e157]:
+      - paragraph [ref=f2e158]: © 2026 FirstClass
+      - navigation "Legal" [ref=f2e159]:
+        - link "Terms and Conditions" [ref=f2e160] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f2e161] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f2e162] [cursor=pointer]: misure-of-admonitions
+  - generic "Show toolbar" [ref=f2e217]: DJDT

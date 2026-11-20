@@ -1,0 +1,188 @@
+- generic [active] [ref=f22e1]:
+  - banner [ref=f22e2]:
+    - link [ref=f22e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f22e4]
+      - heading "FirstClass" [level=1] [ref=f22e5]
+    - navigation [ref=f22e6]:
+      - generic [ref=f22e7]:
+        - generic [ref=f22e8]:
+          - button "Notifications, 3 new" [ref=f22e9]
+          - status:
+            - generic [ref=f22e13]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f22e14]: "3"
+        - button "Open user menu for Demo" [ref=f22e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f22e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f22e18]:
+    - generic [ref=f22e20]:
+      - dialog "Navigation" [ref=f22e21]:
+        - generic [ref=f22e23]:
+          - generic [ref=f22e24]:
+            - paragraph [ref=f22e25]: Organisation
+            - button "Switch organisation" [ref=f22e27] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f22e28]: D
+              - generic "DemoDev" [ref=f22e29]
+          - navigation "Sections" [ref=f22e32]:
+            - heading "Teaching" [level=2] [ref=f22e33]
+            - list [ref=f22e34]:
+              - listitem [ref=f22e35]:
+                - link "Dashboard" [ref=f22e36] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/dashboard
+              - listitem [ref=f22e41]:
+                - link "Cohorts" [ref=f22e42] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+              - listitem [ref=f22e47]:
+                - link "Learners" [ref=f22e48] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+              - listitem [ref=f22e53]:
+                - link "Courses" [ref=f22e54] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+            - heading "Administration" [level=2] [ref=f22e59]
+            - list [ref=f22e60]:
+              - listitem [ref=f22e61]:
+                - link "Staff" [ref=f22e62] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/staff
+              - listitem [ref=f22e67]:
+                - link "Audit log" [ref=f22e68] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/audit-log
+          - generic [ref=f22e73]:
+            - generic [ref=f22e75]:
+              - generic [aria-hidden] [ref=f22e76]: DE
+              - generic [ref=f22e77]:
+                - generic [ref=f22e78]: Demo
+                - generic [ref=f22e79]: demodev@email.com
+            - link "Account settings" [ref=f22e80] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f22e85]:
+        - navigation "Back" [ref=f22e87]:
+          - link "Courses" [ref=f22e88] [cursor=pointer]:
+            - /url: /educator/organisations/demodev/courses
+        - generic [ref=f22e92]:
+          - heading "Content Widgets - Demo Reference" [level=1] [ref=f22e99]
+          - generic [ref=f22e101]:
+            - generic [ref=f22e103]:
+              - heading "Details" [level=2] [ref=f22e106]
+              - generic [ref=f22e108]:
+                - generic [ref=f22e109]:
+                  - term [ref=f22e110]: Title
+                  - definition [ref=f22e111]: Content Widgets - Demo Reference
+                - generic [ref=f22e112]:
+                  - term [ref=f22e113]: Subtitle
+                  - definition [ref=f22e114]: A working reference for content authors
+                - generic [ref=f22e115]:
+                  - term [ref=f22e116]: Visibility
+                  - definition [ref=f22e117]: Coming soon
+                - generic [ref=f22e118]:
+                  - term [ref=f22e119]: Lessons
+                  - definition [ref=f22e120]: "5"
+            - generic [ref=f22e122]:
+              - heading "Course content" [level=2] [ref=f22e125]
+              - generic [ref=f22e126]:
+                - generic [ref=f22e127]: Learners can't see this outline yet. The course is marked as still in development.
+                - generic [ref=f22e133]:
+                  - region "Course outline items" [ref=f22e135]:
+                    - table [ref=f22e136]:
+                      - caption [ref=f22e137]: Course outline items
+                      - rowgroup [ref=f22e138]:
+                        - row [ref=f22e139]:
+                          - columnheader "#" [ref=f22e140]
+                          - columnheader "Title" [ref=f22e141]
+                          - columnheader "Type" [ref=f22e142]
+                          - columnheader "Actions"
+                      - rowgroup [ref=f22e143]:
+                        - row [ref=f22e144]:
+                          - cell [ref=f22e145]
+                          - cell "Course details" [ref=f22e146]
+                          - cell "Course" [ref=f22e151]
+                          - cell [ref=f22e152]:
+                            - button "Preview course details page" [ref=f22e154] [cursor=pointer]: Preview
+                        - row [ref=f22e155]:
+                          - cell "1." [ref=f22e156]
+                          - cell "Topic Annotation and Emphasis" [ref=f22e157]:
+                            - generic [ref=f22e160]:
+                              - generic [ref=f22e161]: Topic
+                              - generic [ref=f22e165]: Annotation and Emphasis
+                          - cell "Topic" [ref=f22e166]
+                          - cell [ref=f22e167]:
+                            - button "Preview Annotation and Emphasis" [ref=f22e169] [cursor=pointer]: Preview
+                        - row [ref=f22e170]:
+                          - cell "2." [ref=f22e171]
+                          - cell "Topic Media" [ref=f22e172]:
+                            - generic [ref=f22e175]:
+                              - generic [ref=f22e176]: Topic
+                              - generic [ref=f22e180]: Media
+                          - cell "Topic" [ref=f22e181]
+                          - cell [ref=f22e182]:
+                            - button "Preview Media" [ref=f22e184] [cursor=pointer]: Preview
+                        - row [ref=f22e185]:
+                          - cell "3." [ref=f22e186]
+                          - cell "Topic Structured Content" [ref=f22e187]:
+                            - generic [ref=f22e190]:
+                              - generic [ref=f22e191]: Topic
+                              - generic [ref=f22e195]: Structured Content
+                          - cell "Topic" [ref=f22e196]
+                          - cell [ref=f22e197]:
+                            - button "Preview Structured Content" [ref=f22e199] [cursor=pointer]: Preview
+                        - row [ref=f22e200]:
+                          - cell "4." [ref=f22e201]
+                          - cell "Topic Interactive Widgets" [ref=f22e202]:
+                            - generic [ref=f22e205]:
+                              - generic [ref=f22e206]: Topic
+                              - generic [ref=f22e210]: Interactive Widgets
+                          - cell "Topic" [ref=f22e211]
+                          - cell [ref=f22e212]:
+                            - button "Preview Interactive Widgets" [ref=f22e214] [cursor=pointer]: Preview
+                        - row [ref=f22e215]:
+                          - cell "5." [ref=f22e216]
+                          - cell "Topic Cards" [ref=f22e217]:
+                            - generic [ref=f22e220]:
+                              - generic [ref=f22e221]: Topic
+                              - generic [ref=f22e225]: Cards
+                          - cell "Topic" [ref=f22e226]
+                          - cell [ref=f22e227]:
+                            - button "Preview Cards" [ref=f22e229] [cursor=pointer]: Preview
+                  - paragraph [ref=f22e231]: 5 course outline items
+            - generic [ref=f22e233]:
+              - heading "Cohort registrations" [level=2] [ref=f22e236]
+              - region "Cohort course registrations" [ref=f22e240]:
+                - table [ref=f22e241]:
+                  - caption [ref=f22e242]: Cohort course registrations
+                  - rowgroup [ref=f22e243]:
+                    - row [ref=f22e244]:
+                      - columnheader "Cohort" [ref=f22e245]
+                      - columnheader "Cohort status" [ref=f22e246]
+                      - columnheader "Status" [ref=f22e247]
+                      - columnheader "Registered" [ref=f22e248]
+                  - rowgroup [ref=f22e249]:
+                    - row [ref=f22e250]:
+                      - cell [ref=f22e251]:
+                        - paragraph [ref=f22e253]: No cohorts are registered for this course yet. Cohort registrations will appear here.
+            - generic [ref=f22e255]:
+              - heading "Direct registrations" [level=2] [ref=f22e258]
+              - region "Learner course registrations" [ref=f22e262]:
+                - table [ref=f22e263]:
+                  - caption [ref=f22e264]: Learner course registrations
+                  - rowgroup [ref=f22e265]:
+                    - row [ref=f22e266]:
+                      - columnheader [ref=f22e267]:
+                        - link "Learner" [ref=f22e268] [cursor=pointer]:
+                          - /url: /educator/organisations/demodev/courses/8bc127c1-edf1-4997-b7fc-35fdf8604f30?learner_registrations-sort=-learner__user__first_name
+                      - columnheader "Status" [ref=f22e272]
+                      - columnheader "Registered" [ref=f22e273]
+                  - rowgroup [ref=f22e274]:
+                    - row [ref=f22e275]:
+                      - cell [ref=f22e276]:
+                        - paragraph [ref=f22e278]: No learners are registered for this course yet. Learner registrations will appear here.
+  - contentinfo [ref=f22e281]:
+    - generic [ref=f22e282]:
+      - paragraph [ref=f22e283]: © 2026 FirstClass
+      - navigation "Legal" [ref=f22e284]:
+        - link "Terms and Conditions" [ref=f22e285] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f22e286] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f22e287] [cursor=pointer]: misure-of-admonitions
+  - generic "Show toolbar" [ref=f22e289]: DJDT
