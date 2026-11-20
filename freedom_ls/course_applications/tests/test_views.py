@@ -11,6 +11,7 @@ from typing import NamedTuple
 from unittest.mock import patch
 from urllib.parse import urlencode
 
+import lxml.html
 import pytest
 import time_machine
 from allauth.account import app_settings as allauth_account_settings
@@ -496,6 +497,33 @@ class TestApplyViewVisibilityGate:
 # ---------------------------------------------------------------------------
 # application_status view
 # ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestApplicationStatusActionRow:
+    """Every state keeps its actions and "Back to dashboard" in one row."""
+
+    def test_withdraw_control_and_back_to_dashboard_share_one_row(
+        self, client, mock_site_context
+    ):
+        """Back to dashboard used to drop below the withdraw control on open applications."""
+        user = UserFactory()
+        application = CourseApplicationFactory(user=user)
+        client.force_login(user)
+
+        response = client.get(
+            reverse("course_applications:status", kwargs={"pk": application.pk})
+        )
+
+        page = lxml.html.fromstring(response.content.decode())
+        rows = page.xpath('//*[@data-testid="application-actions"]')
+        assert len(rows) == 1
+        dashboard_url = reverse("learner_interface:dashboard")
+        withdraw_url = reverse(
+            "course_applications:withdraw", kwargs={"pk": application.pk}
+        )
+        assert rows[0].xpath(f'.//a[@href="{dashboard_url}"]')
+        assert rows[0].xpath(f'.//form[@action="{withdraw_url}"]')
 
 
 @pytest.mark.django_db

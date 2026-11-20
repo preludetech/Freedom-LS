@@ -131,24 +131,21 @@ the state block under an h2, and no withdraw: the address is not yet proven.
                 {% partial state_block %}
             {% endif %}
 
-            {% if application.is_open and application.is_email_verified %}
-                <div class="flex flex-wrap items-center gap-3">
-                    {% if resume_url %}
-                        <c-button href="{{ resume_url }}">Continue application</c-button>
+            <div class="flex flex-wrap items-center gap-3" data-testid="application-actions">
+                {% if application.is_email_verified %}
+                    {% if application.is_open %}
+                        {% if resume_url %}
+                            <c-button href="{{ resume_url }}">Continue application</c-button>
+                        {% endif %}
+                        {% partial withdraw_control %}
+                    {% elif application.state == application.State.WITHDRAWN or application.state == application.State.REJECTED %}
+                        <c-button href="{% url 'course_applications:apply' course_slug=application.course.slug %}">Apply again</c-button>
                     {% endif %}
-                    {% partial withdraw_control %}
-                </div>
-            {% endif %}
-
-            {% if application.is_email_verified %}
-                {% if application.state == application.State.WITHDRAWN or application.state == application.State.REJECTED %}
-                    <c-button href="{% url 'course_applications:apply' course_slug=application.course.slug %}">Apply again</c-button>
                 {% endif %}
-            {% endif %}
-
-            <c-button href="{% url 'learner_interface:dashboard' %}">
-                Back to dashboard
-            </c-button>
+                <c-button href="{% url 'learner_interface:dashboard' %}">
+                    Back to dashboard
+                </c-button>
+            </div>
         </div>
     </c-page>
 {% endblock content %}
