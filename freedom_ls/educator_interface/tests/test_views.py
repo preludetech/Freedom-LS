@@ -9247,8 +9247,9 @@ def test_a_bulk_run_entry_by_the_runs_own_actor_names_them_without_a_second_avat
     entries = lxml.html.fromstring(content).cssselect("dd ul.list-none > li")
     assert entries
     for entry in entries:
-        assert actor.display_name in entry.text_content()
-        assert entry.cssselect("[class*='panel-avatar-']") == []
+        actor_chip = entry.cssselect("li > div")[0]
+        assert actor.display_name in actor_chip.text_content()
+        assert actor_chip.cssselect("[class*='panel-avatar-']") == []
     assert actor.profile_picture_url in profile_picture_sources(content)
 
 

@@ -31,5 +31,6 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 5. Cleanup
 
+- [x] (user) Fix the failing test `freedom_ls/educator_interface/tests/test_views.py::test_a_bulk_run_entry_by_the_runs_own_actor_names_them_without_a_second_avatar` (a bulk-run audit entry by the run's own actor still renders a second avatar span; fails 3/3 on its own, so not flaky), then re-run `/sdd:finish_worktree`
 - [ ] (cmd) Run `/sdd:finish_worktree` to close out the worktree and land it on main
 - [ ] (user) Remove the worktree and delete the branch once main has it
