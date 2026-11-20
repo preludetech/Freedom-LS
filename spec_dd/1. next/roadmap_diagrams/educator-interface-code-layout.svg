@@ -15,7 +15,7 @@
 <path d="M32.0,126.0 H30.0 A6,6 0 0 0 24.0,132.0 V170.0 A6,6 0 0 0 30.0,176.0 H32.0 Z" fill="#fb923c"/>
 <text x="40.0" y="148.0" fill="#111827">educator-interface-refactor-3-</text>
 <text x="40.0" y="163.0" fill="#111827">staff</text>
-<rect x="24.0" y="194.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<rect x="24.0" y="194.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M32.0,194.0 H30.0 A6,6 0 0 0 24.0,200.0 V238.0 A6,6 0 0 0 30.0,244.0 H32.0 Z" fill="#fb923c"/>
 <text x="40.0" y="216.0" fill="#111827">educator-interface-refactor-4-</text>
 <text x="40.0" y="231.0" fill="#111827">course</text>
