@@ -1429,6 +1429,10 @@ document.addEventListener("htmx:afterSettle", (event) => {
 // the list has refreshed.
 let pendingEntryAction = null;
 
+// Numbers every submit from the dialog, so a list refresh can be matched to
+// the submit it followed.
+let entrySubmitSeq = 0;
+
 const entryModal = () => document.getElementById("app-modal");
 
 // The first element matching `selector` inside a panel that is laid out and
@@ -1467,19 +1471,20 @@ function visibleAddTrigger(panel) {
 document.addEventListener("htmx:beforeRequest", (event) => {
     const { elt, target, requestConfig } = event.detail;
     if (pendingEntryAction && elt && elt.closest("#app-modal")) {
-        pendingEntryAction.submitted = true;
+        pendingEntryAction.submitSeq = ++entrySubmitSeq;
     }
-    // A refresh of the list that starts once the dialog has submitted is the
-    // answer to this action. One that started earlier (the previous change's
-    // slow refresh) shows the list as it was, and must not be taken for it.
+    // A refresh of the list carries the number of the latest submit before it
+    // started. Only one that started after the submit that closed the dialog
+    // answers this action; an earlier one ("Add and add another"'s slow
+    // refresh) shows the list as it was.
     if (
         pendingEntryAction &&
-        pendingEntryAction.submitted &&
+        pendingEntryAction.submitSeq &&
         requestConfig &&
         target &&
         target.id === pendingEntryAction.panelId
     ) {
-        requestConfig.answersEntryAction = true;
+        requestConfig.entrySubmitSeq = pendingEntryAction.submitSeq;
     }
     if (!elt || !elt.dataset || !elt.dataset.editableListAction) return;
     if (!target || target.id !== "app-modal-body") return;
@@ -1490,7 +1495,9 @@ document.addEventListener("htmx:beforeRequest", (event) => {
         panelId: panel ? panel.id : "",
         title: elt.dataset.entryTitle || "",
         focusAfterRemove: elt.dataset.focusAfterRemove || "",
-        submitted: false,
+        submitSeq: 0,
+        confirmedSeq: 0,
+        entryPk: "",
         confirmed: false,
         closed: false,
         refreshedTarget: null,
@@ -1505,6 +1512,28 @@ document.addEventListener("htmx:afterRequest", (event) => {
     if (event.detail.failed) pendingEntryAction = null;
 });
 
+// The entry a dialog submit changed, from the ids its HX-Trigger header names.
+// It is read here rather than from the refresh that follows, because the
+// refresh that answers may be one this script fetched itself, with no event
+// behind it.
+document.addEventListener("htmx:afterRequest", (event) => {
+    const { elt, xhr } = event.detail;
+    if (!pendingEntryAction || !elt || !elt.closest("#app-modal") || !xhr) return;
+    const header = xhr.getResponseHeader("HX-Trigger");
+    if (!header) return;
+    let payload;
+    try {
+        payload = JSON.parse(header);
+    } catch (error) {
+        if (error instanceof SyntaxError) return;
+        throw error;
+    }
+    const withIds = Object.values(payload).find(
+        (detail) => detail && Array.isArray(detail.ids) && detail.ids.length,
+    );
+    if (withIds) pendingEntryAction.entryPk = String(withIds.ids[0]);
+});
+
 // "Add and add another" swaps the dialog body with a status notice in it and
 // keeps the dialog open.
 document.addEventListener("htmx:afterSwap", (event) => {
@@ -1515,8 +1544,21 @@ document.addEventListener("htmx:afterSwap", (event) => {
 
 // closeModal only ever follows a saved change.
 document.addEventListener("closeModal", () => {
-    if (pendingEntryAction) pendingEntryAction.confirmed = true;
+    if (!pendingEntryAction) return;
+    pendingEntryAction.confirmed = true;
+    pendingEntryAction.confirmedSeq = pendingEntryAction.submitSeq;
 });
+
+// Whether a request's response is the list refresh that answers the pending
+// entry action.
+function answersEntryAction(requestConfig) {
+    return Boolean(
+        pendingEntryAction &&
+        pendingEntryAction.confirmed &&
+        requestConfig &&
+        requestConfig.entrySubmitSeq === pendingEntryAction.confirmedSeq,
+    );
+}
 
 // A dialog closed without a confirmed change (Cancel, Esc) ends the action.
 // After "Add and add another" the list changed behind the dialog, so focus
@@ -1571,13 +1613,22 @@ document.addEventListener("htmx:afterSwap", (event) => {
     const { target, requestConfig } = event.detail;
     if (!pendingEntryAction || !pendingEntryAction.confirmed) return;
     if (!target || target.id !== pendingEntryAction.panelId) return;
-    if (!requestConfig || !requestConfig.answersEntryAction) return;
+    if (!requestConfig || !requestConfig.entrySubmitSeq) return;
     const panel = document.getElementById(pendingEntryAction.panelId);
-    const detail = requestConfig && requestConfig.triggeringEvent
-        ? requestConfig.triggeringEvent.detail
-        : null;
-    const pk = String((detail && detail.ids && detail.ids[0]) ?? "");
-    const { action, title, focusAfterRemove } = pendingEntryAction;
+    if (!answersEntryAction(requestConfig)) {
+        // An earlier refresh landed after the dialog closed. Its swap replaced
+        // the panel, and with it any refresh htmx had queued there, so the
+        // list is fetched again; that request starts now and answers.
+        if (panel && panel.getAttribute("hx-get")) {
+            htmx.ajax("GET", panel.getAttribute("hx-get"), {
+                source: panel,
+                target: panel.getAttribute("hx-target") || panel,
+                swap: "outerHTML",
+            });
+        }
+        return;
+    }
+    const { action, title, focusAfterRemove, entryPk: pk } = pendingEntryAction;
     let focusTarget = null;
     let message = "";
     if (action === "remove_entry") {
@@ -1602,9 +1653,7 @@ document.addEventListener("htmx:afterSwap", (event) => {
 // htmx restores focus to the element that held it before a swap while it
 // settles, so the entry action finishes only after that.
 document.addEventListener("htmx:afterSettle", (event) => {
-    const { requestConfig } = event.detail;
-    if (!pendingEntryAction || !pendingEntryAction.confirmed) return;
-    if (!requestConfig || !requestConfig.answersEntryAction) return;
+    if (!answersEntryAction(event.detail.requestConfig)) return;
     pendingEntryAction.settled = true;
     finishEntryAction();
 });

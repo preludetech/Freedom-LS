@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import pytest
 import pytest_django.live_server_helper
-from playwright.sync_api import Page, expect
+from playwright.sync_api import APIResponse, Page, Route, expect
 
 from django.contrib.sites.models import Site
 
@@ -214,3 +214,49 @@ def test_editable_list_without_an_edit_trigger_announces_and_focuses_the_entry(
     expect(modal).to_be_hidden()
     expect(announcer).to_have_text("Removed Alpha.")
     expect(panel.get_by_role("button", name="Remove Beta")).to_be_focused()
+
+
+def test_a_slow_refresh_from_add_another_is_not_taken_for_the_next_adds_answer(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    """The list's refresh after "Add and add another" arrives late, after the
+    next plain Add has closed the dialog. It shows the list before that Add,
+    so it must not be read as the Add's answer."""
+    parent = make_stub(name="Slow refresh parent")
+    modal = page.locator("#app-modal")
+    panel = page.locator("[data-panel='entries_add_another']")
+    announcer = page.locator("#scope-announcer")
+    held: list[tuple[Route, APIResponse]] = []
+
+    def hold_first_panel_refresh(route: Route) -> None:
+        if route.request.headers.get("hx-request") != "true" or held:
+            route.continue_()
+            return
+        # Answered now, so it holds the list as it was, and handed back later.
+        held.append((route, route.fetch()))
+
+    page.goto(
+        f"{live_server.url}/test-panel/framework/stubs/{parent.pk}/__tabs/entries_add_another"
+    )
+    page.route("**/__tabs/entries_add_another*", hold_first_panel_refresh)
+
+    panel.get_by_role("button", name="Add stub entry").click()
+    modal.get_by_label("Title").fill("Alpha")
+    modal.get_by_role("button", name="Add and add another").click()
+    expect(modal.locator("[data-status-message]")).to_have_text("Added Alpha.")
+    modal.get_by_label("Title").fill("Beta")
+    modal.get_by_role("button", name="Add", exact=True).click()
+    expect(modal).to_be_hidden()
+    assert len(held) == 1
+
+    # htmx queues the plain Add's refresh behind the held one, so it runs
+    # once the stale list has landed.
+    stale_route, stale_response = held[0]
+    stale_route.fulfill(response=stale_response)
+
+    expect(panel.get_by_text("Beta")).to_be_visible()
+    expect(announcer).to_have_text("Added Beta.")
+    expect(panel.get_by_role("button", name="Edit Beta")).to_be_focused()
