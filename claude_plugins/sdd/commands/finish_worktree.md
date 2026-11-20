@@ -86,8 +86,8 @@ mention until Step 8.
 
 A failure is `status: failed · reason: <run> failed before landing: <tests>`, where `<run>` is
 `full run` here and `checkpoint run` in Step 7's loop. Nothing is moved or landed until a human
-fixes it, except for a flaky test, handled below. A rebased branch has also passed pre-commit; there
-is nothing to re-run for that.
+fixes it, except for a flaky test and an obvious failure, both handled below. A rebased branch has
+also passed pre-commit; there is nothing to re-run for that.
 
 ## Pre-test rebuild
 
@@ -101,8 +101,8 @@ the rebuild.
 When Step 1's full run, or a checkpoint run in Step 7's loop, reports failing tests:
 
 1. Delegate to `sdd:sdd-mechanic`: run each failing test on its own, by node ID, three times, as the
-   tier definition's single test run, and return the pass count per test. A test with 0 passes is a
-   real failure: report it as above.
+   tier definition's single test run, and return the pass count per test. A test with 0 passes goes
+   to "Obvious failures" below.
 2. A test with at least one pass is flaky. Handle the flaky tests one at a time, because they share
    the worktree and its database. For each, spawn a `general-purpose` sub-agent with this brief,
    every input written into the prompt: the test's node ID, its failure output, and, when
@@ -116,6 +116,33 @@ When Step 1's full run, or a checkpoint run in Step 7's loop, reports failing te
 3. A `failed` return gets one more sub-agent, briefed the same way plus the first diagnosis. A second
    `failed` is `status: failed · reason: flaky test <id> not fixed: <diagnosis>`.
 4. After the fixes, `git push`, then follow the run that failed again from its start. A test already
+   fixed once that fails again is a real failure. Keep each fix's commit for Step 8.
+
+## Obvious failures
+
+A test with 0 passes in "Flaky tests" step 1 gets one look here, at depth 0, before it becomes
+`status: failed`. Read the test and its failure output. The failure is obvious when all of these
+hold:
+
+- The rebase brought the cause together: one side changed a name, label, path, import, selector or
+  expected value, and a test from the other side still uses the old one. `git log origin/main..HEAD`
+  and `git log <old-base>..origin/main` on the files involved show which side made each change.
+- Both sides' intent is clear from their commits, and the fix keeps both: the test still checks what
+  it was written to check, against the current name.
+- The fix is a few lines, in the test or in the reference it holds, and changes no behaviour either
+  side meant to ship.
+
+Anything else is a real failure: report it as above. That includes a failure that needs a judgement
+about which side's behaviour is right.
+
+For an obvious failure:
+
+1. Make the fix. Never skip, delete, mark or loosen the test to get a pass.
+2. Run the test on its own, by node ID, as the tier definition's single test run. A failure means
+   the diagnosis was wrong: undo the edit and report it as a real failure.
+3. Commit as `fix <test id> after rebase`, with a body naming the change on each side, then
+   `git push`.
+4. Follow the run that failed again from its start, as "Flaky tests" step 4 does. A test already
    fixed once that fails again is a real failure. Keep each fix's commit for Step 8.
 
 # Step 2: Tear down any per-worktree resources
@@ -286,6 +313,7 @@ Report:
 - the script's `synced: pushed` and `pushed:` lines, as "main pushed"
 - every test report line, from Step 1 and from each checkpoint run
 - each flaky test fix, with its commit
+- each obvious-failure fix, with its commit
 - the `carried:` count, when the script printed one
 - the leftover batch worktrees removed, if any
 - that the worktree directory and the branch still exist; removing them is the `(user)` item that
