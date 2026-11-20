@@ -364,6 +364,30 @@ def test_learner_opens_and_closes_a_transcript(
     expect(text).to_be_hidden()
 
 
+def test_transcript_toggle_controls_the_transcript_panel(
+    live_server,
+    live_server_site,
+    mock_site_context,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    """The toggle's aria-controls used to name an id no element had.
+
+    The wrapper's x-id did not list the transcript id, so the toggle and the
+    panel each minted a different one.
+    """
+    page = logged_in_page
+    _open_clips(live_server, page, logged_in_user)
+    toggle = _transcript_toggle(page)
+
+    controlled = toggle.get_attribute("aria-controls")
+
+    assert controlled
+    panel = page.locator(f"[id='{controlled}']")
+    expect(panel).to_have_count(1)
+    expect(panel).to_contain_text(TRANSCRIPT)
+
+
 def test_transcript_opens_at_once_with_reduced_motion(
     live_server,
     live_server_site,
