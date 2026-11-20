@@ -11,13 +11,16 @@ Attributes:
          as info. `error` is an alert and `success` a status; `info` and
          `warning` are read in place.
   title  A bold first line, not a heading.
+
+A <ul> or <ol> in the slot needs no classes: its bullets sit level with the
+title text.
 {% endcomment %}
 
 {% partialdef panel-callout-box %}
 <div class="rounded-md border p-4 text-on-surface {{ tint }}{% if class %} {{ class }}{% endif %}"{% if known_tone == "error" %} role="alert"{% elif known_tone == "success" %} role="status"{% endif %} {{ attrs }}>
     <div class="flex items-start gap-3">
         <c-icon :name="known_tone" class="size-5 shrink-0 {{ icon_colour }}" />
-        <div class="min-w-0 space-y-3">
+        <div class="min-w-0 space-y-3 [&_:is(ul,ol)]:ml-0 [&_:is(ul,ol)]:list-inside [&_:is(ul,ol)]:space-y-1 [&_li]:py-0">
             {% if title %}<strong class="block font-semibold">{{ title }}</strong>{% endif %}
             {{ slot }}
         </div>

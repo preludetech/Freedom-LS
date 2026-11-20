@@ -100,6 +100,8 @@ Where you do write utilities, keep to Tailwind's spacing scale and use `rounded-
 
 **A callout has room inside it.** `<c-callout>` keeps its icon, title, text and buttons well clear of its border, and puts space between the title, each paragraph and the button row. The `.callout` class sets this spacing for every callout; add no extra padding at the call site.
 
+**A list inside a callout lines its bullets up with the callout's title.** Each bullet or number sits at the left edge of the text column, under the title's first letter, with no extra indent. `<c-callout>` sets this for any `<ul>` or `<ol>` in its slot; write a bare list at the call site, with no list or margin classes.
+
 **A form error that belongs to no single field is an error callout.** A failed login, a rejected submission or any `form.non_field_errors` message shows in `<c-callout tone="error">` above the form. A field's own error stays as text beside that field.
 
 **A button label fits on one line, down to a 375px phone.** Keep it to a verb and a noun ("Download errors", "Upload a corrected file"). A count or a sentence goes in the heading or text beside the button, not in the label. A label wraps only when no shorter wording names the action.
@@ -140,6 +142,7 @@ What QA checks in a screenshot of any FLS page.
 - Every expand chevron (menu button, disclosure, filter chip, accordion) points down while closed and up while open.
 - Items are separated by space: no box around each option, no box inside a box; a rule appears only at a card or dialog edge, a dialog header or footer, a table header, or between the rows of a ruled list of records.
 - A callout has clear space between its border and its content, and between its title, text and buttons; nothing inside it looks packed.
+- A list inside a callout has its bullets level with the start of the callout's title text, not indented past it.
 - A form error that belongs to no single field sits in an error callout above the form, never as bare red text.
 - Buttons of one size are one height, whatever their variant: an outlined button is no taller than a filled one beside it.
 - Content lines up: blocks start and stop on their container's padding, buttons line up with the text above them, items of one kind share a column.

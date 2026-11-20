@@ -12,7 +12,7 @@ button when a protected relation would block the delete.
         <p>Deleting this {{ noun }} cannot be undone.</p>
         {% if cascade_summary %}
             <c-panel-callout tone="error" title="This will also delete:">
-                <ul class="list-inside list-disc">
+                <ul>
                     {% for item in cascade_summary %}
                         <li>{{ item }}</li>
                     {% endfor %}

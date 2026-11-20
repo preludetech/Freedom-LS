@@ -402,6 +402,16 @@
         @apply p-4 rounded-md border text-on-surface
     }
 
+    /* A list in a callout starts its bullets at the text column's left edge,
+     * level with the title, instead of the base layer's indent. */
+    .callout :is(ul, ol) {
+        @apply ml-0 list-inside space-y-1
+    }
+
+    .callout li {
+        @apply py-0
+    }
+
     .callout-info {
         @apply bg-info/10 border-info/20
     }
