@@ -299,3 +299,82 @@ def test_build_served_paper_option_order_ignores_options_added_to_another_questi
     after = build_served_paper(Form.objects.get(pk=quiz_form.pk))
 
     assert after["options"][str(question_a.id)] == before["options"][str(question_a.id)]
+
+
+@pytest.fixture
+def five_page_form(mock_site_context: object) -> Form:
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ, shuffle_pages=True)
+    for i in range(5):
+        page = FormPageFactory(form=form, order=i)
+        question = FormQuestionFactory(form_page=page, order=0)
+        for j in range(3):
+            QuestionOptionFactory(question=question, order=j)
+    return form
+
+
+def _served_page_indexes(form: Form) -> list[int]:
+    authored = [str(p.id) for p in form.pages.all()]
+    paper = build_served_paper(form)
+    return [authored.index(page["id"]) for page in paper["pages"]]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("seed", [1, 2, 3, 99, 12345])
+def test_build_served_paper_with_shuffle_pages_lists_every_page_once(
+    five_page_form: Form, monkeypatch: pytest.MonkeyPatch, seed: int
+) -> None:
+    monkeypatch.setattr(served_paper_module, "new_seed", lambda: seed)
+    authored = [str(p.id) for p in five_page_form.pages.all()]
+
+    paper = build_served_paper(five_page_form)
+
+    assert sorted(p["id"] for p in paper["pages"]) == sorted(authored)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("seed", "expected"),
+    [(1, [3, 2, 0, 1, 4]), (2, [1, 3, 4, 2, 0])],
+)
+def test_build_served_paper_with_shuffle_pages_orders_pages_from_the_seed(
+    five_page_form: Form,
+    monkeypatch: pytest.MonkeyPatch,
+    seed: int,
+    expected: list[int],
+) -> None:
+    monkeypatch.setattr(served_paper_module, "new_seed", lambda: seed)
+
+    served = _served_page_indexes(five_page_form)
+
+    assert served == expected
+
+
+@pytest.mark.django_db
+def test_build_served_paper_page_order_ignores_the_shuffle_options_knob(
+    five_page_form: Form, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(served_paper_module, "new_seed", lambda: 99)
+    off = _served_page_indexes(five_page_form)
+    five_page_form.shuffle_options = True
+    five_page_form.save()
+
+    on = _served_page_indexes(Form.objects.get(pk=five_page_form.pk))
+
+    assert on == off
+
+
+@pytest.mark.django_db
+def test_build_served_paper_option_order_ignores_the_shuffle_pages_knob(
+    five_page_form: Form, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(served_paper_module, "new_seed", lambda: 99)
+    five_page_form.shuffle_options = True
+    five_page_form.save()
+    form = Form.objects.get(pk=five_page_form.pk)
+    pages_on = build_served_paper(form)["options"]
+    form.shuffle_pages = False
+    form.save()
+
+    pages_off = build_served_paper(Form.objects.get(pk=form.pk))["options"]
+
+    assert pages_off == pages_on

@@ -64,12 +64,15 @@ def _served_options(
 
 
 def build_served_paper(form: Form) -> ServedPaper:
-    """The paper a sitting starting now is served: the form's current tree in authored order."""
+    """The paper a sitting starting now is served, shuffled as the form's knobs say."""
     prefetch_related_objects([form], *SERVED_TREE_LOOKUPS)
     seed = new_seed()
+    page_rows = list(form.pages.all())
+    if form.shuffle_pages:
+        _scope_rng(seed, "pages").shuffle(page_rows)
     pages: list[ServedPage] = []
     options: dict[str, list[str]] = {}
-    for page in form.pages.all():
+    for page in page_rows:
         children = page.children()
         pages.append({"id": str(page.id), "children": [str(c.id) for c in children]})
         for child in children:
