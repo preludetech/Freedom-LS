@@ -16,7 +16,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
 - [ ] (user) Review the departures from the plan and keep or revert each: `modal-trigger.html` forwards extra attributes with `:attrs` because cotton does not expand `{{ attrs }}`; the editable-list browser flow uses a separate parent per capped, add-another and table tab because all four stub panels share one entry model; `StubEntry` gained `verbose_name_plural`; the component-reference browser test's section count went from 19 to 20. No action is needed if all four stand.
