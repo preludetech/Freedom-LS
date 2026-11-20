@@ -18,6 +18,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🟠 Medium · `educator-interface-refactor-4-course` (Educator interface code layout)
 - 🟠 Medium · `content-widget-longer-audio` (Audio content widgets)
 - 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
+- ⚪ Priority not set · `extract-semantic-icons-app-1-standalone-app` (Semantic icons extraction)
 
 ### Ready to start
 
@@ -53,7 +54,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - ⚪ Priority not set · `learner-interface-features-5-protected-video` (Learner interface features)
 - ⚪ Priority not set · `housekeeping-sentry-cron-checkin` (Tooling and operations)
 - ⚪ Priority not set · `audit-log-describe-test-flake` (Tooling and operations)
-- ⚪ Priority not set · `extract-semantic-icons-app-1-standalone-app` (Semantic icons extraction)
 
 ### Needs work on main first
 
@@ -384,7 +384,7 @@ Priority: ⚪ Priority not set
 
 The icons app becomes an installable package another Django project can use and extend with its own icons. Parent: `extract-semantic-icons-app`.
 
-- `extract-semantic-icons-app-1-standalone-app` — **ready** — The icons app stops depending on FLS: neutral `SEMANTIC_ICONS_*` settings, bundled icon data, no npm step, standalone tests.
+- `extract-semantic-icons-app-1-standalone-app` — **in progress** — The icons app stops depending on FLS: neutral `SEMANTIC_ICONS_*` settings, bundled icon data, no npm step, standalone tests.
 - `extract-semantic-icons-app-2-host-icons` — **blocked** by `extract-semantic-icons-app-1-standalone-app` — Host projects add semantic names, point names at their own SVGs, and register whole custom icon sets, all checked at startup.
 - `extract-semantic-icons-app-3-package-and-install` — **blocked** by `extract-semantic-icons-app-2-host-icons`, `extract_panels_framework-5-package-and-install` — The public `django-semantic-icons` repo, tagged `v0.1.0`; FLS and First-Class install it by git tag.
 - `extract-semantic-icons-app-4-claude-plugin` — **blocked** by `extract-semantic-icons-app-3-package-and-install`, `extract_panels_framework-6-claude-plugin` — A generic `semantic-icons` Claude Code plugin and host doc in the package repo; `fls-dev:icon-usage` keeps only FLS specifics.

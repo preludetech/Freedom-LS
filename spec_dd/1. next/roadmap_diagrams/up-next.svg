@@ -150,7 +150,7 @@
 <rect x="354.0" y="849.0" width="250" height="35" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
 <path d="M362.0,849.0 H360.0 A6,6 0 0 0 354.0,855.0 V878.0 A6,6 0 0 0 360.0,884.0 H362.0 Z" fill="#fb923c"/>
 <text x="370.0" y="871.0" fill="#111827">user-communication-8-realtime</text>
-<rect x="24.0" y="438.5" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<rect x="24.0" y="438.5" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M32.0,438.5 H30.0 A6,6 0 0 0 24.0,444.5 V482.5 A6,6 0 0 0 30.0,488.5 H32.0 Z" fill="#9ca3af"/>
 <text x="40.0" y="460.5" fill="#111827">extract-semantic-icons-app-1-</text>
 <text x="40.0" y="475.5" fill="#111827">standalone-app</text>
