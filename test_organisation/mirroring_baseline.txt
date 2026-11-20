@@ -37,7 +37,6 @@ freedom_ls/dev_tools/tests/test_danger_content_delete.py
 freedom_ls/educator_interface/tests/test_cohort_delete_action.py
 freedom_ls/educator_interface/tests/test_course_visibility_and_interest.py
 freedom_ls/educator_interface/tests/test_create_cohort_action.py
-freedom_ls/educator_interface/tests/test_dashboard.py
 freedom_ls/educator_interface/tests/test_document_title.py
 freedom_ls/educator_interface/tests/test_interface_urls.py
 freedom_ls/educator_interface/tests/test_learner_section.py
