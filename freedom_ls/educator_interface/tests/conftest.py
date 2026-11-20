@@ -2,14 +2,22 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 import pytest
 
+from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
 
 if TYPE_CHECKING:
+    from django.contrib.auth.models import AbstractBaseUser
     from django.contrib.sites.models import Site
+    from django.test import Client
+
+    from freedom_ls.learner_management.models import Cohort
+    from freedom_ls.organisations.models import Organisation
 
 
 @pytest.fixture
@@ -38,3 +46,19 @@ def _site_context(mock_site_context: Site) -> None:
 
     Use it through pytest.mark.usefixtures("_site_context").
     """
+
+
+@pytest.fixture
+def role_holder_client(
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> Callable[[Organisation | Cohort, str], Client]:
+    """Factory: a logged-in staff user holding `role` on `target`."""
+
+    def _make(
+        target: Organisation | Cohort, role: str = "organisation_admin"
+    ) -> Client:
+        user = UserFactory(staff=True)
+        assign_role(UserFactory(superuser=True), user, role, target)
+        return logged_in_client(user)
+
+    return _make

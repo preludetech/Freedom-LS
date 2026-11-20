@@ -279,3 +279,21 @@ def _content_action_url(organisation: Organisation, course: Course, action: str)
     return _interface_url(
         organisation.slug, f"courses/{course.pk}/__panels/content/__actions/{action}"
     )
+
+
+def _staff_document(client: Client, organisation: Organisation):
+    return _get_document(client, _interface_url(organisation.slug, "staff"))
+
+
+def _staff_member_row(document, email: str):
+    """The table row whose text includes `email`."""
+    (row,) = [
+        r
+        for r in document.cssselect("#main-content tbody tr")
+        if email in r.text_content()
+    ]
+    return row
+
+
+def _hold(user, role: str, target, grantor=None) -> None:
+    assign_role(grantor or UserFactory(superuser=True), user, role, target)

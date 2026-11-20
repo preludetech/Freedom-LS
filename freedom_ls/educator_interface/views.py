@@ -163,11 +163,11 @@ from freedom_ls.educator_interface.panels.staff.filters import (
     StaffRoleFilter,
     may_see_staff_roles,
 )
+from freedom_ls.educator_interface.panels.staff.quick_view import StaffQuickView
 from freedom_ls.educator_interface.paths import interface_path
 from freedom_ls.educator_interface.quick_views import (
     CohortQuickView,
     LearnerQuickView,
-    StaffQuickView,
 )
 from freedom_ls.educator_interface.reporting import (
     DOWNLOAD_COHORT_REPORT,

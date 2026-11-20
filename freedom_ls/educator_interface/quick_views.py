@@ -1,4 +1,4 @@
-"""Quick views for the Learners, Cohorts and Staff sections.
+"""Quick views for the Learners and Cohorts sections.
 
 Each drawer reads only what its own template needs -- the learner's cohort
 memberships and course registrations, or the cohort's learner count and
@@ -17,7 +17,6 @@ from freedom_ls.comms.messaging_views import message_box_context
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     LEARNER_CHANGED,
-    STAFF_CHANGED,
 )
 from freedom_ls.educator_interface.messaging import own_conversation_with
 from freedom_ls.educator_interface.panels.common.badges import active_status_badge
@@ -25,7 +24,6 @@ from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
 from freedom_ls.educator_interface.paths import interface_path
-from freedom_ls.educator_interface.staff import current_role_entries
 from freedom_ls.educator_interface.user_display import email_below_name
 from freedom_ls.learner_management.models import Cohort, CohortMembership, Learner
 from freedom_ls.learner_management.queries import (
@@ -41,7 +39,7 @@ from freedom_ls.panel_framework.quick_view import QuickView
 from freedom_ls.panel_framework.views import StatusBadge
 
 if TYPE_CHECKING:
-    from freedom_ls.accounts.models import User
+    pass
 
 
 def visible_registrations_with_progress(
@@ -146,26 +144,4 @@ class CohortQuickView(QuickView):
                 .select_related("course")
                 .prefetch_related("course__organisations")
             ],
-        }
-
-
-class StaffQuickView(QuickView):
-    """A staff member's roles, with who added each and when: detail the Staff
-    table leaves out so its rows stay easy to scan."""
-
-    template_name = "educator_interface/quick_views/staff.html"
-    refresh_events = (STAFF_CHANGED,)
-
-    def get_title(self) -> str:
-        return cast("User", self.instance).display_name
-
-    def get_subtitle(self) -> str:
-        return email_below_name(cast("User", self.instance))
-
-    def get_context_data(self) -> dict[str, object]:
-        request = cast("OrganisationScopedRequest", self.request)
-        return {
-            "entries": current_role_entries(
-                cast("User", self.instance), request.organisation
-            )
         }

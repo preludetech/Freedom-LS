@@ -79,9 +79,12 @@ from freedom_ls.educator_interface.tests.helpers import (
     _entry_rows,
     _get_document,
     _history_entry,
+    _hold,
     _interface_url,
     _record_run,
     _row_details,
+    _staff_document,
+    _staff_member_row,
     get_interface_page,
     organisation_admin_viewer,
     page_after_adding_rows,
@@ -2781,22 +2784,6 @@ def test_an_active_cohorts_learners_tab_offers_move_for_each_member(
     assert {t.split("?learner=")[1] for t in triggers} == {str(member.pk)}
 
 
-@pytest.fixture
-def role_holder_client(
-    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
-) -> Callable[[Organisation | Cohort, str], Client]:
-    """Factory: a logged-in staff user holding `role` on `target`."""
-
-    def _make(
-        target: Organisation | Cohort, role: str = "organisation_admin"
-    ) -> Client:
-        user = UserFactory(staff=True)
-        assign_role(UserFactory(superuser=True), user, role, target)
-        return logged_in_client(user)
-
-    return _make
-
-
 def _grant_staff_member(
     target: Organisation | Cohort, role: str = "organisation_admin", **user_fields: str
 ) -> None:
@@ -2898,20 +2885,6 @@ def test_a_member_name_is_escaped(role_holder_client):
     assert "<b>x</b>" not in response.content.decode()
 
 
-def _staff_document(client: Client, organisation: Organisation):
-    return _get_document(client, _interface_url(organisation.slug, "staff"))
-
-
-def _staff_member_row(document, email: str):
-    """The table row whose text includes `email`."""
-    (row,) = [
-        r
-        for r in document.cssselect("#main-content tbody tr")
-        if email in r.text_content()
-    ]
-    return row
-
-
 def _scope_lines(row) -> list[str]:
     return [e.text_content().strip() for e in row.cssselect("ul li span[title]")]
 
@@ -2925,10 +2898,6 @@ MARKERS = {"You", "Inactive", "Account inactive", "Also a learner"}
 
 def _marker_labels(row) -> set[str]:
     return {e.text_content().strip() for e in row.cssselect("span")} & MARKERS
-
-
-def _hold(user, role: str, target, grantor=None) -> None:
-    assign_role(grantor or UserFactory(superuser=True), user, role, target)
 
 
 @pytest.mark.django_db
@@ -2983,64 +2952,6 @@ def test_an_inactive_cohort_carries_the_inactive_marker(role_holder_client):
     row = _staff_member_row(_staff_document(client, organisation), "old@example.com")
 
     assert _scope_lines(row) == ["Old (inactive)"]
-
-
-def _staff_quick_view_text(client: Client, organisation, email: str) -> str:
-    user = User.objects.get(email=email)
-    response = client.get(
-        reverse(
-            "educator_interface:interface",
-            kwargs={
-                "organisation_slug": organisation.slug,
-                "path_string": f"staff/{user.pk}/__quick-view",
-            },
-        ),
-        HTTP_HX_REQUEST="true",
-    )
-    assert response.status_code == 200
-    body = lxml.html.fromstring(response.content.decode())
-    return " ".join(body.text_content().split())
-
-
-@pytest.mark.django_db
-def test_a_role_names_who_added_it(role_holder_client):
-    organisation = OrganisationFactory()
-    grantor = UserFactory(superuser=True, first_name="Grace", last_name="Hopper")
-    _hold(
-        UserFactory(email="added@example.com"),
-        "organisation_admin",
-        organisation,
-        grantor,
-    )
-    client = role_holder_client(organisation, "organisation_admin")
-
-    row = _staff_member_row(_staff_document(client, organisation), "added@example.com")
-    quick_view = _staff_quick_view_text(client, organisation, "added@example.com")
-
-    assert "by Grace Hopper" not in row.text_content()
-    assert "by Grace Hopper" in quick_view
-
-
-@pytest.mark.django_db
-def test_a_role_with_no_recorded_grantor_reads_added_without_a_by_clause(
-    role_holder_client,
-):
-    organisation = OrganisationFactory()
-    grantor = UserFactory(superuser=True)
-    _hold(
-        UserFactory(email="orphan@example.com"),
-        "organisation_admin",
-        organisation,
-        grantor,
-    )
-    grantor.delete()
-    client = role_holder_client(organisation, "organisation_admin")
-
-    text = _staff_quick_view_text(client, organisation, "orphan@example.com")
-
-    assert "Added" in text
-    assert " by " not in text
-    assert "Not recorded" not in text
 
 
 def _make_viewer_and_subject(role_holder_client, organisation, case: str):
