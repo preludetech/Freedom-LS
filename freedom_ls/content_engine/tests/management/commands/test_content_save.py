@@ -23,8 +23,8 @@ from django.db import IntegrityError, connection
 from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
 
-from freedom_ls.content_engine.factories import CourseCategoryFactory
-from freedom_ls.content_engine.image_cache import CACHE_DIR_NAME
+from freedom_ls.content_engine.factories import CourseCategoryFactory, FileFactory
+from freedom_ls.content_engine.image_cache import CACHE_DIR_NAME, ImageCache
 from freedom_ls.content_engine.images import ImageEncodeDecision, ImageEncodeStatus
 from freedom_ls.content_engine.management.commands.content_save import (
     PreservingDumper,
@@ -34,6 +34,7 @@ from freedom_ls.content_engine.management.commands.content_save import (
     markdown_translate,
     save_content_to_db,
     save_course,
+    save_file_to_db,
     save_form_content,
     save_form_page,
     save_form_question,
@@ -4320,3 +4321,78 @@ def test_removing_a_shuffle_field_resets_it_on_the_next_save(
     save_content_to_db(tmp_path, site.name)
 
     assert _shuffle_values()[field] == _SHUFFLE_FIELDS[field][1]
+
+
+BEEP_MP3 = Path(__file__).parents[2] / "fixtures" / "beep.mp3"
+BEEP_SECONDS = 1.0448979591836736
+
+
+def _save_one_file(site: Site, base: Path, relative_path: str) -> None:
+    save_file_to_db(base / relative_path, site, base, ImageCache(base))
+
+
+@pytest.mark.django_db
+def test_a_new_mp3_stores_its_duration(site, mock_site_context, tmp_path) -> None:
+    (tmp_path / "clip.mp3").write_bytes(BEEP_MP3.read_bytes())
+
+    _save_one_file(site, tmp_path, "clip.mp3")
+
+    stored = File.objects.get(file_path="clip.mp3")
+    assert stored.duration_seconds == pytest.approx(BEEP_SECONDS)
+
+
+@pytest.mark.django_db
+def test_resaving_an_mp3_replaces_a_stale_duration(
+    site, mock_site_context, tmp_path
+) -> None:
+    FileFactory(
+        file_path="audio/clip.mp3",
+        file_type=File.FileType.AUDIO,
+        duration_seconds=999.0,
+    )
+    (tmp_path / "audio").mkdir()
+    (tmp_path / "audio" / "clip.mp3").write_bytes(BEEP_MP3.read_bytes())
+
+    _save_one_file(site, tmp_path, "audio/clip.mp3")
+
+    stored = File.objects.get(file_path="audio/clip.mp3")
+    assert stored.duration_seconds == pytest.approx(BEEP_SECONDS)
+
+
+@pytest.mark.django_db
+def test_a_file_that_is_no_longer_audio_loses_its_duration(
+    site, mock_site_context, tmp_path
+) -> None:
+    FileFactory(
+        file_path="notes.txt", file_type=File.FileType.AUDIO, duration_seconds=12.0
+    )
+    (tmp_path / "notes.txt").write_text("plain notes")
+
+    _save_one_file(site, tmp_path, "notes.txt")
+
+    stored = File.objects.get(file_path="notes.txt")
+    assert stored.file_type != File.FileType.AUDIO
+    assert stored.duration_seconds is None
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "unreadable_bytes",
+    [BEEP_MP3.read_bytes()[:4], b""],
+    ids=["truncated", "zero-byte"],
+)
+def test_an_unreadable_mp3_stores_no_duration_warns_and_the_run_continues(
+    site, mock_site_context, tmp_path, capsys, unreadable_bytes: bytes
+) -> None:
+    (tmp_path / "broken.mp3").write_bytes(unreadable_bytes)
+    (tmp_path / "good.mp3").write_bytes(BEEP_MP3.read_bytes())
+
+    _save_one_file(site, tmp_path, "broken.mp3")
+    _save_one_file(site, tmp_path, "good.mp3")
+
+    output = capsys.readouterr().out
+    assert File.objects.get(file_path="broken.mp3").duration_seconds is None
+    assert "Could not read the audio duration of broken.mp3" in output
+    assert File.objects.get(file_path="good.mp3").duration_seconds == pytest.approx(
+        BEEP_SECONDS
+    )

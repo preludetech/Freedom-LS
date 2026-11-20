@@ -49,6 +49,14 @@ class File(SiteAwareModel, TimestampedModel):
     )
     original_filename = models.CharField(max_length=255)
     mime_type = models.CharField(max_length=100, blank=True)
+    duration_seconds = models.FloatField(
+        null=True,
+        blank=True,
+        help_text=_(
+            "Length of the audio in seconds, read when the file is saved. "
+            "Empty for non-audio files and for audio that could not be read."
+        ),
+    )
 
     class Meta:
         constraints = [

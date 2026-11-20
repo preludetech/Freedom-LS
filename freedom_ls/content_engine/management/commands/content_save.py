@@ -14,6 +14,7 @@ from pathlib import Path
 
 import djclick as click
 import frontmatter
+import mutagen
 import yaml
 
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
@@ -943,6 +944,19 @@ def _format_image_decision_line(decision: ImageEncodeDecision) -> str:
     return f"{decision.source_format} {source_width}x{source_height}, {reason}{decision.status}."
 
 
+def read_audio_duration(file_path: Path) -> float | None:
+    """Seconds of audio in the local source file, or None when mutagen can't read it."""
+    try:
+        audio = mutagen.File(file_path)
+    except (mutagen.MutagenError, OSError):
+        return None
+    if audio is None:
+        return None
+    length = float(audio.info.length)
+    # A header-only file reports 0.0, which would give a seek bar with no range.
+    return length if length > 0 else None
+
+
 def save_file_to_db(
     file_path: Path, site: Site, base_path: Path, cache: ImageCache
 ) -> ImageEncodeDecision | None:
@@ -960,6 +974,10 @@ def save_file_to_db(
         if decision.data is not None:
             mime_type = decision.mime_type
 
+    duration_seconds = (
+        read_audio_duration(file_path) if file_type == File.FileType.AUDIO else None
+    )
+
     # Get or create the File record (without the file field)
     file_obj, created = File.objects.get_or_create(
         site=site,
@@ -968,6 +986,7 @@ def save_file_to_db(
             "file_type": file_type,
             "original_filename": file_path.name,
             "mime_type": mime_type or "",
+            "duration_seconds": duration_seconds,
         },
     )
 
@@ -976,6 +995,8 @@ def save_file_to_db(
         file_obj.file_type = file_type
         file_obj.original_filename = file_path.name
         file_obj.mime_type = mime_type or ""
+        # None for a non-audio file clears a value left from when it was audio.
+        file_obj.duration_seconds = duration_seconds
 
     if (
         decision is not None
@@ -1016,6 +1037,10 @@ def save_file_to_db(
 
     action = "Created" if created else "Updated"
     lines = [f"{action} {file_type} file: {relative_path}"]
+    if file_type == File.FileType.AUDIO and duration_seconds is None:
+        lines.append(
+            f"  Could not read the audio duration of {relative_path}; it stays empty."
+        )
     if decision is not None:
         lines.append(f"  {_format_image_decision_line(decision)}")
         if decision.data is not None and before_bytes is not None:
