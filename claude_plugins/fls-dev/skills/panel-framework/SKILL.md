@@ -44,7 +44,7 @@ components; `Skill(fls-dev:frontend-styling)` owns the theme tokens.
   `CreateInstanceAction`, `EditAction` and `DeleteAction` build on it. `renders_in_footer` places
   an action in the panel footer or inline; `submit_buttons` names a form's buttons.
   `ConfirmAction` is the confirm dialog (`confirm_label`, `confirm_variant`, `loading_text`, the
-  hooks `get_title`, `get_hidden_fields`, `get_confirm_context`); `DeleteAction` extends it, and
+  hooks `get_title`, `get_confirm_context`); `DeleteAction` extends it, and
   its `get_known_blocked_reason(ctx, instance)` returns a refusal known without collecting the
   cascade. `ReasonMixin` adds the reason dialog: a `ReasonForm` (`forms.py`, `reason_form_class`)
   whose field `modal/confirm.html` renders in the body, validated in `handle_submit`. A host
@@ -58,7 +58,10 @@ components; `Skill(fls-dev:frontend-styling)` owns the theme tokens.
   `refusal_response(ctx, *, title, message, status=422)` renders a refusal in
   `modal/message.html`, and `ConfirmAction.refuse` calls it. `row_param` names the parameter a
   row-scoped action reads, and `get_row_object(ctx)` looks that row up in `get_row_queryset(ctx)`
-  (404 when absent), once per request; `get_hidden_fields` posts it back by default. The form
+  (404 when absent), once per request. `get_hidden_fields(ctx)` lives on `PanelAction`: it returns
+  the name-to-value pairs the submit posts back as hidden inputs, the row `row_param` names by
+  default. `ConfirmAction` and `FormPanelAction` both pass it to their template as
+  `hidden_fields`, and `modal/confirm.html` and `modal/form.html` render it. The form
   hooks take `ctx`, and the action's URL is `action_url` in every fragment. A GET to an action
   with no `template_name` answers 405. `CreateInstanceAction`'s form never takes the page's
   instance.
@@ -178,7 +181,10 @@ which site a request belongs to. The host says so through a setting.
   items, each button's accessible name names its item ("Deactivate Organisation admin").
 - A table whose columns do not fit its own container shows as cards, never behind a sideways
   scroll. The table declares it (`cards_when_narrow`) and the switch reads the container's width,
-  not the viewport's, so it also holds beside an open quick view.
+  not the viewport's, so it also holds beside an open quick view. `<c-data-table>` takes it from
+  `DataTablePanel.cards_when_narrow`; a static `<c-panel-table cards="true">` takes
+  `cards_when_narrow="true"` on the tag, and switches its table and its `card_rows` on the width of
+  its own container.
 - A wide read-only table with no action column (a report's progress table) may scroll sideways
   inside its own region instead. Its name column then has a minimum width, so a person's name
   stays readable at every width, a status badge stays on one line, and no button sits behind the
@@ -315,7 +321,7 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
   reason field when `reason_form` is set, and a footer with one confirm button; a subclass keeps
   only its title, body and hidden fields. `modal/message.html` states something and ends in a
   Close the footer focuses (refusals, "unavailable", empty messages). `modal/form.html` is a
-  multi-field form. A multi-step dialog keeps its own template but still uses `<c-modal-body>`,
+  multi-field form that renders `hidden_fields`. A multi-step dialog keeps its own template but still uses `<c-modal-body>`,
   `partials/error_summary.html` and `<c-panel-callout>`.
 - A dialog ends in `<c-modal-footer>`: it renders its own Cancel at the left (`cancel`,
   `cancel_href`, `cancel_click`, `focus_cancel`), the actions in the default slot at the right, the
