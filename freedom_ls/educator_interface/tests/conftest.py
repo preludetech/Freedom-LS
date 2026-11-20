@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 from freedom_ls.organisations.factories import OrganisationFactory
+
+if TYPE_CHECKING:
+    from django.contrib.sites.models import Site
 
 
 @pytest.fixture
@@ -28,5 +33,8 @@ def panel_request(site_aware_request):
 
 
 @pytest.fixture
-def _site_context(mock_site_context):
-    """Every test here builds site-aware objects."""
+def _site_context(mock_site_context: Site) -> None:
+    """Opt-in site context for tests that build site-aware objects.
+
+    Use it through pytest.mark.usefixtures("_site_context").
+    """

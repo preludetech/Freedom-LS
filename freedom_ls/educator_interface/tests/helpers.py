@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import lxml.html
 from pytest_django.fixtures import DjangoAssertNumQueries
 
 from django.db import connection
+from django.http import HttpRequest
 from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
@@ -28,6 +29,9 @@ from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.utils import assign_object_role
+
+if TYPE_CHECKING:
+    from django.test.client import _MonkeyPatchedWSGIResponse
 
 
 def organisation_admin_viewer(organisation: Organisation) -> User:
@@ -121,7 +125,9 @@ def course_per_reach_row(organisation: Organisation) -> dict[str, Course]:
     }
 
 
-def _educator_request(site_aware_request: RequestFactory, organisation):
+def _educator_request(
+    site_aware_request: RequestFactory, organisation: Organisation
+) -> HttpRequest:
     educator = LearnerFactory(user__staff=True).user
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, educator, "organisation_admin", organisation)
@@ -131,7 +137,7 @@ def _educator_request(site_aware_request: RequestFactory, organisation):
     return request
 
 
-def _any_request():
+def _any_request() -> HttpRequest:
     """For a filter whose apply() reads nothing from the request."""
     return RequestFactory().get("/")
 
@@ -166,7 +172,7 @@ def _bulk_post(
     action_name: str,
     learners: list[Learner],
     **extra: str,
-):
+) -> _MonkeyPatchedWSGIResponse:
     return client.post(
         _learners_bulk_url(organisation, action_name),
         {"keys": [str(learner.pk) for learner in learners], **extra},
@@ -174,7 +180,7 @@ def _bulk_post(
     )
 
 
-def _bulk_text(response) -> str:
+def _bulk_text(response: _MonkeyPatchedWSGIResponse) -> str:
     return " ".join(
         lxml.html.fromstring(response.content.decode()).text_content().split()
     )
