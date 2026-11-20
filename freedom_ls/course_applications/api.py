@@ -42,8 +42,8 @@ class QuestionAnswerApiSerializer(serializers.Serializer):
 
 
 class CourseApplicationApiSerializer(serializers.ModelSerializer):
-    # Properties, not columns: read through the model so they follow when
-    # application review adds a state.
+    # is_submitted and submitted_time read the stored submitted_at, so they
+    # stay true of an application that has since been decided or withdrawn.
     applicant_email = serializers.CharField(read_only=True)
     applicant_name = serializers.CharField(read_only=True)
     is_email_verified = serializers.BooleanField(read_only=True)
@@ -52,6 +52,7 @@ class CourseApplicationApiSerializer(serializers.ModelSerializer):
     is_submitted = serializers.BooleanField(read_only=True)
     # allow_null marks the OpenAPI schema nullable; a draft has no submitted_time.
     submitted_time = serializers.DateTimeField(read_only=True, allow_null=True)
+    organisation_id = serializers.UUIDField(read_only=True)
     answers = serializers.SerializerMethodField()
 
     class Meta:
@@ -68,6 +69,10 @@ class CourseApplicationApiSerializer(serializers.ModelSerializer):
             "course_title",
             "is_submitted",
             "submitted_time",
+            "state",
+            "organisation_id",
+            "decided_at",
+            "withdrawn_at",
             "created_at",
             "updated_at",
             "answers",

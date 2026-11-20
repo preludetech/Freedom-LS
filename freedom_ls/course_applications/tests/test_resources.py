@@ -102,6 +102,18 @@ def test_export_header_is_the_fixed_columns_in_order(staff_client):
     assert header == list(APPLICATION_EXPORT_FIELDS)
 
 
+def test_state_column_follows_is_email_verified_and_holds_the_state(staff_client):
+    application = CourseApplicationFactory(rejected=True)
+
+    response = _export_selected(
+        staff_client, "courseapplication", [str(application.pk)]
+    )
+
+    header, rows = _rows(response)
+    assert header.index("state") == header.index("is_email_verified") + 1
+    assert rows[0][header.index("state")] == "rejected"
+
+
 def test_a_user_held_application_writes_the_users_details(staff_client):
     application = CourseApplicationFactory(
         user=UserFactory(first_name="Ada", last_name="Lovelace")

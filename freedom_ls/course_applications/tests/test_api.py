@@ -65,6 +65,10 @@ EXPECTED_FIELDS = [
     "course_title",
     "is_submitted",
     "submitted_time",
+    "state",
+    "organisation_id",
+    "decided_at",
+    "withdrawn_at",
     "created_at",
     "updated_at",
     "answers",
@@ -181,6 +185,31 @@ def test_a_submitted_application_serialises_submitted_at_as_submitted_time(
 
     assert row["is_submitted"] is True
     assert datetime.fromisoformat(row["submitted_time"]) == application.submitted_at
+
+
+def test_a_withdrawn_application_serialises_its_state_and_withdrawn_at(client, auth):
+    application = CourseApplicationFactory(withdrawn=True)
+
+    row = client.get(
+        reverse(DETAIL_URL_NAME, args=[application.pk]), headers=auth
+    ).json()
+
+    assert row["state"] == "withdrawn"
+    assert row["organisation_id"] == str(application.organisation_id)
+    assert datetime.fromisoformat(row["withdrawn_at"]) == application.withdrawn_at
+    assert row["decided_at"] is None
+
+
+def test_an_approved_application_serialises_its_state_and_decided_at(client, auth):
+    application = CourseApplicationFactory(approved=True)
+
+    row = client.get(
+        reverse(DETAIL_URL_NAME, args=[application.pk]), headers=auth
+    ).json()
+
+    assert row["state"] == "approved"
+    assert datetime.fromisoformat(row["decided_at"]) == application.decided_at
+    assert row["withdrawn_at"] is None
 
 
 def test_answers_are_an_empty_list_when_there_is_no_sitting(client, auth):

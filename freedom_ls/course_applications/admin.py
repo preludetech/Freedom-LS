@@ -5,7 +5,7 @@ from __future__ import annotations
 from unfold.contrib.filters.admin import AutocompleteSelectFilter
 
 from django.contrib import admin
-from django.db.models import Q, QuerySet
+from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse
 from django.utils import formats, timezone
 from django.utils.safestring import SafeString
@@ -28,37 +28,6 @@ from .resources import CourseApplicationResource
 # admin only vouches for the models named here.
 USER_ERASURE_CASCADE_MODELS.add(CourseApplication)
 USER_ERASURE_CASCADE_MODELS.add(AnonymousApplicant)
-
-
-class CourseApplicationSubmittedFilter(admin.SimpleListFilter):
-    """Submitted or draft, by the same rule as CourseApplication.is_submitted.
-
-    An application with no sitting was submitted the moment it was created, so
-    "submitted" is an OR over two shapes and the shared completion filter, which
-    tests one timestamp, cannot express it.
-    """
-
-    title = "submitted"
-    parameter_name = "submitted"
-
-    def lookups(
-        self, request: HttpRequest, model_admin: admin.ModelAdmin
-    ) -> list[tuple[str, str]]:
-        return [("submitted", "Submitted"), ("draft", "Draft")]
-
-    def queryset(
-        self, request: HttpRequest, queryset: QuerySet[CourseApplication]
-    ) -> QuerySet[CourseApplication]:
-        if self.value() == "submitted":
-            return queryset.filter(
-                Q(form_progress__isnull=True)
-                | Q(form_progress__completed_time__isnull=False)
-            )
-        if self.value() == "draft":
-            return queryset.filter(
-                form_progress__isnull=False, form_progress__completed_time__isnull=True
-            )
-        return queryset
 
 
 class EmailVerifiedFilter(admin.SimpleListFilter):
@@ -98,6 +67,7 @@ class CourseApplicationAdmin(SiteAwareExportModelAdmin):
         "applicant_email",
         "applicant_name",
         "is_email_verified",
+        "state",
         "course",
         "is_submitted",
         "submitted_time",
@@ -108,7 +78,7 @@ class CourseApplicationAdmin(SiteAwareExportModelAdmin):
     list_select_related = ["user", "anonymous_applicant", "course", "form_progress"]
     ordering = ["-created_at"]
     list_filter = [
-        CourseApplicationSubmittedFilter,
+        "state",
         EmailVerifiedFilter,
         ("course", AutocompleteSelectFilter),
         ("created_at", InclusiveRangeDateTimeFilter),
@@ -125,7 +95,7 @@ class CourseApplicationAdmin(SiteAwareExportModelAdmin):
         "anonymous_applicant__last_name",
         "course__title",
     ]
-    fields = ["is_submitted", "submitted_time_display", "created_at"]
+    fields = ["state", "is_submitted", "submitted_time_display", "created_at"]
     readonly_fields = fields
     change_form_template = "admin/form_engine/answers_change_form.html"
 

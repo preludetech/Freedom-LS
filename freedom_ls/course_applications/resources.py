@@ -31,6 +31,7 @@ APPLICATION_EXPORT_FIELDS = (
     "applicant_email",
     "applicant_name",
     "is_email_verified",
+    "state",
     "course",
     "is_submitted",
     "submitted_time",

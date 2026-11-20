@@ -281,21 +281,15 @@ def test_form_progress_change_page_shows_application_as_text_without_view_permis
     assert reverse(CHANGE, args=[application.pk]) not in content
 
 
-def test_submitted_filter_agrees_with_is_submitted(staff_client):
-    draft = _draft()
-    submitted = _submitted()
-    no_form = CourseApplicationFactory()
+def test_state_filter_narrows_the_changelist_to_that_state(staff_client):
+    approved = CourseApplicationFactory(approved=True)
+    CourseApplicationFactory(withdrawn=True)
+    CourseApplicationFactory()
 
-    def listed(value: str) -> set[int]:
-        response = staff_client.get(reverse(CHANGELIST), {"submitted": value})
-        assert response.status_code == 200
-        return {row.pk for row in response.context["cl"].result_list}
+    response = staff_client.get(reverse(CHANGELIST), {"state__exact": "approved"})
 
-    assert listed("submitted") == {submitted.pk, no_form.pk}
-    assert listed("draft") == {draft.pk}
-    assert draft.is_submitted is False
-    assert submitted.is_submitted is True
-    assert no_form.is_submitted is True
+    assert response.status_code == 200
+    assert [row.pk for row in response.context["cl"].result_list] == [approved.pk]
 
 
 def test_course_filter_returns_only_that_courses_applications(staff_client):
@@ -818,14 +812,14 @@ def test_export_honours_the_course_filter(staff_client):
     assert other.applicant_email not in body
 
 
-def test_export_honours_the_submitted_filter(staff_client):
-    draft = _draft()
-    submitted = _submitted()
+def test_export_honours_the_state_filter(staff_client):
+    withdrawn = CourseApplicationFactory(withdrawn=True)
+    submitted = CourseApplicationFactory()
 
-    response = staff_client.get(reverse(EXPORT), {"submitted": "draft"})
+    response = staff_client.get(reverse(EXPORT), {"state__exact": "withdrawn"})
 
     body = response.content.decode("utf-8-sig")
-    assert draft.applicant_email in body
+    assert withdrawn.applicant_email in body
     assert submitted.applicant_email not in body
 
 
