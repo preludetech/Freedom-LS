@@ -342,7 +342,7 @@ document.addEventListener("alpine:init", () => {
             return this.duration === null ? "--:--" : formatClipTime(this.duration, this.duration);
         },
         get statusText() {
-            return "";
+            return this.failed ? "This audio couldn't load." : "";
         },
         get showPlayIcon() {
             return this.state === "paused" || this.state === "failed";
@@ -443,6 +443,14 @@ document.addEventListener("alpine:init", () => {
         },
         _fail() {
             this.state = "failed";
+        },
+        retry() {
+            const audio = this._element();
+            // Keep the position across the fresh load.
+            this.pendingSeek = this.elapsed;
+            // Setting src again goes back through the redirect for a freshly signed URL.
+            audio.src = this._src;
+            this._start(audio);
         },
         destroy() {
             const audio = clipElements.get(this._id);

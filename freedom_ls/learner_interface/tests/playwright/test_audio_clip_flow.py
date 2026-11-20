@@ -343,3 +343,60 @@ def test_clip_fits_every_viewport(
         page.set_viewport_size(viewport)
         expect(_seek_bar(page)).to_be_visible()
         assert_no_horizontal_overflow(page)
+
+
+def test_failed_clip_shows_an_error_and_retries_from_its_position(
+    live_server,
+    live_server_site,
+    mock_site_context,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    course = _clip_course(logged_in_user)
+    page.route("**/content/audio/**", lambda route: route.abort())
+    page.goto(form_item_url(live_server, course, "view_course_item"))
+    group = page.get_by_role("group", name=FIRST_CLIP)
+    play = page.get_by_role("button", name=f"Play {FIRST_CLIP}")
+    try_again = page.get_by_role("button", name=f"Try again: {FIRST_CLIP}")
+    status = group.get_by_role("status")
+
+    _seek_bar(page).fill("10")
+    play.click()
+
+    expect(status).to_have_text("This audio couldn't load.")
+    expect(play).to_be_disabled()
+    expect(_seek_bar(page)).to_be_hidden()
+    expect(try_again).to_be_visible()
+
+    page.unroute("**/content/audio/**")
+    page.route("**/content/audio/**", _serve_with_ranges)
+    try_again.click()
+
+    expect(play).to_have_attribute("aria-pressed", "true")
+    expect(status).to_have_text("")
+    expect(_elapsed(page)).not_to_have_text(re.compile(r"0:0\d"))
+    expect(_elapsed(page)).not_to_have_text("0:00")
+    assert _to_seconds(_elapsed(page).inner_text()) >= 10
+
+
+def test_retry_that_fails_again_announces_the_error_again(
+    live_server,
+    live_server_site,
+    mock_site_context,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    course = _clip_course(logged_in_user)
+    page.route("**/content/audio/**", lambda route: route.abort())
+    page.goto(form_item_url(live_server, course, "view_course_item"))
+    status = page.get_by_role("group", name=FIRST_CLIP).get_by_role("status")
+    try_again = page.get_by_role("button", name=f"Try again: {FIRST_CLIP}")
+
+    page.get_by_role("button", name=f"Play {FIRST_CLIP}").click()
+    expect(status).to_have_text("This audio couldn't load.")
+    try_again.click()
+
+    expect(status).to_have_text("This audio couldn't load.")
+    expect(try_again).to_be_visible()

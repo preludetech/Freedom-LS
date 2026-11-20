@@ -26,7 +26,10 @@ its metadata arrives. Both time figures are hidden from
 screen readers, which read the seek bar's aria-valuetext instead.
 A missing or non-audio file, or an empty title, renders a red box naming the
 src instead. The status line is always in the DOM and only its text changes,
-so screen readers announce each change.
+so screen readers announce each change. When the audio fails to load or play,
+the card turns red, Play is disabled and the seek row gives way to the status
+text and a Try again button; Try again reloads through the redirect and plays
+from the saved position.
 {% endcomment %}
 
 {% with file_obj=src|get_file_by_path:content_instance %}
@@ -43,21 +46,21 @@ so screen readers announce each change.
          x-bind:aria-labelledby="$id('audio-clip-title')"
          data-src="{% url 'content_engine:audio_file' file_obj.pk %}"
          data-duration="{% if file_obj.duration_seconds is not None %}{{ file_obj.duration_seconds|unlocalize }}{% endif %}">
-      <div class="flex items-start gap-3 rounded-lg border border-border bg-surface p-3">
+      <div class="flex items-start gap-3 rounded-lg border border-border bg-surface p-3 group-data-[state=failed]:border-error group-data-[state=failed]:bg-error-light group-data-[state=failed]:text-on-error-light">
         <c-button variant="primary" aria_label="Play {{ title }}" x-ref="play"
-                  x-bind:aria-pressed="playing" x-on:click="toggle"
+                  x-bind:aria-pressed="playing" x-bind:disabled="failed" x-on:click="toggle"
                   data-src="{% url 'content_engine:audio_file' file_obj.pk %}"
-                  class="size-11 shrink-0 rounded-pill p-0">
+                  class="size-11 shrink-0 rounded-pill p-0 disabled:cursor-not-allowed disabled:opacity-50">
           <span x-show="showPlayIcon"><c-icon name="media_play" class="size-5" /></span>
           <span x-show="loading" x-cloak><c-icon name="loading" class="size-5 animate-spin motion-reduce:animate-none" /></span>
           <span x-show="playing" x-cloak><c-icon name="media_pause" class="size-5" /></span>
         </c-button>
         <div class="min-w-0 flex-1">
           <div class="flex items-baseline gap-2">
-            <span x-bind:id="$id('audio-clip-title')" title="{{ title }}" class="min-w-0 flex-1 truncate font-bold">{{ title }}</span>
+            <span x-bind:id="$id('audio-clip-title')" title="{{ title }}" class="min-w-0 flex-1 truncate font-bold group-data-[state=failed]:overflow-visible group-data-[state=failed]:whitespace-normal">{{ title }}</span>
             {% if kind.strip %}<span class="shrink-0 font-mono text-xs text-muted">{{ kind }}</span>{% endif %}
           </div>
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-3" x-show="!failed" x-transition>
             <input type="range" min="0" step="any" value="0"
                    {% if file_obj.duration_seconds is not None %}max="{{ file_obj.duration_seconds|unlocalize }}"{% endif %}
                    {% if file_obj.duration_seconds is None %}disabled{% endif %}
@@ -73,9 +76,14 @@ so screen readers announce each change.
               <span class="text-muted">/ <span x-text="totalText">{% if file_obj.duration_seconds is None %}--:--{% else %}{{ file_obj.duration_seconds|clip_time:file_obj.duration_seconds }}{% endif %}</span></span>
             </span>
           </div>
+          <div class="flex flex-wrap items-center gap-3">
+            <p role="status" class="text-sm" x-text="statusText"></p>
+            <div x-show="failed" x-transition x-cloak>
+              <c-button variant="secondary" size="small" aria_label="Try again: {{ title }}" x-on:click="retry">Try again</c-button>
+            </div>
+          </div>
         </div>
       </div>
-      <p role="status" class="sr-only" x-text="statusText"></p>
     </div>
   {% endif %}
 {% endwith %}

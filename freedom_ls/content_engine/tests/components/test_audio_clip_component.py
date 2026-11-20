@@ -186,3 +186,26 @@ class TestAuthorMistakes:
 
         assert "Audio not found" not in html
         assert "Audio needs a title" not in html
+
+
+class TestErrorState:
+    def test_empty_status_line_is_always_rendered(
+        self, mock_site_context: object
+    ) -> None:
+        _audio_file()
+
+        tree = _tree(CLIP.format(extra=""))
+
+        (status,) = tree.xpath("//p[@role='status']")
+        assert status.get("x-text") == "statusText"
+        assert (status.text or "").strip() == ""
+
+    def test_try_again_button_is_named_after_the_clip(
+        self, mock_site_context: object
+    ) -> None:
+        _audio_file()
+
+        tree = _tree(CLIP.format(extra=""))
+
+        (button,) = tree.xpath("//button[@aria-label='Try again: The talk']")
+        assert button.get("x-on:click") == "retry"
