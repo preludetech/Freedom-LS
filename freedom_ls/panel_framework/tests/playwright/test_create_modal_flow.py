@@ -299,3 +299,34 @@ def test_double_clicking_add_creates_one_row(
     expect(page.locator("#app-modal")).to_be_hidden()
     assert post_count["total"] == 1
     assert StubModel.objects.filter(name="Gamma").count() == 1
+
+
+def test_wrapped_footer_actions_stay_right_aligned_on_a_phone(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    """Actions that wrap onto their own footer row stay at the right edge.
+
+    The wrapped action group used to be the only item on its flex line and sat
+    at the left, so the primary button ended short of the body's right edge.
+    """
+    make_stub(name="Existing")
+    page.set_viewport_size({"width": 375, "height": 812})
+    page.goto(f"{live_server.url}{_LIST_PATH}")
+    _open_create_modal(page)
+
+    footer = page.locator("#app-modal [data-modal-footer]:visible")
+    footer_box = footer.bounding_box()
+    last_box = footer.locator("button:visible").last.bounding_box()
+    cancel_box = footer.get_by_role("button", name="Cancel").bounding_box()
+    assert footer_box is not None
+    assert last_box is not None
+    assert cancel_box is not None
+    # The actions wrapped below Cancel.
+    assert last_box["y"] > cancel_box["y"] + cancel_box["height"] - 1
+    # The footer has px-6 (24px) padding.
+    assert last_box["x"] + last_box["width"] == pytest.approx(
+        footer_box["x"] + footer_box["width"] - 24, abs=1
+    )
