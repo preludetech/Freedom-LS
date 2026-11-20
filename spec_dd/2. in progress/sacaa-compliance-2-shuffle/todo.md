@@ -11,15 +11,16 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 2. Plan
 
 - [x] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
-- [ ] (user) Force-push the branch, rebased onto main locally: `git push origin sacaa-compliance-2-shuffle --force-with-lease --force-if-includes`
+- [x] (user) Force-push the branch, rebased onto main locally: `git push origin sacaa-compliance-2-shuffle --force-with-lease --force-if-includes`
 - [ ] (user) Review both plans and edit where needed
 
 ## 3. Implementation and QA
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
+- [ ] (user) Decide whether the fls-content plugin's bundled validator (`claude_plugins/fls-content/validate/validate.py`) should also run the cross-file shuffle checks (`validate_form_shuffle`: group on non-QUIZ, locked with shuffle_options off, group on two pages, split group). It already mirrors `validate_form_conditions` and now has the shuffle fields, but not this pass. If yes, port it during `/sdd:document`'s course-author plugin hook
 
 ## 4. Documentation and pull request
 
