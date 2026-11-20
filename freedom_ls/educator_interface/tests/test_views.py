@@ -3514,7 +3514,7 @@ def test_a_role_the_viewer_may_not_give_has_no_change_cohorts(
     )
     client = role_holder_client(organisation, "organisation_admin")
     monkeypatch.setattr(
-        "freedom_ls.educator_interface.actions.grantable_roles",
+        "freedom_ls.educator_interface.panels.staff.actions.grantable_roles",
         lambda *args: [GrantableRole("organisation_admin", None)],
     )
 
@@ -3545,7 +3545,7 @@ def test_an_entry_the_viewer_may_not_revoke_has_no_remove(
     _hold(UserFactory(email="other@example.com"), "cohort_viewer", cohort)
     client = role_holder_client(organisation, "organisation_admin")
     monkeypatch.setattr(
-        "freedom_ls.educator_interface.actions.grantable_roles",
+        "freedom_ls.educator_interface.panels.staff.actions.grantable_roles",
         lambda *args: [GrantableRole("organisation_admin", None)],
     )
 

@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.models import Organisation
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser
@@ -17,7 +18,6 @@ if TYPE_CHECKING:
     from django.test import Client
 
     from freedom_ls.learner_management.models import Cohort
-    from freedom_ls.organisations.models import Organisation
 
 
 @pytest.fixture
@@ -62,3 +62,8 @@ def role_holder_client(
         return logged_in_client(user)
 
     return _make
+
+
+@pytest.fixture
+def organisation(mock_site_context: Site) -> Organisation:
+    return cast(Organisation, OrganisationFactory())

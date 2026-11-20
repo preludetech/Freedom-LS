@@ -30,7 +30,7 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import Learner
+from freedom_ls.learner_management.models import Cohort, Learner
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
@@ -297,3 +297,49 @@ def _staff_member_row(document, email: str):
 
 def _hold(user, role: str, target, grantor=None) -> None:
     assign_role(grantor or UserFactory(superuser=True), user, role, target)
+
+
+def _post(client: Client, url: str, data: dict[str, str] | None = None):
+    return client.post(url, data or {}, HTTP_HX_REQUEST="true")
+
+
+def _cohort_url(organisation: Organisation, cohort: Cohort, suffix: str = "") -> str:
+    return _interface_url(organisation.slug, f"cohorts/{cohort.pk}{suffix}")
+
+
+def _assert_message_dialog(response, title: str, message: str) -> None:
+    document = lxml.html.fromstring(response.content.decode())
+    assert response.status_code == 422
+    assert document.get_element_by_id("app-modal-title").text_content() == title
+    assert message in _text(response)
+    (close,) = [
+        el for el in document.iter("button") if el.text_content().strip() == "Close"
+    ]
+    assert close.get("autofocus") is not None
+
+
+def _text(response) -> str:
+    return " ".join(
+        lxml.html.fromstring(response.content.decode()).text_content().split()
+    )
+
+
+def _cohort(organisation: Organisation, **kwargs: str) -> Cohort:
+    return cast(Cohort, CohortFactory(organisation=organisation, **kwargs))
+
+
+def _remove_role_url(organisation: Organisation) -> str:
+    return _interface_url(organisation.slug, "staff/__actions/deactivate_role")
+
+
+def _staff_member_holding(
+    role: str, target: Organisation | Cohort | list[Cohort], **fields: str
+) -> User:
+    user = cast(User, UserFactory(**fields))
+    for each in target if isinstance(target, list) else [target]:
+        assign_role(UserFactory(superuser=True), user, role, each)
+    return user
+
+
+def _state_url(organisation: Organisation, action: str) -> str:
+    return _interface_url(organisation.slug, f"staff/__actions/{action}")
