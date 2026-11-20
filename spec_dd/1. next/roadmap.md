@@ -13,13 +13,13 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 - 🔴 High · `educator-interface-refactor-2-dashboard-and-audit-log` (Educator interface code layout, via `sacaa-compliance`)
 - 🔴 High · `sacaa-compliance-2-shuffle` (SACAA compliance)
-- 🔴 High · `extract_panels_framework-4-template-contract` (Panel framework extraction)
 - 🔴 High · `learner-profile-use-panels-framework-2-editable-list-panel` (Account area on panels)
 - 🔴 High · `learner-profile-use-panels-framework-3-account-page` (Account area on panels)
 - 🔴 High · `multi-step-course-applications-1-review-states` (Multi-step course applications)
 
 ### Ready to start
 
+- 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
 - 🟠 Medium · `educator-interface-refactor-3-staff` (Educator interface code layout)
 - 🟠 Medium · `educator-interface-refactor-4-course` (Educator interface code layout)
 - 🟠 Medium · `content-widget-longer-audio` (Audio content widgets)
@@ -118,8 +118,7 @@ Priority: 🔴 High
 
 The panel framework moves into its own installable package, because another Django project needs it. Parent: `extract_panels_framework`.
 
-- `extract_panels_framework-4-template-contract` — **in progress** — Templates, JS and CSS stop assuming FLS: a checked host contract, its own primitives and stylesheet, standalone browser tests.
-- `extract_panels_framework-5-package-and-install` — **blocked** by `extract_panels_framework-4-template-contract` — The public `django-panel-framework` repo, tagged `v0.1.0`. FLS installs it by git tag and drops the old table.
+- `extract_panels_framework-5-package-and-install` — **ready** — The public `django-panel-framework` repo, tagged `v0.1.0`. FLS installs it by git tag and drops the old table.
 - `extract_panels_framework-6-claude-plugin` — **blocked** by `extract_panels_framework-5-package-and-install` — A generic `panel-framework` Claude Code plugin and developer doc in the package repo. `fls-dev` keeps only a pointer.
 
 ![Panel framework extraction](roadmap_diagrams/panel-framework-extraction.svg)
