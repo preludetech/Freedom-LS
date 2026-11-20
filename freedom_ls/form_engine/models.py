@@ -78,6 +78,27 @@ class Form(TitledContent, MarkdownContent):
             "If False (default), the attempt is saved and can be resumed."
         ),
     )
+    shuffle_pages = models.BooleanField(
+        default=False,
+        help_text=_(
+            "If True, each sitting of a quiz serves the pages in a random order. "
+            "If False (default), pages are served in authored order."
+        ),
+    )
+    shuffle_questions = models.BooleanField(
+        default=False,
+        help_text=_(
+            "If True, each sitting of a quiz serves each page's questions in a random order. "
+            "If False (default), questions are served in authored order."
+        ),
+    )
+    shuffle_options = models.BooleanField(
+        default=False,
+        help_text=_(
+            "If True, each sitting of a quiz serves each question's options in a random order. "
+            "If False (default), options are served in authored order."
+        ),
+    )
 
     class Meta:
         constraints = [
@@ -139,6 +160,15 @@ class FormContent(MarkdownContent):
         FormPage, on_delete=models.CASCADE, related_name="text_items"
     )
     order = models.PositiveIntegerField(default=0)
+    group = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text=_(
+            "Keep-together group: children of one page sharing this name stay "
+            "together, in authored order, when the page's questions shuffle."
+        ),
+    )
     # RESTRICT, not PROTECT: an option deleted on its own would leave a gate
     # that can never open, but deleting the whole form collects the gated rows
     # alongside the option and goes through.
@@ -167,6 +197,15 @@ class FormQuestion(BaseContent):
     )
     order = models.PositiveIntegerField(default=0)
     category = models.CharField(max_length=200, blank=True, default="")
+    group = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text=_(
+            "Keep-together group: children of one page sharing this name stay "
+            "together, in authored order, when the page's questions shuffle."
+        ),
+    )
     slug = models.CharField(
         max_length=100,
         blank=True,
@@ -267,6 +306,7 @@ class QuestionOption(SiteAwareModel, TimestampedModel):
     value = models.CharField(max_length=100)
     order = models.PositiveIntegerField(default=0)
     correct = models.BooleanField(null=True, blank=True)
+    locked = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["order"]

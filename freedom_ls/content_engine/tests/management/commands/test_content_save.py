@@ -4218,3 +4218,101 @@ def test_get_file_type_from_extension_types_every_audio_extension_as_audio(
     extension: str,
 ) -> None:
     assert get_file_type_from_extension(Path(f"clip{extension}")) == File.FileType.AUDIO
+
+
+# The shuffle knobs, option `locked` and the keep-together `group` a quiz file carries.
+
+_SHUFFLE_FORM_UUID = "40000000-0000-0000-0000-000000000001"
+_SHUFFLE_PAGE_UUID = "40000000-0000-0000-0000-000000000002"
+_SHUFFLE_QUESTION_UUID = "40000000-0000-0000-0000-000000000003"
+_SHUFFLE_CONTENT_UUID = "40000000-0000-0000-0000-000000000004"
+_SHUFFLE_OPTION_UUID = "40000000-0000-0000-0000-000000000005"
+
+
+def _write_shuffle_quiz(directory: Path, *, authored: bool) -> None:
+    """A one-page quiz that sets every shuffle field when `authored`, and
+    leaves each one out of the files when not."""
+    directory.mkdir(exist_ok=True)
+    knob_lines = (
+        "shuffle_pages: true\nshuffle_questions: true\nshuffle_options: true\n"
+        if authored
+        else ""
+    )
+    group_line = "group: reading\n" if authored else ""
+    locked_line = "    locked: true\n" if authored else ""
+    (directory / "form.md").write_text(f"""---
+content_type: FORM
+strategy: QUIZ
+title: Shuffled quiz
+uuid: {_SHUFFLE_FORM_UUID}
+quiz_show_incorrect: true
+quiz_pass_percentage: 70
+{knob_lines}---
+""")
+    (directory / "1. page.yaml").write_text(f"""---
+content_type: FORM_PAGE
+title: Page
+uuid: {_SHUFFLE_PAGE_UUID}
+---
+question: Pick one
+type: multiple_choice
+uuid: {_SHUFFLE_QUESTION_UUID}
+{group_line}options:
+  - text: "A"
+    value: "a"
+    uuid: {_SHUFFLE_OPTION_UUID}
+{locked_line}    correct: true
+  - text: "B"
+    value: "b"
+---
+content: Read this first
+uuid: {_SHUFFLE_CONTENT_UUID}
+{group_line}""")
+
+
+def _shuffle_values() -> dict[str, object]:
+    form = Form.objects.get(id=_SHUFFLE_FORM_UUID)
+    return {
+        "shuffle_pages": form.shuffle_pages,
+        "shuffle_questions": form.shuffle_questions,
+        "shuffle_options": form.shuffle_options,
+        "locked": QuestionOption.objects.get(id=_SHUFFLE_OPTION_UUID).locked,
+        "question_group": FormQuestion.objects.get(id=_SHUFFLE_QUESTION_UUID).group,
+        "content_group": FormContent.objects.get(id=_SHUFFLE_CONTENT_UUID).group,
+    }
+
+
+_SHUFFLE_FIELDS = {
+    "shuffle_pages": (True, False),
+    "shuffle_questions": (True, False),
+    "shuffle_options": (True, False),
+    "locked": (True, False),
+    "question_group": ("reading", ""),
+    "content_group": ("reading", ""),
+}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("field", list(_SHUFFLE_FIELDS))
+def test_a_saved_quiz_stores_the_shuffle_fields(
+    site, mock_site_context, tmp_path, field
+):
+    _write_shuffle_quiz(tmp_path / "quiz", authored=True)
+
+    save_content_to_db(tmp_path, site.name)
+
+    assert _shuffle_values()[field] == _SHUFFLE_FIELDS[field][0]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("field", list(_SHUFFLE_FIELDS))
+def test_removing_a_shuffle_field_resets_it_on_the_next_save(
+    site, mock_site_context, tmp_path, field
+):
+    _write_shuffle_quiz(tmp_path / "quiz", authored=True)
+    save_content_to_db(tmp_path, site.name)
+
+    _write_shuffle_quiz(tmp_path / "quiz", authored=False)
+    save_content_to_db(tmp_path, site.name)
+
+    assert _shuffle_values()[field] == _SHUFFLE_FIELDS[field][1]
