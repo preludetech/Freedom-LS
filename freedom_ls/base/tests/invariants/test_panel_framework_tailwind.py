@@ -15,6 +15,7 @@ import pytest
 
 from django.conf import settings
 from django.core.management import call_command
+from django.test import override_settings
 
 from freedom_ls.base.tests.tailwind_build import run_tailwind
 from freedom_ls.base.theming import FREEDOM_LS_PACKAGE_DIR
@@ -54,11 +55,15 @@ def test_the_compiled_stylesheet_contains_the_framework_rule(selector: str) -> N
 
 @pytest.fixture(scope="module")
 def reference_only_build(tmp_path_factory: pytest.TempPathFactory) -> str:
-    """The output of a build from the reference theme and the generated file alone."""
-    call_command("write_panel_framework_css", stdout=StringIO())
+    """The output of a build from the reference theme and the generated file alone.
+
+    The generated file is written into the build directory, never the working
+    tree, which other test workers' builds read."""
     build_dir = tmp_path_factory.mktemp("reference_only_build")
+    with override_settings(BASE_DIR=build_dir):
+        call_command("write_panel_framework_css", stdout=StringIO())
     input_css = build_dir / "input.css"
-    generated = Path(settings.BASE_DIR) / GENERATED_FILE_NAME
+    generated = build_dir / GENERATED_FILE_NAME
     input_css.write_text(
         '@import "tailwindcss" source(none);\n'
         f'@import "{REFERENCE_THEME.as_posix()}";\n'

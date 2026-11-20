@@ -702,3 +702,26 @@ def test_no_framework_template_names_a_host_only_template_or_module() -> None:
     }
 
     assert offenders == set()
+
+
+HOST_BUTTON_CLASS = re.compile(r"""class="[^"]*(?<![\w-])btn(?:-[\w-]+)?(?![\w-])""")
+
+
+def test_no_framework_template_uses_a_host_button_class() -> None:
+    """The framework's stylesheet styles `.panel-btn`; a bare `btn` class is a
+    host's, and outside that host the button is unstyled."""
+    offenders = [
+        str(path.relative_to(TEMPLATES_DIR))
+        for path in sorted(TEMPLATES_DIR.rglob("*.html"))
+        if HOST_BUTTON_CLASS.search(path.read_text())
+    ]
+
+    assert offenders == []
+
+
+def test_the_data_table_actions_wrapper_carries_its_hook_class() -> None:
+    """A host whose button override draws its own classes keeps the labels on
+    one line by selecting the wrapper's hook class."""
+    source = (COMPONENTS_DIR / "data-table-actions.html").read_text()
+
+    assert re.search(r'<div class="[^"]*\bpanel-data-table-actions\b', source)

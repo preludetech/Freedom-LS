@@ -5,7 +5,9 @@ The wrapper around the buttons in a data-table cell or phone card. It owns
 the gap between them, so the buttons carry no margins. Every button inside
 takes size="small"; the `.panel-data-table` rule in tailwind.components.css
 makes the size hold even for a button that forgot to say so. Every label
-stays on one line.
+stays on one line. `panel-data-table-actions` carries no rule of its own: a
+host whose panel-button override draws its own button classes selects it to
+keep those labels on one line too.
 
 layout:
   wrap   (default) a row that wraps when the cell is narrow.
@@ -15,4 +17,4 @@ layout:
   stack  one button per line, left-aligned, for a column of whole-row
          buttons.
 {% endcomment %}
-<div class="flex gap-2 [&_.panel-btn]:whitespace-nowrap {% if layout == 'stack' %}flex-col items-start{% elif layout == 'line' %}flex-wrap items-center md:flex-nowrap{% else %}flex-wrap items-center{% endif %} {{ class }}" {{ attrs }}>{{ slot }}</div>
+<div class="panel-data-table-actions flex gap-2 [&_.panel-btn]:whitespace-nowrap {% if layout == 'stack' %}flex-col items-start{% elif layout == 'line' %}flex-wrap items-center md:flex-nowrap{% else %}flex-wrap items-center{% endif %} {{ class }}" {{ attrs }}>{{ slot }}</div>

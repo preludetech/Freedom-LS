@@ -582,3 +582,22 @@ def test_the_default_reference_base_template_raises_no_message(
     del settings.PANEL_REFERENCE_BASE_TEMPLATE
 
     assert check_reference_base_template(app_configs=None) == []
+
+
+@pytest.mark.parametrize(
+    "error",
+    [ValueError("unknown icon set"), FileNotFoundError("no iconify JSON")],
+    ids=["ValueError", "FileNotFoundError"],
+)
+def test_an_icon_component_that_raises_a_backend_error_raises_e010(
+    monkeypatch: pytest.MonkeyPatch, error: Exception
+) -> None:
+    def _raise(name: str) -> str:
+        raise error
+
+    monkeypatch.setattr("freedom_ls.panel_framework.checks._render_icon", _raise)
+
+    messages = _run_icon_check()
+
+    assert {message.id for message in messages} == {"freedom_ls_panel_framework.E010"}
+    assert len(messages) == len(REQUIRED_ICON_NAMES)

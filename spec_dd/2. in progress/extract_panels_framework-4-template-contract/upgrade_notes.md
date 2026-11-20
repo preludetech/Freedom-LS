@@ -4,6 +4,7 @@ requires_template_review: true
 changed_template_paths:
   - freedom_ls/base/templates/partials/page_title.html
   - freedom_ls/base/templates/partials/form.html
+  - freedom_ls/educator_interface/templates/educator_interface/_shell.html
   - freedom_ls/panel_framework/templates/
 requires_settings_change: false
 changed_settings: []
@@ -39,8 +40,12 @@ requires_tailwind_rebuild: true
 - **`partials/page_title.html` and `partials/form.html` moved into the framework.** Their markup is
   now at `panel_framework/partials/page_title.html` and `panel_framework/partials/form.html`; the FLS
   paths are single includes of those. An override of `partials/page_title.html` no longer affects
-  htmx navigation responses, and an override of `partials/form.html` no longer affects panel modal
-  forms or reason fields.
+  educator pages (the educator shell and htmx navigation responses both include the framework's
+  path), and an override of `partials/form.html` no longer affects panel modal forms or reason fields.
+- **A data table's row-action buttons stay on one line through `.panel-data-table-actions .btn`**
+  in `tailwind.components.css`. A project that overrides `cotton/panel-button.html` to draw button
+  classes other than `.btn` must copy that rule, with the data-table and dialog-footer button rules
+  beside it, onto its own classes.
 
 ## Manual steps
 

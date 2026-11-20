@@ -1,7 +1,8 @@
 {% load static %}
 {% comment %}
 The page a panel-framework interface renders into when it has no host shell:
-the framework's own test views, and a host that wants nothing but the panels.
+the framework's own test views and the DEBUG-only reference page. It links
+the gitignored reference.css, so it is never a host's production shell.
 It is a complete document that extends no template and uses no host tag or
 component. The scripts load in the order the panels need: the two framework
 component scripts, then Alpine's CSP build last, because Alpine starts as soon

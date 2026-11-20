@@ -138,7 +138,13 @@ def check_icon_names(
         hint = f"Make the host's c-icon draw '{name}'. See HOST_CONTRACT.md#icons."
         try:
             rendered = _render_icon(name)
-        except (TemplateDoesNotExist, TemplateSyntaxError, LookupError) as error:
+        except (
+            TemplateDoesNotExist,
+            TemplateSyntaxError,
+            LookupError,
+            ValueError,
+            OSError,
+        ) as error:
             messages.append(
                 Error(
                     f"The host's c-icon cannot draw the icon '{name}': {error!r}.",

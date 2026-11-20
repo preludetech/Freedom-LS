@@ -281,6 +281,12 @@
         @apply px-2 py-1.5 text-sm
     }
 
+    /* Every label in a data-table cell's button row stays on one line: FLS's
+     * copy of the rule data-table-actions.html sets on `.panel-btn`. */
+    .panel-data-table-actions .btn {
+        @apply whitespace-nowrap
+    }
+
     /* Below md a button keeps its desktop look and gets a 44px-tall hit area
      * from an invisible ::after centred on it, so a small button stays small
      * to the eye and easy to tap. */

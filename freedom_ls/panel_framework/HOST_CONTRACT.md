@@ -97,6 +97,10 @@ Tailwind build reads the framework's templates and stylesheet.
    and the host's theme tokens, and before the host's theme overrides. A theme that reopens
    `.panel-surface` wins only if it comes later.
 3. Commit neither `tailwind.panel_framework.css` nor the compiled output.
+4. Define `[x-cloak] { display: none !important; }`. The framework marks Alpine-only controls
+   `x-cloak` so they stay hidden until Alpine starts, and stay hidden with scripting off, where a
+   `<noscript>` fallback takes their place. The framework stylesheet leaves it to the host, which
+   needs the rule for its own Alpine markup too.
 
 ## Tokens
 
@@ -193,13 +197,13 @@ framework's JavaScript and stylesheet select on them.
 
 | Primitive | Props | Slots | Hooks an override keeps | Thin wrapper |
 | --- | --- | --- | --- | --- |
-| `panel-button` (`panel-button.html`) | `variant` `type` `href` `form` `id` `name` `value` `disabled` `autofocus` `aria_label` `aria_describedby` `dropdown` `class` `tone` `size` `icon_left` `icon_right` `loading` `loading_text` | default | classes `panel-btn`, `panel-btn-<variant>`, `panel-btn-sm`; `data-variant`; `data-loading-label` on the loading span | `<c-button :variant="variant" :href="href" :attrs="attrs">{{ slot }}</c-button>` |
+| `panel-button` (`panel-button.html`) | `variant` `type` `href` `form` `id` `name` `value` `disabled` `autofocus` `aria_label` `aria_describedby` `dropdown` `class` `tone` `size` `icon_left` `icon_right` `loading` `loading_text` | default | classes `panel-btn`, `panel-btn-<variant>`, `panel-btn-sm`, or the host's own button classes with the framework's `.panel-btn` rules copied onto them (see below); `data-variant`; `data-loading-label` on the loading span | `<c-button :variant="variant" :href="href" :attrs="attrs">{{ slot }}</c-button>` |
 | `panel-button-group` (`panel-button-group.html`) | `variant` `class` | default | none | `<c-button-group :variant="variant" :class="class">{{ slot }}</c-button-group>` |
 | `panel-chip` (`panel-chip.html`) | `variant` `size` `icon` `class` | default | classes `panel-chip`, `panel-chip-<variant>`, `panel-chip-<size>` | `<c-chip :variant="variant" :size="size" :icon="icon" :attrs="attrs">{{ slot }}</c-chip>` |
 | `panel-callout` (`panel-callout.html`) | `level` `title` `class` | default | none | `<c-callout :level="level" :title="title" :class="class">{{ slot }}</c-callout>` |
 | `panel-back-link` (`panel-back-link.html`) | `href` `class` | default | the anchor passes `hx-*` attributes through `{{ attrs }}`; `breadcrumbs.html` relies on it | `<c-back-link :href="href" :attrs="attrs">{{ slot }}</c-back-link>` |
 | `panel-pagination` (`panel-pagination.html`) | `page_obj` `base_url` `table_id` `sort_by` `sort_order` `search_query` `extra_params` `page_param_name` `push_url` `links` `page_url` `class` | none | the `hx-get`, `hx-target` and `hx-push-url` attributes on each page control; class `panel-pagination` | `<c-pagination :page_obj="page_obj" :base_url="base_url" :table_id="table_id" :links="links" />` |
-| `panel-dropdown-menu` (`panel-dropdown-menu.html`) | `trigger` `class` `aria_label` `menu_label` `trigger_variant` `trigger_size` `panel_class` | default; `trigger` as a named slot | `x-data="panelDropdownMenu"`; `x-ref` `menuButton` and `menuPanel`; the `role="menu"` wrapper | `<c-dropdown-menu :aria_label="aria_label" :class="class">{{ slot }}</c-dropdown-menu>` |
+| `panel-dropdown-menu` (`panel-dropdown-menu.html`) | `trigger` `class` `aria_label` `menu_label` `trigger_variant` `trigger_size` `panel_class` | default; `trigger` as a named slot | an Alpine component on the wrapper (`panelDropdownMenu`, or the host's own) with `x-ref` `menuButton` and `menuPanel`; the `role="menu"` wrapper | `<c-dropdown-menu :aria_label="aria_label" :class="class">{{ slot }}</c-dropdown-menu>` |
 | `panel-dropdown-menu-separator` (`panel-dropdown-menu-separator.html`) | none | none | `role="separator"`, which keeps it out of the arrow-key order | `<c-dropdown-menu-separator />` |
 | `panel-page` (`panel-page.html`) | `width` `flush` `class` | default | none | `<c-page :width="width" :flush="flush" :class="class">{{ slot }}</c-page>` |
 | `panel-date` (`panel-date.html`) | `value` `short` | none | `<time datetime>` | `<c-date :value="value" :short="short" />` |
@@ -207,6 +211,11 @@ framework's JavaScript and stylesheet select on them.
 
 Notes that do not fit a row:
 
+- `panel-button`: a wrapper that draws its own button classes instead of `panel-btn` copies three
+  framework rules onto them, or the framework's buttons lose them: the small size inside
+  `.panel-data-table td` and `.panel-data-table-card`, the 44px height inside `[data-modal-footer]`
+  below md, and `whitespace-nowrap` inside `.panel-data-table-actions`. FLS's
+  `tailwind.components.css` copies them onto `.btn`.
 - `panel-dropdown-menu`: `trigger_variant` and `trigger_size` are the trigger button's `variant` and
   `size`. A wrapper maps them to whatever its own button takes. The framework passes `size="small"` to
   get the small button.
@@ -231,6 +240,7 @@ scripts. The reference page fills only these two blocks.
 
 Error `freedom_ls_panel_framework.E009` means the setting names a template that does not exist.
 
-The default shell links `panel_framework/css/reference.css`, a compiled file that is gitignored. Build
-it with `npm run panel_framework_css`. A fresh checkout's `collectstatic` omits it, and only the
-reference page under the minimal shell links it.
+The minimal shell exists for the DEBUG-only reference page and the framework's own tests. It links
+`panel_framework/css/reference.css`, a compiled file that is gitignored: build it with
+`npm run panel_framework_css`. A fresh checkout's `collectstatic` omits it, so a host never renders
+its own interface in the minimal shell. A host's shell links the host's own stylesheet.
