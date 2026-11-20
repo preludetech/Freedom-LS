@@ -21,7 +21,7 @@ uuid: 6101eb66-18ce-42c1-9966-33ac61fe00da
 content: |-
   Look at the picture, then answer the next two questions.
 
-  <c-picture src="../images/landscape.svg" alt="A blue sky over a dark horizon with a yellow sun in the upper right"></c-picture>
+  <c-picture src="../images/shuffled-quiz-picture.svg" alt="A blue sky over a dark horizon with a yellow sun in the upper right"></c-picture>
 group: sky-picture
 uuid: f0fd3ba1-196d-4f21-8fb6-4dad5c836063
 ---

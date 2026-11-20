@@ -938,6 +938,71 @@ def test_a_number_bound_finer_than_the_allowed_decimal_places_fails(
     assert_validator_fails(result, "has more decimal places than this question allows")
 
 
+# Shuffle knobs, locked options and keep-together groups
+
+
+def write_shuffle_form(
+    directory: Path, strategy_block: str = "", page_block: str = ""
+) -> Path:
+    """Write a form directory whose form header and page body are given as YAML."""
+    form_dir = directory / "quiz"
+    form_dir.mkdir(parents=True)
+    (form_dir / "form.md").write_text(
+        f"---\ncontent_type: FORM\ntitle: Quiz\n{strategy_block}---\n",
+        encoding="utf-8",
+    )
+    (form_dir / "1. page.yaml").write_text(
+        f"---\ncontent_type: FORM_PAGE\ntitle: Page\n---\n{page_block}",
+        encoding="utf-8",
+    )
+    return form_dir
+
+
+QUIZ_HEADER = "strategy: QUIZ\nquiz_show_incorrect: true\nquiz_pass_percentage: 50\n"
+
+
+def test_shuffle_knobs_group_and_locked_validate_on_a_quiz(tmp_path: Path) -> None:
+    form_dir = write_shuffle_form(
+        tmp_path,
+        QUIZ_HEADER
+        + "shuffle_pages: true\nshuffle_questions: true\nshuffle_options: true\n",
+        "---\ncontent: Read this first.\ngroup: reading\n"
+        "---\nquestion: Pick one\ntype: multiple_choice\ngroup: reading\n"
+        "options:\n  - text: A\n    value: a\n    correct: true\n"
+        "  - text: None of the above\n    value: z\n    locked: true\n",
+    )
+
+    result = run_validator(form_dir)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize(
+    "knob", ["shuffle_pages", "shuffle_questions", "shuffle_options"]
+)
+def test_a_shuffle_knob_on_a_non_quiz_form_fails(tmp_path: Path, knob: str) -> None:
+    form_dir = write_shuffle_form(
+        tmp_path, f"strategy: CATEGORY_VALUE_SUM\n{knob}: true\n"
+    )
+
+    result = run_validator(form_dir)
+
+    assert_validator_fails(result, f"{knob} should only be set when strategy is QUIZ")
+
+
+@pytest.mark.parametrize("group", ["''", "' padded '"])
+def test_a_blank_or_padded_group_fails(tmp_path: Path, group: str) -> None:
+    form_dir = write_shuffle_form(
+        tmp_path,
+        QUIZ_HEADER,
+        f"---\nquestion: Why?\ntype: short_text\ngroup: {group}\n",
+    )
+
+    result = run_validator(form_dir)
+
+    assert_validator_fails(result, "group")
+
+
 # ---------------------------------------------------------------------------
 # price
 # ---------------------------------------------------------------------------
