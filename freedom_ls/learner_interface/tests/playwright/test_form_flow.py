@@ -10,6 +10,8 @@ the leave prompt, the dialog's focus trap, the exit dialog, and layout.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
+from uuid import UUID
 
 import pytest
 from playwright.sync_api import Dialog, Page, expect
@@ -17,13 +19,22 @@ from playwright.sync_api import Dialog, Page, expect
 from freedom_ls.accounts.models import User
 from freedom_ls.conftest import reverse_url
 from freedom_ls.content_engine.models import Course
+from freedom_ls.form_engine.conditions import ServedPaper
 from freedom_ls.form_engine.factories import (
+    FormContentFactory,
     FormFactory,
     FormPageFactory,
     FormQuestionFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.form_engine.models import Form, FormStrategy, QuestionOption
+from freedom_ls.form_engine.models import (
+    Form,
+    FormContent,
+    FormProgress,
+    FormQuestion,
+    FormStrategy,
+    QuestionOption,
+)
 from freedom_ls.learner_interface.tests.helpers import (
     course_with_form,
     course_with_single_question_form,
@@ -446,6 +457,205 @@ def test_a_preselected_phone_country_does_not_count_as_an_answer(
     expect(summary).to_have_text("0 of 1 answered")
     page.get_by_label("Phone number").fill("82 123 4567")
     expect(summary).to_have_text("1 of 1 answered")
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        assert_no_horizontal_overflow(page)
+
+
+# The shuffle is scoped by page and question id, so these seeds give the same
+# paper on every run only because the rows below carry fixed ids. Seed 3 serves
+# the grouped page first and puts its checkboxes question ahead of the group.
+SHUFFLE_SEED = 3
+STEM_TEXT = "Read this passage before answering"
+QUESTION_TEXTS = {
+    "multiple_choice": "Which one is right",
+    "checkboxes": "Which ones are right",
+    "dropdown": "Which dropdown value is right",
+}
+
+
+@dataclass
+class ShuffledQuizCourse:
+    course: Course
+    form: Form
+    stem: FormContent
+    questions: dict[str, FormQuestion]
+
+
+def _shuffled_quiz_course() -> ShuffledQuizCourse:
+    """A QUIZ, every shuffle knob on, whose second authored page holds a content
+    block grouped with a multiple-choice question, then a checkboxes and a
+    dropdown question. The first option of each is right, and a checkboxes
+    question's second option is too."""
+    form = FormFactory(
+        title="Shuffled Quiz",
+        strategy=FormStrategy.QUIZ,
+        quiz_pass_percentage=50,
+        quiz_show_incorrect=True,
+        shuffle_pages=True,
+        shuffle_questions=True,
+        shuffle_options=True,
+    )
+    pages = [
+        FormPageFactory(form=form, order=order, id=UUID(int=order + 1))
+        for order in range(3)
+    ]
+    stem = FormContentFactory(
+        form_page=pages[1], content=STEM_TEXT, order=0, group="stem", id=UUID(int=10)
+    )
+    specs = [
+        ("lone_first", pages[0], "multiple_choice", 0, ""),
+        ("multiple_choice", pages[1], "multiple_choice", 1, "stem"),
+        ("checkboxes", pages[1], "checkboxes", 2, ""),
+        ("dropdown", pages[1], "dropdown", 3, ""),
+        ("lone_last", pages[2], "multiple_choice", 0, ""),
+    ]
+    questions: dict[str, FormQuestion] = {}
+    for number, (name, page, question_type, order, group) in enumerate(specs, 20):
+        question = FormQuestionFactory(
+            id=UUID(int=number),
+            form_page=page,
+            type=question_type,
+            order=order,
+            group=group,
+            question=QUESTION_TEXTS.get(name, f"Lone question {name}"),
+            required=False,
+        )
+        questions[name] = question
+        correct_count = 2 if question_type == "checkboxes" else 1
+        for n in range(4):
+            QuestionOptionFactory(
+                question=question,
+                text=f"{name} option {n}",
+                order=n,
+                correct=n < correct_count,
+            )
+    course = course_with_form(form, title="Shuffled Course", slug="shuffled-course")
+    return ShuffledQuizCourse(course, form, stem, questions)
+
+
+def _served_page_texts(
+    quiz: ShuffledQuizCourse, paper: ServedPaper
+) -> tuple[list[str], list[int], dict[str, list[str]]]:
+    """What the page under test must show, read from the stored paper: its
+    children's texts top to bottom, its questions' served numbers, and each
+    question's option texts."""
+    served_questions = [
+        child
+        for page in paper["pages"]
+        for child in page["children"]
+        if child in {str(q.id) for q in quiz.questions.values()}
+    ]
+    (page,) = [p for p in paper["pages"] if p["id"] == str(quiz.stem.form_page_id)]
+    names = {str(q.id): name for name, q in quiz.questions.items()}
+    texts = [
+        STEM_TEXT if child == str(quiz.stem.id) else QUESTION_TEXTS[names[child]]
+        for child in page["children"]
+    ]
+    numbers = [
+        served_questions.index(child) + 1
+        for child in page["children"]
+        if child != str(quiz.stem.id)
+    ]
+    option_texts = {
+        QUESTION_TEXTS[names[question_id]]: [
+            QuestionOption.objects.get(pk=option_id).text for option_id in option_ids
+        ]
+        for question_id, option_ids in paper["options"].items()
+        if names[question_id] in QUESTION_TEXTS
+    }
+    return texts, numbers, option_texts
+
+
+def _expect_page_follows_paper(
+    page: Page, quiz: ShuffledQuizCourse, user: User
+) -> None:
+    """The page under test shows its children, question numbers and options in
+    the order the sitting's stored paper holds them."""
+    paper = FormProgress.objects.get(form=quiz.form, user=user).served_paper
+    texts, numbers, option_texts = _served_page_texts(quiz, paper)
+    expect(page.get_by_text(STEM_TEXT)).to_be_visible()
+    shown = page.get_by_text(
+        re.compile("^(" + "|".join([STEM_TEXT, *QUESTION_TEXTS.values()]) + ")$")
+    )
+    # The dropdown's text appears twice: as its legend and as its select's label.
+    assert list(dict.fromkeys(shown.all_text_contents())) == texts
+    expect(page.get_by_test_id(re.compile(r"^question-number-\d+$"))).to_have_text(
+        [f"{number}." for number in numbers]
+    )
+    for kind in ("multiple_choice", "checkboxes"):
+        options = option_texts[QUESTION_TEXTS[kind]]
+        expect(page.get_by_text(re.compile(rf"^{kind} option \d$"))).to_have_text(
+            options
+        )
+    dropdown = page.get_by_label(QUESTION_TEXTS["dropdown"]).get_by_role(
+        "option", name=re.compile(r"^dropdown option \d$")
+    )
+    expect(dropdown).to_have_text(option_texts[QUESTION_TEXTS["dropdown"]])
+
+
+def test_a_shuffled_quiz_shows_the_served_order_on_every_visit(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    page = logged_in_page
+    quiz = _shuffled_quiz_course()
+    register_user_for_course(quiz.course, logged_in_user)
+    monkeypatch.setattr(
+        "freedom_ls.form_engine.served_paper.new_seed", lambda: SHUFFLE_SEED
+    )
+
+    # The first served page is the grouped one, though it is authored second.
+    landing = navigate_to_form(page, live_server, quiz.course)
+    page.get_by_role("link", name="Start Form").click()
+    expect(page).to_have_url(re.compile(r"/fill_form/2$"))
+    _expect_page_follows_paper(page, quiz, logged_in_user)
+
+    page.reload()
+    _expect_page_follows_paper(page, quiz, logged_in_user)
+
+    page.goto(landing)
+    page.get_by_role("link", name="Continue Form").click()
+    expect(page).to_have_url(re.compile(r"/fill_form/2$"))
+    _expect_page_follows_paper(page, quiz, logged_in_user)
+
+    click_next(page)
+    expect(page).to_have_url(re.compile(r"/fill_form/3$"))
+    page.go_back()
+    expect(page).to_have_url(re.compile(r"/fill_form/2$"))
+    _expect_page_follows_paper(page, quiz, logged_in_user)
+
+    # Wrong answers on the grouped page, then on to the end of the paper.
+    page.get_by_text("multiple_choice option 3", exact=True).click()
+    page.get_by_text("checkboxes option 3", exact=True).click()
+    page.get_by_label(QUESTION_TEXTS["dropdown"]).select_option(
+        label="dropdown option 3"
+    )
+    click_next(page)
+    click_next(page)
+    submit_form(page)
+    expect(page).to_have_url(
+        form_item_url(live_server, quiz.course, "course_form_complete")
+    )
+
+    # The review labels each wrong answer with the number it was served at.
+    paper = FormProgress.objects.get(form=quiz.form, user=logged_in_user).served_paper
+    served_questions = [
+        child for served in paper["pages"] for child in served["children"]
+    ]
+    for name in ("multiple_choice", "checkboxes", "dropdown"):
+        question = quiz.questions[name]
+        number = [
+            c
+            for c in served_questions
+            if c in {str(q.id) for q in quiz.questions.values()}
+        ].index(str(question.id)) + 1
+        expect(
+            page.get_by_test_id(f"incorrect-question-{question.id}")
+        ).to_contain_text(f"Question {number}")
+
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
         assert_no_horizontal_overflow(page)

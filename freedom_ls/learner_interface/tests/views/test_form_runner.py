@@ -5,6 +5,7 @@ import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from typing import cast
+from uuid import UUID
 
 import lxml.html
 import pytest
@@ -26,6 +27,7 @@ from freedom_ls.deadlines.factories import (
 )
 from freedom_ls.form_engine.conditions import ServedPaper, current_path
 from freedom_ls.form_engine.factories import (
+    FormContentFactory,
     FormFactory,
     FormPageFactory,
     FormProgressFactory,
@@ -36,6 +38,7 @@ from freedom_ls.form_engine.factories import (
 )
 from freedom_ls.form_engine.models import (
     Form,
+    FormContent,
     FormPage,
     FormProgress,
     FormQuestion,
@@ -1460,6 +1463,396 @@ def test_resume_skips_a_served_page_deleted_mid_sitting(served_runner, client):
     response = client.get(_form_start_url(served_runner.course))
 
     assert response["Location"] == _fill_page_url(served_runner.course, 1)
+
+
+# ---------------------------------------------------------------------------
+# A real shuffled paper, followed by every way the runner is requested
+# ---------------------------------------------------------------------------
+
+FIRST_SEED = 3
+SECOND_SEED = 11
+REQUEST_KINDS = ["first_get", "reload", "back_navigation", "htmx_post", "resume"]
+OPTION_KINDS = ["multiple_choice", "checkboxes", "dropdown"]
+STEM_TEXT = "Shared stem for the grouped questions"
+
+
+@dataclass
+class ShuffledQuiz:
+    """A QUIZ with every shuffle knob on.
+
+    The authored pages are, in order: a lone question, the page under test
+    (a content block grouped with a multiple-choice question, then a
+    checkboxes and a dropdown question) and another lone question.
+    """
+
+    course: Course
+    form: Form
+    user: User
+    pages: list[FormPage]
+    stem: FormContent
+    questions: dict[str, FormQuestion]
+    options: dict[str, list[QuestionOption]]
+
+    @property
+    def paper(self) -> ServedPaper:
+        paper = _served_paper_of_sitting(self.form, self.user)
+        assert paper is not None
+        return paper
+
+    def authored_number(self, page_id: str) -> int:
+        return [str(page.id) for page in self.pages].index(page_id) + 1
+
+    def served_page_numbers(self) -> list[int]:
+        """The authored page numbers, in the order the paper serves the pages."""
+        return [self.authored_number(page["id"]) for page in self.paper["pages"]]
+
+    def served_question_ids(self) -> list[str]:
+        """Every question id the paper serves, in served order across all pages."""
+        question_ids = {str(question.id) for question in self.questions.values()}
+        return [
+            child_id
+            for page in self.paper["pages"]
+            for child_id in page["children"]
+            if child_id in question_ids
+        ]
+
+    def served_children_of_page_under_test(self) -> list[str]:
+        (page,) = [
+            page for page in self.paper["pages"] if page["id"] == str(self.pages[1].id)
+        ]
+        return page["children"]
+
+
+def _set_new_seed(monkeypatch: pytest.MonkeyPatch, seed: int) -> None:
+    # The seed is read where the paper is written, so patching this one name
+    # reaches the live request that writes it.
+    monkeypatch.setattr("freedom_ls.form_engine.served_paper.new_seed", lambda: seed)
+
+
+def _build_shuffled_quiz() -> ShuffledQuiz:
+    # Fixed ids: the shuffle is scoped by page and question id, so a seed
+    # gives the same paper on every run only when the ids are the same too.
+    form = FormFactory(
+        strategy=FormStrategy.QUIZ,
+        shuffle_pages=True,
+        shuffle_questions=True,
+        shuffle_options=True,
+    )
+    pages: list[FormPage] = [
+        FormPageFactory(form=form, order=order, id=UUID(int=order + 1))
+        for order in range(3)
+    ]
+    stem: FormContent = FormContentFactory(
+        form_page=pages[1], content=STEM_TEXT, order=0, group="stem", id=UUID(int=10)
+    )
+    specs: list[tuple[str, FormPage, str, int, str]] = [
+        ("lone_first", pages[0], "multiple_choice", 0, ""),
+        ("multiple_choice", pages[1], "multiple_choice", 1, "stem"),
+        ("checkboxes", pages[1], "checkboxes", 2, ""),
+        ("dropdown", pages[1], "dropdown", 3, ""),
+        ("lone_last", pages[2], "multiple_choice", 0, ""),
+    ]
+    questions: dict[str, FormQuestion] = {}
+    options: dict[str, list[QuestionOption]] = {}
+    for number, (name, page, question_type, order, group) in enumerate(specs, 20):
+        question: FormQuestion = FormQuestionFactory(
+            id=UUID(int=number),
+            form_page=page,
+            type=question_type,
+            order=order,
+            group=group,
+            required=True,
+        )
+        questions[name] = question
+        correct_count = 2 if question_type == "checkboxes" else 1
+        options[name] = [
+            QuestionOptionFactory(
+                question=question,
+                text=f"{name} option {n}",
+                order=n,
+                correct=n < correct_count,
+            )
+            for n in range(4)
+        ]
+    user: User = UserFactory()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    return ShuffledQuiz(course, form, user, pages, stem, questions, options)
+
+
+@pytest.fixture
+def shuffled_quiz(
+    mock_site_context: object, client: Client, monkeypatch: pytest.MonkeyPatch
+) -> ShuffledQuiz:
+    """The quiz with a sitting started on FIRST_SEED, whose paper serves the page
+    under test first and authored page one last."""
+    quiz = _build_shuffled_quiz()
+    client.force_login(quiz.user)
+    _set_new_seed(monkeypatch, FIRST_SEED)
+    client.get(_form_start_url(quiz.course))
+    # The tests below only prove something when the paper differs from the
+    # authored order everywhere a shuffle could show.
+    assert quiz.served_page_numbers()[0] == 2
+    assert quiz.served_page_numbers()[-1] == 1
+    assert quiz.served_children_of_page_under_test() != [
+        str(quiz.stem.id),
+        str(quiz.questions["multiple_choice"].id),
+        str(quiz.questions["checkboxes"].id),
+        str(quiz.questions["dropdown"].id),
+    ]
+    return quiz
+
+
+def _quiz_page_url(quiz: ShuffledQuiz, page_number: int) -> str:
+    return _fill_page_url(quiz.course, page_number)
+
+
+def _request_page_under_test(
+    client: Client, quiz: ShuffledQuiz, request_kind: str
+) -> HttpResponse:
+    """Request the page under test the way `request_kind` reaches it.
+
+    It is the first page the paper serves and the furthest the learner has
+    reached, so resuming through `form_start` lands on it.
+    """
+    url = _quiz_page_url(quiz, 2)
+    last_served_url = _quiz_page_url(quiz, quiz.served_page_numbers()[-1])
+    if request_kind == "reload":
+        client.get(url)
+    elif request_kind == "back_navigation":
+        client.get(last_served_url)
+    elif request_kind == "resume":
+        client.get(url)
+        return cast(
+            "HttpResponse", client.get(_form_start_url(quiz.course), follow=True)
+        )
+    if request_kind == "htmx_post":
+        # Nothing answered, so the required questions refuse the page and it
+        # is drawn again, over the same paper.
+        response = client.post(url, {}, HTTP_HX_REQUEST="true")
+        assert response.status_code == 422
+        return cast("HttpResponse", response)
+    response = client.get(url)
+    assert response.status_code == 200
+    return cast("HttpResponse", response)
+
+
+def _rendered_child_ids(response: HttpResponse, quiz: ShuffledQuiz) -> list[str]:
+    """The ids of the content block and questions drawn, top to bottom."""
+    document = lxml.html.fromstring(response.content)
+    nodes = document.xpath(
+        "//fieldset//*[starts-with(@name, 'question_') and "
+        "(self::select or self::input[@type='radio' or @type='checkbox'])]"
+        f" | //p[contains(., '{STEM_TEXT}')]"
+    )
+    ids = [
+        str(quiz.stem.id)
+        if node.tag == "p"
+        else node.get("name").removeprefix("question_")
+        for node in nodes
+    ]
+    return list(dict.fromkeys(ids))
+
+
+def _rendered_question_numbers(response: HttpResponse) -> list[tuple[str, str]]:
+    """Each question's id and the number printed beside it, top to bottom."""
+    document = lxml.html.fromstring(response.content)
+    return [
+        (
+            fieldset.xpath(".//*[starts-with(@name, 'question_')]")[0]
+            .get("name")
+            .removeprefix("question_"),
+            fieldset.xpath(".//legend/span")[0].text_content().strip(),
+        )
+        for fieldset in document.xpath(
+            "//fieldset[.//*[starts-with(@name, 'question_')]]"
+        )
+    ]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("request_kind", REQUEST_KINDS)
+def test_a_shuffled_pages_children_are_drawn_in_the_papers_order(
+    shuffled_quiz, client, request_kind
+):
+    response = _request_page_under_test(client, shuffled_quiz, request_kind)
+
+    assert (
+        _rendered_child_ids(response, shuffled_quiz)
+        == shuffled_quiz.served_children_of_page_under_test()
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("request_kind", REQUEST_KINDS)
+def test_a_shuffled_pages_question_numbers_are_the_papers_positions(
+    shuffled_quiz, client, request_kind
+):
+    served = shuffled_quiz.served_question_ids()
+    on_page = [
+        child_id
+        for child_id in shuffled_quiz.served_children_of_page_under_test()
+        if child_id in served
+    ]
+
+    response = _request_page_under_test(client, shuffled_quiz, request_kind)
+
+    assert _rendered_question_numbers(response) == [
+        (child_id, f"{served.index(child_id) + 1}.") for child_id in on_page
+    ]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("option_kind", OPTION_KINDS)
+@pytest.mark.parametrize("request_kind", REQUEST_KINDS)
+def test_a_shuffled_questions_options_are_drawn_in_the_papers_order(
+    shuffled_quiz, client, request_kind, option_kind
+):
+    question = shuffled_quiz.questions[option_kind]
+
+    response = _request_page_under_test(client, shuffled_quiz, request_kind)
+
+    assert (
+        _rendered_option_values(response, question)
+        == shuffled_quiz.paper["options"][str(question.id)]
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("option_kind", OPTION_KINDS)
+def test_the_papers_option_order_differs_from_the_authored_order(
+    shuffled_quiz, option_kind
+):
+    question = shuffled_quiz.questions[option_kind]
+    authored = [str(option.id) for option in shuffled_quiz.options[option_kind]]
+
+    assert shuffled_quiz.paper["options"][str(question.id)] != authored
+
+
+@pytest.mark.django_db
+def test_no_element_reorders_the_shuffled_page_with_css(shuffled_quiz, client):
+    """A CSS `order` is the realistic way a page could show the shuffled order while the
+    DOM keeps the authored one, so no element may carry one: the order the paper
+    holds has to be the order of the markup."""
+    response = _request_page_under_test(client, shuffled_quiz, "first_get")
+
+    document = lxml.html.fromstring(response.content)
+    inline_orders = [
+        element.get("style")
+        for element in document.xpath("//*[@style]")
+        if re.search(r"(?<![\w-])order\s*:", element.get("style"))
+    ]
+    order_classes = [
+        token
+        for element in document.xpath("//*[@class]")
+        for token in element.get("class").split()
+        if token.rsplit(":", 1)[-1].lstrip("-").startswith("order-")
+    ]
+    assert inline_orders == []
+    assert order_classes == []
+
+
+@pytest.mark.django_db
+def test_page_jump_links_carry_authored_numbers_in_the_papers_page_order(
+    shuffled_quiz, client
+):
+    response = _request_page_under_test(client, shuffled_quiz, "first_get")
+
+    assert [
+        (link["number"], link["url"]) for link in response.context["page_links"]
+    ] == [
+        (position, _quiz_page_url(shuffled_quiz, authored))
+        for position, authored in enumerate(shuffled_quiz.served_page_numbers(), 1)
+    ]
+
+
+@pytest.mark.django_db
+def test_furthest_page_reached_follows_served_position_not_authored_number(
+    shuffled_quiz, client
+):
+    last_served = shuffled_quiz.served_page_numbers()[-1]
+    client.get(_quiz_page_url(shuffled_quiz, last_served))
+
+    client.get(_quiz_page_url(shuffled_quiz, 2))
+
+    sitting = FormProgress.objects.get(form=shuffled_quiz.form, user=shuffled_quiz.user)
+    assert sitting.furthest_page_reached == last_served
+
+
+def _sit_to_the_end(
+    client: Client, quiz: ShuffledQuiz, *, wrong: tuple[str, ...] = ()
+) -> FormProgress:
+    """Post every page in served order, so the last post completes the sitting.
+
+    Each question gets its correct options, except the named ones, which get
+    the last (wrong) option instead.
+    """
+    names = {str(question.id): name for name, question in quiz.questions.items()}
+    client.get(_form_start_url(quiz.course))
+    for page_number in quiz.served_page_numbers():
+        data: dict[str, list[str]] = {}
+        for question in quiz.pages[page_number - 1].questions.all():
+            options = quiz.options[names[str(question.id)]]
+            chosen = (
+                [options[-1]]
+                if names[str(question.id)] in wrong
+                else [option for option in options if option.correct]
+            )
+            data[f"question_{question.id}"] = [str(option.id) for option in chosen]
+        client.post(_quiz_page_url(quiz, page_number), data)
+    sitting: FormProgress = FormProgress.objects.filter(
+        form=quiz.form, user=quiz.user
+    ).latest("start_time")
+    return sitting
+
+
+@pytest.mark.django_db
+def test_a_resit_after_a_completed_sitting_gets_a_new_paper(
+    shuffled_quiz, client, monkeypatch
+):
+    first = _sit_to_the_end(client, shuffled_quiz)
+    assert first.completed_time is not None
+    _set_new_seed(monkeypatch, SECOND_SEED)
+
+    client.get(_form_start_url(shuffled_quiz.course))
+
+    sittings = FormProgress.objects.filter(
+        form=shuffled_quiz.form, user=shuffled_quiz.user
+    ).order_by("start_time")
+    papers = [sitting.served_paper for sitting in sittings]
+    assert [paper["seed"] for paper in papers] == [FIRST_SEED, SECOND_SEED]
+    assert papers[0]["pages"] != papers[1]["pages"]
+
+
+@pytest.mark.django_db
+def test_a_shuffled_sitting_scores_as_the_same_answers_on_an_unshuffled_sitting(
+    shuffled_quiz, client
+):
+    wrong = ("dropdown", "lone_last")
+    shuffled = _sit_to_the_end(client, shuffled_quiz, wrong=wrong)
+    Form.objects.filter(pk=shuffled_quiz.form.pk).update(
+        shuffle_pages=False, shuffle_questions=False, shuffle_options=False
+    )
+    second_user: User = UserFactory()
+    register_user_for_course(shuffled_quiz.course, second_user)
+    client.force_login(second_user)
+    unshuffled_quiz = ShuffledQuiz(
+        shuffled_quiz.course,
+        shuffled_quiz.form,
+        second_user,
+        shuffled_quiz.pages,
+        shuffled_quiz.stem,
+        shuffled_quiz.questions,
+        shuffled_quiz.options,
+    )
+
+    unshuffled = _sit_to_the_end(client, unshuffled_quiz, wrong=wrong)
+
+    assert unshuffled_quiz.served_page_numbers() == [1, 2, 3]
+    assert shuffled.scores is not None
+    assert shuffled.scores == unshuffled.scores
+    assert shuffled.scores["max_score"] == 5
+    assert shuffled.scores["score"] == 3
 
 
 # ---------------------------------------------------------------------------
