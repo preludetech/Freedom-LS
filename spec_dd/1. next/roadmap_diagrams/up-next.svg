@@ -133,7 +133,7 @@
 <path d="M1022.0,526.5 H1020.0 A6,6 0 0 0 1014.0,532.5 V570.5 A6,6 0 0 0 1020.0,576.5 H1022.0 Z" fill="#991b1b"/>
 <text x="1030.0" y="548.5" fill="#111827">multi-step-course-</text>
 <text x="1030.0" y="563.5" fill="#111827">applications-10-intake-courses</text>
-<rect x="24.0" y="738.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<rect x="24.0" y="738.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M32.0,738.0 H30.0 A6,6 0 0 0 24.0,744.0 V782.0 A6,6 0 0 0 30.0,788.0 H32.0 Z" fill="#fb923c"/>
 <text x="40.0" y="760.0" fill="#111827">learner-interface-features-3-</text>
 <text x="40.0" y="775.0" fill="#111827">revision-questions</text>

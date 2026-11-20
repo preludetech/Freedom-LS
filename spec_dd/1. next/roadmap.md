@@ -16,6 +16,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `learner-profile-use-panels-framework-2-editable-list-panel` (Account area on panels)
 - 🔴 High · `learner-profile-use-panels-framework-3-account-page` (Account area on panels)
 - 🔴 High · `multi-step-course-applications-1-review-states` (Multi-step course applications)
+- 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
 
 ### Ready to start
 
@@ -25,7 +26,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🟠 Medium · `content-widget-longer-audio` (Audio content widgets)
 - 🟠 Medium · `content-widget-sayit-reveal-2-say-it-reveal` (Audio content widgets)
 - 🟠 Medium · `content-widget-sayit-reveal-4-audio-access-control` (Audio content widgets)
-- 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
 - 🟠 Medium · `deadlines-4-learner-self-pause` (Deadlines)
 - 🟠 Medium · `deadlines-5-reminders` (Deadlines)
 - 🟠 Medium · `deadlines-6-educator-management` (Deadlines)
@@ -227,7 +227,7 @@ Priority: 🟠 Medium
 Test out of sections, revise with spaced repetition and flashcards, and watch access-controlled video. Parent: `learner-interface-features`.
 
 - `learner-interface-features-2-test-out` — **ready** — Learners take a pretest and skip sections they already know; the skip is recorded as its own kind of completion.
-- `learner-interface-features-3-revision-questions` — **ready** — Learners revise questions from finished sections, scheduled by spaced repetition, with explanations and weak sections highlighted.
+- `learner-interface-features-3-revision-questions` — **in progress** — Learners revise questions from finished sections, scheduled by spaced repetition, with explanations and weak sections highlighted.
 - `learner-interface-features-4-flashcards` — **blocked** by `learner-interface-features-3-revision-questions` — Authors add flashcards to sections; learners rate their confidence and the revision schedule brings them back.
 - `learner-interface-features-5-protected-video` — **ready** — Course content embeds video that only learners with access to the course can play; shared links stop working.
 
