@@ -167,6 +167,25 @@ somewhere on the page to land.
             </c-panel-attention-list>
         </div>
 
+        <div id="attention-row-picture">
+            <p class="text-sm text-muted">Use when the person has a profile picture: pass its URL bound as picture_url, alongside user_id. Without it the row shows initials.</p>
+            <c-panel-attention-list>
+                <c-panel-attention-row
+                    subject="Thandi Mokoena"
+                    href="#attention-row-target"
+                    reason="4 days idle"
+                    user_id="42"
+                    picture_url="data:image/gif;base64,R0lGODlhAQABAIAAAGZmZv///yH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=="
+                />
+                <c-panel-attention-row
+                    subject="Sipho Dlamini"
+                    href="#attention-row-target"
+                    reason="6 days idle"
+                    user_id="43"
+                />
+            </c-panel-attention-list>
+        </div>
+
         <div id="attention-row-icon">
             <p class="text-sm text-muted">Use when the row is about a cohort-level issue rather than a person, so a severity icon leads instead of an avatar.</p>
             <c-panel-attention-list>
