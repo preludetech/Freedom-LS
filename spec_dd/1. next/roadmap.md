@@ -16,7 +16,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `extract_panels_framework-4-template-contract` (Panel framework extraction)
 - 🔴 High · `learner-profile-use-panels-framework-2-editable-list-panel` (Account area on panels)
 - 🔴 High · `learner-profile-use-panels-framework-3-account-page` (Account area on panels)
-- 🟡 Low · `misure-of-admonitions` (Educator interface)
 
 ### Ready to start
 
@@ -378,7 +377,6 @@ Org admins manage learners, cohorts, registrations and staff. Parent: `educator-
 - `educator-interface-misc-polish` — **ready** — Interface polish: optional learner names, cohort settings sub-panels, show and hide table columns, help icons, smaller mobile buttons.
 - `educator-interface-data-table-filter-design` — **ready** — One button per filter on data tables, instead of a single long drop-down. The UX still needs designing.
 - `audit-log-coverage-gaps` — **ready** — The audit log also records Django admin edits, system admin role changes and report downloads, and marks where history starts.
-- `misure-of-admonitions` — **in progress** — Learner and educator pages use theme-appropriate alerts instead of the content engine's admonition component, which stays for content only.
 - `bulk-run-audit-summary` — **ready** — Bulk actions write one run summary with folded per-object entries in the Audit log, and take an optional reason.
 - `educator-interface-more polish` — **ready** — Educators resend staff invitations and see who hasn't accepted, plus linked dashboard figures, learner-tab messaging and one new-message flow.
 
