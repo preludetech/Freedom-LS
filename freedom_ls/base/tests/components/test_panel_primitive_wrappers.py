@@ -212,6 +212,12 @@ REMAINING_PAIRS = [
         '<c-datetime :value="moment" />',
         id="datetime",
     ),
+    pytest.param('<c-panel-icon name="close" />', '<c-icon name="close" />', id="icon"),
+    pytest.param(
+        '<c-panel-icon name="search" class="size-4" aria_label="Search" />',
+        '<c-icon name="search" class="size-4" aria_label="Search" />',
+        id="icon-class-and-label",
+    ),
 ]
 
 

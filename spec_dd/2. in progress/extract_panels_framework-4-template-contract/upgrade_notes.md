@@ -29,9 +29,10 @@ requires_tailwind_rebuild: true
 - **Panel-framework templates call `c-panel-*` primitives.** Framework templates now use
   `c-panel-button`, `c-panel-button-group`, `c-panel-chip`, `c-panel-callout`, `c-panel-back-link`,
   `c-panel-pagination`, `c-panel-dropdown-menu`, `c-panel-dropdown-menu-separator`, `c-panel-page`,
-  `c-panel-date` and `c-panel-datetime`. FLS ships wrappers for all eleven in
-  `freedom_ls/base/templates/cotton/` that render the existing `c-button`, `c-chip` and so on, so a
-  project that restyled `cotton/button.html` (or any of the others) keeps its look. A project that
+  `c-panel-date`, `c-panel-datetime` and `c-panel-icon`. FLS ships wrappers for all twelve in
+  `freedom_ls/base/templates/cotton/` that render the existing `c-button`, `c-chip`, `c-icon` and so on, so a
+  project that restyled `cotton/button.html` (or any of the others) keeps its look, and panel icons
+  still come from the project's icon set. A project that
   overrides a template under `freedom_ls/panel_framework/templates/` must repoint its calls to the
   `c-panel-*` names, and any `trigger_class="btn …"` on a dropdown menu to `trigger_variant` /
   `trigger_size`.
@@ -62,14 +63,15 @@ requires_tailwind_rebuild: true
    `panel_framework/partials/page_title.html` or `panel_framework/partials/form.html`.
 6. If you override any template under `freedom_ls/panel_framework/templates/`, re-apply your change
    to the new version of that template (see Breaking changes).
-7. Run `uv run manage.py check`. Two new checks run at boot:
+7. Run `uv run manage.py check`. A new check runs at boot:
    - `freedom_ls_panel_framework.E010` (or the warning `W003` when the icon renders empty) fires for
-     each icon name in `REQUIRED_ICON_NAMES` (`freedom_ls/panel_framework/checks.py`) that your
-     `c-icon` cannot draw. A project using FLS's icon set passes; one with a custom icon set must
-     map every listed name.
-   - `freedom_ls_panel_framework.E009` fires when `PANEL_REFERENCE_BASE_TEMPLATE` names a template
-     that does not exist. The new setting is optional: FLS's `config/settings_base.py` sets it to
-     `panel_reference_base.html`, and a project that does not set it gets the framework's
-     `panel_framework/minimal_shell.html` for the DEBUG-only component reference page.
+     each icon name in `REQUIRED_ICON_NAMES` (`freedom_ls/panel_framework/checks.py`) that
+     `c-panel-icon` cannot draw. FLS's wrapper forwards `c-panel-icon` to `c-icon`, so a project
+     using FLS's icon set passes; one with a custom icon set must map every listed name.
+8. Optional: the DEBUG-only component reference page extends
+   `panel_framework/reference/base.html`, which renders the framework's minimal shell. To give the
+   page your own shell, override that template by path, as FLS does in
+   `freedom_ls/base/templates/panel_framework/reference/base.html`. The override defines the
+   `head_title` and `content` blocks.
 
 `freedom_ls/panel_framework/HOST_CONTRACT.md` describes everything a host page must provide.

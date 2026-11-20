@@ -45,7 +45,7 @@ enumerate them:
   exactly as a local field's would.
 - `display_for_field` and `display_for_value` return a plain `bool` for a
   boolean value instead of admin's `<img>` icon HTML, so a template decides
-  how to render it (this project uses `c-icon`).
+  how to render it (the framework uses `c-panel-icon`).
 - The `URLField`/`FileField` link branches and the `avoid_link` parameter
   are dropped; those values fall through to `display_for_value` and render
   as plain text.

@@ -10,13 +10,13 @@ host's Alpine component to close, which runs the dirty-form guard.
     <a href="{{ href }}"
        aria-label="Close"
        class="-my-2 -me-3 flex size-11 shrink-0 items-center justify-center rounded-md text-muted no-underline transition-colors hover:bg-surface-2 hover:text-on-surface">
-        <c-icon name="close" class="size-5" />
+        <c-panel-icon name="close" class="size-5" />
     </a>
 {% else %}
     <button type="button"
             x-on:click="requestClose"
             aria-label="Close"
             class="-my-2 -me-3 flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 hover:text-on-surface">
-        <c-icon name="close" class="size-5" />
+        <c-panel-icon name="close" class="size-5" />
     </button>
 {% endif %}

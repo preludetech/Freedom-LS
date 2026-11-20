@@ -184,7 +184,7 @@ which site a request belongs to. The host says so through a setting.
 Framework templates draw their buttons, chips, callouts, dates, pagination and dropdown menus with
 their own `c-panel-*` primitives (`panel-button`, `panel-button-group`, `panel-chip`, `panel-callout`,
 `panel-back-link`, `panel-date`, `panel-datetime`, `panel-pagination`, `panel-dropdown-menu`,
-`panel-dropdown-menu-separator` and `panel-page`) and never include a host component or template. FLS's wrappers
+`panel-dropdown-menu-separator`, `panel-icon` and `panel-page`) and never include a host component or template. FLS's wrappers
 forward to its own `c-button`, `c-back-link` and the rest; the rules here name
 the component an FLS panel template writes. The panel framework's own styles (`.panel-surface`,
 `.panel-canvas`, `.panel-heading`, `.panel-btn`, the modal host, the selection bar and the compact
@@ -520,9 +520,12 @@ Four guards cover the standalone backend:
   Alpine component against `dropdownMenu` in `base`'s `alpine-components.js`. Change each pair in
   both places at once.
 - `freedom_ls/panel_framework/checks.py` holds `REQUIRED_ICON_NAMES`, the icon names the
-  framework's templates draw. `uv run manage.py check` reports E010 for a name the host's `c-icon`
-  cannot render and W003 for one it renders empty. Add a name there when a framework template draws
-  a new icon.
+  framework's templates draw. A framework template draws an icon with `<c-panel-icon>`, never
+  `<c-icon>`; FLS's wrapper in `freedom_ls/base/templates/cotton/panel-icon.html` forwards it to
+  `<c-icon>`. The framework's default reads each icon's paths from
+  `templates/panel_framework/icons/<name>.html`. `uv run manage.py check` reports E010 for a name
+  `c-panel-icon` cannot render and W003 for one it renders empty. When a framework template draws
+  a new icon, add its name there and its body template beside the others.
 
 Three more files sit beside the template invariants in `tests/invariants/`:
 

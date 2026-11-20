@@ -18,7 +18,6 @@ from django.test import override_settings
 from freedom_ls.panel_framework.checks import (
     REQUIRED_ICON_NAMES,
     check_icon_names,
-    check_reference_base_template,
     check_site_resolver,
     check_task_backend,
     default_sort_errors,
@@ -494,7 +493,7 @@ def _put_icon_component_first(
     tmp_path: Path, settings: SettingsWrapper, source: str
 ) -> None:
     (tmp_path / "cotton").mkdir()
-    (tmp_path / "cotton" / "icon.html").write_text(source)
+    (tmp_path / "cotton" / "panel-icon.html").write_text(source)
     settings.TEMPLATES[0]["DIRS"] = [str(tmp_path), *settings.TEMPLATES[0]["DIRS"]]
 
 
@@ -524,7 +523,7 @@ def test_an_icon_component_that_renders_nothing_raises_w003(
     assert len(messages) == len(REQUIRED_ICON_NAMES)
 
 
-def test_the_standalone_icon_component_raises_no_icon_message() -> None:
+def test_the_shipped_icon_primitive_raises_no_icon_message() -> None:
     assert _run_icon_check() == []
 
 
@@ -549,8 +548,7 @@ def test_each_failing_icon_name_gets_one_error_naming_it(
     ] == [1, 1]
 
 
-@pytest.mark.needs_fls_host
-def test_fls_icon_component_raising_key_error_for_an_unknown_name_raises_e010(
+def test_a_required_name_with_no_icon_body_raises_e010(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
@@ -562,26 +560,6 @@ def test_fls_icon_component_raising_key_error_for_an_unknown_name_raises_e010(
 
     assert [message.id for message in messages] == ["freedom_ls_panel_framework.E010"]
     assert "no_such_semantic_icon" in messages[0].msg
-
-
-def test_a_reference_base_template_that_does_not_load_raises_e009(
-    settings: SettingsWrapper,
-) -> None:
-    settings.PANEL_REFERENCE_BASE_TEMPLATE = "no_such_base.html"
-
-    messages = check_reference_base_template(app_configs=None)
-
-    assert [message.id for message in messages] == ["freedom_ls_panel_framework.E009"]
-    assert "'no_such_base.html'" in messages[0].msg
-    assert "HOST_CONTRACT.md#reference-page" in (messages[0].hint or "")
-
-
-def test_the_default_reference_base_template_raises_no_message(
-    settings: SettingsWrapper,
-) -> None:
-    del settings.PANEL_REFERENCE_BASE_TEMPLATE
-
-    assert check_reference_base_template(app_configs=None) == []
 
 
 @pytest.mark.parametrize(

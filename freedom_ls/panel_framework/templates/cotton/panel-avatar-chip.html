@@ -74,7 +74,7 @@ this component.
         <span aria-hidden="true" class="panel-avatar-{{ person_id|avatar_slot }} relative flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-on-surface {% if size == "xl" %}size-32 text-4xl{% elif size == "lg" %}size-13 text-lg{% elif size == "sm" %}size-6 text-[0.625rem]{% else %}size-8 text-xs{% endif %}">{% firstof initials person_name|initials %}{% if picture_url %}<img data-profile-picture src="{{ picture_url }}" alt="" loading="lazy" {% if size == "xl" %}width="128" height="128"{% elif size == "lg" %}width="52" height="52"{% elif size == "sm" %}width="24" height="24"{% else %}width="32" height="32"{% endif %} class="absolute inset-0 size-full bg-surface object-cover" />{% endif %}</span>
     {% else %}
         <span class="grid shrink-0 place-items-center rounded-full bg-surface-2 text-muted {% if size == "xl" %}size-32{% elif size == "lg" %}size-13{% elif size == "sm" %}size-6{% else %}size-8{% endif %}">
-            {% if name_hidden|flag %}<c-icon :name="fallback_icon" class="size-4" :aria_label="person_name" />{% else %}<span aria-hidden="true"><c-icon :name="fallback_icon" class="size-4" /></span>{% endif %}
+            {% if name_hidden|flag %}<c-panel-icon :name="fallback_icon" class="size-4" :aria_label="person_name" />{% else %}<span aria-hidden="true"><c-panel-icon :name="fallback_icon" class="size-4" /></span>{% endif %}
         </span>
     {% endif %}
     {% if not name_hidden|flag %}

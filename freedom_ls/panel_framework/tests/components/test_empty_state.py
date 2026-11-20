@@ -8,10 +8,10 @@ from ..cotton_helpers import render_cotton
 
 
 def test_icon_is_decorative() -> None:
-    html = render_cotton('<c-panel-empty-state icon="notes" message="No results" />')
+    html = render_cotton('<c-panel-empty-state icon="search" message="No results" />')
 
     assert re.search(
-        r'<span aria-hidden="true"[^>]*>\s*<svg[^>]*data-icon="notes"', html
+        r'<span aria-hidden="true"[^>]*>\s*<svg[^>]*data-icon="search"', html
     )
 
 

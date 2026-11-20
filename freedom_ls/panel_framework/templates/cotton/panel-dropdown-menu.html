@@ -21,7 +21,7 @@
         {% if trigger %}
             {{ trigger }}
         {% else %}
-            <c-icon name="more_options" class="size-5" />
+            <c-panel-icon name="more_options" class="size-5" />
         {% endif %}
     </button>
 
@@ -98,7 +98,7 @@ Usage Examples:
   </c-panel-dropdown-menu>
 
   <!-- Custom trigger with icon component -->
-  <c-panel-dropdown-menu trigger='<c-icon name="settings" class="size-5" />'>
+  <c-panel-dropdown-menu trigger='<c-panel-icon name="settings" class="size-5" />'>
       <c-panel-button dropdown="true">Settings</c-panel-button>
       <c-panel-button dropdown="true">Preferences</c-panel-button>
   </c-panel-dropdown-menu>

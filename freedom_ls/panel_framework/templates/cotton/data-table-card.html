@@ -51,7 +51,7 @@ checkbox's slot but not the checkbox.
                         aria-label="More about {{ row.label }}"
                         x-on:click="toggle">
                     <span aria-hidden="true" class="inline-flex motion-safe:transition-[rotate] group-aria-expanded:rotate-180">
-                        <c-icon name="dropdown" class="size-4" />
+                        <c-panel-icon name="dropdown" class="size-4" />
                     </span>
                 </button>
             {% endif %}
@@ -75,7 +75,7 @@ checkbox's slot but not the checkbox.
                     <div class="min-w-0 flex-1 font-bold break-words">
                         {% include primary_column.template_name with object=row.object column=primary_column %}
                     </div>
-                    {% if primary_column.is_link %}<span aria-hidden="true"><c-icon name="open_page" class="size-4 shrink-0 text-muted" /></span>{% endif %}
+                    {% if primary_column.is_link %}<span aria-hidden="true"><c-panel-icon name="open_page" class="size-4 shrink-0 text-muted" /></span>{% endif %}
                 </div>
             {% endif %}
             {% if secondary_columns %}

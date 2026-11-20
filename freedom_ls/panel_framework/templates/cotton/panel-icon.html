@@ -1,0 +1,20 @@
+<c-vars name="" class="size-5" aria_label="" />
+{% comment %}
+An icon, drawn inline. `name` picks its body, the template
+panel_framework/icons/<name>.html, which holds the paths of a 24 by 24 icon.
+A name with no body template raises TemplateDoesNotExist.
+
+A host adds an icon by adding a body template under that path, and replaces
+one the same way. A host with an icon component of its own overrides this
+template and forwards to it.
+
+An icon is decorative unless given an `aria_label`: without one it renders
+aria-hidden, so a labelled button or a link with text is read by that text
+alone. width and height are the icon's intrinsic size, so it stays small
+when the size class has no stylesheet behind it.
+
+Usage: <c-panel-icon name="close" />
+       <c-panel-icon name="success" class="size-6 text-success" />
+       <c-panel-icon name="boolean_true" aria_label="Yes" />
+{% endcomment %}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="inline {{ class }}" {% if aria_label %}role="img" aria-label="{{ aria_label }}"{% else %}aria-hidden="true"{% endif %} data-icon="{{ name }}">{% spaceless %}{% include "panel_framework/icons/"|add:name|add:".html" %}{% endspaceless %}</svg>

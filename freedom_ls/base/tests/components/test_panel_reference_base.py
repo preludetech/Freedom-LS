@@ -1,4 +1,5 @@
-"""FLS's base for the component reference page fills both blocks the page defines."""
+"""FLS's override of the reference page's base template wins by path and fills
+both blocks the page defines."""
 
 from __future__ import annotations
 
@@ -14,9 +15,8 @@ pytestmark = pytest.mark.django_db
 
 def _render() -> str:
     request = RequestFactory().get("/panel-framework/components/")
-    context = {"reference_base_template": "panel_reference_base.html"}
     return render_to_string(
-        "panel_framework/reference/component_reference.html", context, request=request
+        "panel_framework/reference/component_reference.html", request=request
     )
 
 

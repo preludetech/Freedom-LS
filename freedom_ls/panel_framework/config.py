@@ -26,7 +26,6 @@ class PanelFrameworkConfig(AppSettings):
     BULK_BACKGROUND_THRESHOLD: int
     PANEL_TABLE_PAGE_SIZE: int
     PANEL_FRAMEWORK_SITE_RESOLVER: str
-    PANEL_REFERENCE_BASE_TEMPLATE: str
 
     declared_settings = {
         # A bulk action over more objects than this runs in a background task
@@ -41,11 +40,6 @@ class PanelFrameworkConfig(AppSettings):
         # set its own resolver, or every request shares one site's runs (W002).
         "PANEL_FRAMEWORK_SITE_RESOLVER": Setting(
             default="freedom_ls.panel_framework.sites.current_site_or_none"
-        ),
-        # The template the component reference page extends. It must define the
-        # `head_title` and `content` blocks.
-        "PANEL_REFERENCE_BASE_TEMPLATE": Setting(
-            default="panel_framework/minimal_shell.html"
         ),
     }
 

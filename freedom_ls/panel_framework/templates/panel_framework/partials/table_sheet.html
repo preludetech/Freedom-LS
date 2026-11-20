@@ -52,7 +52,7 @@ when htmx swaps this fragment in.
                             <details class="group rounded-md border border-border">
                                 <summary class="list-none marker:hidden [&::-webkit-details-marker]:hidden flex min-h-11 cursor-pointer items-center justify-between gap-2 px-3 py-2 text-sm font-semibold">
                                     {{ group.label|default:entry.filter.label }}
-                                    <c-icon name="dropdown" class="size-4 text-muted group-open:rotate-180" />
+                                    <c-panel-icon name="dropdown" class="size-4 text-muted group-open:rotate-180" />
                                 </summary>
                                 <div class="space-y-1 px-3 pb-2">
                                     {% for choice in group.choices %}

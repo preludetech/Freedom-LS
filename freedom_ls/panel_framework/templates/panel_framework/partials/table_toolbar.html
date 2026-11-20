@@ -56,7 +56,7 @@ work with JavaScript off.
                hx-swap="outerHTML"
                class="flex items-center gap-2 whitespace-nowrap rounded-md px-2 py-1 text-on-surface no-underline hover:bg-surface-2">
                 <span class="size-4 shrink-0">
-                    {% if choice.selected %}<c-icon name="check" class="size-4" />{% endif %}
+                    {% if choice.selected %}<c-panel-icon name="check" class="size-4" />{% endif %}
                 </span>
                 {{ choice.label }}
             </a>
@@ -202,7 +202,7 @@ reason, and is nothing below lg.
             {% if sortable_columns %}
                 <c-panel-dropdown-menu aria_label="Sort" menu_label="Sort by" trigger_variant="secondary" trigger_size="small" panel_class="fixed w-56">
                     <c-slot name="trigger">
-                        <span aria-hidden="true" class="inline-flex"><c-icon name="sort_neutral" class="size-5" /></span>
+                        <span aria-hidden="true" class="inline-flex"><c-panel-icon name="sort_neutral" class="size-5" /></span>
                         Sort
                     </c-slot>
                     {% for header in header_columns %}

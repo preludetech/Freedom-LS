@@ -13,7 +13,6 @@ from django.conf import settings
 from django.contrib.sites.models import Site
 from django.core.checks import CheckMessage, Error, Warning
 from django.template import Context, Template, TemplateDoesNotExist, TemplateSyntaxError
-from django.template.loader import get_template
 from django.utils.module_loading import import_string
 
 from freedom_ls.panel_framework.config import PanelFrameworkConfig, config
@@ -38,8 +37,9 @@ _NON_DURABLE_BACKEND_PATHS = (
     "django_tasks.backends.dummy.DummyBackend",
 )
 
-# Every icon name the framework's templates and primitives draw, which the
-# host's `c-icon` must be able to render. Names bound at runtime
+# Every icon name the framework's templates and primitives draw. The framework
+# ships a body for each in templates/panel_framework/icons/, and a host's
+# override of `c-panel-icon` must draw each one. Names bound at runtime
 # (`:name="item.icon"`) are the host's own and are not listed.
 REQUIRED_ICON_NAMES: frozenset[str] = frozenset(
     {
@@ -120,9 +120,10 @@ def check_task_backend(
 
 
 def _render_icon(name: str) -> str:
-    """The host's c-icon for `name`, rendered. A string template is never
-    compiled by cotton's loader, so the tag is compiled here."""
-    source = CottonCompiler().process(f'<c-icon name="{name}" />')
+    """c-panel-icon for `name`, rendered: the framework's own or the host's
+    override. A string template is never compiled by cotton's loader, so the
+    tag is compiled here."""
+    source = CottonCompiler().process(f'<c-panel-icon name="{name}" />')
     return Template(source).render(Context())
 
 
@@ -132,10 +133,10 @@ def check_icon_names(
     databases: Sequence[str] | None = None,
     **kwargs: object,
 ) -> list[CheckMessage]:
-    """Report each icon name the framework draws that the host's c-icon cannot."""
+    """Report each icon name the framework draws that c-panel-icon cannot."""
     messages: list[CheckMessage] = []
     for name in sorted(REQUIRED_ICON_NAMES):
-        hint = f"Make the host's c-icon draw '{name}'. See HOST_CONTRACT.md#icons."
+        hint = f"Make c-panel-icon draw '{name}'. See HOST_CONTRACT.md#icons."
         try:
             rendered = _render_icon(name)
         except (
@@ -147,7 +148,7 @@ def check_icon_names(
         ) as error:
             messages.append(
                 Error(
-                    f"The host's c-icon cannot draw the icon '{name}': {error!r}.",
+                    f"c-panel-icon cannot draw the icon '{name}': {error!r}.",
                     hint=hint,
                     id="freedom_ls_panel_framework.E010",
                 )
@@ -156,7 +157,7 @@ def check_icon_names(
         if not rendered.strip():
             messages.append(
                 Warning(
-                    f"The host's c-icon draws nothing for the icon '{name}'.",
+                    f"c-panel-icon draws nothing for the icon '{name}'.",
                     hint=hint,
                     id="freedom_ls_panel_framework.W003",
                 )
@@ -199,30 +200,6 @@ def check_site_resolver(
             id="freedom_ls_panel_framework.W002",
         )
     ]
-
-
-def check_reference_base_template(
-    *,
-    app_configs: Sequence[AppConfig] | None,
-    **kwargs: object,
-) -> list[CheckMessage]:
-    """Report a PANEL_REFERENCE_BASE_TEMPLATE that does not load."""
-    name = config.PANEL_REFERENCE_BASE_TEMPLATE
-    try:
-        get_template(name)
-    except TemplateDoesNotExist:
-        return [
-            Error(
-                f"PANEL_REFERENCE_BASE_TEMPLATE = {name!r} does not exist.",
-                hint=(
-                    "Set PANEL_REFERENCE_BASE_TEMPLATE to a template that defines "
-                    "the head_title and content blocks; see "
-                    "HOST_CONTRACT.md#reference-page."
-                ),
-                id="freedom_ls_panel_framework.E009",
-            )
-        ]
-    return []
 
 
 def check_panels(

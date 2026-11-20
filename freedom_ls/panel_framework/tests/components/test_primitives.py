@@ -10,6 +10,7 @@ import pytest
 import pytest_django.fixtures
 
 from django.core.paginator import Page, Paginator
+from django.template import TemplateDoesNotExist
 from django.utils import timezone
 
 from freedom_ls.panel_framework import field_display
@@ -106,6 +107,22 @@ PRIMITIVE_DEFAULTS = [
         ["3 Nov 2026,", "09:37", "whitespace-nowrap"],
         id="panel-datetime",
     ),
+    pytest.param(
+        '<c-panel-icon name="close" class="size-4" />',
+        [
+            "<svg ",
+            'class="inline size-4"',
+            'aria-hidden="true"',
+            'data-icon="close"',
+            "<path ",
+        ],
+        id="panel-icon",
+    ),
+    pytest.param(
+        '<c-panel-icon name="close" aria_label="Close" />',
+        ['class="inline size-5"', 'role="img"', 'aria-label="Close"'],
+        id="panel-icon-labelled",
+    ),
 ]
 
 PRIMITIVE_OVERRIDES = [
@@ -146,6 +163,7 @@ PRIMITIVE_OVERRIDES = [
     pytest.param(
         "panel-datetime", '<c-panel-datetime :value="moment" />', id="panel-datetime"
     ),
+    pytest.param("panel-icon", '<c-panel-icon name="close" />', id="panel-icon"),
 ]
 
 
@@ -181,6 +199,16 @@ def test_a_primitive_renders_its_documented_props_and_slot(
             "<c-panel-dropdown-menu>Hi</c-panel-dropdown-menu>",
             {"panel-btn", "trigger_class"},
             id="panel-dropdown-menu-without-trigger-variant-has-no-button-class",
+        ),
+        pytest.param(
+            '<c-panel-icon name="close" />',
+            {"role=", "aria-label"},
+            id="panel-icon-without-a-label-is-decorative",
+        ),
+        pytest.param(
+            '<c-panel-icon name="close" aria_label="Close" />',
+            {"aria-hidden"},
+            id="panel-icon-with-a-label-is-not-hidden",
         ),
     ],
 )
@@ -229,3 +257,21 @@ def test_the_datetime_primitive_joins_the_date_and_time_display_formats() -> Non
     date_format, time_format = _formats("panel-datetime")
 
     assert f"{date_format}, {time_format}" == field_display.DATETIME_DISPLAY_FORMAT
+
+
+def test_the_icon_primitive_raises_for_a_name_with_no_icon_body() -> None:
+    with pytest.raises(TemplateDoesNotExist, match="no_such_icon"):
+        render_cotton('<c-panel-icon name="no_such_icon" />')
+
+
+def test_a_host_adds_an_icon_by_adding_its_body_template(
+    tmp_path: Path, settings: pytest_django.fixtures.SettingsWrapper
+) -> None:
+    icons = tmp_path / "panel_framework" / "icons"
+    icons.mkdir(parents=True)
+    (icons / "host_icon.html").write_text('<path d="M0 0h24" />')
+    settings.TEMPLATES[0]["DIRS"] = [str(tmp_path), *settings.TEMPLATES[0]["DIRS"]]
+
+    html = render_cotton('<c-panel-icon name="host_icon" />')
+
+    assert 'data-icon="host_icon"><path d="M0 0h24" /></svg>' in html

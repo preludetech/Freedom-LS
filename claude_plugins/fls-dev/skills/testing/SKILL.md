@@ -122,14 +122,14 @@ What runs where:
 uv run pytest -c freedom_ls/panel_framework/tests/standalone_pytest.ini freedom_ls/panel_framework/tests
 ```
 
-  `standalone_pytest.ini` sets `--ds=freedom_ls.panel_framework.tests.standalone_settings` (in-memory SQLite, `standalone_app/` for the user model, `standalone_templates/` for stand-in templates), adds `-m "not needs_fls_host"`, skips only `playwright` (`norecursedirs`), so the `components` and `invariants` tiers run too, and blocks network access. `standalone_fixtures.py` supplies the `site` and `mock_site_context` fixtures; FLS's conftest does not load.
+  `standalone_pytest.ini` sets `--ds=freedom_ls.panel_framework.tests.standalone_settings` (in-memory SQLite, `standalone_app/` for the user model, no stand-in templates: the framework ships every template it renders), adds `-m "not needs_fls_host"`, skips only `playwright` (`norecursedirs`), so the `components` and `invariants` tiers run too, and blocks network access. `standalone_fixtures.py` supplies the `site` and `mock_site_context` fixtures; FLS's conftest does not load.
 - A concrete downstream project runs:
 
 ```bash
 uv run pytest -m "not playwright and not fls_internal and not ci_only and not weasyprint and not dev_tooling" -n auto --dist loadfile
 ```
 
-Add `needs_fls_host` to a `panel_framework` test that fails under the standalone run because the stand-in templates, icon set or URLconf lack something it asserts on (a rendered FLS template, a real icon, an FLS URL name). Mark the individual test, as `test_reference.py` and `test_tables.py` do. The marker is not `fls_internal`: the FLS run keeps the test, and a downstream that installs the framework runs it too.
+Add `needs_fls_host` to a `panel_framework` test that fails under the standalone run because the framework's default templates, icons or URLconf lack something it asserts on (a rendered FLS template, a real icon, an FLS URL name). Mark the individual test, as `test_reference.py` and `test_tables.py` do. The marker is not `fls_internal`: the FLS run keeps the test, and a downstream that installs the framework runs it too.
 
 **Reach for `fls_internal` last.** Every portable test is integration signal for a downstream. Before marking a test `fls_internal`, de-brand it first (pin the input or assert the contract). Only mark it when it genuinely depends on FLS's own repo/brand/demo state (e.g. it reads `demo_content/`). Prefer a file-level `pytestmark = pytest.mark.fls_internal` only for wholly brand-coupled files; mark individual tests in mixed files.
 

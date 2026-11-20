@@ -588,7 +588,6 @@ def test_no_dialog_form_with_a_find_selector_holds_an_element_that_issues_its_ow
 
 COTTON_TAG = re.compile(r"<c-([a-z][a-z0-9-]*)")
 COTTON_SYNTAX_TAGS = {"vars", "slot"}
-HOST_SUPPLIED_COMPONENTS = {"icon"}
 
 
 def test_every_cotton_tag_in_a_framework_template_is_a_framework_component() -> None:
@@ -602,7 +601,7 @@ def test_every_cotton_tag_in_a_framework_template_is_a_framework_component() -> 
         for name in COTTON_TAG.findall(path.read_text())
     }
 
-    assert used - available - COTTON_SYNTAX_TAGS - HOST_SUPPLIED_COMPONENTS == set()
+    assert used - available - COTTON_SYNTAX_TAGS == set()
 
 
 INCLUDE_OR_EXTENDS_PATH = re.compile(r"\{%\s*(?:include|extends)\s+[\"']([^\"']+)[\"']")
@@ -646,8 +645,11 @@ FLS_APP_LABELS = (
     "webhooks",
 )
 # An app named in a template path, a URL namespace or a dotted module path.
+# `panel_framework/icons/` is the framework's own directory of icon bodies,
+# not FLS's `icons` app.
 FLS_ONLY_NAMES = re.compile(
-    rf"\bfreedom_ls\b|\b(?:{'|'.join(FLS_APP_LABELS)})(?=/|:\w)|\bconversationChanged\b"
+    rf"\bfreedom_ls\b|(?<!panel_framework/)\b(?:{'|'.join(FLS_APP_LABELS)})(?=/|:\w)"
+    rf"|\bconversationChanged\b"
 )
 
 

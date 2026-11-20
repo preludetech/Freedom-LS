@@ -22,7 +22,7 @@ EXTENDS_FRAMEWORK_DIALOG = re.compile(
     r'\{% extends "(panel_framework/modal/[a-z_]+\.html)" %\}'
 )
 STEP_BRANCH = re.compile(r"\bstep == ")
-DROPDOWN_CHEVRON = re.compile(r'<c-icon name="dropdown"[^>]*>')
+DROPDOWN_CHEVRON = re.compile(r'<c-(?:panel-)?icon name="dropdown"[^>]*>')
 LOADING_TEXT = re.compile(r'loading_text="[^"]*"')
 DISABLED_ELT = re.compile(r'hx-disabled-elt="[^"]*"')
 OWN_SUBMIT_ONLY = "hx-disabled-elt=\"find button[type='submit']\""
@@ -98,7 +98,9 @@ def anchors_without_classes(root: Path, prose_exempt: Collection[str]) -> list[s
             attributes, content = match.group(1), match.group(2)
             if "class=" in attributes or "{{ attrs }}" in attributes:
                 continue
-            if "<c-icon" in content and not re.sub(r"<[^>]+>|\s", "", content):
+            if re.search(r"<c-(?:panel-)?icon\b", content) and not re.sub(
+                r"<[^>]+>|\s", "", content
+            ):
                 continue
             offenders.append(f"{relative}: {match.group(0)[:80]}")
     return offenders

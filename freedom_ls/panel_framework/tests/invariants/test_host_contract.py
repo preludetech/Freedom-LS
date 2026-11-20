@@ -31,6 +31,7 @@ PRIMITIVES = {
     "panel-datetime",
     "panel-dropdown-menu",
     "panel-dropdown-menu-separator",
+    "panel-icon",
     "panel-page",
     "panel-pagination",
 }
@@ -75,7 +76,7 @@ def test_the_primitives_table_has_one_row_per_primitive() -> None:
     assert set(_props_by_primitive()) ^ PRIMITIVES == set()
 
 
-@pytest.mark.parametrize("anchor_heading", ["Icons", "Reference page"])
+@pytest.mark.parametrize("anchor_heading", ["Icons"])
 def test_a_check_hint_anchor_is_a_heading(anchor_heading: str) -> None:
     assert f"\n## {anchor_heading}\n" in CONTRACT
 

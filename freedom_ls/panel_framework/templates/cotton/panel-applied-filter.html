@@ -28,8 +28,8 @@ and hx-swap to retract the filter without a full page load.
            aria-label="{% if remove_label %}{{ remove_label }}{% else %}Remove filter: {{ label }}{% endif %}"
            class="inline-flex text-current no-underline hover:text-primary"
            {{ attrs }}>
-            <c-icon name="close" class="size-3" />
+            <c-panel-icon name="close" class="size-3" />
         </a>
     {% endif %}
-    {% if disclosure|flag %}<c-icon name="dropdown" class="size-3 transition-transform group-open:rotate-180" />{% endif %}
+    {% if disclosure|flag %}<c-panel-icon name="dropdown" class="size-3 transition-transform group-open:rotate-180" />{% endif %}
 </c-panel-chip>

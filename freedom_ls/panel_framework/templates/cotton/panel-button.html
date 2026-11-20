@@ -36,7 +36,7 @@ role="menuitem"
 class="{{ computed_class }} {% if tone == 'error' %}text-error{% else %}text-muted{% endif %}"
 {{ attrs }}
 >
-{% if icon_left %}<span aria-hidden="true"><c-icon :name="icon_left" class="size-5 mr-2" /></span>{% endif %}{{ slot }}{% if icon_right %}<span aria-hidden="true"><c-icon :name="icon_right" class="size-5 ml-2" /></span>{% endif %}
+{% if icon_left %}<span aria-hidden="true"><c-panel-icon :name="icon_left" class="size-5 mr-2" /></span>{% endif %}{{ slot }}{% if icon_right %}<span aria-hidden="true"><c-panel-icon :name="icon_right" class="size-5 ml-2" /></span>{% endif %}
 </{% if href %}a{% else %}button{% endif %}>
 {% endwith %}
 {% else %}
@@ -56,10 +56,10 @@ class="panel-btn panel-btn-{{ variant }}{% if size == 'small' %} panel-btn-sm{% 
 >
 {% if loading %}
 {% comment %}HTMX puts .htmx-request on the element that triggered the request, which is an ancestor of these spans, so both states are driven from there.{% endcomment %}
-<span class="inline-flex items-center gap-2 [.htmx-request_&]:hidden">{% if icon_left %}<span aria-hidden="true" class="inline-flex"><c-icon :name="icon_left" class="size-5" /></span>{% endif %}{{ slot }}{% if icon_right %}<span aria-hidden="true" class="inline-flex"><c-icon :name="icon_right" class="size-5" /></span>{% endif %}</span>
-<span data-loading-label="{{ loading_text }}" class="hidden [.htmx-request_&]:inline-flex [.htmx-request_&]:items-center [.htmx-request_&]:gap-2"><c-icon name="loading" class="size-5 animate-spin" /> {{ loading_text }}</span>
+<span class="inline-flex items-center gap-2 [.htmx-request_&]:hidden">{% if icon_left %}<span aria-hidden="true" class="inline-flex"><c-panel-icon :name="icon_left" class="size-5" /></span>{% endif %}{{ slot }}{% if icon_right %}<span aria-hidden="true" class="inline-flex"><c-panel-icon :name="icon_right" class="size-5" /></span>{% endif %}</span>
+<span data-loading-label="{{ loading_text }}" class="hidden [.htmx-request_&]:inline-flex [.htmx-request_&]:items-center [.htmx-request_&]:gap-2"><c-panel-icon name="loading" class="size-5 animate-spin" /> {{ loading_text }}</span>
 {% else %}
-{% if icon_left %}<span aria-hidden="true" class="inline-flex"><c-icon :name="icon_left" class="size-5" /></span>{% endif %}{{ slot }}{% if icon_right %}<span aria-hidden="true" class="inline-flex"><c-icon :name="icon_right" class="size-5" /></span>{% endif %}
+{% if icon_left %}<span aria-hidden="true" class="inline-flex"><c-panel-icon :name="icon_left" class="size-5" /></span>{% endif %}{{ slot }}{% if icon_right %}<span aria-hidden="true" class="inline-flex"><c-panel-icon :name="icon_right" class="size-5" /></span>{% endif %}
 {% endif %}
 </{% if href %}a{% else %}button{% endif %}>
 {% endif %}

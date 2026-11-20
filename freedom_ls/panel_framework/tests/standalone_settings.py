@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
-_TESTS_DIR = Path(__file__).resolve().parent
-
 SECRET_KEY = "panel-framework-standalone-tests"  # noqa: S105  # pragma: allowlist secret
 DEBUG = False
 TIME_ZONE = "UTC"
@@ -42,7 +38,7 @@ AUTH_USER_MODEL = "standalone_app.User"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [str(_TESTS_DIR / "standalone_templates")],
+        "DIRS": [],
         "OPTIONS": {
             "loaders": [
                 "django_cotton.cotton_loader.Loader",

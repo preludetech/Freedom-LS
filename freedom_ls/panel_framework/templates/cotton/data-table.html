@@ -117,11 +117,11 @@
                                        class="cursor-pointer no-underline text-muted hover:text-primary inline-flex items-center gap-2">
                                         {{ header.column.header }}
                                         {% if header.state == 'asc' %}
-                                            <span aria-hidden="true"><c-icon name="sort_asc" class="size-4 shrink-0" /></span>
+                                            <span aria-hidden="true"><c-panel-icon name="sort_asc" class="size-4 shrink-0" /></span>
                                         {% elif header.state == 'desc' %}
-                                            <span aria-hidden="true"><c-icon name="sort_desc" class="size-4 shrink-0" /></span>
+                                            <span aria-hidden="true"><c-panel-icon name="sort_desc" class="size-4 shrink-0" /></span>
                                         {% else %}
-                                            <span aria-hidden="true"><c-icon name="sort_neutral" class="size-4 shrink-0 text-muted" /></span>
+                                            <span aria-hidden="true"><c-panel-icon name="sort_neutral" class="size-4 shrink-0 text-muted" /></span>
                                         {% endif %}
                                     </a>
                                 {% else %}
@@ -167,7 +167,7 @@
                                                     aria-label="More about {{ row.label }}"
                                                     x-on:click="toggle">
                                                 <span aria-hidden="true" class="inline-flex motion-safe:transition-[rotate] group-aria-expanded:rotate-180">
-                                                    <c-icon name="dropdown" class="size-4" />
+                                                    <c-panel-icon name="dropdown" class="size-4" />
                                                 </span>
                                             </button>
                                         {% endif %}

@@ -23,7 +23,7 @@ writes the wording for every case; this component draws none of its own.
     </div>
 {% else %}
     <div class="flex flex-col items-center gap-3 py-10 text-center" {{ attrs }}>
-        {% if icon %}<span aria-hidden="true" class="text-muted"><c-icon :name="icon" class="size-8" /></span>{% endif %}
+        {% if icon %}<span aria-hidden="true" class="text-muted"><c-panel-icon :name="icon" class="size-8" /></span>{% endif %}
         <p class="text-muted">{{ message }}</p>
         {{ slot }}
     </div>

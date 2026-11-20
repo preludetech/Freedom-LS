@@ -147,8 +147,11 @@ background.
 
 ## Icons
 
-The host provides a `c-icon` component taking `name`, `class` and `aria_label`. It must draw every name
-in this block. The block equals `REQUIRED_ICON_NAMES` in `checks.py`.
+The framework draws every icon through its own `c-panel-icon` primitive, which takes `name`, `class`
+and `aria_label`. The default includes the icon's paths from `panel_framework/icons/<name>.html` inside
+a 24 by 24 `<svg>`. The framework ships one such body template for every name in this block. The block
+equals `REQUIRED_ICON_NAMES` in `checks.py`. The bodies are Heroicons outline icons (MIT, see
+`templates/panel_framework/icons/HEROICONS_LICENSE.txt`).
 
 ```
 add
@@ -181,11 +184,19 @@ user
 warning
 ```
 
-`manage.py check` renders each name through the host's `c-icon`. A name that raises is error
-`freedom_ls_panel_framework.E010`. A name that renders nothing is warning
-`freedom_ls_panel_framework.W003`.
+A host changes the icons by template path:
 
-Names that host data supplies (a sidebar item's `icon`, an empty state's `icon`) belong to the host.
+- To add an icon, add `panel_framework/icons/<name>.html` holding its paths. Names that host data
+  supplies (a sidebar item's `icon`, an empty state's `icon`, a button's `icon_left`) belong to the
+  host and need a body each. A name with no body raises `TemplateDoesNotExist`.
+- To replace one icon, put a template of the same name earlier in template precedence.
+- To use the host's own icon component for all of them, override `cotton/panel-icon.html` with a
+  wrapper that forwards to it, as FLS does in `freedom_ls/base/templates/cotton/panel-icon.html`. The
+  override must draw every name in the block.
+
+`manage.py check` renders each name through `c-panel-icon`, the framework's or the host's override. A
+name that raises is error `freedom_ls_panel_framework.E010`. A name that renders nothing is warning
+`freedom_ls_panel_framework.W003`.
 
 ## Primitives
 
@@ -205,6 +216,7 @@ framework's JavaScript and stylesheet select on them.
 | `panel-pagination` (`panel-pagination.html`) | `page_obj` `base_url` `table_id` `sort_by` `sort_order` `search_query` `extra_params` `page_param_name` `push_url` `links` `page_url` `class` | none | the `hx-get`, `hx-target` and `hx-push-url` attributes on each page control; class `panel-pagination` | `<c-pagination :page_obj="page_obj" :base_url="base_url" :table_id="table_id" :links="links" />` |
 | `panel-dropdown-menu` (`panel-dropdown-menu.html`) | `trigger` `class` `aria_label` `menu_label` `trigger_variant` `trigger_size` `panel_class` | default; `trigger` as a named slot | an Alpine component on the wrapper (`panelDropdownMenu`, or the host's own) with `x-ref` `menuButton` and `menuPanel`; the `role="menu"` wrapper | `<c-dropdown-menu :aria_label="aria_label" :class="class">{{ slot }}</c-dropdown-menu>` |
 | `panel-dropdown-menu-separator` (`panel-dropdown-menu-separator.html`) | none | none | `role="separator"`, which keeps it out of the arrow-key order | `<c-dropdown-menu-separator />` |
+| `panel-icon` (`panel-icon.html`) | `name` `class` `aria_label` | none | `aria-hidden="true"` without `aria_label`, `role="img"` and `aria-label` with one | `<c-icon :name="name" :class="class" :aria_label="aria_label" />` |
 | `panel-page` (`panel-page.html`) | `width` `flush` `class` | default | none | `<c-page :width="width" :flush="flush" :class="class">{{ slot }}</c-page>` |
 | `panel-date` (`panel-date.html`) | `value` `short` | none | `<time datetime>` | `<c-date :value="value" :short="short" />` |
 | `panel-datetime` (`panel-datetime.html`) | `value` | none | `<time datetime>` and the two `whitespace-nowrap` spans | `<c-datetime :value="value" />` |
@@ -226,19 +238,19 @@ Notes that do not fit a row:
 
 ## Reference page
 
-`PANEL_REFERENCE_BASE_TEMPLATE` names the template the DEBUG-only component reference page extends. The
-default is `panel_framework/minimal_shell.html`. A host sets its own in settings, as FLS does with
-`panel_reference_base.html`.
+The DEBUG-only component reference page extends `panel_framework/reference/base.html`. The
+framework's copy extends `panel_framework/minimal_shell.html`. A host gives the page its own shell by
+overriding that template by path, as FLS does in
+`freedom_ls/base/templates/panel_framework/reference/base.html`. The override wins by template
+precedence: `DIRS` before apps, then `INSTALLED_APPS` order.
 
-A template named by the setting defines two blocks:
+An override defines two blocks:
 
 - `head_title`, the page's `<title>` text.
 - `content`, where the reference page renders.
 
 It also loads `panel_framework/js/alpine-components.js` if it is not already part of the host's
 scripts. The reference page fills only these two blocks.
-
-Error `freedom_ls_panel_framework.E009` means the setting names a template that does not exist.
 
 The minimal shell exists for the DEBUG-only reference page and the framework's own tests. It links
 `panel_framework/css/reference.css`, a compiled file that is gitignored: build it with
