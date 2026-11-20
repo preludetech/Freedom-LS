@@ -41,6 +41,15 @@ class UserForm(forms.ModelForm):
         model = User
         fields = ["first_name", "last_name"]
 
+    def save(self, commit: bool = True) -> UserModel:
+        user: UserModel = super().save(commit=False)
+        if commit:
+            # Only the name's own columns: a save of the whole row would
+            # write back a picture this copy read before another request
+            # replaced it.
+            user.save(update_fields=[*self.Meta.fields, "updated_at"])
+        return user
+
 
 def _lock_and_read_stored_profile_picture_name(pk: int) -> str:
     """The picture name the database holds now, with the row locked.
@@ -82,10 +91,13 @@ def remove_profile_picture(user: UserModel) -> None:
         _delete_stored_picture_on_commit(get_profile_picture_storage(), stored)
 
 
+NO_PICTURE_CHOSEN = "Choose a picture first."
+
+
 class ProfilePictureForm(forms.ModelForm):
     profile_picture = forms.FileField(
-        required=False,
         label="Profile picture",
+        error_messages={"required": NO_PICTURE_CHOSEN},
         help_text=(
             "JPEG, PNG or WebP, up to 10 MB. Square pictures work best; "
             "others are cropped to the centre."
@@ -99,11 +111,12 @@ class ProfilePictureForm(forms.ModelForm):
         model = User
         fields = ["profile_picture"]
 
-    def clean_profile_picture(self) -> File | None:
+    def clean_profile_picture(self) -> File:
         upload = self.cleaned_data.get("profile_picture")
         if not isinstance(upload, UploadedFile):
-            # No new file: the field hands back what the user already has.
-            return upload
+            # With a picture stored, the field passes an empty submit and
+            # hands that picture back, so "required" alone does not refuse it.
+            raise forms.ValidationError(NO_PICTURE_CHOSEN)
         with validate_profile_picture(upload) as img:
             encoded = encode_profile_picture(img)
         # Storage only ever receives the re-encoded WebP. The name is a
@@ -117,7 +130,11 @@ class ProfilePictureForm(forms.ModelForm):
             raise ValueError("ProfilePictureForm.save() does not support commit=False.")
         with transaction.atomic():
             superseded = _lock_and_read_stored_profile_picture_name(self.instance.pk)
-            user: UserModel = super().save()
+            user: UserModel = super().save(commit=False)
+            # Only the picture's own columns: a save of the whole row would
+            # write back a name this copy read before another request
+            # changed it.
+            user.save(update_fields=[*self.Meta.fields, "updated_at"])
         if superseded and superseded != user.profile_picture.name:
             _delete_stored_picture_on_commit(user.profile_picture.storage, superseded)
         return user

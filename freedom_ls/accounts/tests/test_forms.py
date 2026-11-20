@@ -20,6 +20,7 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
 from freedom_ls.accounts.forms import (
+    NO_PICTURE_CHOSEN,
     ProfilePictureForm,
     SiteAwareSignupForm,
     UserForm,
@@ -501,18 +502,58 @@ def test_user_form_saving_names_keeps_the_existing_picture(
 
 
 @pytest.mark.django_db
-def test_profile_picture_form_without_a_file_keeps_the_existing_picture(
+def test_profile_picture_form_without_a_file_is_refused_with_a_picture_stored(
     mock_site_context, pathless_profile_picture_storage
 ):
-    user = UserFactory(with_profile_picture=True)
-    stored_name = user.profile_picture.name
-    form = ProfilePictureForm({}, {}, instance=user)
+    form = ProfilePictureForm({}, {}, instance=UserFactory(with_profile_picture=True))
 
+    assert form.errors == {"profile_picture": [NO_PICTURE_CHOSEN]}
+
+
+@pytest.mark.django_db
+def test_profile_picture_form_without_a_file_is_refused_with_no_picture_stored(
+    mock_site_context,
+):
+    form = ProfilePictureForm({}, {}, instance=UserFactory())
+
+    assert form.errors == {"profile_picture": [NO_PICTURE_CHOSEN]}
+
+
+@pytest.mark.django_db
+def test_user_form_saved_from_a_stale_copy_keeps_a_picture_stored_since(
+    mock_site_context, pathless_profile_picture_storage
+):
+    user = UserFactory()
+    stale = UserModel._base_manager.get(pk=user.pk)
+    picture_form = _picture_form(user, jpeg_bytes())
+    assert picture_form.is_valid(), picture_form.errors
+    stored_name = picture_form.save().profile_picture.name
+    form = UserForm({"first_name": "Grace", "last_name": "Hopper"}, instance=stale)
     assert form.is_valid(), form.errors
+
     form.save()
 
     user.refresh_from_db()
+    assert stored_name
     assert user.profile_picture.name == stored_name
+
+
+@pytest.mark.django_db
+def test_profile_picture_form_saved_from_a_stale_copy_keeps_a_name_stored_since(
+    mock_site_context, pathless_profile_picture_storage
+):
+    user = UserFactory(first_name="Ada", last_name="Lovelace")
+    stale = UserModel._base_manager.get(pk=user.pk)
+    name_form = UserForm({"first_name": "Grace", "last_name": "Hopper"}, instance=user)
+    assert name_form.is_valid(), name_form.errors
+    name_form.save()
+    form = _picture_form(stale, jpeg_bytes())
+    assert form.is_valid(), form.errors
+
+    form.save()
+
+    user.refresh_from_db()
+    assert (user.first_name, user.last_name) == ("Grace", "Hopper")
 
 
 @pytest.mark.django_db
@@ -632,7 +673,7 @@ def test_user_form_saving_names_deletes_nothing(
 
 @pytest.mark.django_db
 def test_profile_picture_form_save_without_commit_raises(mock_site_context):
-    form = ProfilePictureForm({}, {}, instance=UserFactory())
+    form = _picture_form(UserFactory(), jpeg_bytes())
     assert form.is_valid(), form.errors
 
     with pytest.raises(ValueError, match="commit=False"):

@@ -12,6 +12,7 @@ from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.forms import NO_PICTURE_CHOSEN
 from freedom_ls.accounts.panels.personal_details.actions import (
     ACCOUNT_CHANGED,
     CHANGE_OWN_NAME,
@@ -182,6 +183,17 @@ def test_a_refused_file_answers_422_with_the_error_and_keeps_the_stored_picture(
     assert WRONG_TYPE in response.content.decode()
     assert user.profile_picture.name == stored_name
     assert f'src="{user.profile_picture_url}"' in panel.content.decode()
+
+
+def test_a_picture_save_with_no_file_answers_422_and_reports_no_success(signed_in):
+    client, _ = signed_in
+
+    response = client.post(UPLOAD_PICTURE_URL, headers={"HX-Request": "true"})
+
+    html = response.content.decode()
+    assert response.status_code == 422
+    assert NO_PICTURE_CHOSEN in html
+    assert "Profile picture saved" not in html
 
 
 def test_an_anonymous_picture_upload_redirects_to_login(mock_site_context):
