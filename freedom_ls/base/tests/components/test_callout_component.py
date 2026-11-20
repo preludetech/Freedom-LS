@@ -105,3 +105,15 @@ def test_callout_icon_is_aria_hidden(tone: str) -> None:
 
     [svg] = box.xpath(".//svg")
     assert svg.get("aria-hidden") == "true"
+
+
+def test_callout_title_keeps_a_gap_above_a_bare_text_body() -> None:
+    """A bare text body sat directly under the title with no gap.
+
+    `space-y-3` only spaces element children, so the title carries its own
+    bottom margin to clear text that is not wrapped in an element.
+    """
+    box = _box('<c-callout title="Heads up">Plain text body</c-callout>')
+
+    [title] = box.xpath(".//strong")
+    assert "mb-3" in title.get("class").split()

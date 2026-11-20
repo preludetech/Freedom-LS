@@ -24,7 +24,7 @@ callout puts its bullets level with the title text. Course content uses
     <div class="flex items-start gap-3">
         <c-icon :name="known_tone" class="callout-icon size-5 shrink-0" />
         <div class="min-w-0 space-y-3">
-            {% if title %}<strong class="block font-semibold">{{ title }}</strong>{% endif %}
+            {% if title %}<strong class="block font-semibold mb-3 last:mb-0">{{ title }}</strong>{% endif %}
             {{ slot }}
         </div>
     </div>
