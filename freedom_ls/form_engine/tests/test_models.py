@@ -697,3 +697,72 @@ def test_deleting_a_form_removes_the_pages_gated_by_its_own_options(
 
     assert not FormPage.objects.filter(pk=gated.pk).exists()
     assert not QuestionOption.objects.filter(pk=option.pk).exists()
+
+
+def _three_question_quiz(
+    middle_type: str = "multiple_choice",
+) -> tuple[FormProgress, list[FormQuestion]]:
+    """An unanswered quiz sitting of three questions on one page, with no served paper."""
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ)
+    page = FormPageFactory(form=form, order=0)
+    questions: list[FormQuestion] = [
+        FormQuestionFactory(form_page=page, type=question_type, order=order)
+        for order, question_type in enumerate(
+            ["multiple_choice", middle_type, "multiple_choice"]
+        )
+    ]
+    for question in questions:
+        if question.type == "multiple_choice":
+            QuestionOptionFactory(question=question, correct=True, order=0)
+    progress: FormProgress = FormProgressFactory(form=form)
+    return progress, questions
+
+
+def _serve_in_order(progress: FormProgress, served: list[FormQuestion]) -> None:
+    progress.served_paper = served_paper_of(
+        [(served[0].form_page, [*served])],
+        {q: list(q.options.all()) for q in served if q.type == "multiple_choice"},
+    )
+    progress.save()
+
+
+@pytest.mark.django_db
+def test_incorrect_answers_carry_the_number_the_learner_was_shown(mock_site_context):
+    progress, (first, second, third) = _three_question_quiz()
+    _serve_in_order(progress, [third, first, second])
+
+    incorrect = progress.get_incorrect_quiz_answers()
+
+    assert [(item["question"], item["number"]) for item in incorrect] == [
+        (third, 1),
+        (first, 2),
+        (second, 3),
+    ]
+
+
+@pytest.mark.django_db
+def test_incorrect_answers_without_a_served_paper_carry_the_authored_number(
+    mock_site_context,
+):
+    progress, (first, second, third) = _three_question_quiz()
+
+    incorrect = progress.get_incorrect_quiz_answers()
+
+    assert [(item["question"], item["number"]) for item in incorrect] == [
+        (first, 1),
+        (second, 2),
+        (third, 3),
+    ]
+
+
+@pytest.mark.django_db
+def test_incorrect_answers_numbers_skip_a_free_text_question(mock_site_context):
+    progress, (first, free_text, third) = _three_question_quiz("short_text")
+    _serve_in_order(progress, [third, free_text, first])
+
+    incorrect = progress.get_incorrect_quiz_answers()
+
+    assert [(item["question"], item["number"]) for item in incorrect] == [
+        (third, 1),
+        (first, 3),
+    ]

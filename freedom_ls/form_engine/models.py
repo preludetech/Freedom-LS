@@ -648,25 +648,32 @@ class FormProgress(SiteAwareModel):
         self.scores = scores
         self.save()
 
+    def _served_path(self, path: SittingPath | None) -> SittingPath | None:
+        """The sitting's path when it has a served paper, built only when not given; else None."""
+        if self.served_paper is None:
+            return None
+        if path is None:
+            # Local import: conditions imports this module.
+            from .conditions import sitting_path
+
+            path = sitting_path(self)
+        return path
+
     def _quiz_questions(self, path: SittingPath | None) -> list[FormQuestion]:
         """The questions this quiz sitting is marked on.
 
         A sitting with a served paper is marked on the questions it was served.
         One without is marked on every question the form currently has.
         """
-        if self.served_paper is None:
+        served = self._served_path(path)
+        if served is None:
             return [
                 child
                 for page in self.form.pages.all()
                 for child in page.children()
                 if child.content_type == "FORM_QUESTION"
             ]
-        if path is None:
-            # Local import: conditions imports this module.
-            from .conditions import sitting_path
-
-            path = sitting_path(self)
-        return path.questions()
+        return served.questions()
 
     def compute_quiz_scores(self, path: SittingPath | None = None) -> dict[str, int]:
         """Score this attempt against the current marking rules, storing nothing.
@@ -726,6 +733,7 @@ class FormProgress(SiteAwareModel):
 
         Returns a list of dicts with:
         - question: FormQuestion instance
+        - number: the question number the learner was shown
         - learner_selected: list of QuestionOption instances the learner selected
         - correct_options: list of QuestionOption instances that are correct
 
@@ -742,7 +750,10 @@ class FormProgress(SiteAwareModel):
         if self.form.strategy != FormStrategy.QUIZ:
             return incorrect_answers
 
-        for question in self._quiz_questions(path):
+        served = self._served_path(path)
+        positions = served.question_positions() if served is not None else None
+
+        for question in self._quiz_questions(served):
             # A free-text question has no options, so there is nothing to
             # show as either the selected or the correct answer — it would
             # render as an empty review card. Such a question is not meant to
@@ -772,6 +783,13 @@ class FormProgress(SiteAwareModel):
                 incorrect_answers.append(
                     {
                         "question": question,
+                        # The number this learner was shown, which on a shuffled
+                        # paper is not the authored one.
+                        "number": (
+                            positions[question.id]
+                            if positions is not None
+                            else question.question_number()
+                        ),
                         "learner_selected": selected_options,
                         "correct_options": correct_options,
                     }
