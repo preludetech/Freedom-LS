@@ -170,7 +170,9 @@ def _start_application(
 def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
     """Apply entry view.
 
-    A learner who already has an application is sent to its status page.
+    A learner who already has an active application is sent to its status page.
+    One whose applications are all closed (withdrawn or rejected) starts a new
+    one, which records its own conversion.
 
     A course that names an application form has nothing to confirm here: the
     application is not sent until the check-your-answers page. So any request,
@@ -187,9 +189,8 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
     `applicant_details`); no account exists for them until they follow the
     claim link in the confirmation email.
 
-    NOTE: when application review lands, the POST body will wrap get_or_create in
-      an atomic block and call app.submit() (the FSM transition) + create an
-      ApplicationStateTransition audit row.
+    Creation and submission run through `_start_application` and
+    `transitions.submit_application`.
     """
     course = get_object_or_404(Course, slug=course_slug)
 
@@ -200,11 +201,13 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
         return _anonymous_apply(request, course)
     user = cast(User, request.user)
 
-    # An existing applicant always reaches their application record, even if the
-    # course was later flipped to coming-soon — so this short-circuit precedes the
-    # coming-soon redirect below.
+    # An applicant with an active application always reaches its record, even if
+    # the course was later flipped to coming-soon — so this short-circuit
+    # precedes the coming-soon redirect below. A closed application does not
+    # count: applying again is a new application, which a coming-soon course
+    # does not accept.
     existing_app = get_application_for_course(user=user, course=course)
-    if existing_app is not None:
+    if existing_app is not None and existing_app.state in ACTIVE_STATES:
         return redirect("course_applications:status", pk=existing_app.pk)
 
     coming_soon = _coming_soon_redirect(course)

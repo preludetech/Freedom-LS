@@ -96,6 +96,11 @@
                             <c-button href="{{ start_url }}" class="w-full">
                                 {{ cta_label }}
                             </c-button>
+                            {% if secondary_cta_label and secondary_cta_url %}
+                                <c-button href="{{ secondary_cta_url }}" variant="link" class="w-full">
+                                    {{ secondary_cta_label }}
+                                </c-button>
+                            {% endif %}
                         {% endif %}
                         {% if not course.table_of_contents_in_development or includes_assessments %}
                             <div class="pt-2 border-t border-border">

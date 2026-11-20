@@ -929,6 +929,8 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     )
     start_url: str | None
     cta_label: str | None
+    secondary_cta_label: str | None = None
+    secondary_cta_url: str | None = None
     access_ended = decision.access_ended_at is not None
     if access_ended or paused:
         # An ended or paused learner is offered nothing to start, continue or register for.
@@ -948,6 +950,8 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
         # backends that provide no CTA (e.g. invalid config) — <c-button href=""> renders disabled.
         start_url = decision.cta_url
         cta_label = decision.cta_label
+        secondary_cta_label = decision.secondary_cta_label
+        secondary_cta_url = decision.secondary_cta_url
     # Coming-soon courses render the shared express-interest control in the
     # not-registered branch instead of the generic enrol anchor (which would
     # GET a POST-only endpoint and can't reflect existing interest). Stamp the
@@ -1008,6 +1012,8 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
             "is_coming_soon": is_coming_soon,
             "start_url": start_url,
             "cta_label": cta_label,
+            "secondary_cta_label": secondary_cta_label,
+            "secondary_cta_url": secondary_cta_url,
             "access_ended_at": decision.access_ended_at,
             "paused_at": decision.paused_at,
             "planned_resume_on": decision.planned_resume_on,

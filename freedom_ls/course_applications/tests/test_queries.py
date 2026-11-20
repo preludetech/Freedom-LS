@@ -43,6 +43,42 @@ class TestGetApplicationForCourse:
 
         assert get_application_for_course(user=user, course=course) == claimed
 
+    def test_prefers_the_active_application_over_a_newer_closed_one(
+        self, mock_site_context
+    ):
+        from freedom_ls.course_applications.queries import get_application_for_course
+
+        user = UserFactory()
+        course = CourseFactory()
+        active = CourseApplicationFactory(user=user, course=course)
+        CourseApplicationFactory(user=user, course=course, withdrawn=True)
+
+        assert get_application_for_course(user=user, course=course) == active
+
+    def test_prefers_the_active_application_over_an_older_closed_one(
+        self, mock_site_context
+    ):
+        from freedom_ls.course_applications.queries import get_application_for_course
+
+        user = UserFactory()
+        course = CourseFactory()
+        CourseApplicationFactory(user=user, course=course, withdrawn=True)
+        active = CourseApplicationFactory(user=user, course=course)
+
+        assert get_application_for_course(user=user, course=course) == active
+
+    def test_returns_the_newest_closed_application_when_none_is_active(
+        self, mock_site_context
+    ):
+        from freedom_ls.course_applications.queries import get_application_for_course
+
+        user = UserFactory()
+        course = CourseFactory()
+        CourseApplicationFactory(user=user, course=course, withdrawn=True)
+        newest = CourseApplicationFactory(user=user, course=course, rejected=True)
+
+        assert get_application_for_course(user=user, course=course) == newest
+
     def test_returns_none_when_absent(self, mock_site_context):
         """Returns None when the user has no application to the course."""
         from freedom_ls.course_applications.queries import get_application_for_course

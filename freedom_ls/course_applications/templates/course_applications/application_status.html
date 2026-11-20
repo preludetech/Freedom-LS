@@ -120,6 +120,10 @@ the state block under an h2, and no withdraw: the address is not yet proven.
                 </div>
             {% endif %}
 
+            {% if application.state == application.State.WITHDRAWN and application.is_email_verified %}
+                <c-button href="{% url 'course_applications:apply' course_slug=application.course.slug %}">Apply again</c-button>
+            {% endif %}
+
             <c-button href="{% url 'learner_interface:dashboard' %}">
                 Back to dashboard
             </c-button>

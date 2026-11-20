@@ -79,6 +79,9 @@ class CourseAccessDecision:
     # access_ended_at is None, because a pause stops the clock instead of ending access.
     paused_at: datetime | None = None
     planned_resume_on: date | None = None
+    # A backend may offer one lower-emphasis link beside the main call to action.
+    secondary_cta_label: str | None = None
+    secondary_cta_url: str | None = None
 
 
 @dataclass(frozen=True)

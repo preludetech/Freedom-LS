@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from django.db.models import Case, IntegerField, Value, When
+
 from freedom_ls.organisations.utils import get_default_organisation
 
 if TYPE_CHECKING:
@@ -42,16 +44,27 @@ def get_application_for_course(
     """Return this user's application to the given course, or None.
 
     Returns None immediately for anonymous users — no DB query is issued.
-    Site isolation is automatic via SiteAwareManager. An account holds one
-    application per course, whether it applied signed in or claimed one.
+    Site isolation is automatic via SiteAwareManager. An account holds at most
+    one active application per course, whether it applied signed in or claimed
+    one, beside any number of closed ones. The active application wins; with
+    only closed ones, the newest is returned.
     """
     if not user.is_authenticated:
         return None
-    from freedom_ls.course_applications.models import CourseApplication
+    from freedom_ls.course_applications.models import (
+        ACTIVE_STATES,
+        CourseApplication,
+    )
 
+    is_closed = Case(
+        When(state__in=ACTIVE_STATES, then=Value(0)),
+        default=Value(1),
+        output_field=IntegerField(),
+    )
     return (
         CourseApplication.objects.filter(user=user, course=course)
         .select_related("form_progress")
+        .order_by(is_closed, "-created_at", "pk")
         .first()
     )
 

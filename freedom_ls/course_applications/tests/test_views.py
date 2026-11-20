@@ -185,6 +185,136 @@ class TestApplyViewGetExistingApplication:
 
 
 @pytest.mark.django_db
+class TestApplyAfterAClosedApplication:
+    """An account whose latest application is closed can start another."""
+
+    def test_post_after_a_withdrawn_application_creates_a_submitted_one(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        course = CourseFactory()
+        CourseApplicationFactory(user=user, course=course, withdrawn=True)
+        client.force_login(user)
+
+        response = client.post(
+            reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+        )
+
+        new = CourseApplication.objects.get(
+            user=user, course=course, state=CourseApplication.State.SUBMITTED
+        )
+        assert CourseApplication.objects.filter(user=user, course=course).count() == 2
+        assert response["Location"] == reverse(
+            "course_applications:status", kwargs={"pk": new.pk}
+        )
+
+    def test_post_after_a_rejected_application_creates_a_submitted_one(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        course = CourseFactory()
+        CourseApplicationFactory(user=user, course=course, rejected=True)
+        client.force_login(user)
+
+        client.post(
+            reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+        )
+
+        assert CourseApplication.objects.filter(
+            user=user, course=course, state=CourseApplication.State.SUBMITTED
+        ).exists()
+
+    def test_get_after_a_withdrawn_application_starts_a_draft_for_a_form_course(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        course, _form = gated_course_with_form()
+        CourseApplicationFactory(user=user, course=course, withdrawn=True)
+        client.force_login(user)
+
+        client.get(
+            reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+        )
+
+        draft = CourseApplication.objects.get(
+            user=user, course=course, state=CourseApplication.State.DRAFT
+        )
+        assert draft.form_progress is not None
+
+    def test_each_new_application_records_its_own_conversion(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        course = CourseFactory()
+        CourseApplicationFactory(user=user, course=course, withdrawn=True)
+        client.force_login(user)
+        url = reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+
+        client.post(url)
+
+        new = CourseApplication.objects.get(
+            user=user, course=course, state=CourseApplication.State.SUBMITTED
+        )
+        conversion = Conversion._base_manager.get(user=user)
+        assert conversion.kind == ConversionKind.COURSE_APPLICATION
+        assert conversion.object_id == str(new.pk)
+
+    def test_post_with_an_active_application_redirects_to_it(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        course = CourseFactory()
+        CourseApplicationFactory(user=user, course=course, withdrawn=True)
+        active = CourseApplicationFactory(user=user, course=course)
+        client.force_login(user)
+
+        response = client.post(
+            reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+        )
+
+        assert response["Location"] == reverse(
+            "course_applications:status", kwargs={"pk": active.pk}
+        )
+        assert CourseApplication.objects.filter(user=user, course=course).count() == 2
+
+    def test_post_on_a_coming_soon_course_redirects_to_the_course_detail_page(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+        CourseApplicationFactory(user=user, course=course, withdrawn=True)
+        client.force_login(user)
+
+        response = client.post(
+            reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+        )
+
+        assert response["Location"] == reverse(
+            "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+        )
+        assert CourseApplication.objects.filter(user=user, course=course).count() == 1
+
+    def test_withdrawn_status_page_links_to_apply_again(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        application = CourseApplicationFactory(user=user, withdrawn=True)
+        client.force_login(user)
+
+        response = client.get(
+            reverse("course_applications:status", kwargs={"pk": application.pk})
+        )
+
+        apply_url = reverse(
+            "course_applications:apply",
+            kwargs={"course_slug": application.course.slug},
+        )
+        content = response.content.decode()
+        assert "Apply again" in content
+        assert f'href="{apply_url}"' in content
+
+
+@pytest.mark.django_db
 class TestApplyViewPost:
     """POST /apply/<slug>/ — creates application and redirects to status."""
 

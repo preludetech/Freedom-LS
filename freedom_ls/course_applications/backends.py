@@ -22,6 +22,7 @@ from freedom_ls.course_access.backends import (
     DashboardContribution,
     FreeOnlyCourseAccessBackend,
 )
+from freedom_ls.course_applications.models import ACTIVE_STATES
 from freedom_ls.learner_management.utils import is_registered_for_course
 
 if TYPE_CHECKING:
@@ -121,8 +122,8 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
         into a gated course by an admin or via a cohort therefore reaches content:
         admin/cohort enrolment deliberately bypasses the gate.
         Free, not registered → Enrol for free/self-register (inherited from parent).
-        Application-gated, not registered → View my application when one exists,
-        otherwise Apply now.
+        Application-gated, not registered → View my application while one is
+        active, Apply again once it is closed, Apply now when there is none.
         Invalid config → safe no-action decision.
         """
         decision = self._ungated_decision(user=user, course=course)
@@ -184,14 +185,28 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
     def _gated_decision(
         self, *, course: Course, application: CourseApplication | None
     ) -> CourseAccessDecision:
-        """ "View my application" for an applicant, "Apply now" for anyone else."""
-        if application is not None:
+        """The CTA for an unregistered visitor to a gated course.
+
+        "Apply now" with no application; "View my application" while one is
+        active; "Apply again" once a claimed applicant's application is closed,
+        with a secondary link to that closed application.
+        """
+        apply_url = reverse(
+            "course_applications:apply", kwargs={"course_slug": course.slug}
+        )
+
+        def gated(
+            *,
+            cta_label: str,
+            cta_url: str,
+            secondary_cta_label: str | None = None,
+            secondary_cta_url: str | None = None,
+        ) -> CourseAccessDecision:
             return CourseAccessDecision(
-                cta_label="View my application",
-                cta_url=reverse(
-                    "course_applications:status",
-                    kwargs={"pk": application.pk},
-                ),
+                cta_label=cta_label,
+                cta_url=cta_url,
+                secondary_cta_label=secondary_cta_label,
+                secondary_cta_url=secondary_cta_url,
                 can_self_register=False,
                 can_access_content=False,
                 enrolment_summary="By application",
@@ -200,18 +215,20 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
                 is_accessible_for_free=False,
             )
 
-        return CourseAccessDecision(
-            cta_label="Apply now",
-            cta_url=reverse(
-                "course_applications:apply",
-                kwargs={"course_slug": course.slug},
-            ),
-            can_self_register=False,
-            can_access_content=False,
-            enrolment_summary="By application",
-            acquisition_heading="Application required",
-            acquisition_subtext="Apply and we'll review your request.",
-            is_accessible_for_free=False,
+        if application is None:
+            return gated(cta_label="Apply now", cta_url=apply_url)
+        status_url = reverse(
+            "course_applications:status", kwargs={"pk": application.pk}
+        )
+        # An unclaimed applicant must claim before applying again, so a closed
+        # unclaimed application still reads as "View my application".
+        if application.state in ACTIVE_STATES or not application.is_email_verified:
+            return gated(cta_label="View my application", cta_url=status_url)
+        return gated(
+            cta_label="Apply again",
+            cta_url=apply_url,
+            secondary_cta_label="View your previous application",
+            secondary_cta_url=status_url,
         )
 
     def is_accessible_for_free(self, *, course: Course) -> bool:

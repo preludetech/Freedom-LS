@@ -211,6 +211,47 @@ def test_anonymous_applicant_sees_view_my_application_on_the_course_page(
 
 @needs_course_applications
 @pytest.mark.django_db
+def test_closed_application_shows_apply_again_with_a_link_to_the_previous_one(
+    mock_site_context,
+):
+    course = _gated_form_course()
+    user = UserFactory()
+    client = Client()
+    client.force_login(user)
+    apply_url = reverse(
+        "course_applications:apply", kwargs={"course_slug": course.slug}
+    )
+    applied = client.get(apply_url)
+    application_pk = re.findall(r"[0-9a-f-]{36}", applied["Location"])[0]
+    client.post(reverse("course_applications:withdraw", kwargs={"pk": application_pk}))
+
+    response = client.get(_detail_url(course))
+
+    content = response.content.decode()
+    status_url = reverse("course_applications:status", kwargs={"pk": application_pk})
+    assert "Apply again" in content
+    assert "View your previous application" in content
+    assert status_url in content
+
+
+@needs_course_applications
+@pytest.mark.django_db
+def test_gated_course_without_an_application_has_no_secondary_link(
+    mock_site_context,
+):
+    course = _gated_form_course()
+    user = UserFactory()
+    client = Client()
+    client.force_login(user)
+
+    response = client.get(_detail_url(course))
+
+    assert "Apply now" in response.content.decode()
+    assert "View your previous application" not in response.content.decode()
+
+
+@needs_course_applications
+@pytest.mark.django_db
 def test_fresh_anonymous_visitor_still_sees_apply_now_on_a_gated_course_page(
     mock_site_context, settings
 ):

@@ -299,6 +299,61 @@ class TestGetAccess:
         assert decision.cta_label == "View my application"
         assert decision.cta_url == expected_url
 
+    def test_claimed_applicant_with_a_closed_application_is_offered_apply_again(
+        self, mock_site_context
+    ):
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        user = UserFactory()
+        course = CourseFactory(access_config={"access_type": "application_gated"})
+        closed = CourseApplicationFactory(user=user, course=course, withdrawn=True)
+
+        decision = ApplicationCourseAccessBackend().get_access(user=user, course=course)
+
+        assert decision.cta_label == "Apply again"
+        assert decision.cta_url == reverse(
+            "course_applications:apply", kwargs={"course_slug": course.slug}
+        )
+        assert decision.secondary_cta_label == "View your previous application"
+        assert decision.secondary_cta_url == reverse(
+            "course_applications:status", kwargs={"pk": closed.pk}
+        )
+
+    def test_active_application_has_no_secondary_link(self, mock_site_context):
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        user = UserFactory()
+        course = CourseFactory(access_config={"access_type": "application_gated"})
+        CourseApplicationFactory(user=user, course=course)
+
+        decision = ApplicationCourseAccessBackend().get_access(user=user, course=course)
+
+        assert decision.cta_label == "View my application"
+        assert decision.secondary_cta_label is None
+        assert decision.secondary_cta_url is None
+
+    def test_unclaimed_closed_application_still_reads_view_my_application(
+        self, mock_site_context
+    ):
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        course = CourseFactory(access_config={"access_type": "application_gated"})
+        closed = CourseApplicationFactory(anonymous=True, course=course, withdrawn=True)
+        request = _anonymous_request(closed.anonymous_applicant)
+
+        decision = ApplicationCourseAccessBackend().get_access_for_request(
+            request=request, course=course
+        )
+
+        assert decision.cta_label == "View my application"
+        assert decision.secondary_cta_label is None
+
     def test_no_application_still_returns_apply_now(self, mock_site_context):
         """An unregistered learner without an application still sees 'Apply now'."""
         from freedom_ls.course_applications.backends import (
