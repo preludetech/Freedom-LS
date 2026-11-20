@@ -1,0 +1,157 @@
+- generic [ref=f5e1]:
+  - banner [ref=f5e2]:
+    - link [ref=f5e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f5e4]
+      - heading "FirstClass" [level=1] [ref=f5e5]
+    - navigation [ref=f5e6]:
+      - generic [ref=f5e7]:
+        - generic [ref=f5e8]:
+          - button "Notifications, none new" [ref=f5e9]
+          - status:
+            - generic [ref=f5e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f5e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f5e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f5e17]:
+    - generic [ref=f5e19]:
+      - dialog "Navigation" [ref=f5e20]:
+        - generic [ref=f5e22]:
+          - generic [ref=f5e23]:
+            - paragraph [ref=f5e24]: Organisation
+            - button "Switch organisation" [ref=f5e26] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f5e27]: D
+              - generic "DemoDev" [ref=f5e28]
+          - navigation "Sections" [ref=f5e31]:
+            - heading "Teaching" [level=2] [ref=f5e32]
+            - list [ref=f5e33]:
+              - listitem [ref=f5e34]:
+                - link "Dashboard" [ref=f5e35] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/dashboard
+              - listitem [ref=f5e40]:
+                - link "Cohorts" [ref=f5e41] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+              - listitem [ref=f5e46]:
+                - link "Learners" [ref=f5e47] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+              - listitem [ref=f5e52]:
+                - link "Courses" [ref=f5e53] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+            - heading "Administration" [level=2] [ref=f5e58]
+            - list [ref=f5e59]:
+              - listitem [ref=f5e60]:
+                - link "Staff" [ref=f5e61] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/staff
+              - listitem [ref=f5e66]:
+                - link "Audit log" [ref=f5e67] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/audit-log
+          - generic [ref=f5e72]:
+            - generic [ref=f5e74]:
+              - generic [aria-hidden] [ref=f5e75]: DE
+              - generic [ref=f5e76]: demodev@email.com
+            - link "Account settings" [ref=f5e78] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f5e83]:
+        - generic [ref=f5e84]:
+          - generic [ref=f5e86]:
+            - heading "Cohorts" [level=1] [ref=f5e90]
+            - button "Create cohort" [ref=f5e92] [cursor=pointer]
+          - generic [ref=f5e211]:
+            - generic [ref=f5e212]:
+              - generic [ref=f5e214]:
+                - generic [ref=f5e215]: Search
+                - searchbox "Search" [ref=f5e103]: Cohort
+              - group [ref=f5e218]:
+                - generic "Add filter" [ref=f5e219]
+                - generic [ref=f5e313]:
+                  - group [ref=f5e314]:
+                    - generic "Show inactive" [active] [ref=f5e315] [cursor=pointer]
+                    - link "Show inactive" [ref=f5e323] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts?cohorts-q=Cohort&cohorts-inactive=1
+                  - group [ref=f5e318]:
+                    - generic "Course" [ref=f5e319] [cursor=pointer]
+            - status [ref=f5e223]
+            - region "Cohorts" [ref=f5e226]:
+              - table [ref=f5e227]:
+                - caption [ref=f5e228]: Cohorts
+                - rowgroup [ref=f5e229]:
+                  - row [ref=f5e230]:
+                    - columnheader [ref=f5e231]:
+                      - checkbox "Select all on this page" [ref=f5e232] [cursor=pointer]
+                    - columnheader [ref=f5e233]:
+                      - link "Name" [ref=f5e234] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts?cohorts-q=Cohort&cohorts-sort=-name
+                    - columnheader "Status" [ref=f5e238]
+                    - columnheader [ref=f5e239]:
+                      - link "Learners" [ref=f5e240] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts?cohorts-q=Cohort&cohorts-sort=learner_count
+                    - columnheader "Courses" [ref=f5e244]
+                    - columnheader [ref=f5e245]:
+                      - link "Created" [ref=f5e246] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts?cohorts-q=Cohort&cohorts-sort=created_at
+                - rowgroup [ref=f5e250]:
+                  - row [ref=f5e251]:
+                    - cell [ref=f5e252]:
+                      - checkbox "Select Cohort 2025.03.04" [ref=f5e253] [cursor=pointer]
+                    - cell [ref=f5e254]:
+                      - generic [ref=f5e255]:
+                        - link "Cohort 2025.03.04" [ref=f5e256] [cursor=pointer]:
+                          - /url: /educator/organisations/demodev/cohorts/6ab4084d-3c7c-48b5-943c-97547f4fc35e
+                        - 'link "Quick view: Cohort 2025.03.04" [ref=f5e257] [cursor=pointer]':
+                          - /url: /educator/organisations/demodev/cohorts/6ab4084d-3c7c-48b5-943c-97547f4fc35e
+                    - cell "Active" [ref=f5e262]
+                    - cell "50" [ref=f5e264]
+                    - cell [ref=f5e265]:
+                      - img "None" [ref=f5e266]: —
+                    - cell "19 Nov 2026, 23:49" [ref=f5e267]:
+                      - time [ref=f5e268]:
+                        - generic [ref=f5e269]: 19 Nov 2026,
+                        - generic [ref=f5e270]: 23:49
+                  - row [ref=f5e271]:
+                    - cell [ref=f5e272]:
+                      - checkbox "Select Cohort 2025.04.06" [ref=f5e273] [cursor=pointer]
+                    - cell [ref=f5e274]:
+                      - generic [ref=f5e275]:
+                        - link "Cohort 2025.04.06" [ref=f5e276] [cursor=pointer]:
+                          - /url: /educator/organisations/demodev/cohorts/8acec74c-262d-48e5-b6ad-6d44aaf1779d
+                        - 'link "Quick view: Cohort 2025.04.06" [ref=f5e277] [cursor=pointer]':
+                          - /url: /educator/organisations/demodev/cohorts/8acec74c-262d-48e5-b6ad-6d44aaf1779d
+                    - cell "Active" [ref=f5e282]
+                    - cell "0" [ref=f5e284]
+                    - cell [ref=f5e285]:
+                      - img "None" [ref=f5e286]: —
+                    - cell "19 Nov 2026, 23:49" [ref=f5e287]:
+                      - time [ref=f5e288]:
+                        - generic [ref=f5e289]: 19 Nov 2026,
+                        - generic [ref=f5e290]: 23:49
+                  - row [ref=f5e291]:
+                    - cell [ref=f5e292]:
+                      - checkbox "Select QA Cohort 1795132691198" [ref=f5e293] [cursor=pointer]
+                    - cell [ref=f5e294]:
+                      - generic [ref=f5e295]:
+                        - link "QA Cohort 1795132691198" [ref=f5e296] [cursor=pointer]:
+                          - /url: /educator/organisations/demodev/cohorts/09f47156-3478-4d69-b039-5daf53261d84
+                        - 'link "Quick view: QA Cohort 1795132691198" [ref=f5e297] [cursor=pointer]':
+                          - /url: /educator/organisations/demodev/cohorts/09f47156-3478-4d69-b039-5daf53261d84
+                    - cell "Active" [ref=f5e302]
+                    - cell "0" [ref=f5e304]
+                    - cell [ref=f5e305]:
+                      - img "None" [ref=f5e306]: —
+                    - cell "19 Nov 2026, 23:58" [ref=f5e307]:
+                      - time [ref=f5e308]:
+                        - generic [ref=f5e309]: 19 Nov 2026,
+                        - generic [ref=f5e310]: 23:58
+            - paragraph [ref=f5e312]: 3 cohorts
+        - generic [ref=f5e200]: Showing 1–3 of 3, sorted by Name
+  - contentinfo [ref=f5e202]:
+    - generic [ref=f5e203]:
+      - paragraph [ref=f5e204]: © 2026 FirstClass
+      - navigation "Legal" [ref=f5e205]:
+        - link "Terms and Conditions" [ref=f5e206] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f5e207] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f5e208] [cursor=pointer]: extract_panels_framework-4-template-contract
+  - generic "Show toolbar" [ref=f5e210]: DJDT

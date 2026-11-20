@@ -1,0 +1,144 @@
+- generic [ref=f26e1]:
+  - banner [ref=f26e2]:
+    - link [ref=f26e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f26e4]
+    - navigation [ref=f26e5]:
+      - generic [ref=f26e6]:
+        - generic [ref=f26e7]:
+          - button "Notifications, none new" [ref=f26e8]
+          - status:
+            - generic [ref=f26e12]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f26e14] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f26e15]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f26e16]:
+    - generic [ref=f26e17]:
+      - generic [ref=f26e20]:
+        - generic [ref=f26e22]:
+          - generic [ref=f26e24]:
+            - button "Open navigation panel" [ref=f26e25] [cursor=pointer]
+            - heading "Cohorts" [level=1] [ref=f26e29]
+          - button "Create cohort" [ref=f26e31] [cursor=pointer]
+        - generic [ref=f26e36]:
+          - generic [ref=f26e37]:
+            - generic [ref=f26e39]:
+              - generic [ref=f26e40]: Search
+              - searchbox "Search" [ref=f26e42]
+            - generic [ref=f26e44]:
+              - button "Filter" [ref=f26e45] [cursor=pointer]
+              - button "Sort" [ref=f26e50] [cursor=pointer]
+          - status [ref=f26e54]
+          - generic [ref=f26e56]:
+            - generic [ref=f26e58]:
+              - checkbox "Select all on this page" [ref=f26e59] [cursor=pointer]
+              - text: Select all on this page
+            - list [ref=f26e60]:
+              - listitem [ref=f26e61]:
+                - checkbox "Select Cohort 2025.03.04" [ref=f26e63] [cursor=pointer]
+                - generic [ref=f26e64]:
+                  - generic [ref=f26e67]:
+                    - link "Cohort 2025.03.04" [ref=f26e68] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/6ab4084d-3c7c-48b5-943c-97547f4fc35e
+                    - 'link "Quick view: Cohort 2025.03.04" [ref=f26e69] [cursor=pointer]':
+                      - /url: /educator/organisations/demodev/cohorts/6ab4084d-3c7c-48b5-943c-97547f4fc35e
+                  - generic [ref=f26e77]:
+                    - generic [ref=f26e78]:
+                      - term [ref=f26e79]: Status
+                      - definition [ref=f26e80]:
+                        - generic [ref=f26e81]: Active
+                    - generic [ref=f26e82]:
+                      - term [ref=f26e83]: Learners
+                      - definition [ref=f26e84]: "50"
+                    - generic [ref=f26e85]:
+                      - term [ref=f26e86]: Courses
+                      - definition [ref=f26e87]:
+                        - img "None" [ref=f26e88]: —
+              - listitem [ref=f26e89]:
+                - checkbox "Select Cohort 2025.04.06" [ref=f26e91] [cursor=pointer]
+                - generic [ref=f26e92]:
+                  - generic [ref=f26e95]:
+                    - link "Cohort 2025.04.06" [ref=f26e96] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/8acec74c-262d-48e5-b6ad-6d44aaf1779d
+                    - 'link "Quick view: Cohort 2025.04.06" [ref=f26e97] [cursor=pointer]':
+                      - /url: /educator/organisations/demodev/cohorts/8acec74c-262d-48e5-b6ad-6d44aaf1779d
+                  - generic [ref=f26e105]:
+                    - generic [ref=f26e106]:
+                      - term [ref=f26e107]: Status
+                      - definition [ref=f26e108]:
+                        - generic [ref=f26e109]: Active
+                    - generic [ref=f26e110]:
+                      - term [ref=f26e111]: Learners
+                      - definition [ref=f26e112]: "0"
+                    - generic [ref=f26e113]:
+                      - term [ref=f26e114]: Courses
+                      - definition [ref=f26e115]:
+                        - img "None" [ref=f26e116]: —
+              - listitem [ref=f26e117]:
+                - checkbox "Select QA Cohort 1795132691198" [ref=f26e119] [cursor=pointer]
+                - generic [ref=f26e120]:
+                  - generic [ref=f26e123]:
+                    - link "QA Cohort 1795132691198" [ref=f26e124] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/09f47156-3478-4d69-b039-5daf53261d84
+                    - 'link "Quick view: QA Cohort 1795132691198" [ref=f26e125] [cursor=pointer]':
+                      - /url: /educator/organisations/demodev/cohorts/09f47156-3478-4d69-b039-5daf53261d84
+                  - generic [ref=f26e133]:
+                    - generic [ref=f26e134]:
+                      - term [ref=f26e135]: Status
+                      - definition [ref=f26e136]:
+                        - generic [ref=f26e137]: Active
+                    - generic [ref=f26e138]:
+                      - term [ref=f26e139]: Learners
+                      - definition [ref=f26e140]: "0"
+                    - generic [ref=f26e141]:
+                      - term [ref=f26e142]: Courses
+                      - definition [ref=f26e143]:
+                        - img "None" [ref=f26e144]: —
+              - listitem [ref=f26e145]:
+                - checkbox "Select QA Double Click Cohort" [ref=f26e147] [cursor=pointer]
+                - generic [ref=f26e148]:
+                  - generic [ref=f26e151]:
+                    - link "QA Double Click Cohort" [ref=f26e152] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/700fd5ae-5500-488c-97ab-e067380c0a25
+                    - 'link "Quick view: QA Double Click Cohort" [ref=f26e153] [cursor=pointer]':
+                      - /url: /educator/organisations/demodev/cohorts/700fd5ae-5500-488c-97ab-e067380c0a25
+                  - generic [ref=f26e161]:
+                    - generic [ref=f26e162]:
+                      - term [ref=f26e163]: Status
+                      - definition [ref=f26e164]:
+                        - generic [ref=f26e165]: Active
+                    - generic [ref=f26e166]:
+                      - term [ref=f26e167]: Learners
+                      - definition [ref=f26e168]: "50"
+                    - generic [ref=f26e169]:
+                      - term [ref=f26e170]: Courses
+                      - definition [ref=f26e171]:
+                        - img "None" [ref=f26e172]: —
+          - paragraph [ref=f26e174]: 4 cohorts
+      - dialog [ref=f26e186]:
+        - status [ref=f26e187]
+        - generic [ref=f26e188]:
+          - generic [ref=f26e189]:
+            - heading "Create cohort" [level=2] [ref=f26e190]
+            - button "Close" [ref=f26e191] [cursor=pointer]
+          - generic [ref=f26e194]:
+            - generic [ref=f26e197]:
+              - generic [ref=f26e198]: "Name:"
+              - textbox "Name:" [active] [ref=f26e199]
+            - generic [ref=f26e200]:
+              - button "Cancel" [ref=f26e202] [cursor=pointer]
+              - generic [ref=f26e203]:
+                - button "Save and add another" [ref=f26e204] [cursor=pointer]
+                - button "Save" [ref=f26e206] [cursor=pointer]
+  - contentinfo [ref=f26e177]:
+    - generic [ref=f26e178]:
+      - paragraph [ref=f26e179]: © 2026 FirstClass
+      - navigation "Legal" [ref=f26e180]:
+        - link "Terms and Conditions" [ref=f26e181] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f26e182] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f26e183] [cursor=pointer]: extract_panels_framework-4-template-contract
+  - generic "Show toolbar" [ref=f26e185]: DJDT

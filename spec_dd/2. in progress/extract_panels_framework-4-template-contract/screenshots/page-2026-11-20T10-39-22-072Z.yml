@@ -1,0 +1,1903 @@
+- generic [active] [ref=f22e1]:
+  - banner [ref=f22e2]:
+    - heading "TemplateDoesNotExist at /educator/organisations/demodev/learners" [level=1] [ref=f22e3]
+    - generic [ref=f22e4]: panel_framework/icons/home.html
+    - table [ref=f22e5]:
+      - rowgroup [ref=f22e6]:
+        - row [ref=f22e7]:
+          - rowheader "Request Method:" [ref=f22e8]
+          - cell "GET" [ref=f22e9]
+        - row [ref=f22e10]:
+          - rowheader "Request URL:" [ref=f22e11]
+          - cell "http://127.0.0.1:8570/educator/organisations/demodev/learners" [ref=f22e12]
+        - row [ref=f22e13]:
+          - rowheader "Django Version:" [ref=f22e14]
+          - cell "6.0.4" [ref=f22e15]
+        - row [ref=f22e16]:
+          - rowheader "Exception Type:" [ref=f22e17]
+          - cell "TemplateDoesNotExist" [ref=f22e18]
+        - row [ref=f22e19]:
+          - rowheader "Exception Value:" [ref=f22e20]
+          - cell "panel_framework/icons/home.html" [ref=f22e21]
+        - row [ref=f22e23]:
+          - rowheader "Exception Location:" [ref=f22e24]
+          - cell "/home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/backends/django.py, line 130, in reraise" [ref=f22e25]
+        - row [ref=f22e26]:
+          - rowheader "Raised during:" [ref=f22e27]
+          - cell "freedom_ls.educator_interface.views.interface" [ref=f22e28]
+        - row [ref=f22e29]:
+          - rowheader "Python Executable:" [ref=f22e30]
+          - cell "/home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/bin/python3" [ref=f22e31]
+        - row [ref=f22e32]:
+          - rowheader "Python Version:" [ref=f22e33]
+          - cell "3.13.5" [ref=f22e34]
+        - row [ref=f22e35]:
+          - rowheader "Python Path:" [ref=f22e36]
+          - cell [ref=f22e37]:
+            - code [ref=f22e39]: "['/home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/concrete_apps', '/home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract', '/tmp/claude-1000/-home-sheena-workspace-lms-freedom-ls-worktrees-extract-panels-framework-4-template-contract/67f1659e-4d0f-490b-801d-704433c316ad/scratchpad', '/home/sheena/.local/share/uv/python/cpython-3.13.5-linux-x86_64-gnu/lib/python313.zip', '/home/sheena/.local/share/uv/python/cpython-3.13.5-linux-x86_64-gnu/lib/python3.13', '/home/sheena/.local/share/uv/python/cpython-3.13.5-linux-x86_64-gnu/lib/python3.13/lib-dynload', '/home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages']"
+        - row [ref=f22e40]:
+          - rowheader "Server time:" [ref=f22e41]
+          - cell "Fri, 20 Nov 2026 10:39:21 +0000" [ref=f22e42]
+  - main [ref=f22e43]:
+    - generic [ref=f22e44]:
+      - heading "Template-loader postmortem" [level=2] [ref=f22e45]
+      - paragraph [ref=f22e46]: "Django tried loading these templates, in this order:"
+      - paragraph [ref=f22e47]:
+        - text: Using engine
+        - code [ref=f22e48]: django
+        - text: ":"
+      - list [ref=f22e49]:
+        - listitem [ref=f22e50]: This engine did not provide a list of tried templates.
+    - generic [ref=f22e51]:
+      - heading "Error during template rendering" [level=2] [ref=f22e52]
+      - paragraph [ref=f22e53]:
+        - text: In template
+        - code [ref=f22e54]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/freedom_ls/panel_framework/templates/cotton/panel-icon.html
+        - text: ", error at line"
+        - strong [ref=f22e55]: "20"
+      - heading "panel_framework/icons/home.html" [level=3] [ref=f22e56]
+      - table [ref=f22e57]:
+        - rowgroup [ref=f22e58]:
+          - row [ref=f22e59]:
+            - rowheader "10" [ref=f22e60]
+            - cell [ref=f22e61]
+          - row [ref=f22e62]:
+            - rowheader "11" [ref=f22e63]
+            - 'cell "An icon is decorative unless given an `aria_label`: without one it renders" [ref=f22e64]'
+          - row [ref=f22e65]:
+            - rowheader "12" [ref=f22e66]
+            - cell "aria-hidden, so a labelled button or a link with text is read by that text" [ref=f22e67]
+          - row [ref=f22e68]:
+            - rowheader "13" [ref=f22e69]
+            - cell "alone. width and height are the icon's intrinsic size, so it stays small" [ref=f22e70]
+          - row [ref=f22e71]:
+            - rowheader "14" [ref=f22e72]
+            - cell "when the size class has no stylesheet behind it." [ref=f22e73]
+          - row [ref=f22e74]:
+            - rowheader "15" [ref=f22e75]
+            - cell [ref=f22e76]
+          - row [ref=f22e77]:
+            - rowheader "16" [ref=f22e78]
+            - 'cell "Usage: <c-panel-icon name=\"close\" />" [ref=f22e79]'
+          - row [ref=f22e80]:
+            - rowheader "17" [ref=f22e81]
+            - cell "<c-panel-icon name=\"success\" class=\"size-6 text-success\" />" [ref=f22e82]
+          - row [ref=f22e83]:
+            - rowheader "18" [ref=f22e84]
+            - cell "<c-panel-icon name=\"boolean_true\" aria_label=\"Yes\" />" [ref=f22e85]
+          - row [ref=f22e86]:
+            - rowheader "19" [ref=f22e87]
+            - 'cell "{% endcomment %}" [ref=f22e88]'
+          - row [ref=f22e89]:
+            - rowheader "20" [ref=f22e90]
+            - 'cell "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" width=\"24\" height=\"24\" class=\"inline {{ class }}\" {% if aria_label %}role=\"img\" aria-label=\"{{ aria_label }}\"{% else %}aria-hidden=\"true\"{% endif %} data-icon=\"{{ name }}\">{% spaceless %}{% include \"panel_framework/icons/\"|add:name|add:\".html\" %}{% endspaceless %}</svg>" [ref=f22e91]'
+          - row [ref=f22e92]:
+            - rowheader "21" [ref=f22e93]
+            - cell [ref=f22e94]
+    - generic [ref=f22e95]:
+      - heading [level=2] [ref=f22e96]:
+        - text: Traceback
+        - button "Switch to copy-and-paste view" [ref=f22e98] [cursor=pointer]
+      - list [ref=f22e100]:
+        - listitem [ref=f22e101]:
+          - code [ref=f22e102]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/backends/django.py
+          - text: ", line 107, in render"
+          - list [ref=f22e104]:
+            - listitem [ref=f22e105] [cursor=pointer]:
+              - text: return self.template.render(context) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e106]: …
+          - group [ref=f22e107]:
+            - generic "Local vars" [ref=f22e108] [cursor=pointer]
+        - listitem [ref=f22e109]:
+          - code [ref=f22e110]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 174, in render"
+          - list [ref=f22e112]:
+            - listitem [ref=f22e113] [cursor=pointer]:
+              - text: return self._render(context) ^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e114]: …
+          - group [ref=f22e115]:
+            - generic "Local vars" [ref=f22e116] [cursor=pointer]
+        - listitem [ref=f22e117]:
+          - code [ref=f22e118]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/test/utils.py
+          - text: ", line 114, in instrumented_test_render"
+          - list [ref=f22e120]:
+            - listitem [ref=f22e121] [cursor=pointer]:
+              - text: return self.nodelist.render(context) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e122]: …
+          - group [ref=f22e123]:
+            - generic "Local vars" [ref=f22e124] [cursor=pointer]
+        - listitem [ref=f22e125]:
+          - code [ref=f22e126]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 1091, in render"
+          - list [ref=f22e128]:
+            - listitem [ref=f22e129] [cursor=pointer]:
+              - text: return SafeString("".join([node.render_annotated(context) for node in self])) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e130]: …
+          - group [ref=f22e131]:
+            - generic "Local vars" [ref=f22e132] [cursor=pointer]
+        - listitem [ref=f22e133]:
+          - code [ref=f22e134]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 1052, in render_annotated"
+          - list [ref=f22e136]:
+            - listitem [ref=f22e137] [cursor=pointer]:
+              - text: return self.render(context) ^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e138]: …
+          - group [ref=f22e139]:
+            - generic "Local vars" [ref=f22e140] [cursor=pointer]
+        - listitem [ref=f22e141]:
+          - code [ref=f22e142]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/loader_tags.py
+          - text: ", line 160, in render"
+          - list [ref=f22e144]:
+            - listitem [ref=f22e145] [cursor=pointer]:
+              - text: return compiled_parent._render(context) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e146]: …
+          - group [ref=f22e147]:
+            - generic "Local vars" [ref=f22e148] [cursor=pointer]
+        - listitem [ref=f22e149]:
+          - code [ref=f22e150]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/test/utils.py
+          - text: ", line 114, in instrumented_test_render"
+          - list [ref=f22e152]:
+            - listitem [ref=f22e153] [cursor=pointer]:
+              - text: return self.nodelist.render(context) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e154]: …
+          - group [ref=f22e155]:
+            - generic "Local vars" [ref=f22e156] [cursor=pointer]
+        - listitem [ref=f22e157]:
+          - code [ref=f22e158]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 1091, in render"
+          - list [ref=f22e160]:
+            - listitem [ref=f22e161] [cursor=pointer]:
+              - text: return SafeString("".join([node.render_annotated(context) for node in self])) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e162]: …
+          - group [ref=f22e163]:
+            - generic "Local vars" [ref=f22e164] [cursor=pointer]
+        - listitem [ref=f22e165]:
+          - code [ref=f22e166]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 1052, in render_annotated"
+          - list [ref=f22e168]:
+            - listitem [ref=f22e169] [cursor=pointer]:
+              - text: return self.render(context) ^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e170]: …
+          - group [ref=f22e171]:
+            - generic "Local vars" [ref=f22e172] [cursor=pointer]
+        - listitem [ref=f22e173]:
+          - code [ref=f22e174]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/loader_tags.py
+          - text: ", line 160, in render"
+          - list [ref=f22e176]:
+            - listitem [ref=f22e177] [cursor=pointer]:
+              - text: return compiled_parent._render(context) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e178]: …
+          - group [ref=f22e179]:
+            - generic "Local vars" [ref=f22e180] [cursor=pointer]
+        - listitem [ref=f22e181]:
+          - code [ref=f22e182]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/test/utils.py
+          - text: ", line 114, in instrumented_test_render"
+          - list [ref=f22e184]:
+            - listitem [ref=f22e185] [cursor=pointer]:
+              - text: return self.nodelist.render(context) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e186]: …
+          - group [ref=f22e187]:
+            - generic "Local vars" [ref=f22e188] [cursor=pointer]
+        - listitem [ref=f22e189]:
+          - code [ref=f22e190]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 1091, in render"
+          - list [ref=f22e192]:
+            - listitem [ref=f22e193] [cursor=pointer]:
+              - text: return SafeString("".join([node.render_annotated(context) for node in self])) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e194]: …
+          - group [ref=f22e195]:
+            - generic "Local vars" [ref=f22e196] [cursor=pointer]
+        - listitem [ref=f22e197]:
+          - code [ref=f22e198]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 1052, in render_annotated"
+          - list [ref=f22e200]:
+            - listitem [ref=f22e201] [cursor=pointer]:
+              - text: return self.render(context) ^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e202]: …
+          - group [ref=f22e203]:
+            - generic "Local vars" [ref=f22e204] [cursor=pointer]
+        - listitem [ref=f22e205]:
+          - code [ref=f22e206]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/loader_tags.py
+          - text: ", line 160, in render"
+          - list [ref=f22e208]:
+            - listitem [ref=f22e209] [cursor=pointer]:
+              - text: return compiled_parent._render(context) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e210]: …
+          - group [ref=f22e211]:
+            - generic "Local vars" [ref=f22e212] [cursor=pointer]
+        - listitem [ref=f22e213]:
+          - code [ref=f22e214]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/test/utils.py
+          - text: ", line 114, in instrumented_test_render"
+          - list [ref=f22e216]:
+            - listitem [ref=f22e217] [cursor=pointer]:
+              - text: return self.nodelist.render(context) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e218]: …
+          - group [ref=f22e219]:
+            - generic "Local vars" [ref=f22e220] [cursor=pointer]
+        - listitem [ref=f22e221]:
+          - code [ref=f22e222]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 1091, in render"
+          - list [ref=f22e224]:
+            - listitem [ref=f22e225] [cursor=pointer]:
+              - text: return SafeString("".join([node.render_annotated(context) for node in self])) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e226]: …
+          - group [ref=f22e227]:
+            - generic "Local vars" [ref=f22e228] [cursor=pointer]
+        - listitem [ref=f22e229]:
+          - code [ref=f22e230]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 1052, in render_annotated"
+          - list [ref=f22e232]:
+            - listitem [ref=f22e233] [cursor=pointer]:
+              - text: return self.render(context) ^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e234]: …
+          - group [ref=f22e235]:
+            - generic "Local vars" [ref=f22e236] [cursor=pointer]
+        - listitem [ref=f22e237]:
+          - code [ref=f22e238]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/loader_tags.py
+          - text: ", line 66, in render"
+          - list [ref=f22e240]:
+            - listitem [ref=f22e241] [cursor=pointer]:
+              - text: result = block.nodelist.render(context) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e242]: …
+          - group [ref=f22e243]:
+            - generic "Local vars" [ref=f22e244] [cursor=pointer]
+        - listitem [ref=f22e245]:
+          - code [ref=f22e246]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 1091, in render"
+          - list [ref=f22e248]:
+            - listitem [ref=f22e249] [cursor=pointer]:
+              - text: return SafeString("".join([node.render_annotated(context) for node in self])) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e250]: …
+          - group [ref=f22e251]:
+            - generic "Local vars" [ref=f22e252] [cursor=pointer]
+        - listitem [ref=f22e253]:
+          - code [ref=f22e254]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 1052, in render_annotated"
+          - list [ref=f22e256]:
+            - listitem [ref=f22e257] [cursor=pointer]:
+              - text: return self.render(context) ^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e258]: …
+          - group [ref=f22e259]:
+            - generic "Local vars" [ref=f22e260] [cursor=pointer]
+        - listitem [ref=f22e261]:
+          - code [ref=f22e262]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/loader_tags.py
+          - text: ", line 66, in render"
+          - list [ref=f22e264]:
+            - listitem [ref=f22e265] [cursor=pointer]:
+              - text: result = block.nodelist.render(context) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e266]: …
+          - group [ref=f22e267]:
+            - generic "Local vars" [ref=f22e268] [cursor=pointer]
+        - listitem [ref=f22e269]:
+          - code [ref=f22e270]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 1091, in render"
+          - list [ref=f22e272]:
+            - listitem [ref=f22e273] [cursor=pointer]:
+              - text: return SafeString("".join([node.render_annotated(context) for node in self])) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e274]: …
+          - group [ref=f22e275]:
+            - generic "Local vars" [ref=f22e276] [cursor=pointer]
+        - listitem [ref=f22e277]:
+          - code [ref=f22e278]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 1052, in render_annotated"
+          - list [ref=f22e280]:
+            - listitem [ref=f22e281] [cursor=pointer]:
+              - text: return self.render(context) ^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e282]: …
+          - group [ref=f22e283]:
+            - generic "Local vars" [ref=f22e284] [cursor=pointer]
+        - listitem [ref=f22e285]:
+          - code [ref=f22e286]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/loader_tags.py
+          - text: ", line 209, in render"
+          - list [ref=f22e288]:
+            - listitem [ref=f22e289] [cursor=pointer]:
+              - text: return template.render(context.new(values)) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e290]: …
+          - group [ref=f22e291]:
+            - generic "Local vars" [ref=f22e292] [cursor=pointer]
+        - listitem [ref=f22e293]:
+          - code [ref=f22e294]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 176, in render"
+          - list [ref=f22e296]:
+            - listitem [ref=f22e297] [cursor=pointer]:
+              - text: return self._render(context) ^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e298]: …
+          - group [ref=f22e299]:
+            - generic "Local vars" [ref=f22e300] [cursor=pointer]
+        - listitem [ref=f22e301]:
+          - code [ref=f22e302]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/test/utils.py
+          - text: ", line 114, in instrumented_test_render"
+          - list [ref=f22e304]:
+            - listitem [ref=f22e305] [cursor=pointer]:
+              - text: return self.nodelist.render(context) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e306]: …
+          - group [ref=f22e307]:
+            - generic "Local vars" [ref=f22e308] [cursor=pointer]
+        - listitem [ref=f22e309]:
+          - code [ref=f22e310]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 1091, in render"
+          - list [ref=f22e312]:
+            - listitem [ref=f22e313] [cursor=pointer]:
+              - text: return SafeString("".join([node.render_annotated(context) for node in self])) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e314]: …
+          - group [ref=f22e315]:
+            - generic "Local vars" [ref=f22e316] [cursor=pointer]
+        - listitem [ref=f22e317]:
+          - code [ref=f22e318]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 1052, in render_annotated"
+          - list [ref=f22e320]:
+            - listitem [ref=f22e321] [cursor=pointer]:
+              - text: return self.render(context) ^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e322]: …
+          - group [ref=f22e323]:
+            - generic "Local vars" [ref=f22e324] [cursor=pointer]
+        - listitem [ref=f22e325]:
+          - code [ref=f22e326]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/defaulttags.py
+          - text: ", line 249, in render"
+          - list [ref=f22e328]:
+            - listitem [ref=f22e329] [cursor=pointer]:
+              - text: nodelist.append(node.render_annotated(context)) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e330]: …
+          - group [ref=f22e331]:
+            - generic "Local vars" [ref=f22e332] [cursor=pointer]
+        - listitem [ref=f22e333]:
+          - code [ref=f22e334]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 1052, in render_annotated"
+          - list [ref=f22e336]:
+            - listitem [ref=f22e337] [cursor=pointer]:
+              - text: return self.render(context) ^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e338]: …
+          - group [ref=f22e339]:
+            - generic "Local vars" [ref=f22e340] [cursor=pointer]
+        - listitem [ref=f22e341]:
+          - code [ref=f22e342]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/defaulttags.py
+          - text: ", line 249, in render"
+          - list [ref=f22e344]:
+            - listitem [ref=f22e345] [cursor=pointer]:
+              - text: nodelist.append(node.render_annotated(context)) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e346]: …
+          - group [ref=f22e347]:
+            - generic "Local vars" [ref=f22e348] [cursor=pointer]
+        - listitem [ref=f22e349]:
+          - code [ref=f22e350]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 1052, in render_annotated"
+          - list [ref=f22e352]:
+            - listitem [ref=f22e353] [cursor=pointer]:
+              - text: return self.render(context) ^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e354]: …
+          - group [ref=f22e355]:
+            - generic "Local vars" [ref=f22e356] [cursor=pointer]
+        - listitem [ref=f22e357]:
+          - code [ref=f22e358]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/defaulttags.py
+          - text: ", line 333, in render"
+          - list [ref=f22e360]:
+            - listitem [ref=f22e361] [cursor=pointer]:
+              - text: return nodelist.render(context) ^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e362]: …
+          - group [ref=f22e363]:
+            - generic "Local vars" [ref=f22e364] [cursor=pointer]
+        - listitem [ref=f22e365]:
+          - code [ref=f22e366]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 1091, in render"
+          - list [ref=f22e368]:
+            - listitem [ref=f22e369] [cursor=pointer]:
+              - text: return SafeString("".join([node.render_annotated(context) for node in self])) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e370]: …
+          - group [ref=f22e371]:
+            - generic "Local vars" [ref=f22e372] [cursor=pointer]
+        - listitem [ref=f22e373]:
+          - code [ref=f22e374]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 1052, in render_annotated"
+          - list [ref=f22e376]:
+            - listitem [ref=f22e377] [cursor=pointer]:
+              - text: return self.render(context) ^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e378]: …
+          - group [ref=f22e379]:
+            - generic "Local vars" [ref=f22e380] [cursor=pointer]
+        - listitem [ref=f22e381]:
+          - code [ref=f22e382]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django_cotton/templatetags/_component.py
+          - text: ", line 108, in render"
+          - list [ref=f22e384]:
+            - listitem [ref=f22e385] [cursor=pointer]:
+              - text: output = template.render(context) ^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e386]: …
+          - group [ref=f22e387]:
+            - generic "Local vars" [ref=f22e388] [cursor=pointer]
+        - listitem [ref=f22e389]:
+          - code [ref=f22e390]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 176, in render"
+          - list [ref=f22e392]:
+            - listitem [ref=f22e393] [cursor=pointer]:
+              - text: return self._render(context) ^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e394]: …
+          - group [ref=f22e395]:
+            - generic "Local vars" [ref=f22e396] [cursor=pointer]
+        - listitem [ref=f22e397]:
+          - code [ref=f22e398]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/test/utils.py
+          - text: ", line 114, in instrumented_test_render"
+          - list [ref=f22e400]:
+            - listitem [ref=f22e401] [cursor=pointer]:
+              - text: return self.nodelist.render(context) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e402]: …
+          - group [ref=f22e403]:
+            - generic "Local vars" [ref=f22e404] [cursor=pointer]
+        - listitem [ref=f22e405]:
+          - code [ref=f22e406]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 1091, in render"
+          - list [ref=f22e408]:
+            - listitem [ref=f22e409] [cursor=pointer]:
+              - text: return SafeString("".join([node.render_annotated(context) for node in self])) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e410]: …
+          - group [ref=f22e411]:
+            - generic "Local vars" [ref=f22e412] [cursor=pointer]
+        - listitem [ref=f22e413]:
+          - code [ref=f22e414]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 1052, in render_annotated"
+          - list [ref=f22e416]:
+            - listitem [ref=f22e417] [cursor=pointer]:
+              - text: return self.render(context) ^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e418]: …
+          - group [ref=f22e419]:
+            - generic "Local vars" [ref=f22e420] [cursor=pointer]
+        - listitem [ref=f22e421]:
+          - code [ref=f22e422]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/defaulttags.py
+          - text: ", line 454, in render"
+          - list [ref=f22e424]:
+            - listitem [ref=f22e425] [cursor=pointer]:
+              - text: return strip_spaces_between_tags(self.nodelist.render(context).strip()) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e426]: …
+          - group [ref=f22e427]:
+            - generic "Local vars" [ref=f22e428] [cursor=pointer]
+        - listitem [ref=f22e429]:
+          - code [ref=f22e430]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 1091, in render"
+          - list [ref=f22e432]:
+            - listitem [ref=f22e433] [cursor=pointer]:
+              - text: return SafeString("".join([node.render_annotated(context) for node in self])) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e434]: …
+          - group [ref=f22e435]:
+            - generic "Local vars" [ref=f22e436] [cursor=pointer]
+        - listitem [ref=f22e437]:
+          - code [ref=f22e438]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/base.py
+          - text: ", line 1052, in render_annotated"
+          - list [ref=f22e440]:
+            - listitem [ref=f22e441] [cursor=pointer]:
+              - text: return self.render(context) ^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e442]: …
+          - group [ref=f22e443]:
+            - generic "Local vars" [ref=f22e444] [cursor=pointer]
+        - listitem [ref=f22e445]:
+          - code [ref=f22e446]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/loader_tags.py
+          - text: ", line 200, in render"
+          - list [ref=f22e448]:
+            - listitem [ref=f22e449] [cursor=pointer]:
+              - text: template = context.template.engine.select_template(template_name) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e450]: …
+          - group [ref=f22e451]:
+            - generic "Local vars" [ref=f22e452] [cursor=pointer]
+        - listitem [ref=f22e453]:
+          - code [ref=f22e454]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/engine.py
+          - text: ", line 234, in select_template"
+          - list [ref=f22e456]:
+            - listitem [ref=f22e457] [cursor=pointer]:
+              - text: raise TemplateDoesNotExist(", ".join(not_found)) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e458]: …
+          - group [ref=f22e459]:
+            - generic "Local vars" [ref=f22e460] [cursor=pointer]
+        - listitem [ref=f22e461]:
+          - heading "The above exception (panel_framework/icons/home.html) was the direct cause of the following exception:" [level=3] [ref=f22e462]
+        - listitem [ref=f22e463]:
+          - code [ref=f22e464]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/core/handlers/exception.py
+          - text: ", line 55, in inner"
+          - list [ref=f22e466]:
+            - listitem [ref=f22e467] [cursor=pointer]:
+              - text: response = get_response(request) ^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e468]: …
+          - group [ref=f22e469]:
+            - generic "Local vars" [ref=f22e470] [cursor=pointer]
+        - listitem [ref=f22e471]:
+          - code [ref=f22e472]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/core/handlers/base.py
+          - text: ", line 198, in _get_response"
+          - list [ref=f22e474]:
+            - listitem [ref=f22e475] [cursor=pointer]:
+              - text: response = wrapped_callback(request, *callback_args, **callback_kwargs) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e476]: …
+          - group [ref=f22e477]:
+            - generic "Local vars" [ref=f22e478] [cursor=pointer]
+        - listitem [ref=f22e479]:
+          - code [ref=f22e480]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/contrib/auth/decorators.py
+          - text: ", line 59, in _view_wrapper"
+          - list [ref=f22e482]:
+            - listitem [ref=f22e483] [cursor=pointer]:
+              - text: return view_func(request, *args, **kwargs) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e484]: …
+          - group [ref=f22e485]:
+            - generic "Local vars" [ref=f22e486] [cursor=pointer]
+        - listitem [ref=f22e487]:
+          - code [ref=f22e488]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/freedom_ls/educator_interface/views.py
+          - text: ", line 3388, in interface"
+          - list [ref=f22e490]:
+            - listitem [ref=f22e491] [cursor=pointer]:
+              - text: response = panel_framework_view(
+              - generic [ref=f22e492]: …
+          - group [ref=f22e493]:
+            - generic "Local vars" [ref=f22e494] [cursor=pointer]
+        - listitem [ref=f22e495]:
+          - code [ref=f22e496]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/freedom_ls/panel_framework/views.py
+          - text: ", line 1673, in panel_framework_view"
+          - list [ref=f22e498]:
+            - listitem [ref=f22e499] [cursor=pointer]:
+              - text: response = _vary_on_htmx(_respond(request, resolved, template_name, page_context)) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e500]: …
+          - group [ref=f22e501]:
+            - generic "Local vars" [ref=f22e502] [cursor=pointer]
+        - listitem [ref=f22e503]:
+          - code [ref=f22e504]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/freedom_ls/panel_framework/views.py
+          - text: ", line 1415, in _respond"
+          - list [ref=f22e506]:
+            - listitem [ref=f22e507] [cursor=pointer]:
+              - text: return render(request, template_name, page_context) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e508]: …
+          - group [ref=f22e509]:
+            - generic "Local vars" [ref=f22e510] [cursor=pointer]
+        - listitem [ref=f22e511]:
+          - code [ref=f22e512]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/shortcuts.py
+          - text: ", line 25, in render"
+          - list [ref=f22e514]:
+            - listitem [ref=f22e515] [cursor=pointer]:
+              - text: content = loader.render_to_string(template_name, context, request, using=using) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e516]: …
+          - group [ref=f22e517]:
+            - generic "Local vars" [ref=f22e518] [cursor=pointer]
+        - listitem [ref=f22e519]:
+          - code [ref=f22e520]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/loader.py
+          - text: ", line 62, in render_to_string"
+          - list [ref=f22e522]:
+            - listitem [ref=f22e523] [cursor=pointer]:
+              - text: return template.render(context, request) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e524]: …
+          - group [ref=f22e525]:
+            - generic "Local vars" [ref=f22e526] [cursor=pointer]
+        - listitem [ref=f22e527]:
+          - code [ref=f22e528]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/backends/django.py
+          - text: ", line 109, in render"
+          - list [ref=f22e530]:
+            - listitem [ref=f22e531] [cursor=pointer]:
+              - text: reraise(exc, self.backend) ^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e532]: …
+          - group [ref=f22e533]:
+            - generic "Local vars" [ref=f22e534] [cursor=pointer]
+        - listitem [ref=f22e535]:
+          - code [ref=f22e536]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/lib/python3.13/site-packages/django/template/backends/django.py
+          - text: ", line 130, in reraise"
+          - list [ref=f22e538]:
+            - listitem [ref=f22e539] [cursor=pointer]:
+              - text: raise new from exc ^^^^^^^^^^^^^^^^^^
+              - generic [ref=f22e540]: …
+          - group [ref=f22e541]:
+            - generic "Local vars" [ref=f22e542] [cursor=pointer]
+    - generic [ref=f22e543]:
+      - heading "Request information" [level=2] [ref=f22e544]
+      - heading "USER" [level=3] [ref=f22e545]
+      - paragraph [ref=f22e546]: demodev@email.com
+      - heading "GET" [level=3] [ref=f22e547]
+      - paragraph [ref=f22e548]: No GET data
+      - heading "POST" [level=3] [ref=f22e549]
+      - paragraph [ref=f22e550]: No POST data
+      - heading "FILES" [level=3] [ref=f22e551]
+      - paragraph [ref=f22e552]: No FILES data
+      - heading "COOKIES" [level=3] [ref=f22e553]
+      - table [ref=f22e554]:
+        - rowgroup [ref=f22e555]:
+          - row [ref=f22e556]:
+            - columnheader "Variable" [ref=f22e557]
+            - columnheader "Value" [ref=f22e558]
+        - rowgroup [ref=f22e559]:
+          - row [ref=f22e560]:
+            - cell "csrftoken" [ref=f22e561]
+            - cell "'********************'" [ref=f22e562]
+          - row [ref=f22e564]:
+            - cell "sessionid_db_extract_panels_framework_4_template_contract" [ref=f22e565]
+            - cell "'********************'" [ref=f22e566]
+      - heading "META" [level=3] [ref=f22e568]
+      - table [ref=f22e569]:
+        - rowgroup [ref=f22e570]:
+          - row [ref=f22e571]:
+            - columnheader "Variable" [ref=f22e572]
+            - columnheader "Value" [ref=f22e573]
+        - rowgroup [ref=f22e574]:
+          - row [ref=f22e575]:
+            - cell "AGE_PUBLIC_KEY_MMULLER" [ref=f22e576]
+            - cell "'********************'" [ref=f22e577]
+          - row [ref=f22e579]:
+            - cell "AI_AGENT" [ref=f22e580]
+            - cell "'claude-code_2-1-329_agent'" [ref=f22e581]
+          - row [ref=f22e583]:
+            - cell "CHROME_DESKTOP" [ref=f22e584]
+            - cell "'code_code.desktop'" [ref=f22e585]
+          - row [ref=f22e587]:
+            - cell "CLAUDECODE" [ref=f22e588]
+            - cell "'1'" [ref=f22e589]
+          - row [ref=f22e591]:
+            - cell "CLAUDE_CODE_CHILD_NOTES_DIR" [ref=f22e592]
+            - cell "'/tmp/claude-1000/-home-sheena-workspace-lms-freedom-ls-worktrees-extract-panels-framework-4-template-contract/67f1659e-4d0f-490b-801d-704433c316ad/started'" [ref=f22e593]
+          - row [ref=f22e595]:
+            - cell "CLAUDE_CODE_CHILD_SESSION" [ref=f22e596]
+            - cell "'1'" [ref=f22e597]
+          - row [ref=f22e599]:
+            - cell "CLAUDE_CODE_ENTRYPOINT" [ref=f22e600]
+            - cell "'cli'" [ref=f22e601]
+          - row [ref=f22e603]:
+            - cell "CLAUDE_CODE_EXECPATH" [ref=f22e604]
+            - cell "'/home/sheena/.local/share/claude/versions/2.1.329'" [ref=f22e605]
+          - row [ref=f22e607]:
+            - cell "CLAUDE_CODE_MESSAGING_SOCKET" [ref=f22e608]
+            - cell "'/run/user/1000/cc-socks/2656459.sock'" [ref=f22e609]
+          - row [ref=f22e611]:
+            - cell "CLAUDE_CODE_MESSAGING_TOKEN" [ref=f22e612]
+            - cell "'********************'" [ref=f22e613]
+          - row [ref=f22e615]:
+            - cell "CLAUDE_CODE_SESSION_ATTENDED" [ref=f22e616]
+            - cell "'1'" [ref=f22e617]
+          - row [ref=f22e619]:
+            - cell "CLAUDE_CODE_SESSION_ID" [ref=f22e620]
+            - cell "'67f1659e-4d0f-490b-801d-704433c316ad'" [ref=f22e621]
+          - row [ref=f22e623]:
+            - cell "CLAUDE_CODE_SSE_PORT" [ref=f22e624]
+            - cell "'38058'" [ref=f22e625]
+          - row [ref=f22e627]:
+            - cell "CLAUDE_EFFORT" [ref=f22e628]
+            - cell "'medium'" [ref=f22e629]
+          - row [ref=f22e631]:
+            - cell "CLAUDE_PID" [ref=f22e632]
+            - cell "'2656459'" [ref=f22e633]
+          - row [ref=f22e635]:
+            - cell "CLAUDE_PLUGINS_LOADED" [ref=f22e636]
+            - cell "'1'" [ref=f22e637]
+          - row [ref=f22e639]:
+            - cell "COLORTERM" [ref=f22e640]
+            - cell "'truecolor'" [ref=f22e641]
+          - row [ref=f22e643]:
+            - cell "CONTENT_LENGTH" [ref=f22e644]
+            - cell "''" [ref=f22e645]
+          - row [ref=f22e647]:
+            - cell "CONTENT_TYPE" [ref=f22e648]
+            - cell "'text/plain'" [ref=f22e649]
+          - row [ref=f22e651]:
+            - cell "COREPACK_ENABLE_AUTO_PIN" [ref=f22e652]
+            - cell "'0'" [ref=f22e653]
+          - row [ref=f22e655]:
+            - cell "CSRF_COOKIE" [ref=f22e656]
+            - cell "'yb2TaPWESyEE6yxd2CFiIVToabdyIjEo'" [ref=f22e657]
+          - row [ref=f22e659]:
+            - cell "CSRF_COOKIE_NEEDS_UPDATE" [ref=f22e660]
+            - cell "True" [ref=f22e661]
+          - row [ref=f22e663]:
+            - cell "DBUS_SESSION_BUS_ADDRESS" [ref=f22e664]
+            - cell "'unix:path=/run/user/1000/bus'" [ref=f22e665]
+          - row [ref=f22e667]:
+            - cell "DESKTOP_SESSION" [ref=f22e668]
+            - cell "'ubuntu'" [ref=f22e669]
+          - row [ref=f22e671]:
+            - cell "DISPLAY" [ref=f22e672]
+            - cell "':0'" [ref=f22e673]
+          - row [ref=f22e675]:
+            - cell "DJANGO_SETTINGS_MODULE" [ref=f22e676]
+            - cell "'qa_minimal_shell_settings'" [ref=f22e677]
+          - row [ref=f22e679]:
+            - cell "FC_FONTATIONS" [ref=f22e680]
+            - cell "'1'" [ref=f22e681]
+          - row [ref=f22e683]:
+            - cell "FLYCTL_INSTALL" [ref=f22e684]
+            - cell "'/home/sheena/.fly'" [ref=f22e685]
+          - row [ref=f22e687]:
+            - cell "FONTCONFIG_FILE" [ref=f22e688]
+            - cell "'/etc/fonts/fonts.conf'" [ref=f22e689]
+          - row [ref=f22e691]:
+            - cell "FONTCONFIG_PATH" [ref=f22e692]
+            - cell "'/etc/fonts'" [ref=f22e693]
+          - row [ref=f22e695]:
+            - cell "GATEWAY_INTERFACE" [ref=f22e696]
+            - cell "'CGI/1.1'" [ref=f22e697]
+          - row [ref=f22e699]:
+            - cell "GDK_BACKEND_VSCODE_SNAP_ORIG" [ref=f22e700]
+            - cell "''" [ref=f22e701]
+          - row [ref=f22e703]:
+            - cell "GDMSESSION" [ref=f22e704]
+            - cell "'ubuntu'" [ref=f22e705]
+          - row [ref=f22e707]:
+            - cell "GIO_LAUNCHED_DESKTOP_FILE_PID" [ref=f22e708]
+            - cell "'14847'" [ref=f22e709]
+          - row [ref=f22e711]:
+            - cell "GIO_MODULE_DIR" [ref=f22e712]
+            - cell "'/home/sheena/snap/code/common/.cache/gio-modules'" [ref=f22e713]
+          - row [ref=f22e715]:
+            - cell "GIO_MODULE_DIR_VSCODE_SNAP_ORIG" [ref=f22e716]
+            - cell "''" [ref=f22e717]
+          - row [ref=f22e719]:
+            - cell "GIT_ASKPASS" [ref=f22e720]
+            - cell "'********************'" [ref=f22e721]
+          - row [ref=f22e723]:
+            - cell "GIT_EDITOR" [ref=f22e724]
+            - cell "'true'" [ref=f22e725]
+          - row [ref=f22e727]:
+            - cell "GNOME_DESKTOP_SESSION_ID" [ref=f22e728]
+            - cell "'this-is-deprecated'" [ref=f22e729]
+          - row [ref=f22e731]:
+            - cell "GNOME_KEYRING_CONTROL" [ref=f22e732]
+            - cell "'********************'" [ref=f22e733]
+          - row [ref=f22e735]:
+            - cell "GNOME_SETUP_DISPLAY" [ref=f22e736]
+            - cell "'unix:/tmp/.X11-unix/X1'" [ref=f22e737]
+          - row [ref=f22e739]:
+            - cell "GPG_AGENT_INFO" [ref=f22e740]
+            - cell "'/run/user/1000/gnupg/S.gpg-agent:0:1'" [ref=f22e741]
+          - row [ref=f22e743]:
+            - cell "GSETTINGS_SCHEMA_DIR" [ref=f22e744]
+            - cell "'/home/sheena/snap/code/280/.local/share/glib-2.0/schemas'" [ref=f22e745]
+          - row [ref=f22e747]:
+            - cell "GSETTINGS_SCHEMA_DIR_VSCODE_SNAP_ORIG" [ref=f22e748]
+            - cell "''" [ref=f22e749]
+          - row [ref=f22e751]:
+            - cell "GTK_EXE_PREFIX" [ref=f22e752]
+            - cell "'/snap/code/280/usr'" [ref=f22e753]
+          - row [ref=f22e755]:
+            - cell "GTK_EXE_PREFIX_VSCODE_SNAP_ORIG" [ref=f22e756]
+            - cell "''" [ref=f22e757]
+          - row [ref=f22e759]:
+            - cell "GTK_IM_MODULE_FILE" [ref=f22e760]
+            - cell "'/home/sheena/snap/code/common/.cache/immodules/immodules.cache'" [ref=f22e761]
+          - row [ref=f22e763]:
+            - cell "GTK_IM_MODULE_FILE_VSCODE_SNAP_ORIG" [ref=f22e764]
+            - cell "''" [ref=f22e765]
+          - row [ref=f22e767]:
+            - cell "GTK_MODULES" [ref=f22e768]
+            - cell "'gail:atk-bridge'" [ref=f22e769]
+          - row [ref=f22e771]:
+            - cell "GTK_PATH" [ref=f22e772]
+            - cell "'/snap/code/280/usr/lib/x86_64-linux-gnu/gtk-3.0'" [ref=f22e773]
+          - row [ref=f22e775]:
+            - cell "GTK_PATH_VSCODE_SNAP_ORIG" [ref=f22e776]
+            - cell "''" [ref=f22e777]
+          - row [ref=f22e779]:
+            - cell "HOME" [ref=f22e780]
+            - cell "'/home/sheena'" [ref=f22e781]
+          - row [ref=f22e783]:
+            - cell "HTTP_ACCEPT" [ref=f22e784]
+            - cell "'text/html,application/xhtml+xml,application/xml;q=0.9,image/jxl,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7'" [ref=f22e785]
+          - row [ref=f22e787]:
+            - cell "HTTP_ACCEPT_ENCODING" [ref=f22e788]
+            - cell "'gzip, deflate, br, zstd'" [ref=f22e789]
+          - row [ref=f22e791]:
+            - cell "HTTP_ACCEPT_LANGUAGE" [ref=f22e792]
+            - cell "'en-US,en;q=0.9'" [ref=f22e793]
+          - row [ref=f22e795]:
+            - cell "HTTP_CONNECTION" [ref=f22e796]
+            - cell "'keep-alive'" [ref=f22e797]
+          - row [ref=f22e799]:
+            - cell "HTTP_COOKIE" [ref=f22e800]
+            - cell "'********************'" [ref=f22e801]
+          - row [ref=f22e803]:
+            - cell "HTTP_HOST" [ref=f22e804]
+            - cell "'127.0.0.1:8570'" [ref=f22e805]
+          - row [ref=f22e807]:
+            - cell "HTTP_SEC_CH_UA" [ref=f22e808]
+            - cell "'\"Chromium\";v=\"158\", \"Not.A/Brand\";v=\"24\", \"Google Chrome\";v=\"158\"'" [ref=f22e809]
+          - row [ref=f22e811]:
+            - cell "HTTP_SEC_CH_UA_MOBILE" [ref=f22e812]
+            - cell "'?0'" [ref=f22e813]
+          - row [ref=f22e815]:
+            - cell "HTTP_SEC_CH_UA_PLATFORM" [ref=f22e816]
+            - cell "'\"Linux\"'" [ref=f22e817]
+          - row [ref=f22e819]:
+            - cell "HTTP_SEC_FETCH_DEST" [ref=f22e820]
+            - cell "'document'" [ref=f22e821]
+          - row [ref=f22e823]:
+            - cell "HTTP_SEC_FETCH_MODE" [ref=f22e824]
+            - cell "'navigate'" [ref=f22e825]
+          - row [ref=f22e827]:
+            - cell "HTTP_SEC_FETCH_SITE" [ref=f22e828]
+            - cell "'none'" [ref=f22e829]
+          - row [ref=f22e831]:
+            - cell "HTTP_SEC_FETCH_USER" [ref=f22e832]
+            - cell "'?1'" [ref=f22e833]
+          - row [ref=f22e835]:
+            - cell "HTTP_UPGRADE_INSECURE_REQUESTS" [ref=f22e836]
+            - cell "'1'" [ref=f22e837]
+          - row [ref=f22e839]:
+            - cell "HTTP_USER_AGENT" [ref=f22e840]
+            - cell "('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) ' 'HeadlessChrome/158.0.0.0 Safari/537.36')" [ref=f22e841]
+          - row [ref=f22e843]:
+            - cell "INVOCATION_ID" [ref=f22e844]
+            - cell "'0d25349e903c47349bc1500ad2b7af12'" [ref=f22e845]
+          - row [ref=f22e847]:
+            - cell "JOURNAL_STREAM" [ref=f22e848]
+            - cell "'10:56582'" [ref=f22e849]
+          - row [ref=f22e851]:
+            - cell "LANG" [ref=f22e852]
+            - cell "'en_US.UTF-8'" [ref=f22e853]
+          - row [ref=f22e855]:
+            - cell "LESS" [ref=f22e856]
+            - cell "'-R'" [ref=f22e857]
+          - row [ref=f22e859]:
+            - cell "LOCPATH" [ref=f22e860]
+            - cell "'/snap/code/280/usr/lib/locale'" [ref=f22e861]
+          - row [ref=f22e863]:
+            - cell "LOCPATH_VSCODE_SNAP_ORIG" [ref=f22e864]
+            - cell "''" [ref=f22e865]
+          - row [ref=f22e867]:
+            - cell "LOGNAME" [ref=f22e868]
+            - cell "'sheena'" [ref=f22e869]
+          - row [ref=f22e871]:
+            - cell "LSCOLORS" [ref=f22e872]
+            - cell "'Gxfxcxdxbxegedabagacad'" [ref=f22e873]
+          - row [ref=f22e875]:
+            - cell "LS_COLORS" [ref=f22e876]
+            - cell [ref=f22e877]
+          - row [ref=f22e879]:
+            - cell "MANAGERPID" [ref=f22e880]
+            - cell "'7183'" [ref=f22e881]
+          - row [ref=f22e883]:
+            - cell "MANAGERPIDFDID" [ref=f22e884]
+            - cell "'16933'" [ref=f22e885]
+          - row [ref=f22e887]:
+            - cell "MEMORY_PRESSURE_WATCH" [ref=f22e888]
+            - cell "'/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/session.slice/org.gnome.SettingsDaemon.MediaKeys.service/memory.pressure'" [ref=f22e889]
+          - row [ref=f22e891]:
+            - cell "MEMORY_PRESSURE_WRITE" [ref=f22e892]
+            - cell "'c29tZSAyMDAwMDAgMjAwMDAwMAA='" [ref=f22e893]
+          - row [ref=f22e895]:
+            - cell "NO_AT_BRIDGE" [ref=f22e896]
+            - cell "'1'" [ref=f22e897]
+          - row [ref=f22e899]:
+            - cell "NVM_BIN" [ref=f22e900]
+            - cell "'/home/sheena/.nvm/versions/node/v24.11.0/bin'" [ref=f22e901]
+          - row [ref=f22e903]:
+            - cell "NVM_CD_FLAGS" [ref=f22e904]
+            - cell "'-q'" [ref=f22e905]
+          - row [ref=f22e907]:
+            - cell "NVM_DIR" [ref=f22e908]
+            - cell "'/home/sheena/.nvm'" [ref=f22e909]
+          - row [ref=f22e911]:
+            - cell "NVM_INC" [ref=f22e912]
+            - cell "'/home/sheena/.nvm/versions/node/v24.11.0/include/node'" [ref=f22e913]
+          - row [ref=f22e915]:
+            - cell "NoDefaultCurrentDirectoryInExePath" [ref=f22e916]
+            - cell "'1'" [ref=f22e917]
+          - row [ref=f22e919]:
+            - cell "OLDPWD" [ref=f22e920]
+            - cell "'/home/sheena/workspace'" [ref=f22e921]
+          - row [ref=f22e923]:
+            - cell "OPENSCADPATH" [ref=f22e924]
+            - cell "'~/.local/share/OpenSCAD/libraries/'" [ref=f22e925]
+          - row [ref=f22e927]:
+            - cell "PAGER" [ref=f22e928]
+            - cell "'less'" [ref=f22e929]
+          - row [ref=f22e931]:
+            - cell "PATH" [ref=f22e932]
+            - cell "'/home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv/bin:/home/sheena/.opencode/bin:/home/sheena/.fly/bin:/home/sheena/.pyenv/shims:/home/sheena/.pyenv/bin:/home/sheena/.flutter_sdk/flutter/bin:/home/sheena/.opencode/bin:/home/sheena/.local/bin:/home/sheena/.fly/bin:/home/sheena/.nvm/versions/node/v24.11.0/bin:/home/sheena/.pyenv/bin:/home/sheena/.flutter_sdk/flutter/bin:/home/sheena/.flutter_sdk/flutter/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin'" [ref=f22e933]
+          - row [ref=f22e935]:
+            - cell "PATH_INFO" [ref=f22e936]
+            - cell "'/educator/organisations/demodev/learners'" [ref=f22e937]
+          - row [ref=f22e939]:
+            - cell "PWD" [ref=f22e940]
+            - cell "'/home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract'" [ref=f22e941]
+          - row [ref=f22e943]:
+            - cell "PYENV_ROOT" [ref=f22e944]
+            - cell "'/home/sheena/.pyenv'" [ref=f22e945]
+          - row [ref=f22e947]:
+            - cell "PYENV_SHELL" [ref=f22e948]
+            - cell "'zsh'" [ref=f22e949]
+          - row [ref=f22e951]:
+            - cell "PYTHONPATH" [ref=f22e952]
+            - cell "'/tmp/claude-1000/-home-sheena-workspace-lms-freedom-ls-worktrees-extract-panels-framework-4-template-contract/67f1659e-4d0f-490b-801d-704433c316ad/scratchpad'" [ref=f22e953]
+          - row [ref=f22e955]:
+            - cell "PYTHONSTARTUP" [ref=f22e956]
+            - cell "'/home/sheena/.config/Code/User/workspaceStorage/fe6a628fe846fc750a2671d2b1995fbd/ms-python.python/pythonrc.py'" [ref=f22e957]
+          - row [ref=f22e959]:
+            - cell "PYTHON_COLORS" [ref=f22e960]
+            - cell "'0'" [ref=f22e961]
+          - row [ref=f22e963]:
+            - cell "QT_ACCESSIBILITY" [ref=f22e964]
+            - cell "'1'" [ref=f22e965]
+          - row [ref=f22e967]:
+            - cell "QT_IM_MODULE" [ref=f22e968]
+            - cell "'ibus'" [ref=f22e969]
+          - row [ref=f22e971]:
+            - cell "QT_IM_MODULES" [ref=f22e972]
+            - cell "'wayland;ibus'" [ref=f22e973]
+          - row [ref=f22e975]:
+            - cell "QUERY_STRING" [ref=f22e976]
+            - cell "''" [ref=f22e977]
+          - row [ref=f22e979]:
+            - cell "REMOTE_ADDR" [ref=f22e980]
+            - cell "'127.0.0.1'" [ref=f22e981]
+          - row [ref=f22e983]:
+            - cell "REMOTE_HOST" [ref=f22e984]
+            - cell "''" [ref=f22e985]
+          - row [ref=f22e987]:
+            - cell "REQUEST_METHOD" [ref=f22e988]
+            - cell "'GET'" [ref=f22e989]
+          - row [ref=f22e991]:
+            - cell "RUN_MAIN" [ref=f22e992]
+            - cell "'true'" [ref=f22e993]
+          - row [ref=f22e995]:
+            - cell "SCRIPT_NAME" [ref=f22e996]
+            - cell "''" [ref=f22e997]
+          - row [ref=f22e999]:
+            - cell "SERVER_NAME" [ref=f22e1000]
+            - cell "'localhost'" [ref=f22e1001]
+          - row [ref=f22e1003]:
+            - cell "SERVER_PORT" [ref=f22e1004]
+            - cell "'8570'" [ref=f22e1005]
+          - row [ref=f22e1007]:
+            - cell "SERVER_PROTOCOL" [ref=f22e1008]
+            - cell "'HTTP/1.1'" [ref=f22e1009]
+          - row [ref=f22e1011]:
+            - cell "SERVER_SOFTWARE" [ref=f22e1012]
+            - cell "'WSGIServer/0.2'" [ref=f22e1013]
+          - row [ref=f22e1015]:
+            - cell "SHELL" [ref=f22e1016]
+            - cell "'/usr/bin/zsh'" [ref=f22e1017]
+          - row [ref=f22e1019]:
+            - cell "SHLVL" [ref=f22e1020]
+            - cell "'4'" [ref=f22e1021]
+          - row [ref=f22e1023]:
+            - cell "SSH_AUTH_SOCK" [ref=f22e1024]
+            - cell "'********************'" [ref=f22e1025]
+          - row [ref=f22e1027]:
+            - cell "SYSTEMD_EXEC_PID" [ref=f22e1028]
+            - cell "'8239'" [ref=f22e1029]
+          - row [ref=f22e1031]:
+            - cell "TERM" [ref=f22e1032]
+            - cell "'xterm-256color'" [ref=f22e1033]
+          - row [ref=f22e1035]:
+            - cell "TERMINATOR_DBUS_NAME" [ref=f22e1036]
+            - cell "'net.tenshu.Terminator25ef4b219e3b005583550f2b0f9f990c3'" [ref=f22e1037]
+          - row [ref=f22e1039]:
+            - cell "TERMINATOR_DBUS_PATH" [ref=f22e1040]
+            - cell "'/net/tenshu/Terminator2'" [ref=f22e1041]
+          - row [ref=f22e1043]:
+            - cell "TERMINATOR_UUID" [ref=f22e1044]
+            - cell "'urn:uuid:e306bc97-b4b0-40f5-89d7-f1d21431ae9b'" [ref=f22e1045]
+          - row [ref=f22e1047]:
+            - cell "TERM_PROGRAM" [ref=f22e1048]
+            - cell "'vscode'" [ref=f22e1049]
+          - row [ref=f22e1051]:
+            - cell "TERM_PROGRAM_VERSION" [ref=f22e1052]
+            - cell "'1.146.0'" [ref=f22e1053]
+          - row [ref=f22e1055]:
+            - cell "TZ" [ref=f22e1056]
+            - cell "'UTC'" [ref=f22e1057]
+          - row [ref=f22e1059]:
+            - cell "USER" [ref=f22e1060]
+            - cell "'sheena'" [ref=f22e1061]
+          - row [ref=f22e1063]:
+            - cell "USERNAME" [ref=f22e1064]
+            - cell "'sheena'" [ref=f22e1065]
+          - row [ref=f22e1067]:
+            - cell "USER_ZDOTDIR" [ref=f22e1068]
+            - cell "'/home/sheena'" [ref=f22e1069]
+          - row [ref=f22e1071]:
+            - cell "UV" [ref=f22e1072]
+            - cell "'/home/sheena/.local/bin/uv'" [ref=f22e1073]
+          - row [ref=f22e1075]:
+            - cell "UV_RUN_RECURSION_DEPTH" [ref=f22e1076]
+            - cell "'1'" [ref=f22e1077]
+          - row [ref=f22e1079]:
+            - cell "VIRTUAL_ENV" [ref=f22e1080]
+            - cell "'/home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/.venv'" [ref=f22e1081]
+          - row [ref=f22e1083]:
+            - cell "VSCODE_GIT_ASKPASS_EXTRA_ARGS" [ref=f22e1084]
+            - cell "'********************'" [ref=f22e1085]
+          - row [ref=f22e1087]:
+            - cell "VSCODE_GIT_ASKPASS_MAIN" [ref=f22e1088]
+            - cell "'********************'" [ref=f22e1089]
+          - row [ref=f22e1091]:
+            - cell "VSCODE_GIT_ASKPASS_NODE" [ref=f22e1092]
+            - cell "'********************'" [ref=f22e1093]
+          - row [ref=f22e1095]:
+            - cell "VSCODE_GIT_IPC_HANDLE" [ref=f22e1096]
+            - cell "'/run/user/1000/vscode-git-038a06d8e7.sock'" [ref=f22e1097]
+          - row [ref=f22e1099]:
+            - cell "VSCODE_INJECTION" [ref=f22e1100]
+            - cell "'1'" [ref=f22e1101]
+          - row [ref=f22e1103]:
+            - cell "VSCODE_PYTHON_AUTOACTIVATE_GUARD" [ref=f22e1104]
+            - cell "'1'" [ref=f22e1105]
+          - row [ref=f22e1107]:
+            - cell "VTE_VERSION" [ref=f22e1108]
+            - cell "'8400'" [ref=f22e1109]
+          - row [ref=f22e1111]:
+            - cell "WAYLAND_DISPLAY" [ref=f22e1112]
+            - cell "'wayland-0'" [ref=f22e1113]
+          - row [ref=f22e1115]:
+            - cell "XAUTHORITY" [ref=f22e1116]
+            - cell "'********************'" [ref=f22e1117]
+          - row [ref=f22e1119]:
+            - cell "XDG_CONFIG_DIRS_VSCODE_SNAP_ORIG" [ref=f22e1120]
+            - cell "''" [ref=f22e1121]
+          - row [ref=f22e1123]:
+            - cell "XDG_CURRENT_DESKTOP" [ref=f22e1124]
+            - cell "'ubuntu:GNOME'" [ref=f22e1125]
+          - row [ref=f22e1127]:
+            - cell "XDG_DATA_DIRS" [ref=f22e1128]
+            - cell "'/home/sheena/snap/code/280/.local/share:/home/sheena/snap/code/280:/snap/code/280/usr/share:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'" [ref=f22e1129]
+          - row [ref=f22e1131]:
+            - cell "XDG_DATA_DIRS_VSCODE_SNAP_ORIG" [ref=f22e1132]
+            - cell "'/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'" [ref=f22e1133]
+          - row [ref=f22e1135]:
+            - cell "XDG_MENU_PREFIX" [ref=f22e1136]
+            - cell "'gnome-'" [ref=f22e1137]
+          - row [ref=f22e1139]:
+            - cell "XDG_RUNTIME_DIR" [ref=f22e1140]
+            - cell "'/run/user/1000'" [ref=f22e1141]
+          - row [ref=f22e1143]:
+            - cell "XDG_SESSION_CLASS" [ref=f22e1144]
+            - cell "'user'" [ref=f22e1145]
+          - row [ref=f22e1147]:
+            - cell "XDG_SESSION_DESKTOP" [ref=f22e1148]
+            - cell "'ubuntu'" [ref=f22e1149]
+          - row [ref=f22e1151]:
+            - cell "XDG_SESSION_EXTRA_DEVICE_ACCESS" [ref=f22e1152]
+            - cell "'render:accel'" [ref=f22e1153]
+          - row [ref=f22e1155]:
+            - cell "XDG_SESSION_TYPE" [ref=f22e1156]
+            - cell "'wayland'" [ref=f22e1157]
+          - row [ref=f22e1159]:
+            - cell "XMODIFIERS" [ref=f22e1160]
+            - cell "'@im=ibus'" [ref=f22e1161]
+          - row [ref=f22e1163]:
+            - cell "ZDOTDIR" [ref=f22e1164]
+            - cell "'/home/sheena'" [ref=f22e1165]
+          - row [ref=f22e1167]:
+            - cell "ZSH" [ref=f22e1168]
+            - cell "'/home/sheena/.oh-my-zsh'" [ref=f22e1169]
+          - row [ref=f22e1171]:
+            - cell "_" [ref=f22e1172]
+            - cell "'/home/sheena/.local/bin/uv'" [ref=f22e1173]
+          - row [ref=f22e1175]:
+            - cell "wsgi.errors" [ref=f22e1176]
+            - cell "<_io.TextIOWrapper name='<stderr>' mode='w' encoding='utf-8'>" [ref=f22e1177]
+          - row [ref=f22e1179]:
+            - cell "wsgi.file_wrapper" [ref=f22e1180]
+            - cell "<class 'wsgiref.util.FileWrapper'>" [ref=f22e1181]
+          - row [ref=f22e1183]:
+            - cell "wsgi.input" [ref=f22e1184]
+            - cell "<django.core.handlers.wsgi.LimitedStream object at 0x759dea517c70>" [ref=f22e1185]
+          - row [ref=f22e1187]:
+            - cell "wsgi.multiprocess" [ref=f22e1188]
+            - cell "False" [ref=f22e1189]
+          - row [ref=f22e1191]:
+            - cell "wsgi.multithread" [ref=f22e1192]
+            - cell "True" [ref=f22e1193]
+          - row [ref=f22e1195]:
+            - cell "wsgi.run_once" [ref=f22e1196]
+            - cell "False" [ref=f22e1197]
+          - row [ref=f22e1199]:
+            - cell "wsgi.url_scheme" [ref=f22e1200]
+            - cell "'http'" [ref=f22e1201]
+          - row [ref=f22e1203]:
+            - cell "wsgi.version" [ref=f22e1204]
+            - cell "(1, 0)" [ref=f22e1205]
+      - heading "Settings" [level=3] [ref=f22e1207]
+      - heading [level=4] [ref=f22e1208]:
+        - text: Using settings module
+        - code [ref=f22e1209]: qa_minimal_shell_settings
+      - table [ref=f22e1210]:
+        - rowgroup [ref=f22e1211]:
+          - row [ref=f22e1212]:
+            - columnheader "Setting" [ref=f22e1213]
+            - columnheader "Value" [ref=f22e1214]
+        - rowgroup [ref=f22e1215]:
+          - row [ref=f22e1216]:
+            - cell "ABSOLUTE_URL_OVERRIDES" [ref=f22e1217]
+            - 'cell "{}" [ref=f22e1218]'
+          - row [ref=f22e1220]:
+            - cell "ACCOUNT_ADAPTER" [ref=f22e1221]
+            - cell "'freedom_ls.accounts.allauth_account_adapter.AccountAdapter'" [ref=f22e1222]
+          - row [ref=f22e1224]:
+            - cell "ACCOUNT_EMAIL_NOTIFICATIONS" [ref=f22e1225]
+            - cell "True" [ref=f22e1226]
+          - row [ref=f22e1228]:
+            - cell "ACCOUNT_EMAIL_VERIFICATION" [ref=f22e1229]
+            - cell "'mandatory'" [ref=f22e1230]
+          - row [ref=f22e1232]:
+            - cell "ACCOUNT_FORMS" [ref=f22e1233]
+            - 'cell "{''signup'': ''freedom_ls.accounts.forms.SiteAwareSignupForm''}" [ref=f22e1234]'
+          - row [ref=f22e1236]:
+            - cell "ACCOUNT_LOGIN_METHODS" [ref=f22e1237]
+            - 'cell "{''email''}" [ref=f22e1238]'
+          - row [ref=f22e1240]:
+            - cell "ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION" [ref=f22e1241]
+            - cell "True" [ref=f22e1242]
+          - row [ref=f22e1244]:
+            - cell "ACCOUNT_LOGIN_ON_PASSWORD_RESET" [ref=f22e1245]
+            - cell "'********************'" [ref=f22e1246]
+          - row [ref=f22e1248]:
+            - cell "ACCOUNT_PREVENT_ENUMERATION" [ref=f22e1249]
+            - cell "True" [ref=f22e1250]
+          - row [ref=f22e1252]:
+            - cell "ACCOUNT_RATE_LIMITS" [ref=f22e1253]
+            - cell "False" [ref=f22e1254]
+          - row [ref=f22e1256]:
+            - cell "ACCOUNT_SIGNUP_FIELDS" [ref=f22e1257]
+            - cell "['email*', 'password1*', 'password2*', 'first_name*', 'last_name']" [ref=f22e1258]
+          - row [ref=f22e1260]:
+            - cell "ACCOUNT_USER_MODEL_USERNAME_FIELD" [ref=f22e1261]
+            - cell "None" [ref=f22e1262]
+          - row [ref=f22e1264]:
+            - cell "ADDITIONAL_REGISTRATION_FORMS" [ref=f22e1265]
+            - cell "[]" [ref=f22e1266]
+          - row [ref=f22e1268]:
+            - cell "ADMINS" [ref=f22e1269]
+            - cell "[]" [ref=f22e1270]
+          - row [ref=f22e1272]:
+            - cell "ADMONITION_TYPES" [ref=f22e1273]
+            - 'cell "{''checklist'': {''color'': ''success'', ''icon'': ''check'', ''label'': ''Checklist''}, ''danger'': {''color'': ''error'', ''icon'': ''error'', ''label'': ''Danger''}, ''default'': {''color'': ''info'', ''icon'': ''info'', ''label'': ''Note''}, ''important'': {''color'': ''warning'', ''icon'': ''warning'', ''label'': ''Important''}, ''key_takeaways'': ''********************'', ''note'': {''color'': ''info'', ''icon'': ''info'', ''label'': ''Note''}, ''regulation'': {''color'': ''warning'', ''icon'': ''scale'', ''icon_fallback'': ''heroicons:scale'', ''label'': ''Regulation''}, ''tip'': {''color'': ''success'', ''icon'': ''star'', ''label'': ''Tip''}, ''warning'': {''color'': ''warning'', ''icon'': ''warning'', ''label'': ''Warning''}}" [ref=f22e1274]'
+          - row [ref=f22e1276]:
+            - cell "ALLOWED_HOSTS" [ref=f22e1277]
+            - cell "[]" [ref=f22e1278]
+          - row [ref=f22e1280]:
+            - cell "ALLOW_SIGN_UPS" [ref=f22e1281]
+            - cell "True" [ref=f22e1282]
+          - row [ref=f22e1284]:
+            - cell "APPEND_SLASH" [ref=f22e1285]
+            - cell "True" [ref=f22e1286]
+          - row [ref=f22e1288]:
+            - cell "AUTHENTICATION_BACKENDS" [ref=f22e1289]
+            - cell "'********************'" [ref=f22e1290]
+          - row [ref=f22e1292]:
+            - cell "AUTH_PASSWORD_VALIDATORS" [ref=f22e1293]
+            - cell "'********************'" [ref=f22e1294]
+          - row [ref=f22e1296]:
+            - cell "AUTH_USER_MODEL" [ref=f22e1297]
+            - cell "'********************'" [ref=f22e1298]
+          - row [ref=f22e1300]:
+            - cell "AXES_ACCESS_FAILURE_LOG_PER_USER_LIMIT" [ref=f22e1301]
+            - cell "1000" [ref=f22e1302]
+          - row [ref=f22e1304]:
+            - cell "AXES_ALLOWED_CORS_ORIGINS" [ref=f22e1305]
+            - cell "'*'" [ref=f22e1306]
+          - row [ref=f22e1308]:
+            - cell "AXES_CLIENT_IP_CALLABLE" [ref=f22e1309]
+            - cell "'freedom_ls.accounts.utils.get_client_ip'" [ref=f22e1310]
+          - row [ref=f22e1312]:
+            - cell "AXES_CLIENT_STR_CALLABLE" [ref=f22e1313]
+            - cell "None" [ref=f22e1314]
+          - row [ref=f22e1316]:
+            - cell "AXES_COOLOFF_MESSAGE" [ref=f22e1317]
+            - 'cell "''Account locked: too many login attempts. Please try again later.''" [ref=f22e1318]'
+          - row [ref=f22e1320]:
+            - cell "AXES_COOLOFF_TIME" [ref=f22e1321]
+            - cell "1" [ref=f22e1322]
+          - row [ref=f22e1324]:
+            - cell "AXES_DISABLE_ACCESS_LOG" [ref=f22e1325]
+            - cell "False" [ref=f22e1326]
+          - row [ref=f22e1328]:
+            - cell "AXES_ENABLED" [ref=f22e1329]
+            - cell "True" [ref=f22e1330]
+          - row [ref=f22e1332]:
+            - cell "AXES_ENABLE_ACCESS_FAILURE_LOG" [ref=f22e1333]
+            - cell "False" [ref=f22e1334]
+          - row [ref=f22e1336]:
+            - cell "AXES_ENABLE_ADMIN" [ref=f22e1337]
+            - cell "True" [ref=f22e1338]
+          - row [ref=f22e1340]:
+            - cell "AXES_FAILURE_LIMIT" [ref=f22e1341]
+            - cell "5" [ref=f22e1342]
+          - row [ref=f22e1344]:
+            - cell "AXES_HANDLER" [ref=f22e1345]
+            - cell "'axes.handlers.database.AxesDatabaseHandler'" [ref=f22e1346]
+          - row [ref=f22e1348]:
+            - cell "AXES_HTTP_RESPONSE_CODE" [ref=f22e1349]
+            - cell "429" [ref=f22e1350]
+          - row [ref=f22e1352]:
+            - cell "AXES_IPWARE_META_PRECEDENCE_ORDER" [ref=f22e1353]
+            - cell "('REMOTE_ADDR',)" [ref=f22e1354]
+          - row [ref=f22e1356]:
+            - cell "AXES_IPWARE_PROXY_COUNT" [ref=f22e1357]
+            - cell "None" [ref=f22e1358]
+          - row [ref=f22e1360]:
+            - cell "AXES_IPWARE_PROXY_ORDER" [ref=f22e1361]
+            - cell "'left-most'" [ref=f22e1362]
+          - row [ref=f22e1364]:
+            - cell "AXES_IPWARE_PROXY_TRUSTED_IPS" [ref=f22e1365]
+            - cell "None" [ref=f22e1366]
+          - row [ref=f22e1368]:
+            - cell "AXES_IP_BLACKLIST" [ref=f22e1369]
+            - cell "None" [ref=f22e1370]
+          - row [ref=f22e1372]:
+            - cell "AXES_IP_WHITELIST" [ref=f22e1373]
+            - cell "None" [ref=f22e1374]
+          - row [ref=f22e1376]:
+            - cell "AXES_LOCKOUT_CALLABLE" [ref=f22e1377]
+            - cell "None" [ref=f22e1378]
+          - row [ref=f22e1380]:
+            - cell "AXES_LOCKOUT_PARAMETERS" [ref=f22e1381]
+            - cell "[['ip_address', 'username'], 'username']" [ref=f22e1382]
+          - row [ref=f22e1384]:
+            - cell "AXES_LOCKOUT_TEMPLATE" [ref=f22e1385]
+            - cell "'accounts/lockout.html'" [ref=f22e1386]
+          - row [ref=f22e1388]:
+            - cell "AXES_LOCKOUT_URL" [ref=f22e1389]
+            - cell "None" [ref=f22e1390]
+          - row [ref=f22e1392]:
+            - cell "AXES_LOCK_OUT_AT_FAILURE" [ref=f22e1393]
+            - cell "True" [ref=f22e1394]
+          - row [ref=f22e1396]:
+            - cell "AXES_NEVER_LOCKOUT_GET" [ref=f22e1397]
+            - cell "False" [ref=f22e1398]
+          - row [ref=f22e1400]:
+            - cell "AXES_NEVER_LOCKOUT_WHITELIST" [ref=f22e1401]
+            - cell "False" [ref=f22e1402]
+          - row [ref=f22e1404]:
+            - cell "AXES_ONLY_ADMIN_SITE" [ref=f22e1405]
+            - cell "False" [ref=f22e1406]
+          - row [ref=f22e1408]:
+            - cell "AXES_ONLY_WHITELIST" [ref=f22e1409]
+            - cell "False" [ref=f22e1410]
+          - row [ref=f22e1412]:
+            - cell "AXES_PASSWORD_FORM_FIELD" [ref=f22e1413]
+            - cell "'********************'" [ref=f22e1414]
+          - row [ref=f22e1416]:
+            - cell "AXES_PERMALOCK_MESSAGE" [ref=f22e1417]
+            - 'cell "''Account locked: too many login attempts. Contact an admin to unlock your account.''" [ref=f22e1418]'
+          - row [ref=f22e1420]:
+            - cell "AXES_RESET_COOL_OFF_ON_FAILURE_DURING_LOCKOUT" [ref=f22e1421]
+            - cell "False" [ref=f22e1422]
+          - row [ref=f22e1424]:
+            - cell "AXES_RESET_ON_SUCCESS" [ref=f22e1425]
+            - cell "True" [ref=f22e1426]
+          - row [ref=f22e1428]:
+            - cell "AXES_SENSITIVE_PARAMETERS" [ref=f22e1429]
+            - cell "['username', 'ip_address']" [ref=f22e1430]
+          - row [ref=f22e1432]:
+            - cell "AXES_USERNAME_CALLABLE" [ref=f22e1433]
+            - cell "None" [ref=f22e1434]
+          - row [ref=f22e1436]:
+            - cell "AXES_USERNAME_FORM_FIELD" [ref=f22e1437]
+            - 'cell "<JSONSerializableLazyObject: ''email''>" [ref=f22e1438]'
+          - row [ref=f22e1440]:
+            - cell "AXES_USE_ATTEMPT_EXPIRATION" [ref=f22e1441]
+            - cell "False" [ref=f22e1442]
+          - row [ref=f22e1444]:
+            - cell "AXES_VERBOSE" [ref=f22e1445]
+            - cell "True" [ref=f22e1446]
+          - row [ref=f22e1448]:
+            - cell "AXES_WHITELIST_CALLABLE" [ref=f22e1449]
+            - cell "None" [ref=f22e1450]
+          - row [ref=f22e1452]:
+            - cell "BASE_DIR" [ref=f22e1453]
+            - cell "PosixPath('/home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract')" [ref=f22e1454]
+          - row [ref=f22e1456]:
+            - cell "CACHES" [ref=f22e1457]
+            - 'cell "{''default'': {''BACKEND'': ''django.core.cache.backends.locmem.LocMemCache''}}" [ref=f22e1458]'
+          - row [ref=f22e1460]:
+            - cell "CACHE_MIDDLEWARE_ALIAS" [ref=f22e1461]
+            - cell "'default'" [ref=f22e1462]
+          - row [ref=f22e1464]:
+            - cell "CACHE_MIDDLEWARE_KEY_PREFIX" [ref=f22e1465]
+            - cell "'********************'" [ref=f22e1466]
+          - row [ref=f22e1468]:
+            - cell "CACHE_MIDDLEWARE_SECONDS" [ref=f22e1469]
+            - cell "600" [ref=f22e1470]
+          - row [ref=f22e1472]:
+            - cell "CONTENT_MEDIA_PURPOSE" [ref=f22e1473]
+            - cell "'COURSE_MEDIA'" [ref=f22e1474]
+          - row [ref=f22e1476]:
+            - cell "CONTENT_MEDIA_STORAGE_ALIAS" [ref=f22e1477]
+            - cell "'course_media'" [ref=f22e1478]
+          - row [ref=f22e1480]:
+            - cell "COTTON_SNAKE_CASED_NAMES" [ref=f22e1481]
+            - cell "False" [ref=f22e1482]
+          - row [ref=f22e1484]:
+            - cell "COURSE_ACCESS_BACKEND" [ref=f22e1485]
+            - cell "'freedom_ls.course_applications.backends.ApplicationCourseAccessBackend'" [ref=f22e1486]
+          - row [ref=f22e1488]:
+            - cell "COURSE_ACCESS_CONFIG_VALIDATOR" [ref=f22e1489]
+            - cell "'freedom_ls.course_access.loader.validate_course_access_config'" [ref=f22e1490]
+          - row [ref=f22e1492]:
+            - cell "CSP" [ref=f22e1493]
+            - cell "<enum 'CSP'>" [ref=f22e1494]
+          - row [ref=f22e1496]:
+            - cell "CSRF_COOKIE_AGE" [ref=f22e1497]
+            - cell "31449600" [ref=f22e1498]
+          - row [ref=f22e1500]:
+            - cell "CSRF_COOKIE_DOMAIN" [ref=f22e1501]
+            - cell "None" [ref=f22e1502]
+          - row [ref=f22e1504]:
+            - cell "CSRF_COOKIE_HTTPONLY" [ref=f22e1505]
+            - cell "False" [ref=f22e1506]
+          - row [ref=f22e1508]:
+            - cell "CSRF_COOKIE_NAME" [ref=f22e1509]
+            - cell "'csrftoken'" [ref=f22e1510]
+          - row [ref=f22e1512]:
+            - cell "CSRF_COOKIE_PATH" [ref=f22e1513]
+            - cell "'/'" [ref=f22e1514]
+          - row [ref=f22e1516]:
+            - cell "CSRF_COOKIE_SAMESITE" [ref=f22e1517]
+            - cell "'Lax'" [ref=f22e1518]
+          - row [ref=f22e1520]:
+            - cell "CSRF_COOKIE_SECURE" [ref=f22e1521]
+            - cell "False" [ref=f22e1522]
+          - row [ref=f22e1524]:
+            - cell "CSRF_FAILURE_VIEW" [ref=f22e1525]
+            - cell "'django.views.csrf.csrf_failure'" [ref=f22e1526]
+          - row [ref=f22e1528]:
+            - cell "CSRF_HEADER_NAME" [ref=f22e1529]
+            - cell "'HTTP_X_CSRFTOKEN'" [ref=f22e1530]
+          - row [ref=f22e1532]:
+            - cell "CSRF_TRUSTED_ORIGINS" [ref=f22e1533]
+            - cell "[]" [ref=f22e1534]
+          - row [ref=f22e1536]:
+            - cell "CSRF_USE_SESSIONS" [ref=f22e1537]
+            - cell "False" [ref=f22e1538]
+          - row [ref=f22e1540]:
+            - cell "DATABASES" [ref=f22e1541]
+            - 'cell "{''default'': {''ATOMIC_REQUESTS'': False, ''AUTOCOMMIT'': True, ''CONN_HEALTH_CHECKS'': False, ''CONN_MAX_AGE'': 0, ''ENGINE'': ''django.db.backends.postgresql'', ''HOST'': ''127.0.0.1'', ''NAME'': ''db_extract_panels_framework_4_template_contract'', ''OPTIONS'': {''application_name'': ''runserver:-:db_extract_panels_framework_4_template_contract''}, ''PASSWORD'': ''********************'', ''PORT'': ''6543'', ''TEST'': {''CHARSET'': None, ''COLLATION'': None, ''MIGRATE'': True, ''MIRROR'': None, ''NAME'': ''test_db_extract_panels_framework_4_template_contract'', ''TEMPLATE'': ''template0''}, ''TIME_ZONE'': None, ''USER'': ''fls_dev''}}" [ref=f22e1542]'
+          - row [ref=f22e1544]:
+            - cell "DATABASE_ROUTERS" [ref=f22e1545]
+            - cell "[]" [ref=f22e1546]
+          - row [ref=f22e1548]:
+            - cell "DATA_UPLOAD_MAX_MEMORY_SIZE" [ref=f22e1549]
+            - cell "2621440" [ref=f22e1550]
+          - row [ref=f22e1552]:
+            - cell "DATA_UPLOAD_MAX_NUMBER_FIELDS" [ref=f22e1553]
+            - cell "1000" [ref=f22e1554]
+          - row [ref=f22e1556]:
+            - cell "DATA_UPLOAD_MAX_NUMBER_FILES" [ref=f22e1557]
+            - cell "100" [ref=f22e1558]
+          - row [ref=f22e1560]:
+            - cell "DATETIME_FORMAT" [ref=f22e1561]
+            - cell "'N j, Y, P'" [ref=f22e1562]
+          - row [ref=f22e1564]:
+            - cell "DATETIME_INPUT_FORMATS" [ref=f22e1565]
+            - cell "['%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M', '%m/%d/%Y %H:%M:%S', '%m/%d/%Y %H:%M:%S.%f', '%m/%d/%Y %H:%M', '%m/%d/%y %H:%M:%S', '%m/%d/%y %H:%M:%S.%f', '%m/%d/%y %H:%M']" [ref=f22e1566]
+          - row [ref=f22e1568]:
+            - cell "DATE_FORMAT" [ref=f22e1569]
+            - cell "'N j, Y'" [ref=f22e1570]
+          - row [ref=f22e1572]:
+            - cell "DATE_INPUT_FORMATS" [ref=f22e1573]
+            - cell "['%Y-%m-%d', '%m/%d/%Y', '%m/%d/%y', '%b %d %Y', '%b %d, %Y', '%d %b %Y', '%d %b, %Y', '%B %d %Y', '%B %d, %Y', '%d %B %Y', '%d %B, %Y']" [ref=f22e1574]
+          - row [ref=f22e1576]:
+            - cell "DEBUG" [ref=f22e1577]
+            - cell "True" [ref=f22e1578]
+          - row [ref=f22e1580]:
+            - cell "DEBUG_PROPAGATE_EXCEPTIONS" [ref=f22e1581]
+            - cell "False" [ref=f22e1582]
+          - row [ref=f22e1584]:
+            - cell "DECIMAL_SEPARATOR" [ref=f22e1585]
+            - cell "'.'" [ref=f22e1586]
+          - row [ref=f22e1588]:
+            - cell "DEFAULT_AUTO_FIELD" [ref=f22e1589]
+            - cell "'django.db.models.BigAutoField'" [ref=f22e1590]
+          - row [ref=f22e1592]:
+            - cell "DEFAULT_CHARSET" [ref=f22e1593]
+            - cell "'utf-8'" [ref=f22e1594]
+          - row [ref=f22e1596]:
+            - cell "DEFAULT_EXCEPTION_REPORTER" [ref=f22e1597]
+            - cell "'django.views.debug.ExceptionReporter'" [ref=f22e1598]
+          - row [ref=f22e1600]:
+            - cell "DEFAULT_EXCEPTION_REPORTER_FILTER" [ref=f22e1601]
+            - cell "'django.views.debug.SafeExceptionReporterFilter'" [ref=f22e1602]
+          - row [ref=f22e1604]:
+            - cell "DEFAULT_FROM_EMAIL" [ref=f22e1605]
+            - cell "'webmaster@localhost'" [ref=f22e1606]
+          - row [ref=f22e1608]:
+            - cell "DEFAULT_INDEX_TABLESPACE" [ref=f22e1609]
+            - cell "''" [ref=f22e1610]
+          - row [ref=f22e1612]:
+            - cell "DEFAULT_TABLESPACE" [ref=f22e1613]
+            - cell "''" [ref=f22e1614]
+          - row [ref=f22e1616]:
+            - cell "DEV_TOOLS_ENABLED" [ref=f22e1617]
+            - cell "True" [ref=f22e1618]
+          - row [ref=f22e1620]:
+            - cell "DISALLOWED_USER_AGENTS" [ref=f22e1621]
+            - cell "[]" [ref=f22e1622]
+          - row [ref=f22e1624]:
+            - cell "EMAIL_BACKEND" [ref=f22e1625]
+            - cell "'freedom_ls.mail.backends.QueuedEmailBackend'" [ref=f22e1626]
+          - row [ref=f22e1628]:
+            - cell "EMAIL_HOST" [ref=f22e1629]
+            - cell "'localhost'" [ref=f22e1630]
+          - row [ref=f22e1632]:
+            - cell "EMAIL_HOST_PASSWORD" [ref=f22e1633]
+            - cell "'********************'" [ref=f22e1634]
+          - row [ref=f22e1636]:
+            - cell "EMAIL_HOST_USER" [ref=f22e1637]
+            - cell "''" [ref=f22e1638]
+          - row [ref=f22e1640]:
+            - cell "EMAIL_LOGO_STATIC_PATH" [ref=f22e1641]
+            - cell "None" [ref=f22e1642]
+          - row [ref=f22e1644]:
+            - cell "EMAIL_PORT" [ref=f22e1645]
+            - cell "1025" [ref=f22e1646]
+          - row [ref=f22e1648]:
+            - cell "EMAIL_SSL_CERTFILE" [ref=f22e1649]
+            - cell "None" [ref=f22e1650]
+          - row [ref=f22e1652]:
+            - cell "EMAIL_SSL_KEYFILE" [ref=f22e1653]
+            - cell "'********************'" [ref=f22e1654]
+          - row [ref=f22e1656]:
+            - cell "EMAIL_SUBJECT_PREFIX" [ref=f22e1657]
+            - cell "'[Django] '" [ref=f22e1658]
+          - row [ref=f22e1660]:
+            - cell "EMAIL_TIMEOUT" [ref=f22e1661]
+            - cell "None" [ref=f22e1662]
+          - row [ref=f22e1664]:
+            - cell "EMAIL_UPSTREAM_BACKEND" [ref=f22e1665]
+            - cell "'django.core.mail.backends.smtp.EmailBackend'" [ref=f22e1666]
+          - row [ref=f22e1668]:
+            - cell "EMAIL_USE_LOCALTIME" [ref=f22e1669]
+            - cell "False" [ref=f22e1670]
+          - row [ref=f22e1672]:
+            - cell "EMAIL_USE_SSL" [ref=f22e1673]
+            - cell "False" [ref=f22e1674]
+          - row [ref=f22e1676]:
+            - cell "EMAIL_USE_TLS" [ref=f22e1677]
+            - cell "False" [ref=f22e1678]
+          - row [ref=f22e1680]:
+            - cell "FAVICON_STATIC_PATH" [ref=f22e1681]
+            - cell "'images/first_class_logo.png'" [ref=f22e1682]
+          - row [ref=f22e1684]:
+            - cell "FILE_UPLOAD_DIRECTORY_PERMISSIONS" [ref=f22e1685]
+            - cell "None" [ref=f22e1686]
+          - row [ref=f22e1688]:
+            - cell "FILE_UPLOAD_HANDLERS" [ref=f22e1689]
+            - cell "['django.core.files.uploadhandler.MemoryFileUploadHandler', 'django.core.files.uploadhandler.TemporaryFileUploadHandler']" [ref=f22e1690]
+          - row [ref=f22e1692]:
+            - cell "FILE_UPLOAD_MAX_MEMORY_SIZE" [ref=f22e1693]
+            - cell "2621440" [ref=f22e1694]
+          - row [ref=f22e1696]:
+            - cell "FILE_UPLOAD_PERMISSIONS" [ref=f22e1697]
+            - cell "420" [ref=f22e1698]
+          - row [ref=f22e1700]:
+            - cell "FILE_UPLOAD_TEMP_DIR" [ref=f22e1701]
+            - cell "None" [ref=f22e1702]
+          - row [ref=f22e1704]:
+            - cell "FIRST_DAY_OF_WEEK" [ref=f22e1705]
+            - cell "0" [ref=f22e1706]
+          - row [ref=f22e1708]:
+            - cell "FIXTURE_DIRS" [ref=f22e1709]
+            - cell "[]" [ref=f22e1710]
+          - row [ref=f22e1712]:
+            - cell "FLS_NOTIFICATION_CATEGORIES" [ref=f22e1713]
+            - cell [ref=f22e1714]
+          - row [ref=f22e1716]:
+            - cell "FLS_THEME" [ref=f22e1717]
+            - cell "'default'" [ref=f22e1718]
+          - row [ref=f22e1720]:
+            - cell "FLS_THEMES_DIRS" [ref=f22e1721]
+            - cell "[PosixPath('/home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/themes'), PosixPath('/home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/freedom_ls/themes')]" [ref=f22e1722]
+          - row [ref=f22e1724]:
+            - cell "FLS_WEBHOOK_EVENT_TYPES" [ref=f22e1725]
+            - cell "[('user.signed_up', 'User signed up'), ('course.completed', 'Course completed'), ('course.paused', 'Course paused'), ('course.resumed', 'Course resumed'), ('deadline.extended', 'Deadline extended'), ('registration.added', 'Learner registered for course'), ('registration.reactivated', 'Learner course registration reactivated'), ('registration.deactivated', 'Learner course registration deactivated'), ('cohort_registration.added', 'Cohort registered for course'), ('cohort_registration.reactivated', 'Cohort course registration reactivated'), ('cohort_registration.deactivated', 'Cohort course registration deactivated'), ('learner.added', 'Learner added'), ('learner.deactivated', 'Learner deactivated'), ('learner.reactivated', 'Learner reactivated'), ('cohort_membership.added', 'Learner added to cohort'), ('cohort_membership.removed', 'Learner removed from cohort')]" [ref=f22e1726]
+          - row [ref=f22e1728]:
+            - cell "FORCE_SCRIPT_NAME" [ref=f22e1729]
+            - cell "None" [ref=f22e1730]
+          - row [ref=f22e1732]:
+            - cell "FORCE_SITE_NAME" [ref=f22e1733]
+            - cell "'DemoDev'" [ref=f22e1734]
+          - row [ref=f22e1736]:
+            - cell "FORMAT_MODULE_PATH" [ref=f22e1737]
+            - cell "None" [ref=f22e1738]
+          - row [ref=f22e1740]:
+            - cell "FORM_RENDERER" [ref=f22e1741]
+            - cell "'django.forms.renderers.DjangoTemplates'" [ref=f22e1742]
+          - row [ref=f22e1744]:
+            - cell "FREEDOMLS_PERMISSIONS_MODULES" [ref=f22e1745]
+            - 'cell "{''DemoDev'': ''config.role_based_permissions.demodev''}" [ref=f22e1746]'
+          - row [ref=f22e1748]:
+            - cell "FREEDOM_LS_ICON_SET" [ref=f22e1749]
+            - cell "'heroicons'" [ref=f22e1750]
+          - row [ref=f22e1752]:
+            - cell "FREEDOM_LS_PACKAGE_DIR" [ref=f22e1753]
+            - cell "PosixPath('/home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/freedom_ls')" [ref=f22e1754]
+          - row [ref=f22e1756]:
+            - cell "GOOGLE_ADS_CONVERSION_ID" [ref=f22e1757]
+            - cell "None" [ref=f22e1758]
+          - row [ref=f22e1760]:
+            - cell "GOOGLE_ADS_CONVERSION_LABELS" [ref=f22e1761]
+            - 'cell "{}" [ref=f22e1762]'
+          - row [ref=f22e1764]:
+            - cell "GOOGLE_ANALYTICS_MEASUREMENT_ID" [ref=f22e1765]
+            - cell "None" [ref=f22e1766]
+          - row [ref=f22e1768]:
+            - cell "GUARDIAN_MONKEY_PATCH_GROUP" [ref=f22e1769]
+            - cell "'********************'" [ref=f22e1770]
+          - row [ref=f22e1772]:
+            - cell "GUARDIAN_MONKEY_PATCH_USER" [ref=f22e1773]
+            - cell "'********************'" [ref=f22e1774]
+          - row [ref=f22e1776]:
+            - cell "HEADER_LOGO_ON_DARK_STATIC_PATH" [ref=f22e1777]
+            - cell "'images/first_class_logo_on_dark.png'" [ref=f22e1778]
+          - row [ref=f22e1780]:
+            - cell "HEADER_LOGO_STATIC_PATH" [ref=f22e1781]
+            - cell "'images/first_class_logo.png'" [ref=f22e1782]
+          - row [ref=f22e1784]:
+            - cell "HEADER_TITLE" [ref=f22e1785]
+            - cell "'FirstClass'" [ref=f22e1786]
+          - row [ref=f22e1788]:
+            - cell "HEADER_TITLE_STYLE" [ref=f22e1789]
+            - 'cell "''font-style: italic;''" [ref=f22e1790]'
+          - row [ref=f22e1792]:
+            - cell "HEADLESS_SERVE_SPECIFICATION" [ref=f22e1793]
+            - cell "True" [ref=f22e1794]
+          - row [ref=f22e1796]:
+            - cell "IGNORABLE_404_URLS" [ref=f22e1797]
+            - cell "[]" [ref=f22e1798]
+          - row [ref=f22e1800]:
+            - cell "INSTALLED_APPS" [ref=f22e1801]
+            - cell [ref=f22e1802]
+          - row [ref=f22e1804]:
+            - cell "INTERNAL_IPS" [ref=f22e1805]
+            - cell "['127.0.0.1']" [ref=f22e1806]
+          - row [ref=f22e1808]:
+            - cell "LANGUAGES" [ref=f22e1809]
+            - cell [ref=f22e1810]
+          - row [ref=f22e1812]:
+            - cell "LANGUAGES_BIDI" [ref=f22e1813]
+            - cell "['he', 'ar', 'ar-dz', 'ckb', 'fa', 'ug', 'ur']" [ref=f22e1814]
+          - row [ref=f22e1816]:
+            - cell "LANGUAGE_CODE" [ref=f22e1817]
+            - cell "'en-us'" [ref=f22e1818]
+          - row [ref=f22e1820]:
+            - cell "LANGUAGE_COOKIE_AGE" [ref=f22e1821]
+            - cell "None" [ref=f22e1822]
+          - row [ref=f22e1824]:
+            - cell "LANGUAGE_COOKIE_DOMAIN" [ref=f22e1825]
+            - cell "None" [ref=f22e1826]
+          - row [ref=f22e1828]:
+            - cell "LANGUAGE_COOKIE_HTTPONLY" [ref=f22e1829]
+            - cell "False" [ref=f22e1830]
+          - row [ref=f22e1832]:
+            - cell "LANGUAGE_COOKIE_NAME" [ref=f22e1833]
+            - cell "'django_language'" [ref=f22e1834]
+          - row [ref=f22e1836]:
+            - cell "LANGUAGE_COOKIE_PATH" [ref=f22e1837]
+            - cell "'/'" [ref=f22e1838]
+          - row [ref=f22e1840]:
+            - cell "LANGUAGE_COOKIE_SAMESITE" [ref=f22e1841]
+            - cell "None" [ref=f22e1842]
+          - row [ref=f22e1844]:
+            - cell "LANGUAGE_COOKIE_SECURE" [ref=f22e1845]
+            - cell "False" [ref=f22e1846]
+          - row [ref=f22e1848]:
+            - cell "LEGAL_DOCS_MANIFEST_PATH" [ref=f22e1849]
+            - cell "None" [ref=f22e1850]
+          - row [ref=f22e1852]:
+            - cell "LOCALE_PATHS" [ref=f22e1853]
+            - cell "[]" [ref=f22e1854]
+          - row [ref=f22e1856]:
+            - cell "LOGGING" [ref=f22e1857]
+            - 'cell "{}" [ref=f22e1858]'
+          - row [ref=f22e1860]:
+            - cell "LOGGING_CONFIG" [ref=f22e1861]
+            - cell "'logging.config.dictConfig'" [ref=f22e1862]
+          - row [ref=f22e1864]:
+            - cell "LOGIN_REDIRECT_URL" [ref=f22e1865]
+            - cell "'/'" [ref=f22e1866]
+          - row [ref=f22e1868]:
+            - cell "LOGIN_URL" [ref=f22e1869]
+            - cell "'/accounts/login/'" [ref=f22e1870]
+          - row [ref=f22e1872]:
+            - cell "LOGOUT_REDIRECT_URL" [ref=f22e1873]
+            - cell "None" [ref=f22e1874]
+          - row [ref=f22e1876]:
+            - cell "MANAGERS" [ref=f22e1877]
+            - cell "[]" [ref=f22e1878]
+          - row [ref=f22e1880]:
+            - cell "MARKDOWN_ALLOWED_TAGS" [ref=f22e1881]
+            - 'cell "{''c-accordion'': {''open'', ''title''}, ''c-admonition'': {''type'', ''title''}, ''c-article-card'': {''path'', ''variant''}, ''c-article-link'': {''path''}, ''c-audio'': {''symbol'', ''src'', ''respelling'', ''label''}, ''c-card'': {''alt'', ''src'', ''size'', ''title''}, ''c-code-block'': {''wrap'', ''language'', ''title''}, ''c-content-link'': {''path''}, ''c-course-card'': {''path'', ''variant''}, ''c-equation'': {''label''}, ''c-file-download'': {''src'', ''text''}, ''c-flashcard'': {''size''}, ''c-grid'': {''columns''}, ''c-image-grid'': {''columns''}, ''c-pdf-embed'': {''src'', ''caption'', ''height''}, ''c-picture'': {''alt'', ''number'', ''src'', ''description'', ''title''}, ''c-pull-quote'': {''cite'', ''source'', ''attribution''}, ''c-slot'': {''name''}, ''c-table'': {''caption''}, ''c-youtube'': {''video_id'', ''caption'', ''video_title''}}" [ref=f22e1882]'
+          - row [ref=f22e1884]:
+            - cell "MARKDOWN_TEMPLATE_RENDER_ON" [ref=f22e1885]
+            - cell "True" [ref=f22e1886]
+          - row [ref=f22e1888]:
+            - cell "MEDIA_ROOT" [ref=f22e1889]
+            - cell "PosixPath('/home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/media')" [ref=f22e1890]
+          - row [ref=f22e1892]:
+            - cell "MEDIA_URL" [ref=f22e1893]
+            - cell "'/media/'" [ref=f22e1894]
+          - row [ref=f22e1896]:
+            - cell "MESSAGE_STORAGE" [ref=f22e1897]
+            - cell "'django.contrib.messages.storage.fallback.FallbackStorage'" [ref=f22e1898]
+          - row [ref=f22e1900]:
+            - cell "MESSAGING_ENABLED" [ref=f22e1901]
+            - cell "True" [ref=f22e1902]
+          - row [ref=f22e1904]:
+            - cell "META_PIXEL_ID" [ref=f22e1905]
+            - cell "None" [ref=f22e1906]
+          - row [ref=f22e1908]:
+            - cell "MIDDLEWARE" [ref=f22e1909]
+            - cell [ref=f22e1910]
+          - row [ref=f22e1912]:
+            - cell "MIGRATION_MODULES" [ref=f22e1913]
+            - 'cell "{''debug_toolbar'': None}" [ref=f22e1914]'
+          - row [ref=f22e1916]:
+            - cell "MONTH_DAY_FORMAT" [ref=f22e1917]
+            - cell "'F j'" [ref=f22e1918]
+          - row [ref=f22e1920]:
+            - cell "NOTIFICATIONS_ENABLED" [ref=f22e1921]
+            - cell "True" [ref=f22e1922]
+          - row [ref=f22e1924]:
+            - cell "NOTIFICATION_CATEGORIES" [ref=f22e1925]
+            - cell [ref=f22e1926]
+          - row [ref=f22e1928]:
+            - cell "NUMBER_GROUPING" [ref=f22e1929]
+            - cell "0" [ref=f22e1930]
+          - row [ref=f22e1932]:
+            - cell "ORGANISATION_LOGO_STORAGE_ALIAS" [ref=f22e1933]
+            - cell "'public'" [ref=f22e1934]
+          - row [ref=f22e1936]:
+            - cell "OVERRIDE_COURSE_ACCESS_TO_FREE" [ref=f22e1937]
+            - cell "False" [ref=f22e1938]
+          - row [ref=f22e1940]:
+            - cell "OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE" [ref=f22e1941]
+            - cell "False" [ref=f22e1942]
+          - row [ref=f22e1944]:
+            - cell "PANEL_FRAMEWORK_SITE_RESOLVER" [ref=f22e1945]
+            - cell "'freedom_ls.site_aware_models.models.get_cached_site'" [ref=f22e1946]
+          - row [ref=f22e1948]:
+            - cell "PASSWORD_HASHERS" [ref=f22e1949]
+            - cell "'********************'" [ref=f22e1950]
+          - row [ref=f22e1952]:
+            - cell "PASSWORD_RESET_TIMEOUT" [ref=f22e1953]
+            - cell "'********************'" [ref=f22e1954]
+          - row [ref=f22e1956]:
+            - cell "POSTHOG_API_HOST" [ref=f22e1957]
+            - cell "'********************'" [ref=f22e1958]
+          - row [ref=f22e1960]:
+            - cell "POSTHOG_API_KEY" [ref=f22e1961]
+            - cell "'********************'" [ref=f22e1962]
+          - row [ref=f22e1964]:
+            - cell "POSTHOG_UI_HOST" [ref=f22e1965]
+            - cell "None" [ref=f22e1966]
+          - row [ref=f22e1968]:
+            - cell "PREPEND_WWW" [ref=f22e1969]
+            - cell "False" [ref=f22e1970]
+          - row [ref=f22e1972]:
+            - cell "PROFILE_PICTURES_PURPOSE" [ref=f22e1973]
+            - cell "'PROFILE_PICTURES'" [ref=f22e1974]
+          - row [ref=f22e1976]:
+            - cell "REPORTS_STORAGE_ALIAS" [ref=f22e1977]
+            - cell "'reports'" [ref=f22e1978]
+          - row [ref=f22e1980]:
+            - cell "REQUIRE_NAME" [ref=f22e1981]
+            - cell "True" [ref=f22e1982]
+          - row [ref=f22e1984]:
+            - cell "REQUIRE_TERMS_ACCEPTANCE" [ref=f22e1985]
+            - cell "True" [ref=f22e1986]
+          - row [ref=f22e1988]:
+            - cell "RESOLVED_THEME_DIR" [ref=f22e1989]
+            - cell "PosixPath('/home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/freedom_ls/themes/default')" [ref=f22e1990]
+          - row [ref=f22e1992]:
+            - cell "ROOT_URLCONF" [ref=f22e1993]
+            - cell "'config.urls'" [ref=f22e1994]
+          - row [ref=f22e1996]:
+            - cell "SALT_KEY" [ref=f22e1997]
+            - cell "'********************'" [ref=f22e1998]
+          - row [ref=f22e2000]:
+            - cell "SECRET_KEY" [ref=f22e2001]
+            - cell "'********************'" [ref=f22e2002]
+          - row [ref=f22e2004]:
+            - cell "SECRET_KEY_FALLBACKS" [ref=f22e2005]
+            - cell "'********************'" [ref=f22e2006]
+          - row [ref=f22e2008]:
+            - cell "SECURE_CONTENT_TYPE_NOSNIFF" [ref=f22e2009]
+            - cell "True" [ref=f22e2010]
+          - row [ref=f22e2012]:
+            - cell "SECURE_CROSS_ORIGIN_OPENER_POLICY" [ref=f22e2013]
+            - cell "'same-origin'" [ref=f22e2014]
+          - row [ref=f22e2016]:
+            - cell "SECURE_CSP" [ref=f22e2017]
+            - 'cell "{}" [ref=f22e2018]'
+          - row [ref=f22e2020]:
+            - cell "SECURE_CSP_REPORT_ONLY" [ref=f22e2021]
+            - cell [ref=f22e2022]
+          - row [ref=f22e2024]:
+            - cell "SECURE_HSTS_INCLUDE_SUBDOMAINS" [ref=f22e2025]
+            - cell "False" [ref=f22e2026]
+          - row [ref=f22e2028]:
+            - cell "SECURE_HSTS_PRELOAD" [ref=f22e2029]
+            - cell "False" [ref=f22e2030]
+          - row [ref=f22e2032]:
+            - cell "SECURE_HSTS_SECONDS" [ref=f22e2033]
+            - cell "0" [ref=f22e2034]
+          - row [ref=f22e2036]:
+            - cell "SECURE_PROXY_SSL_HEADER" [ref=f22e2037]
+            - cell "None" [ref=f22e2038]
+          - row [ref=f22e2040]:
+            - cell "SECURE_REDIRECT_EXEMPT" [ref=f22e2041]
+            - cell "[]" [ref=f22e2042]
+          - row [ref=f22e2044]:
+            - cell "SECURE_REFERRER_POLICY" [ref=f22e2045]
+            - cell "'same-origin'" [ref=f22e2046]
+          - row [ref=f22e2048]:
+            - cell "SECURE_SSL_HOST" [ref=f22e2049]
+            - cell "None" [ref=f22e2050]
+          - row [ref=f22e2052]:
+            - cell "SECURE_SSL_REDIRECT" [ref=f22e2053]
+            - cell "False" [ref=f22e2054]
+          - row [ref=f22e2056]:
+            - cell "SENTRY_DSN" [ref=f22e2057]
+            - cell "None" [ref=f22e2058]
+          - row [ref=f22e2060]:
+            - cell "SENTRY_ENVIRONMENT" [ref=f22e2061]
+            - cell "None" [ref=f22e2062]
+          - row [ref=f22e2064]:
+            - cell "SENTRY_RELEASE" [ref=f22e2065]
+            - cell "None" [ref=f22e2066]
+          - row [ref=f22e2068]:
+            - cell "SENTRY_SEND_DEFAULT_PII" [ref=f22e2069]
+            - cell "False" [ref=f22e2070]
+          - row [ref=f22e2072]:
+            - cell "SENTRY_TRACES_SAMPLE_RATE" [ref=f22e2073]
+            - cell "None" [ref=f22e2074]
+          - row [ref=f22e2076]:
+            - cell "SERVER_EMAIL" [ref=f22e2077]
+            - cell "'root@localhost'" [ref=f22e2078]
+          - row [ref=f22e2080]:
+            - cell "SESSION_CACHE_ALIAS" [ref=f22e2081]
+            - cell "'default'" [ref=f22e2082]
+          - row [ref=f22e2084]:
+            - cell "SESSION_COOKIE_AGE" [ref=f22e2085]
+            - cell "1209600" [ref=f22e2086]
+          - row [ref=f22e2088]:
+            - cell "SESSION_COOKIE_DOMAIN" [ref=f22e2089]
+            - cell "None" [ref=f22e2090]
+          - row [ref=f22e2092]:
+            - cell "SESSION_COOKIE_HTTPONLY" [ref=f22e2093]
+            - cell "True" [ref=f22e2094]
+          - row [ref=f22e2096]:
+            - cell "SESSION_COOKIE_NAME" [ref=f22e2097]
+            - cell "'sessionid_db_extract_panels_framework_4_template_contract'" [ref=f22e2098]
+          - row [ref=f22e2100]:
+            - cell "SESSION_COOKIE_PATH" [ref=f22e2101]
+            - cell "'/'" [ref=f22e2102]
+          - row [ref=f22e2104]:
+            - cell "SESSION_COOKIE_SAMESITE" [ref=f22e2105]
+            - cell "'Lax'" [ref=f22e2106]
+          - row [ref=f22e2108]:
+            - cell "SESSION_COOKIE_SECURE" [ref=f22e2109]
+            - cell "False" [ref=f22e2110]
+          - row [ref=f22e2112]:
+            - cell "SESSION_ENGINE" [ref=f22e2113]
+            - cell "'django.contrib.sessions.backends.db'" [ref=f22e2114]
+          - row [ref=f22e2116]:
+            - cell "SESSION_EXPIRE_AT_BROWSER_CLOSE" [ref=f22e2117]
+            - cell "False" [ref=f22e2118]
+          - row [ref=f22e2120]:
+            - cell "SESSION_FILE_PATH" [ref=f22e2121]
+            - cell "None" [ref=f22e2122]
+          - row [ref=f22e2124]:
+            - cell "SESSION_SAVE_EVERY_REQUEST" [ref=f22e2125]
+            - cell "False" [ref=f22e2126]
+          - row [ref=f22e2128]:
+            - cell "SESSION_SERIALIZER" [ref=f22e2129]
+            - cell "'django.contrib.sessions.serializers.JSONSerializer'" [ref=f22e2130]
+          - row [ref=f22e2132]:
+            - cell "SETTINGS_MODULE" [ref=f22e2133]
+            - cell "'qa_minimal_shell_settings'" [ref=f22e2134]
+          - row [ref=f22e2136]:
+            - cell "SHORT_DATETIME_FORMAT" [ref=f22e2137]
+            - cell "'m/d/Y P'" [ref=f22e2138]
+          - row [ref=f22e2140]:
+            - cell "SHORT_DATE_FORMAT" [ref=f22e2141]
+            - cell "'m/d/Y'" [ref=f22e2142]
+          - row [ref=f22e2144]:
+            - cell "SIGNING_BACKEND" [ref=f22e2145]
+            - cell "'django.core.signing.TimestampSigner'" [ref=f22e2146]
+          - row [ref=f22e2148]:
+            - cell "SILENCED_SYSTEM_CHECKS" [ref=f22e2149]
+            - cell "[]" [ref=f22e2150]
+          - row [ref=f22e2152]:
+            - cell "STATICFILES_DIRS" [ref=f22e2153]
+            - cell "[PosixPath('/home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/freedom_ls/themes/default/static'), PosixPath('/home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/freedom_ls/themes/first_class/static'), PosixPath('/home/sheena/workspace/lms/freedom-ls-worktrees/extract_panels_framework-4-template-contract/static')]" [ref=f22e2154]
+          - row [ref=f22e2156]:
+            - cell "STATICFILES_FINDERS" [ref=f22e2157]
+            - cell "['django.contrib.staticfiles.finders.FileSystemFinder', 'django.contrib.staticfiles.finders.AppDirectoriesFinder']" [ref=f22e2158]
+          - row [ref=f22e2160]:
+            - cell "STATIC_ROOT" [ref=f22e2161]
+            - cell "None" [ref=f22e2162]
+          - row [ref=f22e2164]:
+            - cell "STATIC_URL" [ref=f22e2165]
+            - cell "'/static/'" [ref=f22e2166]
+          - row [ref=f22e2168]:
+            - cell "STORAGES" [ref=f22e2169]
+            - 'cell "{''certificates'': {''BACKEND'': ''django.core.files.storage.FileSystemStorage''}, ''course_media'': {''BACKEND'': ''django.core.files.storage.FileSystemStorage''}, ''default'': {''BACKEND'': ''django.core.files.storage.FileSystemStorage''}, ''profile_pictures'': {''BACKEND'': ''django.core.files.storage.FileSystemStorage''}, ''public'': {''BACKEND'': ''django.core.files.storage.FileSystemStorage'', ''OPTIONS'': {''allow_overwrite'': True}}, ''reports'': {''BACKEND'': ''django.core.files.storage.FileSystemStorage''}, ''staticfiles'': {''BACKEND'': ''django.contrib.staticfiles.storage.StaticFilesStorage''}, ''user_uploads'': {''BACKEND'': ''django.core.files.storage.FileSystemStorage''}}" [ref=f22e2170]'
+          - row [ref=f22e2172]:
+            - cell "TASKS" [ref=f22e2173]
+            - 'cell "{''default'': {''BACKEND'': ''django.tasks.backends.immediate.ImmediateBackend''}}" [ref=f22e2174]'
+          - row [ref=f22e2176]:
+            - cell "TEMPLATES" [ref=f22e2177]
+            - cell [ref=f22e2178]
+          - row [ref=f22e2180]:
+            - cell "TESTING" [ref=f22e2181]
+            - cell "False" [ref=f22e2182]
+          - row [ref=f22e2184]:
+            - cell "TEST_NON_SERIALIZED_APPS" [ref=f22e2185]
+            - cell "[]" [ref=f22e2186]
+          - row [ref=f22e2188]:
+            - cell "TEST_RUNNER" [ref=f22e2189]
+            - cell "'django.test.runner.DiscoverRunner'" [ref=f22e2190]
+          - row [ref=f22e2192]:
+            - cell "THOUSAND_SEPARATOR" [ref=f22e2193]
+            - cell "','" [ref=f22e2194]
+          - row [ref=f22e2196]:
+            - cell "TIKTOK_PIXEL_ID" [ref=f22e2197]
+            - cell "None" [ref=f22e2198]
+          - row [ref=f22e2200]:
+            - cell "TIME_FORMAT" [ref=f22e2201]
+            - cell "'P'" [ref=f22e2202]
+          - row [ref=f22e2204]:
+            - cell "TIME_INPUT_FORMATS" [ref=f22e2205]
+            - cell "['%H:%M:%S', '%H:%M:%S.%f', '%H:%M']" [ref=f22e2206]
+          - row [ref=f22e2208]:
+            - cell "TIME_ZONE" [ref=f22e2209]
+            - cell "'UTC'" [ref=f22e2210]
+          - row [ref=f22e2212]:
+            - cell "TRUSTED_PROXY_IP_HEADER" [ref=f22e2213]
+            - cell "None" [ref=f22e2214]
+          - row [ref=f22e2216]:
+            - cell "URLIZE_ASSUME_HTTPS" [ref=f22e2217]
+            - cell "False" [ref=f22e2218]
+          - row [ref=f22e2220]:
+            - cell "USE_I18N" [ref=f22e2221]
+            - cell "True" [ref=f22e2222]
+          - row [ref=f22e2224]:
+            - cell "USE_THOUSAND_SEPARATOR" [ref=f22e2225]
+            - cell "False" [ref=f22e2226]
+          - row [ref=f22e2228]:
+            - cell "USE_TZ" [ref=f22e2229]
+            - cell "True" [ref=f22e2230]
+          - row [ref=f22e2232]:
+            - cell "USE_X_FORWARDED_HOST" [ref=f22e2233]
+            - cell "False" [ref=f22e2234]
+          - row [ref=f22e2236]:
+            - cell "USE_X_FORWARDED_PORT" [ref=f22e2237]
+            - cell "False" [ref=f22e2238]
+          - row [ref=f22e2240]:
+            - cell "VISITOR_COUNTRY_HEADER" [ref=f22e2241]
+            - cell "None" [ref=f22e2242]
+          - row [ref=f22e2244]:
+            - cell "WEBHOOK_EVENT_TYPES" [ref=f22e2245]
+            - cell "[('user.signed_up', 'User signed up'), ('course.completed', 'Course completed'), ('course.paused', 'Course paused'), ('course.resumed', 'Course resumed'), ('deadline.extended', 'Deadline extended'), ('registration.added', 'Learner registered for course'), ('registration.reactivated', 'Learner course registration reactivated'), ('registration.deactivated', 'Learner course registration deactivated'), ('cohort_registration.added', 'Cohort registered for course'), ('cohort_registration.reactivated', 'Cohort course registration reactivated'), ('cohort_registration.deactivated', 'Cohort course registration deactivated'), ('learner.added', 'Learner added'), ('learner.deactivated', 'Learner deactivated'), ('learner.reactivated', 'Learner reactivated'), ('cohort_membership.added', 'Learner added to cohort'), ('cohort_membership.removed', 'Learner removed from cohort')]" [ref=f22e2246]
+          - row [ref=f22e2248]:
+            - cell "WSGI_APPLICATION" [ref=f22e2249]
+            - cell "'config.wsgi.application'" [ref=f22e2250]
+          - row [ref=f22e2252]:
+            - cell "X_FRAME_OPTIONS" [ref=f22e2253]
+            - cell "'SAMEORIGIN'" [ref=f22e2254]
+          - row [ref=f22e2256]:
+            - cell "YEAR_MONTH_FORMAT" [ref=f22e2257]
+            - cell "'F Y'" [ref=f22e2258]
+  - contentinfo [ref=f22e2260]:
+    - paragraph [ref=f22e2261]:
+      - text: You’re seeing this error because you have
+      - code [ref=f22e2262]: DEBUG = True
+      - text: in your Django settings file. Change that to
+      - code [ref=f22e2263]: "False"
+      - text: ", and Django will display a standard page generated by the handler for this status code."
+  - generic "Show toolbar" [ref=f22e2265]: DJDT

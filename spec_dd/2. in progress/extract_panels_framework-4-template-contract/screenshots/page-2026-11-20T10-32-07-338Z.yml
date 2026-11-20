@@ -1,0 +1,95 @@
+- generic [active] [ref=f8e1]:
+  - banner [ref=f8e2]:
+    - link [ref=f8e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f8e4]
+      - heading "FirstClass" [level=1] [ref=f8e5]
+    - navigation [ref=f8e6]:
+      - generic [ref=f8e7]:
+        - generic [ref=f8e8]:
+          - button "Notifications, none new" [ref=f8e9]
+          - status:
+            - generic [ref=f8e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f8e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f8e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f8e17]:
+    - generic [ref=f8e18]:
+      - generic [ref=f8e19]:
+        - dialog "Navigation" [ref=f8e20]:
+          - generic [ref=f8e22]:
+            - generic [ref=f8e778]:
+              - paragraph [ref=f8e779]: Organisation
+              - button "Switch organisation" [ref=f8e781] [cursor=pointer]:
+                - generic [aria-hidden] [ref=f8e782]: D
+                - generic "DemoDev" [ref=f8e783]
+            - navigation "Sections" [ref=f8e786]:
+              - heading "Teaching" [level=2] [ref=f8e787]
+              - list [ref=f8e788]:
+                - listitem [ref=f8e789]:
+                  - link "Dashboard" [ref=f8e790] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/dashboard
+                - listitem [ref=f8e795]:
+                  - link "Cohorts" [ref=f8e796] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts
+                - listitem [ref=f8e801]:
+                  - link "Learners" [ref=f8e802] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/learners
+                - listitem [ref=f8e807]:
+                  - link "Courses" [ref=f8e808] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/courses
+              - heading "Administration" [level=2] [ref=f8e813]
+              - list [ref=f8e814]:
+                - listitem [ref=f8e815]:
+                  - link "Staff" [ref=f8e816] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/staff
+                - listitem [ref=f8e821]:
+                  - link "Audit log" [ref=f8e822] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/audit-log
+            - generic [ref=f8e72]:
+              - generic [ref=f8e74]:
+                - generic [aria-hidden] [ref=f8e75]: DE
+                - generic [ref=f8e76]: demodev@email.com
+              - link "Account settings" [ref=f8e78] [cursor=pointer]:
+                - /url: /accounts/profile/
+        - generic [ref=f8e827]:
+          - generic [ref=f8e829]:
+            - heading "Staff" [level=1] [ref=f8e833]
+            - button "Add staff member" [ref=f8e835] [cursor=pointer]
+          - generic [ref=f8e840]:
+            - generic [ref=f8e841]:
+              - generic [ref=f8e843]:
+                - generic [ref=f8e844]: Search
+                - searchbox "Search" [ref=f8e846]
+              - group [ref=f8e848]:
+                - 'generic "Role: All roles" [ref=f8e849]'
+            - region "Staff members" [ref=f8e854]:
+              - table [ref=f8e855]:
+                - caption [ref=f8e856]: Staff members
+                - rowgroup [ref=f8e857]:
+                  - row [ref=f8e858]:
+                    - columnheader [ref=f8e859]:
+                      - link "Staff member" [ref=f8e860] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/staff?staff-sort=-first_name
+                    - columnheader "Roles" [ref=f8e864]
+                    - columnheader "Role actions" [ref=f8e865]
+                    - columnheader "Staff member actions" [ref=f8e866]
+                - rowgroup [ref=f8e867]:
+                  - row [ref=f8e868]:
+                    - cell [ref=f8e869]:
+                      - generic [ref=f8e870]:
+                        - paragraph [ref=f8e871]: No staff yet. Add the first staff member to give someone access to this organisation.
+                        - button "Add staff member" [ref=f8e872] [cursor=pointer]
+      - generic [ref=f8e396]: Showing Cohort 2025.03.04
+  - contentinfo [ref=f8e397]:
+    - generic [ref=f8e398]:
+      - paragraph [ref=f8e399]: © 2026 FirstClass
+      - navigation "Legal" [ref=f8e400]:
+        - link "Terms and Conditions" [ref=f8e401] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f8e402] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f8e403] [cursor=pointer]: extract_panels_framework-4-template-contract
+  - generic "Show toolbar" [ref=f8e405]: DJDT

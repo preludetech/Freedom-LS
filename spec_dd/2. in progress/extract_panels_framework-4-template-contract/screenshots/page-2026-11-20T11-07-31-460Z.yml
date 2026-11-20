@@ -1,0 +1,135 @@
+- generic [ref=f3e1]:
+  - banner [ref=f3e2]:
+    - link [ref=f3e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f3e4]
+      - heading "FirstClass" [level=1] [ref=f3e5]
+    - navigation [ref=f3e6]:
+      - generic [ref=f3e7]:
+        - generic [ref=f3e8]:
+          - button "Notifications, none new" [ref=f3e9]
+          - status:
+            - generic [ref=f3e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f3e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f3e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f3e17]:
+    - generic [ref=f3e18]:
+      - generic [ref=f3e19]:
+        - dialog "Navigation" [ref=f3e20]:
+          - generic [ref=f3e22]:
+            - generic [ref=f3e23]:
+              - paragraph [ref=f3e24]: Organisation
+              - button "Switch organisation" [ref=f3e26] [cursor=pointer]:
+                - generic [aria-hidden] [ref=f3e27]: D
+                - generic "DemoDev" [ref=f3e28]
+            - navigation "Sections" [ref=f3e31]:
+              - heading "Teaching" [level=2] [ref=f3e32]
+              - list [ref=f3e33]:
+                - listitem [ref=f3e34]:
+                  - link "Dashboard" [ref=f3e35] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/dashboard
+                - listitem [ref=f3e40]:
+                  - link "Cohorts" [ref=f3e41] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts
+                - listitem [ref=f3e46]:
+                  - link "Learners" [ref=f3e47] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/learners
+                - listitem [ref=f3e52]:
+                  - link "Courses" [ref=f3e53] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/courses
+              - heading "Administration" [level=2] [ref=f3e58]
+              - list [ref=f3e59]:
+                - listitem [ref=f3e60]:
+                  - link "Staff" [ref=f3e61] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/staff
+                - listitem [ref=f3e66]:
+                  - link "Audit log" [ref=f3e67] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/audit-log
+            - generic [ref=f3e72]:
+              - generic [ref=f3e74]:
+                - generic [aria-hidden] [ref=f3e75]: DE
+                - generic [ref=f3e76]: demodev@email.com
+              - link "Account settings" [ref=f3e78] [cursor=pointer]:
+                - /url: /accounts/profile/
+        - generic [ref=f3e83]:
+          - navigation "Back" [ref=f3e85]:
+            - link "Cohorts" [ref=f3e86] [cursor=pointer]:
+              - /url: /educator/organisations/demodev/cohorts
+          - generic [ref=f3e90]:
+            - generic [ref=f3e92]:
+              - heading "QA Double Click Cohort" [level=1] [ref=f3e97]
+              - navigation "Cohort sections" [ref=f3e98]:
+                - list [ref=f3e99]:
+                  - listitem [ref=f3e100]:
+                    - link "Overview" [ref=f3e101] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/700fd5ae-5500-488c-97ab-e067380c0a25/__tabs/overview
+                  - listitem [ref=f3e102]:
+                    - link "Learners 50" [ref=f3e103] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/700fd5ae-5500-488c-97ab-e067380c0a25/__tabs/learners
+                      - text: Learners
+                      - generic [ref=f3e104]: "50"
+                  - listitem [ref=f3e105]:
+                    - link "Courses 0" [ref=f3e106] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/700fd5ae-5500-488c-97ab-e067380c0a25/__tabs/courses
+                      - text: Courses
+                      - generic [ref=f3e107]: "0"
+                  - listitem [ref=f3e108]:
+                    - link "Report" [ref=f3e109] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/700fd5ae-5500-488c-97ab-e067380c0a25/__tabs/report
+                  - listitem [ref=f3e110]:
+                    - link "Settings" [ref=f3e111] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/700fd5ae-5500-488c-97ab-e067380c0a25/__tabs/settings
+                  - listitem [ref=f3e112]:
+                    - link "History" [ref=f3e113] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/700fd5ae-5500-488c-97ab-e067380c0a25/__tabs/history
+            - generic [ref=f3e117]:
+              - generic [ref=f3e119]:
+                - heading "Name" [level=2] [ref=f3e122]
+                - generic [ref=f3e125]:
+                  - generic [ref=f3e126]:
+                    - generic [ref=f3e127]: "Name:"
+                    - textbox "Name:" [ref=f3e128]: QA Double Click Cohort
+                  - button "Save" [ref=f3e129] [cursor=pointer]
+              - generic [ref=f3e132]:
+                - generic [ref=f3e133]:
+                  - heading "Staff" [level=2] [ref=f3e135]
+                  - button "Add staff member" [ref=f3e137] [cursor=pointer]
+                - paragraph [ref=f3e139]: No staff assigned to this cohort.
+              - generic [ref=f3e141]:
+                - heading "Status" [level=2] [ref=f3e144]
+                - generic [ref=f3e146]:
+                  - paragraph [ref=f3e147]: Deactivating stops this cohort's registrations from giving access to its courses. Learners keep their place and their progress.
+                  - paragraph [ref=f3e148]: QA Double Click Cohort can't be deleted while it has 50 learners, counting inactive learners and inactive registrations.
+                - button "Deactivate" [ref=f3e151] [cursor=pointer]
+      - dialog [ref=f3e163]:
+        - status [ref=f3e164]
+        - generic [ref=f3e165]:
+          - generic [ref=f3e166]:
+            - heading "Deactivate QA Double Click Cohort?" [level=2] [ref=f3e167]
+            - button "Close" [ref=f3e168] [cursor=pointer]
+          - generic [ref=f3e171]:
+            - generic [ref=f3e172]:
+              - paragraph [ref=f3e173]: Learners stay in the cohort and keep their progress.
+              - paragraph [ref=f3e174]: While the cohort is inactive, its registrations stop giving access to its 0 courses. Learners with another registration for a course keep access to it.
+              - paragraph [ref=f3e175]: You can reactivate the cohort at any time.
+              - paragraph [ref=f3e176]: QA Double Click Cohort can't be deleted while it has 50 learners, counting inactive learners and inactive registrations.
+              - generic [ref=f3e178]:
+                - generic [ref=f3e179]: "Reason (optional):"
+                - textbox "Reason (optional):" [ref=f3e180]
+                - paragraph [ref=f3e181]: Only staff can see this. It is shown in the history.
+            - generic [ref=f3e182]:
+              - button "Cancel" [active] [ref=f3e184] [cursor=pointer]
+              - button "Deactivate" [ref=f3e186] [cursor=pointer]
+  - contentinfo [ref=f3e154]:
+    - generic [ref=f3e155]:
+      - paragraph [ref=f3e156]: © 2026 FirstClass
+      - navigation "Legal" [ref=f3e157]:
+        - link "Terms and Conditions" [ref=f3e158] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f3e159] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f3e160] [cursor=pointer]: extract_panels_framework-4-template-contract
+  - generic "Show toolbar" [ref=f3e162]: DJDT

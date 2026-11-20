@@ -1,0 +1,392 @@
+- generic [active] [ref=f25e1]:
+  - banner [ref=f25e2]:
+    - link [ref=f25e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f25e4]
+    - navigation [ref=f25e5]:
+      - generic [ref=f25e6]:
+        - generic [ref=f25e7]:
+          - button "Notifications, none new" [ref=f25e8]
+          - status:
+            - generic [ref=f25e12]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f25e14] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f25e15]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f25e16]:
+    - generic [ref=f25e20]:
+      - generic [ref=f25e22]:
+        - generic [ref=f25e24]:
+          - button "Open navigation panel" [ref=f25e25] [cursor=pointer]
+          - heading "Learners" [level=1] [ref=f25e29]
+        - generic [ref=f25e30]:
+          - button "Add learner" [ref=f25e31] [cursor=pointer]
+          - link "Import learners" [ref=f25e32] [cursor=pointer]:
+            - /url: /educator/organisations/demodev/learners/import/
+      - generic [ref=f25e37]:
+        - generic [ref=f25e38]:
+          - generic [ref=f25e40]:
+            - generic [ref=f25e41]: Search
+            - searchbox "Search" [ref=f25e43]
+          - generic [ref=f25e44]:
+            - generic [ref=f25e45]: "Status: Active, Pending"
+            - generic [ref=f25e46]:
+              - button "Filter" [ref=f25e47] [cursor=pointer]
+              - button "Sort" [ref=f25e52] [cursor=pointer]
+            - link "Export CSV" [ref=f25e56] [cursor=pointer]:
+              - /url: /educator/organisations/demodev/learners?learners-page=2&learners-export=csv
+        - status [ref=f25e60]
+        - generic [ref=f25e62]:
+          - generic [ref=f25e64]:
+            - checkbox "Select all on this page" [ref=f25e65] [cursor=pointer]
+            - text: Select all on this page
+          - list [ref=f25e66]:
+            - listitem [ref=f25e67]:
+              - checkbox "Select demodev_s19" [ref=f25e69] [cursor=pointer]
+              - generic [ref=f25e70]:
+                - generic [ref=f25e73]:
+                  - link "demodev_s19 demodev_s19@email.com" [ref=f25e75] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/learners/2af098f5-21ef-40ed-a034-2c0524cd7b7e
+                    - generic [ref=f25e76]:
+                      - generic [aria-hidden] [ref=f25e77]: D
+                      - generic [ref=f25e78]:
+                        - generic [ref=f25e79]: demodev_s19
+                        - generic [ref=f25e80]: demodev_s19@email.com
+                  - 'link "Quick view: demodev_s19" [ref=f25e81] [cursor=pointer]':
+                    - /url: /educator/organisations/demodev/learners/2af098f5-21ef-40ed-a034-2c0524cd7b7e
+                - generic [ref=f25e86]:
+                  - generic [ref=f25e87]:
+                    - term [ref=f25e88]: Status
+                    - definition [ref=f25e89]:
+                      - generic [ref=f25e90]: Active
+                  - generic [ref=f25e91]:
+                    - term [ref=f25e92]: Cohorts
+                    - definition [ref=f25e93]:
+                      - link "Cohort 2025.03.04" [ref=f25e94] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/6ab4084d-3c7c-48b5-943c-97547f4fc35e
+                      - text: ","
+                      - link "QA Double Click Cohort" [ref=f25e95] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/700fd5ae-5500-488c-97ab-e067380c0a25
+                  - generic [ref=f25e96]:
+                    - term [ref=f25e97]: Courses
+                    - definition [ref=f25e98]:
+                      - img "None" [ref=f25e99]: —
+                  - generic [ref=f25e100]:
+                    - term [ref=f25e101]: Last active
+                    - definition [ref=f25e102]: Never
+            - listitem [ref=f25e103]:
+              - checkbox "Select demodev_s2" [ref=f25e105] [cursor=pointer]
+              - generic [ref=f25e106]:
+                - generic [ref=f25e109]:
+                  - link "demodev_s2 demodev_s2@email.com" [ref=f25e111] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/learners/f2bf03e3-6530-4417-a086-923ad15224f8
+                    - generic [ref=f25e112]:
+                      - generic [aria-hidden] [ref=f25e113]: D
+                      - generic [ref=f25e114]:
+                        - generic [ref=f25e115]: demodev_s2
+                        - generic [ref=f25e116]: demodev_s2@email.com
+                  - 'link "Quick view: demodev_s2" [ref=f25e117] [cursor=pointer]':
+                    - /url: /educator/organisations/demodev/learners/f2bf03e3-6530-4417-a086-923ad15224f8
+                - generic [ref=f25e122]:
+                  - generic [ref=f25e123]:
+                    - term [ref=f25e124]: Status
+                    - definition [ref=f25e125]:
+                      - generic [ref=f25e126]: Active
+                  - generic [ref=f25e127]:
+                    - term [ref=f25e128]: Cohorts
+                    - definition [ref=f25e129]:
+                      - link "Cohort 2025.03.04" [ref=f25e130] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/6ab4084d-3c7c-48b5-943c-97547f4fc35e
+                      - text: ","
+                      - link "QA Double Click Cohort" [ref=f25e131] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/700fd5ae-5500-488c-97ab-e067380c0a25
+                  - generic [ref=f25e132]:
+                    - term [ref=f25e133]: Courses
+                    - definition [ref=f25e134]:
+                      - img "None" [ref=f25e135]: —
+                  - generic [ref=f25e136]:
+                    - term [ref=f25e137]: Last active
+                    - definition [ref=f25e138]: Never
+            - listitem [ref=f25e139]:
+              - checkbox "Select demodev_s20" [ref=f25e141] [cursor=pointer]
+              - generic [ref=f25e142]:
+                - generic [ref=f25e145]:
+                  - link "demodev_s20 demodev_s20@email.com" [ref=f25e147] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/learners/a4f8e9f5-4a9f-4748-b462-cebba17c75d8
+                    - generic [ref=f25e148]:
+                      - generic [aria-hidden] [ref=f25e149]: D
+                      - generic [ref=f25e150]:
+                        - generic [ref=f25e151]: demodev_s20
+                        - generic [ref=f25e152]: demodev_s20@email.com
+                  - 'link "Quick view: demodev_s20" [ref=f25e153] [cursor=pointer]':
+                    - /url: /educator/organisations/demodev/learners/a4f8e9f5-4a9f-4748-b462-cebba17c75d8
+                - generic [ref=f25e158]:
+                  - generic [ref=f25e159]:
+                    - term [ref=f25e160]: Status
+                    - definition [ref=f25e161]:
+                      - generic [ref=f25e162]: Active
+                  - generic [ref=f25e163]:
+                    - term [ref=f25e164]: Cohorts
+                    - definition [ref=f25e165]:
+                      - link "Cohort 2025.03.04" [ref=f25e166] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/6ab4084d-3c7c-48b5-943c-97547f4fc35e
+                      - text: ","
+                      - link "QA Double Click Cohort" [ref=f25e167] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/700fd5ae-5500-488c-97ab-e067380c0a25
+                  - generic [ref=f25e168]:
+                    - term [ref=f25e169]: Courses
+                    - definition [ref=f25e170]:
+                      - img "None" [ref=f25e171]: —
+                  - generic [ref=f25e172]:
+                    - term [ref=f25e173]: Last active
+                    - definition [ref=f25e174]: Never
+            - listitem [ref=f25e175]:
+              - checkbox "Select demodev_s21" [ref=f25e177] [cursor=pointer]
+              - generic [ref=f25e178]:
+                - generic [ref=f25e181]:
+                  - link "demodev_s21 demodev_s21@email.com" [ref=f25e183] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/learners/11cdeeb1-0ee5-4fb3-8c55-c584ad3f56c4
+                    - generic [ref=f25e184]:
+                      - generic [aria-hidden] [ref=f25e185]: D
+                      - generic [ref=f25e186]:
+                        - generic [ref=f25e187]: demodev_s21
+                        - generic [ref=f25e188]: demodev_s21@email.com
+                  - 'link "Quick view: demodev_s21" [ref=f25e189] [cursor=pointer]':
+                    - /url: /educator/organisations/demodev/learners/11cdeeb1-0ee5-4fb3-8c55-c584ad3f56c4
+                - generic [ref=f25e194]:
+                  - generic [ref=f25e195]:
+                    - term [ref=f25e196]: Status
+                    - definition [ref=f25e197]:
+                      - generic [ref=f25e198]: Active
+                  - generic [ref=f25e199]:
+                    - term [ref=f25e200]: Cohorts
+                    - definition [ref=f25e201]:
+                      - link "Cohort 2025.03.04" [ref=f25e202] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/6ab4084d-3c7c-48b5-943c-97547f4fc35e
+                      - text: ","
+                      - link "QA Double Click Cohort" [ref=f25e203] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/700fd5ae-5500-488c-97ab-e067380c0a25
+                  - generic [ref=f25e204]:
+                    - term [ref=f25e205]: Courses
+                    - definition [ref=f25e206]:
+                      - img "None" [ref=f25e207]: —
+                  - generic [ref=f25e208]:
+                    - term [ref=f25e209]: Last active
+                    - definition [ref=f25e210]: Never
+            - listitem [ref=f25e211]:
+              - checkbox "Select demodev_s22" [ref=f25e213] [cursor=pointer]
+              - generic [ref=f25e214]:
+                - generic [ref=f25e217]:
+                  - link "demodev_s22 demodev_s22@email.com" [ref=f25e219] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/learners/dff4ba09-f697-4b59-b379-74dccc1d92a7
+                    - generic [ref=f25e220]:
+                      - generic [aria-hidden] [ref=f25e221]: D
+                      - generic [ref=f25e222]:
+                        - generic [ref=f25e223]: demodev_s22
+                        - generic [ref=f25e224]: demodev_s22@email.com
+                  - 'link "Quick view: demodev_s22" [ref=f25e225] [cursor=pointer]':
+                    - /url: /educator/organisations/demodev/learners/dff4ba09-f697-4b59-b379-74dccc1d92a7
+                - generic [ref=f25e230]:
+                  - generic [ref=f25e231]:
+                    - term [ref=f25e232]: Status
+                    - definition [ref=f25e233]:
+                      - generic [ref=f25e234]: Active
+                  - generic [ref=f25e235]:
+                    - term [ref=f25e236]: Cohorts
+                    - definition [ref=f25e237]:
+                      - link "Cohort 2025.03.04" [ref=f25e238] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/6ab4084d-3c7c-48b5-943c-97547f4fc35e
+                      - text: ","
+                      - link "QA Double Click Cohort" [ref=f25e239] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/700fd5ae-5500-488c-97ab-e067380c0a25
+                  - generic [ref=f25e240]:
+                    - term [ref=f25e241]: Courses
+                    - definition [ref=f25e242]:
+                      - img "None" [ref=f25e243]: —
+                  - generic [ref=f25e244]:
+                    - term [ref=f25e245]: Last active
+                    - definition [ref=f25e246]: Never
+            - listitem [ref=f25e247]:
+              - checkbox "Select demodev_s23" [ref=f25e249] [cursor=pointer]
+              - generic [ref=f25e250]:
+                - generic [ref=f25e253]:
+                  - link "demodev_s23 demodev_s23@email.com" [ref=f25e255] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/learners/e2da9dd0-b9a7-4e82-b924-25cdf5478676
+                    - generic [ref=f25e256]:
+                      - generic [aria-hidden] [ref=f25e257]: D
+                      - generic [ref=f25e258]:
+                        - generic [ref=f25e259]: demodev_s23
+                        - generic [ref=f25e260]: demodev_s23@email.com
+                  - 'link "Quick view: demodev_s23" [ref=f25e261] [cursor=pointer]':
+                    - /url: /educator/organisations/demodev/learners/e2da9dd0-b9a7-4e82-b924-25cdf5478676
+                - generic [ref=f25e266]:
+                  - generic [ref=f25e267]:
+                    - term [ref=f25e268]: Status
+                    - definition [ref=f25e269]:
+                      - generic [ref=f25e270]: Active
+                  - generic [ref=f25e271]:
+                    - term [ref=f25e272]: Cohorts
+                    - definition [ref=f25e273]:
+                      - link "Cohort 2025.03.04" [ref=f25e274] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/6ab4084d-3c7c-48b5-943c-97547f4fc35e
+                      - text: ","
+                      - link "QA Double Click Cohort" [ref=f25e275] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/700fd5ae-5500-488c-97ab-e067380c0a25
+                  - generic [ref=f25e276]:
+                    - term [ref=f25e277]: Courses
+                    - definition [ref=f25e278]:
+                      - img "None" [ref=f25e279]: —
+                  - generic [ref=f25e280]:
+                    - term [ref=f25e281]: Last active
+                    - definition [ref=f25e282]: Never
+            - listitem [ref=f25e283]:
+              - checkbox "Select demodev_s24" [ref=f25e285] [cursor=pointer]
+              - generic [ref=f25e286]:
+                - generic [ref=f25e289]:
+                  - link "demodev_s24 demodev_s24@email.com" [ref=f25e291] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/learners/f5457a14-fb7b-4337-9122-d09453780599
+                    - generic [ref=f25e292]:
+                      - generic [aria-hidden] [ref=f25e293]: D
+                      - generic [ref=f25e294]:
+                        - generic [ref=f25e295]: demodev_s24
+                        - generic [ref=f25e296]: demodev_s24@email.com
+                  - 'link "Quick view: demodev_s24" [ref=f25e297] [cursor=pointer]':
+                    - /url: /educator/organisations/demodev/learners/f5457a14-fb7b-4337-9122-d09453780599
+                - generic [ref=f25e302]:
+                  - generic [ref=f25e303]:
+                    - term [ref=f25e304]: Status
+                    - definition [ref=f25e305]:
+                      - generic [ref=f25e306]: Active
+                  - generic [ref=f25e307]:
+                    - term [ref=f25e308]: Cohorts
+                    - definition [ref=f25e309]:
+                      - link "Cohort 2025.03.04" [ref=f25e310] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/6ab4084d-3c7c-48b5-943c-97547f4fc35e
+                      - text: ","
+                      - link "QA Double Click Cohort" [ref=f25e311] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/700fd5ae-5500-488c-97ab-e067380c0a25
+                  - generic [ref=f25e312]:
+                    - term [ref=f25e313]: Courses
+                    - definition [ref=f25e314]:
+                      - img "None" [ref=f25e315]: —
+                  - generic [ref=f25e316]:
+                    - term [ref=f25e317]: Last active
+                    - definition [ref=f25e318]: Never
+            - listitem [ref=f25e319]:
+              - checkbox "Select demodev_s25" [ref=f25e321] [cursor=pointer]
+              - generic [ref=f25e322]:
+                - generic [ref=f25e325]:
+                  - link "demodev_s25 demodev_s25@email.com" [ref=f25e327] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/learners/fc6b9aca-b910-4324-99fa-0fb61d3ea22a
+                    - generic [ref=f25e328]:
+                      - generic [aria-hidden] [ref=f25e329]: D
+                      - generic [ref=f25e330]:
+                        - generic [ref=f25e331]: demodev_s25
+                        - generic [ref=f25e332]: demodev_s25@email.com
+                  - 'link "Quick view: demodev_s25" [ref=f25e333] [cursor=pointer]':
+                    - /url: /educator/organisations/demodev/learners/fc6b9aca-b910-4324-99fa-0fb61d3ea22a
+                - generic [ref=f25e338]:
+                  - generic [ref=f25e339]:
+                    - term [ref=f25e340]: Status
+                    - definition [ref=f25e341]:
+                      - generic [ref=f25e342]: Active
+                  - generic [ref=f25e343]:
+                    - term [ref=f25e344]: Cohorts
+                    - definition [ref=f25e345]:
+                      - link "Cohort 2025.03.04" [ref=f25e346] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/6ab4084d-3c7c-48b5-943c-97547f4fc35e
+                      - text: ","
+                      - link "QA Double Click Cohort" [ref=f25e347] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/700fd5ae-5500-488c-97ab-e067380c0a25
+                  - generic [ref=f25e348]:
+                    - term [ref=f25e349]: Courses
+                    - definition [ref=f25e350]:
+                      - img "None" [ref=f25e351]: —
+                  - generic [ref=f25e352]:
+                    - term [ref=f25e353]: Last active
+                    - definition [ref=f25e354]: Never
+            - listitem [ref=f25e355]:
+              - checkbox "Select demodev_s26" [ref=f25e357] [cursor=pointer]
+              - generic [ref=f25e358]:
+                - generic [ref=f25e361]:
+                  - link "demodev_s26 demodev_s26@email.com" [ref=f25e363] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/learners/73926d62-2c89-496e-858c-608c7c451748
+                    - generic [ref=f25e364]:
+                      - generic [aria-hidden] [ref=f25e365]: D
+                      - generic [ref=f25e366]:
+                        - generic [ref=f25e367]: demodev_s26
+                        - generic [ref=f25e368]: demodev_s26@email.com
+                  - 'link "Quick view: demodev_s26" [ref=f25e369] [cursor=pointer]':
+                    - /url: /educator/organisations/demodev/learners/73926d62-2c89-496e-858c-608c7c451748
+                - generic [ref=f25e374]:
+                  - generic [ref=f25e375]:
+                    - term [ref=f25e376]: Status
+                    - definition [ref=f25e377]:
+                      - generic [ref=f25e378]: Active
+                  - generic [ref=f25e379]:
+                    - term [ref=f25e380]: Cohorts
+                    - definition [ref=f25e381]:
+                      - link "Cohort 2025.03.04" [ref=f25e382] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/6ab4084d-3c7c-48b5-943c-97547f4fc35e
+                      - text: ","
+                      - link "QA Double Click Cohort" [ref=f25e383] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/700fd5ae-5500-488c-97ab-e067380c0a25
+                  - generic [ref=f25e384]:
+                    - term [ref=f25e385]: Courses
+                    - definition [ref=f25e386]:
+                      - img "None" [ref=f25e387]: —
+                  - generic [ref=f25e388]:
+                    - term [ref=f25e389]: Last active
+                    - definition [ref=f25e390]: Never
+            - listitem [ref=f25e391]:
+              - checkbox "Select demodev_s27" [ref=f25e393] [cursor=pointer]
+              - generic [ref=f25e394]:
+                - generic [ref=f25e397]:
+                  - link "demodev_s27 demodev_s27@email.com" [ref=f25e399] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/learners/e563868f-1336-4bd1-a7ae-0a52148365d5
+                    - generic [ref=f25e400]:
+                      - generic [aria-hidden] [ref=f25e401]: D
+                      - generic [ref=f25e402]:
+                        - generic [ref=f25e403]: demodev_s27
+                        - generic [ref=f25e404]: demodev_s27@email.com
+                  - 'link "Quick view: demodev_s27" [ref=f25e405] [cursor=pointer]':
+                    - /url: /educator/organisations/demodev/learners/e563868f-1336-4bd1-a7ae-0a52148365d5
+                - generic [ref=f25e410]:
+                  - generic [ref=f25e411]:
+                    - term [ref=f25e412]: Status
+                    - definition [ref=f25e413]:
+                      - generic [ref=f25e414]: Active
+                  - generic [ref=f25e415]:
+                    - term [ref=f25e416]: Cohorts
+                    - definition [ref=f25e417]:
+                      - link "Cohort 2025.03.04" [ref=f25e418] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/6ab4084d-3c7c-48b5-943c-97547f4fc35e
+                      - text: ","
+                      - link "QA Double Click Cohort" [ref=f25e419] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/700fd5ae-5500-488c-97ab-e067380c0a25
+                  - generic [ref=f25e420]:
+                    - term [ref=f25e421]: Courses
+                    - definition [ref=f25e422]:
+                      - img "None" [ref=f25e423]: —
+                  - generic [ref=f25e424]:
+                    - term [ref=f25e425]: Last active
+                    - definition [ref=f25e426]: Never
+        - generic [ref=f25e427]:
+          - paragraph [ref=f25e428]: Showing 11–20 of 50 learners
+          - generic [ref=f25e429]:
+            - link "Previous" [ref=f25e430] [cursor=pointer]:
+              - /url: /educator/organisations/demodev/learners?learners-page=1
+            - generic [ref=f25e434]: Page 2 of 5
+            - link "Next" [ref=f25e435] [cursor=pointer]:
+              - /url: /educator/organisations/demodev/learners?learners-page=3
+  - contentinfo [ref=f25e441]:
+    - generic [ref=f25e442]:
+      - paragraph [ref=f25e443]: © 2026 FirstClass
+      - navigation "Legal" [ref=f25e444]:
+        - link "Terms and Conditions" [ref=f25e445] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f25e446] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f25e447] [cursor=pointer]: extract_panels_framework-4-template-contract
+  - generic "Show toolbar" [ref=f25e449]: DJDT

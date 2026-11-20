@@ -1,0 +1,195 @@
+- generic [active] [ref=f2e1]:
+  - banner [ref=f2e2]:
+    - link [ref=f2e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f2e4]
+    - navigation [ref=f2e5]:
+      - generic [ref=f2e6]:
+        - generic [ref=f2e7]:
+          - button "Notifications, none new" [ref=f2e8]
+          - status:
+            - generic [ref=f2e12]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f2e14] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f2e15]: DE
+  - generic:
+    - status:
+      - generic [ref=f2e16]:
+        - paragraph [ref=f2e21]: Successfully signed in as demodev@email.com.
+        - button "Dismiss notification" [ref=f2e22]
+    - alert
+  - main [ref=f2e25]:
+    - generic [ref=f2e29]:
+      - generic [ref=f2e31]:
+        - generic [ref=f2e33]:
+          - button "Open navigation panel" [ref=f2e34] [cursor=pointer]
+          - heading "Cohorts" [level=1] [ref=f2e38]
+        - button "Create cohort" [ref=f2e40] [cursor=pointer]
+      - generic [ref=f2e45]:
+        - generic [ref=f2e46]:
+          - generic [ref=f2e48]:
+            - generic [ref=f2e49]: Search
+            - searchbox "Search" [ref=f2e51]
+          - generic [ref=f2e53]:
+            - button "Filter" [ref=f2e54] [cursor=pointer]
+            - button "Sort" [ref=f2e59] [cursor=pointer]
+        - status [ref=f2e63]
+        - generic [ref=f2e65]:
+          - generic [ref=f2e67]:
+            - checkbox "Select all on this page" [ref=f2e68] [cursor=pointer]
+            - text: Select all on this page
+          - list [ref=f2e69]:
+            - listitem [ref=f2e70]:
+              - checkbox "Select Cohort 2025.03.04" [ref=f2e72] [cursor=pointer]
+              - generic [ref=f2e73]:
+                - generic [ref=f2e76]:
+                  - link "Cohort 2025.03.04" [ref=f2e77] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/6ab4084d-3c7c-48b5-943c-97547f4fc35e
+                  - 'link "Quick view: Cohort 2025.03.04" [ref=f2e78] [cursor=pointer]':
+                    - /url: /educator/organisations/demodev/cohorts/6ab4084d-3c7c-48b5-943c-97547f4fc35e
+                - generic [ref=f2e86]:
+                  - generic [ref=f2e87]:
+                    - term [ref=f2e88]: Status
+                    - definition [ref=f2e89]:
+                      - generic [ref=f2e90]: Active
+                  - generic [ref=f2e91]:
+                    - term [ref=f2e92]: Learners
+                    - definition [ref=f2e93]: "50"
+                  - generic [ref=f2e94]:
+                    - term [ref=f2e95]: Courses
+                    - definition [ref=f2e96]:
+                      - img "None" [ref=f2e97]: —
+            - listitem [ref=f2e98]:
+              - checkbox "Select Cohort 2025.04.06" [ref=f2e100] [cursor=pointer]
+              - generic [ref=f2e101]:
+                - generic [ref=f2e104]:
+                  - link "Cohort 2025.04.06" [ref=f2e105] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/8acec74c-262d-48e5-b6ad-6d44aaf1779d
+                  - 'link "Quick view: Cohort 2025.04.06" [ref=f2e106] [cursor=pointer]':
+                    - /url: /educator/organisations/demodev/cohorts/8acec74c-262d-48e5-b6ad-6d44aaf1779d
+                - generic [ref=f2e114]:
+                  - generic [ref=f2e115]:
+                    - term [ref=f2e116]: Status
+                    - definition [ref=f2e117]:
+                      - generic [ref=f2e118]: Active
+                  - generic [ref=f2e119]:
+                    - term [ref=f2e120]: Learners
+                    - definition [ref=f2e121]: "0"
+                  - generic [ref=f2e122]:
+                    - term [ref=f2e123]: Courses
+                    - definition [ref=f2e124]:
+                      - img "None" [ref=f2e125]: —
+            - listitem [ref=f2e126]:
+              - checkbox "Select QA Cohort 1795132691198" [ref=f2e128] [cursor=pointer]
+              - generic [ref=f2e129]:
+                - generic [ref=f2e132]:
+                  - link "QA Cohort 1795132691198" [ref=f2e133] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/09f47156-3478-4d69-b039-5daf53261d84
+                  - 'link "Quick view: QA Cohort 1795132691198" [ref=f2e134] [cursor=pointer]':
+                    - /url: /educator/organisations/demodev/cohorts/09f47156-3478-4d69-b039-5daf53261d84
+                - generic [ref=f2e142]:
+                  - generic [ref=f2e143]:
+                    - term [ref=f2e144]: Status
+                    - definition [ref=f2e145]:
+                      - generic [ref=f2e146]: Active
+                  - generic [ref=f2e147]:
+                    - term [ref=f2e148]: Learners
+                    - definition [ref=f2e149]: "0"
+                  - generic [ref=f2e150]:
+                    - term [ref=f2e151]: Courses
+                    - definition [ref=f2e152]:
+                      - img "None" [ref=f2e153]: —
+            - listitem [ref=f2e154]:
+              - checkbox "Select QA Double Click Cohort" [ref=f2e156] [cursor=pointer]
+              - generic [ref=f2e157]:
+                - generic [ref=f2e160]:
+                  - link "QA Double Click Cohort" [ref=f2e161] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/700fd5ae-5500-488c-97ab-e067380c0a25
+                  - 'link "Quick view: QA Double Click Cohort" [ref=f2e162] [cursor=pointer]':
+                    - /url: /educator/organisations/demodev/cohorts/700fd5ae-5500-488c-97ab-e067380c0a25
+                - generic [ref=f2e170]:
+                  - generic [ref=f2e171]:
+                    - term [ref=f2e172]: Status
+                    - definition [ref=f2e173]:
+                      - generic [ref=f2e174]: Active
+                  - generic [ref=f2e175]:
+                    - term [ref=f2e176]: Learners
+                    - definition [ref=f2e177]: "50"
+                  - generic [ref=f2e178]:
+                    - term [ref=f2e179]: Courses
+                    - definition [ref=f2e180]:
+                      - img "None" [ref=f2e181]: —
+        - paragraph [ref=f2e183]: 4 cohorts
+  - contentinfo [ref=f2e186]:
+    - generic [ref=f2e187]:
+      - paragraph [ref=f2e188]: © 2026 FirstClass
+      - navigation "Legal" [ref=f2e189]:
+        - link "Terms and Conditions" [ref=f2e190] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f2e191] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f2e192] [cursor=pointer]: extract_panels_framework-4-template-contract
+  - list [ref=f2e194]:
+    - listitem [ref=f2e195]:
+      - link "Hide »" [ref=f2e196] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e197]:
+      - link "Toggle Theme" [ref=f2e198] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e201]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e202] [cursor=pointer]
+      - link "History /educator/organisations/demodev/cohorts" [ref=f2e203] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e204]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e205] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f2e206] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e207]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e208] [cursor=pointer]
+      - 'link "Time CPU: 571.04ms (563.03ms)" [ref=f2e209] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f2e210]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e211] [cursor=pointer]
+      - link "Settings" [ref=f2e212] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e213]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e214] [cursor=pointer]
+      - link "Headers" [ref=f2e215] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e216]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e217] [cursor=pointer]
+      - link "Request interface" [ref=f2e218] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e219]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e220] [cursor=pointer]
+      - link "SQL 20 queries in 32.92ms" [ref=f2e221] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e222]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e223] [cursor=pointer]
+      - link "Static files 14 files used" [ref=f2e224] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e225]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e226] [cursor=pointer]
+      - link "Templates educator_interface/interface.html" [ref=f2e227] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e228]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e229] [cursor=pointer]
+      - link "Alerts" [ref=f2e230] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e231]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e232] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f2e233] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e234]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e235] [cursor=pointer]
+      - link "Signals 130 receivers of 15 signals" [ref=f2e236] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e237]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e238] [cursor=pointer]
+      - link "Community" [ref=f2e239] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e240]:
+      - checkbox "Enable for next and successive requests" [ref=f2e241] [cursor=pointer]
+      - generic [ref=f2e242]: Intercept redirects
+    - listitem [ref=f2e243]:
+      - checkbox "Enable for next and successive requests" [ref=f2e244] [cursor=pointer]
+      - generic [ref=f2e245]: Profiling

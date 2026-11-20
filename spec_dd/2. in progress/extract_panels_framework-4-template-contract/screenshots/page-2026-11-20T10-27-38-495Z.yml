@@ -1,0 +1,153 @@
+- generic [active] [ref=f2e1]:
+  - banner [ref=f2e2]:
+    - link [ref=f2e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f2e4]
+      - heading "FirstClass" [level=1] [ref=f2e5]
+    - navigation [ref=f2e6]:
+      - generic [ref=f2e7]:
+        - generic [ref=f2e8]:
+          - button "Notifications, none new" [ref=f2e9]
+          - status:
+            - generic [ref=f2e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f2e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f2e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f2e17]:
+    - generic [ref=f2e19]:
+      - dialog "Navigation" [ref=f2e20]:
+        - generic [ref=f2e22]:
+          - generic [ref=f2e23]:
+            - paragraph [ref=f2e24]: Organisation
+            - button "Switch organisation" [ref=f2e26] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f2e27]: D
+              - generic "DemoDev" [ref=f2e28]
+          - navigation "Sections" [ref=f2e31]:
+            - heading "Teaching" [level=2] [ref=f2e32]
+            - list [ref=f2e33]:
+              - listitem [ref=f2e34]:
+                - link "Dashboard" [ref=f2e35] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/dashboard
+              - listitem [ref=f2e40]:
+                - link "Cohorts" [ref=f2e41] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+              - listitem [ref=f2e46]:
+                - link "Learners" [ref=f2e47] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+              - listitem [ref=f2e52]:
+                - link "Courses" [ref=f2e53] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+            - heading "Administration" [level=2] [ref=f2e58]
+            - list [ref=f2e59]:
+              - listitem [ref=f2e60]:
+                - link "Staff" [ref=f2e61] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/staff
+              - listitem [ref=f2e66]:
+                - link "Audit log" [ref=f2e67] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/audit-log
+          - generic [ref=f2e72]:
+            - generic [ref=f2e74]:
+              - generic [aria-hidden] [ref=f2e75]: DE
+              - generic [ref=f2e76]: demodev@email.com
+            - link "Account settings" [ref=f2e78] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f2e84]:
+        - heading "Dashboard" [level=1] [ref=f2e90]
+        - generic [ref=f2e94]:
+          - generic [ref=f2e95]:
+            - generic [ref=f2e96]:
+              - term [ref=f2e97]: Learners
+              - definition [ref=f2e98]: "50"
+              - definition [ref=f2e99]: Across 3 cohorts
+            - link "3 cohorts" [ref=f2e100] [cursor=pointer]:
+              - /url: /educator/organisations/demodev/cohorts
+              - generic [ref=f2e101]:
+                - term [ref=f2e102]: Cohorts
+                - definition [ref=f2e103]: "3"
+            - generic [ref=f2e104]:
+              - term [ref=f2e105]: Average progress
+              - definition [ref=f2e106]
+            - generic [ref=f2e109]:
+              - term [ref=f2e110]: Learners needing attention
+              - definition [ref=f2e111]
+          - generic [ref=f2e115]:
+            - region [ref=f2e116]:
+              - heading "Needs attention" [level=2] [ref=f2e119]
+            - region [ref=f2e127]:
+              - heading "Cohort progress" [level=2] [ref=f2e130]
+  - contentinfo [ref=f2e140]:
+    - generic [ref=f2e141]:
+      - paragraph [ref=f2e142]: © 2026 FirstClass
+      - navigation "Legal" [ref=f2e143]:
+        - link "Terms and Conditions" [ref=f2e144] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f2e145] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f2e146] [cursor=pointer]: extract_panels_framework-4-template-contract
+  - list [ref=f2e148]:
+    - listitem [ref=f2e149]:
+      - link "Hide »" [ref=f2e150] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e151]:
+      - link "Toggle Theme" [ref=f2e152] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e155]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e156] [cursor=pointer]
+      - link "History /educator/organisations/demodev/dashboard" [ref=f2e157] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e158]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e159] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f2e160] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e161]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e162] [cursor=pointer]
+      - 'link "Time CPU: 183.30ms (263.77ms)" [ref=f2e163] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f2e164]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e165] [cursor=pointer]
+      - link "Settings" [ref=f2e166] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e167]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e168] [cursor=pointer]
+      - link "Headers" [ref=f2e169] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e170]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e171] [cursor=pointer]
+      - link "Request interface" [ref=f2e172] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e173]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e174] [cursor=pointer]
+      - link "SQL 18 queries in 44.23ms" [ref=f2e175] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e176]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e177] [cursor=pointer]
+      - link "Static files 14 files used" [ref=f2e178] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e179]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e180] [cursor=pointer]
+      - link "Templates educator_interface/interface.html" [ref=f2e181] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e182]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e183] [cursor=pointer]
+      - link "Alerts" [ref=f2e184] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e185]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e186] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f2e187] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e188]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e189] [cursor=pointer]
+      - link "Signals 130 receivers of 15 signals" [ref=f2e190] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e191]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e192] [cursor=pointer]
+      - link "Community" [ref=f2e193] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e194]:
+      - checkbox "Enable for next and successive requests" [ref=f2e195] [cursor=pointer]
+      - generic [ref=f2e196]: Intercept redirects
+    - listitem [ref=f2e197]:
+      - checkbox "Enable for next and successive requests" [ref=f2e198] [cursor=pointer]
+      - generic [ref=f2e199]: Profiling

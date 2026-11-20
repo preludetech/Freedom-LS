@@ -1,0 +1,89 @@
+- generic [active] [ref=f4e1]:
+  - banner [ref=f4e2]:
+    - link [ref=f4e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f4e4]
+      - heading "FirstClass" [level=1] [ref=f4e5]
+    - navigation [ref=f4e6]:
+      - generic [ref=f4e7]:
+        - generic [ref=f4e8]:
+          - button "Notifications, none new" [ref=f4e9]
+          - status:
+            - generic [ref=f4e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f4e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f4e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f4e17]:
+    - generic [ref=f4e19]:
+      - dialog "Navigation" [ref=f4e20]:
+        - generic [ref=f4e22]:
+          - generic [ref=f4e23]:
+            - paragraph [ref=f4e24]: Organisation
+            - button "Switch organisation" [ref=f4e26] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f4e27]: D
+              - generic "DemoDev" [ref=f4e28]
+          - navigation "Sections" [ref=f4e31]:
+            - heading "Teaching" [level=2] [ref=f4e32]
+            - list [ref=f4e33]:
+              - listitem [ref=f4e34]:
+                - link "Dashboard" [ref=f4e35] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/dashboard
+              - listitem [ref=f4e40]:
+                - link "Cohorts" [ref=f4e41] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+              - listitem [ref=f4e46]:
+                - link "Learners" [ref=f4e47] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+              - listitem [ref=f4e52]:
+                - link "Courses" [ref=f4e53] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+            - heading "Administration" [level=2] [ref=f4e58]
+            - list [ref=f4e59]:
+              - listitem [ref=f4e60]:
+                - link "Staff" [ref=f4e61] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/staff
+              - listitem [ref=f4e66]:
+                - link "Audit log" [ref=f4e67] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/audit-log
+          - generic [ref=f4e72]:
+            - generic [ref=f4e74]:
+              - generic [aria-hidden] [ref=f4e75]: DE
+              - generic [ref=f4e76]: demodev@email.com
+            - link "Account settings" [ref=f4e78] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f4e84]:
+        - heading "Dashboard" [level=1] [ref=f4e90]
+        - generic [ref=f4e94]:
+          - generic [ref=f4e95]:
+            - generic [ref=f4e96]:
+              - term [ref=f4e97]: Learners
+              - definition [ref=f4e98]: "50"
+              - definition [ref=f4e99]: Across 3 cohorts
+            - link "3 cohorts" [ref=f4e100] [cursor=pointer]:
+              - /url: /educator/organisations/demodev/cohorts
+              - generic [ref=f4e101]:
+                - term [ref=f4e102]: Cohorts
+                - definition [ref=f4e103]: "3"
+            - generic [ref=f4e104]:
+              - term [ref=f4e105]: Average progress
+              - definition [ref=f4e106]
+            - generic [ref=f4e109]:
+              - term [ref=f4e110]: Learners needing attention
+              - definition [ref=f4e111]
+          - generic [ref=f4e115]:
+            - region [ref=f4e116]:
+              - heading "Needs attention" [level=2] [ref=f4e119]
+            - region [ref=f4e127]:
+              - heading "Cohort progress" [level=2] [ref=f4e130]
+  - contentinfo [ref=f4e140]:
+    - generic [ref=f4e141]:
+      - paragraph [ref=f4e142]: © 2026 FirstClass
+      - navigation "Legal" [ref=f4e143]:
+        - link "Terms and Conditions" [ref=f4e144] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f4e145] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f4e146] [cursor=pointer]: extract_panels_framework-4-template-contract
+  - generic "Show toolbar" [ref=f4e148]: DJDT
