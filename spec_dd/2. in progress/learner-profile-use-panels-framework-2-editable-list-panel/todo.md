@@ -6,6 +6,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 1. Spec
 
 - [x] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
+- [ ] (user) Fix test_wrapped_dialog_footer_keeps_its_actions_at_the_right_edge in freedom_ls/educator_interface/tests/playwright/test_create_cohort_add_and_add_another.py (main's test looks for a Save button; this branch renamed the create dialog's primary button to Add), then re-run `/sdd:finish_worktree`
 - [ ] (user) Review the spec and edit where needed; after substantial hand edits, run `/sdd:spec_review`
 
 ## 2. Plan
