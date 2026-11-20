@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import html
 from collections.abc import Iterator, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import datetime
 from functools import cached_property
 from typing import ClassVar, Literal, NamedTuple, cast
@@ -157,6 +157,8 @@ from freedom_ls.educator_interface.panels.common.request import (
 )
 from freedom_ls.educator_interface.panels.common.tables import (
     _active_status_column,
+    _cohort_links_column,
+    _course_title_column,
     _interface_link,
     _learner_column,
     _registration_columns,
@@ -237,7 +239,6 @@ from freedom_ls.panel_framework.tables import (
     Column,
     DataTable,
     ExportColumn,
-    RelatedListColumn,
     TableQuery,
 )
 from freedom_ls.panel_framework.views import (
@@ -263,33 +264,6 @@ from freedom_ls.site_aware_models.models import get_cached_site
 #
 # instance edit
 # instance, other actions (eg: send_email)
-
-
-def _course_title_column(
-    header: str, text_attr: str, path_template: str, *, attr: str = ""
-) -> Column:
-    """The course title link with the owner of a shared course under it.
-    `attr` names the row's course; empty means the row is the course."""
-    return replace(
-        _interface_link(header, text_attr, path_template, card="primary"),
-        template_name="educator_interface/data-table-cells/course_title.html",
-        attr=attr,
-    )
-
-
-def _cohort_links_column(relation_set: str) -> RelatedListColumn:
-    """The Cohorts column: each related cohort, linked to its page."""
-    return RelatedListColumn(
-        header="Cohorts",
-        template_name="cotton/data-table-cells/related_list.html",
-        relation_set=relation_set,
-        link_object_attr="cohort",
-        item_text_attr="cohort.name",
-        url_name="educator_interface:interface",
-        url_path_template="cohorts/{pk}",
-        htmx_nav=True,
-        layout="inline",
-    )
 
 
 class CohortDataTable(DataTable):

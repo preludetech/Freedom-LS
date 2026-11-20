@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from operator import attrgetter
 from typing import Literal
 
 from freedom_ls.educator_interface.panels.common.badges import active_status_badge
-from freedom_ls.panel_framework.tables import BadgeColumn, Column
+from freedom_ls.panel_framework.tables import BadgeColumn, Column, RelatedListColumn
 
 __all__ = [
     "_active_status_column",
+    "_cohort_links_column",
+    "_course_title_column",
     "_interface_link",
     "_learner_column",
     "_registration_columns",
@@ -78,3 +81,30 @@ def _registration_columns() -> list[Column]:
             card="md_only",
         ),
     ]
+
+
+def _course_title_column(
+    header: str, text_attr: str, path_template: str, *, attr: str = ""
+) -> Column:
+    """The course title link with the owner of a shared course under it.
+    `attr` names the row's course; empty means the row is the course."""
+    return replace(
+        _interface_link(header, text_attr, path_template, card="primary"),
+        template_name="educator_interface/data-table-cells/course_title.html",
+        attr=attr,
+    )
+
+
+def _cohort_links_column(relation_set: str) -> RelatedListColumn:
+    """The Cohorts column: each related cohort, linked to its page."""
+    return RelatedListColumn(
+        header="Cohorts",
+        template_name="cotton/data-table-cells/related_list.html",
+        relation_set=relation_set,
+        link_object_attr="cohort",
+        item_text_attr="cohort.name",
+        url_name="educator_interface:interface",
+        url_path_template="cohorts/{pk}",
+        htmx_nav=True,
+        layout="inline",
+    )
