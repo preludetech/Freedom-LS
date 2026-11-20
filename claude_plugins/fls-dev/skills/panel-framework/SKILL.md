@@ -230,6 +230,16 @@ from the default (Inactive, Pending); stats stay out when the tabs already count
 sits in the header, each lives with the thing it changes. A list page opens with its heading and
 its toolbar, so the list starts at the top; help lives in a dialog the page opens, or in the docs.
 
+The mobile navigation toggle (`partials/panel_toggle.html`) is the first item in the heading's row,
+at the left of the `<h1>` and centred on it. It comes from `<c-panel-page-header panel_toggle="true">`
+or from the `_main_base.html` header band, never from a row or wrapper of its own above the heading.
+
+Every page in an area built on panels has the same three layers: the header band
+(`.panel-surface`, the heading and its toggle), the canvas (`.panel-canvas`) and the cards on it.
+A page whose body another app renders (an allauth page) is wrapped in that structure, its content
+inside a `<c-panel-card>`; it never fills the content column bare. Better still, its job becomes a
+panel with framework actions that call the other app's forms and flows.
+
 ### Panels
 
 - Each panel does one job. A tab that does several jobs is a `PanelStack` of panels, one per job
@@ -243,6 +253,9 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
   rounded corners.
 - Inside a panel, space separates items. A list of people or records is rows in a grid with a gap,
   one column per kind of content (person, role, buttons), so the columns line up.
+- A list of records the person acts on gives each row its own actions, on the row's line, so
+  picking a record and acting on it is one click (a radio plus a shared button below the list is
+  the form this replaces).
 - `<c-panel-list>` is the one list that draws a rule between its rows. Nothing else inside a panel
   does, and nothing inside a panel is boxed: a group within a panel (one course among several) is
   a section with its own heading, separated from the next by space, never a card inside the card.
@@ -414,9 +427,15 @@ the selection clears. Every control stays inside the bar at 375px.
   and that status message, keeping it open while the panels behind it refresh. Put the button
   ahead of "Add" in `submit_buttons` (`CreateInstanceAction` does). A textarea that asks for one record per line is an import wearing a form's
   clothes; a list goes to an import page with a preview.
-- A record's own name is a field with a Save button on its Settings panel, posted inline to the
-  `edit` action (`renders_in_footer = False`), not a dialog.
-  Dialogs are for confirmations and multi-field forms.
+- A record's own name is a field on its Settings panel, posted inline to the `edit` action
+  (`renders_in_footer = False`), not a dialog. Dialogs are for confirmations and multi-field forms.
+- A form in a panel puts its submit button(s) in the card footer (the `actions` slot,
+  right-aligned above the rule, where Deactivate sits), never beside or under the fields. The
+  fields and their error lines stay in the body. An inline form panel extends
+  `panels/inline_form_panel.html`, which renders `partials/inline_record_form.html` in the body and
+  `partials/inline_record_form_submit.html` in the footer; the submit names its form with `form=`,
+  so the form posts with JavaScript off, and the form points `hx-indicator` and `hx-disabled-elt`
+  at it.
 - An inline form works with JavaScript off: `partials/inline_record_form.html` carries a method,
   an action and a CSRF token, and a `FormPanelAction` with `renders_in_footer = False` answers a
   POST that has no `HX-Request` header with a 303 to the page, the save or the field errors as a
@@ -642,6 +661,14 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
 - A heading, notice or error summary that takes focus so a screen reader announces it shows no
   focus box; a button, link or field does.
 - A field error in an inline panel form is one line under its field, without the field's label.
+- A panel that holds a form shows its Save (or other submit) in the card footer, right-aligned
+  under the footer rule, never on the field row or under the fields.
+- At phone and tablet widths the navigation toggle sits at the left of the page heading, on the
+  heading's line; it never has a row of its own above the heading.
+- Every page of a panel-built area shows the header band, the grey canvas and bordered cards; no
+  page shows its content bare on white in the content column.
+- A list of records the person acts on has each row's actions on that row's line, with no radio
+  column.
 - Options in a dialog (radio choices, search results) are separated by space, with no box around
   each option and no line between them; an empty result list draws nothing.
 - A table row's per-item buttons sit on their item's line in their own column, and the
