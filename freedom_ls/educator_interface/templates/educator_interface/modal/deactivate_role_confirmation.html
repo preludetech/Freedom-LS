@@ -27,7 +27,7 @@ last_organisation_admin, grantor_is_site_level, target_is_site_level.
     {% endif %}
     {% if last_organisation_admin and grantor_is_site_level %}
         <c-callout tone="warning">
-            {{ staff_member.display_name }} is the only organisation admin. After this, nobody in the organisation can administer it until you add one.
+            {% if is_self %}You're{% else %}{{ staff_member.display_name }} is{% endif %} the only organisation admin. After this, nobody in the organisation can administer it until you add one.
         </c-callout>
     {% endif %}
 {% endblock body %}

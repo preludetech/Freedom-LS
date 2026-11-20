@@ -4721,6 +4721,24 @@ def test_a_site_admin_removing_the_last_organisation_admin_is_warned_then_succee
 
 
 @pytest.mark.django_db
+def test_the_only_admin_warning_speaks_to_a_site_admin_removing_their_own_role(
+    mock_site_context, logged_in_client, organisation
+):
+    """The warning named the viewer in the third person ("Ada is the only...")
+    when they were deactivating their own role; it now says "You're"."""
+    me = _staff_member_holding(
+        "organisation_admin", organisation, first_name="Ada", last_name="Lovelace"
+    )
+    assign_role(UserFactory(superuser=True), me, "site_admin", organisation.site)
+    client = logged_in_client(me)
+
+    dialog = _text(_remove_dialog(client, organisation, me, "organisation_admin"))
+
+    assert "You're the only organisation admin." in dialog
+    assert "Ada Lovelace is the only organisation admin." not in dialog
+
+
+@pytest.mark.django_db
 def test_the_warning_is_absent_when_another_organisation_admin_remains(
     admin_client, organisation
 ):
