@@ -15,10 +15,13 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 3. Implementation and QA
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
+- [ ] (user) Decide the seek bar's played-part fill: it uses `accent-primary` only, and the `--played` style it binds is read by nothing. Either add the track gradient (WebKit `::-webkit-slider-runnable-track`, Firefox `::-moz-range-progress`) in `freedom_ls/content_engine/templates/cotton/audio-clip.html` for browsers that don't fill the track, or drop the unused `playedStyle` binding
+- [ ] (user) Listen to `demo_content/functionality_demo_content_widgets/2. media/audio/gettysburg.mp3` and confirm the transcript in `2. media/content.md` matches the words spoken; it was copied from the Wikisource text (Everett copy), not checked against the audio
+- [ ] (user) Force-push the rebased branch, which was refused here: run `! git push origin content-widget-longer-audio --force-with-lease --force-if-includes`
 
 ## 4. Documentation and pull request
 
