@@ -4343,3 +4343,52 @@ def test_outline_on_finalising_response_shows_the_finalised_state(
     )
 
     assert response.context["current_entry"]["status"] == "FAILED"
+
+
+def _question_label(content: str, question: FormQuestion) -> str:
+    """The "Question N" label on a question's incorrect-answer card."""
+    card = content.split(f'data-testid="incorrect-question-{question.id}"', 1)[1]
+    match = re.search(r"Question \d+", card)
+    assert match is not None
+    return match.group(0)
+
+
+@pytest.mark.django_db
+def test_quiz_results_page_labels_a_wrong_answer_with_the_served_number(
+    mock_site_context, client
+):
+    user = UserFactory()
+    form, (q1, q2, q3) = _math_quiz()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    attempt = form_attempt(course, user, form)
+    attempt.served_paper = served_paper_of(
+        [
+            (q3.form_page, [q3]),
+            (q1.form_page, [q1, q2]),
+        ],
+        {q: list(q.options.all()) for q in (q1, q2, q3)},
+    )
+    attempt.save()
+    attempt.complete()
+    client.force_login(user)
+
+    content = client.get(_complete_url(course)).content.decode()
+
+    assert _question_label(content, q3) == "Question 1"
+
+
+@pytest.mark.django_db
+def test_quiz_results_page_without_a_served_paper_labels_with_the_authored_number(
+    mock_site_context, client
+):
+    user = UserFactory()
+    form, (q1, q2, q3) = _math_quiz()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    _sit_math_quiz(course, user, form, [q1, q2, q3], ["7", "6", "11"])
+    client.force_login(user)
+
+    content = client.get(_complete_url(course)).content.decode()
+
+    assert _question_label(content, q3) == "Question 3"
