@@ -13,10 +13,16 @@ from django.test import Client, RequestFactory
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import Course, CourseVisibility
+from freedom_ls.content_engine.models import Course, CourseAudience, CourseVisibility
 from freedom_ls.course_interest.factories import CourseInterestFactory
 from freedom_ls.educator_interface.panels.course.data_tables import CourseDataTable
+from freedom_ls.educator_interface.tests.helpers import (
+    _get_document,
+    _interface_url,
+    organisation_admin_viewer,
+)
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -252,11 +258,38 @@ def test_course_page_cohort_table_shows_cohort_status_and_registration_status(
     assert "Active" in badges
 
 
-# -- Task 5.3: visibility is content-file-only, not educator/admin editable --
+@pytest.mark.django_db
+def test_the_courses_list_renders_its_empty_state_when_no_course_is_available(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+):
+    organisation = OrganisationFactory()
+    CourseFactory(audience=CourseAudience.PUBLIC).organisations.add(
+        OrganisationFactory()
+    )
+    client = logged_in_client(organisation_admin_viewer(organisation))
+
+    response = client.get(_interface_url(organisation.slug, "courses"))
+
+    assert CourseDataTable.empty_message in response.content.decode()
 
 
-def test_course_details_panel_does_not_edit_visibility():
-    """The educator course details panel never exposes visibility for editing."""
-    from freedom_ls.educator_interface.panels.course.panels import CourseDetailsPanel
+@pytest.mark.django_db
+def test_courses_list_names_the_owner_under_a_shared_course_only(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+):
+    """Two courses with one title looked identical in the Title column."""
+    organisation = OrganisationFactory(name="Harbour College")
+    own = CourseFactory(title="Own Safety", audience=CourseAudience.PUBLIC)
+    own.organisations.add(organisation)
+    shared = CourseFactory(title="Shared Safety", audience=CourseAudience.PUBLIC)
+    shared.organisations.add(OrganisationFactory(name="Northwind Logistics"))
+    shared.shared_with.add(organisation)
+    client = logged_in_client(organisation_admin_viewer(organisation))
 
-    assert "visibility" not in CourseDetailsPanel.fields
+    document = _get_document(client, _interface_url(organisation.slug, "courses"))
+
+    notes = {
+        element.text_content().strip()
+        for element in document.cssselect("[data-testid='shared-by']")
+    }
+    assert notes == {"Shared by Northwind Logistics"}

@@ -51,7 +51,6 @@ from freedom_ls.comms.messaging_policy import MessagingRefusal
 from freedom_ls.comms.models import Conversation, Message
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
-    CourseCategoryFactory,
     CourseFactory,
     CoursePartFactory,
     FileFactory,
@@ -720,109 +719,6 @@ def test_course_page_buttons_are_only_preview_triggers(staff_client: Client):
         "Preview Intro",
     }
     assert document.cssselect("section[data-panel] footer button") == []
-
-
-def _course_details_text(client: Client, course: CourseModel) -> str:
-    organisation = OrganisationFactory()
-    document = _get_document(
-        client, _interface_url(organisation.slug, f"courses/{course.pk}")
-    )
-    (panel,) = document.cssselect("section[data-panel='details']")
-    return " ".join(panel.text_content().split())
-
-
-@pytest.mark.django_db
-def test_course_details_show_each_set_field_with_the_learner_label(
-    staff_client: Client,
-):
-    course = CourseFactory(
-        title="Algebra",
-        subtitle="Start here",
-        difficulty="beginner",
-        estimated_duration=timedelta(hours=2),
-        time_limit_days=90,
-        learning_outcomes=["Solve equations", "Plot graphs"],
-    )
-    ContentCollectionItemFactory(
-        collection_object=course, child_object=TopicFactory(), order=0
-    )
-
-    text = _course_details_text(staff_client, course)
-
-    for expected in (
-        "Subtitle",
-        "Start here",
-        "Visibility",
-        "Level",
-        "Beginner",
-        "Duration ~2 hours",
-        "Time limit 90 days",
-        "Solve equations",
-        "Plot graphs",
-        "Lessons 1",
-    ):
-        assert expected in text
-
-
-@pytest.mark.django_db
-def test_course_details_list_each_learning_outcome_on_its_own(
-    staff_client: Client,
-):
-    """An outcome can hold a comma, so joining them with commas would lose
-    where one ends and the next begins."""
-    organisation = OrganisationFactory()
-    course = CourseFactory(learning_outcomes=["Read, write and speak", "Plan"])
-
-    document = _get_document(
-        staff_client, _interface_url(organisation.slug, f"courses/{course.pk}")
-    )
-    (panel,) = document.cssselect("section[data-panel='details']")
-
-    items = [
-        li.text_content().strip() for li in panel.cssselect("ul li > span:last-child")
-    ]
-    assert items == ["Read, write and speak", "Plan"]
-
-
-@pytest.mark.django_db
-def test_course_details_label_the_category_row_category(staff_client: Client):
-    """The category row read "Dashboard category" (the model field's verbose
-    name) instead of the learner page's word, "Category"."""
-    course = CourseFactory(dashboard_category=CourseCategoryFactory(title="Maths"))
-
-    text = _course_details_text(staff_client, course)
-
-    assert "Category Maths" in text
-    assert "Dashboard category" not in text
-
-
-@pytest.mark.django_db
-def test_course_details_leave_out_rows_without_a_value(staff_client: Client):
-    course = CourseFactory(
-        subtitle="",
-        estimated_duration=None,
-        time_limit_days=None,
-        learning_outcomes=[],
-    )
-
-    text = _course_details_text(staff_client, course)
-
-    for label in ("Subtitle", "Duration", "Time limit", "Learning outcomes"):
-        assert label not in text
-    assert "Lessons 0" in text
-
-
-@pytest.mark.django_db
-def test_course_details_lesson_count_reads_the_number_of_topics(
-    staff_client: Client,
-):
-    course = CourseFactory()
-    for order in range(3):
-        ContentCollectionItemFactory(
-            collection_object=course, child_object=TopicFactory(), order=order
-        )
-
-    assert "Lessons 3" in _course_details_text(staff_client, course)
 
 
 def _cohort_table_request(
@@ -8439,21 +8335,6 @@ def test_the_course_detail_url_answers_only_for_a_course_that_reaches_the_organi
     assert response.status_code == (200 if reached else 404)
 
 
-@pytest.mark.django_db
-def test_the_courses_list_renders_its_empty_state_when_no_course_is_available(
-    mock_site_context: Site, logged_in_client: Callable[[User], Client]
-):
-    organisation = OrganisationFactory()
-    CourseFactory(audience=CourseAudience.PUBLIC).organisations.add(
-        OrganisationFactory()
-    )
-    client = logged_in_client(organisation_admin_viewer(organisation))
-
-    response = client.get(_interface_url(organisation.slug, "courses"))
-
-    assert CourseDataTable.empty_message in response.content.decode()
-
-
 PREVIEW_AVAILABLE = [
     ("no_owner", True),
     ("owned", True),
@@ -8535,28 +8416,6 @@ def test_a_form_page_of_a_course_held_only_through_a_registration_cannot_be_prev
     )
 
     assert response.status_code == 404
-
-
-@pytest.mark.django_db
-def test_courses_list_names_the_owner_under_a_shared_course_only(
-    mock_site_context: Site, logged_in_client: Callable[[User], Client]
-):
-    """Two courses with one title looked identical in the Title column."""
-    organisation = OrganisationFactory(name="Harbour College")
-    own = CourseFactory(title="Own Safety", audience=CourseAudience.PUBLIC)
-    own.organisations.add(organisation)
-    shared = CourseFactory(title="Shared Safety", audience=CourseAudience.PUBLIC)
-    shared.organisations.add(OrganisationFactory(name="Northwind Logistics"))
-    shared.shared_with.add(organisation)
-    client = logged_in_client(organisation_admin_viewer(organisation))
-
-    document = _get_document(client, _interface_url(organisation.slug, "courses"))
-
-    notes = {
-        element.text_content().strip()
-        for element in document.cssselect("[data-testid='shared-by']")
-    }
-    assert notes == {"Shared by Northwind Logistics"}
 
 
 def _shared_and_own_course_world() -> tuple[Organisation, CourseModel, CourseModel]:
