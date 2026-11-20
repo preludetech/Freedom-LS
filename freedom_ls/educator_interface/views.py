@@ -5,7 +5,7 @@ from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from functools import cached_property
-from typing import ClassVar, Literal, NamedTuple, cast
+from typing import Literal, NamedTuple, cast
 from uuid import UUID, uuid4
 
 from django import forms
@@ -40,7 +40,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.template.defaultfilters import filesizeformat
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.html import format_html, format_html_join, strip_tags
+from django.utils.html import strip_tags
 from django.utils.http import urlencode
 
 from freedom_ls.accounts.models import User
@@ -168,6 +168,7 @@ from freedom_ls.educator_interface.panels.course.data_tables import (
     CourseDataTable,
     CourseLearnerRegistrationDataTable,
 )
+from freedom_ls.educator_interface.panels.course.panels import CourseDetailsPanel
 from freedom_ls.educator_interface.panels.dashboard.config import DashboardConfig
 from freedom_ls.educator_interface.paths import interface_path
 from freedom_ls.educator_interface.quick_views import (
@@ -1542,51 +1543,6 @@ class LearnerConfig(OrganisationSectionConfig, ListViewConfig):
             .exists()
         ):
             raise OrganisationScopeDenied
-
-
-class CourseDetailsPanel(InstanceDetailsPanel):
-    model = Course
-    fields = [
-        "title",
-        "subtitle",
-        "dashboard_category",
-        "get_visibility_display",
-        "get_difficulty_display",
-        "display_estimated_duration",
-        "display_time_limit",
-        "learning_outcomes",
-        "lesson_count",
-    ]
-    # The learner details page's words, so an educator and a learner
-    # read the same label for the same fact.
-    labels: ClassVar[dict[str, str]] = {
-        "dashboard_category": "Category",
-        "get_visibility_display": "Visibility",
-        "get_difficulty_display": "Level",
-        "display_estimated_duration": "Duration",
-        "display_time_limit": "Time limit",
-        "lesson_count": "Lessons",
-    }
-
-    def get_rows(self) -> list[dict[str, object]]:
-        course = cast(Course, self._bound_instance())
-        rows: list[dict[str, object]] = []
-        for name, row in zip(self.fields, super().get_rows(), strict=True):
-            if row["value"] in ("", self.empty_value_display):
-                continue
-            if name == "learning_outcomes":
-                # One item per outcome: an outcome can hold a comma.
-                row["value"] = format_html(
-                    '<ul class="ml-0 list-none space-y-1">{}</ul>',
-                    format_html_join(
-                        "",
-                        '<li class="flex gap-2 py-0"><span aria-hidden="true">•</span>'
-                        "<span>{}</span></li>",
-                        ((outcome,) for outcome in course.learning_outcomes),
-                    ),
-                )
-            rows.append({**row, "label": self.labels.get(name, row["label"])})
-        return rows
 
 
 @dataclass(frozen=True)

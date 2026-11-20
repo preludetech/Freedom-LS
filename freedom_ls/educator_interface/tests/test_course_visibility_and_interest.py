@@ -257,6 +257,6 @@ def test_course_page_cohort_table_shows_cohort_status_and_registration_status(
 
 def test_course_details_panel_does_not_edit_visibility():
     """The educator course details panel never exposes visibility for editing."""
-    from freedom_ls.educator_interface.views import CourseDetailsPanel
+    from freedom_ls.educator_interface.panels.course.panels import CourseDetailsPanel
 
     assert "visibility" not in CourseDetailsPanel.fields
