@@ -25,7 +25,7 @@ form with form=, and hx-indicator and hx-disabled-elt point at it.
       class="flex flex-col gap-3 space-y-0">
     {% csrf_token %}
     {% if form.non_field_errors %}
-        <c-panel-notice tone="error" data-error-summary tabindex="-1">{{ form.non_field_errors }}</c-panel-notice>
+        <c-panel-callout tone="error" data-error-summary tabindex="-1">{{ form.non_field_errors }}</c-panel-callout>
     {% endif %}
     <div class="form-field">
         {{ field.label_tag }}

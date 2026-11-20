@@ -544,7 +544,8 @@ QA looks: `test_no_control_link_is_hand_styled`, `test_every_anchor_with_visible
 (one footer per step, none in a template that extends one),
 `test_no_dialog_template_hand_writes_what_a_component_owns` (no Cancel button, `text-sm`,
 `px-6 py-4` or `bg-error/10`), `test_no_framework_template_calls_the_host_callout` (no `<c-callout>` in any framework
-template), `test_every_dialog_loading_text_ends_in_the_ellipsis_character`,
+template), `test_no_fls_panel_template_calls_the_site_callout` (none in an accounts or educator
+panel, modal, quick view or panel-partial template either), `test_every_dialog_loading_text_ends_in_the_ellipsis_character`,
 `test_every_dialog_disables_only_its_own_submit_buttons`,
 `test_no_dialog_form_with_a_find_selector_holds_an_element_that_issues_its_own_request`,
 `test_no_educator_module_sets_the_modal_trigger_template_by_hand`,

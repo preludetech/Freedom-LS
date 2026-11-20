@@ -90,3 +90,42 @@ def test_no_base_button_hand_writes_a_touch_height() -> None:
 
 def test_every_base_expand_chevron_turns_when_its_control_opens() -> None:
     assert template_rules.expand_chevrons_that_do_not_turn(BASE_TEMPLATES_DIR) == []
+
+
+ACCOUNTS_TEMPLATES_DIR: Path = (
+    FREEDOM_LS_PACKAGE_DIR / "accounts" / "templates" / "accounts"
+)
+EDUCATOR_TEMPLATES_DIR: Path = (
+    FREEDOM_LS_PACKAGE_DIR / "educator_interface" / "templates" / "educator_interface"
+)
+# Rendered on a standalone educator page (the import steps), outside the panel
+# framework's dispatch, where <c-callout> is the site's notice.
+STANDALONE_PAGE_PARTIALS = frozenset({"import_error_block.html"})
+TEMPLATE_COMMENT = re.compile(
+    r"{%\s*comment\s*%}.*?{%\s*endcomment\s*%}|{#.*?#}", re.DOTALL
+)
+
+
+def test_no_fls_panel_template_calls_the_site_callout() -> None:
+    """An FLS panel, dialog or partial used <c-callout> where <c-panel-callout> belongs."""
+    paths = [
+        *ACCOUNTS_TEMPLATES_DIR.rglob("*.html"),
+        *(EDUCATOR_TEMPLATES_DIR / "modal").rglob("*.html"),
+        *(EDUCATOR_TEMPLATES_DIR / "panels").rglob("*.html"),
+        *(EDUCATOR_TEMPLATES_DIR / "quick_views").rglob("*.html"),
+        *(
+            path
+            for path in (EDUCATOR_TEMPLATES_DIR / "partials").rglob("*.html")
+            if path.name not in STANDALONE_PAGE_PARTIALS
+        ),
+    ]
+    offenders = [
+        str(path.relative_to(FREEDOM_LS_PACKAGE_DIR))
+        for path in paths
+        if re.search(r"<c-callout(?![\w-])", TEMPLATE_COMMENT.sub("", path.read_text()))
+    ]
+
+    assert offenders == [], (
+        "a notice on a panel-framework page is <c-panel-callout>; "
+        "<c-callout> is for pages outside the panel framework"
+    )

@@ -26,8 +26,8 @@ last_organisation_admin, grantor_is_site_level, target_is_site_level.
         <p>You can give the role again later.</p>
     {% endif %}
     {% if last_organisation_admin and grantor_is_site_level %}
-        <c-callout tone="warning">
+        <c-panel-callout tone="warning">
             {% if is_self %}You're{% else %}{{ staff_member.display_name }} is{% endif %} the only organisation admin. After this, nobody in the organisation can administer it until you add one.
-        </c-callout>
+        </c-panel-callout>
     {% endif %}
 {% endblock body %}

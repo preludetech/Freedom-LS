@@ -15,7 +15,7 @@ new_role_display_name.
     <input type="hidden" name="role" value="{{ role }}">
     <c-modal-body>
         {% if form.errors %}
-        <c-callout tone="error" data-error-summary tabindex="-1">{{ form.new_role.errors }}</c-callout>
+        <c-panel-callout tone="error" data-error-summary tabindex="-1">{{ form.new_role.errors }}</c-panel-callout>
         {% endif %}
         <fieldset class="space-y-2">
             <legend class="mb-2 font-semibold">Role</legend>
