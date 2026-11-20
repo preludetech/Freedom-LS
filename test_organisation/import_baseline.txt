@@ -44,7 +44,7 @@ freedom_ls.dev_tools.tests.test_danger_content_delete -> freedom_ls.registration
 freedom_ls.dev_tools.tests.test_danger_content_delete -> freedom_ls.registration_rules.models
 
 # educator_interface
-freedom_ls.educator_interface.tests.test_course_visibility_and_interest -> freedom_ls.course_interest.factories
+freedom_ls.educator_interface.tests.panels.course.test_data_tables -> freedom_ls.course_interest.factories
 
 # google_tag
 freedom_ls.google_tag.tests.test_context_processors -> freedom_ls.accounts.models
