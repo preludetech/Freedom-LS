@@ -1,143 +1,108 @@
 # QA report: served paper record
 
+Result: every test in the plan (Tests 1 to 11, the two-tab check and the viewport checks) passed. There are no fail records and no bugs were filed.
+
 ## Methodology
 
-Screenshots were collected into `spec_dd/2. in progress/sacaa-compliance-1-served-paper-record/screenshots/`. Every image linked below was checked to exist there beside this report. The QA plan is `3. frontend_qa.md`. The smoke gate passed, so no steps were skipped because of it.
+Screenshots were collected into `spec_dd/2. in progress/sacaa-compliance-1-served-paper-record/screenshots/`, beside this report, and every image linked below is taken from that folder by its recorded basename. The run followed `3. frontend_qa.md` at desktop width, with extra mobile (375px) and tablet (768px) passes for the runner and results pages.
 
-Run-order notes:
+Besides the screenshots, `screenshots/` also holds 14 accessibility-snapshot `.yml` files, 4 console `.log` files and the downloaded cohort report PDF. These were collected from the Playwright output dir.
 
-- Test 6 was run before Test 5, so that 6.6's premise ("a served paper with nothing missing") held. Test 5 deletes and moves served rows, which would have broken that premise.
-- The option-order check in 4.3 used learner D, because learner B had already finished the quiz by then. This is recorded as 4.3b. The page-order half of 4.3 ran with learner B as planned. Test 4.4 ran later, after the data helper cleared learner D's sitting.
-- 4.2's option reorder first failed to save: the question admin required "File path", and the QA scenario had created questions with it blank. This was a test-data gap, not a product bug, and was fixed through the data helper (see Data changes).
+Admin-side data edits in Tests 4 to 6 (reordering pages and options, deleting or recreating options, moving Q4, switching the correct option) were made through the Django shell, not the admin form.
 
 ## Diff scoping
 
-Class: FULL. Changed files that triggered it:
+Class: **FULL**.
 
-- `freedom_ls/form_engine/templates/form_engine/inputs/checkboxes.html`
-- `freedom_ls/form_engine/templates/form_engine/inputs/dropdown.html`
-- `freedom_ls/form_engine/templates/form_engine/inputs/multiple_choice.html`
+Changed files that triggered it:
+- `freedom_ls/form_engine/templates/form_engine/inputs/*.html`
+- `freedom_ls/learner_interface/templates/learner_interface/course_form_page.html`
 - `freedom_ls/form_engine/*.py`
 - `freedom_ls/learner_interface/views.py`
 - `freedom_ls/course_applications/views.py`
+- `freedom_ls/learner_progress/attempts.py`
 - `freedom_ls/reports/indexes.py`
+- migration `0010_formprogress_served_paper`
 
-Nothing was skipped on scoping grounds. Everything ran, including the mobile and tablet passes.
+Skipped: nothing. Every test, and the mobile and tablet passes, ran.
+
+Rebase record: Step 0 rebased 26 commits onto origin/main (2 upstream commits, spec-only). There were no conflicts, the lost-change check passed, the tier was none and the branch was pushed. The front-end check was subsumed by this full QA run.
 
 ## Smoke gate
 
-Outcome: pass. Pages loaded: `/` and `/courses/qa-served-paper-course/1/`.
-
-## Test results summary
-
-| Test | Result |
-|------|--------|
-| 1.1 to 1.9 | pass |
-| 2.1, 2.3 to 2.5 | pass |
-| 2.2 | pass for the behaviour; visual review failed (B1, "2.2-cover") |
-| 3.1, 3.2 | pass |
-| 4.1 to 4.6 (including 4.3b) | pass |
-| 5.1, 5.3, 5.5, 5.6 | pass |
-| 6.1, 6.2, 6.4, 6.5, 6.6 | pass |
-| 7.1, 7.2 | pass |
-| 7.3 | pass for the behaviour; outline check failed (B2, "7.3-outline") |
-| 8.1, 8.2 | pass |
-| 9.1 to 9.6, 9.8 | pass |
-| 9.7 | skip (applicant applied anonymously and has no verified account, which the plan says to skip) |
-| 10.1 | pass |
-| 11.1 | pass (on-screen report only) |
-| watch: missing page, viewports (runner and results), two tabs | pass |
-| watch: two tabs, double start | fail (B3) |
+Status: **pass**. Pages loaded: `/` and `/courses/qa-served-paper-course/1/`. There was no failure and the run was not aborted.
 
 ## Design check
 
-No design states tested.
-
-## Bug B1: Runner exit dialog backdrop does not cover the sticky footer
-
-Manifestations:
-
-- `2.2-cover`, desktop
-
-![](screenshots/page-2026-11-19T16-41-46-779Z.png)
-
-- Expected: with the "Leave the test?" dialog open, the whole page behind it is dimmed under the backdrop. That includes the header, the content and the sticky Previous/Next footer.
-- Actual: the sticky footer (Previous, Next and the "Going back won't save..." note) renders above the backdrop. It is undimmed and looks clickable.
-- Note from the tester: likely pre-existing. This branch changed no runner shell template, only the option input templates.
-
-## Bug B2: Course outline shows stale "In progress" on the request that finalises an abandoned submit-on-exit sitting
-
-Manifestations:
-
-- `7.3-outline`, desktop
-
-No screenshot.
-
-- Expected: when the quiz start screen finalises an abandoned submit-on-exit attempt, the outline on that same response shows the item's new state ("Needs retry").
-- Actual: the outline still says "In progress" while the page body shows the finalised attempt. Only a reload shows "Needs retry".
-- Note from the tester: pre-existing. This branch does not change `finalise_stale_incomplete` or the outline (introduced on main in f79587793).
-
-## Bug B3: Two concurrent quiz starts create two sittings and score one as abandoned
-
-Manifestations:
-
-- `watch.two-tabs-double-start`, tablet
-
-No screenshot.
-
-- Expected: opening the submit-on-exit quiz start in two tabs at once yields one open sitting.
-- Actual: two FormProgress rows are created. One is immediately finalised and scored as an abandoned attempt, and the other stays open.
-- Note from the tester: pre-existing. Sitting creation (`get_or_create_incomplete`) and `finalise_stale_incomplete` are unchanged by this branch.
+No design states tested (no design records exist for this run).
 
 ## Layout probe
 
-| Test id | Viewport | URL | Screenshot | Result |
-|---------|----------|-----|------------|--------|
-| 1.1 | desktop | /courses/qa-served-paper-course/1/ | [shot](screenshots/page-2026-11-19T16-39-48-477Z.png) | clean |
-| 1.3 | desktop | /courses/qa-served-paper-course/1/fill_form/1 | [shot](screenshots/page-2026-11-19T16-40-02-769Z.png) | clean |
-| 1.5 | desktop | /courses/qa-served-paper-course/1/fill_form/2 | [shot](screenshots/page-2026-11-19T16-40-59-277Z.png) | clean |
-| 3.1 | desktop | /courses/qa-served-paper-course/1/complete | [shot](screenshots/page-2026-11-19T16-42-24-171Z.png) | clean |
-| watch.viewports-runner | mobile | /courses/qa-served-paper-course/1/fill_form/2 | [shot](screenshots/page-2026-11-19T16-59-33-928Z.png) | clean |
-| watch.viewports-results | mobile | /courses/qa-served-paper-course/1/complete | [shot](screenshots/page-2026-11-19T16-59-53-795Z.png) | clean |
-| watch.viewports-results | tablet | /courses/qa-served-paper-course/1/complete | [shot](screenshots/page-2026-11-19T17-00-01-203Z.png) | clean |
-| watch.viewports-runner | tablet | /courses/qa-served-paper-course/1/fill_form/2 | [shot](screenshots/page-2026-11-19T17-00-17-711Z.png) | clean |
+| Test | Viewport | URL | Screenshot | Result |
+|---|---|---|---|---|
+| 1.1 | desktop | /courses/qa-served-paper-course/1/ | [page-2026-11-20T06-08-46-509Z.png](screenshots/page-2026-11-20T06-08-46-509Z.png) | clean |
+| 1.1 | desktop | /courses/qa-served-paper-course/1/fill_form/1 | [page-2026-11-20T06-09-11-021Z.png](screenshots/page-2026-11-20T06-09-11-021Z.png) | clean |
+| 1.5 | desktop | /courses/qa-served-paper-course/1/fill_form/2 | [page-2026-11-20T06-10-42-144Z.png](screenshots/page-2026-11-20T06-10-42-144Z.png) | clean |
+| 3 | desktop | /courses/qa-served-paper-course/1/complete | [page-2026-11-20T06-12-09-786Z.png](screenshots/page-2026-11-20T06-12-09-786Z.png) | clean |
+| 11 | desktop | /educator/organisations/demodev/cohorts/&lt;pk&gt;/__tabs/report | [page-2026-11-20T06-15-26-895Z.png](screenshots/page-2026-11-20T06-15-26-895Z.png) | clean |
+| 7 | desktop | /courses/qa-served-paper-course/2/ | [page-2026-11-20T06-17-48-060Z.png](screenshots/page-2026-11-20T06-17-48-060Z.png) | clean |
+| 9 | desktop | /applications/application/&lt;pk&gt;/page/1/ | [page-2026-11-20T06-19-11-301Z.png](screenshots/page-2026-11-20T06-19-11-301Z.png) | clean |
+| 9 | desktop | /applications/application/&lt;pk&gt;/check-your-answers/ | [page-2026-11-20T06-19-28-020Z.png](screenshots/page-2026-11-20T06-19-28-020Z.png) | clean |
+| 10 | desktop | /educator/organisations/demodev/courses/&lt;pk&gt; | [page-2026-11-20T06-21-33-378Z.png](screenshots/page-2026-11-20T06-21-33-378Z.png) | clean |
+| viewport-runner | mobile | /courses/qa-served-paper-course/1/fill_form/2 | [page-2026-11-20T06-22-08-704Z.png](screenshots/page-2026-11-20T06-22-08-704Z.png) | clean |
+| viewport-results | mobile | /courses/qa-served-paper-course/1/complete | [page-2026-11-20T06-22-19-485Z.png](screenshots/page-2026-11-20T06-22-19-485Z.png) | clean |
+| viewport-results | tablet | /courses/qa-served-paper-course/1/complete | [page-2026-11-20T06-22-27-531Z.png](screenshots/page-2026-11-20T06-22-27-531Z.png) | clean |
+| viewport-runner | tablet | /courses/qa-served-paper-course/1/fill_form/2 | [page-2026-11-20T06-22-37-074Z.png](screenshots/page-2026-11-20T06-22-37-074Z.png) | clean |
+
+The probe recorded no flags. The mobile and tablet screenshots show the dev-only branch badge overlapping controls (see General notes). It is dev tooling, not product.
+
+## Test results
+
+| Test | Viewport | Result | Evidence |
+|---|---|---|---|
+| 1.1 | desktop | pass | Start opens fill_form/1, "Page 1 of 3", content block above Q1 numbered "1.", options A-D in authored order. No sitting before start, one after. ![](screenshots/page-2026-11-20T06-09-11-021Z.png) The first capture (`page-2026-11-20T06-08-46-509Z.png`) shows the debug toolbar expanded. It was hidden for every later shot. |
+| 1.4 | desktop | pass | Admin FormProgress page shows "Served paper" read-only right after "Asked", holding seed, 3 pages and an options object. ![](screenshots/page-2026-11-20T06-09-42-858Z.png) |
+| 1.5-1.9 | desktop | pass | Page 2 of 3, Q2 and Q3 numbered, "Select all that apply.", dropdown blank first then A-D. Previous kept Q1=B. Page nav links pages 1 and 2, page 3 "not yet accessible". Two reloads were identical and the seed was unchanged (1337129218073893057). ![](screenshots/page-2026-11-20T06-10-42-144Z.png) |
+| 2 | desktop | pass | "Leave and save" returns to the start screen with "Continue Form" going to fill_form/3, "Page 3 of 3". Direct fill_form/1 shows saved answer B. fill_form/9 returns a 404 page. No screenshot. |
+| 3 | desktop | pass | Quiz passed, 75%, 3/4. Review lists only Q3 (Option A given, Option D correct). No out-of-date notice. Record has completed_time, scores 3/4, asked filled, seed unchanged. ![](screenshots/page-2026-11-20T06-12-09-786Z.png) |
+| 4 | desktop | pass | Learner B kept the original page and option order after the shell reorder. "Page N of 3" followed B's original order, answers were kept and there were no errors. A fresh learner D got the new order. B finished 4/4, 100%, no notice, and the order was restored afterwards. ![](screenshots/page-2026-11-20T06-13-30-194Z.png) |
+| 5 | desktop | pass | Deleted Q1 Option A, then moved Q4 to survey page 2. B's results page re-rendered both times with the stored 100% 4/4 and no notice. The admin record still lists the deleted option id and Q4's id, and the Answers section renders with Q4 under "Questions no longer on the form". ![](screenshots/page-2026-11-20T06-14-46-551Z.png) |
+| 11 | desktop | pass | Run after Test 5's removals. The on-screen cohort report shows A 75%, B 100%, C 75%, with quiz confusions listing only Q3 (2 of 3 learners). The generated PDF shows A 75% 3/4 with Q3 listed and B 100% 4/4 with no incorrect, removed or moved question. Generation completed immediately. ![](screenshots/page-2026-11-20T06-15-26-895Z.png) |
+| 6 | desktop | pass | Learner C's old sitting (served_paper null) shows the stored 75% 3/4. Switching Q3's correct option D to A shows the "This quiz has changed since you sat it" notice for C. Learner A shows it too, but only once Q1 Option A was recreated under its original pk (see observations). Restoring D removed the notice for both. ![](screenshots/page-2026-11-20T06-16-29-508Z.png) |
+| 7 | desktop | pass | Learner A: "Leave and submit" gives results at 50% 1/2, passed, with served paper filled and completed. Learner B navigated away without the exit control. The start screen shows "Previous attempts 20 Nov 2026 0% (0 / 2)" with Try Again and no error, and the record is completed with a served paper. ![](screenshots/page-2026-11-20T06-17-48-060Z.png) |
+| 8 | desktop | pass | Survey navigation Page 1 of 2 to 2 of 2 and back, then Submit, reaches the complete page. Record: served_paper None, asked filled, completed. No screenshot. |
+| 9 | desktop | pass | Anonymous applicant: Previous links correct on pages 1 and 2, check-your-answers has one card per page in order with Edit. Editing page 1 (`?return=check`), A to B, shows Option B on check-your-answers. Record served paper filled (2 pages). Submit reaches "Check your email". The anonymous owner gets 404 on page/1 after submit, so step 7 was run as signed-in learner D's own application. It rendered read-only with all radios disabled, Option B checked and options A-D in order. The non-quiz application walked two pages correctly with served_paper None. ![](screenshots/page-2026-11-20T06-19-28-020Z.png) ![](screenshots/page-2026-11-20T06-19-59-259Z.png) |
+| 10 | desktop | pass | Educator page previews of the quiz show options A-D in authored order on all 3 pages. "Correct answer" marks show on Q1 B, Q2 A and C, Q3 under the dropdown (Option D) and Q4 C. FormProgress count was 12 before and after. The form-level preview shows only a summary. ![](screenshots/page-2026-11-20T06-21-33-378Z.png) |
+| extra-two-tab | desktop | pass | With learner D's sitting cleared, start_form opened concurrently in two tabs. Both landed on fill_form/1 "Page 1: Warm up" with options A-D. There was one FormProgress for D with one served paper (seed 2390554010477586617). No screenshot. |
+| viewport-runner | mobile | pass | At 375px scrollWidth equals clientWidth, so no horizontal overflow. Option cards and dropdown are full width and Next/Previous stack. ![](screenshots/page-2026-11-20T06-22-08-704Z.png) |
+| viewport-results | mobile | pass | At 375px there is no overflow. The score ring, 3/4, incorrect-answer card and Continue fit. ![](screenshots/page-2026-11-20T06-22-19-485Z.png) |
+| viewport-results | tablet | pass | At 768px there is no overflow and the content aligns with the breadcrumb. ![](screenshots/page-2026-11-20T06-22-27-531Z.png) |
+| viewport-runner | tablet | pass | At 768px there is no overflow and the header reads "Page 2 of 3". ![](screenshots/page-2026-11-20T06-22-37-074Z.png) |
+
+## Bugs
+
+No bugs were filed this run.
 
 ## Data changes
 
 | What changed | Made by | Files written |
-|--------------|---------|---------------|
-| Seeded the empty branch DB with `create_demo_data` and `content_save demo_content DemoDev`, then built the served-paper scenario: quiz course with 3 forms, learners A to D, cohort, learner C's old sitting, and quiz and plain application courses | `sdd:qa-data-helper` | `freedom_ls/qa_helpers/management/commands/qa_create_served_paper_scenario.py` |
-| Filled the blank `file_path` on the 33 QA scenario content rows (forms, pages, content, questions, courses, category) so the question admin validates. The command was updated to set it on create. Learner D's quiz sitting was cleared. | `sdd:qa-data-helper` | `freedom_ls/qa_helpers/management/commands/qa_create_served_paper_scenario.py` |
+|---|---|---|
+| Restored residue from the previous QA run: moved Q4 (pk 7b4f0af5) back from survey page 2 to quiz page 3 and recreated its deleted Option A. Cleared learner A, B and D sittings on qa-served-paper-course with `qa_clear_form_sittings`, then re-ran `qa_create_served_paper_scenario`. | Django shell and management commands | none |
+| Test 4/5 edits restored after use: page and Q1 option order put back, Q4 moved back to quiz page 3 and Q1 Option A recreated (new pk). Test 11 ran before Test 6 so Test 6's "learner A has nothing missing" holds. | Django shell | none |
+| Recreated Q1 Option A and Q4 Option A under their original pks (964043f2..., 689e1caa...) so served papers recorded this run have nothing missing. Q3's correct option was switched D to A for Test 6, then restored. | Django shell | none |
 
 ## Bug status
 
-| Bug | Title | Status |
-|-----|-------|--------|
-| B1 | Runner exit dialog backdrop does not cover the sticky footer | **FIXED** (commit: 4a16fef0e). Re-verified: dialog covers the footer, footer stays pinned while content scrolls at 375px |
-| B2 | Course outline shows stale "In progress" on the request that finalises an abandoned submit-on-exit sitting | **FIXED** (commit: 10a137049). Re-verified: outline shows "Needs retry" on the finalising response |
-| B3 | Two concurrent quiz starts create two sittings and score one as abandoned | **FIXED** (commit: 6cbb6ee2b) — Two concurrent quiz starts create two sittings and score one as abandoned. Starts now lock the course progress row and reuse a sitting opened in the last 10 seconds; proven by unit tests (no on-screen change) |
+No bugs filed.
 
 ## General notes
 
-- **Cohort report PDF (11.1):** generated after QA from the gather and render path directly (no task worker) and saved as [qa_cohort_report.pdf](qa_cohort_report.pdf). Learner A's quiz section shows 3/4 with Q3 listed wrong; learner B's section lists no removed or moved question. Learner B's three 0% submit-on-exit attempts are abandoned sittings from QA (test 7.3 and the B3 double start, before the fix). Test 9.7 was skipped, as above.
-- **Test 5 data changes:** the plan's Test 5 data changes (deleting Q4 Option A, moving Q4 to the survey's page 2) were made by the data helper. Only two `data_change` records were logged in the scratch file, so those two are not itemised in the table above. The test notes for 5.3, 5.5 and 10.1 describe them.
-- **Legacy numbering (6.2):** learner C's results label the wrong question "QUESTION 4". C has no served paper, so numbering follows the current authored page order after Test 4's page reorder. This is the legacy fallback and not a defect.
-- **Dev-only badge (tablet runner):** the dev-only branch badge covers the footer's Previous link at 768px. The link is present at x=64. This is dev tooling and not product.
-- **Admin screenshot (1.4):** the admin shot was taken from a second browser context, with the debug toolbar open.
-- **Additional screenshots:** these exist in the screenshots folder as evidence for the tests above.
-  - [admin record for learner A](screenshots/page-admin-a-progress-1795106432765.png) (1.4)
-  - [leave dialog](screenshots/page-2026-11-19T16-41-46-779Z.png) (2.2)
-  - [B after page reorder](screenshots/page-2026-11-19T16-44-06-581Z.png) (4.3)
-  - [B results](screenshots/page-2026-11-19T16-44-12-069Z.png) (4.5)
-  - [D new order](screenshots/page-learner-d-new-order-1795106667913.png) and [D kept option order](screenshots/page-learner-d-kept-option-order-1795106933630.png) (4.3b)
-  - [outdated notice, C](screenshots/page-2026-11-19T16-50-23-196Z.png) (6.4) and [outdated notice, A](screenshots/page-learner-a-outdated-notice-1795107038871.png) (6.6)
-  - [fresh sitting in new order](screenshots/page-2026-11-19T16-51-27-899Z.png) (4.4)
-  - [educator preview](screenshots/page-educator-preview-1795107176313.png), [page 1](screenshots/page-educator-preview-p1-1795107203630.png), [page 2](screenshots/page-educator-preview-p2-1795107205909.png) and [page 3](screenshots/page-educator-preview-p3-1795107208211.png) (10.1)
-  - [apply start](screenshots/page-apply-start-1795107235437.png), [form page 1](screenshots/page-apply-form-p1-1795107245716.png), [check your answers](screenshots/page-apply-cya-1795107255731.png) and [status](screenshots/page-apply-status-1795107273350.png) (9.x)
-  - [B results after move](screenshots/page-learner-b-results-after-move-1795107285511.png) and [admin B after removal](screenshots/page-admin-b-progress-after-removal-1795107292398.png) (5.5, 5.6)
-  - [submit-on-exit abandoned](screenshots/page-submit-on-exit-abandoned-1795107443453.png) (7.3)
-  - [survey page 2](screenshots/page-survey-p2-1795107493273.png) (8.1)
-  - [cohort report](screenshots/page-cohort-report-1795107538562.png) (11.1)
-- **Pre-existing bugs:** all three bugs were assessed by the tester as pre-existing and unrelated to the served-paper change. Triage should confirm this.
+- **Furthest page reached.** Learner B's completed record shows "Furthest page reached: 1". The value is an authored page number, recorded while the reorder had "Last question" at authored position 1. This is by design (the `record_page_reached` docstring) and has no learner-visible effect on a completed sitting.
+- **Notice suppressed when a served item is missing.** With Test 5's deleted option recreated under a new pk, learner A's served paper had a missing item. The results view then suppresses the "score is out of date" notice by design (`path.has_missing_served_items`). After the option was recreated under its original pk, the notice showed for A as the plan expects.
+- **Dev branch badge.** At narrow widths the dev-only branch badge overlaps controls: the Previous link at 375px, the results card title at 375px and the Previous link at 768px. This is dev tooling, not product, and no action is attached.
+- **Survey submit dialog copy.** The survey's submit dialog says "your answers will be scored" for an unscored form. This is pre-existing copy and this branch did not change it.
+- **Test 9 step 7.** An anonymous owner gets 404 on page/1 after submit, so the read-only check used a signed-in learner's own application instead. The plan allows skipping this step for applicants without an account, and it was run anyway.
+- **Test 4 URLs.** After the reorder, fill_form/2 resolves to authored page 2, shown as "Page 1 of 3". The URL carries the authored number, as the plan notes.
+- **Not tested.** Nothing in the plan was skipped.
 
-status: ok · reason: 3 bugs — 3 fixed, 0 unresolved; report rendered, screenshots verified
+status: ok · reason: report rendered, 0 bugs documented

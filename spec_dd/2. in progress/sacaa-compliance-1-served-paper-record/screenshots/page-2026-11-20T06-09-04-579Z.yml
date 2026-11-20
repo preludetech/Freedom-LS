@@ -1,0 +1,47 @@
+- generic [ref=f4e1]:
+  - generic:
+    - status
+    - alert
+  - main [ref=f4e2]:
+    - generic [ref=f4e3]:
+      - generic [ref=f4e4]:
+        - generic [ref=f4e5]:
+          - button "Exit test" [ref=f4e7]
+          - heading "QA Served Paper Quiz" [level=2] [ref=f4e10]
+          - generic [ref=f4e11]: 0 of 4 answered
+        - generic [ref=f4e12]:
+          - generic [ref=f4e13]: Page 1 of 3
+          - navigation "Form pages" [ref=f4e17]:
+            - link "Page 1 (current)" [ref=f4e18] [cursor=pointer]:
+              - /url: /courses/qa-served-paper-course/1/fill_form/1
+            - generic "Page 2 (not yet accessible)" [ref=f4e19]
+            - generic "Page 3 (not yet accessible)" [ref=f4e20]
+      - generic [ref=f4e22]:
+        - generic [ref=f4e23]:
+          - heading "QA Served Paper Quiz — Page 1 of 3" [level=1] [ref=f4e24]
+          - generic [ref=f4e25]: Page 1 of 3
+          - 'heading "Page 1: Warm up" [active] [level=2] [ref=f4e27]'
+        - generic [ref=f4e28]:
+          - paragraph [ref=f4e30]: This content block comes first on page 1, before the multiple-choice question.
+          - 'group "1. Q1 (multiple choice): which option is correct? (required)" [ref=f4e31]':
+            - generic [ref=f4e32]:
+              - generic [ref=f4e33]: "1."
+              - paragraph [ref=f4e34]: "Q1 (multiple choice): which option is correct?"
+              - text: "*"
+              - generic [ref=f4e35]: (required)
+            - generic [ref=f4e36]:
+              - generic [ref=f4e37] [cursor=pointer]:
+                - radio "Option A" [ref=f4e38]
+                - generic [ref=f4e41]: Option A
+              - generic [ref=f4e42] [cursor=pointer]:
+                - radio "Option B" [ref=f4e43]
+                - generic [ref=f4e46]: Option B
+              - generic [ref=f4e47] [cursor=pointer]:
+                - radio "Option C" [ref=f4e48]
+                - generic [ref=f4e51]: Option C
+              - generic [ref=f4e52] [cursor=pointer]:
+                - radio "Option D" [ref=f4e53]
+                - generic [ref=f4e56]: Option D
+      - button "Next" [ref=f4e61] [cursor=pointer]
+  - generic [ref=f4e64] [cursor=pointer]: sacaa-compliance-1-served-paper-record
+  - generic "Show toolbar" [ref=f4e66]: DJDT

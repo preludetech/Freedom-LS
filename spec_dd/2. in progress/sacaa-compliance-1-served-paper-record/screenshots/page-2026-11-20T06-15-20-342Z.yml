@@ -1,0 +1,280 @@
+- generic [ref=f48e1]:
+  - banner [ref=f48e2]:
+    - link [ref=f48e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f48e4]
+      - heading "FirstClass" [level=1] [ref=f48e5]
+    - navigation [ref=f48e6]:
+      - generic [ref=f48e7]:
+        - generic [ref=f48e8]:
+          - button "Notifications, none new" [ref=f48e9]
+          - status:
+            - generic [ref=f48e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f48e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f48e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f48e17]:
+    - generic [ref=f48e19]:
+      - dialog "Navigation" [ref=f48e20]:
+        - generic [ref=f48e22]:
+          - generic [ref=f48e23]:
+            - paragraph [ref=f48e24]: Organisation
+            - button "Switch organisation" [ref=f48e26] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f48e27]: D
+              - generic "DemoDev" [ref=f48e28]
+          - navigation "Sections" [ref=f48e31]:
+            - heading "Teaching" [level=2] [ref=f48e32]
+            - list [ref=f48e33]:
+              - listitem [ref=f48e34]:
+                - link "Dashboard" [ref=f48e35] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/dashboard
+              - listitem [ref=f48e40]:
+                - link "Cohorts" [ref=f48e41] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+              - listitem [ref=f48e46]:
+                - link "Learners" [ref=f48e47] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+              - listitem [ref=f48e52]:
+                - link "Courses" [ref=f48e53] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+            - heading "Administration" [level=2] [ref=f48e58]
+            - list [ref=f48e59]:
+              - listitem [ref=f48e60]:
+                - link "Staff" [ref=f48e61] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/staff
+              - listitem [ref=f48e66]:
+                - link "Audit log" [ref=f48e67] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/audit-log
+          - generic [ref=f48e72]:
+            - generic [ref=f48e74]:
+              - generic [aria-hidden] [ref=f48e75]: DE
+              - generic [ref=f48e76]: demodev@email.com
+            - link "Account settings" [ref=f48e78] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f48e83]:
+        - navigation "Back" [ref=f48e85]:
+          - link "Cohorts" [ref=f48e86] [cursor=pointer]:
+            - /url: /educator/organisations/demodev/cohorts
+        - generic [ref=f48e90]:
+          - generic [ref=f48e92]:
+            - heading "QA Served Paper Cohort" [level=1] [ref=f48e97]
+            - navigation "Cohort sections" [ref=f48e98]:
+              - list [ref=f48e99]:
+                - listitem [ref=f48e100]:
+                  - link "Overview" [ref=f48e101] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/e6ef020a-c7d1-426d-a855-cf4eef8a7a1a/__tabs/overview
+                - listitem [ref=f48e102]:
+                  - link "Learners 4" [ref=f48e103] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/e6ef020a-c7d1-426d-a855-cf4eef8a7a1a/__tabs/learners
+                    - text: Learners
+                    - generic [ref=f48e104]: "4"
+                - listitem [ref=f48e105]:
+                  - link "Courses 1" [ref=f48e106] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/e6ef020a-c7d1-426d-a855-cf4eef8a7a1a/__tabs/courses
+                    - text: Courses
+                    - generic [ref=f48e107]: "1"
+                - listitem [ref=f48e108]:
+                  - link "Report" [active] [ref=f48e109] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/e6ef020a-c7d1-426d-a855-cf4eef8a7a1a/__tabs/report
+                - listitem [ref=f48e110]:
+                  - link "Settings" [ref=f48e111] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/e6ef020a-c7d1-426d-a855-cf4eef8a7a1a/__tabs/settings
+                - listitem [ref=f48e112]:
+                  - link "History" [ref=f48e113] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/e6ef020a-c7d1-426d-a855-cf4eef8a7a1a/__tabs/history
+          - generic [ref=f48e182]:
+            - generic [ref=f48e184]:
+              - generic [ref=f48e185]:
+                - heading "Downloads" [level=2] [ref=f48e187]
+                - button "Generate report" [ref=f48e190] [cursor=pointer]
+              - region "Generated reports" [ref=f48e194]:
+                - table [ref=f48e195]:
+                  - caption [ref=f48e196]: Generated reports
+                  - rowgroup [ref=f48e197]:
+                    - row [ref=f48e198]:
+                      - columnheader "Generated" [ref=f48e199]
+                      - columnheader "By" [ref=f48e200]
+                      - columnheader "Download" [ref=f48e201]
+                  - rowgroup [ref=f48e203]:
+                    - row [ref=f48e204]:
+                      - cell "19 Nov 2026, 16:59" [ref=f48e205]:
+                        - time [ref=f48e206]:
+                          - generic [ref=f48e207]: 19 Nov 2026,
+                          - generic [ref=f48e208]: 16:59
+                      - cell "demodev@email.com" [ref=f48e209]
+                      - cell [ref=f48e210]:
+                        - link "Download the report generated 19 Nov 2026, 16:59" [ref=f48e211] [cursor=pointer]:
+                          - /url: /educator/organisations/demodev/cohorts/e6ef020a-c7d1-426d-a855-cf4eef8a7a1a/reports/757339c8-50d2-4fe7-96ef-8e991f4761fb/download/
+                          - text: Download
+            - generic [ref=f48e216]:
+              - heading "Cohort report" [level=2] [ref=f48e219]
+              - generic [ref=f48e222]:
+                - generic [ref=f48e223]:
+                  - paragraph [ref=f48e224]:
+                    - text: Figures as of
+                    - time [ref=f48e225]:
+                      - generic [ref=f48e226]: 20 Nov 2026,
+                      - generic [ref=f48e227]: 06:15
+                  - button "Refresh" [ref=f48e228] [cursor=pointer]
+                - region [ref=f48e229]:
+                  - heading "Cohort at a glance" [level=3] [ref=f48e230]
+                  - generic [ref=f48e231]:
+                    - generic [ref=f48e232]:
+                      - term [ref=f48e233]: Learners in cohort
+                      - definition [ref=f48e234]: "4"
+                    - generic [ref=f48e235]:
+                      - term [ref=f48e236]: Median completion
+                      - definition [ref=f48e237]: 33%
+                    - generic [ref=f48e238]:
+                      - term [ref=f48e239]: Not started
+                      - definition [ref=f48e240]: "1"
+                    - generic [ref=f48e241]:
+                      - term [ref=f48e242]: Completed everything
+                      - definition [ref=f48e243]: "0"
+                - region [ref=f48e244]:
+                  - heading "Learners needing attention" [level=3] [ref=f48e245]
+                  - list [ref=f48e246]:
+                    - listitem [ref=f48e247]:
+                      - generic [ref=f48e248]:
+                        - link "Learner C" [ref=f48e252] [cursor=pointer]:
+                          - /url: /educator/organisations/demodev/learners/a701a745-b10b-4b58-b5df-07aa69e67afe
+                          - generic [ref=f48e253]:
+                            - generic [aria-hidden] [ref=f48e254]: LC
+                            - generic [ref=f48e255]: Learner C
+                        - generic [ref=f48e258]:
+                          - generic [ref=f48e259]: In progress
+                          - generic [ref=f48e260]: No activity recently
+                          - generic [ref=f48e261]: No activity recorded in over 7 days.
+                - region [ref=f48e262]:
+                  - heading "Summary of learner progress" [level=3] [ref=f48e263]
+                  - region [ref=f48e265]:
+                    - heading "QA Served Paper Course" [level=4] [ref=f48e266]
+                    - region "QA Served Paper Course" [ref=f48e267]:
+                      - table [ref=f48e268]:
+                        - caption [ref=f48e269]: QA Served Paper Course
+                        - rowgroup [ref=f48e270]:
+                          - row [ref=f48e271]:
+                            - columnheader "Learner" [ref=f48e272]
+                            - columnheader "Status" [ref=f48e273]
+                            - columnheader "Completion" [ref=f48e274]
+                            - columnheader "Last item completed" [ref=f48e275]
+                            - columnheader "When" [ref=f48e276]
+                            - columnheader "QSPQ" [ref=f48e277]
+                            - columnheader "QSPS" [ref=f48e278]
+                        - rowgroup [ref=f48e279]:
+                          - row [ref=f48e280]:
+                            - rowheader [ref=f48e281]:
+                              - link "Learner A" [ref=f48e284] [cursor=pointer]:
+                                - /url: /educator/organisations/demodev/learners/dfd10386-2f26-4913-b43f-acc8d12084f2
+                                - generic [ref=f48e285]:
+                                  - generic [aria-hidden] [ref=f48e286]: LA
+                                  - generic [ref=f48e287]: Learner A
+                            - cell "In progress" [ref=f48e289]
+                            - cell "33 33% 1 of 3 items" [ref=f48e291]:
+                              - generic [ref=f48e292]:
+                                - progressbar "Learner A completion" [ref=f48e293]: 33%
+                                - generic [ref=f48e294]: 33%
+                              - text: 1 of 3 items
+                            - cell "QA Served Paper Quiz" [ref=f48e295]
+                            - cell [ref=f48e296]:
+                              - time [ref=f48e297]: 20 Nov 2026
+                            - cell "75% Passed ×1" [ref=f48e298]:
+                              - text: 75%
+                              - generic [ref=f48e299]: Passed
+                              - text: ×1
+                            - cell "Not attempted" [ref=f48e300]: —
+                          - row [ref=f48e302]:
+                            - rowheader [ref=f48e303]:
+                              - link "Learner B" [ref=f48e306] [cursor=pointer]:
+                                - /url: /educator/organisations/demodev/learners/9431d28f-cf40-4f32-94a0-de3ef8f420b6
+                                - generic [ref=f48e307]:
+                                  - generic [aria-hidden] [ref=f48e308]: LB
+                                  - generic [ref=f48e309]: Learner B
+                            - cell "In progress" [ref=f48e311]
+                            - cell "33 33% 1 of 3 items" [ref=f48e313]:
+                              - generic [ref=f48e314]:
+                                - progressbar "Learner B completion" [ref=f48e315]: 33%
+                                - generic [ref=f48e316]: 33%
+                              - text: 1 of 3 items
+                            - cell "QA Served Paper Quiz" [ref=f48e317]
+                            - cell [ref=f48e318]:
+                              - time [ref=f48e319]: 20 Nov 2026
+                            - cell "100% Passed ×1" [ref=f48e320]:
+                              - text: 100%
+                              - generic [ref=f48e321]: Passed
+                              - text: ×1
+                            - cell "Not attempted" [ref=f48e322]: —
+                          - row [ref=f48e324]:
+                            - rowheader [ref=f48e325]:
+                              - link "Learner C" [ref=f48e328] [cursor=pointer]:
+                                - /url: /educator/organisations/demodev/learners/a701a745-b10b-4b58-b5df-07aa69e67afe
+                                - generic [ref=f48e329]:
+                                  - generic [aria-hidden] [ref=f48e330]: LC
+                                  - generic [ref=f48e331]: Learner C
+                            - cell "In progress" [ref=f48e333]
+                            - cell "33 33% 1 of 3 items" [ref=f48e335]:
+                              - generic [ref=f48e336]:
+                                - progressbar "Learner C completion" [ref=f48e337]: 33%
+                                - generic [ref=f48e338]: 33%
+                              - text: 1 of 3 items
+                            - cell "QA Served Paper Quiz" [ref=f48e339]
+                            - cell [ref=f48e340]:
+                              - time [ref=f48e341]: 20 Oct 2026
+                            - cell "75% Passed ×1" [ref=f48e342]:
+                              - text: 75%
+                              - generic [ref=f48e343]: Passed
+                              - text: ×1
+                            - cell "Not attempted" [ref=f48e344]: —
+                          - row [ref=f48e346]:
+                            - rowheader [ref=f48e347]:
+                              - link "Learner D" [ref=f48e350] [cursor=pointer]:
+                                - /url: /educator/organisations/demodev/learners/dd8febe8-78d3-4429-b7d8-f35c316c6991
+                                - generic [ref=f48e351]:
+                                  - generic [aria-hidden] [ref=f48e352]: LD
+                                  - generic [ref=f48e353]: Learner D
+                            - cell "Not started" [ref=f48e355]
+                            - cell "0 0% 0 of 3 items" [ref=f48e357]:
+                              - generic [ref=f48e358]:
+                                - progressbar "Learner D completion" [ref=f48e359]: 0%
+                                - generic [ref=f48e360]: 0%
+                              - text: 0 of 3 items
+                            - cell "—" [ref=f48e361]
+                            - cell "—" [ref=f48e362]
+                            - cell "Not attempted" [ref=f48e363]: —
+                            - cell "Not attempted" [ref=f48e365]: —
+                    - paragraph [ref=f48e367]: QSPQ = QA Served Paper Quiz · QSPS = QA Served Paper Submit-on-exit Quiz
+                    - paragraph [ref=f48e368]: Score is the latest attempt · ×n is the number of attempts · quiz columns follow course order.
+                - region [ref=f48e369]:
+                  - heading "Quiz confusions across the cohort" [level=3] [ref=f48e370]
+                  - region [ref=f48e372]:
+                    - heading "QA Served Paper Quiz" [level=4] [ref=f48e373]
+                    - region "QA Served Paper Quiz" [ref=f48e374]:
+                      - table [ref=f48e375]:
+                        - caption [ref=f48e376]: QA Served Paper Quiz
+                        - rowgroup [ref=f48e377]:
+                          - row [ref=f48e378]:
+                            - columnheader "Q" [ref=f48e379]
+                            - columnheader "Question and correct answer" [ref=f48e380]
+                            - columnheader "Incorrect answers chosen" [ref=f48e381]
+                            - columnheader "Got it wrong" [ref=f48e382]
+                        - rowgroup [ref=f48e383]:
+                          - row [ref=f48e384]:
+                            - cell "Q3" [ref=f48e385]
+                            - 'cell "Q3 (dropdown): pick the correct option. Option D" [ref=f48e386]':
+                              - text: "Q3 (dropdown): pick the correct option."
+                              - generic [ref=f48e387]: Option D
+                            - cell "Option A ×2" [ref=f48e389]
+                            - cell "2 of 3 learners" [ref=f48e392]
+        - generic [ref=f48e171]: Showing Report
+  - contentinfo [ref=f48e173]:
+    - generic [ref=f48e174]:
+      - paragraph [ref=f48e175]: © 2026 FirstClass
+      - navigation "Legal" [ref=f48e176]:
+        - link "Terms and Conditions" [ref=f48e177] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f48e178] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f48e179] [cursor=pointer]: sacaa-compliance-1-served-paper-record
+  - generic "Show toolbar" [ref=f48e181]: DJDT

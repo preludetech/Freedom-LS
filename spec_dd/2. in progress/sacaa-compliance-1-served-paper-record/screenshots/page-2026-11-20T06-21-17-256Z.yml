@@ -1,0 +1,253 @@
+- generic [ref=f102e1]:
+  - banner [ref=f102e2]:
+    - link [ref=f102e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f102e4]
+      - heading "FirstClass" [level=1] [ref=f102e5]
+    - navigation [ref=f102e6]:
+      - generic [ref=f102e7]:
+        - generic [ref=f102e8]:
+          - button "Notifications, none new" [ref=f102e9]
+          - status:
+            - generic [ref=f102e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f102e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f102e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f102e17]:
+    - generic [ref=f102e18]:
+      - generic [ref=f102e19]:
+        - dialog "Navigation" [ref=f102e20]:
+          - generic [ref=f102e22]:
+            - generic [ref=f102e162]:
+              - paragraph [ref=f102e163]: Organisation
+              - button "Switch organisation" [ref=f102e165] [cursor=pointer]:
+                - generic [aria-hidden] [ref=f102e166]: D
+                - generic "DemoDev" [ref=f102e167]
+            - navigation "Sections" [ref=f102e170]:
+              - heading "Teaching" [level=2] [ref=f102e171]
+              - list [ref=f102e172]:
+                - listitem [ref=f102e173]:
+                  - link "Dashboard" [ref=f102e174] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/dashboard
+                - listitem [ref=f102e179]:
+                  - link "Cohorts" [ref=f102e180] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts
+                - listitem [ref=f102e185]:
+                  - link "Learners" [ref=f102e186] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/learners
+                - listitem [ref=f102e191]:
+                  - link "Courses" [ref=f102e192] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/courses
+              - heading "Administration" [level=2] [ref=f102e197]
+              - list [ref=f102e198]:
+                - listitem [ref=f102e199]:
+                  - link "Staff" [ref=f102e200] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/staff
+                - listitem [ref=f102e205]:
+                  - link "Audit log" [ref=f102e206] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/audit-log
+            - generic [ref=f102e72]:
+              - generic [ref=f102e74]:
+                - generic [aria-hidden] [ref=f102e75]: DE
+                - generic [ref=f102e76]: demodev@email.com
+              - link "Account settings" [ref=f102e78] [cursor=pointer]:
+                - /url: /accounts/profile/
+        - generic [ref=f102e83]:
+          - navigation "Back" [ref=f102e211]:
+            - link "Courses" [ref=f102e212] [cursor=pointer]:
+              - /url: /educator/organisations/demodev/courses
+          - generic [ref=f102e216]:
+            - heading "QA Served Paper Course" [level=1] [ref=f102e223]
+            - generic [ref=f102e225]:
+              - generic [ref=f102e227]:
+                - heading "Details" [level=2] [ref=f102e230]
+                - generic [ref=f102e232]:
+                  - generic [ref=f102e233]:
+                    - term [ref=f102e234]: Title
+                    - definition [ref=f102e235]: QA Served Paper Course
+                  - generic [ref=f102e236]:
+                    - term [ref=f102e237]: Visibility
+                    - definition [ref=f102e238]: Published
+                  - generic [ref=f102e239]:
+                    - term [ref=f102e240]: Lessons
+                    - definition [ref=f102e241]: "0"
+              - generic [ref=f102e243]:
+                - heading "Course content" [level=2] [ref=f102e246]
+                - generic [ref=f102e248]:
+                  - region "Course outline items" [ref=f102e250]:
+                    - table [ref=f102e251]:
+                      - caption [ref=f102e252]: Course outline items
+                      - rowgroup [ref=f102e253]:
+                        - row [ref=f102e254]:
+                          - columnheader "#" [ref=f102e255]
+                          - columnheader "Title" [ref=f102e256]
+                          - columnheader "Type" [ref=f102e257]
+                          - columnheader "Actions"
+                      - rowgroup [ref=f102e258]:
+                        - row [ref=f102e259]:
+                          - cell [ref=f102e260]
+                          - cell "Course details" [ref=f102e261]
+                          - cell "Course" [ref=f102e266]
+                          - cell [ref=f102e267]:
+                            - button "Preview course details page" [ref=f102e269] [cursor=pointer]: Preview
+                        - row [ref=f102e270]:
+                          - cell "1." [ref=f102e271]
+                          - cell "QA Served Paper Quiz Form QA Served Paper Quiz" [ref=f102e272]:
+                            - generic [ref=f102e273]:
+                              - button "QA Served Paper Quiz" [expanded] [ref=f102e274]
+                              - generic [ref=f102e278]:
+                                - generic [ref=f102e279]: Form
+                                - generic [ref=f102e283]: QA Served Paper Quiz
+                          - cell "Form" [ref=f102e284]
+                          - cell [ref=f102e285]:
+                            - button "Preview QA Served Paper Quiz" [ref=f102e287] [cursor=pointer]: Preview
+                        - row [ref=f102e288]:
+                          - cell "1.1" [ref=f102e289]
+                          - 'cell "Page Page 1: Warm up" [ref=f102e290]':
+                            - generic [ref=f102e293]:
+                              - generic [ref=f102e294]: Page
+                              - generic [ref=f102e298]: "Page 1: Warm up"
+                          - cell "Page" [ref=f102e299]
+                          - cell [ref=f102e300]:
+                            - 'button "Preview QA Served Paper Quiz: Page 1: Warm up" [ref=f102e302] [cursor=pointer]': Preview
+                        - row [ref=f102e303]:
+                          - cell "1.2" [ref=f102e304]
+                          - 'cell "Page Page 2: Checkboxes and dropdown" [ref=f102e305]':
+                            - generic [ref=f102e308]:
+                              - generic [ref=f102e309]: Page
+                              - generic [ref=f102e313]: "Page 2: Checkboxes and dropdown"
+                          - cell "Page" [ref=f102e314]
+                          - cell [ref=f102e315]:
+                            - 'button "Preview QA Served Paper Quiz: Page 2: Checkboxes and dropdown" [ref=f102e317] [cursor=pointer]': Preview
+                        - row [ref=f102e318]:
+                          - cell "1.3" [ref=f102e319]
+                          - 'cell "Page Page 3: Last question" [ref=f102e320]':
+                            - generic [ref=f102e323]:
+                              - generic [ref=f102e324]: Page
+                              - generic [ref=f102e328]: "Page 3: Last question"
+                          - cell "Page" [ref=f102e329]
+                          - cell [ref=f102e330]:
+                            - 'button "Preview QA Served Paper Quiz: Page 3: Last question" [ref=f102e332] [cursor=pointer]': Preview
+                        - row [ref=f102e333]:
+                          - cell "2." [ref=f102e334]
+                          - cell "QA Served Paper Submit-on-exit Quiz Form QA Served Paper Submit-on-exit Quiz" [ref=f102e335]:
+                            - generic [ref=f102e336]:
+                              - button "QA Served Paper Submit-on-exit Quiz" [expanded] [ref=f102e337]
+                              - generic [ref=f102e341]:
+                                - generic [ref=f102e342]: Form
+                                - generic [ref=f102e346]: QA Served Paper Submit-on-exit Quiz
+                          - cell "Form" [ref=f102e347]
+                          - cell [ref=f102e348]:
+                            - button "Preview QA Served Paper Submit-on-exit Quiz" [ref=f102e350] [cursor=pointer]: Preview
+                        - row [ref=f102e351]:
+                          - cell "2.1" [ref=f102e352]
+                          - cell "Page Exit quiz page 1" [ref=f102e353]:
+                            - generic [ref=f102e356]:
+                              - generic [ref=f102e357]: Page
+                              - generic [ref=f102e361]: Exit quiz page 1
+                          - cell "Page" [ref=f102e362]
+                          - cell [ref=f102e363]:
+                            - 'button "Preview QA Served Paper Submit-on-exit Quiz: Exit quiz page 1" [ref=f102e365] [cursor=pointer]': Preview
+                        - row [ref=f102e366]:
+                          - cell "2.2" [ref=f102e367]
+                          - cell "Page Exit quiz page 2" [ref=f102e368]:
+                            - generic [ref=f102e371]:
+                              - generic [ref=f102e372]: Page
+                              - generic [ref=f102e376]: Exit quiz page 2
+                          - cell "Page" [ref=f102e377]
+                          - cell [ref=f102e378]:
+                            - 'button "Preview QA Served Paper Submit-on-exit Quiz: Exit quiz page 2" [ref=f102e380] [cursor=pointer]': Preview
+                        - row [ref=f102e381]:
+                          - cell "3." [ref=f102e382]
+                          - cell "QA Served Paper Survey Form QA Served Paper Survey" [ref=f102e383]:
+                            - generic [ref=f102e384]:
+                              - button "QA Served Paper Survey" [expanded] [ref=f102e385]
+                              - generic [ref=f102e389]:
+                                - generic [ref=f102e390]: Form
+                                - generic [ref=f102e394]: QA Served Paper Survey
+                          - cell "Form" [ref=f102e395]
+                          - cell [ref=f102e396]:
+                            - button "Preview QA Served Paper Survey" [ref=f102e398] [cursor=pointer]: Preview
+                        - row [ref=f102e399]:
+                          - cell "3.1" [ref=f102e400]
+                          - cell "Page Survey page 1" [ref=f102e401]:
+                            - generic [ref=f102e404]:
+                              - generic [ref=f102e405]: Page
+                              - generic [ref=f102e409]: Survey page 1
+                          - cell "Page" [ref=f102e410]
+                          - cell [ref=f102e411]:
+                            - 'button "Preview QA Served Paper Survey: Survey page 1" [ref=f102e413] [cursor=pointer]': Preview
+                        - row [ref=f102e414]:
+                          - cell "3.2" [ref=f102e415]
+                          - cell "Page Survey page 2" [ref=f102e416]:
+                            - generic [ref=f102e419]:
+                              - generic [ref=f102e420]: Page
+                              - generic [ref=f102e424]: Survey page 2
+                          - cell "Page" [ref=f102e425]
+                          - cell [ref=f102e426]:
+                            - 'button "Preview QA Served Paper Survey: Survey page 2" [ref=f102e428] [cursor=pointer]': Preview
+                  - paragraph [ref=f102e430]: 10 course outline items
+              - generic [ref=f102e432]:
+                - heading "Cohort registrations" [level=2] [ref=f102e435]
+                - generic [ref=f102e437]:
+                  - region "Cohort course registrations" [ref=f102e439]:
+                    - table [ref=f102e440]:
+                      - caption [ref=f102e441]: Cohort course registrations
+                      - rowgroup [ref=f102e442]:
+                        - row [ref=f102e443]:
+                          - columnheader "Cohort" [ref=f102e444]
+                          - columnheader "Cohort status" [ref=f102e445]
+                          - columnheader "Status" [ref=f102e446]
+                          - columnheader "Registered" [ref=f102e447]
+                      - rowgroup [ref=f102e448]:
+                        - row [ref=f102e449]:
+                          - cell [ref=f102e450]:
+                            - link "QA Served Paper Cohort" [ref=f102e451] [cursor=pointer]:
+                              - /url: /educator/organisations/demodev/cohorts/e6ef020a-c7d1-426d-a855-cf4eef8a7a1a
+                          - cell "Active" [ref=f102e452]
+                          - cell "Active" [ref=f102e454]
+                          - cell "19 Nov 2026, 16:37" [ref=f102e456]:
+                            - time [ref=f102e457]:
+                              - generic [ref=f102e458]: 19 Nov 2026,
+                              - generic [ref=f102e459]: 16:37
+                  - paragraph [ref=f102e461]: 1 cohort course registration
+              - generic [ref=f102e463]:
+                - heading "Direct registrations" [level=2] [ref=f102e466]
+                - region "Learner course registrations" [ref=f102e470]:
+                  - table [ref=f102e471]:
+                    - caption [ref=f102e472]: Learner course registrations
+                    - rowgroup [ref=f102e473]:
+                      - row [ref=f102e474]:
+                        - columnheader [ref=f102e475]:
+                          - link "Learner" [ref=f102e476] [cursor=pointer]:
+                            - /url: /educator/organisations/demodev/courses/88aa7d70-043e-468d-b3f6-4ab1b33c33d3?learner_registrations-sort=-learner__user__first_name
+                        - columnheader "Status" [ref=f102e480]
+                        - columnheader "Registered" [ref=f102e481]
+                    - rowgroup [ref=f102e482]:
+                      - row [ref=f102e483]:
+                        - cell [ref=f102e484]:
+                          - paragraph [ref=f102e486]: No learners are registered for this course yet. Learner registrations will appear here.
+      - dialog [ref=f102e487]:
+        - status [ref=f102e488]
+        - generic [ref=f102e490]:
+          - generic [ref=f102e491]:
+            - heading "QA Served Paper Quiz (Preview) Form" [active] [level=2] [ref=f102e492]:
+              - text: QA Served Paper Quiz (Preview)
+              - generic [ref=f102e493]: Form
+            - button "Close" [ref=f102e494] [cursor=pointer]
+          - generic [ref=f102e499]:
+            - generic [ref=f102e500]: 4 questions
+            - generic [ref=f102e503]: 3 pages
+          - button "Close" [ref=f102e508] [cursor=pointer]
+  - contentinfo [ref=f102e153]:
+    - generic [ref=f102e154]:
+      - paragraph [ref=f102e155]: © 2026 FirstClass
+      - navigation "Legal" [ref=f102e156]:
+        - link "Terms and Conditions" [ref=f102e157] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f102e158] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f102e159] [cursor=pointer]: sacaa-compliance-1-served-paper-record
+  - generic "Show toolbar" [ref=f102e161]: DJDT

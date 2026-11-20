@@ -1,0 +1,94 @@
+- generic [active] [ref=f23e1]:
+  - banner [ref=f23e2]:
+    - link [ref=f23e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f23e4]
+      - heading "FirstClass" [level=1] [ref=f23e5]
+    - navigation [ref=f23e6]:
+      - generic [ref=f23e7]:
+        - generic [ref=f23e8]:
+          - button "Notifications, none new" [ref=f23e9]
+          - status:
+            - generic [ref=f23e13]: Notifications, none new
+        - button "Open user menu for Learner A" [ref=f23e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f23e16]: LA
+  - generic:
+    - status
+    - alert
+  - main [ref=f23e17]:
+    - generic [ref=f23e19]:
+      - dialog "Course outline" [ref=f23e20]:
+        - generic [ref=f23e23]:
+          - generic [ref=f23e24]:
+            - paragraph [ref=f23e25]: Course outline
+            - paragraph [ref=f23e26]: QA Served Paper Course
+            - generic [ref=f23e28]:
+              - progressbar "Progress for QA Served Paper Course" [ref=f23e29]: 33%
+              - generic [ref=f23e30]: 33% complete
+          - navigation "Course outline" [ref=f23e31]:
+            - list [ref=f23e32]:
+              - listitem [ref=f23e33]:
+                - generic [ref=f23e34]:
+                  - generic [ref=f23e35]: "1."
+                  - generic [ref=f23e36]: Completed
+                  - generic [ref=f23e40]: QA Served Paper Quiz
+              - listitem [ref=f23e41]:
+                - generic [ref=f23e42]:
+                  - generic [ref=f23e43]: "2."
+                  - generic [ref=f23e44]: Not started
+                  - link "QA Served Paper Submit-on-exit Quiz" [ref=f23e49] [cursor=pointer]:
+                    - /url: /courses/qa-served-paper-course/2/
+              - listitem [ref=f23e50]:
+                - generic [ref=f23e51]:
+                  - generic [ref=f23e52]: "3."
+                  - generic [ref=f23e53]: Locked
+                  - generic [ref=f23e57]: QA Served Paper Survey
+      - generic [ref=f23e58]:
+        - navigation "Breadcrumb" [ref=f23e63]:
+          - list [ref=f23e64]:
+            - listitem [ref=f23e65]:
+              - link "QA Served Paper Course" [ref=f23e66] [cursor=pointer]:
+                - /url: /courses/qa-served-paper-course/detail/
+            - listitem [ref=f23e67]:
+              - generic [aria-hidden] [ref=f23e68]: ">"
+              - generic "QA Served Paper Quiz" [ref=f23e69]
+        - generic [ref=f23e70]:
+          - generic [ref=f23e73]:
+            - heading "Quiz passed!" [level=1] [ref=f23e76]
+            - paragraph [ref=f23e77]:
+              - text: Well done for completing
+              - strong [ref=f23e78]: QA Served Paper Quiz
+              - text: .
+          - generic [ref=f23e80]:
+            - generic [ref=f23e81]: 75%
+            - generic [ref=f23e87]:
+              - generic [ref=f23e88]: 3 / 4
+              - generic [ref=f23e89]: correct
+          - generic [ref=f23e90]:
+            - heading "Review incorrect answers" [level=2] [ref=f23e91]
+            - generic [ref=f23e94]:
+              - generic [ref=f23e95]:
+                - generic [ref=f23e96]:
+                  - paragraph [ref=f23e97]: Question 3
+                  - paragraph [ref=f23e98]: Marked wrong
+                - paragraph [ref=f23e101]: "Q3 (dropdown): pick the correct option."
+              - generic [ref=f23e102]:
+                - paragraph [ref=f23e103]: Your answer
+                - generic [ref=f23e105]:
+                  - img "Marked incorrect" [ref=f23e106]
+                  - generic [ref=f23e108]: Option A
+              - generic [ref=f23e109]:
+                - paragraph [ref=f23e110]: Correct answer
+                - generic [ref=f23e111]: Option D
+          - link "Continue" [ref=f23e117] [cursor=pointer]:
+            - /url: /courses/qa-served-paper-course/2/
+  - contentinfo [ref=f23e121]:
+    - generic [ref=f23e122]:
+      - paragraph [ref=f23e123]: © 2026 FirstClass
+      - navigation "Legal" [ref=f23e124]:
+        - link "Terms and Conditions" [ref=f23e125] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f23e126] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f23e127] [cursor=pointer]: sacaa-compliance-1-served-paper-record
+  - generic "Show toolbar" [ref=f23e129]: DJDT

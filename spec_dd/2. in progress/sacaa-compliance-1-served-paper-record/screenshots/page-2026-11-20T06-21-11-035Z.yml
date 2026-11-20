@@ -1,0 +1,122 @@
+- generic [active] [ref=f102e1]:
+  - banner [ref=f102e2]:
+    - link [ref=f102e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f102e4]
+      - heading "FirstClass" [level=1] [ref=f102e5]
+    - navigation [ref=f102e6]:
+      - generic [ref=f102e7]:
+        - generic [ref=f102e8]:
+          - button "Notifications, none new" [ref=f102e9]
+          - status:
+            - generic [ref=f102e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f102e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f102e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f102e17]:
+    - generic [ref=f102e19]:
+      - dialog "Navigation" [ref=f102e20]:
+        - generic [ref=f102e22]:
+          - generic [ref=f102e23]:
+            - paragraph [ref=f102e24]: Organisation
+            - button "Switch organisation" [ref=f102e26] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f102e27]: D
+              - generic "DemoDev" [ref=f102e28]
+          - navigation "Sections" [ref=f102e31]:
+            - heading "Teaching" [level=2] [ref=f102e32]
+            - list [ref=f102e33]:
+              - listitem [ref=f102e34]:
+                - link "Dashboard" [ref=f102e35] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/dashboard
+              - listitem [ref=f102e40]:
+                - link "Cohorts" [ref=f102e41] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+              - listitem [ref=f102e46]:
+                - link "Learners" [ref=f102e47] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+              - listitem [ref=f102e52]:
+                - link "Courses" [ref=f102e53] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+            - heading "Administration" [level=2] [ref=f102e58]
+            - list [ref=f102e59]:
+              - listitem [ref=f102e60]:
+                - link "Staff" [ref=f102e61] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/staff
+              - listitem [ref=f102e66]:
+                - link "Audit log" [ref=f102e67] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/audit-log
+          - generic [ref=f102e72]:
+            - generic [ref=f102e74]:
+              - generic [aria-hidden] [ref=f102e75]: DE
+              - generic [ref=f102e76]: demodev@email.com
+            - link "Account settings" [ref=f102e78] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f102e83]:
+        - navigation "Back" [ref=f102e85]:
+          - link "Cohorts" [ref=f102e86] [cursor=pointer]:
+            - /url: /educator/organisations/demodev/cohorts
+        - generic [ref=f102e90]:
+          - generic [ref=f102e92]:
+            - heading "QA Served Paper Cohort" [level=1] [ref=f102e97]
+            - navigation "Cohort sections" [ref=f102e98]:
+              - list [ref=f102e99]:
+                - listitem [ref=f102e100]:
+                  - link "Overview" [ref=f102e101] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/e6ef020a-c7d1-426d-a855-cf4eef8a7a1a/__tabs/overview
+                - listitem [ref=f102e102]:
+                  - link "Learners 4" [ref=f102e103] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/e6ef020a-c7d1-426d-a855-cf4eef8a7a1a/__tabs/learners
+                    - text: Learners
+                    - generic [ref=f102e104]: "4"
+                - listitem [ref=f102e105]:
+                  - link "Courses 1" [ref=f102e106] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/e6ef020a-c7d1-426d-a855-cf4eef8a7a1a/__tabs/courses
+                    - text: Courses
+                    - generic [ref=f102e107]: "1"
+                - listitem [ref=f102e108]:
+                  - link "Report" [ref=f102e109] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/e6ef020a-c7d1-426d-a855-cf4eef8a7a1a/__tabs/report
+                - listitem [ref=f102e110]:
+                  - link "Settings" [ref=f102e111] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/e6ef020a-c7d1-426d-a855-cf4eef8a7a1a/__tabs/settings
+                - listitem [ref=f102e112]:
+                  - link "History" [ref=f102e113] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/e6ef020a-c7d1-426d-a855-cf4eef8a7a1a/__tabs/history
+          - generic [ref=f102e118]:
+            - heading "Courses" [level=2] [ref=f102e121]
+            - generic [ref=f102e123]:
+              - region "Cohort course registrations" [ref=f102e125]:
+                - table [ref=f102e126]:
+                  - caption [ref=f102e127]: Cohort course registrations
+                  - rowgroup [ref=f102e128]:
+                    - row [ref=f102e129]:
+                      - columnheader "Course" [ref=f102e130]
+                      - columnheader "Status" [ref=f102e131]
+                      - columnheader "Registered" [ref=f102e132]
+                      - columnheader [ref=f102e133]
+                  - rowgroup [ref=f102e134]:
+                    - row [ref=f102e135]:
+                      - cell [ref=f102e136]:
+                        - link "QA Served Paper Course" [ref=f102e137] [cursor=pointer]:
+                          - /url: /educator/organisations/demodev/courses/88aa7d70-043e-468d-b3f6-4ab1b33c33d3
+                      - cell "Active" [ref=f102e138]
+                      - cell "19 Nov 2026, 16:37" [ref=f102e140]:
+                        - time [ref=f102e141]:
+                          - generic [ref=f102e142]: 19 Nov 2026,
+                          - generic [ref=f102e143]: 16:37
+                      - cell [ref=f102e144]:
+                        - button "Deactivate the QA Served Paper Course registration" [ref=f102e145] [cursor=pointer]: Deactivate
+              - paragraph [ref=f102e147]: 1 cohort course registration
+            - button "Register for a course" [ref=f102e150] [cursor=pointer]
+  - contentinfo [ref=f102e153]:
+    - generic [ref=f102e154]:
+      - paragraph [ref=f102e155]: © 2026 FirstClass
+      - navigation "Legal" [ref=f102e156]:
+        - link "Terms and Conditions" [ref=f102e157] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f102e158] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f102e159] [cursor=pointer]: sacaa-compliance-1-served-paper-record
+  - generic "Show toolbar" [ref=f102e161]: DJDT

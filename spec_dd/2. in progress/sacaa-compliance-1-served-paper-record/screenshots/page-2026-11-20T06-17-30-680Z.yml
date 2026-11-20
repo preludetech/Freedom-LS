@@ -1,0 +1,54 @@
+- generic [ref=f64e1]:
+  - generic:
+    - status
+    - alert
+  - main [ref=f64e2]:
+    - generic [ref=f64e3]:
+      - generic [ref=f64e4]:
+        - generic [ref=f64e5]:
+          - generic [ref=f64e6]:
+            - button "Exit test" [ref=f64e7]
+            - dialog [ref=f64e64]:
+              - generic [ref=f64e67]:
+                - generic [ref=f64e68]:
+                  - heading "Leave the test?" [level=3] [ref=f64e69]
+                  - button "Close dialog" [active] [ref=f64e70]
+                - paragraph [ref=f64e74]: Leaving now will submit your answers and score your attempt. You won't be able to change your answers afterwards.
+                - generic [ref=f64e75]:
+                  - button "Keep going" [ref=f64e76] [cursor=pointer]
+                  - button "Leave and submit" [ref=f64e77] [cursor=pointer]
+          - heading "QA Served Paper Submit-on-exit Quiz" [level=2] [ref=f64e10]
+          - generic [ref=f64e11]: 1 of 2 answered
+        - generic [ref=f64e12]:
+          - generic [ref=f64e13]: Page 1 of 2
+          - navigation "Form pages" [ref=f64e17]:
+            - link "Page 1 (current)" [ref=f64e18] [cursor=pointer]:
+              - /url: /courses/qa-served-paper-course/2/fill_form/1
+            - generic "Page 2 (not yet accessible)" [ref=f64e19]
+      - generic [ref=f64e21]:
+        - generic [ref=f64e22]:
+          - heading "QA Served Paper Submit-on-exit Quiz — Page 1 of 2" [level=1] [ref=f64e23]
+          - generic [ref=f64e24]: Page 1 of 2
+          - heading "Exit quiz page 1" [level=2] [ref=f64e26]
+        - 'group "1. Exit Q1 (multiple choice): which option is correct? (required)" [ref=f64e28]':
+          - generic [ref=f64e29]:
+            - generic [ref=f64e30]: "1."
+            - paragraph [ref=f64e31]: "Exit Q1 (multiple choice): which option is correct?"
+            - text: "*"
+            - generic [ref=f64e32]: (required)
+          - generic [ref=f64e33]:
+            - generic [ref=f64e34] [cursor=pointer]:
+              - radio "Option A" [checked] [ref=f64e35]
+              - generic [ref=f64e38]: Option A
+            - generic [ref=f64e39] [cursor=pointer]:
+              - radio "Option B" [ref=f64e40]
+              - generic [ref=f64e43]: Option B
+            - generic [ref=f64e44] [cursor=pointer]:
+              - radio "Option C" [ref=f64e45]
+              - generic [ref=f64e48]: Option C
+            - generic [ref=f64e49] [cursor=pointer]:
+              - radio "Option D" [ref=f64e50]
+              - generic [ref=f64e53]: Option D
+      - button "Next" [ref=f64e58] [cursor=pointer]
+  - generic [ref=f64e61] [cursor=pointer]: sacaa-compliance-1-served-paper-record
+  - generic "Show toolbar" [ref=f64e63]: DJDT

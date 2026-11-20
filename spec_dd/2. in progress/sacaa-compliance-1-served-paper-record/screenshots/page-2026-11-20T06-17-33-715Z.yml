@@ -1,0 +1,96 @@
+- generic [active] [ref=f65e1]:
+  - banner [ref=f65e2]:
+    - link [ref=f65e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f65e4]
+      - heading "FirstClass" [level=1] [ref=f65e5]
+    - navigation [ref=f65e6]:
+      - generic [ref=f65e7]:
+        - generic [ref=f65e8]:
+          - button "Notifications, none new" [ref=f65e9]
+          - status:
+            - generic [ref=f65e13]: Notifications, none new
+        - button "Open user menu for Learner A" [ref=f65e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f65e16]: LA
+  - generic:
+    - status
+    - alert
+  - main [ref=f65e17]:
+    - generic [ref=f65e19]:
+      - dialog "Course outline" [ref=f65e20]:
+        - generic [ref=f65e23]:
+          - generic [ref=f65e24]:
+            - paragraph [ref=f65e25]: Course outline
+            - paragraph [ref=f65e26]: QA Served Paper Course
+            - generic [ref=f65e28]:
+              - progressbar "Progress for QA Served Paper Course" [ref=f65e29]: 67%
+              - generic [ref=f65e30]: 67% complete
+          - navigation "Course outline" [ref=f65e31]:
+            - list [ref=f65e32]:
+              - listitem [ref=f65e33]:
+                - generic [ref=f65e34]:
+                  - generic [ref=f65e35]: "1."
+                  - generic [ref=f65e36]: Completed
+                  - link "QA Served Paper Quiz" [ref=f65e41] [cursor=pointer]:
+                    - /url: /courses/qa-served-paper-course/1/
+              - listitem [ref=f65e42]:
+                - generic [ref=f65e43]:
+                  - generic [ref=f65e44]: "2."
+                  - generic [ref=f65e45]: Completed
+                  - generic [ref=f65e49]: QA Served Paper Submit-on-exit Quiz
+              - listitem [ref=f65e50]:
+                - generic [ref=f65e51]:
+                  - generic [ref=f65e52]: "3."
+                  - generic [ref=f65e53]: Not started
+                  - link "QA Served Paper Survey" [ref=f65e58] [cursor=pointer]:
+                    - /url: /courses/qa-served-paper-course/3/
+      - generic [ref=f65e59]:
+        - navigation "Breadcrumb" [ref=f65e64]:
+          - list [ref=f65e65]:
+            - listitem [ref=f65e66]:
+              - link "QA Served Paper Course" [ref=f65e67] [cursor=pointer]:
+                - /url: /courses/qa-served-paper-course/detail/
+            - listitem [ref=f65e68]:
+              - generic [aria-hidden] [ref=f65e69]: ">"
+              - generic "QA Served Paper Submit-on-exit Quiz" [ref=f65e70]
+        - generic [ref=f65e71]:
+          - generic [ref=f65e74]:
+            - heading "Quiz passed!" [level=1] [ref=f65e77]
+            - paragraph [ref=f65e78]:
+              - text: Well done for completing
+              - strong [ref=f65e79]: QA Served Paper Submit-on-exit Quiz
+              - text: .
+          - generic [ref=f65e81]:
+            - generic [ref=f65e82]: 50%
+            - generic [ref=f65e88]:
+              - generic [ref=f65e89]: 1 / 2
+              - generic [ref=f65e90]: correct
+          - generic [ref=f65e91]:
+            - heading "Review incorrect answers" [level=2] [ref=f65e92]
+            - generic [ref=f65e95]:
+              - generic [ref=f65e96]:
+                - generic [ref=f65e97]:
+                  - paragraph [ref=f65e98]: Question 2
+                  - paragraph [ref=f65e99]: Marked wrong
+                - paragraph [ref=f65e102]: "Exit Q2 (multiple choice): which option is correct?"
+              - generic [ref=f65e103]:
+                - paragraph [ref=f65e104]: Your answer
+                - paragraph [ref=f65e106]: You did not answer this question.
+              - generic [ref=f65e107]:
+                - paragraph [ref=f65e108]: Correct answer
+                - generic [ref=f65e109]: Option D
+          - generic [ref=f65e114]:
+            - link "Previous" [ref=f65e116] [cursor=pointer]:
+              - /url: /courses/qa-served-paper-course/1/
+            - link "Continue" [ref=f65e120] [cursor=pointer]:
+              - /url: /courses/qa-served-paper-course/3/
+  - contentinfo [ref=f65e124]:
+    - generic [ref=f65e125]:
+      - paragraph [ref=f65e126]: © 2026 FirstClass
+      - navigation "Legal" [ref=f65e127]:
+        - link "Terms and Conditions" [ref=f65e128] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f65e129] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f65e130] [cursor=pointer]: sacaa-compliance-1-served-paper-record
+  - generic "Show toolbar" [ref=f65e132]: DJDT
