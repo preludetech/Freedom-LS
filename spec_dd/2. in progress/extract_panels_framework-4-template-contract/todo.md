@@ -18,12 +18,16 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
 - [ ] (user) Decide whether `boolean_true` and `boolean_false` join `REQUIRED_ICON_NAMES` in `freedom_ls/panel_framework/checks.py`: `_details_value.html` picks them inside an `{% if %}`, so the icon check misses them (HOST_CONTRACT.md lists them by hand); if yes, add them there and to the extra names in `freedom_ls/panel_framework/tests/invariants/test_icon_names.py`
 - [ ] (user) Decide whether to amend the spec's success-criteria greps: `_base\.html` matches the framework's own `_main_base.html`/`_panel_base.html` (the invariant uses `(?<![\w])_base\.html`), and the `FREEDOM_LS_PACKAGE_DIR` grep matches the invariant's own regex in `test_templates.py`
 - [ ] (user) `freedom_ls/webhooks/tests/test_admin.py::TestWebhookEndpointFormTransformation::test_saving_endpoint_with_transformation_fields` resolves example.com over DNS and failed once in the full run (passes on rerun); decide whether to make it network-free (unrelated to this branch)
+- [ ] (user) Decide what to do about QA bug: FLS wrappers make the minimal-shell reference page unstyled (TDD: failing test first, then fix). Under FLS settings the FLS `panel-*` wrappers replace every framework primitive, so the minimal shell shows `btn`/`chip` classes that `reference.css` does not style; decide whether §4 of `3. frontend_qa.md` is checked only in the framework's standalone run, or FLS's wrappers step aside in the minimal shell
+- [ ] (user) Decide whether the reference page should render a navigation toggle in the minimal shell: it sets no page title or menu groups, so `3. frontend_qa.md` §4's 375-wide bottom-sheet check had nothing to open; then amend the QA plan or the page
+- [ ] (user) Run `3. frontend_qa.md` §1's before/after comparison against a `main` server: QA skipped it because the `main` worktree was in use by another session and its database held no demo data
+- [ ] (user) Decide how to exercise `3. frontend_qa.md` §2.4.3 (a confirm dialog whose reason is required): no FLS action in the demo data requires a reason, and the reference page's `reason_required` example does not validate; amend the plan or name an action
 
 ## 4. Documentation and pull request
 
