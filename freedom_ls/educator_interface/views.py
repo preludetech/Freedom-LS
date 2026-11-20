@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from functools import cached_property
@@ -12,7 +12,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.sites.models import Site
 from django.core.exceptions import ValidationError
-from django.core.paginator import Page, Paginator
+from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import (
     Count,
@@ -157,12 +157,11 @@ from freedom_ls.educator_interface.panels.staff.actions import (
     DeactivateStaffMemberAction,
     ReactivateStaffMemberAction,
     RemoveStaffFromCohortAction,
-    actionable_roles,
     grantable_roles_for,
     roles_grantable_on,
 )
+from freedom_ls.educator_interface.panels.staff.data_tables import StaffDataTable
 from freedom_ls.educator_interface.panels.staff.filters import (
-    StaffRoleFilter,
     may_see_staff_roles,
 )
 from freedom_ls.educator_interface.panels.staff.quick_view import StaffQuickView
@@ -177,7 +176,6 @@ from freedom_ls.educator_interface.reporting import (
     CohortReportStack,
     LearnerCoursesPanel,
 )
-from freedom_ls.educator_interface.staff import staff_role_entries
 from freedom_ls.educator_interface.tasks import _run_learner_import_task
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.config import config as learner_management_config
@@ -191,7 +189,6 @@ from freedom_ls.learner_management.models import (
     LearnerCourseRegistration,
     LearnerImport,
     LearnerImportRow,
-    StaffMember,
 )
 from freedom_ls.learner_management.queries import (
     ASSIGN_COHORT_VIEWER,
@@ -208,7 +205,6 @@ from freedom_ls.learner_management.queries import (
     learners_visible_to,
     organisations_accessible_to,
     site_level_admins,
-    staff_assignments,
     staff_of,
 )
 from freedom_ls.learner_management.utils import record_cohort_entry
@@ -1533,100 +1529,6 @@ class LearnerConfig(OrganisationSectionConfig, ListViewConfig):
             .exists()
         ):
             raise OrganisationScopeDenied
-
-
-class StaffDataTable(DataTable):
-    noun = "staff members"
-    noun_singular = "staff member"
-    search_fields = ["first_name", "last_name", "email"]
-    default_sort = "first_name"
-    empty_message = "No staff yet. Add the first staff member to give someone access to this organisation."
-    empty_no_results = "No staff members match these filters."
-    # Four columns, two of them buttons, need more room than a tablet or the
-    # space beside the quick view gives.
-    cards_when_narrow = True
-    card_template_name = "educator_interface/partials/staff_card.html"
-
-    @staticmethod
-    def get_queryset(request: HttpRequest) -> QuerySet:
-        organisation = cast(OrganisationScopedRequest, request).organisation
-        return staff_of(organisation).prefetch_related(
-            Prefetch(
-                "object_role_assignments",
-                queryset=staff_assignments(organisation)
-                .select_related("assigned_by")
-                .prefetch_related("target"),
-                to_attr="held_assignments",
-            ),
-            Prefetch(
-                "staffmember_set",
-                queryset=StaffMember.objects.filter(organisation=organisation),
-                to_attr="member_rows",
-            ),
-            Prefetch(
-                "learner_set",
-                queryset=Learner.objects.filter(
-                    organisation=organisation, is_active=True
-                ),
-                to_attr="learner_rows",
-            ),
-        )
-
-    @staticmethod
-    def get_filters() -> list[TableFilter]:
-        return [StaffRoleFilter()]
-
-    @classmethod
-    def get_rows(
-        cls,
-        request: HttpRequest,
-        queryset: QuerySet | Sequence[object],
-        query: TableQuery,
-    ) -> Page:
-        page_obj = super().get_rows(request, queryset, query)
-        site = cast(OrganisationScopedRequest, request).organisation.site
-        site_level_ids = set(
-            site_level_admins(site)
-            .filter(pk__in=[row.pk for row in page_obj.object_list])
-            .values_list("pk", flat=True)
-        )
-        for row in page_obj.object_list:
-            row.is_site_level = row.pk in site_level_ids
-            row.role_entries = staff_role_entries(row, site)
-            row.actionable_roles = actionable_roles(request, row.role_entries)
-            row.is_inactive = not any(m.is_active for m in row.member_rows)
-        return page_obj
-
-    @staticmethod
-    def get_columns() -> list[Column]:
-        return [
-            Column(
-                header="Staff member",
-                template_name="educator_interface/data-table-cells/staff_member.html",
-                sortable=True,
-                sort_field="first_name",
-                card="primary",
-            ),
-            Column(
-                header="Roles",
-                template_name="educator_interface/data-table-cells/staff_roles.html",
-                card="secondary",
-            ),
-            Column(
-                header="Role actions",
-                template_name="educator_interface/data-table-cells/staff_role_actions.html",
-                card="secondary",
-            ),
-            Column(
-                header="Staff member actions",
-                template_name="educator_interface/data-table-cells/staff_member_actions.html",
-                card="secondary",
-            ),
-        ]
-
-    @staticmethod
-    def get_row_label(row: object) -> str:
-        return cast(User, row).display_name
 
 
 class StaffConfig(OrganisationSectionConfig, ListViewConfig):

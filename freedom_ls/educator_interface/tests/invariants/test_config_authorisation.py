@@ -26,12 +26,12 @@ from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationSectionConfig,
 )
+from freedom_ls.educator_interface.panels.staff.data_tables import StaffDataTable
 from freedom_ls.educator_interface.tests import interface_walk
 from freedom_ls.educator_interface.tests.interface_walk import (
     SECTIONS,
     config_path_strings,
 )
-from freedom_ls.educator_interface.views import StaffDataTable
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,

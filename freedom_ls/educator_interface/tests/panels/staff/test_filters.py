@@ -8,9 +8,9 @@ from django.http import HttpRequest
 from django.test import RequestFactory
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.educator_interface.panels.staff.data_tables import StaffDataTable
 from freedom_ls.educator_interface.panels.staff.filters import StaffRoleFilter
 from freedom_ls.educator_interface.tests.helpers import _educator_request
-from freedom_ls.educator_interface.views import StaffDataTable
 from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
