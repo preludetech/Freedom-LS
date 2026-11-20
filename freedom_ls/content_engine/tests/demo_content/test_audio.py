@@ -43,3 +43,17 @@ def test_the_media_topic_renders_six_audio_widgets_without_red_boxes(
     assert "Audio not found" not in rendered
     assert "Audio needs a label" not in rendered
     assert "Audio needs a title" not in rendered
+
+
+@pytest.mark.django_db
+def test_the_media_topic_does_not_call_the_clip_title_optional(
+    site: Site, loaded_demo_content: Site, mock_site_context: object
+) -> None:
+    """The Audio clip intro used to call `title` optional, but a clip without
+    one renders the red box "Audio needs a title"."""
+    topic = Topic.objects.get(site=site, title="Media")
+
+    rendered = topic.rendered_content()
+
+    assert "optional heading above the player" not in rendered
+    assert "required heading above the player" in rendered

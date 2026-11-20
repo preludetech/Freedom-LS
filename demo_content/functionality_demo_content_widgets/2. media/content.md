@@ -92,7 +92,7 @@ Play a recorded word with `c-audio`. `src` is the audio file and `label` is the 
 
 ## Audio clip
 
-Play a longer recording with `c-audio-clip`. `src` is the audio file, `title` is the optional heading above the player, `kind` is the optional label such as "Listening exercise", and whatever you write inside the tag becomes a collapsible transcript.
+Play a longer recording with `c-audio-clip`. `src` is the audio file, `title` is the required heading above the player, `kind` is the optional label such as "Listening exercise", and whatever you write inside the tag becomes a collapsible transcript.
 
 <c-audio-clip src="audio/gettysburg.mp3" title="The Gettysburg Address" kind="Listening exercise">
 
