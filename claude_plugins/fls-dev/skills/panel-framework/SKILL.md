@@ -184,7 +184,7 @@ which site a request belongs to. The host says so through a setting.
 Framework templates draw their buttons, chips, callouts, dates, pagination and dropdown menus with
 their own `c-panel-*` primitives (`panel-button`, `panel-button-group`, `panel-chip`, `panel-callout`,
 `panel-back-link`, `panel-date`, `panel-datetime`, `panel-pagination`, `panel-dropdown-menu`,
-`panel-page` and `panel-heading`) and never include a host component or template. FLS's wrappers
+`panel-dropdown-menu-separator` and `panel-page`) and never include a host component or template. FLS's wrappers
 forward to its own `c-button`, `c-back-link` and the rest; the rules here name
 the component an FLS panel template writes. The panel framework's own styles (`.panel-surface`,
 `.panel-canvas`, `.panel-heading`, `.panel-btn`, the modal host, the selection bar and the compact
