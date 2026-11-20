@@ -4220,8 +4220,6 @@ def test_get_file_type_from_extension_types_every_audio_extension_as_audio(
     assert get_file_type_from_extension(Path(f"clip{extension}")) == File.FileType.AUDIO
 
 
-# The shuffle knobs, option `locked` and the keep-together `group` a quiz file carries.
-
 _SHUFFLE_FORM_UUID = "40000000-0000-0000-0000-000000000001"
 _SHUFFLE_PAGE_UUID = "40000000-0000-0000-0000-000000000002"
 _SHUFFLE_QUESTION_UUID = "40000000-0000-0000-0000-000000000003"
