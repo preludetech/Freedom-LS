@@ -1606,6 +1606,18 @@ function finishEntryAction() {
     }, 0);
 }
 
+// A live region whose text is set to what it already says is not read again,
+// so saving one entry twice would be heard once. The region is emptied first
+// and the message set a moment later, so it always changes.
+function announceEntryChange(message) {
+    const announcer = document.getElementById("scope-announcer");
+    if (!announcer) return;
+    announcer.textContent = "";
+    setTimeout(() => {
+        announcer.textContent = message;
+    }, 50);
+}
+
 // After a confirmed change the list refreshes; mark the element that takes
 // focus and announce the change. This runs before the generic focus fallback
 // below, which focuses the marked element once the old trigger is gone.
@@ -1645,8 +1657,7 @@ document.addEventListener("htmx:afterSwap", (event) => {
         message = "Saved " + entryTitle(panel, pk) + ".";
     }
     if (focusTarget) focusTarget.setAttribute("data-focus-target", "");
-    const announcer = document.getElementById("scope-announcer");
-    if (announcer) announcer.textContent = message;
+    announceEntryChange(message);
     pendingEntryAction.refreshedTarget = focusTarget;
 });
 

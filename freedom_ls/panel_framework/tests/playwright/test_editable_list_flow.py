@@ -16,7 +16,7 @@ from freedom_ls.tests.playwright_helpers import (
     assert_no_horizontal_overflow,
 )
 
-from ..helpers import make_stub
+from ..helpers import make_stub, make_stub_entry
 from ..stub_models import StubEntry
 
 pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
@@ -260,3 +260,43 @@ def test_a_slow_refresh_from_add_another_is_not_taken_for_the_next_adds_answer(
     expect(panel.get_by_text("Beta")).to_be_visible()
     expect(announcer).to_have_text("Added Beta.")
     expect(panel.get_by_role("button", name="Edit Beta")).to_be_focused()
+
+
+def test_saving_one_entry_twice_announces_both_saves(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    """A live region whose text does not change is not read again, so the
+    announcer is emptied before each message."""
+    parent = make_stub(name="Twice parent")
+    make_stub_entry(parent, "Alpha")
+    modal = page.locator("#app-modal")
+    panel = page.locator("[data-panel='entries']")
+    announcer = page.locator("#scope-announcer")
+    page.goto(
+        f"{live_server.url}/test-panel/framework/stubs/{parent.pk}/__tabs/entries"
+    )
+    page.evaluate(
+        """() => {
+            window.announced = [];
+            const region = document.getElementById("scope-announcer");
+            new MutationObserver(() => window.announced.push(region.textContent))
+                .observe(region, {childList: true, characterData: true, subtree: true});
+        }"""
+    )
+
+    for _ in range(2):
+        panel.get_by_role("button", name="Edit Alpha").click()
+        modal.get_by_role("button", name="Save").click()
+        expect(modal).to_be_hidden()
+        expect(announcer).to_have_text("Saved Alpha.")
+        expect(panel.get_by_role("button", name="Edit Alpha")).to_be_focused()
+
+    # The region starts empty, so only the second save has a text to clear.
+    assert page.evaluate("window.announced") == [
+        "Saved Alpha.",
+        "",
+        "Saved Alpha.",
+    ]
