@@ -83,3 +83,18 @@ def test_a_check_hint_anchor_is_a_heading(anchor_heading: str) -> None:
 @pytest.mark.parametrize("primitive", sorted(PRIMITIVES))
 def test_the_props_a_primitive_lists_equal_its_c_vars(primitive: str) -> None:
     assert _props_by_primitive()[primitive] ^ _c_vars(primitive) == set()
+
+
+def test_minimal_shell_styles_headings_and_the_contract_lists_them() -> None:
+    """The minimal shell's base layer sized no headings, so every h1 and h2
+    rendered at body size and weight, and the contract never told a host to
+    supply them."""
+    stylesheet = (PACKAGE_DIR / "css/minimal_shell.css").read_text()
+    base_layer = stylesheet[stylesheet.index("@layer base") :]
+    for heading in ("h1", "h2"):
+        rule = re.search(rf"^\s*{heading}\s*\{{(.*?)\}}", base_layer, re.M | re.S)
+        assert rule is not None, f"minimal_shell.css has no base rule for {heading}"
+        assert "font-bold" in rule.group(1)
+        assert re.search(r"text-(xl|lg)", rule.group(1))
+    assert "`h1`" in CONTRACT
+    assert "`h2`" in CONTRACT

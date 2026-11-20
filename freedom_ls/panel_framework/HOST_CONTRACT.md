@@ -21,9 +21,9 @@ The host's base template also renders four things the shell supplies:
   fragment that appends to one of them.
 - A place where Django's `messages` render. A request without scripting shows its outcome there.
 - An htmx listener for `htmx:beforeSwap` (see [Scripts and order](#scripts-and-order)).
-- Base element styles for `table`, `th` and `td`. Framework templates style their own markup with
-  utilities and leave cell padding and colour to the page. The rules are in
-  `css/minimal_shell.css`, under `@layer base`.
+- Base element styles for `table`, `th`, `td`, `h1` and `h2`. Framework templates style their own
+  markup with utilities and leave cell padding and colour, and heading size and weight, to the
+  page. The rules are in `css/minimal_shell.css`, under `@layer base`.
 
 ## Fragments
 
