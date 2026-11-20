@@ -5,6 +5,8 @@ from __future__ import annotations
 import lxml.html
 import pytest
 
+from django.urls import reverse
+
 from freedom_ls.content_engine.factories import FileFactory, TopicFactory
 from freedom_ls.content_engine.models import File
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
@@ -124,6 +126,23 @@ class TestResolvedClip:
         tree = _tree(CLIP.format(extra=""))
 
         assert len(tree.xpath("//p[@role='status']")) == 1
+
+
+class TestPlayButton:
+    def test_play_button_carries_the_redirect_url_and_name(
+        self, mock_site_context: object
+    ) -> None:
+        file_obj = _audio_file()
+
+        tree = _tree(CLIP.format(extra=""))
+
+        (button,) = tree.xpath("//button[@x-ref='play']")
+        assert button.get("data-src") == reverse(
+            "content_engine:audio_file", args=[file_obj.pk]
+        )
+        assert button.get("aria-label") == "Play The talk"
+        assert button.get("x-bind:aria-pressed") == "playing"
+        assert button.get("x-on:click") == "toggle"
 
 
 class TestAuthorMistakes:

@@ -72,6 +72,8 @@ HEROICONS_MAPPING: dict[str, str] = {
     "course": "academic-cap",
     "audio_play": "speaker-wave",
     "audio_playing": "chart-bar",
+    "media_play": "play",
+    "media_pause": "pause",
 }
 
 LUCIDE_MAPPING: dict[str, str] = {
@@ -139,6 +141,8 @@ LUCIDE_MAPPING: dict[str, str] = {
     "course": "graduation-cap",
     "audio_play": "volume-2",
     "audio_playing": "audio-lines",
+    "media_play": "play",
+    "media_pause": "pause",
 }
 
 TABLER_MAPPING: dict[str, str] = {
@@ -206,6 +210,8 @@ TABLER_MAPPING: dict[str, str] = {
     "course": "school",
     "audio_play": "volume-2",
     "audio_playing": "chart-bar",
+    "media_play": "player-play",
+    "media_pause": "player-pause",
 }
 
 PHOSPHOR_MAPPING: dict[str, str] = {
@@ -273,6 +279,8 @@ PHOSPHOR_MAPPING: dict[str, str] = {
     "course": "graduation-cap",
     "audio_play": "speaker-high",
     "audio_playing": "waveform",
+    "media_play": "play",
+    "media_pause": "pause",
 }
 
 HEROICONS_VARIANTS: dict[str, str | None] = {

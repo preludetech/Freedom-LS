@@ -41,6 +41,14 @@ so screen readers announce each change.
          data-src="{% url 'content_engine:audio_file' file_obj.pk %}"
          data-duration="{% if file_obj.duration_seconds is not None %}{{ file_obj.duration_seconds|unlocalize }}{% endif %}">
       <div class="flex items-start gap-3 rounded-lg border border-border bg-surface p-3">
+        <c-button variant="primary" aria_label="Play {{ title }}" x-ref="play"
+                  x-bind:aria-pressed="playing" x-on:click="toggle"
+                  data-src="{% url 'content_engine:audio_file' file_obj.pk %}"
+                  class="size-11 shrink-0 rounded-pill p-0">
+          <span x-show="showPlayIcon"><c-icon name="media_play" class="size-5" /></span>
+          <span x-show="loading" x-cloak><c-icon name="loading" class="size-5 animate-spin motion-reduce:animate-none" /></span>
+          <span x-show="playing" x-cloak><c-icon name="media_pause" class="size-5" /></span>
+        </c-button>
         <div class="min-w-0 flex-1">
           <div class="flex items-baseline gap-2">
             <span x-bind:id="$id('audio-clip-title')" title="{{ title }}" class="min-w-0 flex-1 truncate font-bold">{{ title }}</span>

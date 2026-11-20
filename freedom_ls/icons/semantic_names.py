@@ -74,4 +74,6 @@ SEMANTIC_ICON_NAMES: set[str] = {
     # Audio
     "audio_play",
     "audio_playing",
+    "media_play",
+    "media_pause",
 }

@@ -267,6 +267,13 @@ document.addEventListener("alpine:init", () => {
     // Unlike audioFile, each clip owns its element so a long recording keeps
     // its position while another clip plays.
     let nextAudioClipId = 0;
+    // The one widget whose audio is playing or loading, as {id, pause}.
+    // Starting any widget pauses this one first.
+    let activeAudio = null;
+    // Audio elements live outside Alpine's reactive data: a proxied media
+    // element misbehaves, and each clip keeps its own so a paused clip keeps
+    // its buffer.
+    const clipElements = new Map();
 
     // m:ss under an hour, h:mm:ss from an hour up, chosen from the total; both
     // values floored so elapsed never reads past the total.
@@ -322,6 +329,66 @@ document.addEventListener("alpine:init", () => {
         },
         get statusText() {
             return "";
+        },
+        get showPlayIcon() {
+            return this.state === "paused" || this.state === "failed";
+        },
+
+        toggle() {
+            if (this.state === "playing" || this.state === "loading") {
+                this._element().pause();
+                return;
+            }
+            this._start(this._element());
+        },
+        _element() {
+            let audio = clipElements.get(this._id);
+            if (audio) return audio;
+            audio = new Audio();
+            audio.preload = "none";
+            audio.src = this._src;
+            audio.addEventListener("playing", () => { this.state = "playing"; });
+            audio.addEventListener("waiting", () => { if (!audio.paused) this.state = "loading"; });
+            audio.addEventListener("pause", () => { if (this.state !== "failed") this.state = "paused"; });
+            audio.addEventListener("timeupdate", () => { this.elapsed = audio.currentTime; });
+            // The stored length is an estimate for some VBR files; the element's own is exact.
+            audio.addEventListener("loadedmetadata", () => {
+                if (Number.isFinite(audio.duration)) this.duration = audio.duration;
+            });
+            audio.addEventListener("ended", () => {
+                audio.currentTime = 0;
+                this.elapsed = 0;
+                this.state = "paused";
+            });
+            audio.addEventListener("error", () => this._fail());
+            clipElements.set(this._id, audio);
+            return audio;
+        },
+        // The redirect URL, never a signed one, so a page left open past the signature still plays.
+        get _src() {
+            return this.$refs.play.dataset.src;
+        },
+        _start(audio) {
+            if (activeAudio && activeAudio.id !== this._id) activeAudio.pause();
+            activeAudio = { id: this._id, pause: () => audio.pause() };
+            this.state = "loading";
+            // Called synchronously inside the click so iOS treats it as user-initiated.
+            audio.play().catch((error) => {
+                if (error.name !== "AbortError") this._fail();
+            });
+        },
+        _fail() {
+            this.state = "failed";
+        },
+        destroy() {
+            const audio = clipElements.get(this._id);
+            if (audio) {
+                audio.pause();
+                audio.removeAttribute("src");
+                audio.load();
+                clipElements.delete(this._id);
+            }
+            if (activeAudio?.id === this._id) activeAudio = null;
         },
     }));
 });
