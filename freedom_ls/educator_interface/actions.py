@@ -45,7 +45,6 @@ from freedom_ls.educator_interface.events import (
     REGISTRATION_CHANGED,
     STAFF_CHANGED,
 )
-from freedom_ls.educator_interface.filters import may_see_staff_roles
 from freedom_ls.educator_interface.forms import (
     AddLearnerForm,
     AddStaffMemberForm,
@@ -76,6 +75,7 @@ from freedom_ls.educator_interface.panels.common.bulk_actions import (
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
+from freedom_ls.educator_interface.panels.staff.filters import may_see_staff_roles
 from freedom_ls.educator_interface.staff import (
     ORGANISATION_SCOPE,
     RoleEntry,

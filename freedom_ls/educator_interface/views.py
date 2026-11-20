@@ -109,8 +109,6 @@ from freedom_ls.educator_interface.filters import (
     LearnerCohortFilter,
     LearnerCourseFilter,
     LearnerStatusFilter,
-    StaffRoleFilter,
-    may_see_staff_roles,
 )
 from freedom_ls.educator_interface.forms import CohortForm, LearnerImportForm
 from freedom_ls.educator_interface.learner_import import (
@@ -161,6 +159,10 @@ from freedom_ls.educator_interface.panels.common.tables import (
 )
 from freedom_ls.educator_interface.panels.course.config import CourseConfig
 from freedom_ls.educator_interface.panels.dashboard.config import DashboardConfig
+from freedom_ls.educator_interface.panels.staff.filters import (
+    StaffRoleFilter,
+    may_see_staff_roles,
+)
 from freedom_ls.educator_interface.paths import interface_path
 from freedom_ls.educator_interface.quick_views import (
     CohortQuickView,
