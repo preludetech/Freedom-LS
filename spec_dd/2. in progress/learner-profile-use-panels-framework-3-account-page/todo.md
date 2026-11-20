@@ -16,7 +16,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
 - [ ] (user) Decide whether the panel framework should offer a built-in 'close the dialog and toast, swap nothing' response: RemoveProfilePictureAction.handle_submit (accounts/panels/personal_details/actions.py) sets HX-Retarget: body and HX-Reswap: none by hand, because an empty 200 swapped into #app-modal-body reopened the dialog; keep it, or file a framework idea
