@@ -23,9 +23,11 @@ from .stub_models import (
     StubChild,
     StubEntry,
     StubEntryProtectedChild,
+    StubEntryRestrictedChild,
     StubFileModel,
     StubModel,
     StubProtectedChild,
+    StubRestrictedChild,
 )
 
 _counter = itertools.count(1)
@@ -78,6 +80,18 @@ def make_stub_entry_protected_child(entry: StubEntry) -> StubEntryProtectedChild
     return cast(
         StubEntryProtectedChild, StubEntryProtectedChild.objects.create(entry=entry)
     )
+
+
+def make_stub_entry_restricted_child(entry: StubEntry) -> StubEntryRestrictedChild:
+    """Create a StubEntryRestrictedChild, which blocks removal of ``entry``."""
+    return cast(
+        StubEntryRestrictedChild, StubEntryRestrictedChild.objects.create(entry=entry)
+    )
+
+
+def make_stub_restricted_child(parent: StubModel) -> StubRestrictedChild:
+    """Create a StubRestrictedChild, which blocks deletion of ``parent``."""
+    return cast(StubRestrictedChild, StubRestrictedChild.objects.create(parent=parent))
 
 
 def make_stub_protected_child(

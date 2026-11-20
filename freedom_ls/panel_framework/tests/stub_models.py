@@ -78,6 +78,20 @@ class StubProtectedChild(models.Model):
         return f"StubProtectedChild({self.pk})"
 
 
+class StubRestrictedChild(models.Model):
+    """A child that restricts its parent's delete, so RESTRICT can be exercised."""
+
+    parent = models.ForeignKey(StubModel, on_delete=models.RESTRICT)
+
+    class Meta:
+        app_label = "freedom_ls_panel_framework"
+        verbose_name = "stub restricted child"
+        verbose_name_plural = "stub restricted children"
+
+    def __str__(self) -> str:
+        return f"StubRestrictedChild({self.pk})"
+
+
 class StubFileModel(models.Model):
     """A record with an optional file. The field names no storage alias: the
     model exists only in the test run, and the autouse fixture in
@@ -121,3 +135,17 @@ class StubEntryProtectedChild(models.Model):
 
     def __str__(self) -> str:
         return f"StubEntryProtectedChild({self.pk})"
+
+
+class StubEntryRestrictedChild(models.Model):
+    """A child that restricts its entry's delete, so removing an entry can hit RESTRICT."""
+
+    entry = models.ForeignKey(StubEntry, on_delete=models.RESTRICT)
+
+    class Meta:
+        app_label = "freedom_ls_panel_framework"
+        verbose_name = "stub entry restricted child"
+        verbose_name_plural = "stub entry restricted children"
+
+    def __str__(self) -> str:
+        return f"StubEntryRestrictedChild({self.pk})"

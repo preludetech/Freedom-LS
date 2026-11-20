@@ -56,8 +56,10 @@ from .helpers import (
     make_stub_child,
     make_stub_entry,
     make_stub_entry_protected_child,
+    make_stub_entry_restricted_child,
     make_stub_file,
     make_stub_protected_child,
+    make_stub_restricted_child,
 )
 from .stub_models import StubEntry, StubFileModel, StubGrandchild, StubModel
 from .stub_panels import (
@@ -1298,6 +1300,39 @@ def test_delete_action_handle_submit_refuses_a_protected_instance(
     response = action.handle_submit(_ctx(request, item))
     assert response.status_code == 422
     assert "cannot be deleted" in response.content.decode()
+    assert StubModel.objects.filter(pk=item.pk).exists()
+
+
+@pytest.mark.django_db
+def test_delete_action_render_explains_a_restricted_instance(
+    mock_site_context: Site,
+) -> None:
+    item = make_stub(name="restricted-render")
+    make_stub_restricted_child(parent=item)
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+
+    html = _render(DeleteAction(success_url="/items"), _ctx(request, item))
+
+    assert "cannot be deleted because it still has 1 stub restricted child." in html
+    assert not lxml.html.fromstring(html).cssselect("button[type='submit']")
+
+
+@pytest.mark.django_db
+def test_delete_action_handle_submit_refuses_a_restricted_instance(
+    mock_site_context: Site,
+) -> None:
+    item = make_stub(name="restricted-submit")
+    make_stub_restricted_child(parent=item)
+    request = RequestFactory().delete("/")
+    request.user = make_staff_user()
+
+    response = DeleteAction(success_url="/items").handle_submit(_ctx(request, item))
+
+    assert response.status_code == 422
+    assert "cannot be deleted because it still has 1 stub restricted child." in (
+        response.content.decode()
+    )
     assert StubModel.objects.filter(pk=item.pk).exists()
 
 
@@ -2801,6 +2836,29 @@ def test_removing_a_protected_entry_answers_422_with_the_refusal_and_keeps_it(
     assert (
         "This stub entry cannot be removed because it still has 1 stub entry "
         "protected child." in response.content.decode()
+    )
+    assert StubEntry.objects.filter(pk=entry.pk).exists()
+
+
+@pytest.mark.django_db
+def test_removing_a_restricted_entry_answers_422_with_the_refusal_and_keeps_it(
+    mock_site_context: Site,
+) -> None:
+    parent = make_stub()
+    entry = make_stub_entry(parent, "Alpha")
+    make_stub_entry_restricted_child(entry)
+
+    response = fetch(
+        _remove_path(parent),
+        method="post",
+        data={"entry": str(entry.pk)},
+        htmx=True,
+    )
+
+    assert response.status_code == 422
+    assert (
+        "This stub entry cannot be removed because it still has 1 stub entry "
+        "restricted child." in response.content.decode()
     )
     assert StubEntry.objects.filter(pk=entry.pk).exists()
 

@@ -15,7 +15,7 @@ from django.core.exceptions import (
 )
 from django.db import transaction
 from django.db.models import Model, QuerySet
-from django.db.models.deletion import ProtectedError
+from django.db.models.deletion import ProtectedError, RestrictedError
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
@@ -642,9 +642,15 @@ class ConfirmAction(ModalPanelAction):
         return refusal_response(ctx, title=title, message=message)
 
 
-def _protected_dependents(error: ProtectedError) -> str:
-    """What still depends on a row a protected relation would not let go, as prose."""
-    counts: Counter[type[Model]] = Counter(type(obj) for obj in error.protected_objects)
+def _protected_dependents(error: ProtectedError | RestrictedError) -> str:
+    """What still depends on a row a protected or restricted relation would
+    not let go, as prose."""
+    blocking = (
+        error.protected_objects
+        if isinstance(error, ProtectedError)
+        else error.restricted_objects
+    )
+    counts: Counter[type[Model]] = Counter(type(obj) for obj in blocking)
     return join_prose(
         [
             count_noun(model, counts[model])
@@ -675,9 +681,10 @@ class DeleteAction(ConfirmAction):
     def get_cascade_summary(self, instance: Model) -> list[str]:
         """Use Django's Collector to show what will be cascade-deleted.
 
-        Raises ProtectedError when a protected relation blocks the delete, the
-        same way the delete itself would. Callers rendering a preview catch it
-        and show get_blocked_reason() in place of the summary.
+        Raises ProtectedError or RestrictedError when a protected or
+        restricted relation blocks the delete, the same way the delete itself
+        would. Callers rendering a preview catch it and show
+        get_blocked_reason() in place of the summary.
         """
         from django.db.models.deletion import Collector
 
@@ -697,7 +704,9 @@ class DeleteAction(ConfirmAction):
             if count and model is not type(instance)
         ]
 
-    def get_blocked_reason(self, instance: Model, error: ProtectedError) -> str:
+    def get_blocked_reason(
+        self, instance: Model, error: ProtectedError | RestrictedError
+    ) -> str:
         """One plain sentence naming what still depends on this instance."""
         return (
             f"This {instance._meta.verbose_name} cannot be deleted because it "
@@ -747,7 +756,8 @@ class DeleteAction(ConfirmAction):
 
     def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
         """The cascade summary, or, for a delete that is known to be refused
-        or that a protected relation would block, the reason in its place."""
+        or that a protected or restricted relation would block, the reason in
+        its place."""
         instance = self._instance(ctx)
         context = self._body_context(
             instance, self.get_known_blocked_reason(ctx, instance)
@@ -756,7 +766,7 @@ class DeleteAction(ConfirmAction):
             return context
         try:
             context["cascade_summary"] = self.get_cascade_summary(instance)
-        except ProtectedError as error:
+        except (ProtectedError, RestrictedError) as error:
             context["blocked_reason"] = self.get_blocked_reason(instance, error)
         return context
 
@@ -773,7 +783,7 @@ class DeleteAction(ConfirmAction):
                 if refusal is not None:
                     return refusal
                 instance.delete()
-        except ProtectedError as error:
+        except (ProtectedError, RestrictedError) as error:
             # The render path hides the button, so reaching here means a stale
             # page or a hand-made request. Rendered after the block, since
             # a transaction marked for rollback cannot run queries.
@@ -1017,7 +1027,7 @@ class EditableListRemoveAction(_EditableListEntryAction, ConfirmAction):
         try:
             with transaction.atomic():
                 entry.delete()
-        except ProtectedError as error:
+        except (ProtectedError, RestrictedError) as error:
             # Answered after the block: a transaction marked for rollback cannot run queries.
             return self.refuse(
                 ctx,
