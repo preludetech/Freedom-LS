@@ -594,7 +594,7 @@ Four guards cover the standalone backend:
   `c-panel-icon` cannot render and W003 for one it renders empty. When a framework template draws
   a new icon, add its name there and its body template beside the others.
 
-`tests/invariants/test_panel_form_buttons.py` fails on any panel template whose `panel_body`, or a
+`freedom_ls/base/tests/invariants/test_panel_form_buttons.py` fails on any panel template whose `panel_body`, or a
 template it includes, renders a submit button. `accounts/tests/test_allauth_pages.py` checks an
 allauth management page puts the toggle and the `<h1>` in one row of the header band and its form
 in a card with the buttons in the footer, and `accounts/tests/playwright/test_profile_picture_flow.py`

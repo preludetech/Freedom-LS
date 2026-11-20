@@ -16,8 +16,9 @@ import pytest
 from django.template import TemplateDoesNotExist
 from django.template.loader import get_template
 
-# The freedom_ls package: tests/invariants -> tests -> panel_framework -> freedom_ls.
-FREEDOM_LS_PACKAGE_DIR = Path(__file__).resolve().parents[3]
+from freedom_ls.base.theming import FREEDOM_LS_PACKAGE_DIR
+
+pytestmark = pytest.mark.fls_internal
 
 PANEL_BASE = "panel_framework/panels/panel.html"
 

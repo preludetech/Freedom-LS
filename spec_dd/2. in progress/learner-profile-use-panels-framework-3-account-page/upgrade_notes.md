@@ -63,7 +63,7 @@ requires_tailwind_rebuild: true
   `label`) in the panel template's `panel_actions` block after `{{ block.super }}`. The form's
   `hx-disabled-elt` and `hx-indicator` point at `#<form_id>-submit`. A panel template that
   includes the inline form and leaves `panel_actions` alone now has no Save button, and the
-  invariant `panel_framework/tests/invariants/test_panel_form_buttons.py` fails on any panel body
+  invariant `base/tests/invariants/test_panel_form_buttons.py` fails on any panel body
   that renders a submit.
 
 ## Manual steps
