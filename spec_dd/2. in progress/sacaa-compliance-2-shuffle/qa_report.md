@@ -71,6 +71,6 @@ Observations, not bugs. No action is attached to either.
 1. The shuffled demo quiz picture still shows its source image's "Landscape 800×450" label. This is cosmetic demo content.
 2. "Leave and save" does not keep an answer chosen on the current page unless Next was pressed. This is existing runner behaviour, unrelated to shuffling. The page already warns "Going back won't save unsaved changes". Answers saved via Next persisted correctly.
 
-Nothing was left untested. Some screenshots in the folder are `.yml` page snapshots and a console log, kept as supporting evidence and not linked above.
+Nothing was left untested.
 
 status: ok · reason: report rendered, 0 bugs documented
