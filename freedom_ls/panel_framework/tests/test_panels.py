@@ -1494,6 +1494,26 @@ def test_the_table_layout_has_an_edit_and_a_remove_button_per_entry(
     )
 
 
+def test_the_table_layouts_cards_keep_edit_and_remove_outside_the_label_grid(
+    mock_site_context: Site,
+) -> None:
+    """Each card's buttons sit together outside the label/value grid.
+
+    They used to be slotted into the card's two-column definition list, whose
+    rows are dissolved into grid cells, so every button became its own cell.
+    """
+    parent = make_stub()
+    make_stub_entry(parent, "Alpha", "first")
+
+    root = _layout_entries_html(parent, "entries_table")
+
+    (card,) = root.xpath("//ul[@data-row-cards]/li")
+    assert not card.xpath(".//dl//*[contains(@hx-get, '/__actions/')]")
+    (edit,) = card.xpath(".//*[contains(@hx-get, '/__actions/edit_entry')]")
+    (remove,) = card.xpath(".//*[contains(@hx-get, '/__actions/remove_entry')]")
+    assert edit.getparent() is remove.getparent()
+
+
 def test_the_table_layout_states_the_entry_count(mock_site_context: Site) -> None:
     parent = make_stub()
     for title in ("Alpha", "Beta"):

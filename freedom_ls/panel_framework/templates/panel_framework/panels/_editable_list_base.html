@@ -14,8 +14,10 @@
                 <c-slot name="card_rows">
                     {% for entry in entries %}
                         <c-panel-table-card primary="{{ entry.title }}">
-                            {% if entry.detail %}<p class="text-sm text-muted">{{ entry.detail }}</p>{% endif %}
-                            <c-data-table-actions class="mt-3">{% include "panel_framework/partials/editable_list_entry_triggers.html" %}</c-data-table-actions>
+                            <c-slot name="content">
+                                {% if entry.detail %}<p class="text-sm text-muted">{{ entry.detail }}</p>{% endif %}
+                                <c-data-table-actions class="mt-3">{% include "panel_framework/partials/editable_list_entry_triggers.html" %}</c-data-table-actions>
+                            </c-slot>
                         </c-panel-table-card>
                     {% endfor %}
                 </c-slot>
