@@ -109,13 +109,28 @@ Actual: under FLS settings the FLS wrappers replace every primitive. The page ca
 ## Bug status
 
 - **FIXED** (commit: 13994114b) — B1: Minimal shell leaves h1/h2 unstyled. Re-verified on a fresh minimal-shell server: h2 30px/700, h1 36px/700 (![](screenshots/page-2026-11-20T00-20-04-000Z.png)); the educator cohorts page is unchanged.
-- **UNRESOLVED** — B2: FLS wrappers make the minimal-shell reference page unstyled (reason: needs a decision. Under FLS settings, FLS's wrappers replace every framework primitive by template path, so the page carries `btn`/`chip`, which `reference.css` must not define. The QA plan's §4 expects `panel-btn`/`panel-chip`, which only a host without FLS's wrappers can show. Either §4 is checked in the framework's standalone run, or FLS's wrappers need a way to step aside in the minimal shell.)
+- **FIXED** (commit: d09d6b02b) — B2: FLS wrappers make the minimal-shell reference page unstyled. Decided as a QA-plan fix: §4's settings now put the framework's template directory ahead of FLS's wrappers, as the framework's test tiers do. No product code changed. Re-checked on a server with those settings: 21 `panel-btn` and 14 `panel-chip` elements, no `btn` or `chip`, styled by `reference.css`, no overflow, layout probe clean — after the fix: ![](screenshots/fixed/page-2026-11-20T05-01-50-037Z.png) ![](screenshots/fixed/page-2026-11-20T05-02-06-028Z.png) ![](screenshots/fixed/page-2026-11-20T05-02-13-174Z.png)
+
+## Before/after comparison against `main` (run after QA)
+
+The §1 comparison the first run skipped was run afterwards. A throwaway worktree at `origin/main` served a copy of this branch's dev database, so both servers showed the same records. Each of the 14 states in §1.1 (a to n) was captured on both servers at 1920×1080, 768×1024 and 375×812 and compared pixel for pixel, with the branch badge and debug toolbar hidden. The worktree, its branch and its database were deleted afterwards.
+
+Result: 38 of 42 pairs are identical. The four that differ:
+
+| Pair | Difference | Verdict |
+| --- | --- | --- |
+| a (dashboard), desktop and tablet | The "Figures as of" time reads 04:44 on one server and 04:45 on the other. ![](screenshots/fixed/main-vs-branch-dashboard-clock-desktop.png) | Clock, not a change. |
+| n (component reference), desktop and mobile | The Callout example's intro sentence was reworded on this branch ("This is `c-panel-callout`."). It is one line shorter at 375 wide, so everything below sits 20px higher. ![](screenshots/fixed/main-vs-branch-reference-callout-mobile.png) | The reference page's own copy, changed on purpose. No educator page differs. |
+
+Every educator page (a to m) is pixel-identical apart from the clock. Example pair, the create dialog submitted empty at 375 wide, branch left and `main` right: ![](screenshots/fixed/main-vs-branch-create-dialog-errors-mobile.png). The branch's desktop shots of the actions menu, the quick view and the deactivate dialog: ![](screenshots/fixed/main-vs-branch-states-desktop-branch.png).
+
+Limits: full-page shots paint the sticky header as a band partway down the page, so about 70px of each full-page pair is covered. State f, j, k, l and m were viewport shots. State h at desktop is the list as loaded, because the Sort menu exists only below md. The first_class theme (§3) was not compared against `main`.
 
 ## General notes
 
-- Not run: the §0.3 main baseline. The main worktree's dev DB has no DemoDev data and another session is working in it. §1 was judged against the §1.3 checklist alone, as §0.3.3 allows. The §3 comparison against main was also not possible.
-- 2.4.3 is PARTIAL. Every reason field in the demo data is optional, and the reference page's reason_required example posts to the page itself with no validation.
-- 4-nav is PARTIAL. The reference page renders no navigation toggle, because the toggle comes from `page_title.html` and the reference page sets no page_title or menu_groups. The shell docks its sidebar from lg (1024), not 768.
+- Not run in the first pass (run afterwards, see the section above): the §0.3 main baseline. The main worktree's dev DB has no DemoDev data and another session is working in it. §1 was judged against the §1.3 checklist alone, as §0.3.3 allows. The §3 comparison against main was also not possible.
+- 2.4.3 is now covered by `test_empty_required_reason_keeps_dialog_open_with_error_until_filled` (commit dfd89d186) and the QA plan points at it. In the first pass 2.4.3 was PARTIAL. Every reason field in the demo data is optional, and the reference page's reason_required example posts to the page itself with no validation.
+- 4-nav: the QA plan no longer checks a navigation toggle on the reference page, which has no navigation (commit d09d6b02b). In the first pass 4-nav was PARTIAL. The reference page renders no navigation toggle, because the toggle comes from `page_title.html` and the reference page sets no page_title or menu_groups. The shell docks its sidebar from lg (1024), not 768.
 - 4-examples: the reference page has no dropdown-menu, quick-view or openable-dialog example, so those bullets had nothing to exercise.
 - The reference page loads scrolled to the first reason-dialog example because its Cancel button takes focus. Noted, not judged a regression.
 - Page 1.1e used the Learners list, because the cohort learners table has no row selection.
@@ -123,4 +138,4 @@ Actual: under FLS settings the FLS wrappers replace every primitive. The page ca
 - The tab title reads "Cohorts — DemoDev — DemoDev" because the org scope and site are both named DemoDev. Same format as main.
 - The console errors seen were an htmx sendAbort from a search aborted by pressing Enter mid-request, and the 422 from the deliberate empty submit.
 
-status: ok · reason: 2 bugs — 1 fixed, 1 unresolved; report rendered, screenshots verified
+status: ok · reason: 2 bugs — 2 fixed, 0 unresolved; main comparison run, 38 of 42 pairs identical, 4 explained; report rendered, screenshots verified
