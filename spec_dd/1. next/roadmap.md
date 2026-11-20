@@ -16,10 +16,10 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `extract_panels_framework-4-template-contract` (Panel framework extraction)
 - 🔴 High · `learner-profile-use-panels-framework-2-editable-list-panel` (Account area on panels)
 - 🔴 High · `learner-profile-use-panels-framework-3-account-page` (Account area on panels)
+- 🔴 High · `multi-step-course-applications-1-review-states` (Multi-step course applications)
 
 ### Ready to start
 
-- 🔴 High · `multi-step-course-applications-1-review-states` (Multi-step course applications)
 - 🟠 Medium · `educator-interface-refactor-3-staff` (Educator interface code layout)
 - 🟠 Medium · `educator-interface-refactor-4-course` (Educator interface code layout)
 - 🟠 Medium · `content-widget-longer-audio` (Audio content widgets)
@@ -191,7 +191,7 @@ Priority: 🔴 High
 
 Applications become steps an applicant works through over weeks, decided by a deployment's rules and cleared by organisation reviewers. Parent: `multi-step-course-applications`.
 
-- `multi-step-course-applications-1-review-states` — **ready** — Applications get a state and an organisation; applicants see where theirs stands and can withdraw.
+- `multi-step-course-applications-1-review-states` — **in progress** — Applications get a state and an organisation; applicants see where theirs stands and can withdraw.
 - `multi-step-course-applications-2-reviewers-and-inbox` — **blocked** by `multi-step-course-applications-1-review-states` — Organisation reviewers get an applications inbox and review screen, approve or reject, and move applications between organisations.
 - `multi-step-course-applications-3-approval-outcome` — **blocked** by `multi-step-course-applications-2-reviewers-and-inbox` — A deployment seam decides what approval does; FLS's default registers the applicant for the course.
 - `multi-step-course-applications-4-reopen-form` — **blocked** by `multi-step-course-applications-1-review-states` — Applicants reopen their submitted application form, answers prefilled, until it is approved.

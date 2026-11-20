@@ -107,7 +107,7 @@
 <path d="M692.0,597.0 H690.0 A6,6 0 0 0 684.0,603.0 V641.0 A6,6 0 0 0 690.0,647.0 H692.0 Z" fill="#991b1b"/>
 <text x="700.0" y="619.0" fill="#111827">learner-public-profile-7-</text>
 <text x="700.0" y="634.0" fill="#111827">contact</text>
-<rect x="24.0" y="607.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<rect x="24.0" y="607.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M32.0,607.0 H30.0 A6,6 0 0 0 24.0,613.0 V651.0 A6,6 0 0 0 30.0,657.0 H32.0 Z" fill="#991b1b"/>
 <text x="40.0" y="629.0" fill="#111827">multi-step-course-</text>
 <text x="40.0" y="644.0" fill="#111827">applications-1-review-states</text>
