@@ -144,6 +144,12 @@ A page that matches them **passes**. Its difference from a drawing, an earlier s
 sibling is the decided design: record it as a pass, never as a failure, bug, design miss or todo,
 and never fix it back. Read the spec documents' passages on a page before judging it.
 
+## Rule 6 — Never touch `main`
+
+QA never checks out, builds, migrates, seeds or runs a server from the `main` branch, the `main`
+worktree or an export of `main`. A QA-plan step that asks for one is skipped and recorded as
+`skip: QA never touches main`, with no todo line. Pages are judged on this branch's server alone.
+
 ---
 
 # Instructions

@@ -113,6 +113,11 @@ IMPORTANT: The QA command picks a free webserver port at run time. Never name a 
 - We run the runserver command like this: `uv run python manage.py runserver $PORT`
 - Base url is `http://127.0.0.1:$PORT`
 
+IMPORTANT: The QA file never touches the `main` branch or the `main` worktree. No step checks out,
+builds, migrates, seeds or runs a server from `main`, its worktree or an export of it, and no test
+compares a page against a `main` server. A "looks unchanged" test names the checklist each page is
+judged against on this branch's server.
+
 ## Notes
 
 - Note we will be following TDD. Do not write out all the tests at this point.
