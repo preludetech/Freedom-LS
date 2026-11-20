@@ -340,11 +340,8 @@ def test_created_date_range_with_only_date_boxes_narrows_the_list(staff_client):
 
 def test_change_page_submitted_time_is_formatted_like_created_at(staff_client):
     application = _submitted()
-    assert application.form_progress is not None
-    application.form_progress.completed_time = datetime(
-        2026, 10, 5, 19, 29, 6, 975164, tzinfo=UTC
-    )
-    application.form_progress.save()
+    application.submitted_at = datetime(2026, 10, 5, 19, 29, 6, 975164, tzinfo=UTC)
+    application.save(update_fields=["submitted_at"])
 
     response = staff_client.get(reverse(CHANGE, args=[application.pk]))
 

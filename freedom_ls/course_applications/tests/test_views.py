@@ -59,6 +59,8 @@ from freedom_ls.course_applications.models import (
     CourseApplication,
     claim_link_max_age,
 )
+from freedom_ls.course_applications.queries import organisation_for_new_application
+from freedom_ls.course_applications.transitions import submit_application
 from freedom_ls.course_applications.views import (
     _details_in_flight_key,
     _start_application,
@@ -185,6 +187,40 @@ class TestApplyViewGetExistingApplication:
 @pytest.mark.django_db
 class TestApplyViewPost:
     """POST /apply/<slug>/ — creates application and redirects to status."""
+
+    def test_post_for_a_no_form_course_creates_a_submitted_application(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        course = CourseFactory()
+        client.force_login(user)
+
+        with time_machine.travel("2026-03-01 10:00:00+00:00", tick=False):
+            client.post(
+                reverse(
+                    "course_applications:apply", kwargs={"course_slug": course.slug}
+                )
+            )
+
+        app = CourseApplication.objects.get(user=user, course=course)
+        assert app.state == CourseApplication.State.SUBMITTED
+        assert app.submitted_at is not None
+        assert app.organisation == organisation_for_new_application(course)
+
+    def test_post_for_a_form_course_creates_a_draft_application(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        course, _form = gated_course_with_form()
+        client.force_login(user)
+
+        client.post(
+            reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+        )
+
+        app = CourseApplication.objects.get(user=user, course=course)
+        assert app.state == CourseApplication.State.DRAFT
+        assert app.submitted_at is None
 
     def test_post_creates_application(self, client, mock_site_context):
         """POST apply creates one CourseApplication for the learner."""
@@ -1042,8 +1078,70 @@ class TestCheckYourAnswers:
         notices = [str(m) for m in get_messages(response.wsgi_request)]
         assert notices == [
             f"Your application for {course.title} has been submitted "
-            "and is pending review."
+            "and is waiting for review."
         ]
+
+    def test_submitting_leaves_the_application_submitted(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _applied(client, course)
+        name = _questions_on(form, 1)[0]
+        client.post(_page_url(app, 1), {f"question_{name.id}": "Ada"})
+
+        client.post(_check_url(app))
+
+        app.refresh_from_db()
+        assert app.state == CourseApplication.State.SUBMITTED
+        assert app.submitted_at is not None
+
+    def test_posting_for_an_application_that_is_not_a_draft_changes_nothing(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+        CourseApplication.objects.filter(pk=app.pk).update(
+            state=CourseApplication.State.WITHDRAWN,
+            withdrawn_at=timezone.now(),
+        )
+
+        response = client.post(_check_url(app))
+
+        app.refresh_from_db()
+        app.form_progress.refresh_from_db()
+        assert response["Location"] == reverse(
+            "course_applications:status", kwargs={"pk": app.pk}
+        )
+        assert app.state == CourseApplication.State.WITHDRAWN
+        assert app.form_progress.completed_time is None
+
+    def test_losing_a_race_to_submit_leaves_the_sitting_open(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _applied(client, course)
+        name = _questions_on(form, 1)[0]
+        client.post(_page_url(app, 1), {f"question_{name.id}": "Ada"})
+        real_submit = submit_application
+
+        def withdraw_then_submit(application):
+            CourseApplication.objects.filter(pk=application.pk).update(
+                state=CourseApplication.State.WITHDRAWN,
+                withdrawn_at=timezone.now(),
+            )
+            return real_submit(application)
+
+        with patch(
+            "freedom_ls.course_applications.views.submit_application",
+            side_effect=withdraw_then_submit,
+        ):
+            response = client.post(_check_url(app))
+
+        app.form_progress.refresh_from_db()
+        assert response["Location"] == reverse(
+            "course_applications:status", kwargs={"pk": app.pk}
+        )
+        assert app.form_progress.completed_time is None
 
     def test_a_blocked_submission_says_nothing_about_success(
         self, client, mock_site_context
@@ -2782,7 +2880,12 @@ def test_overlapping_starts_of_one_application_make_one_sitting(mock_site_contex
     commit, and each thread opens its own connection."""
     site = mock_site_context
     course, _form = gated_course_with_form()
-    application = CourseApplicationFactory(anonymous=True, course=course)
+    application = CourseApplicationFactory(
+        anonymous=True,
+        course=course,
+        state=CourseApplication.State.DRAFT,
+        submitted_at=None,
+    )
     applicant = application.anonymous_applicant
     first_holds_the_lock = threading.Event()
     original_create = FormProgress.objects.create
@@ -3232,6 +3335,9 @@ def _draft_application():
     _stamp_consent(application.anonymous_applicant)
     application.form_progress.completed_time = None
     application.form_progress.save(update_fields=["completed_time"])
+    application.state = CourseApplication.State.DRAFT
+    application.submitted_at = None
+    application.save(update_fields=["state", "submitted_at"])
     return application
 
 

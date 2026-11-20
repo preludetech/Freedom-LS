@@ -27,6 +27,7 @@ from freedom_ls.course_applications.models import (
     CourseApplication,
     claim_link_max_age,
 )
+from freedom_ls.course_applications.transitions import submit_application
 
 
 @pytest.mark.django_db
@@ -155,18 +156,17 @@ class TestIsSubmitted:
             user=user, form_progress=FormProgressFactory(user=user, form=form)
         )
         app.form_progress.complete()
+        submit_application(app)
 
         assert app.is_submitted is True
 
 
 @pytest.mark.django_db
 class TestSubmittedTime:
-    def test_an_application_with_no_sitting_was_submitted_when_created(
-        self, mock_site_context
-    ):
+    def test_a_submitted_application_reports_its_submitted_at(self, mock_site_context):
         app = CourseApplicationFactory()
 
-        assert app.submitted_time == app.created_at
+        assert app.submitted_time == app.submitted_at
 
     def test_an_open_sitting_has_no_submitted_time(self, mock_site_context):
         user = UserFactory()
@@ -184,8 +184,9 @@ class TestSubmittedTime:
             user=user, form_progress=FormProgressFactory(user=user)
         )
         app.form_progress.complete()
+        submit_application(app)
 
-        assert app.submitted_time == app.form_progress.completed_time
+        assert app.submitted_time == app.submitted_at
         assert app.submitted_time is not None
 
 
@@ -309,3 +310,112 @@ def test_a_signed_in_applicants_application_has_no_unverified_applicant(
     application = CourseApplicationFactory()
 
     assert application.unverified_applicant is None
+
+
+State = CourseApplication.State
+
+
+@pytest.mark.django_db
+class TestStateProperties:
+    def test_is_submitted_is_false_for_a_withdrawn_draft(self, mock_site_context):
+        application = CourseApplicationFactory(withdrawn=True, submitted_at=None)
+
+        assert application.is_submitted is False
+
+    def test_is_submitted_is_true_for_an_application_withdrawn_after_submitting(
+        self, mock_site_context
+    ):
+        application = CourseApplicationFactory(withdrawn=True)
+
+        assert application.is_submitted is True
+
+    def test_submitted_time_is_submitted_at(self, mock_site_context):
+        application = CourseApplicationFactory()
+
+        assert application.submitted_time == application.submitted_at
+
+    @pytest.mark.parametrize(
+        ("state", "expected"),
+        [
+            (State.DRAFT, True),
+            (State.SUBMITTED, True),
+            (State.APPROVED, False),
+            (State.REJECTED, False),
+            (State.WITHDRAWN, False),
+        ],
+    )
+    def test_is_open_follows_the_state(self, state, expected):
+        assert CourseApplication(state=state).is_open is expected
+
+
+@pytest.mark.django_db
+class TestActiveApplicationConstraint:
+    def test_a_second_active_application_raises_integrity_error_naming_the_constraint(
+        self, mock_site_context
+    ):
+        user = UserFactory()
+        course = CourseFactory()
+        CourseApplicationFactory(user=user, course=course, approved=True)
+
+        with pytest.raises(
+            IntegrityError, match="unique_active_application_per_site_user_course"
+        ):
+            CourseApplicationFactory(user=user, course=course)
+
+    @pytest.mark.parametrize("closed", ["rejected", "withdrawn"])
+    def test_a_new_application_beside_a_closed_one_is_allowed(
+        self, mock_site_context, closed
+    ):
+        user = UserFactory()
+        course = CourseFactory()
+        CourseApplicationFactory(user=user, course=course, **{closed: True})
+
+        second = CourseApplicationFactory(user=user, course=course)
+
+        assert second.pk is not None
+
+
+@pytest.mark.django_db
+class TestStateCheckConstraints:
+    @pytest.mark.parametrize(
+        ("constraint", "fields"),
+        [
+            (
+                "courseapp_submitted_at_matches_state",
+                {"state": State.SUBMITTED, "submitted_at": None},
+            ),
+            (
+                "courseapp_decided_at_matches_state",
+                {"state": State.APPROVED, "decided_at": None},
+            ),
+            (
+                "courseapp_decided_at_matches_state",
+                {"state": State.DRAFT, "submitted_at": None, "decided_at": "now"},
+            ),
+            (
+                "courseapp_withdrawn_at_matches_state",
+                {"state": State.WITHDRAWN, "withdrawn_at": None},
+            ),
+            (
+                "courseapp_withdrawn_at_matches_state",
+                {"state": State.DRAFT, "submitted_at": None, "withdrawn_at": "now"},
+            ),
+            (
+                "courseapp_rejection_message_matches_state",
+                {"state": State.REJECTED, "decided_at": "now", "rejection_message": ""},
+            ),
+            (
+                "courseapp_rejection_message_matches_state",
+                {"state": State.SUBMITTED, "rejection_message": "No."},
+            ),
+        ],
+    )
+    def test_a_row_that_disagrees_with_its_state_is_refused(
+        self, mock_site_context, constraint, fields
+    ):
+        fields = {
+            name: timezone.now() if value == "now" else value
+            for name, value in fields.items()
+        }
+        with pytest.raises(IntegrityError, match=constraint):
+            CourseApplicationFactory(**fields)

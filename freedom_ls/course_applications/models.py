@@ -1,10 +1,12 @@
 """Course application submission model.
 
-Deliberately minimal and standalone. Application review will later add a state
-machine, transitions, notes, signals, and permissions, and will swap the plain
-unique constraint for an active-state partial index. An application holds its
-own sitting of the course's application form; the form and the answers
-themselves live in form_engine.
+A CourseApplication carries its state as a `TextChoices` field. Only the
+functions in `transitions.py` change it: they check the allowed moves in
+`ALLOWED_FROM`, and approve and reject are audited through `audit_log`.
+Nothing changes state by signal or by direct assignment. A partial unique
+constraint allows one active application per account and course. An
+application holds its own sitting of the course's application form; the form
+and the answers themselves live in form_engine.
 """
 
 from __future__ import annotations
@@ -15,6 +17,7 @@ from allauth.account import app_settings as allauth_account_settings
 
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 
 from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
@@ -81,24 +84,40 @@ class AnonymousApplicant(SiteAwareModel, TimestampedModel):
         return sent_at is not None and sent_at > timezone.now() - claim_link_max_age()
 
 
+REJECTION_MESSAGE_MAX_LENGTH = 2000
+
+
+def _set_exactly_when(field: str, states: list[str]) -> Q:
+    """A check condition: `field` is set when the state is one of `states` and
+    null otherwise."""
+    return Q(state__in=states, **{f"{field}__isnull": False}) | (
+        ~Q(state__in=states) & Q(**{f"{field}__isnull": True})
+    )
+
+
 class CourseApplication(SiteAwareModel):
     """A learner's request to access an application-gated course.
 
     Extends SiteAwareModel (UUID pk + site FK). Site isolation is automatic
     via SiteAwareManager — never filter on site_id manually.
 
-    NOTE: when application review lands, this model gains `state = FSMField(protected=True)`, the
-      submit/withdraw/pick_up/request_changes/resubmit/approve/reject transitions,
-      submitted_at/decided_at/decided_by, the view_application/change_application permissions,
-      ApplicationNote + ApplicationStateTransition, the application_state_changed signal, and the
-      active-state PARTIAL unique index that REPLACES the plain constraint below.
-    Do not architect these away — leave this model standalone and additive.
+    `state` is changed only by the functions in `transitions.py`. The timestamps
+    are written by those functions and agree with the state, which the check
+    constraints enforce. `organisation` is the organisation that reviews the
+    application.
 
     `form_progress` is the applicant's own sitting of the form the course named
     when they applied, null when the course asks for no form. The form is read
     back off that sitting, so it survives the course being re-pointed at another
     one.
     """
+
+    class State(models.TextChoices):
+        DRAFT = "draft", "Not submitted"
+        SUBMITTED = "submitted", "Waiting for review"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Not approved"
+        WITHDRAWN = "withdrawn", "Withdrawn"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -130,19 +149,53 @@ class CourseApplication(SiteAwareModel):
         on_delete=models.RESTRICT,
         related_name="course_application",
     )
+    state = models.CharField(max_length=20, choices=State.choices, default=State.DRAFT)
+    organisation = models.ForeignKey(
+        "freedom_ls_organisations.Organisation",
+        on_delete=models.PROTECT,
+        related_name="course_applications",
+    )
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    # Approve and reject share it; the state says which decision it was.
+    decided_at = models.DateTimeField(null=True, blank=True)
+    withdrawn_at = models.DateTimeField(null=True, blank=True)
+    rejection_message = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         constraints = [
+            # One active application per account per course, however it began.
+            # A claim or a login that would make a second resolves it first
+            # (see claims.attach_to_user). Rows with no user are unverified
+            # applications and never collide. The states literal repeats
+            # ACTIVE_STATES: a class body cannot see `State` from `Meta`.
             models.UniqueConstraint(
                 fields=["site", "user", "course"],
-                name="unique_application_per_site_user_course",
-                # One application per account per course, however it began.
-                # A claim or a login that would make a second resolves it
-                # first (see claims.attach_to_user). Rows with no user are
-                # unverified applications and never collide.
-            )
+                condition=Q(state__in=["draft", "submitted", "approved"]),
+                name="unique_active_application_per_site_user_course",
+            ),
+            # A row that was ever submitted has a submitted_at; a withdrawn
+            # draft has none.
+            models.CheckConstraint(
+                condition=~Q(state__in=["submitted", "approved", "rejected"])
+                | Q(submitted_at__isnull=False),
+                name="courseapp_submitted_at_matches_state",
+            ),
+            models.CheckConstraint(
+                condition=_set_exactly_when("decided_at", ["approved", "rejected"]),
+                name="courseapp_decided_at_matches_state",
+            ),
+            models.CheckConstraint(
+                condition=_set_exactly_when("withdrawn_at", ["withdrawn"]),
+                name="courseapp_withdrawn_at_matches_state",
+            ),
+            # A blank text field compares with "" rather than null.
+            models.CheckConstraint(
+                condition=(Q(state="rejected") & ~Q(rejection_message=""))
+                | (~Q(state="rejected") & Q(rejection_message="")),
+                name="courseapp_rejection_message_matches_state",
+            ),
         ]
         indexes = [
             # The API pages a site's applications by (updated_at, id) and
@@ -164,23 +217,19 @@ class CourseApplication(SiteAwareModel):
 
     @property
     def is_submitted(self) -> bool:
-        """Whether the applicant has actually asked for a place yet.
-
-        An application with no sitting was submitted the moment it was created.
-        One with a sitting is a draft until the sitting is completed; that stamp
-        is what separates draft from submitted until review adds `state`.
-        """
-        return (
-            self.form_progress is None or self.form_progress.completed_time is not None
-        )
+        """Whether the applicant has ever submitted: true for a withdrawn
+        application only if it was submitted before it was withdrawn."""
+        return self.submitted_at is not None
 
     @property
     def submitted_time(self) -> datetime | None:
-        """When the applicant asked for a place; None while the sitting is a draft."""
-        # An application with no sitting was submitted the moment it was created.
-        if self.form_progress is None:
-            return self.created_at
-        return self.form_progress.completed_time
+        """Alias of `submitted_at`, kept because the API serialises it under this name."""
+        return self.submitted_at
+
+    @property
+    def is_open(self) -> bool:
+        """Whether the application is still waiting on the applicant or a reviewer."""
+        return self.state in OPEN_STATES
 
     @property
     def is_email_verified(self) -> bool:
@@ -216,3 +265,20 @@ class CourseApplication(SiteAwareModel):
         else:
             return ""
         return f"{first} {last}".strip()
+
+
+OPEN_STATES = frozenset(
+    {CourseApplication.State.DRAFT, CourseApplication.State.SUBMITTED}
+)
+# The unique constraint's condition repeats this set, so changing it needs a
+# migration.
+ACTIVE_STATES = frozenset(
+    {
+        CourseApplication.State.DRAFT,
+        CourseApplication.State.SUBMITTED,
+        CourseApplication.State.APPROVED,
+    }
+)
+CLOSED_STATES = frozenset(
+    {CourseApplication.State.REJECTED, CourseApplication.State.WITHDRAWN}
+)

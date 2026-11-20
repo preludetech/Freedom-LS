@@ -28,6 +28,7 @@ from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.course_applications.transitions import submit_application
 from freedom_ls.form_engine.factories import (
     FormProgressFactory,
     QuestionAnswerFactory,
@@ -129,6 +130,8 @@ def _ensure_application(
             answer.text_answer = text
             answer.save(update_fields=["text_answer"])
     sitting_or_none.complete()
+    if application.state == CourseApplication.State.DRAFT:
+        submit_application(application)
     return cast(
         CourseApplication,
         CourseApplication.objects.select_related("form_progress").get(

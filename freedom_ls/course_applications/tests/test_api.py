@@ -170,7 +170,9 @@ def test_a_draft_is_not_submitted_and_has_no_submitted_time(client, auth):
     assert row["submitted_time"] is None
 
 
-def test_an_application_with_no_sitting_was_submitted_when_created(client, auth):
+def test_a_submitted_application_serialises_submitted_at_as_submitted_time(
+    client, auth
+):
     application = CourseApplicationFactory()
 
     row = client.get(
@@ -178,7 +180,7 @@ def test_an_application_with_no_sitting_was_submitted_when_created(client, auth)
     ).json()
 
     assert row["is_submitted"] is True
-    assert row["submitted_time"] == row["created_at"]
+    assert datetime.fromisoformat(row["submitted_time"]) == application.submitted_at
 
 
 def test_answers_are_an_empty_list_when_there_is_no_sitting(client, auth):

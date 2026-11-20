@@ -83,7 +83,7 @@
                 <c-button href="{% url 'course_applications:status' pk=application.pk %}">
                     Your application
                 </c-button>
-            {% else %}
+            {% elif can_submit %}
                 <form method="post">
                     {% csrf_token %}
                     <c-button type="submit">Submit application</c-button>

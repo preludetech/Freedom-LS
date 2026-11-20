@@ -15,6 +15,8 @@ if app_not_installed("freedom_ls.course_applications"):
 
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.form_engine.factories import FormProgressFactory
+from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.utils import get_default_organisation
 
 
 @pytest.mark.django_db
@@ -104,3 +106,32 @@ class TestGetActiveApplications:
         second = CourseApplicationFactory(user=user)
 
         assert set(get_active_applications(user)) == {first, second}
+
+
+@pytest.mark.django_db
+class TestOrganisationForNewApplication:
+    def test_a_course_with_one_owning_organisation_returns_it(self, mock_site_context):
+        from freedom_ls.course_applications.queries import (
+            organisation_for_new_application,
+        )
+
+        course = CourseFactory()
+        owner = OrganisationFactory()
+        course.organisations.add(owner)
+
+        assert organisation_for_new_application(course) == owner
+
+    @pytest.mark.parametrize("owner_count", [0, 2])
+    def test_a_course_without_exactly_one_owner_returns_the_site_default(
+        self, mock_site_context, owner_count
+    ):
+        from freedom_ls.course_applications.queries import (
+            organisation_for_new_application,
+        )
+
+        course = CourseFactory()
+        course.organisations.add(*[OrganisationFactory() for _ in range(owner_count)])
+
+        assert organisation_for_new_application(course) == get_default_organisation(
+            course.site
+        )

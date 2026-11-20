@@ -13,7 +13,7 @@ from allauth.core import ratelimit
 from django.contrib import messages
 from django.contrib.sites.models import Site
 from django.core.cache import cache
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import QuerySet, prefetch_related_objects
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -55,12 +55,21 @@ from freedom_ls.course_applications.claims import (
     update_applicant_email,
 )
 from freedom_ls.course_applications.emails import send_application_claim_email
+from freedom_ls.course_applications.exceptions import ApplicationStateError
 from freedom_ls.course_applications.forms import (
     ApplicantDetailsForm,
     ApplicantEmailForm,
 )
-from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
-from freedom_ls.course_applications.queries import get_application_for_course
+from freedom_ls.course_applications.models import (
+    ACTIVE_STATES,
+    AnonymousApplicant,
+    CourseApplication,
+)
+from freedom_ls.course_applications.queries import (
+    get_application_for_course,
+    organisation_for_new_application,
+)
+from freedom_ls.course_applications.transitions import submit_application
 from freedom_ls.form_engine.conditions import current_path, sitting_path
 from freedom_ls.form_engine.models import Form, FormProgress
 from freedom_ls.form_engine.page_flow import (
@@ -84,6 +93,34 @@ from freedom_ls.referral_tracking.models import ConversionKind
 from freedom_ls.site_aware_models.models import get_cached_site
 
 
+def _active_or_new_application(
+    course: Course, user: User
+) -> tuple[CourseApplication, bool]:
+    """The user's active application to `course`, created if they have none.
+
+    Two racing creates converge: the loser hits the unique constraint inside a
+    savepoint and re-reads the winner's row.
+    """
+    active = CourseApplication.objects.filter(
+        user=user, course=course, state__in=ACTIVE_STATES
+    )
+    existing = active.first()
+    if existing is not None:
+        return existing, False
+    try:
+        with transaction.atomic():
+            return (
+                CourseApplication.objects.create(
+                    user=user,
+                    course=course,
+                    organisation=organisation_for_new_application(course),
+                ),
+                True,
+            )
+    except IntegrityError:
+        return active.get(), False
+
+
 def _start_application(
     course: Course,
     *,
@@ -94,29 +131,34 @@ def _start_application(
     and whether this call created it.
 
     The applicant is a signed-in user or an anonymous applicant, never both.
+    An account holds at most one active application per course.
 
     A course that names an application form gets a sitting of that form created
-    alongside the application; the sitting is a draft, not a submission.
+    alongside the application; the sitting is a draft, not a submission. A
+    course with no form has nothing to fill in, so creating the application is
+    the request itself and it is submitted at once.
     """
     with transaction.atomic():
-        # get_or_create is race-safe (savepoint + IntegrityError catch +
+        # Both creation paths are race-safe (savepoint + IntegrityError catch +
         # re-get), so concurrent requests that both pass the existing-application
-        # check still converge on one row. An account holds one application
-        # per course however it began, so a user's lookup is by course alone.
+        # check still converge on one row.
         app: CourseApplication
-        app, created = CourseApplication.objects.get_or_create(
-            course=course,
-            **(
-                {"user": user}
-                if user is not None
-                else {"anonymous_applicant": anonymous_applicant}
-            ),
-        )
+        if user is None:
+            app, created = CourseApplication.objects.get_or_create(
+                course=course,
+                anonymous_applicant=anonymous_applicant,
+                defaults={"organisation": organisation_for_new_application(course)},
+            )
+        else:
+            app, created = _active_or_new_application(course, user)
         # Locked before the sitting check: without it two overlapping calls
         # both see no sitting, each creates one, and the loser's sitting is
         # left with no user and no application to reach it by.
         app = CourseApplication.objects.select_for_update().get(pk=app.pk)
-        if course.application_form is not None and app.form_progress is None:
+        if course.application_form is None:
+            if app.state == CourseApplication.State.DRAFT:
+                submit_application(app)
+        elif app.form_progress is None and app.state == CourseApplication.State.DRAFT:
             app.form_progress = FormProgress.objects.create(
                 user=user, form=course.application_form
             )
@@ -827,7 +869,8 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
     if isinstance(owned, HttpResponse):
         return owned
     app, _form, form_progress = owned
-    submitted = form_progress.completed_time is not None
+    submitted = app.is_submitted
+    can_submit = app.state == CourseApplication.State.DRAFT
     required_answers_error = ""
 
     ensure_served_paper(form_progress)
@@ -842,10 +885,17 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
         {answer.question_id: answer for answer in form_progress.answers.all()},
     )
 
-    if request.method == "POST" and not submitted:
+    if request.method == "POST" and can_submit:
         unanswered = unanswered_required_in_form(form_progress, path)
         if not unanswered:
-            form_progress.complete()
+            try:
+                with transaction.atomic():
+                    # Submitting first: a submit that loses a race raises
+                    # before the sitting is touched and the block rolls back.
+                    submit_application(app)
+                    form_progress.complete()
+            except ApplicationStateError:
+                return redirect("course_applications:status", pk=app.pk)
             record_application_submitted(request, app.course)
             if not app.is_email_verified:
                 if app.anonymous_applicant is not None:
@@ -856,7 +906,7 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
             messages.success(
                 request,
                 f"Your application for {app.course.title} has been submitted "
-                "and is pending review.",
+                "and is waiting for review.",
             )
             return redirect("learner_interface:dashboard")
         required_answers_error = unanswered_required_message(unanswered, path)
@@ -890,6 +940,7 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
             "course": app.course,
             "sections": sections,
             "submitted": submitted,
+            "can_submit": can_submit,
             "required_answers_error": required_answers_error,
         },
         status=422 if required_answers_error else 200,

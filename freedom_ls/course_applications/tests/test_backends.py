@@ -31,6 +31,7 @@ from freedom_ls.course_applications.models import (
     AnonymousApplicant,
     CourseApplication,
 )
+from freedom_ls.course_applications.transitions import submit_application
 
 
 @pytest.mark.django_db
@@ -471,6 +472,7 @@ class TestDashboardPartialRendering:
     def test_a_submitted_application_is_pending_review(self, mock_site_context):
         app = _application_with_sitting()
         app.form_progress.complete()
+        submit_application(app)
 
         rendered = _render_panel(app)
 
@@ -480,6 +482,7 @@ class TestDashboardPartialRendering:
     def test_a_submitted_row_offers_view_my_application(self, mock_site_context):
         app = _application_with_sitting()
         app.form_progress.complete()
+        submit_application(app)
 
         rendered = _render_panel(app)
 

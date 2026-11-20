@@ -234,7 +234,13 @@ def _ensure_application(
         completed_time=created_at + timedelta(minutes=20) if seeded.submitted else None,
     )
     CourseApplication._base_manager.filter(pk=application.pk).update(
-        created_at=created_at
+        created_at=created_at,
+        state=(
+            CourseApplication.State.SUBMITTED
+            if seeded.submitted
+            else CourseApplication.State.DRAFT
+        ),
+        submitted_at=created_at + timedelta(minutes=20) if seeded.submitted else None,
     )
     return application
 

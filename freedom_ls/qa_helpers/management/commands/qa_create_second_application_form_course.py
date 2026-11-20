@@ -25,6 +25,7 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseCategory
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.course_applications.transitions import submit_application
 from freedom_ls.form_engine.enums import QuestionType
 from freedom_ls.form_engine.exports import answer_cell
 from freedom_ls.form_engine.factories import (
@@ -171,6 +172,8 @@ def _get_or_create_application(
             answer.text_answer = answer_text
             answer.save(update_fields=["text_answer"])
     sitting.complete()
+    if application.state == CourseApplication.State.DRAFT:
+        submit_application(application)
     return cast(
         CourseApplication,
         CourseApplication.objects.select_related("form_progress").get(

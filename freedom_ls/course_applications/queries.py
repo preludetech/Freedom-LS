@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from freedom_ls.organisations.utils import get_default_organisation
+
 if TYPE_CHECKING:
     from django.contrib.auth.models import AnonymousUser
     from django.db.models import QuerySet
@@ -16,8 +18,22 @@ if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
     from freedom_ls.course_applications.models import CourseApplication
+    from freedom_ls.organisations.models import Organisation
 
     type RequestUser = User | AnonymousUser
+
+
+def organisation_for_new_application(course: Course) -> Organisation:
+    """The organisation that reviews an application to `course`.
+
+    The course's owner when it has exactly one; otherwise the site default.
+    Not `Course.single_organisation()`, which returns None for the default
+    organisation.
+    """
+    owners = list(course.organisations.all()[:2])
+    if len(owners) == 1:
+        return owners[0]
+    return get_default_organisation(course.site)
 
 
 def get_application_for_course(

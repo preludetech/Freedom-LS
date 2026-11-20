@@ -137,7 +137,7 @@ def test_a_draft_is_not_submitted_and_has_no_submitted_time(staff_client):
     assert row["submitted_time"] == ""
 
 
-def test_an_application_with_no_sitting_was_submitted_when_it_was_created(
+def test_a_submitted_application_exports_its_submitted_at_as_submitted_time(
     staff_client,
 ):
     application = CourseApplicationFactory()
@@ -145,7 +145,7 @@ def test_an_application_with_no_sitting_was_submitted_when_it_was_created(
     row = _export_row(staff_client, application)
 
     assert row["is_submitted"] == "TRUE"
-    assert row["submitted_time"] == application.created_at.isoformat()
+    assert row["submitted_time"] == application.submitted_at.isoformat()
 
 
 def test_a_completed_sitting_writes_its_completed_time(staff_client):
