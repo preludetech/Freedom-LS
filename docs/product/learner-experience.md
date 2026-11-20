@@ -1,6 +1,6 @@
 # Learner Experience
 
-_Last updated: 2026-11-13_
+_Last updated: 2026-11-20_
 
 ## Summary
 
@@ -12,7 +12,7 @@ _Last updated: 2026-11-13_
 - **"Apply now" needs no account.** An anonymous visitor gives their name and email and is emailed a link straight away; they complete and submit the application without a password, and finish their account from that link. The same link lets them pick up an unfinished application on another device. See [applying without an account](#applying-to-a-course).
 - Independently of access type, a course also has a visibility state — published, coming soon, or hidden — that governs whether it's discoverable and enrollable; see [Course Visibility](#course-visibility-coming-soon--hidden) below.
 - The course player unlocks items in sequence and resumes automatically where the learner left off.
-- Multi-page forms, quiz feedback (pass/fail, score, optional reveal of incorrect answers), and a course finish page are all built in.
+- Multi-page forms, quiz feedback (pass/fail, score, optional reveal of incorrect answers), and a course finish page are all built in. A quiz can be set to shuffle its pages, questions and answer options, with a different order for each learner and each re-sit.
 - A form, whether an application form or one in a course, can show a page, a question or a block of text only to learners whose earlier answers call for it. A learner sees and is counted against only what applies to them. See [Multi-Page Forms](#multi-page-forms).
 - A form question can ask for text, a number, a date, a time, an email address, a URL, a phone number, a file upload, or a choice made from radio buttons, checkboxes or a dropdown. An answer that does not fit its question's type is refused at submission, with the reason shown on the question itself, rather than stored as typed.
 - A registered learner sees each deadline as upcoming, due today, missed or closed, in the course player and on the dashboard card; the course detail page shows only the course's time limit as a length, the same for everyone. By default nothing is enforced, but staff can switch the mark off, close incomplete items after their deadline, and end course access after the time limit, each after an optional grace window, while the learner's progress is kept. Staff can also pause a learner's course and extend a learner's deadlines. See [Deadlines](#deadlines).
@@ -283,7 +283,7 @@ Scores are frozen when an attempt is submitted and are never recalculated, so a 
 
 A survey or other unscored form confirms that answers were recorded, and does not promise marking that is not coming.
 
-Learners can attempt a quiz more than once.
+Learners can attempt a quiz more than once. On a quiz the author has set to shuffle, each learner gets their own order of pages, questions and answer options, and every re-sit gets a new one, so learners cannot compare answers by position. The order is fixed once the sitting starts: it stays the same through reloads, going back and forth, and resuming later. Questions are numbered in the order that learner sees them, and the review of incorrect answers uses those same numbers. The learner is not told a quiz is shuffled, and a quiz that is not set to shuffle is unchanged. See [content editing workflow](./content-editing-workflow.md#course-frontmatter-options) for how an author turns shuffling on.
 
 ## Course Finish Page
 
