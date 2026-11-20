@@ -24,7 +24,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
-from freedom_ls.educator_interface.reporting import gathered_figures
+from freedom_ls.educator_interface.panels.dashboard.panels import gathered_figures
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -604,7 +604,7 @@ def test_a_dashboard_row_whose_learner_cannot_be_resolved_shows_initials(
         learner__user=UserFactory(with_profile_picture=True),
     )
     monkeypatch.setattr(
-        "freedom_ls.educator_interface.reporting.learner_avatars",
+        "freedom_ls.educator_interface.panels.dashboard.panels.learner_avatars",
         lambda learner_ids: {},
     )
 

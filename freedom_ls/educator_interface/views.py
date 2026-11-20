@@ -162,6 +162,7 @@ from freedom_ls.educator_interface.panels.common.tables import (
     _learner_column,
     _registration_columns,
 )
+from freedom_ls.educator_interface.panels.dashboard.config import DashboardConfig
 from freedom_ls.educator_interface.paths import interface_path
 from freedom_ls.educator_interface.quick_views import (
     CohortQuickView,
@@ -172,7 +173,6 @@ from freedom_ls.educator_interface.reporting import (
     DOWNLOAD_COHORT_REPORT,
     CohortNeedsAttentionPanel,
     CohortReportStack,
-    DashboardPanel,
     LearnerCoursesPanel,
 )
 from freedom_ls.educator_interface.staff import staff_role_entries
@@ -242,7 +242,6 @@ from freedom_ls.panel_framework.tables import (
     TableQuery,
 )
 from freedom_ls.panel_framework.views import (
-    BaseViewConfig,
     InstanceView,
     ListViewConfig,
     NavGroup,
@@ -2480,13 +2479,6 @@ class CourseConfig(OrganisationSectionConfig, ListViewConfig):
             .exists()
         ):
             raise OrganisationScopeDenied
-
-
-class DashboardConfig(OrganisationSectionConfig, BaseViewConfig):
-    url_name = "dashboard"
-    menu_label = "Dashboard"
-    icon = "home"
-    panel = DashboardPanel
 
 
 class StaffDataTable(DataTable):
