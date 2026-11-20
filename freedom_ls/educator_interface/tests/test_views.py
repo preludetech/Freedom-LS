@@ -9217,6 +9217,43 @@ def test_a_bulk_run_entry_in_the_audit_log_shows_its_actors_picture() -> None:
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures("mock_site_context")
+def test_a_bulk_run_entry_by_the_runs_own_actor_names_them_without_a_second_avatar() -> (
+    None
+):
+    organisation = OrganisationFactory()
+    actor = cast(User, UserFactory(with_profile_picture=True))
+    learner = LearnerFactory(organisation=organisation)
+    run_id = uuid4()
+    record_entry(
+        action="learner.deactivated",
+        actor=actor,
+        target=learner,
+        target_label="Spring cohort",
+        organisation=organisation,
+        run_id=run_id,
+    )
+    record_run_summary(
+        action="bulk_action.completed",
+        run_id=run_id,
+        organisation=organisation,
+        actor=actor,
+        counts={"changed": 1, "skipped": 0, "failed": 0},
+    )
+
+    content = get_interface_page(
+        organisation, "audit-log", organisation_admin_viewer(organisation)
+    )
+
+    entries = lxml.html.fromstring(content).cssselect("dd ul.list-none > li")
+    assert entries
+    for entry in entries:
+        assert actor.display_name in entry.text_content()
+        assert entry.cssselect("[class*='panel-avatar-']") == []
+    assert actor.profile_picture_url in profile_picture_sources(content)
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("mock_site_context")
 def test_a_learners_history_tab_shows_the_actors_picture(
     staff_client: Client,
 ) -> None:

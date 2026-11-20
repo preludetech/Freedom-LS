@@ -1,6 +1,7 @@
 {% comment %}
 What a compact audit row leaves out: the full description, the reason, and
-for a bulk run summary its entries. Every value is user-derived text, so
+for a bulk run summary its entries. An entry by the summary's own actor names
+them without an avatar, since the summary row already draws it. Every value is user-derived text, so
 nothing here is marked safe.
 {% endcomment %}
 <c-panel-definition-list layout="inline">
@@ -15,7 +16,11 @@ nothing here is marked safe.
             <ul class="ml-0 list-none space-y-1">
                 {% for entry in object.run_entries %}
                     <li class="flex flex-wrap items-center gap-2">
-                        {% include "educator_interface/partials/audit_person.html" with label=entry.actor_label user_pk=entry.actor_id picture_url=entry.actor_picture_url %}
+                        {% if entry.actor_id == object.actor_id and entry.actor_label == object.actor_label %}
+                            {% include "educator_interface/partials/audit_person.html" with label=entry.actor_label user_pk=entry.actor_id picture_url=entry.actor_picture_url avatar_hidden=True %}
+                        {% else %}
+                            {% include "educator_interface/partials/audit_person.html" with label=entry.actor_label user_pk=entry.actor_id picture_url=entry.actor_picture_url %}
+                        {% endif %}
                         <span class="text-muted">{{ entry.label }}</span>
                         {% include "educator_interface/data-table-cells/audit_target.html" with object=entry %}
                     </li>

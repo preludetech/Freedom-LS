@@ -1,4 +1,4 @@
-<c-vars user="" name="" user_id="" initials="" secondary="" size="md" name_hidden="" fallback_icon="" picture_url="" />
+<c-vars user="" name="" user_id="" initials="" secondary="" size="md" name_hidden="" avatar_hidden="" fallback_icon="" picture_url="" />
 
 {% load panel_tags %}
 
@@ -32,6 +32,10 @@ Attributes:
                subject rather than two). Read through the `flag` filter,
                so "False", "false", "0", "none" and an empty string all
                count as off.
+  avatar_hidden  Off (default). On: the circle is not rendered and the name
+               stands alone, for a nested row naming the same person as the
+               row it expands (an audit run's entries under the run summary),
+               so the person's avatar is drawn once. Read through `flag`.
 
   picture_url  A plain URL string the caller resolves (default none: initials
                only). Pass it bound (`:picture_url="..."`), because a quoted
@@ -56,8 +60,9 @@ this component.
 
 {% person_display user as person %}
 {% with person_name=person.name|default:name person_secondary=person.secondary|default:secondary person_id=person.id|default:user_id %}
-<div class="{% if name_hidden|flag %}flex gap-3{% else %}grid grid-cols-[auto_minmax(0,1fr)] gap-x-3{% endif %} {% if size == "sm" %}items-start{% else %}items-center{% endif %}" {{ attrs }}>
-    {% if person_id or not fallback_icon %}
+<div class="{% if name_hidden|flag %}flex gap-3{% elif avatar_hidden|flag %}flex flex-col{% else %}grid grid-cols-[auto_minmax(0,1fr)] gap-x-3{% endif %} {% if size == "sm" %}items-start{% else %}items-center{% endif %}" {{ attrs }}>
+    {% if avatar_hidden|flag %}
+    {% elif person_id or not fallback_icon %}
         <style>@layer components {
     .panel-avatar-1 { background-color: color-mix(in oklab, var(--color-primary) 22%, var(--color-surface)); }
     .panel-avatar-2 { background-color: color-mix(in oklab, var(--color-secondary) 22%, var(--color-surface)); }
@@ -77,7 +82,7 @@ this component.
             <span class="block truncate">{{ person_name }}</span>
             {% if person_secondary %}<span class="block truncate text-sm font-normal text-muted">{{ person_secondary }}</span>{% endif %}
         </span>
-        {% if badges %}<span class="col-start-2 mt-1 flex flex-wrap gap-1 font-normal">{{ badges }}</span>{% endif %}
+        {% if badges %}<span class="{% if not avatar_hidden|flag %}col-start-2 {% endif %}mt-1 flex flex-wrap gap-1 font-normal">{{ badges }}</span>{% endif %}
     {% endif %}
 </div>
 {% endwith %}

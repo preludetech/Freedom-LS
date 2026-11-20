@@ -5,12 +5,13 @@ person is the same colour here as in the learner and member tables. A user
 that no longer exists (label but no pk) keeps the stored name beside a
 neutral circle; no label and no pk is the system. `picture_url` is the live
 user's picture, or None when they have none, and is passed bound so None never
-renders as text.
+renders as text. `avatar_hidden` drops the circle and keeps the name, for a
+line that repeats the person its row already shows.
 {% endcomment %}
 {% if user_pk %}
-    <c-panel-avatar-chip :name="label" :user_id="user_pk" :picture_url="picture_url" />
+    <c-panel-avatar-chip :name="label" :user_id="user_pk" :picture_url="picture_url" avatar_hidden="{{ avatar_hidden|default:'' }}" />
 {% elif label %}
-    <c-panel-avatar-chip :name="label" fallback_icon="user" />
+    <c-panel-avatar-chip :name="label" fallback_icon="user" avatar_hidden="{{ avatar_hidden|default:'' }}" />
 {% else %}
-    <c-panel-avatar-chip name="System" fallback_icon="settings" />
+    <c-panel-avatar-chip name="System" fallback_icon="settings" avatar_hidden="{{ avatar_hidden|default:'' }}" />
 {% endif %}

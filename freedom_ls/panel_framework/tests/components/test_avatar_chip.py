@@ -141,6 +141,25 @@ def test_name_hidden_false_string_shows_the_name() -> None:
     assert "Thandi Mokoena</span>" in html
 
 
+def test_avatar_hidden_renders_the_name_and_no_circle() -> None:
+    html = render_cotton(
+        '<c-panel-avatar-chip name="Thandi Mokoena" user_id="42" '
+        'picture_url="/media/me.webp" avatar_hidden="true" />'
+    )
+
+    assert "Thandi Mokoena</span>" in html
+    assert "panel-avatar-" not in html
+    assert "data-profile-picture" not in html
+
+
+def test_avatar_hidden_false_string_shows_the_circle() -> None:
+    html = render_cotton(
+        '<c-panel-avatar-chip name="Thandi Mokoena" user_id="42" avatar_hidden="False" />'
+    )
+
+    assert re.search(r'class="panel-avatar-\d', html)
+
+
 def test_badges_sit_in_the_name_column_under_the_name() -> None:
     html = render_cotton(
         '<c-panel-avatar-chip name="Thandi Mokoena" user_id="42" secondary="t@example.com">'

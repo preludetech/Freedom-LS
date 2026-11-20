@@ -233,6 +233,9 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
   resolves and passes bound (`:picture_url="user.profile_picture_url"`; a quoted `{{ }}` turns
   `None` into the text "None"). Empty shows the initials, which stay under the picture as the
   fallback when the image fails to load.
+- An avatar is drawn once per person per row group. A nested row naming the same person as the row
+  it expands keeps the name and drops the avatar: `<c-panel-avatar-chip avatar_hidden=True>`. The
+  avatar shows by default.
 - A row of figures is `<c-panel-stat-row>`, a grid at every width (two columns on a phone), so the
   labels line up.
 - A list of records in a panel is rows that share one shape: the name in `font-medium`, the
@@ -525,7 +528,8 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
 - A list of records in a panel has the same fields in the same places on every row, never
   dash-joined sentences; a row of figures lines its labels up in columns at every width; a person
   in a list row has a small name and a small avatar centred on the name's first line; a person's
-  badges sit on a line under the name and email, their left edge on the name's left edge.
+  badges sit on a line under the name and email, their left edge on the name's left edge; an
+  expanded row that names the parent row's person again shows the name with no second avatar.
 - A disclosure, filter chip or menu button shows the icon chevron, never the browser's triangle,
   and the chevron turns up while open; a group opened inside a popover draws no second box.
 - A confirmation shows as a modal over the page it came from, JavaScript on or off; body text in a
