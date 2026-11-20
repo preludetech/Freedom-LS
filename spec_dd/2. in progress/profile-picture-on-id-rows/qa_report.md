@@ -1,87 +1,76 @@
-# QA report: Profile picture on id-only rows
+# Frontend QA report: Profile picture on id-only rows
+
+Run 2026-11-20, base URL http://127.0.0.1:8408. Result: all tests passed, no bugs.
 
 ## Methodology
 
-Screenshots were collected into `spec_dd/2. in progress/profile-picture-on-id-rows/screenshots/` and every image referenced below sits there, beside this report. The run followed `3. frontend_qa.md` in a browser at desktop (1920), tablet (768) and mobile (375). The smoke gate passed, so no steps were skipped because of it.
+Screenshots were collected into `spec_dd/2. in progress/profile-picture-on-id-rows/screenshots/` and every image referenced below exists beside this report. Tests ran in a browser at desktop (1920), tablet (768) and mobile (375), inspecting the DOM for `img[data-profile-picture]`, `panel-avatar-N` classes, sideways scroll and `src="None"`.
 
 ## Diff scoping
 
-Class: **FULL**. Changed files that triggered it include `freedom_ls/audit_log/models.py`, `freedom_ls/educator_interface/avatars.py`, `reporting.py`, `views.py`, `templatetags/educator_tags.py`, the audit, dashboard and cohort-report templates, `freedom_ls/panel_framework/templates/cotton/panel-attention-row.html`, their tests, and the spec files in `spec_dd/2. in progress/profile-picture-on-id-rows/`. Nothing was skipped because of scoping: every pass ran (desktop, tablet, mobile).
+Class: **FULL**. Changed files that triggered it: `freedom_ls/educator_interface/templates/...`, `freedom_ls/panel_framework/templates/cotton/panel-attention-row.html`, `freedom_ls/educator_interface/views.py`, `freedom_ls/educator_interface/reporting.py`, `freedom_ls/educator_interface/avatars.py`, `freedom_ls/audit_log/models.py`, `freedom_ls/educator_interface/templatetags/educator_tags.py`. Nothing was skipped: all viewports and all tests ran.
 
 ## Smoke gate
 
-Outcome: **pass**. Pages loaded: `/` and `/educator/organisations/demodev/dashboard`. The first load of `/` returned 500 because the branch dev DB was empty (no DemoDev site). The data helper bootstrapped demo data, after which both pages loaded.
-
-## Results
-
-| Test | Title | Viewport | Result | Screenshot |
-|---|---|---|---|---|
-| 1 | Dashboard attention list | desktop | PASS | ![](screenshots/page-2026-11-19T22-06-12-024Z.png) |
-| 1 | Dashboard attention list | mobile | PASS | ![](screenshots/page-2026-11-19T22-10-15-575Z.png) |
-| 1-5 | Dashboard, cohort overview, report and audit log | tablet | PASS | ![](screenshots/page-2026-11-19T22-11-16-479Z.png) |
-| 2 | Avatar colour matches the learners table | desktop | PASS | none |
-| 3 | Cohort Needs attention card | desktop | PASS | ![](screenshots/page-2026-11-19T22-07-19-203Z.png) |
-| 4 | On-screen cohort report | desktop | PASS | ![](screenshots/page-2026-11-19T22-07-37-323Z.png) |
-| 4 | On-screen cohort report | mobile | PASS | ![](screenshots/page-2026-11-19T22-10-44-359Z.png) |
-| 5 | Audit log | desktop | PASS | ![](screenshots/page-2026-11-19T22-08-41-859Z.png) |
-| 5 | Audit log | mobile | PASS | ![](screenshots/page-2026-11-19T22-10-54-615Z.png) |
-| 6.1-6.2 | Pictures follow the live user (picture cleared) | desktop | PASS | ![](screenshots/page-2026-11-19T22-12-52-960Z.png) |
-| 6.3-6.4 | Pictures follow the live user (Learner row deleted) | desktop | **PARTIAL** (skipped) | none |
-| 7 | A picture that fails to load | desktop | PASS | ![](screenshots/element-2026-11-19T22-06-37-027Z.png) |
-
-Notes per test:
-
-- **Test 1 (desktop):** Pia shows `img[data-profile-picture]` with `alt=""` (24x24, loaded). Nadia and Gone Learner show initials alone. The avatar sits on the name's first line. The per-cohort detail and quick-view trigger are unchanged. The name link opens Pia's learner page, the quick view opens, and a reload keeps the picture. No `src=None`.
-- **Test 1 (mobile):** at 375 the picture is 24x24 with `object-fit: cover`, the trailing next icon shows, and there is no sideways scroll.
-- **Test 1-5 (tablet):** at 768 the dashboard, cohort overview, report (sticky Learner column holds at 49px when scrolled) and audit log table all show the right pictures. There is no `src=None`, no page sideways scroll and no probe flags. The audit table scrolls sideways inside its card at 768, which was already the case before this change.
-- **Test 2:** the `panel-avatar` slot matches the learners table: Nadia `panel-avatar-2`, Gone Learner `panel-avatar-3`, Pia `panel-avatar-4`. This held on the dashboard, the cohort Needs attention card and the learners table.
-- **Test 3:** Pia shows a picture, and Nadia and Gone Learner show initials. Badges are unchanged and there is no sideways scroll.
-- **Test 4 (desktop):** "Learners needing attention" and "Summary of learner progress" both show Pia's picture and initials for the others. After Refresh the pictures still show (2 imgs). The generated PDF was downloaded and `pdfimages` lists no images, so learners are named only.
-- **Test 4 (mobile):** at 375 the Learner column stays sticky when the summary table scrolls sideways (left stays 33px). The picture does not overlap the next column, and there is no page sideways scroll. The cohort overview at 375 also has no sideways scroll.
-- **Test 5 (desktop):** Ava to Tariq shows both pictures. Nadia to Pia shows Nadia's initials and Pia's picture. "Deleted Person" shows a neutral circle with a person icon. The System chip shows the settings icon. The bulk run detail shows Ava's picture on both run entries, with Pia's picture and Nadia's initials as targets. Sorting by Who and Target and filtering Who=Ava keep the pictures with the right people. Cohort P's History shows the same rules. Tariq's learner History tab has no Target column, because a learner's own history omits it by design. So step 5.9's "Tariq as Target" cannot apply there, and Ava's picture shows as Who.
-- **Test 5 (mobile):** the audit log cards at 375 show the same pictures and the same System and Deleted Person chips as the table. There is no sideways scroll.
-- **Test 6.1-6.2:** after Tariq's picture was cleared, the audit log shows him with TT initials on both entries naming him. There is no broken image and no `src=None`.
-- **Test 6.3-6.4 (PARTIAL):** not run. Deleting Gone Learner's `Learner` row needs its PROTECTed `CourseProgress` row deleted first, and the permission system blocked that delete in the data helper. A content reset or full wipe would destroy the scenario rather than create it. The data helper also found that deleting the Learner cascades its `CohortMembership`, whose signal clears the cohort's cached figures. So the row would normally drop rather than render from cache. The missing-Learner fallback is covered by unit tests that stub the resolver to return no avatar.
-- **Test 7:** pointing Pia's img at a 404 removes the img and leaves the PP initials in the circle. The only console error is that 404.
+Pass. Pages loaded: `/` and `/educator/organisations/demodev/dashboard`.
 
 ## Design check
 
-No design records: this plan has no design tests, so no design states tested.
-
-## Bug sections
-
-No `bug` records, so there are no per-bug sections.
+No design states tested.
 
 ## Layout probe
 
-| Test id | Viewport | URL | Screenshot | Result |
+| Test | Viewport | URL | Screenshot | Result |
 |---|---|---|---|---|
-| 1 | desktop | /educator/organisations/demodev/dashboard | ![](screenshots/page-2026-11-19T22-06-12-024Z.png) | clean |
-| 3 | desktop | /educator/organisations/demodev/cohorts/2c6cdaac-f885-4547-8b82-c56c2acd698a | ![](screenshots/page-2026-11-19T22-07-19-203Z.png) | clean |
-| 4 | desktop | /educator/organisations/demodev/cohorts/2c6cdaac-f885-4547-8b82-c56c2acd698a/__tabs/report | ![](screenshots/page-2026-11-19T22-07-37-323Z.png) | clean |
-| 5 | desktop | /educator/organisations/demodev/audit-log | ![](screenshots/page-2026-11-19T22-08-30-314Z.png) | clean |
-| 1 | mobile | /educator/organisations/demodev/dashboard | ![](screenshots/page-2026-11-19T22-10-15-575Z.png) | clean |
-| 4 | mobile | /educator/organisations/demodev/cohorts/2c6cdaac-f885-4547-8b82-c56c2acd698a/__tabs/report | ![](screenshots/page-2026-11-19T22-10-44-359Z.png) | clean |
-| 5 | mobile | /educator/organisations/demodev/audit-log | ![](screenshots/page-2026-11-19T22-10-54-615Z.png) | clean |
-| 5 | tablet | /educator/organisations/demodev/audit-log | ![](screenshots/page-2026-11-19T22-11-16-479Z.png) | clean |
+| 1 | desktop | /educator/organisations/demodev/dashboard | ![](screenshots/page-2026-11-20T04-52-14-534Z.png) | clean |
+| 3 | desktop | /educator/organisations/demodev/cohorts/<cohort-p> | ![](screenshots/page-2026-11-20T04-53-20-371Z.png) | clean |
+| 4 | desktop | /educator/organisations/demodev/cohorts/<cohort-p>/__tabs/report | ![](screenshots/page-2026-11-20T04-53-39-482Z.png) | clean |
+| 5 | desktop | /educator/organisations/demodev/audit-log | ![](screenshots/page-2026-11-20T04-54-36-416Z.png) | clean |
+| 1 | mobile | /educator/organisations/demodev/dashboard | ![](screenshots/page-2026-11-20T04-56-04-290Z.png) | clean |
+| 3 | mobile | /educator/organisations/demodev/cohorts/<cohort-p> | ![](screenshots/page-2026-11-20T04-56-23-245Z.png) | clean |
+| 4 | mobile | /educator/organisations/demodev/cohorts/<cohort-p>/__tabs/report | ![](screenshots/page-2026-11-20T04-56-40-237Z.png) | clean |
+| 5 | mobile | /educator/organisations/demodev/audit-log | ![](screenshots/page-2026-11-20T04-56-53-617Z.png) | clean |
+| 4 | tablet | /educator/organisations/demodev/cohorts/<cohort-p>/__tabs/report | ![](screenshots/page-2026-11-20T04-57-29-793Z.png) | clean |
+| 1 | tablet | /educator/organisations/demodev/dashboard | ![](screenshots/page-2026-11-20T04-57-38-654Z.png) | clean |
+
+## Test results
+
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 1 | desktop | pass | Pia shows the picture (alt="", loaded); Nadia and Gone show initials. Links and quick view work. Pictures persist after reload. ![](screenshots/page-2026-11-20T04-52-14-534Z.png) ![](screenshots/page-2026-11-20T04-52-26-837Z.png) |
+| 2, 2.4 | desktop | pass | `panel-avatar-N` classes match the learners table (Nadia 2, Gone 3, Pia 4). |
+| 3 | desktop | pass | Cohort P Needs attention shows the picture and initials; avatar top-aligned with the name. ![](screenshots/page-2026-11-20T04-53-20-371Z.png) |
+| 4 | desktop | pass | Report tab shows pictures in both tables and after Refresh. The new PDF has no images (pdfimages). ![](screenshots/page-2026-11-20T04-53-39-482Z.png) |
+| 5 | desktop | pass | Table, bulk run detail, sort/filter, Deleted Person, System and the learner and cohort History tabs all correct. ![](screenshots/page-2026-11-20T04-54-36-416Z.png) |
+| 7 | desktop | pass | A 404 src removes the img and the initials show. ![](screenshots/page-2026-11-20T04-55-43-301Z.png) |
+| 1.5 | mobile | pass | Whole row is the tap target; picture not clipped. ![](screenshots/page-2026-11-20T04-56-11-903Z.png) |
+| 3.3 | mobile | pass | ![](screenshots/page-2026-11-20T04-56-23-245Z.png) |
+| 4.4 | mobile | pass | Sticky Learner column holds; picture stays in its cell. ![](screenshots/page-2026-11-20T04-56-40-237Z.png) |
+| 5.8 | mobile | pass | Cards carry the same pictures and chips. ![](screenshots/page-2026-11-20T04-56-53-617Z.png) |
+| 4.4 | tablet | pass | ![](screenshots/page-2026-11-20T04-57-29-793Z.png) |
+| 1-5 | tablet | pass | No sideways scroll anywhere; avatars aligned. ![](screenshots/page-2026-11-20T04-57-38-654Z.png) |
+| 6.2 | desktop | pass | Tariq shows TT initials after his picture is cleared. ![](screenshots/page-2026-11-20T05-00-07-722Z.png) |
+| 6.4 | desktop | pass | Pages render fully after Gone Learner was deleted. ![](screenshots/page-2026-11-20T05-00-54-452Z.png) |
 
 ## Data changes
 
-| What changed | Made by | Files |
+| What changed | Made by | Files written |
 |---|---|---|
-| Empty branch dev DB bootstrapped with `create_demo_data` and `content_save demo_content DemoDev`. Then Cohort P (3 unstarted learners: Pia Picture with picture, Nadia Noface, Gone Learner), Tariq Target (learner, picture), Ava Actor (staff, picture) and five audit-entry shapes (person target, no-picture actor, bulk run, deleted actor, system) in organisation demodev. | sdd:qa-data-helper | `freedom_ls/qa_helpers/management/commands/qa_create_profile_picture_id_rows_scenario.py` |
-| Cleared Tariq Target's profile picture (user pk 75) through the `ProfilePictureForm` remove, deleting the stored file. | sdd:qa-data-helper | none |
+| Restored Tariq Target (user 75) green profile picture, cleared by the previous QA run Test 6 | sdd:qa-data-helper | none |
+| Test 6: cleared Tariq Target (user 75) profile picture via ProfilePictureForm remove; deleted Gone Learner's CourseProgress efb2ba71 (PROTECT FK blocked the Learner delete), then Learner fc1c44ac (cascaded 1 CohortMembership). User 74 kept. No cache cleared. | sdd:qa-data-helper | `.claude/agent-memory/sdd-qa-data-helper/reference_profile_picture_id_rows_command.md` |
 
 ## Bug status
 
-No `bug` records, so there are no bugs to track.
+| Bug | Status |
+|---|---|
+| none | no bugs recorded |
 
 ## General notes
 
-- Test 6.3-6.4 is PARTIAL, as explained above. It is covered only by unit tests, not exercised in the browser.
-- The first load of `/` returned 500 on an empty branch dev DB. This is environmental: the DB needed demo data bootstrapped. It is not a defect in the change.
-- Tariq's learner History tab has no Target column, so the spec step 5.9 wording ("Tariq as Target") does not apply to a learner's own history page. The test plan could be amended.
-- The audit table scrolls sideways inside its card at 768. This was already the case before this change.
-- Test 2 and Test 7 have no per-viewport layout records. Test 2 has no screenshot.
+- Test 6.4: the report figures were regathered (as of 05:00), so Gone Learner no longer appears. The cached-row chip path (initials chip for a deleted learner) could not be observed. The plan allows this ("if still listed").
+- The learner History table has no Target column, because the learner is the page subject. Ava's picture shows as Who.
+- Test 7's only console error was the expected 404 for the test URL.
+- The scratch records hold no separate record for Test 2 step 3 beyond the class match, and Test 4's quiz-column continuation table was not distinguished from the single summary table (one table).
+- Stray files in `screenshots/` (`.yml` snapshots and `.log` console logs) are not referenced.
 
-status: ok · reason: report rendered, 0 bugs documented, 6.3-6.4 PARTIAL
+status: ok · reason: report rendered, 0 bugs documented

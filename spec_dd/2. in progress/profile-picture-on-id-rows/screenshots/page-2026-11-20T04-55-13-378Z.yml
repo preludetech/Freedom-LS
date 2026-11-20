@@ -1,0 +1,134 @@
+- generic [ref=f21e212]:
+  - banner [ref=f21e213]:
+    - link [ref=f21e214] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f21e215]
+      - heading "FirstClass" [level=1] [ref=f21e216]
+    - navigation [ref=f21e217]:
+      - generic [ref=f21e218]:
+        - generic [ref=f21e219]:
+          - button "Messages, none unread" [ref=f21e220]
+          - status:
+            - generic [ref=f21e224]: Messages, none unread
+        - generic [ref=f21e225]:
+          - button "Notifications, none new" [ref=f21e226]
+          - status:
+            - generic [ref=f21e230]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f21e232] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f21e233]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f21e234]:
+    - generic [ref=f21e236]:
+      - dialog "Navigation" [ref=f21e237]:
+        - generic [ref=f21e239]:
+          - generic [ref=f21e240]:
+            - paragraph [ref=f21e241]: Organisation
+            - button "Switch organisation" [ref=f21e243] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f21e244]: D
+              - generic "DemoDev" [ref=f21e245]
+          - navigation "Sections" [ref=f21e248]:
+            - heading "Teaching" [level=2] [ref=f21e249]
+            - list [ref=f21e250]:
+              - listitem [ref=f21e251]:
+                - link "Dashboard" [ref=f21e252] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/dashboard
+              - listitem [ref=f21e257]:
+                - link "Cohorts" [ref=f21e258] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+              - listitem [ref=f21e263]:
+                - link "Learners" [ref=f21e264] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+              - listitem [ref=f21e269]:
+                - link "Courses" [ref=f21e270] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+            - heading "Administration" [level=2] [ref=f21e275]
+            - list [ref=f21e276]:
+              - listitem [ref=f21e277]:
+                - link "Staff" [ref=f21e278] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/staff
+              - listitem [ref=f21e283]:
+                - link "Audit log" [ref=f21e284] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/audit-log
+          - generic [ref=f21e289]:
+            - generic [ref=f21e291]:
+              - generic [aria-hidden] [ref=f21e292]: DE
+              - generic [ref=f21e293]: demodev@email.com
+            - link "Account settings" [ref=f21e295] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f21e1]:
+        - generic [ref=f21e2]:
+          - heading "Audit log" [level=1] [ref=f21e8]
+          - generic [ref=f21e319]:
+            - generic [ref=f21e321]:
+              - group [ref=f21e322]:
+                - generic [ref=f21e324] [cursor=pointer]:
+                  - text: "Who: Ava Actor"
+                  - link "Remove Who filter" [ref=f21e325]:
+                    - /url: /educator/organisations/demodev/audit-log?
+              - group [ref=f21e330]:
+                - generic "Add filter" [ref=f21e331]
+              - link "Clear all" [ref=f21e335] [cursor=pointer]:
+                - /url: /educator/organisations/demodev/audit-log?
+              - link "Export CSV" [ref=f21e336] [cursor=pointer]:
+                - /url: /educator/organisations/demodev/audit-log?audit_log-who=76&audit_log-export=csv
+            - region "Entries" [ref=f21e341]:
+              - table [ref=f21e342]:
+                - caption [ref=f21e343]: Entries
+                - rowgroup [ref=f21e344]:
+                  - row [ref=f21e345]:
+                    - columnheader "Details" [ref=f21e346]
+                    - columnheader [ref=f21e348]:
+                      - link "When" [ref=f21e349] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/audit-log?audit_log-who=76&audit_log-sort=created_at
+                    - columnheader [ref=f21e353]:
+                      - link "Who" [ref=f21e354] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/audit-log?audit_log-who=76&audit_log-sort=actor_label
+                    - columnheader [ref=f21e358]:
+                      - link "What" [ref=f21e359] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/audit-log?audit_log-who=76&audit_log-sort=action
+                    - columnheader [ref=f21e363]:
+                      - link "Target" [ref=f21e364] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/audit-log?audit_log-who=76&audit_log-sort=target_label
+                - rowgroup [ref=f21e368]:
+                  - row [ref=f21e369]:
+                    - cell [ref=f21e370]:
+                      - 'button "More about Bulk action completed: DemoDev" [ref=f21e371]'
+                    - cell "19 Nov 2026, 22:04" [ref=f21e375]:
+                      - time [ref=f21e376]:
+                        - generic [ref=f21e377]: 19 Nov 2026,
+                        - generic [ref=f21e378]: 22:04
+                    - cell "Ava Actor" [ref=f21e379]:
+                      - generic [ref=f21e380]:
+                        - generic [aria-hidden] [ref=f21e381]: AA
+                        - generic [ref=f21e382]: Ava Actor
+                    - cell "Bulk action completed 2 changed, 0 skipped, 0 failed" [ref=f21e384]
+                    - cell "DemoDev" [ref=f21e386]
+                  - row [ref=f21e387]:
+                    - cell [ref=f21e388]
+                    - cell "19 Nov 2026, 22:04" [ref=f21e389]:
+                      - time [ref=f21e390]:
+                        - generic [ref=f21e391]: 19 Nov 2026,
+                        - generic [ref=f21e392]: 22:04
+                    - cell "Ava Actor" [ref=f21e393]:
+                      - generic [ref=f21e394]:
+                        - generic [aria-hidden] [ref=f21e395]: AA
+                        - generic [ref=f21e396]: Ava Actor
+                    - cell "Setup email resent" [ref=f21e398]
+                    - cell "Tariq Target" [ref=f21e400]:
+                      - generic [ref=f21e401]:
+                        - generic [aria-hidden] [ref=f21e402]: TT
+                        - generic [ref=f21e403]: Tariq Target
+            - paragraph [ref=f21e406]: 2 entries
+        - generic [ref=f21e211]: Showing 1–2 of 2, sorted by When
+  - contentinfo [ref=f21e310]:
+    - generic [ref=f21e311]:
+      - paragraph [ref=f21e312]: © 2026 FirstClass
+      - navigation "Legal" [ref=f21e313]:
+        - link "Terms and Conditions" [ref=f21e314] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f21e315] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f21e316] [cursor=pointer]: profile-picture-on-id-rows
+  - generic "Show toolbar" [ref=f21e318]: DJDT

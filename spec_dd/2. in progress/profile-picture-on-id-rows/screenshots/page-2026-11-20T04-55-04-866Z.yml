@@ -1,0 +1,212 @@
+- generic [ref=f21e212]:
+  - banner [ref=f21e213]:
+    - link [ref=f21e214] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f21e215]
+      - heading "FirstClass" [level=1] [ref=f21e216]
+    - navigation [ref=f21e217]:
+      - generic [ref=f21e218]:
+        - generic [ref=f21e219]:
+          - button "Messages, none unread" [ref=f21e220]
+          - status:
+            - generic [ref=f21e224]: Messages, none unread
+        - generic [ref=f21e225]:
+          - button "Notifications, none new" [ref=f21e226]
+          - status:
+            - generic [ref=f21e230]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f21e232] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f21e233]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f21e234]:
+    - generic [ref=f21e236]:
+      - dialog "Navigation" [ref=f21e237]:
+        - generic [ref=f21e239]:
+          - generic [ref=f21e240]:
+            - paragraph [ref=f21e241]: Organisation
+            - button "Switch organisation" [ref=f21e243] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f21e244]: D
+              - generic "DemoDev" [ref=f21e245]
+          - navigation "Sections" [ref=f21e248]:
+            - heading "Teaching" [level=2] [ref=f21e249]
+            - list [ref=f21e250]:
+              - listitem [ref=f21e251]:
+                - link "Dashboard" [ref=f21e252] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/dashboard
+              - listitem [ref=f21e257]:
+                - link "Cohorts" [ref=f21e258] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+              - listitem [ref=f21e263]:
+                - link "Learners" [ref=f21e264] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+              - listitem [ref=f21e269]:
+                - link "Courses" [ref=f21e270] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+            - heading "Administration" [level=2] [ref=f21e275]
+            - list [ref=f21e276]:
+              - listitem [ref=f21e277]:
+                - link "Staff" [ref=f21e278] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/staff
+              - listitem [ref=f21e283]:
+                - link "Audit log" [ref=f21e284] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/audit-log
+          - generic [ref=f21e289]:
+            - generic [ref=f21e291]:
+              - generic [aria-hidden] [ref=f21e292]: DE
+              - generic [ref=f21e293]: demodev@email.com
+            - link "Account settings" [ref=f21e295] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f21e2]:
+        - heading "Audit log" [level=1] [ref=f21e8]
+        - generic [ref=f21e13]:
+          - generic [ref=f21e15]:
+            - group [ref=f21e16]:
+              - generic "Add filter" [ref=f21e17]
+              - generic [ref=f21e21]:
+                - group [ref=f21e22]:
+                  - generic "Who" [active] [ref=f21e23] [cursor=pointer]
+                  - generic [ref=f21e300]:
+                    - link "System" [ref=f21e301] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/audit-log?audit_log-who=system
+                    - link "demodev@email.com" [ref=f21e303] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/audit-log?audit_log-who=9
+                    - link "Ava Actor" [ref=f21e305] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/audit-log?audit_log-who=76
+                    - link "Nadia Noface" [ref=f21e307] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/audit-log?audit_log-who=73
+                - group [ref=f21e26]:
+                  - generic "What" [ref=f21e27] [cursor=pointer]
+                - group [ref=f21e30]:
+                  - generic "When" [ref=f21e31] [cursor=pointer]
+            - link "Export CSV" [ref=f21e34] [cursor=pointer]:
+              - /url: /educator/organisations/demodev/audit-log?audit_log-export=csv
+          - region "Entries" [ref=f21e39]:
+            - table [ref=f21e40]:
+              - caption [ref=f21e41]: Entries
+              - rowgroup [ref=f21e42]:
+                - row [ref=f21e43]:
+                  - columnheader "Details" [ref=f21e44]
+                  - columnheader [ref=f21e46]:
+                    - link "When" [ref=f21e47] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/audit-log?audit_log-sort=created_at
+                  - columnheader [ref=f21e51]:
+                    - link "Who" [ref=f21e52] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/audit-log?audit_log-sort=actor_label
+                  - columnheader [ref=f21e56]:
+                    - link "What" [ref=f21e57] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/audit-log?audit_log-sort=action
+                  - columnheader [ref=f21e61]:
+                    - link "Target" [ref=f21e62] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/audit-log?audit_log-sort=target_label
+              - rowgroup [ref=f21e66]:
+                - row [ref=f21e67]:
+                  - cell [ref=f21e68]
+                  - cell "19 Nov 2026, 22:04" [ref=f21e69]:
+                    - time [ref=f21e70]:
+                      - generic [ref=f21e71]: 19 Nov 2026,
+                      - generic [ref=f21e72]: 22:04
+                  - cell "System" [ref=f21e73]
+                  - cell "Learner reactivated" [ref=f21e83]
+                  - cell "Pia Picture" [ref=f21e85]:
+                    - generic [ref=f21e86]:
+                      - generic [aria-hidden] [ref=f21e87]: PP
+                      - generic [ref=f21e88]: Pia Picture
+                - row [ref=f21e90]:
+                  - cell [ref=f21e91]
+                  - cell "19 Nov 2026, 22:04" [ref=f21e92]:
+                    - time [ref=f21e93]:
+                      - generic [ref=f21e94]: 19 Nov 2026,
+                      - generic [ref=f21e95]: 22:04
+                  - cell "Deleted Person" [ref=f21e96]
+                  - cell "Setup email resent" [ref=f21e104]
+                  - cell "Tariq Target" [ref=f21e106]:
+                    - generic [ref=f21e107]:
+                      - generic [aria-hidden] [ref=f21e108]: TT
+                      - generic [ref=f21e109]: Tariq Target
+                - row [ref=f21e111]:
+                  - cell [ref=f21e112]:
+                    - 'button "More about Bulk action completed: DemoDev" [ref=f21e113]'
+                  - cell "19 Nov 2026, 22:04" [ref=f21e117]:
+                    - time [ref=f21e118]:
+                      - generic [ref=f21e119]: 19 Nov 2026,
+                      - generic [ref=f21e120]: 22:04
+                  - cell "Ava Actor" [ref=f21e121]:
+                    - generic [ref=f21e122]:
+                      - generic [aria-hidden] [ref=f21e123]: AA
+                      - generic [ref=f21e124]: Ava Actor
+                  - cell "Bulk action completed 2 changed, 0 skipped, 0 failed" [ref=f21e126]
+                  - cell "DemoDev" [ref=f21e128]
+                - row [ref=f21e129]:
+                  - cell [ref=f21e130]
+                  - cell "19 Nov 2026, 22:04" [ref=f21e131]:
+                    - time [ref=f21e132]:
+                      - generic [ref=f21e133]: 19 Nov 2026,
+                      - generic [ref=f21e134]: 22:04
+                  - cell "Nadia Noface" [ref=f21e135]:
+                    - generic [ref=f21e136]:
+                      - generic [aria-hidden] [ref=f21e137]: NN
+                      - generic [ref=f21e138]: Nadia Noface
+                  - cell "Setup email resent" [ref=f21e140]
+                  - cell "Pia Picture" [ref=f21e142]:
+                    - generic [ref=f21e143]:
+                      - generic [aria-hidden] [ref=f21e144]: PP
+                      - generic [ref=f21e145]: Pia Picture
+                - row [ref=f21e147]:
+                  - cell [ref=f21e148]
+                  - cell "19 Nov 2026, 22:04" [ref=f21e149]:
+                    - time [ref=f21e150]:
+                      - generic [ref=f21e151]: 19 Nov 2026,
+                      - generic [ref=f21e152]: 22:04
+                  - cell "Ava Actor" [ref=f21e153]:
+                    - generic [ref=f21e154]:
+                      - generic [aria-hidden] [ref=f21e155]: AA
+                      - generic [ref=f21e156]: Ava Actor
+                  - cell "Setup email resent" [ref=f21e158]
+                  - cell "Tariq Target" [ref=f21e160]:
+                    - generic [ref=f21e161]:
+                      - generic [aria-hidden] [ref=f21e162]: TT
+                      - generic [ref=f21e163]: Tariq Target
+                - row [ref=f21e165]:
+                  - cell [ref=f21e166]:
+                    - 'button "More about Role assigned: Ava Actor" [ref=f21e167]'
+                  - cell "19 Nov 2026, 22:04" [ref=f21e171]:
+                    - time [ref=f21e172]:
+                      - generic [ref=f21e173]: 19 Nov 2026,
+                      - generic [ref=f21e174]: 22:04
+                  - cell "demodev@email.com" [ref=f21e175]:
+                    - generic [ref=f21e176]:
+                      - generic [aria-hidden] [ref=f21e177]: D
+                      - generic [ref=f21e178]: demodev@email.com
+                  - cell "Role assigned Cohort admin on Cohort P" [ref=f21e180]
+                  - cell "Ava Actor" [ref=f21e182]:
+                    - generic [ref=f21e183]:
+                      - generic [aria-hidden] [ref=f21e184]: AA
+                      - generic [ref=f21e185]: Ava Actor
+                - row [ref=f21e187]:
+                  - cell [ref=f21e188]:
+                    - 'button "More about Role assigned: demodev@email.com" [ref=f21e189]'
+                  - cell "19 Nov 2026, 22:04" [ref=f21e193]:
+                    - time [ref=f21e194]:
+                      - generic [ref=f21e195]: 19 Nov 2026,
+                      - generic [ref=f21e196]: 22:04
+                  - cell "demodev@email.com" [ref=f21e197]:
+                    - generic [ref=f21e198]:
+                      - generic [aria-hidden] [ref=f21e199]: D
+                      - generic [ref=f21e200]: demodev@email.com
+                  - cell "Role assigned Organisation admin on DemoDev" [ref=f21e202]
+                  - cell "demodev@email.com" [ref=f21e204]:
+                    - generic [ref=f21e205]:
+                      - generic [aria-hidden] [ref=f21e206]: D
+                      - generic [ref=f21e207]: demodev@email.com
+          - paragraph [ref=f21e210]: 7 entries
+  - contentinfo [ref=f21e310]:
+    - generic [ref=f21e311]:
+      - paragraph [ref=f21e312]: © 2026 FirstClass
+      - navigation "Legal" [ref=f21e313]:
+        - link "Terms and Conditions" [ref=f21e314] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f21e315] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f21e316] [cursor=pointer]: profile-picture-on-id-rows
+  - generic "Show toolbar" [ref=f21e318]: DJDT
