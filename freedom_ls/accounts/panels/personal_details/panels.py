@@ -19,17 +19,23 @@ from .actions import (
 )
 
 
-class NamePanel(Panel):
+class OwnAccountPanel(Panel):
+    """A panel on the user's own row. It holds nothing but its actions' forms,
+    so it shows only to a user who may run one of them."""
+
+    model = User
+
+    def has_permission(self, request: HttpRequest) -> bool:
+        return super().has_permission(request) and bool(self.available_actions)
+
+
+class NamePanel(OwnAccountPanel):
     """The user's first and last name as fields with Save, posted inline to
     the edit action. The save response re-renders the form, which is all the
     panel holds, so it needs no refresh events."""
 
-    model = User
     title = "Name"
     template_name = "accounts/panels/name.html"
-
-    def has_permission(self, request: HttpRequest) -> bool:
-        return super().has_permission(request) and bool(self.available_actions)
 
     def get_actions(self) -> list[PanelAction]:
         return [EditNameAction(cast(User, self.instance))]
@@ -40,16 +46,12 @@ class NamePanel(Panel):
         return context
 
 
-class ProfilePicturePanel(Panel):
+class ProfilePicturePanel(OwnAccountPanel):
     """The stored picture, or the initials, above an inline upload form."""
 
-    model = User
     title = "Profile picture"
     template_name = "accounts/panels/profile_picture.html"
     refresh_events = (ACCOUNT_CHANGED,)
-
-    def has_permission(self, request: HttpRequest) -> bool:
-        return super().has_permission(request) and bool(self.available_actions)
 
     def get_actions(self) -> list[PanelAction]:
         return [

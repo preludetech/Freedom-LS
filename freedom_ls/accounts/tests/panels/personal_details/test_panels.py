@@ -6,6 +6,7 @@ import re
 
 import pytest
 
+from django.contrib.sites.models import Site
 from django.test import Client
 
 from freedom_ls.accounts.factories import UserFactory
@@ -19,7 +20,7 @@ PICTURE_PANEL_URL = "/accounts/profile/personal-details/__panels/profile-picture
 
 
 @pytest.fixture
-def picture_panel_html(mock_site_context) -> str:
+def picture_panel_html(mock_site_context: Site) -> str:
     client = Client()
     client.force_login(UserFactory())
     return client.get(PICTURE_PANEL_URL).content.decode()

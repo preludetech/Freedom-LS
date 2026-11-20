@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import pytest
 
+from django.http import HttpRequest
+from django.test import RequestFactory
 from django.urls import NoReverseMatch, ResolverMatch
 
 from freedom_ls.accounts import sidebar
@@ -14,7 +16,7 @@ from freedom_ls.accounts.sidebar import (
 )
 
 
-def _request_on(rf, view_name: str):
+def _request_on(rf: RequestFactory, view_name: str) -> HttpRequest:
     request = rf.get("/")
     *namespaces, url_name = view_name.split(":")
     request.resolver_match = ResolverMatch(

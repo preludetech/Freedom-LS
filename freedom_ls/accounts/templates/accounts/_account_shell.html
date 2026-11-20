@@ -30,8 +30,9 @@ padding instead of the shell's, as the panel pages do.
 {% endblock modal_host %}
 
 {% comment %}
-Single-line so no whitespace leaks into the rendered <title>. The same partial
-feeds the OOB fragment on HTMX navigation, so both paths read identically.
+Single-line so no whitespace leaks into the rendered <title>. The site segment
+here is site_title. The framework's navigation response fills the same partial
+with site_name, which can differ, but no account page requests one.
 {% endcomment %}
 {% block head_title %}{% include "panel_framework/partials/document_title.html#document-title" with site_name=site_title %}{% endblock head_title %}
 

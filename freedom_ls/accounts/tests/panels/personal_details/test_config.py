@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 
-from django.http import Http404
+from django.contrib.sites.models import Site
+from django.http import Http404, HttpRequest
+from django.test import RequestFactory
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.accounts.panels.personal_details.actions import (
     ACCOUNT_CAPABILITIES,
     CHANGE_OWN_NAME,
@@ -19,12 +24,12 @@ pytestmark = pytest.mark.django_db
 
 
 @pytest.fixture
-def user(mock_site_context):
-    return UserFactory()
+def user(mock_site_context: Site) -> User:
+    return cast(User, UserFactory())
 
 
 @pytest.fixture
-def request_for(rf, user):
+def request_for(rf: RequestFactory, user: User) -> HttpRequest:
     request = rf.get("/accounts/profile/personal-details")
     request.user = user
     return request

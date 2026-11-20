@@ -3,17 +3,20 @@
 from __future__ import annotations
 
 import re
+from typing import cast
 
 import pytest
 from allauth.account.models import EmailAddress
 
 from django.contrib import messages
 from django.contrib.messages.storage import default_storage
+from django.contrib.sites.models import Site
 from django.http import HttpResponse
 from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 
 SHELL_HOSTS = [
     'id="interface-main"',
@@ -25,8 +28,8 @@ SHELL_HOSTS = [
 
 
 @pytest.fixture
-def signed_in(db, mock_site_context):
-    user = UserFactory()
+def signed_in(db: None, mock_site_context: Site) -> tuple[Client, User]:
+    user = cast(User, UserFactory())
     EmailAddress.objects.create(
         user=user, email=user.email, primary=True, verified=True
     )

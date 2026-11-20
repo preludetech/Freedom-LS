@@ -10,18 +10,12 @@ carries it, is replaced.
 {% comment %}
 The content header is the toggle and the page title directly in the column,
 without the shell's centred width wrapper, which would shrink to fit and
-centre inside this narrow column. The toggle is hidden from lg up, so the
-heading is the first thing on a desktop page.
+centre inside this narrow column. The toggle is the one the panel pages draw,
+so every page of the account area shows the same control. It is hidden from lg
+up, so the heading is the first thing on a desktop page.
 {% endcomment %}
 {% block content_header %}
-    <div class="lg:hidden">
-        <button x-on:click="toggle"
-                x-bind:aria-expanded="open"
-                class="-ms-3 shrink-0 p-3 rounded-md text-muted hover:text-on-surface hover:bg-surface-2 transition-colors cursor-pointer"
-                aria-label="Open navigation panel">
-            <c-icon name="table_of_contents" class="size-5" />
-        </button>
-    </div>
+    <div class="flex lg:hidden">{% include "panel_framework/partials/panel_toggle.html" %}</div>
     {% include "partials/page_title.html" %}
 {% endblock content_header %}
 
