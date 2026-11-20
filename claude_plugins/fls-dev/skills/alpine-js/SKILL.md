@@ -19,6 +19,7 @@ Reuse these registered components before writing a new one. Each app registers i
 | `headerScroll` | `base` | `partials/header_bar.html` | Sets `scrolled` once the window scrolls, which the template binds to `data-scrolled` for the theme's sticky-header treatment |
 | `stretchedLinkProxy` | `base` | `cotton/organisation-byline.html` (`content_engine`) | Passes a click on the organisation name to the card's stretched title link |
 | `dropdownMenu` | `base` | `cotton/dropdown-menu.html` | Toggle open/close, click-away, smart positioning |
+| `panelDropdownMenu` | `panel_framework` | `cotton/panel-dropdown-menu.html` | The framework's own copy of `dropdownMenu` (same body, same behaviour), so the framework needs nothing from `base`. Edit both together |
 | `toast` | `base` | `partials/_toast.html`, included by `partials/messages.html` | Auto-dismiss by severity (errors persist), pauses on hover, focus and window blur, caps visible toasts at five |
 | `sidePanel` | `panel_framework` (`shell-components.js`) | `_base_interface.html` (sidebar); `panel_framework/partials/table_toolbar.html` (phone filter and sort sheet, `data-mobile-only`) | One `<dialog>`: docked with `show()` at `lg`+ with state in localStorage, modal with `showModal()` below, Back closes it, `aria-expanded` sync and focus return |
 | `debugBadge` | `base` | `_base.html` | Collapsible debug badge |

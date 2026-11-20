@@ -154,7 +154,7 @@ which site a request belongs to. The host says so through a setting.
   `<c-modal-trigger>`); the dialog footer's pair is the one full-size pair, because that is the
   decision the dialog asks for. A panel holds at most one `primary` button outside a dialog.
 - A button looks the same at every width. Below `md` the shared rule in
-  `tailwind.components.css` gives every panel button an invisible 44px-tall hit area and leaves
+  `freedom_ls/panel_framework/css/panel_framework.css` gives every panel button an invisible 44px-tall hit area and leaves
   its look alone, so a small button stays about 32px tall on a phone. The dialog footer's buttons
   are the one exception: on a phone they are 44px tall, at the bottom of the sheet under the
   thumb. A text field is 44px tall on a phone. No template adds a height to a button.
@@ -180,6 +180,16 @@ which site a request belongs to. The host says so through a setting.
 - Two buttons in one row each name their object, so no two share a bare verb.
 
 ### Controls are components
+
+Framework templates draw their buttons, chips, callouts, dates, pagination and dropdown menus with
+their own `c-panel-*` primitives (`panel-button`, `panel-button-group`, `panel-chip`, `panel-callout`,
+`panel-back-link`, `panel-date`, `panel-datetime`, `panel-pagination`, `panel-dropdown-menu`,
+`panel-page` and `panel-heading`) and never include a host component or template. FLS's wrappers
+forward to its own `c-button`, `c-back-link` and the rest; the rules here name
+the component an FLS panel template writes. The panel framework's own styles (`.panel-surface`,
+`.panel-canvas`, `.panel-heading`, `.panel-btn`, the modal host, the selection bar and the compact
+table) live in `freedom_ls/panel_framework/css/panel_framework.css`, not in `tailwind.components.css`.
+`freedom_ls/panel_framework/HOST_CONTRACT.md` lists every primitive and what a host must supply.
 
 Every anchor in a panel-framework page is a control. The base layer underlines every `<a>`, and
 that underline means "a link inside prose", which these templates never hold. A control takes the
@@ -486,13 +496,12 @@ Run that file after any change to a panel template.
 as `<c-admonition>`, or a `level=` on `<c-callout>` or `<c-panel-callout>`, in any app template
 outside the content engine.
 
-Three guards cover the standalone backend:
+Four guards cover the standalone backend:
 
 - `freedom_ls/panel_framework/tests/test_import_guard.py` parses every `.py` file under the
   framework and fails on any import of a `freedom_ls` module outside `freedom_ls.panel_framework`
-  (including a bare `import freedom_ls`). Relative imports pass. The exempt directories are
-  `tests/components`, `tests/invariants` and `tests/playwright`, which exercise the host's
-  templates. Reach host behaviour through a setting, as the site resolver does.
+  (including a bare `import freedom_ls`). Relative imports pass. No directory is exempt, tests
+  included. Reach host behaviour through a setting, as the site resolver does.
 - `freedom_ls/educator_interface/tests/invariants/test_bulk_run_scoping.py` parses every production
   `.py` file under `freedom_ls/` (`tests/` and `migrations/` directories excluded) and fails on any
   `BulkActionRun.objects.<method>` other than `for_site`, `for_request` and `create`, on
@@ -504,8 +513,16 @@ Three guards cover the standalone backend:
 - `freedom_ls/educator_interface/tests/invariants/test_framework_copies_match_base.py` holds the
   framework's private copies to their `freedom_ls.base` originals: `escape_csv_formula`,
   `EchoWriter`, `Setting` and `AppSettings` must have identical source, and `FORMULA_TRIGGERS`,
-  `UTF8_BOM`, `_E164_PHONE_NUMBER` and the date display formats identical values. Change a helper
-  in both places at once.
+  `UTF8_BOM`, `_E164_PHONE_NUMBER` and the date display formats identical values. It also pins
+  `pagination_suffix` (`freedom_ls/base/templatetags/pagination_tags.py` and the framework's
+  `data_table_tags.py`), `assert_no_horizontal_overflow` and `QA_VIEWPORTS` (`freedom_ls/tests/playwright_helpers.py`
+  and `freedom_ls/panel_framework/tests/playwright/helpers.py`), and the body of the `panelDropdownMenu`
+  Alpine component against `dropdownMenu` in `base`'s `alpine-components.js`. Change each pair in
+  both places at once.
+- `freedom_ls/panel_framework/checks.py` holds `REQUIRED_ICON_NAMES`, the icon names the
+  framework's templates draw. `uv run manage.py check` reports E010 for a name the host's `c-icon`
+  cannot render and W003 for one it renders empty. Add a name there when a framework template draws
+  a new icon.
 
 Three more files sit beside the template invariants in `tests/invariants/`:
 

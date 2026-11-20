@@ -12,6 +12,8 @@ Every icon is a `<c-icon />` Cotton component referenced by **semantic name** (`
 
 The full list is `SEMANTIC_ICON_NAMES` in `freedom_ls/icons/semantic_names.py`, grouped by purpose. Read it before choosing. If nothing fits, add a semantic name: see [resources/configuring-icons.md](resources/configuring-icons.md).
 
+An icon a panel-framework template draws by a fixed name is listed in `REQUIRED_ICON_NAMES` in `freedom_ls/panel_framework/checks.py`. `uv run manage.py check` renders each one through the host's `c-icon` and reports E010 for a name it cannot render and W003 for one that renders empty. Renaming or removing a semantic name in that list fails the check.
+
 ## Rendering
 
 ```html

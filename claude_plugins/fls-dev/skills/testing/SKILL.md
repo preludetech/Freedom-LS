@@ -122,7 +122,7 @@ What runs where:
 uv run pytest -c freedom_ls/panel_framework/tests/standalone_pytest.ini freedom_ls/panel_framework/tests
 ```
 
-  `standalone_pytest.ini` sets `--ds=freedom_ls.panel_framework.tests.standalone_settings` (in-memory SQLite, `standalone_app/` for the user model, `standalone_templates/` for stand-in templates), adds `-m "not needs_fls_host"`, skips `components`, `invariants` and `playwright`, and blocks network access. `standalone_fixtures.py` supplies the `site` and `mock_site_context` fixtures; FLS's conftest does not load.
+  `standalone_pytest.ini` sets `--ds=freedom_ls.panel_framework.tests.standalone_settings` (in-memory SQLite, `standalone_app/` for the user model, `standalone_templates/` for stand-in templates), adds `-m "not needs_fls_host"`, skips only `playwright` (`norecursedirs`), so the `components` and `invariants` tiers run too, and blocks network access. `standalone_fixtures.py` supplies the `site` and `mock_site_context` fixtures; FLS's conftest does not load.
 - A concrete downstream project runs:
 
 ```bash

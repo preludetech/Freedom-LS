@@ -14,6 +14,7 @@ Read `Skill(ds:playwright-tests)` first for the flow rule and the generic mechan
 - `educator_logged_in_page`: the educator equivalent (`freedom_ls/educator_interface/tests/playwright/conftest.py`).
 - `live_server_site` and `mock_site_context`: bind the live server's host to the test `Site` so site-aware queries resolve (`freedom_ls/conftest.py`).
 - `QA_VIEWPORTS` and `assert_no_horizontal_overflow` (`freedom_ls/tests/playwright_helpers.py`): the layout check. A flow loops it over every viewport in its last step.
+- `QA_VIEWPORTS` and `assert_no_horizontal_overflow` also exist in `freedom_ls/panel_framework/tests/playwright/helpers.py`, the framework's own copy: its tests import that one, never `freedom_ls.tests`. Edit both together; `test_framework_copies_match_base.py` fails on drift. The standalone run (`Skill(fls-dev:testing)`) leaves `tests/playwright` out.
 
 ## Why transaction=True and a login per test
 
