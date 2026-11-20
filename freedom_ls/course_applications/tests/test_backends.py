@@ -858,6 +858,15 @@ class TestGetDashboardContributionsForRequest:
 
         assert _contributed_applications(request) == [newer, older]
 
+    def test_withdrawn_draft_is_absent(self, mock_site_context):
+        application = _anonymous_draft()
+        CourseApplication.objects.filter(pk=application.pk).update(
+            state=CourseApplication.State.WITHDRAWN, withdrawn_at=timezone.now()
+        )
+        request = _anonymous_request(application.anonymous_applicant)
+
+        assert _contributed_applications(request) == []
+
     def test_submitted_application_is_absent(self, mock_site_context):
         submitted = CourseApplicationFactory(anonymous=True, course=_gated_course())
         request = _anonymous_request(submitted.anonymous_applicant)

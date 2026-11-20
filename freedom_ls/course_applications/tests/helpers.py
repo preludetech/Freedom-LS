@@ -1,10 +1,14 @@
 """Builders shared by the course_applications tests."""
 
+import threading
+from collections.abc import Callable
 from datetime import datetime
 from typing import NamedTuple, cast
 
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.sessions.backends.db import SessionStore
+from django.contrib.sites.models import Site
+from django.db import connection
 from django.http import HttpRequest
 from django.test import RequestFactory
 from django.urls import reverse
@@ -29,6 +33,7 @@ from freedom_ls.form_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import FormProgress, FormStrategy
+from freedom_ls.tests.site_context import site_context
 
 
 def _add_employer_case(form: FormFactory, page_one: FormPageFactory) -> None:
@@ -165,3 +170,33 @@ def application_ids_updated_since(auth: dict[str, str], since: datetime) -> list
         headers=auth,
     )
     return [row["id"] for row in response.json()["results"]]
+
+
+def run_in_parallel_threads(
+    site: Site, action: Callable[[], object], count: int
+) -> list[BaseException | None]:
+    """Run `action` in `count` threads at once, each on its own database
+    connection and inside `site`'s context, and return what each raised.
+
+    The entry for a thread whose call returned is None. A barrier releases the
+    threads together so their calls overlap.
+    """
+    barrier = threading.Barrier(count)
+    outcomes: list[BaseException | None] = [None] * count
+
+    def run(index: int) -> None:
+        try:
+            with site_context(site):
+                barrier.wait(timeout=5)
+                action()
+        except BaseException as exc:
+            outcomes[index] = exc
+        finally:
+            connection.close()
+
+    threads = [threading.Thread(target=run, args=(i,)) for i in range(count)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=15)
+    return outcomes

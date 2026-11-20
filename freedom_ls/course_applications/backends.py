@@ -267,7 +267,8 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
         """The signed-in user's applications, or the drafts an anonymous session holds, paged.
 
         A visitor sees only what their browser can still act on: a submitted
-        application waits for the claim link, so it is not listed here.
+        application waits for the claim link, and a withdrawn one is closed,
+        so neither is listed here.
         """
         if request.user.is_authenticated:
             from freedom_ls.course_applications.queries import get_active_applications
@@ -277,12 +278,14 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
             from freedom_ls.course_applications.anonymous_session import (
                 owned_applications,
             )
+            from freedom_ls.course_applications.models import CourseApplication
             from freedom_ls.course_applications.queries import panel_rows
 
             # An empty session map makes this an `IN ()` filter, which Django
             # answers without a query.
             applications = panel_rows(
                 owned_applications(request).filter(
+                    state=CourseApplication.State.DRAFT,
                     form_progress__isnull=False,
                     form_progress__completed_time__isnull=True,
                 )

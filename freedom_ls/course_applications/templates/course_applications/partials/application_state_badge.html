@@ -1,0 +1,14 @@
+{% comment %}
+The chip naming an application's state. Expects `application` in context.
+Compares against the model's State members because a template cannot call the
+Choices class.
+{% endcomment %}
+{% if application.state == application.State.DRAFT %}
+    <c-panel-status-badge tone="warning" label="{{ application.get_state_display }}" />
+{% elif application.state == application.State.SUBMITTED %}
+    <c-panel-status-badge tone="info" label="{{ application.get_state_display }}" />
+{% elif application.state == application.State.APPROVED %}
+    <c-panel-status-badge tone="success" label="{{ application.get_state_display }}" />
+{% else %}
+    <c-panel-status-badge tone="muted" label="{{ application.get_state_display }}" />
+{% endif %}

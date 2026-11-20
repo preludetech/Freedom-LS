@@ -34,6 +34,7 @@ from freedom_ls.course_access import get_course_access_backend
 from freedom_ls.course_access.analytics_events import record_application_submitted
 from freedom_ls.course_access.overrides import is_coming_soon_for_display
 from freedom_ls.course_access.visibility import raise_404_if_unavailable
+from freedom_ls.course_applications import transitions
 from freedom_ls.course_applications.anonymous_session import (
     anonymous_applicant_for_course,
     application_of,
@@ -281,13 +282,14 @@ def _send_claim_email_unless_live(
 def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
     """Applicant status page.
 
-    Shows a static plain-language "received and pending review" confirmation.
+    Renders the application's state, and the withdraw action while it is open.
     Only the application owner may view this page: another user gets 404 and a
     visitor is sent to log in. Ownership covers an anonymous session's own
     unverified application.
 
-    A GET for an application whose form is still unfinished is sent back to
-    it: there is nothing to say about a request that has not been made yet.
+    A GET for an unclaimed draft is sent back to its form: there is nothing to
+    say about a request that has not been made yet. A claimed draft renders
+    here instead, so its applicant can withdraw it or carry on filling it in.
 
     POST, for an unverified application, sends the claim email again. It
     serves a draft too: the redirect goes back to the page in `next`, the one
@@ -295,10 +297,6 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
     applicant whose first one was skipped or lost is never left waiting for it.
     An HTMX POST comes from the claim link notice and gets the notice back,
     saying whether this send went out.
-
-    NOTE: when application review lands, dynamic state rendering (state badge,
-      reviewer message, withdraw action via get_available_user_state_transitions)
-      goes here.
     """
     found = _owned_application(request, _status_applications(request), pk)
     if isinstance(found, HttpResponse):
@@ -320,7 +318,11 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
             _posted_next_url(request)
             or reverse("course_applications:status", kwargs={"pk": app.pk})
         )
-    if app.form_progress is not None and app.form_progress.completed_time is None:
+    if (
+        app.state == CourseApplication.State.DRAFT
+        and app.user_id is None
+        and app.form_progress is not None
+    ):
         return redirect(_resume_url(app, app.form_progress))
     return _render_status(
         request,
@@ -329,6 +331,30 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
         if app.unverified_applicant is not None
         else None,
     )
+
+
+@require_POST
+def withdraw_application(request: HttpRequest, pk: UUID) -> HttpResponse:
+    """Close the applicant's own open application.
+
+    Only a claimed application can be withdrawn: an unclaimed one gets a
+    404, because its applicant has not yet proven the address.
+    """
+    status_url = reverse("course_applications:status", kwargs={"pk": pk})
+    found = _owned_application(
+        request, _status_applications(request), pk, next_url=status_url
+    )
+    if isinstance(found, HttpResponse):
+        return found
+    if not found.is_email_verified:
+        raise Http404
+    try:
+        transitions.withdraw_application(found)
+    except ApplicationStateError:
+        messages.info(request, "This application can no longer be withdrawn.")
+    else:
+        messages.success(request, "Application withdrawn.")
+    return redirect(status_url)
 
 
 def _posted_next_url(request: HttpRequest) -> str:
@@ -408,6 +434,12 @@ def _render_status(
             "application": app,
             "email_form": email_form,
             "status_url": reverse("course_applications:status", kwargs={"pk": app.pk}),
+            "resume_url": (
+                _resume_url(app, app.form_progress)
+                if app.state == CourseApplication.State.DRAFT
+                and app.form_progress is not None
+                else None
+            ),
         },
         status=status,
     )
@@ -499,7 +531,7 @@ def _anonymous_apply(request: HttpRequest, course: Course) -> HttpResponse:
     # An existing application is always reachable, so this precedes the
     # coming-soon redirect just as it does for a signed-in applicant.
     if app is not None:
-        if not app.is_submitted and app.form_progress is not None:
+        if app.state == CourseApplication.State.DRAFT and app.form_progress is not None:
             return redirect(_resume_url(app, app.form_progress))
         return redirect("course_applications:status", pk=app.pk)
     coming_soon = _coming_soon_redirect(course)
@@ -632,7 +664,7 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
         return redirect_to_acquisition_auth(request)
     applicant = anonymous_applicant_for_course(request, course)
     app = application_of(applicant) if applicant is not None else None
-    if app is not None and app.is_submitted:
+    if app is not None and app.state != CourseApplication.State.DRAFT:
         return redirect("course_applications:status", pk=app.pk)
     if app is None:
         coming_soon = _coming_soon_redirect(course)
@@ -733,9 +765,10 @@ def _owned_application_with_form(
     Returns all three because an application with no sitting has no form pages
     to show, and 404 is the honest answer for a URL that names one.
 
-    A visitor's session reaches the sitting only while it is a draft. Once
-    submitted, the answers and files wait for whoever follows the claim link,
-    not for the next person at the same computer.
+    A visitor's session reaches the sitting only while the application is a
+    draft. Once it is submitted or closed, the answers and files wait for
+    whoever follows the claim link, not for the next person at the same
+    computer.
     """
     found = _owned_application(
         request,
@@ -747,7 +780,9 @@ def _owned_application_with_form(
     if isinstance(found, HttpResponse):
         return found
     app = found
-    if app.form_progress is None or (app.user_id is None and app.is_submitted):
+    if app.form_progress is None or (
+        app.user_id is None and app.state != CourseApplication.State.DRAFT
+    ):
         raise Http404
     return app, app.form_progress.form, app.form_progress
 
@@ -782,10 +817,10 @@ def application_form_page(
 ) -> HttpResponse:
     """One page of the application form.
 
-    A submitted application is read-only for its signed-in owner: its pages
-    still render, so they can re-read what they said, but nothing more is
-    written to it. A visitor's session reaches only a draft (see
-    `_owned_application_with_form`).
+    An application that is no longer a draft is read-only for its signed-in
+    owner: its pages still render, so they can re-read what they said, but
+    nothing more is written to it. A visitor's session reaches only a draft
+    (see `_owned_application_with_form`).
     """
     owned = _owned_application_with_form(request, pk)
     if isinstance(owned, HttpResponse):
@@ -797,7 +832,7 @@ def application_form_page(
     if landing is not None:
         return redirect(_page_url(app, landing))
     current = resolve_page(path, page_number)
-    read_only = form_progress.completed_time is not None
+    read_only = app.state != CourseApplication.State.DRAFT
     # The page form posts to its own URL, query string included, so the marker
     # survives both the save and a 422 re-render.
     return_to_check = request.GET.get("return") == RETURN_TO_CHECK

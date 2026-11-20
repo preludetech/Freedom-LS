@@ -85,3 +85,8 @@ def _move(
 def submit_application(application: CourseApplication) -> CourseApplication:
     """Move a draft to submitted."""
     return _move(application, State.SUBMITTED)
+
+
+def withdraw_application(application: CourseApplication) -> CourseApplication:
+    """Close an open application on the applicant's behalf."""
+    return _move(application, State.WITHDRAWN)

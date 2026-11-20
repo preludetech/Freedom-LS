@@ -380,10 +380,9 @@ class TestApplicationStatusView:
 
         assert response.status_code == 200
 
-    def test_status_page_contains_pending_review_message(
+    def test_status_page_of_a_submitted_application_says_it_is_waiting(
         self, client, mock_site_context
     ):
-        """Status page contains the pending-review confirmation message."""
         user = UserFactory()
         app = CourseApplicationFactory(user=user)
         client.force_login(user)
@@ -392,8 +391,8 @@ class TestApplicationStatusView:
         response = client.get(url)
 
         content = response.content.decode()
-        # The page must mention that the application has been received
-        assert "received" in content.lower() or "pending" in content.lower()
+        assert "is waiting for review. The decision will show here." in content
+        assert "You will be notified once a decision has been made" not in content
 
     def test_non_owner_gets_404(self, client, mock_site_context):
         """A learner who does not own the application gets 404."""
@@ -546,23 +545,12 @@ class TestApplyStartsTheForm:
 
 @pytest.mark.django_db
 class TestApplicationStatusResumes:
-    def test_an_unfinished_application_is_sent_back_to_its_form(
-        self, client, mock_site_context
-    ):
-        course, _form = gated_course_with_form()
-        app = _applied(client, course)
-
-        response = client.get(
-            reverse("course_applications:status", kwargs={"pk": app.pk})
-        )
-
-        assert response["Location"] == _page_url(app, 1)
-
     def test_a_submitted_application_renders_its_status(
         self, client, mock_site_context
     ):
         course, _form = gated_course_with_form()
         app = _applied(client, course)
+        submit_application(app)
         app.form_progress.complete()
 
         response = client.get(
@@ -598,15 +586,17 @@ class TestAPageLessForm:
         app = CourseApplication.objects.get(user=user, course=course)
         assert response["Location"] == _check_url(app)
 
-    def test_the_status_page_resumes_on_the_check_page(self, client, mock_site_context):
+    def test_the_status_page_continues_on_the_check_page(
+        self, client, mock_site_context
+    ):
         course = _gated_course_with_a_page_less_form()
         app = _applied(client, course)
 
-        response = client.get(
+        body = client.get(
             reverse("course_applications:status", kwargs={"pk": app.pk})
-        )
+        ).content.decode()
 
-        assert response["Location"] == _check_url(app)
+        assert f'href="{_check_url(app)}"' in body
 
     def test_the_check_page_renders_and_submits(self, client, mock_site_context):
         course = _gated_course_with_a_page_less_form()
@@ -910,6 +900,7 @@ class TestApplicationFormPage:
         app = _applied(client, course)
         name = _questions_on(form, 1)[0]
         client.post(_page_url(app, 1), {f"question_{name.id}": "Ada"})
+        submit_application(app)
         app.form_progress.complete()
 
         client.post(_page_url(app, 1), {f"question_{name.id}": "Grace"})
@@ -923,6 +914,7 @@ class TestApplicationFormPage:
         course, form = gated_course_with_form()
         app = _applied(client, course)
         name = _questions_on(form, 1)[0]
+        submit_application(app)
         app.form_progress.complete()
 
         response = client.post(_page_url(app, 1), {f"question_{name.id}": "Grace"})
@@ -1329,6 +1321,7 @@ class TestApplicationFormPageMarkup:
     ):
         course, _form = gated_course_with_form()
         app = _applied(client, course)
+        submit_application(app)
         app.form_progress.complete()
 
         body = client.get(_page_url(app, 1)).content.decode()
@@ -1340,6 +1333,7 @@ class TestApplicationFormPageMarkup:
     ):
         course, _form = gated_course_with_form()
         app = _applied(client, course)
+        submit_application(app)
         app.form_progress.complete()
 
         body = client.get(_page_url(app, 1)).content.decode()
@@ -3457,7 +3451,7 @@ def test_claim_post_of_a_draft_redirects_to_set_password_with_the_status_page_as
 
 
 @pytest.mark.django_db
-def test_status_page_after_a_draft_claim_lands_on_the_first_form_page(
+def test_status_page_after_a_draft_claim_continues_on_the_first_form_page(
     client, claimable_draft
 ):
     _claim(client, claimable_draft)
@@ -3466,10 +3460,11 @@ def test_status_page_after_a_draft_claim_lands_on_the_first_form_page(
         reverse("course_applications:status", kwargs={"pk": claimable_draft.pk})
     )
 
-    assert response["Location"] == reverse(
+    first_page = reverse(
         "course_applications:form_page",
         kwargs={"pk": claimable_draft.pk, "page_number": 1},
     )
+    assert f'href="{first_page}"' in response.content.decode()
 
 
 @pytest.mark.django_db
@@ -3490,7 +3485,7 @@ def test_claim_post_of_a_draft_drops_the_applicant_from_the_claiming_session(
 
 
 @pytest.mark.django_db
-def test_claim_post_of_a_draft_for_an_existing_account_lands_on_the_resume_page(
+def test_claim_post_of_a_draft_for_an_existing_account_lands_on_the_status_page(
     client, mock_site_context
 ):
     user = UserFactory(email="ada@example.com")
@@ -3504,18 +3499,15 @@ def test_claim_post_of_a_draft_for_an_existing_account_lands_on_the_resume_page(
     response = _claim(client, application)
     followed = client.get(response["Location"])
 
+    first_page = reverse(
+        "course_applications:form_page",
+        kwargs={"pk": application.pk, "page_number": 1},
+    )
     assert (
         response["Location"],
         client.session["_auth_user_id"],
-        followed["Location"],
-    ) == (
-        status_url,
-        str(user.pk),
-        reverse(
-            "course_applications:form_page",
-            kwargs={"pk": application.pk, "page_number": 1},
-        ),
-    )
+        f'href="{first_page}"' in followed.content.decode(),
+    ) == (status_url, str(user.pk), True)
 
 
 @pytest.mark.django_db
@@ -5224,14 +5216,14 @@ def test_a_visitor_who_does_not_own_the_application_writes_no_served_paper(
 
 
 @pytest.mark.django_db
-def test_resuming_a_quiz_application_lands_on_the_first_served_page(
+def test_resuming_a_quiz_application_continues_on_the_first_served_page(
     client, quiz_application
 ):
     app = quiz_application.application
 
     response = client.get(reverse("course_applications:status", kwargs={"pk": app.pk}))
 
-    assert response["Location"] == _page_url(app, 3)
+    assert f'href="{_page_url(app, 3)}"' in response.content.decode()
 
 
 @pytest.mark.django_db
@@ -5367,3 +5359,273 @@ def test_an_anonymous_applicant_sees_the_previous_served_page_link_on_the_others
     response = client.get(_page_url(app, 1))
 
     assert response.context["previous_page_url"] == _page_url(app, 3)
+
+
+# ---------------------------------------------------------------------------
+# Status page per state and withdraw
+# ---------------------------------------------------------------------------
+
+
+def _status_url(app) -> str:
+    return reverse("course_applications:status", kwargs={"pk": app.pk})
+
+
+def _withdraw_url(app) -> str:
+    return reverse("course_applications:withdraw", kwargs={"pk": app.pk})
+
+
+def _claimed_draft(user):
+    return CourseApplicationFactory(
+        user=user, form_progress=FormProgressFactory(user=user)
+    )
+
+
+def _messages_of(response) -> list[str]:
+    return [str(m) for m in get_messages(response.wsgi_request)]
+
+
+# What a closed row of a submitted application holds, so the state check
+# constraints stay satisfied when a test closes an application in place.
+_CLOSED_FIELDS = {
+    "withdrawn": {"withdrawn_at": timezone.now},
+    "rejected": {
+        "submitted_at": timezone.now,
+        "decided_at": timezone.now,
+        "rejection_message": lambda: "Not this time.",
+    },
+}
+
+
+def _close_in_place(app, state: str) -> None:
+    fields = {name: make() for name, make in _CLOSED_FIELDS[state].items()}
+    CourseApplication.objects.filter(pk=app.pk).update(state=state, **fields)
+
+
+@pytest.mark.django_db
+class TestWithdrawApplicationView:
+    def test_owner_withdraw_redirects_to_status_and_stores_withdrawn(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        app = CourseApplicationFactory(user=user)
+        client.force_login(user)
+
+        response = client.post(_withdraw_url(app))
+
+        app.refresh_from_db()
+        assert response["Location"] == _status_url(app)
+        assert app.state == CourseApplication.State.WITHDRAWN
+
+    def test_owner_withdraw_says_it_was_withdrawn(self, client, mock_site_context):
+        user = UserFactory()
+        app = CourseApplicationFactory(user=user)
+        client.force_login(user)
+
+        response = client.post(_withdraw_url(app))
+
+        assert _messages_of(response) == ["Application withdrawn."]
+
+    @pytest.mark.parametrize(
+        "trait",
+        [{"withdrawn": True}, {"approved": True}, {"rejected": True}],
+        ids=["withdrawn", "approved", "rejected"],
+    )
+    def test_withdraw_of_a_closed_or_decided_application_is_refused(
+        self, client, mock_site_context, trait
+    ):
+        user = UserFactory()
+        app = CourseApplicationFactory(user=user, **trait)
+        before = CourseApplication.objects.get(pk=app.pk)
+        client.force_login(user)
+
+        response = client.post(_withdraw_url(app))
+
+        after = CourseApplication.objects.get(pk=app.pk)
+        assert response["Location"] == _status_url(app)
+        assert _messages_of(response) == [
+            "This application can no longer be withdrawn."
+        ]
+        assert (after.state, after.updated_at) == (before.state, before.updated_at)
+
+    def test_withdraw_of_another_accounts_application_is_404(
+        self, client, mock_site_context
+    ):
+        app = CourseApplicationFactory(user=UserFactory())
+        client.force_login(UserFactory())
+
+        response = client.post(_withdraw_url(app))
+
+        assert response.status_code == 404
+
+    def test_withdraw_of_an_unclaimed_application_in_its_own_session_is_404(
+        self, client, mock_site_context
+    ):
+        app = _anonymous_draft(client)
+
+        response = client.post(_withdraw_url(app))
+
+        assert response.status_code == 404
+
+    def test_withdraw_of_an_unclaimed_application_changes_nothing(
+        self, client, mock_site_context
+    ):
+        app = _anonymous_draft(client)
+
+        client.post(_withdraw_url(app))
+
+        app.refresh_from_db()
+        assert app.state == CourseApplication.State.DRAFT
+
+    def test_withdraw_by_a_signed_out_visitor_redirects_to_login_for_the_status_page(
+        self, client, mock_site_context
+    ):
+        app = CourseApplicationFactory(user=UserFactory())
+
+        response = client.post(_withdraw_url(app))
+
+        assert response["Location"] == (
+            f"{reverse('account_login')}?next={_status_url(app)}"
+        )
+
+    def test_withdraw_by_get_is_405(self, client, mock_site_context):
+        user = UserFactory()
+        app = CourseApplicationFactory(user=user)
+        client.force_login(user)
+
+        response = client.get(_withdraw_url(app))
+
+        assert response.status_code == 405
+
+
+@pytest.mark.django_db
+class TestApplicationStatusStates:
+    def test_a_claimed_draft_renders_its_status_page(self, client, mock_site_context):
+        user = UserFactory()
+        app = _claimed_draft(user)
+        client.force_login(user)
+
+        response = client.get(_status_url(app))
+
+        assert response.status_code == 200
+        assert "Not submitted" in response.content.decode()
+
+    def test_a_claimed_draft_links_to_its_resume_url(self, client, mock_site_context):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        body = client.get(_status_url(app)).content.decode()
+
+        assert f'href="{_page_url(app, 1)}"' in body
+        assert "Continue application" in body
+
+    def test_a_claimed_draft_offers_withdraw(self, client, mock_site_context):
+        user = UserFactory()
+        app = _claimed_draft(user)
+        client.force_login(user)
+
+        body = client.get(_status_url(app)).content.decode()
+
+        assert f'action="{_withdraw_url(app)}"' in body
+
+    def test_an_unclaimed_draft_is_sent_to_its_form(self, client, mock_site_context):
+        app = _anonymous_draft(client)
+
+        response = client.get(_status_url(app))
+
+        assert response["Location"] == _page_url(app, 1)
+
+    def test_a_submitted_application_shows_state_date_and_withdraw(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        app = CourseApplicationFactory(user=user)
+        client.force_login(user)
+
+        body = client.get(_status_url(app)).content.decode()
+
+        assert "Waiting for review" in body
+        assert "Submitted" in body
+        assert f'action="{_withdraw_url(app)}"' in body
+
+    def test_a_withdrawn_application_says_so_and_offers_no_withdraw(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        app = CourseApplicationFactory(user=user, withdrawn=True)
+        client.force_login(user)
+
+        body = client.get(_status_url(app)).content.decode()
+
+        assert "You withdrew your application" in body
+        assert _withdraw_url(app) not in body
+
+    def test_a_withdrawn_draft_renders_instead_of_resuming_its_form(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        app = CourseApplicationFactory(
+            user=user,
+            form_progress=FormProgressFactory(user=user),
+            withdrawn=True,
+        )
+        client.force_login(user)
+
+        response = client.get(_status_url(app))
+
+        assert response.status_code == 200
+        assert "You withdrew your application" in response.content.decode()
+
+    def test_the_page_title_holds_the_state_label(self, client, mock_site_context):
+        user = UserFactory()
+        app = CourseApplicationFactory(user=user, withdrawn=True)
+        client.force_login(user)
+
+        body = client.get(_status_url(app)).content.decode()
+
+        assert re.search(r"<title>[^<]*Withdrawn · Application", body)
+
+    def test_an_unclaimed_submitted_application_offers_no_withdraw(
+        self, client, mock_site_context
+    ):
+        app = _anonymous_draft(client)
+        CourseApplication.objects.filter(pk=app.pk).update(
+            state=CourseApplication.State.SUBMITTED, submitted_at=timezone.now()
+        )
+
+        body = client.get(_status_url(app)).content.decode()
+
+        assert "Check your email" in body
+        assert _withdraw_url(app) not in body
+
+
+@pytest.mark.django_db
+class TestClosedApplicationAcceptsNoWrites:
+    @pytest.mark.parametrize("state", ["withdrawn", "rejected"])
+    def test_a_form_page_post_redirects_to_status_and_changes_no_answer(
+        self, client, mock_site_context, state
+    ):
+        course, form = gated_course_with_form()
+        app = _applied(client, course)
+        name = _questions_on(form, 1)[0]
+        client.post(_page_url(app, 1), {f"question_{name.id}": "Ada"})
+        _close_in_place(app, state)
+
+        response = client.post(_page_url(app, 1), {f"question_{name.id}": "Grace"})
+
+        answer = app.form_progress.answers.get(question=name)
+        assert response["Location"] == _status_url(app)
+        assert answer.text_answer == "Ada"
+
+    @pytest.mark.parametrize("state", ["withdrawn", "rejected"])
+    def test_a_check_your_answers_post_redirects_to_status_and_keeps_the_state(
+        self, client, mock_site_context, state
+    ):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+        _close_in_place(app, state)
+
+        response = client.post(_check_url(app))
+
+        app.refresh_from_db()
+        assert response["Location"] == _status_url(app)
+        assert app.state == state

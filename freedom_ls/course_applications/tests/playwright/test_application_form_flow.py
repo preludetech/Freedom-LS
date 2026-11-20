@@ -68,8 +68,7 @@ def test_an_applicant_can_fill_in_attach_change_and_submit(
 
     # Leave and come back: the file has to still be attached. The dashboard
     # says the application is unfinished, and the status page -- the "View my
-    # application" CTA's destination -- routes a returning applicant back into
-    # the form.
+    # application" CTA's destination -- offers a way back into the form.
     logged_in_page.goto(reverse_url(live_server, "learner_interface:dashboard"))
     expect(logged_in_page.get_by_text("Incomplete")).to_be_visible()
     # The rows line up with their heading rather than sitting in the list's
@@ -88,6 +87,7 @@ def test_an_applicant_can_fill_in_attach_change_and_submit(
             kwargs={"pk": course.applications.get().pk},
         )
     )
+    logged_in_page.get_by_role("link", name="Continue application").click()
     expect(logged_in_page.get_by_text("id-scan.png")).to_be_visible()
 
     # Removing it leaves the empty picker behind.
@@ -334,6 +334,7 @@ def test_the_claim_link_from_the_details_step_signs_a_second_browser_in_on_the_d
         )
         other_page.get_by_role("button", name="Set Password").click()
 
+        other_page.get_by_role("link", name="Continue application").click()
         expect(other_page.get_by_label("Your name")).to_be_visible()
         other_page.goto(reverse_url(live_server, "learner_interface:dashboard"))
         expect(other_page.get_by_text("Incomplete")).to_be_visible()
