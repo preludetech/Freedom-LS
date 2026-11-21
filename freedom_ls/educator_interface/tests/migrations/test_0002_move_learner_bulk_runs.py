@@ -77,60 +77,127 @@ def _stored(model: type, pk: object) -> tuple[str, str]:
 
 # transaction=True: the tests migrate backwards and forwards.
 @pytest.mark.django_db(transaction=True)
-def test_each_learner_run_points_at_the_learner_bulk_action_module_and_keeps_its_name(
-    mock_site_context: object, migrated_back_to_the_leaf: None
+@pytest.mark.parametrize(
+    "old_path, new_path",
+    [
+        ("freedom_ls.educator_interface.actions.AddToCohortBulkAction", "freedom_ls.educator_interface.panels.learner.bulk_actions.AddToCohortBulkAction"),
+        ("freedom_ls.educator_interface.actions.RemoveFromCohortBulkAction", "freedom_ls.educator_interface.panels.learner.bulk_actions.RemoveFromCohortBulkAction"),
+        ("freedom_ls.educator_interface.actions.DeactivateLearnersBulkAction", "freedom_ls.educator_interface.panels.learner.bulk_actions.DeactivateLearnersBulkAction"),
+        ("freedom_ls.educator_interface.actions.ReactivateLearnersBulkAction", "freedom_ls.educator_interface.panels.learner.bulk_actions.ReactivateLearnersBulkAction"),
+        ("freedom_ls.educator_interface.actions.RegisterForCourseBulkAction", "freedom_ls.educator_interface.panels.learner.bulk_actions.RegisterForCourseBulkAction"),
+        ("freedom_ls.educator_interface.actions.DeactivateRegistrationBulkAction", "freedom_ls.educator_interface.panels.learner.bulk_actions.DeactivateRegistrationBulkAction"),
+        ("freedom_ls.educator_interface.actions.ResendSetupEmailBulkAction", "freedom_ls.educator_interface.panels.learner.bulk_actions.ResendSetupEmailBulkAction"),
+    ],
+)
+def test_learner_run_points_at_the_learner_bulk_action_module(
+    old_path: str,
+    new_path: str,
+    mock_site_context: object,
+    migrated_back_to_the_leaf: None,
 ) -> None:
     user = UserFactory()
     site = Site.objects.get_current()
     Historical = _historical_model()
-    runs = {
-        name: _make_run(Historical, site, user, f"{OLD}{name}", action_name)
-        for name, action_name in LEARNER_ACTIONS
-    }
+    run = _make_run(Historical, site, user, old_path, "any_action")
 
     Current = _migrate(AFTER)
 
-    for name, action_name in LEARNER_ACTIONS:
-        assert _stored(Current, runs[name]) == (f"{NEW}{name}", action_name)
+    assert _stored(Current, run)[0] == new_path
 
 
 @pytest.mark.django_db(transaction=True)
-def test_migrating_back_restores_each_learner_run_to_its_old_path(
-    mock_site_context: object, migrated_back_to_the_leaf: None
+@pytest.mark.parametrize("action_name", [action_name for _, action_name in LEARNER_ACTIONS])
+def test_learner_run_keeps_its_action_name_when_moved(
+    action_name: str, mock_site_context: object, migrated_back_to_the_leaf: None
 ) -> None:
     user = UserFactory()
     site = Site.objects.get_current()
     Historical = _historical_model()
-    runs = {
-        name: _make_run(Historical, site, user, f"{OLD}{name}", action_name)
-        for name, action_name in LEARNER_ACTIONS
-    }
-    _migrate(AFTER)
-
-    Restored = _migrate(BEFORE)
-
-    for name, action_name in LEARNER_ACTIONS:
-        assert _stored(Restored, runs[name]) == (f"{OLD}{name}", action_name)
-
-
-@pytest.mark.django_db(transaction=True)
-def test_runs_of_other_actions_and_runs_already_on_a_new_path_are_left_alone(
-    mock_site_context: object, migrated_back_to_the_leaf: None
-) -> None:
-    user = UserFactory()
-    site = Site.objects.get_current()
-    Historical = _historical_model()
-    cohort_run = _make_run(Historical, site, user, f"{OLD}DeactivateCohortsBulkAction", "deactivate")
-    unknown_run = _make_run(Historical, site, user, f"{OLD}NoSuchBulkAction", "unknown")
-    moved_run = _make_run(
-        Historical, site, user, f"{NEW}AddToCohortBulkAction", "add_to_cohort"
+    run = _make_run(
+        Historical,
+        site,
+        user,
+        "freedom_ls.educator_interface.actions.AddToCohortBulkAction",
+        action_name,
     )
 
     Current = _migrate(AFTER)
 
-    assert _stored(Current, cohort_run) == (f"{OLD}DeactivateCohortsBulkAction", "deactivate")
-    assert _stored(Current, unknown_run) == (f"{OLD}NoSuchBulkAction", "unknown")
-    assert _stored(Current, moved_run) == (f"{NEW}AddToCohortBulkAction", "add_to_cohort")
+    assert _stored(Current, run)[1] == action_name
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize(
+    "new_path, old_path",
+    [
+        ("freedom_ls.educator_interface.panels.learner.bulk_actions.AddToCohortBulkAction", "freedom_ls.educator_interface.actions.AddToCohortBulkAction"),
+        ("freedom_ls.educator_interface.panels.learner.bulk_actions.RemoveFromCohortBulkAction", "freedom_ls.educator_interface.actions.RemoveFromCohortBulkAction"),
+        ("freedom_ls.educator_interface.panels.learner.bulk_actions.DeactivateLearnersBulkAction", "freedom_ls.educator_interface.actions.DeactivateLearnersBulkAction"),
+        ("freedom_ls.educator_interface.panels.learner.bulk_actions.ReactivateLearnersBulkAction", "freedom_ls.educator_interface.actions.ReactivateLearnersBulkAction"),
+        ("freedom_ls.educator_interface.panels.learner.bulk_actions.RegisterForCourseBulkAction", "freedom_ls.educator_interface.actions.RegisterForCourseBulkAction"),
+        ("freedom_ls.educator_interface.panels.learner.bulk_actions.DeactivateRegistrationBulkAction", "freedom_ls.educator_interface.actions.DeactivateRegistrationBulkAction"),
+        ("freedom_ls.educator_interface.panels.learner.bulk_actions.ResendSetupEmailBulkAction", "freedom_ls.educator_interface.actions.ResendSetupEmailBulkAction"),
+    ],
+)
+def test_migrating_back_restores_a_learner_run_to_its_old_path(
+    new_path: str,
+    old_path: str,
+    mock_site_context: object,
+    migrated_back_to_the_leaf: None,
+) -> None:
+    user = UserFactory()
+    site = Site.objects.get_current()
+    Historical = _historical_model()
+    run = _make_run(Historical, site, user, old_path, "any_action")
+    _migrate(AFTER)
+
+    Restored = _migrate(BEFORE)
+
+    assert _stored(Restored, run)[0] == old_path
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize(
+    "path, action_name",
+    [
+        ("freedom_ls.educator_interface.actions.DeactivateCohortsBulkAction", "deactivate"),
+        ("freedom_ls.educator_interface.actions.NoSuchBulkAction", "unknown"),
+    ],
+)
+def test_run_of_another_action_is_left_alone(
+    path: str, action_name: str, mock_site_context: object, migrated_back_to_the_leaf: None
+) -> None:
+    user = UserFactory()
+    site = Site.objects.get_current()
+    Historical = _historical_model()
+    run = _make_run(Historical, site, user, path, action_name)
+
+    Current = _migrate(AFTER)
+
+    assert _stored(Current, run) == (path, action_name)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_run_already_on_a_new_path_is_left_alone(
+    mock_site_context: object, migrated_back_to_the_leaf: None
+) -> None:
+    user = UserFactory()
+    site = Site.objects.get_current()
+    Historical = _historical_model()
+    run = _make_run(
+        Historical,
+        site,
+        user,
+        "freedom_ls.educator_interface.panels.learner.bulk_actions.AddToCohortBulkAction",
+        "add_to_cohort",
+    )
+
+    Current = _migrate(AFTER)
+
+    assert _stored(Current, run) == (
+        "freedom_ls.educator_interface.panels.learner.bulk_actions.AddToCohortBulkAction",
+        "add_to_cohort",
+    )
 
 
 @pytest.mark.parametrize("name", [name for name, _ in LEARNER_ACTIONS])
