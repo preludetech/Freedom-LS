@@ -1,75 +1,72 @@
-# QA report: say it, then reveal (`c-audio-reveal`) and widgets nested in slot widgets
+# Frontend QA report: say it, then reveal (`c-audio-reveal`)
 
 ## Methodology
 
-Test plan: `3. frontend_qa.md`. Screenshots were collected into `screenshots/` beside this report, and every image linked below exists there. The run went through the educator course content preview, because the "Content Widgets - Demo Reference" course is `coming_soon` for the learner. The smoke gate passed, so no step was skipped because of an abort.
+- Server: this branch's dev server on port 8352; the branch badge confirmed the branch. Logged in as the QA admin.
+- Viewports: desktop 1920x1080 (per the QA command; the plan names 1280px), mobile 375, 320 (Test 7) and tablet 768.
+- Screenshots were collected into `screenshots/` beside this report. Every referenced image exists there. Compression ran and nothing was over the size limit.
+- Tests 1-6 and 8 ran in the educator course content preview, because the course is `coming_soon` for learners.
+- The run did not abort at the smoke gate, so every step ran.
 
 ## Diff scoping
 
-Class: FULL. Changed files that triggered it: `templates/cotton/*`, `alpine-components.js`, `markdown_utils.py`, and the `demo_content` interactive-widgets topic. Nothing was skipped: desktop, tablet and mobile passes all ran. Tests 4.5 and 10 were skipped for needing a human or a physical device (see General notes).
+Class: **FULL**. Changed files that triggered it: `audio-reveal.html`, `alpine-components.js`, `cotton/*.html`, `markdown_rendering/*.py`, `config/settings_base.py`, the demo content for "4. interactive-widgets", plus docs, plugins and tests. Nothing was skipped; desktop, tablet and mobile passes all ran.
 
 ## Smoke gate
 
-Outcome: pass. Pages loaded: `/` and the educator course preview for the Interactive Widgets topic, `/educator/organisations/demodev/courses/8bc127c1-edf1-4997-b7fc-35fdf8604f30`.
+Pass. Pages loaded: `/` and the educator Interactive Widgets course content preview (`/educator/organisations/demodev/courses/8bc127c1-edf1-4997-b7fc-35fdf8604f30`).
+
+## Results
+
+| Test | Viewport | Result | Screenshot | Notes |
+|---|---|---|---|---|
+| 1 | desktop | pass | ![](screenshots/page-2026-11-21T11-52-50-751Z.png) | Intro paragraph; 4 cards B/C/O/R in 2 columns, tile only, muted eye-closed icon, pointer cursor, 74px card. No `/content/audio/` or `.mp3` request on load. Answer region invisible, inert and aria-hidden; `aria-expanded=false`; `aria-controls` matches the answer id. Tab reaches only the 4 reveal buttons. |
+| 2 | desktop | pass | ![](screenshots/page-2026-11-21T11-56-00-000Z.png) ![](screenshots/page-2026-11-21T11-53-19-618Z.png) | Reveal shows bold Bravo, BRAH-voh with BRAH bold primary, round play button; card height stays 74px. Plays at once, filled primary play button with playing icon, primary border, `aria-expanded=true`. Play while playing stops; again restarts. Hides about 5s after the clip ends (idle 3.4s, hidden 8.3s), never mid-clip. Replay within 5s restarts the countdown. Re-reveal plays again. |
+| 3 | desktop | pass | none | Revealing C while B plays stops B (stays revealed, hides ~5s later) and C plays. B's play while C plays stops C. Flashcard `c-audio` stops when O is revealed. Clips return to the speaker icon at the end; answers hide ~5s later. |
+| 4.1-4.4 | desktop | pass | ![](screenshots/element-2026-11-21T11-57-08-289Z.png) | Visible 2px primary focus ring. Enter reveals and plays; focus moves to "Play pronunciation of Bravo". After auto-hide focus returns to the reveal button. Space reveals and plays. Live status holds "Bravo" while revealed, empty when hidden. |
+| 4.5 | desktop | skip | none | Needs VoiceOver/NVDA, which the automated browser does not have. DOM supports it: sr-only `role=status` holds the label only while revealed; tile letter is not aria-hidden. |
+| 5 | desktop | pass | ![](screenshots/page-2026-11-21T11-58-29-956Z.png) | Media blocked: reveal R still shows the answer and "Audio could not be played. Try again." in the error colour (rgb 210,51,25). Unblock and play: plays, error clears. Scratch topic: missing.mp3 and an image src give "Audio not found"; no label gives "Audio needs a label"; no symbol gives "Audio reveal needs a symbol"; each in a red box. `onclick=alert(1)` stripped, no alert. Only console error was the deliberately blocked request. |
+| 6 | desktop | pass | ![](screenshots/page-2026-11-21T12-00-00-000Z.png) | Tab order before flip: previous card's Flip, this card's Flip, "Reveal answer for B"; back-face play never focused (inert). Front prose click flips. Answer face has prose "Bravo" and a `c-audio` card on an opaque white surface with respelling. Play on the answer face does not flip back; answer-face prose click flips back. Respelling contrast 7.53:1 (#4a5568 on #fff), stressed syllable 5.42:1. The app has no dark theme (emulated dark and `data-theme=dark` change nothing), so the dark half of 6.6 is N/A. All 3 flashcards flip; table and pre scroll as before. |
+| 8 | desktop | pass | ![](screenshots/page-2026-11-21T11-52-50-751Z.png) | Reveal B plays and hides ~5s after the clip ends. Switching topic mid-clip pauses the shared audio element (paused true, 1 pause call); no page errors. Returning: all four reveals hidden. |
+| 9.1 | desktop | pass | none | Media topic: four `c-audio` cards with tiles; play, switch, stop, error line and retry all work. |
+| 9.2-9.3 | desktop | pass | ![](screenshots/page-2026-11-21T12-01-15-931Z.png) ![](screenshots/page-2026-11-21T12-01-28-508Z.png) | All 5 topics previewed with flashcards flipped and accordions opened: no raw `**`, `\|---\|`, `- ` lines or `markdown="1"` text; no `<script>`, `on*` attributes or `javascript:` URLs. Structured Content: 2 c-tables with caption and overflow-x wrapper. Admonitions show icon/title/body; checklist has 4 disabled checkboxes. 3 pull-quote blockquotes. Console: only unrelated htmx "web-share" and YouTube "No available adapters" warnings. |
+| 9.4 | desktop | pass | ![](screenshots/page-2026-11-21T11-58-44-861Z.png) | `c-table` inside `c-accordion` keeps caption and bordered overflow-x wrapper with styled header and bold cell. `c-audio` inside `c-card` inside `c-grid`: card markdown body renders and audio plays. |
+| 1 | mobile 375 | pass | ![](screenshots/page-2026-11-21T12-02-29-253Z.png) | One column; cards 325px wide, 74px tall; reveal control 44px tall inside each card; no horizontal overflow. |
+| 2 | mobile 375 | pass | ![](screenshots/page-2026-11-21T12-03-00-000Z.png) | All four revealed; word, respelling and play button fit; card height 74px; R playing shows filled primary button and border; no overflow. |
+| 7 | mobile 320 | pass | ![](screenshots/page-2026-11-21T12-02-58-016Z.png) | All four revealed and audio flashcard flipped. No document or modal horizontal scroll; no card overflow; each reveal control 44px tall inside its card. |
+| 10 | mobile | skip | none | Needs physical iOS Safari and Android Chrome; not possible from the automated browser. |
+| 1-2 | tablet 768 | pass | ![](screenshots/page-2026-11-21T12-03-23-896Z.png) | Two columns (cards 320px wide, 74px tall), no overflow. B revealed and playing: filled primary button, primary border, height unchanged. O shows the hover tint (pointer resting there), as designed. |
+| 9.2 | tablet 768 | pass | ![](screenshots/page-2026-11-21T12-03-42-398Z.png) | Structured Content: both c-tables keep caption, bordered rounded wrapper and styled header; fit their wrapper; no overflow. |
 
 ## Design check
 
-No design states tested.
-
-## Bug B1: Reveal/Hide toggle changes width with its label, shifting the button and widening the card
-
-Manifestations:
-- Test 2.1, desktop
-
-![](screenshots/page-2026-11-21T08-10-54-275Z.png)
-![](screenshots/page-2026-11-21T08-12-16-444Z.png)
-
-Expected: from the `sm:` breakpoint up, revealing or hiding leaves the toggle's box and the card's width unchanged. Nothing on the page moves: the card does not grow and the button stays where it was.
-
-Actual: at 1920px the toggle is 91px wide reading "Reveal" and 79px reading "Hide". On reveal it moves 13px right and the `flex-1` card grows from 225px to 238px. Revealed rows no longer line up with hidden ones. The other Test 2.1 behaviour passed: the answer and play button show, the clip plays at once, and `aria-expanded` is true.
+No design states tested (the plan names no design screenshots).
 
 ## Layout probe
 
-| Test id | Viewport | URL | Screenshot | Result |
+| Test | Viewport | URL | Screenshot | Result |
 |---|---|---|---|---|
-| 1.1 | desktop | /educator/organisations/demodev/courses/8bc127c1-edf1-4997-b7fc-35fdf8604f30 | ![](screenshots/page-2026-11-21T08-10-28-282Z.png) | clean |
-| 7.1 | mobile (320px) | /educator/organisations/demodev/courses/8bc127c1-edf1-4997-b7fc-35fdf8604f30 | ![](screenshots/page-2026-11-21T08-12-48-083Z.png) | clean |
-| 1.1 | mobile (375px) | /educator/organisations/demodev/courses/8bc127c1-edf1-4997-b7fc-35fdf8604f30 | ![](screenshots/page-2026-11-21T08-13-24-258Z.png) | clean |
-| 1.1 | tablet (768px) | /educator/organisations/demodev/courses/8bc127c1-edf1-4997-b7fc-35fdf8604f30 | ![](screenshots/page-2026-11-21T08-13-04-921Z.png) | clean |
+| 1 | desktop | `/educator/organisations/demodev/courses/<course>` (Interactive Widgets preview) | ![](screenshots/page-2026-11-21T11-52-50-751Z.png) | clean |
+| 1 | mobile 375 | `/educator/.../courses/<course>` (Interactive Widgets preview) | ![](screenshots/page-2026-11-21T12-02-29-253Z.png) | clean |
+| 7 | mobile 320 | `/educator/.../courses/<course>` (Interactive Widgets preview, 320px) | ![](screenshots/page-2026-11-21T12-02-58-016Z.png) | clean |
+| 1-2 | tablet 768 | `/educator/.../courses/<course>` (Interactive Widgets preview) | ![](screenshots/page-2026-11-21T12-03-23-896Z.png) | clean |
+| 9.2 | tablet 768 | `/educator/.../courses/<course>` (Structured Content preview) | ![](screenshots/page-2026-11-21T12-03-42-398Z.png) | clean |
 
 ## Data changes
 
 | What changed | Call or command | Files written |
 |---|---|---|
-| The dev database was empty after the rebase rebuild, so demo data was recreated and the demo content loaded. | `create_demo_data --yes`, then `content_save ./demo_content DemoDev` | none |
+| QA scratch widgets appended to the Cards topic in the dev DB for Tests 5.3/5.4/9.4, then restored by re-running `content_save ./demo_content DemoDev` | dev DB edit, then `content_save ./demo_content DemoDev` | none |
 
 ## Bug status
 
-| Bug | Title | Status |
-|---|---|---|
-| B1 | Reveal/Hide toggle changes width with its label, shifting the button and widening the card | **FIXED** (commit: e9ffd65a9) — both labels share one grid cell with the inactive one invisible; re-verified at 1920px (toggle stays 91×44, card stays 225px through Reveal and Hide; accessible name exactly "Reveal"/"Hide") and 375px (full-width toggle unchanged). ![](screenshots/page-2026-11-21T08-21-55-897Z.png) |
+No bugs were found. No test failed, so there are no bug records and no per-bug sections.
 
 ## General notes
 
-Test results (all desktop unless stated):
-- Passed: setup, 1.1 to 1.4, 2.2 to 2.5, 3.1 to 3.4, 4.1 to 4.4, 5.1 to 5.4, 6.1 to 6.7, 7.1 (320px), 8, 9.1 to 9.4, and 1.1 at 375px and 768px. Only 2.1 failed (B1).
-- Screenshots for passing tests include `page-2026-11-21T08-11-57-095Z.png` (Test 6, flashcard), `page-2026-11-21T08-12-16-444Z.png` (Tests 4 and 5), `page-2026-11-21T08-14-35-520Z.png` (Test 9.1, Media), `page-2026-11-21T08-14-45-876Z.png` (Test 9.2 to 9.3) and `page-2026-11-21T08-14-56-367Z.png` (pull quotes).
+- Not tested: Test 4.5 (screen reader; needs VoiceOver/NVDA) and Test 10 (physical iOS Safari / Android Chrome devices). Both need a human. The dark-theme half of Test 6.6 is N/A because the app has no dark theme.
+- Desktop was run at 1920x1080 rather than the plan's 1280px.
+- Observation (not a failure): the reveal button's accessible name is "Reveal answer for <symbol>" (for example "Reveal answer for B"). This was changed deliberately in commit c5a791f9a ("reveal button is named after its symbol"). `spec.md`, `plan.md` and the QA plan still say "Reveal answer", so those spec documents could be updated to match.
+- Observation: the demo clips for C, O and R are about 0.5s long (B is 2.8s). That makes the "while C plays" checks in Test 3 very short for a human tester.
 
-![](screenshots/page-2026-11-21T08-11-57-095Z.png)
-![](screenshots/page-2026-11-21T08-14-35-520Z.png)
-![](screenshots/page-2026-11-21T08-14-45-876Z.png)
-![](screenshots/page-2026-11-21T08-14-56-367Z.png)
-
-Not tested:
-- Test 4.5, screen-reader listening (VoiceOver/NVDA), needs a human. The sr-only `role=status` element holds "Bravo" while revealed and is emptied on Hide, which drives the single announcement.
-- Test 10, first-tap playback on iOS Safari and Android Chrome, needs physical devices.
-- Test 6.6, dark theme half: the active theme has no dark mode. Light contrast measured 7.53:1 (respelling rgb(74,85,104) on white).
-- Tests 5.3 to 5.4 and 9.4 were run by rendering through `render_markdown` with the Interactive Widgets topic as the content instance, not with a scratch topic.
-
-Observations without a required action:
-- At 768px, R's card is 87px tall against 74px for its neighbours, because "ROW-me-oh" wraps in the 131px answer column and the hidden answer reserves that height. This is the intended no-shift behaviour.
-- Closing the preview dialog alone leaves the clip playing until the new preview replaces the body (same shared element as `c-audio`). Switching topics does stop it.
-- The B flashcard's answer face repeats "Bravo" as plain text above the audio card, as the demo content was written.
-- The console showed no errors besides the deliberate audio aborts and a third-party htmx/YouTube warning.
-
-status: ok · reason: 1 bug — 1 fixed, 0 unresolved; report rendered, screenshots verified
+status: ok · reason: report rendered, 0 bugs documented
