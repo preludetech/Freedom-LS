@@ -12,6 +12,7 @@ urlpatterns = [
         name="applicant_details",
     ),
     path("status/<uuid:pk>/", views.application_status, name="status"),
+    path("status/<uuid:pk>/resume/", views.resume_application, name="resume"),
     path(
         "status/<uuid:pk>/withdraw/",
         views.withdraw_application,

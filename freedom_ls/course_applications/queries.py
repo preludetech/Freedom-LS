@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
     from freedom_ls.course_applications.models import CourseApplication
+    from freedom_ls.form_engine.models import FormProgress
     from freedom_ls.organisations.models import Organisation
 
     type RequestUser = User | AnonymousUser
@@ -118,4 +119,19 @@ def get_dashboard_applications(user: RequestUser) -> QuerySet[CourseApplication]
             Q(state__in=ACTIVE_STATES)
             | (Q(state=CourseApplication.State.REJECTED) & ~Exists(superseded))
         )
+    )
+
+
+def sitting_belongs_to_a_non_draft_application(form_progress: FormProgress) -> bool:
+    """Whether this sitting is an application form that is no longer a draft.
+
+    Registered with form_engine as a sitting lock: a withdrawn draft never
+    completes its sitting, so form_engine alone would still take its answers.
+    """
+    from freedom_ls.course_applications.models import CourseApplication
+
+    return (
+        CourseApplication._base_manager.filter(form_progress=form_progress)
+        .exclude(state=CourseApplication.State.DRAFT)
+        .exists()
     )

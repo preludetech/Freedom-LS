@@ -29,6 +29,7 @@ from freedom_ls.form_engine.models import (
 )
 from freedom_ls.form_engine.permissions import can_download_answer_files
 from freedom_ls.form_engine.session_access import owned_form_progress
+from freedom_ls.form_engine.sitting_locks import sitting_is_locked
 from freedom_ls.form_engine.uploads import validate_and_sanitise
 
 FILE_WIDGET_TEMPLATE = "form_engine/inputs/file_upload.html"
@@ -96,7 +97,7 @@ def partial_question_file_upload(
     with the reason at 422, the one error status the page swaps in.
     """
     form_progress, question = _owned_file_question(request, progress_pk, question_pk)
-    if form_progress.completed_time is not None:
+    if sitting_is_locked(form_progress):
         return HttpResponse(status=409)
     allowed: bool = ratelimit.consume(
         request, action="form_file_upload", key=str(form_progress.pk)
@@ -143,7 +144,7 @@ def partial_question_file_remove(
 ) -> HttpResponse:
     """Detach the file from a file question, taking the stored object with it."""
     form_progress, question = _owned_file_question(request, progress_pk, question_pk)
-    if form_progress.completed_time is not None:
+    if sitting_is_locked(form_progress):
         return HttpResponse(status=409)
 
     # Deleting the answer cascades to the file row, whose post_delete receiver

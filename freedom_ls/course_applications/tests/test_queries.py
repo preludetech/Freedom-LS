@@ -288,3 +288,38 @@ class TestOrganisationForNewApplication:
         assert organisation_for_new_application(course) == get_default_organisation(
             course.site
         )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("traits", "expected"),
+    [
+        ({}, False),
+        ({"withdrawn": True}, True),
+        ({"rejected": True, "submitted_at": timezone.now()}, True),
+    ],
+)
+def test_sitting_belongs_to_a_non_draft_application(
+    mock_site_context: None, traits: dict[str, object], expected: bool
+) -> None:
+    from freedom_ls.course_applications.queries import (
+        sitting_belongs_to_a_non_draft_application,
+    )
+
+    sitting = FormProgressFactory(completed_time=None)
+    CourseApplicationFactory(form_progress=sitting, **traits)
+
+    assert sitting_belongs_to_a_non_draft_application(sitting) is expected
+
+
+@pytest.mark.django_db
+def test_a_sitting_with_no_application_is_not_locked_by_applications(
+    mock_site_context: None,
+) -> None:
+    from freedom_ls.course_applications.queries import (
+        sitting_belongs_to_a_non_draft_application,
+    )
+
+    assert not sitting_belongs_to_a_non_draft_application(
+        FormProgressFactory(completed_time=None)
+    )

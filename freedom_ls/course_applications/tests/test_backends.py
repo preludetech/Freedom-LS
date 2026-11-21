@@ -584,6 +584,16 @@ class TestDashboardPartialRendering:
         assert "Continue application" in rendered
         assert "View my application" not in rendered
 
+    def test_a_draft_rows_continue_button_resumes_the_form(
+        self, mock_site_context: None
+    ) -> None:
+        app = _application_with_sitting()
+
+        rendered = _render_panel(app)
+
+        resume_url = reverse("course_applications:resume", kwargs={"pk": app.pk})
+        assert f'href="{resume_url}"' in rendered
+
     def test_the_button_names_its_course_for_screen_readers(self, mock_site_context):
         app = _application_with_sitting()
 

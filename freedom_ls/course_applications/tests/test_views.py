@@ -64,6 +64,7 @@ from freedom_ls.course_applications.queries import organisation_for_new_applicat
 from freedom_ls.course_applications.transitions import (
     reject_application,
     submit_application,
+    withdraw_application,
 )
 from freedom_ls.course_applications.views import (
     _details_in_flight_key,
@@ -719,6 +720,58 @@ class TestApplicationStatusResumes:
         )
 
         assert response.status_code == 200
+
+
+def _resume(pk: object) -> str:
+    return reverse("course_applications:resume", kwargs={"pk": pk})
+
+
+@pytest.mark.django_db
+class TestResumeApplication:
+    def test_a_claimed_draft_resumes_at_its_form(
+        self, client: Client, mock_site_context: None
+    ) -> None:
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        response = client.get(_resume(app.pk))
+
+        assert response["Location"] == _page_url(app, 1)
+
+    def test_a_submitted_application_goes_to_its_status_page(
+        self, client: Client, mock_site_context: None
+    ) -> None:
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+        app.form_progress.complete()
+        submit_application(app)
+
+        response = client.get(_resume(app.pk))
+
+        assert response["Location"] == reverse(
+            "course_applications:status", kwargs={"pk": app.pk}
+        )
+
+    def test_someone_elses_application_is_not_found(
+        self, client: Client, mock_site_context: None
+    ) -> None:
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+        client.force_login(UserFactory())
+
+        assert client.get(_resume(app.pk)).status_code == 404
+
+    def test_a_visitor_is_sent_to_log_in(
+        self, client: Client, mock_site_context: None
+    ) -> None:
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+        client.logout()
+
+        response = client.get(_resume(app.pk))
+
+        assert response.status_code == 302
+        assert reverse("account_login") in response["Location"]
 
 
 def _gated_course_with_a_page_less_form():
@@ -6050,3 +6103,32 @@ class TestDecidedApplicationStatusPage:
         body = client.get(_status_url(app)).content.decode()
 
         assert "Come back in spring." in body
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("route", ["question_file_upload", "question_file_remove"])
+def test_a_withdrawn_draft_refuses_file_changes(
+    client: Client, mock_site_context: None, route: str
+) -> None:
+    course, form = gated_course_with_form()
+    app = _applied(client, course)
+    answer_file = _attach_file(client, form, app)
+    withdraw_application(app)
+
+    response = client.post(
+        reverse(
+            f"form_engine:{route}",
+            kwargs={
+                "progress_pk": app.form_progress.pk,
+                "question_pk": answer_file.answer.question_id,
+            },
+        ),
+        {"file": SimpleUploadedFile("other.png", png_bytes())},
+        HTTP_HX_REQUEST="true",
+    )
+
+    answer_file.refresh_from_db()
+    assert (response.status_code, answer_file.original_filename) == (
+        409,
+        "id-scan.png",
+    )
