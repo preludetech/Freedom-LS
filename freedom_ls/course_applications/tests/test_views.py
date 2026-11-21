@@ -1533,7 +1533,7 @@ class TestCheckYourAnswersMarkup:
 
         response = client.get(_check_url(app))
 
-        assert not response.context["submitted"]
+        assert response.context["can_submit"]
 
     def test_a_submitted_application_cannot_be_submitted_again(
         self, client, mock_site_context
@@ -1546,7 +1546,7 @@ class TestCheckYourAnswersMarkup:
 
         response = client.get(_check_url(app))
 
-        assert response.context["submitted"]
+        assert not response.context["can_submit"]
 
     def test_a_submitted_application_offers_no_change_links(
         self, client, mock_site_context
@@ -1568,6 +1568,64 @@ class TestCheckYourAnswersMarkup:
         body = client.get(_check_url(app)).content.decode()
 
         assert "Not answered" in body
+
+
+_CHECK_PAGE_INTRO = "Nothing is sent until you press Submit application."
+_CHECK_PAGE_NOTICES = {
+    "submitted": "This application has been submitted and is waiting for review.",
+    "decided": "A decision has been made on this application, so it can no longer be changed.",
+    "withdrawn": "You withdrew this application, so it can no longer be changed.",
+}
+
+
+@pytest.mark.django_db
+class TestCheckYourAnswersWhenNotADraft:
+    @pytest.mark.parametrize(
+        ("state", "submitted", "notice"),
+        [
+            (CourseApplication.State.SUBMITTED, True, "submitted"),
+            (CourseApplication.State.APPROVED, True, "decided"),
+            (CourseApplication.State.REJECTED, True, "decided"),
+            (CourseApplication.State.WITHDRAWN, True, "withdrawn"),
+            (CourseApplication.State.WITHDRAWN, False, "withdrawn"),
+        ],
+    )
+    def test_a_non_draft_application_is_read_only_with_a_notice_for_its_state(
+        self, client, mock_site_context, state, submitted, notice
+    ):
+        """The page used to keep inviting edits on a withdrawn draft, and told
+        a decided or withdrawn application it was still waiting for review."""
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+        now = timezone.now()
+        State = CourseApplication.State
+        CourseApplication.objects.filter(pk=app.pk).update(
+            state=state,
+            submitted_at=now if submitted else None,
+            decided_at=now if state in (State.APPROVED, State.REJECTED) else None,
+            rejection_message="Not this time." if state == State.REJECTED else "",
+            withdrawn_at=now if state == State.WITHDRAWN else None,
+        )
+
+        body = client.get(_check_url(app)).content.decode()
+
+        assert _CHECK_PAGE_INTRO not in body
+        assert _page_url(app, 1) not in body
+        assert _CHECK_PAGE_NOTICES[notice] in body
+        assert "Your application has been submitted." not in body
+        assert reverse("course_applications:status", kwargs={"pk": app.pk}) in body
+
+    def test_a_draft_shows_the_intro_edit_links_and_no_notice(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        body = client.get(_check_url(app)).content.decode()
+
+        assert _CHECK_PAGE_INTRO in body
+        assert _edit_url(app, 1) in body
+        assert not any(text in body for text in _CHECK_PAGE_NOTICES.values())
 
 
 # ---------------------------------------------------------------------------

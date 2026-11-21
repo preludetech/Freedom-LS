@@ -907,7 +907,6 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
     if isinstance(owned, HttpResponse):
         return owned
     app, _form, form_progress = owned
-    submitted = app.is_submitted
     can_submit = app.state == CourseApplication.State.DRAFT
     required_answers_error = ""
 
@@ -977,7 +976,6 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
             "application": app,
             "course": app.course,
             "sections": sections,
-            "submitted": submitted,
             "can_submit": can_submit,
             "required_answers_error": required_answers_error,
         },

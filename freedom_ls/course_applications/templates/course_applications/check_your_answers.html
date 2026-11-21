@@ -13,7 +13,7 @@
             <div class="space-y-2">
                 <p class="text-muted">Application for {{ course.title }}</p>
                 <h1>Check your answers</h1>
-                {% if not submitted %}
+                {% if can_submit %}
                     <p class="text-muted">
                         Nothing is sent until you press Submit application. You can change any section from here.
                     </p>
@@ -39,7 +39,7 @@
                         <h2 id="section-{{ section.number }}-title" class="text-base font-semibold">
                             {% if section.title %}{{ section.title }}{% else %}Page {{ section.number }}{% endif %}
                         </h2>
-                        {% if not submitted %}
+                        {% if can_submit %}
                             <c-button href="{{ section.edit_url }}" variant="ghost" size="small" icon_left="edit">
                                 Edit<span class="sr-only"> {% if section.title %}{{ section.title }}{% else %}page {{ section.number }}{% endif %}</span>
                             </c-button>
@@ -76,18 +76,24 @@
                 </section>
             {% endfor %}
 
-            {% if submitted %}
-                <c-callout tone="success">
-                    Your application has been submitted. You will hear back once it has been reviewed.
-                </c-callout>
-                <c-button href="{% url 'course_applications:status' pk=application.pk %}">
-                    Your application
-                </c-button>
-            {% elif can_submit %}
+            {% if can_submit %}
                 <form method="post">
                     {% csrf_token %}
                     <c-button type="submit">Submit application</c-button>
                 </form>
+            {% else %}
+                <c-callout tone="info">
+                    {% if application.state == application.State.WITHDRAWN %}
+                        You withdrew this application, so it can no longer be changed.
+                    {% elif application.state == application.State.SUBMITTED %}
+                        This application has been submitted and is waiting for review.
+                    {% else %}
+                        A decision has been made on this application, so it can no longer be changed.
+                    {% endif %}
+                </c-callout>
+                <c-button href="{% url 'course_applications:status' pk=application.pk %}">
+                    Your application
+                </c-button>
             {% endif %}
         </div>
     </c-page>
