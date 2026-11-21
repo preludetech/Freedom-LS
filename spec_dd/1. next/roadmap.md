@@ -12,6 +12,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 ### In progress
 
 - 🔴 High · `educator-interface-refactor-5-learner` (Educator interface code layout, via `sacaa-compliance`)
+- 🔴 High · `sacaa-compliance-3-question-pools` (SACAA compliance)
 - 🔴 High · `multi-step-course-applications-1-review-states` (Multi-step course applications)
 - 🟠 Medium · `content-widget-longer-audio` (Audio content widgets)
 - 🟠 Medium · `content-widget-sayit-reveal-2-say-it-reveal` (Audio content widgets)
@@ -20,7 +21,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### Ready to start
 
-- 🔴 High · `sacaa-compliance-3-question-pools` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-1-content-save-safety` (SACAA content versions and access)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-4-question-access` (SACAA content versions and access)
 - 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
@@ -95,7 +95,7 @@ Priority: 🔴 High
 
 Quiz randomisation and a per-attempt record of the paper served, for training organisations audited by SACAA. Parent: `sacaa-compliance`.
 
-- `sacaa-compliance-3-question-pools` — **ready** — Authors set a quiz page to draw N questions per attempt; every learner is scored out of the same total.
+- `sacaa-compliance-3-question-pools` — **in progress** — Authors set a quiz page to draw N questions per attempt; every learner is scored out of the same total.
 - `sacaa-compliance-4-attempt-review` — **blocked** by `educator-interface-refactor-5-learner` — Educators see one learner's quiz attempt: paper served, answers and score. The form export carries the served order.
 
 ![SACAA compliance](roadmap_diagrams/sacaa-compliance.svg)
