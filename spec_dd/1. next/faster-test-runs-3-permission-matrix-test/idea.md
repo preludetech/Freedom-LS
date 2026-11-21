@@ -4,6 +4,8 @@ Spec 3 of 7 in the Faster test runs effort. Read the "Faster test runs" section 
 `spec_dd/1. next/roadmap.md` first: it holds the build order, what this spec depends on and may
 run beside, the decisions already taken and the assumptions every idea in the effort makes.
 
+**Estimated time saving:** about 7 CPU-minutes per full run once `faster-test-runs-1-fast-password-hasher` has landed (roughly 8.5 down to 1 or 2), or about 40 of today's 45 without it. Extrapolated from a 20-case sample.
+
 ## What
 
 The educator-interface permission matrix test checks the same matrix as today in a small fraction

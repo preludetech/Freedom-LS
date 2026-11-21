@@ -4,6 +4,8 @@ Spec 7 of 7 in the Faster test runs effort. Read the "Faster test runs" section 
 `spec_dd/1. next/roadmap.md` first: it holds the build order, what this spec depends on and may
 run beside, the decisions already taken and the assumptions every idea in the effort makes.
 
+**Estimated time saving:** nothing for test runs beyond `faster-test-runs-5-full-suite-on-github-actions`. Its gain is moving agent work off the machine, which has not been measured.
+
 ## What
 
 A test run, or a whole SDD batch with its tests, can be handed to a Claude Code cloud session and
