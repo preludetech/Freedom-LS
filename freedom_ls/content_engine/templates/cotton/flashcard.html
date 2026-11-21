@@ -37,11 +37,12 @@ Accessibility:
 Layering:
   The flip trigger sits *below* the face stack, and the stack is transparent to
   pointer events. A click on prose therefore falls through to the trigger and
-  flips the card, while a scrolling table or code block — the only descendants
-  that take pointer events back — can be swiped without the trigger swallowing
-  the gesture. Putting the trigger on top instead makes those scrollers
-  unreachable: each face has a transform, so it is a stacking context, and no
-  z-index on a descendant can lift it above a sibling of the face.
+  flips the card, while a scrolling table or code block, or a button such as a
+  c-audio play button — the only descendants that take pointer events back —
+  can be swiped or pressed without the trigger swallowing the gesture. Putting
+  the trigger on top instead makes those scrollers unreachable: each face has
+  a transform, so it is a stacking context, and no z-index on a descendant can
+  lift it above a sibling of the face.
 
 Styling:
   The card owns its own styling. The 3-D geometry is Tailwind utilities on the
@@ -86,11 +87,17 @@ Styling:
      * would otherwise have to grow to, pushing the whole card off a narrow
      * viewport. Each becomes its own scroll container instead, capped at the
      * face, and takes pointer events back so the scroll is actually reachable
-     * past the flip trigger underneath. c-table's scroll wrapper works inside a
-     * face too, but this covers plain markdown tables and code blocks. */
+     * past the flip trigger underneath. A c-table's scroll wrapper does the same
+     * for itself, so this covers plain markdown tables and code blocks. */
     .flashcard-face :is(table, pre) {
         max-width: 100%;
         overflow-x: auto;
+        pointer-events: auto;
+    }
+
+    /* Any button in a face takes pointer events back, so pressing it does not
+     * fall through to the flip trigger underneath. */
+    .flashcard-face button {
         pointer-events: auto;
     }
 

@@ -81,3 +81,47 @@ def assert_no_space_below_field_row(form: Locator) -> None:
     """The form's last visible child ends where the form's content box ends."""
     space = form.evaluate(_SPACE_BELOW_LAST_CHILD)
     assert abs(space) <= 1, f"{space}px of space under the form's last visible child"
+
+
+# An element's computed colours as sRGB. Painting a colour on a 1x1 canvas and
+# reading the pixel back makes the browser convert whatever notation the
+# computed value uses (oklch(), color-mix(), color(srgb ...)) to 8-bit channels.
+# The background is the element's fill and each ancestor's under it, painted over
+# white, so a translucent fill resolves to the colour a reader sees.
+_SRGB_COLOURS = """(el) => {
+    const context = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
+    context.canvas.width = 1;
+    context.canvas.height = 1;
+    const toRgb = () => Array.from(context.getImageData(0, 0, 1, 1).data.slice(0, 3));
+    const paint = (colour) => {
+        context.fillStyle = colour;
+        context.fillRect(0, 0, 1, 1);
+    };
+    paint("white");
+    paint(getComputedStyle(el).color);
+    const color = toRgb();
+    paint("white");
+    const chain = [];
+    for (let node = el; node; node = node.parentElement) chain.unshift(node);
+    for (const node of chain) paint(getComputedStyle(node).backgroundColor);
+    return { color, background: toRgb() };
+}"""
+
+
+def _relative_luminance(rgb: list[int]) -> float:
+    """WCAG 2 relative luminance of an 8-bit sRGB colour."""
+    red, green, blue = (
+        channel / 255 / 12.92
+        if channel / 255 <= 0.04045
+        else ((channel / 255 + 0.055) / 1.055) ** 2.4
+        for channel in rgb
+    )
+    return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+
+
+def contrast_ratio(text: Locator, background: Locator) -> float:
+    """The WCAG contrast ratio of ``text``'s colour against ``background``'s fill."""
+    foreground = _relative_luminance(text.evaluate(_SRGB_COLOURS)["color"])
+    fill = _relative_luminance(background.evaluate(_SRGB_COLOURS)["background"])
+    lighter, darker = max(foreground, fill), min(foreground, fill)
+    return (lighter + 0.05) / (darker + 0.05)

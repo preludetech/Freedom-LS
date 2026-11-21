@@ -44,6 +44,7 @@ from freedom_ls.tests.app_guards import app_not_installed
 from freedom_ls.tests.playwright_helpers import (
     QA_VIEWPORTS,
     assert_no_horizontal_overflow,
+    contrast_ratio,
 )
 
 # transaction=True so the live server's own DB connection sees the fixture
@@ -66,6 +67,9 @@ AUDIO_LONG_RESPELLING = "GUD MOR-ning HOW AR YOO tuh-DAY"
 REVEAL_A_LABEL = "November"
 REVEAL_B_LABEL = "Oscar"
 PLAIN_AUDIO_LABEL = "Papa"
+FRONT_AUDIO_LABEL = "Quebec"
+BACK_AUDIO_LABEL = "Romeo"
+FLASHCARD_PROMPT = "Which word stands for Q?"
 
 # A five-column table and a fenced code block: between them they set a
 # min-content width several times a phone's viewport.
@@ -158,7 +162,8 @@ def _logo_upload() -> SimpleUploadedFile:
 
 
 def _audio_widgets_course(user: User) -> Course:
-    """A course with one topic holding two c-audio-reveal widgets and a c-audio."""
+    """A course with a topic of two c-audio-reveal widgets and a c-audio, then a
+    topic of a flashcard playing audio on both faces."""
     course: Course = CourseFactory(
         title="Audio Widgets Course",
         slug="audio-widgets-course",
@@ -166,7 +171,7 @@ def _audio_widgets_course(user: User) -> Course:
         access_config={"access_type": "free"},
     )
     LearnerCourseRegistrationFactory(learner__user=user, course=course, is_active=True)
-    for name in ("november", "oscar", "papa"):
+    for name in ("november", "oscar", "papa", "quebec", "romeo"):
         FileFactory(
             file_path=f"audio/{name}.mp3",
             file=SimpleUploadedFile(
@@ -184,6 +189,26 @@ def _audio_widgets_course(user: User) -> Course:
     )
     topic = TopicFactory(title="Audio Widgets", slug="audio-widgets", content=content)
     ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
+    flashcard = (
+        "<c-flashcard>\n"
+        '<c-slot name="front">\n\n'
+        f"{FLASHCARD_PROMPT}\n\n"
+        f'<c-audio src="audio/quebec.mp3" label="{FRONT_AUDIO_LABEL}"></c-audio>\n\n'
+        "</c-slot>\n"
+        '<c-slot name="back">\n\n'
+        f'<c-audio src="audio/romeo.mp3" label="{BACK_AUDIO_LABEL}" '
+        'respelling="ROW-me-oh"></c-audio>\n\n'
+        "</c-slot>\n"
+        "</c-flashcard>"
+    )
+    flashcard_topic = TopicFactory(
+        title="Audio Flashcard", slug="audio-flashcard", content=flashcard
+    )
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=flashcard_topic, order=1
+    )
+    # Items open in order, so finishing the first unlocks the flashcard topic.
+    topic_completion(course, user, topic, complete_time=timezone.now())
     return course
 
 
@@ -634,6 +659,39 @@ def test_learner_practises_with_audio_widgets(
         box = _box(reveal)
         assert box["width"] >= 44
         assert box["height"] >= 44
+
+    # A play button on a flashcard's showing face plays without flipping the card;
+    # the hidden face's button is out of reach until the card flips.
+    page.goto(_item_url(live_server, course, 2))
+    flip = page.get_by_role("button", name="Flip card")
+    front_play = page.get_by_role(
+        "button", name=f"Play pronunciation of {FRONT_AUDIO_LABEL}"
+    )
+    back_play = page.get_by_role(
+        "button", name=f"Play pronunciation of {BACK_AUDIO_LABEL}"
+    )
+    expect(back_play).to_have_count(0)
+    front_play.click()
+    expect(front_play).to_have_attribute("aria-pressed", "true")
+    expect(flip).to_have_attribute("aria-pressed", "false")
+
+    # Prose on the face still flips it, and the answer's button is then reachable.
+    prose = _box(page.get_by_text(FLASHCARD_PROMPT))
+    page.mouse.click(prose["x"] + prose["width"] / 2, prose["y"] + prose["height"] / 2)
+    expect(flip).to_have_attribute("aria-pressed", "true")
+    expect(back_play).to_have_count(1)
+    back_play.click()
+    expect(back_play).to_have_attribute("aria-pressed", "true")
+
+    # The respelling on the answer face is legible against its audio card.
+    answer = page.locator(".flashcard-back")
+    assert (
+        contrast_ratio(
+            answer.locator("span.font-mono"),
+            answer.locator("[x-data='audioFile'] > div").first,
+        )
+        >= 4.5
+    )
 
 
 def test_a_reveal_whose_audio_fails_still_shows_the_answer(

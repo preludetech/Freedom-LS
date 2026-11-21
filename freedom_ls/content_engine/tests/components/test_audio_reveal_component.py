@@ -185,3 +185,29 @@ class TestInsideGrid:
 
         assert 'x-data="audioReveal"' in html
         assert "data-src=" in html
+
+
+class TestInsideSlotWidgets:
+    @pytest.mark.parametrize(
+        "wrapped",
+        [
+            f'<c-accordion title="Say it">\n\n{MARKUP}\n\n</c-accordion>',
+            (
+                "<c-flashcard>\n"
+                '<c-slot name="front">\n\nQuestion\n\n</c-slot>\n'
+                f'<c-slot name="back">\n\n{MARKUP}\n\n</c-slot>\n'
+                "</c-flashcard>"
+            ),
+        ],
+        ids=["accordion", "flashcard-back"],
+    )
+    def test_component_hooks_survive(
+        self, mock_site_context: object, wrapped: str
+    ) -> None:
+        audio_file("audio/november.mp3")
+
+        tree = render_tree(wrapped)
+
+        (root,) = tree.xpath("//*[@x-data='audioReveal']")
+        assert root.get("data-src")
+        assert len(_by_attribute(tree, "x-on:click", "toggleReveal")) == 1
