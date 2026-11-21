@@ -15,7 +15,7 @@ import pytest
 
 from django.db import connection
 from django.template.loader import render_to_string
-from django.test import Client, RequestFactory
+from django.test import RequestFactory
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
@@ -61,21 +61,6 @@ def _make_learner(*, organisation: Organisation, **user_fields: str) -> Learner:
     )
 
 
-@pytest.fixture
-def educator_client(logged_in_client):
-    """Factory: a logged-in staff educator holding ``role`` on ``target`` --
-    the organisation for a role holder, a cohort for a grant-only educator."""
-
-    def _make(
-        target: Organisation | Cohort, role: str = "organisation_admin"
-    ) -> Client:
-        educator = UserFactory(staff=True)
-        assign_object_role(educator, target, role)
-        return cast(Client, logged_in_client(educator))
-
-    return _make
-
-
 def _learners_url(organisation_slug: str, path_string: str = "learners") -> str:
     return reverse(
         "educator_interface:interface",
@@ -85,12 +70,12 @@ def _learners_url(organisation_slug: str, path_string: str = "learners") -> str:
 
 @pytest.mark.django_db
 def test_learners_section_lists_a_learner_visible_to_an_organisation_role_holder(
-    educator_client,
+    role_holder_client,
 ):
     organisation = OrganisationFactory()
     _make_learner(organisation=organisation)
 
-    response = educator_client(organisation).get(_learners_url(organisation.slug))
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
     assert response.status_code == 200
     content = response.content.decode()
@@ -106,14 +91,14 @@ def _make_pending_learner(*, organisation: Organisation, **user_fields: str) -> 
 
 
 @pytest.mark.django_db
-def test_learners_list_cohort_link_is_bold_like_a_person_link(educator_client):
+def test_learners_list_cohort_link_is_bold_like_a_person_link(role_holder_client):
     """Cohort names in the Cohorts column used to be medium weight, not bold."""
     organisation = OrganisationFactory()
     learner = _make_learner(organisation=organisation)
     cohort = CohortFactory(organisation=organisation, name="Year 9 Maths")
     CohortMembershipFactory(learner=learner, cohort=cohort)
 
-    response = educator_client(organisation).get(_learners_url(organisation.slug))
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
     document = lxml.html.fromstring(response.content.decode())
     links = document.xpath(f"//a[contains(@href, 'cohorts/{cohort.pk}')]")
@@ -122,11 +107,11 @@ def test_learners_list_cohort_link_is_bold_like_a_person_link(educator_client):
 
 
 @pytest.mark.django_db
-def test_learners_list_shows_a_pending_learners_badge(educator_client):
+def test_learners_list_shows_a_pending_learners_badge(role_holder_client):
     organisation = OrganisationFactory()
     _make_pending_learner(organisation=organisation)
 
-    response = educator_client(organisation).get(_learners_url(organisation.slug))
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
     document = lxml.html.fromstring(response.content.decode())
     (row_status,) = document.xpath(
@@ -137,7 +122,7 @@ def test_learners_list_shows_a_pending_learners_badge(educator_client):
 
 
 @pytest.mark.django_db
-def test_learners_list_hides_an_inactive_learner_by_default(educator_client):
+def test_learners_list_hides_an_inactive_learner_by_default(role_holder_client):
     organisation = OrganisationFactory()
     _make_learner(organisation=organisation)
     inactive_learner = _make_learner(
@@ -146,7 +131,7 @@ def test_learners_list_hides_an_inactive_learner_by_default(educator_client):
     inactive_learner.is_active = False
     inactive_learner.save(update_fields=["is_active"])
 
-    response = educator_client(organisation).get(_learners_url(organisation.slug))
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
     content = response.content.decode()
     assert "Ada" in content
@@ -155,7 +140,7 @@ def test_learners_list_hides_an_inactive_learner_by_default(educator_client):
 
 @pytest.mark.django_db
 def test_learners_list_shows_an_inactive_learner_when_filtered_to_inactive(
-    educator_client,
+    role_holder_client,
 ):
     organisation = OrganisationFactory()
     inactive_learner = _make_learner(
@@ -164,7 +149,7 @@ def test_learners_list_shows_an_inactive_learner_when_filtered_to_inactive(
     inactive_learner.is_active = False
     inactive_learner.save(update_fields=["is_active"])
 
-    response = educator_client(organisation).get(
+    response = role_holder_client(organisation).get(
         _learners_url(organisation.slug), {"learners-status": "inactive"}
     )
 
@@ -173,7 +158,7 @@ def test_learners_list_shows_an_inactive_learner_when_filtered_to_inactive(
 
 @pytest.mark.django_db
 def test_learners_list_hides_an_inactive_learner_when_the_status_filter_is_emptied(
-    educator_client,
+    role_holder_client,
 ):
     """Clear all, the filter sheet's Reset and unticking every status all
     send the status parameter empty."""
@@ -185,7 +170,7 @@ def test_learners_list_hides_an_inactive_learner_when_the_status_filter_is_empti
     inactive_learner.is_active = False
     inactive_learner.save(update_fields=["is_active"])
 
-    response = educator_client(organisation).get(
+    response = role_holder_client(organisation).get(
         _learners_url(organisation.slug), {"learners-status": ""}
     )
 
@@ -196,7 +181,7 @@ def test_learners_list_hides_an_inactive_learner_when_the_status_filter_is_empti
 
 @pytest.mark.django_db
 def test_learners_list_offers_to_show_all_when_the_default_filter_hides_every_learner(
-    educator_client,
+    role_holder_client,
 ):
     """ "Clear filters" would return to Active + Pending and show nothing again,
     so the way out is a link that selects every status."""
@@ -206,7 +191,7 @@ def test_learners_list_offers_to_show_all_when_the_default_filter_hides_every_le
     )
     inactive_learner.is_active = False
     inactive_learner.save(update_fields=["is_active"])
-    client = educator_client(organisation)
+    client = role_holder_client(organisation)
 
     response = client.get(_learners_url(organisation.slug))
 
@@ -223,11 +208,11 @@ def test_learners_list_offers_to_show_all_when_the_default_filter_hides_every_le
 
 @pytest.mark.django_db
 def test_learners_list_shows_the_first_use_state_when_there_are_no_learners(
-    educator_client,
+    role_holder_client,
 ):
     organisation = OrganisationFactory()
 
-    response = educator_client(organisation).get(_learners_url(organisation.slug))
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
     content = response.content.decode()
     assert "No learners yet." in content
@@ -235,11 +220,11 @@ def test_learners_list_shows_the_first_use_state_when_there_are_no_learners(
 
 
 @pytest.mark.django_db
-def test_learners_status_chip_has_no_remove_control_at_its_default(educator_client):
+def test_learners_status_chip_has_no_remove_control_at_its_default(role_holder_client):
     organisation = OrganisationFactory()
     _make_learner(organisation=organisation)
 
-    response = educator_client(organisation).get(_learners_url(organisation.slug))
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
     document = lxml.html.fromstring(response.content.decode())
     assert document.xpath("//*[@id='learners-table']//summary") != []
@@ -249,7 +234,7 @@ def test_learners_status_chip_has_no_remove_control_at_its_default(educator_clie
 @pytest.mark.django_db
 @pytest.mark.parametrize("link_text", ["Clear all", "Reset"])
 def test_clearing_the_status_filter_returns_to_active_and_pending(
-    educator_client, link_text
+    role_holder_client, link_text
 ):
     organisation = OrganisationFactory()
     _make_learner(organisation=organisation)
@@ -261,7 +246,7 @@ def test_clearing_the_status_filter_returns_to_active_and_pending(
     )
     inactive_learner.is_active = False
     inactive_learner.save(update_fields=["is_active"])
-    client = educator_client(organisation)
+    client = role_holder_client(organisation)
     filtered = client.get(
         _learners_url(organisation.slug), {"learners-status": "inactive"}
     )
@@ -280,13 +265,13 @@ def test_clearing_the_status_filter_returns_to_active_and_pending(
 
 
 @pytest.mark.django_db
-def test_an_inactive_learners_detail_page_answers_200(educator_client):
+def test_an_inactive_learners_detail_page_answers_200(role_holder_client):
     organisation = OrganisationFactory()
     inactive_learner = _make_learner(organisation=organisation)
     inactive_learner.is_active = False
     inactive_learner.save(update_fields=["is_active"])
 
-    response = educator_client(organisation).get(
+    response = role_holder_client(organisation).get(
         _learners_url(organisation.slug, f"learners/{inactive_learner.pk}")
     )
 
@@ -294,7 +279,7 @@ def test_an_inactive_learners_detail_page_answers_200(educator_client):
 
 
 @pytest.mark.django_db
-def test_learners_list_excludes_a_learner_from_another_organisation(educator_client):
+def test_learners_list_excludes_a_learner_from_another_organisation(role_holder_client):
     """Paired with a learner who should appear: absence alone would also hold
     on a 404, a login redirect or an error page."""
     organisation = OrganisationFactory()
@@ -303,7 +288,7 @@ def test_learners_list_excludes_a_learner_from_another_organisation(educator_cli
         organisation=OrganisationFactory(), first_name="Grace", last_name="Hopper"
     )
 
-    response = educator_client(organisation).get(_learners_url(organisation.slug))
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
     assert response.status_code == 200
     content = response.content.decode()
@@ -313,12 +298,12 @@ def test_learners_list_excludes_a_learner_from_another_organisation(educator_cli
 
 @pytest.mark.django_db
 def test_learner_detail_page_renders_the_underlying_users_name_and_email(
-    educator_client,
+    role_holder_client,
 ):
     organisation = OrganisationFactory()
     learner = _make_learner(organisation=organisation, email="ada@example.com")
 
-    response = educator_client(organisation).get(
+    response = role_holder_client(organisation).get(
         _learners_url(organisation.slug, f"learners/{learner.pk}")
     )
 
@@ -329,11 +314,11 @@ def test_learner_detail_page_renders_the_underlying_users_name_and_email(
 
 
 @pytest.mark.django_db
-def test_learner_detail_pages_panels_refresh_on_learner_changed(educator_client):
+def test_learner_detail_pages_panels_refresh_on_learner_changed(role_holder_client):
     organisation = OrganisationFactory()
     learner = _make_learner(organisation=organisation)
 
-    response = educator_client(organisation).get(
+    response = role_holder_client(organisation).get(
         _learners_url(organisation.slug, f"learners/{learner.pk}")
     )
 
@@ -343,7 +328,7 @@ def test_learner_detail_pages_panels_refresh_on_learner_changed(educator_client)
 
 @pytest.mark.django_db
 def test_learners_list_renders_a_registered_course_through_the_renamed_cell_template(
-    educator_client,
+    role_holder_client,
 ):
     organisation = OrganisationFactory()
     LearnerCourseRegistrationFactory(
@@ -352,7 +337,7 @@ def test_learners_list_renders_a_registered_course_through_the_renamed_cell_temp
         is_active=True,
     )
 
-    response = educator_client(organisation).get(_learners_url(organisation.slug))
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
     assert response.status_code == 200
     assert "Intro to Freedom" in response.content.decode()
@@ -360,7 +345,7 @@ def test_learners_list_renders_a_registered_course_through_the_renamed_cell_temp
 
 @pytest.mark.django_db
 def test_cohort_only_educator_cannot_open_a_learner_outside_their_cohort(
-    educator_client,
+    role_holder_client,
 ):
     """LearnerConfig.authorise_instance is backed by learners_visible_to, so a
     cohort-scoped educator who can reach the organisation at all still gets a
@@ -369,7 +354,7 @@ def test_cohort_only_educator_cannot_open_a_learner_outside_their_cohort(
     granted_cohort = _make_cohort(organisation=organisation)
     outside_learner = _make_learner(organisation=organisation)
 
-    response = educator_client(granted_cohort, "cohort_admin").get(
+    response = role_holder_client(granted_cohort, "cohort_admin").get(
         _learners_url(organisation.slug, f"learners/{outside_learner.pk}")
     )
 
@@ -378,14 +363,14 @@ def test_cohort_only_educator_cannot_open_a_learner_outside_their_cohort(
 
 @pytest.mark.django_db
 def test_cohort_only_educator_can_open_a_member_of_their_own_cohort(
-    educator_client,
+    role_holder_client,
 ):
     organisation = OrganisationFactory()
     granted_cohort = _make_cohort(organisation=organisation)
     member = _make_learner(organisation=organisation)
     CohortMembershipFactory(learner=member, cohort=granted_cohort)
 
-    response = educator_client(granted_cohort, "cohort_admin").get(
+    response = role_holder_client(granted_cohort, "cohort_admin").get(
         _learners_url(organisation.slug, f"learners/{member.pk}")
     )
 
@@ -468,7 +453,7 @@ class TestLearnerDataTableQueryCost:
 
 @pytest.mark.django_db
 def test_learner_detail_cohorts_card_rows_end_with_a_decorative_open_page_icon(
-    educator_client,
+    role_holder_client,
 ):
     """The cohort name opens the cohort's page, so its card line ends with
     the open-page icon the framework draws for a link column."""
@@ -478,7 +463,7 @@ def test_learner_detail_cohorts_card_rows_end_with_a_decorative_open_page_icon(
         learner=learner, cohort=_make_cohort(organisation=organisation)
     )
 
-    response = educator_client(organisation).get(
+    response = role_holder_client(organisation).get(
         _learners_url(organisation.slug, f"learners/{learner.pk}")
     )
 
@@ -490,11 +475,11 @@ def test_learner_detail_cohorts_card_rows_end_with_a_decorative_open_page_icon(
 
 
 @pytest.mark.django_db
-def test_learners_mobile_toolbar_offers_sort_and_filter(educator_client):
+def test_learners_mobile_toolbar_offers_sort_and_filter(role_holder_client):
     organisation = OrganisationFactory()
     _make_learner(organisation=organisation)
 
-    response = educator_client(organisation).get(_learners_url(organisation.slug))
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
     document = lxml.html.fromstring(response.content.decode())
     assert document.xpath("//button[normalize-space()='Sort']")
@@ -503,12 +488,12 @@ def test_learners_mobile_toolbar_offers_sort_and_filter(educator_client):
 
 @pytest.mark.django_db
 def test_learner_detail_page_renders_details_and_cohorts_cards_with_definition_labels(
-    educator_client,
+    role_holder_client,
 ):
     organisation = OrganisationFactory()
     learner = _make_learner(organisation=organisation)
 
-    response = educator_client(organisation).get(
+    response = role_holder_client(organisation).get(
         _learners_url(organisation.slug, f"learners/{learner.pk}")
     )
 
@@ -522,7 +507,7 @@ def test_learner_detail_page_renders_details_and_cohorts_cards_with_definition_l
 
 @pytest.mark.django_db
 def test_learner_detail_cohorts_panel_lists_an_inactive_cohort_with_its_badge(
-    educator_client,
+    role_holder_client,
 ):
     organisation = OrganisationFactory()
     learner = _make_learner(organisation=organisation)
@@ -531,7 +516,7 @@ def test_learner_detail_cohorts_panel_lists_an_inactive_cohort_with_its_badge(
     )
     CohortMembershipFactory(learner=learner, cohort=cohort)
 
-    response = educator_client(organisation).get(
+    response = role_holder_client(organisation).get(
         _learners_url(organisation.slug, f"learners/{learner.pk}")
     )
 
@@ -543,14 +528,14 @@ def test_learner_detail_cohorts_panel_lists_an_inactive_cohort_with_its_badge(
 
 
 @pytest.mark.django_db
-def test_learner_detail_cohorts_panel_renders_no_filter_toolbar(educator_client):
+def test_learner_detail_cohorts_panel_renders_no_filter_toolbar(role_holder_client):
     organisation = OrganisationFactory()
     learner = _make_learner(organisation=organisation)
     CohortMembershipFactory(
         learner=learner, cohort=_make_cohort(organisation=organisation)
     )
 
-    response = educator_client(organisation).get(
+    response = role_holder_client(organisation).get(
         _learners_url(organisation.slug, f"learners/{learner.pk}")
     )
 
@@ -564,7 +549,7 @@ def test_learner_detail_cohorts_panel_renders_no_filter_toolbar(educator_client)
 
 
 @pytest.mark.django_db
-def test_learners_list_links_a_learner_with_no_name_by_their_email(educator_client):
+def test_learners_list_links_a_learner_with_no_name_by_their_email(role_holder_client):
     organisation = OrganisationFactory()
     learner = _make_learner(
         organisation=organisation,
@@ -574,7 +559,7 @@ def test_learners_list_links_a_learner_with_no_name_by_their_email(educator_clie
     )
     learner_path = _learners_url(organisation.slug, f"learners/{learner.pk}")
 
-    response = educator_client(organisation).get(_learners_url(organisation.slug))
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
     assert response.status_code == 200
     document = lxml.html.fromstring(response.content.decode())
@@ -594,13 +579,13 @@ def _learner_cells(response, learner_path: str):
 
 @pytest.mark.django_db
 def test_learners_list_cell_links_the_row_and_carries_a_quick_view_trigger(
-    educator_client,
+    role_holder_client,
 ):
     organisation = OrganisationFactory()
     learner = _make_learner(organisation=organisation, email="ada@example.com")
     learner_path = _learners_url(organisation.slug, f"learners/{learner.pk}")
 
-    response = educator_client(organisation).get(_learners_url(organisation.slug))
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
     document, links = _learner_cells(response, learner_path)
     assert links
@@ -614,7 +599,7 @@ def test_learners_list_cell_links_the_row_and_carries_a_quick_view_trigger(
 
 @pytest.mark.django_db
 def test_cohort_learners_tab_cell_links_the_row_and_carries_a_quick_view_trigger(
-    educator_client,
+    role_holder_client,
 ):
     organisation = OrganisationFactory()
     cohort = _make_cohort(organisation=organisation)
@@ -622,7 +607,7 @@ def test_cohort_learners_tab_cell_links_the_row_and_carries_a_quick_view_trigger
     CohortMembershipFactory(learner=learner, cohort=cohort)
     learner_path = _learners_url(organisation.slug, f"learners/{learner.pk}")
 
-    response = educator_client(organisation).get(
+    response = role_holder_client(organisation).get(
         _learners_url(organisation.slug, f"cohorts/{cohort.pk}/__tabs/learners")
     )
 
@@ -636,7 +621,7 @@ def test_cohort_learners_tab_cell_links_the_row_and_carries_a_quick_view_trigger
 
 @pytest.mark.django_db
 def test_course_direct_registrations_cell_links_the_row_and_carries_a_quick_view_trigger(
-    educator_client,
+    role_holder_client,
 ):
     organisation = OrganisationFactory()
     course = CourseFactory()
@@ -644,7 +629,7 @@ def test_course_direct_registrations_cell_links_the_row_and_carries_a_quick_view
     LearnerCourseRegistrationFactory(learner=learner, course=course, is_active=True)
     learner_path = _learners_url(organisation.slug, f"learners/{learner.pk}")
 
-    response = educator_client(organisation).get(
+    response = role_holder_client(organisation).get(
         _learners_url(organisation.slug, f"courses/{course.pk}/__panels/learners")
     )
 
@@ -658,7 +643,7 @@ def test_course_direct_registrations_cell_links_the_row_and_carries_a_quick_view
 
 @pytest.mark.django_db
 def test_nameless_learner_cell_has_no_secondary_line_and_the_email_is_the_card_primary_line(
-    educator_client,
+    role_holder_client,
 ):
     organisation = OrganisationFactory()
     _make_learner(
@@ -668,7 +653,7 @@ def test_nameless_learner_cell_has_no_secondary_line_and_the_email_is_the_card_p
         email="nameless@example.com",
     )
 
-    response = educator_client(organisation).get(_learners_url(organisation.slug))
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
     document = lxml.html.fromstring(response.content.decode())
     (primary_line,) = document.cssselect("[data-card-primary-line]")
@@ -677,12 +662,12 @@ def test_nameless_learner_cell_has_no_secondary_line_and_the_email_is_the_card_p
 
 
 @pytest.mark.django_db
-def test_learners_list_sorted_by_learner_orders_by_first_name(educator_client):
+def test_learners_list_sorted_by_learner_orders_by_first_name(role_holder_client):
     organisation = OrganisationFactory()
     _make_learner(organisation=organisation, first_name="Abe", email="a@example.com")
     _make_learner(organisation=organisation, first_name="Zed", email="z@example.com")
 
-    response = educator_client(organisation).get(
+    response = role_holder_client(organisation).get(
         _learners_url(organisation.slug), {"learners-sort": "-user__first_name"}
     )
 
@@ -700,7 +685,7 @@ def _row_cells(response, header: str):
 
 @pytest.mark.django_db
 def test_learners_list_courses_cell_shows_each_active_course_with_its_percentage(
-    educator_client,
+    role_holder_client,
 ):
     organisation = OrganisationFactory()
     learner = _make_learner(organisation=organisation)
@@ -714,7 +699,7 @@ def test_learners_list_courses_cell_shows_each_active_course_with_its_percentage
         progress_percentage=40,
     )
 
-    response = educator_client(organisation).get(_learners_url(organisation.slug))
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
     (cell,) = _row_cells(response, "Courses")
     assert "Intro to Freedom" in cell.text_content()
@@ -723,7 +708,7 @@ def test_learners_list_courses_cell_shows_each_active_course_with_its_percentage
 
 @pytest.mark.django_db
 def test_learners_list_courses_cell_skips_an_inactive_individual_registration(
-    educator_client,
+    role_holder_client,
 ):
     organisation = OrganisationFactory()
     LearnerCourseRegistrationFactory(
@@ -732,7 +717,7 @@ def test_learners_list_courses_cell_skips_an_inactive_individual_registration(
         is_active=False,
     )
 
-    response = educator_client(organisation).get(_learners_url(organisation.slug))
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
     (cell,) = _row_cells(response, "Courses")
     assert "Dropped Course" not in cell.text_content()
@@ -740,7 +725,7 @@ def test_learners_list_courses_cell_skips_an_inactive_individual_registration(
 
 @pytest.mark.django_db
 def test_learners_list_courses_cell_lists_a_course_from_an_active_cohort(
-    educator_client,
+    role_holder_client,
 ):
     organisation = OrganisationFactory()
     cohort = _make_cohort(organisation=organisation)
@@ -751,7 +736,7 @@ def test_learners_list_courses_cell_lists_a_course_from_an_active_cohort(
         cohort=cohort, course=CourseFactory(title="Cohort Course"), is_active=True
     )
 
-    response = educator_client(organisation).get(_learners_url(organisation.slug))
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
     (cell,) = _row_cells(response, "Courses")
     assert "Cohort Course" in cell.text_content()
@@ -759,7 +744,7 @@ def test_learners_list_courses_cell_lists_a_course_from_an_active_cohort(
 
 @pytest.mark.django_db
 def test_learners_list_courses_cell_skips_a_course_from_an_inactive_cohort(
-    educator_client,
+    role_holder_client,
 ):
     organisation = OrganisationFactory()
     cohort = CohortFactory(
@@ -772,7 +757,7 @@ def test_learners_list_courses_cell_skips_a_course_from_an_inactive_cohort(
         cohort=cohort, course=CourseFactory(title="Hidden Course"), is_active=True
     )
 
-    response = educator_client(organisation).get(_learners_url(organisation.slug))
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
     (cell,) = _row_cells(response, "Courses")
     assert "Hidden Course" not in cell.text_content()
@@ -780,7 +765,7 @@ def test_learners_list_courses_cell_skips_a_course_from_an_inactive_cohort(
 
 @pytest.mark.django_db
 def test_learners_list_courses_cell_shows_the_higher_of_two_records_for_one_course(
-    educator_client,
+    role_holder_client,
 ):
     organisation = OrganisationFactory()
     learner = _make_learner(organisation=organisation)
@@ -807,7 +792,7 @@ def test_learners_list_courses_cell_shows_the_higher_of_two_records_for_one_cour
         progress_percentage=70,
     )
 
-    response = educator_client(organisation).get(_learners_url(organisation.slug))
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
     (cell,) = _row_cells(response, "Courses")
     assert "70%" in cell.text_content()
@@ -816,12 +801,12 @@ def test_learners_list_courses_cell_shows_the_higher_of_two_records_for_one_cour
 
 @pytest.mark.django_db
 def test_learners_list_last_active_reads_never_without_a_progress_record(
-    educator_client,
+    role_holder_client,
 ):
     organisation = OrganisationFactory()
     _make_learner(organisation=organisation)
 
-    response = educator_client(organisation).get(_learners_url(organisation.slug))
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
     (cell,) = _row_cells(response, "Last active")
     assert cell.text_content().strip() == "Never"
@@ -829,7 +814,7 @@ def test_learners_list_last_active_reads_never_without_a_progress_record(
 
 @pytest.mark.django_db
 def test_learners_list_sorted_by_last_active_orders_by_most_recent_visit(
-    educator_client,
+    role_holder_client,
 ):
     organisation = OrganisationFactory()
     for first_name, visited in (("Early", "2024-01-01"), ("Late", "2025-06-01")):
@@ -842,7 +827,7 @@ def test_learners_list_sorted_by_last_active_orders_by_most_recent_visit(
             learner=learner, last_accessed_time=f"{visited}T10:00:00+00:00"
         )
 
-    response = educator_client(organisation).get(
+    response = role_holder_client(organisation).get(
         _learners_url(organisation.slug), {"learners-sort": "-last_active"}
     )
 
@@ -859,7 +844,7 @@ def test_learners_table_row_label_is_the_display_name():
 
 @pytest.mark.django_db
 def test_learners_list_row_checkbox_is_labelled_by_the_email_of_a_nameless_learner(
-    educator_client,
+    role_holder_client,
 ):
     organisation = OrganisationFactory()
     _make_learner(
@@ -869,7 +854,7 @@ def test_learners_list_row_checkbox_is_labelled_by_the_email_of_a_nameless_learn
         email="nameless@example.com",
     )
 
-    response = educator_client(organisation).get(_learners_url(organisation.slug))
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
     document = lxml.html.fromstring(response.content.decode())
     assert document.xpath('//input[@aria-label="Select nameless@example.com"]')
@@ -877,7 +862,7 @@ def test_learners_list_row_checkbox_is_labelled_by_the_email_of_a_nameless_learn
 
 @pytest.mark.django_db
 def test_a_nameless_learners_page_names_them_by_email_in_its_document_title(
-    educator_client,
+    role_holder_client,
 ):
     organisation = OrganisationFactory()
     learner = _make_learner(
@@ -887,7 +872,7 @@ def test_a_nameless_learners_page_names_them_by_email_in_its_document_title(
         email="nameless@example.com",
     )
 
-    response = educator_client(organisation).get(
+    response = role_holder_client(organisation).get(
         _learners_url(organisation.slug, f"learners/{learner.pk}")
     )
 
@@ -897,14 +882,14 @@ def test_a_nameless_learners_page_names_them_by_email_in_its_document_title(
 
 @pytest.mark.django_db
 def test_learners_list_empty_cohorts_and_courses_cells_read_the_same_em_dash(
-    educator_client,
+    role_holder_client,
 ):
     """A learner with no cohort and no registration used to show an em dash in
     Cohorts but a plain hyphen in Courses."""
     organisation = OrganisationFactory()
     _make_learner(organisation=organisation)
 
-    response = educator_client(organisation).get(_learners_url(organisation.slug))
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
     document = lxml.html.fromstring(response.content.decode())
     dashes = document.xpath("//td//span[@role='img'][@aria-label='None']")

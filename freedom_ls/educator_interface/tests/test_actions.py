@@ -7,7 +7,7 @@ import json
 import re
 import uuid
 from collections.abc import Callable
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import lxml.html
 import pytest
@@ -17,7 +17,7 @@ from django.contrib.sites.models import Site
 from django.core import mail
 from django.core.cache import cache
 from django.db import connection, transaction
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest
 from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
@@ -111,6 +111,9 @@ from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role
 from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.tests.audit_assertions import assert_entry
+
+if TYPE_CHECKING:
+    from django.test.client import _MonkeyPatchedWSGIResponse
 
 
 def _cohort_with_courses(
@@ -3831,7 +3834,7 @@ REASON_DIALOGS = [
 
 def _reason_post(
     client: Client, request: _DialogRequest, reason: str | None
-) -> tuple[HttpResponse, list[AuditLogEntry]]:
+) -> tuple[_MonkeyPatchedWSGIResponse, list[AuditLogEntry]]:
     """POST the dialog `request` and return the response with the entries it
     wrote, leaving out those that setting the scene wrote."""
     before = set(AuditLogEntry.unscoped.values_list("pk", flat=True))

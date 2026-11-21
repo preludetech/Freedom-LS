@@ -281,11 +281,15 @@ def _content_action_url(organisation: Organisation, course: Course, action: str)
     )
 
 
-def _staff_document(client: Client, organisation: Organisation):
+def _staff_document(
+    client: Client, organisation: Organisation
+) -> lxml.html.HtmlElement:
     return _get_document(client, _interface_url(organisation.slug, "staff"))
 
 
-def _staff_member_row(document, email: str):
+def _staff_member_row(
+    document: lxml.html.HtmlElement, email: str
+) -> lxml.html.HtmlElement:
     """The table row whose text includes `email`."""
     (row,) = [
         r
@@ -295,11 +299,18 @@ def _staff_member_row(document, email: str):
     return row
 
 
-def _hold(user, role: str, target, grantor=None) -> None:
+def _hold(
+    user: User,
+    role: str,
+    target: Organisation | Cohort,
+    grantor: User | None = None,
+) -> None:
     assign_role(grantor or UserFactory(superuser=True), user, role, target)
 
 
-def _post(client: Client, url: str, data: dict[str, str] | None = None):
+def _post(
+    client: Client, url: str, data: dict[str, str] | None = None
+) -> _MonkeyPatchedWSGIResponse:
     return client.post(url, data or {}, HTTP_HX_REQUEST="true")
 
 
@@ -307,7 +318,9 @@ def _cohort_url(organisation: Organisation, cohort: Cohort, suffix: str = "") ->
     return _interface_url(organisation.slug, f"cohorts/{cohort.pk}{suffix}")
 
 
-def _assert_message_dialog(response, title: str, message: str) -> None:
+def _assert_message_dialog(
+    response: _MonkeyPatchedWSGIResponse, title: str, message: str
+) -> None:
     document = lxml.html.fromstring(response.content.decode())
     assert response.status_code == 422
     assert document.get_element_by_id("app-modal-title").text_content() == title
@@ -318,7 +331,7 @@ def _assert_message_dialog(response, title: str, message: str) -> None:
     assert close.get("autofocus") is not None
 
 
-def _text(response) -> str:
+def _text(response: _MonkeyPatchedWSGIResponse) -> str:
     return " ".join(
         lxml.html.fromstring(response.content.decode()).text_content().split()
     )

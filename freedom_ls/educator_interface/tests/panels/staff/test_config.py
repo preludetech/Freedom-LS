@@ -118,11 +118,11 @@ def test_the_only_member_line_goes_once_a_second_member_exists(role_holder_clien
 
 
 @pytest.mark.django_db
-def test_a_malformed_pk_of_a_staff_row_404s(educator_client, mock_site_context):
+def test_a_malformed_pk_of_a_staff_row_404s(role_holder_client, mock_site_context):
     organisation = OrganisationFactory()
 
     response = _get_quick_view(
-        educator_client(organisation), organisation, "staff/not-a-number"
+        role_holder_client(organisation), organisation, "staff/not-a-number"
     )
 
     assert response.status_code == 404

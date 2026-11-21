@@ -7,7 +7,7 @@ courses -- scoped the same way the section's own list already is.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import cast
 from uuid import uuid4
 
 from django.db.models import Max
@@ -37,9 +37,6 @@ from freedom_ls.learner_progress.queries import (
 )
 from freedom_ls.panel_framework.quick_view import QuickView
 from freedom_ls.panel_framework.views import StatusBadge
-
-if TYPE_CHECKING:
-    pass
 
 
 def visible_registrations_with_progress(
