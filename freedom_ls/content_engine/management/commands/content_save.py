@@ -1125,9 +1125,9 @@ def _refuse_relative_path_collisions(sources: Sequence[_ParsedSource]) -> None:
 def _write_source(source, site):
     """Write a `_ParsedSource`'s files and content rows. Returns its image statuses.
 
-    Left unannotated like the loader body it was split from: the parsed items
-    arrive as the loosely typed result of `parse_single_file`, and the `save_*`
-    functions that take them are narrower than `BaseBaseContentModel`.
+    Left unannotated: the parsed items are typed `BaseBaseContentModel`, and the
+    `save_*` functions that take them are narrower, so annotating this body would
+    need a type narrowing at every dispatch.
     """
     # The statuses alone: an ImageEncodeDecision carries the encoded bytes,
     # and holding one per image would keep every encode of the run in memory
