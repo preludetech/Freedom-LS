@@ -61,3 +61,5 @@ For a directional flip, rotate a wrapper:
 
 - Switching the icon set, overriding one icon, or adding a semantic name: [resources/configuring-icons.md](resources/configuring-icons.md)
 - Building a custom icon backend: [resources/custom-icon-backend.md](resources/custom-icon-backend.md)
+
+The icons app runs on its own: `uv run pytest -c freedom_ls/icons/tests/standalone_pytest.ini freedom_ls/icons/tests`. Settings are named `SEMANTIC_ICONS_*`, and the data lookup is in the configuring page.

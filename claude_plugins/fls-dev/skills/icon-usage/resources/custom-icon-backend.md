@@ -5,7 +5,7 @@ Use a custom backend when you need to bypass the built-in Iconify rendering enti
 ## Setting
 
 ```python
-FREEDOM_LS_ICON_BACKEND = "myapp.icons.MyCustomBackend"
+SEMANTIC_ICONS_BACKEND = "myapp.icons.MyCustomBackend"
 ```
 
 When set, this dotted path is imported and used instead of the default backend. All `<c-icon />` calls will be routed through your backend's `render()` method.
@@ -36,14 +36,14 @@ class MyCustomBackend(IconBackend):
 
 ## Testing with a custom backend
 
-The backend is cached for the process lifetime via `functools.cache`. In tests that use `override_settings(FREEDOM_LS_ICON_BACKEND=...)`, call `get_icon_backend.cache_clear()` before and after the test:
+The backend is cached for the process lifetime via `functools.cache`. In tests that use `override_settings(SEMANTIC_ICONS_BACKEND=...)`, call `get_icon_backend.cache_clear()` before and after the test:
 
 ```python
 from freedom_ls.icons.backend import get_icon_backend
 
 def test_custom_backend(self):
     get_icon_backend.cache_clear()
-    with override_settings(FREEDOM_LS_ICON_BACKEND="myapp.icons.MyBackend"):
+    with override_settings(SEMANTIC_ICONS_BACKEND="myapp.icons.MyBackend"):
         # test your backend
         ...
     get_icon_backend.cache_clear()
