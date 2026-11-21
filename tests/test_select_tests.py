@@ -933,7 +933,9 @@ def test_tests_changed_in_skips_a_test_file_deleted_in_the_checkout(
 @pytest.mark.parametrize(
     "value", ["--output=x", "HEAD~1..HEAD; ls", "HEAD", "a..b$(id)"]
 )
-@pytest.mark.parametrize("option", ["--range", "--tests-changed-in"])
+@pytest.mark.parametrize(
+    "option", ["--range", "--tests-changed-in", "--upstream-range"]
+)
 def test_range_value_that_is_not_a_plain_revision_range_exits_2(
     tmp_path: Path, option: str, value: str
 ) -> None:
@@ -1201,3 +1203,341 @@ def test_targeted_command_starts_with_the_runner_wrapper_when_installed(
     assert lines(result.stdout, "command") == [
         f"command: {WRAPPER} uv run pytest -n auto --no-cov pkg/alpha/tests"
     ]
+
+
+def repo_with_upstream_range(
+    tmp_path: Path,
+    base: dict[str, str],
+    main_change: dict[str, str],
+    branch_change: dict[str, str],
+) -> None:
+    """base -> main change -> branch change: the upstream range is HEAD~2..HEAD~1 and the
+    branch's own diff is HEAD~1..HEAD."""
+    write_tree(tmp_path, base)
+    run_command(["git", "init"], tmp_path)
+    commit_all(tmp_path, "base")
+    write_tree(tmp_path, main_change)
+    commit_all(tmp_path, "main change")
+    write_tree(tmp_path, branch_change)
+    commit_all(tmp_path, "branch change")
+
+
+UPSTREAM = ("--upstream-range", "HEAD~2..HEAD~1")
+
+
+def app_b_tree() -> dict[str, str]:
+    """`alpha` plus `app_b`, which no app imports."""
+    return alpha_app() | {
+        "docs/app_structure.md": app_map("alpha", "app_b"),
+        "pkg/app_b/__init__.py": "",
+        "pkg/app_b/apps.py": apps_py("pkg.app_b", "AppBConfig"),
+        "pkg/app_b/tests/__init__.py": "",
+    }
+
+
+def test_upstream_migration_in_an_unrelated_app_is_dropped(tmp_path: Path) -> None:
+    # Arrange
+    repo_with_upstream_range(
+        tmp_path,
+        app_b_tree(),
+        {"pkg/app_b/migrations/0002_x.py": ""},
+        {"pkg/alpha/services.py": "x = 1\n"},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *UPSTREAM)
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: none"]
+    assert lines(result.stdout, "why") == [
+        "why: pkg/app_b/migrations/0002_x.py -> none "
+        "(from main; app_b meets no branch app)"
+    ]
+
+
+def imported_app_tree() -> dict[str, str]:
+    """`beta` (runtime) and `gamma` (test-only) import `alpha`."""
+    return beta_gamma_apps()
+
+
+def test_upstream_module_in_an_app_a_branch_app_imports_selects_its_tests(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    repo_with_upstream_range(
+        tmp_path,
+        imported_app_tree(),
+        {"pkg/alpha/services.py": "x = 1\n"},
+        {"pkg/beta/views.py": "x = 1\n"},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *UPSTREAM)
+
+    # Assert
+    assert (
+        "why: pkg/alpha/services.py -> pkg/alpha/tests (from main; owning app alpha)"
+    ) in lines(result.stdout, "why")
+
+
+def test_upstream_module_selects_the_importing_branch_app(tmp_path: Path) -> None:
+    # Arrange
+    repo_with_upstream_range(
+        tmp_path,
+        imported_app_tree(),
+        {"pkg/alpha/services.py": "x = 1\n"},
+        {"pkg/beta/views.py": "x = 1\n"},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *UPSTREAM)
+
+    # Assert
+    assert (
+        "why: pkg/alpha/services.py -> pkg/beta/tests "
+        "(from main; beta has a runtime dep on alpha)"
+    ) in lines(result.stdout, "why")
+
+
+def test_upstream_module_skips_an_importer_that_is_not_a_branch_app(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    repo_with_upstream_range(
+        tmp_path,
+        imported_app_tree(),
+        {"pkg/alpha/services.py": "x = 1\n"},
+        {"pkg/beta/views.py": "x = 1\n"},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *UPSTREAM)
+
+    # Assert
+    assert lines(result.stdout, "command") == [
+        "command: uv run pytest -n auto --no-cov pkg/alpha/tests pkg/beta/tests"
+    ]
+
+
+def test_upstream_module_in_a_branch_app_selects_its_tests(tmp_path: Path) -> None:
+    # Arrange
+    repo_with_upstream_range(
+        tmp_path,
+        imported_app_tree(),
+        {"pkg/beta/models.py": "x = 1\n"},
+        {"pkg/beta/views.py": "x = 1\n"},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *UPSTREAM)
+
+    # Assert
+    assert lines(result.stdout, "why") == [
+        "why: pkg/beta/models.py -> pkg/beta/tests (from main; owning app beta)"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("pyproject", "path"),
+    [
+        ("", "uv.lock"),
+        (
+            '[tool.test_tiers]\ndependency_files = ["requirements/*.txt"]\n',
+            "requirements/dev.txt",
+        ),
+    ],
+)
+def test_upstream_dependency_file_is_full(
+    tmp_path: Path, pyproject: str, path: str
+) -> None:
+    # Arrange
+    repo_with_upstream_range(
+        tmp_path,
+        app_b_tree() | {"pyproject.toml": pyproject},
+        {path: ""},
+        {"pkg/alpha/services.py": "x = 1\n"},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *UPSTREAM)
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: full"]
+    assert lines(result.stdout, "why") == [
+        f"why: {path} -> full (from main; dependency file)"
+    ]
+
+
+def test_upstream_docs_path_is_none(tmp_path: Path) -> None:
+    # Arrange
+    repo_with_upstream_range(
+        tmp_path,
+        app_b_tree(),
+        {"docs/guide.md": ""},
+        {"pkg/alpha/services.py": "x = 1\n"},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *UPSTREAM)
+
+    # Assert
+    assert lines(result.stdout, "why") == [
+        "why: docs/guide.md -> none (from main; matches docs/**)"
+    ]
+
+
+def test_upstream_path_no_rule_knows_is_none(tmp_path: Path) -> None:
+    # Arrange
+    repo_with_upstream_range(
+        tmp_path,
+        app_b_tree(),
+        {"scripts/x.sh": ""},
+        {"pkg/alpha/services.py": "x = 1\n"},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *UPSTREAM)
+
+    # Assert
+    assert lines(result.stdout, "why") == [
+        "why: scripts/x.sh -> none (from main; unmapped path)"
+    ]
+
+
+def test_path_both_sides_changed_is_a_branch_path(tmp_path: Path) -> None:
+    # Arrange
+    repo_with_upstream_range(
+        tmp_path,
+        app_b_tree(),
+        {"pkg/alpha/services.py": "x = 1\n"},
+        {"pkg/alpha/services.py": "x = 2\n"},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *UPSTREAM)
+
+    # Assert
+    assert lines(result.stdout, "why") == [
+        "why: pkg/alpha/services.py -> pkg/alpha/tests (owning app alpha)"
+    ]
+
+
+def uncommitted_upstream_path_repo(tmp_path: Path) -> None:
+    """Main changed alpha's services; the checkout also has it modified, uncommitted."""
+    repo_with_upstream_range(
+        tmp_path,
+        imported_app_tree(),
+        {"pkg/alpha/services.py": "x = 1\n"},
+        {"pkg/beta/views.py": "x = 1\n"},
+    )
+    write_tree(tmp_path, {"pkg/alpha/services.py": "x = 3\n"})
+
+
+def test_uncommitted_path_main_also_changed_is_upstream_without_working_tree(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    uncommitted_upstream_path_repo(tmp_path)
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *UPSTREAM)
+
+    # Assert
+    assert (
+        "why: pkg/alpha/services.py -> pkg/alpha/tests (from main; owning app alpha)"
+    ) in lines(result.stdout, "why")
+
+
+def test_uncommitted_path_main_also_changed_is_a_branch_path_with_working_tree(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    uncommitted_upstream_path_repo(tmp_path)
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *UPSTREAM, "--working-tree")
+
+    # Assert
+    assert (
+        "why: pkg/alpha/services.py -> pkg/alpha/tests (owning app alpha)"
+    ) in lines(result.stdout, "why")
+
+
+def test_upstream_change_in_a_runtime_dep_of_a_test_only_dependency_selects_it(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    chain = app_map("alpha", "beta", "gamma", "beta -.-> gamma", "gamma --> alpha")
+    repo_with_upstream_range(
+        tmp_path,
+        beta_gamma_apps() | {"docs/app_structure.md": chain},
+        {"pkg/alpha/services.py": "x = 1\n"},
+        {"pkg/beta/views.py": "x = 1\n"},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *UPSTREAM)
+
+    # Assert
+    assert (
+        "why: pkg/alpha/services.py -> pkg/alpha/tests (from main; owning app alpha)"
+    ) in lines(result.stdout, "why")
+
+
+def test_branch_apps_come_from_the_branchs_own_diff(tmp_path: Path) -> None:
+    # Arrange
+    repo_with_upstream_range(
+        tmp_path,
+        imported_app_tree(),
+        {"pkg/alpha/services.py": "x = 1\n"},
+        {"pkg/beta/views.py": "x = 1\n"},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "--upstream-range", "HEAD~2..HEAD~1")
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: targeted"]
+
+
+def test_upstream_app_path_without_an_app_map_is_full(tmp_path: Path) -> None:
+    # Arrange
+    base = alpha_app()
+    del base["docs/app_structure.md"]
+    repo_with_upstream_range(
+        tmp_path,
+        base,
+        {"pkg/alpha/services.py": "x = 1\n"},
+        {"pkg/alpha/views.py": "x = 1\n"},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *UPSTREAM)
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: full"]
+
+
+def test_upstream_range_given_twice_exits_2(tmp_path: Path) -> None:
+    # Arrange
+    repo_with_two_commits(tmp_path, {"pkg/alpha/services.py": "x = 1\n"})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *UPSTREAM, "--upstream-range", "HEAD~1..HEAD")
+
+    # Assert
+    assert result.returncode == 2
+
+
+@pytest.mark.parametrize("value", ["HEAD~2...HEAD", "HEAD~2..HEAD~1..HEAD"])
+def test_upstream_range_that_is_not_a_single_range_exits_2(
+    tmp_path: Path, value: str
+) -> None:
+    # Arrange
+    repo_with_two_commits(tmp_path, {"pkg/alpha/services.py": "x = 1\n"})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "--upstream-range", value)
+
+    # Assert
+    assert result.returncode == 2

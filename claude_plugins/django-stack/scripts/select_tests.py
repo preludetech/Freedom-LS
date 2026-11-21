@@ -4,11 +4,15 @@
 
 Usage:
     python select_tests.py [--working-tree] [--range <rev>..<rev>]...
-        [--tests-changed-in <rev>..<rev>] [<path>...]
+        [--upstream-range <old>..<new>] [--tests-changed-in <rev>..<rev>] [<path>...]
 
 Prints `tier:`, one `why:` line per changed path and, for a targeted or full
 run, the `command:` to run. Project-specific globs come from `[tool.test_tiers]`
 in `pyproject.toml`. Stdlib only, like its siblings.
+
+`--upstream-range` names the paths another line of history brought in (main, after a
+rebase). One the branch's own diff (`<new>..HEAD` plus the working tree) does not hold
+counts only where it meets the apps the branch changed or imports.
 """
 
 from __future__ import annotations
@@ -211,35 +215,60 @@ def tests_dir_of(app: App, project_root: Path) -> str:
     return (app.directory / "tests").relative_to(project_root).as_posix()
 
 
-def decide_app_path(
+def runtime_closure(apps: set[str], edges: Edges) -> set[str]:
+    """`apps` plus every app their code imports, through any number of runtime deps."""
+    found = set(apps)
+    queue = list(apps)
+    while queue:
+        source = queue.pop()
+        for src, dst in edges.runtime:
+            if src == source and dst not in found:
+                found.add(dst)
+                queue.append(dst)
+    return found
+
+
+def app_dependencies(app: str, edges: Edges) -> set[str]:
+    """Every app whose code `app`'s code or tests run.
+
+    Runtime deps chain. A test-only dep is one hop from `app` itself, then that app's own
+    runtime deps chain: `app`'s tests import it, and it imports them.
+    """
+    test_only = {dst for src, dst in edges.test if src == app}
+    return (runtime_closure({app}, edges) | runtime_closure(test_only, edges)) - {app}
+
+
+def owner_decision(path: str, app: App, project_root: Path) -> Decision:
+    """The owning app's test directory, or `none` when it has none."""
+    tests_dir = tests_dir_of(app, project_root)
+    if not (project_root / tests_dir).is_dir():
+        return Decision(
+            path, "none", (), f"owning app {app.short_name} has no tests directory"
+        )
+    reason = f"owning app {app.short_name}"
+    touched: tuple[str, ...] = ()
+    playwright_dir = f"{tests_dir}/playwright"
+    if first_match(path, UI_GLOBS) is not None:
+        touched = (tests_dir,)
+        if (project_root / playwright_dir).is_dir():
+            reason += f"; playwright: {playwright_dir}"
+    return Decision(path, "select", (tests_dir,), reason, touched)
+
+
+def importer_decisions(
     path: str,
     app: App,
     apps: list[App],
-    edges: Edges | None,
+    edges: Edges,
     project_root: Path,
+    only: frozenset[str] | None = None,
 ) -> list[Decision]:
-    """The owning app's test directory, then one decision per importer of the app."""
-    if edges is None:
-        return [Decision(path, "full", (), f"{APP_MAP} missing")]
-
-    tests_dir = tests_dir_of(app, project_root)
-    if not (project_root / tests_dir).is_dir():
-        owner = Decision(
-            path, "none", (), f"owning app {app.short_name} has no tests directory"
-        )
-    else:
-        reason = f"owning app {app.short_name}"
-        touched: tuple[str, ...] = ()
-        playwright_dir = f"{tests_dir}/playwright"
-        if first_match(path, UI_GLOBS) is not None:
-            touched = (tests_dir,)
-            if (project_root / playwright_dir).is_dir():
-                reason += f"; playwright: {playwright_dir}"
-        owner = Decision(path, "select", (tests_dir,), reason, touched)
-
+    """One decision per importer of `app`, or per importer named in `only`."""
     by_name = {a.short_name: a for a in apps}
-    decisions = [owner]
+    decisions: list[Decision] = []
     for name, reason in importers(app, edges):
+        if only is not None and name not in only:
+            continue
         importer = by_name.get(name)
         if importer is None:
             decisions.append(Decision(path, "none", (), f"{reason}; app not found"))
@@ -252,6 +281,22 @@ def decide_app_path(
                 Decision(path, "none", (), f"{reason}; no tests directory")
             )
     return decisions
+
+
+def decide_app_path(
+    path: str,
+    app: App,
+    apps: list[App],
+    edges: Edges | None,
+    project_root: Path,
+) -> list[Decision]:
+    """The owning app's test directory, then one decision per importer of the app."""
+    if edges is None:
+        return [Decision(path, "full", (), f"{APP_MAP} missing")]
+    return [
+        owner_decision(path, app, project_root),
+        *importer_decisions(path, app, apps, edges, project_root),
+    ]
 
 
 def is_test_target(target: Path) -> bool:
@@ -340,6 +385,53 @@ def decide(
     return [Decision(path, "full", (), "unmapped path")]
 
 
+@dataclass(frozen=True)
+class BranchContext:
+    branch_apps: frozenset[str]
+    related_apps: frozenset[str]
+
+
+def from_main(decisions: list[Decision]) -> list[Decision]:
+    """Mark decisions as made for a path main brought in."""
+    return [replace(d, reason=f"from main; {d.reason}") for d in decisions]
+
+
+def decide_upstream(
+    path: str,
+    apps: list[App],
+    config: TierConfig,
+    edges: Edges,
+    context: BranchContext,
+    project_root: Path,
+) -> list[Decision]:
+    """The rules for a path main brought in; the first that matches decides.
+
+    Such a path counts only where it meets the apps the branch changed or imports. A
+    dependency file still forces the whole suite, since it changes what every app imports.
+    """
+    none_glob = first_match(path, config.none)
+    if none_glob is not None:
+        return from_main([Decision(path, "none", (), f"matches {none_glob}")])
+
+    if first_match(path, config.dependency) is not None:
+        return from_main([Decision(path, "full", (), "dependency file")])
+
+    app = owning_app(apps, project_root, path)
+    if app is None:
+        return from_main([Decision(path, "none", (), "unmapped path")])
+    if app.short_name not in context.related_apps:
+        reason = f"{app.short_name} meets no branch app"
+        return from_main([Decision(path, "none", (), reason)])
+    return from_main(
+        [
+            owner_decision(path, app, project_root),
+            *importer_decisions(
+                path, app, apps, edges, project_root, only=context.branch_apps
+            ),
+        ]
+    )
+
+
 def git_paths(argv: list[str]) -> list[str]:
     """The NUL-separated paths a git command prints, so no name is ever quoted."""
     result = subprocess.run(  # noqa: S603
@@ -351,6 +443,15 @@ def git_paths(argv: list[str]) -> list[str]:
 def range_type(value: str) -> str:
     if RANGE_PATTERN.fullmatch(value) is None:
         raise argparse.ArgumentTypeError(f"not a <rev>..<rev> range: {value!r}")
+    return value
+
+
+def upstream_range_type(value: str) -> str:
+    # The range is split in two to build the branch's own diff, so it must hold exactly one
+    # `..`: `a...b` and `a..b..c` pass the character check and would split into a different range.
+    range_type(value)
+    if "..." in value or value.count("..") != 1:
+        raise argparse.ArgumentTypeError(f"not a single <rev>..<rev> range: {value!r}")
     return value
 
 
@@ -369,6 +470,17 @@ def range_paths(revision_range: str) -> list[str]:
     )
 
 
+def working_tree_paths() -> tuple[set[str], set[str]]:
+    """(uncommitted and untracked paths, the untracked subset)."""
+    untracked = set(
+        git_paths(["git", "ls-files", "-z", "--others", "--exclude-standard"])
+    )
+    tracked = set(
+        git_paths(["git", "diff", "-z", "--name-only", "--no-renames", "HEAD"])
+    )
+    return tracked | untracked, untracked
+
+
 def changed_paths(
     paths: list[str], working_tree: bool, revision_ranges: list[str]
 ) -> tuple[list[str], set[str]]:
@@ -380,14 +492,45 @@ def changed_paths(
         found.update(range_paths(revision_range))
     untracked: set[str] = set()
     if working_tree:
-        found.update(
-            git_paths(["git", "diff", "-z", "--name-only", "--no-renames", "HEAD"])
-        )
-        untracked.update(
-            git_paths(["git", "ls-files", "-z", "--others", "--exclude-standard"])
-        )
-        found.update(untracked)
+        working, untracked = working_tree_paths()
+        found.update(working)
     return sorted(found), untracked
+
+
+@dataclass(frozen=True)
+class UpstreamSplit:
+    upstream: frozenset[
+        str
+    ]  # changed by the upstream range, absent from the branch's own diff
+    own_paths: frozenset[str]  # the branch's own diff
+
+
+def split_upstream(
+    upstream_range: str, working_tree: set[str]
+) -> tuple[set[str], UpstreamSplit]:
+    """(every path the upstream range changed, how they split).
+
+    The branch's own diff runs from the range's new end to HEAD, plus `working_tree`.
+    """
+    _old, new = upstream_range.split("..", 1)
+    changed = set(range_paths(upstream_range))
+    own_paths = set(range_paths(f"{new}..HEAD")) | working_tree
+    return changed, UpstreamSplit(frozenset(changed - own_paths), frozenset(own_paths))
+
+
+def branch_context(
+    paths: set[str],
+    apps: list[App],
+    edges: Edges,
+    project_root: Path,
+) -> BranchContext:
+    """The apps the branch's paths belong to, and every app those apps run."""
+    owners = (owning_app(apps, project_root, p) for p in paths)
+    branch_apps = {app.short_name for app in owners if app is not None}
+    related = set(branch_apps)
+    for name in branch_apps:
+        related |= app_dependencies(name, edges)
+    return BranchContext(frozenset(branch_apps), frozenset(related))
 
 
 def branch_test_decisions(
@@ -457,6 +600,16 @@ def main() -> int:
         help="also use the paths changed in <rev>..<rev>; may be repeated",
     )
     parser.add_argument(
+        "--upstream-range",
+        type=upstream_range_type,
+        action="append",
+        default=[],
+        help=(
+            "the paths main brought in, <old>..<new>; one the branch's own diff does "
+            "not hold counts only where it meets the apps the branch changed or imports"
+        ),
+    )
+    parser.add_argument(
         "--tests-changed-in",
         type=range_type,
         help=(
@@ -465,10 +618,17 @@ def main() -> int:
         ),
     )
     args = parser.parse_args()
+    if len(args.upstream_range) > 1:
+        parser.error("--upstream-range may be given once")
 
     project_root = Path.cwd()
+    split: UpstreamSplit | None = None
     try:
         paths, untracked = changed_paths(args.paths, args.working_tree, args.range)
+        if args.upstream_range:
+            working = working_tree_paths()[0] if args.working_tree else set()
+            changed, split = split_upstream(args.upstream_range[0], working)
+            paths = sorted(set(paths) | changed)
     except (subprocess.CalledProcessError, FileNotFoundError) as exc:
         parser.error(f"git failed: {exc}")
     try:
@@ -478,10 +638,22 @@ def main() -> int:
 
     apps = find_apps(project_root)
     edges = parse_existing_edges(project_root / APP_MAP)
+    # Without the app map the related apps cannot be computed, so every path takes the
+    # branch rules and an app-owned one is `full`.
+    upstream: frozenset[str] = frozenset()
+    context: BranchContext | None = None
+    if split is not None and edges is not None:
+        upstream = split.upstream
+        branch_paths = (set(paths) - upstream) | split.own_paths
+        context = branch_context(branch_paths, apps, edges, project_root)
     decisions = [
         d
         for p in paths
-        for d in decide(p, apps, config, edges, project_root, p in untracked)
+        for d in (
+            decide_upstream(p, apps, config, edges, context, project_root)
+            if context is not None and edges is not None and p in upstream
+            else decide(p, apps, config, edges, project_root, p in untracked)
+        )
     ]
     tier_decisions = decisions
     if args.tests_changed_in is not None:
