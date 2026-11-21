@@ -1,0 +1,30 @@
+"""The test-tier helper takes and returns the failed set; the commands that fix a failed run re-run only that set.
+
+`run_test_tier.md` runs the tier definition's failed-only re-run when it is given a failed set,
+and returns the failed set of a failed run. Callers that name neither re-run keep the whole-tier
+re-run.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+pytestmark = pytest.mark.dev_tooling
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SDD = REPO_ROOT / "claude_plugins/sdd"
+RUN_TEST_TIER = SDD / "commands/protected/run_test_tier.md"
+
+
+def test_run_test_tier_names_the_failed_only_rerun() -> None:
+    assert "failed-only re-run" in RUN_TEST_TIER.read_text()
+
+
+def test_run_test_tier_names_the_failed_input() -> None:
+    assert "`<failed>`" in RUN_TEST_TIER.read_text()
+
+
+def test_run_test_tier_names_the_failed_return_field() -> None:
+    assert "failed: <" in RUN_TEST_TIER.read_text()

@@ -10,6 +10,10 @@ Inputs from the caller: `<tier>` (`targeted`, `full` or `checkpoint`) and, for `
 `<diff>`: the selection arguments the tier definition accepts. `checkpoint` works out its own tier
 and `<diff>`, so a caller passes none.
 
+Optional: `<failed>`, the failed set an earlier run of this helper returned. With it the helper
+runs the tier definition's **failed-only re-run** in place of `<tier>`, and `<diff>` is the diff of
+the fix.
+
 When `PLUGINS_ROOT`, resolved by `pre_step_rebase.md`'s "`PLUGINS_ROOT` rule", is not `.`, every
 `claude_plugins/sdd/scripts/` path in this file takes the prefix `<PLUGINS_ROOT>/`.
 
@@ -19,11 +23,11 @@ Read `Test tiers` under `## Test Hooks` in `.claude/sdd/config.md` (`config.loca
 definition now but run nothing until Step 2 names the tier.
 
 - a non-blank path → read that file and run `<tier>` as it says, with `<diff>` as the diff
-  arguments.
+  arguments. With `<failed>`, run the failed-only re-run as the tier definition says.
 - blank, or the file or section absent → run `uv run pytest` with the Bash tool's
   `run_in_background: true` and wait for the completion notification. Treat the result as
   `tier: full`. This project has no tier definition, so this plain run is the only test run it
-  has.
+  has, and a `<failed>` input runs it again in full.
 
 ## Step 2: Resolve the checkpoint tier
 
@@ -70,8 +74,11 @@ final pytest summary line.
 Return the line below. Fixing a failure belongs to the caller; this helper only runs and reports.
 
 ```
-tier: none|targeted|full · summary: <the verdict line, or "no tests run">
+tier: none|targeted|full · summary: <the verdict line, or "no tests run"> · failed: <node ids, space-separated, or the "and N more" note>
 ```
+
+`failed:` appears only when the run failed. It is the failed set as the tier definition defines it.
+A failed-only re-run's summary is the tier definition's reporting line for it.
 
 `tier:` names the tier that ran. For a checkpoint, the summary starts with the resolver's `why:`:
 `tier: none · summary: no test-visible change since full green at abc1234`, or
