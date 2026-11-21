@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import copy
+import csv
+import io
 import uuid
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, cast
 
 import lxml.html
+import pytest
 from pytest_django.fixtures import DjangoAssertNumQueries
 
+from django.contrib.sites.models import Site
 from django.db import connection
 from django.db.models import Model
 from django.http import HttpRequest
@@ -22,11 +26,17 @@ from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.factories import AuditLogEntryFactory
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.audit_log.writer import record_entry, record_run_summary
+from freedom_ls.comms.factories import ConversationFactory
+from freedom_ls.comms.models import Conversation
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseAudience
+from freedom_ls.educator_interface.panels.common.request import (
+    OrganisationScopedRequest,
+)
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
+    CohortMembershipFactory,
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
@@ -308,14 +318,360 @@ def _hold(
     assign_role(grantor or UserFactory(superuser=True), user, role, target)
 
 
+def _header_of(document: lxml.html.HtmlElement) -> lxml.html.HtmlElement:
+    (heading,) = document.cssselect("#instance-title")
+    return heading.xpath("ancestor::*[contains(@class, 'justify-between')]")[0]
+
+
+def _add_member(cohort: Cohort) -> Learner:
+    learner = cast(Learner, LearnerFactory(organisation=cohort.organisation))
+    CohortMembershipFactory(cohort=cohort, learner=learner)
+    return learner
+
+
+def _learner_page(
+    client: Client, learner: Learner, tab: str = ""
+) -> lxml.html.HtmlElement:
+    path = f"learners/{learner.pk}" + (f"/__tabs/{tab}" if tab else "")
+    return _get_document(client, _interface_url(learner.organisation.slug, path))
+
+
+def _region_text(document: lxml.html.HtmlElement) -> str:
+    (region,) = document.cssselect("[data-tab-set]")
+    return str(region.text_content())
+
+
+def _history_rows(document: lxml.html.HtmlElement) -> list[list[str]]:
+    return _entry_rows(document, "[data-tab-set]")
+
+
+def _export_audit_csv(
+    client: Client, url: str, table_key: str = "history"
+) -> tuple[list[str], list[list[str]], str]:
+    """An audit table's CSV export at ``url``: (header, rows, Content-Disposition)."""
+    response = client.get(url, {f"{table_key}-export": "csv"})
+    assert response.status_code == 200
+    body = b"".join(response.streaming_content).decode("utf-8-sig")
+    header, *rows = list(csv.reader(io.StringIO(body, newline="")))
+    return header, rows, response["Content-Disposition"]
+
+
+# Shared setup for the educator's Messages tab on the learner page.
+messages_section = pytest.mark.usefixtures("mock_site_context", "_messaging_on")
+
+
+def _msg_educator(organisation: Organisation) -> User:
+    educator = cast(User, UserFactory(staff=True))
+    _grant(educator, "organisation_admin", organisation)
+    return educator
+
+
+def _grant(user: User, role: str, target: Organisation | Cohort | Site) -> None:
+    """Give `user` a role on `target`, granted by a superuser."""
+    grantor = cast(User, UserFactory(superuser=True))
+    assign_role(grantor, user, role, target)
+
+
+def _msg_learner(organisation: Organisation, **user_fields: str) -> Learner:
+    return cast(
+        Learner,
+        LearnerFactory(
+            organisation=organisation,
+            user=UserFactory(
+                **{"first_name": "Ada", "last_name": "Lovelace"} | user_fields
+            ),
+        ),
+    )
+
+
+def _msg_conversation(user: User, other: User) -> Conversation:
+    return cast(Conversation, ConversationFactory(between=(user, other)))
+
+
+def _msg_url(organisation: Organisation, path_string: str) -> str:
+    return reverse(
+        "educator_interface:interface",
+        kwargs={"organisation_slug": organisation.slug, "path_string": path_string},
+    )
+
+
+def _card_summary(
+    card: lxml.html.HtmlElement,
+) -> tuple[str, list[str], list[str], bool]:
+    """An audit card's title, its field labels, its Who and Target values, and
+    whether its toggle names a hidden detail holding the reason."""
+    (title,) = card.cssselect("p.font-bold")
+    fields = card.cssselect("dl")[0]
+    labels = [dt.text_content().strip() for dt in fields.cssselect("dt")]
+    values = [" ".join(dd.text_content().split()) for dd in fields.cssselect("dd")]
+    (toggle,) = card.cssselect("button[aria-controls]")
+    (detail,) = card.cssselect("[data-row-detail]")
+    return (
+        title.text_content().strip(),
+        labels,
+        values[1:],
+        toggle.get("aria-controls") == detail.get("id")
+        and detail.get("hidden") is not None
+        and "Asked to leave" in detail.text_content(),
+    )
+
+
+def _get_table_fragment(client: Client, path: str) -> _MonkeyPatchedWSGIResponse:
+    return client.get(path, HTTP_HX_REQUEST="true", HTTP_HX_TARGET="history-table")
+
+
+def _shared_and_own_course_world() -> tuple[Organisation, Course, Course]:
+    """An organisation with a course of its own and a same-titled course that
+    another organisation owns and shares with it."""
+    organisation = OrganisationFactory(name="Harbour College")
+    own = CourseFactory(
+        title="Workplace Safety", slug="own-safety", audience=CourseAudience.PUBLIC
+    )
+    own.organisations.add(organisation)
+    shared = CourseFactory(
+        title="Workplace Safety", slug="shared-safety", audience=CourseAudience.PUBLIC
+    )
+    shared.organisations.add(OrganisationFactory(name="Northwind Logistics"))
+    shared.shared_with.add(organisation)
+    return (
+        cast(Organisation, organisation),
+        cast(Course, own),
+        cast(Course, shared),
+    )
+
+
+def _shared_by_notes(document: lxml.html.HtmlElement) -> list[str]:
+    return [
+        element.text_content().strip()
+        for element in document.cssselect("[data-testid='shared-by']")
+    ]
+
+
+def _shared_by_notes_by_row(
+    document: lxml.html.HtmlElement,
+) -> dict[str, list[str]]:
+    """The shared-by notes of each table row, keyed by the row's text."""
+    return {
+        " ".join(row.text_content().split()): _shared_by_notes(row)
+        for row in document.cssselect("tbody tr")
+    }
+
+
+def _notes_for(rows: dict[str, list[str]], name: str) -> list[str]:
+    (notes,) = [notes for text, notes in rows.items() if name in text]
+    return notes
+
+
+def _cohort_url(organisation: Organisation, cohort: Cohort, suffix: str = "") -> str:
+    return _interface_url(organisation.slug, f"cohorts/{cohort.pk}{suffix}")
+
+
+def _get_fragment(client: Client, url: str) -> str:
+    response = client.get(url, HTTP_HX_REQUEST="true")
+    assert response.status_code == 200
+    return " ".join(
+        lxml.html.fromstring(response.content.decode()).text_content().split()
+    )
+
+
 def _post(
     client: Client, url: str, data: dict[str, str] | None = None
 ) -> _MonkeyPatchedWSGIResponse:
     return client.post(url, data or {}, HTTP_HX_REQUEST="true")
 
 
-def _cohort_url(organisation: Organisation, cohort: Cohort, suffix: str = "") -> str:
-    return _interface_url(organisation.slug, f"cohorts/{cohort.pk}{suffix}")
+def _picker_dialog(client: Client, url: str) -> lxml.html.HtmlElement:
+    response = client.get(url, HTTP_HX_REQUEST="true")
+    assert response.status_code == 200
+    return lxml.html.fromstring(response.content.decode())
+
+
+def _dialog_title(document: lxml.html.HtmlElement) -> str:
+    (title,) = document.cssselect("#app-modal-title")
+    return " ".join(title.text_content().split())
+
+
+def _site_admin_client(
+    site: Site, logged_in_client: Callable[[User], Client]
+) -> Client:
+    admin = UserFactory(staff=True)
+    assign_role(UserFactory(superuser=True), admin, "site_admin", site)
+    return cast(Client, logged_in_client(admin))
+
+
+def _edit_name_url(organisation: Organisation, learner: Learner) -> str:
+    return _interface_url(
+        organisation.slug, f"learners/{learner.pk}/__actions/edit_name"
+    )
+
+
+def _named_learner(organisation: Organisation) -> Learner:
+    return cast(
+        Learner,
+        LearnerFactory(
+            organisation=organisation,
+            user=UserFactory(first_name="Ada", last_name="Lovelace"),
+        ),
+    )
+
+
+def _learner_state_url(
+    organisation: Organisation, learner: Learner, action: str
+) -> str:
+    return _interface_url(
+        organisation.slug, f"learners/{learner.pk}/__actions/{action}"
+    )
+
+
+def _remove_url_from_learner(
+    organisation: Organisation, learner: Learner, cohort: Cohort | None = None
+) -> str:
+    url = _interface_url(
+        organisation.slug,
+        f"learners/{learner.pk}/__tabs/overview/__panels/cohorts"
+        "/__actions/remove_from_cohort",
+    )
+    return f"{url}?cohort={cohort.pk}" if cohort is not None else url
+
+
+def _membership(
+    organisation: Organisation, **cohort_fields: object
+) -> tuple[Learner, Cohort]:
+    cohort = cast(Cohort, CohortFactory(organisation=organisation, **cohort_fields))
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    CohortMembershipFactory(cohort=cohort, learner=learner)
+    return learner, cohort
+
+
+def _offered_options(client: Client, url: str) -> set[str]:
+    response = client.get(url, HTTP_HX_REQUEST="true")
+    document = lxml.html.fromstring(response.content.decode())
+    return {
+        option.get("value")
+        for option in document.cssselect("option[value]")
+        if option.get("value")
+    }
+
+
+def _cohort_admin_on(organisation: Organisation, *cohorts: Cohort) -> User:
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = cast(
+        User, LearnerFactory(user__staff=True, organisation=organisation).user
+    )
+    for cohort in cohorts:
+        assign_role(grantor, educator, "cohort_admin", cohort)
+    return educator
+
+
+def _resend_url(organisation: Organisation, learner: Learner) -> str:
+    return _interface_url(
+        organisation.slug, f"learners/{learner.pk}/__actions/resend_setup_email"
+    )
+
+
+def _pending_learner(organisation: Organisation) -> Learner:
+    user = UserFactory(email="pending@example.com", last_login=None)
+    user.set_unusable_password()
+    user.save(update_fields=["password"])
+    return cast(Learner, LearnerFactory(organisation=organisation, user=user))
+
+
+def _learner_register_url(organisation: Organisation, learner: Learner) -> str:
+    return _interface_url(
+        organisation.slug, f"learners/{learner.pk}/__actions/register_for_course"
+    )
+
+
+def _learner_unregister_url(organisation: Organisation, learner: Learner) -> str:
+    return _interface_url(
+        organisation.slug,
+        f"learners/{learner.pk}/__tabs/overview/__panels/registrations"
+        "/__actions/deactivate_registration",
+    )
+
+
+def _learner_reregister_url(organisation: Organisation, learner: Learner) -> str:
+    return _interface_url(
+        organisation.slug,
+        f"learners/{learner.pk}/__tabs/overview/__panels/registrations"
+        "/__actions/reactivate_registration",
+    )
+
+
+def _empty_picker_text(client: Client, url: str) -> str:
+    """The text of a picker dialog that has nothing to offer, after checking
+    it shows no select, no submit button and a Close button."""
+    response = client.get(url, HTTP_HX_REQUEST="true")
+    assert response.status_code == 200
+    document = lxml.html.fromstring(response.content.decode())
+    assert document.cssselect("select") == []
+    assert document.cssselect("button[type='submit']") == []
+    assert "Close" in [
+        button.text_content().strip() for button in document.cssselect("button")
+    ]
+    return " ".join(document.text_content().split())
+
+
+def _scoped_request(user: User, organisation: Organisation) -> HttpRequest:
+    """A request as `scope_request` leaves it: the user and the organisation
+    the table's rows belong to."""
+    request = cast(OrganisationScopedRequest, RequestFactory().post("/"))
+    request.user = user
+    request.organisation = organisation
+    return request
+
+
+def _bulk_confirm(
+    client: Client,
+    organisation: Organisation,
+    action_name: str,
+    learners: list[Learner],
+) -> _MonkeyPatchedWSGIResponse:
+    return _bulk_post(
+        client,
+        organisation,
+        action_name,
+        learners,
+        confirmed="on",
+        expected_count=str(len(learners)),
+    )
+
+
+def _bulk_cohort_confirm(
+    client: Client,
+    organisation: Organisation,
+    action_name: str,
+    learners: list[Learner],
+    cohort: Cohort,
+) -> _MonkeyPatchedWSGIResponse:
+    return _bulk_confirm_with(
+        client, organisation, action_name, learners, cohort=str(cohort.pk)
+    )
+
+
+def _bulk_confirm_with(
+    client: Client,
+    organisation: Organisation,
+    action_name: str,
+    learners: list[Learner],
+    **extra: str,
+) -> _MonkeyPatchedWSGIResponse:
+    return _bulk_post(
+        client,
+        organisation,
+        action_name,
+        learners,
+        confirmed="on",
+        expected_count=str(len(learners)),
+        **extra,
+    )
+
+
+def _bulk_pending_learner(organisation: Organisation) -> Learner:
+    user = UserFactory(last_login=None)
+    user.set_unusable_password()
+    user.save(update_fields=["password"])
+    return _bulk_learner(organisation=organisation, user=user)
 
 
 def _assert_message_dialog(

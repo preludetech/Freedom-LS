@@ -17,14 +17,13 @@ from django.contrib.sites.models import Site
 from django.core import mail
 from django.core.cache import cache
 from django.db import connection, transaction
-from django.http import Http404, HttpRequest
+from django.http import Http404
 from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from freedom_ls.accounts.config import config
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseAudience, CourseVisibility
@@ -48,20 +47,39 @@ from freedom_ls.educator_interface.events import (
     LEARNER_CHANGED,
     REGISTRATION_CHANGED,
 )
-from freedom_ls.educator_interface.panels.common.request import (
-    OrganisationScopedRequest,
-)
 from freedom_ls.educator_interface.tests.helpers import (
     _assert_message_dialog,
+    _bulk_cohort_confirm,
+    _bulk_confirm,
+    _bulk_confirm_with,
     _bulk_learner,
+    _bulk_pending_learner,
     _bulk_post,
     _bulk_text,
     _cohort,
+    _cohort_admin_on,
     _cohort_url,
+    _dialog_title,
+    _edit_name_url,
+    _empty_picker_text,
+    _get_fragment,
     _interface_url,
+    _learner_register_url,
+    _learner_reregister_url,
+    _learner_state_url,
+    _learner_unregister_url,
     _learners_bulk_url,
+    _membership,
+    _named_learner,
+    _offered_options,
+    _pending_learner,
+    _picker_dialog,
     _post,
     _remove_role_url,
+    _remove_url_from_learner,
+    _resend_url,
+    _scoped_request,
+    _site_admin_client,
     _staff_member_holding,
     _state_url,
     course_per_reach_row,
@@ -123,25 +141,6 @@ def _cohort_with_courses(
     for _ in range(course_count):
         CohortCourseRegistrationFactory(cohort=cohort)
     return cohort
-
-
-def _get_fragment(client: Client, url: str) -> str:
-    response = client.get(url, HTTP_HX_REQUEST="true")
-    assert response.status_code == 200
-    return " ".join(
-        lxml.html.fromstring(response.content.decode()).text_content().split()
-    )
-
-
-def _picker_dialog(client: Client, url: str) -> lxml.html.HtmlElement:
-    response = client.get(url, HTTP_HX_REQUEST="true")
-    assert response.status_code == 200
-    return lxml.html.fromstring(response.content.decode())
-
-
-def _dialog_title(document: lxml.html.HtmlElement) -> str:
-    (title,) = document.cssselect("#app-modal-title")
-    return " ".join(title.text_content().split())
 
 
 # rename clash
@@ -1019,28 +1018,6 @@ def test_unregister_post_on_an_inactive_cohort_answers_422_and_changes_nothing(
 # edit a learner's name
 
 
-def _site_admin_client(site: Site, logged_in_client) -> Client:
-    admin = UserFactory(staff=True)
-    assign_role(UserFactory(superuser=True), admin, "site_admin", site)
-    return cast(Client, logged_in_client(admin))
-
-
-def _edit_name_url(organisation: Organisation, learner: Learner) -> str:
-    return _interface_url(
-        organisation.slug, f"learners/{learner.pk}/__actions/edit_name"
-    )
-
-
-def _named_learner(organisation: Organisation) -> Learner:
-    return cast(
-        Learner,
-        LearnerFactory(
-            organisation=organisation,
-            user=UserFactory(first_name="Ada", last_name="Lovelace"),
-        ),
-    )
-
-
 @pytest.mark.django_db
 def test_a_site_admins_learner_settings_tab_offers_edit_name(
     mock_site_context: Site, logged_in_client
@@ -1127,14 +1104,6 @@ def test_edit_name_post_fires_the_learner_changed_event_for_the_learner(
 
 
 # deactivate and reactivate a learner
-
-
-def _learner_state_url(
-    organisation: Organisation, learner: Learner, action: str
-) -> str:
-    return _interface_url(
-        organisation.slug, f"learners/{learner.pk}/__actions/{action}"
-    )
 
 
 def _settings_triggers(
@@ -1321,17 +1290,6 @@ def test_reactivating_an_active_learner_answers_422(staff_client: Client):
 # remove from a cohort
 
 
-def _remove_url_from_learner(
-    organisation: Organisation, learner: Learner, cohort: Cohort | None = None
-) -> str:
-    url = _interface_url(
-        organisation.slug,
-        f"learners/{learner.pk}/__tabs/overview/__panels/cohorts"
-        "/__actions/remove_from_cohort",
-    )
-    return f"{url}?cohort={cohort.pk}" if cohort is not None else url
-
-
 def _remove_url_from_cohort(
     organisation: Organisation, cohort: Cohort, learner: Learner | None = None
 ) -> str:
@@ -1339,13 +1297,6 @@ def _remove_url_from_cohort(
         organisation, cohort, "/__tabs/learners/__actions/remove_from_cohort"
     )
     return f"{url}?learner={learner.pk}" if learner is not None else url
-
-
-def _membership(organisation: Organisation, **cohort_fields: object):
-    cohort = cast(Cohort, CohortFactory(organisation=organisation, **cohort_fields))
-    learner = cast(Learner, LearnerFactory(organisation=organisation))
-    CohortMembershipFactory(cohort=cohort, learner=learner)
-    return learner, cohort
 
 
 def _remove_triggers(client: Client, url: str) -> list[str]:
@@ -1552,24 +1503,6 @@ def _add_learners_url(organisation: Organisation, cohort: Cohort) -> str:
     return _cohort_url(
         organisation, cohort, "/__tabs/learners/__actions/add_existing_learners"
     )
-
-
-def _offered_options(client: Client, url: str) -> set[str]:
-    response = client.get(url, HTTP_HX_REQUEST="true")
-    document = lxml.html.fromstring(response.content.decode())
-    return {
-        option.get("value")
-        for option in document.cssselect("option[value]")
-        if option.get("value")
-    }
-
-
-def _cohort_admin_on(organisation: Organisation, *cohorts: Cohort):
-    grantor = LearnerFactory(user__superuser=True).user
-    educator = LearnerFactory(user__staff=True, organisation=organisation).user
-    for cohort in cohorts:
-        assign_role(grantor, educator, "cohort_admin", cohort)
-    return educator
 
 
 @pytest.mark.django_db
@@ -2148,19 +2081,6 @@ def _clear_resend_guard():
     cache.clear()
 
 
-def _resend_url(organisation: Organisation, learner: Learner) -> str:
-    return _interface_url(
-        organisation.slug, f"learners/{learner.pk}/__actions/resend_setup_email"
-    )
-
-
-def _pending_learner(organisation: Organisation) -> Learner:
-    user = UserFactory(email="pending@example.com", last_login=None)
-    user.set_unusable_password()
-    user.save(update_fields=["password"])
-    return cast(Learner, LearnerFactory(organisation=organisation, user=user))
-
-
 @pytest.mark.django_db
 def test_a_pending_learners_settings_tab_offers_resend_setup_email(
     staff_client: Client,
@@ -2642,20 +2562,6 @@ def test_stale_move_post_for_a_departed_member_answers_422_with_the_reason(
 # register and deactivate a learner registration individually
 
 
-def _learner_register_url(organisation: Organisation, learner: Learner) -> str:
-    return _interface_url(
-        organisation.slug, f"learners/{learner.pk}/__actions/register_for_course"
-    )
-
-
-def _learner_unregister_url(organisation: Organisation, learner: Learner) -> str:
-    return _interface_url(
-        organisation.slug,
-        f"learners/{learner.pk}/__tabs/overview/__panels/registrations"
-        "/__actions/deactivate_registration",
-    )
-
-
 @pytest.mark.django_db
 def test_register_fragment_offers_the_registerable_courses(staff_client: Client):
     organisation = OrganisationFactory()
@@ -2951,14 +2857,6 @@ def test_a_cohort_admins_forged_register_on_a_learner_outside_their_cohorts_is_r
 # re-register a learner individually
 
 
-def _learner_reregister_url(organisation: Organisation, learner: Learner) -> str:
-    return _interface_url(
-        organisation.slug,
-        f"learners/{learner.pk}/__tabs/overview/__panels/registrations"
-        "/__actions/reactivate_registration",
-    )
-
-
 def _reregister_triggers(client: Client, url: str) -> list[str]:
     document = lxml.html.fromstring(client.get(url).content.decode())
     return [
@@ -3116,20 +3014,6 @@ def test_a_cohort_viewers_forged_reregister_answers_403(
 
 
 # empty pickers
-
-
-def _empty_picker_text(client: Client, url: str) -> str:
-    """The text of a picker dialog that has nothing to offer, after checking
-    it shows no select, no submit button and a Close button."""
-    response = client.get(url, HTTP_HX_REQUEST="true")
-    assert response.status_code == 200
-    document = lxml.html.fromstring(response.content.decode())
-    assert document.cssselect("select") == []
-    assert document.cssselect("button[type='submit']") == []
-    assert "Close" in [
-        button.text_content().strip() for button in document.cssselect("button")
-    ]
-    return " ".join(document.text_content().split())
 
 
 @pytest.mark.django_db
@@ -3910,31 +3794,6 @@ def test_a_reason_over_500_characters_answers_422_and_changes_nothing(
 # bulk learner state actions
 
 
-def _scoped_request(user: User, organisation: Organisation) -> HttpRequest:
-    """A request as `scope_request` leaves it: the user and the organisation
-    the table's rows belong to."""
-    request = cast(OrganisationScopedRequest, RequestFactory().post("/"))
-    request.user = user
-    request.organisation = organisation
-    return request
-
-
-def _bulk_confirm(
-    client: Client,
-    organisation: Organisation,
-    action_name: str,
-    learners: list[Learner],
-):
-    return _bulk_post(
-        client,
-        organisation,
-        action_name,
-        learners,
-        confirmed="on",
-        expected_count=str(len(learners)),
-    )
-
-
 def _deactivate_dialog(staff_client: Client, count: int = 2) -> lxml.html.HtmlElement:
     organisation = OrganisationFactory()
     learners = [_bulk_learner(organisation=organisation) for _ in range(count)]
@@ -4438,36 +4297,6 @@ def _bulk_cohort_post(
     **extra: str,
 ):
     return _bulk_post(client, organisation, action_name, learners, **extra)
-
-
-def _bulk_cohort_confirm(
-    client: Client,
-    organisation: Organisation,
-    action_name: str,
-    learners: list[Learner],
-    cohort: Cohort,
-):
-    return _bulk_confirm_with(
-        client, organisation, action_name, learners, cohort=str(cohort.pk)
-    )
-
-
-def _bulk_confirm_with(
-    client: Client,
-    organisation: Organisation,
-    action_name: str,
-    learners: list[Learner],
-    **extra: str,
-):
-    return _bulk_post(
-        client,
-        organisation,
-        action_name,
-        learners,
-        confirmed="on",
-        expected_count=str(len(learners)),
-        **extra,
-    )
 
 
 def _picker_options(response) -> set[str]:
@@ -4988,13 +4817,6 @@ def _course_option_values(response) -> set[str]:
         for option in document.cssselect("select[name='course'] option")
         if option.get("value")
     }
-
-
-def _bulk_pending_learner(organisation: Organisation) -> Learner:
-    user = UserFactory(last_login=None)
-    user.set_unusable_password()
-    user.save(update_fields=["password"])
-    return _bulk_learner(organisation=organisation, user=user)
 
 
 @pytest.mark.django_db

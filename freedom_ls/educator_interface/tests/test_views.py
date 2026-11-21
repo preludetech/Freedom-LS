@@ -36,7 +36,6 @@ from freedom_ls.audit_log.writer import (
     subject_key,
 )
 from freedom_ls.comms.factories import (
-    ConversationFactory,
     MessageFactory,
     NotificationFactory,
 )
@@ -53,8 +52,6 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     TopicFactory,
 )
-from freedom_ls.content_engine.models import Course as CourseModel
-from freedom_ls.content_engine.models import CourseAudience
 from freedom_ls.educator_interface import views as educator_views
 from freedom_ls.educator_interface.actions import DeactivateLearnersBulkAction
 from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
@@ -75,15 +72,32 @@ from freedom_ls.educator_interface.panels.course.data_tables import (
 from freedom_ls.educator_interface.panels.staff.data_tables import StaffDataTable
 from freedom_ls.educator_interface.tests.helpers import (
     QUERY_BUDGET,
+    _add_member,
     _audit_log_rows,
     _audit_log_url,
-    _entry_rows,
+    _card_summary,
+    _export_audit_csv,
     _get_document,
+    _get_table_fragment,
+    _grant,
+    _header_of,
     _history_entry,
+    _history_rows,
     _interface_url,
+    _learner_page,
+    _msg_conversation,
+    _msg_educator,
+    _msg_learner,
+    _msg_url,
+    _notes_for,
     _record_run,
+    _region_text,
     _row_details,
+    _shared_and_own_course_world,
+    _shared_by_notes,
+    _shared_by_notes_by_row,
     get_interface_page,
+    messages_section,
     organisation_admin_viewer,
     page_after_adding_rows,
     profile_picture_sources,
@@ -499,11 +513,6 @@ def test_settings_offers_reactivate_on_an_inactive_cohort(staff_client: Client):
     )
 
 
-def _header_of(document: lxml.html.HtmlElement) -> lxml.html.HtmlElement:
-    (heading,) = document.cssselect("#instance-title")
-    return heading.xpath("ancestor::*[contains(@class, 'justify-between')]")[0]
-
-
 @pytest.mark.django_db
 def test_an_active_cohort_header_has_no_badge_no_stats_and_no_buttons(
     staff_client: Client,
@@ -911,12 +920,6 @@ def _cohort_page(client: Client, cohort: Cohort) -> lxml.html.HtmlElement:
     return _get_document(
         client, _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}")
     )
-
-
-def _add_member(cohort: Cohort) -> Learner:
-    learner = cast(Learner, LearnerFactory(organisation=cohort.organisation))
-    CohortMembershipFactory(cohort=cohort, learner=learner)
-    return learner
 
 
 def _add_cohort_progress(
@@ -1601,18 +1604,6 @@ def test_cohort_list_learners_cell_reads_zero_for_a_cohort_with_no_active_learne
     assert "0" in cells
 
 
-def _learner_page(
-    client: Client, learner: Learner, tab: str = ""
-) -> lxml.html.HtmlElement:
-    path = f"learners/{learner.pk}" + (f"/__tabs/{tab}" if tab else "")
-    return _get_document(client, _interface_url(learner.organisation.slug, path))
-
-
-def _region_text(document: lxml.html.HtmlElement) -> str:
-    (region,) = document.cssselect("[data-tab-set]")
-    return str(region.text_content())
-
-
 @pytest.mark.django_db
 @pytest.mark.usefixtures("_messaging_on")
 def test_the_learner_page_has_overview_courses_messages_and_history_tabs(
@@ -1915,10 +1906,6 @@ def test_the_history_tab_renders_its_empty_state(staff_client: Client):
     assert "panel_framework/partials/table_empty.html" in template_names
 
 
-def _history_rows(document: lxml.html.HtmlElement) -> list[list[str]]:
-    return _entry_rows(document, "[data-tab-set]")
-
-
 @pytest.mark.django_db
 def test_the_history_tab_lists_entries_naming_the_learner_only(staff_client: Client):
     organisation = OrganisationFactory()
@@ -2211,17 +2198,6 @@ def _history_export_url(learner: Learner) -> str:
     return _interface_url(
         learner.organisation.slug, f"learners/{learner.pk}/__tabs/history"
     )
-
-
-def _export_audit_csv(
-    client: Client, url: str, table_key: str = "history"
-) -> tuple[list[str], list[list[str]], str]:
-    """An audit table's CSV export at ``url``: (header, rows, Content-Disposition)."""
-    response = client.get(url, {f"{table_key}-export": "csv"})
-    assert response.status_code == 200
-    body = b"".join(response.streaming_content).decode("utf-8-sig")
-    header, *rows = list(csv.reader(io.StringIO(body, newline="")))
-    return header, rows, response["Content-Disposition"]
 
 
 @pytest.mark.django_db
@@ -2833,57 +2809,6 @@ def test_the_cohort_history_panel_refreshes_on_member_changes(staff_client: Clie
     assert "staffChanged from:body" in card.get("hx-trigger")
 
 
-# Shared setup for the educator's Messages tab on the learner page.
-
-
-@pytest.fixture
-def _messaging_on(settings) -> None:
-    settings.MESSAGING_ENABLED = True
-
-
-messages_section = pytest.mark.usefixtures("mock_site_context", "_messaging_on")
-
-
-def _msg_educator(organisation: Organisation) -> User:
-    educator = cast(User, UserFactory(staff=True))
-    _grant(educator, "organisation_admin", organisation)
-    return educator
-
-
-def _grant(user: User, role: str, target: Organisation | Cohort | Site) -> None:
-    """Give `user` a role on `target`, granted by a superuser."""
-    grantor = cast(User, UserFactory(superuser=True))
-    assign_role(grantor, user, role, target)
-
-
-def _msg_learner(organisation: Organisation, **user_fields: str) -> Learner:
-    return cast(
-        Learner,
-        LearnerFactory(
-            organisation=organisation,
-            user=UserFactory(
-                **{"first_name": "Ada", "last_name": "Lovelace"} | user_fields
-            ),
-        ),
-    )
-
-
-def _msg_conversation(user: User, other: User) -> Conversation:
-    return cast(Conversation, ConversationFactory(between=(user, other)))
-
-
-def _msg_url(organisation: Organisation, path_string: str) -> str:
-    return reverse(
-        "educator_interface:interface",
-        kwargs={"organisation_slug": organisation.slug, "path_string": path_string},
-    )
-
-
-@pytest.fixture
-def msg_client_for(logged_in_client):
-    return lambda user: cast(Client, logged_in_client(user))
-
-
 @pytest.mark.django_db
 def test_a_move_shows_on_the_learner_history_tab_as_from_a_to_b(staff_client: Client):
     organisation = OrganisationFactory()
@@ -3036,27 +2961,6 @@ def test_the_cohort_history_card_names_who_the_row_is_about(staff_client: Client
     ).content.decode()
 
     assert html.count("&lt;b&gt;bold&lt;/b&gt;") >= 2
-
-
-def _card_summary(
-    card: lxml.html.HtmlElement,
-) -> tuple[str, list[str], list[str], bool]:
-    """An audit card's title, its field labels, its Who and Target values, and
-    whether its toggle names a hidden detail holding the reason."""
-    (title,) = card.cssselect("p.font-bold")
-    fields = card.cssselect("dl")[0]
-    labels = [dt.text_content().strip() for dt in fields.cssselect("dt")]
-    values = [" ".join(dd.text_content().split()) for dd in fields.cssselect("dd")]
-    (toggle,) = card.cssselect("button[aria-controls]")
-    (detail,) = card.cssselect("[data-row-detail]")
-    return (
-        title.text_content().strip(),
-        labels,
-        values[1:],
-        toggle.get("aria-controls") == detail.get("id")
-        and detail.get("hidden") is not None
-        and "Asked to leave" in detail.text_content(),
-    )
 
 
 @pytest.mark.django_db
@@ -5994,10 +5898,6 @@ def test_the_history_tab_names_a_nameless_actor_by_their_email(staff_client: Cli
     assert names == ["nameless@example.com"]
 
 
-def _get_table_fragment(client: Client, path: str):
-    return client.get(path, HTTP_HX_REQUEST="true", HTTP_HX_TARGET="history-table")
-
-
 @pytest.mark.django_db
 def test_a_table_fragment_of_a_learner_from_another_organisation_answers_the_dialog(
     staff_client: Client,
@@ -6298,48 +6198,6 @@ def test_a_learners_history_tab_shows_the_actors_picture(
         image.get("src") for image in document.cssselect("img[data-profile-picture]")
     ]
     assert actor.profile_picture_url in sources
-
-
-def _shared_and_own_course_world() -> tuple[Organisation, CourseModel, CourseModel]:
-    """An organisation with a course of its own and a same-titled course that
-    another organisation owns and shares with it."""
-    organisation = OrganisationFactory(name="Harbour College")
-    own = CourseFactory(
-        title="Workplace Safety", slug="own-safety", audience=CourseAudience.PUBLIC
-    )
-    own.organisations.add(organisation)
-    shared = CourseFactory(
-        title="Workplace Safety", slug="shared-safety", audience=CourseAudience.PUBLIC
-    )
-    shared.organisations.add(OrganisationFactory(name="Northwind Logistics"))
-    shared.shared_with.add(organisation)
-    return (
-        cast(Organisation, organisation),
-        cast(CourseModel, own),
-        cast(CourseModel, shared),
-    )
-
-
-def _shared_by_notes(document: lxml.html.HtmlElement) -> list[str]:
-    return [
-        element.text_content().strip()
-        for element in document.cssselect("[data-testid='shared-by']")
-    ]
-
-
-def _shared_by_notes_by_row(
-    document: lxml.html.HtmlElement,
-) -> dict[str, list[str]]:
-    """The shared-by notes of each table row, keyed by the row's text."""
-    return {
-        " ".join(row.text_content().split()): _shared_by_notes(row)
-        for row in document.cssselect("tbody tr")
-    }
-
-
-def _notes_for(rows: dict[str, list[str]], name: str) -> list[str]:
-    (notes,) = [notes for text, notes in rows.items() if name in text]
-    return notes
 
 
 @pytest.mark.django_db

@@ -16,9 +16,12 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
 if TYPE_CHECKING:
+    from pytest_django.fixtures import SettingsWrapper
+
     from django.contrib.auth.models import AbstractBaseUser
     from django.contrib.sites.models import Site
 
+    from freedom_ls.accounts.models import User
     from freedom_ls.learner_management.models import Cohort
 
 
@@ -69,3 +72,15 @@ def role_holder_client(
 @pytest.fixture
 def organisation(mock_site_context: Site) -> Organisation:
     return cast(Organisation, OrganisationFactory())
+
+
+@pytest.fixture
+def _messaging_on(settings: SettingsWrapper) -> None:
+    settings.MESSAGING_ENABLED = True
+
+
+@pytest.fixture
+def msg_client_for(
+    logged_in_client: Callable[[User], Client],
+) -> Callable[[User], Client]:
+    return lambda user: cast(Client, logged_in_client(user))
