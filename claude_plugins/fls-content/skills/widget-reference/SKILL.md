@@ -93,7 +93,7 @@ All other widget bodies use standard markdown; escaping is automatic.
 - **`c-grid` takes any children** — put a blank line between each child, and use the closed form for `c-picture` children, as for `c-image-grid`.
 - **`c-audio` is a block widget with a required `label`** — put blank lines around it, and use `c-grid` to lay out a list of them. It works inside a `c-flashcard` face, and its button plays without flipping the card.
 - **`c-audio-reveal` needs both `label` and `symbol`** — the `symbol` tile is the prompt. Put blank lines around it, as for `c-audio`.
-- **`c-audio-clip` is a block widget with a required `title`** — put blank lines around it. Whatever you write inside the tag is its transcript: separate the transcript paragraphs with blank lines, and do not put a file-resolving widget (such as `c-picture`) in it, because that fails.
+- **`c-audio-clip` is a block widget with a required `title`** — put blank lines around it. Whatever you write inside the tag is its transcript: separate the transcript paragraphs with blank lines.
 - **`c-article-link`, `c-article-card`, `c-course-card` `path`** — a path relative to the file holding the widget, ending in the target file name (e.g. `path="undated-notes.md"`, `path="../other_course/course.md"`). `content_validate` fails the run if no content file is at that path, or if the target is the wrong type (ARTICLE for the article widgets, COURSE for `c-course-card`). Write `path="..."` in double quotes.
 - **`c-flashcard` slots need blank lines** inside `<c-slot>` tags so the markdown parser produces block elements (paragraphs, lists).
 - **`c-accordion` bare `open` attribute** — write `open` with no value; the sanitiser normalises it to `open=""` and the template handles it.

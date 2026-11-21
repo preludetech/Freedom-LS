@@ -275,3 +275,49 @@ class TestTranscript:
         assert "Safe words" in html
         assert "<script" not in html
         assert "onerror" not in html
+
+
+class TestNesting:
+    @pytest.mark.parametrize(
+        "wrapped",
+        [
+            f'<c-accordion title="Listen">\n\n{CLIP.format(extra="")}\n\n</c-accordion>',
+            (
+                "<c-flashcard>\n"
+                '<c-slot name="front">\n\nQuestion\n\n</c-slot>\n'
+                f'<c-slot name="back">\n\n{CLIP.format(extra="")}\n\n</c-slot>\n'
+                "</c-flashcard>"
+            ),
+        ],
+        ids=["accordion", "flashcard-back"],
+    )
+    def test_clip_survives_inside_a_slot_widget(
+        self, mock_site_context: object, wrapped: str
+    ) -> None:
+        _audio_file()
+
+        tree = _tree(wrapped)
+
+        (group,) = tree.xpath("//div[@x-data='audioClip']")
+        assert group.get("role") == "group"
+        assert not tree.xpath("//*[contains(., 'Audio needs')]")
+
+    def test_file_resolving_widget_in_the_transcript_renders(
+        self, mock_site_context: object
+    ) -> None:
+        _audio_file()
+        FileFactory(
+            file_path="audio/word.mp3",
+            file_type=File.FileType.AUDIO,
+            mime_type="audio/mpeg",
+        )
+        markup = (
+            '<c-audio-clip src="audio/talk.mp3" title="The talk">\n\n'
+            'Say <c-audio src="audio/word.mp3" label="the word"></c-audio>\n\n'
+            "</c-audio-clip>"
+        )
+
+        tree = _tree(markup)
+
+        (panel,) = tree.xpath("//div[@x-show='transcriptOpen']")
+        assert panel.xpath(".//*[@x-data='audioFile']")

@@ -41,8 +41,3 @@ A clip that carries information needs a transcript (WCAG 1.2.1, audio-only conte
 ## Audio file format
 
 Use a constant-bitrate mp3, or an m4a saved with faststart. `content_save` reads the clip's length when it saves the file, and the seek bar's total time comes from that. If it cannot read the length it prints a warning naming the file, and the card shows `--:--` as the total with a seek bar that stays disabled until the audio reports its own length.
-
-## Where it must not go
-
-- Do not put `c-audio-clip` inside `c-table`, `c-accordion`, `c-admonition`, `c-flashcard`, `c-card` or `c-pull-quote`: they re-render their body and the widget is lost. `c-grid` keeps nested widgets intact, so use it for any layout.
-- Do not put a widget that resolves a file path, such as `c-picture`, in the transcript. It fails.

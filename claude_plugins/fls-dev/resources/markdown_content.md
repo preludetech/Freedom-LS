@@ -58,13 +58,13 @@ Another paragraph.
 </c-audio-clip>
 ```
 
-`c-audio-clip` plays one longer recording. `title` is required; `kind` is an optional label beside it; the slot is an optional transcript (markdown, blank lines between paragraphs) behind a Show transcript toggle. The total time comes from `File.duration_seconds`, which `content_save` fills for audio files. A file-resolving widget inside its transcript fails.
+`c-audio-clip` plays one longer recording. `title` is required; `kind` is an optional label beside it; the slot is an optional transcript (markdown, blank lines between paragraphs) behind a Show transcript toggle. The total time comes from `File.duration_seconds`, which `content_save` fills for audio files.
 
 `c-admonition` `type` values: `note`, `tip`, `important`, `warning`, `danger`, `key_takeaways`, `checklist`. Unknown types fall back to `note`.
 
 `c-audio-reveal` is a say-it-then-reveal card: the `symbol` tile is the prompt, and clicking the space where the answer will appear shows it and plays the audio. `symbol` is required on it.
 
-**Slot widgets** (`c-accordion`, `c-admonition`, `c-card`, `c-flashcard`, `c-pull-quote`, `c-table`) have a body that is author markdown. `render_markdown` converts that body once for every tag in the `MARKDOWN_BODY_TAGS` setting (`freedom_ls/markdown_rendering/config.py`). The widget template declares `markdown=""` in `c-vars` and emits its slot with `{% markdown_body slot markdown %}`: as-is normally, converted when the widget sits under a parent `render_markdown` does not mark (raw HTML such as `<div>`), which leaves `markdown="1"` on it. A new slot widget goes into `MARKDOWN_BODY_TAGS`. Do not run `{% markdown slot %}` in a widget template: a second pass re-converts rendered widget markup. Any widget can nest inside a slot widget.
+**Slot widgets** (`c-accordion`, `c-admonition`, `c-audio-clip`, `c-card`, `c-flashcard`, `c-pull-quote`, `c-table`) have a body that is author markdown. `render_markdown` converts that body once for every tag in the `MARKDOWN_BODY_TAGS` setting (`freedom_ls/markdown_rendering/config.py`). The widget template declares `markdown=""` in `c-vars` and emits its slot with `{% markdown_body slot markdown %}`: as-is normally, converted when the widget sits under a parent `render_markdown` does not mark (raw HTML such as `<div>`), which leaves `markdown="1"` on it. A new slot widget goes into `MARKDOWN_BODY_TAGS`. Do not run `{% markdown slot %}` in a widget template: a second pass re-converts rendered widget markup. Any widget can nest inside a slot widget.
 
 ## Adding New Components
 

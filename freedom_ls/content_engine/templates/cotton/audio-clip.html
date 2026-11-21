@@ -1,4 +1,4 @@
-<c-vars src="" title="" kind="" />
+<c-vars markdown="" src="" title="" kind="" />
 
 {% load content_tags l10n %}
 
@@ -14,7 +14,10 @@ Attributes:
          "Listening exercise".
 The slot, when given, is the transcript: markdown, shown under a Show
 transcript toggle that works in every state, the error state included. A slot
-of only whitespace renders no toggle. The panel's x-show hides it from
+of only whitespace renders no toggle. render_markdown converts the transcript
+in its one markdown pass, so any widget, file-resolving ones included, works
+inside it; markdown_body converts it only when a raw-HTML parent left it
+unconverted. The panel's x-show hides it from
 assistive technology while collapsed.
 
 data-src holds the redirect URL, never a signed one, so playback after the
@@ -106,7 +109,7 @@ chevron starts on the title's left edge; the padding stays for the focus ring.
         {% if slot.strip %}
           <div x-bind:id="$id('audio-clip-transcript')" x-show="transcriptOpen" x-collapse x-cloak
                class="ml-14 mt-2 space-y-4 text-sm motion-reduce:transition-none!">
-            {% markdown slot %}
+            {% markdown_body slot markdown %}
           </div>
         {% endif %}
       </div>

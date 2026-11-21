@@ -161,7 +161,7 @@ These widgets are available inside Markdown content:
 
 ![](screenshots/article_content_widgets.png)
 
-Any widget can be nested inside a widget whose body is Markdown — `c-accordion`, `c-admonition`, `c-card`, a `c-flashcard` face, `c-pull-quote` or `c-table` — and renders as it would on its own. A `c-audio` on a flashcard face plays without flipping the card.
+Any widget can be nested inside a widget whose body is Markdown — `c-accordion`, `c-admonition`, a `c-audio-clip` transcript, `c-card`, a `c-flashcard` face, `c-pull-quote` or `c-table` — and renders as it would on its own. A `c-audio` on a flashcard face plays without flipping the card.
 
 Admonition types default to note, tip, important, warning, danger, key takeaways, and checklist, and are configurable per deployment — as is the widget list itself. See [configuration and extension](./configuration-and-extension.md).
 

@@ -11,7 +11,7 @@ class MarkdownRenderingConfig(AppSettings):
     declared_settings = {
         "MARKDOWN_ALLOWED_TAGS": Setting(default={}),
         "MARKDOWN_TEMPLATE_RENDER_ON": Setting(default=True),
-        # Widgets whose body is markdown: the six slot widgets, plus c-slot and
+        # Widgets whose body is markdown: the slot widgets, plus c-slot and
         # the layout wrappers c-grid and c-image-grid that can hold them. A
         # project adds the tag of each custom widget whose body is markdown.
         "MARKDOWN_BODY_TAGS": Setting(
@@ -22,6 +22,7 @@ class MarkdownRenderingConfig(AppSettings):
                 "c-flashcard",
                 "c-pull-quote",
                 "c-table",
+                "c-audio-clip",
                 "c-slot",
                 "c-grid",
                 "c-image-grid",

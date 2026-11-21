@@ -5,6 +5,7 @@ changed_template_paths: []
 requires_settings_change: true
 changed_settings:
   - MARKDOWN_ALLOWED_TAGS  # optional: only projects that define their own copy, to use c-audio-clip
+  - MARKDOWN_BODY_TAGS  # optional: only projects that set their own value
 requires_package_upgrade: true
 changed_packages:
   - mutagen==1.48.1
@@ -46,3 +47,6 @@ Two visible changes to existing pages:
 5. If your project defines its own `MARKDOWN_ALLOWED_TAGS` instead of inheriting FLS's
    `config/settings_base.py`, add `"c-audio-clip": {"src", "title", "kind"}` to it. Without it the
    tag is stripped from markdown. Projects that inherit the FLS value need no change.
+6. If your project sets `MARKDOWN_BODY_TAGS` itself, add `"c-audio-clip"` to it so the clip's
+   transcript is converted in the one markdown pass. Projects that inherit the default need no
+   change.
