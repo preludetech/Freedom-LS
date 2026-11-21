@@ -183,6 +183,15 @@ def _seed_legacy_sitting(
         completed_time=None, scores=None, asked=None, furthest_page=page
     )
     sitting.refresh_from_db()
+    # An application without a sitting is created submitted; reopen it to a
+    # draft along with its sitting, or its form pages render read-only.
+    CourseApplication._base_manager.filter(pk=application.pk).update(
+        state=CourseApplication.State.DRAFT,
+        submitted_at=None,
+        decided_at=None,
+        withdrawn_at=None,
+        rejection_message="",
+    )
 
     answers: dict[str, QuestionAnswer] = {}
 
