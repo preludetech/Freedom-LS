@@ -123,6 +123,13 @@ uv run pytest -c freedom_ls/panel_framework/tests/standalone_pytest.ini freedom_
 ```
 
   `standalone_pytest.ini` sets `--ds=freedom_ls.panel_framework.tests.standalone_settings` (in-memory SQLite, `standalone_app/` for the user model, no stand-in templates: the framework ships every template it renders), adds `-m "not needs_fls_host"`, skips only `playwright` (`norecursedirs`), so the `components` and `invariants` tiers run too, and blocks network access. `standalone_fixtures.py` supplies the `site` and `mock_site_context` fixtures; FLS's conftest does not load.
+- The icons app's tests run the same way, in the same CI step:
+
+```bash
+uv run pytest -c freedom_ls/icons/tests/standalone_pytest.ini freedom_ls/icons/tests
+```
+
+  `standalone_pytest.ini` sets `--ds=freedom_ls.icons.tests.standalone_settings` (no database, only `django_cotton` and `freedom_ls.icons` installed) and blocks network access; FLS's conftest does not load. The settings leave `SEMANTIC_ICONS_ICONIFY_DIR` unset, so the tests render from the bundled icon data alone. `freedom_ls/icons/tests/conftest.py` clears the loader cache around every test and provides two fixtures: `bundled_data_only` sets `SEMANTIC_ICONS_ICONIFY_DIR` to `None`, and `iconify_dir` points it at an empty `tmp_path`. Use `iconify_dir` to test the on-disk overlay and `bundled_data_only` to pin the bundled lookup under FLS settings; never point the setting at a real directory in a test.
 - A concrete downstream project runs:
 
 ```bash
