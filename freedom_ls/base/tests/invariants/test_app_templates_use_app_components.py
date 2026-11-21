@@ -26,6 +26,7 @@ BANNED_TAGS = (
     "c-content-link",
     "c-article-link",
     "c-audio",
+    "c-audio-reveal",
     "c-content-error",
     "c-panel-notice",
 )

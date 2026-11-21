@@ -10,6 +10,7 @@
  * - `contentLightbox` — native <dialog> spotlight (cotton/picture.html)
  * - `flashcard`       — two-sided flip card (cotton/flashcard.html)
  * - `audioFile`       — one shared audio element for speak buttons (cotton/audio.html)
+ * - `audioReveal`     — say it, then reveal (cotton/audio-reveal.html)
  */
 
 document.addEventListener("alpine:init", () => {
@@ -203,5 +204,27 @@ document.addEventListener("alpine:init", () => {
     }
 
     Alpine.data("audioFile", audioPlayer);
+
+    Alpine.data("audioReveal", () => ({
+        ...audioPlayer(),
+        revealed: false,
+
+        answerClass() {
+            return { invisible: !this.revealed };
+        },
+        announcement() {
+            return this.revealed ? this.$root.dataset.label : "";
+        },
+        toggleReveal() {
+            if (this.revealed) {
+                if (this._sounding()) this._stop();
+                this.revealed = false;
+                return;
+            }
+            this.revealed = true;
+            // Synchronous inside the click, so iOS lets it play.
+            this._start(this.$root.dataset.src);
+        },
+    }));
 
 });

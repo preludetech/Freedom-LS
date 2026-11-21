@@ -63,6 +63,9 @@ AUDIO_A_LABEL = "Alpha"
 AUDIO_B_LABEL = "Bravo"
 AUDIO_LONG_LABEL = "Good morning, how are you today?"
 AUDIO_LONG_RESPELLING = "GUD MOR-ning HOW AR YOO tuh-DAY"
+REVEAL_A_LABEL = "November"
+REVEAL_B_LABEL = "Oscar"
+PLAIN_AUDIO_LABEL = "Papa"
 
 # A five-column table and a fenced code block: between them they set a
 # min-content width several times a phone's viewport.
@@ -152,6 +155,36 @@ def _logo_upload() -> SimpleUploadedFile:
     buf = io.BytesIO()
     Image.new("RGB", (200, 100)).save(buf, format="PNG")
     return SimpleUploadedFile("logo.png", buf.getvalue(), content_type="image/png")
+
+
+def _audio_widgets_course(user: User) -> Course:
+    """A course with one topic holding two c-audio-reveal widgets and a c-audio."""
+    course: Course = CourseFactory(
+        title="Audio Widgets Course",
+        slug="audio-widgets-course",
+        file_path="courses/audio-widgets/course.md",
+        access_config={"access_type": "free"},
+    )
+    LearnerCourseRegistrationFactory(learner__user=user, course=course, is_active=True)
+    for name in ("november", "oscar", "papa"):
+        FileFactory(
+            file_path=f"audio/{name}.mp3",
+            file=SimpleUploadedFile(
+                f"{name}.mp3", BEEP_MP3.read_bytes(), content_type="audio/mpeg"
+            ),
+            file_type=File.FileType.AUDIO,
+            mime_type="audio/mpeg",
+        )
+    content = (
+        f'<c-audio-reveal src="audio/november.mp3" label="{REVEAL_A_LABEL}" '
+        'respelling="no-VEM-ber" symbol="N"></c-audio-reveal>\n\n'
+        f'<c-audio-reveal src="audio/oscar.mp3" label="{REVEAL_B_LABEL}" '
+        'respelling="OS-kar" symbol="O"></c-audio-reveal>\n\n'
+        f'<c-audio src="audio/papa.mp3" label="{PLAIN_AUDIO_LABEL}"></c-audio>'
+    )
+    topic = TopicFactory(title="Audio Widgets", slug="audio-widgets", content=content)
+    ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
+    return course
 
 
 def _browse_course(user: User) -> Course:
@@ -515,6 +548,64 @@ def test_speak_button_shows_an_error_line_and_retries_on_the_next_press(
     button.click()
     expect(button).to_have_attribute("aria-pressed", "true")
     expect(error_line.first).to_be_hidden()
+
+
+def test_learner_practises_with_audio_widgets(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    course = _audio_widgets_course(logged_in_user)
+    requested: list[str] = []
+    page.on("request", lambda request: requested.append(request.url))
+    page.goto(_item_url(live_server, course, 1))
+
+    # Nothing loads, and the answer is out of the accessibility tree, until Reveal.
+    # The button's name flips between Reveal and Hide, so it is found by role
+    # within its widget, not by name.
+    widget = page.locator("[x-data='audioReveal']").first
+    reveal = widget.get_by_role("button", name=re.compile(r"^(Reveal|Hide)$"))
+    play = page.get_by_role("button", name=f"Play pronunciation of {REVEAL_A_LABEL}")
+    expect(reveal).to_have_attribute("aria-expanded", "false")
+    expect(play).to_have_count(0)
+    assert not [url for url in requested if "/content/audio/" in url]
+
+    # Reveal shows the answer and plays it from the start.
+    reveal.click()
+    expect(play.locator("xpath=preceding-sibling::div")).to_be_visible()
+    expect(page.get_by_text(REVEAL_A_LABEL).first).to_be_visible()
+    expect(reveal).to_have_attribute("aria-expanded", "true")
+    expect(play).to_have_attribute("aria-pressed", "true")
+    assert [url for url in requested if "/content/audio/" in url]
+
+    # The play button inside the answer stops and replays it.
+    play.click()
+    expect(play).to_have_attribute("aria-pressed", "false")
+    play.click()
+    expect(play).to_have_attribute("aria-pressed", "true")
+
+    # Hide stops the audio and takes the answer out of the accessibility tree.
+    reveal.click()
+    expect(play).to_have_count(0)
+    expect(widget.locator("button[data-src]")).to_have_attribute(
+        "aria-pressed", "false"
+    )
+    expect(reveal).to_have_attribute("aria-expanded", "false")
+
+    # Reveal again plays from the start.
+    reveal.click()
+    expect(play).to_have_attribute("aria-pressed", "true")
+    reveal.click()
+
+    # Enter reveals and Space hides, and the button keeps focus.
+    reveal.focus()
+    page.keyboard.press("Enter")
+    expect(play).to_have_attribute("aria-pressed", "true")
+    expect(reveal).to_be_focused()
+    page.keyboard.press("Space")
+    expect(play).to_have_count(0)
+    expect(reveal).to_be_focused()
 
 
 @pytest.mark.browser_context_args(timezone_id="America/New_York", locale="en-US")

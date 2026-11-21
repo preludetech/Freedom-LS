@@ -4,6 +4,8 @@ The text column and play button of an audio card, shared by c-audio and
 c-audio-reveal so the markup exists once. Inputs: label, respelling,
 file_obj. The including element supplies x-id="['audio-respelling']" and
 an Alpine scope that spreads audioPlayer (toggle, idle, loading, playing).
+The symbol tile is not part of the partial: c-audio and c-audio-reveal each
+render their own, with the same classes.
 {% endcomment %}
     <div class="min-w-0 flex-1">
       <span class="block break-words font-bold leading-tight">{{ label }}</span>

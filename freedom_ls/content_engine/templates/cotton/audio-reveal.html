@@ -1,0 +1,54 @@
+<c-vars src="" label="" respelling="" symbol="" />
+
+{% load content_tags %}
+
+{% comment %}
+A say-it-then-reveal card: the symbol tile is the prompt; the answer (the
+word, its respelling and a play button) stays hidden until the learner
+presses Reveal, which shows it and plays the audio file from the start.
+Attributes as c-audio, except symbol is required.
+
+The tile is not aria-hidden: here it is the prompt. The answer region is
+invisible, inert and aria-hidden while hidden, so it is neither seen,
+reachable nor announced, and it keeps its height so nothing shifts on
+reveal. invisible is rendered server-side so the answer never shows before
+Alpine starts; answerClass returns an object so Alpine removes it. The
+visually hidden status element holds the label only while revealed, so a
+screen reader announces the answer once.
+
+The tile repeats c-audio's tile classes. The text column and play button come
+from the audio_card_body partial, shared with c-audio. The wrapping row never
+changes with state, so the reveal button does not move: it sits in the row
+from sm:, and full width under the card below it.
+{% endcomment %}
+
+{% with file_obj=src|get_file_by_path:content_instance %}
+  {% if not file_obj or file_obj.file_type != "AUDIO" %}
+    <c-content-error message="Audio not found: {{ src }}" />
+  {% elif not label %}
+    <c-content-error message="Audio needs a label: {{ src }}" />
+  {% elif not symbol %}
+    <c-content-error message="Audio reveal needs a symbol: {{ src }}" />
+  {% else %}
+    <div class="my-6" x-data="audioReveal" x-id="['audio-respelling', 'audio-answer']"
+         data-src="{% url 'content_engine:audio_file' file_obj.pk %}" data-label="{{ label }}">
+      <div class="flex flex-wrap items-center gap-3 sm:flex-nowrap">
+        <div class="flex min-w-0 flex-1 items-center gap-3 rounded-lg border border-border bg-surface p-3 transition-colors has-aria-pressed:border-primary has-aria-pressed:bg-primary/5">
+          <span class="flex size-12 shrink-0 items-center justify-center rounded-md bg-primary text-xl font-bold text-on-primary">{{ symbol }}</span>
+          <div x-bind:id="$id('audio-answer')" class="invisible flex min-w-0 flex-1 items-center gap-3"
+               x-bind:class="answerClass" inert x-bind:inert="!revealed"
+               aria-hidden="true" x-bind:aria-hidden="!revealed">
+            {% include "content_engine/partials/audio_card_body.html" with label=label respelling=respelling file_obj=file_obj only %}
+          </div>
+        </div>
+        <c-button variant="secondary" class="min-h-11 min-w-11 w-full sm:w-auto"
+                  x-bind:aria-expanded="revealed" x-bind:aria-controls="$id('audio-answer')"
+                  x-on:click="toggleReveal">
+          <span x-show="!revealed">Reveal</span><span x-show="revealed" x-cloak>Hide</span>
+        </c-button>
+      </div>
+      <p class="sr-only" role="status" x-text="announcement"></p>
+      <p role="status" x-text="errorText" class="text-error text-sm"></p>
+    </div>
+  {% endif %}
+{% endwith %}

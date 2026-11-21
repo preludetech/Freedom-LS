@@ -404,6 +404,7 @@ MARKDOWN_ALLOWED_TAGS = {
     "c-equation": {"label"},
     "c-grid": {"columns"},
     "c-audio": {"src", "label", "respelling", "symbol"},
+    "c-audio-reveal": {"src", "label", "respelling", "symbol"},
     "c-image-grid": {"columns"},
     "c-table": {"caption"},
     "c-code-block": {"title", "language", "wrap"},
