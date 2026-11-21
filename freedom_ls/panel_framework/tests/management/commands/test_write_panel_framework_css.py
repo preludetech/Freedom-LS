@@ -10,7 +10,11 @@ import pytest
 import pytest_django.fixtures
 
 from django.apps import apps
-from django.core.management import call_command
+from django.core.management import call_command, find_commands
+
+from freedom_ls.panel_framework.management.commands.write_panel_framework_css import (
+    Command,
+)
 
 APP_LABEL = "freedom_ls_panel_framework"
 FILE_NAME = "tailwind.panel_framework.css"
@@ -18,7 +22,10 @@ FILE_NAME = "tailwind.panel_framework.css"
 
 def _run() -> str:
     out = StringIO()
-    call_command("write_panel_framework_css", stdout=out)
+    # Pass the instance: lookup by name goes through Django's cached command
+    # list, which misses this command if first built while a test has patched
+    # the app's path.
+    call_command(Command(), stdout=out)
     return out.getvalue()
 
 
@@ -83,3 +90,9 @@ def test_a_second_run_leaves_the_file_untouched(base_dir: Path) -> None:
 
 def test_prints_the_path_it_wrote(base_dir: Path) -> None:
     assert _run().strip() == str(base_dir / FILE_NAME)
+
+
+def test_is_registered_as_a_management_command() -> None:
+    app_path = Path(apps.get_app_config(APP_LABEL).path)
+
+    assert "write_panel_framework_css" in find_commands(str(app_path / "management"))
