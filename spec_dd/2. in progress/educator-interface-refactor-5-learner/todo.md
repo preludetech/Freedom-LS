@@ -15,10 +15,12 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 3. Implementation and QA
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
+- [ ] (user) Run the full test suite (`uv run pytest`, Playwright included) before opening the PR: it was skipped at your request, so each batch ran only its targeted tests or the educator_interface package; fix anything that fails
+- [ ] (user) Decide whether this refactor needs a browser QA pass: there is no `3. frontend_qa.md`, so `/sdd:do_qa` has nothing to run; if not, tick the do_qa and qa_fix items
 
 ## 4. Documentation and pull request
 
