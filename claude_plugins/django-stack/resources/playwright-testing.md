@@ -68,7 +68,7 @@ def test_user_comment_flow(page, live_server):
 3. **Use `expect()` matchers** - `expect(locator).to_be_visible()` and similar auto-wait, integrate with HTMX swaps, and fail more clearly than `wait_for_selector` / `is_visible`.
 4. **Use semantic locators** - Prefer `get_by_role` / `get_by_label` / `get_by_text` over CSS selectors. See "Locator priority" below.
 5. **Test happy paths first** - Core user journeys
-6. **Write flows** - One journey per test: one login, one data build, many assertions, layout checks looped over the project's viewports at the end. A case that needs its own browser context or a route interception is a separate function in the same file
+6. **Write flows** - One journey per test, with a step that needs its own browser context or a route opening it inside the flow. See the `ds:playwright-tests` skill's Key Rules for the full flow rule
 7. **Use live_server fixture** - Django test server integration
 8. **Use reverse() for URLs** - Never hardcode URLs: `reverse('app:view')` not `'/app/view/'`
 9. **Don't test what pytest can** - Avoid testing backend logic
@@ -115,25 +115,43 @@ Traces are recorded on failure (`--tracing=retain-on-failure`) and written to `t
 
 > **Caveat — traces capture DOM state and may contain fixture credentials, session cookies, or PII baked into seeded test data. Treat trace artefacts as sensitive: do not attach them to public bug reports, third-party support tickets, or shared chat channels without first reviewing them. If a trace must be shared externally, scrub or regenerate against a clean fixture set.**
 
-## Login fixture pattern
+## Signed-in fixture pattern
 
-Log in through the UI at the start of each flow, in a function-scoped fixture. Placeholders below stand for the project's real URL names.
+Give the browser a session without the login form. Build the session on the server with Django's test client and add its cookie to the browser context. Placeholders below stand for the project's real names.
 
 ```python
 import pytest
-from django.urls import reverse
-from playwright.sync_api import expect
+from django.conf import settings
+from django.contrib.auth.base_user import AbstractBaseUser
+from django.test import Client
+from playwright.sync_api import Page
+from pytest_django.live_server_helper import LiveServer
 
 
 @pytest.fixture
-def authed_page(page, live_server):
-    page.goto(f"{live_server.url}{reverse('<login url name>')}")
-    page.get_by_label("Email").fill("user@example.test")
-    page.get_by_label("Password").fill("test-password-not-real")
-    page.get_by_role("button", name="Sign in").click()
-    expect(page).to_have_url(f"{live_server.url}{reverse('<post-login url name>')}")
+def signed_in_page(page: Page, live_server: LiveServer, user: AbstractBaseUser) -> Page:
+    client = Client()
+    client.force_login(user)
+    cookie_name = settings.SESSION_COOKIE_NAME
+    page.context.add_cookies(
+        [
+            {
+                "name": cookie_name,
+                "value": client.cookies[cookie_name].value,
+                "url": live_server.url,
+            }
+        ]
+    )
     return page
 ```
+
+Build the session per test. A transactional database flush deletes the session row at the end of every test, so a session saved once is dead by the next test. Pass `backend=` to `force_login` when the first authentication backend cannot hold a session.
+
+The page has not navigated, so the test starts on `about:blank` and calls `page.goto(...)` first.
+
+### Signing-in test
+
+The one test about signing in fills the form: it opens `<login url name>`, fills `Email` with `user@example.test` and `Password` with `test-password-not-real`, and clicks the sign-in button.
 
 **Security caveat:** never commit session state (a `storage_state` JSON holds session cookies). Build credentials at test time from synthetic values; never hard-code real credentials. Examples here use the RFC 2606 reserved `.test` TLD and obviously synthetic passwords.
 

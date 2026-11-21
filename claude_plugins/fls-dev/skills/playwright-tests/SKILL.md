@@ -10,15 +10,16 @@ Read `Skill(ds:playwright-tests)` first for the flow rule and the generic mechan
 
 ## Fixtures
 
-- `logged_in_page` and `logged_in_user`: an email-verified learner, logged in through the allauth form (`freedom_ls/tests/playwright_fixtures.py`).
-- `educator_logged_in_page`: the educator equivalent (`freedom_ls/educator_interface/tests/playwright/conftest.py`).
+- `logged_in_page` and `logged_in_user`: an email-verified learner. `logged_in_page` gets its session from `sign_in` (`freedom_ls/tests/playwright_fixtures.py`), with no form. The page starts on `about:blank`, so the test calls `page.goto(...)` first.
+- `educator_logged_in_page` and `cohort_admin_logged_in_page`: the educator and cohort-admin equivalents, also through `sign_in` (`freedom_ls/educator_interface/tests/playwright/conftest.py`).
+- `_login_via_ui`: drives the allauth form, for the sign-in test only.
 - `live_server_site` and `mock_site_context`: bind the live server's host to the test `Site` so site-aware queries resolve (`freedom_ls/conftest.py`).
-- `QA_VIEWPORTS` and `assert_no_horizontal_overflow` (`freedom_ls/tests/playwright_helpers.py`): the layout check. A flow loops it over every viewport in its last step.
+- `QA_VIEWPORTS` and `assert_no_horizontal_overflow` (`freedom_ls/tests/playwright_helpers.py`): the layout check. A flow resizes one page through `QA_VIEWPORTS`, once per viewport.
 - `QA_VIEWPORTS` and `assert_no_horizontal_overflow` also exist in `freedom_ls/panel_framework/tests/playwright/helpers.py`, the framework's own copy: its tests import that one, never `freedom_ls.tests`. Edit both together; `test_framework_copies_match_base.py` fails on drift. The standalone run (`Skill(fls-dev:testing)`) leaves `tests/playwright` out.
 
-## Why transaction=True and a login per test
+## Why transaction=True and a session per test
 
-The browser uses its own database connection, so every browser test is `@pytest.mark.django_db(transaction=True)`. That flushes the database after each test and deletes the session row a reused login cookie points at, so login happens per test through the UI. The `playwright_fixtures.py` module docstring has the full reasoning.
+The browser uses its own database connection, so every browser test is `@pytest.mark.django_db(transaction=True)`. That flushes the database after each test and deletes the session row a reused cookie points at, so `sign_in` makes the session in the test, after its user exists. The `playwright_fixtures.py` module docstring has the full reasoning.
 
 ## Flow trade-off
 

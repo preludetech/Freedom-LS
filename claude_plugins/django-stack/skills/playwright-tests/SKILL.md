@@ -19,7 +19,11 @@ This Skill helps write browser tests for behavior that needs a real browser.
 
 ## Key Rules
 
-- A browser test is a flow: one journey, one login, one data build, many assertions, with layout checks looped over the project's viewports at the end. A case that needs its own browser context or a route interception is a separate function in the same file.
+- A browser test is a flow: one journey, one data build, many assertions.
+- A step that needs its own browser context or a route opens it inside the flow and closes it, or calls `page.unroute(...)`, before the next step.
+- A signed-in fixture makes a session on the server in each test and adds its cookie to the browser context. Only the test whose subject is signing in drives the form.
+- One page at several viewports is one test that resizes the page.
+- A flow's assertion messages name the check and, in a viewport loop, the viewport.
 - Only use Playwright for browser-required behavior. If pytest can test it, use pytest.
 - Mark every browser test `@pytest.mark.playwright`, without exception: a consumer that can't run a real browser excludes exactly this set. See the Portability note in the resource file and the `ds:testing` skill's marker guidance.
 - Use `page` and `live_server` fixtures.
@@ -30,7 +34,7 @@ This Skill helps write browser tests for behavior that needs a real browser.
 
 ## Best practices
 
-- Log in once per flow. See the resource file for the login pattern.
+- Sign in once per flow. See the resource file for the signed-in fixture pattern.
 - Trace and screenshot-on-failure are captured automatically (`--tracing=retain-on-failure --screenshot=only-on-failure` in `pyproject.toml` `addopts`). Traces land in `test-results/<nodeid>/trace.zip` and CI uploads `test-results/` as the `playwright-traces` artifact on failure. Treat trace artefacts as sensitive: they may contain fixture credentials or session cookies.
 
 ## Cross-links
