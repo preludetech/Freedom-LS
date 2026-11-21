@@ -175,7 +175,6 @@ from freedom_ls.learner_management.queries import (
     learner_status,
     learners_visible_to,
     organisations_accessible_to,
-    site_level_admins,
 )
 from freedom_ls.learner_management.utils import record_cohort_entry
 from freedom_ls.organisations.models import Organisation

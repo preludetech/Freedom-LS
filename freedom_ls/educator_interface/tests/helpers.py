@@ -8,6 +8,7 @@ import io
 import uuid
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, cast
+from urllib.parse import quote
 
 import lxml.html
 import pytest
@@ -26,7 +27,7 @@ from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.factories import AuditLogEntryFactory
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.audit_log.writer import record_entry, record_run_summary
-from freedom_ls.comms.factories import ConversationFactory
+from freedom_ls.comms.factories import ConversationFactory, MessageFactory
 from freedom_ls.comms.models import Conversation
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseAudience
@@ -815,3 +816,52 @@ def _org_admin(organisation: Organisation) -> User:
     admin = cast(User, UserFactory(staff=True))
     assign_object_role(admin, organisation, "organisation_admin")
     return admin
+
+
+def _tab_url(learner: Learner) -> str:
+    return _msg_url(learner.organisation, f"learners/{learner.pk}/__tabs/messages")
+
+
+def _view_conversation_url(learner: Learner) -> str:
+    return f"{_tab_url(learner)}/__panels/others/__actions/view_conversation"
+
+
+def _open_conversation(
+    client: Client, learner: Learner, conversation: object, **extra: str
+):
+    return client.get(
+        f"{_view_conversation_url(learner)}?conversation={conversation}",
+        HTTP_HX_REQUEST="true",
+        **extra,
+    )
+
+
+def _viewed_entries() -> list[AuditLogEntry]:
+    return list(AuditLogEntry.unscoped.filter(action="conversation.viewed"))
+
+
+def _oversight_scene() -> tuple[Organisation, User, Learner, Conversation]:
+    organisation = cast(Organisation, OrganisationFactory())
+    educator = _msg_educator(organisation)
+    learner = _msg_learner(organisation)
+    conversation = _msg_conversation(educator, learner.user)
+    MessageFactory(conversation=conversation, sender=educator, body="oversight me")
+    return organisation, educator, learner, conversation
+
+
+def _older_url(
+    learner: Learner,
+    conversation_pk: object,
+    cursor: str,
+    organisation: Organisation | None = None,
+) -> str:
+    slug = (organisation or learner.organisation).slug
+    base = reverse(
+        "educator_interface:oversight_thread_older",
+        kwargs={
+            "organisation_slug": slug,
+            "learner_pk": str(learner.pk),
+            "conversation_pk": str(conversation_pk),
+        },
+    )
+    return f"{base}?before={quote(cursor)}" if cursor else base
