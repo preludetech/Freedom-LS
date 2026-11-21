@@ -13,6 +13,10 @@ organisation_staff_roles_viewer on O1, cohort_admin and cohort_viewer on C1.
 
 from __future__ import annotations
 
+import operator
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from functools import partial
 from typing import NamedTuple, cast
 
 import pytest
@@ -592,18 +596,112 @@ def _cases() -> list[tuple[str, str, str, str]]:
     ]
 
 
+class _Walk:
+    """Every disagreement a walk finds, kept so one failing cell does not hide the rest.
+
+    A walk checks many cells against one world because building the world costs far more than
+    any one check.
+    """
+
+    def __init__(self, subject: str) -> None:
+        self.subject = subject
+        self.checked = 0
+        self.mismatches: list[str] = []
+
+    def check(
+        self,
+        expected: Callable[[], object],
+        actual: Callable[[], object],
+        *,
+        same: Callable[[object, object], bool] = operator.is_,
+        **coordinates: str,
+    ) -> None:
+        """Check one cell and keep any disagreement.
+
+        Both sides are computed under the cell's name, so an error from either one
+        names the cell. `same` defaults to identity, which makes a truthy non-bool
+        answer fail where True is expected.
+        """
+        with _naming_the_cell(**coordinates):
+            expected_value = expected()
+            actual_value = actual()
+        self.checked += 1
+        if not same(actual_value, expected_value):
+            self.mismatches.append(
+                _cell_line(
+                    **coordinates,
+                    expected=str(expected_value),
+                    actual=str(actual_value),
+                )
+            )
+
+    def report(self) -> None:
+        """Fail with every mismatch, sorted so the same failure always prints the same report."""
+        if not self.mismatches:
+            return
+        lines = sorted(self.mismatches)
+        header = f"{len(lines)} of {self.checked} cells disagree for {self.subject}"
+        pytest.fail("\n".join([header, *lines]), pytrace=False)
+
+
+def _cell_line(**pairs: str) -> str:
+    return " ".join(f"{key}={value}" for key, value in pairs.items())
+
+
+@contextmanager
+def _naming_the_cell(**coordinates: str) -> Iterator[None]:
+    """An error raised while checking a cell still fails the test, now naming the cell."""
+    try:
+        yield
+    # Broad on purpose: this only adds the cell's coordinates to whatever was raised and
+    # re-raises it, so nothing is swallowed. It is the only broad catch in this file.
+    except Exception as error:
+        error.add_note(_cell_line(**coordinates))
+        raise
+
+
+def _always(value: object) -> Callable[[], object]:
+    """A side of a check that is already known, such as a step's expected answer."""
+    return lambda: value
+
+
+def _matrix_allows(capability: str, role: str, kind: str, relation: str) -> bool:
+    return (kind, relation) in MATRIX[capability][role]
+
+
+def _walk_matrix(world: World, capability: str) -> _Walk:
+    """Every cell of one capability, against one world.
+
+    It loops instead of parametrizing because building the world is the cost of a cell,
+    not the check. `can()` keeps no cache between calls, so one world answers every cell.
+    """
+    walk = _Walk(capability)
+    for cell_capability, role, kind, relation in _cases():
+        if cell_capability != capability:
+            continue
+        walk.check(
+            partial(_matrix_allows, capability, role, kind, relation),
+            partial(can, world.users[role], capability, world.scopes[(kind, relation)]),
+            capability=capability,
+            role=role,
+            kind=kind,
+            relation=relation,
+        )
+    return walk
+
+
+def _codename(capability: str) -> str:
+    return capability.split(".", 1)[1]
+
+
 @pytest.mark.django_db
-@pytest.mark.parametrize(("capability", "role", "kind", "relation"), _cases())
-def test_can_matches_the_matrix(
-    mock_site_context: Site, capability: str, role: str, kind: str, relation: str
-) -> None:
+@pytest.mark.parametrize("capability", CAPABILITY_SCOPE_KINDS, ids=_codename)
+def test_can_matches_the_matrix(mock_site_context: Site, capability: str) -> None:
     world = _build_world(mock_site_context)
-    user = world.users[role]
-    scope = world.scopes[(kind, relation)]
 
-    expected = (kind, relation) in MATRIX[capability][role]
+    walk = _walk_matrix(world, capability)
 
-    assert can(user, capability, scope) is expected
+    walk.report()
 
 
 def test_every_capability_a_role_holds_has_a_matrix_entry() -> None:
