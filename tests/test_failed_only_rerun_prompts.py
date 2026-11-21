@@ -28,3 +28,14 @@ def test_run_test_tier_names_the_failed_input() -> None:
 
 def test_run_test_tier_names_the_failed_return_field() -> None:
     assert "failed: <" in RUN_TEST_TIER.read_text()
+
+
+IMPLEMENT_PLAN = SDD / "commands/implement_plan.md"
+
+
+def test_implement_plan_names_the_failed_only_rerun() -> None:
+    assert "failed-only re-run" in IMPLEMENT_PLAN.read_text()
+
+
+def test_implement_plan_passes_failed_to_the_helper() -> None:
+    assert "`<failed>`" in IMPLEMENT_PLAN.read_text()
