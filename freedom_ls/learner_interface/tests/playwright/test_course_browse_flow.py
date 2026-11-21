@@ -584,35 +584,36 @@ def test_learner_practises_with_audio_widgets(
     course = _audio_widgets_course(logged_in_user)
     requested: list[str] = []
     page.on("request", lambda request: requested.append(request.url))
+    # Time flows as normal; the test fast-forwards it to reach the auto-hide.
+    page.clock.install()
     page.goto(_item_url(live_server, course, 1))
 
-    # Nothing loads, and the answer is out of the accessibility tree, until Reveal.
-    # The button's name flips between Reveal and Hide, so it is found by role
-    # within its widget, not by name.
+    # Nothing loads, and the answer is out of the accessibility tree, until the
+    # eye-closed area that stands in for the answer is clicked.
     widget = page.locator("[x-data='audioReveal']").first
-    reveal = widget.get_by_role("button", name=re.compile(r"^(Reveal|Hide)$"))
+    reveal = widget.get_by_role("button", name="Reveal answer")
     play = page.get_by_role("button", name=f"Play pronunciation of {REVEAL_A_LABEL}")
     expect(reveal).to_have_attribute("aria-expanded", "false")
+    expect(reveal.locator("[data-icon='reveal_hidden']")).to_be_visible()
+    expect(reveal).to_have_css("cursor", "pointer")
     expect(play).to_have_count(0)
     assert not [url for url in requested if "/content/audio/" in url]
 
-    # From sm: up, revealing moves nothing: the button and the card keep their
-    # boxes whichever label the button shows.
+    # Revealing moves nothing: the card keeps its box.
     page.set_viewport_size({"width": 1280, "height": 800})
-    card = widget.locator("div.flex-1").first
-    button_before = _box(reveal)
-    card_width_before = _box(card)["width"]
+    card = widget.locator("div.rounded-lg").first
+    card_before = _box(card)
 
-    # Reveal shows the answer and plays it from the start.
+    # Revealing shows the answer, plays it from the start and moves focus to
+    # the play button, since the reveal button is now out of reach.
     reveal.click()
     expect(play.locator("xpath=preceding-sibling::div")).to_be_visible()
     expect(page.get_by_text(REVEAL_A_LABEL).first).to_be_visible()
-    expect(reveal).to_have_attribute("aria-expanded", "true")
+    expect(reveal).to_have_count(0)
     expect(play).to_have_attribute("aria-pressed", "true")
+    expect(play).to_be_focused()
     assert [url for url in requested if "/content/audio/" in url]
-
-    assert _box(reveal) == button_before
-    assert _box(card)["width"] == card_width_before
+    assert _box(card) == card_before
 
     # The play button inside the answer stops and replays it.
     play.click()
@@ -620,37 +621,46 @@ def test_learner_practises_with_audio_widgets(
     play.click()
     expect(play).to_have_attribute("aria-pressed", "true")
 
-    # Hide stops the audio and takes the answer out of the accessibility tree.
-    reveal.click()
+    # Once the one-second clip ends, the answer stays up for 5s, and a replay
+    # starts that countdown over: 3s + 3s would pass the first deadline. The
+    # 2s margins leave room for real time, which keeps flowing.
+    expect(play).to_have_attribute("aria-pressed", "false")
+    page.clock.fast_forward(3000)
+    expect(play).to_have_count(1)
+    play.click()
+    expect(play).to_have_attribute("aria-pressed", "false")
+    page.clock.fast_forward(3000)
+    expect(play).to_have_count(1)
+
+    # Then it hides, handing focus back to the reveal button.
+    page.clock.fast_forward(2500)
     expect(play).to_have_count(0)
-    expect(widget.locator("button[data-src]")).to_have_attribute(
-        "aria-pressed", "false"
-    )
     expect(reveal).to_have_attribute("aria-expanded", "false")
+    expect(reveal).to_be_focused()
+    assert _box(card) == card_before
 
-    # Reveal again plays from the start.
-    reveal.click()
-    expect(play).to_have_attribute("aria-pressed", "true")
-    reveal.click()
-
-    # Enter reveals and Space hides, and the button keeps focus.
-    reveal.focus()
+    # Enter and Space both reveal and play from the start.
     page.keyboard.press("Enter")
     expect(play).to_have_attribute("aria-pressed", "true")
+    expect(play).to_have_attribute("aria-pressed", "false")
+    page.clock.fast_forward(5500)
     expect(reveal).to_be_focused()
     page.keyboard.press("Space")
+    expect(play).to_have_attribute("aria-pressed", "true")
+    expect(play).to_have_attribute("aria-pressed", "false")
+    page.clock.fast_forward(5500)
     expect(play).to_have_count(0)
-    expect(reveal).to_be_focused()
 
     # Only one sound plays at a time: revealing stops the plain c-audio, and
-    # revealing another widget stops the first, whose answer stays visible.
+    # revealing another widget stops the first, whose answer stays visible
+    # until its own countdown ends.
     plain = page.get_by_role(
         "button", name=f"Play pronunciation of {PLAIN_AUDIO_LABEL}"
     )
     second_reveal = (
         page.locator("[x-data='audioReveal']")
         .nth(1)
-        .get_by_role("button", name=re.compile(r"^(Reveal|Hide)$"))
+        .get_by_role("button", name="Reveal answer")
     )
     plain.click()
     expect(plain).to_have_attribute("aria-pressed", "true")
@@ -660,6 +670,8 @@ def test_learner_practises_with_audio_widgets(
     second_reveal.click()
     expect(play).to_have_attribute("aria-pressed", "false")
     expect(page.get_by_text(REVEAL_A_LABEL).first).to_be_visible()
+    page.clock.fast_forward(5500)
+    expect(play).to_have_count(0)
 
     # Nothing scrolls sideways at 320px or any QA width, and the reveal button
     # is a comfortable touch target.
@@ -714,7 +726,7 @@ def test_a_reveal_whose_audio_fails_still_shows_the_answer(
     page.route(re.compile(r"/content/audio/"), lambda route: route.abort())
     page.goto(_item_url(live_server, course, 1))
     widget = page.locator("[x-data='audioReveal']").first
-    reveal = widget.get_by_role("button", name=re.compile(r"^(Reveal|Hide)$"))
+    reveal = widget.get_by_role("button", name="Reveal answer")
 
     reveal.click()
 

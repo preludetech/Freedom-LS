@@ -205,32 +205,58 @@ document.addEventListener("alpine:init", () => {
 
     Alpine.data("audioFile", audioPlayer);
 
-    Alpine.data("audioReveal", () => ({
-        ...audioPlayer(),
-        revealed: false,
+    // How long a revealed answer stays up after its audio stops.
+    const AUDIO_REVEAL_HIDE_DELAY_MS = 5000;
 
-        answerClass() {
-            return { invisible: !this.revealed };
-        },
-        revealLabelClass() {
-            return { invisible: this.revealed };
-        },
-        hideLabelClass() {
-            return { invisible: !this.revealed };
-        },
-        announcement() {
-            return this.revealed ? this.$root.dataset.label : "";
-        },
-        toggleReveal() {
-            if (this.revealed) {
+    Alpine.data("audioReveal", () => {
+        const player = audioPlayer();
+        return {
+            ...player,
+            revealed: false,
+            _hideTimer: null,
+
+            init() {
+                // The countdown runs only while this widget is silent, so the
+                // answer never hides mid-clip and a replay starts it over.
+                this.$watch("idle", (idle) => {
+                    this._clearHideTimer();
+                    if (idle && this.revealed) {
+                        this._hideTimer = setTimeout(() => this.hide(), AUDIO_REVEAL_HIDE_DELAY_MS);
+                    }
+                });
+            },
+            destroy() {
+                this._clearHideTimer();
+                player.destroy.call(this);
+            },
+            answerClass() {
+                return { invisible: !this.revealed };
+            },
+            revealButtonClass() {
+                return { invisible: this.revealed };
+            },
+            announcement() {
+                return this.revealed ? this.$root.dataset.label : "";
+            },
+            reveal() {
+                this.revealed = true;
+                // Synchronous inside the click, so iOS lets it play.
+                this._start(this.$root.dataset.src);
+                // The reveal button turns inert, so focus moves to the answer.
+                this.$nextTick(() => this.$refs.answer.querySelector("button")?.focus());
+            },
+            hide() {
+                this._clearHideTimer();
                 if (this._sounding()) this._stop();
+                const focusWasInAnswer = this.$refs.answer.contains(document.activeElement);
                 this.revealed = false;
-                return;
-            }
-            this.revealed = true;
-            // Synchronous inside the click, so iOS lets it play.
-            this._start(this.$root.dataset.src);
-        },
-    }));
+                if (focusWasInAnswer) this.$nextTick(() => this.$refs.revealButton.focus());
+            },
+            _clearHideTimer() {
+                clearTimeout(this._hideTimer);
+                this._hideTimer = null;
+            },
+        };
+    });
 
 });

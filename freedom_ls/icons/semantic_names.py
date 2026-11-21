@@ -13,6 +13,7 @@ SEMANTIC_ICON_NAMES: set[str] = {
     "fullscreen",
     "quick_view",
     "open_page",
+    "reveal_hidden",
     # Status
     "success",
     "error",

@@ -99,9 +99,32 @@ class TestResolvedWidget:
 
         tree = render_tree(MARKUP)
 
-        (button,) = _by_attribute(tree, "x-on:click", "toggleReveal")
+        (button,) = _by_attribute(tree, "x-on:click", "reveal")
         assert button.get("x-bind:aria-expanded") == "revealed"
         assert button.get("x-bind:aria-controls") == "$id('audio-answer')"
+        assert button.get("x-bind:inert") == "revealed"
+
+    def test_reveal_button_shows_an_eye_closed_icon_and_no_visible_text(
+        self, mock_site_context: object
+    ) -> None:
+        audio_file("audio/november.mp3")
+
+        tree = render_tree(MARKUP)
+
+        (button,) = _by_attribute(tree, "x-on:click", "reveal")
+        assert button.xpath(".//*[@data-icon='reveal_hidden']")
+        (name,) = button.xpath(".//span[contains(@class, 'sr-only')]")
+        assert name.text_content() == "Reveal answer"
+        assert button.text_content().strip() == "Reveal answer"
+        assert "cursor-pointer" in button.get("class")
+
+    def test_there_is_no_reveal_or_hide_toggle(self, mock_site_context: object) -> None:
+        audio_file("audio/november.mp3")
+
+        tree = render_tree(MARKUP)
+
+        assert not _by_attribute(tree, "x-on:click", "toggleReveal")
+        assert "Hide" not in tree.text_content()
 
     def test_status_element_announces_the_answer(
         self, mock_site_context: object
@@ -210,4 +233,4 @@ class TestInsideSlotWidgets:
 
         (root,) = tree.xpath("//*[@x-data='audioReveal']")
         assert root.get("data-src")
-        assert len(_by_attribute(tree, "x-on:click", "toggleReveal")) == 1
+        assert len(_by_attribute(tree, "x-on:click", "reveal")) == 1

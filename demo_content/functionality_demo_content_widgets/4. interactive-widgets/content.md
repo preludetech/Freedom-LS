@@ -180,7 +180,7 @@ Bravo
 
 ## Audio reveal
 
-Say the word aloud before pressing Reveal, then check yourself against the recording.
+Say the word aloud, then click the hidden space beside the letter to check yourself against the recording. The answer hides again a few seconds after the recording stops.
 
 <c-grid columns="2">
 
