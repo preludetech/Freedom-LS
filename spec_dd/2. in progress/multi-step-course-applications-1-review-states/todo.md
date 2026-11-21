@@ -38,6 +38,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Code review fix: phone-question QA scenario reopens its application to draft
 - [x] (cmd) Code review fix: approved form pages say a decision was made
 - [x] (cmd) Code review fix: type hints on functions this branch added
+- [x] (cmd) UI feedback fix: dashboard application rows link Details to the application page; the application page has a top-left Back link, a Details card and a red Withdraw button
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
 ## 5. Cleanup

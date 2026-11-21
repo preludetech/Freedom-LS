@@ -505,30 +505,158 @@ class TestApplyViewVisibilityGate:
 
 
 @pytest.mark.django_db
-class TestApplicationStatusActionRow:
-    """Every state keeps its actions and "Back to dashboard" in one row."""
+def _status_page(
+    client: Client, application: CourseApplication
+) -> lxml.html.HtmlElement:
+    response = client.get(
+        reverse("course_applications:status", kwargs={"pk": application.pk})
+    )
+    return lxml.html.fromstring(response.content.decode())
 
-    def test_withdraw_control_and_back_to_dashboard_share_one_row(
+
+def _detail_labels(page: lxml.html.HtmlElement) -> list[str]:
+    return [
+        label.text_content().strip()
+        for label in page.xpath('//*[@data-testid="application-details"]//dt')
+    ]
+
+
+@pytest.mark.django_db
+class TestApplicationStatusBackLink:
+    """Going back is a link above the heading, never a button among the actions."""
+
+    def test_the_back_link_to_the_dashboard_comes_before_the_heading(
         self, client: Client, mock_site_context: Site
     ) -> None:
-        """Back to dashboard used to drop below the withdraw control on open applications."""
+        user = UserFactory()
+        client.force_login(user)
+
+        page = _status_page(client, CourseApplicationFactory(user=user))
+
+        dashboard_url = reverse("learner_interface:dashboard")
+        back_links = page.xpath(f'//h1/preceding::a[@href="{dashboard_url}"]')
+        assert [link.text_content().strip() for link in back_links][-1:] == ["Back"]
+
+    def test_the_action_row_holds_withdraw_and_no_way_back(
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         application = CourseApplicationFactory(user=user)
         client.force_login(user)
 
-        response = client.get(
-            reverse("course_applications:status", kwargs={"pk": application.pk})
-        )
+        page = _status_page(client, application)
 
-        page = lxml.html.fromstring(response.content.decode())
         rows = page.xpath('//*[@data-testid="application-actions"]')
         assert len(rows) == 1
         dashboard_url = reverse("learner_interface:dashboard")
         withdraw_url = reverse(
             "course_applications:withdraw", kwargs={"pk": application.pk}
         )
-        assert rows[0].xpath(f'.//a[@href="{dashboard_url}"]')
+        assert not rows[0].xpath(f'.//a[@href="{dashboard_url}"]')
         assert rows[0].xpath(f'.//form[@action="{withdraw_url}"]')
+        assert "Back to dashboard" not in page.text_content()
+
+    def test_the_withdraw_trigger_is_a_destructive_button(
+        self, client: Client, mock_site_context: Site
+    ) -> None:
+        user = UserFactory()
+        application = CourseApplicationFactory(user=user)
+        client.force_login(user)
+
+        page = _status_page(client, application)
+
+        withdraw_url = reverse(
+            "course_applications:withdraw", kwargs={"pk": application.pk}
+        )
+        triggers = page.xpath(f'//form[@action="{withdraw_url}"]//button')
+        assert ["btn-error" in trigger.get("class") for trigger in triggers] == [True]
+
+
+@pytest.mark.django_db
+class TestApplicationStatusDetails:
+    """The details card lists the application's facts for its state."""
+
+    def test_a_submitted_application_lists_its_dates_and_next_step(
+        self, client: Client, mock_site_context: Site
+    ) -> None:
+        user = UserFactory()
+        client.force_login(user)
+
+        page = _status_page(client, CourseApplicationFactory(user=user))
+
+        assert _detail_labels(page) == [
+            "Course",
+            "Status",
+            "Started",
+            "Submitted",
+            "Next step",
+        ]
+        assert "Nothing. We will review your application." in page.text_content()
+
+    def test_the_course_row_links_to_the_course_page(
+        self, client: Client, mock_site_context: Site
+    ) -> None:
+        user = UserFactory()
+        application = CourseApplicationFactory(user=user)
+        client.force_login(user)
+
+        page = _status_page(client, application)
+
+        course_url = reverse(
+            "learner_interface:course_detail",
+            kwargs={"course_slug": application.course.slug},
+        )
+        assert page.xpath(
+            f'//*[@data-testid="application-details"]//a[@href="{course_url}"]'
+        )
+
+    def test_a_draft_lists_how_many_questions_are_answered(
+        self, client: Client, mock_site_context: Site
+    ) -> None:
+        course, _form = gated_course_with_form()
+        application = _applied(client, course)
+
+        page = _status_page(client, application)
+
+        assert _detail_labels(page) == [
+            "Course",
+            "Status",
+            "Started",
+            "Progress",
+            "Next step",
+        ]
+        assert "0 of " in page.text_content()
+        assert "Finish and submit your application." in page.text_content()
+
+    def test_an_approved_application_lists_its_decision_date(
+        self, client: Client, mock_site_context: Site
+    ) -> None:
+        user = UserFactory()
+        client.force_login(user)
+
+        page = _status_page(client, CourseApplicationFactory(user=user, approved=True))
+
+        assert _detail_labels(page) == [
+            "Course",
+            "Status",
+            "Started",
+            "Submitted",
+            "Decision",
+            "Next step",
+        ]
+
+    def test_a_withdrawn_application_lists_when_it_was_withdrawn(
+        self, client: Client, mock_site_context: Site
+    ) -> None:
+        user = UserFactory()
+        application = CourseApplicationFactory(user=user)
+        withdraw_application(application)
+        client.force_login(user)
+
+        page = _status_page(client, application)
+
+        assert "Withdrawn" in _detail_labels(page)
+        assert "You can apply again." in page.text_content()
 
 
 @pytest.mark.django_db

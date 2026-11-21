@@ -2,14 +2,14 @@
 Dashboard panel: the current learner's active course applications, and the
 rejected ones no newer application has superseded.
 Contributed by ApplicationCourseAccessBackend.get_dashboard_contributions().
-The rows include learner_interface/partials/course_row_eyebrow_left.html and
-course_details_link.html and reverse learner_interface:course_detail, so the
+The rows include learner_interface/partials/course_row_eyebrow_left.html, so the
 panel renders only with learner_interface installed; no Python here imports it.
 learner_interface renders this generically via render_to_string — it never
 reads context keys and never imports course_applications.
 
-The title links to the status page on every row. A draft's "Continue
-application" button goes to the resume URL instead, which carries the draft
+A row is an application, so its title and its "Details" link both open the
+application's status page; the course page is linked from there. A draft also
+has a "Continue application" button to the resume URL, which carries the draft
 on at the page the applicant left.
 
 Paging: `panel-page` is the htmx swap boundary. The pager fetches the
@@ -56,13 +56,21 @@ which outlives the swap.
                                 <p class="text-sm text-muted">Decision on <c-date :value="app.decided_at" />. Read the reviewer's message.</p>
                             {% endif %}
                             <c-slot name="footer">
-                                {% comment %}`relative z-10` lifts both controls above the title link's overlay.{% endcomment %}
+                                {% comment %}`relative z-10` lifts each control above the title link's overlay.{% endcomment %}
                                 <div class="flex items-center justify-end gap-3">
-                                    {% include "learner_interface/partials/course_details_link.html" with course=app.course %}
-                                    {% if app.state == app.State.DRAFT %}{% url 'course_applications:resume' pk=app.pk as button_url %}{% else %}{% firstof status_url as button_url %}{% endif %}
-                                    <c-button href="{{ button_url }}" size="small" icon_right="next" class="relative z-10 hidden shrink-0 sm:inline-flex">
-                                        {% if app.state == app.State.DRAFT %}Continue application{% else %}View my application{% endif %}<span class="sr-only"> for {{ app.course.title }}</span>
+                                    <c-button href="{{ status_url }}"
+                                              variant="link"
+                                              size="small"
+                                              icon_right="next"
+                                              class="relative z-10 whitespace-nowrap">
+                                        Details<span class="sr-only"> for {{ app.course.title }}</span>
                                     </c-button>
+                                    {% if app.state == app.State.DRAFT %}
+                                        {% url 'course_applications:resume' pk=app.pk as resume_url %}
+                                        <c-button href="{{ resume_url }}" size="small" icon_right="next" class="relative z-10 hidden shrink-0 sm:inline-flex">
+                                            Continue application<span class="sr-only"> for {{ app.course.title }}</span>
+                                        </c-button>
+                                    {% endif %}
                                     {% if app.state == app.State.REJECTED %}
                                         {% url 'course_applications:apply' course_slug=app.course.slug as apply_url %}
                                         <c-button href="{{ apply_url }}" variant="secondary" size="small" class="relative z-10 hidden shrink-0 sm:inline-flex">

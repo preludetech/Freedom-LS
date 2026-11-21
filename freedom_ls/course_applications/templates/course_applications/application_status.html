@@ -4,18 +4,22 @@
 {% block head_title %}{{ application.get_state_display }} · Application — {{ application.course.title }}{% endblock %}
 
 {% block extra_alpine_components %}{{ block.super }}
+    {% comment %}historyBackLink, the back link's component, lives in learner_interface.{% endcomment %}
+    <script defer src="{% static 'learner_interface/js/alpine-components.js' %}"></script>
     <script defer src="{% static 'course_applications/js/alpine-components.js' %}"></script>
 {% endblock extra_alpine_components %}
 
 {% comment %}
-What the page shows, by state:
-  draft      the chip, "Continue application" back into the form, and withdraw
-  submitted  the chip, the submission date, and withdraw
-  approved   the chip and the decision date
-  rejected   the chip, the decision date, the reviewer's message and apply again
-  withdrawn  the chip and the withdrawal date
+Every state starts with the back link and shows the details card: the course,
+the state chip, each date the application has, and the next step. On top of that:
+  draft      answered-question progress, "Continue application" and withdraw
+  submitted  withdraw
+  approved   nothing more
+  rejected   the reviewer's message and apply again
+  withdrawn  apply again
 An unclaimed applicant sees "Check your email" and the claim notice first, then
-the state block under an h2, and no withdraw: the address is not yet proven.
+the state block under an h2, with no next step and no withdraw: the address is
+not yet proven.
 {% endcomment %}
 
 {% block content %}
@@ -34,7 +38,6 @@ the state block under an h2, and no withdraw: the address is not yet proven.
                 Your application for <strong>{{ application.course.title }}</strong>
                 is waiting for review. The decision will show here.
             </p>
-            <p class="text-muted">Submitted <c-date :value="application.submitted_at" />.</p>
         {% elif application.state == application.State.APPROVED %}
             <p>
                 Your application for <strong>{{ application.course.title }}</strong>
@@ -46,9 +49,6 @@ the state block under an h2, and no withdraw: the address is not yet proven.
                 was not approved on <c-date :value="application.decided_at" />.
             </p>
             <c-callout tone="info" title="Message from the reviewer">{{ application.rejection_message|linebreaksbr }}</c-callout>
-            {% if application.is_email_verified %}
-                <p>You can apply again.</p>
-            {% endif %}
         {% elif application.state == application.State.WITHDRAWN %}
             <p>
                 You withdrew your application for <strong>{{ application.course.title }}</strong> on
@@ -57,13 +57,59 @@ the state block under an h2, and no withdraw: the address is not yet proven.
         {% endif %}
     {% endpartialdef %}
 
+    {% partialdef details_card %}
+        <section aria-labelledby="application-details-title"
+                 class="border border-border rounded-md overflow-hidden bg-surface"
+                 data-testid="application-details">
+            <div class="bg-surface-2 border-b border-border px-4 py-3 sm:px-6">
+                <h2 id="application-details-title" class="text-base font-semibold">Details</h2>
+            </div>
+            <c-panel-definition-list layout="inline" class="px-4 py-4 sm:px-6">
+                <c-panel-definition-row label="Course">
+                    <a href="{% url 'learner_interface:course_detail' course_slug=application.course.slug %}">{{ application.course.title }}</a>
+                </c-panel-definition-row>
+                <c-panel-definition-row label="Status">
+                    {% include "course_applications/partials/application_state_badge.html" %}
+                </c-panel-definition-row>
+                <c-panel-definition-row label="Started">
+                    <c-date :value="application.created_at" />
+                </c-panel-definition-row>
+                {% if total_question_count %}
+                    <c-panel-definition-row label="Progress">
+                        {{ answered_count }} of {{ total_question_count }} question{{ total_question_count|pluralize }} answered
+                    </c-panel-definition-row>
+                {% endif %}
+                {% if application.submitted_at %}
+                    <c-panel-definition-row label="Submitted">
+                        <c-date :value="application.submitted_at" />
+                    </c-panel-definition-row>
+                {% endif %}
+                {% if application.decided_at %}
+                    <c-panel-definition-row label="Decision">
+                        <c-date :value="application.decided_at" />
+                    </c-panel-definition-row>
+                {% endif %}
+                {% if application.withdrawn_at %}
+                    <c-panel-definition-row label="Withdrawn">
+                        <c-date :value="application.withdrawn_at" />
+                    </c-panel-definition-row>
+                {% endif %}
+                {% if application.is_email_verified %}
+                    <c-panel-definition-row label="Next step">
+                        {% if application.state == application.State.DRAFT %}Finish and submit your application.{% elif application.state == application.State.SUBMITTED %}Nothing. We will review your application.{% elif application.state == application.State.APPROVED %}Nothing. Your application was approved.{% else %}You can apply again.{% endif %}
+                    </c-panel-definition-row>
+                {% endif %}
+            </c-panel-definition-list>
+        </section>
+    {% endpartialdef %}
+
     {% partialdef withdraw_control %}
         <div x-data="withdrawDialog">
             <form method="post"
                   action="{% url 'course_applications:withdraw' pk=application.pk %}"
                   x-ref="withdrawForm">
                 {% csrf_token %}
-                <c-button type="submit" variant="secondary" x-on:click="confirmWithdraw">Withdraw application</c-button>
+                <c-button type="submit" variant="error" x-on:click="confirmWithdraw">Withdraw application</c-button>
             </form>
 
             <div x-show="open"
@@ -109,13 +155,17 @@ the state block under an h2, and no withdraw: the address is not yet proven.
         </div>
     {% endpartialdef %}
 
-    <c-page width="narrow">
+    {% comment %}The back link sits just under the site header, so c-page's default
+    top padding is trimmed, as on the course details page.{% endcomment %}
+    <c-page width="narrow" class="pt-2 lg:pt-2">
+        <c-back-link href="{% url 'learner_interface:dashboard' %}"
+                     x-data="historyBackLink"
+                     x-on:click="goBack">Back</c-back-link>
         <div class="space-y-6">
             {% if application.is_email_verified %}
                 <h1>
                     {% partial state_heading %}
                 </h1>
-                <div>{% include "course_applications/partials/application_state_badge.html" %}</div>
                 {% partial state_block %}
             {% else %}
                 <h1>Check your email</h1>
@@ -132,9 +182,10 @@ the state block under an h2, and no withdraw: the address is not yet proven.
                 <h2>
                     {% partial state_heading %}
                 </h2>
-                <div>{% include "course_applications/partials/application_state_badge.html" %}</div>
                 {% partial state_block %}
             {% endif %}
+
+            {% partial details_card %}
 
             <div class="flex flex-wrap items-center gap-3" data-testid="application-actions">
                 {% if application.is_email_verified %}
@@ -147,9 +198,6 @@ the state block under an h2, and no withdraw: the address is not yet proven.
                         <c-button href="{% url 'course_applications:apply' course_slug=application.course.slug %}">Apply again</c-button>
                     {% endif %}
                 {% endif %}
-                <c-button href="{% url 'learner_interface:dashboard' %}">
-                    Back to dashboard
-                </c-button>
             </div>
         </div>
     </c-page>

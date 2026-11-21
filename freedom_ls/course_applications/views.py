@@ -83,6 +83,7 @@ from freedom_ls.form_engine.page_flow import (
     submit_page,
 )
 from freedom_ls.form_engine.paging import (
+    answered_counts,
     first_page_number_with_unanswered_required,
     resume_page_number,
     unanswered_required_in_form,
@@ -447,21 +448,19 @@ def _render_status(
     *,
     status: int = 200,
 ) -> HttpResponse:
+    context: dict[str, object] = {
+        "application": app,
+        "email_form": email_form,
+        "status_url": reverse("course_applications:status", kwargs={"pk": app.pk}),
+        "resume_url": None,
+    }
+    if app.state == CourseApplication.State.DRAFT and app.form_progress is not None:
+        context["resume_url"] = _resume_url(app, app.form_progress)
+        counts = answered_counts(app.form_progress, [], current_path(app.form_progress))
+        context["answered_count"] = counts["answered_count"]
+        context["total_question_count"] = counts["total_question_count"]
     return render(
-        request,
-        "course_applications/application_status.html",
-        {
-            "application": app,
-            "email_form": email_form,
-            "status_url": reverse("course_applications:status", kwargs={"pk": app.pk}),
-            "resume_url": (
-                _resume_url(app, app.form_progress)
-                if app.state == CourseApplication.State.DRAFT
-                and app.form_progress is not None
-                else None
-            ),
-        },
-        status=status,
+        request, "course_applications/application_status.html", context, status=status
     )
 
 

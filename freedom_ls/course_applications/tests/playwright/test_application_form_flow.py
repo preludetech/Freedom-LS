@@ -498,7 +498,8 @@ def test_a_learner_pages_through_their_applications(
     page.goto(dashboard_url)
     rows = panel.get_by_role("listitem")
     expect(panel.get_by_role("link", name="Continue application")).to_be_hidden()
-    expect(panel.get_by_role("link", name="View my application")).to_be_hidden()
+    expect(panel.get_by_role("link", name="View my application")).to_have_count(0)
+    expect(panel.get_by_role("link", name="Details").first).to_be_visible()
     for index in range(rows.count()):
         expect(
             rows.nth(index)

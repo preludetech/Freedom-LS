@@ -6,6 +6,7 @@ import re
 from datetime import timedelta
 from typing import cast
 
+import lxml.html
 import pytest
 from pytest_django.fixtures import DjangoAssertNumQueries
 
@@ -545,16 +546,17 @@ class TestDashboardPartialRendering:
         assert "Waiting for review" in rendered
         assert "Not submitted" not in rendered
 
-    def test_an_approved_application_reads_approved_and_offers_view(
+    def test_an_approved_application_reads_approved_and_offers_details_only(
         self, mock_site_context: Site
     ) -> None:
         rendered = _render_panel(CourseApplicationFactory(approved=True))
 
         assert "Approved" in rendered
-        assert "View my application" in rendered
+        assert "Details" in rendered
+        assert "View my application" not in rendered
         assert "Apply again" not in rendered
 
-    def test_a_rejected_row_offers_the_message_view_and_apply_again(
+    def test_a_rejected_row_offers_the_message_details_and_apply_again(
         self, mock_site_context: Site
     ) -> None:
         app = CourseApplicationFactory(rejected=True, rejection_message="Too early.")
@@ -563,7 +565,8 @@ class TestDashboardPartialRendering:
 
         assert "Not approved" in rendered
         assert "Read the reviewer's message" in rendered
-        assert "View my application" in rendered
+        assert "Details" in rendered
+        assert "View my application" not in rendered
         assert "Apply again" in rendered
         assert (
             reverse(
@@ -573,14 +576,15 @@ class TestDashboardPartialRendering:
         )
         assert "Too early." not in rendered
 
-    def test_a_submitted_row_offers_view_my_application(self, mock_site_context):
+    def test_a_submitted_row_offers_details_only(self, mock_site_context: Site) -> None:
         app = _application_with_sitting()
         app.form_progress.complete()
         submit_application(app)
 
         rendered = _render_panel(app)
 
-        assert "View my application" in rendered
+        assert "Details" in rendered
+        assert "View my application" not in rendered
         assert "Continue application" not in rendered
         assert "Finish your application to have it reviewed." not in rendered
 
@@ -615,14 +619,14 @@ class TestDashboardPartialRendering:
 
         assert re.search(r'<span[^>]*aria-hidden="true"[^>]*>\s*<svg', rendered)
 
-    def test_a_course_title_is_escaped_in_the_link_the_button_and_the_icon(
+    def test_a_course_title_is_escaped_in_the_title_link_and_the_details_link(
         self, mock_site_context
     ):
         course = CourseFactory(title='A <b> "quoted" title')
         rendered = _render_panel(CourseApplicationFactory(course=course))
 
         assert "<b>" not in rendered
-        assert rendered.count("A &lt;b&gt; &quot;quoted&quot; title") >= 3
+        assert rendered.count("A &lt;b&gt; &quot;quoted&quot; title") >= 2
 
     def test_the_panel_issues_no_query_per_row(
         self,
@@ -1147,13 +1151,21 @@ class TestApplicationRowShell:
 
         assert "Waiting for review" in rendered or "Not submitted" in rendered
 
-    def test_the_details_link_points_at_the_course_page(self, row):
+    def test_the_details_link_opens_the_application_not_the_course(self, row):
         rendered, course = row
-        details_url = reverse(
+        application = CourseApplication.objects.get(course=course)
+        status_url = reverse(
+            "course_applications:status", kwargs={"pk": application.pk}
+        )
+        course_url = reverse(
             "learner_interface:course_detail", kwargs={"course_slug": course.slug}
         )
+        details_link = lxml.html.fromstring(rendered).xpath(
+            '//a[starts-with(normalize-space(.), "Details")]'
+        )
 
-        assert f'href="{details_url}"' in rendered
+        assert [link.get("href") for link in details_link] == [status_url]
+        assert f'href="{course_url}"' not in rendered
 
     def test_the_details_link_names_its_course_for_screen_readers(self, row):
         rendered, course = row
