@@ -1,6 +1,6 @@
 ---
 name: widget-reference
-description: FLS c-* widgets, built-in and any custom widgets the content repo declares — purpose, attributes, and examples. Use when asking about a widget, custom widget, component, admonition, flashcard, accordion, youtube, picture, table, code block, card, article link, article card, course card, grid, pull quote, equation, audio, or audio reveal.
+description: FLS c-* widgets, built-in and any custom widgets the content repo declares — purpose, attributes, and examples. Use when asking about a widget, custom widget, component, admonition, flashcard, accordion, youtube, picture, table, code block, card, article link, article card, course card, grid, pull quote, equation, audio, audio reveal, or audio clip.
 allowed-tools: Read, Grep, Glob
 ---
 
@@ -20,6 +20,7 @@ Widgets are `c-*` cotton components embedded in markdown content bodies. They mu
 | `c-file-download` | Providing a file download button |
 | `c-audio` | A card that plays one recorded audio file (e.g. a word pronunciation) |
 | `c-audio-reveal` | A recall card: the learner says the answer to a prompt tile aloud, then reveals the word and hears it |
+| `c-audio-clip` | A card that plays one longer recording (e.g. a listening exercise) with a seek bar and an optional transcript |
 | `c-admonition` | Callout boxes — notes, tips, warnings, checklists, etc. |
 | `c-flashcard` | Two-sided recall card (question/answer flip) |
 | `c-accordion` | Collapsible disclosure section |
@@ -52,6 +53,7 @@ c-equation:       label
 c-grid:           columns
 c-audio:          src, label, respelling, symbol
 c-audio-reveal:   src, label, respelling, symbol
+c-audio-clip:     src, title, kind
 c-image-grid:     columns
 c-table:          caption
 c-code-block:     title, language, wrap
@@ -91,6 +93,7 @@ All other widget bodies use standard markdown; escaping is automatic.
 - **`c-grid` takes any children** — put a blank line between each child, and use the closed form for `c-picture` children, as for `c-image-grid`.
 - **`c-audio` is a block widget with a required `label`** — put blank lines around it, and use `c-grid` to lay out a list of them. It works inside a `c-flashcard` face, and its button plays without flipping the card.
 - **`c-audio-reveal` needs both `label` and `symbol`** — the `symbol` tile is the prompt. Put blank lines around it, as for `c-audio`.
+- **`c-audio-clip` is a block widget with a required `title`** — put blank lines around it. Whatever you write inside the tag is its transcript: separate the transcript paragraphs with blank lines, and do not put a file-resolving widget (such as `c-picture`) in it, because that fails.
 - **`c-article-link`, `c-article-card`, `c-course-card` `path`** — a path relative to the file holding the widget, ending in the target file name (e.g. `path="undated-notes.md"`, `path="../other_course/course.md"`). `content_validate` fails the run if no content file is at that path, or if the target is the wrong type (ARTICLE for the article widgets, COURSE for `c-course-card`). Write `path="..."` in double quotes.
 - **`c-flashcard` slots need blank lines** inside `<c-slot>` tags so the markdown parser produces block elements (paragraphs, lists).
 - **`c-accordion` bare `open` attribute** — write `open` with no value; the sanitiser normalises it to `open=""` and the template handles it.
@@ -106,6 +109,7 @@ one file per widget:
 - [`resources/c-file-download.md`](resources/c-file-download.md)
 - [`resources/c-audio.md`](resources/c-audio.md)
 - [`resources/c-audio-reveal.md`](resources/c-audio-reveal.md)
+- [`resources/c-audio-clip.md`](resources/c-audio-clip.md)
 - [`resources/c-admonition.md`](resources/c-admonition.md)
 - [`resources/c-flashcard.md`](resources/c-flashcard.md)
 - [`resources/c-slot.md`](resources/c-slot.md)
