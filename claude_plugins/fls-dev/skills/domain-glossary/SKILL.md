@@ -59,6 +59,7 @@ children. Do not add a third sense. To be unambiguous, say **collection item** f
 | `Learner` | `models.py` | **A user's association with one organisation.** One row per `(user, organisation)` — `unique_learner_per_organisation`. Fields: `user`, `organisation`, `is_active`, `created_at`. See the note below. |
 | `LearnerCourseRegistration` | `models.py` | One learner registered for one course. Fields: `learner`, `course`, `is_active`, `self_registered` (the learner made it, not staff; false on rows older than the field), `registered_at`. Keyed `(site, learner, course)`. It has **no** `organisation` field — that comes from `learner.organisation`. |
 | `CohortCourseRegistration` | `models.py` | A cohort registered for a course. Its organisation is reached through `cohort.organisation`. |
+| **application** | `CourseApplication` in `freedom_ls/course_applications/models.py` | A request to take an application-gated course. Its `state` is `draft`, `submitted`, `approved`, `rejected` or `withdrawn`. Approval is what leads to a registration; it is not one. |
 | `Cohort` | `models.py` | A group of learners, owned by an organisation. |
 | `CohortMembership` | `models.py` | One learner's membership of a cohort, keyed `(learner, cohort)`. **Not** a registration — a membership grants access via the cohort's registrations. Its `clean()` enforces that the learner and the cohort share an organisation. |
 | `CohortDeadlineOverride` | `freedom_ls/deadlines/models.py` | A **deadline override** set for every learner registered for a course through one cohort. Keyed `(cohort_registration, collection_item)`; a null `collection_item` overrides the course time limit. Records `set_by` and `replaced_value`. |
@@ -196,7 +197,7 @@ fails a code that steps outside this section.
 
 The noun is a glossary noun in snake_case: `learner`, `cohort`, `cohort_membership`, `registration`
 (a `LearnerCourseRegistration`), `cohort_registration`, `role`, `staff_member` (a `StaffMember`),
-`user`, `course`, `bulk_action`, `import`, `conversation`, `api_key` (an `ApiKey`), `deadline` (a deadline extension), `audit_log` (the log the `AuditLogEntry` rows make up). The verb comes from this list and nowhere else:
+`user`, `course`, `bulk_action`, `import`, `conversation`, `api_key` (an `ApiKey`), `deadline` (a deadline extension), `audit_log` (the log the `AuditLogEntry` rows make up), `application` (a `CourseApplication`). The verb comes from this list and nowhere else:
 
 | Verb | Means | Not |
 | --- | --- | --- |
@@ -211,6 +212,7 @@ The noun is a glossary noun in snake_case: `learner`, `cohort`, `cohort_membersh
 | `revoked` | An API key was ended for good: `api_key.revoked`. One-way and never cleared, unlike `deactivated`, which a `reactivated` undoes. | `deactivated`, `cancelled`, `disabled` |
 | `paused` / `resumed` | A `CoursePause` opened / ended on a `CourseProgress`: `course.paused`, `course.resumed`. | `suspended`, `unsuspended`, `held` |
 | `extended` | Days were added to a learner's deadlines by a `DeadlineExtension`: `deadline.extended`. | `postponed`, `moved` |
+| `approved` / `rejected` | A reviewer decided a `CourseApplication`: `application.approved`, `application.rejected`. | `accepted`, `admitted` / `declined`, `denied` |
 | `exported` | A copy of records left the system as a file: `audit_log.exported`. | `downloaded` |
 | `moved`, `renamed`, `resent`, `completed`, `committed`, `signed_up` | As read. `user.signed_up` is an account being created at signup — never `user.registered`, since registration means course access. A verb may carry the thing it acted on when the noun alone would mislead: `learner.setup_email_resent`. | |
 
@@ -250,6 +252,7 @@ Do not give these a second meaning.
 | **start date** | `organisation_start_date` is the hire date: when the learner started at the organisation, not at a course. | For a course, `started_at` on `CourseProgress`. |
 | **suspend** | Retired. Pausing a learner's course is a `CoursePause`; the verbs are `paused` and `resumed`. | pause, `CoursePause` |
 | **callout** | `<c-callout>` (`freedom_ls/base/templates/cotton/callout.html`): a static, toned status box in an app page, panel or dialog. Framework templates call `<c-panel-callout>`, which FLS overrides with a thin wrapper around `<c-callout>`. | **admonition** for the box in authored course content (`<c-admonition>`); **toast** for the dismissible, fixed-position message from Django's messages framework; **notification** for a `Notification` row. "Alert" is only the ARIA role (`role="alert"`), never a component name. |
+| **withdraw** | The applicant closing their own open application (`CourseApplication.State.WITHDRAWN`), the only sense that is a `state`. Elsewhere "withdrawn" means a deactivated registration or learner (`registration_rules/signals.py`, `learner_management/queries.py`), and `qa_reset_course_application` uses it for deletion. | Deactivate for an `is_active` flip, delete for a deleted row. |
 
 ## Prose vs. code
 
