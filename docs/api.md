@@ -792,6 +792,10 @@ is no server-side filter for it.
   "course_title": "Data Analysis Bootcamp",
   "is_submitted": true,
   "submitted_time": "2026-10-02T09:14:07.512304+00:00",
+  "state": "approved",
+  "organisation_id": "3be9…",
+  "decided_at": "2026-10-03T11:02:19.274650+00:00",
+  "withdrawn_at": null,
   "created_at": "2026-10-02T08:51:44.103211+00:00",
   "updated_at": "2026-10-02T09:14:07.530918+00:00",
   "answers": [
@@ -815,6 +819,10 @@ is no server-side filter for it.
 | `course_title` | string | The course's title. Can be stale on an incremental sync; see "What moves `updated_at`" below. |
 | `is_submitted` | boolean | `false` for a draft. |
 | `submitted_time` | string (ISO 8601) or `null` | When the applicant submitted. `null` for a draft. For a course whose application has no form, this is `created_at`. |
+| `state` | string | One of `draft`, `submitted`, `approved`, `rejected` or `withdrawn`. |
+| `organisation_id` | string (UUID) | The organisation that reviews the application. Always set. |
+| `decided_at` | string (ISO 8601) or `null` | When the application was approved or rejected. `null` in any other state; `state` says which decision it was. |
+| `withdrawn_at` | string (ISO 8601) or `null` | When the applicant withdrew. `null` unless `state` is `withdrawn`. |
 | `created_at` | string (ISO 8601) | When the application was started. |
 | `updated_at` | string (ISO 8601) | When the application last changed. Drives paging and `updated_since`. |
 | `answers` | array | See "Answers" below. `[]` for a course whose application has no form. |
