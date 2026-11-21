@@ -74,10 +74,10 @@ FLS already builds each of these, and the brand decisions above are encoded in t
 | You need | Use |
 |---|---|
 | A button | `<c-button variant="primary\|secondary\|ghost\|link\|accent\|success\|error" size="small">`, or the `.btn .btn-<variant>` classes directly |
-| A back link above a heading | `<c-back-link href="…">Back to messages</c-back-link>`, the one style for a back link |
+| A back link | `<c-back-link href="…">Back to messages</c-back-link>`, the one style for a back link. It is the first thing on the page, at the top left above the heading. A page a person opens from another page has one. Going back is a link, never a `<c-button>`, and the page's action row holds actions only. `learner_interface/course_detail.html` is the model, with `historyBackLink` returning the person to the page they came from |
 | A text action ("Change", "Edit", "Clear all", "Export CSV") | `<c-button variant="link">`, or `variant="secondary" size="small"` with an icon when it sits among buttons |
 | A panel-framework page or component (a table, an action, a filter, the quick view, a dialog or sheet, the selection bar) | `Skill(fls-dev:panel-framework)`: it names the component for each job and how it looks |
-| A destructive action | `variant="error"`, reserved for irreversible actions |
+| A destructive action | `variant="error"`, reserved for irreversible actions. The button that opens the confirm dialog is `variant="error"` too, the same red as the dialog's confirm button |
 | A card or panel | `.surface`, or `<c-media-card>` for one with an image |
 | A status badge | `<c-panel-status-badge tone="success\|warning\|error\|info\|muted" label="…">`, on any screen: panel-framework pages, dashboards, learner-facing views. Choose it by what the badge says, not where it sits. If it names the state of a record (Active, Stalled, Draft), it's a status badge. It wraps `c-chip`, limits the tones to the five status meanings and keeps the badge legible in forced-colours mode. |
 | A label that isn't a status | `<c-chip variant="primary\|secondary\|success\|warning\|error\|info\|muted" size="xs">` for tags, levels and categories. `primary` and `secondary` live here because they carry no status meaning. The `.chip-success`, `.chip-warning`, `.chip-error` and `.chip-info` tints are the `-light` pairs. |
@@ -124,6 +124,14 @@ The cohort Settings tab is the Name, Staff and Status panels. The learner Settin
 and Account panels. On the Staff table, Add role sits in the Staff member actions column, beside the
 person it gives a role to; the per-role actions sit in the Role actions column.
 
+A link on a row or card opens the page of the record that row or card shows. A row for an
+application has a "Details" link to the application, and the course it is for is one click further
+on. When two records could claim the link, the one named in the list's heading wins.
+
+A page for one record shows that record's facts in a definition list: its state, each date it
+has (started, submitted, decided), and what the person still has to do. The actions come after the
+facts. A page whose only content is a heading and a button is unfinished.
+
 ## Visual checklist
 
 What QA checks in a screenshot of any FLS page.
@@ -146,6 +154,10 @@ What QA checks in a screenshot of any FLS page.
 - A form error that belongs to no single field sits in an error callout above the form, never as bare red text.
 - Buttons of one size are one height, whatever their variant: an outlined button is no taller than a filled one beside it.
 - Content lines up: blocks start and stop on their container's padding, buttons line up with the text above them, items of one kind share a column.
+- A page opened from another page starts with a back link at the top left, above the heading, in the back-link style; no button on the page goes back.
+- A button that starts an irreversible action (withdraw, delete, remove) is red, on the page and in its confirm dialog.
+- A "Details" link on a row or card opens the record the row shows, not a related record.
+- A page for one record lists its state, its dates and what is left to do in a definition list above its actions.
 
 ## Example page
 
