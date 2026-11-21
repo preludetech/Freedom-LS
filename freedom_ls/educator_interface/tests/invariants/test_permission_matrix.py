@@ -1,5 +1,8 @@
 """The permission matrix: can() answers exactly what the permission table allows.
 
+Most tests here are walks. A walk builds the world once, checks every cell it
+covers against that world, and reports every mismatch in one failure.
+
 MATRIX is a hand-written transcription of that table, reviewed against it and
 never parsed from it. MATRIX and CAPABILITY_SCOPE_KINDS cover every row,
 including download_cohort_report, which the cohort Report tab's generate
@@ -731,45 +734,71 @@ def test_a_roles_permissions_equal_the_capabilities_its_matrix_column_allows(
     assert BASE_ROLES[role].permissions == from_matrix
 
 
+def _cohort_is_listed(user: AbstractBaseUser, scope: Model) -> bool:
+    cohort = cast(Cohort, scope)
+    return cohorts_visible_to(user, cohort.organisation).filter(pk=cohort.pk).exists()
+
+
+def _learner_is_listed(user: AbstractBaseUser, scope: Model) -> bool:
+    learner = cast(Learner, scope)
+    return (
+        learners_visible_to(user, learner.organisation, include_inactive=True)
+        .filter(pk=learner.pk)
+        .exists()
+    )
+
+
+def _walk_visibility(
+    world: World,
+    kind: str,
+    capability: str,
+    visible: Callable[[AbstractBaseUser, Model], bool],
+) -> _Walk:
+    """The queryset a list renders and the per-object check gating a row agree, for every
+    role on every scope object of this kind.
+
+    It walks instead of parametrizing because every role pays for building a world, and
+    one world answers them all.
+    """
+    walk = _Walk(f"{kind} visibility")
+    for role in ROLES:
+        user = world.users[role]
+        for (scope_kind, relation), scope in world.scopes.items():
+            if scope_kind != kind:
+                continue
+            walk.check(
+                partial(can, user, capability, scope),
+                partial(visible, user, scope),
+                role=role,
+                kind=kind,
+                relation=relation,
+            )
+    return walk
+
+
 @pytest.mark.django_db
-@pytest.mark.parametrize("role", ROLES)
 def test_cohorts_visible_to_agrees_with_can_on_every_cohort(
-    mock_site_context: Site, role: str
+    mock_site_context: Site,
 ) -> None:
     """The queryset a list renders and the per-object check gating a row must
-    never disagree about which cohorts this role can see."""
+    never disagree about which cohorts any role can see."""
     world = _build_world(mock_site_context)
-    user = world.users[role]
 
-    for (kind, relation), scope in world.scopes.items():
-        if kind != "cohort":
-            continue
-        cohort = cast(Cohort, scope)
-        visible = (
-            cohorts_visible_to(user, cohort.organisation).filter(pk=cohort.pk).exists()
-        )
-        assert visible is can(user, VIEW_COHORT, scope), (role, relation)
+    walk = _walk_visibility(world, "cohort", VIEW_COHORT, _cohort_is_listed)
+
+    walk.report()
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("role", ROLES)
 def test_learners_visible_to_agrees_with_can_on_every_learner(
-    mock_site_context: Site, role: str
+    mock_site_context: Site,
 ) -> None:
     """Same agreement, on the learner side."""
     world = _build_world(mock_site_context)
-    user = world.users[role]
 
-    for (kind, relation), scope in world.scopes.items():
-        if kind != "learner":
-            continue
-        learner = cast(Learner, scope)
-        visible = (
-            learners_visible_to(user, learner.organisation, include_inactive=True)
-            .filter(pk=learner.pk)
-            .exists()
-        )
-        assert visible is can(user, VIEW_LEARNER, scope), (role, relation)
+    walk = _walk_visibility(world, "learner", VIEW_LEARNER, _learner_is_listed)
+
+    walk.report()
 
 
 def _gated_true_cases() -> list[tuple[str, str, str, str]]:
@@ -992,37 +1021,64 @@ def test_cohort_admin_holds_add_cohortmembership_on_another_cohort_only_with_a_g
     assert can(user, ADD_COHORTMEMBERSHIP, other_cohort) is True
 
 
-@pytest.mark.django_db
-@pytest.mark.parametrize("role", ROLES)
-def test_the_organisation_import_gate_needs_bulk_manage_learners_and_add_learner(
-    mock_site_context: Site, role: str
-) -> None:
-    world = _build_world(mock_site_context)
-    user = world.users[role]
-    organisation = cast(Organisation, world.scopes[("organisation", OWN)])
-    expected = all(
+def _organisation_gate_expected(role: str) -> bool:
+    return all(
         ("organisation", OWN) in MATRIX[capability][role]
         for capability in (BULK_MANAGE_LEARNERS, ADD_LEARNER)
     )
 
-    assert check_import_gate(cast(User, user), organisation, None) is expected
 
-
-@pytest.mark.django_db
-@pytest.mark.parametrize("role", ROLES)
-def test_the_cohort_import_gate_needs_add_learner_and_add_cohortmembership(
-    mock_site_context: Site, role: str
-) -> None:
-    world = _build_world(mock_site_context)
-    user = world.users[role]
-    organisation = cast(Organisation, world.scopes[("organisation", OWN)])
-    cohort = cast(Cohort, world.scopes[("cohort", OWN)])
-    expected = ("organisation", OWN) in MATRIX[ADD_LEARNER][role] and (
+def _cohort_gate_expected(role: str) -> bool:
+    return ("organisation", OWN) in MATRIX[ADD_LEARNER][role] and (
         "cohort",
         OWN,
     ) in MATRIX[ADD_COHORTMEMBERSHIP][role]
 
-    assert check_import_gate(cast(User, user), organisation, cohort) is expected
+
+def _walk_import_gate(
+    world: World, cohort: Cohort | None, expected_for: Callable[[str], bool]
+) -> _Walk:
+    """check_import_gate for every role, against what MATRIX allows.
+
+    It walks instead of parametrizing because every role pays for building a world, and
+    one world answers them all.
+    """
+    organisation = cast(Organisation, world.scopes[("organisation", OWN)])
+    walk = _Walk(
+        "the organisation import gate" if cohort is None else "the cohort import gate"
+    )
+    for role in ROLES:
+        walk.check(
+            partial(expected_for, role),
+            partial(
+                check_import_gate, cast(User, world.users[role]), organisation, cohort
+            ),
+            role=role,
+        )
+    return walk
+
+
+@pytest.mark.django_db
+def test_the_organisation_import_gate_needs_bulk_manage_learners_and_add_learner(
+    mock_site_context: Site,
+) -> None:
+    world = _build_world(mock_site_context)
+
+    walk = _walk_import_gate(world, None, _organisation_gate_expected)
+
+    walk.report()
+
+
+@pytest.mark.django_db
+def test_the_cohort_import_gate_needs_add_learner_and_add_cohortmembership(
+    mock_site_context: Site,
+) -> None:
+    world = _build_world(mock_site_context)
+    cohort = cast(Cohort, world.scopes[("cohort", OWN)])
+
+    walk = _walk_import_gate(world, cohort, _cohort_gate_expected)
+
+    walk.report()
 
 
 @pytest.mark.django_db
