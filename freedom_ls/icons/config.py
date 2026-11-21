@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from django.conf import settings
-
-from freedom_ls.icons.app_settings import AppSettings, Setting
+from freedom_ls.icons.app_settings import AppSettings, Setting, project_value
 
 # Each setting renamed in this tag, mapped to the name it replaces. The old names
 # still work, with a system-check warning, until the next tag removes them.
@@ -13,17 +11,6 @@ DEPRECATED_SETTINGS: dict[str, str] = {
     "SEMANTIC_ICONS_OVERRIDES": "FREEDOM_LS_ICON_OVERRIDES",
     "SEMANTIC_ICONS_BACKEND": "FREEDOM_LS_ICON_BACKEND",
 }
-
-
-def project_value(name: str) -> object | None:
-    """The project's value for `name`, or None when it is unset.
-
-    Uses AppSettings' rule for "set": strings are stripped, and None or "" count as unset.
-    """
-    value = getattr(settings, name, None)
-    if isinstance(value, str):
-        value = value.strip()
-    return None if value in (None, "") else value
 
 
 class IconsConfig(AppSettings):

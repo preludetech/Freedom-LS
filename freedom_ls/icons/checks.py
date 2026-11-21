@@ -21,7 +21,8 @@ W004 — FREEDOM_LS_ICON_BACKEND is still set; use SEMANTIC_ICONS_BACKEND.
 
 from django.core.checks import CheckMessage, Error, Warning, register
 
-from freedom_ls.icons.config import DEPRECATED_SETTINGS, config, project_value
+from freedom_ls.icons.app_settings import project_value
+from freedom_ls.icons.config import DEPRECATED_SETTINGS, config
 from freedom_ls.icons.loader import (
     BUNDLED_DATA_DIR,
     PACKAGE_MAP,

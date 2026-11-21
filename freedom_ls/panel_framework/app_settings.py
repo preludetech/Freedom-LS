@@ -14,6 +14,17 @@ class Setting(NamedTuple):
     required: bool = False
 
 
+def project_value(name: str) -> object | None:
+    """The project's value for setting ``name``, or None when it is unset.
+
+    Strings are stripped, and None or "" count as unset.
+    """
+    value = getattr(settings, name, None)
+    if isinstance(value, str):
+        value = value.strip()
+    return None if value in (None, "") else value
+
+
 class AppSettings:
     """Per-app settings: a project's Django settings override declared fallbacks.
 
@@ -31,10 +42,8 @@ class AppSettings:
             setting = self.declared_settings[name]
         except KeyError:
             raise AttributeError(name) from None
-        value = getattr(settings, name, None)
-        if isinstance(value, str):
-            value = value.strip()
-        if value not in (None, ""):
+        value = project_value(name)
+        if value is not None:
             return value
         if setting.required:
             raise ImproperlyConfigured(

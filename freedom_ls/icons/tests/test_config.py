@@ -8,7 +8,8 @@ import pytest
 
 from django.test import override_settings
 
-from freedom_ls.icons.config import IconsConfig, project_value
+from freedom_ls.icons.app_settings import project_value
+from freedom_ls.icons.config import IconsConfig
 
 RENAMED = [
     ("SEMANTIC_ICONS_SET", "FREEDOM_LS_ICON_SET", "lucide", "tabler", "heroicons"),

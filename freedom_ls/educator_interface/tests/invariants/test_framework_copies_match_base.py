@@ -82,6 +82,8 @@ SAME_SOURCE = [
     (base_app_settings.AppSettings, framework_app_settings.AppSettings),
     (base_app_settings.Setting, icons_app_settings.Setting),
     (base_app_settings.AppSettings, icons_app_settings.AppSettings),
+    (base_app_settings.project_value, framework_app_settings.project_value),
+    (base_app_settings.project_value, icons_app_settings.project_value),
     (
         base_pagination_tags.pagination_suffix,
         framework_data_table_tags.pagination_suffix,
