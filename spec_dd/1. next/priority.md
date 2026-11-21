@@ -10,6 +10,7 @@ adds anything missing under "Priority not set"; move it from there to the level 
 - `sacaa-compliance`
 - `sacaa-compliance-content-versions-and-access`
 - `extract_panels_framework`
+- `reference-material-content`
 - `learner-public-profile`
 - `multi-step-course-applications`
 
@@ -28,6 +29,7 @@ adds anything missing under "Priority not set"; move it from there to the level 
 
 ## Low
 
+- `reference-material-content-4-library-courses`
 - `educator-interface-full-polish`
 - `landing-page-component-kit`
 - `lead-capture-forms`
@@ -45,3 +47,4 @@ adds anything missing under "Priority not set"; move it from there to the level 
 - `panel-framework-dialogs-without-javascript`
 - `sacaa-complianc-deletion-and-declaration`
 - `panel-framework-tech-debt-polish`
+- `full-test-run-still-too-often`

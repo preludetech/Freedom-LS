@@ -18,12 +18,14 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🟠 Medium · `content-widget-sayit-reveal-2-say-it-reveal` (Audio content widgets)
 - 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
 - ⚪ Priority not set · `extract-semantic-icons-app-1-standalone-app` (Semantic icons extraction)
+- ⚪ Priority not set · `full-test-run-still-too-often` (Tooling and operations)
 
 ### Ready to start
 
 - 🔴 High · `sacaa-compliance-content-versions-and-access-1-content-save-safety` (SACAA content versions and access)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-4-question-access` (SACAA content versions and access)
 - 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
+- 🔴 High · `reference-material-content-1-authoring` (Reference material)
 - 🔴 High · `learner-public-profile-2-profile-and-page` (Learner public profiles)
 - 🟠 Medium · `content-widget-sayit-reveal-4-audio-access-control` (Audio content widgets)
 - 🟠 Medium · `deadlines-4-learner-self-pause` (Deadlines)
@@ -156,6 +158,30 @@ The panel framework moves into its own installable package, because another Djan
 - Open: the uv editable-install spike (`extract_panels_framework-5-package-and-install`).
 - The other project must not install the package before `extract_panels_framework-5-package-and-install`.
 - References: `research_packaging_and_distribution.md` and `research_coupling_audit.md`, both in the parent.
+
+## Reference material
+
+Priority: 🔴 High
+
+Reference parts, such as regulations, that learners consult at any time beside a course's learning path, and courses that are only libraries. Parent: `reference-material-content`.
+
+- `reference-material-content-1-authoring` — **ready** — Authors attach reference parts to a course with a `reference:` key; `content_save` stores, validates and cleans them up.
+- `reference-material-content-2-learner-reference` — **blocked** by `reference-material-content-1-authoring` — Registered learners open a course's reference listing and read reference topics from any player page, with nothing tracked.
+- `reference-material-content-3-educator-reference` — **blocked** by `reference-material-content-1-authoring` — Educators see a course's reference parts in the course outline and preview reference topics.
+- `reference-material-content-4-library-courses` — **blocked** by `reference-material-content-2-learner-reference`, `reference-material-content-3-educator-reference` — A course with only reference material opens its reference listing, shows no progress anywhere and can never be finished.
+
+![Reference material](roadmap_diagrams/reference-material.svg)
+
+**Notes**
+- Build order: `reference-material-content-1-authoring` first; then `reference-material-content-2-learner-reference` and `reference-material-content-3-educator-reference` in parallel; `reference-material-content-4-library-courses` last, at low priority.
+- Collisions: `reference-material-content-1-authoring` changes `content_save`, the schema and the validator, like `sacaa-compliance-content-versions-and-access-1-content-save-safety` and `sacaa-compliance-content-versions-and-access-2-retire-removed-content`; whichever lands second rebases. `reference-material-content-4-library-courses` touches the learner and cohort progress panels that `educator-interface-refactor-5-learner` and `educator-interface-refactor-6-cohort` move.
+- Decided: reference parts are `CoursePart` rows attached by a new `CourseReferencePart(course, course_part, order)`; `Course.items` stays the learning path. Reference parts hold topics only, one level deep.
+- Decided: a part listed under `reference:` makes `content_save` delete that course's old collection item placing it, with its overrides and due dates, and report what it removed.
+- Decided: reading reference material records nothing (no progress, resume pointer or `started_at`) and follows lesson access, so it is closed while paused and after the time limit ends.
+- Decided: a library-only course shows no progress or completion anywhere and cannot be finished.
+- Assumed: a topic may sit in both a learning-path part and a reference part; only a whole part is barred from both lists of one course.
+- Out of scope: nesting deeper than part, then topics (planned later), PDFs and files, search, forms in reference.
+- References: `research_learner_player.md` and `research_educator_content.md` in the parent.
 
 ## Learner public profiles
 
@@ -399,6 +425,7 @@ Developer tooling, deployment and downstream fixes.
 - `forced-site-name-for-host-based-site-lookup` — **ready** — `FORCE_SITE_NAME` reaches host-based site lookup in development, so every dev port works.
 - `audit-log-describe-test-flake` — **ready** — Find and fix why the audit-log describe test fails in loaded full runs but passes alone.
 - `dev-site-bootstrap-command` — **ready** — A development command that creates the forced-name dev Site and a verified dev superuser.
+- `full-test-run-still-too-often` — **in progress** — SDD rebases run only the tests the changed code affects, not the full suite after spec-only changes.
 
 ![Tooling and operations](roadmap_diagrams/tooling-and-operations.svg)
 
