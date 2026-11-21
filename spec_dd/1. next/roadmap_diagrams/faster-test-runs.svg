@@ -52,7 +52,7 @@
 <path d="M32.0,534.0 H30.0 A6,6 0 0 0 24.0,540.0 V578.0 A6,6 0 0 0 30.0,584.0 H32.0 Z" fill="#991b1b"/>
 <text x="40.0" y="556.0" fill="#111827">faster-test-runs-9-machine-</text>
 <text x="40.0" y="571.0" fill="#111827">wide-test-run-limit</text>
-<rect x="24.0" y="602.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<rect x="24.0" y="602.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M32.0,602.0 H30.0 A6,6 0 0 0 24.0,608.0 V646.0 A6,6 0 0 0 30.0,652.0 H32.0 Z" fill="#991b1b"/>
 <text x="40.0" y="624.0" fill="#111827">faster-test-runs-10-rerun-</text>
 <text x="40.0" y="639.0" fill="#111827">only-failures-in-a-batch</text>
