@@ -1,0 +1,59 @@
+# Research: prior art for `<c-audio-reveal>`, `{% markdown %}` context and a clickable audio button in `c-flashcard`
+
+Read-only research. I had no shell, so `git log` was not run; I searched files only (Grep/Glob). Paths are relative to the repo root.
+
+## 1. Here
+
+### 1.1 Nothing like this was ever built; the three problems are known but unverified
+- No say-it-then-reveal widget exists in `spec_dd/3. done/` or in code. The only spec trail is the roadmap and the research for this effort.
+- The `c-audio` component (spec 1, `spec_dd/3. done/2026-11-19_08:05_content-widget-sayit-reveal-1-audio-player/`) shipped with `qa_report.md` showing 0 bugs. It was only ever tested on a plain page, never inside another component's slot. Its QA plan (`3. frontend_qa.md`) has no flashcard test. So the nested case has no test evidence either way.
+- The two gaps named in `idea.md` were found by reading code, not by running it. `spec_dd/1. next/content-widget-sayit-reveal/research_content_media.md` section 3 says so itself ("Not confirmed by running; verify with a test", lines 42 and 44). Treat both as hypotheses to prove with a failing test first.
+
+### 1.2 The `{% markdown %}` context gap (confirmed in current code)
+- `freedom_ls/content_engine/templatetags/content_tags.py:160-168`: the tag is `render_markdown(value, request)` and passes no `context=`. `c-audio` resolves its file with `src|get_file_by_path:content_instance` (`freedom_ls/content_engine/templates/cotton/audio.html:34`), so inside a slot `content_instance` is undefined. `get_file_by_path` would get nothing and `c-audio` would show "Audio not found".
+- The render function does accept a context: tests call `render_markdown(markup, None, context={"content_instance": topic})` (`freedom_ls/content_engine/tests/components/test_audio_component.py:19`, `tests/models/test_articles.py:206`). So the fix is to forward the template context (at least `content_instance`) from the tag. `render_markdown` lives in `freedom_ls/markdown_rendering/markdown_utils.py`.
+- Every slot-rendering component is affected, not just flashcard. Slots are rendered through `{% markdown front %}` / `{% markdown back %}` (`flashcard.html:191,215`). Nested `c-picture` or `c-file-download` in a flashcard hit the same gap, which makes it a general fix with its own regression tests.
+- Existing tests that bear on it: `freedom_ls/content_engine/tests/templatetags/test_content_tags.py` (render_markdown at lines 159-243) and `tests/components/test_audio_component.py`. Neither covers the `markdown` tag with context.
+- Re-rendering through nh3 and the cotton compiler a second time is how slots already work, so `c-audio-reveal` and `c-audio` nested in a slot also need their tags and attributes in `MARKDOWN_ALLOWED_TAGS` (`config/settings_base.py`), or nh3 strips them silently. The earlier flashcard `size` attribute hit exactly this: `spec_dd/3. done/2026-09-07_18:13_misc-small-fixes-manual/upgrade_notes.md:148-157` ("hard: c-flashcard needs {"size"} or the attribute is dropped silently"). New attributes (`src`, `label`, `respelling`, `symbol`) are already allowed for `c-audio` but must be added for `c-audio-reveal`. Downstream projects need an upgrade note for the allowlist.
+
+### 1.3 The flashcard layering history (why the stack is `pointer-events-none`)
+- `freedom_ls/content_engine/templates/cotton/flashcard.html:36-43` documents the design. The flip trigger sits BELOW the faces with no z-index. The face stack is `pointer-events-none` so a click on prose falls through to the trigger. Only `table` and `pre` take pointer events back (`.flashcard-face :is(table, pre) { pointer-events: auto }`, lines 90-94).
+- This was a deliberate fix. In `spec_dd/3. done/2026-09-07_18:13_misc-small-fixes-manual/` (QA bug B1, todo line 43) a wide table or code block in an answer pushed the card off a narrow viewport and could not be swiped because a `z-10` trigger sat on top. The fix moved the trigger underneath and made the stack transparent to pointer events. `upgrade_notes.md:250-254` warns shadowing projects to take the layering change. `3. frontend_qa.md:447-455` (tests 5.8f and 5.8g) checks the focus ring survived and that clicks on prose flip while clicks in a table or code block do not.
+- The comment in `flashcard.html:40-43` records why the alternative fails: each face has a transform, so it is a stacking context, and no z-index on a descendant can lift it above a sibling of the face. This rules out "put a z-index on the audio button".
+- Lesson: the working mechanism for a nested interactive element is `pointer-events: auto` on that element (the same trick as table/pre). Extending the existing `:is(...)` selector, or a class the audio component carries, follows the established pattern. Re-run 5.8f/5.8g after the change; the layer was fragile once already.
+- The hidden face is `inert` (`flashcard.html:175,206`), and `inert` blocks pointer events and focus for its subtree. So a button in the hidden face stays unreachable regardless of `pointer-events: auto` on it. That meets the idea's "buttons in the hidden face stay unreachable" and should get an explicit test.
+- Keyboard order: the trigger button is first in the DOM, then the front face. A nested audio button is a second tab stop inside the card. The trigger's `aria-label="Flip card"` covers the whole surface. Keep the nested button focusable on the visible face only.
+- The component's own audio button: `audio.html:47-57` uses `c-button` with `x-on:click="toggle"` and its own `x-data="audioFile"`. A nested Alpine scope inside the `flashcard` scope was judged fine in `research_content_media.md:46`.
+- A click on the audio button does not bubble to the flip trigger because the trigger is a sibling, not an ancestor (`research_content_media.md:44`). So `stopPropagation` is not needed. Verify in a browser.
+
+### 1.4 Reveal-style widgets already in the repo
+- `c-accordion` (`<details>`/`<summary>` plus `x-collapse`; `spec_dd/3. done/2026-06-18_14:35_more_course_widgets/research_accordion_disclosure.md:30`) is native disclosure with an `aria-expanded` built in, but it is a toggle of a title, not a prompt/answer pair with a play button. The answer is already decided: a new component (`answers.md`).
+- `c-flashcard` (same spec dir, `research_flashcard_ux.md:121-122,209`): the trigger must be a real `<button>`, the whole surface is the target, hover-flip is a broken pattern. Carry over to `c-audio-reveal`: a real `<button>`, 44px target, `aria-expanded` or `aria-pressed`, hidden content `inert` and `aria-hidden`.
+- The research for this effort (`research_content_media.md:73-78`) said to reuse the `c-accordion` or flashcard patterns (inert + aria-hidden) and recommended `aria-live="polite"` or `aria-expanded` so screen-reader users hear the answer appear (`research_audio_widgets.md:49`).
+
+### 1.5 Lessons from adjacent QA in this repo
+- Class-string-only tests do not prove a visual fix. `spec_dd/3. done/2026-11-20_11:24_misure-of-admonitions/qa_report.md:198` (B1, UNRESOLVED): a fix asserted only that a class string was present, but in the browser a margin computed to 0 because a bare text node is not an element, so the layout bug stayed. A `pointer-events` fix needs a browser check (an `elementFromPoint` or a real click), not just a class assertion in a Django test.
+- The c-audio QA (`qa_report.md` of spec 1, general note 2): blocking `*/media/*` only fails the first play; Chromium serves later plays from cache, so block `/content/audio/` instead. Relevant to testing replay after Reveal.
+- The `audioFile` Alpine component creates its audio element on first press (`audio.html:23-25`); the header at `alpine-components.js:12` calls it "one shared audio element". This is how a reveal click can trigger play: the new component must call the same play path rather than rebuild audio. The spec should say how `c-audio-reveal` starts playback on Reveal (programmatic click or a shared helper) because the browser only allows play inside the click's task.
+- `c-audio`'s spec decisions carried over: no waveform, scrubbing or speed, no autoplay on load, transcript is the visible label (`spec_dd/3. done/2026-06-01_13:49_student-interface-content-widgets-on-brand/` research notes via `research_prior_art.md` of spec 1).
+- Scope guards still apply: `.opus` not in the loader; CSP has no `media-src` (`research_content_media.md:37`, `:68`); these belong to spec 1 and are not re-opened here unless QA finds playback blocked.
+
+## 2. Elsewhere (brief)
+
+### Reveal-with-audio widgets
+- Anki plays audio on show-answer and exposes `r` to replay; there is no built-in way to hold audio until the reveal (audio on the answer field plays before the flip if it is on the question side). Users also hit iOS-specific failures: autoplay and replay stopping after an update, some mp3s that play on desktop but not on iPhone, and the mute switch. https://forums.ankiweb.net/t/ankimobile-25-02-1-audio-not-playing/55920 , https://forums.ankiweb.net/t/audio-not-working-on-iphone-but-works-on-macos/56070 , https://forums.ankiweb.net/t/audio-not-playing-automatically-on-review/18387 . Lessons: play inside the Reveal click handler, keep a visible replay button, and add the real-device test (the spec 1 QA left test 8, iPhone silent switch, for a human).
+- H5P Dialog Cards: audio button on each side with replay (https://h5p.org/dialog-cards); more in `spec_dd/1. next/content-widget-sayit-reveal/research_audio_widgets.md` sections 1-2.
+
+### Nested buttons in flip cards
+- The failures are usually hit-testing on 3D-transformed faces, not event bubbling. A Mozilla bug reports a flipped `backface-visibility: hidden` face where hit-testing is not well defined: https://bugzilla.mozilla.org/show_bug.cgi?id=1931538 . A WebKit bug shows only half of a flipped back being clickable: https://bugs.webkit.org/show_bug.cgi?id=54371 . An Apple forum thread reports links on a flipped card broken by a translate transform since iOS 16.4: https://developer.apple.com/forums/thread/732443 . A Webflow thread on links on the back side: https://discourse.webflow.com/t/creating-a-card-flip-transition-with-links-on-the-backside-of-the-card/26308 . `stopPropagation` on a nested button in a clickable card is reported to not always help (https://community.weweb.io/t/button-inside-a-link-card-interactions/898).
+- Lesson for FLS: do not rely on the 3-D flip for nested controls in `c-audio-reveal`. A reveal that swaps visibility (inert plus hidden), not a rotating face, avoids the whole class of hit-test bugs. For the flashcard, test the audio button on the visible face in real Chromium, Firefox and Safari, on both the front and, after a flip, the back. (The web results here are forum threads; no standard exists, and I did not read each bug to the end.)
+
+## 3. Decisions the spec should take from this
+1. Write failing tests first: the `markdown` tag forwards `content_instance`; a `c-audio` in a `c-flashcard` slot resolves its file; same for `c-audio-reveal` in a slot.
+2. Fix `{% markdown %}` once for every slot-rendering component.
+3. Make the nested audio button take pointer events with the same mechanism as table/pre, not a z-index (stacking contexts forbid it). Confirm in a browser that the hidden face's button stays unreachable and that prose still flips the card.
+4. Add `c-audio-reveal` and its attributes to `MARKDOWN_ALLOWED_TAGS`, the fls-content widget reference (all three places in `SKILL.md`), `claude_plugins/fls-dev/resources/markdown_content.md`, the demo, and an upgrade note.
+5. Define how Reveal starts the clip so it stays inside the click (autoplay rule), and how the stop-others behaviour of `audioFile` works when Hide is pressed.
+6. QA must include a real-device iPhone/Android run (left open in spec 1) because this is the only autoplay in the effort.
+
+status: ok
