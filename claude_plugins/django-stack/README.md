@@ -112,7 +112,13 @@ Rationale cut from the prompt files an agent reads at run time.
     own model.
 - **Test tiers.** `--no-cov` makes the exit code mean pass or fail: in a project whose `addopts`
   turns coverage on, any run smaller than the whole suite fails the coverage threshold whatever
-  the test did.
+  the test did. `scripts/select_tests.py` takes `--working-tree`, `--range`, `--upstream-range` and
+  `--tests-changed-in`; a project extends it through `none`, `escalation`, `dependency_files`,
+  `tooling` and `markers` in `[tool.test_tiers]`. `--upstream-range <old>..<new>` (given once) names
+  the paths another line of history brought in, such as main after a rebase: such a path counts only
+  where it meets the apps the branch changed or imports. `pyproject.toml` and `uv.lock` are a
+  separate dependency-file list, which `dependency_files` extends; a change to one forces `full`
+  whichever side made it.
 - **QA diff scoping.** A misclassification must over-test, never under-test, which is why anything
   unmatched is `FULL`.
 - **Code comments.** A comment is a promise to the future reader that the code can't keep on its
