@@ -64,7 +64,7 @@
 <path d="M32.0,299.0 H30.0 A6,6 0 0 0 24.0,305.0 V343.0 A6,6 0 0 0 30.0,349.0 H32.0 Z" fill="#991b1b"/>
 <text x="40.0" y="321.0" fill="#111827">faster-test-runs-5-full-suite-</text>
 <text x="40.0" y="336.0" fill="#111827">on-github-actions</text>
-<rect x="24.0" y="367.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<rect x="24.0" y="367.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M32.0,367.0 H30.0 A6,6 0 0 0 24.0,373.0 V411.0 A6,6 0 0 0 30.0,417.0 H32.0 Z" fill="#991b1b"/>
 <text x="40.0" y="389.0" fill="#111827">faster-test-runs-6-prune-slow-</text>
 <text x="40.0" y="404.0" fill="#111827">tests</text>
