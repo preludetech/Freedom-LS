@@ -13,6 +13,7 @@ import re
 import uuid
 from collections import Counter, defaultdict
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 
@@ -1069,52 +1070,75 @@ def save_file_to_db(
     return decision
 
 
-@transaction.atomic
-def save_content_to_db(path, site_name, *, generate_uuids: bool = True):
-    """Scan through all validated files and save them to the database.
+@dataclass
+class _ParsedSource:
+    """One source path with every file read and parsed, before anything is written."""
 
-    With `generate_uuids=False` a file that lacks a uuid is refused instead of
-    being given one, so a save never rewrites the content files.
+    path: Path
+    all_files: list[Path]
+    content_files: set[Path]
+    all_parsed: list[BaseBaseContentModel]
+
+
+def _parse_source(path: Path) -> _ParsedSource:
+    all_files = get_all_files(path)
+    content_files = {f for f in all_files if f.suffix in [".md", ".yaml", ".yml"]}
+    all_parsed: list[BaseBaseContentModel] = []
+    for file_path in all_files:
+        if file_path in content_files:
+            all_parsed.extend(parse_single_file(file_path))
+    return _ParsedSource(path, all_files, content_files, all_parsed)
+
+
+def _relative_to_source(source: Path, file_path: Path) -> str:
+    base = source.parent if source.is_file() else source
+    return file_path.relative_to(base).as_posix()
+
+
+def _refuse_relative_path_collisions(sources: Sequence[_ParsedSource]) -> None:
+    """Refuse two source paths that hold a file at the same relative path.
+
+    Template tags look a file up by its relative path alone and a `File` row is
+    overwritten silently, so no database constraint would catch the clash.
     """
-    path = Path(path)
-    # Get the site
-    site = Site.objects.get(
-        name=site_name,
+    owners: dict[str, list[Path]] = defaultdict(list)
+    for source in sources:
+        for file_path in source.all_files:
+            owners[_relative_to_source(source.path, file_path)].append(source.path)
+    clashes = {rel: paths for rel, paths in owners.items() if len(paths) > 1}
+    if not clashes:
+        return
+    count = len(clashes)
+    raise CommandError(
+        _refusal(
+            f"content_save found {count} file{'s' if count != 1 else ''} at the "
+            "same relative path in more than one source path.",
+            [
+                (relative, [f"Source path: {p}" for p in paths])
+                for relative, paths in clashes.items()
+            ],
+            "Rename or remove one of each pair, then run again.",
+        )
     )
 
-    # Parse all files using existing validation code
-    all_files = get_all_files(path)
-    all_parsed = []
+
+def _write_source(source, site):
+    """Write a `_ParsedSource`'s files and content rows. Returns its image statuses.
+
+    Left unannotated like the loader body it was split from: the parsed items
+    arrive as the loosely typed result of `parse_single_file`, and the `save_*`
+    functions that take them are narrower than `BaseBaseContentModel`.
+    """
     # The statuses alone: an ImageEncodeDecision carries the encoded bytes,
     # and holding one per image would keep every encode of the run in memory
     # to produce a count.
     image_statuses: list[ImageEncodeStatus] = []
-    cache = ImageCache(path)
-
-    content_files = {f for f in all_files if f.suffix in [".md", ".yaml", ".yml"]}
-    for file_path in all_files:
-        if file_path in content_files:
-            all_parsed.extend(parse_single_file(file_path))
-
-    # Checked here as well as in the command's validate(), because fixtures and downstream
-    # projects call this function directly. Every placement error at once, before
-    # anything is written: the rows roll back with the transaction, but a file already
-    # sent to storage does not.
-    placement_errors = [
-        *validate_children_lists(all_parsed),
-        *validate_due_date_placements(all_parsed),
-        *validate_question_sections(all_parsed, loaded_root=path),
-    ]
-    if placement_errors:
-        raise ValueError("\n".join(placement_errors))
-
-    if not generate_uuids:
-        refuse_missing_uuids(all_parsed, path)
+    cache = ImageCache(source.path)
 
     # Save non-content files (images, documents, etc.) to the database
-    for file_path in all_files:
-        if file_path not in content_files:
-            decision = save_file_to_db(file_path, site, path, cache)
+    for file_path in source.all_files:
+        if file_path not in source.content_files:
+            decision = save_file_to_db(file_path, site, source.path, cache)
             if decision is not None:
                 image_statuses.append(decision.status)
 
@@ -1134,7 +1158,7 @@ def save_content_to_db(path, site_name, *, generate_uuids: bool = True):
 
     # Group by content type
     grouped = defaultdict(list)
-    for item in all_parsed:
+    for item in source.all_parsed:
         grouped[item.content_type].append(item)
 
     # Mapping of file paths to saved content objects for collection children resolution
@@ -1145,19 +1169,19 @@ def save_content_to_db(path, site_name, *, generate_uuids: bool = True):
     # Save CourseCategories, ahead of Courses so a course's categories/
     # dashboard_category resolve against rows that already exist.
     for item in grouped.get(SchemaContentType.COURSE_CATEGORIES, []):
-        categories = save_course_categories(item, site, path)
+        categories = save_course_categories(item, site, source.path)
         logger.info(f"Saved {len(categories)} CourseCategory row(s)")
 
     # Save Topics
     for item in grouped.get(SchemaContentType.TOPIC, []):
-        topic = save_topic(item, site, path)
+        topic = save_topic(item, site, source.path)
         content_by_path[content_key(item.file_path)] = topic
         schema_by_path[content_key(item.file_path)] = item
         logger.info(f"Saved Topic: {topic.title}")
 
     # Save Activities
     for item in grouped.get(SchemaContentType.ACTIVITY, []):
-        activity = save_activity(item, site, path)
+        activity = save_activity(item, site, source.path)
         content_by_path[content_key(item.file_path)] = activity
         schema_by_path[content_key(item.file_path)] = item
         logger.info(f"Saved Activity: {activity.title}")
@@ -1165,20 +1189,20 @@ def save_content_to_db(path, site_name, *, generate_uuids: bool = True):
     # Save Articles. They are not added to content_by_path: an article is never
     # a collection child.
     for item in grouped.get(SchemaContentType.ARTICLE, []):
-        article = save_article(item, site, path)
+        article = save_article(item, site, source.path)
         logger.info(f"Saved Article: {article.title}")
 
     # Save Courses and CourseParts
     collections_data = []  # Store (collection_obj, schema_item) for later children processing
     for item in grouped.get(SchemaContentType.COURSE, []):
-        collection = save_course(item, site, path)
+        collection = save_course(item, site, source.path)
         content_by_path[content_key(item.file_path)] = collection
         schema_by_path[content_key(item.file_path)] = item
         collections_data.append((collection, item))
         logger.info(f"Saved Course: {collection.title}")
 
     for item in grouped.get(SchemaContentType.COURSE_PART, []):
-        collection = save_course_part(item, site, path)
+        collection = save_course_part(item, site, source.path)
         content_by_path[content_key(item.file_path)] = collection
         schema_by_path[content_key(item.file_path)] = item
         collections_data.append((collection, item))
@@ -1187,7 +1211,7 @@ def save_content_to_db(path, site_name, *, generate_uuids: bool = True):
     # Save Forms and track them by directory
     forms_by_dir: dict[Path, tuple[Form, form_schema.Form]] = {}
     for item in grouped.get(SchemaContentType.FORM, []):
-        form = save_form(item, site, path)
+        form = save_form(item, site, source.path)
         forms_by_dir[item.file_path.parent] = (form, item)
         content_by_path[content_key(item.file_path)] = form
         schema_by_path[content_key(item.file_path)] = item
@@ -1220,7 +1244,7 @@ def save_content_to_db(path, site_name, *, generate_uuids: bool = True):
                     page_item,
                     parent_form,
                     site,
-                    path,
+                    source.path,
                     order=page_order,
                     condition_option=_resolve_condition(
                         page_item.when, options_by_slug, file_path
@@ -1231,7 +1255,7 @@ def save_content_to_db(path, site_name, *, generate_uuids: bool = True):
                 # Get all content items from this file in the order they appear in the YAML
                 file_content_items = [
                     item
-                    for item in all_parsed
+                    for item in source.all_parsed
                     if item.file_path == file_path
                     and item.content_type
                     in (SchemaContentType.FORM_CONTENT, SchemaContentType.FORM_QUESTION)
@@ -1244,7 +1268,7 @@ def save_content_to_db(path, site_name, *, generate_uuids: bool = True):
                             item,
                             form_page,
                             site,
-                            path,
+                            source.path,
                             order=content_order,
                             condition_option=_resolve_condition(
                                 item.when, options_by_slug, file_path
@@ -1258,7 +1282,7 @@ def save_content_to_db(path, site_name, *, generate_uuids: bool = True):
                             item,
                             form_page,
                             site,
-                            path,
+                            source.path,
                             order=content_order,
                             condition_option=_resolve_condition(
                                 item.when, options_by_slug, file_path
@@ -1418,6 +1442,52 @@ def save_content_to_db(path, site_name, *, generate_uuids: bool = True):
         written=written,
         moved=moved,
     )
+    return image_statuses
+
+
+@transaction.atomic
+def save_content_to_db(
+    paths: Path | str | Sequence[Path | str],
+    site_name: str,
+    *,
+    generate_uuids: bool = True,
+):
+    """Scan through all validated files of every source path and save them as one.
+
+    Every source path is parsed and checked before the first write. With
+    `generate_uuids=False` a file that lacks a uuid is refused instead of
+    being given one, so a save never rewrites the content files.
+    """
+    site = Site.objects.get(
+        name=site_name,
+    )
+    # A lone str is itself a Sequence, so it is told apart by type.
+    path_list = [paths] if isinstance(paths, (str, Path)) else list(paths)
+    sources = [_parse_source(Path(p)) for p in path_list]
+
+    # Checked here as well as in the command's validate(), because fixtures and downstream
+    # projects call this function directly. Every placement error of every source at
+    # once, before anything is written: the rows roll back with the transaction, but a
+    # file already sent to storage does not.
+    placement_errors = [
+        error
+        for source in sources
+        for error in (
+            *validate_children_lists(source.all_parsed),
+            *validate_due_date_placements(source.all_parsed),
+            *validate_question_sections(source.all_parsed, loaded_root=source.path),
+        )
+    ]
+    if placement_errors:
+        raise ValueError("\n".join(placement_errors))
+
+    if not generate_uuids:
+        _refuse_missing_uuids(sources)
+    _refuse_relative_path_collisions(sources)
+
+    image_statuses = [
+        status for source in sources for status in _write_source(source, site)
+    ]
 
     click.echo(f"✓ Successfully saved all content for site: {site_name}")
 
@@ -1497,20 +1567,23 @@ def missing_uuids(
     return found
 
 
-def refuse_missing_uuids(
-    all_parsed: Sequence[BaseBaseContentModel], source: Path
-) -> None:
-    """Raise CommandError listing every uuid the save would have to generate."""
-    missing = missing_uuids(all_parsed)
-    if not missing:
-        return
-    base = source.parent if source.is_file() else source
+def _refuse_missing_uuids(sources: Sequence[_ParsedSource]) -> None:
+    """Raise CommandError listing every uuid the save would have to generate.
+
+    With several source paths each file is headed by its source path, so two
+    paths that both hold `topic.md` stay distinguishable.
+    """
     by_file: dict[str, list[str]] = {}
-    for file_path, description in missing:
-        by_file.setdefault(file_path.relative_to(base).as_posix(), []).append(
-            description
-        )
-    count = len(missing)
+    count = 0
+    for source in sources:
+        for file_path, description in missing_uuids(source.all_parsed):
+            heading = _relative_to_source(source.path, file_path)
+            if len(sources) > 1:
+                heading = f"{source.path}: {heading}"
+            by_file.setdefault(heading, []).append(description)
+            count += 1
+    if not count:
+        return
     raise CommandError(
         _refusal(
             f"content_save found {count} missing uuid{'s' if count != 1 else ''}.",
@@ -1520,53 +1593,99 @@ def refuse_missing_uuids(
     )
 
 
-def check_committed(path: str) -> str:
-    """Refuse a source path that is not a clean, committed git tree.
+def check_committed(paths: Sequence[str]) -> list[str]:
+    """Refuse any source path that is not a clean, committed git tree.
 
-    Returns the HEAD commit the content will be loaded from.
+    Uncommitted files from every path come back in one refusal, one group per
+    path, headed by the path as it was typed. Returns the HEAD commit each path
+    will be loaded from.
     """
-    source = Path(path)
-    if find_repo_root(source) is None:
+    commits: list[str] = []
+    dirty: list[tuple[str, list[str]]] = []
+    dirty_count = 0
+    for path in paths:
+        source = Path(path)
+        if find_repo_root(source) is None:
+            raise CommandError(
+                _refusal(
+                    "content_save loads only committed content: "
+                    f"{path} is not inside a git repository.",
+                    [],
+                    "Put the content in a git repository and commit it, then run again.",
+                )
+            )
+        try:
+            commits.append(head_commit_of(source))
+        except ValueError as error:
+            raise CommandError(
+                _refusal(
+                    f"content_save loads only committed content: {error}",
+                    [],
+                    "Make a first commit, then run again.",
+                )
+            ) from error
+        uncommitted = uncommitted_paths(source)
+        if uncommitted:
+            width = max(len(entry.kind) for entry in uncommitted)
+            dirty_count += len(uncommitted)
+            dirty.append(
+                (
+                    f"Source path: {path}",
+                    [f"{e.kind.ljust(width)}  {e.path}" for e in uncommitted],
+                )
+            )
+    if dirty:
         raise CommandError(
             _refusal(
                 "content_save loads only committed content: "
-                f"{path} is not inside a git repository.",
-                [],
-                "Put the content in a git repository and commit it, then run again.",
-            )
-        )
-    try:
-        commit = head_commit_of(source)
-    except ValueError as error:
-        raise CommandError(
-            _refusal(
-                f"content_save loads only committed content: {error}",
-                [],
-                "Make a first commit, then run again.",
-            )
-        ) from error
-    uncommitted = uncommitted_paths(source)
-    if uncommitted:
-        width = max(len(entry.kind) for entry in uncommitted)
-        count = len(uncommitted)
-        raise CommandError(
-            _refusal(
-                "content_save loads only committed content: "
-                f"{count} uncommitted file{'s' if count != 1 else ''}.",
-                [
-                    (
-                        f"Source path: {path}",
-                        [f"{e.kind.ljust(width)}  {e.path}" for e in uncommitted],
-                    )
-                ],
+                f"{dirty_count} uncommitted file{'s' if dirty_count != 1 else ''}.",
+                dirty,
                 "Commit or remove these files, then run again.",
             )
         )
-    return commit
+    return commits
+
+
+def check_source_paths(paths: Sequence[str]) -> None:
+    """Refuse a source path that does not exist, repeats, or sits inside another."""
+    resolved: list[tuple[str, Path]] = []
+    for path in paths:
+        if not Path(path).exists():
+            raise CommandError(
+                _refusal(
+                    f"content_save cannot find the source path {path}: it does not exist.",
+                    [],
+                    "Check the path, then run again.",
+                )
+            )
+        resolved.append((path, Path(path).resolve()))
+    for index, (path, real) in enumerate(resolved):
+        for other_path, other_real in resolved[index + 1 :]:
+            if real == other_real:
+                problem = f"{path} and {other_path} are the same source path."
+            elif real in other_real.parents or other_real in real.parents:
+                inner, outer = (
+                    (other_path, path)
+                    if real in other_real.parents
+                    else (path, other_path)
+                )
+                problem = (
+                    f"{inner} is inside another source path, {outer}, so its "
+                    "files would be loaded more than once."
+                )
+            else:
+                continue
+            raise CommandError(
+                _refusal(
+                    f"content_save was given overlapping source paths: {problem}",
+                    [],
+                    "Give each directory once, then run again.",
+                )
+            )
 
 
 @click.command()
-@click.argument("path")
+@click.argument("paths", nargs=-1, required=True)
 @click.argument("site_name")
 @click.option(
     "--generate-uuids",
@@ -1574,17 +1693,29 @@ def check_committed(path: str) -> str:
     default=False,
     help="Write a new uuid into every content file that lacks one.",
 )
-def command(path, site_name, generate_uuids):
+def command(paths, site_name, generate_uuids):
     """Validate and save committed content to the database.
 
-    The source path must be inside a git repository with no uncommitted,
-    staged, deleted or untracked files. A file without a uuid is refused
-    unless --generate-uuids is given.
+    Several source paths load as one save:
+
+        python manage.py content_save ../bloom_content ../bloom_extra Bloom
+
+    Every source path must be inside a git repository with no uncommitted,
+    staged, deleted or untracked files. No path may be, or sit inside,
+    another. A file without a uuid is refused unless --generate-uuids is given.
     """
-    check_committed(path)
+    check_source_paths(paths)
+    check_committed(paths)
     logger.info("Validating content...")
-    validate(path)
+    reports: list[str] = []
+    for path in paths:
+        try:
+            validate(path)
+        except ValueError as error:
+            reports.append(f"Source path: {path}\n{error}")
+    if reports:
+        raise ValueError("\n\n".join(reports))
     logger.info("Validation complete!")
 
     logger.info("Saving to database...")
-    save_content_to_db(path, site_name, generate_uuids=generate_uuids)
+    save_content_to_db(paths, site_name, generate_uuids=generate_uuids)

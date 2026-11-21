@@ -67,7 +67,12 @@ from freedom_ls.form_engine.models import (
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.tests.factories import SiteFactory
-from freedom_ls.tests.git_repos import add_linked_worktree, commit_all, init_repo
+from freedom_ls.tests.git_repos import (
+    TOPIC_UUID,
+    add_linked_worktree,
+    commit_all,
+    init_repo,
+)
 from freedom_ls.tests.images import (
     break_png_chunk_crc,
     photographic_jpeg_bytes,
@@ -4712,3 +4717,214 @@ def test_a_dirty_tree_without_uuids_reports_only_the_dirty_tree(
         _save_from_repo(repo, site)
 
     assert "missing uuid" not in str(exc_info.value)
+
+
+_SECOND_TOPIC_UUID = "10000000-0000-0000-0000-000000000002"
+_THIRD_TOPIC_UUID = "10000000-0000-0000-0000-000000000003"
+
+
+def _topic_text(title: str, topic_uuid: str | None) -> str:
+    uuid_line = f"uuid: {topic_uuid}\n" if topic_uuid else ""
+    return f"---\ncontent_type: TOPIC\ntitle: {title}\n{uuid_line}---\n\nBody.\n"
+
+
+def _save_from_repos(site: Site, *paths: Path | str) -> None:
+    drop_ambient_request()
+    call_command("content_save", *(str(p) for p in paths), site.name, "--traceback")
+
+
+@pytest.mark.django_db
+def test_three_source_paths_load_as_one_save(site, mock_site_context, tmp_path: Path):
+    first = _commit_tree(
+        tmp_path / "first", {"first.md": _topic_text("First", TOPIC_UUID)}
+    )
+    second = _commit_tree(
+        tmp_path / "second", {"second.md": _topic_text("Second", _SECOND_TOPIC_UUID)}
+    )
+    third = _commit_tree(
+        tmp_path / "third", {"third.md": _topic_text("Third", _THIRD_TOPIC_UUID)}
+    )
+
+    _save_from_repos(site, first, second, third)
+
+    assert set(Topic.objects.values_list("title", flat=True)) == {
+        "First",
+        "Second",
+        "Third",
+    }
+
+
+@pytest.mark.django_db
+def test_the_same_path_twice_is_refused_before_the_git_check(
+    site, mock_site_context, committed_content_repo: Path
+):
+    (committed_content_repo / "new.md").write_text("new\n")
+
+    with pytest.raises(CommandError, match="same source path") as exc_info:
+        _save_from_repos(site, committed_content_repo, committed_content_repo)
+
+    assert "uncommitted" not in str(exc_info.value)
+    assert Topic.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_a_path_inside_another_is_refused_before_the_git_check(
+    site, mock_site_context, committed_content_repo: Path
+):
+    inner = committed_content_repo / "inner"
+    inner.mkdir()
+    (inner / "new.md").write_text("new\n")
+
+    with pytest.raises(CommandError, match="inside another") as exc_info:
+        _save_from_repos(site, committed_content_repo, inner)
+
+    assert "uncommitted" not in str(exc_info.value)
+
+
+@pytest.mark.django_db
+def test_a_missing_source_path_is_refused(
+    site, mock_site_context, committed_content_repo: Path, tmp_path: Path
+):
+    with pytest.raises(CommandError, match="does not exist"):
+        _save_from_repos(site, committed_content_repo, tmp_path / "nowhere")
+
+    assert Topic.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_a_validation_failure_in_the_second_path_writes_nothing_from_the_first(
+    site, mock_site_context, tmp_path: Path
+):
+    first = _commit_tree(
+        tmp_path / "first", {"topic.md": _topic_text("First", TOPIC_UUID)}
+    )
+    second = _commit_tree(
+        tmp_path / "second",
+        {"broken.md": "---\ncontent_type: NOT_A_TYPE\ntitle: Broken\n---\n"},
+    )
+
+    with pytest.raises(ValueError, match=r"Source path: .*second"):
+        _save_from_repos(site, first, second)
+
+    assert Topic.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_a_database_failure_in_the_second_path_rolls_back_the_first(
+    site, mock_site_context, tmp_path: Path
+):
+    owner = tmp_path / "owner"
+    _write_article(
+        owner,
+        "launch.md",
+        "content_type: ARTICLE\ntitle: Launch\npublished_on: 2026-03-04\n",
+    )
+    save_content_to_db(owner, site.name)
+    first = _commit_tree(
+        tmp_path / "first", {"topic.md": _topic_text("First", TOPIC_UUID)}
+    )
+    imposter = tmp_path / "imposter"
+    _write_article(
+        imposter,
+        "launch.md",
+        "content_type: ARTICLE\ntitle: Imposter\npublished_on: 2026-03-05\n",
+    )
+
+    with pytest.raises(ValueError, match="launch"):
+        save_content_to_db([first, imposter], site.name)
+
+    assert Topic.objects.count() == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("relative", "text"),
+    [
+        ("topic.md", None),
+        ("logo.png", "not an image\n"),
+    ],
+    ids=["content file", "uploaded file"],
+)
+def test_the_same_relative_path_in_two_paths_is_refused_naming_both(
+    site, mock_site_context, tmp_path: Path, relative: str, text: str | None
+):
+    first = _commit_tree(
+        tmp_path / "first",
+        {relative: text or _topic_text("First", TOPIC_UUID)},
+    )
+    second = _commit_tree(
+        tmp_path / "second",
+        {relative: text or _topic_text("Second", _SECOND_TOPIC_UUID)},
+    )
+
+    with pytest.raises(CommandError, match="same relative path") as exc_info:
+        _save_from_repos(site, first, second)
+
+    message = str(exc_info.value)
+    assert relative in message
+    assert str(first) in message
+    assert str(second) in message
+    assert Topic.objects.count() == 0
+    assert File.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_each_path_writes_image_manifests_under_its_own_tree(
+    site, mock_site_context, tmp_path: Path
+):
+    for name, topic_uuid in (("first", TOPIC_UUID), ("second", _SECOND_TOPIC_UUID)):
+        directory = tmp_path / name
+        directory.mkdir()
+        (directory / f"{name}.md").write_text(
+            _topic_text(name.title(), topic_uuid).rstrip("\n")
+            + f'\n\n<c-picture src="{name}.jpg"></c-picture>\n'
+        )
+        (directory / f"{name}.jpg").write_bytes(photographic_jpeg_bytes())
+        init_repo(directory)
+        commit_all(directory)
+
+    _save_from_repos(site, tmp_path / "first", tmp_path / "second")
+
+    assert (tmp_path / "first" / CACHE_DIR_NAME).is_dir()
+    assert (tmp_path / "second" / CACHE_DIR_NAME).is_dir()
+
+
+@pytest.mark.django_db
+def test_missing_uuids_in_two_paths_come_back_in_one_message_grouped_by_path(
+    site, mock_site_context, tmp_path: Path
+):
+    first = _commit_tree(tmp_path / "first", {"topic.md": _NO_UUID_CASES["topic"][1]})
+    second = _commit_tree(
+        tmp_path / "second", {"activity.md": _NO_UUID_CASES["activity"][1]}
+    )
+
+    with pytest.raises(CommandError, match="2 missing uuids") as exc_info:
+        _save_from_repos(site, first, second)
+
+    message = str(exc_info.value)
+    assert f"{first}: topic.md" in message
+    assert f"{second}: activity.md" in message
+    assert Topic.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_dirty_files_in_two_paths_come_back_in_one_refusal_grouped_by_path(
+    site, mock_site_context, tmp_path: Path
+):
+    first = _commit_tree(
+        tmp_path / "first", {"topic.md": _topic_text("First", TOPIC_UUID)}
+    )
+    second = _commit_tree(
+        tmp_path / "second", {"topic.md": _topic_text("Second", _SECOND_TOPIC_UUID)}
+    )
+    (first / "one.md").write_text("one\n")
+    (second / "two.md").write_text("two\n")
+
+    with pytest.raises(CommandError, match="2 uncommitted files") as exc_info:
+        _save_from_repos(site, first, second)
+
+    message = str(exc_info.value)
+    assert f"Source path: {first}" in message
+    assert "one.md" in message
+    assert f"Source path: {second}" in message
+    assert "two.md" in message
