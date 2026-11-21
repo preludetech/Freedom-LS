@@ -3974,6 +3974,24 @@ def test_claim_post_of_a_rejected_application_leaves_the_account_holding_both(
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("draft", [True, False])
+def test_claim_get_of_a_rejected_application_says_nothing_is_replaced_or_discarded(
+    client: Client, mock_site_context: None, draft: bool
+) -> None:
+    incoming = CourseApplicationFactory(anonymous=True, rejected=True)
+    _account_holding(incoming, draft=draft)
+
+    response = client.get(_claim_url(incoming.anonymous_applicant))
+
+    body = response.content.decode()
+    assert (
+        response.context["held_application"],
+        "will be discarded" in body,
+        "replaces the unfinished application" in body,
+    ) == ("", False, False)
+
+
+@pytest.mark.django_db
 def test_claim_get_for_a_passwordless_account_says_a_password_comes_next(
     client, claimable_for_passwordless_user
 ):

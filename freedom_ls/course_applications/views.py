@@ -63,6 +63,7 @@ from freedom_ls.course_applications.forms import (
 )
 from freedom_ls.course_applications.models import (
     ACTIVE_STATES,
+    CLOSED_STATES,
     AnonymousApplicant,
     CourseApplication,
 )
@@ -1052,7 +1053,11 @@ def claim_application(request: HttpRequest, token: str) -> HttpResponse:
             if owner is not None
             else None
         )
-        if held is not None and held.state not in ACTIVE_STATES:
+        # A closed incoming application attaches beside whatever the account
+        # holds (see attach_to_user), so nothing is replaced or discarded.
+        if held is not None and (
+            held.state not in ACTIVE_STATES or application.state in CLOSED_STATES
+        ):
             held = None
         held_application = (
             ""
