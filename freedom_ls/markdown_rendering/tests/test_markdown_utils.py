@@ -1073,9 +1073,8 @@ class _FakeContentInstance:
         return path
 
 
-def audio_file(site: object, file_path: str) -> File:
+def audio_file(file_path: str) -> File:
     file_obj: File = File.objects.create(
-        site=site,
         file=file_path,
         file_path=file_path,
         original_filename=file_path.rsplit("/", 1)[-1],
@@ -1099,9 +1098,9 @@ class TestSlotWidgetBodies:
 
     @_SLOT_WIDGETS
     def test_nested_audio_keeps_its_player_markup(
-        self, mock_request, site, opening, closing
+        self, mock_request, mock_site_context, opening, closing
     ):
-        audio_file(site, "audio/bravo.mp3")
+        audio_file("audio/bravo.mp3")
 
         result = _render_in_topic(
             f'{opening}\n\n<c-audio src="audio/bravo.mp3" label="Bravo"></c-audio>\n\n{closing}',
@@ -1114,9 +1113,9 @@ class TestSlotWidgetBodies:
 
     @_SLOT_WIDGETS
     def test_nested_audio_keeps_every_allow_listed_attribute(
-        self, mock_request, site, opening, closing
+        self, mock_request, mock_site_context, opening, closing
     ):
-        audio_file(site, "audio/bravo.mp3")
+        audio_file("audio/bravo.mp3")
 
         result = _render_in_topic(
             f"{opening}\n\n"
