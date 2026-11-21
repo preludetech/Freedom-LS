@@ -18,6 +18,7 @@ from freedom_ls.content_engine.schema import (
     Course,
     CourseCategories,
     CourseCategoryEntry,
+    CoursePart,
     DiscountedPrice,
     FixedPrice,
     OnRequestPrice,
@@ -767,3 +768,41 @@ def test_an_omitted_or_empty_reference_list_is_empty(extra: dict[str, object]) -
     course = Course.model_validate(_course_data(**extra))
 
     assert course.reference == []
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "due_date",
+        "due_time",
+        "due_days_after_registration",
+        "no_due_date",
+        "children",
+    ],
+)
+def test_a_reference_entry_with_a_due_key_or_children_is_refused_naming_the_key(
+    key: str,
+) -> None:
+    with pytest.raises(
+        ValidationError, match=f"{key}: a reference entry takes only path"
+    ):
+        ReferenceEntry.model_validate({"path": "glossary/part.yaml", key: 1})
+
+
+def test_a_bare_string_reference_entry_is_refused_with_the_mapping_message() -> None:
+    with pytest.raises(
+        ValidationError, match="a reference entry is a mapping with a path key"
+    ):
+        Course.model_validate(_course_data(reference=["glossary/part.yaml"]))
+
+
+def test_a_reference_key_on_a_part_is_refused() -> None:
+    with pytest.raises(ValidationError, match="reference"):
+        CoursePart.model_validate(
+            {
+                "content_type": "COURSE_PART",
+                "title": "Part",
+                "file_path": Path("part/part.yaml"),
+                "reference": [{"path": "glossary/part.yaml"}],
+            }
+        )

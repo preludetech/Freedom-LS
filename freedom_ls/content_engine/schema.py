@@ -5,6 +5,7 @@ Schema for yaml structures like this:
 import re
 import unicodedata
 from collections import Counter, defaultdict
+from collections.abc import Mapping
 from datetime import date, timedelta
 from decimal import Decimal
 from enum import StrEnum
@@ -22,6 +23,7 @@ from pydantic import (
 )
 
 from freedom_ls.content_base.schema import (
+    DUE_DATE_FIELD_NAMES,
     BaseBaseContentModel,
     BaseContentModel,
     ContentType,
@@ -366,10 +368,33 @@ def _validate_price(price: FixedPrice | RangePrice | DiscountedPrice) -> None:
         )
 
 
+# Module level: pydantic would turn an underscore name in a class body into a
+# private attribute. `no_due_date` lives on `PlacementDueDate`, not in
+# `DUE_DATE_FIELD_NAMES`, so it is named separately.
+_REFERENCE_ENTRY_REJECTED_KEYS = (
+    *sorted(DUE_DATE_FIELD_NAMES),
+    "no_due_date",
+    "children",
+)
+
+
 class ReferenceEntry(BaseModel):
     """One entry of a course's reference: list. It names a part and nothing else."""
 
     model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _takes_only_a_path(cls, data: object) -> object:
+        if not isinstance(data, Mapping):
+            raise ValueError(
+                f"a reference entry is a mapping with a path key, not {data!r}; "
+                "write `- path: <part.yaml>`"
+            )
+        for key in _REFERENCE_ENTRY_REJECTED_KEYS:
+            if key in data:
+                raise ValueError(f"{key}: a reference entry takes only path")
+        return data
 
     path: Path = Field(..., description="Path to the reference part's part.yaml")
 
