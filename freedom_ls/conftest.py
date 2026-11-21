@@ -40,6 +40,7 @@ _MD5_HASHER = (
 )
 
 if TYPE_CHECKING:
+    from pytest_django.fixtures import SettingsWrapper
     from pytest_django.live_server_helper import LiveServer
 
     from freedom_ls.accounts.models import User
@@ -144,7 +145,8 @@ def fast_password_hasher() -> Iterator[tuple[str, ...]]:
 
     Public, because `from freedom_ls.conftest import *` skips underscore names.
     A concrete project turns it off by defining its own `fast_password_hasher`
-    after that import.
+    after that import. A test that needs the configured hashers takes
+    `production_password_hashers`.
 
     Yields the configured hashers.
     """
@@ -157,6 +159,20 @@ def fast_password_hasher() -> Iterator[tuple[str, ...]]:
     )
     with override_settings(PASSWORD_HASHERS=[_MD5_HASHER, *configured]):
         yield configured
+
+
+@pytest.fixture
+def production_password_hashers(
+    settings: "SettingsWrapper", fast_password_hasher: tuple[str, ...]
+) -> None:
+    """Hash with the configured password hashers for one test.
+
+    For a test that checks real hashing, such as an Argon2 hash or a hash prefix.
+    pytest-django's `settings` fixture restores the MD5 list when the test ends.
+    A class or module opts in with
+    `@pytest.mark.usefixtures("production_password_hashers")`.
+    """
+    settings.PASSWORD_HASHERS = list(fast_password_hasher)
 
 
 @pytest.fixture(autouse=True)

@@ -34,3 +34,39 @@ def test_settings_module_lists_argon2_first(module_name: str) -> None:
     assert (
         module.PASSWORD_HASHERS[0] == "django.contrib.auth.hashers.Argon2PasswordHasher"
     )
+
+
+def test_get_hasher_with_production_password_hashers_is_argon2(
+    production_password_hashers,
+) -> None:
+    assert get_hasher().algorithm == "argon2"
+
+
+@pytest.mark.django_db
+def test_set_password_with_production_password_hashers_is_argon2_hash(
+    mock_site_context, production_password_hashers
+) -> None:
+    user = UserFactory()
+
+    user.set_password("a-password")
+
+    assert user.password.startswith("argon2")
+
+
+@pytest.mark.django_db
+def test_check_password_with_production_password_hashers_accepts_set_password(
+    mock_site_context, production_password_hashers
+) -> None:
+    user = UserFactory()
+    user.set_password("a-password")
+
+    assert user.check_password("a-password") is True
+
+
+def test_get_hasher_after_production_password_hashers_test_is_md5() -> None:
+    """Fails if an opt-in to the configured hashers leaked past its test.
+
+    It holds in any order. Under random ordering it runs after an opt-in test
+    in some runs, and fails there if that opt-in was not undone.
+    """
+    assert get_hasher().algorithm == "md5"
