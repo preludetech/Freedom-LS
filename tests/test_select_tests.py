@@ -128,6 +128,30 @@ def test_generic_lists_apply_without_a_tool_test_tiers_table(tmp_path: Path) -> 
     assert lines(result.stdout, "tier") == ["tier: full"]
 
 
+@pytest.mark.parametrize(
+    ("pyproject", "path"),
+    [
+        ("[tool.other]\nx = 1\n", "uv.lock"),
+        (
+            '[tool.test_tiers]\ndependency_files = ["requirements/*.txt"]\n',
+            "requirements/dev.txt",
+        ),
+    ],
+)
+def test_dependency_file_makes_a_path_tier_full(
+    tmp_path: Path, pyproject: str, path: str
+) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app() | {"pyproject.toml": pyproject})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, path)
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: full"]
+    assert lines(result.stdout, "why") == [f"why: {path} -> full (dependency file)"]
+
+
 def test_generic_lists_apply_without_a_pyproject_file(tmp_path: Path) -> None:
     # Arrange
     write_tree(tmp_path, {"docs/a.md": ""})
@@ -139,7 +163,7 @@ def test_generic_lists_apply_without_a_pyproject_file(tmp_path: Path) -> None:
     assert lines(result.stdout, "tier") == ["tier: none"]
 
 
-@pytest.mark.parametrize("key", ["none", "escalation"])
+@pytest.mark.parametrize("key", ["none", "escalation", "dependency_files"])
 def test_non_list_value_exits_2_naming_the_key(tmp_path: Path, key: str) -> None:
     # Arrange
     write_tree(

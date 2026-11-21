@@ -47,9 +47,10 @@ ESCALATION_GLOBS: tuple[str, ...] = (
     "**/middleware.py",
     "**/signals.py",
     "**/apps.py",
-    "pyproject.toml",
-    "uv.lock",
 )
+
+# Dependency manifests and lockfiles change what every test imports, whoever changed them.
+DEPENDENCY_GLOBS: tuple[str, ...] = ("pyproject.toml", "uv.lock")
 
 # Repository tooling has its tests in the top-level tests/ directory: the wrappers
 # ds:init generates, and helpers beside those tests.
@@ -91,6 +92,7 @@ class ConfigError(Exception):
 class TierConfig:
     none: tuple[str, ...]
     escalation: tuple[str, ...]
+    dependency: tuple[str, ...]
     tooling: tuple[tuple[str, tuple[str, ...]], ...]
     # The marker expression every tier runs with. A later `-m` replaces the one in
     # `addopts`, so tests the default run deselects still run when a tier selects them.
@@ -155,6 +157,7 @@ def load_tier_config(project_root: Path) -> TierConfig:
     return TierConfig(
         none=NONE_GLOBS + glob_list(table, "none"),
         escalation=ESCALATION_GLOBS + glob_list(table, "escalation"),
+        dependency=DEPENDENCY_GLOBS + glob_list(table, "dependency_files"),
         tooling=TOOLING + tooling_entries(table),
         markers=marker_expression(table),
     )
@@ -316,6 +319,9 @@ def decide(
             reason += f"; playwright: {tests_root}/playwright"
             touched = (tests_root,)
         return [Decision(path, "select", (path,), reason, touched)]
+
+    if first_match(path, config.dependency) is not None:
+        return [Decision(path, "full", (), "dependency file")]
 
     escalation_glob = first_match(path, config.escalation)
     if escalation_glob is not None:
