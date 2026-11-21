@@ -18,7 +18,7 @@ from freedom_ls.educator_interface.panels.common.report import (
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
-from freedom_ls.educator_interface.views import (
+from freedom_ls.educator_interface.panels.learner.data_tables import (
     LearnerCourseSummary,
     learner_course_summaries,
 )

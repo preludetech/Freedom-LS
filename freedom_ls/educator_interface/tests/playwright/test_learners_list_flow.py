@@ -15,7 +15,7 @@ from playwright.sync_api import Browser, Page, Response, Route, expect
 from django.contrib.auth.base_user import AbstractBaseUser
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.educator_interface.views import LearnerDataTable
+from freedom_ls.educator_interface.panels.learner.data_tables import LearnerDataTable
 from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
 from freedom_ls.learner_management.models import CohortMembership, Learner
 from freedom_ls.learner_management.role_assignment import assign_role

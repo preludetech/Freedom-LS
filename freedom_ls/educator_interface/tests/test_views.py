@@ -73,6 +73,10 @@ from freedom_ls.educator_interface.panels.course.data_tables import (
 from freedom_ls.educator_interface.panels.learner.bulk_actions import (
     DeactivateLearnersBulkAction,
 )
+from freedom_ls.educator_interface.panels.learner.data_tables import (
+    CohortLearnerDataTable,
+    LearnerDataTable,
+)
 from freedom_ls.educator_interface.panels.staff.data_tables import StaffDataTable
 from freedom_ls.educator_interface.tests.helpers import (
     QUERY_BUDGET,
@@ -5528,8 +5532,8 @@ def test_the_cohort_learners_tab_hides_the_import_link_from_a_cohort_admin(
 
 
 EDUCATOR_TABLES: list[type[DataTable]] = [
-    educator_views.LearnerDataTable,
-    educator_views.CohortLearnerDataTable,
+    LearnerDataTable,
+    CohortLearnerDataTable,
     CohortDataTable,
     LearnerCohortDataTable,
     CourseDataTable,
