@@ -69,15 +69,19 @@
                     We sent a new link to the address your application was made with.
                 </p>
             {% else %}
-                <h1>
-                    This link is invalid or has already been used
-                </h1>
-                {% url 'learner_interface:courses' as courses_url %}
-                {% if courses_url %}
-                    <p>
-                        <c-button href="{{ courses_url }}" variant="secondary">Browse courses</c-button>
+                <div class="mx-auto max-w-reading flex flex-col items-center gap-3 py-12 text-center">
+                    <span aria-hidden="true" class="inline-flex text-muted"><c-icon name="locked" class="size-12" /></span>
+                    <h1>
+                        This link is invalid or has already been used
+                    </h1>
+                    <p class="text-muted" data-testid="claim-invalid-explanation">
+                        Each link works once. If you need another, start your application again.
                     </p>
-                {% endif %}
+                    {% url 'learner_interface:courses' as courses_url %}
+                    {% if courses_url %}
+                        <c-button href="{{ courses_url }}" variant="secondary">Browse courses</c-button>
+                    {% endif %}
+                </div>
             {% endif %}
         </div>
     </c-page>

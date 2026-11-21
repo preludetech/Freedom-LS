@@ -3761,6 +3761,24 @@ def test_claim_get_after_a_claim_renders_the_invalid_page(client, claimable):
     assert response.context["claim_state"] == "invalid"
 
 
+@pytest.mark.django_db
+def test_invalid_claim_page_shows_a_centred_icon_with_the_explanation_under_it(
+    client, claimable
+):
+    """The used-link page used to be a bare heading and button, with no icon or text."""
+    _claim(client, claimable)
+
+    response = Client().get(_claim_url(claimable.anonymous_applicant))
+
+    content = response.content.decode()
+    assert 'data-icon="locked"' in content
+    assert "size-12" in content
+    assert "text-center" in content
+    assert "This link is invalid or has already been used" in content
+    assert "Browse courses" in content
+    assert 'data-testid="claim-invalid-explanation"' in content
+
+
 def _draft_application():
     """A form application whose sitting has not been completed yet."""
     application = _submitted_form_application()
