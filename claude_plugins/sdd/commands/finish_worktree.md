@@ -79,8 +79,8 @@ mention until Step 8.
 
 # Step 1: Checkpoint tier
 
-The checkpoint run: a pass tests only what the rebase brought in when a full run is on record, and
-runs `full` when none is.
+The checkpoint run: with a passing full run on record, it tests only what changed since that run;
+with none, it runs `full`.
 
 1. Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/commands/protected/run_test_tier.md` and
    follow it with `<tier>`: `checkpoint` as far as its "Resolve the checkpoint tier" step, and
@@ -245,7 +245,7 @@ on each pass, entered with its <blocker>:
     # nothing lands before the close-out commits
     entered before Step 7 (from Step 0, or from Step 0.5's exit 4): leave the loop and continue
         at Step 0.5
-    follow the checkpoint run (below, which points at Step 1)
+    follow the checkpoint run (below)
     <script-path> land        → exit 0 leaves the loop; exit 7 is the next pass
 ```
 
