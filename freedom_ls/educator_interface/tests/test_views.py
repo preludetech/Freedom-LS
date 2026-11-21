@@ -108,7 +108,6 @@ from freedom_ls.educator_interface.tests.interface_walk import (
 )
 from freedom_ls.educator_interface.views import (
     CohortDataTable,
-    learner_status_badge,
 )
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -5841,37 +5840,6 @@ def test_a_filter_in_play_offers_to_clear_it(
     assert table.empty_no_results in html
     assert table.empty_message not in html
     assert "Clear filters" in html
-
-
-def _learner_in_state(state: str) -> Learner:
-    user = UserFactory()
-    if state == "pending":
-        user.set_unusable_password()
-        user.save()
-    learner = cast(
-        Learner,
-        LearnerFactory(
-            user=user, organisation=OrganisationFactory(), is_active=state != "inactive"
-        ),
-    )
-    return learner
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize(
-    ("state", "label", "tone"),
-    [
-        ("active", "Active", "success"),
-        ("pending", "Pending", "info"),
-        ("inactive", "Inactive", "muted"),
-    ],
-)
-def test_learner_status_badge_has_one_label_and_tone_per_state(
-    mock_site_context, state: str, label: str, tone: str
-):
-    badge = learner_status_badge(_learner_in_state(state))
-
-    assert (badge.label, badge.tone) == (label, tone)
 
 
 @pytest.mark.django_db

@@ -19,7 +19,10 @@ from freedom_ls.educator_interface.events import (
     LEARNER_CHANGED,
 )
 from freedom_ls.educator_interface.messaging import own_conversation_with
-from freedom_ls.educator_interface.panels.common.badges import active_status_badge
+from freedom_ls.educator_interface.panels.common.badges import (
+    active_status_badge,
+    learner_status_badge,
+)
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
@@ -36,7 +39,6 @@ from freedom_ls.learner_progress.queries import (
     registrations_with_progress_for_learner,
 )
 from freedom_ls.panel_framework.quick_view import QuickView
-from freedom_ls.panel_framework.views import StatusBadge
 
 
 def visible_registrations_with_progress(
@@ -55,14 +57,6 @@ def visible_registrations_with_progress(
         for registration in registrations_with_progress_for_learner(learner)
         if registration.cohort is None or registration.cohort.pk in visible_cohort_ids
     ]
-
-
-def _learner_status_badge(learner: Learner) -> StatusBadge:
-    """The learner's status badge. views.py imports this module, so it is
-    imported when called."""
-    from freedom_ls.educator_interface.views import learner_status_badge
-
-    return learner_status_badge(learner)
 
 
 class LearnerQuickView(QuickView):
@@ -90,7 +84,7 @@ class LearnerQuickView(QuickView):
         registrations = visible_registrations_with_progress(learner, request)
         context: dict[str, object] = {
             "learner": learner,
-            "status_badge": _learner_status_badge(learner),
+            "status_badge": learner_status_badge(learner),
             "memberships": memberships,
             "registrations": registrations,
             "last_active": last_active,

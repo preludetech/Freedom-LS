@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from freedom_ls.learner_management.models import Learner
+from freedom_ls.learner_management.queries import LearnerStatus, learner_status
 from freedom_ls.panel_framework.views import StatusBadge
 
 __all__ = [
+    "_LEARNER_STATUS_TONES",
     "active_status_badge",
     "inactive_badge",
+    "learner_status_badge",
 ]
 
 
@@ -23,3 +27,16 @@ def inactive_badge(is_active: bool) -> StatusBadge | None:
     if is_active:
         return None
     return StatusBadge("muted", "Inactive")
+
+
+_LEARNER_STATUS_TONES: dict[LearnerStatus, str] = {
+    LearnerStatus.ACTIVE: "success",
+    LearnerStatus.PENDING: "info",
+    LearnerStatus.INACTIVE: "muted",
+}
+
+
+def learner_status_badge(learner: Learner) -> StatusBadge:
+    """The badge for a learner's status: Active, Pending or Inactive."""
+    status = learner_status(learner)
+    return StatusBadge(_LEARNER_STATUS_TONES[status], status.label)

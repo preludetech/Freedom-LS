@@ -8,12 +8,14 @@ from uuid import UUID
 
 from django import forms
 from django.db.models import Model
-from django.http import Http404, HttpRequest
+from django.http import Http404, HttpRequest, HttpResponse
 
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.forms import EducatorReasonForm
+from freedom_ls.learner_management.models import Cohort
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.actions import ReasonMixin
+from freedom_ls.panel_framework.actions import ReasonMixin, refusal_response
+from freedom_ls.panel_framework.context import PanelContext
 
 __all__ = [
     "EducatorReasonMixin",
@@ -22,6 +24,7 @@ __all__ = [
     "_picker_title",
     "_register_title",
     "_uuid_from",
+    "inactive_cohort_response",
 ]
 
 
@@ -76,4 +79,20 @@ def _register_title(
 
     return _picker_title(
         form, "course", unchosen=f"Register {subject} for a course", chosen=chosen
+    )
+
+
+def inactive_cohort_response(
+    ctx: PanelContext, cohort: Cohort, blocked_phrase: str
+) -> HttpResponse:
+    """The 422 fragment for a change aimed at an inactive cohort.
+    `blocked_phrase` completes "Reactivate the cohort ... to" with what the
+    refused action would have done, such as "deactivate it"."""
+    return refusal_response(
+        ctx,
+        title=f"{cohort} is inactive",
+        message=(
+            "The change was not made. Reactivate the cohort from its Settings "
+            f"tab to {blocked_phrase}."
+        ),
     )

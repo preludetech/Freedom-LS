@@ -54,6 +54,7 @@ from freedom_ls.educator_interface.panels.common.actions import (
     _picker_title,
     _register_title,
     _uuid_from,
+    inactive_cohort_response,
 )
 from freedom_ls.educator_interface.panels.common.bulk_actions import (
     CoursePickerMixin,
@@ -145,22 +146,6 @@ from freedom_ls.panel_framework.bulk_actions import (
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.events import build_hx_trigger
 from freedom_ls.role_based_permissions.utils import delete_role_rows_for
-
-
-def inactive_cohort_response(
-    ctx: PanelContext, cohort: Cohort, blocked_phrase: str
-) -> HttpResponse:
-    """The 422 fragment for a change aimed at an inactive cohort.
-    `blocked_phrase` completes "Reactivate the cohort ... to" with what the
-    refused action would have done, such as "deactivate it"."""
-    return refusal_response(
-        ctx,
-        title=f"{cohort} is inactive",
-        message=(
-            "The change was not made. Reactivate the cohort from its Settings "
-            f"tab to {blocked_phrase}."
-        ),
-    )
 
 
 def cohort_not_empty_sentence(cohort: Cohort) -> str:

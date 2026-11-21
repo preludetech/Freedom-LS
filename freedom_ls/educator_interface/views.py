@@ -129,6 +129,7 @@ from freedom_ls.educator_interface.panels.audit_log.data_tables import (
 from freedom_ls.educator_interface.panels.common.badges import (
     active_status_badge,
     inactive_badge,
+    learner_status_badge,
 )
 from freedom_ls.educator_interface.panels.common.filters import VisibleCourseFilter
 from freedom_ls.educator_interface.panels.common.ids import uuid_or_404
@@ -1058,19 +1059,6 @@ class LearnerInstanceView(InstanceView):
 
     def get_header_actions(self) -> list[PanelAction]:
         return []
-
-
-_LEARNER_STATUS_TONES: dict[LearnerStatus, str] = {
-    LearnerStatus.ACTIVE: "success",
-    LearnerStatus.PENDING: "info",
-    LearnerStatus.INACTIVE: "muted",
-}
-
-
-def learner_status_badge(learner: Learner) -> StatusBadge:
-    """The badge for a learner's status: Active, Pending or Inactive."""
-    status = learner_status(learner)
-    return StatusBadge(_LEARNER_STATUS_TONES[status], status.label)
 
 
 class CohortDetailsPanel(InstanceDetailsPanel):
