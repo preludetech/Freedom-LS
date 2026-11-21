@@ -809,6 +809,118 @@ def test_non_string_markers_entry_exits_2_naming_the_key(tmp_path: Path) -> None
     assert "markers" in result.stderr
 
 
+NARROW_TABLE = "[tool.test_tiers]\nnarrow = true\n"
+
+
+@pytest.mark.parametrize("value", ['"yes"', "1"])
+def test_non_boolean_narrow_entry_exits_2_naming_the_key(
+    tmp_path: Path, value: str
+) -> None:
+    # Arrange
+    table = f"[tool.test_tiers]\nnarrow = {value}\n"
+    write_tree(tmp_path, alpha_app() | {"pyproject.toml": table})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "docs/a.md")
+
+    # Assert
+    assert result.returncode == 2
+    assert "[tool.test_tiers] 'narrow' must be true or false" in result.stderr
+
+
+def test_narrow_false_gives_the_same_output_as_no_narrow_key(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app())
+    without_key = run_script(SCRIPT, tmp_path, "pkg/alpha/services.py")
+    write_tree(tmp_path, {"pyproject.toml": "[tool.test_tiers]\nnarrow = false\n"})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/services.py")
+
+    # Assert
+    assert result.stdout == without_key.stdout
+
+
+@pytest.mark.parametrize(
+    ("pyproject", "args", "expects_mode_line"),
+    [
+        (NARROW_TABLE, (), True),
+        ("", (), False),
+        ("[tool.test_tiers]\nnarrow = false\n", (), False),
+        (NARROW_TABLE, ("--wide",), False),
+    ],
+)
+def test_mode_line_follows_the_tier_line_only_while_narrowing_is_in_effect(
+    tmp_path: Path,
+    pyproject: str,
+    args: tuple[str, ...],
+    expects_mode_line: bool,
+) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app() | {"pyproject.toml": pyproject})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *args, "pkg/alpha/services.py")
+
+    # Assert
+    output_lines = result.stdout.splitlines()
+    assert ("mode: narrow" in output_lines) is expects_mode_line
+    if expects_mode_line:
+        assert output_lines[1] == "mode: narrow"
+        assert output_lines[0].startswith("tier:")
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ("pkg/alpha/services.py",),
+        ("pkg/alpha/migrations/0001_initial.py",),
+        ("--range", "HEAD~1..HEAD"),
+    ],
+)
+def test_wide_with_narrow_true_gives_the_same_output_as_no_narrow_key(
+    tmp_path: Path, arguments: tuple[str, ...]
+) -> None:
+    # Arrange
+    repo_with_two_commits(tmp_path, {"pkg/alpha/services.py": "x = 1\n"})
+    without_key = run_script(SCRIPT, tmp_path, *arguments)
+    write_tree(tmp_path, {"pyproject.toml": NARROW_TABLE})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "--wide", *arguments)
+
+    # Assert
+    assert result.returncode == 0
+    assert result.stdout == without_key.stdout
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ("--working-tree",),
+        ("--range", "HEAD~1..HEAD"),
+        ("--upstream-range", "HEAD~2..HEAD~1"),
+        ("--tests-changed-in", "HEAD~1..HEAD"),
+    ],
+)
+def test_wide_combines_with_every_diff_source_flag(
+    tmp_path: Path, arguments: tuple[str, ...]
+) -> None:
+    # Arrange
+    repo_with_upstream_range(
+        tmp_path,
+        alpha_app(),
+        {"pkg/alpha/services.py": "x = 1\n"},
+        {"pkg/alpha/tests/test_services.py": "y = 1\n"},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "--wide", *arguments)
+
+    # Assert
+    assert result.returncode == 0
+
+
 def commit_all(project: Path, message: str) -> None:
     run_command(["git", "add", "."], project)
     run_command(

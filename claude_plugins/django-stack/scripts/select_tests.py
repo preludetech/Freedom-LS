@@ -4,7 +4,7 @@
 
 Usage:
     python select_tests.py [--working-tree] [--range <rev>..<rev>]...
-        [--upstream-range <old>..<new>] [--tests-changed-in <rev>..<rev>] [<path>...]
+        [--upstream-range <old>..<new>] [--tests-changed-in <rev>..<rev>] [--wide] [<path>...]
 
 Prints `tier:`, one `why:` line per changed path and, for a targeted or full
 run, the `command:` to run. Project-specific globs come from `[tool.test_tiers]`
@@ -102,12 +102,20 @@ class ConfigError(Exception):
 @dataclass(frozen=True)
 class TierConfig:
     none: tuple[str, ...]
-    escalation: tuple[str, ...]
+    builtin_escalation: tuple[str, ...]
+    project_escalation: tuple[str, ...]
     dependency: tuple[str, ...]
     tooling: tuple[tuple[str, tuple[str, ...]], ...]
     # The marker expression every tier runs with. A later `-m` replaces the one in
     # `addopts`, so tests the default run deselects still run when a tier selects them.
     markers: str | None = None
+    # When true, a change selects the tests it can reach instead of whole related apps.
+    narrow: bool = False
+
+    @property
+    def escalation(self) -> tuple[str, ...]:
+        # Built-ins first, so the glob a reason names is the one it named before the split.
+        return self.builtin_escalation + self.project_escalation
 
 
 @dataclass(frozen=True)
@@ -155,6 +163,13 @@ def marker_expression(table: dict[str, object]) -> str | None:
     return value
 
 
+def narrow_setting(table: dict[str, object]) -> bool:
+    value = table.get("narrow", False)
+    if not isinstance(value, bool):
+        raise ConfigError("[tool.test_tiers] 'narrow' must be true or false")
+    return value
+
+
 def load_tier_config(project_root: Path) -> TierConfig:
     """Read `[tool.test_tiers]`, with the generic lists extended by the project's.
 
@@ -167,10 +182,12 @@ def load_tier_config(project_root: Path) -> TierConfig:
     table = data.get("tool", {}).get("test_tiers", {})
     return TierConfig(
         none=NONE_GLOBS + glob_list(table, "none"),
-        escalation=ESCALATION_GLOBS + glob_list(table, "escalation"),
+        builtin_escalation=ESCALATION_GLOBS,
+        project_escalation=glob_list(table, "escalation"),
         dependency=DEPENDENCY_GLOBS + glob_list(table, "dependency_files"),
         tooling=TOOLING + tooling_entries(table),
         markers=marker_expression(table),
+        narrow=narrow_setting(table),
     )
 
 
@@ -744,6 +761,11 @@ def main() -> int:
             "they never raise the tier"
         ),
     )
+    parser.add_argument(
+        "--wide",
+        action="store_true",
+        help="ignore `narrow` in `[tool.test_tiers]` and select whole related apps",
+    )
     args = parser.parse_args()
     if len(args.upstream_range) > 1:
         parser.error("--upstream-range may be given once")
@@ -762,6 +784,8 @@ def main() -> int:
         config = load_tier_config(project_root)
     except (tomllib.TOMLDecodeError, ConfigError) as exc:
         parser.error(str(exc))
+    if args.wide:
+        config = replace(config, narrow=False)
 
     apps = find_apps(project_root)
     edges = parse_existing_edges(project_root / APP_MAP)
@@ -803,6 +827,8 @@ def main() -> int:
     touched = {t for d in decisions for t in d.touched}
 
     print(f"tier: {tier}")
+    if config.narrow:
+        print("mode: narrow")
     for d in decisions:
         outcome = {"none": "none", "full": "full"}.get(d.kind) or ", ".join(d.selects)
         print(f"why: {d.path} -> {outcome} ({d.reason})")
