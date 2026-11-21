@@ -37,7 +37,7 @@
 <path d="M32.0,215.5 H30.0 A6,6 0 0 0 24.0,221.5 V259.5 A6,6 0 0 0 30.0,265.5 H32.0 Z" fill="#fb923c"/>
 <text x="40.0" y="237.5" fill="#111827">educator-interface-refactor-4-</text>
 <text x="40.0" y="252.5" fill="#111827">course</text>
-<rect x="24.0" y="351.5" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<rect x="24.0" y="351.5" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M32.0,351.5 H30.0 A6,6 0 0 0 24.0,357.5 V395.5 A6,6 0 0 0 30.0,401.5 H32.0 Z" fill="#991b1b"/>
 <text x="40.0" y="373.5" fill="#111827">educator-interface-refactor-5-</text>
 <text x="40.0" y="388.5" fill="#111827">learner</text>
