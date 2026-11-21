@@ -23,6 +23,7 @@ from freedom_ls.content_engine.schema import (
     OnRequestPrice,
     PartChildDueDate,
     RangePrice,
+    ReferenceEntry,
     Topic,
     slugify,
 )
@@ -748,3 +749,21 @@ def test_a_children_entry_accepts_a_nested_children_list() -> None:
 
     assert entry.children is not None
     assert entry.children[0].due_days_after_registration == 5
+
+
+def test_a_course_reference_list_parses_to_reference_entries() -> None:
+    course = Course.model_validate(
+        _course_data(reference=[{"path": "glossary/part.yaml"}, {"path": "faq.yaml"}])
+    )
+
+    assert course.reference == [
+        ReferenceEntry(path=Path("glossary/part.yaml")),
+        ReferenceEntry(path=Path("faq.yaml")),
+    ]
+
+
+@pytest.mark.parametrize("extra", [{}, {"reference": []}])
+def test_an_omitted_or_empty_reference_list_is_empty(extra: dict[str, object]) -> None:
+    course = Course.model_validate(_course_data(**extra))
+
+    assert course.reference == []

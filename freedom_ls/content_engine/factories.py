@@ -18,6 +18,7 @@ from freedom_ls.content_engine.models import (
     CourseCategory,
     CoursePart,
     CoursePartChildDueDate,
+    CourseReferencePart,
     File,
     Topic,
 )
@@ -128,6 +129,17 @@ class CoursePartChildDueDateFactory(SiteAwareFactory):
         model = CoursePartChildDueDate
 
     due_days_after_registration = 3
+
+
+class CourseReferencePartFactory(SiteAwareFactory):
+    """Factory for CourseReferencePart; the course and part are built unless supplied."""
+
+    class Meta:
+        model = CourseReferencePart
+
+    course = factory.SubFactory(CourseFactory)
+    course_part = factory.SubFactory(CoursePartFactory)
+    order = factory.Sequence(lambda n: n)
 
 
 class FileFactory(SiteAwareFactory):

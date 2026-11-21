@@ -366,6 +366,14 @@ def _validate_price(price: FixedPrice | RangePrice | DiscountedPrice) -> None:
         )
 
 
+class ReferenceEntry(BaseModel):
+    """One entry of a course's reference: list. It names a part and nothing else."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    path: Path = Field(..., description="Path to the reference part's part.yaml")
+
+
 class Course(BaseContentModel, content_type=ContentType.COURSE):
     """
     You can think of this as a folder. It contains an ordered list of child content.
@@ -376,6 +384,11 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
     children: list[Child] = Field(
         default_factory=list,
         description="List of child content references",
+    )
+
+    reference: list[ReferenceEntry] = Field(
+        default_factory=list,
+        description="Parts offered as reference material, outside the learning path",
     )
 
     content: str | None = Field(None, description="Markdown content body")

@@ -675,3 +675,30 @@ class CoursePartChildDueDate(SiteAwareModel):
 
     def __str__(self) -> str:
         return f"Due date for {self.collection_item}"
+
+
+class CourseReferencePart(SiteAwareModel):
+    """A part a course offers as reference material. The part is an ordinary CoursePart;
+    this row, not a ContentCollectionItem, attaches it, so it never counts toward what a
+    learner must complete."""
+
+    course = models.ForeignKey(
+        Course, on_delete=models.CASCADE, related_name="reference_parts"
+    )
+    course_part = models.ForeignKey(
+        CoursePart, on_delete=models.CASCADE, related_name="+"
+    )
+    order = models.PositiveIntegerField()
+
+    class Meta:
+        ordering = ["order"]
+        constraints = [
+            # Both foreign keys already pin the site, so it is not part of the constraint.
+            models.UniqueConstraint(
+                fields=["course", "course_part"],
+                name="one_reference_part_per_course_part",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.course_part} as reference in {self.course}"

@@ -64,6 +64,7 @@ from freedom_ls.content_engine.models import (
     CourseCategory,
     CoursePart,
     CoursePartChildDueDate,
+    CourseReferencePart,
     File,
     FormQuestionCoursePart,
     FormQuestionTopic,
@@ -643,6 +644,7 @@ def save_course(item, site, base_path):
         base_path,
         exclude_fields={
             "children",
+            "reference",
             "categories",
             "dashboard_category",
             "price",
@@ -932,6 +934,26 @@ def _sync_section_rows[Row: (FormQuestionTopic, FormQuestionCoursePart)](
     through._default_manager.bulk_create(
         [make_row(*pair) for pair in wanted - existing.keys()]
     )
+
+
+def sync_reference_parts(
+    site: Site,
+    collections_data: list[tuple[Course | CoursePart, BaseBaseContentModel]],
+    content_by_path: Mapping[Path, models.Model],
+) -> list[str]:
+    """Write each loaded course's reference parts from its reference: list. Returns the
+    lines that report what was removed, for the caller to print once the load is safe."""
+    for course, schema_item in collections_data:
+        if not isinstance(course, Course) or not isinstance(schema_item, CourseSchema):
+            continue
+        for order, entry in enumerate(schema_item.reference):
+            part = content_by_path[
+                resolve_author_path(schema_item.file_path, entry.path)
+            ]
+            CourseReferencePart.objects.update_or_create(
+                site=site, course=course, course_part=part, defaults={"order": order}
+            )
+    return []
 
 
 def get_file_type_from_extension(file_path):
@@ -1456,6 +1478,8 @@ def _write_source(source: _ParsedSource, site: Site) -> list[ImageEncodeStatus]:
                     f"Collection '{collection.title}' names a child at "
                     f"{child_path} that was not loaded"
                 )
+
+    sync_reference_parts(site, collections_data, content_by_path)
 
     # A course is written before the parts it places, so the part's own rows exist only
     # now. Every part placement of every course in this load is reconciled: one whose

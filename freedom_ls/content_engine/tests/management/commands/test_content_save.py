@@ -50,6 +50,7 @@ from freedom_ls.content_engine.models import (
     CourseCategory,
     CoursePart,
     CoursePartChildDueDate,
+    CourseReferencePart,
     File,
     FormQuestionCoursePart,
     FormQuestionTopic,
@@ -4530,6 +4531,83 @@ def test_an_unreadable_mp3_stores_no_duration_warns_and_the_run_continues(
     assert File.objects.get(file_path="good.mp3").duration_seconds == pytest.approx(
         BEEP_SECONDS
     )
+
+
+_REFERENCE_UUIDS = {
+    "glossary": "20000000-0000-0000-0000-000000000051",
+    "faq": "20000000-0000-0000-0000-000000000052",
+}
+
+
+def _write_course_with_reference(course_dir: Path, order: list[str]) -> None:
+    """A course with no learning path whose reference: list names the parts in `order`."""
+    shutil.rmtree(course_dir, ignore_errors=True)
+    course_dir.mkdir(parents=True)
+    for name, part_uuid in _REFERENCE_UUIDS.items():
+        part_dir = course_dir / name
+        part_dir.mkdir()
+        (part_dir / "part.yaml").write_text(
+            f"---\ncontent_type: COURSE_PART\ntitle: {name}\nuuid: {part_uuid}\n"
+        )
+    entries = "".join(f"  - path: {name}/part.yaml\n" for name in order)
+    (course_dir / "course.md").write_text(
+        f"---\ncontent_type: COURSE\ntitle: Reference course\nuuid: {COURSE_UUID}\n"
+        f"children: []\nreference:\n{entries}---\n"
+    )
+
+
+def _reference_titles_in_order() -> list[str]:
+    return [
+        row.course_part.title
+        for row in CourseReferencePart.objects.select_related("course_part")
+    ]
+
+
+@pytest.mark.django_db
+def test_a_reference_list_writes_one_row_per_entry_in_list_order(
+    site, mock_site_context
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "reference"
+        _write_course_with_reference(course_dir, ["glossary", "faq"])
+
+        save_content_to_db(course_dir, site.name)
+
+    assert _reference_titles_in_order() == ["glossary", "faq"]
+    assert {row.site for row in CourseReferencePart.objects.all()} == {site}
+    assert {row.course_id for row in CourseReferencePart.objects.all()} == {
+        uuid.UUID(COURSE_UUID)
+    }
+
+
+@pytest.mark.django_db
+def test_reordering_the_reference_list_and_reloading_reorders_the_rows(
+    site, mock_site_context
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "reference"
+        _write_course_with_reference(course_dir, ["glossary", "faq"])
+        save_content_to_db(course_dir, site.name)
+
+        _write_course_with_reference(course_dir, ["faq", "glossary"])
+        save_content_to_db(course_dir, site.name)
+
+    assert _reference_titles_in_order() == ["faq", "glossary"]
+
+
+@pytest.mark.django_db
+def test_reloading_unchanged_files_keeps_the_same_reference_rows(
+    site, mock_site_context
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "reference"
+        _write_course_with_reference(course_dir, ["glossary", "faq"])
+        save_content_to_db(course_dir, site.name)
+        before = list(CourseReferencePart.objects.values_list("pk", "order"))
+
+        save_content_to_db(course_dir, site.name)
+
+    assert list(CourseReferencePart.objects.values_list("pk", "order")) == before
 
 
 # The command loads only committed content.
