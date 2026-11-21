@@ -496,6 +496,25 @@ def test_a_topic_preview_renders_a_speak_button_and_the_course_page_loads_its_sc
 
 
 @pytest.mark.django_db
+def test_a_topic_preview_renders_an_audio_reveal(staff_client: Client) -> None:
+    organisation = OrganisationFactory()
+    FileFactory(
+        file_path="bravo.mp3", file_type=File.FileType.AUDIO, mime_type="audio/mpeg"
+    )
+    topic = TopicFactory(
+        content='<c-audio-reveal src="bravo.mp3" label="Bravo" symbol="B"></c-audio-reveal>\n'
+    )
+    course, item = _course_with_topic(topic)
+    preview_url = _preview_url(staff_client, organisation, course)
+
+    preview = staff_client.get(
+        f"{preview_url}?item={item.pk}", HTTP_HX_REQUEST="true"
+    ).content.decode()
+
+    assert 'x-data="audioReveal"' in preview
+
+
+@pytest.mark.django_db
 def test_a_preview_of_another_courses_item_is_a_404(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     course, _item = _course_with_topic()

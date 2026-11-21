@@ -607,6 +607,56 @@ def test_learner_practises_with_audio_widgets(
     expect(play).to_have_count(0)
     expect(reveal).to_be_focused()
 
+    # Only one sound plays at a time: revealing stops the plain c-audio, and
+    # revealing another widget stops the first, whose answer stays visible.
+    plain = page.get_by_role(
+        "button", name=f"Play pronunciation of {PLAIN_AUDIO_LABEL}"
+    )
+    second_reveal = (
+        page.locator("[x-data='audioReveal']")
+        .nth(1)
+        .get_by_role("button", name=re.compile(r"^(Reveal|Hide)$"))
+    )
+    plain.click()
+    expect(plain).to_have_attribute("aria-pressed", "true")
+    reveal.click()
+    expect(plain).to_have_attribute("aria-pressed", "false")
+    expect(play).to_have_attribute("aria-pressed", "true")
+    second_reveal.click()
+    expect(play).to_have_attribute("aria-pressed", "false")
+    expect(page.get_by_text(REVEAL_A_LABEL).first).to_be_visible()
+
+    # Nothing scrolls sideways at 320px or any QA width, and the reveal button
+    # is a comfortable touch target.
+    for viewport in (ViewportSize(width=320, height=568), *QA_VIEWPORTS):
+        page.set_viewport_size(viewport)
+        assert_no_horizontal_overflow(page)
+        box = _box(reveal)
+        assert box["width"] >= 44
+        assert box["height"] >= 44
+
+
+def test_a_reveal_whose_audio_fails_still_shows_the_answer(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    course = _audio_widgets_course(logged_in_user)
+    page.route(re.compile(r"/content/audio/"), lambda route: route.abort())
+    page.goto(_item_url(live_server, course, 1))
+    widget = page.locator("[x-data='audioReveal']").first
+    reveal = widget.get_by_role("button", name=re.compile(r"^(Reveal|Hide)$"))
+
+    reveal.click()
+
+    expect(page.get_by_text(REVEAL_A_LABEL).first).to_be_visible()
+    expect(
+        widget.get_by_role("status").filter(
+            has_text="Audio could not be played. Try again."
+        )
+    ).to_be_visible()
+
 
 @pytest.mark.browser_context_args(timezone_id="America/New_York", locale="en-US")
 def test_due_date_reads_in_the_browser_time_zone(
