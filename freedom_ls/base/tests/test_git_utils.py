@@ -2,13 +2,19 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from dulwich import porcelain
 
 from freedom_ls.base.git_utils import (
+    UncommittedPath,
     _clear_branch_cache,
     branch_to_db_name,
+    find_repo_root,
     get_current_branch,
     get_head_commit,
+    head_commit_of,
+    uncommitted_paths,
 )
+from freedom_ls.tests.git_repos import commit_all, init_repo
 
 
 @pytest.fixture(autouse=True)
@@ -225,3 +231,70 @@ class TestBranchToDbName:
 
     def test_hotfix_with_dots(self) -> None:
         assert branch_to_db_name("hotfix-2.1") == "db_hotfix_2_1"
+
+
+# --- find_repo_root, uncommitted_paths and head_commit_of ---
+
+
+def test_find_repo_root_at_the_repo_root_returns_it(
+    committed_content_repo: Path,
+) -> None:
+    assert find_repo_root(committed_content_repo) == committed_content_repo.resolve()
+
+
+def test_find_repo_root_outside_any_repo_returns_none(tmp_path: Path) -> None:
+    assert find_repo_root(tmp_path) is None
+
+
+def test_uncommitted_paths_on_a_clean_tree_is_empty(
+    committed_content_repo: Path,
+) -> None:
+    assert uncommitted_paths(committed_content_repo) == []
+
+
+def _modify(repo: Path) -> None:
+    (repo / "topic.md").write_text("changed\n")
+
+
+def _stage(repo: Path) -> None:
+    (repo / "topic.md").write_text("changed\n")
+    porcelain.add(str(repo), paths=[str(repo / "topic.md")])
+
+
+def _delete(repo: Path) -> None:
+    (repo / "topic.md").unlink()
+
+
+def _add_untracked(repo: Path) -> None:
+    (repo / "new.md").write_text("new\n")
+
+
+@pytest.mark.parametrize(
+    ("change", "name", "kind"),
+    [
+        (_modify, "topic.md", "modified"),
+        (_stage, "topic.md", "staged"),
+        (_delete, "topic.md", "deleted"),
+        (_add_untracked, "new.md", "untracked"),
+    ],
+)
+def test_uncommitted_paths_reports_each_kind_of_change(
+    committed_content_repo: Path, change, name: str, kind: str
+) -> None:
+    change(committed_content_repo)
+
+    assert uncommitted_paths(committed_content_repo) == [UncommittedPath(name, kind)]
+
+
+def test_head_commit_of_returns_the_committed_sha(committed_content_repo: Path) -> None:
+    (committed_content_repo / "second.md").write_text("second\n")
+    sha = commit_all(committed_content_repo)
+
+    assert head_commit_of(committed_content_repo) == sha
+
+
+def test_head_commit_of_a_repo_with_no_commits_raises(tmp_path: Path) -> None:
+    init_repo(tmp_path / "empty")
+
+    with pytest.raises(ValueError, match="no commits"):
+        head_commit_of(tmp_path / "empty")

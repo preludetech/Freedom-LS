@@ -1,5 +1,12 @@
+import os
 import re
+from contextlib import closing
+from dataclasses import dataclass
 from pathlib import Path
+
+from dulwich import porcelain
+from dulwich.errors import NotGitRepository
+from dulwich.repo import Repo
 
 _cached_branch: str | None = None
 _cache_set: bool = False
@@ -157,3 +164,72 @@ def branch_to_db_name(branch: str) -> str:
     sanitized = re.sub(r"[^a-z0-9]", "_", branch.lower())
     sanitized = sanitized[:50]
     return f"db_{sanitized}"
+
+
+@dataclass(frozen=True)
+class UncommittedPath:
+    path: str  # POSIX, relative to the content repo root
+    kind: str  # staged | modified | deleted | untracked | "staged, modified" | "staged, deleted"
+
+
+def find_repo_root(path: Path) -> Path | None:
+    """The resolved root of the git repo holding `path`, or None outside any repo.
+
+    Follows a `.git` file and `commondir`, so a linked worktree gets its own root.
+    A file path starts the walk at its parent.
+    """
+    resolved = path.resolve()
+    start = resolved.parent if resolved.is_file() else resolved
+    try:
+        repo = Repo.discover(str(start))
+    except NotGitRepository:
+        return None
+    with closing(repo):
+        return Path(repo.path).resolve()
+
+
+def uncommitted_paths(path: Path) -> list[UncommittedPath]:
+    """Every file equal to, or under, `path` that differs from the HEAD commit.
+
+    Untracked files count; gitignored ones do not. Sorted by path.
+    """
+    root = find_repo_root(path)
+    if root is None:
+        raise ValueError(f"{path} is not inside a git repository.")
+    status = porcelain.status(str(root), untracked_files="all")
+    kinds: dict[str, str] = {}
+    for names in (
+        status.staged["add"],
+        status.staged["delete"],
+        status.staged["modify"],
+    ):
+        for name in names:
+            kinds[os.fsdecode(name)] = "staged"
+    for raw_name in status.unstaged:
+        name = os.fsdecode(raw_name)
+        kind = "modified" if (root / name).exists() else "deleted"
+        kinds[name] = f"staged, {kind}" if name in kinds else kind
+    for raw_name in status.untracked:
+        kinds.setdefault(os.fsdecode(raw_name), "untracked")
+
+    scope = path.resolve()
+    return [
+        UncommittedPath(path=name, kind=kind)
+        for name, kind in sorted(kinds.items())
+        if (root / name) == scope or scope in (root / name).parents
+    ]
+
+
+def head_commit_of(path: Path) -> str:
+    """The full sha of HEAD for the repo holding `path`.
+
+    Raises ValueError when the path is in no repo or the repo has no commit yet.
+    """
+    root = find_repo_root(path)
+    if root is None:
+        raise ValueError(f"{path} is not inside a git repository.")
+    with closing(Repo(str(root))) as repo:
+        try:
+            return repo.head().decode("ascii")
+        except KeyError as error:
+            raise ValueError(f"The git repository at {root} has no commits.") from error

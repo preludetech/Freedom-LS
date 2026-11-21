@@ -1,6 +1,10 @@
 """
 example usage:
 python manage.py content_save  ../bloom_content Bloom
+
+The source path must be a clean, committed git tree: the command refuses
+uncommitted, staged, deleted and untracked files so a save always matches
+a commit.
 """
 
 import logging
@@ -21,10 +25,16 @@ from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.contrib.sites.models import Site
 from django.core.files import File as DjangoFile
 from django.core.files.base import ContentFile
+from django.core.management.base import CommandError
 from django.db import models, transaction
 from django.utils.module_loading import import_string
 from django.utils.text import slugify
 
+from freedom_ls.base.git_utils import (
+    find_repo_root,
+    head_commit_of,
+    uncommitted_paths,
+)
 from freedom_ls.content_base.schema import (
     DUE_DATE_FIELD_NAMES,
     BaseBaseContentModel,
@@ -1410,11 +1420,83 @@ def save_content_to_db(path, site_name):
     click.echo(f"{summary} ({per_status})." if per_status else f"{summary}.")
 
 
+def _refusal(
+    headline: str,
+    groups: Sequence[tuple[str, Sequence[str]]],
+    fix: str,
+    *,
+    limit: int | None = None,
+) -> str:
+    """The text of every content_save refusal: headline, groups, then the fix last.
+
+    `limit` caps the lines shown per group; the rest collapse to "... and N more".
+    """
+    blocks = [f"❌ {headline}"]
+    for heading, lines in groups:
+        shown = list(lines) if limit is None else list(lines[:limit])
+        block = [heading, *(f"  {line}" for line in shown)]
+        if len(shown) < len(lines):
+            block.append(f"  ... and {len(lines) - len(shown)} more")
+        blocks.append("\n".join(block))
+    blocks.append(fix)
+    return "\n\n".join(blocks)
+
+
+def check_committed(path: str) -> str:
+    """Refuse a source path that is not a clean, committed git tree.
+
+    Returns the HEAD commit the content will be loaded from.
+    """
+    source = Path(path)
+    if find_repo_root(source) is None:
+        raise CommandError(
+            _refusal(
+                "content_save loads only committed content: "
+                f"{path} is not inside a git repository.",
+                [],
+                "Put the content in a git repository and commit it, then run again.",
+            )
+        )
+    try:
+        commit = head_commit_of(source)
+    except ValueError as error:
+        raise CommandError(
+            _refusal(
+                f"content_save loads only committed content: {error}",
+                [],
+                "Make a first commit, then run again.",
+            )
+        ) from error
+    uncommitted = uncommitted_paths(source)
+    if uncommitted:
+        width = max(len(entry.kind) for entry in uncommitted)
+        count = len(uncommitted)
+        raise CommandError(
+            _refusal(
+                "content_save loads only committed content: "
+                f"{count} uncommitted file{'s' if count != 1 else ''}.",
+                [
+                    (
+                        f"Source path: {path}",
+                        [f"{e.kind.ljust(width)}  {e.path}" for e in uncommitted],
+                    )
+                ],
+                "Commit or remove these files, then run again.",
+            )
+        )
+    return commit
+
+
 @click.command()
 @click.argument("path")
 @click.argument("site_name")
 def command(path, site_name):
-    """Validate and save content to database."""
+    """Validate and save committed content to the database.
+
+    The source path must be inside a git repository with no uncommitted,
+    staged, deleted or untracked files.
+    """
+    check_committed(path)
     logger.info("Validating content...")
     validate(path)
     logger.info("Validation complete!")

@@ -8,11 +8,13 @@ from pathlib import Path
 import pytest
 
 from django.contrib.sites.models import Site
-from django.core.management import call_command
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
 from freedom_ls.content_engine.management.commands import content_save
+from freedom_ls.content_engine.management.commands.content_save import (
+    save_content_to_db,
+)
 from freedom_ls.content_engine.models import (
     ContentCollectionItem,
     Course,
@@ -63,7 +65,7 @@ def _write_topic(part_dir: Path, name: str) -> None:
 
 def _load(root: Path, site: Site) -> None:
     drop_ambient_request()
-    call_command("content_save", str(root), site.name)
+    save_content_to_db(root, site.name)
 
 
 def _row_in_part(name: str, part_title: str) -> ContentCollectionItem:

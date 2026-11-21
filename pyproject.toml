@@ -43,6 +43,7 @@ dependencies = [
     "pydantic>=2.12.5",
     "phonenumberslite>=9.0.43",
     "mutagen>=1.48.1",
+    "dulwich>=0.24.0",
 ]
 
 [project.optional-dependencies]

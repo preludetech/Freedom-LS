@@ -9,10 +9,12 @@ from uuid import UUID
 import pytest
 
 from django.contrib.sites.models import Site
-from django.core.management import call_command
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
+from freedom_ls.content_engine.management.commands.content_save import (
+    save_content_to_db,
+)
 from freedom_ls.content_engine.models import (
     ContentCollectionItem,
     Course,
@@ -50,7 +52,7 @@ PART_C = "03. C"
 
 def _load(root: Path, site: Site) -> None:
     drop_ambient_request()
-    call_command("content_save", str(root), site.name)
+    save_content_to_db(root, site.name)
 
 
 def _row_in_part(topic: Topic, part_title: str) -> ContentCollectionItem:
@@ -73,7 +75,7 @@ def _first_load_with_overrides(
     write_part(root, PART_B)
     write_part(root, PART_C)
     write_topic(part_a, "moving")
-    call_command("content_save", str(root), site.name)
+    save_content_to_db(root, site.name)
 
     course = Course.objects.get()
     old_row = _row_in_part(_topic(), PART_A)

@@ -14,11 +14,12 @@ from typing import cast
 
 import pytest
 import yaml
+from dulwich import porcelain
 from PIL import Image
 
 from django.contrib.sites.models import Site
 from django.core.files.base import ContentFile
-from django.core.management import call_command
+from django.core.management import CommandError, call_command
 from django.db import IntegrityError, connection
 from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
@@ -66,6 +67,7 @@ from freedom_ls.form_engine.models import (
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.git_repos import commit_all, init_repo
 from freedom_ls.tests.images import (
     break_png_chunk_crc,
     photographic_jpeg_bytes,
@@ -3328,7 +3330,12 @@ def _write_course_with_dated_entries(course_dir: Path, entries: dict[str, str]) 
 
 
 def _run_content_save(course_dir: Path, site: Site) -> None:
-    """The whole command, which validates before it writes anything."""
+    """The whole command, which validates before it writes anything.
+
+    The command loads only committed content, so the tree is committed first.
+    """
+    init_repo(course_dir)
+    commit_all(course_dir)
     drop_ambient_request()
     call_command("content_save", str(course_dir), site.name)
 
@@ -4402,3 +4409,76 @@ def test_an_unreadable_mp3_stores_no_duration_warns_and_the_run_continues(
     assert File.objects.get(file_path="good.mp3").duration_seconds == pytest.approx(
         BEEP_SECONDS
     )
+
+
+# The command loads only committed content.
+
+
+def _save_from_repo(repo_dir: Path, site: Site) -> None:
+    drop_ambient_request()
+    call_command("content_save", str(repo_dir), site.name, "--traceback")
+
+
+@pytest.mark.django_db
+def test_a_clean_committed_repo_saves(site, mock_site_context, committed_content_repo):
+    _save_from_repo(committed_content_repo, site)
+
+    assert Topic.objects.filter(title="A Topic").exists()
+
+
+def _modify(repo: Path) -> None:
+    (repo / "topic.md").write_text("changed\n")
+
+
+def _stage(repo: Path) -> None:
+    (repo / "topic.md").write_text("changed\n")
+    porcelain.add(str(repo), paths=[str(repo / "topic.md")])
+
+
+def _delete(repo: Path) -> None:
+    (repo / "topic.md").unlink()
+
+
+def _add_untracked(repo: Path) -> None:
+    (repo / "new.md").write_text("new\n")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("change", "listed"),
+    [
+        (_modify, "modified  topic.md"),
+        (_stage, "staged  topic.md"),
+        (_delete, "deleted  topic.md"),
+        (_add_untracked, "untracked  new.md"),
+    ],
+)
+def test_an_uncommitted_file_is_refused_and_listed_with_its_kind(
+    site, mock_site_context, committed_content_repo, change, listed: str
+):
+    change(committed_content_repo)
+
+    with pytest.raises(CommandError, match="loads only committed content") as exc_info:
+        _save_from_repo(committed_content_repo, site)
+
+    assert listed in str(exc_info.value)
+    assert "Commit or remove these files" in str(exc_info.value)
+    assert Topic.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_a_path_outside_any_repo_is_refused(site, mock_site_context, tmp_path: Path):
+    with pytest.raises(CommandError, match="not inside a git repository"):
+        _save_from_repo(tmp_path, site)
+
+    assert Topic.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_a_repo_with_no_commits_is_refused(site, mock_site_context, tmp_path: Path):
+    init_repo(tmp_path / "empty")
+
+    with pytest.raises(CommandError, match="no commits"):
+        _save_from_repo(tmp_path / "empty", site)
+
+    assert Topic.objects.count() == 0
