@@ -54,7 +54,6 @@ from freedom_ls.educator_interface.actions import (
 )
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
-    LEARNER_CHANGED,
     REGISTRATION_CHANGED,
     STAFF_CHANGED,
 )
@@ -89,7 +88,6 @@ from freedom_ls.educator_interface.panels.cohort.data_tables import CohortDataTa
 from freedom_ls.educator_interface.panels.common.badges import (
     active_status_badge,
     inactive_badge,
-    learner_status_badge,
 )
 from freedom_ls.educator_interface.panels.common.ids import uuid_or_404
 from freedom_ls.educator_interface.panels.common.request import (
@@ -103,39 +101,15 @@ from freedom_ls.educator_interface.panels.common.tables import (
 )
 from freedom_ls.educator_interface.panels.course.config import CourseConfig
 from freedom_ls.educator_interface.panels.dashboard.config import DashboardConfig
-
-# Importing the module registers the learners table's bulk actions.
-from freedom_ls.educator_interface.panels.learner import bulk_actions  # noqa: F401
 from freedom_ls.educator_interface.panels.learner.actions import (
-    AddLearnerAction,
-    AddToCohortAction,
-    EditLearnerNameAction,
     ImportLearnersAction,
     MoveToCohortAction,
-    RegisterLearnerForCourseAction,
     RemoveFromCohortAction,
-    ResendSetupEmailAction,
-    learner_state_actions,
 )
-from freedom_ls.educator_interface.panels.learner.data_table_panels import (
-    LearnerCohortsPanel,
-    LearnerHistoryPanel,
-    LearnerRegistrationsPanel,
-)
+from freedom_ls.educator_interface.panels.learner.config import LearnerConfig
 from freedom_ls.educator_interface.panels.learner.data_tables import (
     CohortLearnerDataTable,
-    LearnerDataTable,
 )
-from freedom_ls.educator_interface.panels.learner.messages import (
-    LearnerMessagesStack,
-)
-from freedom_ls.educator_interface.panels.learner.panels import (
-    LearnerAccountPanel,
-    LearnerCoursesPanel,
-    LearnerDetailsPanel,
-    LearnerNamePanel,
-)
-from freedom_ls.educator_interface.panels.learner.quick_view import LearnerQuickView
 from freedom_ls.educator_interface.panels.staff.actions import (
     AddStaffMemberToCohortAction,
     ChangeRoleAction,
@@ -168,12 +142,9 @@ from freedom_ls.learner_management.queries import (
     ASSIGN_COHORT_VIEWER,
     CHANGE_COHORT,
     VIEW_CONVERSATION,
-    LearnerStatus,
     cohort_counts,
     cohort_educators,
     cohorts_visible_to,
-    learner_status,
-    learners_visible_to,
     organisations_accessible_to,
 )
 from freedom_ls.learner_management.utils import record_cohort_entry
@@ -217,89 +188,6 @@ from freedom_ls.reports.services import report_file_response
 #
 # instance edit
 # instance, other actions (eg: send_email)
-
-
-class LearnerOverviewStack(PanelStack):
-    """No refresh events of its own: each child re-fetches itself on
-    LEARNER_CHANGED, so a stack refresh would render them all twice."""
-
-    title = "Overview"
-    children = {
-        "details": LearnerDetailsPanel,
-        "cohorts": LearnerCohortsPanel,
-        "registrations": LearnerRegistrationsPanel,
-    }
-
-
-class LearnerCoursesStack(PanelStack):
-    title = "Courses"
-    refresh_events = (LEARNER_CHANGED,)
-    children = {"courses": LearnerCoursesPanel}
-
-
-class LearnerSettingsStack(PanelStack):
-    """The learner's Settings tab: the actions with no home of their own,
-    one panel per job. Add to cohort lives on the Cohorts panel and Register
-    for a course on the Courses tab, beside what they change."""
-
-    model = Learner
-    title = "Settings"
-    children = {"name": LearnerNamePanel, "account": LearnerAccountPanel}
-
-
-def settings_actions(learner: Learner) -> list[PanelAction]:
-    """The Settings tab's actions on one learner, in the order it offers
-    them: those with no home beside the thing they change."""
-    return [
-        EditLearnerNameAction(learner),
-        ResendSetupEmailAction(),
-        *learner_state_actions(),
-    ]
-
-
-def learner_actions(learner: Learner) -> list[PanelAction]:
-    """Every action on one learner, so each keeps its instance-level URL.
-    The Settings tab, the Cohorts panel and the Courses tab draw the
-    triggers; the page header draws none."""
-    return [
-        *settings_actions(learner),
-        AddToCohortAction(),
-        RegisterLearnerForCourseAction(),
-    ]
-
-
-class LearnerTabSet(TabSet):
-    title = "Learner sections"
-    children = {
-        "overview": LearnerOverviewStack,
-        "courses": LearnerCoursesStack,
-        "messages": LearnerMessagesStack,
-        "settings": LearnerSettingsStack,
-        "history": LearnerHistoryPanel,
-    }
-
-
-class LearnerInstanceView(InstanceView):
-    panel = LearnerTabSet
-    header_refresh_events = (LEARNER_CHANGED,)
-
-    def get_status_badge(self) -> StatusBadge | None:
-        """Active is the default state, so only Pending and Inactive show."""
-        learner = cast(Learner, self.instance)
-        if learner_status(learner) is LearnerStatus.ACTIVE:
-            return None
-        return learner_status_badge(learner)
-
-    def get_subtitle(self) -> str:
-        return cast(Learner, self.instance).user.email
-
-    def get_actions(self) -> list[PanelAction]:
-        # The actions keep their instance-level URLs; the Settings tab
-        # draws their triggers, so the header draws none.
-        return learner_actions(cast(Learner, self.instance))
-
-    def get_header_actions(self) -> list[PanelAction]:
-        return []
 
 
 class CohortDetailsPanel(InstanceDetailsPanel):
@@ -707,40 +595,6 @@ class CohortConfig(OrganisationSectionConfig, ListViewConfig):
         organisation = cast(OrganisationScopedRequest, request).organisation
         if (
             not cohorts_visible_to(request.user, organisation)
-            .filter(pk=instance.pk)
-            .exists()
-        ):
-            raise OrganisationScopeDenied
-
-
-class LearnerConfig(OrganisationSectionConfig, ListViewConfig):
-    url_name = "learners"
-    menu_label = "Learners"
-    icon = "user"
-    model = Learner
-    list_view = LearnerDataTable
-    table_key = "learners"
-    instance_view = LearnerInstanceView
-    refresh_events = (LEARNER_CHANGED,)
-    quick_view = LearnerQuickView
-
-    @classmethod
-    def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
-        return [AddLearnerAction(), ImportLearnersAction()]
-
-    @classmethod
-    def get_bulk_actions(cls, request: HttpRequest) -> list[BulkAction]:
-        return list(bulk_actions_for_table(cls.table_key))
-
-    @classmethod
-    def get_instance_label(cls, instance: Model) -> str:
-        return cast(Learner, instance).user.display_name
-
-    @classmethod
-    def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
-        organisation = cast(OrganisationScopedRequest, request).organisation
-        if (
-            not learners_visible_to(request.user, organisation, include_inactive=True)
             .filter(pk=instance.pk)
             .exists()
         ):
