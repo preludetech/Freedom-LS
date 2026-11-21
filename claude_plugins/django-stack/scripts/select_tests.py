@@ -19,16 +19,20 @@ the apps that import them, and the tests the branch's own paths select.
 from __future__ import annotations
 
 import argparse
+import functools
 import re
 import shlex
 import subprocess
 import tomllib
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path, PurePosixPath
 from typing import Literal
 
+import module_graph
 from check_test_mirroring import is_collected, owning_app
 from generate_app_map import App, Edges, find_apps, parse_existing_edges
+from module_graph import ModuleGraph, path_module_name
 
 # Paths whose change cannot alter a test result. "*.md" is root-level only on purpose:
 # markdown deeper in the tree can be content that tests read.
@@ -89,6 +93,8 @@ RANGE_PATTERN = re.compile(r"^[A-Za-z0-9_./~^@{}-]+\.\.[A-Za-z0-9_./~^@{}-]+$")
 
 BRANCH_TEST_REASON = "branch test file; runs only with a targeted tier"
 
+NARROW_TAIL = "(narrow; the rest is left to a full run)"
+
 RUNNER_WRAPPER = ".claude/ds/scripts/run_tests.sh"
 
 FULL_COMMAND = "uv run pytest -n auto"
@@ -125,6 +131,8 @@ class Decision:
     selects: tuple[str, ...]
     reason: str
     touched: tuple[str, ...] = ()
+    # Set for a decision made under `narrow`, which leaves some tests to a full run.
+    narrowed: bool = False
 
 
 def glob_list(
@@ -391,12 +399,50 @@ def test_file_decision(path: str, project_root: Path) -> Decision | None:
     return Decision(path, "select", (path,), reason, touched)
 
 
+def narrowed(decisions: list[Decision]) -> list[Decision]:
+    """Mark the decisions that narrow the run; a `full` one narrows nothing."""
+    return [replace(d, narrowed=True) if d.kind != "full" else d for d in decisions]
+
+
+def imports_decision(
+    path: str, app: App, graph: ModuleGraph, project_root: Path
+) -> Decision:
+    """The test files that reach the module `path` through imports, outside the owning
+    app's tests directory, which the owner decision already selects.
+
+    A browser test is kept only when the change is one a browser can see.
+    """
+    owner_tests = tests_dir_of(app, project_root)
+    keep_browser_tests = first_match(path, UI_GLOBS) is not None
+    files = sorted(
+        f
+        for f in graph.test_files_reaching({path_module_name(path)})
+        if not targets_overlap(f, owner_tests)
+        and (keep_browser_tests or playwright_tests_root(PurePosixPath(f)) is None)
+    )
+    reason = f"{len(files)} test files through imports"
+    if not files:
+        return Decision(path, "none", (), reason)
+    return Decision(path, "select", tuple(files), reason)
+
+
+def narrow_app_python(
+    path: str, app: App, graph: Callable[[], ModuleGraph], project_root: Path
+) -> list[Decision]:
+    """The owning app's tests, plus the test files that import the module."""
+    return [
+        owner_decision(path, app, project_root),
+        imports_decision(path, app, graph(), project_root),
+    ]
+
+
 def decide(
     path: str,
     apps: list[App],
     config: TierConfig,
     edges: Edges | None,
     project_root: Path,
+    graph: Callable[[], ModuleGraph],
     untracked: bool = False,
 ) -> list[Decision]:
     """Apply the rules in order; the first one that matches `path` decides.
@@ -421,6 +467,8 @@ def decide(
 
     app = owning_app(apps, project_root, path)
     if app is not None:
+        if config.narrow and path.endswith(".py"):
+            return narrowed(narrow_app_python(path, app, graph, project_root))
         return decide_app_path(path, app, apps, edges, project_root)
 
     tooling = decide_tooling(path, config, project_root)
@@ -570,6 +618,10 @@ def git_paths(argv: list[str]) -> list[str]:
     return [p for p in result.stdout.split("\0") if p]
 
 
+def tracked_python_files() -> list[str]:
+    return git_paths(["git", "ls-files", "-z", "--", "*.py"])
+
+
 def range_type(value: str) -> str:
     if RANGE_PATTERN.fullmatch(value) is None:
         raise argparse.ArgumentTypeError(f"not a <rev>..<rev> range: {value!r}")
@@ -682,6 +734,7 @@ def branch_test_decisions(
     config: TierConfig,
     edges: Edges | None,
     project_root: Path,
+    graph: Callable[[], ModuleGraph],
 ) -> list[Decision]:
     """One decision per collected test file the range changed and the checkout still has.
 
@@ -691,7 +744,7 @@ def branch_test_decisions(
     decisions = [
         d
         for path in sorted(range_paths(revision_range))
-        for d in decide(path, apps, config, edges, project_root)
+        for d in decide(path, apps, config, edges, project_root, graph)
         if d.kind == "select" and d.reason.startswith("changed test file")
     ]
     return [replace(d, reason=BRANCH_TEST_REASON) for d in decisions]
@@ -797,20 +850,26 @@ def main() -> int:
         upstream = split.upstream
         branch_paths = (set(paths) - upstream) | split.own_paths
         context = branch_context(branch_paths, apps, edges, config, project_root)
-    decisions = [
-        d
-        for p in paths
-        for d in (
-            decide_upstream(p, apps, config, edges, context, project_root)
-            if context is not None and edges is not None and p in upstream
-            else decide(p, apps, config, edges, project_root, p in untracked)
-        )
-    ]
+    graph = functools.cache(
+        lambda: module_graph.build(project_root, tracked_python_files())
+    )
+    try:
+        decisions = [
+            d
+            for p in paths
+            for d in (
+                decide_upstream(p, apps, config, edges, context, project_root)
+                if context is not None and edges is not None and p in upstream
+                else decide(p, apps, config, edges, project_root, graph, p in untracked)
+            )
+        ]
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        parser.error(f"git failed: {exc}")
     tier_decisions = decisions
     if args.tests_changed_in is not None:
         try:
             decisions = decisions + branch_test_decisions(
-                args.tests_changed_in, apps, config, edges, project_root
+                args.tests_changed_in, apps, config, edges, project_root, graph
             )
         except (subprocess.CalledProcessError, FileNotFoundError) as exc:
             parser.error(f"git failed: {exc}")
@@ -831,7 +890,8 @@ def main() -> int:
         print("mode: narrow")
     for d in decisions:
         outcome = {"none": "none", "full": "full"}.get(d.kind) or ", ".join(d.selects)
-        print(f"why: {d.path} -> {outcome} ({d.reason})")
+        tail = f" {NARROW_TAIL}" if d.narrowed else ""
+        print(f"why: {d.path} -> {outcome} ({d.reason}){tail}")
     if tier == "full":
         print(f"command: {full_command(config, project_root)}")
     elif tier == "targeted":

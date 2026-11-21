@@ -857,7 +857,7 @@ def test_mode_line_follows_the_tier_line_only_while_narrowing_is_in_effect(
     expects_mode_line: bool,
 ) -> None:
     # Arrange
-    write_tree(tmp_path, alpha_app() | {"pyproject.toml": pyproject})
+    git_repo(tmp_path, alpha_app() | {"pyproject.toml": pyproject})
 
     # Act
     result = run_script(SCRIPT, tmp_path, *args, "pkg/alpha/services.py")
@@ -2093,3 +2093,150 @@ def test_upstream_module_in_a_branch_app_selects_every_importer(
         "why: pkg/alpha/services.py -> pkg/gamma/tests "
         "(from main; gamma has a test-only dep on alpha)"
     ) in lines(result.stdout, "why")
+
+
+TAIL = "(narrow; the rest is left to a full run)"
+
+
+def narrow_import_repo(tmp_path: Path, extra: dict[str, str] | None = None) -> None:
+    """A committed `alpha`/`beta`/`gamma` tree, narrowing on, where one `beta` test file
+    imports `pkg.alpha.leaf` and `gamma` imports a different `alpha` module."""
+    tree = beta_gamma_apps() | {
+        "pyproject.toml": NARROW_TABLE,
+        "pkg/alpha/leaf.py": "",
+        "pkg/alpha/other.py": "",
+        "pkg/alpha/views.py": "",
+        "pkg/alpha/tests/test_leaf.py": "from pkg.alpha import leaf\n",
+        "pkg/beta/tests/test_uses_leaf.py": "from pkg.alpha import leaf\n",
+        "pkg/gamma/other.py": "import pkg.alpha.other\n",
+        "pkg/gamma/tests/test_other.py": "import pkg.gamma.other\n",
+    }
+    git_repo(tmp_path, tree | (extra or {}))
+
+
+def test_leaf_module_change_selects_its_app_and_the_test_files_importing_it(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    narrow_import_repo(tmp_path)
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/leaf.py")
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: targeted"]
+    assert lines(result.stdout, "why") == [
+        f"why: pkg/alpha/leaf.py -> pkg/alpha/tests (owning app alpha) {TAIL}",
+        "why: pkg/alpha/leaf.py -> pkg/beta/tests/test_uses_leaf.py "
+        f"(1 test files through imports) {TAIL}",
+    ]
+    assert lines(result.stdout, "command") == [
+        "command: uv run pytest -n auto --no-cov "
+        "pkg/alpha/tests pkg/beta/tests/test_uses_leaf.py"
+    ]
+
+
+def test_module_nothing_imports_selects_only_its_app_and_says_none_reach_it(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    narrow_import_repo(tmp_path)
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/views.py")
+
+    # Assert
+    assert lines(result.stdout, "why")[1] == (
+        f"why: pkg/alpha/views.py -> none (0 test files through imports) {TAIL}"
+    )
+    assert lines(result.stdout, "command") == [
+        "command: uv run pytest -n auto --no-cov pkg/alpha/tests"
+    ]
+
+
+def test_module_imported_through_a_helper_selects_the_test_file_importing_the_helper(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    narrow_import_repo(
+        tmp_path,
+        {
+            "pkg/gamma/helpers.py": "from pkg.alpha import leaf\n",
+            "pkg/gamma/tests/test_x.py": "import pkg.gamma.helpers\n",
+        },
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/leaf.py")
+
+    # Assert
+    assert lines(result.stdout, "command") == [
+        "command: uv run pytest -n auto --no-cov pkg/alpha/tests "
+        "pkg/beta/tests/test_uses_leaf.py pkg/gamma/tests/test_x.py"
+    ]
+
+
+def test_change_to_a_module_a_sibling_app_does_not_reach_leaves_that_app_out(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    narrow_import_repo(tmp_path)
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/leaf.py")
+
+    # Assert
+    assert "pkg/gamma/tests" not in result.stdout
+    assert "pkg/beta/tests " not in result.stdout
+
+
+@pytest.mark.parametrize(
+    ("changed", "browser_test_kept"),
+    [("pkg/alpha/leaf.py", False), ("pkg/alpha/views.py", True)],
+)
+def test_browser_test_reached_by_import_is_kept_only_for_a_change_a_browser_sees(
+    tmp_path: Path, changed: str, browser_test_kept: bool
+) -> None:
+    # Arrange
+    narrow_import_repo(
+        tmp_path,
+        {
+            "pkg/beta/tests/playwright/test_ui.py": (
+                "import pkg.alpha.leaf\nimport pkg.alpha.views\n"
+            )
+        },
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, changed)
+
+    # Assert
+    assert ("pkg/beta/tests/playwright/test_ui.py" in result.stdout) is (
+        browser_test_kept
+    )
+
+
+def test_unrelated_path_never_builds_the_graph(tmp_path: Path) -> None:
+    # Arrange
+    narrow_import_repo(tmp_path, {"pkg/alpha/broken.py": "def (:\n"})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "docs/guide.md")
+
+    # Assert
+    assert result.returncode == 0
+    assert "could not parse" not in result.stderr
+
+
+def test_module_change_builds_the_graph_and_warns_about_a_file_that_does_not_parse(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    narrow_import_repo(tmp_path, {"pkg/alpha/broken.py": "def (:\n"})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/leaf.py")
+
+    # Assert
+    assert result.returncode == 0
+    assert "could not parse pkg/alpha/broken.py" in result.stderr
