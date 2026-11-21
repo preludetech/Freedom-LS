@@ -7,6 +7,7 @@ a `pyproject.toml` plus a namespace package (`pkg/`, no `__init__.py`) holding a
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -2240,3 +2241,176 @@ def test_module_change_builds_the_graph_and_warns_about_a_file_that_does_not_par
     # Assert
     assert result.returncode == 0
     assert "could not parse pkg/alpha/broken.py" in result.stderr
+
+
+def command_args(result: subprocess.CompletedProcess[str]) -> list[str]:
+    return lines(result.stdout, "command")[0].split()
+
+
+@pytest.mark.parametrize(
+    "import_line",
+    [
+        "import pkg.alpha.leaf\n",
+        "from pkg.alpha import leaf\n",
+        "from pkg.alpha.leaf import thing\n",
+    ],
+)
+def test_each_absolute_import_form_selects_the_importing_test_file(
+    tmp_path: Path, import_line: str
+) -> None:
+    # Arrange
+    narrow_import_repo(tmp_path, {"pkg/gamma/tests/test_form.py": import_line})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/leaf.py")
+
+    # Assert
+    assert "pkg/gamma/tests/test_form.py" in command_args(result)
+
+
+@pytest.mark.parametrize(
+    ("module_path", "source"),
+    [
+        ("pkg/alpha/sub/mod.py", "from ..leaf import thing\n"),
+        ("pkg/alpha/sub/mod.py", "from .. import leaf\n"),
+        ("pkg/alpha/sub/__init__.py", "from ..leaf import thing\n"),
+        ("pkg/alpha/mod.py", "from . import leaf\n"),
+        ("pkg/alpha/__init__.py", "from . import leaf\n"),
+        ("pkg/alpha/mod.py", "from .leaf import thing\n"),
+    ],
+)
+def test_relative_import_resolves_to_the_module_it_names(
+    tmp_path: Path, module_path: str, source: str
+) -> None:
+    # Arrange
+    imported = path_to_import(module_path)
+    narrow_import_repo(
+        tmp_path,
+        {
+            module_path: source,
+            "pkg/gamma/tests/test_rel.py": f"import {imported}\n",
+        },
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/leaf.py")
+
+    # Assert
+    assert "pkg/gamma/tests/test_rel.py" in command_args(result)
+
+
+def path_to_import(module_path: str) -> str:
+    """The dotted name a test file imports to reach `module_path`."""
+    stem = module_path.removesuffix(".py").removesuffix("/__init__")
+    return stem.replace("/", ".")
+
+
+def test_package_init_change_selects_test_files_importing_a_submodule_of_it(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    narrow_import_repo(
+        tmp_path,
+        {
+            "pkg/gamma/tests/test_dotted.py": "import pkg.alpha.leaf\n",
+            "pkg/gamma/tests/test_from.py": "from pkg.alpha import leaf\n",
+        },
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/__init__.py")
+
+    # Assert
+    args = command_args(result)
+    assert "pkg/gamma/tests/test_dotted.py" in args
+    assert "pkg/gamma/tests/test_from.py" in args
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "def load():\n    from pkg.alpha import leaf\n",
+        "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from pkg.alpha import leaf\n",
+    ],
+)
+def test_import_inside_a_function_or_type_checking_block_counts(
+    tmp_path: Path, source: str
+) -> None:
+    # Arrange
+    narrow_import_repo(tmp_path, {"pkg/gamma/tests/test_lazy.py": source})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/leaf.py")
+
+    # Assert
+    assert "pkg/gamma/tests/test_lazy.py" in command_args(result)
+
+
+def test_module_imported_only_by_a_conftest_selects_the_test_files_below_it(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    narrow_import_repo(
+        tmp_path,
+        {
+            "pkg/alpha/fixture_helper.py": "",
+            "pkg/beta/tests/conftest.py": "import pkg.alpha.fixture_helper\n",
+            "pkg/beta/tests/sub/test_below.py": "",
+            "pkg/gamma/tests/test_elsewhere.py": "",
+        },
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/fixture_helper.py")
+
+    # Assert
+    args = command_args(result)
+    assert "pkg/beta/tests/sub/test_below.py" in args
+    assert "pkg/beta/tests/test_uses_leaf.py" in args
+    assert not any(arg.startswith("pkg/gamma/tests") for arg in args)
+
+
+def test_module_deleted_in_a_range_still_selects_the_test_file_importing_it(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    narrow_import_repo(tmp_path)
+    run_command(["git", "rm", "--quiet", "pkg/alpha/leaf.py"], tmp_path)
+    commit_all(tmp_path, "delete leaf")
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "--range", "HEAD~1..HEAD")
+
+    # Assert
+    assert result.returncode == 0
+    assert "pkg/beta/tests/test_uses_leaf.py" in command_args(result)
+
+
+def test_module_deleted_in_the_working_tree_only_still_selects_its_importers(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    narrow_import_repo(tmp_path)
+    (tmp_path / "pkg/alpha/leaf.py").unlink()
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "--working-tree")
+
+    # Assert
+    assert result.returncode == 0
+    assert "Traceback" not in result.stderr
+    assert "pkg/beta/tests/test_uses_leaf.py" in command_args(result)
+
+
+def test_relative_import_deeper_than_the_package_adds_no_name_and_raises_nothing(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    narrow_import_repo(tmp_path, {"top.py": "from ... import x\n"})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/leaf.py")
+
+    # Assert
+    assert result.returncode == 0
+    assert result.stderr == ""
