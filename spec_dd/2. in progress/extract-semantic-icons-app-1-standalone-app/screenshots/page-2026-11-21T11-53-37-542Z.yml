@@ -1,0 +1,100 @@
+- generic [active] [ref=f5e1]:
+  - banner [ref=f5e2]:
+    - link [ref=f5e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f5e4]
+      - heading "FirstClass" [level=1] [ref=f5e5]
+    - navigation [ref=f5e6]:
+      - generic [ref=f5e7]:
+        - generic [ref=f5e8]:
+          - button "Messages" [ref=f5e9]
+          - status:
+            - generic [ref=f5e13]: Messages
+        - generic [ref=f5e14]:
+          - button "Notifications, 1 new" [ref=f5e15]
+          - status:
+            - generic [ref=f5e19]: Notifications, 1 new
+            - generic [aria-hidden] [ref=f5e20]: "1"
+        - button "Open user menu for demodev@email.com" [ref=f5e22] [cursor=pointer]:
+          - generic [ref=f5e23]:
+            - generic [ref=f5e24]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f5e25]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f5e26]:
+    - generic [ref=f5e28]:
+      - link "Back" [ref=f5e29] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f5e34]:
+        - heading "Content Widgets - Demo Reference" [level=1] [ref=f5e35]
+        - paragraph [ref=f5e36]: A working reference for content authors
+        - generic [ref=f5e38]:
+          - generic [ref=f5e42]:
+            - paragraph [ref=f5e43]: Lessons
+            - paragraph [ref=f5e44]: 5 lessons
+          - generic [ref=f5e48]:
+            - paragraph [ref=f5e49]: Enrolment
+            - paragraph [ref=f5e50]: Free · open
+      - generic [ref=f5e51]:
+        - complementary [ref=f5e52]:
+          - generic [ref=f5e54]:
+            - generic [ref=f5e55]:
+              - paragraph [ref=f5e56]: Free · open to everyone
+              - paragraph [ref=f5e57]: One click. No credit card.
+            - link "Continue" [ref=f5e58] [cursor=pointer]:
+              - /url: /courses/content-widgets-demo-reference/1/
+            - generic [ref=f5e59]:
+              - heading "This course includes" [level=3] [ref=f5e60]
+              - list [ref=f5e61]:
+                - listitem [ref=f5e62]: 5 lessons
+        - generic [ref=f5e63]:
+          - generic [ref=f5e64]:
+            - heading "About this course" [level=2] [ref=f5e65]
+            - generic [ref=f5e66]:
+              - paragraph [ref=f5e67]: "This course is two things at once: living documentation and a set of QA fixtures."
+              - paragraph [ref=f5e68]: Every widget the content system ships with appears here, with every option exercised at least once. If you are authoring content, read it as a reference — each topic explains what a widget is for, then shows the exact markdown that produces it. If you are testing a rendering change, load this course and check that nothing breaks.
+              - paragraph [ref=f5e69]: "Three topics, grouped by what the widgets do: annotation and emphasis, media, and structured content."
+          - generic [ref=f5e70]:
+            - heading "Course content" [level=2] [ref=f5e71]
+            - navigation "Course outline" [ref=f5e73]:
+              - list [ref=f5e74]:
+                - listitem [ref=f5e75]:
+                  - generic [ref=f5e76]:
+                    - generic [ref=f5e77]: "1."
+                    - generic [ref=f5e78]: Completed
+                    - link "Annotation and Emphasis" [ref=f5e83] [cursor=pointer]:
+                      - /url: /courses/content-widgets-demo-reference/1/
+                - listitem [ref=f5e84]:
+                  - generic [ref=f5e85]:
+                    - generic [ref=f5e86]: "2."
+                    - generic [ref=f5e87]: Completed
+                    - link "Media" [ref=f5e92] [cursor=pointer]:
+                      - /url: /courses/content-widgets-demo-reference/2/
+                - listitem [ref=f5e93]:
+                  - generic [ref=f5e94]:
+                    - generic [ref=f5e95]: "3."
+                    - generic [ref=f5e96]: Completed
+                    - link "Structured Content" [ref=f5e101] [cursor=pointer]:
+                      - /url: /courses/content-widgets-demo-reference/3/
+                - listitem [ref=f5e102]:
+                  - generic [ref=f5e103]:
+                    - generic [ref=f5e104]: "4."
+                    - generic [ref=f5e105]: In progress
+                    - link "Interactive Widgets" [ref=f5e110] [cursor=pointer]:
+                      - /url: /courses/content-widgets-demo-reference/4/
+                - listitem [ref=f5e111]:
+                  - generic [ref=f5e112]:
+                    - generic [ref=f5e113]: "5."
+                    - generic [ref=f5e114]: Locked
+                    - generic [ref=f5e118]: Cards
+  - contentinfo [ref=f5e119]:
+    - generic [ref=f5e120]:
+      - paragraph [ref=f5e121]: © 2026 FirstClass
+      - navigation "Legal" [ref=f5e122]:
+        - link "Terms and Conditions" [ref=f5e123] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f5e124] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f5e125] [cursor=pointer]: extract-semantic-icons-app-1-standalone-app
+  - generic "Show toolbar" [ref=f5e127]: DJDT

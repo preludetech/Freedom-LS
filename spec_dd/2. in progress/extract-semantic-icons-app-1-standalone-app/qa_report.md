@@ -1,89 +1,148 @@
 # QA report: semantic icons app, standalone
 
+Test plan: `3. frontend_qa.md` (Tests 1 to 4).
+
 ## Methodology
 
-Screenshots were collected into `spec_dd/2. in progress/extract-semantic-icons-app-1-standalone-app/screenshots/`, and every image referenced below exists beside this report. The run did not abort at the smoke gate, so every step ran. Tests came from `3. frontend_qa.md`. Tests 1 and 3 ran at desktop, mobile and tablet. Test 2 ran at desktop and tablet. Test 4 ran at desktop only.
+Screenshots were collected into `screenshots/` beside this report, and every image referenced below
+exists there. The run did not abort at the smoke gate, so every step ran. Tests 1 to 4 ran at desktop
+1920x1080. The viewport-marked tests (1 and 3) were re-run at mobile 375x812, and a tablet 768 pass was
+added for Tests 1 and 3.
+
+Setup checks: `manage.py check` printed no `icons.*` line (no W002 to W004, no E002, no E008). The
+server log showed no `KeyError` or `IconResolutionError`. The only 500 was the first home-page load,
+before the pending form_engine migrations were applied (see Data changes).
 
 ## Diff scoping
 
-Class: **FULL**. The changed files that triggered it:
-
-- `freedom_ls/icons/**` and `freedom_ls/icons/data/*.json`
-- `config/settings_base.py`
-- `package.json` and `package-lock.json`
-- `pyproject.toml`
-- `scripts/generate_icon_subset.py`
-- the tests and test_organisation files
-
-Nothing was skipped. Every pass ran.
+Class: **FULL**. Changed files that triggered it: `freedom_ls/icons/*`,
+`freedom_ls/icons/data/*/icons.json`, `config/settings_base.py`, `freedom_ls/base/app_settings.py`,
+`freedom_ls/panel_framework/app_settings.py`, `package.json`, `pyproject.toml`,
+`scripts/generate_icon_subset.py`, docs and plugin docs, tests. Non-`.py` files (icons.json,
+package.json, pyproject.toml) changed, so Rule 4 makes it FULL. Nothing was skipped.
 
 ## Smoke gate
 
-Outcome: **pass**. Pages loaded: `/` and `/courses/functionality-demo-course-parts/1/`. No failure URL and no failure reason.
+Outcome: **pass**. Pages loaded: `/` and `/courses/content-widgets-demo-reference/4/`.
 
 ## Design check
 
-No design states tested. No test has a design checklist.
-
-## Layout probe
-
-| Test id | Viewport | URL | Screenshot | Result |
-|---|---|---|---|---|
-| 1.1 | desktop | / | ![](screenshots/page-2026-11-21T06-59-23-274Z.png) | clean |
-| 1 | desktop | /courses/ | ![](screenshots/page-2026-11-21T06-59-45-732Z.png) | clean |
-| 1 | desktop | /courses/functionality-demo-course-parts/detail/ | ![](screenshots/page-2026-11-21T07-00-01-746Z.png) | clean |
-| 1 | desktop | /courses/functionality-demo-course-parts/1/ | ![](screenshots/page-2026-11-21T07-00-16-008Z.png) | clean |
-| 1 | desktop | /courses/functionality-demo-course-parts/2/ | ![](screenshots/page-2026-11-21T07-00-31-976Z.png) | clean |
-| 3 | desktop | /educator/organisations/demodev/dashboard | ![](screenshots/page-2026-11-21T07-00-51-159Z.png) | clean |
-| 3 | desktop | /educator/organisations/demodev/cohorts/684c05e9-cea4-4a75-89e7-ec7c2a7ab41c | ![](screenshots/page-2026-11-21T07-01-06-402Z.png) | clean |
-| 3 | desktop | /educator/organisations/demodev/learners | ![](screenshots/page-2026-11-21T07-01-20-807Z.png) | clean |
-| 3 | desktop | /educator/organisations/demodev/learners (quick view open) | ![](screenshots/page-2026-11-21T07-01-32-134Z.png) | clean |
-| 3 | desktop | /educator/organisations/demodev/learners (Add filter open) | ![](screenshots/page-2026-11-21T07-01-42-216Z.png) | clean |
-| 3 | desktop | /educator/organisations/demodev/learners/4fedbe0b-f380-4864-989b-4bbea4f05e00 | ![](screenshots/page-2026-11-21T07-01-59-208Z.png) | clean |
-| 2 | desktop | /courses/content-widgets-demo-reference/4/ (scrolled to Custom type: Regulation) | ![](screenshots/page-2026-11-21T07-02-31-186Z.png) | clean |
-| 4 | desktop | /this-page-does-not-exist/ | ![](screenshots/page-2026-11-21T07-02-45-789Z.png) | clean |
-| 1 | mobile | /courses/functionality-demo-course-parts/2/ | ![](screenshots/page-2026-11-21T07-03-02-487Z.png) | clean |
-| 1 | mobile | /courses/functionality-demo-course-parts/2/ (course outline sheet open) | ![](screenshots/page-2026-11-21T07-03-11-251Z.png) | flags: "stacked: sidebar ink spans x=0..375, more than half of the 375px viewport"; "overlap: content and sidebar ink intersect". Both come from the deliberately opened modal bottom sheet (`dialog.side-panel-dialog`) drawn over the blurred page, which is the intended mobile outline. With the sheet closed the same page has no flags. Not a defect. |
-| 1 | mobile | / | ![](screenshots/page-2026-11-21T07-03-30-517Z.png) | clean |
-| 3 | mobile | /educator/organisations/demodev/learners | ![](screenshots/page-2026-11-21T07-03-40-790Z.png) | clean |
-| 2 | tablet | /courses/content-widgets-demo-reference/4/ | ![](screenshots/page-2026-11-21T07-03-58-507Z.png) | clean |
-| 3 | tablet | /educator/organisations/demodev/learners | ![](screenshots/page-2026-11-21T07-04-07-124Z.png) | clean |
+No design states tested: no design records exist this run (the plan has no `-design` tests).
 
 ## Test results
 
-Every test passed.
+| Test | Viewport | Result | Notes | Screenshot |
+|---|---|---|---|---|
+| 1 Home | desktop | pass | 51 visible icons, none empty, sizes 16/20/24/48, none stretched or tiny | ![](screenshots/page-2026-11-21T11-52-09-217Z.png) |
+| 2 Regulation glyph | desktop | pass | Label "Regulation" with heroicons `scale` glyph, 20x20, not fallback, not blank | ![](screenshots/page-2026-11-21T11-52-53-951Z.png) |
+| 2-data-icon | desktop | **fail** | No `data-icon` on the Regulation svg (see B1) | ![](screenshots/page-2026-11-21T11-52-53-951Z.png) |
+| 2-other-admonitions | desktop | pass | Note, Tip, Important, Warning, Danger, notes, check, info each draw their own 20px icon | ![](screenshots/page-2026-11-21T11-53-11-049Z.png) |
+| 1 Course list | desktop | pass | 36 visible icons, none empty | ![](screenshots/page-2026-11-21T11-53-30-015Z.png) |
+| 1 Course detail | desktop | pass | Back arrow, stat icons, outline icons draw; hero art is the intended size-60 decoration | ![](screenshots/page-2026-11-21T11-53-38-910Z.png) |
+| 1 Topic page | desktop | pass | Outline, part chevrons, prev/next, deadline clock draw; no empty svgs | ![](screenshots/page-2026-11-21T11-53-48-314Z.png) |
+| 1-chevron | desktop | **fail** | Open part shows right chevron, not up (see B2) | ![](screenshots/page-2026-11-21T11-53-48-314Z.png) |
+| 3 Dashboard | desktop | pass | Nav icons, org switcher chevron, settings draw | ![](screenshots/page-2026-11-21T11-54-21-688Z.png) |
+| 3 Learners list | desktop | pass | Search, filter chevrons, Export CSV, sort, eye draw; 0 empty svgs. Pager is text buttons, no arrow icons | ![](screenshots/page-2026-11-21T11-54-33-816Z.png) |
+| 3 Quick view | desktop | pass | open_page, close, send draw at 20px; closed with x | ![](screenshots/page-2026-11-21T11-55-19-934Z.png) |
+| 3 Status filter | desktop | pass | Check marks at 16px, chevron turns up while open | ![](screenshots/page-2026-11-21T11-56-42-591Z.png) |
+| 3 Cohort detail | desktop | pass | Back arrow, nav, Learners tab icons draw | ![](screenshots/page-2026-11-21T11-56-54-261Z.png) |
+| 3 Cohort list | desktop | pass | Search, sort, quick-view icons draw | ![](screenshots/page-2026-11-21T11-57-43-221Z.png) |
+| 3 Learner page | desktop | pass | Back arrow, search, sort draw | ![](screenshots/page-2026-11-21T11-58-09-092Z.png) |
+| 3-solid | desktop | pass | Only the header bell/messages use solid (24px, intended, not clipped); no mini/micro variant in any template | ![](screenshots/page-2026-11-21T11-58-30-724Z.png) |
+| 3-more-options | desktop | skip | No more_options (vertical ellipsis) control renders on any educator page with the demo data; only used by cotton dropdown-menu components not instanced on these pages | none |
+| 4 404 page | desktop | pass | See note below | ![](screenshots/page-2026-11-21T11-59-37-337Z.png) |
+| 1 Home | mobile | pass | Icons draw, scrollWidth 375, no sideways scroll | ![](screenshots/page-2026-11-21T11-59-56-172Z.png) |
+| 1 Topic page | mobile | pass | TOC toggle (44x48 target), deadline, prev/next draw; no sideways scroll | ![](screenshots/page-2026-11-21T12-00-04-158Z.png) |
+| 1 Outline sheet | mobile | pass | Outline icons draw at 16px, 0 empty svgs; same right chevron on open parts as desktop (B2) | ![](screenshots/page-2026-11-21T12-00-12-934Z.png) |
+| 3 Learners list | mobile | pass | Cards, nav toggle, search, Filter, Sort, Export CSV, eye draw; no sideways scroll | ![](screenshots/page-2026-11-21T12-00-27-851Z.png) |
+| 3 Pager | mobile | pass | Previous/Next arrows at 20px | ![](screenshots/page-2026-11-21T12-01-09-703Z.png) |
+| 3 Quick view sheet | mobile | pass | open_page and close draw at 20px; closed with x | ![](screenshots/page-2026-11-21T12-01-18-393Z.png) |
+| 3 Nav panel sheet | mobile | pass | Org switcher chevron, nav icons, settings cog draw | ![](screenshots/page-2026-11-21T12-01-28-734Z.png) |
+| 3 Learners list | tablet | pass | Cards at 768, toolbar one row, no sideways scroll | ![](screenshots/page-2026-11-21T12-01-53-569Z.png) |
+| 1 Interactive Widgets | tablet | pass | TOC toggle, admonition icons, flashcard retry, accordion chevrons, prev/next draw; no sideways scroll | ![](screenshots/page-2026-11-21T12-02-01-245Z.png) |
 
-| Test | Viewport | Result | Notes |
-|---|---|---|---|
-| 1 | desktop | pass | Home, course list, course detail and two topics: every visible SVG has drawn content (JS probe: 0 empty on every page). Sizes were 16/20/24 px inline, 36/48 px on course-card icons, and a 240 px decorative hero mark on course detail. Header message and bell, outline folder, chevron, topic and deadline markers, the missed-deadline warning, the completed-item marker and the previous/next arrows all draw. No horizontal scroll. demodev was enrolled in "Functionality Demo - Course Parts" through the UI's Enrol button. |
-| 3 | desktop | pass | Dashboard, cohort list, cohort detail, learner list and learner page: 0 empty SVGs on every page. Sidebar nav icons, org dropdown chevron, search, filter chevrons, Export CSV download, sort asc/neutral, quick-view eye, the quick view's open-page/close/send icons and back arrows all draw. Quick view opens and closes, and the Add filter menu opens. Small variants draw at 12/16/20 px, none at an unexpected 24 px, none clipped. There is no "more options" (vertical ellipsis) row menu on these panel-framework pages, so that step had nothing to open. Pagination is numbered buttons plus a text "Next". |
-| 2 | desktop | pass | The Regulation admonition shows the label "Regulation" with the heroicons `scale` glyph (`svg aria-label='scale'`, 1 drawn path, 20x20). That glyph is outside the bundled required glyphs and is served from `SEMANTIC_ICONS_ICONIFY_DIR`. It is not a fallback info icon and not blank. The other admonitions show info, star, warning and error icons. 0 empty SVGs on the page. The plan's `data-icon='scale'` check does not match how literal glyphs render: `backend.build_svg` writes `data-icon` only for a semantic name, and literal `set:glyph` icons carry `aria-label` instead. This branch did not change that behaviour. |
-| 4 | desktop | pass | 404 Not Found, not 500. The dev server runs with DEBUG=True, so this is Django's technical 404 page, which carries no project icons. |
-| 1 | mobile | pass | Home and topic page at 375x812: 0 empty SVGs, no horizontal scroll. The table-of-contents toggle shows its icon and opens the outline sheet with folder, topic, deadline and chevron icons. Header message and bell icons, previous/next arrows and course-card icons draw at normal sizes. |
-| 3 | mobile | pass | Educator learner list at 375x812: hamburger menu, search, Filter, Sort, Export CSV download, quick-view eye and pager previous/next icons all draw at 16/20/24 px. 0 empty SVGs, no horizontal scroll. |
-| 2 | tablet | pass | Interactive Widgets topic at 768x1024: outline toggle, note (info) and tip (star) admonition icons draw. The scale glyph (`svg aria-label='scale'`) is present. 0 empty SVGs, no horizontal scroll. |
-| 3 | tablet | pass | Educator learner list at 768x1024: menu, search, filter chevrons, sort, Export CSV download and quick-view eye draw at 12/16/20/24 px. 0 empty SVGs, no horizontal scroll. |
+Test 4 note: the dev server runs DEBUG=True, so the live URL shows Django's technical 404. The project
+`404.html` was rendered with DEBUG=False through the test client (status 404, not 500) and loaded in
+the browser on the dev origin. The 'unknown' icon (28px) and the 'home' icon on "Go to your
+dashboard" (20px) both draw.
+
+## Bug: B1, Literal (authored) glyphs render without data-icon
+
+Manifestations:
+- `2-data-icon`, desktop
+
+![](screenshots/page-2026-11-21T11-52-53-951Z.png)
+
+- Expected: the Regulation admonition svg has `data-icon` naming `scale` (test plan Test 2; `2. plan.md:474` expects the course-icon test to assert `data-icon` for `scale`).
+- Actual: the svg has `role=img aria-label=scale` and no `data-icon`. `freedom_ls/icons/render.py` `_render_literal` calls `build_svg` without `data_name`, so every literal/authored glyph renders without `data-icon`. The glyph itself renders correctly. The behaviour predates this branch (render.py is unchanged here), and `test_course_icon.py` checks the path body rather than `data-icon`. The icon-usage skill defines `data-icon` as the semantic name, which a literal glyph does not have.
+
+## Bug: B2, Open course part in the learner outline shows a right chevron, not an up chevron
+
+Manifestations:
+- `1-chevron`, desktop
+- `1`, mobile (outline bottom sheet)
+
+![](screenshots/page-2026-11-21T11-53-48-314Z.png)
+![](screenshots/page-2026-11-21T12-00-12-934Z.png)
+
+- Expected: brand `visual.md` checklist says every expand chevron points down while closed and up while open.
+- Actual: `course_minimal_toc.html` shows `<c-icon name=collapse>` (chevron-right, caret-right for ph) while the part is expanded. Pre-existing: the expand/collapse mappings and the outline template are unchanged on this branch.
+
+## Layout probe
+
+| Test | Viewport | URL | Screenshot | Result |
+|---|---|---|---|---|
+| 1 | desktop | `/` | ![](screenshots/page-2026-11-21T11-52-01-574Z.png) | clean (debug toolbar open in this shot; retaken below) |
+| 1 | desktop | `/` | ![](screenshots/page-2026-11-21T11-52-09-217Z.png) | clean |
+| 2 | desktop | `/courses/content-widgets-demo-reference/4/` | ![](screenshots/page-2026-11-21T11-52-53-951Z.png) | clean |
+| 2 | desktop | `/courses/content-widgets-demo-reference/4/` | ![](screenshots/page-2026-11-21T11-53-11-049Z.png) | clean |
+| 1 | desktop | `/courses/` | ![](screenshots/page-2026-11-21T11-53-30-015Z.png) | clean |
+| 1 | desktop | `/courses/content-widgets-demo-reference/detail/` | ![](screenshots/page-2026-11-21T11-53-38-910Z.png) | clean |
+| 1 | desktop | `/courses/functionality-demo-course-parts/2/` | ![](screenshots/page-2026-11-21T11-53-48-314Z.png) | clean |
+| 3 | desktop | `/educator/organisations/demodev/dashboard` | ![](screenshots/page-2026-11-21T11-54-21-688Z.png) | clean |
+| 3 | desktop | `/educator/organisations/demodev/learners` | ![](screenshots/page-2026-11-21T11-54-33-816Z.png) | clean |
+| 3 | desktop | learners (quick view open) | ![](screenshots/page-2026-11-21T11-55-19-934Z.png) | clean |
+| 3 | desktop | learners (filter open) | ![](screenshots/page-2026-11-21T11-56-42-591Z.png) | clean |
+| 3 | desktop | `/educator/organisations/demodev/cohorts/684c05e9-.../` | ![](screenshots/page-2026-11-21T11-56-54-261Z.png) | clean |
+| 3 | desktop | `/educator/organisations/demodev/cohorts` | ![](screenshots/page-2026-11-21T11-57-43-221Z.png) | clean |
+| 3 | desktop | `/educator/organisations/demodev/learners/<id>` | ![](screenshots/page-2026-11-21T11-58-09-092Z.png) | clean |
+| 3 | desktop | learner page (bell open) | ![](screenshots/page-2026-11-21T11-58-30-724Z.png) | clean |
+| 4 | desktop | `/this-page-does-not-exist/` | ![](screenshots/page-2026-11-21T11-59-37-337Z.png) | clean |
+| 1 | mobile | `/` | ![](screenshots/page-2026-11-21T11-59-56-172Z.png) | clean |
+| 1 | mobile | `/courses/functionality-demo-course-parts/2/` | ![](screenshots/page-2026-11-21T12-00-04-158Z.png) | clean |
+| 1 | mobile | `/courses/functionality-demo-course-parts/2/` (outline sheet open) | ![](screenshots/page-2026-11-21T12-00-12-934Z.png) | fail: stacked (sidebar ink spans x=0..375), overlap (content and sidebar ink intersect). Not a bug, see below |
+| 3 | mobile | learners | ![](screenshots/page-2026-11-21T12-00-27-851Z.png) | clean |
+| 3 | mobile | learners (duplicate shot, scroll attempt timed out) | ![](screenshots/page-2026-11-21T12-01-05-290Z.png) | clean |
+| 3 | mobile | learners (scrolled to pager) | ![](screenshots/page-2026-11-21T12-01-09-703Z.png) | clean |
+| 3 | mobile | learners (quick view open) | ![](screenshots/page-2026-11-21T12-01-18-393Z.png) | clean |
+| 3 | mobile | learners (nav panel open) | ![](screenshots/page-2026-11-21T12-01-28-734Z.png) | fail: stacked (sidebar ink spans x=0..375), overlap (content and sidebar ink intersect). Not a bug, see below |
+| 3 | tablet | learners | ![](screenshots/page-2026-11-21T12-01-53-569Z.png) | clean |
+| 1 | tablet | `/courses/content-widgets-demo-reference/4/` | ![](screenshots/page-2026-11-21T12-02-01-245Z.png) | clean |
+
+The two `fail` rows are probe false positives. The probe ran with a modal bottom sheet open over a
+dimmed page at 375px (the course outline, the educator nav panel). That is the shell's intended phone
+design (panel-framework rule: a sheet on a phone, closed by backdrop tap or Esc), not a bug.
 
 ## Data changes
 
-| What changed | Made by | Files written |
+| What changed | Call or command | Files written |
 |---|---|---|
-| Empty branch dev DB seeded: `create_demo_data --yes`; `content_save demo_content DemoDev`; demodev@email.com granted site_admin, organisation_admin and staff member on demodev | seed (QA data helper) | none |
-| demodev@email.com registered on "Content Widgets - Demo Reference" and items 0-2 marked complete so the Interactive Widgets topic opens. Created Learner 4fedbe0b, LearnerCourseRegistration 2b18c8a3 and 3 TopicProgress rows | `qa_register_org_course`, `qa_set_item_completion` | none |
+| Applied 3 pending form_engine migrations (0011_shuffle, 0012_formprogress_furthest_page, 0013_remove_formprogress_furthest_page_reached) to the branch dev DB. The home page returned a 500 (UndefinedColumn `furthest_page_id`) before this. | migrate (pending migrations) | none |
 
 ## Bug status
 
-No `bug` records. There are no bugs to track.
+| Bug | Status | Detail |
+|---|---|---|
+| B1 | **UNRESOLVED** | Literal (authored) glyphs render without data-icon. Reason: decision needed. The icon-usage skill defines data-icon as the semantic name, which a literal glyph lacks; the spec documents expect data-icon naming `scale`. Choose: emit the glyph name (it can collide with semantic names such as `check`), emit `<set>:<glyph>`, or correct the QA plan and plan to check the path body as the shipped test does. |
+| B2 | **FIXED** (commit: 311a8a6dd) | Open course part in the learner outline shows a right chevron, not an up chevron. The open part now draws the expand chevron rotated 180deg (template only, mappings unchanged). Re-verified at desktop: open parts point up, closed parts point down, and toggling a part flips it. Targeted run after the fix: 1211 passed. ![](screenshots/page-2026-11-21T12-11-09-036Z.png) |
 
 ## General notes
 
-- The dev database was empty at the start. The first page load returned a `Site.DoesNotExist` 500 before seeding. The data_change record above covers it, and it is not a product bug.
-- `manage.py check` printed "System check identified no issues (0 silenced)", with no `icons.*` lines (no W002 to W004, no E002, no E008).
-- The server log had no `KeyError` or `IconResolutionError`, and no 500 after seeding.
-- Console errors were only that pre-seed 500, a missing `/favicon.ico` (404), and the deliberate 404 test URL.
-- The test 2 plan check (`data-icon` naming `scale`) does not match how literal glyphs render, as the test 2 row explains. The `scale` icon renders correctly. The plan wording could be corrected to check `aria-label='scale'`.
-- Test 3's "more options" (vertical ellipsis) step could not run because those pages have no such menu. The plan step may be stale.
-- On mobile home, the collapsed django-debug-toolbar tab sits over the pager's right arrow. This is dev tooling in the state the configured screenshot prep leaves it, and no action is attached.
-- The 404 page in test 4 is Django's DEBUG technical page, so it did not exercise project icons on an error page. A DEBUG=False run would be needed to test that.
+- Not tested: `3-more-options` was skipped. No more_options (vertical ellipsis) control renders on any educator page with the demo data, so the plan's "more options menu" step could not run. The icon is only used by cotton dropdown-menu components not instanced on these pages.
+- The mini variant check found no mini/micro variant in any template. The only non-outline variant is the header bell/messages (solid, size-6 at 24px, as intended).
+- The educator learners pager is text buttons (1..6, Next) on desktop, with no arrow icons. On mobile the Previous/Next arrows draw at 20px.
+- The first desktop home capture had the debug toolbar open (the prep check missed the position:fixed toolbar). It was retaken.
+- Test 4 used the test-client DEBUG=False render of `404.html` because the dev server shows the technical 404.
+- The course detail hero art icon is deliberately large (size-60, 240px), not a stretching bug.
 
-status: ok · reason: report rendered, 0 bugs documented
+status: ok · reason: 2 bugs, 1 fixed, 1 unresolved; report rendered, screenshots verified

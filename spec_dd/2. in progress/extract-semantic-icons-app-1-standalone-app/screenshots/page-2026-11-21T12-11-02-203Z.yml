@@ -1,0 +1,139 @@
+- generic [active] [ref=f21e1]:
+  - banner [ref=f21e2]:
+    - link [ref=f21e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f21e4]
+      - heading "FirstClass" [level=1] [ref=f21e5]
+    - navigation [ref=f21e6]:
+      - generic [ref=f21e7]:
+        - generic [ref=f21e8]:
+          - button "Messages" [ref=f21e9]
+          - status:
+            - generic [ref=f21e13]: Messages
+        - generic [ref=f21e14]:
+          - button "Notifications, none new" [ref=f21e15]
+          - status:
+            - generic [ref=f21e19]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f21e21] [cursor=pointer]:
+          - generic [ref=f21e22]:
+            - generic [ref=f21e23]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f21e24]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f21e25]:
+    - generic [ref=f21e27]:
+      - dialog "Course outline" [ref=f21e28]:
+        - generic [ref=f21e31]:
+          - generic [ref=f21e32]:
+            - paragraph [ref=f21e33]: Course outline
+            - paragraph [ref=f21e34]: Functionality Demo - Course Parts
+            - generic [ref=f21e36]:
+              - progressbar "Progress for Functionality Demo - Course Parts" [ref=f21e37]: 14%
+              - generic [ref=f21e38]: 14% complete
+            - generic [ref=f21e44]:
+              - generic [ref=f21e45]: Deadline
+              - generic [ref=f21e46]: What to Expect
+              - time [ref=f21e49]: 29 Nov 2026, 01:59
+          - navigation "Course outline" [ref=f21e50]:
+            - list [ref=f21e51]:
+              - listitem [ref=f21e52]:
+                - button "1. In progress Getting Started" [expanded] [ref=f21e53] [cursor=pointer]:
+                  - generic [ref=f21e54]:
+                    - generic [ref=f21e55]: "1."
+                    - generic [ref=f21e56]: In progress
+                    - generic [ref=f21e60]: Getting Started
+                - list [ref=f21e66]:
+                  - listitem [ref=f21e67]:
+                    - generic [ref=f21e68]:
+                      - generic [ref=f21e69]: "1.1"
+                      - generic [ref=f21e70]: Completed
+                      - link "Welcome" [ref=f21e75] [cursor=pointer]:
+                        - /url: /courses/functionality-demo-course-parts/1/
+                  - listitem [ref=f21e76]:
+                    - generic [ref=f21e77]:
+                      - generic [ref=f21e78]: "1.2"
+                      - generic [ref=f21e79]: In progress
+                      - generic [ref=f21e83]: What to Expect
+                      - generic [ref=f21e85]:
+                        - generic [ref=f21e89]: Deadline
+                        - time [ref=f21e91]: 29 Nov
+              - listitem [ref=f21e92]:
+                - button "2. Locked Core Concepts" [expanded] [ref=f21e93] [cursor=pointer]:
+                  - generic [ref=f21e94]:
+                    - generic [ref=f21e95]: "2."
+                    - generic [ref=f21e96]: Locked
+                    - generic [ref=f21e100]: Core Concepts
+                - list [ref=f21e106]:
+                  - listitem [ref=f21e107]:
+                    - generic [ref=f21e108]:
+                      - generic [ref=f21e109]: "2.1"
+                      - generic [ref=f21e110]: Locked
+                      - generic [ref=f21e114]: Key Ideas
+                      - generic [ref=f21e116]:
+                        - generic [ref=f21e120]: Deadline
+                        - time [ref=f21e122]: 5 Dec, 19:00
+                  - listitem [ref=f21e123]:
+                    - generic [ref=f21e124]:
+                      - generic [ref=f21e125]: "2.2"
+                      - generic [ref=f21e126]: Locked
+                      - generic [ref=f21e130]: Going Deeper
+                  - listitem [ref=f21e131]:
+                    - generic [ref=f21e132]:
+                      - generic [ref=f21e133]: "2.3"
+                      - generic [ref=f21e134]: Locked
+                      - generic [ref=f21e138]: Knowledge Check
+                      - generic [ref=f21e140]:
+                        - generic [ref=f21e144]: Deadline
+                        - time [ref=f21e146]: 13 Dec
+              - listitem [ref=f21e147]:
+                - button "3. Locked Wrapping Up" [ref=f21e148] [cursor=pointer]:
+                  - generic [ref=f21e149]:
+                    - generic [ref=f21e150]: "3."
+                    - generic [ref=f21e151]: Locked
+                    - generic [ref=f21e155]: Wrapping Up
+      - generic [ref=f21e161]:
+        - generic [ref=f21e163]:
+          - navigation "Breadcrumb" [ref=f21e166]:
+            - list [ref=f21e167]:
+              - listitem [ref=f21e168]:
+                - link "Functionality Demo - Course Parts" [ref=f21e169] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/detail/
+              - listitem [ref=f21e170]:
+                - generic [aria-hidden] [ref=f21e171]: ">"
+                - link "Getting Started" [ref=f21e172] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/1/
+              - listitem [ref=f21e173]:
+                - generic [aria-hidden] [ref=f21e174]: ">"
+                - generic "What to Expect" [ref=f21e175]
+          - paragraph [ref=f21e177]:
+            - text: Deadline
+            - time [ref=f21e183]: 29 Nov 2026, 01:59
+          - heading "What to Expect" [level=1] [ref=f21e186]
+        - generic [ref=f21e188]:
+          - generic [ref=f21e189]:
+            - paragraph [ref=f21e190]: "This course has three parts, each demonstrating different ways to use course parts:"
+            - list [ref=f21e191]:
+              - listitem [ref=f21e192]:
+                - strong [ref=f21e193]: "Part 1: Getting Started"
+                - text: — Contains only topics, showing the simplest use of parts.
+              - listitem [ref=f21e194]:
+                - strong [ref=f21e195]: "Part 2: Core Concepts"
+                - text: — Contains topics and a quiz, showing that parts can mix content types.
+              - listitem [ref=f21e196]:
+                - strong [ref=f21e197]: "Part 3: Wrapping Up"
+                - text: — Contains a topic and a survey, demonstrating a different form type within a part.
+          - generic [ref=f21e198]:
+            - link "Previous" [ref=f21e200] [cursor=pointer]:
+              - /url: /courses/functionality-demo-course-parts/1/
+            - button "Next" [ref=f21e205] [cursor=pointer]
+  - contentinfo [ref=f21e209]:
+    - generic [ref=f21e210]:
+      - paragraph [ref=f21e211]: © 2026 FirstClass
+      - navigation "Legal" [ref=f21e212]:
+        - link "Terms and Conditions" [ref=f21e213] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f21e214] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f21e215] [cursor=pointer]: extract-semantic-icons-app-1-standalone-app
+  - generic "Show toolbar" [ref=f21e217]: DJDT

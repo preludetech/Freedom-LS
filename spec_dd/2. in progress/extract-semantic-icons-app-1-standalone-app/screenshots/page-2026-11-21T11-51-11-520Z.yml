@@ -1,0 +1,1992 @@
+- generic [active] [ref=f1e1]:
+  - banner [ref=f1e2]:
+    - heading "ProgrammingError at /" [level=1] [ref=f1e3]
+    - generic [ref=f1e4]: "column freedom_ls_form_engine_formprogress.furthest_page_id does not exist LINE 1: ..., \"freedom_ls_form_engine_formprogress\".\"scores\", \"freedom_l... ^"
+    - table [ref=f1e5]:
+      - rowgroup [ref=f1e6]:
+        - row [ref=f1e7]:
+          - rowheader "Request Method:" [ref=f1e8]
+          - cell "GET" [ref=f1e9]
+        - row [ref=f1e10]:
+          - rowheader "Request URL:" [ref=f1e11]
+          - cell "http://127.0.0.1:8929/" [ref=f1e12]
+        - row [ref=f1e13]:
+          - rowheader "Django Version:" [ref=f1e14]
+          - cell "6.0.4" [ref=f1e15]
+        - row [ref=f1e16]:
+          - rowheader "Exception Type:" [ref=f1e17]
+          - cell "ProgrammingError" [ref=f1e18]
+        - row [ref=f1e19]:
+          - rowheader "Exception Value:" [ref=f1e20]
+          - 'cell "column freedom_ls_form_engine_formprogress.furthest_page_id does not exist LINE 1: ..., \"freedom_ls_form_engine_formprogress\".\"scores\", \"freedom_l... ^" [ref=f1e21]'
+        - row [ref=f1e23]:
+          - rowheader "Exception Location:" [ref=f1e24]
+          - cell "/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/psycopg/cursor.py, line 117, in execute" [ref=f1e25]
+        - row [ref=f1e26]:
+          - rowheader "Raised during:" [ref=f1e27]
+          - cell "freedom_ls.learner_interface.views.dashboard" [ref=f1e28]
+        - row [ref=f1e29]:
+          - rowheader "Python Executable:" [ref=f1e30]
+          - cell "/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/bin/python3" [ref=f1e31]
+        - row [ref=f1e32]:
+          - rowheader "Python Version:" [ref=f1e33]
+          - cell "3.13.5" [ref=f1e34]
+        - row [ref=f1e35]:
+          - rowheader "Python Path:" [ref=f1e36]
+          - cell [ref=f1e37]:
+            - code [ref=f1e39]: "['/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/concrete_apps', '/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app', '/home/sheena/.local/share/uv/python/cpython-3.13.5-linux-x86_64-gnu/lib/python313.zip', '/home/sheena/.local/share/uv/python/cpython-3.13.5-linux-x86_64-gnu/lib/python3.13', '/home/sheena/.local/share/uv/python/cpython-3.13.5-linux-x86_64-gnu/lib/python3.13/lib-dynload', '/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages']"
+        - row [ref=f1e40]:
+          - rowheader "Server time:" [ref=f1e41]
+          - cell "Sat, 21 Nov 2026 11:51:10 +0000" [ref=f1e42]
+  - main [ref=f1e43]:
+    - generic [ref=f1e44]:
+      - heading [level=2] [ref=f1e45]:
+        - text: Traceback
+        - button "Switch to copy-and-paste view" [ref=f1e47] [cursor=pointer]
+      - list [ref=f1e49]:
+        - listitem [ref=f1e50]:
+          - code [ref=f1e51]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/db/backends/utils.py
+          - text: ", line 105, in _execute"
+          - generic [ref=f1e52]:
+            - list [ref=f1e53]:
+              - listitem [ref=f1e54] [cursor=pointer]: warnings.warn(self.APPS_NOT_READY_WARNING_MSG, category=RuntimeWarning)
+              - listitem [ref=f1e55] [cursor=pointer]: self.db.validate_no_broken_transaction()
+              - listitem [ref=f1e56] [cursor=pointer]: "with self.db.wrap_database_errors:"
+              - listitem [ref=f1e57] [cursor=pointer]: "if params is None:"
+              - listitem [ref=f1e58] [cursor=pointer]: "# params default might be backend specific."
+              - listitem [ref=f1e59] [cursor=pointer]: return self.cursor.execute(sql)
+              - listitem [ref=f1e60] [cursor=pointer]: "else:"
+            - list [ref=f1e61]:
+              - listitem [ref=f1e62] [cursor=pointer]:
+                - text: return self.cursor.execute(sql, params) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                - generic [ref=f1e63]: …
+            - list [ref=f1e64]:
+              - listitem [ref=f1e65] [cursor=pointer]
+              - listitem [ref=f1e66] [cursor=pointer]: "def _executemany(self, sql, param_list, *ignored_wrapper_args):"
+              - listitem [ref=f1e67] [cursor=pointer]: "# Raise a warning during app initialization (stored_app_configs is only"
+              - listitem [ref=f1e68] [cursor=pointer]: "# ever set during testing)."
+              - listitem [ref=f1e69] [cursor=pointer]: "if not apps.ready and not apps.stored_app_configs:"
+              - listitem [ref=f1e70] [cursor=pointer]: warnings.warn(self.APPS_NOT_READY_WARNING_MSG, category=RuntimeWarning)
+          - group [ref=f1e71]:
+            - generic "Local vars" [ref=f1e72] [cursor=pointer]
+        - listitem [ref=f1e73]:
+          - code [ref=f1e74]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/psycopg/cursor.py
+          - text: ", line 117, in execute"
+          - generic [ref=f1e75]:
+            - list [ref=f1e76]:
+              - listitem [ref=f1e77] [cursor=pointer]: "\"\"\""
+              - listitem [ref=f1e78] [cursor=pointer]: "try:"
+              - listitem [ref=f1e79] [cursor=pointer]: "with self._conn.lock:"
+              - listitem [ref=f1e80] [cursor=pointer]: self._conn.wait(
+              - listitem [ref=f1e81] [cursor=pointer]: self._execute_gen(query, params, prepare=prepare, binary=binary)
+              - listitem [ref=f1e82] [cursor=pointer]: )
+              - listitem [ref=f1e83] [cursor=pointer]: "except e._NO_TRACEBACK as ex:"
+            - list [ref=f1e84]:
+              - listitem [ref=f1e85] [cursor=pointer]:
+                - text: raise ex.with_traceback(None) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                - generic [ref=f1e86]: …
+            - list [ref=f1e87]:
+              - listitem [ref=f1e88] [cursor=pointer]: return self
+              - listitem [ref=f1e89] [cursor=pointer]
+              - listitem [ref=f1e90] [cursor=pointer]: def executemany(
+              - listitem [ref=f1e91] [cursor=pointer]: "self, query: Query, params_seq: Iterable[Params], *, returning: bool = False"
+              - listitem [ref=f1e92] [cursor=pointer]: ") -> None:"
+              - listitem [ref=f1e93] [cursor=pointer]: "\"\"\""
+          - group [ref=f1e94]:
+            - generic "Local vars" [ref=f1e95] [cursor=pointer]
+        - listitem [ref=f1e96]:
+          - 'heading "The above exception (column freedom_ls_form_engine_formprogress.furthest_page_id does not exist LINE 1: ..., \"freedom_ls_form_engine_formprogress\".\"scores\", \"freedom_l... ^) was the direct cause of the following exception:" [level=3] [ref=f1e97]'
+        - listitem [ref=f1e98]:
+          - code [ref=f1e99]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/core/handlers/exception.py
+          - text: ", line 55, in inner"
+          - generic [ref=f1e100]:
+            - list [ref=f1e101]:
+              - listitem [ref=f1e102] [cursor=pointer]
+              - listitem [ref=f1e103] [cursor=pointer]: return inner
+              - listitem [ref=f1e104] [cursor=pointer]: "else:"
+              - listitem [ref=f1e105] [cursor=pointer]
+              - listitem [ref=f1e106] [cursor=pointer]: "@wraps(get_response)"
+              - listitem [ref=f1e107] [cursor=pointer]: "def inner(request):"
+              - listitem [ref=f1e108] [cursor=pointer]: "try:"
+            - list [ref=f1e109]:
+              - listitem [ref=f1e110] [cursor=pointer]:
+                - text: response = get_response(request) ^^^^^^^^^^^^^^^^^^^^^
+                - generic [ref=f1e111]: …
+            - list [ref=f1e112]:
+              - listitem [ref=f1e113] [cursor=pointer]: "except Exception as exc:"
+              - listitem [ref=f1e114] [cursor=pointer]: response = response_for_exception(request, exc)
+              - listitem [ref=f1e115] [cursor=pointer]: return response
+              - listitem [ref=f1e116] [cursor=pointer]
+              - listitem [ref=f1e117] [cursor=pointer]: return inner
+              - listitem [ref=f1e118] [cursor=pointer]
+          - group [ref=f1e119]:
+            - generic "Local vars" [ref=f1e120] [cursor=pointer]
+        - listitem [ref=f1e121]:
+          - code [ref=f1e122]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/core/handlers/base.py
+          - text: ", line 198, in _get_response"
+          - generic [ref=f1e123]:
+            - list [ref=f1e124]:
+              - listitem [ref=f1e125] [cursor=pointer]
+              - listitem [ref=f1e126] [cursor=pointer]: "if response is None:"
+              - listitem [ref=f1e127] [cursor=pointer]: wrapped_callback = self.make_view_atomic(callback)
+              - listitem [ref=f1e128] [cursor=pointer]: "# If it is an asynchronous view, run it in a subthread."
+              - listitem [ref=f1e129] [cursor=pointer]: "if iscoroutinefunction(wrapped_callback):"
+              - listitem [ref=f1e130] [cursor=pointer]: wrapped_callback = async_to_sync(wrapped_callback)
+              - listitem [ref=f1e131] [cursor=pointer]: "try:"
+            - list [ref=f1e132]:
+              - listitem [ref=f1e133] [cursor=pointer]:
+                - text: response = wrapped_callback(request, *callback_args, **callback_kwargs) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                - generic [ref=f1e134]: …
+            - list [ref=f1e135]:
+              - listitem [ref=f1e136] [cursor=pointer]: "except Exception as e:"
+              - listitem [ref=f1e137] [cursor=pointer]: response = self.process_exception_by_middleware(e, request)
+              - listitem [ref=f1e138] [cursor=pointer]: "if response is None:"
+              - listitem [ref=f1e139] [cursor=pointer]: raise
+              - listitem [ref=f1e140] [cursor=pointer]
+              - listitem [ref=f1e141] [cursor=pointer]: "# Complain if the view returned None (a common error)."
+          - group [ref=f1e142]:
+            - generic "Local vars" [ref=f1e143] [cursor=pointer]
+        - listitem [ref=f1e144]:
+          - code [ref=f1e145]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/views/decorators/vary.py
+          - text: ", line 31, in _view_wrapper"
+          - generic [ref=f1e146]:
+            - list [ref=f1e147]:
+              - listitem [ref=f1e148] [cursor=pointer]: response = await func(request, *args, **kwargs)
+              - listitem [ref=f1e149] [cursor=pointer]: patch_vary_headers(response, headers)
+              - listitem [ref=f1e150] [cursor=pointer]: return response
+              - listitem [ref=f1e151] [cursor=pointer]
+              - listitem [ref=f1e152] [cursor=pointer]: "else:"
+              - listitem [ref=f1e153] [cursor=pointer]
+              - listitem [ref=f1e154] [cursor=pointer]: "def _view_wrapper(request, *args, **kwargs):"
+            - list [ref=f1e155]:
+              - listitem [ref=f1e156] [cursor=pointer]:
+                - text: response = func(request, *args, **kwargs) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                - generic [ref=f1e157]: …
+            - list [ref=f1e158]:
+              - listitem [ref=f1e159] [cursor=pointer]: patch_vary_headers(response, headers)
+              - listitem [ref=f1e160] [cursor=pointer]: return response
+              - listitem [ref=f1e161] [cursor=pointer]
+              - listitem [ref=f1e162] [cursor=pointer]: return wraps(func)(_view_wrapper)
+              - listitem [ref=f1e163] [cursor=pointer]
+              - listitem [ref=f1e164] [cursor=pointer]: return decorator
+          - group [ref=f1e165]:
+            - generic "Local vars" [ref=f1e166] [cursor=pointer]
+        - listitem [ref=f1e167]:
+          - code [ref=f1e168]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/freedom_ls/learner_interface/views.py
+          - text: ", line 790, in dashboard"
+          - generic [ref=f1e169]:
+            - list [ref=f1e170]:
+              - listitem [ref=f1e171] [cursor=pointer]: inputs = _dashboard_inputs(request, backend)
+              - listitem [ref=f1e172] [cursor=pointer]: dashboard_panels = [
+              - listitem [ref=f1e173] [cursor=pointer]: render_to_string(c.template_name, c.context, request=request)
+              - listitem [ref=f1e174] [cursor=pointer]: for c in contributions
+              - listitem [ref=f1e175] [cursor=pointer]: "]"
+              - listitem [ref=f1e176] [cursor=pointer]
+              - listitem [ref=f1e177] [cursor=pointer]: "context = {"
+            - list [ref=f1e178]:
+              - listitem [ref=f1e179] [cursor=pointer]:
+                - text: "\"sections\": _dashboard_sections(request, inputs), ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+                - generic [ref=f1e180]: …
+            - list [ref=f1e181]:
+              - listitem [ref=f1e182] [cursor=pointer]: "\"dashboard_panels\": dashboard_panels,"
+              - listitem [ref=f1e183] [cursor=pointer]: "\"has_history\": bool(inputs.completed_courses),"
+              - listitem [ref=f1e184] [cursor=pointer]: "**_time_zone_context(request),"
+              - listitem [ref=f1e185] [cursor=pointer]: "}"
+              - listitem [ref=f1e186] [cursor=pointer]: return render(request, "learner_interface/dashboard.html", context)
+              - listitem [ref=f1e187] [cursor=pointer]
+          - group [ref=f1e188]:
+            - generic "Local vars" [ref=f1e189] [cursor=pointer]
+        - listitem [ref=f1e190]:
+          - code [ref=f1e191]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/freedom_ls/learner_interface/views.py
+          - text: ", line 638, in _dashboard_sections"
+          - generic [ref=f1e192]:
+            - list [ref=f1e193]:
+              - listitem [ref=f1e194] [cursor=pointer]: section
+              - listitem [ref=f1e195] [cursor=pointer]: for category in CourseCategory.objects.filter(show_on_dashboard=True)
+              - listitem [ref=f1e196] [cursor=pointer]: if not (
+              - listitem [ref=f1e197] [cursor=pointer]: section := _category_section(request, category, inputs.rest, inputs.backend)
+              - listitem [ref=f1e198] [cursor=pointer]: ).is_empty
+              - listitem [ref=f1e199] [cursor=pointer]: "]"
+              - listitem [ref=f1e200] [cursor=pointer]: in_progress = (
+            - list [ref=f1e201]:
+              - listitem [ref=f1e202] [cursor=pointer]:
+                - text: _in_progress_section( ^
+                - generic [ref=f1e203]: …
+            - list [ref=f1e204]:
+              - listitem [ref=f1e205] [cursor=pointer]: request, inputs.registered_courses, request.user, inputs.backend
+              - listitem [ref=f1e206] [cursor=pointer]: )
+              - listitem [ref=f1e207] [cursor=pointer]: if inputs.is_auth
+              - listitem [ref=f1e208] [cursor=pointer]: else None
+              - listitem [ref=f1e209] [cursor=pointer]: )
+              - listitem [ref=f1e210] [cursor=pointer]
+          - group [ref=f1e211]:
+            - generic "Local vars" [ref=f1e212] [cursor=pointer]
+        - listitem [ref=f1e213]:
+          - code [ref=f1e214]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/freedom_ls/learner_interface/views.py
+          - text: ", line 455, in _in_progress_section"
+          - generic [ref=f1e215]:
+            - list [ref=f1e216]:
+              - listitem [ref=f1e217] [cursor=pointer]: "registered_courses: list[Course],"
+              - listitem [ref=f1e218] [cursor=pointer]: "user: RequestUser,"
+              - listitem [ref=f1e219] [cursor=pointer]: "backend: CourseAccessBackend,"
+              - listitem [ref=f1e220] [cursor=pointer]: ") -> DashboardSection:"
+              - listitem [ref=f1e221] [cursor=pointer]: "\"\"\"The In progress section. Always built, because it owns an empty state.\"\"\""
+              - listitem [ref=f1e222] [cursor=pointer]: page_obj = page_for(request, BuiltInSection.IN_PROGRESS, registered_courses)
+              - listitem [ref=f1e223] [cursor=pointer]: courses = list(page_obj.object_list)
+            - list [ref=f1e224]:
+              - listitem [ref=f1e225] [cursor=pointer]:
+                - text: _annotate_registered_courses(courses, user, backend) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                - generic [ref=f1e226]: …
+            - list [ref=f1e227]:
+              - listitem [ref=f1e228] [cursor=pointer]: return DashboardSection(
+              - listitem [ref=f1e229] [cursor=pointer]: slug=BuiltInSection.IN_PROGRESS,
+              - listitem [ref=f1e230] [cursor=pointer]: heading="In progress",
+              - listitem [ref=f1e231] [cursor=pointer]: wrapper_id="current-courses",
+              - listitem [ref=f1e232] [cursor=pointer]: page_obj=page_obj,
+              - listitem [ref=f1e233] [cursor=pointer]: courses=courses,
+          - group [ref=f1e234]:
+            - generic "Local vars" [ref=f1e235] [cursor=pointer]
+        - listitem [ref=f1e236]:
+          - code [ref=f1e237]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/freedom_ls/learner_interface/views.py
+          - text: ", line 327, in _annotate_registered_courses"
+          - generic [ref=f1e238]:
+            - list [ref=f1e239]:
+              - listitem [ref=f1e240] [cursor=pointer]: course_decision = decisions[course.pk]
+              - listitem [ref=f1e241] [cursor=pointer]: "setattr(course, \"access_ended_at\", course_decision.access_ended_at) # noqa: B010"
+              - listitem [ref=f1e242] [cursor=pointer]: "setattr(course, \"paused_at\", course_decision.paused_at) # noqa: B010"
+              - listitem [ref=f1e243] [cursor=pointer]: "setattr( # noqa: B010"
+              - listitem [ref=f1e244] [cursor=pointer]: course, "planned_resume_on", course_decision.planned_resume_on
+              - listitem [ref=f1e245] [cursor=pointer]: )
+              - listitem [ref=f1e246] [cursor=pointer]: record = records.get(course.pk)
+            - list [ref=f1e247]:
+              - listitem [ref=f1e248] [cursor=pointer]:
+                - text: _annotate_next_up( ^
+                - generic [ref=f1e249]: …
+            - list [ref=f1e250]:
+              - listitem [ref=f1e251] [cursor=pointer]: course,
+              - listitem [ref=f1e252] [cursor=pointer]: user,
+              - listitem [ref=f1e253] [cursor=pointer]: can_access_content=course_decision.can_access_content,
+              - listitem [ref=f1e254] [cursor=pointer]: course_progress=record,
+              - listitem [ref=f1e255] [cursor=pointer]: course_deadlines=(
+              - listitem [ref=f1e256] [cursor=pointer]: deadlines_by_record.get(record.pk) if record is not None else None
+          - group [ref=f1e257]:
+            - generic "Local vars" [ref=f1e258] [cursor=pointer]
+        - listitem [ref=f1e259]:
+          - code [ref=f1e260]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/freedom_ls/learner_interface/views.py
+          - text: ", line 178, in _annotate_next_up"
+          - generic [ref=f1e261]:
+            - list [ref=f1e262]:
+              - listitem [ref=f1e263] [cursor=pointer]: "``can_access_content`` is passed through from the dashboard's per-course"
+              - listitem [ref=f1e264] [cursor=pointer]: backend decision so that get_course_index is not called with a stale value.
+              - listitem [ref=f1e265] [cursor=pointer]
+              - listitem [ref=f1e266] [cursor=pointer]: "``course_progress``, ``course_deadlines`` and ``deadline_policy`` are the resolved"
+              - listitem [ref=f1e267] [cursor=pointer]: record, its deadlines and its policy, handed on so none is resolved again per course. The same walk
+              - listitem [ref=f1e268] [cursor=pointer]: stamps the card's deadline line.
+              - listitem [ref=f1e269] [cursor=pointer]: "\"\"\""
+            - list [ref=f1e270]:
+              - listitem [ref=f1e271] [cursor=pointer]:
+                - text: children = get_course_index(
+                - generic [ref=f1e272]: …
+            - list [ref=f1e273]:
+              - listitem [ref=f1e274] [cursor=pointer]: user=user,
+              - listitem [ref=f1e275] [cursor=pointer]: course=course,
+              - listitem [ref=f1e276] [cursor=pointer]: can_access_content=can_access_content,
+              - listitem [ref=f1e277] [cursor=pointer]: course_progress=course_progress,
+              - listitem [ref=f1e278] [cursor=pointer]: course_deadlines=course_deadlines,
+              - listitem [ref=f1e279] [cursor=pointer]: deadline_policy=deadline_policy,
+          - group [ref=f1e280]:
+            - generic "Local vars" [ref=f1e281] [cursor=pointer]
+        - listitem [ref=f1e282]:
+          - code [ref=f1e283]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/freedom_ls/learner_interface/utils.py
+          - text: ", line 563, in get_course_index"
+          - generic [ref=f1e284]:
+            - list [ref=f1e285]:
+              - listitem [ref=f1e286] [cursor=pointer]: "form_placement_map: dict[uuid.UUID, FormPlacementProgress] = {}"
+              - listitem [ref=f1e287] [cursor=pointer]: reads_progress = can_access_content or outline_mode is not OutlineMode.FULL
+              - listitem [ref=f1e288] [cursor=pointer]: "if reads_progress and user.is_authenticated:"
+              - listitem [ref=f1e289] [cursor=pointer]: "if isinstance(course_progress, Unresolved):"
+              - listitem [ref=f1e290] [cursor=pointer]: "# can_access_content implies an authenticated, registered user (it"
+              - listitem [ref=f1e291] [cursor=pointer]: "# comes from the backend decision), so the cast to User is safe here."
+              - listitem [ref=f1e292] [cursor=pointer]: course_progress = course_progress_for(cast("User", user), course)
+            - list [ref=f1e293]:
+              - listitem [ref=f1e294] [cursor=pointer]:
+                - text: topic_progress_map, form_placement_map = _fetch_player_progress_maps(
+                - generic [ref=f1e295]: …
+            - list [ref=f1e296]:
+              - listitem [ref=f1e297] [cursor=pointer]: course_progress, course.viewable_collection_items()
+              - listitem [ref=f1e298] [cursor=pointer]: )
+              - listitem [ref=f1e299] [cursor=pointer]
+              - listitem [ref=f1e300] [cursor=pointer]: now = now or timezone.now()
+              - listitem [ref=f1e301] [cursor=pointer]: children = []
+              - listitem [ref=f1e302] [cursor=pointer]: "next_status = READY # First item starts as READY"
+          - group [ref=f1e303]:
+            - generic "Local vars" [ref=f1e304] [cursor=pointer]
+        - listitem [ref=f1e305]:
+          - code [ref=f1e306]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/freedom_ls/learner_interface/utils.py
+          - text: ", line 489, in _fetch_player_progress_maps"
+          - generic [ref=f1e307]:
+            - list [ref=f1e308]:
+              - listitem [ref=f1e309] [cursor=pointer]: collection_item_ids = [item.id for item in viewable_collection_items]
+              - listitem [ref=f1e310] [cursor=pointer]
+              - listitem [ref=f1e311] [cursor=pointer]: for tp in TopicProgress.objects.filter(
+              - listitem [ref=f1e312] [cursor=pointer]: course_progress=course_progress, collection_item_id__in=collection_item_ids
+              - listitem [ref=f1e313] [cursor=pointer]: "):"
+              - listitem [ref=f1e314] [cursor=pointer]: topic_map[tp.collection_item_id] = tp
+              - listitem [ref=f1e315] [cursor=pointer]
+            - list [ref=f1e316]:
+              - listitem [ref=f1e317] [cursor=pointer]:
+                - text: attempts = list(
+                - generic [ref=f1e318]: …
+            - list [ref=f1e319]:
+              - listitem [ref=f1e320] [cursor=pointer]: CourseFormAttempt.objects.filter(
+              - listitem [ref=f1e321] [cursor=pointer]: course_progress=course_progress,
+              - listitem [ref=f1e322] [cursor=pointer]: collection_item_id__in=collection_item_ids,
+              - listitem [ref=f1e323] [cursor=pointer]: ).select_related("form_progress__form")
+              - listitem [ref=f1e324] [cursor=pointer]: )
+              - listitem [ref=f1e325] [cursor=pointer]: complete_item_ids = completed_form_item_ids(attempts)
+          - group [ref=f1e326]:
+            - generic "Local vars" [ref=f1e327] [cursor=pointer]
+        - listitem [ref=f1e328]:
+          - code [ref=f1e329]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/db/models/query.py
+          - text: ", line 390, in __iter__"
+          - generic [ref=f1e330]:
+            - list [ref=f1e331]:
+              - listitem [ref=f1e332] [cursor=pointer]: 2. sql.compiler.results_iter()
+              - listitem [ref=f1e333] [cursor=pointer]: "- Returns one row at time. At this point the rows are still just"
+              - listitem [ref=f1e334] [cursor=pointer]: tuples. In some cases the return values are converted to
+              - listitem [ref=f1e335] [cursor=pointer]: Python values at this location.
+              - listitem [ref=f1e336] [cursor=pointer]: 3. self.iterator()
+              - listitem [ref=f1e337] [cursor=pointer]: "- Responsible for turning the rows into model objects."
+              - listitem [ref=f1e338] [cursor=pointer]: "\"\"\""
+            - list [ref=f1e339]:
+              - listitem [ref=f1e340] [cursor=pointer]:
+                - text: self._fetch_all() ^^^^^^^^^^^^^^^^^
+                - generic [ref=f1e341]: …
+            - list [ref=f1e342]:
+              - listitem [ref=f1e343] [cursor=pointer]: return iter(self._result_cache)
+              - listitem [ref=f1e344] [cursor=pointer]
+              - listitem [ref=f1e345] [cursor=pointer]: "def __aiter__(self):"
+              - listitem [ref=f1e346] [cursor=pointer]: "# Remember, __aiter__ itself is synchronous, it's the thing it returns"
+              - listitem [ref=f1e347] [cursor=pointer]: "# that is async!"
+              - listitem [ref=f1e348] [cursor=pointer]: "async def generator():"
+          - group [ref=f1e349]:
+            - generic "Local vars" [ref=f1e350] [cursor=pointer]
+        - listitem [ref=f1e351]:
+          - code [ref=f1e352]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/db/models/query.py
+          - text: ", line 2000, in _fetch_all"
+          - generic [ref=f1e353]:
+            - list [ref=f1e354]:
+              - listitem [ref=f1e355] [cursor=pointer]: c._known_related_objects = self._known_related_objects
+              - listitem [ref=f1e356] [cursor=pointer]: c._iterable_class = self._iterable_class
+              - listitem [ref=f1e357] [cursor=pointer]: c._fields = self._fields
+              - listitem [ref=f1e358] [cursor=pointer]: return c
+              - listitem [ref=f1e359] [cursor=pointer]
+              - listitem [ref=f1e360] [cursor=pointer]: "def _fetch_all(self):"
+              - listitem [ref=f1e361] [cursor=pointer]: "if self._result_cache is None:"
+            - list [ref=f1e362]:
+              - listitem [ref=f1e363] [cursor=pointer]:
+                - text: self._result_cache = list(self._iterable_class(self)) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                - generic [ref=f1e364]: …
+            - list [ref=f1e365]:
+              - listitem [ref=f1e366] [cursor=pointer]: "if self._prefetch_related_lookups and not self._prefetch_done:"
+              - listitem [ref=f1e367] [cursor=pointer]: self._prefetch_related_objects()
+              - listitem [ref=f1e368] [cursor=pointer]
+              - listitem [ref=f1e369] [cursor=pointer]: "def _next_is_sticky(self):"
+              - listitem [ref=f1e370] [cursor=pointer]: "\"\"\""
+              - listitem [ref=f1e371] [cursor=pointer]: Indicate that the next filter call and the one following that should
+          - group [ref=f1e372]:
+            - generic "Local vars" [ref=f1e373] [cursor=pointer]
+        - listitem [ref=f1e374]:
+          - code [ref=f1e375]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/db/models/query.py
+          - text: ", line 95, in __iter__"
+          - generic [ref=f1e376]:
+            - list [ref=f1e377]:
+              - listitem [ref=f1e378] [cursor=pointer]
+              - listitem [ref=f1e379] [cursor=pointer]: "def __iter__(self):"
+              - listitem [ref=f1e380] [cursor=pointer]: queryset = self.queryset
+              - listitem [ref=f1e381] [cursor=pointer]: db = queryset.db
+              - listitem [ref=f1e382] [cursor=pointer]: compiler = queryset.query.get_compiler(using=db)
+              - listitem [ref=f1e383] [cursor=pointer]: "# Execute the query. This will also fill compiler.select, klass_info,"
+              - listitem [ref=f1e384] [cursor=pointer]: "# and annotations."
+            - list [ref=f1e385]:
+              - listitem [ref=f1e386] [cursor=pointer]:
+                - text: results = compiler.execute_sql(
+                - generic [ref=f1e387]: …
+            - list [ref=f1e388]:
+              - listitem [ref=f1e389] [cursor=pointer]: chunked_fetch=self.chunked_fetch, chunk_size=self.chunk_size
+              - listitem [ref=f1e390] [cursor=pointer]: )
+              - listitem [ref=f1e391] [cursor=pointer]: select, klass_info, annotation_col_map = (
+              - listitem [ref=f1e392] [cursor=pointer]: compiler.select,
+              - listitem [ref=f1e393] [cursor=pointer]: compiler.klass_info,
+              - listitem [ref=f1e394] [cursor=pointer]: compiler.annotation_col_map,
+          - group [ref=f1e395]:
+            - generic "Local vars" [ref=f1e396] [cursor=pointer]
+        - listitem [ref=f1e397]:
+          - code [ref=f1e398]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/db/models/sql/compiler.py
+          - text: ", line 1624, in execute_sql"
+          - generic [ref=f1e399]:
+            - list [ref=f1e400]:
+              - listitem [ref=f1e401] [cursor=pointer]: "else:"
+              - listitem [ref=f1e402] [cursor=pointer]: return
+              - listitem [ref=f1e403] [cursor=pointer]: "if chunked_fetch:"
+              - listitem [ref=f1e404] [cursor=pointer]: cursor = self.connection.chunked_cursor()
+              - listitem [ref=f1e405] [cursor=pointer]: "else:"
+              - listitem [ref=f1e406] [cursor=pointer]: cursor = self.connection.cursor()
+              - listitem [ref=f1e407] [cursor=pointer]: "try:"
+            - list [ref=f1e408]:
+              - listitem [ref=f1e409] [cursor=pointer]:
+                - text: cursor.execute(sql, params) ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                - generic [ref=f1e410]: …
+            - list [ref=f1e411]:
+              - listitem [ref=f1e412] [cursor=pointer]: "except Exception:"
+              - listitem [ref=f1e413] [cursor=pointer]: "# Might fail for server-side cursors (e.g. connection closed)"
+              - listitem [ref=f1e414] [cursor=pointer]: cursor.close()
+              - listitem [ref=f1e415] [cursor=pointer]: raise
+              - listitem [ref=f1e416] [cursor=pointer]
+              - listitem [ref=f1e417] [cursor=pointer]: "if result_type == ROW_COUNT:"
+          - group [ref=f1e418]:
+            - generic "Local vars" [ref=f1e419] [cursor=pointer]
+        - listitem [ref=f1e420]:
+          - code [ref=f1e421]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/debug_toolbar/panels/sql/tracking.py
+          - text: ", line 243, in execute"
+          - generic [ref=f1e422]:
+            - list [ref=f1e423]:
+              - listitem [ref=f1e424] [cursor=pointer]: "# We keep `sql` to maintain backwards compatibility"
+              - listitem [ref=f1e425] [cursor=pointer]: self.logger.record(**kwargs)
+              - listitem [ref=f1e426] [cursor=pointer]
+              - listitem [ref=f1e427] [cursor=pointer]: "def callproc(self, procname, params=None):"
+              - listitem [ref=f1e428] [cursor=pointer]: return self._record(super().callproc, procname, params)
+              - listitem [ref=f1e429] [cursor=pointer]
+              - listitem [ref=f1e430] [cursor=pointer]: "def execute(self, sql, params=None):"
+            - list [ref=f1e431]:
+              - listitem [ref=f1e432] [cursor=pointer]:
+                - text: return self._record(super().execute, sql, params) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                - generic [ref=f1e433]: …
+            - list [ref=f1e434]:
+              - listitem [ref=f1e435] [cursor=pointer]
+              - listitem [ref=f1e436] [cursor=pointer]: "def executemany(self, sql, param_list):"
+              - listitem [ref=f1e437] [cursor=pointer]: return self._record(super().executemany, sql, param_list)
+          - group [ref=f1e438]:
+            - generic "Local vars" [ref=f1e439] [cursor=pointer]
+        - listitem [ref=f1e440]:
+          - code [ref=f1e441]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/debug_toolbar/panels/sql/tracking.py
+          - text: ", line 164, in _record"
+          - generic [ref=f1e442]:
+            - list [ref=f1e443]:
+              - listitem [ref=f1e444] [cursor=pointer]: "if vendor == \"postgresql\":"
+              - listitem [ref=f1e445] [cursor=pointer]: "# The underlying DB connection (as opposed to Django's wrapper)"
+              - listitem [ref=f1e446] [cursor=pointer]: conn = self.db.connection
+              - listitem [ref=f1e447] [cursor=pointer]: initial_conn_status = conn.info.transaction_status
+              - listitem [ref=f1e448] [cursor=pointer]
+              - listitem [ref=f1e449] [cursor=pointer]: start_time = perf_counter()
+              - listitem [ref=f1e450] [cursor=pointer]: "try:"
+            - list [ref=f1e451]:
+              - listitem [ref=f1e452] [cursor=pointer]:
+                - text: return method(sql, params) ^^^^^^^^^^^^^^^^^^^
+                - generic [ref=f1e453]: …
+            - list [ref=f1e454]:
+              - listitem [ref=f1e455] [cursor=pointer]: "finally:"
+              - listitem [ref=f1e456] [cursor=pointer]: stop_time = perf_counter()
+              - listitem [ref=f1e457] [cursor=pointer]: duration = (stop_time - start_time) * 1000
+              - listitem [ref=f1e458] [cursor=pointer]: _params = ""
+              - listitem [ref=f1e459] [cursor=pointer]: "with contextlib.suppress(TypeError):"
+              - listitem [ref=f1e460] [cursor=pointer]: "# object JSON serializable?"
+          - group [ref=f1e461]:
+            - generic "Local vars" [ref=f1e462] [cursor=pointer]
+        - listitem [ref=f1e463]:
+          - code [ref=f1e464]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/db/backends/utils.py
+          - text: ", line 122, in execute"
+          - generic [ref=f1e465]:
+            - list [ref=f1e466]:
+              - listitem [ref=f1e467] [cursor=pointer]
+              - listitem [ref=f1e468] [cursor=pointer]
+              - listitem [ref=f1e469] [cursor=pointer]: "class CursorDebugWrapper(CursorWrapper):"
+              - listitem [ref=f1e470] [cursor=pointer]: "# XXX callproc isn't instrumented at this time."
+              - listitem [ref=f1e471] [cursor=pointer]
+              - listitem [ref=f1e472] [cursor=pointer]: "def execute(self, sql, params=None):"
+              - listitem [ref=f1e473] [cursor=pointer]: "with self.debug_sql(sql, params, use_last_executed_query=True):"
+            - list [ref=f1e474]:
+              - listitem [ref=f1e475] [cursor=pointer]:
+                - text: return super().execute(sql, params) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                - generic [ref=f1e476]: …
+            - list [ref=f1e477]:
+              - listitem [ref=f1e478] [cursor=pointer]
+              - listitem [ref=f1e479] [cursor=pointer]: "def executemany(self, sql, param_list):"
+              - listitem [ref=f1e480] [cursor=pointer]: "with self.debug_sql(sql, param_list, many=True):"
+              - listitem [ref=f1e481] [cursor=pointer]: return super().executemany(sql, param_list)
+              - listitem [ref=f1e482] [cursor=pointer]
+              - listitem [ref=f1e483] [cursor=pointer]: "@contextmanager"
+          - group [ref=f1e484]:
+            - generic "Local vars" [ref=f1e485] [cursor=pointer]
+        - listitem [ref=f1e486]:
+          - code [ref=f1e487]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/db/backends/utils.py
+          - text: ", line 79, in execute"
+          - generic [ref=f1e488]:
+            - list [ref=f1e489]:
+              - listitem [ref=f1e490] [cursor=pointer]: "elif kparams is None:"
+              - listitem [ref=f1e491] [cursor=pointer]: return self.cursor.callproc(procname, params)
+              - listitem [ref=f1e492] [cursor=pointer]: "else:"
+              - listitem [ref=f1e493] [cursor=pointer]: params = params or ()
+              - listitem [ref=f1e494] [cursor=pointer]: return self.cursor.callproc(procname, params, kparams)
+              - listitem [ref=f1e495] [cursor=pointer]
+              - listitem [ref=f1e496] [cursor=pointer]: "def execute(self, sql, params=None):"
+            - list [ref=f1e497]:
+              - listitem [ref=f1e498] [cursor=pointer]:
+                - text: return self._execute_with_wrappers(
+                - generic [ref=f1e499]: …
+            - list [ref=f1e500]:
+              - listitem [ref=f1e501] [cursor=pointer]: sql, params, many=False, executor=self._execute
+              - listitem [ref=f1e502] [cursor=pointer]: )
+              - listitem [ref=f1e503] [cursor=pointer]
+              - listitem [ref=f1e504] [cursor=pointer]: "def executemany(self, sql, param_list):"
+              - listitem [ref=f1e505] [cursor=pointer]: return self._execute_with_wrappers(
+              - listitem [ref=f1e506] [cursor=pointer]: sql, param_list, many=True, executor=self._executemany
+          - group [ref=f1e507]:
+            - generic "Local vars" [ref=f1e508] [cursor=pointer]
+        - listitem [ref=f1e509]:
+          - code [ref=f1e510]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/db/backends/utils.py
+          - text: ", line 92, in _execute_with_wrappers"
+          - generic [ref=f1e511]:
+            - list [ref=f1e512]:
+              - listitem [ref=f1e513] [cursor=pointer]: sql, param_list, many=True, executor=self._executemany
+              - listitem [ref=f1e514] [cursor=pointer]: )
+              - listitem [ref=f1e515] [cursor=pointer]
+              - listitem [ref=f1e516] [cursor=pointer]: "def _execute_with_wrappers(self, sql, params, many, executor):"
+              - listitem [ref=f1e517] [cursor=pointer]: "context = {\"connection\": self.db, \"cursor\": self}"
+              - listitem [ref=f1e518] [cursor=pointer]: "for wrapper in reversed(self.db.execute_wrappers):"
+              - listitem [ref=f1e519] [cursor=pointer]: executor = functools.partial(wrapper, executor)
+            - list [ref=f1e520]:
+              - listitem [ref=f1e521] [cursor=pointer]:
+                - text: return executor(sql, params, many, context) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                - generic [ref=f1e522]: …
+            - list [ref=f1e523]:
+              - listitem [ref=f1e524] [cursor=pointer]
+              - listitem [ref=f1e525] [cursor=pointer]: "def _execute(self, sql, params, *ignored_wrapper_args):"
+              - listitem [ref=f1e526] [cursor=pointer]: "# Raise a warning during app initialization (stored_app_configs is only"
+              - listitem [ref=f1e527] [cursor=pointer]: "# ever set during testing)."
+              - listitem [ref=f1e528] [cursor=pointer]: "if not apps.ready and not apps.stored_app_configs:"
+              - listitem [ref=f1e529] [cursor=pointer]: warnings.warn(self.APPS_NOT_READY_WARNING_MSG, category=RuntimeWarning)
+          - group [ref=f1e530]:
+            - generic "Local vars" [ref=f1e531] [cursor=pointer]
+        - listitem [ref=f1e532]:
+          - code [ref=f1e533]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/db/backends/utils.py
+          - text: ", line 100, in _execute"
+          - generic [ref=f1e534]:
+            - list [ref=f1e535]:
+              - listitem [ref=f1e536] [cursor=pointer]
+              - listitem [ref=f1e537] [cursor=pointer]: "def _execute(self, sql, params, *ignored_wrapper_args):"
+              - listitem [ref=f1e538] [cursor=pointer]: "# Raise a warning during app initialization (stored_app_configs is only"
+              - listitem [ref=f1e539] [cursor=pointer]: "# ever set during testing)."
+              - listitem [ref=f1e540] [cursor=pointer]: "if not apps.ready and not apps.stored_app_configs:"
+              - listitem [ref=f1e541] [cursor=pointer]: warnings.warn(self.APPS_NOT_READY_WARNING_MSG, category=RuntimeWarning)
+              - listitem [ref=f1e542] [cursor=pointer]: self.db.validate_no_broken_transaction()
+            - list [ref=f1e543]:
+              - listitem [ref=f1e544] [cursor=pointer]:
+                - text: "with self.db.wrap_database_errors: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+                - generic [ref=f1e545]: …
+            - list [ref=f1e546]:
+              - listitem [ref=f1e547] [cursor=pointer]: "if params is None:"
+              - listitem [ref=f1e548] [cursor=pointer]: "# params default might be backend specific."
+              - listitem [ref=f1e549] [cursor=pointer]: return self.cursor.execute(sql)
+              - listitem [ref=f1e550] [cursor=pointer]: "else:"
+              - listitem [ref=f1e551] [cursor=pointer]: return self.cursor.execute(sql, params)
+              - listitem [ref=f1e552] [cursor=pointer]
+          - group [ref=f1e553]:
+            - generic "Local vars" [ref=f1e554] [cursor=pointer]
+        - listitem [ref=f1e555]:
+          - code [ref=f1e556]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/db/utils.py
+          - text: ", line 94, in __exit__"
+          - generic [ref=f1e557]:
+            - list [ref=f1e558]:
+              - listitem [ref=f1e559] [cursor=pointer]: db_exc_type = getattr(self.wrapper.Database, dj_exc_type.__name__)
+              - listitem [ref=f1e560] [cursor=pointer]: "if issubclass(exc_type, db_exc_type):"
+              - listitem [ref=f1e561] [cursor=pointer]: dj_exc_value = dj_exc_type(*exc_value.args)
+              - listitem [ref=f1e562] [cursor=pointer]: "# Only set the 'errors_occurred' flag for errors that may make"
+              - listitem [ref=f1e563] [cursor=pointer]: "# the connection unusable."
+              - listitem [ref=f1e564] [cursor=pointer]: "if dj_exc_type not in (DataError, IntegrityError):"
+              - listitem [ref=f1e565] [cursor=pointer]: self.wrapper.errors_occurred = True
+            - list [ref=f1e566]:
+              - listitem [ref=f1e567] [cursor=pointer]:
+                - text: raise dj_exc_value.with_traceback(traceback) from exc_value ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                - generic [ref=f1e568]: …
+            - list [ref=f1e569]:
+              - listitem [ref=f1e570] [cursor=pointer]
+              - listitem [ref=f1e571] [cursor=pointer]: "def __call__(self, func):"
+              - listitem [ref=f1e572] [cursor=pointer]: "# Note that we are intentionally not using @wraps here for performance"
+              - listitem [ref=f1e573] [cursor=pointer]: "# reasons. Refs #21109."
+              - listitem [ref=f1e574] [cursor=pointer]: "def inner(*args, **kwargs):"
+              - listitem [ref=f1e575] [cursor=pointer]: "with self:"
+          - group [ref=f1e576]:
+            - generic "Local vars" [ref=f1e577] [cursor=pointer]
+        - listitem [ref=f1e578]:
+          - code [ref=f1e579]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/db/backends/utils.py
+          - text: ", line 105, in _execute"
+          - generic [ref=f1e580]:
+            - list [ref=f1e581]:
+              - listitem [ref=f1e582] [cursor=pointer]: warnings.warn(self.APPS_NOT_READY_WARNING_MSG, category=RuntimeWarning)
+              - listitem [ref=f1e583] [cursor=pointer]: self.db.validate_no_broken_transaction()
+              - listitem [ref=f1e584] [cursor=pointer]: "with self.db.wrap_database_errors:"
+              - listitem [ref=f1e585] [cursor=pointer]: "if params is None:"
+              - listitem [ref=f1e586] [cursor=pointer]: "# params default might be backend specific."
+              - listitem [ref=f1e587] [cursor=pointer]: return self.cursor.execute(sql)
+              - listitem [ref=f1e588] [cursor=pointer]: "else:"
+            - list [ref=f1e589]:
+              - listitem [ref=f1e590] [cursor=pointer]:
+                - text: return self.cursor.execute(sql, params) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                - generic [ref=f1e591]: …
+            - list [ref=f1e592]:
+              - listitem [ref=f1e593] [cursor=pointer]
+              - listitem [ref=f1e594] [cursor=pointer]: "def _executemany(self, sql, param_list, *ignored_wrapper_args):"
+              - listitem [ref=f1e595] [cursor=pointer]: "# Raise a warning during app initialization (stored_app_configs is only"
+              - listitem [ref=f1e596] [cursor=pointer]: "# ever set during testing)."
+              - listitem [ref=f1e597] [cursor=pointer]: "if not apps.ready and not apps.stored_app_configs:"
+              - listitem [ref=f1e598] [cursor=pointer]: warnings.warn(self.APPS_NOT_READY_WARNING_MSG, category=RuntimeWarning)
+          - group [ref=f1e599]:
+            - generic "Local vars" [ref=f1e600] [cursor=pointer]
+        - listitem [ref=f1e601]:
+          - code [ref=f1e602]: /home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/psycopg/cursor.py
+          - text: ", line 117, in execute"
+          - generic [ref=f1e603]:
+            - list [ref=f1e604]:
+              - listitem [ref=f1e605] [cursor=pointer]: "\"\"\""
+              - listitem [ref=f1e606] [cursor=pointer]: "try:"
+              - listitem [ref=f1e607] [cursor=pointer]: "with self._conn.lock:"
+              - listitem [ref=f1e608] [cursor=pointer]: self._conn.wait(
+              - listitem [ref=f1e609] [cursor=pointer]: self._execute_gen(query, params, prepare=prepare, binary=binary)
+              - listitem [ref=f1e610] [cursor=pointer]: )
+              - listitem [ref=f1e611] [cursor=pointer]: "except e._NO_TRACEBACK as ex:"
+            - list [ref=f1e612]:
+              - listitem [ref=f1e613] [cursor=pointer]:
+                - text: raise ex.with_traceback(None) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                - generic [ref=f1e614]: …
+            - list [ref=f1e615]:
+              - listitem [ref=f1e616] [cursor=pointer]: return self
+              - listitem [ref=f1e617] [cursor=pointer]
+              - listitem [ref=f1e618] [cursor=pointer]: def executemany(
+              - listitem [ref=f1e619] [cursor=pointer]: "self, query: Query, params_seq: Iterable[Params], *, returning: bool = False"
+              - listitem [ref=f1e620] [cursor=pointer]: ") -> None:"
+              - listitem [ref=f1e621] [cursor=pointer]: "\"\"\""
+          - group [ref=f1e622]:
+            - generic "Local vars" [ref=f1e623] [cursor=pointer]
+      - generic [ref=f1e625]:
+        - textbox [ref=f1e626]: "Environment: Request Method: GET Request URL: http://127.0.0.1:8929/ Django Version: 6.0.4 Python Version: 3.13.5 Installed Applications: ['whitenoise.runserver_nostatic', 'django_cotton.apps.SimpleAppConfig', 'django.contrib.auth', 'django.contrib.contenttypes', 'django.contrib.sessions', 'django.contrib.messages', 'django.contrib.staticfiles', 'django.contrib.sites', 'django.contrib.sitemaps', 'django.contrib.postgres', 'django.tasks', 'django_tasks_db', 'unfold.apps.BasicAppConfig', 'unfold.contrib.filters', 'unfold.contrib.forms', 'unfold.contrib.inlines', 'unfold.contrib.import_export', 'import_export', 'unfold.contrib.guardian', 'unfold.contrib.simple_history', 'unfold.contrib.location_field', 'unfold.contrib.constance', 'freedom_ls.base.admin_config.FreedomLSAdminConfig', 'guardian', 'health_check', 'rest_framework', 'django_filters', 'drf_spectacular', 'freedom_ls.base', 'freedom_ls.api', 'freedom_ls.api_admin', 'freedom_ls.deployment', 'freedom_ls.google_tag', 'freedom_ls.meta_pixel', 'freedom_ls.blog', 'freedom_ls.tiktok_pixel', 'freedom_ls.mail', 'freedom_ls.health', 'freedom_ls.icons', 'freedom_ls.markdown_rendering', 'freedom_ls.content_base', 'freedom_ls.content_engine', 'freedom_ls.form_engine', 'freedom_ls.accounts', 'freedom_ls.referral_tracking', 'freedom_ls.organisations', 'freedom_ls.audit_log', 'freedom_ls.learner_management', 'freedom_ls.hr_attributes', 'freedom_ls.registration_rules', 'freedom_ls.learner_progress', 'freedom_ls.deadlines', 'freedom_ls.site_aware_models', 'freedom_ls.panel_framework', 'freedom_ls.educator_interface', 'freedom_ls.reports', 'freedom_ls.role_based_permissions', 'freedom_ls.course_access', 'freedom_ls.course_applications', 'freedom_ls.course_interest', 'freedom_ls.course_recommendations', 'freedom_ls.learner_interface', 'encrypted_fields', 'django_ace', 'freedom_ls.webhooks', 'freedom_ls.comms', 'freedom_ls.messaging_policy', 'allauth', 'allauth.account', 'axes', 'debug_toolbar', 'django_browser_reload', 'freedom_ls.qa_helpers', 'freedom_ls.dev_tools'] Installed Middleware: ['debug_toolbar.middleware.DebugToolbarMiddleware', 'django.middleware.security.SecurityMiddleware', 'django.middleware.csp.ContentSecurityPolicyMiddleware', 'whitenoise.middleware.WhiteNoiseMiddleware', 'django.contrib.sessions.middleware.SessionMiddleware', 'django.middleware.common.CommonMiddleware', 'freedom_ls.base.middleware.RemoveSlashMiddleware', 'django.middleware.csrf.CsrfViewMiddleware', 'django.contrib.auth.middleware.AuthenticationMiddleware', 'django.contrib.messages.middleware.MessageMiddleware', 'freedom_ls.base.middleware.HtmxMessagesMiddleware', 'django.middleware.clickjacking.XFrameOptionsMiddleware', 'freedom_ls.site_aware_models.middleware.CurrentSiteMiddleware', 'freedom_ls.referral_tracking.middleware.AttributionCaptureMiddleware', 'allauth.account.middleware.AccountMiddleware', 'freedom_ls.accounts.middleware.RegistrationCompletionMiddleware', 'axes.middleware.AxesMiddleware', 'django_browser_reload.middleware.BrowserReloadMiddleware'] Traceback (most recent call last): File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/db/backends/utils.py\", line 105, in _execute return self.cursor.execute(sql, params) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/psycopg/cursor.py\", line 117, in execute raise ex.with_traceback(None) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ The above exception (column freedom_ls_form_engine_formprogress.furthest_page_id does not exist LINE 1: ..., \"freedom_ls_form_engine_formprogress\".\"scores\", \"freedom_l... ^) was the direct cause of the following exception: File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/core/handlers/exception.py\", line 55, in inner response = get_response(request) ^^^^^^^^^^^^^^^^^^^^^ File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/core/handlers/base.py\", line 198, in _get_response response = wrapped_callback(request, *callback_args, **callback_kwargs) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/views/decorators/vary.py\", line 31, in _view_wrapper response = func(request, *args, **kwargs) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/freedom_ls/learner_interface/views.py\", line 790, in dashboard \"sections\": _dashboard_sections(request, inputs), ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/freedom_ls/learner_interface/views.py\", line 638, in _dashboard_sections _in_progress_section( ^ File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/freedom_ls/learner_interface/views.py\", line 455, in _in_progress_section _annotate_registered_courses(courses, user, backend) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/freedom_ls/learner_interface/views.py\", line 327, in _annotate_registered_courses _annotate_next_up( ^ File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/freedom_ls/learner_interface/views.py\", line 178, in _annotate_next_up children = get_course_index( File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/freedom_ls/learner_interface/utils.py\", line 563, in get_course_index topic_progress_map, form_placement_map = _fetch_player_progress_maps( File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/freedom_ls/learner_interface/utils.py\", line 489, in _fetch_player_progress_maps attempts = list( File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/db/models/query.py\", line 390, in __iter__ self._fetch_all() ^^^^^^^^^^^^^^^^^ File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/db/models/query.py\", line 2000, in _fetch_all self._result_cache = list(self._iterable_class(self)) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/db/models/query.py\", line 95, in __iter__ results = compiler.execute_sql( File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/db/models/sql/compiler.py\", line 1624, in execute_sql cursor.execute(sql, params) ^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/debug_toolbar/panels/sql/tracking.py\", line 243, in execute return self._record(super().execute, sql, params) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/debug_toolbar/panels/sql/tracking.py\", line 164, in _record return method(sql, params) ^^^^^^^^^^^^^^^^^^^ File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/db/backends/utils.py\", line 122, in execute return super().execute(sql, params) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/db/backends/utils.py\", line 79, in execute return self._execute_with_wrappers( File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/db/backends/utils.py\", line 92, in _execute_with_wrappers return executor(sql, params, many, context) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/db/backends/utils.py\", line 100, in _execute with self.db.wrap_database_errors: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/db/utils.py\", line 94, in __exit__ raise dj_exc_value.with_traceback(traceback) from exc_value ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/django/db/backends/utils.py\", line 105, in _execute return self.cursor.execute(sql, params) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/lib/python3.13/site-packages/psycopg/cursor.py\", line 117, in execute raise ex.with_traceback(None) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Exception Type: ProgrammingError at / Exception Value: column freedom_ls_form_engine_formprogress.furthest_page_id does not exist LINE 1: ..., \"freedom_ls_form_engine_formprogress\".\"scores\", \"freedom_l... ^"
+        - button "Share this traceback on a public website" [ref=f1e627]
+    - generic [ref=f1e628]:
+      - heading "Request information" [level=2] [ref=f1e629]
+      - heading "USER" [level=3] [ref=f1e630]
+      - paragraph [ref=f1e631]: demodev@email.com
+      - heading "GET" [level=3] [ref=f1e632]
+      - paragraph [ref=f1e633]: No GET data
+      - heading "POST" [level=3] [ref=f1e634]
+      - paragraph [ref=f1e635]: No POST data
+      - heading "FILES" [level=3] [ref=f1e636]
+      - paragraph [ref=f1e637]: No FILES data
+      - heading "COOKIES" [level=3] [ref=f1e638]
+      - table [ref=f1e639]:
+        - rowgroup [ref=f1e640]:
+          - row [ref=f1e641]:
+            - columnheader "Variable" [ref=f1e642]
+            - columnheader "Value" [ref=f1e643]
+        - rowgroup [ref=f1e644]:
+          - row [ref=f1e645]:
+            - cell "messages" [ref=f1e646]
+            - cell "'W1siX19qc29uX21lc3NhZ2UiLDAsMjUsIlN1Y2Nlc3NmdWxseSBzaWduZWQgaW4gYXMgZGVtb2RldkBlbWFpbC5jb20uIiwiIl1d:1xUjca:O-jN9N77Y73rkrkq47u3mxG4wyo1_pmnHNZ9BMb21W4'" [ref=f1e647]
+          - row [ref=f1e649]:
+            - cell "csrftoken" [ref=f1e650]
+            - cell "'********************'" [ref=f1e651]
+          - row [ref=f1e653]:
+            - cell "sessionid_db_extract_semantic_icons_app_1_standalone_app" [ref=f1e654]
+            - cell "'********************'" [ref=f1e655]
+      - heading "META" [level=3] [ref=f1e657]
+      - table [ref=f1e658]:
+        - rowgroup [ref=f1e659]:
+          - row [ref=f1e660]:
+            - columnheader "Variable" [ref=f1e661]
+            - columnheader "Value" [ref=f1e662]
+        - rowgroup [ref=f1e663]:
+          - row [ref=f1e664]:
+            - cell "AGE_PUBLIC_KEY_MMULLER" [ref=f1e665]
+            - cell "'********************'" [ref=f1e666]
+          - row [ref=f1e668]:
+            - cell "AI_AGENT" [ref=f1e669]
+            - cell "'claude-code_2-1-330_agent'" [ref=f1e670]
+          - row [ref=f1e672]:
+            - cell "BUNDLED_DEBUGPY_PATH" [ref=f1e673]
+            - cell "'/home/sheena/.vscode/extensions/ms-python.debugpy-2026.6.0-linux-x64/bundled/libs/debugpy'" [ref=f1e674]
+          - row [ref=f1e676]:
+            - cell "CHROME_DESKTOP" [ref=f1e677]
+            - cell "'code_code.desktop'" [ref=f1e678]
+          - row [ref=f1e680]:
+            - cell "CLAUDECODE" [ref=f1e681]
+            - cell "'1'" [ref=f1e682]
+          - row [ref=f1e684]:
+            - cell "CLAUDE_CODE_CHILD_NOTES_DIR" [ref=f1e685]
+            - cell "'/tmp/claude-1000/-home-sheena-workspace-lms-freedom-ls-worktrees-extract-semantic-icons-app-1-standalone-app/2bce865e-b05a-46ea-923a-75f841fcc7a7/started'" [ref=f1e686]
+          - row [ref=f1e688]:
+            - cell "CLAUDE_CODE_CHILD_SESSION" [ref=f1e689]
+            - cell "'1'" [ref=f1e690]
+          - row [ref=f1e692]:
+            - cell "CLAUDE_CODE_ENTRYPOINT" [ref=f1e693]
+            - cell "'cli'" [ref=f1e694]
+          - row [ref=f1e696]:
+            - cell "CLAUDE_CODE_EXECPATH" [ref=f1e697]
+            - cell "'/home/sheena/.local/share/claude/versions/2.1.330'" [ref=f1e698]
+          - row [ref=f1e700]:
+            - cell "CLAUDE_CODE_MESSAGING_SOCKET" [ref=f1e701]
+            - cell "'/run/user/1000/cc-socks/197692.sock'" [ref=f1e702]
+          - row [ref=f1e704]:
+            - cell "CLAUDE_CODE_MESSAGING_TOKEN" [ref=f1e705]
+            - cell "'********************'" [ref=f1e706]
+          - row [ref=f1e708]:
+            - cell "CLAUDE_CODE_SESSION_ATTENDED" [ref=f1e709]
+            - cell "'1'" [ref=f1e710]
+          - row [ref=f1e712]:
+            - cell "CLAUDE_CODE_SESSION_ID" [ref=f1e713]
+            - cell "'2bce865e-b05a-46ea-923a-75f841fcc7a7'" [ref=f1e714]
+          - row [ref=f1e716]:
+            - cell "CLAUDE_CODE_SSE_PORT" [ref=f1e717]
+            - cell "'23056'" [ref=f1e718]
+          - row [ref=f1e720]:
+            - cell "CLAUDE_EFFORT" [ref=f1e721]
+            - cell "'medium'" [ref=f1e722]
+          - row [ref=f1e724]:
+            - cell "CLAUDE_PID" [ref=f1e725]
+            - cell "'197692'" [ref=f1e726]
+          - row [ref=f1e728]:
+            - cell "CLAUDE_PLUGINS_LOADED" [ref=f1e729]
+            - cell "'1'" [ref=f1e730]
+          - row [ref=f1e732]:
+            - cell "COLORTERM" [ref=f1e733]
+            - cell "'truecolor'" [ref=f1e734]
+          - row [ref=f1e736]:
+            - cell "CONTENT_LENGTH" [ref=f1e737]
+            - cell "''" [ref=f1e738]
+          - row [ref=f1e740]:
+            - cell "CONTENT_TYPE" [ref=f1e741]
+            - cell "'text/plain'" [ref=f1e742]
+          - row [ref=f1e744]:
+            - cell "COREPACK_ENABLE_AUTO_PIN" [ref=f1e745]
+            - cell "'0'" [ref=f1e746]
+          - row [ref=f1e748]:
+            - cell "CSRF_COOKIE" [ref=f1e749]
+            - cell "'QBR2M91j0NAeOw10tpcqX0vN3UIGLobP'" [ref=f1e750]
+          - row [ref=f1e752]:
+            - cell "DBUS_SESSION_BUS_ADDRESS" [ref=f1e753]
+            - cell "'unix:path=/run/user/1000/bus'" [ref=f1e754]
+          - row [ref=f1e756]:
+            - cell "DESKTOP_SESSION" [ref=f1e757]
+            - cell "'ubuntu'" [ref=f1e758]
+          - row [ref=f1e760]:
+            - cell "DISPLAY" [ref=f1e761]
+            - cell "':0'" [ref=f1e762]
+          - row [ref=f1e764]:
+            - cell "DJANGO_SETTINGS_MODULE" [ref=f1e765]
+            - cell "'config.settings_dev'" [ref=f1e766]
+          - row [ref=f1e768]:
+            - cell "FC_FONTATIONS" [ref=f1e769]
+            - cell "'1'" [ref=f1e770]
+          - row [ref=f1e772]:
+            - cell "FLYCTL_INSTALL" [ref=f1e773]
+            - cell "'/home/sheena/.fly'" [ref=f1e774]
+          - row [ref=f1e776]:
+            - cell "FONTCONFIG_FILE" [ref=f1e777]
+            - cell "'/etc/fonts/fonts.conf'" [ref=f1e778]
+          - row [ref=f1e780]:
+            - cell "FONTCONFIG_PATH" [ref=f1e781]
+            - cell "'/etc/fonts'" [ref=f1e782]
+          - row [ref=f1e784]:
+            - cell "GATEWAY_INTERFACE" [ref=f1e785]
+            - cell "'CGI/1.1'" [ref=f1e786]
+          - row [ref=f1e788]:
+            - cell "GDK_BACKEND_VSCODE_SNAP_ORIG" [ref=f1e789]
+            - cell "''" [ref=f1e790]
+          - row [ref=f1e792]:
+            - cell "GDMSESSION" [ref=f1e793]
+            - cell "'ubuntu'" [ref=f1e794]
+          - row [ref=f1e796]:
+            - cell "GIO_LAUNCHED_DESKTOP_FILE_PID" [ref=f1e797]
+            - cell "'14847'" [ref=f1e798]
+          - row [ref=f1e800]:
+            - cell "GIO_MODULE_DIR" [ref=f1e801]
+            - cell "'/home/sheena/snap/code/common/.cache/gio-modules'" [ref=f1e802]
+          - row [ref=f1e804]:
+            - cell "GIO_MODULE_DIR_VSCODE_SNAP_ORIG" [ref=f1e805]
+            - cell "'/home/sheena/snap/code/common/.cache/gio-modules'" [ref=f1e806]
+          - row [ref=f1e808]:
+            - cell "GIT_ASKPASS" [ref=f1e809]
+            - cell "'********************'" [ref=f1e810]
+          - row [ref=f1e812]:
+            - cell "GIT_EDITOR" [ref=f1e813]
+            - cell "'true'" [ref=f1e814]
+          - row [ref=f1e816]:
+            - cell "GNOME_DESKTOP_SESSION_ID" [ref=f1e817]
+            - cell "'this-is-deprecated'" [ref=f1e818]
+          - row [ref=f1e820]:
+            - cell "GNOME_KEYRING_CONTROL" [ref=f1e821]
+            - cell "'********************'" [ref=f1e822]
+          - row [ref=f1e824]:
+            - cell "GNOME_SETUP_DISPLAY" [ref=f1e825]
+            - cell "'unix:/tmp/.X11-unix/X1'" [ref=f1e826]
+          - row [ref=f1e828]:
+            - cell "GPG_AGENT_INFO" [ref=f1e829]
+            - cell "'/run/user/1000/gnupg/S.gpg-agent:0:1'" [ref=f1e830]
+          - row [ref=f1e832]:
+            - cell "GSETTINGS_SCHEMA_DIR" [ref=f1e833]
+            - cell "'/home/sheena/snap/code/280/.local/share/glib-2.0/schemas'" [ref=f1e834]
+          - row [ref=f1e836]:
+            - cell "GSETTINGS_SCHEMA_DIR_VSCODE_SNAP_ORIG" [ref=f1e837]
+            - cell "'/home/sheena/snap/code/280/.local/share/glib-2.0/schemas'" [ref=f1e838]
+          - row [ref=f1e840]:
+            - cell "GTK_EXE_PREFIX" [ref=f1e841]
+            - cell "'/snap/code/280/usr'" [ref=f1e842]
+          - row [ref=f1e844]:
+            - cell "GTK_EXE_PREFIX_VSCODE_SNAP_ORIG" [ref=f1e845]
+            - cell "'/snap/code/280/usr'" [ref=f1e846]
+          - row [ref=f1e848]:
+            - cell "GTK_IM_MODULE_FILE" [ref=f1e849]
+            - cell "'/home/sheena/snap/code/common/.cache/immodules/immodules.cache'" [ref=f1e850]
+          - row [ref=f1e852]:
+            - cell "GTK_IM_MODULE_FILE_VSCODE_SNAP_ORIG" [ref=f1e853]
+            - cell "'/home/sheena/snap/code/common/.cache/immodules/immodules.cache'" [ref=f1e854]
+          - row [ref=f1e856]:
+            - cell "GTK_MODULES" [ref=f1e857]
+            - cell "'gail:atk-bridge'" [ref=f1e858]
+          - row [ref=f1e860]:
+            - cell "GTK_PATH" [ref=f1e861]
+            - cell "'/snap/code/280/usr/lib/x86_64-linux-gnu/gtk-3.0:/snap/code/280/usr/lib/x86_64-linux-gnu/gtk-3.0'" [ref=f1e862]
+          - row [ref=f1e864]:
+            - cell "GTK_PATH_VSCODE_SNAP_ORIG" [ref=f1e865]
+            - cell "'/snap/code/280/usr/lib/x86_64-linux-gnu/gtk-3.0'" [ref=f1e866]
+          - row [ref=f1e868]:
+            - cell "HOME" [ref=f1e869]
+            - cell "'/home/sheena'" [ref=f1e870]
+          - row [ref=f1e872]:
+            - cell "HTTP_ACCEPT" [ref=f1e873]
+            - cell "'text/html,application/xhtml+xml,application/xml;q=0.9,image/jxl,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7'" [ref=f1e874]
+          - row [ref=f1e876]:
+            - cell "HTTP_ACCEPT_ENCODING" [ref=f1e877]
+            - cell "'gzip, deflate, br, zstd'" [ref=f1e878]
+          - row [ref=f1e880]:
+            - cell "HTTP_ACCEPT_LANGUAGE" [ref=f1e881]
+            - cell "'en-US,en;q=0.9'" [ref=f1e882]
+          - row [ref=f1e884]:
+            - cell "HTTP_CACHE_CONTROL" [ref=f1e885]
+            - cell "'max-age=0'" [ref=f1e886]
+          - row [ref=f1e888]:
+            - cell "HTTP_CONNECTION" [ref=f1e889]
+            - cell "'keep-alive'" [ref=f1e890]
+          - row [ref=f1e892]:
+            - cell "HTTP_COOKIE" [ref=f1e893]
+            - cell "'********************'" [ref=f1e894]
+          - row [ref=f1e896]:
+            - cell "HTTP_HOST" [ref=f1e897]
+            - cell "'127.0.0.1:8929'" [ref=f1e898]
+          - row [ref=f1e900]:
+            - cell "HTTP_REFERER" [ref=f1e901]
+            - cell "'http://127.0.0.1:8929/accounts/login/'" [ref=f1e902]
+          - row [ref=f1e904]:
+            - cell "HTTP_SEC_CH_UA" [ref=f1e905]
+            - cell "'\"Chromium\";v=\"158\", \"Not.A/Brand\";v=\"24\", \"Google Chrome\";v=\"158\"'" [ref=f1e906]
+          - row [ref=f1e908]:
+            - cell "HTTP_SEC_CH_UA_MOBILE" [ref=f1e909]
+            - cell "'?0'" [ref=f1e910]
+          - row [ref=f1e912]:
+            - cell "HTTP_SEC_CH_UA_PLATFORM" [ref=f1e913]
+            - cell "'\"Linux\"'" [ref=f1e914]
+          - row [ref=f1e916]:
+            - cell "HTTP_SEC_FETCH_DEST" [ref=f1e917]
+            - cell "'document'" [ref=f1e918]
+          - row [ref=f1e920]:
+            - cell "HTTP_SEC_FETCH_MODE" [ref=f1e921]
+            - cell "'navigate'" [ref=f1e922]
+          - row [ref=f1e924]:
+            - cell "HTTP_SEC_FETCH_SITE" [ref=f1e925]
+            - cell "'same-origin'" [ref=f1e926]
+          - row [ref=f1e928]:
+            - cell "HTTP_SEC_FETCH_USER" [ref=f1e929]
+            - cell "'?1'" [ref=f1e930]
+          - row [ref=f1e932]:
+            - cell "HTTP_UPGRADE_INSECURE_REQUESTS" [ref=f1e933]
+            - cell "'1'" [ref=f1e934]
+          - row [ref=f1e936]:
+            - cell "HTTP_USER_AGENT" [ref=f1e937]
+            - cell "('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) ' 'HeadlessChrome/158.0.0.0 Safari/537.36')" [ref=f1e938]
+          - row [ref=f1e940]:
+            - cell "INVOCATION_ID" [ref=f1e941]
+            - cell "'0d25349e903c47349bc1500ad2b7af12'" [ref=f1e942]
+          - row [ref=f1e944]:
+            - cell "JOURNAL_STREAM" [ref=f1e945]
+            - cell "'10:56582'" [ref=f1e946]
+          - row [ref=f1e948]:
+            - cell "LANG" [ref=f1e949]
+            - cell "'en_US.UTF-8'" [ref=f1e950]
+          - row [ref=f1e952]:
+            - cell "LESS" [ref=f1e953]
+            - cell "'-R'" [ref=f1e954]
+          - row [ref=f1e956]:
+            - cell "LOCPATH" [ref=f1e957]
+            - cell "'/snap/code/280/usr/lib/locale:/snap/code/280/usr/lib/locale'" [ref=f1e958]
+          - row [ref=f1e960]:
+            - cell "LOCPATH_VSCODE_SNAP_ORIG" [ref=f1e961]
+            - cell "'/snap/code/280/usr/lib/locale'" [ref=f1e962]
+          - row [ref=f1e964]:
+            - cell "LOGNAME" [ref=f1e965]
+            - cell "'sheena'" [ref=f1e966]
+          - row [ref=f1e968]:
+            - cell "LSCOLORS" [ref=f1e969]
+            - cell "'Gxfxcxdxbxegedabagacad'" [ref=f1e970]
+          - row [ref=f1e972]:
+            - cell "LS_COLORS" [ref=f1e973]
+            - cell [ref=f1e974]
+          - row [ref=f1e976]:
+            - cell "MANAGERPID" [ref=f1e977]
+            - cell "'7183'" [ref=f1e978]
+          - row [ref=f1e980]:
+            - cell "MANAGERPIDFDID" [ref=f1e981]
+            - cell "'16933'" [ref=f1e982]
+          - row [ref=f1e984]:
+            - cell "MEMORY_PRESSURE_WATCH" [ref=f1e985]
+            - cell "'/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/session.slice/org.gnome.SettingsDaemon.MediaKeys.service/memory.pressure'" [ref=f1e986]
+          - row [ref=f1e988]:
+            - cell "MEMORY_PRESSURE_WRITE" [ref=f1e989]
+            - cell "'c29tZSAyMDAwMDAgMjAwMDAwMAA='" [ref=f1e990]
+          - row [ref=f1e992]:
+            - cell "NO_AT_BRIDGE" [ref=f1e993]
+            - cell "'1'" [ref=f1e994]
+          - row [ref=f1e996]:
+            - cell "NVM_BIN" [ref=f1e997]
+            - cell "'/home/sheena/.nvm/versions/node/v24.11.0/bin'" [ref=f1e998]
+          - row [ref=f1e1000]:
+            - cell "NVM_CD_FLAGS" [ref=f1e1001]
+            - cell "'-q'" [ref=f1e1002]
+          - row [ref=f1e1004]:
+            - cell "NVM_DIR" [ref=f1e1005]
+            - cell "'/home/sheena/.nvm'" [ref=f1e1006]
+          - row [ref=f1e1008]:
+            - cell "NVM_INC" [ref=f1e1009]
+            - cell "'/home/sheena/.nvm/versions/node/v24.11.0/include/node'" [ref=f1e1010]
+          - row [ref=f1e1012]:
+            - cell "NoDefaultCurrentDirectoryInExePath" [ref=f1e1013]
+            - cell "'1'" [ref=f1e1014]
+          - row [ref=f1e1016]:
+            - cell "OLDPWD" [ref=f1e1017]
+            - cell "'/home/sheena/workspace'" [ref=f1e1018]
+          - row [ref=f1e1020]:
+            - cell "OPENSCADPATH" [ref=f1e1021]
+            - cell "'~/.local/share/OpenSCAD/libraries/'" [ref=f1e1022]
+          - row [ref=f1e1024]:
+            - cell "PAGER" [ref=f1e1025]
+            - cell "'less'" [ref=f1e1026]
+          - row [ref=f1e1028]:
+            - cell "PATH" [ref=f1e1029]
+            - cell "'/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/bin:/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv/bin:/home/sheena/.opencode/bin:/home/sheena/.fly/bin:/home/sheena/.pyenv/shims:/home/sheena/.pyenv/bin:/home/sheena/.flutter_sdk/flutter/bin:/home/sheena/.opencode/bin:/home/sheena/.fly/bin:/home/sheena/.pyenv/bin:/home/sheena/.flutter_sdk/flutter/bin:/home/sheena/.opencode/bin:/home/sheena/.local/bin:/home/sheena/.fly/bin:/home/sheena/.nvm/versions/node/v24.11.0/bin:/home/sheena/.pyenv/bin:/home/sheena/.flutter_sdk/flutter/bin:/home/sheena/.flutter_sdk/flutter/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/home/sheena/.vscode/extensions/ms-python.debugpy-2026.6.0-linux-x64/bundled/scripts/noConfigScripts'" [ref=f1e1030]
+          - row [ref=f1e1032]:
+            - cell "PATH_INFO" [ref=f1e1033]
+            - cell "'/'" [ref=f1e1034]
+          - row [ref=f1e1036]:
+            - cell "PWD" [ref=f1e1037]
+            - cell "'/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app'" [ref=f1e1038]
+          - row [ref=f1e1040]:
+            - cell "PYDEVD_DISABLE_FILE_VALIDATION" [ref=f1e1041]
+            - cell "'1'" [ref=f1e1042]
+          - row [ref=f1e1044]:
+            - cell "PYENV_ROOT" [ref=f1e1045]
+            - cell "'/home/sheena/.pyenv'" [ref=f1e1046]
+          - row [ref=f1e1048]:
+            - cell "PYENV_SHELL" [ref=f1e1049]
+            - cell "'zsh'" [ref=f1e1050]
+          - row [ref=f1e1052]:
+            - cell "PYTHONSTARTUP" [ref=f1e1053]
+            - cell "'/home/sheena/.config/Code/User/workspaceStorage/d729218f6e35f4cb335c4db7c5faac2b/ms-python.python/pythonrc.py'" [ref=f1e1054]
+          - row [ref=f1e1056]:
+            - cell "PYTHON_COLORS" [ref=f1e1057]
+            - cell "'0'" [ref=f1e1058]
+          - row [ref=f1e1060]:
+            - cell "QT_ACCESSIBILITY" [ref=f1e1061]
+            - cell "'1'" [ref=f1e1062]
+          - row [ref=f1e1064]:
+            - cell "QT_IM_MODULE" [ref=f1e1065]
+            - cell "'ibus'" [ref=f1e1066]
+          - row [ref=f1e1068]:
+            - cell "QT_IM_MODULES" [ref=f1e1069]
+            - cell "'wayland;ibus'" [ref=f1e1070]
+          - row [ref=f1e1072]:
+            - cell "QUERY_STRING" [ref=f1e1073]
+            - cell "''" [ref=f1e1074]
+          - row [ref=f1e1076]:
+            - cell "REMOTE_ADDR" [ref=f1e1077]
+            - cell "'127.0.0.1'" [ref=f1e1078]
+          - row [ref=f1e1080]:
+            - cell "REMOTE_HOST" [ref=f1e1081]
+            - cell "''" [ref=f1e1082]
+          - row [ref=f1e1084]:
+            - cell "REQUEST_METHOD" [ref=f1e1085]
+            - cell "'GET'" [ref=f1e1086]
+          - row [ref=f1e1088]:
+            - cell "RUN_MAIN" [ref=f1e1089]
+            - cell "'true'" [ref=f1e1090]
+          - row [ref=f1e1092]:
+            - cell "SCRIPT_NAME" [ref=f1e1093]
+            - cell "''" [ref=f1e1094]
+          - row [ref=f1e1096]:
+            - cell "SERVER_NAME" [ref=f1e1097]
+            - cell "'localhost'" [ref=f1e1098]
+          - row [ref=f1e1100]:
+            - cell "SERVER_PORT" [ref=f1e1101]
+            - cell "'8929'" [ref=f1e1102]
+          - row [ref=f1e1104]:
+            - cell "SERVER_PROTOCOL" [ref=f1e1105]
+            - cell "'HTTP/1.1'" [ref=f1e1106]
+          - row [ref=f1e1108]:
+            - cell "SERVER_SOFTWARE" [ref=f1e1109]
+            - cell "'WSGIServer/0.2'" [ref=f1e1110]
+          - row [ref=f1e1112]:
+            - cell "SHELL" [ref=f1e1113]
+            - cell "'/usr/bin/zsh'" [ref=f1e1114]
+          - row [ref=f1e1116]:
+            - cell "SHLVL" [ref=f1e1117]
+            - cell "'5'" [ref=f1e1118]
+          - row [ref=f1e1120]:
+            - cell "SSH_AUTH_SOCK" [ref=f1e1121]
+            - cell "'********************'" [ref=f1e1122]
+          - row [ref=f1e1124]:
+            - cell "SYSTEMD_EXEC_PID" [ref=f1e1125]
+            - cell "'8239'" [ref=f1e1126]
+          - row [ref=f1e1128]:
+            - cell "TERM" [ref=f1e1129]
+            - cell "'xterm-256color'" [ref=f1e1130]
+          - row [ref=f1e1132]:
+            - cell "TERMINATOR_DBUS_NAME" [ref=f1e1133]
+            - cell "'net.tenshu.Terminator25ef4b219e3b005583550f2b0f9f990c3'" [ref=f1e1134]
+          - row [ref=f1e1136]:
+            - cell "TERMINATOR_DBUS_PATH" [ref=f1e1137]
+            - cell "'/net/tenshu/Terminator2'" [ref=f1e1138]
+          - row [ref=f1e1140]:
+            - cell "TERMINATOR_UUID" [ref=f1e1141]
+            - cell "'urn:uuid:e306bc97-b4b0-40f5-89d7-f1d21431ae9b'" [ref=f1e1142]
+          - row [ref=f1e1144]:
+            - cell "TERM_PROGRAM" [ref=f1e1145]
+            - cell "'vscode'" [ref=f1e1146]
+          - row [ref=f1e1148]:
+            - cell "TERM_PROGRAM_VERSION" [ref=f1e1149]
+            - cell "'1.146.0'" [ref=f1e1150]
+          - row [ref=f1e1152]:
+            - cell "TZ" [ref=f1e1153]
+            - cell "'UTC'" [ref=f1e1154]
+          - row [ref=f1e1156]:
+            - cell "USER" [ref=f1e1157]
+            - cell "'sheena'" [ref=f1e1158]
+          - row [ref=f1e1160]:
+            - cell "USERNAME" [ref=f1e1161]
+            - cell "'sheena'" [ref=f1e1162]
+          - row [ref=f1e1164]:
+            - cell "USER_ZDOTDIR" [ref=f1e1165]
+            - cell "'/home/sheena'" [ref=f1e1166]
+          - row [ref=f1e1168]:
+            - cell "UV" [ref=f1e1169]
+            - cell "'/home/sheena/.local/bin/uv'" [ref=f1e1170]
+          - row [ref=f1e1172]:
+            - cell "UV_RUN_RECURSION_DEPTH" [ref=f1e1173]
+            - cell "'1'" [ref=f1e1174]
+          - row [ref=f1e1176]:
+            - cell "VIRTUAL_ENV" [ref=f1e1177]
+            - cell "'/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/.venv'" [ref=f1e1178]
+          - row [ref=f1e1180]:
+            - cell "VIRTUAL_ENV_PROMPT" [ref=f1e1181]
+            - cell "'freedom-ls'" [ref=f1e1182]
+          - row [ref=f1e1184]:
+            - cell "VSCODE_GIT_ASKPASS_EXTRA_ARGS" [ref=f1e1185]
+            - cell "'********************'" [ref=f1e1186]
+          - row [ref=f1e1188]:
+            - cell "VSCODE_GIT_ASKPASS_MAIN" [ref=f1e1189]
+            - cell "'********************'" [ref=f1e1190]
+          - row [ref=f1e1192]:
+            - cell "VSCODE_GIT_ASKPASS_NODE" [ref=f1e1193]
+            - cell "'********************'" [ref=f1e1194]
+          - row [ref=f1e1196]:
+            - cell "VSCODE_GIT_IPC_HANDLE" [ref=f1e1197]
+            - cell "'/run/user/1000/vscode-git-eaf7f558e2.sock'" [ref=f1e1198]
+          - row [ref=f1e1200]:
+            - cell "VSCODE_INJECTION" [ref=f1e1201]
+            - cell "'1'" [ref=f1e1202]
+          - row [ref=f1e1204]:
+            - cell "VSCODE_PYTHON_AUTOACTIVATE_GUARD" [ref=f1e1205]
+            - cell "'1'" [ref=f1e1206]
+          - row [ref=f1e1208]:
+            - cell "VTE_VERSION" [ref=f1e1209]
+            - cell "'8400'" [ref=f1e1210]
+          - row [ref=f1e1212]:
+            - cell "WAYLAND_DISPLAY" [ref=f1e1213]
+            - cell "'wayland-0'" [ref=f1e1214]
+          - row [ref=f1e1216]:
+            - cell "XAUTHORITY" [ref=f1e1217]
+            - cell "'********************'" [ref=f1e1218]
+          - row [ref=f1e1220]:
+            - cell "XDG_CONFIG_DIRS_VSCODE_SNAP_ORIG" [ref=f1e1221]
+            - cell "''" [ref=f1e1222]
+          - row [ref=f1e1224]:
+            - cell "XDG_CURRENT_DESKTOP" [ref=f1e1225]
+            - cell "'ubuntu:GNOME'" [ref=f1e1226]
+          - row [ref=f1e1228]:
+            - cell "XDG_DATA_DIRS" [ref=f1e1229]
+            - cell "'/home/sheena/snap/code/280/.local/share:/home/sheena/snap/code/280:/snap/code/280/usr/share:/home/sheena/snap/code/280/.local/share:/home/sheena/snap/code/280:/snap/code/280/usr/share:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'" [ref=f1e1230]
+          - row [ref=f1e1232]:
+            - cell "XDG_DATA_DIRS_VSCODE_SNAP_ORIG" [ref=f1e1233]
+            - cell "'/home/sheena/snap/code/280/.local/share:/home/sheena/snap/code/280:/snap/code/280/usr/share:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'" [ref=f1e1234]
+          - row [ref=f1e1236]:
+            - cell "XDG_MENU_PREFIX" [ref=f1e1237]
+            - cell "'gnome-'" [ref=f1e1238]
+          - row [ref=f1e1240]:
+            - cell "XDG_RUNTIME_DIR" [ref=f1e1241]
+            - cell "'/run/user/1000'" [ref=f1e1242]
+          - row [ref=f1e1244]:
+            - cell "XDG_SESSION_CLASS" [ref=f1e1245]
+            - cell "'user'" [ref=f1e1246]
+          - row [ref=f1e1248]:
+            - cell "XDG_SESSION_DESKTOP" [ref=f1e1249]
+            - cell "'ubuntu'" [ref=f1e1250]
+          - row [ref=f1e1252]:
+            - cell "XDG_SESSION_EXTRA_DEVICE_ACCESS" [ref=f1e1253]
+            - cell "'render:accel'" [ref=f1e1254]
+          - row [ref=f1e1256]:
+            - cell "XDG_SESSION_TYPE" [ref=f1e1257]
+            - cell "'wayland'" [ref=f1e1258]
+          - row [ref=f1e1260]:
+            - cell "XMODIFIERS" [ref=f1e1261]
+            - cell "'@im=ibus'" [ref=f1e1262]
+          - row [ref=f1e1264]:
+            - cell "ZDOTDIR" [ref=f1e1265]
+            - cell "'/home/sheena'" [ref=f1e1266]
+          - row [ref=f1e1268]:
+            - cell "ZSH" [ref=f1e1269]
+            - cell "'/home/sheena/.oh-my-zsh'" [ref=f1e1270]
+          - row [ref=f1e1272]:
+            - cell "_" [ref=f1e1273]
+            - cell "'/home/sheena/.local/bin/uv'" [ref=f1e1274]
+          - row [ref=f1e1276]:
+            - cell "wsgi.errors" [ref=f1e1277]
+            - cell "<_io.TextIOWrapper name='<stderr>' mode='w' encoding='utf-8'>" [ref=f1e1278]
+          - row [ref=f1e1280]:
+            - cell "wsgi.file_wrapper" [ref=f1e1281]
+            - cell "<class 'wsgiref.util.FileWrapper'>" [ref=f1e1282]
+          - row [ref=f1e1284]:
+            - cell "wsgi.input" [ref=f1e1285]
+            - cell "<django.core.handlers.wsgi.LimitedStream object at 0x70d506d48910>" [ref=f1e1286]
+          - row [ref=f1e1288]:
+            - cell "wsgi.multiprocess" [ref=f1e1289]
+            - cell "False" [ref=f1e1290]
+          - row [ref=f1e1292]:
+            - cell "wsgi.multithread" [ref=f1e1293]
+            - cell "True" [ref=f1e1294]
+          - row [ref=f1e1296]:
+            - cell "wsgi.run_once" [ref=f1e1297]
+            - cell "False" [ref=f1e1298]
+          - row [ref=f1e1300]:
+            - cell "wsgi.url_scheme" [ref=f1e1301]
+            - cell "'http'" [ref=f1e1302]
+          - row [ref=f1e1304]:
+            - cell "wsgi.version" [ref=f1e1305]
+            - cell "(1, 0)" [ref=f1e1306]
+      - heading "Settings" [level=3] [ref=f1e1308]
+      - heading [level=4] [ref=f1e1309]:
+        - text: Using settings module
+        - code [ref=f1e1310]: config.settings_dev
+      - table [ref=f1e1311]:
+        - rowgroup [ref=f1e1312]:
+          - row [ref=f1e1313]:
+            - columnheader "Setting" [ref=f1e1314]
+            - columnheader "Value" [ref=f1e1315]
+        - rowgroup [ref=f1e1316]:
+          - row [ref=f1e1317]:
+            - cell "ABSOLUTE_URL_OVERRIDES" [ref=f1e1318]
+            - 'cell "{}" [ref=f1e1319]'
+          - row [ref=f1e1321]:
+            - cell "ACCOUNT_ADAPTER" [ref=f1e1322]
+            - cell "'freedom_ls.accounts.allauth_account_adapter.AccountAdapter'" [ref=f1e1323]
+          - row [ref=f1e1325]:
+            - cell "ACCOUNT_EMAIL_NOTIFICATIONS" [ref=f1e1326]
+            - cell "True" [ref=f1e1327]
+          - row [ref=f1e1329]:
+            - cell "ACCOUNT_EMAIL_VERIFICATION" [ref=f1e1330]
+            - cell "'mandatory'" [ref=f1e1331]
+          - row [ref=f1e1333]:
+            - cell "ACCOUNT_FORMS" [ref=f1e1334]
+            - 'cell "{''signup'': ''freedom_ls.accounts.forms.SiteAwareSignupForm''}" [ref=f1e1335]'
+          - row [ref=f1e1337]:
+            - cell "ACCOUNT_LOGIN_METHODS" [ref=f1e1338]
+            - 'cell "{''email''}" [ref=f1e1339]'
+          - row [ref=f1e1341]:
+            - cell "ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION" [ref=f1e1342]
+            - cell "True" [ref=f1e1343]
+          - row [ref=f1e1345]:
+            - cell "ACCOUNT_LOGIN_ON_PASSWORD_RESET" [ref=f1e1346]
+            - cell "'********************'" [ref=f1e1347]
+          - row [ref=f1e1349]:
+            - cell "ACCOUNT_PREVENT_ENUMERATION" [ref=f1e1350]
+            - cell "True" [ref=f1e1351]
+          - row [ref=f1e1353]:
+            - cell "ACCOUNT_RATE_LIMITS" [ref=f1e1354]
+            - cell "False" [ref=f1e1355]
+          - row [ref=f1e1357]:
+            - cell "ACCOUNT_SIGNUP_FIELDS" [ref=f1e1358]
+            - cell "['email*', 'password1*', 'password2*', 'first_name*', 'last_name']" [ref=f1e1359]
+          - row [ref=f1e1361]:
+            - cell "ACCOUNT_USER_MODEL_USERNAME_FIELD" [ref=f1e1362]
+            - cell "None" [ref=f1e1363]
+          - row [ref=f1e1365]:
+            - cell "ADDITIONAL_REGISTRATION_FORMS" [ref=f1e1366]
+            - cell "[]" [ref=f1e1367]
+          - row [ref=f1e1369]:
+            - cell "ADMINS" [ref=f1e1370]
+            - cell "[]" [ref=f1e1371]
+          - row [ref=f1e1373]:
+            - cell "ADMONITION_TYPES" [ref=f1e1374]
+            - 'cell "{''checklist'': {''color'': ''success'', ''icon'': ''check'', ''label'': ''Checklist''}, ''danger'': {''color'': ''error'', ''icon'': ''error'', ''label'': ''Danger''}, ''default'': {''color'': ''info'', ''icon'': ''info'', ''label'': ''Note''}, ''important'': {''color'': ''warning'', ''icon'': ''warning'', ''label'': ''Important''}, ''key_takeaways'': ''********************'', ''note'': {''color'': ''info'', ''icon'': ''info'', ''label'': ''Note''}, ''regulation'': {''color'': ''warning'', ''icon'': ''scale'', ''icon_fallback'': ''heroicons:scale'', ''label'': ''Regulation''}, ''tip'': {''color'': ''success'', ''icon'': ''star'', ''label'': ''Tip''}, ''warning'': {''color'': ''warning'', ''icon'': ''warning'', ''label'': ''Warning''}}" [ref=f1e1375]'
+          - row [ref=f1e1377]:
+            - cell "ALLOWED_HOSTS" [ref=f1e1378]
+            - cell "[]" [ref=f1e1379]
+          - row [ref=f1e1381]:
+            - cell "ALLOW_SIGN_UPS" [ref=f1e1382]
+            - cell "True" [ref=f1e1383]
+          - row [ref=f1e1385]:
+            - cell "APPEND_SLASH" [ref=f1e1386]
+            - cell "True" [ref=f1e1387]
+          - row [ref=f1e1389]:
+            - cell "AUTHENTICATION_BACKENDS" [ref=f1e1390]
+            - cell "'********************'" [ref=f1e1391]
+          - row [ref=f1e1393]:
+            - cell "AUTH_PASSWORD_VALIDATORS" [ref=f1e1394]
+            - cell "'********************'" [ref=f1e1395]
+          - row [ref=f1e1397]:
+            - cell "AUTH_USER_MODEL" [ref=f1e1398]
+            - cell "'********************'" [ref=f1e1399]
+          - row [ref=f1e1401]:
+            - cell "AXES_ACCESS_FAILURE_LOG_PER_USER_LIMIT" [ref=f1e1402]
+            - cell "1000" [ref=f1e1403]
+          - row [ref=f1e1405]:
+            - cell "AXES_ALLOWED_CORS_ORIGINS" [ref=f1e1406]
+            - cell "'*'" [ref=f1e1407]
+          - row [ref=f1e1409]:
+            - cell "AXES_CLIENT_IP_CALLABLE" [ref=f1e1410]
+            - cell "'freedom_ls.accounts.utils.get_client_ip'" [ref=f1e1411]
+          - row [ref=f1e1413]:
+            - cell "AXES_CLIENT_STR_CALLABLE" [ref=f1e1414]
+            - cell "None" [ref=f1e1415]
+          - row [ref=f1e1417]:
+            - cell "AXES_COOLOFF_MESSAGE" [ref=f1e1418]
+            - 'cell "''Account locked: too many login attempts. Please try again later.''" [ref=f1e1419]'
+          - row [ref=f1e1421]:
+            - cell "AXES_COOLOFF_TIME" [ref=f1e1422]
+            - cell "1" [ref=f1e1423]
+          - row [ref=f1e1425]:
+            - cell "AXES_DISABLE_ACCESS_LOG" [ref=f1e1426]
+            - cell "False" [ref=f1e1427]
+          - row [ref=f1e1429]:
+            - cell "AXES_ENABLED" [ref=f1e1430]
+            - cell "True" [ref=f1e1431]
+          - row [ref=f1e1433]:
+            - cell "AXES_ENABLE_ACCESS_FAILURE_LOG" [ref=f1e1434]
+            - cell "False" [ref=f1e1435]
+          - row [ref=f1e1437]:
+            - cell "AXES_ENABLE_ADMIN" [ref=f1e1438]
+            - cell "True" [ref=f1e1439]
+          - row [ref=f1e1441]:
+            - cell "AXES_FAILURE_LIMIT" [ref=f1e1442]
+            - cell "5" [ref=f1e1443]
+          - row [ref=f1e1445]:
+            - cell "AXES_HANDLER" [ref=f1e1446]
+            - cell "'axes.handlers.database.AxesDatabaseHandler'" [ref=f1e1447]
+          - row [ref=f1e1449]:
+            - cell "AXES_HTTP_RESPONSE_CODE" [ref=f1e1450]
+            - cell "429" [ref=f1e1451]
+          - row [ref=f1e1453]:
+            - cell "AXES_IPWARE_META_PRECEDENCE_ORDER" [ref=f1e1454]
+            - cell "('REMOTE_ADDR',)" [ref=f1e1455]
+          - row [ref=f1e1457]:
+            - cell "AXES_IPWARE_PROXY_COUNT" [ref=f1e1458]
+            - cell "None" [ref=f1e1459]
+          - row [ref=f1e1461]:
+            - cell "AXES_IPWARE_PROXY_ORDER" [ref=f1e1462]
+            - cell "'left-most'" [ref=f1e1463]
+          - row [ref=f1e1465]:
+            - cell "AXES_IPWARE_PROXY_TRUSTED_IPS" [ref=f1e1466]
+            - cell "None" [ref=f1e1467]
+          - row [ref=f1e1469]:
+            - cell "AXES_IP_BLACKLIST" [ref=f1e1470]
+            - cell "None" [ref=f1e1471]
+          - row [ref=f1e1473]:
+            - cell "AXES_IP_WHITELIST" [ref=f1e1474]
+            - cell "None" [ref=f1e1475]
+          - row [ref=f1e1477]:
+            - cell "AXES_LOCKOUT_CALLABLE" [ref=f1e1478]
+            - cell "None" [ref=f1e1479]
+          - row [ref=f1e1481]:
+            - cell "AXES_LOCKOUT_PARAMETERS" [ref=f1e1482]
+            - cell "[['ip_address', 'username'], 'username']" [ref=f1e1483]
+          - row [ref=f1e1485]:
+            - cell "AXES_LOCKOUT_TEMPLATE" [ref=f1e1486]
+            - cell "'accounts/lockout.html'" [ref=f1e1487]
+          - row [ref=f1e1489]:
+            - cell "AXES_LOCKOUT_URL" [ref=f1e1490]
+            - cell "None" [ref=f1e1491]
+          - row [ref=f1e1493]:
+            - cell "AXES_LOCK_OUT_AT_FAILURE" [ref=f1e1494]
+            - cell "True" [ref=f1e1495]
+          - row [ref=f1e1497]:
+            - cell "AXES_NEVER_LOCKOUT_GET" [ref=f1e1498]
+            - cell "False" [ref=f1e1499]
+          - row [ref=f1e1501]:
+            - cell "AXES_NEVER_LOCKOUT_WHITELIST" [ref=f1e1502]
+            - cell "False" [ref=f1e1503]
+          - row [ref=f1e1505]:
+            - cell "AXES_ONLY_ADMIN_SITE" [ref=f1e1506]
+            - cell "False" [ref=f1e1507]
+          - row [ref=f1e1509]:
+            - cell "AXES_ONLY_WHITELIST" [ref=f1e1510]
+            - cell "False" [ref=f1e1511]
+          - row [ref=f1e1513]:
+            - cell "AXES_PASSWORD_FORM_FIELD" [ref=f1e1514]
+            - cell "'********************'" [ref=f1e1515]
+          - row [ref=f1e1517]:
+            - cell "AXES_PERMALOCK_MESSAGE" [ref=f1e1518]
+            - 'cell "''Account locked: too many login attempts. Contact an admin to unlock your account.''" [ref=f1e1519]'
+          - row [ref=f1e1521]:
+            - cell "AXES_RESET_COOL_OFF_ON_FAILURE_DURING_LOCKOUT" [ref=f1e1522]
+            - cell "False" [ref=f1e1523]
+          - row [ref=f1e1525]:
+            - cell "AXES_RESET_ON_SUCCESS" [ref=f1e1526]
+            - cell "True" [ref=f1e1527]
+          - row [ref=f1e1529]:
+            - cell "AXES_SENSITIVE_PARAMETERS" [ref=f1e1530]
+            - cell "['username', 'ip_address']" [ref=f1e1531]
+          - row [ref=f1e1533]:
+            - cell "AXES_USERNAME_CALLABLE" [ref=f1e1534]
+            - cell "None" [ref=f1e1535]
+          - row [ref=f1e1537]:
+            - cell "AXES_USERNAME_FORM_FIELD" [ref=f1e1538]
+            - 'cell "<JSONSerializableLazyObject: ''email''>" [ref=f1e1539]'
+          - row [ref=f1e1541]:
+            - cell "AXES_USE_ATTEMPT_EXPIRATION" [ref=f1e1542]
+            - cell "False" [ref=f1e1543]
+          - row [ref=f1e1545]:
+            - cell "AXES_VERBOSE" [ref=f1e1546]
+            - cell "True" [ref=f1e1547]
+          - row [ref=f1e1549]:
+            - cell "AXES_WHITELIST_CALLABLE" [ref=f1e1550]
+            - cell "None" [ref=f1e1551]
+          - row [ref=f1e1553]:
+            - cell "BASE_DIR" [ref=f1e1554]
+            - cell "PosixPath('/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app')" [ref=f1e1555]
+          - row [ref=f1e1557]:
+            - cell "CACHES" [ref=f1e1558]
+            - 'cell "{''default'': {''BACKEND'': ''django.core.cache.backends.locmem.LocMemCache''}}" [ref=f1e1559]'
+          - row [ref=f1e1561]:
+            - cell "CACHE_MIDDLEWARE_ALIAS" [ref=f1e1562]
+            - cell "'default'" [ref=f1e1563]
+          - row [ref=f1e1565]:
+            - cell "CACHE_MIDDLEWARE_KEY_PREFIX" [ref=f1e1566]
+            - cell "'********************'" [ref=f1e1567]
+          - row [ref=f1e1569]:
+            - cell "CACHE_MIDDLEWARE_SECONDS" [ref=f1e1570]
+            - cell "600" [ref=f1e1571]
+          - row [ref=f1e1573]:
+            - cell "CONTENT_MEDIA_PURPOSE" [ref=f1e1574]
+            - cell "'COURSE_MEDIA'" [ref=f1e1575]
+          - row [ref=f1e1577]:
+            - cell "CONTENT_MEDIA_STORAGE_ALIAS" [ref=f1e1578]
+            - cell "'course_media'" [ref=f1e1579]
+          - row [ref=f1e1581]:
+            - cell "COTTON_SNAKE_CASED_NAMES" [ref=f1e1582]
+            - cell "False" [ref=f1e1583]
+          - row [ref=f1e1585]:
+            - cell "COURSE_ACCESS_BACKEND" [ref=f1e1586]
+            - cell "'freedom_ls.course_applications.backends.ApplicationCourseAccessBackend'" [ref=f1e1587]
+          - row [ref=f1e1589]:
+            - cell "COURSE_ACCESS_CONFIG_VALIDATOR" [ref=f1e1590]
+            - cell "'freedom_ls.course_access.loader.validate_course_access_config'" [ref=f1e1591]
+          - row [ref=f1e1593]:
+            - cell "CSP" [ref=f1e1594]
+            - cell "<enum 'CSP'>" [ref=f1e1595]
+          - row [ref=f1e1597]:
+            - cell "CSRF_COOKIE_AGE" [ref=f1e1598]
+            - cell "31449600" [ref=f1e1599]
+          - row [ref=f1e1601]:
+            - cell "CSRF_COOKIE_DOMAIN" [ref=f1e1602]
+            - cell "None" [ref=f1e1603]
+          - row [ref=f1e1605]:
+            - cell "CSRF_COOKIE_HTTPONLY" [ref=f1e1606]
+            - cell "False" [ref=f1e1607]
+          - row [ref=f1e1609]:
+            - cell "CSRF_COOKIE_NAME" [ref=f1e1610]
+            - cell "'csrftoken'" [ref=f1e1611]
+          - row [ref=f1e1613]:
+            - cell "CSRF_COOKIE_PATH" [ref=f1e1614]
+            - cell "'/'" [ref=f1e1615]
+          - row [ref=f1e1617]:
+            - cell "CSRF_COOKIE_SAMESITE" [ref=f1e1618]
+            - cell "'Lax'" [ref=f1e1619]
+          - row [ref=f1e1621]:
+            - cell "CSRF_COOKIE_SECURE" [ref=f1e1622]
+            - cell "False" [ref=f1e1623]
+          - row [ref=f1e1625]:
+            - cell "CSRF_FAILURE_VIEW" [ref=f1e1626]
+            - cell "'django.views.csrf.csrf_failure'" [ref=f1e1627]
+          - row [ref=f1e1629]:
+            - cell "CSRF_HEADER_NAME" [ref=f1e1630]
+            - cell "'HTTP_X_CSRFTOKEN'" [ref=f1e1631]
+          - row [ref=f1e1633]:
+            - cell "CSRF_TRUSTED_ORIGINS" [ref=f1e1634]
+            - cell "[]" [ref=f1e1635]
+          - row [ref=f1e1637]:
+            - cell "CSRF_USE_SESSIONS" [ref=f1e1638]
+            - cell "False" [ref=f1e1639]
+          - row [ref=f1e1641]:
+            - cell "DATABASES" [ref=f1e1642]
+            - 'cell "{''default'': {''ATOMIC_REQUESTS'': False, ''AUTOCOMMIT'': True, ''CONN_HEALTH_CHECKS'': False, ''CONN_MAX_AGE'': 0, ''ENGINE'': ''django.db.backends.postgresql'', ''HOST'': ''127.0.0.1'', ''NAME'': ''db_extract_semantic_icons_app_1_standalone_app'', ''OPTIONS'': {''application_name'': ''runserver:-:db_extract_semantic_icons_app_1_standalone_app''}, ''PASSWORD'': ''********************'', ''PORT'': ''6543'', ''TEST'': {''CHARSET'': None, ''COLLATION'': None, ''MIGRATE'': True, ''MIRROR'': None, ''NAME'': ''test_db_extract_semantic_icons_app_1_standalone_app'', ''TEMPLATE'': ''template0''}, ''TIME_ZONE'': None, ''USER'': ''fls_dev''}}" [ref=f1e1643]'
+          - row [ref=f1e1645]:
+            - cell "DATABASE_ROUTERS" [ref=f1e1646]
+            - cell "[]" [ref=f1e1647]
+          - row [ref=f1e1649]:
+            - cell "DATA_UPLOAD_MAX_MEMORY_SIZE" [ref=f1e1650]
+            - cell "2621440" [ref=f1e1651]
+          - row [ref=f1e1653]:
+            - cell "DATA_UPLOAD_MAX_NUMBER_FIELDS" [ref=f1e1654]
+            - cell "1000" [ref=f1e1655]
+          - row [ref=f1e1657]:
+            - cell "DATA_UPLOAD_MAX_NUMBER_FILES" [ref=f1e1658]
+            - cell "100" [ref=f1e1659]
+          - row [ref=f1e1661]:
+            - cell "DATETIME_FORMAT" [ref=f1e1662]
+            - cell "'N j, Y, P'" [ref=f1e1663]
+          - row [ref=f1e1665]:
+            - cell "DATETIME_INPUT_FORMATS" [ref=f1e1666]
+            - cell "['%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M', '%m/%d/%Y %H:%M:%S', '%m/%d/%Y %H:%M:%S.%f', '%m/%d/%Y %H:%M', '%m/%d/%y %H:%M:%S', '%m/%d/%y %H:%M:%S.%f', '%m/%d/%y %H:%M']" [ref=f1e1667]
+          - row [ref=f1e1669]:
+            - cell "DATE_FORMAT" [ref=f1e1670]
+            - cell "'N j, Y'" [ref=f1e1671]
+          - row [ref=f1e1673]:
+            - cell "DATE_INPUT_FORMATS" [ref=f1e1674]
+            - cell "['%Y-%m-%d', '%m/%d/%Y', '%m/%d/%y', '%b %d %Y', '%b %d, %Y', '%d %b %Y', '%d %b, %Y', '%B %d %Y', '%B %d, %Y', '%d %B %Y', '%d %B, %Y']" [ref=f1e1675]
+          - row [ref=f1e1677]:
+            - cell "DEBUG" [ref=f1e1678]
+            - cell "True" [ref=f1e1679]
+          - row [ref=f1e1681]:
+            - cell "DEBUG_PROPAGATE_EXCEPTIONS" [ref=f1e1682]
+            - cell "False" [ref=f1e1683]
+          - row [ref=f1e1685]:
+            - cell "DECIMAL_SEPARATOR" [ref=f1e1686]
+            - cell "'.'" [ref=f1e1687]
+          - row [ref=f1e1689]:
+            - cell "DEFAULT_AUTO_FIELD" [ref=f1e1690]
+            - cell "'django.db.models.BigAutoField'" [ref=f1e1691]
+          - row [ref=f1e1693]:
+            - cell "DEFAULT_CHARSET" [ref=f1e1694]
+            - cell "'utf-8'" [ref=f1e1695]
+          - row [ref=f1e1697]:
+            - cell "DEFAULT_EXCEPTION_REPORTER" [ref=f1e1698]
+            - cell "'django.views.debug.ExceptionReporter'" [ref=f1e1699]
+          - row [ref=f1e1701]:
+            - cell "DEFAULT_EXCEPTION_REPORTER_FILTER" [ref=f1e1702]
+            - cell "'django.views.debug.SafeExceptionReporterFilter'" [ref=f1e1703]
+          - row [ref=f1e1705]:
+            - cell "DEFAULT_FROM_EMAIL" [ref=f1e1706]
+            - cell "'webmaster@localhost'" [ref=f1e1707]
+          - row [ref=f1e1709]:
+            - cell "DEFAULT_INDEX_TABLESPACE" [ref=f1e1710]
+            - cell "''" [ref=f1e1711]
+          - row [ref=f1e1713]:
+            - cell "DEFAULT_TABLESPACE" [ref=f1e1714]
+            - cell "''" [ref=f1e1715]
+          - row [ref=f1e1717]:
+            - cell "DEV_TOOLS_ENABLED" [ref=f1e1718]
+            - cell "True" [ref=f1e1719]
+          - row [ref=f1e1721]:
+            - cell "DISALLOWED_USER_AGENTS" [ref=f1e1722]
+            - cell "[]" [ref=f1e1723]
+          - row [ref=f1e1725]:
+            - cell "EMAIL_BACKEND" [ref=f1e1726]
+            - cell "'freedom_ls.mail.backends.QueuedEmailBackend'" [ref=f1e1727]
+          - row [ref=f1e1729]:
+            - cell "EMAIL_HOST" [ref=f1e1730]
+            - cell "'localhost'" [ref=f1e1731]
+          - row [ref=f1e1733]:
+            - cell "EMAIL_HOST_PASSWORD" [ref=f1e1734]
+            - cell "'********************'" [ref=f1e1735]
+          - row [ref=f1e1737]:
+            - cell "EMAIL_HOST_USER" [ref=f1e1738]
+            - cell "''" [ref=f1e1739]
+          - row [ref=f1e1741]:
+            - cell "EMAIL_LOGO_STATIC_PATH" [ref=f1e1742]
+            - cell "None" [ref=f1e1743]
+          - row [ref=f1e1745]:
+            - cell "EMAIL_PORT" [ref=f1e1746]
+            - cell "1025" [ref=f1e1747]
+          - row [ref=f1e1749]:
+            - cell "EMAIL_SSL_CERTFILE" [ref=f1e1750]
+            - cell "None" [ref=f1e1751]
+          - row [ref=f1e1753]:
+            - cell "EMAIL_SSL_KEYFILE" [ref=f1e1754]
+            - cell "'********************'" [ref=f1e1755]
+          - row [ref=f1e1757]:
+            - cell "EMAIL_SUBJECT_PREFIX" [ref=f1e1758]
+            - cell "'[Django] '" [ref=f1e1759]
+          - row [ref=f1e1761]:
+            - cell "EMAIL_TIMEOUT" [ref=f1e1762]
+            - cell "None" [ref=f1e1763]
+          - row [ref=f1e1765]:
+            - cell "EMAIL_UPSTREAM_BACKEND" [ref=f1e1766]
+            - cell "'django.core.mail.backends.smtp.EmailBackend'" [ref=f1e1767]
+          - row [ref=f1e1769]:
+            - cell "EMAIL_USE_LOCALTIME" [ref=f1e1770]
+            - cell "False" [ref=f1e1771]
+          - row [ref=f1e1773]:
+            - cell "EMAIL_USE_SSL" [ref=f1e1774]
+            - cell "False" [ref=f1e1775]
+          - row [ref=f1e1777]:
+            - cell "EMAIL_USE_TLS" [ref=f1e1778]
+            - cell "False" [ref=f1e1779]
+          - row [ref=f1e1781]:
+            - cell "FAVICON_STATIC_PATH" [ref=f1e1782]
+            - cell "'images/first_class_logo.png'" [ref=f1e1783]
+          - row [ref=f1e1785]:
+            - cell "FILE_UPLOAD_DIRECTORY_PERMISSIONS" [ref=f1e1786]
+            - cell "None" [ref=f1e1787]
+          - row [ref=f1e1789]:
+            - cell "FILE_UPLOAD_HANDLERS" [ref=f1e1790]
+            - cell "['django.core.files.uploadhandler.MemoryFileUploadHandler', 'django.core.files.uploadhandler.TemporaryFileUploadHandler']" [ref=f1e1791]
+          - row [ref=f1e1793]:
+            - cell "FILE_UPLOAD_MAX_MEMORY_SIZE" [ref=f1e1794]
+            - cell "2621440" [ref=f1e1795]
+          - row [ref=f1e1797]:
+            - cell "FILE_UPLOAD_PERMISSIONS" [ref=f1e1798]
+            - cell "420" [ref=f1e1799]
+          - row [ref=f1e1801]:
+            - cell "FILE_UPLOAD_TEMP_DIR" [ref=f1e1802]
+            - cell "None" [ref=f1e1803]
+          - row [ref=f1e1805]:
+            - cell "FIRST_DAY_OF_WEEK" [ref=f1e1806]
+            - cell "0" [ref=f1e1807]
+          - row [ref=f1e1809]:
+            - cell "FIXTURE_DIRS" [ref=f1e1810]
+            - cell "[]" [ref=f1e1811]
+          - row [ref=f1e1813]:
+            - cell "FLS_NOTIFICATION_CATEGORIES" [ref=f1e1814]
+            - cell [ref=f1e1815]
+          - row [ref=f1e1817]:
+            - cell "FLS_THEME" [ref=f1e1818]
+            - cell "'default'" [ref=f1e1819]
+          - row [ref=f1e1821]:
+            - cell "FLS_THEMES_DIRS" [ref=f1e1822]
+            - cell "[PosixPath('/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/themes'), PosixPath('/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/freedom_ls/themes')]" [ref=f1e1823]
+          - row [ref=f1e1825]:
+            - cell "FLS_WEBHOOK_EVENT_TYPES" [ref=f1e1826]
+            - cell "[('user.signed_up', 'User signed up'), ('course.completed', 'Course completed'), ('course.paused', 'Course paused'), ('course.resumed', 'Course resumed'), ('deadline.extended', 'Deadline extended'), ('registration.added', 'Learner registered for course'), ('registration.reactivated', 'Learner course registration reactivated'), ('registration.deactivated', 'Learner course registration deactivated'), ('cohort_registration.added', 'Cohort registered for course'), ('cohort_registration.reactivated', 'Cohort course registration reactivated'), ('cohort_registration.deactivated', 'Cohort course registration deactivated'), ('learner.added', 'Learner added'), ('learner.deactivated', 'Learner deactivated'), ('learner.reactivated', 'Learner reactivated'), ('cohort_membership.added', 'Learner added to cohort'), ('cohort_membership.removed', 'Learner removed from cohort')]" [ref=f1e1827]
+          - row [ref=f1e1829]:
+            - cell "FORCE_SCRIPT_NAME" [ref=f1e1830]
+            - cell "None" [ref=f1e1831]
+          - row [ref=f1e1833]:
+            - cell "FORCE_SITE_NAME" [ref=f1e1834]
+            - cell "'DemoDev'" [ref=f1e1835]
+          - row [ref=f1e1837]:
+            - cell "FORMAT_MODULE_PATH" [ref=f1e1838]
+            - cell "None" [ref=f1e1839]
+          - row [ref=f1e1841]:
+            - cell "FORM_RENDERER" [ref=f1e1842]
+            - cell "'django.forms.renderers.DjangoTemplates'" [ref=f1e1843]
+          - row [ref=f1e1845]:
+            - cell "FREEDOMLS_PERMISSIONS_MODULES" [ref=f1e1846]
+            - 'cell "{''DemoDev'': ''config.role_based_permissions.demodev''}" [ref=f1e1847]'
+          - row [ref=f1e1849]:
+            - cell "FREEDOM_LS_PACKAGE_DIR" [ref=f1e1850]
+            - cell "PosixPath('/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/freedom_ls')" [ref=f1e1851]
+          - row [ref=f1e1853]:
+            - cell "GOOGLE_ADS_CONVERSION_ID" [ref=f1e1854]
+            - cell "None" [ref=f1e1855]
+          - row [ref=f1e1857]:
+            - cell "GOOGLE_ADS_CONVERSION_LABELS" [ref=f1e1858]
+            - 'cell "{}" [ref=f1e1859]'
+          - row [ref=f1e1861]:
+            - cell "GOOGLE_ANALYTICS_MEASUREMENT_ID" [ref=f1e1862]
+            - cell "None" [ref=f1e1863]
+          - row [ref=f1e1865]:
+            - cell "GUARDIAN_MONKEY_PATCH_GROUP" [ref=f1e1866]
+            - cell "'********************'" [ref=f1e1867]
+          - row [ref=f1e1869]:
+            - cell "GUARDIAN_MONKEY_PATCH_USER" [ref=f1e1870]
+            - cell "'********************'" [ref=f1e1871]
+          - row [ref=f1e1873]:
+            - cell "HEADER_LOGO_ON_DARK_STATIC_PATH" [ref=f1e1874]
+            - cell "'images/first_class_logo_on_dark.png'" [ref=f1e1875]
+          - row [ref=f1e1877]:
+            - cell "HEADER_LOGO_STATIC_PATH" [ref=f1e1878]
+            - cell "'images/first_class_logo.png'" [ref=f1e1879]
+          - row [ref=f1e1881]:
+            - cell "HEADER_TITLE" [ref=f1e1882]
+            - cell "'FirstClass'" [ref=f1e1883]
+          - row [ref=f1e1885]:
+            - cell "HEADER_TITLE_STYLE" [ref=f1e1886]
+            - 'cell "''font-style: italic;''" [ref=f1e1887]'
+          - row [ref=f1e1889]:
+            - cell "HEADLESS_SERVE_SPECIFICATION" [ref=f1e1890]
+            - cell "True" [ref=f1e1891]
+          - row [ref=f1e1893]:
+            - cell "IGNORABLE_404_URLS" [ref=f1e1894]
+            - cell "[]" [ref=f1e1895]
+          - row [ref=f1e1897]:
+            - cell "INSTALLED_APPS" [ref=f1e1898]
+            - cell [ref=f1e1899]
+          - row [ref=f1e1901]:
+            - cell "INTERNAL_IPS" [ref=f1e1902]
+            - cell "['127.0.0.1']" [ref=f1e1903]
+          - row [ref=f1e1905]:
+            - cell "LANGUAGES" [ref=f1e1906]
+            - cell [ref=f1e1907]
+          - row [ref=f1e1909]:
+            - cell "LANGUAGES_BIDI" [ref=f1e1910]
+            - cell "['he', 'ar', 'ar-dz', 'ckb', 'fa', 'ug', 'ur']" [ref=f1e1911]
+          - row [ref=f1e1913]:
+            - cell "LANGUAGE_CODE" [ref=f1e1914]
+            - cell "'en-us'" [ref=f1e1915]
+          - row [ref=f1e1917]:
+            - cell "LANGUAGE_COOKIE_AGE" [ref=f1e1918]
+            - cell "None" [ref=f1e1919]
+          - row [ref=f1e1921]:
+            - cell "LANGUAGE_COOKIE_DOMAIN" [ref=f1e1922]
+            - cell "None" [ref=f1e1923]
+          - row [ref=f1e1925]:
+            - cell "LANGUAGE_COOKIE_HTTPONLY" [ref=f1e1926]
+            - cell "False" [ref=f1e1927]
+          - row [ref=f1e1929]:
+            - cell "LANGUAGE_COOKIE_NAME" [ref=f1e1930]
+            - cell "'django_language'" [ref=f1e1931]
+          - row [ref=f1e1933]:
+            - cell "LANGUAGE_COOKIE_PATH" [ref=f1e1934]
+            - cell "'/'" [ref=f1e1935]
+          - row [ref=f1e1937]:
+            - cell "LANGUAGE_COOKIE_SAMESITE" [ref=f1e1938]
+            - cell "None" [ref=f1e1939]
+          - row [ref=f1e1941]:
+            - cell "LANGUAGE_COOKIE_SECURE" [ref=f1e1942]
+            - cell "False" [ref=f1e1943]
+          - row [ref=f1e1945]:
+            - cell "LEGAL_DOCS_MANIFEST_PATH" [ref=f1e1946]
+            - cell "None" [ref=f1e1947]
+          - row [ref=f1e1949]:
+            - cell "LOCALE_PATHS" [ref=f1e1950]
+            - cell "[]" [ref=f1e1951]
+          - row [ref=f1e1953]:
+            - cell "LOGGING" [ref=f1e1954]
+            - 'cell "{}" [ref=f1e1955]'
+          - row [ref=f1e1957]:
+            - cell "LOGGING_CONFIG" [ref=f1e1958]
+            - cell "'logging.config.dictConfig'" [ref=f1e1959]
+          - row [ref=f1e1961]:
+            - cell "LOGIN_REDIRECT_URL" [ref=f1e1962]
+            - cell "'/'" [ref=f1e1963]
+          - row [ref=f1e1965]:
+            - cell "LOGIN_URL" [ref=f1e1966]
+            - cell "'/accounts/login/'" [ref=f1e1967]
+          - row [ref=f1e1969]:
+            - cell "LOGOUT_REDIRECT_URL" [ref=f1e1970]
+            - cell "None" [ref=f1e1971]
+          - row [ref=f1e1973]:
+            - cell "MANAGERS" [ref=f1e1974]
+            - cell "[]" [ref=f1e1975]
+          - row [ref=f1e1977]:
+            - cell "MARKDOWN_ALLOWED_TAGS" [ref=f1e1978]
+            - 'cell "{''c-accordion'': {''open'', ''title''}, ''c-admonition'': {''type'', ''title''}, ''c-article-card'': {''path'', ''variant''}, ''c-article-link'': {''path''}, ''c-audio'': {''src'', ''symbol'', ''respelling'', ''label''}, ''c-card'': {''src'', ''size'', ''alt'', ''title''}, ''c-code-block'': {''wrap'', ''title'', ''language''}, ''c-content-link'': {''path''}, ''c-course-card'': {''path'', ''variant''}, ''c-equation'': {''label''}, ''c-file-download'': {''src'', ''text''}, ''c-flashcard'': {''size''}, ''c-grid'': {''columns''}, ''c-image-grid'': {''columns''}, ''c-pdf-embed'': {''src'', ''caption'', ''height''}, ''c-picture'': {''number'', ''title'', ''alt'', ''description'', ''src''}, ''c-pull-quote'': {''attribution'', ''source'', ''cite''}, ''c-slot'': {''name''}, ''c-table'': {''caption''}, ''c-youtube'': {''video_id'', ''caption'', ''video_title''}}" [ref=f1e1979]'
+          - row [ref=f1e1981]:
+            - cell "MARKDOWN_TEMPLATE_RENDER_ON" [ref=f1e1982]
+            - cell "True" [ref=f1e1983]
+          - row [ref=f1e1985]:
+            - cell "MEDIA_ROOT" [ref=f1e1986]
+            - cell "PosixPath('/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/media')" [ref=f1e1987]
+          - row [ref=f1e1989]:
+            - cell "MEDIA_URL" [ref=f1e1990]
+            - cell "'/media/'" [ref=f1e1991]
+          - row [ref=f1e1993]:
+            - cell "MESSAGE_STORAGE" [ref=f1e1994]
+            - cell "'django.contrib.messages.storage.fallback.FallbackStorage'" [ref=f1e1995]
+          - row [ref=f1e1997]:
+            - cell "MESSAGING_ENABLED" [ref=f1e1998]
+            - cell "True" [ref=f1e1999]
+          - row [ref=f1e2001]:
+            - cell "META_PIXEL_ID" [ref=f1e2002]
+            - cell "None" [ref=f1e2003]
+          - row [ref=f1e2005]:
+            - cell "MIDDLEWARE" [ref=f1e2006]
+            - cell [ref=f1e2007]
+          - row [ref=f1e2009]:
+            - cell "MIGRATION_MODULES" [ref=f1e2010]
+            - 'cell "{''debug_toolbar'': None}" [ref=f1e2011]'
+          - row [ref=f1e2013]:
+            - cell "MONTH_DAY_FORMAT" [ref=f1e2014]
+            - cell "'F j'" [ref=f1e2015]
+          - row [ref=f1e2017]:
+            - cell "NOTIFICATIONS_ENABLED" [ref=f1e2018]
+            - cell "True" [ref=f1e2019]
+          - row [ref=f1e2021]:
+            - cell "NOTIFICATION_CATEGORIES" [ref=f1e2022]
+            - cell [ref=f1e2023]
+          - row [ref=f1e2025]:
+            - cell "NUMBER_GROUPING" [ref=f1e2026]
+            - cell "0" [ref=f1e2027]
+          - row [ref=f1e2029]:
+            - cell "ORGANISATION_LOGO_STORAGE_ALIAS" [ref=f1e2030]
+            - cell "'public'" [ref=f1e2031]
+          - row [ref=f1e2033]:
+            - cell "OVERRIDE_COURSE_ACCESS_TO_FREE" [ref=f1e2034]
+            - cell "False" [ref=f1e2035]
+          - row [ref=f1e2037]:
+            - cell "OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE" [ref=f1e2038]
+            - cell "False" [ref=f1e2039]
+          - row [ref=f1e2041]:
+            - cell "PANEL_FRAMEWORK_SITE_RESOLVER" [ref=f1e2042]
+            - cell "'freedom_ls.site_aware_models.models.get_cached_site'" [ref=f1e2043]
+          - row [ref=f1e2045]:
+            - cell "PASSWORD_HASHERS" [ref=f1e2046]
+            - cell "'********************'" [ref=f1e2047]
+          - row [ref=f1e2049]:
+            - cell "PASSWORD_RESET_TIMEOUT" [ref=f1e2050]
+            - cell "'********************'" [ref=f1e2051]
+          - row [ref=f1e2053]:
+            - cell "POSTHOG_API_HOST" [ref=f1e2054]
+            - cell "'********************'" [ref=f1e2055]
+          - row [ref=f1e2057]:
+            - cell "POSTHOG_API_KEY" [ref=f1e2058]
+            - cell "'********************'" [ref=f1e2059]
+          - row [ref=f1e2061]:
+            - cell "POSTHOG_UI_HOST" [ref=f1e2062]
+            - cell "None" [ref=f1e2063]
+          - row [ref=f1e2065]:
+            - cell "PREPEND_WWW" [ref=f1e2066]
+            - cell "False" [ref=f1e2067]
+          - row [ref=f1e2069]:
+            - cell "PROFILE_PICTURES_PURPOSE" [ref=f1e2070]
+            - cell "'PROFILE_PICTURES'" [ref=f1e2071]
+          - row [ref=f1e2073]:
+            - cell "REPORTS_STORAGE_ALIAS" [ref=f1e2074]
+            - cell "'reports'" [ref=f1e2075]
+          - row [ref=f1e2077]:
+            - cell "REQUIRE_NAME" [ref=f1e2078]
+            - cell "True" [ref=f1e2079]
+          - row [ref=f1e2081]:
+            - cell "REQUIRE_TERMS_ACCEPTANCE" [ref=f1e2082]
+            - cell "True" [ref=f1e2083]
+          - row [ref=f1e2085]:
+            - cell "RESOLVED_THEME_DIR" [ref=f1e2086]
+            - cell "PosixPath('/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/freedom_ls/themes/default')" [ref=f1e2087]
+          - row [ref=f1e2089]:
+            - cell "ROOT_URLCONF" [ref=f1e2090]
+            - cell "'config.urls'" [ref=f1e2091]
+          - row [ref=f1e2093]:
+            - cell "SALT_KEY" [ref=f1e2094]
+            - cell "'********************'" [ref=f1e2095]
+          - row [ref=f1e2097]:
+            - cell "SECRET_KEY" [ref=f1e2098]
+            - cell "'********************'" [ref=f1e2099]
+          - row [ref=f1e2101]:
+            - cell "SECRET_KEY_FALLBACKS" [ref=f1e2102]
+            - cell "'********************'" [ref=f1e2103]
+          - row [ref=f1e2105]:
+            - cell "SECURE_CONTENT_TYPE_NOSNIFF" [ref=f1e2106]
+            - cell "True" [ref=f1e2107]
+          - row [ref=f1e2109]:
+            - cell "SECURE_CROSS_ORIGIN_OPENER_POLICY" [ref=f1e2110]
+            - cell "'same-origin'" [ref=f1e2111]
+          - row [ref=f1e2113]:
+            - cell "SECURE_CSP" [ref=f1e2114]
+            - 'cell "{}" [ref=f1e2115]'
+          - row [ref=f1e2117]:
+            - cell "SECURE_CSP_REPORT_ONLY" [ref=f1e2118]
+            - cell [ref=f1e2119]
+          - row [ref=f1e2121]:
+            - cell "SECURE_HSTS_INCLUDE_SUBDOMAINS" [ref=f1e2122]
+            - cell "False" [ref=f1e2123]
+          - row [ref=f1e2125]:
+            - cell "SECURE_HSTS_PRELOAD" [ref=f1e2126]
+            - cell "False" [ref=f1e2127]
+          - row [ref=f1e2129]:
+            - cell "SECURE_HSTS_SECONDS" [ref=f1e2130]
+            - cell "0" [ref=f1e2131]
+          - row [ref=f1e2133]:
+            - cell "SECURE_PROXY_SSL_HEADER" [ref=f1e2134]
+            - cell "None" [ref=f1e2135]
+          - row [ref=f1e2137]:
+            - cell "SECURE_REDIRECT_EXEMPT" [ref=f1e2138]
+            - cell "[]" [ref=f1e2139]
+          - row [ref=f1e2141]:
+            - cell "SECURE_REFERRER_POLICY" [ref=f1e2142]
+            - cell "'same-origin'" [ref=f1e2143]
+          - row [ref=f1e2145]:
+            - cell "SECURE_SSL_HOST" [ref=f1e2146]
+            - cell "None" [ref=f1e2147]
+          - row [ref=f1e2149]:
+            - cell "SECURE_SSL_REDIRECT" [ref=f1e2150]
+            - cell "False" [ref=f1e2151]
+          - row [ref=f1e2153]:
+            - cell "SEMANTIC_ICONS_ICONIFY_DIR" [ref=f1e2154]
+            - cell "PosixPath('/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/node_modules/@iconify-json')" [ref=f1e2155]
+          - row [ref=f1e2157]:
+            - cell "SEMANTIC_ICONS_SET" [ref=f1e2158]
+            - cell "'heroicons'" [ref=f1e2159]
+          - row [ref=f1e2161]:
+            - cell "SENTRY_DSN" [ref=f1e2162]
+            - cell "None" [ref=f1e2163]
+          - row [ref=f1e2165]:
+            - cell "SENTRY_ENVIRONMENT" [ref=f1e2166]
+            - cell "None" [ref=f1e2167]
+          - row [ref=f1e2169]:
+            - cell "SENTRY_RELEASE" [ref=f1e2170]
+            - cell "None" [ref=f1e2171]
+          - row [ref=f1e2173]:
+            - cell "SENTRY_SEND_DEFAULT_PII" [ref=f1e2174]
+            - cell "False" [ref=f1e2175]
+          - row [ref=f1e2177]:
+            - cell "SENTRY_TRACES_SAMPLE_RATE" [ref=f1e2178]
+            - cell "None" [ref=f1e2179]
+          - row [ref=f1e2181]:
+            - cell "SERVER_EMAIL" [ref=f1e2182]
+            - cell "'root@localhost'" [ref=f1e2183]
+          - row [ref=f1e2185]:
+            - cell "SESSION_CACHE_ALIAS" [ref=f1e2186]
+            - cell "'default'" [ref=f1e2187]
+          - row [ref=f1e2189]:
+            - cell "SESSION_COOKIE_AGE" [ref=f1e2190]
+            - cell "1209600" [ref=f1e2191]
+          - row [ref=f1e2193]:
+            - cell "SESSION_COOKIE_DOMAIN" [ref=f1e2194]
+            - cell "None" [ref=f1e2195]
+          - row [ref=f1e2197]:
+            - cell "SESSION_COOKIE_HTTPONLY" [ref=f1e2198]
+            - cell "True" [ref=f1e2199]
+          - row [ref=f1e2201]:
+            - cell "SESSION_COOKIE_NAME" [ref=f1e2202]
+            - cell "'sessionid_db_extract_semantic_icons_app_1_standalone_app'" [ref=f1e2203]
+          - row [ref=f1e2205]:
+            - cell "SESSION_COOKIE_PATH" [ref=f1e2206]
+            - cell "'/'" [ref=f1e2207]
+          - row [ref=f1e2209]:
+            - cell "SESSION_COOKIE_SAMESITE" [ref=f1e2210]
+            - cell "'Lax'" [ref=f1e2211]
+          - row [ref=f1e2213]:
+            - cell "SESSION_COOKIE_SECURE" [ref=f1e2214]
+            - cell "False" [ref=f1e2215]
+          - row [ref=f1e2217]:
+            - cell "SESSION_ENGINE" [ref=f1e2218]
+            - cell "'django.contrib.sessions.backends.db'" [ref=f1e2219]
+          - row [ref=f1e2221]:
+            - cell "SESSION_EXPIRE_AT_BROWSER_CLOSE" [ref=f1e2222]
+            - cell "False" [ref=f1e2223]
+          - row [ref=f1e2225]:
+            - cell "SESSION_FILE_PATH" [ref=f1e2226]
+            - cell "None" [ref=f1e2227]
+          - row [ref=f1e2229]:
+            - cell "SESSION_SAVE_EVERY_REQUEST" [ref=f1e2230]
+            - cell "False" [ref=f1e2231]
+          - row [ref=f1e2233]:
+            - cell "SESSION_SERIALIZER" [ref=f1e2234]
+            - cell "'django.contrib.sessions.serializers.JSONSerializer'" [ref=f1e2235]
+          - row [ref=f1e2237]:
+            - cell "SETTINGS_MODULE" [ref=f1e2238]
+            - cell "'config.settings_dev'" [ref=f1e2239]
+          - row [ref=f1e2241]:
+            - cell "SHORT_DATETIME_FORMAT" [ref=f1e2242]
+            - cell "'m/d/Y P'" [ref=f1e2243]
+          - row [ref=f1e2245]:
+            - cell "SHORT_DATE_FORMAT" [ref=f1e2246]
+            - cell "'m/d/Y'" [ref=f1e2247]
+          - row [ref=f1e2249]:
+            - cell "SIGNING_BACKEND" [ref=f1e2250]
+            - cell "'django.core.signing.TimestampSigner'" [ref=f1e2251]
+          - row [ref=f1e2253]:
+            - cell "SILENCED_SYSTEM_CHECKS" [ref=f1e2254]
+            - cell "[]" [ref=f1e2255]
+          - row [ref=f1e2257]:
+            - cell "STATICFILES_DIRS" [ref=f1e2258]
+            - cell "[PosixPath('/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/freedom_ls/themes/default/static'), PosixPath('/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/freedom_ls/themes/first_class/static'), PosixPath('/home/sheena/workspace/lms/freedom-ls-worktrees/extract-semantic-icons-app-1-standalone-app/static')]" [ref=f1e2259]
+          - row [ref=f1e2261]:
+            - cell "STATICFILES_FINDERS" [ref=f1e2262]
+            - cell "['django.contrib.staticfiles.finders.FileSystemFinder', 'django.contrib.staticfiles.finders.AppDirectoriesFinder']" [ref=f1e2263]
+          - row [ref=f1e2265]:
+            - cell "STATIC_ROOT" [ref=f1e2266]
+            - cell "None" [ref=f1e2267]
+          - row [ref=f1e2269]:
+            - cell "STATIC_URL" [ref=f1e2270]
+            - cell "'/static/'" [ref=f1e2271]
+          - row [ref=f1e2273]:
+            - cell "STORAGES" [ref=f1e2274]
+            - 'cell "{''certificates'': {''BACKEND'': ''django.core.files.storage.FileSystemStorage''}, ''course_media'': {''BACKEND'': ''django.core.files.storage.FileSystemStorage''}, ''default'': {''BACKEND'': ''django.core.files.storage.FileSystemStorage''}, ''profile_pictures'': {''BACKEND'': ''django.core.files.storage.FileSystemStorage''}, ''public'': {''BACKEND'': ''django.core.files.storage.FileSystemStorage'', ''OPTIONS'': {''allow_overwrite'': True}}, ''reports'': {''BACKEND'': ''django.core.files.storage.FileSystemStorage''}, ''staticfiles'': {''BACKEND'': ''django.contrib.staticfiles.storage.StaticFilesStorage''}, ''user_uploads'': {''BACKEND'': ''django.core.files.storage.FileSystemStorage''}}" [ref=f1e2275]'
+          - row [ref=f1e2277]:
+            - cell "TASKS" [ref=f1e2278]
+            - 'cell "{''default'': {''BACKEND'': ''django.tasks.backends.immediate.ImmediateBackend''}}" [ref=f1e2279]'
+          - row [ref=f1e2281]:
+            - cell "TEMPLATES" [ref=f1e2282]
+            - cell [ref=f1e2283]
+          - row [ref=f1e2285]:
+            - cell "TESTING" [ref=f1e2286]
+            - cell "False" [ref=f1e2287]
+          - row [ref=f1e2289]:
+            - cell "TEST_NON_SERIALIZED_APPS" [ref=f1e2290]
+            - cell "[]" [ref=f1e2291]
+          - row [ref=f1e2293]:
+            - cell "TEST_RUNNER" [ref=f1e2294]
+            - cell "'django.test.runner.DiscoverRunner'" [ref=f1e2295]
+          - row [ref=f1e2297]:
+            - cell "THOUSAND_SEPARATOR" [ref=f1e2298]
+            - cell "','" [ref=f1e2299]
+          - row [ref=f1e2301]:
+            - cell "TIKTOK_PIXEL_ID" [ref=f1e2302]
+            - cell "None" [ref=f1e2303]
+          - row [ref=f1e2305]:
+            - cell "TIME_FORMAT" [ref=f1e2306]
+            - cell "'P'" [ref=f1e2307]
+          - row [ref=f1e2309]:
+            - cell "TIME_INPUT_FORMATS" [ref=f1e2310]
+            - cell "['%H:%M:%S', '%H:%M:%S.%f', '%H:%M']" [ref=f1e2311]
+          - row [ref=f1e2313]:
+            - cell "TIME_ZONE" [ref=f1e2314]
+            - cell "'UTC'" [ref=f1e2315]
+          - row [ref=f1e2317]:
+            - cell "TRUSTED_PROXY_IP_HEADER" [ref=f1e2318]
+            - cell "None" [ref=f1e2319]
+          - row [ref=f1e2321]:
+            - cell "URLIZE_ASSUME_HTTPS" [ref=f1e2322]
+            - cell "False" [ref=f1e2323]
+          - row [ref=f1e2325]:
+            - cell "USE_I18N" [ref=f1e2326]
+            - cell "True" [ref=f1e2327]
+          - row [ref=f1e2329]:
+            - cell "USE_THOUSAND_SEPARATOR" [ref=f1e2330]
+            - cell "False" [ref=f1e2331]
+          - row [ref=f1e2333]:
+            - cell "USE_TZ" [ref=f1e2334]
+            - cell "True" [ref=f1e2335]
+          - row [ref=f1e2337]:
+            - cell "USE_X_FORWARDED_HOST" [ref=f1e2338]
+            - cell "False" [ref=f1e2339]
+          - row [ref=f1e2341]:
+            - cell "USE_X_FORWARDED_PORT" [ref=f1e2342]
+            - cell "False" [ref=f1e2343]
+          - row [ref=f1e2345]:
+            - cell "VISITOR_COUNTRY_HEADER" [ref=f1e2346]
+            - cell "None" [ref=f1e2347]
+          - row [ref=f1e2349]:
+            - cell "WEBHOOK_EVENT_TYPES" [ref=f1e2350]
+            - cell "[('user.signed_up', 'User signed up'), ('course.completed', 'Course completed'), ('course.paused', 'Course paused'), ('course.resumed', 'Course resumed'), ('deadline.extended', 'Deadline extended'), ('registration.added', 'Learner registered for course'), ('registration.reactivated', 'Learner course registration reactivated'), ('registration.deactivated', 'Learner course registration deactivated'), ('cohort_registration.added', 'Cohort registered for course'), ('cohort_registration.reactivated', 'Cohort course registration reactivated'), ('cohort_registration.deactivated', 'Cohort course registration deactivated'), ('learner.added', 'Learner added'), ('learner.deactivated', 'Learner deactivated'), ('learner.reactivated', 'Learner reactivated'), ('cohort_membership.added', 'Learner added to cohort'), ('cohort_membership.removed', 'Learner removed from cohort')]" [ref=f1e2351]
+          - row [ref=f1e2353]:
+            - cell "WSGI_APPLICATION" [ref=f1e2354]
+            - cell "'config.wsgi.application'" [ref=f1e2355]
+          - row [ref=f1e2357]:
+            - cell "X_FRAME_OPTIONS" [ref=f1e2358]
+            - cell "'SAMEORIGIN'" [ref=f1e2359]
+          - row [ref=f1e2361]:
+            - cell "YEAR_MONTH_FORMAT" [ref=f1e2362]
+            - cell "'F Y'" [ref=f1e2363]
+  - contentinfo [ref=f1e2365]:
+    - paragraph [ref=f1e2366]:
+      - text: You’re seeing this error because you have
+      - code [ref=f1e2367]: DEBUG = True
+      - text: in your Django settings file. Change that to
+      - code [ref=f1e2368]: "False"
+      - text: ", and Django will display a standard page generated by the handler for this status code."

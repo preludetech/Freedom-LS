@@ -1,0 +1,111 @@
+- generic [active] [ref=f13e1]:
+  - banner [ref=f13e2]:
+    - heading "Page not found (404)" [level=1] [ref=f13e3]
+    - table [ref=f13e4]:
+      - rowgroup [ref=f13e5]:
+        - row [ref=f13e6]:
+          - rowheader "Request Method:" [ref=f13e7]
+          - cell "GET" [ref=f13e8]
+        - row [ref=f13e9]:
+          - rowheader "Request URL:" [ref=f13e10]
+          - cell "http://127.0.0.1:8929/this-page-does-not-exist/" [ref=f13e11]
+  - main [ref=f13e12]:
+    - paragraph [ref=f13e13]:
+      - text: Using the URLconf defined in
+      - code [ref=f13e14]: config.urls
+      - text: ", Django tried these URL patterns, in this order:"
+    - list [ref=f13e15]:
+      - listitem [ref=f13e16]:
+        - code [ref=f13e17]: health/
+      - listitem [ref=f13e18]:
+        - code [ref=f13e19]: admin/
+      - listitem [ref=f13e20]:
+        - code [ref=f13e21]: robots.txt [name='robots_txt']
+      - listitem [ref=f13e22]:
+        - code [ref=f13e23]: sitemap.xml [name='sitemap']
+      - listitem [ref=f13e24]:
+        - code
+        - code [ref=f13e25]: "^[gG][oO]/(?P<code>[A-Za-z0-9-]{1,64})/?$ [name='follow_go']"
+      - listitem [ref=f13e26]:
+        - code
+        - code [ref=f13e27]: "^[dD]/(?P<code>[A-Za-z0-9-]{1,64})/?$ [name='follow_d']"
+      - listitem [ref=f13e28]:
+        - code [ref=f13e29]: educator/
+      - listitem [ref=f13e30]:
+        - code
+        - code [ref=f13e31]: sentry-debug/ [name='trigger_error']
+      - listitem [ref=f13e32]:
+        - code [ref=f13e33]: accounts/
+      - listitem [ref=f13e34]:
+        - code [ref=f13e35]: accounts/
+      - listitem [ref=f13e36]:
+        - code [ref=f13e37]: articles/
+      - listitem [ref=f13e38]:
+        - code [ref=f13e39]: api/v1/
+      - listitem [ref=f13e40]:
+        - code [ref=f13e41]: content/
+      - listitem [ref=f13e42]:
+        - code
+        - code [ref=f13e43]: "[name='dashboard']"
+      - listitem [ref=f13e44]:
+        - code
+        - code [ref=f13e45]: courses/ [name='courses']
+      - listitem [ref=f13e46]:
+        - code
+        - code [ref=f13e47]: courses/<slug:course_slug>/detail/ [name='course_detail']
+      - listitem [ref=f13e48]:
+        - code
+        - code [ref=f13e49]: courses/<slug:course_slug>/ [name='course_home']
+      - listitem [ref=f13e50]:
+        - code
+        - code [ref=f13e51]: courses/<slug:course_slug>/access/ [name='initiate_course_access']
+      - listitem [ref=f13e52]:
+        - code
+        - code [ref=f13e53]: courses/<slug:course_slug>/<int:index>/ [name='view_course_item']
+      - listitem [ref=f13e54]:
+        - code
+        - code [ref=f13e55]: courses/<slug:course_slug>/<int:index>/start_form [name='form_start']
+      - listitem [ref=f13e56]:
+        - code
+        - code [ref=f13e57]: courses/<slug:course_slug>/<int:index>/fill_form/<int:page_number> [name='form_fill_page']
+      - listitem [ref=f13e58]:
+        - code
+        - code [ref=f13e59]: courses/<slug:course_slug>/<int:index>/complete [name='course_form_complete']
+      - listitem [ref=f13e60]:
+        - code
+        - code [ref=f13e61]: courses/<slug:course_slug>/<int:index>/submit-and-exit [name='form_submit_and_exit']
+      - listitem [ref=f13e62]:
+        - code
+        - code [ref=f13e63]: courses/<slug:course_slug>/finish/ [name='course_finish']
+      - listitem [ref=f13e64]:
+        - code [ref=f13e65]: notifications/
+      - listitem [ref=f13e66]:
+        - code [ref=f13e67]: messages/
+      - listitem [ref=f13e68]:
+        - code [ref=f13e69]: applications/
+      - listitem [ref=f13e70]:
+        - code [ref=f13e71]: forms/
+      - listitem [ref=f13e72]:
+        - code [ref=f13e73]: interest/
+      - listitem [ref=f13e74]:
+        - code [ref=f13e75]: __reload__/
+      - listitem [ref=f13e76]:
+        - code [ref=f13e77]: qa/
+      - listitem [ref=f13e78]:
+        - code [ref=f13e79]: panel-framework/
+      - listitem [ref=f13e80]:
+        - code [ref=f13e81]: ^media/(?P<path>.*)$
+      - listitem [ref=f13e82]:
+        - code [ref=f13e83]: ^__debug__/
+    - paragraph [ref=f13e84]:
+      - text: The current path,
+      - code [ref=f13e85]: this-page-does-not-exist/
+      - text: ", didn’t match any of these."
+  - contentinfo [ref=f13e86]:
+    - paragraph [ref=f13e87]:
+      - text: You’re seeing this error because you have
+      - code [ref=f13e88]: DEBUG = True
+      - text: in your Django settings file. Change that to
+      - code [ref=f13e89]: "False"
+      - text: ", and Django will display a standard 404 page."
+  - generic "Show toolbar" [ref=f13e91]: DJDT

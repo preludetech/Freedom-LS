@@ -1,0 +1,96 @@
+- generic [active] [ref=f7e1]:
+  - banner [ref=f7e2]:
+    - link [ref=f7e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f7e4]
+      - heading "FirstClass" [level=1] [ref=f7e5]
+    - navigation [ref=f7e6]:
+      - generic [ref=f7e7]:
+        - generic [ref=f7e8]:
+          - button "Messages" [ref=f7e9]
+          - status:
+            - generic [ref=f7e13]: Messages
+        - generic [ref=f7e14]:
+          - button "Notifications, 1 new" [ref=f7e15]
+          - status:
+            - generic [ref=f7e19]: Notifications, 1 new
+            - generic [aria-hidden] [ref=f7e20]: "1"
+        - button "Open user menu for demodev@email.com" [ref=f7e22] [cursor=pointer]:
+          - generic [ref=f7e23]:
+            - generic [ref=f7e24]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f7e25]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f7e26]:
+    - generic [ref=f7e28]:
+      - dialog "Navigation" [ref=f7e29]:
+        - generic [ref=f7e31]:
+          - generic [ref=f7e32]:
+            - paragraph [ref=f7e33]: Organisation
+            - button "Switch organisation" [ref=f7e35] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f7e36]: D
+              - generic "DemoDev" [ref=f7e37]
+          - navigation "Sections" [ref=f7e40]:
+            - heading "Teaching" [level=2] [ref=f7e41]
+            - list [ref=f7e42]:
+              - listitem [ref=f7e43]:
+                - link "Dashboard" [ref=f7e44] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/dashboard
+              - listitem [ref=f7e49]:
+                - link "Cohorts" [ref=f7e50] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+              - listitem [ref=f7e55]:
+                - link "Learners" [ref=f7e56] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+              - listitem [ref=f7e61]:
+                - link "Courses" [ref=f7e62] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+            - heading "Administration" [level=2] [ref=f7e67]
+            - list [ref=f7e68]:
+              - listitem [ref=f7e69]:
+                - link "Staff" [ref=f7e70] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/staff
+              - listitem [ref=f7e75]:
+                - link "Audit log" [ref=f7e76] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/audit-log
+          - generic [ref=f7e81]:
+            - generic [ref=f7e83]:
+              - generic [aria-hidden] [ref=f7e84]: DE
+              - generic [ref=f7e85]: demodev@email.com
+            - link "Account settings" [ref=f7e87] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f7e93]:
+        - heading "Dashboard" [level=1] [ref=f7e99]
+        - generic [ref=f7e103]:
+          - generic [ref=f7e104]:
+            - generic [ref=f7e105]:
+              - term [ref=f7e106]: Learners
+              - definition [ref=f7e107]: "50"
+              - definition [ref=f7e108]: Across 2 cohorts
+            - link "2 cohorts" [ref=f7e109] [cursor=pointer]:
+              - /url: /educator/organisations/demodev/cohorts
+              - generic [ref=f7e110]:
+                - term [ref=f7e111]: Cohorts
+                - definition [ref=f7e112]: "2"
+            - generic [ref=f7e113]:
+              - term [ref=f7e114]: Average progress
+              - definition [ref=f7e115]
+            - generic [ref=f7e118]:
+              - term [ref=f7e119]: Learners needing attention
+              - definition [ref=f7e120]
+          - generic [ref=f7e124]:
+            - region [ref=f7e125]:
+              - heading "Needs attention" [level=2] [ref=f7e128]
+            - region [ref=f7e136]:
+              - heading "Cohort progress" [level=2] [ref=f7e139]
+  - contentinfo [ref=f7e149]:
+    - generic [ref=f7e150]:
+      - paragraph [ref=f7e151]: © 2026 FirstClass
+      - navigation "Legal" [ref=f7e152]:
+        - link "Terms and Conditions" [ref=f7e153] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f7e154] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f7e155] [cursor=pointer]: extract-semantic-icons-app-1-standalone-app
+  - generic "Show toolbar" [ref=f7e157]: DJDT

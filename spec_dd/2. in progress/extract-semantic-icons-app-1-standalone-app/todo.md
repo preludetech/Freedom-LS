@@ -20,6 +20,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [x] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
+- [ ] (user) Decide what `data-icon` a literal (authored) glyph such as `heroicons:scale` should carry: the glyph name (it can collide with semantic names like `check`), `<set>:<glyph>`, or none. Then either make `_render_literal` in `freedom_ls/icons/render.py` pass it (TDD: failing test first, then fix), or change Test 2 in `3. frontend_qa.md` and the course-icon step in `2. plan.md` to check the path body as the shipped test does. See bug B1 in `qa_report.md`
 
 ## 4. Documentation and pull request
 

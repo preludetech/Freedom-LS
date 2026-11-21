@@ -1,0 +1,338 @@
+- generic [active] [ref=f3e1]:
+  - banner [ref=f3e2]:
+    - link [ref=f3e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f3e4]
+      - heading "FirstClass" [level=1] [ref=f3e5]
+    - navigation [ref=f3e6]:
+      - generic [ref=f3e7]:
+        - generic [ref=f3e8]:
+          - button "Messages" [ref=f3e9]
+          - status:
+            - generic [ref=f3e13]: Messages
+        - generic [ref=f3e14]:
+          - button "Notifications, 1 new" [ref=f3e15]
+          - status:
+            - generic [ref=f3e19]: Notifications, 1 new
+            - generic [aria-hidden] [ref=f3e20]: "1"
+        - button "Open user menu for demodev@email.com" [ref=f3e22] [cursor=pointer]:
+          - generic [ref=f3e23]:
+            - generic [ref=f3e24]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f3e25]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f3e26]:
+    - generic [ref=f3e28]:
+      - dialog "Course outline" [ref=f3e29]:
+        - generic [ref=f3e32]:
+          - generic [ref=f3e33]:
+            - paragraph [ref=f3e34]: Course outline
+            - paragraph [ref=f3e35]: Content Widgets - Demo Reference
+            - generic [ref=f3e37]:
+              - progressbar "Progress for Content Widgets - Demo Reference" [ref=f3e38]: 60%
+              - generic [ref=f3e39]: 60% complete
+          - navigation "Course outline" [ref=f3e40]:
+            - list [ref=f3e41]:
+              - listitem [ref=f3e42]:
+                - generic [ref=f3e43]:
+                  - generic [ref=f3e44]: "1."
+                  - generic [ref=f3e45]: Completed
+                  - link "Annotation and Emphasis" [ref=f3e50] [cursor=pointer]:
+                    - /url: /courses/content-widgets-demo-reference/1/
+              - listitem [ref=f3e51]:
+                - generic [ref=f3e52]:
+                  - generic [ref=f3e53]: "2."
+                  - generic [ref=f3e54]: Completed
+                  - link "Media" [ref=f3e59] [cursor=pointer]:
+                    - /url: /courses/content-widgets-demo-reference/2/
+              - listitem [ref=f3e60]:
+                - generic [ref=f3e61]:
+                  - generic [ref=f3e62]: "3."
+                  - generic [ref=f3e63]: Completed
+                  - link "Structured Content" [ref=f3e68] [cursor=pointer]:
+                    - /url: /courses/content-widgets-demo-reference/3/
+              - listitem [ref=f3e69]:
+                - generic [ref=f3e70]:
+                  - generic [ref=f3e71]: "4."
+                  - generic [ref=f3e72]: In progress
+                  - generic [ref=f3e76]: Interactive Widgets
+              - listitem [ref=f3e77]:
+                - generic [ref=f3e78]:
+                  - generic [ref=f3e79]: "5."
+                  - generic [ref=f3e80]: Locked
+                  - generic [ref=f3e84]: Cards
+      - generic [ref=f3e85]:
+        - generic [ref=f3e87]:
+          - navigation "Breadcrumb" [ref=f3e90]:
+            - list [ref=f3e91]:
+              - listitem [ref=f3e92]:
+                - link "Content Widgets - Demo Reference" [ref=f3e93] [cursor=pointer]:
+                  - /url: /courses/content-widgets-demo-reference/detail/
+              - listitem [ref=f3e94]:
+                - generic [aria-hidden] [ref=f3e95]: ">"
+                - generic "Interactive Widgets" [ref=f3e96]
+          - generic [ref=f3e98]:
+            - heading "Interactive Widgets" [level=1] [ref=f3e99]
+            - paragraph [ref=f3e100]: Widgets that draw attention, test recall, or reveal depth on demand
+        - generic [ref=f3e102]:
+          - generic [ref=f3e103]:
+            - heading "Admonitions" [level=3] [ref=f3e104]
+            - paragraph [ref=f3e105]: "An admonition draws the learner's eye to a passage that needs more weight than bold text can carry — a safety warning, a procedural tip, a regulatory constraint, or a list of things to check before moving on. Each type has a distinct colour and icon so learners build an intuition for what each shape means. Use them deliberately: a page full of admonitions has no admonitions."
+            - paragraph [ref=f3e106]:
+              - text: The
+              - code [ref=f3e107]: type
+              - text: attribute selects the style. The optional
+              - code [ref=f3e108]: title
+              - text: attribute overrides the default label. The body is rendered as markdown, so you can include lists, code, and emphasis.
+            - heading "Note" [level=4] [ref=f3e109]
+            - paragraph [ref=f3e110]:
+              - text: Use
+              - code [ref=f3e111]: note
+              - text: for neutral, informational context that is worth flagging but carries no risk.
+            - note "Note" [ref=f3e112]:
+              - paragraph [ref=f3e119]:
+                - text: A
+                - code [ref=f3e120]: note
+                - text: sits quietly alongside the main content. It adds context without implying any urgency.
+            - heading "Tip" [level=4] [ref=f3e121]
+            - paragraph [ref=f3e122]:
+              - text: Use
+              - code [ref=f3e123]: tip
+              - text: for practical shortcuts, best practices, or things a more experienced person would tell you.
+            - note "Tip" [ref=f3e124]:
+              - paragraph [ref=f3e131]: Keyboard shortcuts pay back the time spent learning them many times over. Start with the three you reach for most, then build from there.
+            - heading "Important" [level=4] [ref=f3e132]
+            - paragraph [ref=f3e133]:
+              - text: Use
+              - code [ref=f3e134]: important
+              - text: when the learner genuinely must not miss something — but save it for content that warrants the visual weight.
+            - note "Important" [ref=f3e135]:
+              - paragraph [ref=f3e142]: Always read the full error message before searching for it. The exact wording often contains the file path and line number that make the cause immediately clear.
+            - heading "Warning" [level=4] [ref=f3e143]
+            - paragraph [ref=f3e144]:
+              - text: Use
+              - code [ref=f3e145]: warning
+              - text: when an action is reversible only with effort, or when a misunderstanding could waste significant time.
+            - note "Warning" [ref=f3e146]:
+              - paragraph [ref=f3e153]:
+                - text: Renaming a database column requires a migration. Running
+                - code [ref=f3e154]: makemigrations
+                - text: is not enough — you must also run
+                - code [ref=f3e155]: migrate
+                - text: before restarting the server, or queries against the renamed column will fail at runtime.
+            - heading "Danger" [level=4] [ref=f3e156]
+            - paragraph [ref=f3e157]:
+              - text: Use
+              - code [ref=f3e158]: danger
+              - text: when an action is irreversible or could cause data loss, a security breach, or a production outage.
+            - note "Danger" [ref=f3e159]:
+              - paragraph [ref=f3e166]:
+                - text: Running
+                - code [ref=f3e167]: DROP TABLE
+                - text: without a transaction and a verified backup is irreversible. There is no undo. Always confirm you are connected to the correct database before executing destructive SQL.
+            - heading "Key Takeaways" [level=4] [ref=f3e168]
+            - paragraph [ref=f3e169]:
+              - text: Use
+              - code [ref=f3e170]: key_takeaways
+              - text: at the end of a section to distil the three or four points every learner must leave with.
+            - note "Key Takeaways" [ref=f3e171]:
+              - list [ref=f3e178]:
+                - listitem [ref=f3e179]: Admonitions guide attention — they cannot replace clear prose.
+                - listitem [ref=f3e180]: Each type has a fixed meaning; mixing them up trains learners to ignore them.
+                - listitem [ref=f3e181]: One or two admonitions per topic is usually enough.
+            - heading "Checklist" [level=4] [ref=f3e182]
+            - paragraph [ref=f3e183]:
+              - text: Use
+              - code [ref=f3e184]: checklist
+              - text: for a concrete list of things to do or verify. The body is a markdown task list — each item uses
+              - code [ref=f3e185]: "- [ ]"
+              - text: syntax.
+            - note "Checklist" [ref=f3e186]:
+              - list [ref=f3e193]:
+                - listitem [ref=f3e194]:
+                  - checkbox [disabled] [ref=f3e195]
+                  - text: Back up any data you cannot recreate before running migrations.
+                - listitem [ref=f3e196]:
+                  - checkbox [disabled] [ref=f3e197]
+                  - text: Confirm the target environment in your terminal prompt before running destructive commands.
+                - listitem [ref=f3e198]:
+                  - checkbox [disabled] [ref=f3e199]
+                  - text: Review the generated migration file before applying it to a shared database.
+                - listitem [ref=f3e200]:
+                  - checkbox [disabled] [ref=f3e201]
+                  - text: Test the rollback path before deploying to production.
+            - heading "Title override" [level=4] [ref=f3e202]
+            - paragraph [ref=f3e203]:
+              - text: Any admonition type accepts a
+              - code [ref=f3e204]: title
+              - text: attribute that replaces the default label. Use it when the generic label is too broad for the specific content.
+            - note "A note about task lists" [ref=f3e205]:
+              - paragraph [ref=f3e212]:
+                - text: The
+                - code [ref=f3e213]: checklist
+                - text: type renders its body through the normal markdown pipeline, so
+                - code [ref=f3e214]: "- [ ]"
+                - text: items become accessible checkbox inputs. Do not use a checklist for items that will actually be ticked — it is a reading aid, not a form.
+            - 'heading "Custom type: Regulation" [level=4] [ref=f3e215]'
+            - paragraph [ref=f3e216]:
+              - text: The
+              - code [ref=f3e217]: regulation
+              - text: type is a project-level addition defined in
+              - code [ref=f3e218]: settings_dev.py
+              - text: . It exists to show that
+              - code [ref=f3e219]: ADMONITION_TYPES
+              - text: "is extensible: any project consuming Freedom LS can add its own types by merging into the dictionary in its local settings. The icon ("
+              - code [ref=f3e220]: scale
+              - text: ) is a literal heroicons glyph, resolved through the same five-step resolution order as every other icon in the system.
+            - note "Regulation" [ref=f3e221]:
+              - paragraph [ref=f3e228]: Under POPIA, personal information may only be processed for the specific purpose for which it was collected. Learners must be informed of that purpose at the point of collection, and data may not be retained beyond what is necessary to fulfil it.
+            - separator [ref=f3e229]
+            - heading "Flashcard" [level=3] [ref=f3e230]
+            - paragraph [ref=f3e231]: "A flashcard presents two faces — a prompt on the front and an answer on the back. Click anywhere on the card to flip it. Use flashcards for recall practice: vocabulary, definitions, formulae, or cause-and-effect relationships. Do not use them for content that must be read in full — hidden content is not assessable."
+            - paragraph [ref=f3e232]: Each face is a named slot, so both sides support full markdown.
+            - generic [ref=f3e234]:
+              - button "Flip card" [ref=f3e235] [cursor=pointer]
+              - generic:
+                - generic:
+                  - generic:
+                    - generic [aria-hidden]: Question
+                    - paragraph:
+                      - strong: What is the difference between authentication and authorisation?
+                    - generic [aria-hidden]: Tap to flip
+                - generic [aria-hidden]:
+                  - generic:
+                    - generic [aria-hidden]: Answer
+                    - paragraph:
+                      - strong: Authentication
+                      - text: confirms identity — it answers "who are you?". A password, a token, or a certificate authenticates a user.
+                    - paragraph:
+                      - strong: Authorisation
+                      - text: confirms permission — it answers "what are you allowed to do?". A role, a policy, or a capability list authorises an action.
+                    - paragraph: Authentication comes first. Authorisation is meaningless without it.
+                    - generic [aria-hidden]: Tap to flip
+            - paragraph [ref=f3e237]: An answer face can hold anything markdown can express. The face is a tinted panel rather than the plain page surface, so every kind of prose on it — headings, links, inline and fenced code, tables, rules — is repainted to stay legible against the tint.
+            - paragraph [ref=f3e238]:
+              - text: Set
+              - code [ref=f3e239]: size="wide"
+              - text: when the answer needs the room. A wide card fills more of the content column and left-aligns both faces, so a table reads as a table. Anything still too wide for the card — on a phone, that is most tables — scrolls sideways inside the face rather than dragging the card off the screen.
+            - generic [ref=f3e241]:
+              - button "Flip card" [ref=f3e242] [cursor=pointer]
+              - generic:
+                - generic:
+                  - generic:
+                    - generic [aria-hidden]: Question
+                    - paragraph:
+                      - strong: Which HTTP status codes should a REST API use for a failed write?
+                    - generic [aria-hidden]: Tap to flip
+                - generic [aria-hidden]:
+                  - generic:
+                    - generic [aria-hidden]: Answer
+                    - heading [level=4]: It depends on who got it wrong
+                    - paragraph:
+                      - text: Use a
+                      - code: 4xx
+                      - text: when the client can fix the request, and a
+                      - code: 5xx
+                      - text: when it cannot.
+                    - table [ref=f3e244]:
+                      - rowgroup [ref=f3e245]:
+                        - row [ref=f3e246]:
+                          - columnheader [ref=f3e247]: Code
+                          - columnheader [ref=f3e248]: Meaning
+                          - columnheader [ref=f3e249]: Client should
+                      - rowgroup [ref=f3e250]:
+                        - row [ref=f3e251]:
+                          - cell [ref=f3e252]:
+                            - code [ref=f3e253]: "400"
+                          - cell [ref=f3e254]: Malformed request
+                          - cell [ref=f3e255]: Fix the payload
+                        - row [ref=f3e256]:
+                          - cell [ref=f3e257]:
+                            - code [ref=f3e258]: "401"
+                          - cell [ref=f3e259]: Not authenticated
+                          - cell [ref=f3e260]: Log in
+                        - row [ref=f3e261]:
+                          - cell [ref=f3e262]:
+                            - code [ref=f3e263]: "403"
+                          - cell [ref=f3e264]: Authenticated, not permitted
+                          - cell [ref=f3e265]: Stop
+                        - row [ref=f3e266]:
+                          - cell [ref=f3e267]:
+                            - code [ref=f3e268]: "409"
+                          - cell [ref=f3e269]: Conflicts with current state
+                          - cell [ref=f3e270]: Re-read, retry
+                        - row [ref=f3e271]:
+                          - cell [ref=f3e272]:
+                            - code [ref=f3e273]: "422"
+                          - cell [ref=f3e274]: Well-formed but semantically invalid
+                          - cell [ref=f3e275]: Fix the values
+                    - separator
+                    - paragraph:
+                      - text: A validation failure is
+                      - strong: not
+                      - text: a
+                      - code: "500"
+                      - text: . Reserve
+                      - code: 5xx
+                      - text: "for faults the caller cannot act on, and always return a body the caller can read:"
+                    - code [ref=f3e277]: "{\"errors\": {\"email\": [\"Enter a valid email address.\"]}}"
+                    - list:
+                      - listitem:
+                        - code: "400"
+                        - text: is for syntax;
+                        - code: "422"
+                        - text: is for meaning.
+                      - listitem:
+                        - text: Never return
+                        - code: "200"
+                        - text: with an error body — it breaks every generic client.
+                      - listitem:
+                        - text: See
+                        - link:
+                          - /url: https://www.rfc-editor.org/rfc/rfc9110
+                          - text: RFC 9110
+                        - text: for the full list.
+                    - generic [aria-hidden]: Tap to flip
+            - separator [ref=f3e278]
+            - heading "Accordion" [level=3] [ref=f3e279]
+            - paragraph [ref=f3e280]: An accordion hides content behind a clickable summary bar. Click the bar to reveal or conceal the body. Use accordions for supplementary depth — optional context, reference tables, or worked examples that not every learner needs. Do not hide content that is required reading or that forms part of assessed material.
+            - paragraph [ref=f3e281]:
+              - text: The
+              - code [ref=f3e282]: title
+              - text: attribute sets the visible summary. Add the
+              - code [ref=f3e283]: open
+              - text: attribute to start the accordion expanded.
+            - paragraph [ref=f3e284]: "Default state — closed on load:"
+            - group [ref=f3e285]:
+              - generic "Why does Python use indentation instead of braces?" [ref=f3e286] [cursor=pointer]
+            - paragraph [ref=f3e291]:
+              - text: Pre-opened — expanded on load, using the
+              - code [ref=f3e292]: open
+              - text: "attribute:"
+            - group [ref=f3e293]:
+              - generic "When should you use an accordion rather than a callout?" [ref=f3e294] [cursor=pointer]
+              - generic [ref=f3e300]:
+                - paragraph [ref=f3e301]: "Use an accordion when the content is:"
+                - list [ref=f3e302]:
+                  - listitem [ref=f3e303]: Optional supplementary material that benefits some learners but not all.
+                  - listitem [ref=f3e304]: Reference information (a table, a list of options) that a learner may want to look up but does not need to read linearly.
+                  - listitem [ref=f3e305]: A worked example that extends a concept already explained in the main flow.
+                - paragraph [ref=f3e306]: Use a callout (admonition) instead when the content must be noticed — a warning, a constraint, or a key takeaway. Hiding required information behind a click is an accessibility and instructional design problem, not just a layout choice.
+            - paragraph [ref=f3e307]: "A summary long enough to wrap — the title takes the room it needs and the chevron stays pinned to the right of the row:"
+            - group [ref=f3e308]:
+              - generic "Why does a long accordion summary have to wrap rather than push the chevron off the end of the row, and what happens on a narrow screen?" [ref=f3e309] [cursor=pointer]
+          - generic [ref=f3e314]:
+            - link "Previous" [ref=f3e316] [cursor=pointer]:
+              - /url: /courses/content-widgets-demo-reference/3/
+            - button "Next" [ref=f3e321] [cursor=pointer]
+  - contentinfo [ref=f3e325]:
+    - generic [ref=f3e326]:
+      - paragraph [ref=f3e327]: © 2026 FirstClass
+      - navigation "Legal" [ref=f3e328]:
+        - link "Terms and Conditions" [ref=f3e329] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f3e330] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f3e331] [cursor=pointer]: extract-semantic-icons-app-1-standalone-app
+  - generic "Show toolbar" [ref=f3e333]: DJDT

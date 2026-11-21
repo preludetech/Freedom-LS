@@ -1,0 +1,73 @@
+- generic [active] [ref=f16e1]:
+  - banner [ref=f16e2]:
+    - link [ref=f16e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f16e4]
+    - navigation [ref=f16e5]:
+      - generic [ref=f16e6]:
+        - generic [ref=f16e7]:
+          - button "Messages" [ref=f16e8]
+          - status:
+            - generic [ref=f16e12]: Messages
+        - generic [ref=f16e13]:
+          - button "Notifications, none new" [ref=f16e14]
+          - status:
+            - generic [ref=f16e18]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f16e20] [cursor=pointer]:
+          - generic [ref=f16e21]:
+            - generic [ref=f16e22]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f16e23]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f16e24]:
+    - generic [ref=f16e27]:
+      - generic [ref=f16e29]:
+        - generic [ref=f16e30]:
+          - button "Open course outline" [ref=f16e31] [cursor=pointer]
+          - navigation "Breadcrumb" [ref=f16e35]:
+            - list [ref=f16e36]:
+              - listitem [ref=f16e37]:
+                - link "Functionality Demo - Course Parts" [ref=f16e38] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/detail/
+              - listitem [ref=f16e39]:
+                - generic [aria-hidden] [ref=f16e40]: ">"
+                - link "Getting Started" [ref=f16e41] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/1/
+              - listitem [ref=f16e42]:
+                - generic [aria-hidden] [ref=f16e43]: ">"
+                - generic "What to Expect" [ref=f16e44]
+        - generic [ref=f16e46]:
+          - progressbar "Progress for Functionality Demo - Course Parts" [ref=f16e47]: 14%
+          - generic [ref=f16e48]: 14%
+        - paragraph [ref=f16e50]:
+          - text: Deadline
+          - time [ref=f16e56]: 29 Nov 2026, 01:59
+        - heading "What to Expect" [level=1] [ref=f16e59]
+      - generic [ref=f16e61]:
+        - generic [ref=f16e62]:
+          - paragraph [ref=f16e63]: "This course has three parts, each demonstrating different ways to use course parts:"
+          - list [ref=f16e64]:
+            - listitem [ref=f16e65]:
+              - strong [ref=f16e66]: "Part 1: Getting Started"
+              - text: — Contains only topics, showing the simplest use of parts.
+            - listitem [ref=f16e67]:
+              - strong [ref=f16e68]: "Part 2: Core Concepts"
+              - text: — Contains topics and a quiz, showing that parts can mix content types.
+            - listitem [ref=f16e69]:
+              - strong [ref=f16e70]: "Part 3: Wrapping Up"
+              - text: — Contains a topic and a survey, demonstrating a different form type within a part.
+        - generic [ref=f16e71]:
+          - link "Previous" [ref=f16e73] [cursor=pointer]:
+            - /url: /courses/functionality-demo-course-parts/1/
+          - button "Next" [ref=f16e78] [cursor=pointer]
+  - contentinfo [ref=f16e82]:
+    - generic [ref=f16e83]:
+      - paragraph [ref=f16e84]: © 2026 FirstClass
+      - navigation "Legal" [ref=f16e85]:
+        - link "Terms and Conditions" [ref=f16e86] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f16e87] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f16e88] [cursor=pointer]: extract-semantic-icons-app-1-standalone-app
+  - generic "Show toolbar" [ref=f16e90]: DJDT
