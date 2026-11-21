@@ -11,6 +11,7 @@ import lxml.html
 import pytest
 import time_machine
 
+from django.db.models import F
 from django.http import HttpResponse
 from django.test import Client
 from django.urls import reverse
@@ -1466,6 +1467,22 @@ def test_resume_skips_a_served_page_deleted_mid_sitting(served_runner, client):
     assert response["Location"] == _fill_page_url(served_runner.course, 1)
 
 
+@pytest.mark.django_db
+def test_resume_stays_on_the_furthest_page_shown_when_an_author_adds_a_page(
+    served_runner, client
+):
+    """Served 3, 1, 2 and shown pages 3 and 1. A new first page renumbers
+    page 1 to 2; the sitting still resumes on it."""
+    client.get(_fill_page_url(served_runner.course, 3))
+    client.get(_fill_page_url(served_runner.course, 1))
+    served_runner.pages[0].form.pages.update(order=F("order") + 1)
+    FormPageFactory(form=served_runner.pages[0].form, order=0)
+
+    response = client.get(_form_start_url(served_runner.course))
+
+    assert response["Location"] == _fill_page_url(served_runner.course, 2)
+
+
 # ---------------------------------------------------------------------------
 # A real shuffled paper, followed by every way the runner is requested
 # ---------------------------------------------------------------------------
@@ -1806,7 +1823,7 @@ def test_furthest_page_reached_follows_served_position_not_authored_number(
     client.get(_quiz_page_url(shuffled_quiz, 2))
 
     sitting = FormProgress.objects.get(form=shuffled_quiz.form, user=shuffled_quiz.user)
-    assert sitting.furthest_page_reached == last_served
+    assert sitting.furthest_page_number(current_path(sitting)) == last_served
 
 
 def _sit_to_the_end(
@@ -2592,7 +2609,7 @@ def test_leave_and_submit_with_an_invalid_answer_still_records_the_page_reached(
     )
 
     attempt = FormProgress.objects.get(user=user, form=form)
-    assert attempt.furthest_page_reached == 1
+    assert attempt.furthest_page == form.pages.first()
 
 
 @pytest.mark.django_db

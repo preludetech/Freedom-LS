@@ -139,7 +139,7 @@ def _get_or_create_application(
             FormProgressFactory(
                 user=user,
                 form=form,
-                furthest_page_reached=1,
+                furthest_page=form.pages.first(),
                 site=site,
             ),
         )

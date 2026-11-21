@@ -344,9 +344,16 @@ class FormProgress(SiteAwareModel):
         blank=True, null=True, help_text="Calculated scores by category"
     )
     # A page with only optional questions leaves no answer rows behind, so the
-    # answers alone cannot say how far a sitting got. 0 until a page is shown.
-    furthest_page_reached = models.PositiveSmallIntegerField(
-        default=0, help_text="The highest-numbered page this sitting has been shown"
+    # answers alone cannot say how far a sitting got. The page itself, not its
+    # number: an author adding or removing a page renumbers the ones after it.
+    # Null until a page is shown, and again if that page is deleted.
+    furthest_page = models.ForeignKey(
+        "FormPage",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text=_("The page furthest along this sitting has been shown"),
     )
     asked = models.JSONField(
         null=True,
@@ -405,15 +412,19 @@ class FormProgress(SiteAwareModel):
         """Remember that this sitting has been shown `page_number`.
 
         Only ever moves forward along the path: stepping back to an earlier
-        page does not forget the later one. The stored value stays an authored
-        page number, the same meaning it has for every form.
+        page does not forget the later one.
         """
         if path.reached_position(page_number) <= path.reached_position(
-            self.furthest_page_reached
+            self.furthest_page_number(path)
         ):
             return
-        self.furthest_page_reached = page_number
-        self.save(update_fields=["furthest_page_reached", "last_updated_time"])
+        self.furthest_page = path.all_pages[page_number - 1]
+        self.save(update_fields=["furthest_page", "last_updated_time"])
+
+    def furthest_page_number(self, path: SittingPath) -> int:
+        """The authored number the furthest page shown has now; 0 when no page
+        has been shown or the form no longer has that page."""
+        return path.page_number_of(self.furthest_page_id) or 0
 
     def get_current_page_number(
         self, path: SittingPath, answered_ids: set[UUID]

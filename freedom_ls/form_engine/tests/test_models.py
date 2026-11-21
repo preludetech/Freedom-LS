@@ -247,15 +247,14 @@ def test_get_current_page_number_skips_an_off_path_pages_unanswered_question(
 @pytest.mark.django_db
 def test_record_page_reached_remembers_the_furthest_page(mock_site_context):
     form: Form = FormFactory()
-    for order in range(3):
-        FormPageFactory(form=form, order=order)
+    pages = [FormPageFactory(form=form, order=order) for order in range(3)]
     form_progress: FormProgress = FormProgressFactory(form=form)
     form_progress.record_page_reached(3, current_path(form_progress))
 
     form_progress.record_page_reached(1, current_path(form_progress))
 
     form_progress.refresh_from_db()
-    assert form_progress.furthest_page_reached == 3
+    assert form_progress.furthest_page == pages[2]
 
 
 @pytest.fixture
@@ -280,7 +279,7 @@ def test_record_page_reached_moves_forward_by_served_position(served_out_of_orde
     served_out_of_order.record_page_reached(1, current_path(served_out_of_order))
 
     served_out_of_order.refresh_from_db()
-    assert served_out_of_order.furthest_page_reached == 1
+    assert served_out_of_order.furthest_page.order == 0
 
 
 @pytest.mark.django_db
@@ -290,7 +289,7 @@ def test_record_page_reached_does_not_step_back_in_served_order(served_out_of_or
     served_out_of_order.record_page_reached(1, current_path(served_out_of_order))
 
     served_out_of_order.refresh_from_db()
-    assert served_out_of_order.furthest_page_reached == 2
+    assert served_out_of_order.furthest_page.order == 1
 
 
 @pytest.mark.django_db

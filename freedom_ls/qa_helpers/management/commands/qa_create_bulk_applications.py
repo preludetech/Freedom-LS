@@ -32,7 +32,12 @@ from freedom_ls.form_engine.factories import (
     FormProgressFactory,
     QuestionAnswerFactory,
 )
-from freedom_ls.form_engine.models import FormProgress, FormQuestion, QuestionAnswer
+from freedom_ls.form_engine.models import (
+    FormPage,
+    FormProgress,
+    FormQuestion,
+    QuestionAnswer,
+)
 from freedom_ls.learner_management.factories import LearnerFactory
 from freedom_ls.organisations.utils import get_default_organisation
 
@@ -92,7 +97,9 @@ def _ensure_application(
             FormProgressFactory(
                 user=user,
                 form=course.application_form,
-                furthest_page_reached=1,
+                furthest_page=FormPage.objects.filter(
+                    form=course.application_form
+                ).first(),
                 site=site,
             ),
         )

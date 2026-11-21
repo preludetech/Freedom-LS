@@ -537,6 +537,33 @@ def test_a_number_off_a_served_path_lands_on_the_first_greater_number_else_the_l
     assert path.landing_page_number(4) == 1
 
 
+def test_page_number_of_an_on_path_page_is_its_authored_number(
+    served_form: ServedForm,
+) -> None:
+    path = served_path(_fresh(served_form.form), _reordered_paper(served_form))
+
+    assert path.page_number_of(served_form.page_three.id) == 3
+
+
+def test_page_number_of_an_off_path_page_is_its_authored_number(
+    served_form: ServedForm,
+) -> None:
+    sf = served_form
+    paper = served_paper_of([(sf.page_three, [sf.q_four]), (sf.page_one, [sf.q_one])])
+    path = served_path(_fresh(sf.form), paper)
+
+    assert path.page_number_of(sf.page_two.id) == 2
+
+
+@pytest.mark.parametrize("page_id", [None, UUID(int=1)])
+def test_page_number_of_a_page_the_form_lacks_is_none(
+    served_form: ServedForm, page_id: UUID | None
+) -> None:
+    path = served_path(_fresh(served_form.form), _reordered_paper(served_form))
+
+    assert path.page_number_of(page_id) is None
+
+
 def test_a_served_paper_that_omits_a_page_and_a_question_leaves_them_off_the_path(
     served_form: ServedForm,
 ) -> None:

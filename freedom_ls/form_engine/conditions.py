@@ -127,6 +127,17 @@ class SittingPath:
         """Every on-path question, in sitting order."""
         return [question for page in self.pages for question in self.questions_of(page)]
 
+    def page_number_of(self, page_id: UUID | None) -> int | None:
+        """The authored number of one of the form's pages, on the path or off it."""
+        return next(
+            (
+                number
+                for number, page in enumerate(self.all_pages, start=1)
+                if page.id == page_id
+            ),
+            None,
+        )
+
     def page_position(self, number: int) -> int:
         """The 1-based place of an on-path page among the on-path pages."""
         return self._page_positions[number]
@@ -164,7 +175,8 @@ class SittingPath:
         """How far along the path a sitting that reached authored page `number` has got.
 
         A number off the path counts as every page before the one it would land
-        on, so a stored number an author's edit has shifted still compares.
+        on, so a reached page the answers have since taken off the path still
+        compares.
         """
         if number in self._page_positions:
             return self._page_positions[number]

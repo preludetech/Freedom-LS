@@ -10,6 +10,7 @@ from dataclasses import dataclass
 
 import pytest
 
+from django.db.models import F
 from django.http import QueryDict
 
 from freedom_ls.form_engine.conditions import current_path, full_path
@@ -349,25 +350,42 @@ def test_page_links_keep_a_reached_page_clickable_after_stepping_back(
     assert [link["is_accessible"] for link in links] == [True, True, False, False]
 
 
+def _reloaded(form_progress: FormProgress) -> FormProgress:
+    """The sitting as a new request would load it, after an author's edit."""
+    reloaded: FormProgress = FormProgress.objects.get(pk=form_progress.pk)
+    return reloaded
+
+
+def _insert_first_page(form: Form) -> None:
+    """An author adds a page in front of every other page."""
+    form.pages.update(order=F("order") + 1)
+    FormPageFactory(form=form, order=0, title="Inserted")
+
+
 @pytest.mark.django_db
-def test_resume_page_is_clamped_to_the_pages_the_form_still_has(
+def test_resume_falls_back_to_the_first_unanswered_page_when_the_reached_page_is_deleted(
     mock_site_context, four_page_form
 ):
-    """The reached-page record outlives a page an author deletes afterwards;
-    resuming on it would be a permanent 404."""
+    """Resuming on a page an author has since deleted would be a permanent 404."""
     form_progress = FormProgressFactory(form=four_page_form)
-    reloaded = FormProgress.objects.get(pk=form_progress.pk)
-    form_progress.record_page_reached(4, current_path(reloaded))
+    form_progress.record_page_reached(4, current_path(_reloaded(form_progress)))
     four_page_form.pages.filter(order__gte=2).delete()
+    reloaded = _reloaded(form_progress)
 
-    assert resume_page_number(form_progress, current_path(form_progress)) == 2
-    links = build_page_links(
-        form_progress,
-        current_page_number=1,
-        url_for_page=str,
-        path=full_path(four_page_form),
-    )
-    assert [link["is_accessible"] for link in links] == [True, True]
+    assert resume_page_number(reloaded, current_path(reloaded)) == 1
+
+
+@pytest.mark.django_db
+def test_resume_follows_the_reached_page_when_a_page_is_added_before_it(
+    mock_site_context, four_page_form
+):
+    form_progress = FormProgressFactory(form=four_page_form)
+    _answer(form_progress, _question_on_page(four_page_form, 1))
+    form_progress.record_page_reached(3, current_path(_reloaded(form_progress)))
+    _insert_first_page(four_page_form)
+    reloaded = _reloaded(form_progress)
+
+    assert resume_page_number(reloaded, current_path(reloaded)) == 4
 
 
 @pytest.fixture
@@ -572,18 +590,48 @@ def test_resume_lands_on_the_furthest_answered_served_page(served_three):
 
 @pytest.mark.django_db
 def test_resume_lands_on_the_reached_page_when_it_is_furthest_served(served_three):
-    FormProgress.objects.filter(pk=served_three.pk).update(furthest_page_reached=1)
-    served_three.refresh_from_db()
+    served_three.record_page_reached(1, current_path(served_three))
 
     assert resume_page_number(served_three, current_path(served_three)) == 1
 
 
 @pytest.mark.django_db
-def test_resume_clamps_a_reached_page_past_the_last_page(served_three):
-    FormProgress.objects.filter(pk=served_three.pk).update(furthest_page_reached=9)
-    served_three.refresh_from_db()
+def test_served_resume_stays_on_the_reached_page_when_an_unvisited_page_is_deleted(
+    served_three,
+):
+    """Served 3, 1, 2 and shown only page 3. Deleting page 2 renumbers page 3
+    to 2; the sitting still resumes on it."""
+    served_three.record_page_reached(3, current_path(served_three))
+    served_three.form.pages.filter(order=1).delete()
+    reloaded = _reloaded(served_three)
 
-    assert resume_page_number(served_three, current_path(served_three)) == 2
+    assert resume_page_number(reloaded, current_path(reloaded)) == 2
+
+
+@pytest.mark.django_db
+def test_served_resume_stays_on_the_reached_page_when_a_page_is_added_before_it(
+    served_three,
+):
+    """Served 3, 1, 2 and shown only page 3, which a new first page renumbers to 4."""
+    served_three.record_page_reached(3, current_path(served_three))
+    _insert_first_page(served_three.form)
+    reloaded = _reloaded(served_three)
+
+    assert resume_page_number(reloaded, current_path(reloaded)) == 4
+
+
+@pytest.mark.django_db
+def test_served_resume_falls_back_to_the_answers_when_the_reached_page_is_deleted(
+    served_three,
+):
+    """Served 3, 1, 2; page 3 answered and page 1 shown, then page 1 deleted.
+    The first unanswered served page is the old page 2, now numbered 1."""
+    _answer(served_three, _question_of_page(served_three, 3))
+    served_three.record_page_reached(1, current_path(served_three))
+    served_three.form.pages.filter(order=0).delete()
+    reloaded = _reloaded(served_three)
+
+    assert resume_page_number(reloaded, current_path(reloaded)) == 1
 
 
 @pytest.mark.django_db

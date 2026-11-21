@@ -33,7 +33,7 @@ def test_the_completed_sitting_records_the_questions_it_was_asked(mock_site_cont
     sitting = application.form_progress
     assert sitting is not None
     assert application.is_submitted
-    assert sitting.furthest_page_reached == 1
+    assert sitting.furthest_page == form.pages.first()
     assert sitting.asked
     assert sitting.answers.count() == len(QUESTIONS)
     assert rerun.pk == application.pk

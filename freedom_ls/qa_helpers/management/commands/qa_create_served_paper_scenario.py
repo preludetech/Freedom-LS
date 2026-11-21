@@ -538,7 +538,7 @@ def _old_sitting(
     completed_at = timezone.now() - timedelta(days=OLD_SITTING_DAYS_AGO)
     FormProgress.objects.filter(pk=sitting.pk).update(
         served_paper=None,
-        furthest_page_reached=len(MAIN_QUIZ.pages),
+        furthest_page=built.form.pages.last(),
         start_time=completed_at - timedelta(minutes=15),
         completed_time=completed_at,
     )

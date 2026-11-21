@@ -588,12 +588,14 @@ def test_the_add_page_offers_user_and_form(staff_client) -> None:
 
 
 @pytest.mark.django_db
-def test_the_change_page_shows_furthest_page_reached(staff_client) -> None:
-    progress = FormProgressFactory(furthest_page_reached=3)
+def test_the_change_page_shows_the_furthest_page(staff_client) -> None:
+    form = FormFactory()
+    page = FormPageFactory(form=form, title="Medical history")
+    progress = FormProgressFactory(form=form, furthest_page=page)
 
     body = _change_page(staff_client, progress)
 
-    assert "Furthest page reached" in body
+    assert "Medical history" in body
 
 
 def _progress_with_file_answer(filename: str = "id-scan.png"):

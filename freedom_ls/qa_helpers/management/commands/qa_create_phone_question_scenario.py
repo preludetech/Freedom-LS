@@ -180,7 +180,7 @@ def _seed_legacy_sitting(
         application.save(update_fields=["form_progress"])
     # Unsubmitted, shown page 1 so the runner resumes there.
     FormProgress._base_manager.filter(pk=sitting.pk).update(
-        completed_time=None, scores=None, asked=None, furthest_page_reached=1
+        completed_time=None, scores=None, asked=None, furthest_page=page
     )
     sitting.refresh_from_db()
 
@@ -258,7 +258,7 @@ def command(legacy_email: str, site_name: str) -> None:
     click.echo(f"CourseApplication pk={application.pk}")
     click.echo(
         f"FormProgress pk={sitting.pk} completed_time={sitting.completed_time} "
-        f"furthest_page_reached={sitting.furthest_page_reached}"
+        f"furthest_page={sitting.furthest_page}"
     )
     for text, answer in answers.items():
         answer.refresh_from_db()

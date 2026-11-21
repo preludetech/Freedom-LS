@@ -46,11 +46,10 @@ def _resume_page_number(form_progress: FormProgress, path: SittingPath) -> int:
     if not numbered:
         return 1
     answered_ids = _answered_ids(form_progress)
-    # furthest_page_reached is an authored number. It can outlive a page an
-    # author deleted and can name a page off the path, so it is clamped to
-    # the pages the form has and moved onto the path before it is compared.
+    # The furthest page shown can be one the answers have since taken off the
+    # path, so it is moved onto the path before it is compared.
     reached = path.first_page_number_at_or_after(
-        min(form_progress.furthest_page_reached, len(path.all_pages))
+        form_progress.furthest_page_number(path)
     )
     candidates = (
         form_progress.get_current_page_number(path, answered_ids),
@@ -68,10 +67,9 @@ def resume_page_number(form_progress: FormProgress, path: SittingPath) -> int:
     The furthest page they were shown, and the furthest one they answered on,
     both count too: that is what stops a resume dropping them back in front of
     work they have already done. The answered-page term still matters for
-    sittings that predate the reached-page record. The reached-page record
-    outlives a page an author later deletes and may name a page the answers
-    have since taken off the path, so the result is clamped to the pages the
-    form has and moved onto the path.
+    sittings that predate the reached-page record, and for one whose furthest
+    page an author has since deleted. The furthest page shown may be one the
+    answers have since taken off the path, so the result is moved onto the path.
     """
     return _resume_page_number(form_progress, path)
 

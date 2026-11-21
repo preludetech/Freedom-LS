@@ -17,7 +17,7 @@ Command: `freedom_ls/qa_helpers/management/commands/qa_create_phone_question_sce
 Reuses `_get_site/_get_learner/_attach_form_to_course/_register` from
 `qa_create_form_question_types` and `_ensure_user/_ensure_verified_email` from
 `qa_create_clean_applicant`. Deletes nothing; idempotent (same pks on re-run); re-opens a
-submitted sitting via queryset.update(completed_time=None, furthest_page_reached=1).
+submitted sitting via queryset.update(completed_time=None, furthest_page=<page 1>).
 
 - Course `qa-phone-course`, form `qa-phone-form` (UNSCORED). Start `/courses/qa-phone-course/1/`,
   button POSTs `/courses/qa-phone-course/1/start_form`, runner `/courses/qa-phone-course/1/fill_form/1`
