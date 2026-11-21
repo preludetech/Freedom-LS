@@ -194,6 +194,26 @@ class TestGetDashboardApplications:
 
         assert old not in get_dashboard_applications(user)
 
+    @pytest.mark.parametrize("older_state", ["draft", "submitted", "approved"])
+    def test_an_older_active_application_for_the_course_hides_the_rejection(
+        self, mock_site_context: Site, older_state: str
+    ) -> None:
+        from freedom_ls.course_applications.queries import get_dashboard_applications
+
+        user = UserFactory()
+        course = CourseFactory()
+        traits: dict[str, object] = {
+            "draft": {"form_progress": FormProgressFactory(user=user)},
+            "submitted": {},
+            "approved": {"approved": True},
+        }[older_state]
+        active = _created_ago(
+            CourseApplicationFactory(user=user, course=course, **traits), 2
+        )
+        CourseApplicationFactory(user=user, course=course, rejected=True)
+
+        assert list(get_dashboard_applications(user)) == [active]
+
     def test_another_users_newer_application_does_not_hide_the_rejection(
         self, mock_site_context: Site
     ) -> None:

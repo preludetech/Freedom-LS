@@ -94,10 +94,12 @@ def panel_rows(
 def get_dashboard_applications(user: RequestUser) -> QuerySet[CourseApplication]:
     """Return the applications the user's dashboard panel lists.
 
-    Active applications, plus each rejected one that no newer application for
-    the same course has replaced; a newer application in any state, withdrawn
-    included, hides the rejection. Open applications come first, then approved
-    and rejected ones, newest first within each group.
+    Active applications, plus each rejected one that no other application for
+    the same course has replaced. A newer application in any state, withdrawn
+    included, hides the rejection, and so does an active one of any age, so a
+    course never shows both "Waiting for review" and "Declined". Open
+    applications come first, then approved and rejected ones, newest first
+    within each group.
 
     Returns an empty queryset immediately for anonymous users — no DB query is issued.
     Site isolation is automatic via SiteAwareManager.
@@ -110,10 +112,8 @@ def get_dashboard_applications(user: RequestUser) -> QuerySet[CourseApplication]
     if not user.is_authenticated:
         return CourseApplication.objects.none()
     superseded = CourseApplication.objects.filter(
-        user=OuterRef("user"),
-        course=OuterRef("course"),
-        created_at__gt=OuterRef("created_at"),
-    )
+        user=OuterRef("user"), course=OuterRef("course")
+    ).filter(Q(created_at__gt=OuterRef("created_at")) | Q(state__in=ACTIVE_STATES))
     return panel_rows(
         CourseApplication.objects.filter(user=user).filter(
             Q(state__in=ACTIVE_STATES)
