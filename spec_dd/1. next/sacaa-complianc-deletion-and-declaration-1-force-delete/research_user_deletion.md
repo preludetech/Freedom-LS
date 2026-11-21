@@ -1,0 +1,62 @@
+# Research: User and Learner deletion, audit logging, last-active (SACAA 5-year record retention)
+
+Read-only findings. Paths are under `freedom_ls/` unless stated.
+
+## 1. What "Learner" most plausibly means
+
+- `learner_management.models.Learner` (`SiteAwareModel`, `LoadedIsActiveMixin`): `user` FK to `AUTH_USER_MODEL` (CASCADE), `organisation` FK (PROTECT), `is_active`, `created_at`. One User may hold a Learner per Organisation (unique on site+user+organisation). It is the near-certain meaning: the project vocabulary calls it the user's association with an Organisation, and "Learner" has its own admin (`LearnerAdmin`).
+- `learner_management.models.StaffMember`: counterpart of Learner (educator side), `user` FK CASCADE, `is_active`. Not a "Learner", but the same deletion shape.
+- `accounts.User` itself (email-based, site-aware, integer pk). Educator-facing text says "learner" for the person, but the row is `User`.
+- Records hanging off Learner (not User): `CohortMembership.learner` (CASCADE), `LearnerCourseRegistration.learner` (CASCADE), `learner_progress.CourseProgress.learner` (**PROTECT**, related_name `course_progress_records`), `messaging_policy.LearnerMessagingConfig.learner` (CASCADE).
+- Records hanging off User directly: `form_engine.FormProgress.user` (CASCADE, `form_engine/models.py:294`) and thus `QuestionAnswer` (CASCADE via FormProgress), `accounts.LegalConsent.user` (CASCADE), `comms.Notification.user` and conversation participants (CASCADE), `course_applications` (user FKs CASCADE), `course_interest`, `course_recommendations`, `referral_tracking` (3 FKs CASCADE), `role_based_permissions` (CASCADE rows), `panel_framework/models.py:75` (CASCADE), `learner_management/models.py:398` (LearnerImport row user, CASCADE), `hr_attributes` (CASCADE at 148/216).
+
+## 2. Every delete path today
+
+**Django admin**
+- `accounts.admin.UserAdmin` (`SiteAwareExportModelAdmin`): no `has_delete_permission` override, no `actions` override. So the standard change-page Delete button AND the bulk "delete selected" action both work for anyone with `delete_user` permission. `get_deleted_objects` is overridden to strip `perms_needed` for the models in `USER_ERASURE_CASCADE_MODELS`.
+- `USER_ERASURE_CASCADE_MODELS` (`accounts/admin.py:26`) is an existing set, extended by `learner_management/admin.py:279` (`Learner`) and `course_applications/admin.py:29-30` (`CourseApplication`, `AnonymousApplicant`); it starts with `LegalConsent`. Comments there say the User admin is "the one path" for erasure. A user deletion via the User admin is therefore a designed, already-supported erasure path; the idea's "do not allow deleting Users" reverses this design. Test: `learner_management/tests/test_admin.py::TestDeletePermission::test_erasing_the_user_takes_their_learner_rows`.
+- `learner_management.admin.LearnerAdmin.has_delete_permission` returns `False` always (line 232). With it False, Django's bulk "delete selected" action is also unavailable for Learner. Comment: removing a learner is `is_active=False`, not losing the row.
+- Delete denied elsewhere: `LegalConsentAdmin`, `AuditLogEntryAdmin`, `ApiKeyAdmin`, `OrganisationAdmin`, content_engine/form_engine definition admins, deadlines, referral tracking (`ReadOnlyAdminMixin`), webhooks, mail, reports.
+- No `has_delete_permission` override found (per grep of every `admin.py`) in `form_engine.admin.FormProgressAdmin`, `QuestionAnswerAdmin`, `QuestionAnswerFileAdmin`, `learner_progress.admin.TopicProgressAdmin`, `CourseProgressAdmin`, `CourseFormAttemptAdmin`, `LearnerCourseRegistrationAdmin`, `CohortCourseRegistrationAdmin` (a default ModelAdmin allows delete for permitted staff). These delete records without touching User; relevant to "detailed student records".
+- Inline deletes: `can_delete = False` on `LegalConsentInline`, `ReadOnlyLearnerRecordInline` (and its two subclasses), `CourseProgressItemInline`, `LearnerCourseProgressInline`, `OrganisationLearnerInline` (line 428), hr_attributes inlines, form_engine inlines. Not `can_delete = False`: `CohortMembershipInline` (`learner_management/admin.py:282`, on Cohort page, extra=1) and `CohortCourseRegistrationInline` (line 320): can delete `CohortMembership` rows from the Cohort admin. The deadlines `DeadlineOverrideInline` (line 185) was not inspected for can_delete.
+- No other ModelAdmin has an inline on User that can delete: the only User inline is `LegalConsentInline` (read-only, `can_delete=False`, `has_delete_permission` False).
+- `SiteAwareEmailAddressAdmin` (allauth `EmailAddress`) can delete an address row (does not delete User); signal `touch_user_updated_at` fires.
+
+**Educator interface / panel framework**
+- `panel_framework.actions.DeleteAction` (line 700, `ConfirmAction`) with cascade preview and `ProtectedError`/`RestrictedError` handling (lines 807-824). Only subclass in production: `educator_interface.actions.DeleteEmptyCohortAction` (line 387). No educator action deletes a User or Learner. Educator "remove learner" = `deactivate_learner` / reactivate (`educator_interface/actions.py:470-505`).
+
+**Other**
+- No management command deletes users (`accounts/management/commands/setup_initial_prod_data.py` only creates/checks). `audit_log` has `prune_audit_log` command (deletes entries by age). `deployment` housekeeping deletes stale previews and finished records (`deployment/tests/test_housekeeping.py`; not read in detail).
+- Signal: `accounts.signals.delete_profile_pictures` (post_delete on User) removes picture files on commit. Nothing blocks deletion.
+- Self-service account deletion: none. `accounts/urls.py` has only personal-details redirects; `accounts/views.py` has no delete view. allauth is configured (`ACCOUNT_*` settings in `config/settings_base.py`) with no account-delete flow.
+- API (`api`, `api_admin`): no delete endpoints found in `api/` (non-test).
+- `course_applications.erasure.erase_anonymous_applicant` deletes `AnonymousApplicant` (not User).
+
+**Cascade blocks**: User delete cascades to Learner, and `CourseProgress.learner` is PROTECT, so deleting a User (or Learner, if allowed) with any CourseProgress raises `ProtectedError`; a User delete in admin will show it as a protected dependent. A user with only FormProgress (no Learner progress) deletes cleanly and takes answers/attempts with it. So a "force delete" must handle `CourseProgress` (PROTECT; and `TopicProgress`/`CourseFormAttempt` which cascade from CourseProgress) deliberately. `FormProgress.form` is PROTECT (protects forms, not users).
+
+## 3. Audit log
+
+- Exists: `freedom_ls_audit_log` app. `audit_log.models.AuditLogEntry` (`SiteAwareModel`): `created_at`, `organisation` (FK PROTECT, nullable), `actor` (FK to user, `on_delete=set_null_by_instance`, nullable), `actor_label` (text copy of display name), `action`, `target_content_type` + `target_object_id` (CharField) + GenericFK, `target_label`, `subjects` (ArrayField, e.g. `accounts.user:12`), `reason` (max `REASON_LENGTH`=500), `details` (JSON), `run_id`. Append-only: `update`/`delete`/`save`-on-existing raise `AppendOnlyError`; only `prune_before` deletes.
+- Written via `audit_log.writer.record_entry(action, actor, target, target_label, organisation, subjects, reason, details, run_id, site)`; unknown actions raise (`validate_action`). Actions live in a registry in `audit_log/actions.py` (`FLS_AUDIT_ACTIONS`; includes `learner.added`, `learner.deactivated`, `learner.reactivated`, `learner.renamed`, `learner.setup_email_resent`). No user-deletion/erasure action exists today. Educator actions (`educator_interface/actions.py`, `EducatorReasonMixin`, modal templates with a reason field) call `record_learner_entry(...)` / `record_run_summary` inside the caller's transaction.
+- Survival of deletion: the actor FK is set NULL on actor deletion and `actor_label` keeps the name, so entries by a deleted actor survive. The entry's target is a GenericFK with a `CharField` object id (no DB FK), plus `target_label` and `subjects` strings, so a log entry about a deleted User survives and stays readable. `organisation` is PROTECT (an Organisation with entries cannot be deleted). The `site` FK is PROTECT via `SiteAwareModelBase`. `record_entry` needs a site: `_site_for(target)` requires a `SiteAware` target (User is `SiteAwareModelBase`, OK) or explicit `site=`. `organisation` is nullable, but the educator audit panel filters by organisation (`educator_interface/panels/audit_log`), so an entry with no organisation would only appear in the Django admin `AuditLogEntryAdmin` (read-only, `has_delete_permission` False).
+- Test fixtures show the design: `audit_log/tests/test_writer.py:98-101` deletes the actor and organisation and asserts the entry survives.
+- Django `LogEntry` (admin history) exists as stock `django.contrib.admin`; `api_admin/tests/test_admin.py:102` asserts on it. A User delete in the admin writes a `LogEntry` (DELETION) with `user` FK CASCADE to the *acting* admin, with `object_repr` text; it would be lost if the actor were deleted. No `simple_history` or `django-auditlog` found.
+
+## 4. "Last active"
+
+- `User.last_login` (from `AbstractBaseUser`, nullable). Updated by Django's `update_last_login` receiver on `user_logged_in`; allauth logins go through Django `login()`, so it is set on each interactive login. It does not move for a user whose session stays valid (prod `SESSION_COOKIE_AGE` = 2 weeks, `config/settings_prod.py:51`; dev default), so a user who stays logged in or uses an API key shows an old/blank value. `accounts/tests/test_signals.py:110` asserts a login does not move `updated_at` (login touches only `last_login`). `last_login` is shown read-only in `UserAdmin` ("Important dates") and exported in `UserResource` (`accounts/resources.py:26`). `accounts/account_setup.py:40,47` treats `last_login is None` as "never signed in" (setup-email flow), so changing its semantics affects that.
+- `User.updated_at` (`TimestampedModel`, auto_now) is not activity; it is a changed-since sync signal, indexed with site, and moved by EmailAddress signals.
+- Progress timestamps: `CourseProgress.last_accessed_time` (set by the course player, `learner_interface/views.py:1588-1603`, deliberately not auto_now), `started_at`, `completed_time`, `updated_at`; `TopicProgress.last_accessed_time` is `auto_now` (`learner_progress/models.py:89`) and `start_time`, `complete_time`. These are per-course, only for learner course activity, not "any user".
+- No `last_seen`, `last_active` field, middleware or session tracking exists. No API key last-used was checked (`api.models.ApiKey` not read in detail).
+
+## 5. Deactivation today
+
+- User: `User.is_active` editable in `UserAdmin` fieldsets (and list column/filter). No educator action for User.
+- Learner: `Learner.is_active`, editable in `LearnerAdmin` (field in `fields`, filter); educator action `deactivate_learner`/reactivate in `educator_interface/actions.py` which writes `learner.deactivated`/`learner.reactivated` audit entries and fires webhooks. `LoadedIsActiveMixin.flipped_off` and `UpdatedAtInUpdateFieldsMixin` (learner_management/models.py:121-153) let post_save receivers detect the flip. Self-service registration reactivates a deactivated Learner (`ensure_learner`).
+- `SiteAwareModelAdmin` is a plain `ModelAdmin` with a `Media` class (`site_aware_models/admin.py:25`), `SiteAwareExportModelAdmin` adds `ExportActionMixin` (export action, `has_export_permission`), `GuardedSiteAwareModelAdmin` adds guardian. None override delete or actions, so site-awareness comes only from `SiteAwareManager` queryset filtering (the admin lists current-site rows); it does not affect deactivation. `UserAdmin` inherits `ExportActionMixin`, which already adds an action ("Export selected"), so a new action just joins the admin `actions` list. Because `UserAdmin` has `unfold` forms, the admin is Unfold-themed (`unfold.admin.ModelAdmin`).
+
+## 6. Other ModelAdmins with a User FK inline that could delete
+
+None found: `UserAdmin.inlines = [LegalConsentInline]` (non-deleting) is the only inline on a User change page. Inlines on `Learner` change page are read-only. Inlines on other parents that include Learner or user rows: `OrganisationLearnerInline` (on Organisation, `can_delete=False`), `CohortMembershipInline` (on Cohort; can delete `CohortMembership`, which belongs to a Learner), `LearnerDeadlineOverrideInline` (deadlines; delete behaviour not checked).
+
+status: ok

@@ -56,10 +56,12 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - ⚪ Priority not set · `audit-log-describe-test-flake` (Tooling and operations)
 - ⚪ Priority not set · `panel-framework-close-and-toast-response` (Panel framework)
 - ⚪ Priority not set · `panel-framework-dialogs-without-javascript` (Panel framework)
+- ⚪ Priority not set · `sacaa-complianc-deletion-and-declaration-1-force-delete` (SACAA record retention and declarations)
+- ⚪ Priority not set · `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` (SACAA record retention and declarations)
 
 ### Needs work on main first
 
-None.
+- ⚪ Priority not set · `panel-framework-tech-debt-polish` (Panel framework): cut it with `/sdd:roadmap panel-framework-tech-debt-polish` (the directory is empty).
 
 ![Up next](roadmap_diagrams/up-next.svg)
 
@@ -229,6 +231,7 @@ Test out of sections, revise with spaced repetition and flashcards, and watch ac
 - `learner-interface-features-3-revision-questions` — **in progress** — Learners revise questions from finished sections, scheduled by spaced repetition, with explanations and weak sections highlighted.
 - `learner-interface-features-4-flashcards` — **blocked** by `learner-interface-features-3-revision-questions` — Authors add flashcards to sections; learners rate their confidence and the revision schedule brings them back.
 - `learner-interface-features-5-protected-video` — **ready** — Course content embeds video that only learners with access to the course can play; shared links stop working.
+- `educator-revision-analytics` — **blocked** by `learner-interface-features-3-revision-questions` — Educators see the revision questions learners miss most, per-option answer counts and each learner's weak sections.
 
 ![Learner interface features](roadmap_diagrams/learner-interface-features.svg)
 
@@ -434,5 +437,29 @@ Gaps in the panel framework's dialogs and responses.
 
 - `panel-framework-close-and-toast-response` — **ready** — Panel actions get a built-in response that closes the dialog and shows a toast without swapping content.
 - `panel-framework-dialogs-without-javascript` — **ready** — Single-record dialog triggers work with JavaScript off, opening the dialog server-side over its page.
+- `panel-framework-tech-debt-polish` — **ready** — No idea written yet. Before starting: cut it with `/sdd:roadmap panel-framework-tech-debt-polish` (the directory is empty).
 
 ![Panel framework](roadmap_diagrams/panel-framework.svg)
+
+## SACAA record retention and declarations
+
+Priority: ⚪ Priority not set
+
+Keeping learner records for SACAA's five-year rule, and signed quiz declarations, for training organisations audited by SACAA. Parent: `sacaa-complianc-deletion-and-declaration`.
+
+- `sacaa-complianc-deletion-and-declaration-1-force-delete` — **ready** — Admins can no longer delete users; superusers force delete a user or learner with a logged reason; users get a last-active time.
+- `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` — **ready** — A quiz can make learners tick a declaration and type their name before the first page; FLS stores it immutably.
+
+![SACAA record retention and declarations](roadmap_diagrams/sacaa-record-retention-and-declarations.svg)
+
+**Notes**
+- Build order: the two specs share no code and run in parallel.
+- Collisions: `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` changes the form schema, `Form`, `FormProgress`, `content_save` and `form_start`, like `sacaa-compliance-2-shuffle` and `sacaa-compliance-3-question-pools`; it rebases onto whichever lands first.
+- Decided: only superusers force delete, at any time, with a required reason written to the audit log; no retention-window gate and no automatic cleanup.
+- Decided: force delete replaces the User admin's delete button and "delete selected" action as the one erasure path.
+- Decided: each quiz sets whether its declaration is signed on every attempt or once per learner; the typed name must be non-empty and is stored as typed.
+- Assumption: force deleting a user removes every record today's user deletion removes, plus their course progress, which today blocks deletion (`PROTECT`).
+- Assumption: force deleting a learner removes that `Learner` and its registrations, cohort memberships and course progress in that organisation; the `User` stays.
+- Assumption: of `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` and `sacaa-compliance-4-attempt-review`, whichever lands second shows the declaration on the educator attempt view.
+- Out of scope: locking progress, attempt and answer records in the admin; self-service account deletion; declarations on non-quiz forms.
+- References: CAR 141.01.17 five-year retention in `sacaa-compliance/research_sacaa_requirements.md`.
