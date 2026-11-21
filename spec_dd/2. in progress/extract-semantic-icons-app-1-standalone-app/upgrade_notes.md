@@ -13,7 +13,7 @@ requires_package_upgrade: false
 changed_packages: []
 requires_npm_install: false
 changed_npm_packages:
-  - "@iconify-json/heroicons@^1.2.3"  # moved to devDependencies in FLS; no longer needed at runtime unless SEMANTIC_ICONS_ICONIFY_DIR points at it
+  - "@iconify-json/heroicons@^1.2.3"  # moved to devDependencies in FLS; no longer needed at runtime unless SEMANTIC_ICONS_ICONIFY_DIR points at it, and then `npm ci --omit=dev` must not drop them
   - "@iconify-json/lucide@^1.2.101"
   - "@iconify-json/ph@^1.2.2"
   - "@iconify-json/tabler@^1.2.33"
@@ -56,6 +56,13 @@ The renamed settings are not breaking yet: the `FREEDOM_LS_ICON_*` names still w
 
    The directory overlays the bundled data icon by icon, so a partial directory still renders
    every semantic name.
+
+   FLS now lists the four packages under `devDependencies`. A build that installs with
+   `npm ci --omit=dev` or `npm install --production` leaves them out, so the directory does not
+   exist, `icons.E008` fires and `manage.py check` and `migrate` stop. Either install them
+   explicitly in that build (`npm install --no-save @iconify-json/heroicons @iconify-json/lucide
+   @iconify-json/ph @iconify-json/tabler`), copy `node_modules/@iconify-json` from a stage that
+   installed dev dependencies, or leave `SEMANTIC_ICONS_ICONIFY_DIR` unset there.
 3. Update any comment, `SILENCED_SYSTEM_CHECKS` entry or CI step that refers to `icons.E002`
    meaning "missing from `node_modules`". The check for a bad directory is now `icons.E008`.
 4. First-Class: rename the two `FREEDOM_LS_ICON_*` settings in `config/customisation.py`, set
