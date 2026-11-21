@@ -4544,3 +4544,171 @@ def test_a_gitignored_file_the_scanner_skips_does_not_block(
     _save_from_repo(committed_content_repo, site)
 
     assert Topic.objects.filter(title="A Topic").exists()
+
+
+_PAGE_HEADER = (
+    "---\ncontent_type: FORM_PAGE\ntitle: A Page\n"
+    "uuid: 10000000-0000-0000-0000-0000000000c1\n---\n"
+)
+
+_NO_UUID_CASES = {
+    "topic": (
+        "topic.md",
+        "---\ncontent_type: TOPIC\ntitle: A Topic\n---\n\nBody.\n",
+        'TOPIC "A Topic"',
+    ),
+    "activity": (
+        "activity.md",
+        "---\ncontent_type: ACTIVITY\ntitle: An Activity\n---\n\nBody.\n",
+        'ACTIVITY "An Activity"',
+    ),
+    "article": (
+        "article.md",
+        "---\ncontent_type: ARTICLE\ntitle: An Article\npublished_on: 2026-01-02\n---\n\nBody.\n",
+        'ARTICLE "An Article"',
+    ),
+    "course": (
+        "course.md",
+        "---\ncontent_type: COURSE\ntitle: A Course\n---\n",
+        'COURSE "A Course"',
+    ),
+    "course_part": (
+        "part.yaml",
+        "---\ncontent_type: COURSE_PART\ntitle: A Part\n---\n",
+        'COURSE_PART "A Part"',
+    ),
+    "form": (
+        "form.md",
+        "---\ncontent_type: FORM\nstrategy: CATEGORY_VALUE_SUM\ntitle: A Form\n---\n",
+        'FORM "A Form"',
+    ),
+    "form_page": (
+        "page.yaml",
+        "---\ncontent_type: FORM_PAGE\ntitle: A Page\n---\n",
+        'page "A Page"',
+    ),
+    "form_content": (
+        "page.yaml",
+        _PAGE_HEADER + "content: Read this\n",
+        "content block 1",
+    ),
+    "form_question": (
+        "page.yaml",
+        _PAGE_HEADER + "question: Which colour?\ntype: short_text\n",
+        'question "Which colour?"',
+    ),
+    "option": (
+        "page.yaml",
+        _PAGE_HEADER + "question: Which colour?\ntype: multiple_choice\n"
+        "uuid: 10000000-0000-0000-0000-0000000000a1\n"
+        "options:\n  - text: Red\n    value: 1\n"
+        "    uuid: 10000000-0000-0000-0000-0000000000a2\n"
+        "  - text: Blue\n    value: 2\n",
+        'option 2 of question "Which colour?"',
+    ),
+    "category_entry": (
+        "course_categories.yaml",
+        "---\ncontent_type: COURSE_CATEGORIES\ncategories:\n"
+        "  - slug: first\n    title: First\n    uuid: 10000000-0000-0000-0000-0000000000b1\n"
+        "  - slug: second\n    title: Second\n",
+        'category 2 ("Second")',
+    ),
+}
+
+
+def _commit_tree(directory: Path, files: dict[str, str]) -> Path:
+    directory.mkdir(exist_ok=True)
+    for name, text in files.items():
+        (directory / name).write_text(text)
+    init_repo(directory)
+    commit_all(directory)
+    return directory
+
+
+def _tree_snapshot(directory: Path) -> dict[str, str]:
+    return {
+        str(path.relative_to(directory)): path.read_text()
+        for path in sorted(directory.rglob("*"))
+        if path.is_file() and ".git" not in path.relative_to(directory).parts
+    }
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("filename", "text", "description"),
+    list(_NO_UUID_CASES.values()),
+    ids=list(_NO_UUID_CASES),
+)
+def test_a_missing_uuid_is_refused_and_named(
+    site, mock_site_context, tmp_path: Path, filename: str, text: str, description: str
+):
+    repo = _commit_tree(tmp_path / "repo", {filename: text})
+
+    with pytest.raises(CommandError, match="missing uuid") as exc_info:
+        _save_from_repo(repo, site)
+
+    assert filename in str(exc_info.value)
+    assert description in str(exc_info.value)
+    assert "--generate-uuids" in str(exc_info.value)
+
+
+@pytest.mark.django_db
+def test_several_missing_uuids_come_back_in_one_message(
+    site, mock_site_context, tmp_path: Path
+):
+    repo = _commit_tree(
+        tmp_path / "repo",
+        {
+            "topic.md": _NO_UUID_CASES["topic"][1],
+            "activity.md": _NO_UUID_CASES["activity"][1],
+        },
+    )
+
+    with pytest.raises(CommandError, match="2 missing uuids") as exc_info:
+        _save_from_repo(repo, site)
+
+    assert 'TOPIC "A Topic"' in str(exc_info.value)
+    assert 'ACTIVITY "An Activity"' in str(exc_info.value)
+
+
+@pytest.mark.django_db
+def test_a_refusal_for_missing_uuids_changes_nothing(
+    site, mock_site_context, tmp_path: Path
+):
+    repo = _commit_tree(
+        tmp_path / "repo",
+        {"topic.md": _NO_UUID_CASES["topic"][1], "logo.png": "not an image\n"},
+    )
+    before = _tree_snapshot(repo)
+
+    with pytest.raises(CommandError, match="missing uuid"):
+        _save_from_repo(repo, site)
+
+    assert _tree_snapshot(repo) == before
+    assert Topic.objects.count() == 0
+    assert File.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_generate_uuids_writes_the_uuids_into_the_files(
+    site, mock_site_context, tmp_path: Path
+):
+    repo = _commit_tree(tmp_path / "repo", {"topic.md": _NO_UUID_CASES["topic"][1]})
+    drop_ambient_request()
+
+    call_command("content_save", str(repo), site.name, "--generate-uuids")
+
+    assert str(Topic.objects.get(title="A Topic").id) in (repo / "topic.md").read_text()
+
+
+@pytest.mark.django_db
+def test_a_dirty_tree_without_uuids_reports_only_the_dirty_tree(
+    site, mock_site_context, tmp_path: Path
+):
+    repo = _commit_tree(tmp_path / "repo", {"topic.md": _NO_UUID_CASES["topic"][1]})
+    (repo / "new.md").write_text("new\n")
+
+    with pytest.raises(CommandError, match="loads only committed content") as exc_info:
+        _save_from_repo(repo, site)
+
+    assert "missing uuid" not in str(exc_info.value)

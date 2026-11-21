@@ -8,7 +8,6 @@ title: Content title 1
 uuid: c63e747c-8fd9-43e4-b46e-df1076c95d07
 ---
 
-NOTE: UUID fields are automatically generated!
 
 - don't create them by hand
 - if one exists, don't edit it

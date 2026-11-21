@@ -38,6 +38,7 @@ from freedom_ls.base.git_utils import (
 from freedom_ls.content_base.schema import (
     DUE_DATE_FIELD_NAMES,
     BaseBaseContentModel,
+    BaseContentModel,
     DueDateFields,
 )
 from freedom_ls.content_base.schema import ContentType as SchemaContentType
@@ -65,7 +66,7 @@ from freedom_ls.content_engine.moved_children import (
     moved_children,
 )
 from freedom_ls.content_engine.prices import KIND_FIELDS
-from freedom_ls.content_engine.schema import Child
+from freedom_ls.content_engine.schema import Child, CourseCategories
 from freedom_ls.content_engine.schema import Course as CourseSchema
 from freedom_ls.content_engine.signals import collection_items_synced
 from freedom_ls.content_engine.validate import (
@@ -73,6 +74,7 @@ from freedom_ls.content_engine.validate import (
     collection_children,
     content_key,
     effective_sections,
+    form_section_label,
     get_all_files,
     parse_single_file,
     resolve_author_path,
@@ -1068,8 +1070,12 @@ def save_file_to_db(
 
 
 @transaction.atomic
-def save_content_to_db(path, site_name):
-    """Scan through all validated files and save them to the database."""
+def save_content_to_db(path, site_name, *, generate_uuids: bool = True):
+    """Scan through all validated files and save them to the database.
+
+    With `generate_uuids=False` a file that lacks a uuid is refused instead of
+    being given one, so a save never rewrites the content files.
+    """
     path = Path(path)
     # Get the site
     site = Site.objects.get(
@@ -1101,6 +1107,9 @@ def save_content_to_db(path, site_name):
     ]
     if placement_errors:
         raise ValueError("\n".join(placement_errors))
+
+    if not generate_uuids:
+        refuse_missing_uuids(all_parsed, path)
 
     # Save non-content files (images, documents, etc.) to the database
     for file_path in all_files:
@@ -1442,6 +1451,75 @@ def _refusal(
     return "\n\n".join(blocks)
 
 
+def _label(item: BaseBaseContentModel, block_number: int) -> str:
+    """How a refusal names a section: the validator's label for form sections."""
+    if isinstance(
+        item,
+        (
+            form_schema.FormPage,
+            form_schema.FormContent,
+            form_schema.FormQuestion,
+        ),
+    ):
+        return form_section_label(item, block_number)
+    if isinstance(item, BaseContentModel):
+        return f'{item.content_type} "{item.title}"'
+    return str(item.content_type)
+
+
+def missing_uuids(
+    all_parsed: Sequence[BaseBaseContentModel],
+) -> list[tuple[Path, str]]:
+    """(file, description) for every uuid the save would have to generate."""
+    found: list[tuple[Path, str]] = []
+    content_blocks: Counter[Path] = Counter()
+    for item in all_parsed:
+        if isinstance(item, CourseCategories):
+            # The document has no uuid of its own: each entry has one.
+            found += [
+                (item.file_path, f'category {position} ("{entry.title}")')
+                for position, entry in enumerate(item.categories, start=1)
+                if not entry.uuid
+            ]
+            continue
+        if item.content_type == SchemaContentType.FORM_CONTENT:
+            content_blocks[item.file_path] += 1
+        label = _label(item, content_blocks[item.file_path])
+        if not item.uuid:
+            found.append((item.file_path, label))
+        found += [
+            (item.file_path, f"option {position} of {label}")
+            for position, option in enumerate(
+                getattr(item, "options", None) or [], start=1
+            )
+            if not option.uuid
+        ]
+    return found
+
+
+def refuse_missing_uuids(
+    all_parsed: Sequence[BaseBaseContentModel], source: Path
+) -> None:
+    """Raise CommandError listing every uuid the save would have to generate."""
+    missing = missing_uuids(all_parsed)
+    if not missing:
+        return
+    base = source.parent if source.is_file() else source
+    by_file: dict[str, list[str]] = {}
+    for file_path, description in missing:
+        by_file.setdefault(file_path.relative_to(base).as_posix(), []).append(
+            description
+        )
+    count = len(missing)
+    raise CommandError(
+        _refusal(
+            f"content_save found {count} missing uuid{'s' if count != 1 else ''}.",
+            list(by_file.items()),
+            "Run again with --generate-uuids, then commit the changed files.",
+        )
+    )
+
+
 def check_committed(path: str) -> str:
     """Refuse a source path that is not a clean, committed git tree.
 
@@ -1490,11 +1568,18 @@ def check_committed(path: str) -> str:
 @click.command()
 @click.argument("path")
 @click.argument("site_name")
-def command(path, site_name):
+@click.option(
+    "--generate-uuids",
+    is_flag=True,
+    default=False,
+    help="Write a new uuid into every content file that lacks one.",
+)
+def command(path, site_name, generate_uuids):
     """Validate and save committed content to the database.
 
     The source path must be inside a git repository with no uncommitted,
-    staged, deleted or untracked files.
+    staged, deleted or untracked files. A file without a uuid is refused
+    unless --generate-uuids is given.
     """
     check_committed(path)
     logger.info("Validating content...")
@@ -1502,4 +1587,4 @@ def command(path, site_name):
     logger.info("Validation complete!")
 
     logger.info("Saving to database...")
-    save_content_to_db(path, site_name)
+    save_content_to_db(path, site_name, generate_uuids=generate_uuids)

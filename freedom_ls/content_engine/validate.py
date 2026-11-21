@@ -937,7 +937,7 @@ def section_error(
     """The error block for one bad entry in a sections: list."""
     field = f"sections[{index}]"
     if isinstance(declarer, FormQuestion):
-        field = f"{_target_label(declarer, 0)} → {field}"
+        field = f"{form_section_label(declarer, 0)} → {field}"
     return _reference_error(
         declarer.file_path,
         declarer.content_type,
@@ -1056,7 +1056,8 @@ def _form_error(
     )
 
 
-def _target_label(item: _FormSection, block_number: int) -> str:
+def form_section_label(item: _FormSection, block_number: int) -> str:
+    """How an error names a form page, question or content block."""
     if isinstance(item, FormPage):
         return f'page "{item.title}"'
     if isinstance(item, FormQuestion):
@@ -1090,7 +1091,7 @@ def _form_pages(all_parsed: Sequence[BaseBaseContentModel]) -> list[_FormPages]:
 
     Page order is the one content_save assigns: the page files sorted as
     paths, so `10. x.yaml` comes before `2. y.yaml`. Content blocks are
-    numbered per page file, as _target_label names them.
+    numbered per page file, as form_section_label names them.
     """
     forms = {
         item.file_path.parent: item for item in all_parsed if isinstance(item, Form)
@@ -1112,7 +1113,7 @@ def _form_pages(all_parsed: Sequence[BaseBaseContentModel]) -> list[_FormPages]:
                     block_number += 1
                 if isinstance(item, FormPage):
                     page = item
-                labelled.append((item, _target_label(item, block_number)))
+                labelled.append((item, form_section_label(item, block_number)))
             pages.append(_PageSections(page=page, sections=labelled))
         result.append(_FormPages(form=form, pages=pages))
     return result
