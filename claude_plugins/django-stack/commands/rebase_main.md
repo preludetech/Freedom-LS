@@ -205,10 +205,12 @@ Follow `${CLAUDE_PLUGIN_ROOT}/resources/test_tiers.md`.
    `tier: none` → the branch holds nothing a test can see. Report `tier: none`; go to Step 10.
 2. Main's diff and the fix-ups committed since the replay, with the branch's own tests:
 
-       .claude/ds/scripts/select_tests.sh --range $OLD_BASE..origin/main --range $REPLAYED_TIP..HEAD --tests-changed-in origin/main..HEAD
+   ```
+   .claude/ds/scripts/select_tests.sh --upstream-range $OLD_BASE..origin/main --range $REPLAYED_TIP..HEAD --tests-changed-in origin/main..HEAD
+   ```
 
-   `tier: none` → main brought in nothing the branch's code can interact with, and Step 7 added
-   nothing a test can see. Report `tier: none`. Otherwise run the printed command.
+   `tier: none` → main brought in nothing that meets the apps the branch changed or imports, and
+   Step 7 added nothing a test can see. Report `tier: none`. Otherwise run the printed command.
 
 A failure is fixed on the branch, test first, following "When a targeted run or full run fails"
 in the tier definition, then committed:

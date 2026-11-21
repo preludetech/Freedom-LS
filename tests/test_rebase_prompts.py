@@ -31,6 +31,18 @@ def test_pre_commit_runs_on_the_branch_changes_only() -> None:
     assert not [f for f in fragments if "--all-files" in f]
 
 
+def test_rebase_targeted_run_passes_mains_changes_as_the_upstream_range() -> None:
+    fragments = code_fragments(rebase_command_path().read_text())
+
+    assert [f for f in fragments if "--upstream-range $OLD_BASE..origin/main" in f]
+
+
+def test_rebase_targeted_run_does_not_pass_mains_changes_as_a_plain_range() -> None:
+    fragments = code_fragments(rebase_command_path().read_text())
+
+    assert not [f for f in fragments if "--range $OLD_BASE..origin/main" in f]
+
+
 @pytest.mark.parametrize("reason", ["push rejected: stale lease", "force-push needed:"])
 def test_rebase_command_spells_the_push_refusal_reason(reason: str) -> None:
     assert reason in rebase_command_path().read_text()
