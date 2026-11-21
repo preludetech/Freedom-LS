@@ -17,7 +17,7 @@ html = topic.rendered_content()
 ```
 
 **What happens:**
-1. Markdown → HTML (extensions: fenced_code, mdx_headdown, tables)
+1. Markdown → HTML (extensions: fenced_code, md_in_html, mdx_headdown, tables, pymdownx.tasklist)
 2. Sanitize with nh3 (only `MARKDOWN_ALLOWED_TAGS` allowed)
 3. Render Cotton components
 4. Return safe HTML
@@ -26,7 +26,7 @@ html = topic.rendered_content()
 
 **Location:** `freedom_ls/content_engine/templates/cotton/`
 
-Includes `admonition.html`, `flashcard.html`, `accordion.html`, `youtube.html`, `picture.html`, `content-link.html`, `audio.html`.
+Includes `admonition.html`, `flashcard.html`, `accordion.html`, `youtube.html`, `picture.html`, `content-link.html`, `audio.html`, `audio-reveal.html`.
 
 These widgets are for authored markdown only. App templates (pages, panels, dialogs) use `<c-callout tone="info|success|warning|error" title="...">` from `freedom_ls/base/templates/cotton/callout.html` instead of `<c-admonition>`.
 
@@ -47,10 +47,15 @@ These widgets are for authored markdown only. App templates (pages, panels, dial
 <c-youtube video_id="abc123"></c-youtube>
 <c-picture src="images/file.svg" alt="Alt text"></c-picture>
 <c-content-link path="other.md">link</c-content-link>
-<c-audio src="audio/file.mp3" label="Listen" respelling="ow-dee-oh"></c-audio>
+<c-audio src="audio/file.mp3" label="Listen" respelling="ow-dee-oh" symbol="aw"></c-audio>
+<c-audio-reveal src="audio/file.mp3" label="Listen" respelling="ow-dee-oh" symbol="aw"></c-audio-reveal>
 ```
 
 `c-admonition` `type` values: `note`, `tip`, `important`, `warning`, `danger`, `key_takeaways`, `checklist`. Unknown types fall back to `note`.
+
+`c-audio-reveal` is a say-it-then-reveal card: the `symbol` tile is the prompt, and clicking the space where the answer will appear shows it and plays the audio. `symbol` is required on it.
+
+**Slot widgets** (`c-accordion`, `c-admonition`, `c-card`, `c-flashcard`, `c-pull-quote`, `c-table`) have a body that is author markdown. `render_markdown` converts that body once, and the widget template emits its slot as-is (`{{ slot }}`), as `c-grid` does. Do not run `{% markdown slot %}` in a widget template: a second pass re-converts rendered widget markup. Any widget can nest inside a slot widget.
 
 ## Adding New Components
 
@@ -70,18 +75,24 @@ MARKDOWN_ALLOWED_TAGS = {
     "c-youtube": {"video_id", "video_title", "caption"},
     "c-picture": {"src", "alt", "title", "description", "number"},
     "c-content-link": {"path"},
+    "c-article-link": {"path"},
+    "c-article-card": {"path", "variant"},
+    "c-course-card": {"path", "variant"},
     "c-pdf-embed": {"src", "caption", "height"},
     "c-file-download": {"src", "text"},
     "c-pull-quote": {"attribution", "cite", "source"},
     "c-equation": {"label"},
+    "c-grid": {"columns"},
+    "c-audio": {"src", "label", "respelling", "symbol"},
+    "c-audio-reveal": {"src", "label", "respelling", "symbol"},
     "c-image-grid": {"columns"},
     "c-table": {"caption"},
     "c-code-block": {"title", "language", "wrap"},
     "c-admonition": {"type", "title"},
     "c-flashcard": {"size"},
     "c-accordion": {"title", "open"},
+    "c-card": {"src", "alt", "title", "size"},
     "c-slot": {"name"},
-    "c-audio": {"src", "label", "respelling"},
 }
 ```
 
