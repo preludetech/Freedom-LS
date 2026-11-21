@@ -98,6 +98,10 @@ Where you do write utilities, keep to Tailwind's spacing scale and use `rounded-
 
 **Buttons of one size are one height.** A variant changes a button's colour and outline, never its box: the secondary button's outline is drawn inside its box, so it sits level with a primary or error button beside it. This holds on every page, learner pages included.
 
+**A button shows its focus ring on keyboard focus only.** `.btn` draws the ring under `focus-visible`, never `focus`, so a button looks the same after a mouse click or tap as before it. A toggle that swaps its label ("Show transcript" / "Hide transcript") keeps one look in both states.
+
+**An icon-only button centres its icon.** The icon sits at the button's optical centre: wrap it in a block-level box (`flex`, not a bare inline `<span>`), so no text baseline pushes it down. A play triangle, whose visual weight sits left of its box, moves right by a pixel or two (`translate-x-px`).
+
 **A callout has room inside it.** `<c-callout>` keeps its icon, title, text and buttons well clear of its border, and puts space between the title, each paragraph and the button row. The `.callout` class sets this spacing for every callout; add no extra padding at the call site.
 
 **A list inside a callout lines its bullets up with the callout's title.** Each bullet or number sits at the left edge of the text column, under the title's first letter, with no extra indent. `<c-callout>` sets this for any `<ul>` or `<ol>` in its slot; write a bare list at the call site, with no list or margin classes.
@@ -158,6 +162,8 @@ What QA checks in a screenshot of any FLS page.
 - A list inside a callout has its bullets level with the start of the callout's title text, not indented past it.
 - A form error that belongs to no single field sits in an error callout above the form, never as bare red text.
 - Buttons of one size are one height, whatever their variant: an outlined button is no taller than a filled one beside it.
+- A button clicked with the mouse shows no focus ring; a toggle looks the same in both of its states. Tab to it and the ring shows.
+- The icon in an icon-only button sits at its centre, not low and not to one side.
 - Content lines up: blocks start and stop on their container's padding, buttons line up with the text above them, items of one kind share a column.
 - A page opened from another page starts with a back link at the top left, above the heading, in the back-link style; no button on the page goes back.
 - A button that starts an irreversible action (withdraw, delete, remove) is red, on the page and in its confirm dialog.

@@ -23,6 +23,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (user) Listen to `demo_content/functionality_demo_content_widgets/2. media/audio/gettysburg.mp3` and confirm the transcript in `2. media/content.md` matches the words spoken; it was copied from the Wikisource text (Everett copy), not checked against the audio
 - [ ] (user) Force-push the rebased branch, which was refused here: run `! git push origin content-widget-longer-audio --force-with-lease --force-if-includes`
 - [ ] (user) Repeat Test 3 steps 1–4 (seeking) of `3. frontend_qa.md` in Safari; no Safari was available to the QA run, which passed them in Chromium
+- [ ] (user) Decide: should the dev server's `/media/` handler honour Range requests? Without it Chrome can't seek on a clip's first (uncached) load, so the `c-audio-clip` bar goes back to the sound's real position. Production storage honours Range. (QA B1's earlier fix only froze the bar; the widget now follows the sound instead.)
 
 ## 4. Documentation and pull request
 
