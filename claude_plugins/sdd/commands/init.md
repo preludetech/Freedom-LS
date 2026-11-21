@@ -223,7 +223,7 @@ anything in this step or before it completes.
    falls back to the project's plain pytest command. If another plugin owns that file, the user points this key at it.
 
    A **Pre-test rebuild** value points at a script that rebuilds generated assets (dependencies,
-   compiled CSS) the tests read. `/sdd:finish_worktree` runs it before its own full test run, when
+   compiled CSS) the tests read. `/sdd:finish_worktree` runs it before its own checkpoint run, when
    no rebase already rebuilt and tested the branch. Blank means "this project has no such step".
 
    A **Flaky test guide** value points at the file `/sdd:finish_worktree` hands the sub-agent that

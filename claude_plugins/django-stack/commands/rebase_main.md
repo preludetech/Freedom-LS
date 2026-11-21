@@ -209,7 +209,7 @@ Follow `${CLAUDE_PLUGIN_ROOT}/resources/test_tiers.md`.
    .claude/ds/scripts/select_tests.sh --upstream-range $OLD_BASE..origin/main --range $REPLAYED_TIP..HEAD --tests-changed-in origin/main..HEAD
    ```
 
-   `tier: none` → main brought in nothing that meets the apps the branch changed or imports, and
+   `tier: none` → main brought in nothing that meets the branch, and
    Step 7 added nothing a test can see. Report `tier: none`. Otherwise run the printed command.
 
 A failure is fixed on the branch, test first, following "When a targeted run or full run fails"

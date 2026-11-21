@@ -17,8 +17,9 @@ live here and nowhere else.
   The diff arguments are the step's own: `--working-tree` for uncommitted and untracked files,
   explicit paths, `--range <rev>..<rev>` (repeatable) for the files a git range changed,
   `--upstream-range <old>..<new>` (once) for the paths main brought in between two bases, where a
-  path the branch's own diff does not contain counts only where it meets the apps the branch
-  changed or imports, and `--tests-changed-in <rev>..<rev>` for test files that join a targeted
+  path the branch's own diff does not contain counts only where it meets the branch (the apps it
+  changed, the apps those import, the apps that import them, and the tests its own paths select),
+  and `--tests-changed-in <rev>..<rev>` for test files that join a targeted
   run without ever raising its tier. An untracked file no rule knows is `none`; a tracked one is `full`. The `tier:` line is
   the tier that applies; `none` means there is nothing to run. Run the `command:` line exactly as
   printed, and quote the `why:` lines when reporting. The generic `none`, escalation and

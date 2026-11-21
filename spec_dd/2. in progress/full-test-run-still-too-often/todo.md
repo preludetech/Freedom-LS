@@ -27,6 +27,11 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Add `--upstream-range` and `dependency_files` wherever the selector's flags or `[tool.test_tiers]` keys are listed: `claude_plugins/django-stack/README.md` (it lists neither today) and `claude_plugins/django-stack/resources/testing.md` (the paragraph on `select_tests.py`, which also says `pyproject.toml`/`uv.lock` behaviour lives in the escalation list) (spec section "Documentation and downstream", second bullet)
 - [x] (cmd) Update the diagrams under `claude_plugins/sdd/docs/diagrams/`: `finish_worktree.drawio.svg` (Step 1 takes the checkpoint fill, no longer red; its note "Step 1's full run wrote the record it reads" is reworded), `overview.drawio.svg` (one red full-run box), `rebase.drawio.svg` (Step 9.2 wording); `tests/test_check_diagrams.py` must pass (spec section "Documentation and downstream", third bullet)
 - [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [x] (cmd) PR 273 review: in `select_tests.py`, select an upstream tooling path when its test targets overlap the test targets the branch's paths reach, not when the glob strings match
+- [x] (cmd) PR 273 review: in `select_tests.py`, an upstream escalation path outside any app also selects its tooling tests when they overlap the branch's test targets
+- [x] (cmd) PR 273 review: in `select_tests.py`, select the tests of an app that imports a branch app when main changed it, and every importer of a branch app main changed
+- [x] (cmd) PR 273 review: add `.python-version`, `package.json` and `package-lock.json` to the generic dependency files in `select_tests.py`
+- [x] (cmd) PR 273 review: docs that say `finish_worktree` runs the full tier say checkpoint (`sdd/commands/README.md`, `sdd/commands/init.md`, `sdd/README.md`), and the docs and spec that describe the upstream rules match the fixes
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
 ## 5. Cleanup
