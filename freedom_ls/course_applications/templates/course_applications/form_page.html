@@ -31,7 +31,7 @@
                     <span data-testid="read-only-notice">
                         {% if application.state == "withdrawn" %}
                             You withdrew this application, so it can no longer be changed.
-                        {% elif application.state == "rejected" %}
+                        {% elif application.state == "rejected" or application.state == "approved" %}
                             A decision has been made on this application, so it can no longer be changed.
                         {% else %}
                             This application has been submitted and can no longer be changed.

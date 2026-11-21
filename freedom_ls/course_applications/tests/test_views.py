@@ -4608,6 +4608,30 @@ def test_read_only_form_page_never_says_submitted_for_an_unsubmitted_state(
 
 
 @pytest.mark.django_db
+def test_read_only_form_page_of_an_approved_application_says_a_decision_was_made(
+    client: Client, mock_site_context: None
+) -> None:
+    application = _anonymous_draft(client)
+    user = UserFactory()
+    client.force_login(user)
+    now = timezone.now()
+    CourseApplication.objects.filter(pk=application.pk).update(
+        user=user,
+        anonymous_applicant=None,
+        state=CourseApplication.State.APPROVED,
+        decided_at=now,
+        submitted_at=now,
+    )
+
+    body = client.get(_page_url(application, 1)).content.decode()
+    notice = lxml.html.fromstring(body).xpath(
+        "string(//*[@data-testid='read-only-notice'])"
+    )
+
+    assert "A decision has been made" in notice
+
+
+@pytest.mark.django_db
 def test_form_page_notice_names_the_applicants_address(client, mock_site_context):
     application = _anonymous_draft(client)
 
