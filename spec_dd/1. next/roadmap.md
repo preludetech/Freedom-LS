@@ -14,6 +14,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `faster-test-runs-1-fast-password-hasher` (Faster test runs)
 - 🔴 High · `faster-test-runs-10-rerun-only-failures-in-a-batch` (Faster test runs)
 - 🔴 High · `faster-test-runs-3-permission-matrix-test` (Faster test runs)
+- 🔴 High · `faster-test-runs-4-playwright-tests` (Faster test runs)
 - 🔴 High · `faster-test-runs-8-narrower-targeted-tier` (Faster test runs)
 - 🔴 High · `educator-interface-refactor-5-learner` (Educator interface code layout, via `sacaa-compliance`)
 - 🔴 High · `sacaa-compliance-3-question-pools` (SACAA compliance)
@@ -26,7 +27,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 - 🔴 High · `faster-test-runs-12-reliable-full-run-record` (Faster test runs)
 - 🔴 High · `faster-test-runs-2-reuse-test-database` (Faster test runs)
-- 🔴 High · `faster-test-runs-4-playwright-tests` (Faster test runs)
 - 🔴 High · `faster-test-runs-5-full-suite-on-github-actions` (Faster test runs)
 - 🔴 High · `faster-test-runs-6-prune-slow-tests` (Faster test runs)
 - 🔴 High · `faster-test-runs-9-machine-wide-test-run-limit` (Faster test runs)
@@ -85,7 +85,7 @@ Cut the time and machine load of test runs so several worktrees can work at once
 - `faster-test-runs-1-fast-password-hasher` — **in progress** — Tests hash passwords with a fast hasher; production and the dev server keep Argon2.
 - `faster-test-runs-2-reuse-test-database` — **ready** — A pytest run reuses the test database and rebuilds it only when migrations change.
 - `faster-test-runs-3-permission-matrix-test` — **in progress** — The permission matrix test builds its users and cohorts once, with every cell still checked.
-- `faster-test-runs-4-playwright-tests` — **ready** — Playwright tests sign in without the login form, and same-page tests merge into one flow.
+- `faster-test-runs-4-playwright-tests` — **in progress** — Playwright tests sign in without the login form, and same-page tests merge into one flow.
 - `faster-test-runs-5-full-suite-on-github-actions` — **ready** — The full suite runs on free GitHub runners in parallel jobs, started on demand by an SDD run.
 - `faster-test-runs-6-prune-slow-tests` — **ready** — Remaining slow and redundant tests are merged or removed from a measured per-test ranking.
 - `faster-test-runs-7-claude-cloud-test-runs` — **blocked** by `faster-test-runs-1-fast-password-hasher`, `faster-test-runs-2-reuse-test-database`, `faster-test-runs-3-permission-matrix-test`, `faster-test-runs-4-playwright-tests`, `faster-test-runs-5-full-suite-on-github-actions`, `faster-test-runs-6-prune-slow-tests`, `faster-test-runs-8-narrower-targeted-tier`, `faster-test-runs-9-machine-wide-test-run-limit`, `faster-test-runs-10-rerun-only-failures-in-a-batch`, `faster-test-runs-11-record-failed-full-runs`, `faster-test-runs-12-reliable-full-run-record`, `faster-test-runs-13-checkpoint-shared-paths` — Fallback: a test run or SDD batch is handed to a Claude Code cloud session.

@@ -61,7 +61,7 @@
 <path d="M32.0,209.0 H30.0 A6,6 0 0 0 24.0,215.0 V253.0 A6,6 0 0 0 30.0,259.0 H32.0 Z" fill="#991b1b"/>
 <text x="40.0" y="231.0" fill="#111827">faster-test-runs-3-permission-</text>
 <text x="40.0" y="246.0" fill="#111827">matrix-test</text>
-<rect x="24.0" y="277.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<rect x="24.0" y="277.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M32.0,277.0 H30.0 A6,6 0 0 0 24.0,283.0 V321.0 A6,6 0 0 0 30.0,327.0 H32.0 Z" fill="#991b1b"/>
 <text x="40.0" y="299.0" fill="#111827">faster-test-runs-4-playwright-</text>
 <text x="40.0" y="314.0" fill="#111827">tests</text>
