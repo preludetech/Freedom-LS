@@ -147,6 +147,7 @@ These widgets are available inside Markdown content:
 | `c-file-download` | Downloadable file link |
 | `c-audio` | Card that plays a recorded audio file on demand, showing the word (`label`), an optional `respelling` and an optional `symbol` tile; one plays at a time |
 | `c-audio-reveal` | Recall prompt: shows a `symbol` tile and hides the answer; the learner says the answer aloud, then reveals the word (`label`) and optional `respelling` and hears its audio file, after which it hides again |
+| `c-audio-clip` | Player for a longer recording, such as a listening exercise, with play/pause and seeking; shows a `title` and an optional `kind`, and text in the tag body becomes an expandable transcript; shares the one-at-a-time rule with `c-audio` and `c-audio-reveal` |
 | `c-pull-quote` | Pull quote with optional attribution |
 | `c-equation` | Rendered equation block |
 | `c-image-grid` | Multi-column image grid; a `c-grid` specialised for images |
