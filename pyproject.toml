@@ -123,6 +123,9 @@ escalation = [
     "freedom_ls/site_aware_models/**",
     "freedom_ls/content_base/**",
 ]
+# A targeted run narrows to the tests that can reach the change. The full run that closes an
+# implementation and CI on the pull request cover what narrowing leaves out.
+narrow = true
 # The marker expression the tiers run with. It drops `not dev_tooling` from the default
 # filter, so a tier that selects tests/, freedom_ls/dev_tools/tests or the content validator
 # runs their tests.
@@ -151,6 +154,17 @@ tests = ["tests/test_generate_icon_subset.py"]
 [[tool.test_tiers.tooling]]
 glob = "freedom_ls/icons/data/**"
 tests = ["tests/test_generate_icon_subset.py"]
+
+# The demo content is read by five test targets and by nothing else.
+[[tool.test_tiers.tooling]]
+glob = "demo_content/**"
+tests = [
+    "freedom_ls/content_engine/tests/demo_content",
+    "freedom_ls/learner_interface/tests/demo_content",
+    "freedom_ls/blog/tests/demo_content",
+    "freedom_ls/content_engine/tests/test_validate.py",
+    "claude_plugins/fls-content/validate/tests/test_validator.py",
+]
 
 # The course content plugin carries its own tests and is exercised by content_engine's
 # validator tests.
