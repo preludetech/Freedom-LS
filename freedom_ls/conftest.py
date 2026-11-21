@@ -35,6 +35,10 @@ _ONE_PIXEL_PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
 )
 
+_MD5_HASHER = (
+    "django.contrib.auth.hashers.MD5PasswordHasher"  # pragma: allowlist secret
+)
+
 if TYPE_CHECKING:
     from pytest_django.live_server_helper import LiveServer
 
@@ -126,6 +130,33 @@ def _disable_preview_overrides(settings):
     """
     settings.OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE = False
     settings.OVERRIDE_COURSE_ACCESS_TO_FREE = False
+
+
+@pytest.fixture(scope="session", autouse=True)
+def fast_password_hasher() -> Iterator[tuple[str, ...]]:
+    """Hash passwords with MD5 for the whole test session.
+
+    Argon2 is slow on purpose, and most tests create users. MD5 goes first, so
+    new hashes use it. The configured hashers stay after it, so their hashes
+    still verify. Session-scoped so it is on before any fixture creates a user.
+    It uses `override_settings`, whose `setting_changed` signal clears Django's
+    cached hasher list. A plain assignment would leave that cache stale.
+
+    Public, because `from freedom_ls.conftest import *` skips underscore names.
+    A concrete project turns it off by defining its own `fast_password_hasher`
+    after that import.
+
+    Yields the configured hashers.
+    """
+    from django.conf import settings
+
+    # Two registrations (this file, and the root conftest's star-import) can
+    # both run in one session, and the second reads the first's MD5 list.
+    configured = tuple(
+        hasher for hasher in settings.PASSWORD_HASHERS if hasher != _MD5_HASHER
+    )
+    with override_settings(PASSWORD_HASHERS=[_MD5_HASHER, *configured]):
+        yield configured
 
 
 @pytest.fixture(autouse=True)
