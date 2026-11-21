@@ -93,11 +93,6 @@ from freedom_ls.educator_interface.events import (
     STAFF_CHANGED,
 )
 from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
-from freedom_ls.educator_interface.filters import (
-    LearnerCohortFilter,
-    LearnerCourseFilter,
-    LearnerStatusFilter,
-)
 from freedom_ls.educator_interface.forms import CohortForm, LearnerImportForm
 from freedom_ls.educator_interface.learner_import import (
     ERROR_CSV_HEADER,
@@ -149,6 +144,11 @@ from freedom_ls.educator_interface.panels.common.tables import (
 )
 from freedom_ls.educator_interface.panels.course.config import CourseConfig
 from freedom_ls.educator_interface.panels.dashboard.config import DashboardConfig
+from freedom_ls.educator_interface.panels.learner.filters import (
+    LearnerCohortFilter,
+    LearnerCourseFilter,
+    LearnerStatusFilter,
+)
 from freedom_ls.educator_interface.panels.staff.actions import (
     AddStaffMemberToCohortAction,
     ChangeRoleAction,
@@ -220,7 +220,6 @@ from freedom_ls.panel_framework.tables import (
     Column,
     DataTable,
     ExportColumn,
-    TableQuery,
 )
 from freedom_ls.panel_framework.views import (
     InstanceView,

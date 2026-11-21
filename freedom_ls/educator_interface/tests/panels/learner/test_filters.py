@@ -1,4 +1,4 @@
-"""The cohort list's own table filters."""
+"""The learner list's table filters."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import cast
 import pytest
 
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.educator_interface.filters import (
+from freedom_ls.educator_interface.panels.learner.filters import (
     LearnerCohortFilter,
     LearnerCourseFilter,
     LearnerStatusFilter,
@@ -29,9 +29,6 @@ from freedom_ls.learner_management.models import Learner
 from freedom_ls.organisations.factories import OrganisationFactory
 
 pytestmark = pytest.mark.usefixtures("_site_context")
-
-
-# the table hides inactive cohorts only while it offers the toggle
 
 
 def _status_learners() -> dict[str, Learner]:

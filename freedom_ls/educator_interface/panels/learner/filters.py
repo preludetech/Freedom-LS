@@ -1,4 +1,4 @@
-"""Table filters specific to the educator interface's lists."""
+"""The learner list's table filters."""
 
 from __future__ import annotations
 
@@ -13,20 +13,20 @@ from freedom_ls.educator_interface.panels.common.filters import VisibleCourseFil
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
-from freedom_ls.learner_management.models import (
-    CohortMembership,
-    Learner,
-)
+from freedom_ls.learner_management.models import CohortMembership, Learner
 from freedom_ls.learner_management.queries import (
     LearnerStatus,
     cohorts_visible_to,
     holds_registration_for_any_expression,
     learner_status_q,
 )
-from freedom_ls.panel_framework.filters import (
-    ChoiceFilter,
-    RelatedChoiceFilter,
-)
+from freedom_ls.panel_framework.filters import ChoiceFilter, RelatedChoiceFilter
+
+__all__ = [
+    "LearnerCohortFilter",
+    "LearnerCourseFilter",
+    "LearnerStatusFilter",
+]
 
 
 class LearnerStatusFilter(ChoiceFilter):
