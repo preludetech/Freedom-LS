@@ -12,7 +12,8 @@ in `pyproject.toml`. Stdlib only, like its siblings.
 
 `--upstream-range` names the paths another line of history brought in (main, after a
 rebase). One the branch's own diff (`<new>..HEAD` plus the working tree) does not hold
-counts only where it meets the apps the branch changed or imports.
+counts only where it meets the branch: the apps the branch changed, the apps those import,
+the apps that import them, and the tests the branch's own paths select.
 """
 
 from __future__ import annotations
@@ -54,7 +55,13 @@ ESCALATION_GLOBS: tuple[str, ...] = (
 )
 
 # Dependency manifests and lockfiles change what every test imports, whoever changed them.
-DEPENDENCY_GLOBS: tuple[str, ...] = ("pyproject.toml", "uv.lock")
+DEPENDENCY_GLOBS: tuple[str, ...] = (
+    "pyproject.toml",
+    "uv.lock",
+    ".python-version",
+    "package.json",
+    "package-lock.json",
+)
 
 # Repository tooling has its tests in the top-level tests/ directory: the wrappers
 # ds:init generates, and helpers beside those tests.
@@ -319,6 +326,16 @@ def matching_tooling_glob(path: str, config: TierConfig) -> str | None:
     return next((glob for glob, _ in config.tooling if posix.full_match(glob)), None)
 
 
+def tooling_targets(path: str, config: TierConfig) -> tuple[str, ...] | None:
+    """The test directories and files of the first tooling entry whose glob matches `path`."""
+    glob = matching_tooling_glob(path, config)
+    if glob is None:
+        return None
+    return next(
+        entry_targets for entry, entry_targets in config.tooling if entry == glob
+    )
+
+
 def decide_tooling(
     path: str, config: TierConfig, project_root: Path
 ) -> list[Decision] | None:
@@ -326,12 +343,9 @@ def decide_tooling(
 
     Each listed entry that does not exist selects nothing and gets its own reason.
     """
-    glob = matching_tooling_glob(path, config)
-    if glob is None:
+    targets = tooling_targets(path, config)
+    if targets is None:
         return None
-    targets = next(
-        entry_targets for entry, entry_targets in config.tooling if entry == glob
-    )
     present = tuple(t for t in targets if is_test_target(project_root / t))
     decisions = [
         Decision(path, "none", (), f"tooling; {t} does not exist")
@@ -404,9 +418,13 @@ def decide(
 @dataclass(frozen=True)
 class BranchContext:
     branch_apps: frozenset[str]
+    # The branch apps plus every app their code or tests run.
     related_apps: frozenset[str]
-    # The tooling globs some path of the branch's own diff matches.
-    tooling_globs: frozenset[str]
+    # Every app whose code or tests reach a branch app.
+    dependent_apps: frozenset[str]
+    # The tests the branch's own paths select without the app map: each branch app's tests
+    # directory, and the targets of each tooling entry a branch path matches.
+    test_targets: frozenset[str]
 
 
 def from_main(decisions: list[Decision]) -> list[Decision]:
@@ -414,19 +432,46 @@ def from_main(decisions: list[Decision]) -> list[Decision]:
     return [replace(d, reason=f"from main; {d.reason}") for d in decisions]
 
 
+def targets_overlap(first: str, second: str) -> bool:
+    """Two test targets that are the same path, or one inside the other."""
+    return (
+        first == second
+        or first.startswith(second + "/")
+        or second.startswith(first + "/")
+    )
+
+
+def branch_tooling_decisions(
+    path: str, config: TierConfig, context: BranchContext, project_root: Path
+) -> list[Decision]:
+    """The tooling decisions for `path` when its entry's tests overlap the tests the branch's
+    own paths select; nothing otherwise."""
+    targets = tooling_targets(path, config) or ()
+    if not any(
+        targets_overlap(target, branch_target)
+        for target in targets
+        for branch_target in context.test_targets
+    ):
+        return []
+    return decide_tooling(path, config, project_root) or []
+
+
 def related_tests_decision(
     path: str,
     escalation_glob: str,
+    owner: App | None,
     apps: list[App],
     context: BranchContext,
     project_root: Path,
 ) -> Decision:
-    """One decision selecting the tests directory of every related app that has one."""
+    """One decision selecting the tests directory of every related app, and of the owning
+    app, that has one."""
+    names = context.related_apps | ({owner.short_name} if owner is not None else set())
     directories = tuple(
         sorted(
             tests_dir_of(app, project_root)
             for app in apps
-            if app.short_name in context.related_apps
+            if app.short_name in names
             and (project_root / tests_dir_of(app, project_root)).is_dir()
         )
     )
@@ -444,7 +489,8 @@ def decide_upstream(
 ) -> list[Decision]:
     """The rules for a path main brought in; the first that matches decides.
 
-    Such a path counts only where it meets the apps the branch changed or imports. A
+    Such a path counts only where it meets the branch: an app the branch changed, one such
+    an app imports, one that imports such an app, or tests the branch's own paths select. A
     dependency file still forces the whole suite, since it changes what every app imports.
     """
     none_glob = first_match(path, config.none)
@@ -455,7 +501,9 @@ def decide_upstream(
         return from_main([Decision(path, "full", (), "dependency file")])
 
     app = owning_app(apps, project_root, path)
-    if app is not None and app.short_name not in context.related_apps:
+    if app is not None and app.short_name not in (
+        context.related_apps | context.dependent_apps
+    ):
         reason = f"{app.short_name} meets no branch app"
         return from_main([Decision(path, "none", (), reason)])
 
@@ -463,29 +511,38 @@ def decide_upstream(
     if test_file is not None and app is not None:
         return from_main([test_file])
 
+    tooling = (
+        branch_tooling_decisions(path, config, context, project_root)
+        if app is None
+        else []
+    )
+
     escalation_glob = first_match(path, config.escalation)
     if escalation_glob is not None:
-        return from_main(
-            [related_tests_decision(path, escalation_glob, apps, context, project_root)]
+        related = related_tests_decision(
+            path, escalation_glob, app, apps, context, project_root
         )
+        # A conftest or fixture beside tooling tests reaches those tests as well.
+        if related.kind == "none" and tooling:
+            return from_main(tooling)
+        return from_main([related, *tooling])
 
     if app is not None:
+        # Main's change to a branch app meets the branch's change to it, so every importer
+        # runs. For an app the branch only imports, the importers the branch changed do.
+        only = None if app.short_name in context.branch_apps else context.branch_apps
         return from_main(
             [
                 owner_decision(path, app, project_root),
-                *importer_decisions(
-                    path, app, apps, edges, project_root, only=context.branch_apps
-                ),
+                *importer_decisions(path, app, apps, edges, project_root, only=only),
             ]
         )
 
-    tooling_glob = matching_tooling_glob(path, config)
-    if tooling_glob is None:
+    if tooling:
+        return from_main(tooling)
+    if matching_tooling_glob(path, config) is None:
         return from_main([Decision(path, "none", (), "unmapped path")])
-    if tooling_glob not in context.tooling_globs:
-        reason = f"no branch path matches {tooling_glob}"
-        return from_main([Decision(path, "none", (), reason)])
-    return from_main(decide_tooling(path, config, project_root) or [])
+    return from_main([Decision(path, "none", (), "its tests meet no branch path")])
 
 
 def git_paths(argv: list[str]) -> list[str]:
@@ -581,16 +638,25 @@ def branch_context(
     config: TierConfig,
     project_root: Path,
 ) -> BranchContext:
-    """The apps the branch's paths belong to, every app those apps run, and the tooling
-    globs the paths match."""
-    owners = (owning_app(apps, project_root, p) for p in paths)
-    branch_apps = {app.short_name for app in owners if app is not None}
-    related = set(branch_apps)
-    for name in branch_apps:
+    """The apps the branch's paths belong to, every app those apps run, every app that
+    reaches them, and the tests the paths select without the app map."""
+    owned: dict[str, App] = {}
+    targets: set[str] = set()
+    for path in paths:
+        owner = owning_app(apps, project_root, path)
+        if owner is None:
+            targets |= set(tooling_targets(path, config) or ())
+        else:
+            owned[owner.short_name] = owner
+    related = set(owned)
+    dependents: set[str] = set()
+    for name, app in owned.items():
+        targets.add(tests_dir_of(app, project_root))
         related |= app_dependencies(name, edges)
-    matches = (matching_tooling_glob(p, config) for p in paths)
-    globs = {glob for glob in matches if glob is not None}
-    return BranchContext(frozenset(branch_apps), frozenset(related), frozenset(globs))
+        dependents |= {importer for importer, _reason in importers(app, edges)}
+    return BranchContext(
+        frozenset(owned), frozenset(related), frozenset(dependents), frozenset(targets)
+    )
 
 
 def branch_test_decisions(
@@ -666,7 +732,8 @@ def main() -> int:
         default=[],
         help=(
             "the paths main brought in, <old>..<new>; one the branch's own diff does "
-            "not hold counts only where it meets the apps the branch changed or imports"
+            "not hold counts only where it meets the apps the branch changed, the apps "
+            "those import, the apps that import them, or the tests the branch selects"
         ),
     )
     parser.add_argument(

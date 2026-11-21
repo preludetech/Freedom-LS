@@ -132,6 +132,9 @@ def test_generic_lists_apply_without_a_tool_test_tiers_table(tmp_path: Path) -> 
     ("pyproject", "path"),
     [
         ("[tool.other]\nx = 1\n", "uv.lock"),
+        ("", ".python-version"),
+        ("", "package.json"),
+        ("", "package-lock.json"),
         (
             '[tool.test_tiers]\ndependency_files = ["requirements/*.txt"]\n',
             "requirements/dev.txt",
@@ -1340,6 +1343,9 @@ def test_upstream_module_in_a_branch_app_selects_its_tests(tmp_path: Path) -> No
 @pytest.mark.parametrize(
     ("pyproject", "path"),
     [
+        ("", ".python-version"),
+        ("", "package.json"),
+        ("", "package-lock.json"),
         ("", "uv.lock"),
         (
             '[tool.test_tiers]\ndependency_files = ["requirements/*.txt"]\n',
@@ -1743,7 +1749,7 @@ def test_upstream_tooling_path_with_no_branch_path_under_its_entry_is_none(
 
     # Assert
     assert lines(result.stdout, "why") == [
-        "why: tests/helper.py -> none (from main; no branch path matches tests/**)"
+        "why: tests/helper.py -> none (from main; its tests meet no branch path)"
     ]
 
 
@@ -1806,3 +1812,172 @@ def test_tests_changed_in_file_alone_leaves_the_tier_none(tmp_path: Path) -> Non
 
     # Assert
     assert lines(result.stdout, "tier") == ["tier: none"]
+
+
+def test_upstream_tooling_path_whose_tests_a_branch_path_under_another_entry_reaches_is_selected(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    pyproject = '[[tool.test_tiers.tooling]]\nglob = "plugins/*/scripts/**"\ntests = ["tests"]\n'
+    repo_with_upstream_range(
+        tmp_path,
+        app_b_tree() | {"pyproject.toml": pyproject, "tests/__init__.py": ""},
+        {"tests/helper.py": ""},
+        {"plugins/x/scripts/run.py": ""},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *UPSTREAM)
+
+    # Assert
+    assert "why: tests/helper.py -> tests (from main; tooling)" in lines(
+        result.stdout, "why"
+    )
+
+
+def test_upstream_tooling_path_whose_tests_are_a_branch_apps_tests_is_selected(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    pyproject = '[[tool.test_tiers.tooling]]\nglob = "content/**"\ntests = ["pkg/alpha/tests"]\n'
+    repo_with_upstream_range(
+        tmp_path,
+        app_b_tree() | {"pyproject.toml": pyproject},
+        {"content/page.txt": ""},
+        {"pkg/alpha/services.py": "x = 1\n"},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *UPSTREAM)
+
+    # Assert
+    assert "why: content/page.txt -> pkg/alpha/tests (from main; tooling)" in lines(
+        result.stdout, "why"
+    )
+
+
+def test_upstream_tooling_path_whose_test_directory_holds_a_branch_tooling_test_file_is_selected(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    pyproject = (
+        '[[tool.test_tiers.tooling]]\nglob = "prompts/**"\n'
+        'tests = ["tests/test_prompts.py"]\n'
+    )
+    repo_with_upstream_range(
+        tmp_path,
+        app_b_tree() | {"pyproject.toml": pyproject, "tests/test_prompts.py": ""},
+        {"tests/helper.py": ""},
+        {"prompts/a.txt": ""},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *UPSTREAM)
+
+    # Assert
+    assert "why: tests/helper.py -> tests (from main; tooling)" in lines(
+        result.stdout, "why"
+    )
+
+
+def test_upstream_conftest_under_a_tooling_entry_selects_the_tests_a_branch_path_reaches(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    repo_with_upstream_range(
+        tmp_path,
+        app_b_tree() | {"tests/__init__.py": ""},
+        {"tests/conftest.py": ""},
+        {"tests/helper.py": ""},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *UPSTREAM)
+
+    # Assert
+    assert "why: tests/conftest.py -> tests (from main; tooling)" in lines(
+        result.stdout, "why"
+    )
+
+
+def test_upstream_module_in_an_app_that_imports_a_branch_app_selects_its_tests(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    repo_with_upstream_range(
+        tmp_path,
+        imported_app_tree(),
+        {"pkg/beta/views.py": "x = 1\n"},
+        {"pkg/alpha/services.py": "x = 1\n"},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *UPSTREAM)
+
+    # Assert
+    assert (
+        "why: pkg/beta/views.py -> pkg/beta/tests (from main; owning app beta)"
+    ) in lines(result.stdout, "why")
+
+
+def test_upstream_test_file_in_an_app_that_imports_a_branch_app_is_selected(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    repo_with_upstream_range(
+        tmp_path,
+        imported_app_tree(),
+        {"pkg/gamma/tests/test_extra.py": ""},
+        {"pkg/alpha/services.py": "x = 1\n"},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *UPSTREAM)
+
+    # Assert
+    assert (
+        "why: pkg/gamma/tests/test_extra.py -> pkg/gamma/tests/test_extra.py "
+        "(from main; changed test file)"
+    ) in lines(result.stdout, "why")
+
+
+def test_upstream_migration_in_an_app_that_imports_a_branch_app_selects_its_tests_too(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    repo_with_upstream_range(
+        tmp_path,
+        imported_app_tree(),
+        {"pkg/beta/migrations/0002_x.py": ""},
+        {"pkg/alpha/services.py": "x = 1\n"},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *UPSTREAM)
+
+    # Assert
+    assert lines(result.stdout, "why") == [
+        "why: pkg/beta/migrations/0002_x.py -> pkg/alpha/tests, pkg/beta/tests "
+        "(from main; matches **/migrations/**)"
+    ]
+
+
+def test_upstream_module_in_a_branch_app_selects_every_importer(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    repo_with_upstream_range(
+        tmp_path,
+        imported_app_tree(),
+        {"pkg/alpha/services.py": "x = 1\n"},
+        {"pkg/alpha/other.py": "x = 1\n"},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, *UPSTREAM)
+
+    # Assert
+    assert (
+        "why: pkg/alpha/services.py -> pkg/gamma/tests "
+        "(from main; gamma has a test-only dep on alpha)"
+    ) in lines(result.stdout, "why")
