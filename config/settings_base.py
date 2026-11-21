@@ -64,7 +64,7 @@ FLS_THEMES_DIRS: list[Path] = [
 
 # Active icon set. Downstream projects can override this; the value must be a
 # key in `freedom_ls.icons.mappings.ICON_SETS`.
-FREEDOM_LS_ICON_SET = "heroicons"
+SEMANTIC_ICONS_SET = "heroicons"
 
 
 # Quick-start development settings - unsuitable for production
@@ -653,7 +653,7 @@ PANEL_FRAMEWORK_SITE_RESOLVER = "freedom_ls.site_aware_models.models.get_cached_
 # default validator; a future backend with its own config keys swaps this string
 # with no content_engine change. content_engine never imports course_access — this string is
 # the only seam (resolved via import_string, the same idiom as COURSE_ACCESS_BACKEND /
-# FREEDOM_LS_ICON_BACKEND).
+# SEMANTIC_ICONS_BACKEND).
 COURSE_ACCESS_CONFIG_VALIDATOR = (
     "freedom_ls.course_access.loader.validate_course_access_config"
 )

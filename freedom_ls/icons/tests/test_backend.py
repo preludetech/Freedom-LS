@@ -37,7 +37,7 @@ class TestGetIconBackend:
         assert isinstance(get_icon_backend(), DefaultIconBackend)
 
     @override_settings(
-        FREEDOM_LS_ICON_BACKEND="freedom_ls.icons.tests.test_backend.MockBackend"
+        SEMANTIC_ICONS_BACKEND="freedom_ls.icons.tests.test_backend.MockBackend"
     )
     def test_returns_custom_backend_instance(self) -> None:
         backend = get_icon_backend()
@@ -52,14 +52,14 @@ class TestRenderIconHtml:
         assert "<svg" in result
 
     @override_settings(
-        FREEDOM_LS_ICON_BACKEND="freedom_ls.icons.tests.test_backend.MockBackend"
+        SEMANTIC_ICONS_BACKEND="freedom_ls.icons.tests.test_backend.MockBackend"
     )
     def test_custom_backend_output_is_used(self) -> None:
         result = get_icon_backend().render("success")
         assert "<mock>success|" in result
 
     @override_settings(
-        FREEDOM_LS_ICON_BACKEND="freedom_ls.icons.tests.test_backend.MockBackend"
+        SEMANTIC_ICONS_BACKEND="freedom_ls.icons.tests.test_backend.MockBackend"
     )
     def test_custom_backend_receives_all_params(self) -> None:
         result = get_icon_backend().render(
@@ -95,7 +95,7 @@ class TestDefaultIconBackendRender:
         assert 'width="24"' in result
         assert 'height="24"' in result
 
-    @override_settings(FREEDOM_LS_ICON_SET="heroicons")
+    @override_settings(SEMANTIC_ICONS_SET="heroicons")
     def test_intrinsic_size_tracks_the_icon_sets_own_dimensions(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -112,7 +112,7 @@ class TestDefaultIconBackendRender:
         assert 'height="20"' in result
         assert 'width="24"' not in result
 
-    @override_settings(FREEDOM_LS_ICON_SET="heroicons")
+    @override_settings(SEMANTIC_ICONS_SET="heroicons")
     def test_returns_svg_with_non_24_viewbox_when_active_set_glyphs_differ(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -164,7 +164,7 @@ class TestDefaultIconBackendRender:
         with pytest.raises(KeyError):
             render_icon("nonexistent_icon_xyz")
 
-    @override_settings(FREEDOM_LS_ICON_OVERRIDES={"success": "star"})
+    @override_settings(SEMANTIC_ICONS_OVERRIDES={"success": "star"})
     def test_overrides_are_applied(self) -> None:
         result = render_icon("success")
         # "star" icon should be rendered instead of "check-circle"
@@ -173,7 +173,7 @@ class TestDefaultIconBackendRender:
         normal = render_icon("next")  # unaffected
         assert result != normal
 
-    @override_settings(FREEDOM_LS_ICON_SET="lucide")
+    @override_settings(SEMANTIC_ICONS_SET="lucide")
     def test_lucide_icon_set(self) -> None:
         result = render_icon("success")
         assert "<svg" in result
@@ -181,7 +181,7 @@ class TestDefaultIconBackendRender:
 
     @pytest.mark.parametrize("icon_set", ["tabler", "phosphor"])
     def test_other_bundled_icon_sets_render_svg(self, icon_set: str) -> None:
-        with override_settings(FREEDOM_LS_ICON_SET=icon_set):
+        with override_settings(SEMANTIC_ICONS_SET=icon_set):
             result = render_icon("success")
         assert "<svg" in result
 
@@ -190,7 +190,7 @@ class TestDefaultIconBackendRender:
         assert "<script>" not in result
         assert "&lt;script&gt;" in result
 
-    @override_settings(FREEDOM_LS_ICON_SET="lucide")
+    @override_settings(SEMANTIC_ICONS_SET="lucide")
     def test_unsupported_variant_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="not supported"):
             render_icon("success", variant="solid")

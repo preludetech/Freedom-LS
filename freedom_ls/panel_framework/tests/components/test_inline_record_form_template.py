@@ -54,7 +54,7 @@ def _render(form: forms.Form) -> str:
 def _render_golden_candidate() -> str:
     # The golden markup holds heroicons' SVGs, so pin the set: a concrete project
     # running this suite may configure another one.
-    with override_settings(FREEDOM_LS_ICON_SET="heroicons"):
+    with override_settings(SEMANTIC_ICONS_SET="heroicons"):
         return _render(_TextFieldsForm())
 
 
@@ -68,7 +68,7 @@ def test_a_form_without_a_file_field_renders_the_golden_markup() -> None:
 
 
 @pytest.mark.needs_fls_host
-@override_settings(FREEDOM_LS_ICON_SET="phosphor")
+@override_settings(SEMANTIC_ICONS_SET="phosphor")
 def test_the_golden_comparison_holds_when_the_project_uses_another_icon_set() -> None:
     html = _render_golden_candidate()
 

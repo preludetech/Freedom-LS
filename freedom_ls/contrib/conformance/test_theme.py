@@ -23,7 +23,7 @@ def test_active_icon_set_resolves() -> None:
     from freedom_ls.icons.mappings import ICON_SETS
     from freedom_ls.icons.render import render_icon
 
-    icon_set = icons_config.FREEDOM_LS_ICON_SET
+    icon_set = icons_config.SEMANTIC_ICONS_SET
     assert icon_set in ICON_SETS
 
     svg = render_icon("", default_semantic="home")

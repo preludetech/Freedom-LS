@@ -253,7 +253,7 @@ def test_a_form_without_a_file_field_declares_no_encoding() -> None:
 def _render_form_without_file_field() -> str:
     # The golden markup holds heroicons' SVGs, so pin the set: a concrete project
     # running this suite may configure another one.
-    with override_settings(FREEDOM_LS_ICON_SET="heroicons"):
+    with override_settings(SEMANTIC_ICONS_SET="heroicons"):
         return render_to_string(
             "panel_framework/modal/form.html",
             {
@@ -275,7 +275,7 @@ def test_a_form_without_a_file_field_renders_as_it_always_did() -> None:
 
 
 @pytest.mark.needs_fls_host
-@override_settings(FREEDOM_LS_ICON_SET="phosphor")
+@override_settings(SEMANTIC_ICONS_SET="phosphor")
 def test_the_golden_comparison_holds_when_the_project_uses_another_icon_set() -> None:
     html = _render_form_without_file_field()
 

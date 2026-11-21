@@ -78,7 +78,7 @@ def test_semantic_name_resolves_correctly(
 # ---- Step 3: literal glyph in the active set ----
 
 
-@override_settings(FREEDOM_LS_ICON_SET="heroicons")
+@override_settings(SEMANTIC_ICONS_SET="heroicons")
 def test_literal_glyph_in_active_set_resolves(monkeypatch: pytest.MonkeyPatch) -> None:
     real_data = load_iconify_data("heroicons")
     fake_heroicons = {
@@ -100,7 +100,7 @@ def test_literal_glyph_in_active_set_resolves(monkeypatch: pytest.MonkeyPatch) -
     assert 'aria-label="widget"' in out
 
 
-@override_settings(FREEDOM_LS_ICON_SET="heroicons")
+@override_settings(SEMANTIC_ICONS_SET="heroicons")
 @pytest.mark.parametrize("default_semantic", ["course", "info"])
 def test_literal_glyph_in_active_set_uses_parametrised_default_semantic(
     monkeypatch: pytest.MonkeyPatch,
@@ -129,7 +129,7 @@ def test_literal_glyph_in_active_set_uses_parametrised_default_semantic(
 # ---- Step 4: <iconset>:<glyph> fallback when literal is absent from active set ----
 
 
-@override_settings(FREEDOM_LS_ICON_SET="heroicons")
+@override_settings(SEMANTIC_ICONS_SET="heroicons")
 def test_iconset_colon_glyph_fallback_used_when_active_lacks_glyph(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -164,7 +164,7 @@ def test_iconset_colon_glyph_fallback_used_when_active_lacks_glyph(
     assert 'aria-label="drone"' in out
 
 
-@override_settings(FREEDOM_LS_ICON_SET="heroicons")
+@override_settings(SEMANTIC_ICONS_SET="heroicons")
 @pytest.mark.parametrize("default_semantic", ["course", "info"])
 def test_iconset_glyph_fallback_uses_parametrised_default_semantic_not_glyph(
     monkeypatch: pytest.MonkeyPatch,
@@ -241,7 +241,7 @@ def test_render_icon_never_raises_for_unknown_icon() -> None:
 # ---- Raise paths: half-shipped icon set and unsupported variant ----
 
 
-@override_settings(FREEDOM_LS_ICON_SET="heroicons")
+@override_settings(SEMANTIC_ICONS_SET="heroicons")
 def test_missing_suffixed_glyph_raises_icon_resolution_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -262,7 +262,7 @@ def test_missing_suffixed_glyph_raises_icon_resolution_error(
         render_icon("halfshipped", default_semantic="course", variant="solid")
 
 
-@override_settings(FREEDOM_LS_ICON_SET="heroicons")
+@override_settings(SEMANTIC_ICONS_SET="heroicons")
 def test_unsupported_variant_raises_value_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

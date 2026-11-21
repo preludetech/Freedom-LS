@@ -37,7 +37,7 @@ class IconResolutionError(RuntimeError):
 
 
 def _active_set_name() -> str:
-    return config.FREEDOM_LS_ICON_SET
+    return config.SEMANTIC_ICONS_SET
 
 
 def _render_literal(

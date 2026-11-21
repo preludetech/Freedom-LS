@@ -90,8 +90,8 @@ class DefaultIconBackend(IconBackend):
     ) -> str:
         # No caching needed: attribute access on config is trivial, and
         # load_iconify_data() already caches its result.
-        icon_set_name: str = config.FREEDOM_LS_ICON_SET
-        overrides: dict[str, str] = config.FREEDOM_LS_ICON_OVERRIDES
+        icon_set_name: str = config.SEMANTIC_ICONS_SET
+        overrides: dict[str, str] = config.SEMANTIC_ICONS_OVERRIDES
 
         set_config = ICON_SETS[icon_set_name]
         mapping = {**set_config.mapping, **overrides}
@@ -130,10 +130,10 @@ def get_icon_backend() -> IconBackend:
     """Return the configured icon backend, or the default backend.
 
     Result is cached for the process lifetime. In tests that use
-    ``override_settings(FREEDOM_LS_ICON_BACKEND=...)``, call
+    ``override_settings(SEMANTIC_ICONS_BACKEND=...)``, call
     ``get_icon_backend.cache_clear()`` before and after the test.
     """
-    backend_path: str | None = config.FREEDOM_LS_ICON_BACKEND
+    backend_path: str | None = config.SEMANTIC_ICONS_BACKEND
     if backend_path is None:
         return DefaultIconBackend()
     backend_class: type[IconBackend] = import_string(backend_path)

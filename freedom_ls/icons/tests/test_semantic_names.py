@@ -26,5 +26,5 @@ def test_every_set_maps_every_semantic_name(set_name: str) -> None:
 @pytest.mark.parametrize("set_name", list(ICON_SETS))
 @pytest.mark.parametrize("name", sorted(SEMANTIC_ICON_NAMES))
 def test_every_semantic_name_renders_in_every_set(name: str, set_name: str) -> None:
-    with override_settings(FREEDOM_LS_ICON_SET=set_name):
+    with override_settings(SEMANTIC_ICONS_SET=set_name):
         assert "<svg" in get_icon_backend().render(name)

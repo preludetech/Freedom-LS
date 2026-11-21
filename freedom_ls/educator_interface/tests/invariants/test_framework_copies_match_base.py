@@ -1,6 +1,7 @@
-"""The panel framework keeps its own copies of a few freedom_ls.base helpers,
-because it must run without FLS. Each copy must stay identical to its
-original, so a fix to one (a new CSV formula trigger, say) reaches both.
+"""The panel framework and the icons app keep their own copies of a few
+freedom_ls.base helpers, because each must run without FLS. Each copy must
+stay identical to its original, so a fix to one (a new CSV formula trigger,
+say) reaches both.
 """
 
 from __future__ import annotations
@@ -8,6 +9,7 @@ from __future__ import annotations
 import importlib.util
 import inspect
 import re
+import sys
 from pathlib import Path
 from types import ModuleType
 
@@ -50,12 +52,27 @@ def _load_module_from_path(name: str, path: Path) -> ModuleType:
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
+    # inspect.getsource finds a class's file through sys.modules, so register first.
+    sys.modules[name] = module
     spec.loader.exec_module(module)
     return module
 
 
+def _app_module_path(package: str, module: str) -> Path:
+    """The file of `package.module`, found without importing it, so this app gains no
+    dependency the import contracts forbid."""
+    spec = importlib.util.find_spec(package)
+    assert spec is not None
+    assert spec.submodule_search_locations is not None
+    return Path(spec.submodule_search_locations[0]) / f"{module}.py"
+
+
 framework_playwright_helpers = _load_module_from_path(
     "framework_playwright_helpers", FRAMEWORK_PLAYWRIGHT_HELPERS_PATH
+)
+
+icons_app_settings = _load_module_from_path(
+    "icons_app_settings", _app_module_path("freedom_ls.icons", "app_settings")
 )
 
 SAME_SOURCE = [
@@ -63,6 +80,8 @@ SAME_SOURCE = [
     (base_csv_import.EchoWriter, framework_csv_safety.EchoWriter),
     (base_app_settings.Setting, framework_app_settings.Setting),
     (base_app_settings.AppSettings, framework_app_settings.AppSettings),
+    (base_app_settings.Setting, icons_app_settings.Setting),
+    (base_app_settings.AppSettings, icons_app_settings.AppSettings),
     (
         base_pagination_tags.pagination_suffix,
         framework_data_table_tags.pagination_suffix,
@@ -86,7 +105,9 @@ SAME_VALUE = [
 @pytest.mark.parametrize(
     ("original", "copy"),
     SAME_SOURCE,
-    ids=[original.__qualname__ for original, _copy in SAME_SOURCE],
+    ids=[
+        f"{copy.__module__}.{original.__qualname__}" for original, copy in SAME_SOURCE
+    ],
 )
 def test_a_copied_helper_has_its_originals_source(
     original: object, copy: object

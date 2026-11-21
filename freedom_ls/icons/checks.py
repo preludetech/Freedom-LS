@@ -12,11 +12,14 @@ E005 — Override key is not a valid semantic icon name.
 E006 — Override icon name not found in Iconify JSON.
 E007 — Mapping keys don't match SEMANTIC_ICON_NAMES.
 W001 — Warn if commonly used variants (outline, solid) are unsupported.
+W002 — FREEDOM_LS_ICON_SET is still set; use SEMANTIC_ICONS_SET.
+W003 — FREEDOM_LS_ICON_OVERRIDES is still set; use SEMANTIC_ICONS_OVERRIDES.
+W004 — FREEDOM_LS_ICON_BACKEND is still set; use SEMANTIC_ICONS_BACKEND.
 """
 
 from django.core.checks import CheckMessage, Error, Warning, register
 
-from freedom_ls.icons.config import config
+from freedom_ls.icons.config import DEPRECATED_SETTINGS, config, project_value
 from freedom_ls.icons.loader import PACKAGE_MAP, iconify_json_path
 from freedom_ls.icons.mappings import ICON_SETS
 from freedom_ls.icons.semantic_names import SEMANTIC_ICON_NAMES
@@ -26,7 +29,7 @@ from freedom_ls.icons.semantic_names import SEMANTIC_ICON_NAMES
 def check_iconify_json_exists(**kwargs: object) -> list[CheckMessage]:
     """E001/E002: Check that the icon set is known and its JSON file exists."""
     errors: list[CheckMessage] = []
-    icon_set_name: str = config.FREEDOM_LS_ICON_SET
+    icon_set_name: str = config.SEMANTIC_ICONS_SET
     pkg = PACKAGE_MAP.get(icon_set_name)
     if pkg is None:
         errors.append(
@@ -54,7 +57,7 @@ def check_iconify_json_exists(**kwargs: object) -> list[CheckMessage]:
 def check_mapping_values_exist(**kwargs: object) -> list[CheckMessage]:
     """E003/E004: Check that every mapping value and variant-suffixed name exists."""
     errors: list[CheckMessage] = []
-    icon_set_name: str = config.FREEDOM_LS_ICON_SET
+    icon_set_name: str = config.SEMANTIC_ICONS_SET
     if icon_set_name not in ICON_SETS:
         return errors  # E001 will catch this
 
@@ -95,11 +98,11 @@ def check_mapping_values_exist(**kwargs: object) -> list[CheckMessage]:
 def check_overrides_exist(**kwargs: object) -> list[CheckMessage]:
     """E005/E006: Check that override icon names exist in the Iconify JSON data."""
     errors: list[CheckMessage] = []
-    overrides: dict[str, str] = config.FREEDOM_LS_ICON_OVERRIDES
+    overrides: dict[str, str] = config.SEMANTIC_ICONS_OVERRIDES
     if not overrides:
         return errors
 
-    icon_set_name: str = config.FREEDOM_LS_ICON_SET
+    icon_set_name: str = config.SEMANTIC_ICONS_SET
     try:
         from freedom_ls.icons.loader import load_iconify_data
 
@@ -150,7 +153,7 @@ def check_mapping_keys(**kwargs: object) -> list[CheckMessage]:
 def check_variant_support(**kwargs: object) -> list[CheckMessage]:
     """W001: Warn if commonly used variants are not supported by the active icon set."""
     warnings: list[CheckMessage] = []
-    icon_set_name: str = config.FREEDOM_LS_ICON_SET
+    icon_set_name: str = config.SEMANTIC_ICONS_SET
     if icon_set_name not in ICON_SETS:
         return warnings
 
@@ -166,3 +169,36 @@ def check_variant_support(**kwargs: object) -> list[CheckMessage]:
                 )
             )
     return warnings
+
+
+# One id per old name, so a host can silence each one separately.
+DEPRECATION_CHECK_IDS: dict[str, str] = {
+    "FREEDOM_LS_ICON_SET": "icons.W002",
+    "FREEDOM_LS_ICON_OVERRIDES": "icons.W003",
+    "FREEDOM_LS_ICON_BACKEND": "icons.W004",
+}
+
+
+@register()
+def check_deprecated_settings(**kwargs: object) -> list[CheckMessage]:
+    """W002-W004: an old setting name is still set."""
+    found: list[CheckMessage] = []
+    for new_name, old_name in DEPRECATED_SETTINGS.items():
+        if project_value(old_name) is None:
+            continue
+        check_id = DEPRECATION_CHECK_IDS[old_name]
+        message = f"{old_name} is deprecated; use {new_name}."
+        if project_value(new_name) is not None:
+            message += f" {old_name} is ignored because {new_name} is set."
+        found.append(
+            Warning(
+                message,
+                hint=(
+                    f"Rename the setting: {new_name} = <your value>. {old_name} is "
+                    f"removed in the next tag. To silence this warning, add "
+                    f"'{check_id}' to SILENCED_SYSTEM_CHECKS."
+                ),
+                id=check_id,
+            )
+        )
+    return found
