@@ -60,7 +60,9 @@ A helper that tests import by hand goes in `helpers.py` beside the tests: `conte
 
 ### Fixture placement
 
-`freedom_ls/conftest.py` holds the autouse `_disable_force_site_name`, `_isolate_media_root`, `_disable_preview_overrides` and `_clear_course_access_backend_cache` fixtures, and the opt-in `mock_site_context` fixture, which many apps' fixtures build on. `mock_site_context` is not autouse; a test that needs it takes it as a parameter (see "`mock_site_context` fixture" below).
+`freedom_ls/conftest.py` holds the autouse `_disable_force_site_name`, `_isolate_media_root`, `_disable_preview_overrides` and `_clear_course_access_backend_cache` fixtures, the session-scoped autouse `fast_password_hasher` fixture (tests hash passwords with MD5, and the configured hashers stay after it so their hashes still verify), and the opt-in `mock_site_context` fixture, which many apps' fixtures build on. `mock_site_context` is not autouse; a test that needs it takes it as a parameter (see "`mock_site_context` fixture" below).
+
+A test that checks real hashing, such as an Argon2 hash or a hash prefix, opts in to the configured hashers with the non-autouse `production_password_hashers` fixture. It takes the fixture as a parameter, or a class or module applies `@pytest.mark.usefixtures("production_password_hashers")`. A concrete project turns MD5 off by defining its own `fast_password_hasher` after importing `freedom_ls.conftest`.
 
 `freedom_ls/conftest.py` imports the four Playwright fixtures (`playwright`, `reset_local_storage`, `logged_in_user`, `logged_in_page`) from `freedom_ls/tests/playwright_fixtures.py` by name, so they reach every app's `tests/playwright/` directory and any project that star-imports the module. A fixture shared across apps lives in a plain module in the lowest app that depends on everything it builds, and each consumer's `tests/conftest.py` imports it by name: `course_with_scored_quiz` and `sit_quiz` live in `learner_progress/tests/quiz_fixtures.py` and are imported by `learner_progress/tests/conftest.py` and `learner_interface/tests/conftest.py`.
 
