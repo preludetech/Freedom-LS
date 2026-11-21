@@ -1,0 +1,408 @@
+- generic [active] [ref=f4e1]:
+  - banner [ref=f4e2]:
+    - link [ref=f4e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f4e4]
+      - heading "FirstClass" [level=1] [ref=f4e5]
+    - navigation [ref=f4e6]:
+      - generic [ref=f4e7]:
+        - generic [ref=f4e8]:
+          - button "Notifications, 1 new" [ref=f4e9]
+          - status:
+            - generic [ref=f4e13]: Notifications, 1 new
+            - generic [aria-hidden] [ref=f4e14]: "1"
+        - button "Open user menu for demodev@email.com" [ref=f4e16] [cursor=pointer]:
+          - generic [ref=f4e17]:
+            - generic [ref=f4e18]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f4e19]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f4e20]:
+    - generic [ref=f4e22]:
+      - dialog "Course outline" [ref=f4e23]:
+        - generic [ref=f4e26]:
+          - generic [ref=f4e27]:
+            - paragraph [ref=f4e28]: Course outline
+            - paragraph [ref=f4e29]: Content Widgets - Demo Reference
+            - generic [ref=f4e31]:
+              - progressbar "Progress for Content Widgets - Demo Reference" [ref=f4e32]: 80%
+              - generic [ref=f4e33]: 80% complete
+          - navigation "Course outline" [ref=f4e34]:
+            - list [ref=f4e35]:
+              - listitem [ref=f4e36]:
+                - generic [ref=f4e37]:
+                  - generic [ref=f4e38]: "1."
+                  - generic [ref=f4e39]: Completed
+                  - link "Annotation and Emphasis" [ref=f4e44] [cursor=pointer]:
+                    - /url: /courses/content-widgets-demo-reference/1/
+              - listitem [ref=f4e45]:
+                - generic [ref=f4e46]:
+                  - generic [ref=f4e47]: "2."
+                  - generic [ref=f4e48]: Completed
+                  - generic [ref=f4e52]: Media
+              - listitem [ref=f4e53]:
+                - generic [ref=f4e54]:
+                  - generic [ref=f4e55]: "3."
+                  - generic [ref=f4e56]: Completed
+                  - link "Structured Content" [ref=f4e61] [cursor=pointer]:
+                    - /url: /courses/content-widgets-demo-reference/3/
+              - listitem [ref=f4e62]:
+                - generic [ref=f4e63]:
+                  - generic [ref=f4e64]: "4."
+                  - generic [ref=f4e65]: Completed
+                  - link "Interactive Widgets" [ref=f4e70] [cursor=pointer]:
+                    - /url: /courses/content-widgets-demo-reference/4/
+              - listitem [ref=f4e71]:
+                - generic [ref=f4e72]:
+                  - generic [ref=f4e73]: "5."
+                  - generic [ref=f4e74]: In progress
+                  - link "Cards" [ref=f4e79] [cursor=pointer]:
+                    - /url: /courses/content-widgets-demo-reference/5/
+      - generic [ref=f4e80]:
+        - generic [ref=f4e82]:
+          - navigation "Breadcrumb" [ref=f4e85]:
+            - list [ref=f4e86]:
+              - listitem [ref=f4e87]:
+                - link "Content Widgets - Demo Reference" [ref=f4e88] [cursor=pointer]:
+                  - /url: /courses/content-widgets-demo-reference/detail/
+              - listitem [ref=f4e89]:
+                - generic [aria-hidden] [ref=f4e90]: ">"
+                - generic "Media" [ref=f4e91]
+          - generic [ref=f4e93]:
+            - heading "Media" [level=1] [ref=f4e94]
+            - paragraph [ref=f4e95]: Bringing pictures and video into your content
+        - generic [ref=f4e97]:
+          - generic [ref=f4e98]:
+            - heading "YouTube video" [level=3] [ref=f4e99]
+            - paragraph [ref=f4e100]:
+              - text: Embed a YouTube video by its
+              - code [ref=f4e101]: video_id
+              - text: — the part after
+              - code [ref=f4e102]: v=
+              - text: in the watch URL. Add a
+              - code [ref=f4e103]: caption
+              - text: to describe what the video shows; it sits beneath the player.
+            - figure "A short, descriptive caption explaining what the viewer is about to watch." [ref=f4e104]:
+              - iframe [ref=f4e106]:
+                - generic [ref=f5e1]:
+                  - generic "YouTube Video Player" [ref=f5e3]
+                  - generic [ref=f5e5]:
+                    - generic:
+                      - generic:
+                        - generic [ref=f5e6] [cursor=pointer]
+                        - button "Play video" [ref=f5e10] [cursor=pointer]
+                        - button "Hide player controls" [ref=f5e14] [cursor=pointer]
+                        - generic [ref=f5e16]:
+                          - generic [ref=f5e23]:
+                            - generic [ref=f5e24]:
+                              - link "The Bar For Excellence Is Embarrassingly Low" [ref=f5e25] [cursor=pointer]:
+                                - /url: https://www.youtube.com/watch?v=01MXBvMeFCw
+                              - link "MoreMozi" [ref=f5e26] [cursor=pointer]:
+                                - /url: /channel/UCrvchO1h6lWZAuGaa1LqX9Q
+                            - generic [ref=f5e28]:
+                              - button [ref=f5e29] [cursor=pointer]:
+                                - img "thumbnail-image" [ref=f5e30]
+                              - generic [ref=f5e32]:
+                                - generic: MoreMozi
+                                - generic: 172K subscribers
+                          - generic [ref=f5e33]:
+                            - button "Share" [ref=f5e36] [cursor=pointer]
+                            - link "Watch on YouTube" [ref=f5e47] [cursor=pointer]:
+                              - /url: https://www.youtube.com/watch?v=01MXBvMeFCw
+                              - generic [ref=f5e48]: Watch on
+            - heading "Pictures" [level=3] [ref=f4e108]
+            - paragraph [ref=f4e109]:
+              - text: The picture widget renders an image with an accessible lightbox — click or focus it and press Enter to view it full-screen. The
+              - code [ref=f4e110]: src
+              - text: "is a path relative to this file. Three text attributes matter, and they do different jobs:"
+            - list [ref=f4e111]:
+              - listitem [ref=f4e112]:
+                - code [ref=f4e113]: alt
+                - text: describes the image for people who cannot see it. It is read by screen readers and never shown on screen.
+              - listitem [ref=f4e114]:
+                - code [ref=f4e115]: title
+                - text: is the visible text printed under the image in the page and as the heading in the full-screen lightbox.
+              - listitem [ref=f4e116]:
+                - code [ref=f4e117]: description
+                - text: (optional) adds a longer caption block below the title, both in the page and in the full-screen lightbox — useful for detailed annotations that do not fit in a one-line title.
+            - paragraph [ref=f4e118]:
+              - text: Do not duplicate
+              - code [ref=f4e119]: alt
+              - text: and
+              - code [ref=f4e120]: title
+              - text: . The alt text should stand in for the image; the title adds context a sighted reader still benefits from. Purely decorative images should use
+              - code [ref=f4e121]: alt=""
+              - text: so screen readers skip them.
+            - paragraph [ref=f4e122]:
+              - text: Add a
+              - code [ref=f4e123]: number
+              - text: "to prefix the title with \"Figure N\":"
+            - figure "Figure 1 A titled, numbered figure with a click-to-zoom lightbox, and a really long title Expand This longer description sits below the title in the page, and appears again beneath the title in the full-screen lightbox." [ref=f4e125]:
+              - img "A blue sky over a dark horizon with a yellow sun in the upper right" [ref=f4e126]
+              - generic [ref=f4e127]:
+                - generic [ref=f4e128]:
+                  - paragraph [ref=f4e129]:
+                    - generic [ref=f4e130]: Figure 1
+                    - generic [ref=f4e131]: A titled, numbered figure with a click-to-zoom lightbox, and a really long title
+                  - button "Expand" [ref=f4e132] [cursor=pointer]
+                - paragraph [ref=f4e136]: This longer description sits below the title in the page, and appears again beneath the title in the full-screen lightbox.
+            - heading "Annotated diagrams" [level=3] [ref=f4e137]
+            - paragraph [ref=f4e138]:
+              - text: "There is no special \"diagram\" widget. An annotated diagram is an authoring pattern: a picture whose image carries visible letter markers, followed immediately by a"
+              - code [ref=f4e139]: <dl>
+              - text: legend that says what each letter means. This matters for accessibility — colour and position alone are never the only signal, so a screen-reader user gets the same information from the legend that a sighted user gets from the picture.
+            - figure "Figure 2 how a request flows from browser to server and back Expand" [ref=f4e141]:
+              - 'img "A request flow diagram: a Browser box on the left and a Server box on the right, joined by two arrows" [ref=f4e142]'
+              - generic [ref=f4e144]:
+                - paragraph [ref=f4e145]:
+                  - generic [ref=f4e146]: Figure 2
+                  - generic [ref=f4e147]: how a request flows from browser to server and back
+                - button "Expand" [ref=f4e148] [cursor=pointer]
+            - generic [ref=f4e152]:
+              - term [ref=f4e153]: A
+              - definition [ref=f4e154]: The browser sends a request to the server.
+              - term [ref=f4e155]: B
+              - definition [ref=f4e156]: The server renders the page.
+              - term [ref=f4e157]: C
+              - definition [ref=f4e158]: The response returns to the browser.
+            - heading "Image grids" [level=3] [ref=f4e159]
+            - paragraph [ref=f4e160]:
+              - text: The image grid is a layout wrapper. It takes a
+              - code [ref=f4e161]: columns
+              - text: value — 2, 3, or 4 — and tiles its
+              - code [ref=f4e162]: c-picture
+              - text: children into that many columns, collapsing to a single column on narrow screens. Each picture keeps its own title and lightbox.
+            - paragraph [ref=f4e163]:
+              - text: "One authoring quirk to remember: always use the closed form"
+              - code [ref=f4e164]: <c-picture ...></c-picture>
+              - text: inside a grid (never the self-closing
+              - code [ref=f4e165]: />
+              - text: "), and leave a blank line between each child. A two-column grid:"
+            - generic [ref=f4e166]:
+              - figure "Landscape Expand" [ref=f4e168]:
+                - img "A blue sky over a dark horizon with a yellow sun" [ref=f4e169]
+                - generic [ref=f4e171]:
+                  - paragraph [ref=f4e172]:
+                    - generic [ref=f4e173]: Landscape
+                  - button "Expand" [ref=f4e174] [cursor=pointer]
+              - figure "Square Expand" [ref=f4e179]:
+                - img "A dark circle centred on an orange background" [ref=f4e180]
+                - generic [ref=f4e182]:
+                  - paragraph [ref=f4e183]:
+                    - generic [ref=f4e184]: Square
+                  - button "Expand" [ref=f4e185] [cursor=pointer]
+            - paragraph [ref=f4e189]: "The same three images at three columns:"
+            - generic [ref=f4e190]:
+              - figure "Landscape Expand" [ref=f4e192]:
+                - img "A blue sky over a dark horizon with a yellow sun" [ref=f4e193]
+                - generic [ref=f4e195]:
+                  - paragraph [ref=f4e196]:
+                    - generic [ref=f4e197]: Landscape
+                  - button "Expand" [ref=f4e198] [cursor=pointer]
+              - figure "Portrait Expand" [ref=f4e203]:
+                - img "A tall dark panel on a green background" [ref=f4e204]
+                - generic [ref=f4e206]:
+                  - paragraph [ref=f4e207]:
+                    - generic [ref=f4e208]: Portrait
+                  - button "Expand" [ref=f4e209] [cursor=pointer]
+              - figure "Square Expand" [ref=f4e214]:
+                - img "A dark circle centred on an orange background" [ref=f4e215]
+                - generic [ref=f4e217]:
+                  - paragraph [ref=f4e218]:
+                    - generic [ref=f4e219]: Square
+                  - button "Expand" [ref=f4e220] [cursor=pointer]
+            - heading "Stacked figures" [level=3] [ref=f4e224]
+            - paragraph [ref=f4e225]:
+              - text: If you do not want a grid, you do not need a wrapper. Consecutive
+              - code [ref=f4e226]: c-picture
+              - text: blocks simply stack, each centred with its own title — the second gallery shape, and the right choice when each image deserves its own row.
+            - figure "A stacked figure, full width and centred Expand" [ref=f4e228]:
+              - img "A tall dark panel on a green background" [ref=f4e229]
+              - generic [ref=f4e231]:
+                - paragraph [ref=f4e232]:
+                  - generic [ref=f4e233]: A stacked figure, full width and centred
+                - button "Expand" [ref=f4e234] [cursor=pointer]
+            - figure "A second stacked figure directly below the first Expand" [ref=f4e239]:
+              - img "A dark circle centred on an orange background" [ref=f4e240]
+              - generic [ref=f4e242]:
+                - paragraph [ref=f4e243]:
+                  - generic [ref=f4e244]: A second stacked figure directly below the first
+                - button "Expand" [ref=f4e245] [cursor=pointer]
+            - figure "A hobbyist flying a drone in his back garden Expand" [ref=f4e250]:
+              - img "A man stands in a back garden holding a handheld controller, looking up at a white quadcopter drone hovering above a wooden fence" [ref=f4e251]
+              - generic [ref=f4e253]:
+                - paragraph [ref=f4e254]:
+                  - generic [ref=f4e255]: A hobbyist flying a drone in his back garden
+                - button "Expand" [ref=f4e256] [cursor=pointer]
+            - heading "Audio" [level=3] [ref=f4e260]
+            - paragraph [ref=f4e261]:
+              - text: Play a recorded word with
+              - code [ref=f4e262]: c-audio
+              - text: .
+              - code [ref=f4e263]: src
+              - text: is the audio file and
+              - code [ref=f4e264]: label
+              - text: is the word shown in bold.
+              - code [ref=f4e265]: respelling
+              - text: "is the optional pronunciation guide under the word: write the stressed syllable in capitals and it stands out."
+              - code [ref=f4e266]: symbol
+              - text: is optional short text for the tile at the left, such as the letter the word stands for. Wrap several in a
+              - code [ref=f4e267]: c-grid
+              - text: to line them up.
+            - generic [ref=f4e268]:
+              - generic [ref=f4e269]:
+                - generic [ref=f4e270]:
+                  - generic [aria-hidden] [ref=f4e271]: B
+                  - generic [ref=f4e272]:
+                    - generic [ref=f4e273]: Bravo
+                    - generic [ref=f4e274]:
+                      - strong [ref=f4e275]: BRAH
+                      - text: "-voh"
+                  - button "Play pronunciation of Bravo" [ref=f4e276] [cursor=pointer]
+                - status
+              - generic [ref=f4e280]:
+                - generic [ref=f4e281]:
+                  - generic [aria-hidden] [ref=f4e282]: C
+                  - generic [ref=f4e283]:
+                    - generic [ref=f4e284]: Charlie
+                    - generic [ref=f4e285]:
+                      - strong [ref=f4e286]: CHAR
+                      - text: "-lee"
+                  - button "Play pronunciation of Charlie" [ref=f4e287] [cursor=pointer]
+                - status
+              - generic [ref=f4e291]:
+                - generic [ref=f4e292]:
+                  - generic [aria-hidden] [ref=f4e293]: O
+                  - generic [ref=f4e294]:
+                    - generic [ref=f4e295]: Oscar
+                    - generic [ref=f4e296]:
+                      - strong [ref=f4e297]: OSS
+                      - text: "-cah"
+                  - button "Play pronunciation of Oscar" [ref=f4e298] [cursor=pointer]
+                - status
+              - generic [ref=f4e302]:
+                - generic [ref=f4e303]:
+                  - generic [aria-hidden] [ref=f4e304]: R
+                  - generic [ref=f4e305]:
+                    - generic [ref=f4e306]: Romeo
+                    - generic [ref=f4e307]:
+                      - strong [ref=f4e308]: ROW
+                      - text: "-me-oh"
+                  - button "Play pronunciation of Romeo" [ref=f4e309] [cursor=pointer]
+                - status
+            - heading "Audio clip" [level=3] [ref=f4e313]
+            - paragraph [ref=f4e314]:
+              - text: Play a longer recording with
+              - code [ref=f4e315]: c-audio-clip
+              - text: .
+              - code [ref=f4e316]: src
+              - text: is the audio file,
+              - code [ref=f4e317]: title
+              - text: is the required heading above the player,
+              - code [ref=f4e318]: kind
+              - text: is the optional label such as "Listening exercise", and whatever you write inside the tag becomes a collapsible transcript.
+            - group "The Gettysburg Address" [ref=f4e319]:
+              - generic [ref=f4e321]:
+                - button "Play The Gettysburg Address" [ref=f4e322] [cursor=pointer]
+                - generic [ref=f4e326]:
+                  - generic [ref=f4e327]:
+                    - generic "The Gettysburg Address" [ref=f4e328]
+                    - generic [ref=f4e329]: Listening exercise
+                  - generic [ref=f4e330]:
+                    - slider "Seek The Gettysburg Address" [ref=f4e331]: "0"
+                    - generic [aria-hidden] [ref=f4e332]:
+                      - text: 0:00
+                      - generic [ref=f4e333]: / 2:13
+                  - status
+                  - button "Show transcript" [ref=f4e334] [cursor=pointer]
+            - group "The Gettysburg Address" [ref=f4e338]:
+              - generic [ref=f4e340]:
+                - button "Play The Gettysburg Address" [ref=f4e341] [cursor=pointer]
+                - generic [ref=f4e345]:
+                  - generic "The Gettysburg Address" [ref=f4e347]
+                  - generic [ref=f4e348]:
+                    - slider "Seek The Gettysburg Address" [ref=f4e349]: "0"
+                    - generic [aria-hidden] [ref=f4e350]:
+                      - text: 0:00
+                      - generic [ref=f4e351]: / 2:13
+                  - status
+          - generic [ref=f4e352]:
+            - link "Previous" [ref=f4e354] [cursor=pointer]:
+              - /url: /courses/content-widgets-demo-reference/1/
+            - link "Next" [ref=f4e358] [cursor=pointer]:
+              - /url: /courses/content-widgets-demo-reference/3/
+  - contentinfo [ref=f4e362]:
+    - generic [ref=f4e363]:
+      - paragraph [ref=f4e364]: © 2026 FirstClass
+      - navigation "Legal" [ref=f4e365]:
+        - link "Terms and Conditions" [ref=f4e366] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f4e367] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f4e368] [cursor=pointer]: content-widget-longer-audio
+  - list [ref=f4e370]:
+    - listitem [ref=f4e371]:
+      - link "Hide »" [ref=f4e372] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e373]:
+      - link "Toggle Theme" [ref=f4e374] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e377]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e378] [cursor=pointer]
+      - link "History /courses/content-widgets-demo-reference/2/" [ref=f4e379] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e380]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e381] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f4e382] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e383]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e384] [cursor=pointer]
+      - 'link "Time CPU: 436.02ms (1056.01ms)" [ref=f4e385] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f4e386]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e387] [cursor=pointer]
+      - link "Settings" [ref=f4e388] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e389]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e390] [cursor=pointer]
+      - link "Headers" [ref=f4e391] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e392]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e393] [cursor=pointer]
+      - link "Request view_course_item" [ref=f4e394] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e395]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e396] [cursor=pointer]
+      - link "SQL 66 queries in 265.02ms" [ref=f4e397] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e398]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e399] [cursor=pointer]
+      - link "Static files 13 files used" [ref=f4e400] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e401]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e402] [cursor=pointer]
+      - link "Templates learner_interface/course_topic.html" [ref=f4e403] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e404]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e405] [cursor=pointer]
+      - link "Alerts" [ref=f4e406] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e407]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e408] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f4e409] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e410]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e411] [cursor=pointer]
+      - link "Signals 130 receivers of 15 signals" [ref=f4e412] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e413]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e414] [cursor=pointer]
+      - link "Community" [ref=f4e415] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e416]:
+      - checkbox "Enable for next and successive requests" [ref=f4e417] [cursor=pointer]
+      - generic [ref=f4e418]: Intercept redirects
+    - listitem [ref=f4e419]:
+      - checkbox "Enable for next and successive requests" [ref=f4e420] [cursor=pointer]
+      - generic [ref=f4e421]: Profiling
