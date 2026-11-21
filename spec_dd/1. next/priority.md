@@ -7,6 +7,7 @@ adds anything missing under "Priority not set"; move it from there to the level 
 
 ## High
 
+- `faster-test-runs`
 - `sacaa-compliance`
 - `sacaa-compliance-content-versions-and-access`
 - `extract_panels_framework`
@@ -36,6 +37,7 @@ adds anything missing under "Priority not set"; move it from there to the level 
 - `dev-site-bootstrap-command`
 - `forced-site-name-for-host-based-site-lookup`
 - `from-address-system-check`
+- `faster-test-runs-7-claude-cloud-test-runs`
 
 ## Priority not set
 
