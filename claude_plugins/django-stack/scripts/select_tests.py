@@ -313,6 +313,12 @@ def playwright_tests_root(posix: PurePosixPath) -> str | None:
     return None
 
 
+def matching_tooling_glob(path: str, config: TierConfig) -> str | None:
+    """The glob of the first tooling entry that matches `path`."""
+    posix = PurePosixPath(path)
+    return next((glob for glob, _ in config.tooling if posix.full_match(glob)), None)
+
+
 def decide_tooling(
     path: str, config: TierConfig, project_root: Path
 ) -> list[Decision] | None:
@@ -320,20 +326,38 @@ def decide_tooling(
 
     Each listed entry that does not exist selects nothing and gets its own reason.
     """
+    glob = matching_tooling_glob(path, config)
+    if glob is None:
+        return None
+    targets = next(
+        entry_targets for entry, entry_targets in config.tooling if entry == glob
+    )
+    present = tuple(t for t in targets if is_test_target(project_root / t))
+    decisions = [
+        Decision(path, "none", (), f"tooling; {t} does not exist")
+        for t in targets
+        if t not in present
+    ]
+    if present:
+        decisions.insert(0, Decision(path, "select", present, "tooling"))
+    return decisions
+
+
+def test_file_decision(path: str, project_root: Path) -> Decision | None:
+    """The decision for a collected test file under a `tests` directory, or None for any
+    other path. A file the checkout no longer has selects nothing."""
     posix = PurePosixPath(path)
-    for glob, targets in config.tooling:
-        if not posix.full_match(glob):
-            continue
-        present = tuple(t for t in targets if is_test_target(project_root / t))
-        decisions = [
-            Decision(path, "none", (), f"tooling; {t} does not exist")
-            for t in targets
-            if t not in present
-        ]
-        if present:
-            decisions.insert(0, Decision(path, "select", present, "tooling"))
-        return decisions
-    return None
+    if not (is_collected(posix.name) and "tests" in posix.parts):
+        return None
+    if not (project_root / path).exists():
+        return Decision(path, "none", (), "deleted test file")
+    reason = "changed test file"
+    touched: tuple[str, ...] = ()
+    tests_root = playwright_tests_root(posix)
+    if tests_root is not None:
+        reason += f"; playwright: {tests_root}/playwright"
+        touched = (tests_root,)
+    return Decision(path, "select", (path,), reason, touched)
 
 
 def decide(
@@ -353,17 +377,9 @@ def decide(
     if none_glob is not None:
         return [Decision(path, "none", (), f"matches {none_glob}")]
 
-    posix = PurePosixPath(path)
-    if is_collected(posix.name) and "tests" in posix.parts:
-        if not (project_root / path).exists():
-            return [Decision(path, "none", (), "deleted test file")]
-        reason = "changed test file"
-        touched: tuple[str, ...] = ()
-        tests_root = playwright_tests_root(posix)
-        if tests_root is not None:
-            reason += f"; playwright: {tests_root}/playwright"
-            touched = (tests_root,)
-        return [Decision(path, "select", (path,), reason, touched)]
+    test_file = test_file_decision(path, project_root)
+    if test_file is not None:
+        return [test_file]
 
     if first_match(path, config.dependency) is not None:
         return [Decision(path, "full", (), "dependency file")]
@@ -389,11 +405,33 @@ def decide(
 class BranchContext:
     branch_apps: frozenset[str]
     related_apps: frozenset[str]
+    # The tooling globs some path of the branch's own diff matches.
+    tooling_globs: frozenset[str]
 
 
 def from_main(decisions: list[Decision]) -> list[Decision]:
     """Mark decisions as made for a path main brought in."""
     return [replace(d, reason=f"from main; {d.reason}") for d in decisions]
+
+
+def related_tests_decision(
+    path: str,
+    escalation_glob: str,
+    apps: list[App],
+    context: BranchContext,
+    project_root: Path,
+) -> Decision:
+    """One decision selecting the tests directory of every related app that has one."""
+    directories = tuple(
+        sorted(
+            tests_dir_of(app, project_root)
+            for app in apps
+            if app.short_name in context.related_apps
+            and (project_root / tests_dir_of(app, project_root)).is_dir()
+        )
+    )
+    kind: Literal["none", "select"] = "select" if directories else "none"
+    return Decision(path, kind, directories, f"matches {escalation_glob}")
 
 
 def decide_upstream(
@@ -417,19 +455,37 @@ def decide_upstream(
         return from_main([Decision(path, "full", (), "dependency file")])
 
     app = owning_app(apps, project_root, path)
-    if app is None:
-        return from_main([Decision(path, "none", (), "unmapped path")])
-    if app.short_name not in context.related_apps:
+    if app is not None and app.short_name not in context.related_apps:
         reason = f"{app.short_name} meets no branch app"
         return from_main([Decision(path, "none", (), reason)])
-    return from_main(
-        [
-            owner_decision(path, app, project_root),
-            *importer_decisions(
-                path, app, apps, edges, project_root, only=context.branch_apps
-            ),
-        ]
-    )
+
+    test_file = test_file_decision(path, project_root)
+    if test_file is not None and app is not None:
+        return from_main([test_file])
+
+    escalation_glob = first_match(path, config.escalation)
+    if escalation_glob is not None:
+        return from_main(
+            [related_tests_decision(path, escalation_glob, apps, context, project_root)]
+        )
+
+    if app is not None:
+        return from_main(
+            [
+                owner_decision(path, app, project_root),
+                *importer_decisions(
+                    path, app, apps, edges, project_root, only=context.branch_apps
+                ),
+            ]
+        )
+
+    tooling_glob = matching_tooling_glob(path, config)
+    if tooling_glob is None:
+        return from_main([Decision(path, "none", (), "unmapped path")])
+    if tooling_glob not in context.tooling_globs:
+        reason = f"no branch path matches {tooling_glob}"
+        return from_main([Decision(path, "none", (), reason)])
+    return from_main(decide_tooling(path, config, project_root) or [])
 
 
 def git_paths(argv: list[str]) -> list[str]:
@@ -522,15 +578,19 @@ def branch_context(
     paths: set[str],
     apps: list[App],
     edges: Edges,
+    config: TierConfig,
     project_root: Path,
 ) -> BranchContext:
-    """The apps the branch's paths belong to, and every app those apps run."""
+    """The apps the branch's paths belong to, every app those apps run, and the tooling
+    globs the paths match."""
     owners = (owning_app(apps, project_root, p) for p in paths)
     branch_apps = {app.short_name for app in owners if app is not None}
     related = set(branch_apps)
     for name in branch_apps:
         related |= app_dependencies(name, edges)
-    return BranchContext(frozenset(branch_apps), frozenset(related))
+    matches = (matching_tooling_glob(p, config) for p in paths)
+    globs = {glob for glob in matches if glob is not None}
+    return BranchContext(frozenset(branch_apps), frozenset(related), frozenset(globs))
 
 
 def branch_test_decisions(
@@ -645,7 +705,7 @@ def main() -> int:
     if split is not None and edges is not None:
         upstream = split.upstream
         branch_paths = (set(paths) - upstream) | split.own_paths
-        context = branch_context(branch_paths, apps, edges, project_root)
+        context = branch_context(branch_paths, apps, edges, config, project_root)
     decisions = [
         d
         for p in paths
