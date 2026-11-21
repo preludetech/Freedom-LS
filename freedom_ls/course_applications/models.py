@@ -106,6 +106,12 @@ class CourseApplication(SiteAwareModel):
     constraints enforce. `organisation` is the organisation that reviews the
     application.
 
+    NOTE: as application review grows, this model gains the
+      pick_up/request_changes/resubmit transitions, decided_by, the
+      view_application/change_application permissions, ApplicationNote +
+      ApplicationStateTransition, and the application_state_changed signal.
+    Do not architect these away — leave this model standalone and additive.
+
     `form_progress` is the applicant's own sitting of the form the course named
     when they applied, null when the course asks for no form. The form is read
     back off that sitting, so it survives the course being re-pointed at another
