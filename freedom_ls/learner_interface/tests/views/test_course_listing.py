@@ -1876,7 +1876,7 @@ def test_anonymous_dashboard_lists_the_drafts_the_session_holds(
 
 @needs_course_applications
 @pytest.mark.django_db
-def test_anonymous_dashboard_draft_continues_at_its_status_url(
+def test_anonymous_dashboard_draft_row_links_details_to_its_status_url(
     mock_site_context, settings
 ):
     settings.REQUIRE_TERMS_ACCEPTANCE = False
@@ -1886,7 +1886,8 @@ def test_anonymous_dashboard_draft_continues_at_its_status_url(
     body = client.get(reverse("learner_interface:dashboard")).content.decode()
 
     status_url = reverse("course_applications:status", kwargs={"pk": pk})
-    assert "Continue application" in body
+    assert "Details" in body
+    assert "Continue application" not in body
     assert f'href="{status_url}"' in body
 
 

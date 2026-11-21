@@ -15,7 +15,7 @@ the state chip, each date the application has, and the next step. On top of that
   draft      answered-question progress, "Continue application" and withdraw
   submitted  withdraw
   approved   nothing more
-  rejected   the reviewer's message and apply again
+  rejected   the reason it was declined and apply again
   withdrawn  apply again
 An unclaimed applicant sees "Check your email" and the claim notice first, then
 the state block under an h2, with no next step and no withdraw: the address is
@@ -24,7 +24,7 @@ not yet proven.
 
 {% block content %}
     {% partialdef state_heading %}
-        {% if application.state == application.State.WITHDRAWN %}You withdrew your application{% elif application.state == application.State.APPROVED %}Your application was approved{% elif application.state == application.State.REJECTED %}Your application was not approved{% else %}Your application{% endif %}
+        {% if application.state == application.State.WITHDRAWN %}You withdrew your application{% elif application.state == application.State.APPROVED %}Your application was approved{% elif application.state == application.State.REJECTED %}Your application was declined{% else %}Your application{% endif %}
     {% endpartialdef %}
 
     {% partialdef state_block %}
@@ -46,9 +46,8 @@ not yet proven.
         {% elif application.state == application.State.REJECTED %}
             <p>
                 Your application for <strong>{{ application.course.title }}</strong>
-                was not approved on <c-date :value="application.decided_at" />.
+                was declined on <c-date :value="application.decided_at" />.
             </p>
-            <c-callout tone="info" title="Message from the reviewer">{{ application.rejection_message|linebreaksbr }}</c-callout>
         {% elif application.state == application.State.WITHDRAWN %}
             <p>
                 You withdrew your application for <strong>{{ application.course.title }}</strong> on
@@ -66,11 +65,18 @@ not yet proven.
             </div>
             <c-panel-definition-list layout="inline" class="px-4 py-4 sm:px-6">
                 <c-panel-definition-row label="Course">
-                    <a href="{% url 'learner_interface:course_detail' course_slug=application.course.slug %}">{{ application.course.title }}</a>
+                    {% comment %}A record's name outside a sentence is a control: no prose underline.{% endcomment %}
+                    <a href="{% url 'learner_interface:course_detail' course_slug=application.course.slug %}"
+                       class="font-semibold text-primary no-underline hover:text-primary-hover">{{ application.course.title }}</a>
                 </c-panel-definition-row>
                 <c-panel-definition-row label="Status">
                     {% include "course_applications/partials/application_state_badge.html" %}
                 </c-panel-definition-row>
+                {% if application.state == application.State.REJECTED %}
+                    <c-panel-definition-row label="Reason">
+                        {{ application.rejection_message|linebreaksbr }}
+                    </c-panel-definition-row>
+                {% endif %}
                 <c-panel-definition-row label="Started">
                     <c-date :value="application.created_at" />
                 </c-panel-definition-row>

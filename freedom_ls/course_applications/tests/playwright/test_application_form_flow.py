@@ -254,10 +254,11 @@ def test_an_anonymous_visitor_can_apply_from_details_to_submit(
     expect(notice).to_be_visible()
     expect(notice).to_contain_text("anon.applicant@example.com")
 
-    # The dashboard lists the unfinished draft and resumes it on page 1.
+    # The dashboard lists the unfinished draft; an unclaimed draft's Details
+    # link resumes it on page 1.
     page.goto(reverse_url(live_server, "learner_interface:dashboard"))
     expect(page.get_by_text("Not submitted")).to_be_visible()
-    page.get_by_role("link", name="Continue application").click()
+    page.locator("#applications-page").get_by_role("link", name="Details").click()
     expect(page.get_by_label("Your name")).to_be_visible()
 
     page.get_by_label("Your name").fill("Ada Lovelace")
@@ -414,7 +415,7 @@ def test_send_again_from_the_notice_says_a_new_link_went(
 @pytest.mark.playwright
 # transaction=True so the Playwright browser (separate connection) sees committed data
 @pytest.mark.django_db(transaction=True)
-def test_a_rejected_row_offers_apply_again_into_a_new_application(
+def test_a_rejected_rows_details_lead_to_apply_again_and_a_new_application(
     live_server: LiveServer,
     logged_in_page: Page,
     logged_in_user: User,
@@ -428,12 +429,14 @@ def test_a_rejected_row_offers_apply_again_into_a_new_application(
     panel = logged_in_page.locator("#applications-page")
 
     logged_in_page.goto(dashboard_url)
-    expect(panel.get_by_text("Not approved")).to_be_visible()
-    panel.get_by_role("link", name="Apply again").click()
+    expect(panel.get_by_text("Declined", exact=True)).to_be_visible()
+    expect(panel.get_by_role("link", name="Apply again")).to_have_count(0)
+    panel.get_by_role("link", name="Details").click()
+    logged_in_page.get_by_role("link", name="Apply again").click()
 
     expect(logged_in_page).to_have_url(re.compile(r"/application/.+/page/1/"))
     logged_in_page.goto(dashboard_url)
-    expect(panel.get_by_text("Not approved")).to_have_count(0)
+    expect(panel.get_by_text("Declined", exact=True)).to_have_count(0)
     expect(panel.get_by_text("Not submitted")).to_be_visible()
     assert CourseApplication.objects.filter(user=logged_in_user).count() == 2
     assert CourseApplication.objects.get(pk=rejected.pk).state == "rejected"
@@ -493,19 +496,14 @@ def test_a_learner_pages_through_their_applications(
         0
     )
 
-    # Below sm the row's button gives way to a chevron.
+    # On a phone each row still ends in its one Details link.
     page.set_viewport_size({"width": 375, "height": 800})
     page.goto(dashboard_url)
     rows = panel.get_by_role("listitem")
-    expect(panel.get_by_role("link", name="Continue application")).to_be_hidden()
+    expect(panel.get_by_role("link", name="Continue application")).to_have_count(0)
     expect(panel.get_by_role("link", name="View my application")).to_have_count(0)
+    expect(panel.get_by_role("link", name="Details")).to_have_count(rows.count())
     expect(panel.get_by_role("link", name="Details").first).to_be_visible()
-    for index in range(rows.count()):
-        expect(
-            rows.nth(index)
-            .locator('span.sm\\:hidden[aria-hidden="true"]')
-            .locator("svg")
-        ).to_be_visible()
 
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)

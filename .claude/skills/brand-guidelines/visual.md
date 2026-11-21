@@ -92,7 +92,7 @@ FLS already builds each of these, and the brand decisions above are encoded in t
 
 **Headings, body text, links, lists, tables and form inputs take no classes.** The base layer already sizes and colours them: write `<h1>Title</h1>`, and the stylesheet stays the one place those styles live.
 
-**No underline on a link outside a sentence.** The base layer underlines every `<a>`, and that underline means "a link inside prose": words in the middle of a sentence in a paragraph. Every other link is a control: a person, a back link, a text action, a clickable row, and a record's name in a table cell, a definition-list value, a card or a list. A control takes the component for its job and never the prose style. A record's name with no component of its own takes `class="font-semibold text-primary no-underline hover:text-primary-hover"`, the back link's look. A bare `<a href>` with no `class` is a forgotten control unless a sentence surrounds it. `template_rules.anchors_without_classes` (`freedom_ls/panel_framework/tests/invariants/template_rules.py`) finds them; an app with learner-facing templates runs it over its own templates in an invariant test. On a panel-framework page every anchor is a control, and `Skill(fls-dev:panel-framework)` names the component for each and the invariant test that fails on a hand-styled one.
+**No underline on a link outside a sentence.** The base layer underlines every `<a>`, and that underline means "a link inside prose": words in the middle of a sentence in a paragraph. Every other link is a control: a person, a back link, a text action, a clickable row, and a record's name in a table cell, a definition-list value, a card or a list. A control takes the component for its job and never the prose style. A record's name with no component of its own takes `class="font-semibold text-primary no-underline hover:text-primary-hover"`, the back link's look. A bare `<a href>` with no `class` is a forgotten control unless a sentence surrounds it. An invariant test finds them: `template_rules.anchors_without_classes` (`freedom_ls/panel_framework/tests/invariants/template_rules.py`) in an app whose tests may import `panel_framework`, and `freedom_ls/course_applications/tests/invariants/test_template_rules.py` as the model for an app whose tests may not. On a panel-framework page every anchor is a control, and `Skill(fls-dev:panel-framework)` names the component for each and the invariant test that fails on a hand-styled one.
 
 Where you do write utilities, keep to Tailwind's spacing scale and use `rounded-md` (`--fls-radius-md`) unless the component says otherwise. Padding, gaps, dialog footers and phone sizing are set by the panel-framework components; `Skill(fls-dev:panel-framework)` says what they do.
 
@@ -128,6 +128,11 @@ A link on a row or card opens the page of the record that row or card shows. A r
 application has a "Details" link to the application, and the course it is for is one click further
 on. When two records could claim the link, the one named in the list's heading wins.
 
+A row or card in a list ends in one control: the link to its record ("Details"). Every list on a
+page ends its rows the same way, so an application row ends like a course row. A second button
+beside it, a second arrow, or a button that appears only in some states makes the list ragged. The
+record's own actions (continue, withdraw, apply again) sit on the record's page.
+
 A page for one record shows that record's facts in a definition list: its state, each date it
 has (started, submitted, decided), and what the person still has to do. The actions come after the
 facts. A page whose only content is a heading and a button is unfinished.
@@ -157,6 +162,7 @@ What QA checks in a screenshot of any FLS page.
 - A page opened from another page starts with a back link at the top left, above the heading, in the back-link style; no button on the page goes back.
 - A button that starts an irreversible action (withdraw, delete, remove) is red, on the page and in its confirm dialog.
 - A "Details" link on a row or card opens the record the row shows, not a related record.
+- Each row or card in a list ends in one control, in the same place on every row, with one arrow; no row has an extra button.
 - A page for one record lists its state, its dates and what is left to do in a definition list above its actions.
 
 ## Example page

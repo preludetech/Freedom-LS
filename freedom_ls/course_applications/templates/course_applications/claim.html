@@ -75,7 +75,7 @@
                 {% url 'learner_interface:courses' as courses_url %}
                 {% if courses_url %}
                     <p>
-                        <a href="{{ courses_url }}">Browse courses</a>
+                        <c-button href="{{ courses_url }}" variant="secondary">Browse courses</c-button>
                     </p>
                 {% endif %}
             {% endif %}

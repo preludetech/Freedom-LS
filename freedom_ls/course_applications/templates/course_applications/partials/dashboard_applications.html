@@ -8,9 +8,9 @@ learner_interface renders this generically via render_to_string — it never
 reads context keys and never imports course_applications.
 
 A row is an application, so its title and its "Details" link both open the
-application's status page; the course page is linked from there. A draft also
-has a "Continue application" button to the resume URL, which carries the draft
-on at the page the applicant left.
+application's status page; the course page is linked from there. "Details" is
+the row's one control, as on a course row: continuing a draft, withdrawing and
+applying again all start from the status page.
 
 Paging: `panel-page` is the htmx swap boundary. The pager fetches the
 dashboard URL; the view sees this panel's swap id in HX-Target and answers
@@ -53,10 +53,10 @@ which outlives the swap.
                             {% if app.state == app.State.DRAFT %}
                                 <p class="text-sm text-muted">Finish your application to have it reviewed.</p>
                             {% elif app.state == app.State.REJECTED %}
-                                <p class="text-sm text-muted">Decision on <c-date :value="app.decided_at" />. Read the reviewer's message.</p>
+                                <p class="text-sm text-muted">Declined on <c-date :value="app.decided_at" />. Read the reason.</p>
                             {% endif %}
                             <c-slot name="footer">
-                                {% comment %}`relative z-10` lifts each control above the title link's overlay.{% endcomment %}
+                                {% comment %}`relative z-10` lifts the link above the title link's overlay.{% endcomment %}
                                 <div class="flex items-center justify-end gap-3">
                                     <c-button href="{{ status_url }}"
                                               variant="link"
@@ -65,19 +65,6 @@ which outlives the swap.
                                               class="relative z-10 whitespace-nowrap">
                                         Details<span class="sr-only"> for {{ app.course.title }}</span>
                                     </c-button>
-                                    {% if app.state == app.State.DRAFT %}
-                                        {% url 'course_applications:resume' pk=app.pk as resume_url %}
-                                        <c-button href="{{ resume_url }}" size="small" icon_right="next" class="relative z-10 hidden shrink-0 sm:inline-flex">
-                                            Continue application<span class="sr-only"> for {{ app.course.title }}</span>
-                                        </c-button>
-                                    {% endif %}
-                                    {% if app.state == app.State.REJECTED %}
-                                        {% url 'course_applications:apply' course_slug=app.course.slug as apply_url %}
-                                        <c-button href="{{ apply_url }}" variant="secondary" size="small" class="relative z-10 hidden shrink-0 sm:inline-flex">
-                                            Apply again<span class="sr-only"> for {{ app.course.title }}</span>
-                                        </c-button>
-                                    {% endif %}
-                                    <span class="text-muted sm:hidden" aria-hidden="true"><c-icon name="next" class="size-5" /></span>
                                 </div>
                             </c-slot>
                         </c-course-row-shell>

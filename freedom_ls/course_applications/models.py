@@ -116,7 +116,7 @@ class CourseApplication(SiteAwareModel):
         DRAFT = "draft", "Not submitted"
         SUBMITTED = "submitted", "Waiting for review"
         APPROVED = "approved", "Approved"
-        REJECTED = "rejected", "Not approved"
+        REJECTED = "rejected", "Declined"
         WITHDRAWN = "withdrawn", "Withdrawn"
 
     user = models.ForeignKey(

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from datetime import timedelta
 from typing import cast
 
@@ -556,24 +557,19 @@ class TestDashboardPartialRendering:
         assert "View my application" not in rendered
         assert "Apply again" not in rendered
 
-    def test_a_rejected_row_offers_the_message_details_and_apply_again(
+    def test_a_rejected_row_points_to_the_reason_and_offers_details_only(
         self, mock_site_context: Site
     ) -> None:
         app = CourseApplicationFactory(rejected=True, rejection_message="Too early.")
 
         rendered = _render_panel(app)
 
-        assert "Not approved" in rendered
-        assert "Read the reviewer's message" in rendered
+        assert "Declined" in rendered
+        assert "Not approved" not in rendered
+        assert "Read the reason." in rendered
         assert "Details" in rendered
         assert "View my application" not in rendered
-        assert "Apply again" in rendered
-        assert (
-            reverse(
-                "course_applications:apply", kwargs={"course_slug": app.course.slug}
-            )
-            in rendered
-        )
+        assert "Apply again" not in rendered
         assert "Too early." not in rendered
 
     def test_a_submitted_row_offers_details_only(self, mock_site_context: Site) -> None:
@@ -588,24 +584,40 @@ class TestDashboardPartialRendering:
         assert "Continue application" not in rendered
         assert "Finish your application to have it reviewed." not in rendered
 
-    def test_a_draft_row_explains_what_is_left_and_offers_to_continue(
-        self, mock_site_context
-    ):
+    def test_a_draft_row_explains_what_is_left_and_offers_details_only(
+        self, mock_site_context: Site
+    ) -> None:
         rendered = _render_panel(_application_with_sitting())
 
         assert "Finish your application to have it reviewed." in rendered
-        assert "Continue application" in rendered
-        assert "View my application" not in rendered
+        assert "Details" in rendered
+        assert "Continue application" not in rendered
 
-    def test_a_draft_rows_continue_button_resumes_the_form(
-        self, mock_site_context: Site
+    @pytest.mark.parametrize(
+        "make_application",
+        [
+            lambda: _application_with_sitting(),
+            CourseApplicationFactory,
+            lambda: CourseApplicationFactory(approved=True),
+            lambda: CourseApplicationFactory(rejected=True),
+        ],
+        ids=["draft", "submitted", "approved", "rejected"],
+    )
+    def test_details_is_the_only_control_at_the_end_of_a_row(
+        self,
+        mock_site_context: Site,
+        make_application: Callable[[], CourseApplication],
     ) -> None:
-        app = _application_with_sitting()
+        application = make_application()
 
-        rendered = _render_panel(app)
+        row = lxml.html.fromstring(_render_panel(application))
 
-        resume_url = reverse("course_applications:resume", kwargs={"pk": app.pk})
-        assert f'href="{resume_url}"' in rendered
+        labels = [
+            link.text_content().split()[0]
+            for link in row.xpath("//li//a[contains(@class, 'btn')]")
+        ]
+        assert labels == ["Details"]
+        assert not row.xpath("//li//button")
 
     def test_the_button_names_its_course_for_screen_readers(self, mock_site_context):
         app = _application_with_sitting()
@@ -613,11 +625,6 @@ class TestDashboardPartialRendering:
         rendered = _render_panel(app)
 
         assert f'<span class="sr-only"> for {app.course.title}</span>' in rendered
-
-    def test_each_row_carries_a_decorative_chevron(self, mock_site_context):
-        rendered = _render_panel(CourseApplicationFactory())
-
-        assert re.search(r'<span[^>]*aria-hidden="true"[^>]*>\s*<svg', rendered)
 
     def test_a_course_title_is_escaped_in_the_title_link_and_the_details_link(
         self, mock_site_context

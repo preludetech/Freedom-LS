@@ -645,6 +645,35 @@ class TestApplicationStatusDetails:
             "Next step",
         ]
 
+    def test_a_declined_application_lists_the_reason_under_its_status(
+        self, client: Client, mock_site_context: Site
+    ) -> None:
+        user = UserFactory()
+        application = CourseApplicationFactory(
+            user=user, rejected=True, rejection_message="Too early."
+        )
+        client.force_login(user)
+
+        page = _status_page(client, application)
+
+        assert _detail_labels(page)[:3] == ["Course", "Status", "Reason"]
+        values = page.xpath('//*[@data-testid="application-details"]//dd')
+        assert values[1].text_content().strip() == "Declined"
+        assert values[2].text_content().strip() == "Too early."
+
+    def test_the_course_link_is_not_underlined_like_prose(
+        self, client: Client, mock_site_context: Site
+    ) -> None:
+        user = UserFactory()
+        client.force_login(user)
+
+        page = _status_page(client, CourseApplicationFactory(user=user))
+
+        links = page.xpath('//*[@data-testid="application-details"]//a')
+        assert ["no-underline" in link.get("class", "").split() for link in links] == [
+            True
+        ]
+
     def test_a_withdrawn_application_lists_when_it_was_withdrawn(
         self, client: Client, mock_site_context: Site
     ) -> None:
@@ -6208,8 +6237,9 @@ class TestDecidedApplicationStatusPage:
 
         body = client.get(_status_url(app)).content.decode()
 
-        assert "Your application was not approved" in body
-        assert "Message from the reviewer" in body
+        assert "Your application was declined" in body
+        assert "Message from the reviewer" not in body
+        assert "not approved" not in body.lower()
         assert "Not this time." in body
         assert "You can apply again." in body
         assert (

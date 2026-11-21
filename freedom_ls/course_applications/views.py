@@ -342,9 +342,9 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
 def resume_application(request: HttpRequest, pk: UUID) -> HttpResponse:
     """Carry an open draft on at the page its applicant left.
 
-    The dashboard's "Continue application" goes here, because a claimed
-    draft's status page is a stop of its own (it offers the withdraw action).
-    Anything that is not a draft with a form goes to its status page.
+    A claimed draft's status page is a stop of its own (it offers the
+    withdraw action), so a link that should land in the form itself comes
+    here. Anything that is not a draft with a form goes to its status page.
     """
     found = _owned_application(request, _status_applications(request), pk)
     if isinstance(found, HttpResponse):
