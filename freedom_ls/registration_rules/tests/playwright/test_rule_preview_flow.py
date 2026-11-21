@@ -17,7 +17,7 @@ from freedom_ls.hr_attributes.factories import (
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.tests.app_guards import app_not_installed
-from freedom_ls.tests.playwright_fixtures import _LOGGED_IN_PASSWORD, _login_via_ui
+from freedom_ls.tests.playwright_fixtures import sign_in
 from freedom_ls.tests.playwright_helpers import (
     QA_VIEWPORTS,
     assert_no_horizontal_overflow,
@@ -34,7 +34,7 @@ pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 @pytest.fixture
 def admin_user(db, live_server_site, mock_site_context):
     """A fresh, email-verified superuser."""
-    user = UserFactory(superuser=True, password=_LOGGED_IN_PASSWORD)
+    user = UserFactory(superuser=True)
     EmailAddress.objects.get_or_create(
         user=user,
         email=user.email,
@@ -46,7 +46,7 @@ def admin_user(db, live_server_site, mock_site_context):
 @pytest.fixture
 def admin_page(page: Page, live_server, admin_user) -> Page:
     """A Playwright Page logged in as admin_user."""
-    _login_via_ui(page, live_server, str(admin_user.email), _LOGGED_IN_PASSWORD)
+    sign_in(page, live_server, admin_user)
     return page
 
 
@@ -140,7 +140,7 @@ def test_a_recommend_rule_shows_the_course_as_recommended_until_the_learner_regi
     )
     course = CourseFactory(title="Budgeting basics")
     department = DepartmentFactory(organisation=organisation, name="Accounts")
-    learner_user = UserFactory(password=_LOGGED_IN_PASSWORD)
+    learner_user = UserFactory()
     EmailAddress.objects.create(
         user=learner_user, email=learner_user.email, verified=True, primary=True
     )
@@ -181,7 +181,7 @@ def test_a_recommend_rule_shows_the_course_as_recommended_until_the_learner_regi
 
     # Act: the learner opens the dashboard.
     page.context.clear_cookies()
-    _login_via_ui(page, live_server, str(learner_user.email), _LOGGED_IN_PASSWORD)
+    sign_in(page, live_server, learner_user)
     dashboard = f"{live_server.url}{reverse('learner_interface:dashboard')}"
     page.goto(dashboard)
 

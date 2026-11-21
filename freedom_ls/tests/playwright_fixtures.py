@@ -57,6 +57,7 @@ from playwright.sync_api import Page, Playwright, expect
 from pytest_django.live_server_helper import LiveServer
 
 from django.conf import settings
+from django.contrib.auth.base_user import AbstractBaseUser
 from django.db import connections
 from django.test import Client
 
@@ -151,7 +152,7 @@ def _login_via_ui(
     expect(page).not_to_have_url(login_url)
 
 
-def sign_in(page: Page, live_server: LiveServer, user: User) -> None:
+def sign_in(page: Page, live_server: LiveServer, user: AbstractBaseUser) -> None:
     """Give ``page``'s browser context a session for ``user``, without the login form.
 
     The session is made in this test, after ``user`` exists, because ``transaction=True``

@@ -12,11 +12,12 @@ import pytest
 from allauth.account.models import EmailAddress
 from playwright.sync_api import Page, expect
 
+from django.contrib.auth.base_user import AbstractBaseUser
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.mail.factories import OutboundEmailFactory
-from freedom_ls.tests.playwright_fixtures import _LOGGED_IN_PASSWORD, _login_via_ui
+from freedom_ls.tests.playwright_fixtures import sign_in
 
 # transaction=True so the live server's own DB connection sees the fixture
 # data this test's connection committed.
@@ -30,19 +31,19 @@ _CLIPPED_CELLS_JS = """
 
 
 @pytest.fixture
-def admin_email(db, live_server_site, mock_site_context) -> str:
-    """The email of a fresh, email-verified superuser."""
-    user = UserFactory(superuser=True, password=_LOGGED_IN_PASSWORD)
+def admin_user(db, live_server_site, mock_site_context) -> AbstractBaseUser:
+    """A fresh, email-verified superuser."""
+    user: AbstractBaseUser = UserFactory(superuser=True)
     EmailAddress.objects.get_or_create(
         user=user,
         email=user.email,
         defaults={"verified": True, "primary": True},
     )
-    return str(user.email)
+    return user
 
 
 def test_changelist_card_cells_grow_to_fit_a_long_last_error(
-    live_server, page: Page, admin_email: str
+    live_server, page: Page, admin_user: AbstractBaseUser
 ) -> None:
     OutboundEmailFactory(
         failed=True,
@@ -51,7 +52,7 @@ def test_changelist_card_cells_grow_to_fit_a_long_last_error(
         last_error="smtplib.SMTPServerDisconnected: " + "connection dropped " * 10,
     )
     page.set_viewport_size({"width": 375, "height": 812})
-    _login_via_ui(page, live_server, admin_email, _LOGGED_IN_PASSWORD)
+    sign_in(page, live_server, admin_user)
 
     page.goto(
         f"{live_server.url}{reverse('admin:freedom_ls_mail_outboundemail_changelist')}"

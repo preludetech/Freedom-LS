@@ -21,7 +21,7 @@ from freedom_ls.messaging_policy.factories import (
     LearnerMessagingConfigFactory,
     SiteMessagingConfigFactory,
 )
-from freedom_ls.tests.playwright_fixtures import _LOGGED_IN_PASSWORD, _login_via_ui
+from freedom_ls.tests.playwright_fixtures import sign_in
 
 # transaction=True so the live server's own DB connection sees the fixture
 # data this test's connection committed.
@@ -39,7 +39,7 @@ _CLIPPED_CELLS_JS = """
 @pytest.fixture
 def admin_user(db, live_server_site, mock_site_context) -> User:
     """A fresh, email-verified superuser."""
-    user: User = UserFactory(superuser=True, password=_LOGGED_IN_PASSWORD)
+    user: User = UserFactory(superuser=True)
     EmailAddress.objects.get_or_create(
         user=user,
         email=user.email,
@@ -52,7 +52,7 @@ def admin_user(db, live_server_site, mock_site_context) -> User:
 def phone_admin_page(page: Page, live_server, admin_user: User) -> Page:
     """A Playwright Page at a phone viewport, logged in as admin_user."""
     page.set_viewport_size(_PHONE_VIEWPORT)
-    _login_via_ui(page, live_server, str(admin_user.email), _LOGGED_IN_PASSWORD)
+    sign_in(page, live_server, admin_user)
     return page
 
 

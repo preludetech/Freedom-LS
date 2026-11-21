@@ -23,7 +23,7 @@ from freedom_ls.referral_tracking.factories import (
     SignupAttributionFactory,
 )
 from freedom_ls.referral_tracking.models import Door, ReferralCode
-from freedom_ls.tests.playwright_fixtures import _LOGGED_IN_PASSWORD, _login_via_ui
+from freedom_ls.tests.playwright_fixtures import sign_in
 from freedom_ls.tests.playwright_helpers import (
     QA_VIEWPORTS,
     assert_no_horizontal_overflow,
@@ -40,7 +40,7 @@ LONG_RAW_QUERY = "utm_source=facebook&fbclid=" + "x" * 100
 @pytest.fixture
 def admin_user(db, live_server_site, mock_site_context) -> User:
     """A fresh, email-verified superuser."""
-    user: User = UserFactory(superuser=True, password=_LOGGED_IN_PASSWORD)
+    user: User = UserFactory(superuser=True)
     EmailAddress.objects.get_or_create(
         user=user,
         email=user.email,
@@ -86,7 +86,7 @@ def test_referral_admin_flow(
     ]
     # Grant clipboard access before any navigation happens.
     page.context.grant_permissions(["clipboard-read", "clipboard-write"])
-    _login_via_ui(page, live_server, str(admin_user.email), _LOGGED_IN_PASSWORD)
+    sign_in(page, live_server, admin_user)
     page.goto(_code_change_url(live_server, referral_code))
 
     # The copy button puts the go URL on the clipboard. live_server_site has
@@ -110,6 +110,19 @@ def test_referral_admin_flow(
         )
         assert border_width != "0px"
 
+    # A rejected write must not leave the button looking like it worked. This runs
+    # after the copy checks because it replaces writeText, and the reload restores the
+    # real one before the detail pages.
+    page.reload()
+    page.evaluate(
+        "Object.defineProperty(navigator.clipboard, 'writeText', "
+        "{value: () => Promise.reject(new Error('denied'))})"
+    )
+    page.get_by_role("button", name="Copy /go/ URL").click()
+    expect(
+        page.get_by_text("Could not copy"), "refused clipboard write not reported"
+    ).to_be_visible()
+
     # The read-only detail pages wrap long values at every width.
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
@@ -117,19 +130,3 @@ def test_referral_admin_flow(
             page.goto(f"{live_server.url}{path}")
             expect(page.get_by_text(long_value, exact=True)).to_be_visible()
             assert_no_horizontal_overflow(page)
-
-
-def test_copy_button_reports_a_refused_clipboard(
-    live_server, page: Page, admin_user: User, referral_code: ReferralCode
-) -> None:
-    """A rejected write must not leave the button looking like it worked."""
-    _login_via_ui(page, live_server, str(admin_user.email), _LOGGED_IN_PASSWORD)
-    page.goto(_code_change_url(live_server, referral_code))
-    page.evaluate(
-        "Object.defineProperty(navigator.clipboard, 'writeText', "
-        "{value: () => Promise.reject(new Error('denied'))})"
-    )
-
-    page.get_by_role("button", name="Copy /go/ URL").click()
-
-    expect(page.get_by_text("Could not copy")).to_be_visible()

@@ -21,7 +21,7 @@ from freedom_ls.form_engine.factories import (
     FormQuestionFactory,
     QuestionAnswerFactory,
 )
-from freedom_ls.tests.playwright_fixtures import _LOGGED_IN_PASSWORD, _login_via_ui
+from freedom_ls.tests.playwright_fixtures import sign_in
 
 # transaction=True so the live server's own DB connection sees the fixture
 # data this test's connection committed.
@@ -37,7 +37,7 @@ _THREE_PARAGRAPHS = (
 @pytest.fixture
 def admin_user(db, live_server_site, mock_site_context) -> User:
     """A fresh, email-verified superuser."""
-    user: User = UserFactory(superuser=True, password=_LOGGED_IN_PASSWORD)
+    user: User = UserFactory(superuser=True)
     EmailAddress.objects.get_or_create(
         user=user,
         email=user.email,
@@ -58,7 +58,7 @@ def test_a_long_answer_keeps_its_paragraph_breaks_in_the_admin(
     QuestionAnswerFactory(
         form_progress=progress, question=question, text_answer=_THREE_PARAGRAPHS
     )
-    _login_via_ui(page, live_server, str(admin_user.email), _LOGGED_IN_PASSWORD)
+    sign_in(page, live_server, admin_user)
 
     page.goto(
         live_server.url

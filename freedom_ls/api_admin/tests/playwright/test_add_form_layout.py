@@ -10,7 +10,7 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
-from freedom_ls.tests.playwright_fixtures import _LOGGED_IN_PASSWORD, _login_via_ui
+from freedom_ls.tests.playwright_fixtures import sign_in
 from freedom_ls.tests.playwright_helpers import (
     QA_VIEWPORTS,
     assert_no_horizontal_overflow,
@@ -24,7 +24,7 @@ pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 @pytest.fixture
 def admin_user(db, live_server_site, mock_site_context) -> User:
     """A fresh, email-verified superuser."""
-    user: User = UserFactory(superuser=True, password=_LOGGED_IN_PASSWORD)
+    user: User = UserFactory(superuser=True)
     EmailAddress.objects.get_or_create(
         user=user,
         email=user.email,
@@ -33,25 +33,32 @@ def admin_user(db, live_server_site, mock_site_context) -> User:
     return user
 
 
-def test_add_form_fits_the_viewport_with_long_scope_labels(
-    live_server, page: Page, admin_user: User
-) -> None:
-    """The long scope labels did not wrap, so the add form scrolled sideways."""
-    _login_via_ui(page, live_server, str(admin_user.email), _LOGGED_IN_PASSWORD)
+def test_api_key_add_form_flow(live_server, page: Page, admin_user: User) -> None:
+    """The add form fits every viewport, shows scope labels in full and wraps the issued key.
+
+    Long scope labels used to not wrap, so the form scrolled sideways, and they were cut
+    off with an ellipsis, hiding the models they cover. A key with no dashes ran past its
+    box on a phone, clipping its middle. The issued-key step runs last because it submits
+    the form.
+    """
+    sign_in(page, live_server, admin_user)
+    add_url = f"{live_server.url}{reverse('admin:freedom_ls_api_apikey_add')}"
 
     for viewport in QA_VIEWPORTS:
+        width = viewport["width"]
         page.set_viewport_size(viewport)
-        page.goto(f"{live_server.url}{reverse('admin:freedom_ls_api_apikey_add')}")
+        page.goto(add_url)
         assert_no_horizontal_overflow(page)
+        label_texts = page.locator("input[name=scopes] + span")
+        assert label_texts.count() > 0, f"no scope labels at {width}px"
+        clipped = label_texts.evaluate_all(
+            "els => els.filter(e => e.scrollWidth > e.clientWidth)"
+            ".map(e => e.textContent)"
+        )
+        assert clipped == [], f"scope labels clipped at {width}px: {clipped}"
 
-
-def test_issued_key_wraps_inside_its_box_on_a_phone(
-    live_server, page: Page, admin_user: User
-) -> None:
-    """A key with no dashes ran past its box on a phone, clipping its middle."""
-    _login_via_ui(page, live_server, str(admin_user.email), _LOGGED_IN_PASSWORD)
     page.set_viewport_size(QA_VIEWPORTS[0])
-    page.goto(f"{live_server.url}{reverse('admin:freedom_ls_api_apikey_add')}")
+    page.goto(add_url)
     page.fill("input[name=name]", "Phone key")
     page.locator("input[name=scopes]").first.check()
     page.get_by_role("button", name="Save", exact=False).first.click()
@@ -64,24 +71,5 @@ def test_issued_key_wraps_inside_its_box_on_a_phone(
     )
 
     fits = key_box.evaluate("el => el.scrollWidth <= el.clientWidth")
-    assert fits
+    assert fits, "issued key runs past its box on a phone"
     assert_no_horizontal_overflow(page)
-
-
-def test_scope_labels_show_their_full_text_at_every_viewport(
-    live_server, page: Page, admin_user: User
-) -> None:
-    """Scope labels were cut off with an ellipsis, hiding the models they cover."""
-    _login_via_ui(page, live_server, str(admin_user.email), _LOGGED_IN_PASSWORD)
-
-    for viewport in QA_VIEWPORTS:
-        page.set_viewport_size(viewport)
-        page.goto(f"{live_server.url}{reverse('admin:freedom_ls_api_apikey_add')}")
-        label_texts = page.locator("input[name=scopes] + span")
-        assert label_texts.count() > 0
-        clipped = label_texts.evaluate_all(
-            "els => els.filter(e => e.scrollWidth > e.clientWidth)"
-            ".map(e => e.textContent)"
-        )
-        assert clipped == [], f"clipped at {viewport}"
-        assert_no_horizontal_overflow(page)
