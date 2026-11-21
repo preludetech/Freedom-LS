@@ -437,7 +437,16 @@ def _render_status(
         "email_form": email_form,
         "status_url": reverse("course_applications:status", kwargs={"pk": app.pk}),
         "resume_url": None,
+        "current_application_url": None,
     }
+    if app.state in CLOSED_STATES and app.user is not None:
+        # An applicant who has applied again goes to that application, not
+        # back through apply.
+        current = get_application_for_course(user=app.user, course=app.course)
+        if current is not None and current.state in ACTIVE_STATES:
+            context["current_application_url"] = reverse(
+                "course_applications:status", kwargs={"pk": current.pk}
+            )
     if app.state == CourseApplication.State.DRAFT and app.form_progress is not None:
         context["resume_url"] = _resume_url(app, app.form_progress)
         counts = answered_counts(app.form_progress, [], current_path(app.form_progress))

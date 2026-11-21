@@ -322,6 +322,28 @@ class TestApplyAfterAClosedApplication:
         assert "Apply again" in content
         assert f'href="{apply_url}"' in content
 
+    @pytest.mark.parametrize("closed_traits", [{"withdrawn": True}, {"rejected": True}])
+    def test_a_closed_status_page_links_to_the_newer_application(
+        self, client: Client, mock_site_context: Site, closed_traits: dict[str, bool]
+    ) -> None:
+        user = UserFactory()
+        course = CourseFactory()
+        old = CourseApplicationFactory(user=user, course=course, **closed_traits)
+        current = CourseApplicationFactory(user=user, course=course)
+        client.force_login(user)
+
+        response = client.get(
+            reverse("course_applications:status", kwargs={"pk": old.pk})
+        )
+
+        current_url = reverse("course_applications:status", kwargs={"pk": current.pk})
+        content = response.content.decode()
+        assert "Apply again" not in content
+        assert "You can apply again." not in content
+        assert "You have a newer application for this course." in content
+        assert f'href="{current_url}"' in content
+        assert "View my current application" in content
+
 
 @pytest.mark.django_db
 class TestApplyViewPost:

@@ -17,6 +17,8 @@ the state chip, each date the application has, and the next step. On top of that
   approved   nothing more
   rejected   the reason it was declined and apply again
   withdrawn  apply again
+A rejected or withdrawn application whose owner has applied again links to that
+newer application in place of "Apply again".
 An unclaimed applicant sees "Check your email" and the claim notice first, then
 the state block under an h2, with no next step and no withdraw: the address is
 not yet proven.
@@ -102,7 +104,7 @@ not yet proven.
                 {% endif %}
                 {% if application.is_email_verified %}
                     <c-panel-definition-row label="Next step">
-                        {% if application.state == application.State.DRAFT %}Finish and submit your application.{% elif application.state == application.State.SUBMITTED %}Nothing. We will review your application.{% elif application.state == application.State.APPROVED %}Nothing. Your application was approved.{% else %}You can apply again.{% endif %}
+                        {% if application.state == application.State.DRAFT %}Finish and submit your application.{% elif application.state == application.State.SUBMITTED %}Nothing. We will review your application.{% elif application.state == application.State.APPROVED %}Nothing. Your application was approved.{% elif current_application_url %}You have a newer application for this course.{% else %}You can apply again.{% endif %}
                     </c-panel-definition-row>
                 {% endif %}
             </c-panel-definition-list>
@@ -200,6 +202,8 @@ not yet proven.
                             <c-button href="{{ resume_url }}">Continue application</c-button>
                         {% endif %}
                         {% partial withdraw_control %}
+                    {% elif current_application_url %}
+                        <c-button href="{{ current_application_url }}">View my current application</c-button>
                     {% elif application.state == application.State.WITHDRAWN or application.state == application.State.REJECTED %}
                         <c-button href="{% url 'course_applications:apply' course_slug=application.course.slug %}">Apply again</c-button>
                     {% endif %}
