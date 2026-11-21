@@ -23,6 +23,10 @@ DEFAULT_ICON_SIZE = 24
 
 _cache: dict[tuple[str, Path | None], IconifyData] = {}
 
+# What usable_iconify_dir() resolved for each raw setting value, so rendering stats the
+# directory once per value rather than once per icon.
+_dir_cache: dict[str | Path | None, Path | None] = {}
+
 # Bundled data lives inside the app and uses node_modules/@iconify-json's layout, so one
 # lookup reads either root.
 BUNDLED_DATA_DIR = Path(__file__).resolve().parent / "data"
@@ -48,8 +52,12 @@ def usable_iconify_dir() -> Path | None:
     value = config.SEMANTIC_ICONS_ICONIFY_DIR
     if value is None:
         return None
-    path = Path(value)
-    return path.resolve() if path.is_absolute() and path.is_dir() else None
+    if value not in _dir_cache:
+        path = Path(value)
+        _dir_cache[value] = (
+            path.resolve() if path.is_absolute() and path.is_dir() else None
+        )
+    return _dir_cache[value]
 
 
 def _read(path: Path) -> IconifyData:
@@ -101,3 +109,4 @@ def _size(node: IconifyData | IconEntry, fallback: tuple[int, int]) -> tuple[int
 def clear_cache() -> None:
     """Forget every loaded set, so the next read sees the current settings and files."""
     _cache.clear()
+    _dir_cache.clear()

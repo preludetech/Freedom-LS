@@ -175,6 +175,24 @@ def test_the_same_object_is_returned_twice_without_a_clear(
     assert first is second
 
 
+def test_a_repeat_read_under_the_same_setting_does_not_touch_the_disk(
+    iconify_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    load_iconify_data("heroicons")
+    stats: list[Path] = []
+    real_is_dir = Path.is_dir
+
+    def spy_is_dir(self: Path) -> bool:
+        stats.append(self)
+        return real_is_dir(self)
+
+    monkeypatch.setattr(Path, "is_dir", spy_is_dir)
+
+    load_iconify_data("heroicons")
+
+    assert stats == []
+
+
 def test_an_unknown_set_raises_value_error() -> None:
     with pytest.raises(ValueError, match="Unknown icon set"):
         load_iconify_data("nonexistent")
