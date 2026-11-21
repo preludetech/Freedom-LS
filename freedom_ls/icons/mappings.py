@@ -317,3 +317,11 @@ ICON_SETS: dict[str, IconSetConfig] = {
         variants=PHOSPHOR_VARIANTS,
     ),
 }
+
+
+def required_glyphs(set_name: str) -> set[str]:
+    """Every glyph the set's mapping names, plus each with every variant suffix the set has."""
+    set_config = ICON_SETS[set_name]
+    base = set(set_config.mapping.values())
+    suffixes = [suffix for suffix in set_config.variants.values() if suffix is not None]
+    return base | {glyph + suffix for glyph in base for suffix in suffixes}

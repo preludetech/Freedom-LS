@@ -1,7 +1,7 @@
 import pytest
 
 from freedom_ls.icons.loader import load_iconify_data
-from freedom_ls.icons.mappings import ICON_SETS
+from freedom_ls.icons.mappings import ICON_SETS, IconSetConfig, required_glyphs
 from freedom_ls.icons.semantic_names import SEMANTIC_ICON_NAMES
 
 
@@ -73,3 +73,36 @@ class TestQuickViewAndOpenPageAreDistinct:
     def test_they_map_to_different_glyphs(self, set_name: str) -> None:
         mapping = ICON_SETS[set_name].mapping
         assert mapping["quick_view"] != mapping["open_page"]
+
+
+class TestRequiredGlyphs:
+    def test_set_without_suffixes_needs_only_the_mapped_glyphs(self) -> None:
+        mapping_values = set(ICON_SETS["lucide"].mapping.values())
+
+        result = required_glyphs("lucide")
+
+        assert result == mapping_values
+
+    def test_each_mapped_glyph_is_paired_with_every_variant_suffix(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        small_set = IconSetConfig(
+            mapping={"home": "house", "close": "x"},
+            variants={"outline": None, "solid": "-solid", "mini": "-mini"},
+        )
+        monkeypatch.setitem(ICON_SETS, "small", small_set)
+
+        result = required_glyphs("small")
+
+        assert result == {
+            "house",
+            "x",
+            "house-solid",
+            "x-solid",
+            "house-mini",
+            "x-mini",
+        }
+
+    def test_unknown_set_raises_key_error(self) -> None:
+        with pytest.raises(KeyError):
+            required_glyphs("no-such-set")

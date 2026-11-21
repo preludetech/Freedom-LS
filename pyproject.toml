@@ -141,6 +141,16 @@ tests = ["tests"]
 glob = "claude_plugins/*/templates/**"
 tests = ["tests"]
 
+# The generator test is the one that compares the bundled data with upstream; it also covers
+# the fixture-based tests of the script itself.
+[[tool.test_tiers.tooling]]
+glob = "scripts/generate_icon_subset.py"
+tests = ["tests/test_generate_icon_subset.py"]
+
+[[tool.test_tiers.tooling]]
+glob = "freedom_ls/icons/data/**"
+tests = ["tests/test_generate_icon_subset.py"]
+
 # The course content plugin carries its own tests and is exercised by content_engine's
 # validator tests.
 [[tool.test_tiers.tooling]]
@@ -298,6 +308,7 @@ fixable = ["ALL"]
 "claude_plugins/sdd/scripts/compress_screenshots.py" = ["T20"]
 # sdd roadmap script — allow print() calls (it is a CLI tool)
 "claude_plugins/sdd/scripts/roadmap.py" = ["T20"]
+"scripts/generate_icon_subset.py" = ["T20"]
 # Conftest — allow unused imports (fixtures are imported for side effects)
 "conftest.py" = ["F401"]
 

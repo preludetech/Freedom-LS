@@ -20,6 +20,10 @@ class IconifyData(TypedDict, total=False):
 
 _cache: dict[str, IconifyData] = {}
 
+# Bundled data lives inside the app and uses node_modules/@iconify-json's layout, so one
+# lookup reads either root.
+BUNDLED_DATA_DIR = Path(__file__).resolve().parent / "data"
+
 PACKAGE_MAP: dict[str, str] = {
     "heroicons": "heroicons",
     "lucide": "lucide",
