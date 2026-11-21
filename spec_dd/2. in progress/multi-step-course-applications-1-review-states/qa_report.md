@@ -1,144 +1,101 @@
-# QA report: multi-step-course-applications-1-review-states
+# Frontend QA report: Application review states
+
+Run date: 2026-11-21. Server on port 8444, on branch `multi-step-course-applications-1-review-states` (branch badge confirmed). Test plan: `3. frontend_qa.md`.
+
+## Summary
+
+- Tests recorded: all of plan Tests 1 to 8 at desktop; mobile and tablet passes on the key pages.
+- Result: every plan test passed. One extra visual check failed (bug B1, pending triage).
 
 ## Methodology
 
-Screenshots were collected into `screenshots/` beside this report. Every image referenced below was checked and exists in that directory. The smoke gate passed, so no steps were skipped by an abort. The run covered desktop, mobile (375px) and tablet passes.
+Screenshots were collected into `screenshots/` beside this report. Every image referenced here exists in that directory. The smoke gate passed, so no steps were skipped because of it.
+
+The run also covered pre-step work, from the `note` record:
+
+- Rebase onto origin/main: 38 commits replayed, one conflict (`docs/product/learner-experience.md` Last-updated date; the branch's 2026-11-21 was kept). The lost-change check found only context drift.
+- Targeted tests (course_applications, form_engine, application qa_helpers, learner_interface form runner, course detail and listing): 3816 passed. The full suite was not run; the user asked for targeted tests only.
+- Upstream-change review: unchanged.
+- Front-end check folded into this run: the upstream change to `form_engine/question.html` renders on the application form pages visited here (checked in 2.3 mobile, no overflow, no console errors).
 
 ## Diff scoping
 
-Class: **FULL**. The changed files include models, migrations, views, templates, JS, admin, API, audit-log actions and playwright tests across `course_applications`, `learner_interface`, `audit_log`, `course_access` and `educator_interface`, plus the spec files. Skipped: nothing. Everything ran, including the mobile and tablet passes.
+Class: FULL. Changed files: `freedom_ls/course_applications/templates/...`, `freedom_ls/course_applications/static/...` and many `.py` files. Nothing was skipped: desktop, mobile and tablet passes all ran.
 
 ## Smoke gate
 
-Outcome: **pass**. Pages loaded: `/` and `/applications/status/8b27b907-8722-45a9-a8ab-d2dde1ad65d0/`. No failure URL or reason.
+Passed. Pages loaded: `/` and `/applications/status/41a16a1a-4de0-4c63-bad1-503fa997889e/`.
 
 ## Design check
 
-no design states tested
+No design states tested.
 
-## Bug 1 (B1): Status page actions are laid out differently per state
+## Bug B1: Used or invalid claim-link page lacks the blocked-page treatment
 
 Manifestations:
-- `1.2-actions` (desktop)
-- `2.2` (desktop)
-- `t-status` (tablet)
+
+- `5.4-visual`, desktop
+- `5.4`, mobile (the page itself works; it shows the same layout)
 
 Screenshots:
 
-![](screenshots/page-2026-11-20T18-47-11-881Z.png)
-![](screenshots/page-2026-11-20T18-49-00-232Z.png)
-![](screenshots/page-2026-11-20T18-47-33-889Z.png)
+![](screenshots/page-2026-11-21T10-23-18-992Z.png)
+![](screenshots/page-2026-11-21T10-26-12-382Z.png)
 
-Expected: every state of the application status page places its actions the same way, in one action row holding the state's actions and 'Back to dashboard'.
+Expected: per `.claude/skills/brand-guidelines/visual.md`, a page a person cannot use shows a large centred `<c-icon>` (size-12) with the explanation as plain text under it, never a callout. The outlined "Browse courses" button stays (plan 5.4).
 
-Actual: in the draft and submitted states the withdraw form is its own block, so 'Back to dashboard' drops to a second row under it. The withdrawn, approved and rejected states show their actions in one row.
-
-## Bug 2 (B2): Read-only application form page says 'submitted' for a withdrawn or rejected application
-
-Manifestations:
-- `1.10-copy` (desktop)
-- `2.5-copy` (desktop)
-
-Screenshots:
-
-![](screenshots/page-2026-11-20T18-48-27-388Z.png)
-
-Expected: the read-only notice on a form page describes the application's actual state (for example withdrawn, or not approved). It never says 'submitted' for an application that was never submitted.
-
-Actual: `form_page.html` always shows 'This application has been submitted and can no longer be changed.' when the page is read-only, including for a withdrawn draft.
-
-## Bug 3 (B3): Unclaimed decided application still reads as awaiting review in the claim notice and claim page
-
-Manifestations:
-- `5.1-copy` (desktop)
-
-Screenshots:
-
-![](screenshots/page-2026-11-20T18-50-08-456Z.png)
-
-Expected: for an unclaimed application that has already been decided, the 'Check your email' notice and the claim confirm page do not say the application is yet to be reviewed or unfinished.
-
-Actual: the status page notice says 'Your application for <course> is in. Before anyone reviews it, confirm your email address.' above 'Your application was not approved'. The claim confirm page heading says 'Finish your application for <course>'.
-
-## Bug 4 (B4): 'View your previous application' wraps onto two lines at 375px
-
-Manifestations:
-- `m-course-cta` (mobile)
-
-Screenshots:
-
-![](screenshots/page-2026-11-20T18-53-36-208Z.png)
-
-Expected: every button label sits on one line at 375px, 768px and 1280px (brand visual checklist).
-
-Actual: the course detail CTA's secondary link-button 'View your previous application' wraps to two lines in the sidebar card at 375px.
-
-## Bug 5 (B5): Withdrawn or rejected application's check-your-answers page still invites edits and submission
-
-Manifestations:
-- `2.5-copy` (desktop)
-
-Screenshots:
-
-![](screenshots/page-2026-11-20T18-49-22-645Z.png)
-
-Expected: decided with the user. A todo item is already filed in `todo.md`. The open question is whether a decided application's check-your-answers page hides its Edit links and the 'Nothing is sent until…' intro.
-
-Actual: the intro says 'Nothing is sent until you press Submit application. You can change any section from here.' and Edit links show, but there is no Submit button and edits are refused.
-
-## Bug 6 (B6): Rejected dashboard row has no 'Apply again' below the sm breakpoint
-
-Manifestations:
-- `m-dashboard` (mobile)
-
-Screenshots:
-
-![](screenshots/page-2026-11-20T18-53-25-787Z.png)
-
-Expected: the spec says the rejected row offers a secondary 'Apply again'. Whether it should show below the sm breakpoint is a product decision already filed in `todo.md`.
-
-Actual: 'Apply again' is hidden below sm, like 'View my application'. Phone users reach it from the status page.
+Actual: a left-aligned heading "This link is invalid or has already been used" and a "Browse courses" button. There is no icon and no explanatory text. The layout (`claim.html`, else-branch) predates the branch; the branch only restyled the button.
 
 ## Layout probe
 
 | Test id | Viewport | URL | Screenshot | Result |
 |---|---|---|---|---|
-| 1.1 | desktop | `/` | [page-2026-11-20T18-47-07-338Z.png](screenshots/page-2026-11-20T18-47-07-338Z.png) | clean |
-| 1.2 | desktop | `/applications/status/<pk>/` | [page-2026-11-20T18-47-11-881Z.png](screenshots/page-2026-11-20T18-47-11-881Z.png) | clean |
-| 1.9 | desktop | `/courses/qa-review-f1/detail/` | [page-2026-11-20T18-48-13-392Z.png](screenshots/page-2026-11-20T18-48-13-392Z.png) | clean |
-| 2.1 | desktop | `/` | [page-2026-11-20T18-48-53-792Z.png](screenshots/page-2026-11-20T18-48-53-792Z.png) | clean |
-| 5.1 | desktop | `/applications/status/<pk>/` | [page-2026-11-20T18-50-08-456Z.png](screenshots/page-2026-11-20T18-50-08-456Z.png) | clean |
-| 3.3 | desktop | `/applications/status/<pk>/` | [page-2026-11-20T18-50-54-490Z.png](screenshots/page-2026-11-20T18-50-54-490Z.png) | clean |
-| m-dashboard | mobile | `/` | [page-2026-11-20T18-53-25-787Z.png](screenshots/page-2026-11-20T18-53-25-787Z.png) | clean |
-| m-rejected-status | mobile | `/applications/status/<pk>/` | [page-2026-11-20T18-53-34-269Z.png](screenshots/page-2026-11-20T18-53-34-269Z.png) | clean |
-| m-course-cta | mobile | `/courses/qa-review-g/detail/` | [page-2026-11-20T18-53-36-208Z.png](screenshots/page-2026-11-20T18-53-36-208Z.png) | clean |
-| t-status | tablet | `/applications/status/<pk>/` | [page-2026-11-20T18-53-56-755Z.png](screenshots/page-2026-11-20T18-53-56-755Z.png) | clean |
-| t-dashboard | tablet | `/` | [page-2026-11-20T18-54-02-339Z.png](screenshots/page-2026-11-20T18-54-02-339Z.png) | clean |
+| 1.1 | desktop | `/` | ![](screenshots/page-2026-11-21T10-15-08-293Z.png) | clean |
+| 1.2 | desktop | `/applications/status/<F1>/` | ![](screenshots/page-2026-11-21T10-15-22-446Z.png) | clean |
+| 1.11 | desktop | `/applications/application/<old F1>/page/1/` | ![](screenshots/page-2026-11-21T10-16-59-685Z.png) | clean |
+| 2.1 | desktop | `/` | ![](screenshots/page-2026-11-21T10-17-35-710Z.png) | clean |
+| 2.2 | desktop | `/applications/status/<F5>/` | ![](screenshots/page-2026-11-21T10-17-46-075Z.png) | clean |
+| 2.5 | desktop | `/applications/application/<F5>/check-your-answers/` | ![](screenshots/page-2026-11-21T10-18-25-252Z.png) | clean |
+| 3.3 | desktop | `/applications/status/<F4>/` | ![](screenshots/page-2026-11-21T10-19-58-640Z.png) | clean |
+| 5.1 | desktop | `/applications/status/<anon G>/` | ![](screenshots/page-2026-11-21T10-21-31-870Z.png) | clean |
+| 5.4 | desktop | `/applications/claim/<token>/` | ![](screenshots/page-2026-11-21T10-23-18-992Z.png) | clean |
+| 8.1 | desktop | `/admin/freedom_ls_course_applications/courseapplication/?state__exact=withdrawn` | ![](screenshots/page-2026-11-21T10-24-35-115Z.png) | clean |
+| 1.1 | mobile | `/` | ![](screenshots/page-2026-11-21T10-25-11-133Z.png) | clean |
+| 3.3 | mobile | `/applications/status/<F4 declined>/` | ![](screenshots/page-2026-11-21T10-25-19-816Z.png) | clean |
+| 2.2 | mobile | `/applications/status/<F4 draft>/` | ![](screenshots/page-2026-11-21T10-25-27-341Z.png) | clean |
+| 2.5 | mobile | `/applications/application/<F5>/check-your-answers/` | ![](screenshots/page-2026-11-21T10-25-55-434Z.png) | clean |
+| 2.3 | mobile | `/applications/application/<F4 draft>/page/1/` | ![](screenshots/page-2026-11-21T10-26-03-938Z.png) | clean |
+| 1.1 | tablet | `/` | ![](screenshots/page-2026-11-21T10-26-20-099Z.png) | clean |
+| 2.2 | tablet | `/applications/status/<F4 draft>/` | ![](screenshots/page-2026-11-21T10-26-49-287Z.png) | clean |
 
-The layout probe flags no overflow. The visual defects it did not flag (B1, B4, B6) were found by the functional tests and are documented above.
+The layout probe flags nothing: the B1 miss is a brand rule, not a layout flag.
 
 ## Data changes
 
-| What changed | Call or command | Files written |
+| What changed | Made by | Files written |
 |---|---|---|
-| Base dev data was missing, so it was created with `create_demo_data --yes` and `content_save demo_content DemoDev`. A new command then created applicants A (`qa_review_applicant_a@email.com`) and B (`qa_review_applicant_b@email.com`) and courses F1-F5, G and N. | `create_demo_data --yes`, `content_save demo_content DemoDev`, then `qa_create_application_review_states` | `freedom_ls/qa_helpers/management/commands/qa_create_application_review_states.py` (new, untracked) |
+| Reset applicants A and B and courses F1 to F5, G and N to the plan's Data section. The command was extended for the `furthest_page` FK, a 3-page form, and `--reject-pk` and `--message`. | `sdd:qa-data-helper` via `qa_create_application_review_states` | `freedom_ls/qa_helpers/management/commands/qa_create_application_review_states.py` |
+| Rejected anonymous application a667ad46 on course G with message "Not this time." through `reject_application`. | `sdd:qa-data-helper` (`qa_create_application_review_states --reject-pk`) | none |
 
 ## Bug status
 
-| Bug | Title | Verdict |
+| Bug | Title | Status |
 |---|---|---|
-| B1 | Status page actions are laid out differently per state | **FIXED** (commit: f60f738da) |
-| B2 | Read-only application form page says 'submitted' for a withdrawn or rejected application | **FIXED** (commit: 23e354ea5) |
-| B3 | Unclaimed decided application still reads as awaiting review in the claim notice and claim page | **FIXED** (commit: 01dba4815) |
-| B4 | 'View your previous application' wraps onto two lines at 375px | **FIXED** (commit: 1df2c5126) |
-| B5 | Withdrawn or rejected application's check-your-answers page still invites edits and submission | **FIXED** (commit: 4e2b1710d) — Withdrawn or rejected application's check-your-answers page still invites edits and submission — after the fix: ![](screenshots/fixed/page-2026-11-21T02-55-47-332Z.png) ![](screenshots/fixed/page-2026-11-21T02-55-57-937Z.png) |
-| B6 | Rejected dashboard row has no 'Apply again' below the sm breakpoint | **WONTFIX** — Rejected dashboard row has no 'Apply again' below the sm breakpoint (reason: phone rows stay one tap target; Apply again is on the status page) |
+| B1 | Used or invalid claim-link page lacks the blocked-page treatment | **FIXED** (commit: eafd1baea) |
+
+Re-verified on the live server: centred lock icon, the explanation "Each link works once. If you need another, start your application again." and the outlined "Browse courses" button, with no horizontal scroll at 1920px or 375px.
+
+![](screenshots/page-2026-11-21T10-39-13-825Z.png)
+![](screenshots/page-2026-11-21T10-39-14-326Z.png)
 
 ## General notes
 
-- Passing test records with screenshots: 1.1, 1.2, 1.3, 1.6, 1.9, 2.1, 2.2, 2.5, 3.1 to 3.4, 5.1, 5.3 and 8.1-8.2. The remaining passes had no screenshot (1.4, 1.5, 1.7, 1.8, 1.10, 2.3, 2.4, 2.6, 3.5, 4.1-4.4, 5.2, 6.1-6.2, 7.1-7.3).
-- Pre-existing observation, no action attached: the no-form course confirm page (6.1-6.2) still says 'you will be notified of the outcome'. This branch removed that sentence from the status page, so the two pages now differ.
-- Extra screenshots not referenced by a record row above, kept as supporting evidence: `page-2026-11-20T18-46-59-482Z.png`, `page-2026-11-20T18-47-20-593Z.png` (withdraw dialog), `page-2026-11-20T18-48-22-683Z.png`, `page-2026-11-20T18-50-32-871Z.png`, `page-2026-11-20T18-50-48-666Z.png`, `page-2026-11-20T18-51-09-691Z.png`, `page-2026-11-20T18-52-30-660Z.png`, `page-2026-11-20T18-53-11-920Z.png` and `page-2026-11-20T18-53-50-568Z.png`.
-- No tests were skipped.
+- Plan 1.8: browser Back re-fetches the withdrawn page rather than showing a stale copy, so the repeat POST was replayed by a form submit. The result matched: "This application can no longer be withdrawn."
+- Plan 5.3: the claim link was computed by the data helper because the sent email payload is scrubbed.
+- Plan 1.4 on mobile: the dialog buttons stack full width with Withdraw (red) above Keep. No rule file sets the mobile stacking order, so this is recorded without a verdict.
+- Plan 2.5 on mobile: the fixed branch badge overlays the button in the full-page capture only. This is dev tooling, not the product.
+- Plan 6.1: the unchanged `apply.html` confirm copy still says "you will be notified of the outcome". The file predates this branch. No action attached.
+- Plan 8.1: the admin keeps a boolean "Submitted" column (true for rows withdrawn after submission). The plan does not cover it. The console showed Django admin's own RelatedObjectLookups "unload" permissions-policy message.
+- Full-page captures `page-2026-11-21T10-15-00-534Z.png` and `page-2026-11-21T10-25-35-345Z.png` are in the screenshots directory but are not referenced by any record, so they are not linked here. The `fb-*` and `fb2-*` files came from an earlier feedback session, not this run; they are not committed with this report.
 
-status: ok · reason: 6 bugs — 5 fixed, 1 won't fix, 0 unresolved; report rendered, screenshots verified
+status: ok · reason: 1 bug — 1 fixed, 0 unresolved; report rendered, screenshots verified

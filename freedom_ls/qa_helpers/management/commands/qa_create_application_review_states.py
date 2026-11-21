@@ -3,14 +3,14 @@
 Idempotently writes, on one site (default: DemoDev):
 
 * Seven published, application-gated QA courses:
-  F1-F5 and G each name the shared two-page "QA review states form";
+  F1-F5 and G each name the shared three-page "QA review states form";
   N names no application form.
 * ``qa_review_applicant_a@email.com`` holds exactly two submitted applications,
   on F1 and F2, and nothing else.
 * ``qa_review_applicant_b@email.com`` holds exactly three applications:
   approved on F3, rejected on F4 (created after F3's, with a two-line message
   carrying a script tag, to check escaping), and a draft on F5 whose sitting
-  has one answer saved and is not completed.
+  has one of its three answers saved and is not completed.
 * Nobody has applied to G: every application on G, anonymous ones included,
   is deleted on each run, so a tester can apply there anonymously.
 
@@ -23,9 +23,15 @@ sittings, registrations and memberships, and every application on G.
 
 DemoDev-only convention: each applicant's password is their own email address.
 
+``--reject-pk <pk> --message <text>`` seeds nothing: it rejects that one
+submitted application (anonymous ones included) through ``reject_application``
+with the same reviewer, so the audit entry exists.
+
 Usage:
     uv run python manage.py qa_create_application_review_states
     uv run python manage.py qa_create_application_review_states --site-name DemoDev
+    uv run python manage.py qa_create_application_review_states \
+        --reject-pk <pk> --message "Not this time."
 """
 
 from dataclasses import dataclass
@@ -40,6 +46,10 @@ from django.urls import reverse
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
+from freedom_ls.course_applications.exceptions import (
+    ApplicationStateError,
+    RejectionMessageError,
+)
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import (
     AnonymousApplicant,
@@ -88,6 +98,7 @@ FORM_TITLE = "QA review states form"
 FORM_PAGES = [
     (1, "About you", "What is your full name?"),
     (2, "Your experience", "Describe your relevant experience."),
+    (3, "Your goals", "What do you hope to gain from the course?"),
 ]
 
 
@@ -224,14 +235,14 @@ def _start(
     user: User,
     course: Course,
     answers: list[tuple[FormQuestion, str]],
-    furthest_page: int,
+    furthest_page: FormPage,
 ) -> CourseApplication:
     """A draft application whose open sitting holds the given answers."""
     form = cast(Form, course.application_form)
     sitting = cast(
         FormProgress,
         FormProgressFactory(
-            user=user, form=form, furthest_page_reached=furthest_page, site=site
+            user=user, form=form, furthest_page=furthest_page, site=site
         ),
     )
     for question, text in answers:
@@ -250,14 +261,17 @@ def _submitted(
     site: Site, user: User, course: Course, questions: list[FormQuestion]
 ) -> CourseApplication:
     """An application submitted through its completed sitting."""
-    name = f"{user.first_name} {user.last_name}"
-    experience = f"Five years relevant to {course.title}."
+    texts = [
+        f"{user.first_name} {user.last_name}",
+        f"Five years relevant to {course.title}.",
+        "A clearer grasp of the subject.",
+    ]
     application = _start(
         site,
         user,
         course,
-        [(questions[0], name), (questions[1], experience)],
-        furthest_page=len(questions),
+        list(zip(questions, texts, strict=True)),
+        furthest_page=questions[-1].form_page,
     )
     cast(FormProgress, application.form_progress).complete()
     return submit_application(application)
@@ -304,17 +318,57 @@ def _echo_applications(user: User) -> None:
             click.echo(f"      rejection_message={application.rejection_message!r}")
 
 
-@click.command()
-@click.option("--site-name", default="DemoDev", show_default=True)
-def command(site_name: str) -> None:
-    """Seed applicants A and B, courses F1-F5, G and N."""
-    site = _get_site(site_name)
+def _get_reviewer() -> User:
     reviewer: User | None = User._base_manager.filter(email=REVIEWER_EMAIL).first()
     if reviewer is None or not reviewer.is_staff:
         raise click.ClickException(
             f"Staff user {REVIEWER_EMAIL} not found. "
             "Run `manage.py create_demo_data --yes` first."
         )
+    return reviewer
+
+
+def _reject_one(pk: str, message: str, reviewer: User) -> None:
+    """Reject one submitted application through the transition, and show it."""
+    application: CourseApplication | None = (
+        CourseApplication._base_manager.select_related("course", "user")
+        .filter(pk=pk)
+        .first()
+    )
+    if application is None:
+        raise click.ClickException(f"No CourseApplication with pk={pk}.")
+    who = application.user.email if application.user else "anonymous (unclaimed)"
+    click.echo(
+        f"Rejecting {application} pk={application.pk} course={application.course.slug} "
+        f"applicant={who} site_id={application.site_id} state={application.state}"
+    )
+    try:
+        reject_application(application, actor=reviewer, message=message)
+    except (ApplicationStateError, RejectionMessageError) as e:
+        raise click.ClickException(f"Refused: {e!r}") from e
+    status = reverse("course_applications:status", kwargs={"pk": application.pk})
+    click.secho(
+        f"Now state={application.state} decided_at={application.decided_at} "
+        f"rejection_message={application.rejection_message!r} status={status}",
+        fg="green",
+    )
+
+
+@click.command()
+@click.option("--site-name", default="DemoDev", show_default=True)
+@click.option("--reject-pk", default=None, help="Only reject this application.")
+@click.option("--message", default=None, help="Rejection message for --reject-pk.")
+def command(site_name: str, reject_pk: str | None, message: str | None) -> None:
+    """Seed applicants A and B, courses F1-F5, G and N."""
+    reviewer = _get_reviewer()
+    if reject_pk is not None:
+        if not message:
+            raise click.ClickException("--reject-pk needs --message.")
+        _reject_one(reject_pk, message, reviewer)
+        return
+    if message is not None:
+        raise click.ClickException("--message is only used with --reject-pk.")
+    site = _get_site(site_name)
 
     with transaction.atomic():
         form, questions = _ensure_form(site)
@@ -339,7 +393,7 @@ def command(site_name: str) -> None:
             user_b,
             courses["F5"],
             [(questions[0], "Ben ReviewB")],
-            furthest_page=1,
+            furthest_page=questions[0].form_page,
         )
 
     click.secho(f"Site: {site.name} (id={site.pk}, {site.domain})", fg="cyan")
