@@ -16,7 +16,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `sacaa-compliance-content-versions-and-access-1-content-save-safety` (SACAA content versions and access)
 - 🔴 High · `multi-step-course-applications-1-review-states` (Multi-step course applications)
 - 🟠 Medium · `content-widget-longer-audio` (Audio content widgets)
-- 🟠 Medium · `content-widget-sayit-reveal-2-say-it-reveal` (Audio content widgets)
 - 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
 - ⚪ Priority not set · `extract-semantic-icons-app-1-standalone-app` (Semantic icons extraction)
 - ⚪ Priority not set · `full-test-run-still-too-often` (Tooling and operations)
@@ -279,8 +278,7 @@ Priority: 🟠 Medium
 
 Course content that plays audio: clips, say-it-then-reveal practice and audio on revision flashcards. Parent: `content-widget-sayit-reveal`.
 
-- `content-widget-sayit-reveal-2-say-it-reveal` — **in progress** — Learners say an answer aloud, reveal it and hear it; audio also plays inside flashcard widget faces.
-- `content-widget-sayit-reveal-3-audio-on-revision-flashcards` — **blocked** by `content-widget-sayit-reveal-2-say-it-reveal`, `learner-interface-features-4-flashcards` — Scheduled revision flashcards carry audio that plays when the learner reveals the card.
+- `content-widget-sayit-reveal-3-audio-on-revision-flashcards` — **blocked** by `learner-interface-features-4-flashcards` — Scheduled revision flashcards carry audio that plays when the learner reveals the card.
 - `content-widget-longer-audio` — **in progress** — A listening-exercise card with title, seek bar and elapsed time, for longer audio clips in course content.
 - `content-widget-sayit-reveal-4-audio-access-control` — **ready** — Decide and enforce who may play a course's audio through its open redirect link.
 
