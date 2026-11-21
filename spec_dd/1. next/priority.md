@@ -46,4 +46,3 @@ adds anything missing under "Priority not set"; move it from there to the level 
 - `panel-framework-close-and-toast-response`
 - `panel-framework-dialogs-without-javascript`
 - `sacaa-complianc-deletion-and-declaration`
-- `panel-framework-tech-debt-polish`
