@@ -21,7 +21,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (user) Review the code and the QA report
 - [ ] (user) Run QA Test 4.5 with VoiceOver or NVDA on the Interactive Widgets Audio reveal: activating the reveal control announces the word once, the auto-hide announces nothing (see qa_report.md)
 - [ ] (user) Run QA Test 10 on a real iPhone (Safari) and Android phone (Chrome): tap B's eye-closed space, the clip plays on the first tap and again after the auto-hide
-- [ ] (user) Decide whether to update 1. spec.md, 2. plan.md and 3. frontend_qa.md to the reveal button's current name 'Reveal answer for <symbol>' (changed in commit c5a791f9a)
+- [x] (user) Decide whether to update 1. spec.md, 2. plan.md and 3. frontend_qa.md to the reveal button's current name 'Reveal answer for <symbol>' (changed in commit c5a791f9a)
 
 ## 4. Documentation and pull request
 
