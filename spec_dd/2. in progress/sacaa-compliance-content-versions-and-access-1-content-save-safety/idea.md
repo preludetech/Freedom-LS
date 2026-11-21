@@ -54,6 +54,19 @@ A content save today writes uuids into the author's files, accepts one path, and
 - **Name derived from the slug.** Recommendation: replace hyphens and underscores with spaces and capitalise the words of the slug.
 - **Reading the commit without `git`.** Recommendation: extend the filesystem-only reader in `freedom_ls/base/git_utils.py` to take a directory, the same way the clean-tree check reads the working tree.
 
+## ignored files
+
+`.fls-content.yaml`
+
+Add an ignore list here. Match exact paths to files and folders.
+Eg.
+
+```
+ignore:
+- CLAUDE.md
+- claude.sh
+```
+
 ## Out of scope
 
 - Retiring content removed from the source, and the rule that one call covers the site's whole source: `sacaa-compliance-content-versions-and-access-2-retire-removed-content`.
