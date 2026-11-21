@@ -356,6 +356,12 @@ def _export_audit_csv(
     return header, rows, response["Content-Disposition"]
 
 
+def _history_export_url(learner: Learner) -> str:
+    return _interface_url(
+        learner.organisation.slug, f"learners/{learner.pk}/__tabs/history"
+    )
+
+
 # Shared setup for the educator's Messages tab on the learner page.
 messages_section = pytest.mark.usefixtures("mock_site_context", "_messaging_on")
 
