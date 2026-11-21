@@ -32,7 +32,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) In `claude_plugins/fls-dev/resources/markdown_content.md`: add the `c-audio-clip` widget beside `c-audio` (spec: Documentation and downstream)
 - [x] (cmd) In `claude_plugins/fls-dev/skills/alpine-js/SKILL.md`: add an `audioClip` row to the Alpine components table and note the page-level active audio handle shared with `audioFile` (spec: Documentation and downstream)
 - [x] (cmd) In `claude_plugins/fls-dev/skills/icon-usage/` (SKILL.md and resources that list semantic names): add `media_play` and `media_pause` (spec: Documentation and downstream)
-- [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
 ## 5. Cleanup
