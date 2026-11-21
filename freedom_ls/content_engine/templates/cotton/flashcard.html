@@ -1,7 +1,5 @@
 <c-vars size="standard" />
 
-{% load content_tags %}
-
 {% comment %}
 Flashcard component — a two-sided flip card for question/answer content.
 
@@ -11,8 +9,11 @@ Attributes:
          block reads properly. An unknown size falls back to standard.
 
 Named slots:
-  front  The question / prompt face (markdown rendered).
-  back   The answer / reveal face (markdown rendered).
+  front  The question / prompt face.
+  back   The answer / reveal face.
+  Both slots arrive as HTML that render_markdown has already converted and nh3
+  has sanitised before Cotton renders this template, which is why they are
+  emitted unescaped.
 
 Alpine component:
   `flashcard` (registered in alpine-components.js) manages flipped state,
@@ -85,8 +86,8 @@ Styling:
      * would otherwise have to grow to, pushing the whole card off a narrow
      * viewport. Each becomes its own scroll container instead, capped at the
      * face, and takes pointer events back so the scroll is actually reachable
-     * past the flip trigger underneath. c-table's scroll wrapper is no help
-     * here — it is stripped inside a markdown slot. */
+     * past the flip trigger underneath. c-table's scroll wrapper works inside a
+     * face too, but this covers plain markdown tables and code blocks. */
     .flashcard-face :is(table, pre) {
         max-width: 100%;
         overflow-x: auto;
@@ -188,7 +189,7 @@ Styling:
                     <div class="absolute top-4 left-5 font-mono text-xs font-medium
                                 uppercase tracking-widest text-muted"
                          aria-hidden="true">Question</div>
-                    {% markdown front %}
+                    {{ front }}
                     <div class="absolute bottom-3.5 right-5 flex items-center gap-1.5
                                 text-xs text-muted"
                          aria-hidden="true">
@@ -212,7 +213,7 @@ Styling:
                     <div class="absolute top-4 left-5 font-mono text-xs font-medium
                                 uppercase tracking-widest text-(--flashcard-accent)"
                          aria-hidden="true">Answer</div>
-                    {% markdown back %}
+                    {{ back }}
                     <div class="absolute bottom-3.5 right-5 flex items-center gap-1.5
                                 text-xs text-(--flashcard-hint)"
                          aria-hidden="true">

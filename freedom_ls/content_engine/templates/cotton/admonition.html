@@ -30,7 +30,7 @@ Accessibility:
         <span id="{{ label_id }}">{% if title %}{{ title }}{% else %}{{ cfg.label }}{% endif %}</span>
     </div>
     <div class="{{ text }} px-2 space-y-4">
-        {% markdown slot %}
+        {{ slot }}
     </div>
 </div>
 {% endpartialdef %}

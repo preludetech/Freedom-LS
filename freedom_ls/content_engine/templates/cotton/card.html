@@ -19,7 +19,9 @@ Attributes:
          the content column so they read as a self-contained panel. An unknown
          size falls back to medium.
 
-The body is the default slot, rendered as markdown. The header image is
+The body is the default slot. render_markdown has already converted it to
+HTML and nh3 has sanitised it before Cotton renders this template, which is
+why it is emitted unescaped. The header image is
 cropped to a fixed height with object-cover so cards of the same size line up
 regardless of the source image's aspect ratio.
 {% endcomment %}
@@ -44,7 +46,7 @@ regardless of the source image's aspect ratio.
         {% if title %}
             <h3 class="font-semibold text-on-surface">{{ title }}</h3>
         {% endif %}
-        {% markdown slot %}
+        {{ slot }}
     </div>
 </div>
 {% endpartialdef %}

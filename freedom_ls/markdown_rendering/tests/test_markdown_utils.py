@@ -1,11 +1,19 @@
 """Tests for markdown_utils.py - focusing on custom cotton tag functionality."""
 
+import re
+from pathlib import Path
+
 import pytest
 
 from django.test import override_settings
 from django.utils.safestring import SafeString
 
-from freedom_ls.markdown_rendering.markdown_utils import render_markdown
+from freedom_ls.content_engine.models import File
+from freedom_ls.markdown_rendering.config import config
+from freedom_ls.markdown_rendering.markdown_utils import (
+    MARKDOWN_BODY_TAGS,
+    render_markdown,
+)
 
 
 @pytest.fixture
@@ -531,52 +539,6 @@ This is **bold** text
         assert "<table" in result
         assert "<caption" not in result
 
-    @pytest.mark.parametrize(
-        ("opening", "closing"),
-        [
-            ('<c-accordion title="Detail">', "</c-accordion>"),
-            (
-                '<c-flashcard>\n<c-slot name="back">',
-                "</c-slot>\n</c-flashcard>",
-            ),
-        ],
-        ids=["accordion", "flashcard"],
-    )
-    def test_c_table_wrapper_is_stripped_inside_a_markdown_slot(
-        self, mock_request, opening, closing
-    ):
-        """A nested c-table loses its scroll wrapper, so authors must not nest it.
-
-        Components whose body is author markdown emit it with
-        ``{% markdown slot %}``. Cotton has already rendered any nested
-        component into that slot, so the second markdown pass runs nh3 over
-        finished component markup and strips it — ``div`` carries no allowed
-        attributes. The table survives; its focusable scroll region, caption
-        styling and ``role="group"`` label do not.
-
-        c-image-grid dodges this by emitting ``{{ slot }}``, which the accordion
-        and flashcard cannot do: their bodies really are markdown.
-        """
-        standalone = render_markdown(
-            '<c-table caption="Plan comparison">\n'
-            "| Plan | Price |\n|------|-------|\n| Free | 0 |\n"
-            "</c-table>",
-            mock_request,
-        )
-        nested = render_markdown(
-            f'{opening}\n\n<c-table caption="Plan comparison">\n\n'
-            "| Plan | Price |\n|------|-------|\n| Free | 0 |\n\n"
-            f"</c-table>\n\n{closing}",
-            mock_request,
-        )
-
-        assert "overflow-x-auto" in standalone
-        assert 'role="group"' in standalone
-
-        assert "<table" in nested
-        assert "overflow-x-auto" not in nested
-        assert 'role="group"' not in nested
-
     def test_c_image_grid_preserves_nested_picture_lightbox(self, mock_request, site):
         """The grid wrapper preserves each nested c-picture's lightbox button."""
         self._make_image_file(site, "images/a.png")
@@ -1075,3 +1037,197 @@ class TestInjectTableCaption:
         assert (
             result.index("<table") < result.index("<caption") < result.index("<thead")
         )
+
+
+# Widgets whose slot is verbatim text (source code, LaTeX, link text), not a markdown
+# body, so they are deliberately left out of MARKDOWN_BODY_TAGS.
+_VERBATIM_SLOT_WIDGETS = {
+    "c-code-block",
+    "c-equation",
+    "c-article-link",
+    "c-content-link",
+}
+
+_COTTON_TEMPLATES = (
+    Path(__file__).resolve().parents[2] / "content_engine" / "templates" / "cotton"
+)
+
+_SLOT_WIDGETS = pytest.mark.parametrize(
+    ("opening", "closing"),
+    [
+        ('<c-accordion title="Detail">', "</c-accordion>"),
+        ('<c-admonition type="note">', "</c-admonition>"),
+        ('<c-card title="Card">', "</c-card>"),
+        ('<c-flashcard>\n<c-slot name="back">', "</c-slot>\n</c-flashcard>"),
+        ("<c-pull-quote>", "</c-pull-quote>"),
+        ('<c-table caption="Plan comparison">', "</c-table>"),
+    ],
+    ids=["accordion", "admonition", "card", "flashcard", "pull-quote", "table"],
+)
+
+
+class _FakeContentInstance:
+    """Resolves file paths as relative to the content root, as a topic does."""
+
+    def calculate_path_from_root(self, path: str) -> str:
+        return path
+
+
+def audio_file(site: object, file_path: str) -> File:
+    file_obj: File = File.objects.create(
+        site=site,
+        file=file_path,
+        file_path=file_path,
+        original_filename=file_path.rsplit("/", 1)[-1],
+        file_type=File.FileType.AUDIO,
+        mime_type="audio/mpeg",
+    )
+    return file_obj
+
+
+def _render_in_topic(markup: str, request: object) -> str:
+    return str(
+        render_markdown(
+            markup, request, context={"content_instance": _FakeContentInstance()}
+        )
+    )
+
+
+@pytest.mark.django_db
+class TestSlotWidgetBodies:
+    """A slot widget's body is converted by the one markdown pass, so widgets nested in it render."""
+
+    @_SLOT_WIDGETS
+    def test_nested_audio_keeps_its_player_markup(
+        self, mock_request, site, opening, closing
+    ):
+        audio_file(site, "audio/bravo.mp3")
+
+        result = _render_in_topic(
+            f'{opening}\n\n<c-audio src="audio/bravo.mp3" label="Bravo"></c-audio>\n\n{closing}',
+            mock_request,
+        )
+
+        assert 'x-data="audioFile"' in result
+        assert "<button" in result
+        assert "data-src=" in result
+
+    @_SLOT_WIDGETS
+    def test_nested_audio_keeps_every_allow_listed_attribute(
+        self, mock_request, site, opening, closing
+    ):
+        audio_file(site, "audio/bravo.mp3")
+
+        result = _render_in_topic(
+            f"{opening}\n\n"
+            '<c-audio src="audio/bravo.mp3" label="Bravo" respelling="BRAH-voh" symbol="B">'
+            f"</c-audio>\n\n{closing}",
+            mock_request,
+        )
+
+        assert "data-src=" in result
+        assert "Bravo" in result
+        assert "BRAH" in result
+        assert ">B</span>" in result
+
+    @_SLOT_WIDGETS
+    def test_nested_table_keeps_its_labelled_scroll_region(
+        self, mock_request, opening, closing
+    ):
+        """A c-table in a markdown slot keeps its labelled scroll region because the slot body is converted once, before the widget renders."""
+        result = render_markdown(
+            f'{opening}\n\n<c-table caption="Nested plans">\n\n'
+            "| Plan | Price |\n|------|-------|\n| Free | 0 |\n\n"
+            f"</c-table>\n\n{closing}",
+            mock_request,
+        )
+
+        assert 'role="group"' in result
+        assert "<caption>Nested plans</caption>" in result
+
+    @_SLOT_WIDGETS
+    def test_markdown_in_the_slot_renders(self, mock_request, opening, closing):
+        result = render_markdown(
+            f"{opening}\n\n*soft*\n\n- one\n- two\n\n"
+            "| A | B |\n|---|---|\n| 1 | 2 |\n\n"
+            f"```\ncode here\n```\n\n{closing}",
+            mock_request,
+        )
+
+        assert "<em>soft</em>" in result
+        assert "<li>one</li>" in result
+        assert "<table" in result
+        assert "<pre><code" in result
+
+    @_SLOT_WIDGETS
+    def test_unsafe_markup_in_the_slot_is_stripped(
+        self, mock_request, opening, closing
+    ):
+        result = render_markdown(
+            f"{opening}\n\n<script>alert(1)</script>\n\n"
+            '<p onclick="alert(2)">text</p>\n\n'
+            f"[link](javascript:alert(3))\n\n{closing}",
+            mock_request,
+        )
+
+        assert "<script" not in result
+        assert "onclick" not in result
+        assert "javascript:" not in result
+
+    @_SLOT_WIDGETS
+    def test_template_variable_in_the_slot_is_escaped(
+        self, mock_request, opening, closing
+    ):
+        result = render_markdown(
+            f"{opening}\n\n{{{{ payload }}}}\n\n{closing}",
+            mock_request,
+            context={"payload": "<b>x</b>"},
+        )
+
+        assert "<b>x</b>" not in result
+        assert "&lt;b&gt;x&lt;/b&gt;" in result
+
+
+@pytest.mark.django_db
+class TestMarkdownBodyMarking:
+    """Which opening tags get markdown="1", and which are left alone."""
+
+    def test_card_inside_a_grid_converts_its_body(self, mock_request):
+        result = render_markdown(
+            '<c-grid>\n\n<c-card title="One">\n\n**bold**\n\n</c-card>\n\n</c-grid>',
+            mock_request,
+        )
+
+        assert "<strong>bold</strong>" in result
+        assert "markdown=" not in result
+
+    def test_fenced_block_holding_a_widget_tag_is_not_marked(self, mock_request):
+        result = render_markdown("```html\n<c-card>\n```", mock_request)
+
+        assert 'markdown="1"' not in result
+        assert "&lt;c-card&gt;" in result
+
+    def test_inline_code_holding_a_widget_tag_is_not_marked(self, mock_request):
+        result = render_markdown("Write `<c-card>` to start one.", mock_request)
+
+        assert 'markdown="1"' not in result
+        assert "<code>&lt;c-card&gt;</code>" in result
+
+    def test_tag_sharing_a_prefix_is_not_marked(self, mock_request):
+        result = render_markdown("<c-cardx>text</c-cardx>", mock_request)
+
+        assert 'markdown="1"' not in result
+
+    def test_every_slot_emitting_widget_is_marked(self):
+        slot_emitters = {
+            "c-" + path.stem
+            for path in _COTTON_TEMPLATES.glob("*.html")
+            if re.search(r"{{\s*(slot|front|back)\s*}}", path.read_text())
+        }
+
+        slot_widgets = (
+            slot_emitters & set(config.MARKDOWN_ALLOWED_TAGS) - _VERBATIM_SLOT_WIDGETS
+        )
+
+        assert slot_widgets
+        assert slot_widgets <= set(MARKDOWN_BODY_TAGS)

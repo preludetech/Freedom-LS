@@ -23,7 +23,7 @@ The body slot is markdown prose.
               class="absolute -top-6 -left-4 text-5xl leading-none opacity-50 sm:text-6xl text-primary select-none">“
         </span>
         <div class="space-y-4">
-            {% markdown slot %}
+            {{ slot }}
         </div>
     </blockquote>
     {% if attribution or source %}

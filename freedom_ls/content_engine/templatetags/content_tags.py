@@ -65,8 +65,9 @@ def inject_table_caption(rendered_html: str, caption: str) -> SafeString:
     text is escaped (it is author input). If there is no ``<table>`` (or no
     caption), the input is returned unchanged.
 
-    ``rendered_html`` is trusted markup straight from ``render_markdown``
-    (already nh3-sanitised) and the only untrusted input (``caption``) is
+    ``rendered_html`` is the slot of a ``<c-table>``: markup that
+    ``render_markdown`` converted and nh3 sanitised before Cotton rendered the
+    template, so it is trusted as such and the only untrusted input (``caption``) is
     escaped, so the assembled string is safe to return as a ``SafeString``.
     """
     if not caption:

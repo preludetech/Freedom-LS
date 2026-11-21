@@ -7,10 +7,9 @@ Phones get one column; 2/3/4 apply from sm/lg.
 `columns` maps through a FIXED whitelist (2/3/4); any other value falls back
 to the default 3-column layout. Author input never becomes raw CSS.
 
-The slot is emitted with {{ slot }} (NOT {% markdown slot %}): nested
-components are compiled and rendered at the outer level, so their interactive
-markup survives. Re-running them through {% markdown %} would re-sanitise and
-strip it.
+The slot is emitted with {{ slot }}: render_markdown has already converted
+and sanitised the body, and nested components render at the outer level, so
+their interactive markup survives.
 
 The [&>*]:my-0! rule drops the outer margin of c-picture's wrapper div so it
 shares its row's top edge; the [&_figure]:… rules neutralise c-picture's
