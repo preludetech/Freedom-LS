@@ -26,7 +26,7 @@ html = topic.rendered_content()
 
 **Location:** `freedom_ls/content_engine/templates/cotton/`
 
-Includes `admonition.html`, `flashcard.html`, `accordion.html`, `youtube.html`, `picture.html`, `content-link.html`, `audio.html`, `audio-reveal.html`.
+Includes `admonition.html`, `flashcard.html`, `accordion.html`, `youtube.html`, `picture.html`, `content-link.html`, `audio.html`, `audio-reveal.html`, `audio-clip.html`.
 
 These widgets are for authored markdown only. App templates (pages, panels, dialogs) use `<c-callout tone="info|success|warning|error" title="...">` from `freedom_ls/base/templates/cotton/callout.html` instead of `<c-admonition>`.
 
@@ -49,7 +49,16 @@ These widgets are for authored markdown only. App templates (pages, panels, dial
 <c-content-link path="other.md">link</c-content-link>
 <c-audio src="audio/file.mp3" label="Listen" respelling="ow-dee-oh" symbol="aw"></c-audio>
 <c-audio-reveal src="audio/file.mp3" label="Listen" respelling="ow-dee-oh" symbol="aw"></c-audio-reveal>
+<c-audio-clip src="audio/lecture.mp3" title="Lecture excerpt" kind="Listening exercise">
+
+Transcript paragraph.
+
+Another paragraph.
+
+</c-audio-clip>
 ```
+
+`c-audio-clip` plays one longer recording. `title` is required; `kind` is an optional label beside it; the slot is an optional transcript (markdown, blank lines between paragraphs) behind a Show transcript toggle. The total time comes from `File.duration_seconds`, which `content_save` fills for audio files. A file-resolving widget inside its transcript fails.
 
 `c-admonition` `type` values: `note`, `tip`, `important`, `warning`, `danger`, `key_takeaways`, `checklist`. Unknown types fall back to `note`.
 
@@ -85,6 +94,7 @@ MARKDOWN_ALLOWED_TAGS = {
     "c-grid": {"columns"},
     "c-audio": {"src", "label", "respelling", "symbol"},
     "c-audio-reveal": {"src", "label", "respelling", "symbol"},
+    "c-audio-clip": {"src", "title", "kind"},
     "c-image-grid": {"columns"},
     "c-table": {"caption"},
     "c-code-block": {"title", "language", "wrap"},
