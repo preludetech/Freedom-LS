@@ -23,7 +23,7 @@ spent rebuilding identical data.
 
 - Coverage does not shrink: the set of cells checked after the change equals the set checked before.
 - A failing cell is identified in the test output as precisely as it is now.
-- The spec measures the file before and after, on top of `faster-test-runs-1-fast-password-hasher`.
+- The spec measures the file before and after.
 
 ## Open until the spec
 

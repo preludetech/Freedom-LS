@@ -23,8 +23,10 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 ### Ready to start
 
 - 🔴 High · `faster-test-runs-2-reuse-test-database` (Faster test runs)
+- 🔴 High · `faster-test-runs-3-permission-matrix-test` (Faster test runs)
 - 🔴 High · `faster-test-runs-4-playwright-tests` (Faster test runs)
 - 🔴 High · `faster-test-runs-5-full-suite-on-github-actions` (Faster test runs)
+- 🔴 High · `faster-test-runs-6-prune-slow-tests` (Faster test runs)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-4-question-access` (SACAA content versions and access)
 - 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
 - 🔴 High · `learner-public-profile-2-profile-and-page` (Learner public profiles)
@@ -77,21 +79,21 @@ Cut the time and machine load of test runs so several worktrees can work at once
 
 - `faster-test-runs-1-fast-password-hasher` — **in progress** — Tests hash passwords with a fast hasher; production and the dev server keep Argon2.
 - `faster-test-runs-2-reuse-test-database` — **ready** — A pytest run reuses the test database and rebuilds it only when migrations change.
-- `faster-test-runs-3-permission-matrix-test` — **blocked** by `faster-test-runs-1-fast-password-hasher` — The permission matrix test builds its users and cohorts once, with every cell still checked.
+- `faster-test-runs-3-permission-matrix-test` — **ready** — The permission matrix test builds its users and cohorts once, with every cell still checked.
 - `faster-test-runs-4-playwright-tests` — **ready** — Playwright tests sign in without the login form, and same-page tests merge into one flow.
 - `faster-test-runs-5-full-suite-on-github-actions` — **ready** — The full suite runs on free GitHub runners in parallel jobs, started on demand by an SDD run.
-- `faster-test-runs-6-prune-slow-tests` — **blocked** by `faster-test-runs-1-fast-password-hasher`, `faster-test-runs-2-reuse-test-database`, `faster-test-runs-3-permission-matrix-test`, `faster-test-runs-4-playwright-tests` — Remaining slow and redundant tests are merged or removed from a measured per-test ranking.
-- `faster-test-runs-7-claude-cloud-test-runs` — **blocked** by `faster-test-runs-5-full-suite-on-github-actions`, `faster-test-runs-6-prune-slow-tests` — Fallback: a test run or SDD batch is handed to a Claude Code cloud session.
+- `faster-test-runs-6-prune-slow-tests` — **ready** — Remaining slow and redundant tests are merged or removed from a measured per-test ranking.
+- `faster-test-runs-7-claude-cloud-test-runs` — **blocked** by `faster-test-runs-1-fast-password-hasher`, `faster-test-runs-2-reuse-test-database`, `faster-test-runs-3-permission-matrix-test`, `faster-test-runs-4-playwright-tests`, `faster-test-runs-5-full-suite-on-github-actions`, `faster-test-runs-6-prune-slow-tests` — Fallback: a test run or SDD batch is handed to a Claude Code cloud session.
 
 ![Faster test runs](roadmap_diagrams/faster-test-runs.svg)
 
 **Notes**
-- Build order: `faster-test-runs-1-fast-password-hasher` and `faster-test-runs-2-reuse-test-database` first; they are the cheapest and gain the most.
-- `faster-test-runs-1-fast-password-hasher`, `faster-test-runs-2-reuse-test-database`, `faster-test-runs-4-playwright-tests` and `faster-test-runs-5-full-suite-on-github-actions` run in parallel.
+- Every spec except `faster-test-runs-7-claude-cloud-test-runs` can start now and run in parallel.
+- Suggested order by saving: `faster-test-runs-1-fast-password-hasher`, `faster-test-runs-2-reuse-test-database`, then the rest.
+- `faster-test-runs-7-claude-cloud-test-runs` waits on the others because the owner wants it only if they are not enough.
 - Collision: `faster-test-runs-2-reuse-test-database` and `faster-test-runs-5-full-suite-on-github-actions` both change the test tier definition and its runner.
 - Decision: generic `sdd` and `ds` plugins stay generic; project values reach them through per-project configuration.
 - Decision: no spec reduces what is tested without naming the test that still covers it.
-- Decision: `faster-test-runs-7-claude-cloud-test-runs` starts only if the owner confirms the rest left the local machine the bottleneck.
 - Assumption: every spec reports its before and after timings against `faster-test-runs/research_test_timings.md`.
 - Open: whether coverage is still enforced across parallel jobs (owned by `faster-test-runs-5-full-suite-on-github-actions`).
 - Out of scope: paid runners, squashing migrations, changes to the First Class workflow.

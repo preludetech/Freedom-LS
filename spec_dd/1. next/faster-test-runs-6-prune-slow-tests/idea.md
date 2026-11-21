@@ -16,12 +16,11 @@ are merged, rewritten or removed. The ranking is kept so the next slow test is e
 The suite has 19,507 tests. The timings taken so far are samples; they found the password hasher,
 the database setup and the permission matrix, and they showed that test count alone is a poor guide:
 1,400 cases of one shuffle test cost under a minute. Whether redundant tests are eating time is
-still unknown, and it can only be answered once the systemic costs are gone and stop hiding it.
+still unknown until every test's duration is measured.
 
 ## What is settled
 
-- The spec starts from one full run that records every test's duration, taken after its
-  prerequisites have landed.
+- The spec starts from one full run that records every test's duration.
 - Work goes down the ranking by cost. A test is removed only when another test checks the same
   behaviour, and the spec names that test.
 - The coverage threshold still holds afterwards.
