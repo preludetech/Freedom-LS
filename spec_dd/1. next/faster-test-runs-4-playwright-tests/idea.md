@@ -4,7 +4,7 @@ Spec 4 of 7 in the Faster test runs effort. Read the "Faster test runs" section 
 `spec_dd/1. next/roadmap.md` first: it holds the build order, what this spec depends on and may
 run beside, the decisions already taken and the assumptions every idea in the effort makes.
 
-**Estimated time saving:** 8 to 12 CPU-minutes per full run, a guess of 30 to 50% of the 25 CPU-minutes the Playwright tests cost. The audit that opens the spec replaces the guess.
+**Estimated time saving:** 2 to 3 minutes off a full run. A guess until the audit is done.
 
 ## What
 

@@ -4,7 +4,7 @@ Spec 1 of 7 in the Faster test runs effort. Read the "Faster test runs" section 
 `spec_dd/1. next/roadmap.md` first: it holds the build order, what this spec depends on and may
 run beside, the decisions already taken and the assumptions every idea in the effort makes.
 
-**Estimated time saving:** about half of the test time of a full run, a guess from two samples that ran 3x and 5x faster; the whole suite has not been measured. It also removes most of the memory and thread load that stops worktrees running side by side.
+**Estimated time saving:** about 12 minutes off a 25-minute full run. A guess: two samples ran 3x and 5x faster, and the whole suite has not been measured.
 
 ## What
 

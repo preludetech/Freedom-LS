@@ -4,7 +4,7 @@ Spec 2 of 7 in the Faster test runs effort. Read the "Faster test runs" section 
 `spec_dd/1. next/roadmap.md` first: it holds the build order, what this spec depends on and may
 run beside, the decisions already taken and the assumptions every idea in the effort makes.
 
-**Estimated time saving:** about 58s off every pytest start (measured: 62s down to 4s). That is every red and green run, and about 4 CPU-minutes off each 4-worker run.
+**Estimated time saving:** about 1 minute off a full run, and about 1 minute off every other pytest run, including each single-test run. Measured: startup drops from 62s to 4s.
 
 ## What
 

@@ -4,7 +4,7 @@ Spec 6 of 7 in the Faster test runs effort. Read the "Faster test runs" section 
 `spec_dd/1. next/roadmap.md` first: it holds the build order, what this spec depends on and may
 run beside, the decisions already taken and the assumptions every idea in the effort makes.
 
-**Estimated time saving:** unknown until the ranking exists. The samples found no evidence yet that redundant tests cost much.
+**Estimated time saving:** unknown. It needs the per-test ranking first.
 
 ## What
 

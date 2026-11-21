@@ -4,7 +4,7 @@ Spec 5 of 7 in the Faster test runs effort. Read the "Faster test runs" section 
 `spec_dd/1. next/roadmap.md` first: it holds the build order, what this spec depends on and may
 run beside, the decisions already taken and the assumptions every idea in the effort makes.
 
-**Estimated time saving:** the whole local full run, which today takes more than ten minutes on 4 workers, drops to zero local compute. The wait does not shrink much: expect 5 to 8 minutes for the remote run, unmeasured.
+**Estimated time saving:** the full run uses none of the local machine, where today it uses 4 workers for about 25 minutes. The wait for the result is 5 to 8 minutes, a guess.
 
 ## What
 
