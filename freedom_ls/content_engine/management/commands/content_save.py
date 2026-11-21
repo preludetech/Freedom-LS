@@ -946,13 +946,31 @@ def sync_reference_parts(
     for course, schema_item in collections_data:
         if not isinstance(course, Course) or not isinstance(schema_item, CourseSchema):
             continue
+        part_ids: list[uuid.UUID] = []
         for order, entry in enumerate(schema_item.reference):
-            part = content_by_path[
-                resolve_author_path(schema_item.file_path, entry.path)
-            ]
+            part_path = resolve_author_path(schema_item.file_path, entry.path)
+            part = content_by_path.get(part_path)
+            if part is None:
+                # A silently dropped entry is a course missing reference material
+                # nobody notices.
+                raise ValueError(
+                    f"Collection '{course.title}' names a child at "
+                    f"{part_path} that was not loaded"
+                )
+            if not isinstance(part, CoursePart):
+                raise ValueError(
+                    f"Course '{course.title}' lists {part_path} under reference:, "
+                    "which is not a COURSE_PART"
+                )
             CourseReferencePart.objects.update_or_create(
                 site=site, course=course, course_part=part, defaults={"order": order}
             )
+            part_ids.append(part.id)
+        # The file is the single source of a course's reference parts, so a row the
+        # list no longer names goes. Only courses in this load are touched.
+        CourseReferencePart.objects.filter(site=site, course=course).exclude(
+            course_part_id__in=part_ids
+        ).delete()
     return []
 
 

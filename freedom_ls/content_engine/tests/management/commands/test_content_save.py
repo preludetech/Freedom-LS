@@ -24,7 +24,12 @@ from django.db import IntegrityError, connection
 from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
 
-from freedom_ls.content_engine.factories import CourseCategoryFactory, FileFactory
+from freedom_ls.content_engine.factories import (
+    CourseCategoryFactory,
+    CourseFactory,
+    FileFactory,
+    TopicFactory,
+)
 from freedom_ls.content_engine.image_cache import CACHE_DIR_NAME, ImageCache
 from freedom_ls.content_engine.images import ImageEncodeDecision, ImageEncodeStatus
 from freedom_ls.content_engine.management.commands.content_save import (
@@ -40,6 +45,7 @@ from freedom_ls.content_engine.management.commands.content_save import (
     save_form_page,
     save_form_question,
     save_topic,
+    sync_reference_parts,
     update_file_with_uuid,
 )
 from freedom_ls.content_engine.models import (
@@ -58,7 +64,7 @@ from freedom_ls.content_engine.models import (
     Topic,
 )
 from freedom_ls.content_engine.tests.helpers import write_organisation_course
-from freedom_ls.content_engine.validate import parse_single_file
+from freedom_ls.content_engine.validate import parse_single_file, resolve_author_path
 from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import (
     Form,
@@ -4608,6 +4614,123 @@ def test_reloading_unchanged_files_keeps_the_same_reference_rows(
         save_content_to_db(course_dir, site.name)
 
     assert list(CourseReferencePart.objects.values_list("pk", "order")) == before
+
+
+def _write_second_reference_course(course_dir: Path) -> None:
+    """A second course, with its own reference part, in a directory of its own."""
+    course_dir.mkdir(parents=True)
+    part_dir = course_dir / "appendix"
+    part_dir.mkdir()
+    (part_dir / "part.yaml").write_text(
+        "---\ncontent_type: COURSE_PART\ntitle: appendix\n"
+        "uuid: 20000000-0000-0000-0000-000000000053\n"
+    )
+    (course_dir / "course.md").write_text(
+        "---\ncontent_type: COURSE\ntitle: Second course\n"
+        "uuid: 20000000-0000-0000-0000-000000000002\n"
+        "children: []\nreference:\n  - path: appendix/part.yaml\n---\n"
+    )
+
+
+@pytest.mark.django_db
+def test_removing_an_entry_from_the_reference_list_deletes_its_row_on_reload(
+    site, mock_site_context
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "reference"
+        _write_course_with_reference(course_dir, ["glossary", "faq"])
+        save_content_to_db(course_dir, site.name)
+
+        _write_course_with_reference(course_dir, ["faq"])
+        save_content_to_db(course_dir, site.name)
+
+    assert _reference_titles_in_order() == ["faq"]
+    assert CourseReferencePart.objects.get().order == 0
+
+
+@pytest.mark.django_db
+def test_removing_the_reference_key_deletes_every_row_on_reload(
+    site, mock_site_context
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "reference"
+        _write_course_with_reference(course_dir, ["glossary", "faq"])
+        save_content_to_db(course_dir, site.name)
+
+        (course_dir / "course.md").write_text(
+            f"---\ncontent_type: COURSE\ntitle: Reference course\nuuid: {COURSE_UUID}\n"
+            "children: []\n---\n"
+        )
+        save_content_to_db(course_dir, site.name)
+
+    assert not CourseReferencePart.objects.exists()
+
+
+@pytest.mark.django_db
+def test_a_course_missing_from_a_later_load_keeps_its_reference_rows(
+    site, mock_site_context
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        first_dir = Path(tmpdir) / "first"
+        second_dir = Path(tmpdir) / "second"
+        _write_course_with_reference(first_dir, ["glossary", "faq"])
+        _write_second_reference_course(second_dir)
+        save_content_to_db(first_dir, site.name)
+
+        save_content_to_db(second_dir, site.name)
+
+    assert sorted(
+        CourseReferencePart.objects.values_list("course_part__title", flat=True)
+    ) == ["appendix", "faq", "glossary"]
+
+
+@pytest.mark.django_db
+def test_a_reference_path_that_was_not_loaded_raises_and_writes_nothing(
+    site, mock_site_context
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "reference"
+        outside_dir = Path(tmpdir) / "outside"
+        outside_dir.mkdir()
+        (outside_dir / "part.yaml").write_text(
+            "---\ncontent_type: COURSE_PART\ntitle: outside\n"
+            "uuid: 20000000-0000-0000-0000-000000000054\n"
+        )
+        _write_course_with_reference(course_dir, ["glossary"])
+        (course_dir / "course.md").write_text(
+            f"---\ncontent_type: COURSE\ntitle: Reference course\nuuid: {COURSE_UUID}\n"
+            "children: []\nreference:\n  - path: glossary/part.yaml\n"
+            "  - path: ../outside/part.yaml\n---\n"
+        )
+
+        with pytest.raises(ValueError, match="was not loaded"):
+            save_content_to_db(course_dir, site.name)
+
+    assert not CourseReferencePart.objects.exists()
+    assert not Course.objects.exists()
+
+
+@pytest.mark.django_db
+def test_a_reference_entry_naming_a_file_that_is_not_a_part_raises(
+    site, mock_site_context, tmp_path
+):
+    course_file = tmp_path / "course.md"
+    course_file.write_text(
+        f"---\ncontent_type: COURSE\ntitle: Reference course\nuuid: {COURSE_UUID}\n"
+        "children: []\nreference:\n  - path: topic.md\n---\n"
+    )
+    schema_item = parse_single_file(course_file)[0]
+    course = CourseFactory.create(title="Reference course")
+    topic = TopicFactory.create()
+
+    with pytest.raises(ValueError, match="not a COURSE_PART"):
+        sync_reference_parts(
+            site,
+            [(course, schema_item)],
+            {resolve_author_path(course_file, "topic.md"): topic},
+        )
+
+    assert not CourseReferencePart.objects.exists()
 
 
 # The command loads only committed content.
