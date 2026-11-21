@@ -114,7 +114,7 @@ class TierConfig:
 
     @property
     def escalation(self) -> tuple[str, ...]:
-        # Built-ins first, so the glob a reason names is the one it named before the split.
+        # Built-ins come first, so when a built-in glob and a project glob both match, the reason names the built-in glob.
         return self.builtin_escalation + self.project_escalation
 
 
