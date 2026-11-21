@@ -12,6 +12,7 @@ import importlib.util
 import json
 import os
 import re
+import shlex
 import signal
 import subprocess
 import sys
@@ -1754,3 +1755,124 @@ def test_process_scan_finds_nothing_on_a_platform_without_proc(
 
     # Assert
     assert found == []
+
+
+def node_id_lines(output: str, kind: str) -> list[str]:
+    return [line for line in output.splitlines() if line.startswith(f"run: {kind} ")]
+
+
+def printed_closing_output(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    *,
+    failed: list[str],
+    unfinished: list[str],
+    label: str,
+) -> str:
+    module = load_runner_module(monkeypatch)
+    state = module.RunState(
+        collected=set(failed) | set(unfinished),
+        outcomes=dict.fromkeys(failed, "failed"),
+    )
+    module.print_closing_lines(state, [4], 1.0, label)
+    return capsys.readouterr().out
+
+
+def test_failed_test_is_listed_before_the_merged_summary(
+    crash_with_failure_run: RealRun,
+) -> None:
+    lines = crash_with_failure_run.lines
+    failed_line = "run: failed test_sample.py::test_genuine_failure"
+    summary_index = next(
+        index
+        for index, line in enumerate(lines)
+        if line.startswith("run: summary (merged)")
+    )
+    assert failed_line in lines[:summary_index]
+
+
+def test_failed_tests_are_listed_in_sorted_node_id_order(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    output = printed_closing_output(
+        monkeypatch,
+        capsys,
+        failed=["t.py::test_c", "t.py::test_a", "t.py::test_b"],
+        unfinished=[],
+        label="FAIL",
+    )
+
+    assert node_id_lines(output, "failed") == [
+        "run: failed t.py::test_a",
+        "run: failed t.py::test_b",
+        "run: failed t.py::test_c",
+    ]
+
+
+def test_test_that_killed_its_worker_every_time_is_listed_as_failed(
+    crash_every_time_run: RealRun,
+) -> None:
+    assert (
+        "run: failed test_sample.py::test_kills_its_worker_every_time"
+        in crash_every_time_run.lines
+    )
+
+
+def test_unfinished_test_of_a_failed_run_is_listed(
+    stop_on_first_failure_run: RealRun,
+) -> None:
+    assert (
+        "run: unfinished test_sample.py::test_b_never_runs"
+        in stop_on_first_failure_run.lines
+    )
+
+
+def test_more_failed_tests_than_the_limit_are_cut_to_the_limit_and_a_count(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    output = printed_closing_output(
+        monkeypatch,
+        capsys,
+        failed=[f"t.py::test_{number:03d}" for number in range(201)],
+        unfinished=[],
+        label="FAIL",
+    )
+
+    lines = [line for line in output.splitlines() if line.startswith("run: failed ")]
+    assert len(lines) == 201
+    assert lines[-2] == "run: failed t.py::test_199"
+    assert lines[-1] == "run: failed ... and 1 more"
+
+
+def test_passing_run_lists_no_failed_or_unfinished_test(
+    crash_once_run: RealRun,
+) -> None:
+    assert [
+        line
+        for line in crash_once_run.lines
+        if line.startswith(("run: failed", "run: unfinished"))
+    ] == []
+
+
+def test_incomplete_run_lists_no_unfinished_test(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    output = printed_closing_output(
+        monkeypatch, capsys, failed=[], unfinished=["t.py::test_a"], label="INCOMPLETE"
+    )
+
+    assert node_id_lines(output, "unfinished") == []
+
+
+def test_node_id_with_a_quote_and_a_space_is_printed_shell_quoted(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    node_id = "t.py::test_x[it's here]"
+
+    output = printed_closing_output(
+        monkeypatch, capsys, failed=[node_id], unfinished=[], label="FAIL"
+    )
+
+    (line,) = node_id_lines(output, "failed")
+    assert line == f"run: failed {shlex.quote(node_id)}"
+    assert shlex.split(line.removeprefix("run: failed ")) == [node_id]

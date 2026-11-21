@@ -31,6 +31,7 @@ import math
 import os
 import random
 import re
+import shlex
 import signal
 import subprocess
 import sys
@@ -89,6 +90,8 @@ BACKOFF_S = (30, 60)
 # pytest's exit code for "tests ran and some failed", and the code this runner exits with when
 # retries ran out with tests unfinished (EX_TEMPFAIL: neither a pass nor a code defect).
 EXIT_TESTS_FAILED = 1
+# Past this many node-ID lines a re-run by node ID is no cheaper than the whole tier.
+FAILED_SET_LINE_LIMIT = 200
 EXIT_INCOMPLETE = 75
 
 # Seconds between memory polls while waiting, and between progress lines.
@@ -673,6 +676,25 @@ def verdict(state: RunState, returncode: int) -> tuple[str, int]:
     return "PASS", 0
 
 
+def failed_set_lines(state: RunState, include_unfinished: bool) -> list[str]:
+    """The node IDs a failed-only re-run needs, failed tests first, each group sorted.
+
+    Each ID is shell-quoted, so an agent can paste it onto a command line as printed: a
+    parametrized ID can hold a quote, `$` or a space.
+    A test that crashed its worker in every attempt is already an outcome of `failed` here.
+    """
+    failed = sorted(
+        node for node, outcome in state.outcomes.items() if outcome == "failed"
+    )
+    unfinished = sorted(state.unfinished()) if include_unfinished else []
+    lines = [f"run: failed {shlex.quote(node)}" for node in failed]
+    lines += [f"run: unfinished {shlex.quote(node)}" for node in unfinished]
+    if len(lines) > FAILED_SET_LINE_LIMIT:
+        hidden = len(lines) - FAILED_SET_LINE_LIMIT
+        lines = [*lines[:FAILED_SET_LINE_LIMIT], f"run: failed ... and {hidden} more"]
+    return lines
+
+
 def print_closing_lines(
     state: RunState, worker_counts: list[int], elapsed_s: float, label: str
 ) -> None:
@@ -681,6 +703,9 @@ def print_closing_lines(
         outcomes.count(name) for name in ("passed", "failed", "skipped")
     )
     workers = " -> ".join(str(count) for count in worker_counts)
+    # An INCOMPLETE run is blocked on memory, so re-running its unfinished tests fixes nothing.
+    for line in failed_set_lines(state, include_unfinished=label == "FAIL"):
+        print(line)
     print(f"run: pytest attempts {len(worker_counts)}, xdist workers {workers}")
     print(
         f"run: tests {len(state.collected)} collected, {len(outcomes)} finished, "
