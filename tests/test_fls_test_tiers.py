@@ -17,6 +17,7 @@ from tests._script_trees import run_command, run_script
 pytestmark = [pytest.mark.dev_tooling, pytest.mark.fls_internal]
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+THIS_FILE = Path(__file__).resolve().relative_to(REPO_ROOT).as_posix()
 SELECTOR = Path("claude_plugins") / "django-stack" / "scripts" / "select_tests.py"
 
 DEMO_CONTENT_TARGETS = (
@@ -49,6 +50,9 @@ def demo_content_readers_outside_targets() -> list[str]:
     offenders: list[str] = []
     for path in git_output("ls-files").splitlines():
         if not fnmatch.fnmatch(Path(path).name, "test_*.py"):
+            continue
+        # This file names `demo_content` to check the selector's rule for it, not to read the content.
+        if path == THIS_FILE:
             continue
         if "demo_content" not in (REPO_ROOT / path).read_text(encoding="utf-8"):
             continue
