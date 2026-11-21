@@ -1,4 +1,4 @@
-"""The sdd command files ask for the full tier twice: after the last batch and before landing."""
+"""The sdd command files ask for the full tier once, after the last batch."""
 
 from __future__ import annotations
 
@@ -50,16 +50,32 @@ def test_plan_from_spec_does_not_promise_the_full_suite() -> None:
     assert "full test suite passing" not in (COMMANDS / "plan_from_spec.md").read_text()
 
 
-def test_finish_worktree_asks_for_the_full_tier_once() -> None:
+def test_finish_worktree_never_asks_for_the_full_tier() -> None:
     text = (COMMANDS / "finish_worktree.md").read_text()
 
-    assert len(TIER_FULL.findall(text)) == 1
+    assert TIER_FULL.findall(text) == []
 
 
-def test_finish_worktree_step_one_is_the_full_tier() -> None:
+def test_finish_worktree_asks_for_the_checkpoint_tier() -> None:
+    text = (COMMANDS / "finish_worktree.md").read_text()
+
+    assert TIER_CHECKPOINT.search(text) is not None
+
+
+def test_finish_worktree_step_one_is_the_checkpoint_tier() -> None:
     lines = (COMMANDS / "finish_worktree.md").read_text().splitlines()
 
-    assert "# Step 1: Full tier" in lines
+    assert "# Step 1: Checkpoint tier" in lines
+
+
+def test_implement_plan_is_the_only_command_that_asks_for_the_full_tier() -> None:
+    asking = {
+        str(path.relative_to(COMMANDS))
+        for path in COMMANDS.rglob("*.md")
+        if TIER_FULL.search(path.read_text())
+    }
+
+    assert asking == {"implement_plan.md"}
 
 
 @pytest.mark.parametrize("wording", ["gh pr view", "changes requested"])

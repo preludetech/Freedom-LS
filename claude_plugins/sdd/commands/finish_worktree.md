@@ -77,17 +77,24 @@ mention until Step 8.
   worktree" below.
 - any other exit → `status: blocked · reason: <the script's output, verbatim>`. Stop.
 
-# Step 1: Full tier
+# Step 1: Checkpoint tier
 
-1. Rebuild generated assets ("Pre-test rebuild" below).
-2. Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/commands/protected/run_test_tier.md` and
-   follow it with `<tier>`: `full`, returning the report line and any failing test names.
-3. Keep the report line for Step 8.
+The checkpoint run: a pass tests only what the rebase brought in when a full run is on record, and
+runs `full` when none is.
 
-A failure is `status: failed · reason: <run> failed before landing: <tests>`, where `<run>` is
-`full run` here and `checkpoint run` in Step 7's loop. Nothing is moved or landed until a human
-fixes it, except for a flaky test and an obvious failure, both handled below. A rebased branch has
-also passed pre-commit; there is nothing to re-run for that.
+1. Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/commands/protected/run_test_tier.md` and
+   follow it with `<tier>`: `checkpoint` as far as its "Resolve the checkpoint tier" step, and
+   return the `tier:`, `diff:` and `why:` lines. `none` → the report line is
+   `tier: none · summary: <why>`; nothing else runs.
+2. `targeted` or the full tier → rebuild generated assets ("Pre-test rebuild" below), then
+   delegate to `sdd:sdd-mechanic`: follow `run_test_tier.md` with the tier and `<diff>` as
+   resolved, returning the report line and any failing test names. Failing tests follow the
+   failure rule below and "Flaky tests".
+3. Keep every report line for Step 8.
+
+A failure is `status: failed · reason: checkpoint run failed before landing: <tests>`. Nothing is
+moved or landed until a human fixes it, except for a flaky test and an obvious failure, both
+handled below. A rebased branch has also passed pre-commit; there is nothing to re-run for that.
 
 ## Pre-test rebuild
 
@@ -98,7 +105,7 @@ the rebuild.
 
 ## Flaky tests
 
-When Step 1's full run, or a checkpoint run in Step 7's loop, reports failing tests:
+When a checkpoint run, in Step 1 or in Step 7's loop, reports failing tests:
 
 1. Delegate to `sdd:sdd-mechanic`: run each failing test on its own, by node ID, three times, as the
    tier definition's single test run, and return the pass count per test. A test with 0 passes goes
@@ -238,7 +245,7 @@ on each pass, entered with its <blocker>:
     # nothing lands before the close-out commits
     entered before Step 7 (from Step 0, or from Step 0.5's exit 4): leave the loop and continue
         at Step 0.5
-    follow the checkpoint run (below)
+    follow the checkpoint run (below, which points at Step 1)
     <script-path> land        → exit 0 leaves the loop; exit 7 is the next pass
 ```
 
@@ -251,17 +258,8 @@ handled as items 3 and 4 above.
 
 ### The checkpoint run
 
-Step 1's full run wrote the full-run record, so a pass tests only what the rebase brought in.
-
-1. Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/commands/protected/run_test_tier.md` and
-   follow it with `<tier>`: `checkpoint` as far as its "Resolve the checkpoint tier" step, and
-   return the `tier:`, `diff:` and `why:` lines. `none` → the report line is
-   `tier: none · summary: <why>`; nothing else runs.
-2. `targeted` or the full tier → rebuild generated assets ("Pre-test rebuild" in Step 1), then
-   delegate to `sdd:sdd-mechanic`: follow `run_test_tier.md` with the tier and `<diff>` as
-   resolved, returning the report line and any failing test names. Failing tests follow Step 1's
-   failure rule and "Flaky tests".
-3. Keep every report line for Step 8.
+Follow Step 1's checkpoint run. The last passing full run, usually `implement_plan` Step 3, wrote
+the full-run record, so a pass tests only what the rebase brought in.
 
 ## A dirty main worktree
 
@@ -311,7 +309,8 @@ Report:
 - the number of passes of the main-moved loop, and each auto-resolved conflict path with its side
 - the main-worktree commit, when one was made: "main-worktree commit <sha>: <paths>"
 - the script's `synced: pushed` and `pushed:` lines, as "main pushed"
-- every test report line, from Step 1 and from each checkpoint run
+- every test report line, from Step 1's checkpoint run and from each checkpoint run of the
+  main-moved loop
 - each flaky test fix, with its commit
 - each obvious-failure fix, with its commit
 - the `carried:` count, when the script printed one
