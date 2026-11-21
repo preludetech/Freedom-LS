@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 
+from django.contrib.sites.models import Site
 from django.test import override_settings
 from django.utils.safestring import SafeString
 
@@ -189,7 +190,7 @@ def test_active_set_respects_settings(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.mark.fls_internal
 @pytest.mark.django_db
 def test_a_saved_course_renders_a_glyph_outside_the_required_glyphs(
-    mock_site_context,
+    mock_site_context: Site,
 ) -> None:
     CourseFactory(icon="no-such-glyph", icon_fallback="heroicons:scale")
     course = Course.objects.get()
