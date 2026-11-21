@@ -140,6 +140,12 @@ from freedom_ls.educator_interface.panels.learner.data_tables import (
     CohortLearnerDataTable,
     LearnerDataTable,
 )
+from freedom_ls.educator_interface.panels.learner.panels import (
+    LearnerAccountPanel,
+    LearnerCoursesPanel,
+    LearnerDetailsPanel,
+    LearnerNamePanel,
+)
 from freedom_ls.educator_interface.panels.learner.quick_view import LearnerQuickView
 from freedom_ls.educator_interface.panels.staff.actions import (
     AddStaffMemberToCohortAction,
@@ -156,7 +162,6 @@ from freedom_ls.educator_interface.reporting import (
     DOWNLOAD_COHORT_REPORT,
     CohortNeedsAttentionPanel,
     CohortReportStack,
-    LearnerCoursesPanel,
 )
 from freedom_ls.educator_interface.tasks import _run_learner_import_task
 from freedom_ls.learner_management.capabilities import can
@@ -231,20 +236,6 @@ from freedom_ls.site_aware_models.models import get_cached_site
 #
 # instance edit
 # instance, other actions (eg: send_email)
-
-
-class LearnerDetailsPanel(InstanceDetailsPanel):
-    model = Learner
-    refresh_events = (LEARNER_CHANGED,)
-
-    def get_rows(self) -> list[dict[str, object]]:
-        learner = cast(Learner, self.instance)
-        return [
-            self.detail_row("Name", learner.user.display_name),
-            self.detail_row("Email", learner.user.email),
-            self.detail_row("Status", learner_status_badge(learner), "badge"),
-            self.detail_row("Date added", learner.created_at, "date"),
-        ]
 
 
 class LearnerCohortsPanel(DataTablePanel):
@@ -633,52 +624,6 @@ def _oversight_role_label(viewer: User, learner: Learner) -> str:
     if site_level_admins(learner.site).filter(pk=viewer.pk).exists():
         return "a site admin"
     return "an organisation admin"
-
-
-class LearnerNamePanel(Panel):
-    """The learner's first and last name as fields with Save, posted inline
-    to the edit action, as the cohort's Name panel is. Shown only to someone
-    who may change the name."""
-
-    model = Learner
-    title = "Name"
-    template_name = "educator_interface/panels/learner_name.html"
-    refresh_events = (LEARNER_CHANGED,)
-
-    def has_permission(self, request: HttpRequest) -> bool:
-        return super().has_permission(request) and bool(self.available_actions)
-
-    def get_actions(self) -> list[PanelAction]:
-        return [EditLearnerNameAction(cast(Learner, self.instance))]
-
-    def get_context_data(self) -> dict[str, object]:
-        context = super().get_context_data()
-        context["rename"] = self.available_actions[0].get_context_data(self.ctx)
-        return context
-
-
-class LearnerAccountPanel(Panel):
-    """The learner's account: whether it is set up and active, with Resend
-    setup email and Deactivate or Reactivate in the footer. Shown to anyone
-    who may take one of those actions."""
-
-    model = Learner
-    title = "Account"
-    template_name = "educator_interface/panels/learner_account.html"
-    refresh_events = (LEARNER_CHANGED,)
-
-    def has_permission(self, request: HttpRequest) -> bool:
-        return super().has_permission(request) and bool(self.available_actions)
-
-    def get_actions(self) -> list[PanelAction]:
-        return [ResendSetupEmailAction(), *learner_state_actions()]
-
-    def get_context_data(self) -> dict[str, object]:
-        learner = cast(Learner, self.instance)
-        context = super().get_context_data()
-        context["learner"] = learner
-        context["status"] = learner_status(learner)
-        return context
 
 
 class LearnerSettingsStack(PanelStack):

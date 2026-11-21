@@ -1483,6 +1483,7 @@ class TestLearnerCoursesPanel:
 _NEW_REPORTING_FILES = [
     "reporting.py",
     "panels/dashboard/panels.py",
+    "panels/learner/panels.py",
     "templates/educator_interface/panels/dashboard.html",
     "templates/educator_interface/panels/dashboard_region.html",
     "templates/educator_interface/panels/cohort_needs_attention_region.html",

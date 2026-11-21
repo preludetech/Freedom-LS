@@ -16,8 +16,6 @@ from freedom_ls.accounts.models import User
 from freedom_ls.educator_interface.avatars import learner_avatars
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
-    LEARNER_CHANGED,
-    REGISTRATION_CHANGED,
 )
 from freedom_ls.educator_interface.panels.common.report import (
     report_over_limit_message,
@@ -25,15 +23,8 @@ from freedom_ls.educator_interface.panels.common.report import (
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
-from freedom_ls.educator_interface.panels.learner.actions import (
-    RegisterLearnerForCourseAction,
-)
-from freedom_ls.educator_interface.panels.learner.quick_view import (
-    visible_registrations_with_progress,
-)
 from freedom_ls.learner_management.models import (
     Cohort,
-    Learner,
 )
 from freedom_ls.panel_framework.actions import PanelAction
 from freedom_ls.panel_framework.context import PanelContext
@@ -43,7 +34,6 @@ from freedom_ls.panel_framework.lazy_panels import (
     render_region,
 )
 from freedom_ls.panel_framework.panels import Panel, PanelStack
-from freedom_ls.reports.gather import gather_learner_course_details
 from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.reports.report_data import (
     CohortReportData,
@@ -252,45 +242,3 @@ class CohortReportStack(PanelStack):
         "downloads": CohortReportDownloadsPanel,
         "body": CohortReportBodyPanel,
     }
-
-
-class LearnerCoursesPanel(Panel):
-    """One card per visible registration: recomputed completion, flags, completed items and quiz attempts.
-
-    Runs live and uncached, so a refresh after an educator action reads the
-    current progress.
-    """
-
-    model = Learner
-    title = "Courses"
-    template_name = "educator_interface/panels/learner_courses.html"
-    refresh_events = (LEARNER_CHANGED, REGISTRATION_CHANGED)
-
-    def get_actions(self) -> list[PanelAction]:
-        # Register for a course sits with the registrations it adds to.
-        return [RegisterLearnerForCourseAction()]
-
-    def get_context_data(self) -> dict[str, object]:
-        learner = cast(Learner, self.instance)
-        request = cast("OrganisationScopedRequest", self.request)
-        registrations = [
-            entry.registration
-            for entry in sorted(
-                visible_registrations_with_progress(learner, request),
-                key=lambda entry: entry.course.title,
-            )
-        ]
-        details = gather_learner_course_details(learner, registrations, learner.site_id)
-        # The registrations' courses arrive with their organisations prefetched.
-        courses = {
-            registration.course_id: registration.course
-            for registration in registrations
-        }
-        context = super().get_context_data()
-        # Each course's detail beside who shares the course, when another
-        # organisation owns it.
-        context["details"] = [
-            (detail, courses[detail.course_id].shared_by(request.organisation))
-            for detail in details
-        ]
-        return context
