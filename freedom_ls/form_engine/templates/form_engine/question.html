@@ -1,5 +1,6 @@
 {% load fls_base_filters %}
-<fieldset class="space-y-3 border-0 p-0">
+{% comment %}`relative` contains the sr-only text inside the fieldset; without a positioned ancestor it sits against the body and stretches the document.{% endcomment %}
+<fieldset class="relative space-y-3 border-0 p-0">
     {% comment %}
     Only the last rendered paragraph goes inline. That is what keeps the
     asterisk on the question's last word. Earlier paragraphs stay blocks, so

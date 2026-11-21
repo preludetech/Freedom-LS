@@ -371,6 +371,41 @@ def test_form_pages_line_their_header_up_with_their_content(
     assert_header_lines_up_with_content(page)
 
 
+def test_a_long_form_page_scrolls_only_the_player_region(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    """The document stays exactly the viewport tall on a long form page.
+
+    The "(required)" text in each question's legend is absolutely positioned;
+    with no positioned ancestor in the scroll region it used to extend the
+    document, so the player header scrolled away.
+    """
+    page = logged_in_page
+    form = FormFactory(title="Long Form")
+    form_page = FormPageFactory(form=form, order=0, title="Only Page")
+    for order in range(8):
+        FormQuestionFactory(
+            form_page=form_page,
+            type="long_text",
+            question=f"Question number {order}",
+            order=order,
+            required=True,
+        )
+    course = course_with_form(form, title="Long Form Course", slug="long-form")
+    register_user_for_course(course, logged_in_user)
+    page.set_viewport_size({"width": 1920, "height": 1080})
+
+    navigate_to_form(page, live_server, course)
+    start_form(page)
+
+    heights = page.evaluate(
+        "() => [document.documentElement.scrollHeight, window.innerHeight]"
+    )
+    assert heights[0] == heights[1]
+
+
 def test_footer_buttons_share_the_question_column_edges(
     live_server,
     logged_in_page: Page,
