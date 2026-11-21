@@ -27,14 +27,9 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseAudience, CourseVisibility
 from freedom_ls.educator_interface import actions as actions_module
 from freedom_ls.educator_interface.actions import (
-    AddToCohortBulkAction,
     CohortCourseBulkAction,
     DeactivateCohortRegistrationBulkAction,
-    DeactivateLearnersBulkAction,
-    DeactivateRegistrationBulkAction,
     RegisterCohortForCourseBulkAction,
-    RegisterForCourseBulkAction,
-    RemoveFromCohortBulkAction,
     RequiresActiveCohortMixin,
     cohort_not_empty_sentence,
 )
@@ -45,6 +40,13 @@ from freedom_ls.educator_interface.events import (
 from freedom_ls.educator_interface.panels.learner.actions import (
     AddLearnerAction,
     RemoveFromCohortAction,
+)
+from freedom_ls.educator_interface.panels.learner.bulk_actions import (
+    AddToCohortBulkAction,
+    DeactivateLearnersBulkAction,
+    DeactivateRegistrationBulkAction,
+    RegisterForCourseBulkAction,
+    RemoveFromCohortBulkAction,
 )
 from freedom_ls.educator_interface.tests.helpers import (
     _add_learners_list_url,

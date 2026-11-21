@@ -24,7 +24,7 @@ def test_runs_recorded_under_the_old_class_names_point_at_the_new_ones(
     site = Site.objects.get_current()
 
     executor = MigrationExecutor(connection)
-    leaf = executor.loader.graph.leaf_nodes()
+    target = [(APP, "0001_rename_unregister_bulk_runs")]
     executor.migrate([(APP, None)])
     old_apps = executor.loader.project_state([(RUNS, "0001_initial")]).apps
     Historical = old_apps.get_model(RUNS, "BulkActionRun")
@@ -45,8 +45,8 @@ def test_runs_recorded_under_the_old_class_names_point_at_the_new_ones(
 
     executor = MigrationExecutor(connection)
     executor.loader.build_graph()
-    executor.migrate(leaf)
-    Current = executor.loader.project_state(leaf).apps.get_model(RUNS, "BulkActionRun")
+    executor.migrate(target)
+    Current = executor.loader.project_state(target).apps.get_model(RUNS, "BulkActionRun")
 
     def stored(pk: object) -> tuple[str, str]:
         run = Current.objects.get(pk=pk)

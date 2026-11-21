@@ -51,7 +51,6 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.educator_interface import views as educator_views
-from freedom_ls.educator_interface.actions import DeactivateLearnersBulkAction
 from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
 from freedom_ls.educator_interface.learner_import import (
     PREVIEW_LABEL_TONES,
@@ -70,6 +69,9 @@ from freedom_ls.educator_interface.panels.course.data_tables import (
     CourseCohortRegistrationDataTable,
     CourseDataTable,
     CourseLearnerRegistrationDataTable,
+)
+from freedom_ls.educator_interface.panels.learner.bulk_actions import (
+    DeactivateLearnersBulkAction,
 )
 from freedom_ls.educator_interface.panels.staff.data_tables import StaffDataTable
 from freedom_ls.educator_interface.tests.helpers import (

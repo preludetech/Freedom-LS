@@ -133,6 +133,9 @@ from freedom_ls.educator_interface.panels.common.tables import (
 )
 from freedom_ls.educator_interface.panels.course.config import CourseConfig
 from freedom_ls.educator_interface.panels.dashboard.config import DashboardConfig
+
+# Importing the module registers the learners table's bulk actions.
+from freedom_ls.educator_interface.panels.learner import bulk_actions  # noqa: F401
 from freedom_ls.educator_interface.panels.learner.actions import (
     AddLearnerAction,
     AddToCohortAction,

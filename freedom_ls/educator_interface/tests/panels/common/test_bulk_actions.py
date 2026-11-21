@@ -12,7 +12,9 @@ from django.test import Client
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.comms.models import Notification
-from freedom_ls.educator_interface.actions import DeactivateLearnersBulkAction
+from freedom_ls.educator_interface.panels.learner.bulk_actions import (
+    DeactivateLearnersBulkAction,
+)
 from freedom_ls.educator_interface.tests.helpers import (
     _bulk_learner,
     _bulk_post,
