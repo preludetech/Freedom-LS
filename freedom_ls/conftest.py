@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 import pytest
 
 from django.core.cache import cache
-from django.test import Client, RequestFactory
+from django.test import Client, RequestFactory, override_settings
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -42,10 +42,18 @@ if TYPE_CHECKING:
     from freedom_ls.content_engine.models import Course
 
 
-@pytest.fixture(autouse=True)
-def _disable_force_site_name(settings):
-    """Ensure FORCE_SITE_NAME is always None during tests."""
-    settings.FORCE_SITE_NAME = None
+@pytest.fixture(scope="session", autouse=True)
+def _disable_force_site_name() -> Iterator[None]:
+    """Ensure FORCE_SITE_NAME is always None during tests.
+
+    Session-scoped, not per test: the live server answers requests on its own
+    threads, and one still in flight as a test ends would otherwise read the
+    dev settings' pinned name between tests. A read that straddles the next
+    test's override also leaves that name cached on `django.conf.settings`
+    for the whole of that test, so its requests fail to resolve a site.
+    """
+    with override_settings(FORCE_SITE_NAME=None):
+        yield
 
 
 @pytest.fixture(autouse=True)
