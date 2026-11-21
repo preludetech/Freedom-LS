@@ -46,6 +46,11 @@ The taxonomy (`playwright`, `fls_internal`, `ci_only`, `weasyprint`, `dev_toolin
 - `none`: `spec_dd/**` holds spec documents no test reads, and `claude_plugins/**/*.jsx` are course-author components that no test executes.
 - `escalation`: `config/**` is the settings package every test runs under. `site_aware_models` and `content_base` are the bases every model and content type builds on, so a change there reaches apps the dependency map shows only indirectly.
 - `tooling`: this repository hosts the plugins, so `claude_plugins/*/scripts/**` and `claude_plugins/*/templates/**` map to the top-level `tests/` directory where their tests live. `claude_plugins/fls-content/**` maps to its own tests and to `content_engine`'s validator tests, which exercise the content it ships. `claude_plugins/*/**/*.md` maps to `tests/test_test_tiers.py`, the one test that reads the plugin prompts.
+- `tooling`, icons: `scripts/generate_icon_subset.py` and `freedom_ls/icons/data/**` map to `tests/test_generate_icon_subset.py`, the generator test that also compares the bundled icon data with upstream.
+
+## Standalone runs
+
+The icons app tests also run with no FLS settings or conftest: `uv run pytest -c freedom_ls/icons/tests/standalone_pytest.ini freedom_ls/icons/tests`. The panel framework's run is `uv run pytest -c freedom_ls/panel_framework/tests/standalone_pytest.ini freedom_ls/panel_framework/tests`. `Skill(fls-dev:testing)` describes what each configuration sets.
 
 ## Collection safety — FLS example
 
@@ -54,7 +59,7 @@ Where the generic resource uses `myproject.optional_feature` / `WidgetFactory`, 
 ## De-branding techniques
 
 - **Ambient-default config.** Assert the structure, not the value the ambient icon set happens to produce: `re.search(r'viewBox="0 0 \d+ \d+"', result)`, not `viewBox="0 0 24 24"`. Prove it flexes with a second case that stubs a glyph set of a different size.
-- **Pinned config stays as-is.** A test whose subject is one specific icon set pins it with `@override_settings(FREEDOM_LS_ICON_SET="lucide")` and may assert that set's literals. A test that stubs one set without pinning `FREEDOM_LS_ICON_SET` gets the pin added.
+- **Pinned config stays as-is.** A test whose subject is one specific icon set pins it with `@override_settings(SEMANTIC_ICONS_SET="lucide")` and may assert that set's literals. A test that stubs one set without pinning `SEMANTIC_ICONS_SET` gets the pin added.
 - **Theme values read through the code.** A test that loads a real theme `.css` and asserts a derived colour or font stack breaks the day someone re-skins the theme. Feed an explicit token dict instead (`resolve_color({"color-primary": "#283593"})`) and cover the shipped themes with a check that resolution succeeds.
 - **Independent oracle for shipped assets.** Monkeypatch the image-dimension reader to a fixed size and assert a hand-computed result, never one derived from the shipped logo.
 - **Shadowed partial.** A downstream replaces marketing copy wholesale, so assert the partial's template name (`[t.name for t in response.templates]` reports the lookup name, so a shadow still matches) or a documented structural hook. `html.split("Some Heading")` is the same bug: under a shadow it raises `IndexError` rather than failing.
