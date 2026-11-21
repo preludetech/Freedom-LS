@@ -50,7 +50,7 @@ The taxonomy (`playwright`, `fls_internal`, `ci_only`, `weasyprint`, `dev_toolin
 
 ## Standalone runs
 
-The icons app tests also run with no FLS settings or conftest: `uv run pytest -c freedom_ls/icons/tests/standalone_pytest.ini freedom_ls/icons/tests`. The panel framework's run is `uv run pytest -c freedom_ls/panel_framework/tests/standalone_pytest.ini freedom_ls/panel_framework/tests`. `Skill(fls-dev:testing)` describes what each configuration sets.
+The icons app and the panel framework each have a standalone run, with no FLS settings or conftest. `Skill(fls-dev:testing)` gives each command and what its configuration sets.
 
 ## Collection safety — FLS example
 

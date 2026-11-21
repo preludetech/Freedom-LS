@@ -6,6 +6,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 1. Spec
 
 - [x] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
+- [x] (user) Fix `tests/test_test_tiers.py::test_only_allowlisted_plugin_files_spell_out_a_pytest_invocation`: `claude_plugins/fls-dev/resources/testing.md` and `claude_plugins/fls-dev/skills/icon-usage/SKILL.md` now spell out the icons standalone pytest command but are not on its `ALLOWED` list. Either add them to `ALLOWED` or move the command to `claude_plugins/fls-dev/skills/testing/SKILL.md` and point to it, then re-run `/sdd:finish_worktree`
 - [ ] (user) Review the spec and edit where needed; after substantial hand edits, run `/sdd:spec_review`
 
 ## 2. Plan
