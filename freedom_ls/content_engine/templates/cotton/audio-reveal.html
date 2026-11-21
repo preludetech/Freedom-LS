@@ -44,7 +44,10 @@ from sm:, and full width under the card below it.
         <c-button variant="secondary" class="min-h-11 min-w-11 w-full sm:w-auto"
                   x-bind:aria-expanded="revealed" x-bind:aria-controls="$id('audio-answer')"
                   x-on:click="toggleReveal">
-          <span x-show="!revealed">Reveal</span><span x-show="revealed" x-cloak>Hide</span>
+          <span class="grid">
+            <span class="col-start-1 row-start-1" x-bind:class="revealLabelClass">Reveal</span>
+            <span class="invisible col-start-1 row-start-1" x-bind:class="hideLabelClass">Hide</span>
+          </span>
         </c-button>
       </div>
       <p class="sr-only" role="status" x-text="announcement"></p>

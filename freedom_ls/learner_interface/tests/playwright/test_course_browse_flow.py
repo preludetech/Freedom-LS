@@ -596,6 +596,13 @@ def test_learner_practises_with_audio_widgets(
     expect(play).to_have_count(0)
     assert not [url for url in requested if "/content/audio/" in url]
 
+    # From sm: up, revealing moves nothing: the button and the card keep their
+    # boxes whichever label the button shows.
+    page.set_viewport_size({"width": 1280, "height": 800})
+    card = widget.locator("div.flex-1").first
+    button_before = _box(reveal)
+    card_width_before = _box(card)["width"]
+
     # Reveal shows the answer and plays it from the start.
     reveal.click()
     expect(play.locator("xpath=preceding-sibling::div")).to_be_visible()
@@ -603,6 +610,9 @@ def test_learner_practises_with_audio_widgets(
     expect(reveal).to_have_attribute("aria-expanded", "true")
     expect(play).to_have_attribute("aria-pressed", "true")
     assert [url for url in requested if "/content/audio/" in url]
+
+    assert _box(reveal) == button_before
+    assert _box(card)["width"] == card_width_before
 
     # The play button inside the answer stops and replays it.
     play.click()

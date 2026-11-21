@@ -212,6 +212,12 @@ document.addEventListener("alpine:init", () => {
         answerClass() {
             return { invisible: !this.revealed };
         },
+        revealLabelClass() {
+            return { invisible: this.revealed };
+        },
+        hideLabelClass() {
+            return { invisible: !this.revealed };
+        },
         announcement() {
             return this.revealed ? this.$root.dataset.label : "";
         },
