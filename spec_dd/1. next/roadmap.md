@@ -11,7 +11,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### In progress
 
-- 🔴 High · `faster-test-runs-1-fast-password-hasher` (Faster test runs)
 - 🔴 High · `faster-test-runs-10-rerun-only-failures-in-a-batch` (Faster test runs)
 - 🔴 High · `faster-test-runs-3-permission-matrix-test` (Faster test runs)
 - 🔴 High · `faster-test-runs-4-playwright-tests` (Faster test runs)
@@ -72,7 +71,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### Needs work on main first
 
-- ⚪ Priority not set · `panel-framework-tech-debt-polish` (Panel framework): cut it with `/sdd:roadmap panel-framework-tech-debt-polish` (the directory is empty).
+None.
 
 ![Up next](roadmap_diagrams/up-next.svg)
 
@@ -82,13 +81,12 @@ Priority: 🔴 High
 
 Cut the time and machine load of test runs so several worktrees can work at once. Parent: `faster-test-runs`.
 
-- `faster-test-runs-1-fast-password-hasher` — **in progress** — Tests hash passwords with a fast hasher; production and the dev server keep Argon2.
 - `faster-test-runs-2-reuse-test-database` — **ready** — A pytest run reuses the test database and rebuilds it only when migrations change.
 - `faster-test-runs-3-permission-matrix-test` — **in progress** — The permission matrix test builds its users and cohorts once, with every cell still checked.
 - `faster-test-runs-4-playwright-tests` — **in progress** — Playwright tests sign in without the login form, and same-page tests merge into one flow.
 - `faster-test-runs-5-full-suite-on-github-actions` — **ready** — The full suite runs on free GitHub runners in parallel jobs, started on demand by an SDD run.
 - `faster-test-runs-6-prune-slow-tests` — **ready** — Remaining slow and redundant tests are merged or removed from a measured per-test ranking.
-- `faster-test-runs-7-claude-cloud-test-runs` — **blocked** by `faster-test-runs-1-fast-password-hasher`, `faster-test-runs-2-reuse-test-database`, `faster-test-runs-3-permission-matrix-test`, `faster-test-runs-4-playwright-tests`, `faster-test-runs-5-full-suite-on-github-actions`, `faster-test-runs-6-prune-slow-tests`, `faster-test-runs-8-narrower-targeted-tier`, `faster-test-runs-9-machine-wide-test-run-limit`, `faster-test-runs-10-rerun-only-failures-in-a-batch`, `faster-test-runs-11-record-failed-full-runs`, `faster-test-runs-12-reliable-full-run-record`, `faster-test-runs-13-checkpoint-shared-paths` — Fallback: a test run or SDD batch is handed to a Claude Code cloud session.
+- `faster-test-runs-7-claude-cloud-test-runs` — **blocked** by `faster-test-runs-2-reuse-test-database`, `faster-test-runs-3-permission-matrix-test`, `faster-test-runs-4-playwright-tests`, `faster-test-runs-5-full-suite-on-github-actions`, `faster-test-runs-6-prune-slow-tests`, `faster-test-runs-8-narrower-targeted-tier`, `faster-test-runs-9-machine-wide-test-run-limit`, `faster-test-runs-10-rerun-only-failures-in-a-batch`, `faster-test-runs-11-record-failed-full-runs`, `faster-test-runs-12-reliable-full-run-record`, `faster-test-runs-13-checkpoint-shared-paths` — Fallback: a test run or SDD batch is handed to a Claude Code cloud session.
 - `faster-test-runs-8-narrower-targeted-tier` — **in progress** — A batch's targeted test run covers the tests its change can affect, not most of the suite.
 - `faster-test-runs-9-machine-wide-test-run-limit` — **ready** — Test runs from every worktree share one CPU and memory limit, and a waiting run says so.
 - `faster-test-runs-10-rerun-only-failures-in-a-batch` — **in progress** — After a failure a batch re-runs only the failed tests; the whole-tier gate stays at the final full run.
@@ -506,7 +504,6 @@ Gaps in the panel framework's dialogs and responses.
 
 - `panel-framework-close-and-toast-response` — **ready** — Panel actions get a built-in response that closes the dialog and shows a toast without swapping content.
 - `panel-framework-dialogs-without-javascript` — **ready** — Single-record dialog triggers work with JavaScript off, opening the dialog server-side over its page.
-- `panel-framework-tech-debt-polish` — **ready** — No idea written yet. Before starting: cut it with `/sdd:roadmap panel-framework-tech-debt-polish` (the directory is empty).
 
 ![Panel framework](roadmap_diagrams/panel-framework.svg)
 
