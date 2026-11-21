@@ -370,9 +370,6 @@ document.addEventListener("alpine:init", () => {
             const elapsed = spokenDuration(this.elapsed);
             return this.duration === null ? elapsed : `${elapsed} of ${spokenDuration(this.duration)}`;
         },
-        get playedStyle() {
-            return { "--played": `${this.duration ? (this.elapsed / this.duration) * 100 : 0}%` };
-        },
 
         seekInput(event) {
             this.dragging = true;

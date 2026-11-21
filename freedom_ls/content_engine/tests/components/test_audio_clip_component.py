@@ -107,6 +107,15 @@ class TestResolvedClip:
 
         assert _seek(tree).get("disabled") is None
 
+    def test_seek_bar_binds_no_style(self, mock_site_context: object) -> None:
+        """The seek bar bound a `--played` style that no CSS read; `accent-primary` fills it."""
+        _audio_file(198.4)
+
+        tree = _tree(CLIP.format(extra=""))
+
+        assert _seek(tree).get("x-bind:style") is None
+        assert "accent-primary" in _seek(tree).get("class", "")
+
     def test_kind_renders_when_given(self, mock_site_context: object) -> None:
         _audio_file()
 
