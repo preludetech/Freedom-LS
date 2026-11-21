@@ -29,7 +29,7 @@ from freedom_ls.comms.messaging_policy import (
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.events import LEARNER_CHANGED
-from freedom_ls.educator_interface.quick_views import LearnerQuickView
+from freedom_ls.educator_interface.panels.learner.quick_view import LearnerQuickView
 from freedom_ls.educator_interface.tests.helpers import (
     _get_quick_view,
     _quick_view_url,

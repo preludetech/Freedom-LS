@@ -154,6 +154,7 @@ from freedom_ls.educator_interface.panels.learner.filters import (
     LearnerCourseFilter,
     LearnerStatusFilter,
 )
+from freedom_ls.educator_interface.panels.learner.quick_view import LearnerQuickView
 from freedom_ls.educator_interface.panels.staff.actions import (
     AddStaffMemberToCohortAction,
     ChangeRoleAction,
@@ -164,7 +165,6 @@ from freedom_ls.educator_interface.panels.staff.config import StaffConfig
 from freedom_ls.educator_interface.paths import interface_path
 from freedom_ls.educator_interface.quick_views import (
     CohortQuickView,
-    LearnerQuickView,
 )
 from freedom_ls.educator_interface.reporting import (
     DOWNLOAD_COHORT_REPORT,

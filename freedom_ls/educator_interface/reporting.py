@@ -28,7 +28,7 @@ from freedom_ls.educator_interface.panels.common.request import (
 from freedom_ls.educator_interface.panels.learner.actions import (
     RegisterLearnerForCourseAction,
 )
-from freedom_ls.educator_interface.quick_views import (
+from freedom_ls.educator_interface.panels.learner.quick_view import (
     visible_registrations_with_progress,
 )
 from freedom_ls.learner_management.models import (
