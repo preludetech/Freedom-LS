@@ -690,6 +690,27 @@ def test_a_closed_claim_beside_a_held_draft_leaves_the_draft_and_its_sitting(
     assert FormProgress.objects.filter(pk=held.form_progress_id).exists()
 
 
+def test_a_claim_reads_the_incoming_state_afresh_so_a_late_rejection_survives(
+    account_with_user: User,
+) -> None:
+    incoming = _anonymous_with_state_for("taken@example.com")
+    held = CourseApplicationFactory(user=account_with_user, course=incoming.course)
+    # A reviewer rejects it after the claimant's copy was loaded.
+    CourseApplication._base_manager.filter(pk=incoming.pk).update(
+        state=CourseApplication.State.REJECTED,
+        decided_at=timezone.now(),
+        rejection_message="Not this time.",
+    )
+
+    result = attach_to_user(incoming, incoming.anonymous_applicant, account_with_user)
+
+    assert result == AttachResult(application=incoming, discarded_draft=False)
+    assert set(CourseApplication.objects.filter(user=account_with_user)) == {
+        held,
+        incoming,
+    }
+
+
 @pytest.mark.parametrize("incoming_kind", ["draft", "submitted"])
 @pytest.mark.parametrize("held_kwargs", [{}, {"approved": True}])
 def test_an_active_claim_over_a_submitted_or_approved_held_application_is_erased(

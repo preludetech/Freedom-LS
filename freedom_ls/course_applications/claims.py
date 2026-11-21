@@ -355,6 +355,14 @@ def attach_to_user(
         # The lookup below locks the held application, which is nothing when
         # the account holds none; the user row is the one lock both see.
         list(User._base_manager.filter(pk=user.pk).select_for_update())
+        # Read the incoming state afresh under its own lock: a reviewer may
+        # have rejected it since the caller loaded it, and a rejected
+        # application must attach beside the account's, never be erased.
+        application.state = (
+            CourseApplication._base_manager.select_for_update()
+            .values_list("state", flat=True)
+            .get(pk=application.pk)
+        )
         held: CourseApplication | None = (
             None
             if application.state in CLOSED_STATES
