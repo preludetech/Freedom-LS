@@ -233,9 +233,6 @@ class TestBranchToDbName:
         assert branch_to_db_name("hotfix-2.1") == "db_hotfix_2_1"
 
 
-# --- find_repo_root, uncommitted_paths and head_commit_of ---
-
-
 def test_find_repo_root_at_the_repo_root_returns_it(
     committed_content_repo: Path,
 ) -> None:
