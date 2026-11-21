@@ -606,3 +606,29 @@ def test_seek_before_play_gives_way_when_the_host_ignores_range(
 
     expect(play).to_have_attribute("aria-pressed", "true", timeout=10_000)
     expect(_elapsed(page)).to_have_text(re.compile(r"0:0\d"), timeout=5_000)
+
+
+def test_transcript_toggle_lines_up_with_the_clip_title(
+    live_server,
+    live_server_site,
+    mock_site_context,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    """The toggle's chevron used to start 8px right of the title's left edge.
+
+    The link button's own left padding pushed it in from the text column.
+    """
+    page = logged_in_page
+    _open_clips(live_server, page, logged_in_user)
+    title = page.get_by_role("group", name=FIRST_CLIP).locator(
+        "[x-bind\\:id=\"$id('audio-clip-title')\"]"
+    )
+    chevron = _transcript_toggle(page).locator("[data-icon='dropdown']")
+
+    title_box = title.bounding_box()
+    chevron_box = chevron.bounding_box()
+
+    assert title_box
+    assert chevron_box
+    assert abs(chevron_box["x"] - title_box["x"]) <= 1

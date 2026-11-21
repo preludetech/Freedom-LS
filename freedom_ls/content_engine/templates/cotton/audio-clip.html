@@ -41,6 +41,8 @@ The play button sits in the vertical centre of the card in every state, beside
 the title, seek or status row and transcript toggle. The transcript panel sits
 below that row, indented to the column (ml-14 = the button's 44 px plus the
 12 px gap), so opening it does not move the button.
+The transcript toggle's -ml-2 cancels the link button's 8px left padding so its
+chevron starts on the title's left edge; the padding stays for the focus ring.
 {% endcomment %}
 
 {% with file_obj=src|get_file_by_path:content_instance %}
@@ -93,7 +95,7 @@ below that row, indented to the column (ml-14 = the button's 44 px plus the
             {% if slot.strip %}
               <c-button variant="link" size="small" x-on:click="toggleTranscript"
                         x-bind:aria-expanded="transcriptOpen" x-bind:aria-controls="$id('audio-clip-transcript')"
-                        class="group/transcript gap-1">
+                        class="group/transcript -ml-2 gap-1">
                 <c-icon name="dropdown" class="size-4 group-aria-expanded/transcript:rotate-180 motion-safe:transition-[rotate]" />
                 <span x-text="transcriptToggleText">Show transcript</span>
               </c-button>
