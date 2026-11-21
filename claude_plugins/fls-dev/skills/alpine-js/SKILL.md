@@ -53,6 +53,7 @@ Reuse these registered components before writing a new one. Each app registers i
 | `flashcard` | `content_engine` | `cotton/flashcard.html` | Flip state and 3-D face styles for the two-sided card; the animation honours reduced motion |
 | `contentLightbox` | `content_engine` | `cotton/picture.html` | Focus-managing image lightbox (open/close, escape, focus restore) |
 | `audioFile` | `content_engine` | `cotton/audio.html` | Speak button: creates one page-wide audio element on the first press, then plays or stops its file; starting one stops any other, so one plays at a time. Shows idle, loading and playing icons, and a retry message on failure |
+| `audioReveal` | `content_engine` | `cotton/audio-reveal.html` | Say it, then reveal: `audioFile`'s player (same page-wide audio element, so one plays at a time) plus a `revealed` flag. Pressing the hidden answer's slot shows the answer and plays its file from the start; the answer hides again 5 seconds after the audio stops (a replay restarts the countdown, never hides mid-clip). Hiding stops any audio and returns focus to the reveal button if it was in the answer; revealing moves focus to the answer's play button. The class bindings return objects so the server-rendered hidden state is removed; a status line announces the label only while revealed |
 | `claimLinkNotice` | `course_applications` | `course_applications/partials/claim_link_notice.html` | Reveals the change-address form in place, reopening it with the field focused after a failed change |
 
 ### Stores (`Alpine.store`)
