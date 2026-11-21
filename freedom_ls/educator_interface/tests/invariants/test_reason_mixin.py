@@ -12,19 +12,20 @@ import inspect
 
 from freedom_ls.educator_interface import actions
 from freedom_ls.educator_interface.panels.common import actions as common_actions
+from freedom_ls.educator_interface.panels.learner import actions as learner_module
 from freedom_ls.educator_interface.panels.staff import actions as staff_actions
 from freedom_ls.panel_framework.actions import ReasonMixin
 
 
-def _reason_actions() -> list[type[ReasonMixin]]:
-    return [
+def _reason_actions() -> set[type[ReasonMixin]]:
+    return {
         cls
-        for module in (actions, staff_actions)
+        for module in (actions, learner_module, staff_actions)
         for _, cls in inspect.getmembers(module, inspect.isclass)
         if issubclass(cls, ReasonMixin)
         and cls is not ReasonMixin
         and cls is not common_actions.EducatorReasonMixin
-    ]
+    }
 
 
 def test_every_reason_action_submits_through_the_mixin() -> None:

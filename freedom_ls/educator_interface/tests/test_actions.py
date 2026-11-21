@@ -29,7 +29,6 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseAudience, CourseVisibility
 from freedom_ls.educator_interface import actions as actions_module
 from freedom_ls.educator_interface.actions import (
-    AddLearnerAction,
     AddToCohortBulkAction,
     CohortCourseBulkAction,
     DeactivateCohortRegistrationBulkAction,
@@ -37,7 +36,6 @@ from freedom_ls.educator_interface.actions import (
     DeactivateRegistrationBulkAction,
     RegisterCohortForCourseBulkAction,
     RegisterForCourseBulkAction,
-    RemoveFromCohortAction,
     RemoveFromCohortBulkAction,
     RequiresActiveCohortMixin,
     cohort_not_empty_sentence,
@@ -46,6 +44,10 @@ from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     LEARNER_CHANGED,
     REGISTRATION_CHANGED,
+)
+from freedom_ls.educator_interface.panels.learner.actions import (
+    AddLearnerAction,
+    RemoveFromCohortAction,
 )
 from freedom_ls.educator_interface.tests.helpers import (
     _assert_message_dialog,
@@ -2521,7 +2523,7 @@ def test_a_member_leaving_mid_move_answers_422_with_the_reason(
         raise ValueError("The learner is not a member of the source cohort.")
 
     monkeypatch.setattr(
-        "freedom_ls.educator_interface.actions.move_between_cohorts",
+        "freedom_ls.educator_interface.panels.learner.actions.move_between_cohorts",
         leave_then_refuse,
     )
 
@@ -3574,7 +3576,8 @@ def test_a_failed_entry_sends_no_email_and_leaves_the_resend_open(
         raise _RolledBackError
 
     monkeypatch.setattr(
-        "freedom_ls.educator_interface.actions.record_learner_entry", fail
+        "freedom_ls.educator_interface.panels.learner.actions.record_learner_entry",
+        fail,
     )
     with (
         pytest.raises(_RolledBackError),

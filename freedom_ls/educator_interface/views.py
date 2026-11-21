@@ -67,24 +67,13 @@ from freedom_ls.comms.views import login_required_htmx_to
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.actions import (
     AddExistingLearnersAction,
-    AddLearnerAction,
     AddLearnerToCohortAction,
-    AddToCohortAction,
     DeactivateCohortRegistrationAction,
-    DeactivateRegistrationAction,
     DeleteEmptyCohortAction,
     EditCohortAction,
-    EditLearnerNameAction,
-    ImportLearnersAction,
-    MoveToCohortAction,
-    ReactivateRegistrationAction,
     RegisterCohortForCourseAction,
-    RegisterLearnerForCourseAction,
-    RemoveFromCohortAction,
-    ResendSetupEmailAction,
     cohort_not_empty_sentence,
     cohort_state_actions,
-    learner_state_actions,
 )
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
@@ -144,6 +133,19 @@ from freedom_ls.educator_interface.panels.common.tables import (
 )
 from freedom_ls.educator_interface.panels.course.config import CourseConfig
 from freedom_ls.educator_interface.panels.dashboard.config import DashboardConfig
+from freedom_ls.educator_interface.panels.learner.actions import (
+    AddLearnerAction,
+    AddToCohortAction,
+    DeactivateRegistrationAction,
+    EditLearnerNameAction,
+    ImportLearnersAction,
+    MoveToCohortAction,
+    ReactivateRegistrationAction,
+    RegisterLearnerForCourseAction,
+    RemoveFromCohortAction,
+    ResendSetupEmailAction,
+    learner_state_actions,
+)
 from freedom_ls.educator_interface.panels.learner.filters import (
     LearnerCohortFilter,
     LearnerCourseFilter,

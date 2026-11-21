@@ -13,7 +13,6 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.models import User
-from freedom_ls.educator_interface.actions import RegisterLearnerForCourseAction
 from freedom_ls.educator_interface.avatars import learner_avatars
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
@@ -25,6 +24,9 @@ from freedom_ls.educator_interface.panels.common.report import (
 )
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
+)
+from freedom_ls.educator_interface.panels.learner.actions import (
+    RegisterLearnerForCourseAction,
 )
 from freedom_ls.educator_interface.quick_views import (
     visible_registrations_with_progress,
