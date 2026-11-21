@@ -767,3 +767,21 @@ def _move_url_from_learner(
 
 def _add_learners_list_url(organisation: Organisation) -> str:
     return _interface_url(organisation.slug, "learners/__actions/add_learner")
+
+
+def _cohort_with_courses(
+    organisation: Organisation, course_count: int, **cohort_fields: object
+) -> Cohort:
+    cohort = cast(Cohort, CohortFactory(organisation=organisation, **cohort_fields))
+    for _ in range(course_count):
+        CohortCourseRegistrationFactory(cohort=cohort)
+    return cohort
+
+
+def _course_option_values(response: _MonkeyPatchedWSGIResponse) -> set[str]:
+    document = lxml.html.fromstring(response.content.decode())
+    return {
+        option.get("value")
+        for option in document.cssselect("select[name='course'] option")
+        if option.get("value")
+    }
