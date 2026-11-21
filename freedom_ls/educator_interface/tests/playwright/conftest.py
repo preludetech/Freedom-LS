@@ -11,7 +11,7 @@ from django.contrib.sites.models import Site
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
-from freedom_ls.tests.playwright_fixtures import _LOGGED_IN_PASSWORD, _login_via_ui
+from freedom_ls.tests.playwright_fixtures import _LOGGED_IN_PASSWORD, sign_in
 
 
 @pytest.fixture
@@ -37,7 +37,7 @@ def educator_logged_in_page(
     educator_user: User,
 ) -> Page:
     """A Playwright Page logged in as educator_user."""
-    _login_via_ui(page, live_server, str(educator_user.email), _LOGGED_IN_PASSWORD)
+    sign_in(page, live_server, educator_user)
     return page
 
 
@@ -61,5 +61,5 @@ def cohort_admin_logged_in_page(
     cohort_admin_user: User,
 ) -> Page:
     """A Playwright Page logged in as cohort_admin_user."""
-    _login_via_ui(page, live_server, str(cohort_admin_user.email), _LOGGED_IN_PASSWORD)
+    sign_in(page, live_server, cohort_admin_user)
     return page

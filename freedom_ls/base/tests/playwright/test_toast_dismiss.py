@@ -22,6 +22,9 @@ from __future__ import annotations
 
 import pytest
 from playwright.sync_api import Page, expect
+from pytest_django.live_server_helper import LiveServer
+
+from freedom_ls.conftest import reverse_url
 
 
 def _inject_toast(page: Page, region_id: str, toast_id: str, severity: str) -> None:
@@ -57,7 +60,9 @@ def _inject_toast(page: Page, region_id: str, toast_id: str, severity: str) -> N
 
 @pytest.mark.playwright
 @pytest.mark.django_db(transaction=True)
-def test_toast_dismissal_and_stack_order(logged_in_page: Page) -> None:
+def test_toast_dismissal_and_stack_order(
+    logged_in_page: Page, live_server: LiveServer
+) -> None:
     """Dismissing a toast removes its root from the DOM, then new toasts stack newest-lowest.
 
     The toast root used to stay attached after the close-button click (only the
@@ -67,6 +72,8 @@ def test_toast_dismissal_and_stack_order(logged_in_page: Page) -> None:
     recently inserted toast has the largest y-coordinate of the stack.
     """
     page = logged_in_page
+    # A signed-in page starts on about:blank, which has no toast regions.
+    page.goto(reverse_url(live_server, "accounts:account_profile"))
 
     # An error toast is persistent: no auto-dismiss timer races the click.
     _inject_toast(

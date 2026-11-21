@@ -7,62 +7,44 @@ Available fixtures
   and ``sessionStorage`` are empty at the *start* of each Playwright test.
   pytest-playwright already gives each test a fresh ``BrowserContext`` (so
   storage is empty by default), but the fixture is the explicit, documented
-  contract — tests no longer need to call
+  contract: tests no longer need to call
   ``page.evaluate("localStorage.clear()")`` themselves. The clear happens
   via context teardown, which keeps in-test persistence semantics
   (writing to localStorage and navigating again still finds the value)
   intact.
-- ``logged_in_page`` (function): yields a Playwright ``Page`` for a freshly-
-  created, email-verified learner user. Drives the allauth login form once
-  per test using semantic locators (``get_by_label`` / ``get_by_role``) per
-  the ``fls:playwright-tests`` skill. Replaces the older fixture body that
-  used CSS selectors (``input[name="login"]``, ``button[type="submit"]``).
+- ``logged_in_page`` (function): yields a Playwright ``Page`` signed in as
+  ``logged_in_user``, a freshly created, email-verified learner. It calls
+  ``sign_in``, so the browser holds a session without the login form.
 
-A ``fresh_login_page`` (no-auth) variant is intentionally not provided —
-no current test needs it, and a fixture is only added once two or more tests
-need it. Tests that need to drive the login or
-signup UI themselves can use the standard ``page`` fixture directly.
+``sign_in(page, live_server, user)`` gives a page's browser context a session
+for ``user``. It builds the session with the Django test client's
+``force_login`` and adds the session cookie to the context. It does not
+navigate. The educator fixtures in ``educator_interface`` and any test that
+needs a second user or a fresh context use it too.
 
-Scoping
--------
+``_login_via_ui`` drives the allauth login form. It is for a test whose
+subject is signing in; every other test signs in with ``sign_in``.
 
-All fixtures here are function-scoped. A session-scoped ``storage_state``
-login fixture would pay for the UI login once per session and reuse the
-resulting cookies + localStorage across every test via
-``browser.new_context(storage_state=...)``.
+Why the session is made per test
+--------------------------------
 
-That approach does not survive contact with the existing E2E test suite,
-which uses ``@pytest.mark.django_db(transaction=True)`` so that the
+Browser tests use ``@pytest.mark.django_db(transaction=True)`` so that the
 Playwright browser (a separate DB connection) sees data the test set up.
-``transaction=True`` makes pytest-django flush the entire database at the
-end of every test — that wipes both the synthetic user the session-scoped
-fixture created *and* the ``django_session`` row the cookie points at, so
-the cached ``storage_state`` is invalid by the second test.
-
-A function-scoped UI login is therefore the correct trade-off here:
-slower per test (one form submission instead of zero), but compatible with
-the transactional DB reset every existing E2E test relies on. If a future
-test class can opt out of ``transaction=True``, a session-scoped
-``storage_state`` fixture can be layered on without removing this one.
+``transaction=True`` makes pytest-django flush the entire database at the end
+of every test, which deletes the user and the ``django_session`` row a cookie
+points at. A ``storage_state`` saved once is therefore dead by the second
+test, so each test builds its session after its user exists.
 
 Composition
 -----------
 
 ``logged_in_page`` depends on ``live_server_site`` (sets the test
-``Site``'s domain to match ``live_server.url`` so allauth's site-aware
-queries hit the right row) and ``mock_site_context`` (patches
-``_thread_locals.request`` and ``get_current_site`` for code that runs in
-the test's own thread — factories, view helpers called directly from the
-test, etc.). The live server itself runs in a separate thread and does
-its own site lookup; the mock is for the test process.
-
-Role variants
--------------
-
-Only a learner-shaped login is provided today, because every existing
-Playwright test uses a learner. Role-specific variants
-(``educator_logged_in_page``, ``admin_logged_in_page``) should be added
-the moment a second test needs them — not preemptively.
+``Site``'s domain to match ``live_server.url`` so site-aware queries hit the
+right row) and ``mock_site_context`` (patches ``_thread_locals.request`` and
+``get_current_site`` for code that runs in the test's own thread: factories,
+view helpers called directly from the test, etc.). The live server itself
+runs in a separate thread and does its own site lookup; the mock is for the
+test process.
 """
 
 import contextlib
@@ -72,8 +54,11 @@ import pytest
 from allauth.account.models import EmailAddress
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import Page, Playwright, expect
+from pytest_django.live_server_helper import LiveServer
 
+from django.conf import settings
 from django.db import connections
+from django.test import Client
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
@@ -142,7 +127,9 @@ def reset_local_storage(request: pytest.FixtureRequest) -> None:
         page.evaluate("window.localStorage.clear(); window.sessionStorage.clear();")
 
 
-def _login_via_ui(page: Page, live_server, email: str, password: str) -> None:
+def _login_via_ui(
+    page: Page, live_server: LiveServer, email: str, password: str
+) -> None:
     """Drive the allauth login form using semantic locators."""
     from conftest import reverse_url  # local to avoid circular import at module load
 
@@ -164,6 +151,31 @@ def _login_via_ui(page: Page, live_server, email: str, password: str) -> None:
     expect(page).not_to_have_url(login_url)
 
 
+def sign_in(page: Page, live_server: LiveServer, user: User) -> None:
+    """Give ``page``'s browser context a session for ``user``, without the login form.
+
+    The session is made in this test, after ``user`` exists, because ``transaction=True``
+    flushes ``django_session`` after every test: a session saved once would be gone by the
+    next test. ``force_login`` builds it through the session engine and fires
+    ``user_logged_in`` as a real login does. Does not navigate.
+    """
+    client = Client()
+    # Axes's backend is first in AUTHENTICATION_BACKENDS and cannot be named for a
+    # session, so the session records the model backend.
+    client.force_login(user, backend="django.contrib.auth.backends.ModelBackend")
+    # The cookie name differs per worktree (settings_dev), so read it from settings.
+    cookie_name = settings.SESSION_COOKIE_NAME
+    page.context.add_cookies(
+        [
+            {
+                "name": cookie_name,
+                "value": client.cookies[cookie_name].value,
+                "url": live_server.url,
+            }
+        ]
+    )
+
+
 # Synthetic credential shared by the logged-in fixtures; never persisted.
 _LOGGED_IN_PASSWORD = "testpass"  # noqa: S105  # pragma: allowlist secret
 
@@ -179,8 +191,8 @@ def logged_in_user(db, live_server_site, mock_site_context) -> User:
     """
     user: User = UserFactory(password=_LOGGED_IN_PASSWORD)
 
-    # allauth refuses to authenticate users whose email is not verified
-    # when ACCOUNT_EMAIL_VERIFICATION == "mandatory" (set in settings_base).
+    # The verified address lets a page read it (allauth no longer authenticates
+    # this user, since ``sign_in`` skips the login form).
     EmailAddress.objects.get_or_create(
         user=user,
         email=user.email,
@@ -190,12 +202,11 @@ def logged_in_user(db, live_server_site, mock_site_context) -> User:
 
 
 @pytest.fixture
-def logged_in_page(page: Page, live_server, logged_in_user: User) -> Page:
-    """Yield a Playwright ``Page`` logged in as ``logged_in_user``.
+def logged_in_page(page: Page, live_server: LiveServer, logged_in_user: User) -> Page:
+    """Yield a Playwright ``Page`` signed in as ``logged_in_user``.
 
-    Uses semantic locators (``get_by_label``, ``get_by_role``) per the
-    Playwright skill. See module docstring for why this is function-scoped
-    rather than backed by a session-scoped ``storage_state`` fixture.
+    The session is made with ``sign_in`` per test; see the module docstring for
+    why a session saved once cannot be reused.
     """
-    _login_via_ui(page, live_server, str(logged_in_user.email), _LOGGED_IN_PASSWORD)
+    sign_in(page, live_server, logged_in_user)
     return page
