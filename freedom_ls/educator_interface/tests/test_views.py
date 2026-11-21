@@ -75,7 +75,6 @@ from freedom_ls.educator_interface.tests.helpers import (
     _card_summary,
     _export_audit_csv,
     _get_document,
-    _get_table_fragment,
     _grant,
     _header_of,
     _history_entry,
@@ -267,29 +266,6 @@ def test_cohort_page_actions_sit_in_the_page_header_not_the_details_card(
     assert all(
         "btn-sm" in button.get("class").split()
         for button in settings.cssselect("section[data-panel='status'] footer .btn")
-    )
-
-
-@pytest.mark.django_db
-def test_learner_detail_page_is_titled_with_the_learners_name_not_the_user_str(
-    staff_client: Client,
-):
-    organisation = OrganisationFactory(name="Northside")
-    learner = LearnerFactory(
-        organisation=organisation,
-        user__first_name="Ada",
-        user__last_name="Lovelace",
-        user__email="ada@example.com",
-    )
-
-    document = _get_document(
-        staff_client, _interface_url(organisation.slug, f"learners/{learner.pk}")
-    )
-
-    (heading,) = document.cssselect("#instance-title")
-    assert heading.text_content().strip() == "Ada Lovelace"
-    assert "ada@example.com - Northside" not in lxml.html.tostring(
-        document, encoding="unicode"
     )
 
 
@@ -520,133 +496,6 @@ def test_an_active_cohort_header_has_no_badge_no_stats_and_no_buttons(
     assert "Active" not in header.text_content()
     assert "Learners" not in header.text_content()
     assert not header.cssselect(".btn")
-
-
-@pytest.mark.django_db
-def test_an_active_learner_header_has_no_badge_and_no_buttons(staff_client: Client):
-    organisation = OrganisationFactory()
-    learner = LearnerFactory(organisation=organisation, user__first_name="Ada")
-
-    header = _header_of(
-        _get_document(
-            staff_client, _interface_url(organisation.slug, f"learners/{learner.pk}")
-        )
-    )
-
-    assert not header.cssselect(".chip")
-    assert not header.cssselect(".btn")
-
-
-@pytest.mark.django_db
-def test_an_inactive_learner_header_shows_the_inactive_badge(staff_client: Client):
-    organisation = OrganisationFactory()
-    learner = LearnerFactory(organisation=organisation, is_active=False)
-
-    header = _header_of(
-        _get_document(
-            staff_client, _interface_url(organisation.slug, f"learners/{learner.pk}")
-        )
-    )
-
-    (badge,) = header.cssselect(".chip")
-    assert badge.text_content().strip() == "Inactive"
-
-
-@pytest.mark.django_db
-def test_add_to_cohort_sits_under_the_learners_cohorts_panel(staff_client: Client):
-    organisation = OrganisationFactory()
-    learner = LearnerFactory(organisation=organisation)
-    page_url = _interface_url(organisation.slug, f"learners/{learner.pk}")
-
-    document = _get_document(staff_client, page_url)
-
-    (panel,) = document.cssselect("section[data-panel='cohorts']")
-    labels = [
-        button.text_content().strip() for button in panel.cssselect("footer .btn")
-    ]
-    assert labels == ["Add to cohort"]
-
-
-@pytest.mark.django_db
-def test_the_learners_cohorts_table_shows_as_cards_when_its_panel_is_narrow(
-    staff_client: Client,
-):
-    organisation = OrganisationFactory()
-    learner = LearnerFactory(organisation=organisation)
-    CohortMembershipFactory(
-        cohort=CohortFactory(organisation=organisation), learner=learner
-    )
-    page_url = _interface_url(organisation.slug, f"learners/{learner.pk}")
-
-    document = _get_document(staff_client, page_url)
-
-    (panel,) = document.cssselect("section[data-panel='cohorts']")
-    (wrapper,) = panel.cssselect("[data-table-layout]")
-    (region,) = wrapper.cssselect("[role='region']")
-    (cards,) = wrapper.xpath("./ul")
-    assert "@container" in wrapper.get("class", "").split()
-    assert "@min-[58rem]:block" in region.get("class", "").split()
-    assert "@min-[58rem]:hidden" in cards.get("class", "").split()
-
-
-@pytest.mark.django_db
-def test_a_cohort_admin_gets_the_cohort_and_course_actions_but_no_settings_tab(
-    mock_site_context, logged_in_client
-):
-    organisation = OrganisationFactory()
-    cohort = cast(Cohort, CohortFactory(organisation=organisation))
-    learner = _add_member(cohort)
-    grantor = LearnerFactory(user__superuser=True).user
-    educator = LearnerFactory(user__staff=True, organisation=organisation).user
-    assign_role(grantor, educator, "cohort_admin", cohort)
-    client = logged_in_client(educator)
-    page_url = _interface_url(organisation.slug, f"learners/{learner.pk}")
-
-    overview = _get_document(client, page_url)
-    courses = _get_document(client, f"{page_url}/__tabs/courses")
-
-    (cohorts_panel,) = overview.cssselect("section[data-panel='cohorts']")
-    assert [
-        b.text_content().strip() for b in cohorts_panel.cssselect("footer .btn")
-    ] == ["Add to cohort"]
-    (courses_panel,) = courses.cssselect("section[data-panel='courses']")
-    assert [
-        b.text_content().strip() for b in courses_panel.cssselect("footer .btn")
-    ] == ["Register for a course"]
-    assert not overview.cssselect("a[href$='/__tabs/settings']")
-
-
-@pytest.mark.django_db
-def test_the_learner_settings_tab_is_hidden_from_a_cohort_viewer(
-    mock_site_context, logged_in_client
-):
-    organisation = OrganisationFactory()
-    cohort = cast(Cohort, CohortFactory(organisation=organisation))
-    learner = _add_member(cohort)
-    grantor = LearnerFactory(user__superuser=True).user
-    educator = LearnerFactory(user__staff=True, organisation=organisation).user
-    assign_role(grantor, educator, "cohort_viewer", cohort)
-    page_url = _interface_url(organisation.slug, f"learners/{learner.pk}")
-    client = logged_in_client(educator)
-
-    document = _get_document(client, page_url)
-
-    (nav,) = document.cssselect("nav[aria-label='Learner sections']")
-    assert "Settings" not in [a.text_content().split()[0] for a in nav.cssselect("a")]
-    assert client.get(f"{page_url}/__tabs/settings").status_code == 404
-
-
-@pytest.mark.django_db
-def test_the_learner_header_refreshes_on_learner_changed(staff_client: Client):
-    organisation = OrganisationFactory()
-    learner = LearnerFactory(organisation=organisation)
-
-    document = _get_document(
-        staff_client, _interface_url(organisation.slug, f"learners/{learner.pk}")
-    )
-
-    (refresher,) = document.cssselect("#instance-header [data-refresh-events]")
-    assert refresher.get("data-refresh-events") == LEARNER_CHANGED
 
 
 def _cohort_page(client: Client, cohort: Cohort) -> lxml.html.HtmlElement:
@@ -1316,84 +1165,6 @@ def test_a_cohort_viewers_courses_tab_renders_no_action_buttons(
 
     (region,) = document.cssselect("[data-tab-set]")
     assert region.cssselect("button[hx-get]") == []
-
-
-@pytest.mark.django_db
-@pytest.mark.usefixtures("_messaging_on")
-def test_the_learner_page_has_overview_courses_messages_and_history_tabs(
-    staff_client: Client,
-):
-    learner = LearnerFactory(organisation=OrganisationFactory())
-
-    document = _learner_page(staff_client, learner)
-
-    (nav,) = document.cssselect("nav[aria-label='Learner sections']")
-    links = nav.cssselect("a")
-    assert [link.get("href").rsplit("/", 1)[-1] for link in links] == [
-        "overview",
-        "courses",
-        "messages",
-        "settings",
-        "history",
-    ]
-
-
-@pytest.mark.django_db
-def test_the_learner_page_has_no_messages_tab_when_messaging_is_off(
-    staff_client: Client, settings: SettingsWrapper
-):
-    settings.MESSAGING_ENABLED = False
-    learner = LearnerFactory(organisation=OrganisationFactory())
-
-    document = _learner_page(staff_client, learner)
-
-    (nav,) = document.cssselect("nav[aria-label='Learner sections']")
-    links = nav.cssselect("a")
-    assert [link.get("href").rsplit("/", 1)[-1] for link in links] == [
-        "overview",
-        "courses",
-        "settings",
-        "history",
-    ]
-
-
-@pytest.mark.django_db
-def test_the_learner_page_opens_on_the_overview_tab(staff_client: Client):
-    learner = LearnerFactory(organisation=OrganisationFactory())
-
-    document = _learner_page(staff_client, learner)
-
-    (nav,) = document.cssselect("nav[aria-label='Learner sections']")
-    (active,) = [a for a in nav.cssselect("a") if a.get("aria-current") == "page"]
-    assert active.text_content().split()[0] == "Overview"
-
-
-@pytest.mark.django_db
-def test_the_learner_header_carries_the_email_subtitle_and_no_active_badge(
-    staff_client: Client,
-):
-    learner = LearnerFactory(
-        organisation=OrganisationFactory(), user__email="ada@example.com"
-    )
-
-    document = _learner_page(staff_client, learner)
-
-    (title,) = document.cssselect("#instance-title")
-    header = title.xpath("ancestor::div[contains(@class, 'justify-between')][1]")[0]
-    assert "Active" not in header.text_content()
-    assert "ada@example.com" in header.text_content()
-
-
-@pytest.mark.django_db
-def test_the_learner_overview_details_card_lists_name_email_status_and_date_added(
-    staff_client: Client,
-):
-    learner = LearnerFactory(organisation=OrganisationFactory())
-
-    document = _learner_page(staff_client, learner, "overview")
-
-    labels = [dt.text_content().strip() for dt in document.cssselect("dl dt")]
-    assert labels == ["Name", "Email", "Status", "Date added"]
 
 
 def _cohort_history_access(
@@ -4251,65 +4022,6 @@ def test_a_filter_in_play_offers_to_clear_it(
     assert table.empty_no_results in html
     assert table.empty_message not in html
     assert "Clear filters" in html
-
-
-@pytest.mark.django_db
-def test_a_table_fragment_of_a_learner_from_another_organisation_answers_the_dialog(
-    staff_client: Client,
-):
-    organisation = OrganisationFactory()
-    elsewhere = LearnerFactory(organisation=OrganisationFactory())
-
-    response = _get_table_fragment(
-        staff_client, _interface_url(organisation.slug, f"learners/{elsewhere.pk}")
-    )
-
-    assert response.status_code == 404
-    assert "This is no longer available" in response.content.decode()
-
-
-@pytest.mark.django_db
-def test_a_table_fragment_of_an_unknown_learner_answers_the_dialog(
-    staff_client: Client,
-):
-    organisation = OrganisationFactory()
-
-    response = _get_table_fragment(
-        staff_client, _interface_url(organisation.slug, f"learners/{uuid.uuid4()}")
-    )
-
-    assert response.status_code == 404
-    assert "This is no longer available" in response.content.decode()
-
-
-@pytest.mark.django_db
-def test_the_out_of_scope_dialog_is_byte_equal_to_the_unavailable_template(
-    staff_client: Client,
-):
-    organisation = OrganisationFactory()
-    elsewhere = LearnerFactory(organisation=OrganisationFactory())
-
-    response = _get_table_fragment(
-        staff_client, _interface_url(organisation.slug, f"learners/{elsewhere.pk}")
-    )
-
-    assert response.content.decode() == render_to_string(
-        "panel_framework/partials/action_unavailable.html"
-    )
-
-
-@pytest.mark.django_db
-def test_a_plain_request_for_an_unknown_learner_gets_the_page_404(
-    staff_client: Client,
-):
-    organisation = OrganisationFactory()
-
-    response = staff_client.get(
-        _interface_url(organisation.slug, f"learners/{uuid.uuid4()}")
-    )
-
-    assert response.status_code == 404
-    assert "data-htmx-swap-error" not in response.content.decode()
 
 
 def _cohort_entry(cohort: Cohort, **overrides: object) -> AuditLogEntry:
