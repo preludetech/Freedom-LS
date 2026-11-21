@@ -1,6 +1,6 @@
 # Content Editing Workflow
 
-_Last updated: 2026-11-20_
+_Last updated: 2026-11-21_
 
 ## Summary
 
@@ -146,6 +146,7 @@ These widgets are available inside Markdown content:
 | `c-pdf-embed` | Inline PDF viewer |
 | `c-file-download` | Downloadable file link |
 | `c-audio` | Card that plays a recorded audio file on demand, showing the word (`label`), an optional `respelling` and an optional `symbol` tile; one plays at a time |
+| `c-audio-reveal` | Recall prompt: shows a `symbol` tile and hides the answer; the learner says the answer aloud, then reveals the word (`label`) and optional `respelling` and hears its audio file, after which it hides again |
 | `c-pull-quote` | Pull quote with optional attribution |
 | `c-equation` | Rendered equation block |
 | `c-image-grid` | Multi-column image grid; a `c-grid` specialised for images |
@@ -159,7 +160,7 @@ These widgets are available inside Markdown content:
 
 ![](screenshots/article_content_widgets.png)
 
-`c-table` only renders its scrolling, styled wrapper when it sits directly in a topic or activity body. Nested inside `c-accordion`, a `c-flashcard` slot, or `c-admonition`, it falls back to a plain, unstyled table — use a plain markdown table there instead.
+Any widget can be nested inside a widget whose body is Markdown — `c-accordion`, `c-admonition`, `c-card`, a `c-flashcard` face, `c-pull-quote` or `c-table` — and renders as it would on its own. A `c-audio` on a flashcard face plays without flipping the card.
 
 Admonition types default to note, tip, important, warning, danger, key takeaways, and checklist, and are configurable per deployment — as is the widget list itself. See [configuration and extension](./configuration-and-extension.md).
 
