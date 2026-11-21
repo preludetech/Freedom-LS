@@ -12,9 +12,9 @@ A step-by-step workflow from a rough idea to a merged pull request. Each step pr
 
 These are the five sections of the `todo.md` checklist. Capturing the idea comes before them.
 
-![The cycle from `/sdd:start` to `/sdd:finish_worktree` in `todo.md` order, with the two full-run points, the side commands and the test-tier legend.](../docs/diagrams/overview.drawio.svg)
+![The cycle from `/sdd:start` to `/sdd:finish_worktree` in `todo.md` order, with the full-run point, the side commands and the test-tier legend.](../docs/diagrams/overview.drawio.svg)
 
-The overview has one box per command, in the order of the `todo.md` sections. A box with a diagram links to it. The red boxes are the two full test runs (see "When the full suite runs"). The plain grey boxes are commands you run when you need them. In the other diagrams, every `Step N` box carries its heading's text, and a legend gives the fill for each test tier. A diagram holds one or more flowcharts, each in its own titled frame: one main flow of the steps, and one chart per sub-flow. A box with double sides in one chart has a chart of its own, titled with the same name. The fill also says who does the work: white for the orchestrator, orange for a sub-agent, purple for a hook, green for you.
+The overview has one box per command, in the order of the `todo.md` sections. A box with a diagram links to it. The red box is the full test run (see "When the full suite runs"). The plain grey boxes are commands you run when you need them. In the other diagrams, every `Step N` box carries its heading's text, and a legend gives the fill for each test tier. A diagram holds one or more flowcharts, each in its own titled frame: one main flow of the steps, and one chart per sub-flow. A box with double sides in one chart has a chart of its own, titled with the same name. The fill also says who does the work: white for the orchestrator, orange for a sub-agent, purple for a hook, green for you.
 
 > `/sdd:start` is the entry point: it creates the `todo.md` checklist next to the spec/idea **and** an isolated worktree, moves the session into the worktree, registers a design when `design_prompt.md` is present and writes the spec. When it ends, the session is already inside the worktree, so everything after it runs there.
 
@@ -181,20 +181,19 @@ Every feature-branch command starts by following `commands/protected/pre_step_re
 
 ## When the full suite runs
 
-Two steps ask for the `full` tier outright, and the overview diagram marks both in red.
+One step asks for the `full` tier outright, and the overview diagram marks it in red.
 
-1. **`/sdd:implement_plan` Step 3** asks for the `full` tier outright, once, after the last batch. When it fails, the fix sub-agent re-runs the failing tests by node ID until they pass, then runs the `targeted` tier over the fix's commit range. It does not repeat the full run. The full run in `finish_worktree` covers the fixes.
-2. **`/sdd:finish_worktree` Step 1** asks for the `full` tier outright, once, before the close-out commits. It is the last proof before the branch lands.
+**`/sdd:implement_plan` Step 3** asks for the `full` tier outright, once, after the last batch. When it fails, the fix sub-agent re-runs the failing tests by node ID until they pass, then runs the `targeted` tier over the fix's commit range. It does not repeat the full run. The checkpoint in `finish_worktree` covers the fixes.
 
 `do_qa` (after the last fix) and `qa_fix` Step 7 run the `targeted` tier over their fix commits.
 
-**The checkpoint tier** is what the main-moved loop in `finish_worktree` runs after each rebase. A checkpoint is a request to run whatever the branch needs, and `full_run_record.py resolve` picks the tier in this order:
+**The checkpoint tier** is what `finish_worktree` Step 1 runs before the close-out commits, and what its main-moved loop runs after each rebase. It is the last proof before the branch lands. A checkpoint is a request to run whatever the branch needs, and `full_run_record.py resolve` picks the tier in this order:
 
 1. The branch diff `origin/main..HEAD` selects `none` (a spec-only branch): run nothing.
 2. No full-run record, or the recorded commit no longer resolves: run `full`.
-3. Otherwise: whatever the project's test selector picks for `<record>..HEAD`. A diff tool treats that range as a tree diff, so it works after a rebase moved the record off the branch. The selector's escalation globs (migrations, dependency files and the rest) still force `full`, including files main brought in.
+3. Otherwise: whatever the project's test selector picks for `<record>..HEAD`. A diff tool treats that range as a tree diff, so it works after a rebase moved the record off the branch. A path main brought in counts only where it meets the branch: an upstream escalation glob (migrations and the rest) selects the tests of the related apps, or nothing when the app that owns it is outside them. Dependency files still force `full` from either side.
 
-Step 1's full run wrote the record, so a pass usually runs the tests main's new commits touch, or nothing. A project whose `Test tiers` value is blank has no selector, so a checkpoint is a full run.
+The last passing full run, usually `implement_plan` Step 3, wrote the record, so a pass usually runs the tests main's new commits touch, or nothing. A project whose `Test tiers` value is blank has no selector, so a checkpoint is a full run.
 
 The report line names the tier that ran and why, for example `tier: none · summary: no test-visible change since full green at abc1234`. A skipped run never reads as a pass.
 
