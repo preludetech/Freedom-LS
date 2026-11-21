@@ -803,3 +803,9 @@ def _get_quick_view(
     return client.get(
         _quick_view_url(organisation.slug, path_string), HTTP_HX_REQUEST="true"
     )
+
+
+def _org_admin(organisation: Organisation) -> User:
+    admin = cast(User, UserFactory(staff=True))
+    assign_object_role(admin, organisation, "organisation_admin")
+    return admin

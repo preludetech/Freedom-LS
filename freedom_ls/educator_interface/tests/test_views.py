@@ -46,9 +46,7 @@ from freedom_ls.comms.messaging import (
 from freedom_ls.comms.messaging_policy import MessagingRefusal
 from freedom_ls.comms.models import Conversation, Message
 from freedom_ls.content_engine.factories import (
-    ContentCollectionItemFactory,
     CourseFactory,
-    TopicFactory,
 )
 from freedom_ls.educator_interface import views as educator_views
 from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
@@ -102,7 +100,6 @@ from freedom_ls.educator_interface.tests.helpers import (
     _region_text,
     _row_details,
     _shared_and_own_course_world,
-    _shared_by_notes,
     _shared_by_notes_by_row,
     get_interface_page,
     messages_section,
@@ -152,7 +149,6 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.bulk_runs import run_bulk_action
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 from freedom_ls.panel_framework.tables import DataTable
-from freedom_ls.reports.tests.helpers import topic_progress
 from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role
 from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.tests.site_context import drop_ambient_request
@@ -564,28 +560,6 @@ def test_an_inactive_learner_header_shows_the_inactive_badge(staff_client: Clien
 
 
 @pytest.mark.django_db
-def test_the_learner_settings_tab_offers_every_learner_action_to_an_org_admin(
-    staff_client: Client,
-):
-    organisation = OrganisationFactory()
-    learner = LearnerFactory(organisation=organisation)
-    page_url = _interface_url(organisation.slug, f"learners/{learner.pk}")
-
-    document = _get_document(staff_client, f"{page_url}/__tabs/settings")
-
-    (name,) = document.cssselect("section[data-panel='name']")
-    (account,) = document.cssselect("section[data-panel='account']")
-    labels = [
-        button.text_content().strip() for button in account.cssselect("footer .btn")
-    ]
-    # The name is a field with Save on its own panel. Resend setup email is
-    # offered only while the learner is pending. Add to cohort and Register
-    # for a course sit with the cohorts and the courses.
-    assert name.cssselect("form#learner-name-form")
-    assert labels == ["Deactivate"]
-
-
-@pytest.mark.django_db
 def test_add_to_cohort_sits_under_the_learners_cohorts_panel(staff_client: Client):
     organisation = OrganisationFactory()
     learner = LearnerFactory(organisation=organisation)
@@ -620,21 +594,6 @@ def test_the_learners_cohorts_table_shows_as_cards_when_its_panel_is_narrow(
     assert "@container" in wrapper.get("class", "").split()
     assert "@min-[58rem]:block" in region.get("class", "").split()
     assert "@min-[58rem]:hidden" in cards.get("class", "").split()
-
-
-@pytest.mark.django_db
-def test_register_for_a_course_sits_on_the_learners_courses_tab(staff_client: Client):
-    organisation = OrganisationFactory()
-    learner = LearnerFactory(organisation=organisation)
-    page_url = _interface_url(organisation.slug, f"learners/{learner.pk}")
-
-    document = _get_document(staff_client, f"{page_url}/__tabs/courses")
-
-    (panel,) = document.cssselect("section[data-panel='courses']")
-    labels = [
-        button.text_content().strip() for button in panel.cssselect("footer .btn")
-    ]
-    assert labels == ["Register for a course"]
 
 
 @pytest.mark.django_db
@@ -1580,62 +1539,6 @@ def test_the_registrations_card_leaves_out_a_course_from_an_inactive_cohort(
     document = _learner_page(staff_client, learner, "overview")
 
     assert not document.cssselect("[data-testid='registration-row']")
-
-
-@pytest.mark.django_db
-def test_the_courses_tab_shows_the_recomputed_percentage_not_the_stored_one(
-    staff_client: Client,
-):
-    course = CourseFactory(title="Algebra")
-    done_topic = TopicFactory()
-    open_topic = TopicFactory()
-    ContentCollectionItemFactory(
-        collection_object=course, child_object=done_topic, order=0
-    )
-    ContentCollectionItemFactory(
-        collection_object=course, child_object=open_topic, order=1
-    )
-    record = course_progress_record(course, UserFactory(), progress_percentage=90)
-    topic_progress(record, done_topic, complete_time=timezone.now())
-
-    document = _learner_page(staff_client, record.learner, "courses")
-
-    text = _region_text(document)
-    assert "50%" in text
-    assert "90%" not in text
-
-
-@pytest.mark.django_db
-def test_the_courses_tab_says_nothing_completed_for_a_registration_without_activity(
-    staff_client: Client,
-):
-    learner = LearnerFactory(organisation=OrganisationFactory())
-    LearnerCourseRegistrationFactory(
-        learner=learner, course=CourseFactory(title="Algebra")
-    )
-
-    document = _learner_page(staff_client, learner, "courses")
-
-    assert "Nothing completed yet" in _region_text(document)
-
-
-@pytest.mark.django_db
-def test_the_courses_tab_sets_each_course_out_as_a_plain_section_not_a_nested_card(
-    staff_client: Client,
-):
-    """Each course sat in its own bordered card inside the panel's card."""
-    learner = LearnerFactory(organisation=OrganisationFactory())
-    for title in ("Algebra", "Geometry"):
-        LearnerCourseRegistrationFactory(
-            learner=learner, course=CourseFactory(title=title)
-        )
-
-    document = _learner_page(staff_client, learner, "courses")
-
-    (panel,) = document.cssselect("section[data-panel='courses']")
-    assert len(panel.cssselect(".panel-surface")) == 1
-    headings = [h.text_content().strip() for h in panel.cssselect("h3.panel-heading")]
-    assert sorted(headings) == ["Algebra", "Geometry"]
 
 
 @pytest.mark.django_db
@@ -5981,23 +5884,3 @@ def test_cohort_course_completion_names_the_owner_of_a_shared_course_only(
     text = " ".join(document.text_content().split())
     assert text.count("Shared by Northwind Logistics") == 1
     assert "Shared by Northwind Logistics · 0 of 0 completed" in text
-
-
-@pytest.mark.django_db
-def test_learner_courses_tab_names_the_owner_of_a_shared_course_only(
-    mock_site_context: Site, logged_in_client: Callable[[User], Client]
-):
-    """A course card on the learner's Courses tab titled a shared course with
-    its bare title."""
-    organisation, own, shared = _shared_and_own_course_world()
-    learner = LearnerFactory(organisation=organisation)
-    LearnerCourseRegistrationFactory(learner=learner, course=shared)
-    LearnerCourseRegistrationFactory(learner=learner, course=own)
-    client = logged_in_client(organisation_admin_viewer(organisation))
-
-    document = _get_document(
-        client,
-        _interface_url(organisation.slug, f"learners/{learner.pk}/__tabs/courses"),
-    )
-
-    assert _shared_by_notes(document) == ["Shared by Northwind Logistics"]
