@@ -12,6 +12,14 @@ Read `Skill(ds:app-settings)` first for the per-app `AppSettings` / `Setting` / 
 
 Where `ds:app-settings` uses `myproject/base/app_settings.py`, FLS ships the base module at `freedom_ls/base/app_settings.py` (in the installed FLS package). Any app, FLS's own or one in a concrete project, imports `AppSettings`, `Setting`, and `required_settings_errors` from there.
 
+## Standalone apps carry their own copy
+
+An app meant to run without FLS (`freedom_ls/panel_framework`, `freedom_ls/icons`) must not import `freedom_ls.base`. It keeps its own `app_settings.py` holding a byte-for-byte copy of `Setting` and `AppSettings` from `freedom_ls/base/app_settings.py`, and declares its settings in its own `AppSettings` subclass as usual.
+
+- **Copy the two classes only.** `required_settings_errors` is not copied: it builds Django system-check messages for FLS's required-settings check, which a standalone app does not register. A standalone app does not define it.
+- **The invariant keeps the copies in sync.** `SAME_SOURCE` in `freedom_ls/educator_interface/tests/invariants/test_framework_copies_match_base.py` lists each `(original, copy)` pair and asserts `inspect.getsource` is identical for both. Each standalone app's `Setting` and `AppSettings` are in that list. Change a class in `base` and in every copy together, or the test fails.
+- **A new standalone app adds its two pairs to `SAME_SOURCE`.** Load its module by path with `_app_module_path`, as the icons app does, so the test gains no import the import contracts forbid.
+
 ## Concrete example — `COURSE_ACCESS_BACKEND`
 
 Declaring the setting:
