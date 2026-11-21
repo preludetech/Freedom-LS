@@ -102,6 +102,8 @@ action a project adds through `AUDIT_LOG_EXTRA_ACTIONS` lands under "Other".
 | `staff_member.added` | Staff member added | Staff and roles | staff member | its user | |
 | `staff_member.deactivated` | Staff member deactivated | Staff and roles | staff member | its user | |
 | `staff_member.reactivated` | Staff member reactivated | Staff and roles | staff member | its user | |
+| `application.approved` | Application approved | Applications | application | the course | `from`, `to` |
+| `application.rejected` | Application rejected | Applications | application | the course | `from`, `to` |
 | `bulk_action.completed` | Bulk action completed | Other | organisation | | `counts`, `rows`, `truncated`, `bulk_action` |
 | `import.committed` | Import committed | Other | organisation | | `counts`, `rows`, `truncated` |
 | `audit_log.exported` | Audit log exported | Other | organisation | | `scope` (`organisation`, `learner`, `cohort`), `scope_label`, `count`, `filters` |
@@ -110,6 +112,11 @@ action a project adds through `AUDIT_LOG_EXTRA_ACTIONS` lands under "Other".
 accepts nothing else. `role.deactivated`
 is the `is_active` flip done from Members; `role.removed` is a role row deleted along with its
 cohort.
+
+`application.approved` and `application.rejected` are the reviewer's decisions, written by
+`course_applications.transitions` with the reviewer as actor. The applicant's own submit and
+withdraw write no entry, because the audit log records staff actions only. Neither action fires a
+webhook.
 
 `audit_log.exported` is written on every CSV export of the organisation's Audit log or a learner's
 or cohort's History. It always targets the organisation, so it shows on the organisation's Audit
