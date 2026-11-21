@@ -43,6 +43,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) UI feedback fix: each dashboard application row ends in "Details" only (no "Continue application", "Apply again" or phone-only arrow); the QA plan checks the rows, the status page card, "Declined" and the course link in every test
 - [x] (user) Decide whether to keep the `course_applications:resume` route (`resume_application` in `freedom_ls/course_applications/views.py`): the dashboard row's "Continue application" button was its only caller and is gone, so nothing in the app links to it now; it still has its own tests
 - [x] (cmd) Run `/sdd:document`: retake `docs/product/screenshots/learner_dashboard_applications.png`, which still shows "Not approved" and "View my application" rows
+- [ ] (user) Run `git push origin multi-step-course-applications-1-review-states --force-with-lease --force-if-includes`, then re-run `/sdd:finish_worktree`
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
 ## 5. Cleanup
