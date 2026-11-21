@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from typing import TYPE_CHECKING, cast
 
 import pytest
 
+from django.core.cache import cache
 from django.test import Client
 
 from freedom_ls.accounts.factories import UserFactory
@@ -72,6 +73,13 @@ def role_holder_client(
 @pytest.fixture
 def organisation(mock_site_context: Site) -> Organisation:
     return cast(Organisation, OrganisationFactory())
+
+
+@pytest.fixture
+def _clear_resend_guard() -> Iterator[None]:
+    cache.clear()
+    yield
+    cache.clear()
 
 
 @pytest.fixture

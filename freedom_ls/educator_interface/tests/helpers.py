@@ -730,3 +730,40 @@ def _get_quick_view(
     return client.get(
         _quick_view_url(organisation.slug, path_string), HTTP_HX_REQUEST="true"
     )
+
+
+def _add_to_cohort_url(organisation: Organisation, learner: Learner) -> str:
+    return _interface_url(
+        organisation.slug, f"learners/{learner.pk}/__actions/add_to_cohort"
+    )
+
+
+def _organisation_admin_on(organisation: Organisation) -> User:
+    grantor = cast(User, LearnerFactory(user__superuser=True).user)
+    educator = cast(
+        User, LearnerFactory(user__staff=True, organisation=organisation).user
+    )
+    assign_role(grantor, educator, "organisation_admin", organisation)
+    return educator
+
+
+def _move_url_from_learner(
+    organisation: Organisation,
+    learner: Learner,
+    source: Cohort | None = None,
+    destination: Cohort | None = None,
+) -> str:
+    url = _interface_url(
+        organisation.slug,
+        f"learners/{learner.pk}/__tabs/overview/__panels/cohorts/__actions/move",
+    )
+    params = []
+    if source is not None:
+        params.append(f"cohort={source.pk}")
+    if destination is not None:
+        params.append(f"destination={destination.pk}")
+    return f"{url}?{'&'.join(params)}" if params else url
+
+
+def _add_learners_list_url(organisation: Organisation) -> str:
+    return _interface_url(organisation.slug, "learners/__actions/add_learner")
