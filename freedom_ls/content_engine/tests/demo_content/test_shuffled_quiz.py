@@ -87,3 +87,24 @@ def test_the_demo_quiz_fails_validation_when_a_question_splits_the_group(
 
     with pytest.raises(ValueError, match=f'group "{GROUP_NAME}" is split'):
         validate(tmp_path)
+
+
+def test_the_demo_picture_is_the_sky_scene_with_no_placeholder_caption() -> None:
+    """The demo picture used to be a placeholder: a "Landscape 800x450" caption
+    drawn over the sky and an aria-label calling it a placeholder."""
+    svg = (
+        settings.BASE_DIR
+        / "demo_content"
+        / DEMO_COURSE
+        / "images"
+        / "shuffled-quiz-picture.svg"
+    ).read_text(encoding="utf-8")
+
+    assert (
+        "<text" in svg,
+        "placeholder" in svg.lower(),
+        "Landscape" in svg,
+        "<circle" in svg,
+        'aria-label="A blue sky over a dark horizon with a yellow sun in the upper right"'
+        in svg,
+    ) == (False, False, False, True, True)
