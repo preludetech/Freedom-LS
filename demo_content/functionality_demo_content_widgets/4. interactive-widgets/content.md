@@ -159,6 +159,41 @@ and always return a body the caller can read:
 </c-slot>
 </c-flashcard>
 
+A flashcard face can also play a sound. Flip this card to hear the answer.
+
+<c-flashcard>
+<c-slot name="front">
+
+**Which word stands for B?**
+
+</c-slot>
+<c-slot name="back">
+
+Bravo
+
+<c-audio src="../2. media/audio/bravo.mp3" label="Bravo" respelling="BRAH-voh"></c-audio>
+
+</c-slot>
+</c-flashcard>
+
+---
+
+## Audio reveal
+
+Say the word aloud before pressing Reveal, then check yourself against the recording.
+
+<c-grid columns="2">
+
+<c-audio-reveal src="../2. media/audio/bravo.mp3" label="Bravo" symbol="B" respelling="BRAH-voh"></c-audio-reveal>
+
+<c-audio-reveal src="../2. media/audio/charlie.mp3" label="Charlie" symbol="C" respelling="CHAR-lee"></c-audio-reveal>
+
+<c-audio-reveal src="../2. media/audio/oscar.mp3" label="Oscar" symbol="O" respelling="OSS-cah"></c-audio-reveal>
+
+<c-audio-reveal src="../2. media/audio/romeo.mp3" label="Romeo" symbol="R" respelling="ROW-me-oh"></c-audio-reveal>
+
+</c-grid>
+
 ---
 
 ## Accordion
