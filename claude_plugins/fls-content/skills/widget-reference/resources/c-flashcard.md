@@ -41,6 +41,8 @@ A named container for a value that can change over time.
 
 The `front` and `back` slots are passed via `c-slot` — see [`c-slot.md`](c-slot.md).
 
+A face can hold other widgets. A `c-audio` on a face plays without flipping the card — see [`c-audio.md`](c-audio.md#inside-other-widgets).
+
 Use `size="wide"` when the answer is a table or a code block:
 
 ```markdown

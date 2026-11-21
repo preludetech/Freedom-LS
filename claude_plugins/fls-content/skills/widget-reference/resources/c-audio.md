@@ -35,6 +35,25 @@ Use `c-grid` to line several up, with a blank line between each child:
 </c-grid>
 ```
 
-## Where it must not go
+## Inside other widgets
 
-Do not put `c-audio` inside `c-table`, `c-accordion`, `c-admonition`, `c-flashcard`, `c-card` or `c-pull-quote`. These widgets re-render their body as markdown, and the `c-audio` is lost. `c-grid` keeps nested widgets intact, so use it for any layout.
+`c-audio` works inside any widget, a `c-flashcard` face included. Pressing its button on the showing face plays the audio without flipping the card:
+
+```markdown
+<c-flashcard>
+<c-slot name="front">
+
+**Which word stands for B?**
+
+</c-slot>
+<c-slot name="back">
+
+Bravo
+
+<c-audio src="audio/bravo.mp3" label="Bravo" respelling="BRAH-voh"></c-audio>
+
+</c-slot>
+</c-flashcard>
+```
+
+To have the learner say the word before hearing it, use [`c-audio-reveal`](c-audio-reveal.md).
