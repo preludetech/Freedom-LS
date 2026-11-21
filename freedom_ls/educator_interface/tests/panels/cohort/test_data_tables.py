@@ -39,6 +39,8 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.filters import TableFilter, ToggleFilter
 from freedom_ls.panel_framework.tables import TableQuery
 
+# the table hides inactive cohorts only while it offers the toggle
+
 
 def _cohort_rows(table: type[CohortDataTable], request) -> list[Cohort]:
     query = TableQuery(key="cohorts")
