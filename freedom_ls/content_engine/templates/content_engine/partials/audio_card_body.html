@@ -1,0 +1,22 @@
+{% load content_tags %}
+{% comment %}
+The text column and play button of an audio card, shared by c-audio and
+c-audio-reveal so the markup exists once. Inputs: label, respelling,
+file_obj. The including element supplies x-id="['audio-respelling']" and
+an Alpine scope that spreads audioPlayer (toggle, idle, loading, playing).
+{% endcomment %}
+    <div class="min-w-0 flex-1">
+      <span class="block break-words font-bold leading-tight">{{ label }}</span>
+      {% if respelling %}<span x-bind:id="$id('audio-respelling')" class="mt-1 block break-words font-mono text-sm text-muted">{% for text, stressed in respelling|respelling_parts %}{% if stressed %}<strong class="font-bold text-primary">{{ text }}</strong>{% else %}{{ text }}{% endif %}{% endfor %}</span>{% endif %}
+    </div>
+    <c-button variant="ghost"
+              aria_label="Play pronunciation of {{ label }}"
+              x-bind:aria-describedby="{% if respelling %}$id('audio-respelling'){% else %}null{% endif %}"
+              x-bind:aria-pressed="playing"
+              x-on:click="toggle"
+              data-src="{% url 'content_engine:audio_file' file_obj.pk %}"
+              class="size-11 shrink-0 rounded-pill border border-primary/30 p-0 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-on-primary aria-pressed:hover:bg-primary-hover">
+      <span x-show="idle"><c-icon name="audio_play" class="size-5" /></span>
+      <span x-show="loading" x-cloak><c-icon name="loading" class="size-5 animate-spin" /></span>
+      <span x-show="playing" x-cloak><c-icon name="audio_playing" class="size-5" /></span>
+    </c-button>

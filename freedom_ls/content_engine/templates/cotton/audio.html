@@ -23,6 +23,8 @@ button's aria-pressed, so no extra state is bound.
 data-src holds the redirect URL, never a signed one, so playback after the
 signature expires still works. The audio element is created by the audioFile
 Alpine component on first press, so nothing loads with the page.
+The text column and play button live in the audio_card_body partial, shared
+with c-audio-reveal.
 A missing or non-audio file, or an empty label, renders a red box naming the
 src instead. The respelling comes before the button in the DOM so it reads in
 order (word, respelling, button). Its id comes from Alpine's $id, so two
@@ -40,21 +42,7 @@ readers announce each failure.
     <div class="my-6" x-data="audioFile"{% if respelling %} x-id="['audio-respelling']"{% endif %}>
       <div class="flex items-center gap-3 rounded-lg border border-border bg-surface p-3 transition-colors has-aria-pressed:border-primary has-aria-pressed:bg-primary/5">
         {% if symbol %}<span aria-hidden="true" class="flex size-12 shrink-0 items-center justify-center rounded-md bg-primary text-xl font-bold text-on-primary">{{ symbol }}</span>{% endif %}
-        <div class="min-w-0 flex-1">
-          <span class="block break-words font-bold leading-tight">{{ label }}</span>
-          {% if respelling %}<span x-bind:id="$id('audio-respelling')" class="mt-1 block break-words font-mono text-sm text-muted">{% for text, stressed in respelling|respelling_parts %}{% if stressed %}<strong class="font-bold text-primary">{{ text }}</strong>{% else %}{{ text }}{% endif %}{% endfor %}</span>{% endif %}
-        </div>
-        <c-button variant="ghost"
-                  aria_label="Play pronunciation of {{ label }}"
-                  x-bind:aria-describedby="{% if respelling %}$id('audio-respelling'){% else %}null{% endif %}"
-                  x-bind:aria-pressed="playing"
-                  x-on:click="toggle"
-                  data-src="{% url 'content_engine:audio_file' file_obj.pk %}"
-                  class="size-11 shrink-0 rounded-pill border border-primary/30 p-0 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-on-primary aria-pressed:hover:bg-primary-hover">
-          <span x-show="idle"><c-icon name="audio_play" class="size-5" /></span>
-          <span x-show="loading" x-cloak><c-icon name="loading" class="size-5 animate-spin" /></span>
-          <span x-show="playing" x-cloak><c-icon name="audio_playing" class="size-5" /></span>
-        </c-button>
+        {% include "content_engine/partials/audio_card_body.html" with label=label respelling=respelling file_obj=file_obj only %}
       </div>
       <p role="status" x-text="failed ? 'Audio could not be played. Try again.' : ''" class="text-error text-sm"></p>
     </div>

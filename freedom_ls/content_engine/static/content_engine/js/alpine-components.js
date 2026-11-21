@@ -132,57 +132,76 @@ document.addEventListener("alpine:init", () => {
         return sharedAudio;
     }
 
-    Alpine.data("audioFile", () => ({
-        _id: nextAudioFileId++,
-        idle: true,
-        loading: false,
-        playing: false,
-        failed: false,
+    // The player half of an audio widget: its state, and taking or giving up
+    // the page's one audio element. Each widget gets a fresh copy, so the owner
+    // hand-off exists once and one file plays at a time across every widget.
+    function audioPlayer() {
+        return {
+            _id: nextAudioFileId++,
+            idle: true,
+            loading: false,
+            playing: false,
+            failed: false,
 
-        toggle() {
-            const audio = audioElement();
-            if (owner?._id === this._id && !this.idle) {
+            toggle() {
+                if (this._sounding()) this._stop();
+                else this._start(this.$el.dataset.src);
+            },
+            errorText() {
+                return this.failed ? "Audio could not be played. Try again." : "";
+            },
+            // Takes the element from whoever owns it and plays from the start.
+            // Never stops, so a second call while playing restarts the clip.
+            _start(src) {
+                const audio = audioElement();
+                if (owner) {
+                    owner.failed = false;
+                    owner._setState("idle");
+                }
+                this.failed = false;
+                owner = this;
+                this._setState("loading");
+                if (audio.getAttribute("src") === src && !audio.error) {
+                    // The file is already loaded: replay it rather than fetch a
+                    // freshly signed copy through the redirect.
+                    audio.currentTime = 0;
+                } else {
+                    // src only, never <source type>: the stored mime type can be empty.
+                    audio.src = src;
+                }
+                // Called synchronously inside the click so iOS treats it as user-initiated.
+                audio.play().catch((error) => {
+                    // AbortError means another press replaced this load; not a failure.
+                    if (error.name !== "AbortError" && owner?._id === this._id) this._fail();
+                });
+            },
+            _stop() {
+                const audio = audioElement();
                 audio.pause();
                 audio.currentTime = 0;
                 this._setState("idle");
-                return;
-            }
-            if (owner) {
-                owner.failed = false;
-                owner._setState("idle");
-            }
-            this.failed = false;
-            owner = this;
-            this._setState("loading");
-            const src = this.$el.dataset.src;
-            if (audio.getAttribute("src") === src && !audio.error) {
-                // The file is already loaded: replay it rather than fetch a
-                // freshly signed copy through the redirect.
-                audio.currentTime = 0;
-            } else {
-                // src only, never <source type>: the stored mime type can be empty.
-                audio.src = src;
-            }
-            // Called synchronously inside the click so iOS treats it as user-initiated.
-            audio.play().catch((error) => {
-                // AbortError means another press replaced this load; not a failure.
-                if (error.name !== "AbortError" && owner?._id === this._id) this._fail();
-            });
-        },
-        destroy() {
-            if (owner?._id === this._id) {
-                sharedAudio.pause();
-                owner = null;
-            }
-        },
-        _fail() {
-            this.failed = true;
-            this._setState("idle");
-        },
-        _setState(state) {
-            this.idle = state === "idle";
-            this.loading = state === "loading";
-            this.playing = state === "playing";
-        },
-    }));
+            },
+            _sounding() {
+                return owner?._id === this._id && !this.idle;
+            },
+            destroy() {
+                if (owner?._id === this._id) {
+                    sharedAudio.pause();
+                    owner = null;
+                }
+            },
+            _fail() {
+                this.failed = true;
+                this._setState("idle");
+            },
+            _setState(state) {
+                this.idle = state === "idle";
+                this.loading = state === "loading";
+                this.playing = state === "playing";
+            },
+        };
+    }
+
+    Alpine.data("audioFile", audioPlayer);
+
 });
