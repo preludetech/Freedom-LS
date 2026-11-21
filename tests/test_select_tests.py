@@ -2496,3 +2496,54 @@ def test_path_outside_any_app_that_nothing_reaches_is_decided_as_unmapped(
 
     # Assert
     assert f"why: {path} -> {reason}" in lines(result.stdout, "why")
+
+
+def narrow_chain_tree() -> dict[str, str]:
+    return (
+        chain_apps()
+        | {"pyproject.toml": NARROW_TABLE}
+        | {"pkg/alpha/tests/playwright/__init__.py": "", "pkg/alpha/leaf.py": ""}
+    )
+
+
+def test_app_template_selects_its_app_and_the_direct_importers_without_the_chain(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    write_tree(tmp_path, narrow_chain_tree())
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/templates/alpha/x.html")
+
+    # Assert
+    assert lines(result.stdout, "why") == [
+        "why: pkg/alpha/templates/alpha/x.html -> pkg/alpha/tests "
+        f"(owning app alpha; playwright: pkg/alpha/tests/playwright) {TAIL}",
+        "why: pkg/alpha/templates/alpha/x.html -> pkg/beta/tests "
+        f"(beta has a runtime dep on alpha) {TAIL}",
+        "why: pkg/alpha/templates/alpha/x.html -> pkg/gamma/tests "
+        f"(gamma has a test-only dep on alpha) {TAIL}",
+    ]
+    assert "pkg/delta/tests" not in result.stdout
+    assert "pkg/epsilon/tests" not in result.stdout
+
+
+def test_app_template_without_an_app_map_is_full_while_app_python_still_narrows(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    tree = narrow_chain_tree()
+    del tree["docs/app_structure.md"]
+    git_repo(tmp_path, tree)
+
+    # Act
+    template = run_script(SCRIPT, tmp_path, "pkg/alpha/templates/alpha/x.html")
+    module = run_script(SCRIPT, tmp_path, "pkg/alpha/leaf.py")
+
+    # Assert
+    assert lines(template.stdout, "tier") == ["tier: full"]
+    assert (
+        "why: pkg/alpha/templates/alpha/x.html -> full (docs/app_structure.md missing)"
+        in lines(template.stdout, "why")
+    )
+    assert lines(module.stdout, "tier") == ["tier: targeted"]

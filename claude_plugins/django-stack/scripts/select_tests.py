@@ -219,11 +219,12 @@ def first_match(path: str, globs: tuple[str, ...]) -> str | None:
     return next((glob for glob in globs if posix.full_match(glob)), None)
 
 
-def importers(app: App, edges: Edges) -> list[tuple[str, str]]:
+def importers(app: App, edges: Edges, chain: bool = True) -> list[tuple[str, str]]:
     """(importer short name, reason) for every app whose code or tests reach `app`.
 
     Runtime deps chain: an app that imports an importer of `app` runs `app`'s code too.
     A test-only dep is one hop, since only that app's tests reach `app`, not its code.
+    With `chain` false, only the apps that import `app` directly are returned.
     """
     found: dict[str, str] = {}
     queue = [app.short_name]
@@ -238,7 +239,7 @@ def importers(app: App, edges: Edges) -> list[tuple[str, str]]:
                 if dst != target or src == app.short_name or src in found:
                     continue
                 found[src] = f"{src} has a {dep} on {app.short_name}{via}"
-                if dep == "runtime dep":
+                if dep == "runtime dep" and chain:
                     queue.append(src)
     return sorted(found.items())
 
@@ -294,11 +295,12 @@ def importer_decisions(
     edges: Edges,
     project_root: Path,
     only: frozenset[str] | None = None,
+    chain: bool = True,
 ) -> list[Decision]:
     """One decision per importer of `app`, or per importer named in `only`."""
     by_name = {a.short_name: a for a in apps}
     decisions: list[Decision] = []
-    for name, reason in importers(app, edges):
+    for name, reason in importers(app, edges, chain):
         if only is not None and name not in only:
             continue
         importer = by_name.get(name)
@@ -329,6 +331,13 @@ def decide_app_path(
         owner_decision(path, app, project_root),
         *importer_decisions(path, app, apps, edges, project_root),
     ]
+
+
+def one_app_hop(
+    path: str, app: App, apps: list[App], edges: Edges, project_root: Path
+) -> list[Decision]:
+    """One decision per app that imports `app` directly, without the chain of importers."""
+    return importer_decisions(path, app, apps, edges, project_root, chain=False)
 
 
 def is_test_target(target: Path) -> bool:
@@ -440,6 +449,18 @@ def narrow_app_python(
     ]
 
 
+def narrow_app_file(
+    path: str, app: App, apps: list[App], edges: Edges | None, project_root: Path
+) -> list[Decision]:
+    """The owning app's tests, plus the tests of each app that imports it directly."""
+    if edges is None:
+        return [Decision(path, "full", (), f"{APP_MAP} missing")]
+    return [
+        owner_decision(path, app, project_root),
+        *one_app_hop(path, app, apps, edges, project_root),
+    ]
+
+
 def narrow_loose_python(
     path: str, config: TierConfig, graph: Callable[[], ModuleGraph], project_root: Path
 ) -> list[Decision] | None:
@@ -487,6 +508,8 @@ def decide(
     if app is not None:
         if config.narrow and path.endswith(".py"):
             return narrowed(narrow_app_python(path, app, graph, project_root))
+        if config.narrow:
+            return narrowed(narrow_app_file(path, app, apps, edges, project_root))
         return decide_app_path(path, app, apps, edges, project_root)
 
     if config.narrow and path.endswith(".py"):
