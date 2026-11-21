@@ -113,10 +113,52 @@ failure to fix, including a test counted as failed because it crashed its worker
 Without the runner, quote the final pytest summary line. The step is done when that line shows no
 failures.
 
+A failed-only re-run reports `tier: <tier> · summary: failed-only re-run of <n> tests + fix
+selection: <verdict line>`. The failed run's own report line stays in the report, ahead of it.
+
 ## When a targeted run or full run fails
 
 This section addresses the agent that owns the change, never a mechanic briefed only to run a tier.
-Fix the failure, then re-run only the failures with `uv run pytest --lf --no-cov` (append `-n auto`
-for a targeted or full run). When the runner is installed, put `.claude/ds/scripts/run_tests.sh`
-in front of that command. Once that is green, re-run the whole tier as it first ran. The gate is
-the whole tier, not the `--lf` subset.
+
+The **failed set** is the node IDs of the tests the failed run left to fix. With the runner, they
+are the `run: failed <node id>` and `run: unfinished <node id>` lines. When the output has no
+`run: summary (merged)` line (no runner, `DS_TEST_MEMORY_GUARD=off`, or the runner's plain
+fallback), they are the node IDs on pytest's `FAILED <node id> - <message>` short-summary lines. A
+run that printed `run: failed ... and <n> more` has too many to list, so it takes the whole-tier
+re-run, whatever the caller asked for.
+
+Fix the failure, then re-run as the caller says. A caller that names neither re-run gets the
+whole-tier re-run.
+
+### Failed-only re-run
+
+Run only the failed set, then stop. Select with the fix's diff, not the original one:
+
+- The fix is uncommitted: pass the files it edited as explicit paths. `--working-tree` would
+  select the caller's whole uncommitted change again.
+- The fix is committed: pass `--range <sha before the fix>..HEAD`.
+
+What runs depends on the `tier:` line the selector prints:
+
+- `targeted`: run the printed `command:` line with the failed set appended.
+- `none`: run the failed set on its own. Replace `<markers>` with `markers` from
+  `[tool.test_tiers]` and drop `-m` when it is unset. Drop the runner prefix when the runner is not
+  installed.
+
+  ```
+  .claude/ds/scripts/run_tests.sh uv run pytest -n auto --no-cov -m '<markers>' <node ids>
+  ```
+
+- `full`: run the full tier. It is an ordinary full run, so its pass finishes the step.
+
+The runner's node IDs are already shell-quoted: append them exactly as printed. A node ID taken
+from a pytest `FAILED` line is the text between `FAILED ` and the first ` - `, wrapped in single
+quotes, with each single quote inside it written as `'\''`.
+
+Done when that run passes. A failure in it is fixed the same way, with its own failed set and the
+new fix's diff.
+
+### Whole-tier re-run
+
+Do the failed-only re-run. Once it passes, run the tier again as it first ran. The gate is the
+whole tier.

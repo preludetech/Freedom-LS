@@ -95,3 +95,39 @@ def test_a_backtick_fence_inside_a_tilde_fence_does_not_close_it() -> None:
     text = "~~~\n```\nuv run pytest\n```\n~~~"
 
     assert code_fragments(text) == ["```", "uv run pytest", "```"]
+
+
+FAILURE_SECTION_HEADING = "## When a targeted run or full run fails"
+
+
+def failure_section() -> str:
+    """The tier definition's text from the failure heading to the next `## ` heading."""
+    text = (
+        REPO_ROOT / "claude_plugins/django-stack/resources/test_tiers.md"
+    ).read_text()
+    section = text.split(FAILURE_SECTION_HEADING, 1)[1]
+    return section.split("\n## ", 1)[0]
+
+
+def plugin_files_containing(needle: str) -> list[str]:
+    """Repo-relative paths of the text files under `claude_plugins/` that contain `needle`."""
+    found = []
+    for path in sorted((REPO_ROOT / "claude_plugins").rglob("*")):
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text()
+        except UnicodeDecodeError:
+            continue
+        if needle in text:
+            found.append(path.relative_to(REPO_ROOT).as_posix())
+    return found
+
+
+@pytest.mark.parametrize("heading", ["### Failed-only re-run", "### Whole-tier re-run"])
+def test_failure_section_defines_both_re_runs(heading: str) -> None:
+    assert heading in failure_section()
+
+
+def test_no_plugin_file_uses_the_last_failed_flag() -> None:
+    assert plugin_files_containing("--lf") == []
