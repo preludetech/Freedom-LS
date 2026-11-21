@@ -16,6 +16,8 @@ How FreedomLS sounds, in UI text, error messages, docs, README and marketing.
 2. **Direct over diplomatic**: "FreedomLS stores content as Markdown files", not "FreedomLS leverages an innovative content paradigm."
 3. **Teach while you talk**: even marketing copy leaves the reader knowing something new.
 4. **Respect the reader's time**: front-load the important information, and prefer a code example to a long explanation.
+5. **Plain outcomes for adults**: a learner is an adult, so bad news uses the word a person would say out loud. An application a reviewer turned down is "Declined", and the page says why under "Reason". A softer word that could mean something else fails: "Not approved" reads as "not approved yet".
+6. **A label names what the thing is**: the text a reviewer writes when declining is a reason, so its label is "Reason", not "Message from the reviewer". Label a value by what it tells the reader, not by who typed it or how it arrived.
 
 SaaS phrasing marks copy that has drifted off-voice: "unlock potential", "empower learners", "drive engagement", "cutting-edge", "robust", "scale your learning". Replace each with the specific thing it gestured at.
 
@@ -150,5 +152,7 @@ opens the add dialog.
 
 ## Visual checklist
 
+- A refusal, failure or closed door is named with the plain word ("Declined", "Failed", "Closed"), never
+  a softened one a reader could take for "not yet"; a reason is labelled "Reason".
 - A confirm dialog says "you" when the person acts on themselves, and every sentence in it holds
   after the action: nothing it describes differs from the result, nothing it promises is lost by it.

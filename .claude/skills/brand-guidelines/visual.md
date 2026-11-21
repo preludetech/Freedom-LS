@@ -92,7 +92,7 @@ FLS already builds each of these, and the brand decisions above are encoded in t
 
 **Headings, body text, links, lists, tables and form inputs take no classes.** The base layer already sizes and colours them: write `<h1>Title</h1>`, and the stylesheet stays the one place those styles live.
 
-**The base layer underlines every `<a>`, and that underline means "a link inside prose".** A control (a person, a back link, a text action, a clickable row) takes the component for its job and never the prose style. On a panel-framework page every anchor is a control, and `Skill(fls-dev:panel-framework)` names the component for each and the invariant test that fails on a hand-styled one.
+**No underline on a link outside a sentence.** The base layer underlines every `<a>`, and that underline means "a link inside prose": words in the middle of a sentence in a paragraph. Every other link is a control: a person, a back link, a text action, a clickable row, and a record's name in a table cell, a definition-list value, a card or a list. A control takes the component for its job and never the prose style. A record's name with no component of its own takes `class="font-semibold text-primary no-underline hover:text-primary-hover"`, the back link's look. A bare `<a href>` with no `class` is a forgotten control unless a sentence surrounds it. `template_rules.anchors_without_classes` (`freedom_ls/panel_framework/tests/invariants/template_rules.py`) finds them; an app with learner-facing templates runs it over its own templates in an invariant test. On a panel-framework page every anchor is a control, and `Skill(fls-dev:panel-framework)` names the component for each and the invariant test that fails on a hand-styled one.
 
 Where you do write utilities, keep to Tailwind's spacing scale and use `rounded-md` (`--fls-radius-md`) unless the component says otherwise. Padding, gaps, dialog footers and phone sizing are set by the panel-framework components; `Skill(fls-dev:panel-framework)` says what they do.
 
@@ -138,7 +138,7 @@ What QA checks in a screenshot of any FLS page.
 
 - At 1024px and wider the navigation is a left column beside the content, never a band above it, never the page's width, never missing, JavaScript on or off.
 - A person is linked with the avatar-and-name person link, never a bare name.
-- A link that acts as a control carries no prose underline; a link inside prose does.
+- Only a link in the middle of a sentence is underlined. A link in a table cell, a definition list, a card, a list or on a line of its own has no underline.
 - A control that changes a thing sits beside the thing it changes; a Settings tab holds only the
   actions with no home of their own.
 - Status badges carry one of the five status tones; a label that is not a status is a chip.

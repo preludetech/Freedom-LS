@@ -212,7 +212,7 @@ The noun is a glossary noun in snake_case: `learner`, `cohort`, `cohort_membersh
 | `revoked` | An API key was ended for good: `api_key.revoked`. One-way and never cleared, unlike `deactivated`, which a `reactivated` undoes. | `deactivated`, `cancelled`, `disabled` |
 | `paused` / `resumed` | A `CoursePause` opened / ended on a `CourseProgress`: `course.paused`, `course.resumed`. | `suspended`, `unsuspended`, `held` |
 | `extended` | Days were added to a learner's deadlines by a `DeadlineExtension`: `deadline.extended`. | `postponed`, `moved` |
-| `approved` / `rejected` | A reviewer decided a `CourseApplication`: `application.approved`, `application.rejected`. | `accepted`, `admitted` / `declined`, `denied` |
+| `approved` / `rejected` | A reviewer decided a `CourseApplication`: `application.approved`, `application.rejected`. In code, audit actions and the API the verb is `rejected`; the words a person reads for that state are "Declined" and its "Reason" (the `rejection_message`). | `accepted`, `admitted` / `denied`, and `declined` as a code name |
 | `exported` | A copy of records left the system as a file: `audit_log.exported`. | `downloaded` |
 | `moved`, `renamed`, `resent`, `completed`, `committed`, `signed_up` | As read. `user.signed_up` is an account being created at signup — never `user.registered`, since registration means course access. A verb may carry the thing it acted on when the noun alone would mislead: `learner.setup_email_resent`. | |
 
