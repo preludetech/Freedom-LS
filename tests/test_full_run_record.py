@@ -17,7 +17,7 @@ from urllib.parse import quote
 import pytest
 
 from tests._script_trees import run_command, run_script, write_tree
-from tests.test_select_tests import alpha_app
+from tests.test_select_tests import alpha_app, app_map, apps_py
 
 pytestmark = pytest.mark.dev_tooling
 
@@ -68,6 +68,13 @@ class Project:
 
     def resolve(self) -> dict[str, str]:
         return parse(self.script("resolve", "--selector", SELECTOR))
+
+    def script_selector(self, *args: str) -> str:
+        result = run_command(
+            [str(self.path / SELECTOR), *args], self.path, self.git_env
+        )
+        assert result.returncode == 0, result.stderr
+        return result.stdout
 
     def start(self) -> str:
         """The `sha:` value `start` prints: HEAD on a clean tree, else empty."""
@@ -120,6 +127,28 @@ def commit_app_change(project: Project, content: str = "one\n") -> str:
 def commit_spec_change(project: Project) -> str:
     project.write("spec_dd/2. in progress/x/spec.md", "text\n")
     return project.commit("spec change")
+
+
+def add_app_b(project: Project) -> None:
+    """Put `pkg/app_b`, an app with tests that no other app in the app map imports, on main."""
+    project.write("docs/app_structure.md", app_map("alpha", "app_b"))
+    project.write("pkg/app_b/__init__.py", "")
+    project.write("pkg/app_b/apps.py", apps_py("pkg.app_b", "AppBConfig"))
+    project.write("pkg/app_b/models.py", "")
+    project.write("pkg/app_b/tests/__init__.py", "")
+    project.commit("add app_b")
+    project.git("push", "-q", "origin", "feature:main")
+    project.git("branch", "-q", "-f", "main", "feature")
+
+
+def move_main(project: Project, relative_path: str) -> None:
+    """Commit a new file on main, push it, and rebase `feature` onto it."""
+    project.git("checkout", "-q", "main")
+    project.write(relative_path, "from main\n")
+    project.commit("main moves")
+    project.git("push", "-q", "origin", "main")
+    project.git("checkout", "-q", "feature")
+    project.git("rebase", "-q", "main")
 
 
 def test_branch_with_no_record_resolves_to_full(project: Project) -> None:
@@ -212,7 +241,7 @@ def test_uncommitted_app_edit_after_a_record_resolves_to_targeted(
 
 def test_lock_file_change_after_a_record_resolves_to_full(project: Project) -> None:
     # Arrange
-    recorded = commit_app_change(project)
+    commit_app_change(project)
     project.record_green()
     project.write("uv.lock", "locked\n")
     project.commit("lock")
@@ -224,7 +253,7 @@ def test_lock_file_change_after_a_record_resolves_to_full(project: Project) -> N
     assert resolution == {
         "tier": "full",
         "diff": "",
-        "why": f"the selector escalates over {recorded[:7]}..HEAD",
+        "why": "uv.lock -> full (dependency file)",
     }
 
 
@@ -261,18 +290,95 @@ def test_record_taken_before_a_rebase_onto_a_moved_main_sees_what_main_changed(
     # Arrange
     commit_app_change(project)
     project.record_green()
-    project.git("checkout", "-q", "main")
-    project.write("uv.lock", "locked\n")
-    project.commit("main moves")
-    project.git("push", "-q", "origin", "main")
-    project.git("checkout", "-q", "feature")
-    project.git("rebase", "-q", "main")
+    move_main(project, "uv.lock")
 
     # Act
     resolution = project.resolve()
 
     # Assert
     assert resolution["tier"] == "full"
+    assert resolution["why"] == "uv.lock -> full (from main; dependency file)"
+
+
+def record_then_main_migrates_app_b(project: Project) -> None:
+    """A record on a branch that changed `alpha`, then main adds a migration to `app_b`."""
+    add_app_b(project)
+    commit_app_change(project)
+    project.record_green()
+    move_main(project, "pkg/app_b/migrations/0001_initial.py")
+
+
+def test_main_change_outside_the_related_apps_after_a_record_resolves_to_none(
+    project: Project,
+) -> None:
+    # Arrange
+    record_then_main_migrates_app_b(project)
+
+    # Act
+    resolution = project.resolve()
+
+    # Assert
+    assert resolution["tier"] == "none"
+
+
+def test_branch_commit_after_a_rebase_onto_a_moved_main_resolves_to_targeted(
+    project: Project,
+) -> None:
+    # Arrange
+    record_then_main_migrates_app_b(project)
+    commit_app_change(project, "two\n")
+
+    # Act
+    resolution = project.resolve()
+
+    # Assert
+    assert resolution["tier"] == "targeted"
+
+
+def test_targeted_diff_after_a_rebase_onto_a_moved_main_starts_with_the_upstream_range(
+    project: Project,
+) -> None:
+    # Arrange
+    record_then_main_migrates_app_b(project)
+    commit_app_change(project, "two\n")
+
+    # Act
+    resolution = project.resolve()
+
+    # Assert
+    assert resolution["diff"].startswith("--upstream-range ")
+
+
+def test_targeted_diff_after_a_rebase_onto_a_moved_main_leaves_out_the_unrelated_app_tests(
+    project: Project,
+) -> None:
+    # Arrange
+    record_then_main_migrates_app_b(project)
+    commit_app_change(project, "two\n")
+    diff = project.resolve()["diff"]
+
+    # Act
+    output = project.script_selector(*diff.split())
+
+    # Assert
+    assert "pkg/app_b/tests" not in output
+
+
+def test_record_resolves_to_a_plain_range_when_origin_main_is_gone(
+    project: Project,
+) -> None:
+    # Arrange
+    recorded = commit_app_change(project)
+    project.record_green()
+    commit_app_change(project, "two\n")
+    project.git("update-ref", "-d", "refs/remotes/origin/main")
+
+    # Act
+    resolution = project.resolve()
+
+    # Assert
+    assert resolution["tier"] == "targeted"
+    assert resolution["diff"] == f"--range {recorded}..HEAD --working-tree"
 
 
 def test_missing_selector_resolves_to_full(project: Project) -> None:

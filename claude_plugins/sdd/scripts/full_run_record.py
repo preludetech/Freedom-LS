@@ -15,6 +15,8 @@ during the run.
 The record is one file per branch under `.sdd-work/`. A checkpoint compares HEAD with the
 recorded commit through the project's tier selector, so a branch that has not changed anything a
 test can see since its last green full run runs nothing, and a small change runs a targeted tier.
+When main moved under the branch since the record, the part main brought in goes to the selector
+as the upstream range, so it counts only where it meets the branch's own change.
 A missing, unreadable or stale record always resolves to a full run.
 
 Stdlib only. Every verb exits 0; a usage error exits 64.
@@ -104,8 +106,42 @@ class Resolution:
     why: str
 
 
-def selected_tier(project_root: Path, selector: list[str], *diff: str) -> Tier:
-    """The tier the selector prints for a diff.
+def merge_base(project_root: Path, revision: str) -> str | None:
+    """The merge base of `revision` and `origin/main`, or None when git cannot name one.
+
+    The value goes on to the selector inside a range, so only a full SHA is let through.
+    """
+    result = git(
+        project_root, "merge-base", "--end-of-options", revision, "origin/main"
+    )
+    sha = result.stdout.strip()
+    return sha if result.returncode == 0 and FULL_SHA.fullmatch(sha) else None
+
+
+def record_diff(project_root: Path, sha: str) -> tuple[str, ...]:
+    """The selector's diff arguments for everything since the recorded commit.
+
+    When main moved under the branch since the record, the part main brought in is passed as
+    the upstream range, so the selector can tell it from the branch's own change.
+    """
+    # `git diff A..HEAD` compares two trees, so the range still works after a rebase moved
+    # the recorded commit off the branch.
+    plain = ("--range", f"{sha}..HEAD", "--working-tree")
+    old, new = merge_base(project_root, sha), merge_base(project_root, "HEAD")
+    # Equal bases: main has not moved under the branch, so there is no upstream side.
+    if old is None or new is None or old == new:
+        return plain
+    return ("--upstream-range", f"{old}..{new}", *plain)
+
+
+@dataclass(frozen=True)
+class Selection:
+    tier: Tier
+    full_reason: str | None  # the `why:` line that forced a full tier, else None
+
+
+def run_selector(project_root: Path, selector: list[str], *diff: str) -> Selection:
+    """The tier the selector prints for a diff, and the line that forced `full`.
 
     A selector that fails, or prints no tier line, counts as full: an unknown change is never
     skipped.
@@ -119,14 +155,25 @@ def selected_tier(project_root: Path, selector: list[str], *diff: str) -> Tier:
             check=False,
         )
     except OSError:
-        return "full"
+        return Selection("full", None)
     if result.returncode != 0:
-        return "full"
-    for line in result.stdout.splitlines():
+        return Selection("full", None)
+    lines = result.stdout.splitlines()
+    full_reason = next(
+        (
+            line.removeprefix("why: ")
+            for line in lines
+            if line.startswith("why: ") and " -> full (" in line
+        ),
+        None,
+    )
+    for line in lines:
         if line.startswith("tier:"):
             value = line.removeprefix("tier:").strip()
-            return next((tier for tier in TIERS if tier == value), "full")
-    return "full"
+            return Selection(
+                next((tier for tier in TIERS if tier == value), "full"), full_reason
+            )
+    return Selection("full", None)
 
 
 def resolve(project_root: Path, selector: list[str] | None) -> Resolution:
@@ -135,24 +182,26 @@ def resolve(project_root: Path, selector: list[str] | None) -> Resolution:
     # --working-tree adds uncommitted edits, which a range alone would leave out of a "nothing
     # changed" answer.
     branch_diff = ("--range", "origin/main..HEAD", "--working-tree")
-    if selected_tier(project_root, selector, *branch_diff) == "none":
+    if run_selector(project_root, selector, *branch_diff).tier == "none":
         return Resolution("none", "", "the branch holds no test-visible change")
     sha = read(project_root)
     if sha is None:
         return Resolution("full", "", "no full-run record")
     if not commit_exists(project_root, sha):
         return Resolution("full", "", f"recorded commit {sha[:7]} no longer resolves")
-    # `git diff A..HEAD` compares two trees, so the range still works after a rebase moved
-    # the recorded commit off the branch.
-    diff = ("--range", f"{sha}..HEAD", "--working-tree")
-    tier = selected_tier(project_root, selector, *diff)
-    if tier == "none":
+    diff = record_diff(project_root, sha)
+    selection = run_selector(project_root, selector, *diff)
+    if selection.tier == "none":
         return Resolution(
             "none", "", f"no test-visible change since full green at {sha[:7]}"
         )
-    if tier == "targeted":
+    if selection.tier == "targeted":
         return Resolution("targeted", " ".join(diff), f"range {sha[:7]}..HEAD")
-    return Resolution("full", "", f"the selector escalates over {sha[:7]}..HEAD")
+    return Resolution(
+        "full",
+        "",
+        selection.full_reason or f"the selector escalates over {sha[:7]}..HEAD",
+    )
 
 
 def tracked_tree_is_clean(project_root: Path) -> bool:
