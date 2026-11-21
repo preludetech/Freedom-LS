@@ -1,12 +1,12 @@
 # Configuration and Extension
 
-_Last updated: 2026-11-18_
+_Last updated: 2026-11-21_
 
 ## Summary
 
 - Branding (logo, favicon, header title, email logo) is set through configuration — no template editing needed.
 - Theming works at three increasing depths: override CSS tokens, fill slots inside components, or replace whole template files.
-- Two themes ship (`default`, `first_class`), selected by `FLS_THEME`. Four icon sets are available, selected by `FREEDOM_LS_ICON_SET`.
+- Two themes ship (`default`, `first_class`), selected by `FLS_THEME`. Four icon sets are available, selected by `SEMANTIC_ICONS_SET`.
 - Course access is a pluggable backend, so a deployment can offer free enrolment, application-gated courses, or a model of its own.
 - [Deadline consequences](./learner-experience.md#deadlines) have a deployment-wide default, and the policy that decides them can be replaced.
 - [Direct messaging](./messaging.md) is off until `MESSAGING_ENABLED` is set. Who may message whom is decided by a swappable messaging policy; out of the box learners may message their educators and peer messaging stays closed.
@@ -47,7 +47,7 @@ The site footer is one such component: a downstream project wanting different fo
 
 Two themes ship: **`default`** (the standard FLS style) and **`first_class`** (an alternative). The active one is chosen by `FLS_THEME`, which is read both at Tailwind build time — to decide which theme's CSS to compile — and at runtime for template resolution. **The Tailwind build must be re-run whenever `FLS_THEME` changes**; it cannot be switched at runtime alone.
 
-Icons are referenced by semantic name (`lock`, `check`, `arrow-right`) rather than library-specific glyph names, and those names are mapped onto the active library. Four icon sets are implemented — `heroicons`, `lucide`, `tabler`, and `phosphor` — selected by `FREEDOM_LS_ICON_SET`. Adding another requires supplying a mapping from FLS's semantic names to that library's identifiers.
+Icons are referenced by semantic name (`lock`, `check`, `arrow-right`) rather than library-specific glyph names, and those names are mapped onto the active library. Four icon sets are implemented — `heroicons`, `lucide`, `tabler`, and `phosphor` — selected by `SEMANTIC_ICONS_SET`. Adding another requires supplying a mapping from FLS's semantic names to that library's identifiers. The glyphs those mappings use ship with FLS, so icons need no front-end packages; a deployment whose authors pick other glyphs for courses or callouts points `SEMANTIC_ICONS_ICONIFY_DIR` at the full Iconify icon data.
 
 ## Configurable Admonition Types
 
@@ -140,7 +140,8 @@ A deployment that has a good reason to accept one of these can silence it indivi
 | Setting | Effect |
 |---|---|
 | `FLS_THEME` | Active theme. Read at Tailwind build time and runtime; requires a rebuild to change. |
-| `FREEDOM_LS_ICON_SET` | Active icon set: `heroicons`, `lucide`, `tabler`, or `phosphor`. |
+| `SEMANTIC_ICONS_SET` | Active icon set: `heroicons`, `lucide`, `tabler`, or `phosphor`. |
+| `SEMANTIC_ICONS_ICONIFY_DIR` | Directory of full Iconify icon data, for glyphs beyond the ones FLS ships. Unset by default; the reference configuration sets it. |
 | `ADMONITION_TYPES` | The admonition callout types available to content authors. |
 | `COURSE_ACCESS_BACKEND` | Selects the course-access backend. Must be set; the reference configuration uses the application-gated backend. |
 | `COURSE_ACCESS_CONFIG_VALIDATOR` | Validator for each course's access configuration at content-load time. |
