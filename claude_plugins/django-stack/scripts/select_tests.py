@@ -475,6 +475,62 @@ def narrow_loose_python(
     return [reached, *tooling]
 
 
+def conftest_decision(path: str, apps: list[App], project_root: Path) -> list[Decision]:
+    """A conftest applies to the tests below its directory. One in a directory above an
+    app's own is loaded by every app under it, so it is the whole suite."""
+    directory = PurePosixPath(path).parent
+    root = project_root / directory
+    if any(root != app.directory and root in app.directory.parents for app in apps):
+        return [Decision(path, "full", (), "matches **/conftest.py")]
+    return [
+        Decision(
+            path,
+            "select",
+            (directory.as_posix(),),
+            f"conftest scope {directory.as_posix()}",
+        )
+    ]
+
+
+def narrow_escalation(
+    path: str,
+    app: App | None,
+    apps: list[App],
+    config: TierConfig,
+    edges: Edges | None,
+    graph: Callable[[], ModuleGraph],
+    project_root: Path,
+) -> list[Decision] | None:
+    """The decisions for a path that matches an escalation glob, with the built-in globs
+    narrowed. None when the path is not escalated, or when it belongs to the rules that
+    follow (no owning app, so the loose-module rule applies).
+    """
+    project_glob = first_match(path, config.project_escalation)
+    if project_glob is not None:
+        return [Decision(path, "full", (), f"matches {project_glob}")]
+    glob = first_match(path, config.builtin_escalation)
+    if glob is None:
+        return None
+    if glob == "**/migrations/**":
+        return [Decision(path, "full", (), f"matches {glob}")]
+    if glob == "**/conftest.py":
+        return narrowed(conftest_decision(path, apps, project_root))
+    if app is None:
+        return None
+    if glob in ("**/urls.py", "**/apps.py"):
+        if edges is None:
+            return [Decision(path, "full", (), f"{APP_MAP} missing")]
+        return narrowed(
+            [
+                *narrow_app_python(path, app, graph, project_root),
+                *one_app_hop(path, app, apps, edges, project_root),
+            ]
+        )
+    if glob == "**/fixtures/**" and not path.endswith(".py"):
+        return narrowed(narrow_app_file(path, app, apps, edges, project_root))
+    return narrowed(narrow_app_python(path, app, graph, project_root))
+
+
 def decide(
     path: str,
     apps: list[App],
@@ -500,11 +556,19 @@ def decide(
     if first_match(path, config.dependency) is not None:
         return [Decision(path, "full", (), "dependency file")]
 
-    escalation_glob = first_match(path, config.escalation)
-    if escalation_glob is not None:
-        return [Decision(path, "full", (), f"matches {escalation_glob}")]
-
     app = owning_app(apps, project_root, path)
+
+    if config.narrow:
+        escalated = narrow_escalation(
+            path, app, apps, config, edges, graph, project_root
+        )
+        if escalated is not None:
+            return escalated
+    else:
+        escalation_glob = first_match(path, config.escalation)
+        if escalation_glob is not None:
+            return [Decision(path, "full", (), f"matches {escalation_glob}")]
+
     if app is not None:
         if config.narrow and path.endswith(".py"):
             return narrowed(narrow_app_python(path, app, graph, project_root))

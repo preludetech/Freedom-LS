@@ -2547,3 +2547,209 @@ def test_app_template_without_an_app_map_is_full_while_app_python_still_narrows(
         in lines(template.stdout, "why")
     )
     assert lines(module.stdout, "tier") == ["tier: targeted"]
+
+
+def escalation_repo(tmp_path: Path, extra: dict[str, str] | None = None) -> None:
+    """A committed, narrowing `alpha`/`beta`/`gamma` tree with one test file importing each
+    escalation-named `alpha` module, and a conftest at every level."""
+    modules = ("factories", "signals", "middleware", "urls", "apps")
+    tree = narrow_chain_tree() | {
+        f"pkg/beta/tests/test_{name}.py": f"import pkg.alpha.{name}\n"
+        for name in modules
+        if name != "apps"
+    }
+    tree |= {
+        "pkg/beta/tests/test_apps.py": "import pkg.alpha.apps\n",
+        "pkg/alpha/factories.py": "",
+        "pkg/alpha/signals.py": "",
+        "pkg/alpha/middleware.py": "",
+        "pkg/alpha/urls.py": "",
+        "pkg/alpha/fixtures/data.json": "{}",
+        "pkg/alpha/migrations/0002_x.py": "",
+        "pkg/factories.py": "",
+        "pkg/urls.py": "",
+        "pkg/beta/tests/conftest.py": "",
+        "pkg/beta/tests/sub/conftest.py": "",
+        "pkg/conftest.py": "",
+        "conftest.py": "",
+        "tests/conftest.py": "",
+        "tests/test_imports_pkg_factories.py": "import pkg.factories\n",
+        "tests/test_imports_pkg_urls.py": "import pkg.urls\n",
+    }
+    git_repo(tmp_path, tree | (extra or {}))
+
+
+def test_project_escalation_glob_on_a_builtin_glob_path_is_full(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    table = f'{NARROW_TABLE}escalation = ["pkg/alpha/urls.py"]\n'
+    escalation_repo(tmp_path, {"pyproject.toml": table})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/urls.py")
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: full"]
+    assert lines(result.stdout, "why") == [
+        "why: pkg/alpha/urls.py -> full (matches pkg/alpha/urls.py)"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("path", "scope"),
+    [
+        ("pkg/beta/tests/conftest.py", "pkg/beta/tests"),
+        ("pkg/beta/tests/sub/conftest.py", "pkg/beta/tests/sub"),
+        ("tests/conftest.py", "tests"),
+    ],
+)
+def test_conftest_inside_a_tests_directory_selects_its_own_subtree(
+    tmp_path: Path, path: str, scope: str
+) -> None:
+    # Arrange
+    escalation_repo(tmp_path)
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, path)
+
+    # Assert
+    assert lines(result.stdout, "why") == [
+        f"why: {path} -> {scope} (conftest scope {scope}) {TAIL}"
+    ]
+    assert lines(result.stdout, "command") == [
+        f"command: uv run pytest -n auto --no-cov {scope}"
+    ]
+
+
+@pytest.mark.parametrize("path", ["conftest.py", "pkg/conftest.py"])
+def test_conftest_above_every_app_is_full(tmp_path: Path, path: str) -> None:
+    # Arrange
+    escalation_repo(tmp_path)
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, path)
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: full"]
+    assert lines(result.stdout, "why") == [
+        f"why: {path} -> full (matches **/conftest.py)"
+    ]
+
+
+@pytest.mark.parametrize("name", ["factories", "signals", "middleware"])
+def test_app_module_named_by_an_escalation_glob_selects_its_app_and_its_importers(
+    tmp_path: Path, name: str
+) -> None:
+    # Arrange
+    escalation_repo(tmp_path)
+    path = f"pkg/alpha/{name}.py"
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, path)
+
+    # Assert
+    assert lines(result.stdout, "why") == [
+        f"why: {path} -> pkg/alpha/tests (owning app alpha) {TAIL}",
+        f"why: {path} -> pkg/beta/tests/test_{name}.py "
+        f"(1 test files through imports) {TAIL}",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("path", "importer"),
+    [
+        ("pkg/factories.py", "tests/test_imports_pkg_factories.py"),
+        ("pkg/urls.py", "tests/test_imports_pkg_urls.py"),
+    ],
+)
+def test_ownerless_escalation_named_module_follows_the_loose_module_rule(
+    tmp_path: Path, path: str, importer: str
+) -> None:
+    # Arrange
+    escalation_repo(tmp_path)
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, path)
+
+    # Assert
+    assert lines(result.stdout, "why") == [
+        f"why: {path} -> {importer} (1 test files through imports) {TAIL}"
+    ]
+    assert "runtime dep" not in result.stdout
+
+
+def test_app_urls_and_apps_modules_select_their_importers_and_one_app_hop(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    escalation_repo(tmp_path)
+
+    # Act
+    results = {
+        name: run_script(SCRIPT, tmp_path, f"pkg/alpha/{name}.py")
+        for name in ("urls", "apps")
+    }
+
+    # Assert
+    for name, result in results.items():
+        path = f"pkg/alpha/{name}.py"
+        assert lines(result.stdout, "why") == [
+            f"why: {path} -> pkg/alpha/tests (owning app alpha) {TAIL}",
+            f"why: {path} -> pkg/beta/tests/test_{name}.py "
+            f"(1 test files through imports) {TAIL}",
+            f"why: {path} -> pkg/beta/tests (beta has a runtime dep on alpha) {TAIL}",
+            f"why: {path} -> pkg/gamma/tests "
+            f"(gamma has a test-only dep on alpha) {TAIL}",
+        ]
+        assert "pkg/delta/tests" not in result.stdout
+
+
+@pytest.mark.parametrize("name", ["urls", "apps"])
+def test_app_urls_and_apps_modules_without_an_app_map_are_full(
+    tmp_path: Path, name: str
+) -> None:
+    # Arrange
+    tree = narrow_chain_tree()
+    del tree["docs/app_structure.md"]
+    git_repo(tmp_path, tree | {"pkg/alpha/urls.py": ""})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, f"pkg/alpha/{name}.py")
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: full"]
+    assert lines(result.stdout, "why") == [
+        f"why: pkg/alpha/{name}.py -> full (docs/app_structure.md missing)"
+    ]
+
+
+def test_app_fixture_data_file_selects_its_app_and_one_app_hop(tmp_path: Path) -> None:
+    # Arrange
+    escalation_repo(tmp_path)
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/fixtures/data.json")
+
+    # Assert
+    assert lines(result.stdout, "why") == [
+        f"why: pkg/alpha/fixtures/data.json -> pkg/alpha/tests (owning app alpha) {TAIL}",
+        "why: pkg/alpha/fixtures/data.json -> pkg/beta/tests "
+        f"(beta has a runtime dep on alpha) {TAIL}",
+        "why: pkg/alpha/fixtures/data.json -> pkg/gamma/tests "
+        f"(gamma has a test-only dep on alpha) {TAIL}",
+    ]
+
+
+def test_app_migration_is_full(tmp_path: Path) -> None:
+    # Arrange
+    escalation_repo(tmp_path)
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/migrations/0002_x.py")
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: full"]
+    assert lines(result.stdout, "why") == [
+        "why: pkg/alpha/migrations/0002_x.py -> full (matches **/migrations/**)"
+    ]
