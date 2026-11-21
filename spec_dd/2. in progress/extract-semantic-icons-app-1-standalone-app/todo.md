@@ -28,7 +28,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Update `claude_plugins/fls-dev/skills/testing/SKILL.md`: the icons standalone command `uv run pytest -c freedom_ls/icons/tests/standalone_pytest.ini freedom_ls/icons/tests` beside the panel framework's, and `SEMANTIC_ICONS_ICONIFY_DIR` (spec: Documentation and downstream)
 - [x] (cmd) Update `claude_plugins/fls-dev/resources/testing.md`: rename `FREEDOM_LS_ICON_SET` to `SEMANTIC_ICONS_SET` in the pinned-config rule, add the icons standalone command, and add the generator's `[[tool.test_tiers.tooling]]` entries (spec: Documentation and downstream)
 - [x] (cmd) Update `claude_plugins/fls-dev/skills/app-settings/SKILL.md`: the standalone-app copy rule, the `SAME_SOURCE` invariant, and that `required_settings_errors` is not copied (spec: Documentation and downstream)
-- [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
 ## 5. Cleanup
