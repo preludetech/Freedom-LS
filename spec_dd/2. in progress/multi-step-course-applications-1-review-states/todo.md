@@ -41,7 +41,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) UI feedback fix: dashboard application rows link Details to the application page; the application page has a top-left Back link, a Details card and a red Withdraw button
 - [x] (cmd) UI feedback fix: a rejected application reads "Declined" with its reason in the Details card's "Reason" row; the card's course link has no underline; an invariant test fails on an unclassed anchor in the application templates
 - [x] (cmd) UI feedback fix: each dashboard application row ends in "Details" only (no "Continue application", "Apply again" or phone-only arrow); the QA plan checks the rows, the status page card, "Declined" and the course link in every test
-- [ ] (user) Decide whether to keep the `course_applications:resume` route (`resume_application` in `freedom_ls/course_applications/views.py`): the dashboard row's "Continue application" button was its only caller and is gone, so nothing in the app links to it now; it still has its own tests
+- [x] (user) Decide whether to keep the `course_applications:resume` route (`resume_application` in `freedom_ls/course_applications/views.py`): the dashboard row's "Continue application" button was its only caller and is gone, so nothing in the app links to it now; it still has its own tests
 - [x] (cmd) Run `/sdd:document`: retake `docs/product/screenshots/learner_dashboard_applications.png`, which still shows "Not approved" and "View my application" rows
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 

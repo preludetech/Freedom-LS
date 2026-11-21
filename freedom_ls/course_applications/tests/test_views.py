@@ -883,58 +883,6 @@ class TestApplicationStatusResumes:
         assert response.status_code == 200
 
 
-def _resume(pk: object) -> str:
-    return reverse("course_applications:resume", kwargs={"pk": pk})
-
-
-@pytest.mark.django_db
-class TestResumeApplication:
-    def test_a_claimed_draft_resumes_at_its_form(
-        self, client: Client, mock_site_context: Site
-    ) -> None:
-        course, _form = gated_course_with_form()
-        app = _applied(client, course)
-
-        response = client.get(_resume(app.pk))
-
-        assert response["Location"] == _page_url(app, 1)
-
-    def test_a_submitted_application_goes_to_its_status_page(
-        self, client: Client, mock_site_context: Site
-    ) -> None:
-        course, _form = gated_course_with_form()
-        app = _applied(client, course)
-        app.form_progress.complete()
-        submit_application(app)
-
-        response = client.get(_resume(app.pk))
-
-        assert response["Location"] == reverse(
-            "course_applications:status", kwargs={"pk": app.pk}
-        )
-
-    def test_someone_elses_application_is_not_found(
-        self, client: Client, mock_site_context: Site
-    ) -> None:
-        course, _form = gated_course_with_form()
-        app = _applied(client, course)
-        client.force_login(UserFactory())
-
-        assert client.get(_resume(app.pk)).status_code == 404
-
-    def test_a_visitor_is_sent_to_log_in(
-        self, client: Client, mock_site_context: Site
-    ) -> None:
-        course, _form = gated_course_with_form()
-        app = _applied(client, course)
-        client.logout()
-
-        response = client.get(_resume(app.pk))
-
-        assert response.status_code == 302
-        assert reverse("account_login") in response["Location"]
-
-
 def _gated_course_with_a_page_less_form():
     """An author can save a form with no pages, and a course can name it."""
     form = FormFactory(strategy=FormStrategy.UNSCORED)

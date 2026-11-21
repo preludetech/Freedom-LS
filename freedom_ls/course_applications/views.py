@@ -20,7 +20,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.crypto import salted_hmac
 from django.utils.http import url_has_allowed_host_and_scheme
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_POST
 
 from freedom_ls.accounts.forms import tripped_honeypot
 from freedom_ls.accounts.models import User
@@ -336,22 +336,6 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
         if app.unverified_applicant is not None
         else None,
     )
-
-
-@require_GET
-def resume_application(request: HttpRequest, pk: UUID) -> HttpResponse:
-    """Carry an open draft on at the page its applicant left.
-
-    A claimed draft's status page is a stop of its own (it offers the
-    withdraw action), so a link that should land in the form itself comes
-    here. Anything that is not a draft with a form goes to its status page.
-    """
-    found = _owned_application(request, _status_applications(request), pk)
-    if isinstance(found, HttpResponse):
-        return found
-    if found.state == CourseApplication.State.DRAFT and found.form_progress is not None:
-        return redirect(_resume_url(found, found.form_progress))
-    return redirect("course_applications:status", pk=found.pk)
 
 
 @require_POST
