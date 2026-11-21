@@ -379,6 +379,12 @@ document.addEventListener("alpine:init", () => {
             this.dragging = false;
             this._seekTo(Number(event.target.value));
         },
+        // A drag can end with no change event: a touch drag that becomes a
+        // scroll, or a release where it started. The next timeupdate then
+        // moves the bar back to the audio's position.
+        seekEnd() {
+            this.dragging = false;
+        },
         seekKey(event) {
             // step="any" leaves the browser's arrow step undefined, so arrows are handled here.
             const delta = { ArrowLeft: -5, ArrowRight: 5 }[event.key];
@@ -419,7 +425,7 @@ document.addEventListener("alpine:init", () => {
         _fullyLoaded(audio) {
             const { buffered, duration } = audio;
             return Number.isFinite(duration) && buffered.length > 0
-                && buffered.start(0) === 0 && buffered.end(buffered.length - 1) >= duration - 0.5;
+                && buffered.start(0) <= 0.5 && buffered.end(buffered.length - 1) >= duration - 0.5;
         },
 
         toggle() {

@@ -82,6 +82,7 @@ chevron starts on the title's left edge; the padding stays for the focus ring.
                      x-bind:max="seekMax" x-bind:value="elapsed" x-bind:disabled="seekDisabled"
                      x-bind:aria-valuetext="valueText"
                      x-on:input="seekInput" x-on:change="seekChange" x-on:keydown="seekKey"
+                     x-on:pointerup="seekEnd" x-on:pointercancel="seekEnd" x-on:blur="seekEnd"
                      aria-label="Seek {{ title }}"
                      aria-valuetext="{{ 0|clip_value_text:file_obj.duration_seconds }}"
                      x-ref="seek"

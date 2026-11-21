@@ -7,7 +7,9 @@ from pathlib import Path
 
 import pytest
 from playwright.sync_api import Locator, Page, Route, expect
+from pytest_django.live_server_helper import LiveServer
 
+from django.contrib.sites.models import Site
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 from freedom_ls.accounts.models import User
@@ -80,9 +82,9 @@ def _clip_course(user: User, third_clip_duration: float | None = None) -> Course
 
 
 def test_learner_plays_and_pauses_a_clip(
-    live_server,
-    live_server_site,
-    mock_site_context,
+    live_server: LiveServer,
+    live_server_site: Site,
+    mock_site_context: object,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -144,16 +146,16 @@ def _serve_with_ranges(route: Route) -> None:
     route.fulfill(status=206, headers=headers, body=body[start : end + 1])
 
 
-def _open_clips(live_server, page: Page, user: User) -> None:
+def _open_clips(live_server: LiveServer, page: Page, user: User) -> None:
     course = _clip_course(user)
     page.route("**/content/audio/**", _serve_with_ranges)
     page.goto(form_item_url(live_server, course, "view_course_item"))
 
 
 def test_learner_seeks_a_clip_by_keyboard_and_mouse(
-    live_server,
-    live_server_site,
-    mock_site_context,
+    live_server: LiveServer,
+    live_server_site: Site,
+    mock_site_context: object,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -198,9 +200,9 @@ def test_learner_seeks_a_clip_by_keyboard_and_mouse(
 
 
 def test_clip_seeked_near_the_end_returns_to_the_start(
-    live_server,
-    live_server_site,
-    mock_site_context,
+    live_server: LiveServer,
+    live_server_site: Site,
+    mock_site_context: object,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -220,9 +222,9 @@ def test_clip_seeked_near_the_end_returns_to_the_start(
 
 
 def test_clip_seeked_while_playing_from_a_host_without_range_still_ends(
-    live_server,
-    live_server_site,
-    mock_site_context,
+    live_server: LiveServer,
+    live_server_site: Site,
+    mock_site_context: object,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -243,9 +245,9 @@ def test_clip_seeked_while_playing_from_a_host_without_range_still_ends(
 
 
 def test_clip_without_a_stored_duration_enables_its_seek_bar_after_play(
-    live_server,
-    live_server_site,
-    mock_site_context,
+    live_server: LiveServer,
+    live_server_site: Site,
+    mock_site_context: object,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -265,9 +267,9 @@ def test_clip_without_a_stored_duration_enables_its_seek_bar_after_play(
 
 @pytest.mark.browser_context_args(has_touch=True)
 def test_learner_seeks_a_clip_by_touch(
-    live_server,
-    live_server_site,
-    mock_site_context,
+    live_server: LiveServer,
+    live_server_site: Site,
+    mock_site_context: object,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -282,15 +284,42 @@ def test_learner_seeks_a_clip_by_touch(
     expect(_elapsed(page)).to_have_text(re.compile(r"0:(29|30)"))
 
 
+def test_cancelled_drag_lets_the_bar_follow_the_audio_again(
+    live_server: LiveServer,
+    live_server_site: Site,
+    mock_site_context: object,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    """A drag that ends without a change event, such as a touch turned into a scroll."""
+    page = logged_in_page
+    _open_clips(live_server, page, logged_in_user)
+    play = page.get_by_role("button", name=f"Play {FIRST_CLIP}")
+    elapsed = _elapsed(page)
+
+    play.click()
+    expect(play).to_have_attribute("aria-pressed", "true", timeout=10_000)
+    _seek_bar(page).evaluate(
+        """seek => {
+            seek.value = "25";
+            seek.dispatchEvent(new Event("input", { bubbles: true }));
+            seek.dispatchEvent(new PointerEvent("pointercancel", { bubbles: true }));
+        }"""
+    )
+
+    expect(elapsed).to_have_text(re.compile(r"0:0\d"), timeout=5_000)
+    expect(play).to_have_attribute("aria-pressed", "true")
+
+
 def _to_seconds(clock: str) -> int:
     minutes, seconds = clock.split(":")
     return int(minutes) * 60 + int(seconds)
 
 
 def test_only_one_clip_or_speak_button_plays_at_a_time(
-    live_server,
-    live_server_site,
-    mock_site_context,
+    live_server: LiveServer,
+    live_server_site: Site,
+    mock_site_context: object,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -334,9 +363,9 @@ def test_only_one_clip_or_speak_button_plays_at_a_time(
 
 
 def test_pressing_the_speak_button_stops_a_playing_clip_and_back(
-    live_server,
-    live_server_site,
-    mock_site_context,
+    live_server: LiveServer,
+    live_server_site: Site,
+    mock_site_context: object,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -365,9 +394,9 @@ def _transcript_toggle(page: Page, title: str = FIRST_CLIP) -> Locator:
 
 
 def test_learner_opens_and_closes_a_transcript(
-    live_server,
-    live_server_site,
-    mock_site_context,
+    live_server: LiveServer,
+    live_server_site: Site,
+    mock_site_context: object,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -392,9 +421,9 @@ def test_learner_opens_and_closes_a_transcript(
 
 
 def test_transcript_toggle_controls_the_transcript_panel(
-    live_server,
-    live_server_site,
-    mock_site_context,
+    live_server: LiveServer,
+    live_server_site: Site,
+    mock_site_context: object,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -416,9 +445,9 @@ def test_transcript_toggle_controls_the_transcript_panel(
 
 
 def test_transcript_opens_at_once_with_reduced_motion(
-    live_server,
-    live_server_site,
-    mock_site_context,
+    live_server: LiveServer,
+    live_server_site: Site,
+    mock_site_context: object,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -436,9 +465,9 @@ def test_transcript_opens_at_once_with_reduced_motion(
 
 
 def test_clip_fits_every_viewport(
-    live_server,
-    live_server_site,
-    mock_site_context,
+    live_server: LiveServer,
+    live_server_site: Site,
+    mock_site_context: object,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -464,9 +493,9 @@ def _assert_vertically_centred(inner: Locator, outer: Locator) -> None:
 
 
 def test_play_button_sits_in_the_vertical_centre_of_the_clip(
-    live_server,
-    live_server_site,
-    mock_site_context,
+    live_server: LiveServer,
+    live_server_site: Site,
+    mock_site_context: object,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -498,9 +527,9 @@ def test_play_button_sits_in_the_vertical_centre_of_the_clip(
 
 
 def test_failed_clip_shows_an_error_and_retries_from_its_position(
-    live_server,
-    live_server_site,
-    mock_site_context,
+    live_server: LiveServer,
+    live_server_site: Site,
+    mock_site_context: object,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -534,9 +563,9 @@ def test_failed_clip_shows_an_error_and_retries_from_its_position(
 
 
 def test_transcript_opens_in_the_error_state(
-    live_server,
-    live_server_site,
-    mock_site_context,
+    live_server: LiveServer,
+    live_server_site: Site,
+    mock_site_context: object,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -555,9 +584,9 @@ def test_transcript_opens_in_the_error_state(
 
 
 def test_retry_that_fails_again_announces_the_error_again(
-    live_server,
-    live_server_site,
-    mock_site_context,
+    live_server: LiveServer,
+    live_server_site: Site,
+    mock_site_context: object,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -586,9 +615,9 @@ def _serve_without_ranges(route: Route) -> None:
 
 
 def test_seek_before_play_gives_way_when_the_host_ignores_range(
-    live_server,
-    live_server_site,
-    mock_site_context,
+    live_server: LiveServer,
+    live_server_site: Site,
+    mock_site_context: object,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -611,9 +640,9 @@ def test_seek_before_play_gives_way_when_the_host_ignores_range(
 
 
 def test_transcript_toggle_lines_up_with_the_clip_title(
-    live_server,
-    live_server_site,
-    mock_site_context,
+    live_server: LiveServer,
+    live_server_site: Site,
+    mock_site_context: object,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:

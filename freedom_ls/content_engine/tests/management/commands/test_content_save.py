@@ -4332,7 +4332,9 @@ def _save_one_file(site: Site, base: Path, relative_path: str) -> None:
 
 
 @pytest.mark.django_db
-def test_a_new_mp3_stores_its_duration(site, mock_site_context, tmp_path) -> None:
+def test_a_new_mp3_stores_its_duration(
+    site: Site, mock_site_context: object, tmp_path: Path
+) -> None:
     (tmp_path / "clip.mp3").write_bytes(BEEP_MP3.read_bytes())
 
     _save_one_file(site, tmp_path, "clip.mp3")
@@ -4343,7 +4345,7 @@ def test_a_new_mp3_stores_its_duration(site, mock_site_context, tmp_path) -> Non
 
 @pytest.mark.django_db
 def test_resaving_an_mp3_replaces_a_stale_duration(
-    site, mock_site_context, tmp_path
+    site: Site, mock_site_context: object, tmp_path: Path
 ) -> None:
     FileFactory(
         file_path="audio/clip.mp3",
@@ -4361,7 +4363,7 @@ def test_resaving_an_mp3_replaces_a_stale_duration(
 
 @pytest.mark.django_db
 def test_a_file_that_is_no_longer_audio_loses_its_duration(
-    site, mock_site_context, tmp_path
+    site: Site, mock_site_context: object, tmp_path: Path
 ) -> None:
     FileFactory(
         file_path="notes.txt", file_type=File.FileType.AUDIO, duration_seconds=12.0
@@ -4382,7 +4384,11 @@ def test_a_file_that_is_no_longer_audio_loses_its_duration(
     ids=["truncated", "zero-byte"],
 )
 def test_an_unreadable_mp3_stores_no_duration_warns_and_the_run_continues(
-    site, mock_site_context, tmp_path, capsys, unreadable_bytes: bytes
+    site: Site,
+    mock_site_context: object,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    unreadable_bytes: bytes,
 ) -> None:
     (tmp_path / "broken.mp3").write_bytes(unreadable_bytes)
     (tmp_path / "good.mp3").write_bytes(BEEP_MP3.read_bytes())

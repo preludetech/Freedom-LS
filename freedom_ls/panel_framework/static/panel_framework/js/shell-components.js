@@ -103,14 +103,7 @@ document.addEventListener("alpine:init", () => {
             this._mq = window.matchMedia("(min-width: 1024px)");
             this.isMobile = !this._mq.matches;
 
-            // Position the docked panel below the header bar (consumed by the
-            // CSS var on the dialog).
-            // Document offset, not viewport offset: a reload restores the
-            // scroll position before this runs, and the viewport offset would
-            // then be short by the scroll distance and inflate the dialog's
-            // height to the whole page.
-            const top = this.$el.getBoundingClientRect().top + window.scrollY;
-            this.$el.style.setProperty("--sidebar-top", top + "px");
+            this._captureSidebarTop();
 
             // Single point every dismiss route (Escape, scrim, programmatic,
             // Back) funnels through. Unwind the pushed history entry here unless
@@ -239,18 +232,23 @@ document.addEventListener("alpine:init", () => {
                 // — goes stale across a resize that crosses this
                 // breakpoint without a reload. Recapture it here, by which
                 // point the header has already re-rendered at its new width.
-                // Document offset, not viewport offset: a reload restores the
-            // scroll position before this runs, and the viewport offset would
-            // then be short by the scroll distance and inflate the dialog's
-            // height to the whole page.
-            const top = this.$el.getBoundingClientRect().top + window.scrollY;
-                this.$el.style.setProperty("--sidebar-top", top + "px");
+                this._captureSidebarTop();
                 // Reset to the correct mode for the new breakpoint.
                 if (this.dialog.open) this.dialog.close();
                 this.open = false;
                 if (!this.isMobile) this._dockOnceNoModalIsOpen();
             };
             this._mq.addEventListener("change", this._mqHandler);
+        },
+        // Position the docked panel below the header bar (consumed by the
+        // CSS var on the dialog).
+        // Document offset, not viewport offset: a reload restores the scroll
+        // position before init() runs, and the viewport offset would then be
+        // short by the scroll distance and inflate the dialog's height to the
+        // whole page.
+        _captureSidebarTop() {
+            const top = this.$el.getBoundingClientRect().top + window.scrollY;
+            this.$el.style.setProperty("--sidebar-top", top + "px");
         },
         destroy() {
             if (this._mq && this._mqHandler) {
