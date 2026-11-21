@@ -17,7 +17,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `sacaa-compliance-3-question-pools` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-1-content-save-safety` (SACAA content versions and access)
 - 🔴 High · `reference-material-content-1-authoring` (Reference material)
-- 🔴 High · `multi-step-course-applications-1-review-states` (Multi-step course applications)
 - 🟠 Medium · `content-widget-longer-audio` (Audio content widgets)
 - 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
 
@@ -33,6 +32,8 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `sacaa-compliance-content-versions-and-access-4-question-access` (SACAA content versions and access)
 - 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
 - 🔴 High · `learner-public-profile-2-profile-and-page` (Learner public profiles)
+- 🔴 High · `multi-step-course-applications-2-reviewers-and-inbox` (Multi-step course applications)
+- 🔴 High · `multi-step-course-applications-4-reopen-form` (Multi-step course applications)
 - 🟠 Medium · `content-widget-sayit-reveal-4-audio-access-control` (Audio content widgets)
 - 🟠 Medium · `deadlines-4-learner-self-pause` (Deadlines)
 - 🟠 Medium · `deadlines-5-reminders` (Deadlines)
@@ -256,10 +257,9 @@ Priority: 🔴 High
 
 Applications become steps an applicant works through over weeks, decided by a deployment's rules and cleared by organisation reviewers. Parent: `multi-step-course-applications`.
 
-- `multi-step-course-applications-1-review-states` — **in progress** — Applications get a state and an organisation; applicants see where theirs stands and can withdraw.
-- `multi-step-course-applications-2-reviewers-and-inbox` — **blocked** by `multi-step-course-applications-1-review-states` — Organisation reviewers get an applications inbox and review screen, approve or reject, and move applications between organisations.
+- `multi-step-course-applications-2-reviewers-and-inbox` — **ready** — Organisation reviewers get an applications inbox and review screen, approve or reject, and move applications between organisations.
 - `multi-step-course-applications-3-approval-outcome` — **blocked** by `multi-step-course-applications-2-reviewers-and-inbox` — A deployment seam decides what approval does; FLS's default registers the applicant for the course.
-- `multi-step-course-applications-4-reopen-form` — **blocked** by `multi-step-course-applications-1-review-states` — Applicants reopen their submitted application form, answers prefilled, until it is approved.
+- `multi-step-course-applications-4-reopen-form` — **ready** — Applicants reopen their submitted application form, answers prefilled, until it is approved.
 - `multi-step-course-applications-5-requirements-and-resolver` — **blocked** by `multi-step-course-applications-4-reopen-form` — Applicants work through a requirements page; a deployment resolver, or the course's fixed list, decides the requirements.
 - `multi-step-course-applications-6-reviewer-verdicts` — **blocked** by `multi-step-course-applications-5-requirements-and-resolver`, `multi-step-course-applications-10-intake-courses` — Reviewers accept or turn down requirements with a reason, preview the consequence; requirements hold back approval or registration.
 - `multi-step-course-applications-7-upload-requirements` — **blocked** by `multi-step-course-applications-6-reviewer-verdicts` — Applicants upload documents for requirements, re-upload when asked, and see past uploads; reviewers see every version.
