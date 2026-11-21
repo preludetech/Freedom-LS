@@ -785,3 +785,21 @@ def _course_option_values(response: _MonkeyPatchedWSGIResponse) -> set[str]:
         for option in document.cssselect("select[name='course'] option")
         if option.get("value")
     }
+
+
+def _quick_view_url(organisation_slug: str, path_string: str) -> str:
+    return reverse(
+        "educator_interface:interface",
+        kwargs={
+            "organisation_slug": organisation_slug,
+            "path_string": f"{path_string}/__quick-view",
+        },
+    )
+
+
+def _get_quick_view(
+    client: Client, organisation: Organisation, path_string: str
+) -> _MonkeyPatchedWSGIResponse:
+    return client.get(
+        _quick_view_url(organisation.slug, path_string), HTTP_HX_REQUEST="true"
+    )

@@ -92,3 +92,18 @@ def msg_client_for(
     logged_in_client: Callable[[User], Client],
 ) -> Callable[[User], Client]:
     return lambda user: cast(Client, logged_in_client(user))
+
+
+@pytest.fixture
+def educator_client(logged_in_client):
+    """Factory: a logged-in staff educator holding ``role`` on ``target`` --
+    the organisation for a role holder, a cohort for a grant-only educator."""
+
+    def _make(
+        target: Organisation | Cohort, role: str = "organisation_admin"
+    ) -> Client:
+        educator = UserFactory(staff=True)
+        assign_object_role(educator, target, role)
+        return cast(Client, logged_in_client(educator))
+
+    return _make
