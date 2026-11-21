@@ -11,7 +11,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 2. Plan
 
-- [ ] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
+- [x] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
 - [ ] (user) Review both plans and edit where needed
 
 ## 3. Implementation and QA
@@ -24,6 +24,8 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 4. Documentation and pull request
 
 - [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [ ] (cmd) Run `/sdd:document`: in `claude_plugins/fls-dev/skills/testing/SKILL.md`, "Fixture placement", add `fast_password_hasher` to the autouse list and name `production_password_hashers` as the opt-in (spec, "Documentation and downstream")
+- [ ] (cmd) Run `/sdd:document`: write `timings.md` in this spec directory with test-body times, before and after, for `freedom_ls/course_access` and `educator_interface/tests/invariants/test_permission_matrix.py::test_can_matches_the_matrix`, measured as `spec_dd/1. next/faster-test-runs/research_test_timings.md` did. Take the before sample with a temporary `fast_password_hasher` that yields the configured list without overriding, then delete it (spec, "Documentation and downstream")
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
