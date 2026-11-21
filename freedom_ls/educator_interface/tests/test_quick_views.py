@@ -1,9 +1,8 @@
-"""The learner and cohort quick views: educator_interface/quick_views.py.
+"""The cohort and staff quick views: educator_interface/quick_views.py.
 
-LearnerConfig and CohortConfig now declare a `quick_view`, so an htmx GET of
-`<section>/<pk>/__quick-view` returns the drawer's frame with each consumer's
-own fields, scoped the same way the section's own list and instance pages
-already are.
+An htmx GET of `<section>/<pk>/__quick-view` returns the drawer's frame with
+each consumer's own fields, scoped the same way the section's own list and
+instance pages are.
 """
 
 from __future__ import annotations
