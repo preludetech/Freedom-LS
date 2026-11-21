@@ -102,7 +102,9 @@ def test_export_header_is_the_fixed_columns_in_order(staff_client):
     assert header == list(APPLICATION_EXPORT_FIELDS)
 
 
-def test_state_column_follows_is_email_verified_and_holds_the_state(staff_client):
+def test_state_column_follows_is_email_verified_and_holds_the_state(
+    staff_client: Client,
+) -> None:
     application = CourseApplicationFactory(rejected=True)
 
     response = _export_selected(
@@ -150,8 +152,8 @@ def test_a_draft_is_not_submitted_and_has_no_submitted_time(staff_client):
 
 
 def test_a_submitted_application_exports_its_submitted_at_as_submitted_time(
-    staff_client,
-):
+    staff_client: Client,
+) -> None:
     application = CourseApplicationFactory()
 
     row = _export_row(staff_client, application)

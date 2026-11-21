@@ -89,8 +89,8 @@ def _row_after(apps: StateApps, pk: object) -> object:
 
 
 def test_an_application_with_no_sitting_becomes_submitted_when_it_was_created(
-    mock_site_context,
-):
+    mock_site_context: Site,
+) -> None:
     site = Site.objects.get_current()
     course = CourseFactory()
     created = timezone.now() - timedelta(days=5)
@@ -108,8 +108,8 @@ def test_an_application_with_no_sitting_becomes_submitted_when_it_was_created(
 
 
 def test_an_application_with_a_completed_sitting_becomes_submitted_when_it_completed(
-    mock_site_context,
-):
+    mock_site_context: Site,
+) -> None:
     site = Site.objects.get_current()
     course = CourseFactory()
     completed = timezone.now() - timedelta(days=2)
@@ -131,8 +131,8 @@ def test_an_application_with_a_completed_sitting_becomes_submitted_when_it_compl
 
 @pytest.mark.parametrize("with_user", [True, False], ids=["claimed", "unclaimed"])
 def test_an_application_with_an_open_sitting_stays_a_draft(
-    mock_site_context, with_user
-):
+    mock_site_context: Site, with_user: bool
+) -> None:
     site = Site.objects.get_current()
     course = CourseFactory()
     user = UserFactory() if with_user else None
@@ -158,8 +158,8 @@ def test_an_application_with_an_open_sitting_stays_a_draft(
 
 @pytest.mark.parametrize("with_user", [True, False], ids=["claimed", "unclaimed"])
 def test_an_application_with_no_sitting_is_submitted_whoever_holds_it(
-    mock_site_context, with_user
-):
+    mock_site_context: Site, with_user: bool
+) -> None:
     site = Site.objects.get_current()
     course = CourseFactory()
     user = UserFactory() if with_user else None
@@ -177,8 +177,8 @@ def test_an_application_with_no_sitting_is_submitted_whoever_holds_it(
 
 
 def test_a_course_with_one_owning_organisation_gives_it_to_the_application(
-    mock_site_context,
-):
+    mock_site_context: Site,
+) -> None:
     site = Site.objects.get_current()
     course = CourseFactory()
     owner = OrganisationFactory()
@@ -194,8 +194,8 @@ def test_a_course_with_one_owning_organisation_gives_it_to_the_application(
 
 @pytest.mark.parametrize("owner_count", [0, 2])
 def test_a_course_without_exactly_one_owner_gives_the_application_its_sites_default(
-    mock_site_context, owner_count
-):
+    mock_site_context: Site, owner_count: int
+) -> None:
     site = Site.objects.get_current()
     other_site = SiteFactory(domain="other.example.com", name="Other")
     course = CourseFactory()
@@ -219,7 +219,7 @@ def test_a_course_without_exactly_one_owner_gives_the_application_its_sites_defa
     ).pk
 
 
-def test_updated_at_moves_on_every_row(mock_site_context):
+def test_updated_at_moves_on_every_row(mock_site_context: Site) -> None:
     site = Site.objects.get_current()
     course = CourseFactory()
     seeded: list[object] = []
@@ -233,8 +233,8 @@ def test_updated_at_moves_on_every_row(mock_site_context):
 
 
 def test_a_site_without_a_default_organisation_stops_the_migration(
-    mock_site_context,
-):
+    mock_site_context: Site,
+) -> None:
     site = Site.objects.get_current()
     course = CourseFactory()
     Organisation._base_manager.filter(site=site, is_default=True).delete()

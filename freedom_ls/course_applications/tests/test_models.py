@@ -6,6 +6,7 @@ from datetime import timedelta
 
 import pytest
 
+from django.contrib.sites.models import Site
 from django.db import IntegrityError
 from django.db.models import ProtectedError, RestrictedError
 from django.utils import timezone
@@ -163,7 +164,9 @@ class TestIsSubmitted:
 
 @pytest.mark.django_db
 class TestSubmittedTime:
-    def test_a_submitted_application_reports_its_submitted_at(self, mock_site_context):
+    def test_a_submitted_application_reports_its_submitted_at(
+        self, mock_site_context: Site
+    ) -> None:
         app = CourseApplicationFactory()
 
         assert app.submitted_time == app.submitted_at
@@ -317,19 +320,21 @@ State = CourseApplication.State
 
 @pytest.mark.django_db
 class TestStateProperties:
-    def test_is_submitted_is_false_for_a_withdrawn_draft(self, mock_site_context):
+    def test_is_submitted_is_false_for_a_withdrawn_draft(
+        self, mock_site_context: Site
+    ) -> None:
         application = CourseApplicationFactory(withdrawn=True, submitted_at=None)
 
         assert application.is_submitted is False
 
     def test_is_submitted_is_true_for_an_application_withdrawn_after_submitting(
-        self, mock_site_context
-    ):
+        self, mock_site_context: Site
+    ) -> None:
         application = CourseApplicationFactory(withdrawn=True)
 
         assert application.is_submitted is True
 
-    def test_submitted_time_is_submitted_at(self, mock_site_context):
+    def test_submitted_time_is_submitted_at(self, mock_site_context: Site) -> None:
         application = CourseApplicationFactory()
 
         assert application.submitted_time == application.submitted_at
@@ -344,15 +349,15 @@ class TestStateProperties:
             (State.WITHDRAWN, False),
         ],
     )
-    def test_is_open_follows_the_state(self, state, expected):
+    def test_is_open_follows_the_state(self, state: State, expected: bool) -> None:
         assert CourseApplication(state=state).is_open is expected
 
 
 @pytest.mark.django_db
 class TestActiveApplicationConstraint:
     def test_a_second_active_application_raises_integrity_error_naming_the_constraint(
-        self, mock_site_context
-    ):
+        self, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         course = CourseFactory()
         CourseApplicationFactory(user=user, course=course, approved=True)
@@ -364,8 +369,8 @@ class TestActiveApplicationConstraint:
 
     @pytest.mark.parametrize("closed", ["rejected", "withdrawn"])
     def test_a_new_application_beside_a_closed_one_is_allowed(
-        self, mock_site_context, closed
-    ):
+        self, mock_site_context: Site, closed: str
+    ) -> None:
         user = UserFactory()
         course = CourseFactory()
         CourseApplicationFactory(user=user, course=course, **{closed: True})
@@ -411,8 +416,8 @@ class TestStateCheckConstraints:
         ],
     )
     def test_a_row_that_disagrees_with_its_state_is_refused(
-        self, mock_site_context, constraint, fields
-    ):
+        self, mock_site_context: Site, constraint: str, fields: dict[str, object]
+    ) -> None:
         fields = {
             name: timezone.now() if value == "now" else value
             for name, value in fields.items()

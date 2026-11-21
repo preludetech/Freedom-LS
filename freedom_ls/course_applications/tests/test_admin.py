@@ -281,7 +281,9 @@ def test_form_progress_change_page_shows_application_as_text_without_view_permis
     assert reverse(CHANGE, args=[application.pk]) not in content
 
 
-def test_state_filter_narrows_the_changelist_to_that_state(staff_client):
+def test_state_filter_narrows_the_changelist_to_that_state(
+    staff_client: Client,
+) -> None:
     approved = CourseApplicationFactory(approved=True)
     CourseApplicationFactory(withdrawn=True)
     CourseApplicationFactory()
@@ -812,7 +814,7 @@ def test_export_honours_the_course_filter(staff_client):
     assert other.applicant_email not in body
 
 
-def test_export_honours_the_state_filter(staff_client):
+def test_export_honours_the_state_filter(staff_client: Client) -> None:
     withdrawn = CourseApplicationFactory(withdrawn=True)
     submitted = CourseApplicationFactory()
 

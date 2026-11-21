@@ -35,7 +35,9 @@ def test_staff_member_added_is_registered_under_staff_and_roles():
         ("application.rejected", "Application rejected"),
     ],
 )
-def test_application_decisions_are_registered_under_applications(code, label):
+def test_application_decisions_are_registered_under_applications(
+    code: str, label: str
+) -> None:
     action = get_audit_action(code)
 
     assert (action.label, action.group) == (label, "Applications")

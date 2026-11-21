@@ -5,6 +5,7 @@ from __future__ import annotations
 import threading
 import time
 from datetime import UTC, datetime, timedelta
+from typing import cast
 from unittest.mock import patch
 
 import pytest
@@ -635,19 +636,22 @@ def test_attaching_to_an_account_holding_nothing_reports_no_draft_discarded(
     assert result == AttachResult(application=incoming, discarded_draft=False)
 
 
-def _anonymous_with_state_for(email: str, **state):
+def _anonymous_with_state_for(email: str, **state: object) -> CourseApplication:
     application = CourseApplicationFactory(anonymous=True, **state)
     applicant = application.anonymous_applicant
     applicant.email = email
     applicant.save(update_fields=["email"])
-    return application
+    return cast(CourseApplication, application)
 
 
 @pytest.mark.parametrize("closed", [{"rejected": True}, {"withdrawn": True}])
 @pytest.mark.parametrize("held_state", ["draft", "submitted", "approved"])
 def test_a_closed_claim_attaches_beside_any_active_held_application(
-    account_with_user, rf, closed, held_state
-):
+    account_with_user: User,
+    rf: RequestFactory,
+    closed: dict[str, bool],
+    held_state: str,
+) -> None:
     incoming = _anonymous_with_state_for("taken@example.com", **closed)
     held = CourseApplicationFactory(
         user=account_with_user,
@@ -678,8 +682,8 @@ def test_a_closed_claim_attaches_beside_any_active_held_application(
 
 
 def test_a_closed_claim_beside_a_held_draft_leaves_the_draft_and_its_sitting(
-    account_with_user, rf
-):
+    account_with_user: User, rf: RequestFactory
+) -> None:
     incoming = _anonymous_with_state_for("taken@example.com", rejected=True)
     held = _held_draft(account_with_user, incoming.course)
 
@@ -714,8 +718,8 @@ def test_a_claim_reads_the_incoming_state_afresh_so_a_late_rejection_survives(
 @pytest.mark.parametrize("incoming_kind", ["draft", "submitted"])
 @pytest.mark.parametrize("held_kwargs", [{}, {"approved": True}])
 def test_an_active_claim_over_a_submitted_or_approved_held_application_is_erased(
-    account_with_user, incoming_kind, held_kwargs
-):
+    account_with_user: User, incoming_kind: str, held_kwargs: dict[str, bool]
+) -> None:
     incoming = (
         _anonymous_draft_for("taken@example.com")
         if incoming_kind == "draft"
@@ -734,8 +738,8 @@ def test_an_active_claim_over_a_submitted_or_approved_held_application_is_erased
 
 
 def test_a_submitted_claim_over_a_held_draft_replaces_the_draft_and_its_sitting(
-    account_with_user,
-):
+    account_with_user: User,
+) -> None:
     incoming = _anonymous_with_state_for("taken@example.com")
     held = _held_draft(account_with_user, incoming.course)
     held_sitting_pk = held.form_progress_id
@@ -749,8 +753,8 @@ def test_a_submitted_claim_over_a_held_draft_replaces_the_draft_and_its_sitting(
 
 @pytest.mark.parametrize("closed", [{"rejected": True}, {"withdrawn": True}])
 def test_a_held_closed_application_never_blocks_or_loses_to_an_active_claim(
-    account_with_user, closed
-):
+    account_with_user: User, closed: dict[str, bool]
+) -> None:
     incoming = _anonymous_draft_for("taken@example.com")
     held = CourseApplicationFactory(
         user=account_with_user, course=incoming.course, **closed

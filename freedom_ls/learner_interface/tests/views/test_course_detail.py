@@ -13,6 +13,7 @@ import pytest
 import time_machine
 from django_cotton.compiler_regex import CottonCompiler
 
+from django.contrib.sites.models import Site
 from django.http import HttpResponse
 from django.template import Context, Template
 from django.test import Client, override_settings
@@ -212,8 +213,8 @@ def test_anonymous_applicant_sees_view_my_application_on_the_course_page(
 @needs_course_applications
 @pytest.mark.django_db
 def test_closed_application_shows_apply_again_with_a_link_to_the_previous_one(
-    mock_site_context,
-):
+    mock_site_context: Site,
+) -> None:
     course = _gated_form_course()
     user = UserFactory()
     client = Client()
@@ -237,8 +238,8 @@ def test_closed_application_shows_apply_again_with_a_link_to_the_previous_one(
 @needs_course_applications
 @pytest.mark.django_db
 def test_gated_course_without_an_application_has_no_secondary_link(
-    mock_site_context,
-):
+    mock_site_context: Site,
+) -> None:
     course = _gated_form_course()
     user = UserFactory()
     client = Client()

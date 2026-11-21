@@ -1,5 +1,7 @@
 import pytest
 
+from django.contrib.sites.models import Site
+
 from freedom_ls.form_engine import sitting_locks
 from freedom_ls.form_engine.factories import FormProgressFactory
 from freedom_ls.form_engine.models import FormProgress
@@ -16,7 +18,7 @@ def no_registered_locks(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.mark.django_db
 def test_an_open_sitting_with_no_locks_is_not_locked(
-    mock_site_context: None, no_registered_locks: None
+    mock_site_context: Site, no_registered_locks: None
 ) -> None:
     form_progress: FormProgress = FormProgressFactory(completed_time=None)
 
@@ -25,7 +27,7 @@ def test_an_open_sitting_with_no_locks_is_not_locked(
 
 @pytest.mark.django_db
 def test_a_completed_sitting_is_locked(
-    mock_site_context: None, no_registered_locks: None
+    mock_site_context: Site, no_registered_locks: None
 ) -> None:
     form_progress: FormProgress = FormProgressFactory(completed_time=None)
     form_progress.complete()
@@ -35,7 +37,7 @@ def test_a_completed_sitting_is_locked(
 
 @pytest.mark.django_db
 def test_a_registered_lock_locks_an_open_sitting(
-    mock_site_context: None, no_registered_locks: None
+    mock_site_context: Site, no_registered_locks: None
 ) -> None:
     form_progress: FormProgress = FormProgressFactory(completed_time=None)
     register_sitting_lock(lambda fp: fp.pk == form_progress.pk)

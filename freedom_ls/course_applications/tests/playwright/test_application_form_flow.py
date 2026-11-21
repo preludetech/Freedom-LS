@@ -13,10 +13,13 @@ from urllib.parse import urlparse
 
 import pytest
 from playwright.sync_api import Page, expect
+from pytest_django.live_server_helper import LiveServer
 
+from django.contrib.sites.models import Site
 from django.core import mail
 from django.utils import timezone
 
+from freedom_ls.accounts.models import User
 from freedom_ls.conftest import reverse_url
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.course_applications.factories import CourseApplicationFactory
@@ -412,8 +415,11 @@ def test_send_again_from_the_notice_says_a_new_link_went(
 # transaction=True so the Playwright browser (separate connection) sees committed data
 @pytest.mark.django_db(transaction=True)
 def test_a_rejected_row_offers_apply_again_into_a_new_application(
-    live_server, logged_in_page: Page, logged_in_user, mock_site_context
-):
+    live_server: LiveServer,
+    logged_in_page: Page,
+    logged_in_user: User,
+    mock_site_context: Site,
+) -> None:
     course, _form = gated_course_with_form()
     rejected = CourseApplicationFactory(
         user=logged_in_user, course=course, rejected=True

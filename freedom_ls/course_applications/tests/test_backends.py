@@ -7,13 +7,16 @@ from datetime import timedelta
 from typing import cast
 
 import pytest
+from pytest_django.fixtures import DjangoAssertNumQueries
 
 from django.contrib.auth.models import AnonymousUser
+from django.contrib.sites.models import Site
 from django.test import RequestFactory
 from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.form_engine.factories import FormProgressFactory
 from freedom_ls.form_engine.models import FormProgress
@@ -300,8 +303,8 @@ class TestGetAccess:
         assert decision.cta_url == expected_url
 
     def test_claimed_applicant_with_a_closed_application_is_offered_apply_again(
-        self, mock_site_context
-    ):
+        self, mock_site_context: Site
+    ) -> None:
         from freedom_ls.course_applications.backends import (
             ApplicationCourseAccessBackend,
         )
@@ -321,7 +324,9 @@ class TestGetAccess:
             "course_applications:status", kwargs={"pk": closed.pk}
         )
 
-    def test_active_application_has_no_secondary_link(self, mock_site_context):
+    def test_active_application_has_no_secondary_link(
+        self, mock_site_context: Site
+    ) -> None:
         from freedom_ls.course_applications.backends import (
             ApplicationCourseAccessBackend,
         )
@@ -337,8 +342,8 @@ class TestGetAccess:
         assert decision.secondary_cta_url is None
 
     def test_unclaimed_closed_application_still_reads_view_my_application(
-        self, mock_site_context
-    ):
+        self, mock_site_context: Site
+    ) -> None:
         from freedom_ls.course_applications.backends import (
             ApplicationCourseAccessBackend,
         )
@@ -511,14 +516,16 @@ class TestDashboardPartialRendering:
         assert expected_url in rendered
 
     def test_an_application_with_no_form_reads_waiting_for_review(
-        self, mock_site_context
-    ):
+        self, mock_site_context: Site
+    ) -> None:
         rendered = _render_panel(CourseApplicationFactory())
 
         assert "Waiting for review" in rendered
         assert "Not submitted" not in rendered
 
-    def test_a_draft_application_reads_not_submitted(self, mock_site_context):
+    def test_a_draft_application_reads_not_submitted(
+        self, mock_site_context: Site
+    ) -> None:
         """An application nobody has submitted is not waiting on a reviewer;
         it is waiting on the applicant, and the dashboard has to say so."""
         rendered = _render_panel(_application_with_sitting())
@@ -526,7 +533,9 @@ class TestDashboardPartialRendering:
         assert "Not submitted" in rendered
         assert "Waiting for review" not in rendered
 
-    def test_a_submitted_application_reads_waiting_for_review(self, mock_site_context):
+    def test_a_submitted_application_reads_waiting_for_review(
+        self, mock_site_context: Site
+    ) -> None:
         app = _application_with_sitting()
         app.form_progress.complete()
         submit_application(app)
@@ -537,8 +546,8 @@ class TestDashboardPartialRendering:
         assert "Not submitted" not in rendered
 
     def test_an_approved_application_reads_approved_and_offers_view(
-        self, mock_site_context
-    ):
+        self, mock_site_context: Site
+    ) -> None:
         rendered = _render_panel(CourseApplicationFactory(approved=True))
 
         assert "Approved" in rendered
@@ -546,8 +555,8 @@ class TestDashboardPartialRendering:
         assert "Apply again" not in rendered
 
     def test_a_rejected_row_offers_the_message_view_and_apply_again(
-        self, mock_site_context
-    ):
+        self, mock_site_context: Site
+    ) -> None:
         app = CourseApplicationFactory(rejected=True, rejection_message="Too early.")
 
         rendered = _render_panel(app)
@@ -585,7 +594,7 @@ class TestDashboardPartialRendering:
         assert "View my application" not in rendered
 
     def test_a_draft_rows_continue_button_resumes_the_form(
-        self, mock_site_context: None
+        self, mock_site_context: Site
     ) -> None:
         app = _application_with_sitting()
 
@@ -616,8 +625,10 @@ class TestDashboardPartialRendering:
         assert rendered.count("A &lt;b&gt; &quot;quoted&quot; title") >= 3
 
     def test_the_panel_issues_no_query_per_row(
-        self, mock_site_context, django_assert_max_num_queries
-    ):
+        self,
+        mock_site_context: Site,
+        django_assert_max_num_queries: DjangoAssertNumQueries,
+    ) -> None:
         from django.db import connection
         from django.test.utils import CaptureQueriesContext
 
@@ -647,7 +658,7 @@ def _render_panel(app) -> str:
     return _render_panel_for(app.user)
 
 
-def _render_panel_for(user) -> str:
+def _render_panel_for(user: User) -> str:
     from django.template.loader import render_to_string
 
     from freedom_ls.course_applications.backends import ApplicationCourseAccessBackend
@@ -973,7 +984,7 @@ class TestGetDashboardContributionsForRequest:
 
         assert _contributed_applications(request) == [newer, older]
 
-    def test_withdrawn_draft_is_absent(self, mock_site_context):
+    def test_withdrawn_draft_is_absent(self, mock_site_context: Site) -> None:
         application = _anonymous_draft()
         CourseApplication.objects.filter(pk=application.pk).update(
             state=CourseApplication.State.WITHDRAWN, withdrawn_at=timezone.now()

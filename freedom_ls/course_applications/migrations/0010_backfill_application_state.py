@@ -1,9 +1,11 @@
 from django.db import migrations
+from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.models import Count, F, OuterRef, Subquery
+from django.db.migrations.state import StateApps
 from django.utils import timezone
 
 
-def backfill(apps, schema_editor) -> None:
+def backfill(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> None:
     Application = apps.get_model("freedom_ls_course_applications", "CourseApplication")
     FormProgress = apps.get_model("freedom_ls_form_engine", "FormProgress")
     Course = apps.get_model("freedom_ls_content_engine", "Course")

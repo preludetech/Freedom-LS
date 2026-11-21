@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 import time_machine
 
+from django.contrib.sites.models import Site
 from django.utils import timezone
 
 from freedom_ls.audit_log.models import AuditLogEntry
@@ -63,7 +64,9 @@ def _pair_id(pair: tuple[str, str]) -> str:
 
 @pytest.mark.django_db
 class TestSubmitApplication:
-    def test_submit_from_draft_sets_state_and_timestamp(self, mock_site_context):
+    def test_submit_from_draft_sets_state_and_timestamp(
+        self, mock_site_context: Site
+    ) -> None:
         application = CourseApplicationFactory(state=State.DRAFT)
 
         with time_machine.travel("2026-03-01 10:00:00+00:00", tick=False):
@@ -75,7 +78,7 @@ class TestSubmitApplication:
             year=2026, month=3, day=1, hour=10, minute=0, second=0, microsecond=0
         )
 
-    def test_submit_moves_updated_at(self, mock_site_context):
+    def test_submit_moves_updated_at(self, mock_site_context: Site) -> None:
         application = CourseApplicationFactory(state=State.DRAFT)
         before = application.updated_at
 
@@ -84,7 +87,9 @@ class TestSubmitApplication:
         application.refresh_from_db()
         assert application.updated_at > before
 
-    def test_submit_updates_the_instance_it_was_given(self, mock_site_context):
+    def test_submit_updates_the_instance_it_was_given(
+        self, mock_site_context: Site
+    ) -> None:
         application = CourseApplicationFactory(state=State.DRAFT)
 
         returned = submit_application(application)
@@ -93,7 +98,7 @@ class TestSubmitApplication:
         assert application.state == State.SUBMITTED
         assert application.submitted_at is not None
 
-    def test_submit_writes_no_audit_entry(self, mock_site_context):
+    def test_submit_writes_no_audit_entry(self, mock_site_context: Site) -> None:
         application = CourseApplicationFactory(state=State.DRAFT)
 
         submit_application(application)
@@ -106,8 +111,8 @@ class TestSubmitApplication:
         ids=["submitted", "approved", "rejected", "withdrawn"],
     )
     def test_submit_from_any_other_state_raises_and_changes_nothing(
-        self, mock_site_context, trait
-    ):
+        self, mock_site_context: Site, trait: dict[str, bool]
+    ) -> None:
         application = CourseApplicationFactory(course=CourseFactory(), **trait)
         current_state = application.state
         before = CourseApplication.objects.get(pk=application.pk)
@@ -129,8 +134,8 @@ class TestWithdrawApplication:
         ids=["draft", "submitted"],
     )
     def test_withdraw_from_an_open_state_sets_state_and_timestamp(
-        self, mock_site_context, trait
-    ):
+        self, mock_site_context: Site, trait: dict[str, object]
+    ) -> None:
         application = CourseApplicationFactory(**trait)
 
         with time_machine.travel("2026-03-01 10:00:00+00:00", tick=False):
@@ -142,7 +147,7 @@ class TestWithdrawApplication:
             year=2026, month=3, day=1, hour=10, minute=0, second=0, microsecond=0
         )
 
-    def test_withdraw_moves_updated_at(self, mock_site_context):
+    def test_withdraw_moves_updated_at(self, mock_site_context: Site) -> None:
         application = CourseApplicationFactory()
         before = application.updated_at
 
@@ -151,7 +156,7 @@ class TestWithdrawApplication:
         application.refresh_from_db()
         assert application.updated_at > before
 
-    def test_withdraw_writes_no_audit_entry(self, mock_site_context):
+    def test_withdraw_writes_no_audit_entry(self, mock_site_context: Site) -> None:
         application = CourseApplicationFactory()
 
         withdraw_application(application)
@@ -164,8 +169,8 @@ class TestWithdrawApplication:
         ids=["approved", "rejected", "withdrawn"],
     )
     def test_withdraw_from_any_other_state_raises_and_changes_nothing(
-        self, mock_site_context, trait
-    ):
+        self, mock_site_context: Site, trait: dict[str, bool]
+    ) -> None:
         application = CourseApplicationFactory(course=CourseFactory(), **trait)
         current_state = application.state
         before = CourseApplication.objects.get(pk=application.pk)
@@ -181,7 +186,9 @@ class TestWithdrawApplication:
 
 
 @pytest.mark.django_db(transaction=True)
-def test_withdraw_racing_withdraws_succeed_exactly_once(mock_site_context):
+def test_withdraw_racing_withdraws_succeed_exactly_once(
+    mock_site_context: Site,
+) -> None:
     """transaction=True so each thread's own connection sees the other's commit."""
     application = CourseApplicationFactory()
 
@@ -200,8 +207,8 @@ def test_withdraw_racing_withdraws_succeed_exactly_once(mock_site_context):
 class TestEveryTransition:
     @pytest.mark.parametrize(("function", "state"), _ALLOWED_PAIRS, ids=_pair_id)
     def test_an_allowed_move_writes_state_and_timestamp(
-        self, mock_site_context, function, state
-    ):
+        self, mock_site_context: Site, function: str, state: str
+    ) -> None:
         application = CourseApplicationFactory(**APPLICATION_IN_STATE[state])
         new_state, stamp_field = TRANSITION_RESULTS[function]
 
@@ -214,7 +221,9 @@ class TestEveryTransition:
         assert getattr(stored, stamp_field) == expected_stamp
 
     @pytest.mark.parametrize(("function", "state"), _ALLOWED_PAIRS, ids=_pair_id)
-    def test_an_allowed_move_moves_updated_at(self, mock_site_context, function, state):
+    def test_an_allowed_move_moves_updated_at(
+        self, mock_site_context: Site, function: str, state: str
+    ) -> None:
         application = CourseApplicationFactory(**APPLICATION_IN_STATE[state])
         before = application.updated_at
 
@@ -224,8 +233,8 @@ class TestEveryTransition:
 
     @pytest.mark.parametrize(("function", "state"), _ALLOWED_PAIRS, ids=_pair_id)
     def test_an_allowed_move_updates_the_instance_it_was_given(
-        self, mock_site_context, function, state
-    ):
+        self, mock_site_context: Site, function: str, state: str
+    ) -> None:
         application = CourseApplicationFactory(**APPLICATION_IN_STATE[state])
         new_state, stamp_field = TRANSITION_RESULTS[function]
 
@@ -237,8 +246,8 @@ class TestEveryTransition:
 
     @pytest.mark.parametrize(("function", "state"), _REFUSED_PAIRS, ids=_pair_id)
     def test_a_refused_move_raises_and_leaves_row_and_audit_log_untouched(
-        self, mock_site_context, function, state
-    ):
+        self, mock_site_context: Site, function: str, state: str
+    ) -> None:
         application = CourseApplicationFactory(
             course=CourseFactory(), **APPLICATION_IN_STATE[state]
         )
@@ -257,8 +266,8 @@ class TestEveryTransition:
 @pytest.mark.django_db
 class TestApproveApplication:
     def test_approve_of_an_unclaimed_application_raises_and_writes_nothing(
-        self, mock_site_context
-    ):
+        self, mock_site_context: Site
+    ) -> None:
         application = CourseApplicationFactory(anonymous=True)
         before = CourseApplication.objects.get(pk=application.pk)
 
@@ -274,8 +283,8 @@ class TestApproveApplication:
 @pytest.mark.django_db
 class TestRejectApplication:
     def test_reject_of_an_unclaimed_application_succeeds_and_keeps_it_unclaimed(
-        self, mock_site_context
-    ):
+        self, mock_site_context: Site
+    ) -> None:
         application = CourseApplicationFactory(anonymous=True)
 
         reject_application(application, actor=UserFactory(), message="Not this time.")
@@ -290,8 +299,8 @@ class TestRejectApplication:
         ids=["empty", "blank", "too-long"],
     )
     def test_reject_with_an_unusable_message_raises_and_writes_nothing(
-        self, mock_site_context, message
-    ):
+        self, mock_site_context: Site, message: str
+    ) -> None:
         application = CourseApplicationFactory()
         before = CourseApplication.objects.get(pk=application.pk)
 
@@ -303,7 +312,9 @@ class TestRejectApplication:
         assert after.updated_at == before.updated_at
         assert not AuditLogEntry.objects.exists()
 
-    def test_reject_with_a_message_of_exactly_the_cap_succeeds(self, mock_site_context):
+    def test_reject_with_a_message_of_exactly_the_cap_succeeds(
+        self, mock_site_context: Site
+    ) -> None:
         application = CourseApplicationFactory()
 
         reject_application(
@@ -315,7 +326,7 @@ class TestRejectApplication:
         application.refresh_from_db()
         assert application.state == State.REJECTED
 
-    def test_reject_stores_the_message_stripped(self, mock_site_context):
+    def test_reject_stores_the_message_stripped(self, mock_site_context: Site) -> None:
         application = CourseApplicationFactory()
 
         reject_application(
@@ -325,7 +336,9 @@ class TestRejectApplication:
         application.refresh_from_db()
         assert application.rejection_message == "Not this time."
 
-    def test_reject_checks_the_cap_on_the_stripped_message(self, mock_site_context):
+    def test_reject_checks_the_cap_on_the_stripped_message(
+        self, mock_site_context: Site
+    ) -> None:
         application = CourseApplicationFactory()
         message = f" {'x' * REJECTION_MESSAGE_MAX_LENGTH} "
 
@@ -346,8 +359,8 @@ class TestDecisionAudit:
         ids=["approve", "reject"],
     )
     def test_a_decision_writes_exactly_one_entry_naming_the_move(
-        self, mock_site_context, function, action, to
-    ):
+        self, mock_site_context: Site, function: str, action: str, to: str
+    ) -> None:
         application = CourseApplicationFactory()
 
         TRANSITION_CALLS[function](application)
@@ -361,7 +374,9 @@ class TestDecisionAudit:
             subject_key(application.course),
         ]
 
-    def test_an_approval_entry_is_attributed_to_the_reviewer(self, mock_site_context):
+    def test_an_approval_entry_is_attributed_to_the_reviewer(
+        self, mock_site_context: Site
+    ) -> None:
         reviewer = UserFactory()
         application = CourseApplicationFactory()
 
@@ -369,7 +384,9 @@ class TestDecisionAudit:
 
         assert AuditLogEntry.objects.get().actor == reviewer
 
-    def test_a_rejection_entry_is_attributed_to_the_reviewer(self, mock_site_context):
+    def test_a_rejection_entry_is_attributed_to_the_reviewer(
+        self, mock_site_context: Site
+    ) -> None:
         reviewer = UserFactory()
         application = CourseApplicationFactory()
 
@@ -378,8 +395,8 @@ class TestDecisionAudit:
         assert AuditLogEntry.objects.get().actor == reviewer
 
     def test_a_rejection_entry_holds_neither_applicant_nor_message(
-        self, mock_site_context
-    ):
+        self, mock_site_context: Site
+    ) -> None:
         applicant = UserFactory(first_name="Zelda", last_name="Zebra")
         application = CourseApplicationFactory(user=applicant)
 

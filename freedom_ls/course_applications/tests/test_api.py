@@ -10,6 +10,7 @@ from typing import cast
 import pytest
 
 from django.db import connection
+from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from rest_framework.test import APIClient
@@ -175,8 +176,8 @@ def test_a_draft_is_not_submitted_and_has_no_submitted_time(client, auth):
 
 
 def test_a_submitted_application_serialises_submitted_at_as_submitted_time(
-    client, auth
-):
+    client: Client, auth: dict[str, str]
+) -> None:
     application = CourseApplicationFactory()
 
     row = client.get(
@@ -187,7 +188,9 @@ def test_a_submitted_application_serialises_submitted_at_as_submitted_time(
     assert datetime.fromisoformat(row["submitted_time"]) == application.submitted_at
 
 
-def test_a_withdrawn_application_serialises_its_state_and_withdrawn_at(client, auth):
+def test_a_withdrawn_application_serialises_its_state_and_withdrawn_at(
+    client: Client, auth: dict[str, str]
+) -> None:
     application = CourseApplicationFactory(withdrawn=True)
 
     row = client.get(
@@ -200,7 +203,9 @@ def test_a_withdrawn_application_serialises_its_state_and_withdrawn_at(client, a
     assert row["decided_at"] is None
 
 
-def test_an_approved_application_serialises_its_state_and_decided_at(client, auth):
+def test_an_approved_application_serialises_its_state_and_decided_at(
+    client: Client, auth: dict[str, str]
+) -> None:
     application = CourseApplicationFactory(approved=True)
 
     row = client.get(

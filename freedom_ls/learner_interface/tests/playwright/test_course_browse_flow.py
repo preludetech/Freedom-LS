@@ -21,6 +21,7 @@ from playwright.sync_api import FloatRect, Locator, Page, ViewportSize, expect
 from pytest_django.live_server_helper import LiveServer
 
 from django.apps import apps
+from django.contrib.sites.models import Site
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 
@@ -1140,10 +1141,10 @@ def test_back_does_not_bounce_between_the_course_and_its_application(
     reason="course_applications not installed",
 )
 def test_previous_application_link_label_stays_on_one_line(
-    live_server,
+    live_server: LiveServer,
     logged_in_page: Page,
     logged_in_user: User,
-    mock_site_context,
+    mock_site_context: Site,
 ) -> None:
     """The "View your previous application" label used to wrap at 375px."""
     # Resolved through the app registry: learner_interface tests may not import

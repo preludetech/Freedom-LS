@@ -7,6 +7,7 @@ from datetime import timedelta
 import pytest
 
 from django.contrib.auth.models import AnonymousUser
+from django.contrib.sites.models import Site
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
@@ -48,8 +49,8 @@ class TestGetApplicationForCourse:
         assert get_application_for_course(user=user, course=course) == claimed
 
     def test_prefers_the_active_application_over_a_newer_closed_one(
-        self, mock_site_context
-    ):
+        self, mock_site_context: Site
+    ) -> None:
         from freedom_ls.course_applications.queries import get_application_for_course
 
         user = UserFactory()
@@ -60,8 +61,8 @@ class TestGetApplicationForCourse:
         assert get_application_for_course(user=user, course=course) == active
 
     def test_prefers_the_active_application_over_an_older_closed_one(
-        self, mock_site_context
-    ):
+        self, mock_site_context: Site
+    ) -> None:
         from freedom_ls.course_applications.queries import get_application_for_course
 
         user = UserFactory()
@@ -72,8 +73,8 @@ class TestGetApplicationForCourse:
         assert get_application_for_course(user=user, course=course) == active
 
     def test_returns_the_newest_closed_application_when_none_is_active(
-        self, mock_site_context
-    ):
+        self, mock_site_context: Site
+    ) -> None:
         from freedom_ls.course_applications.queries import get_application_for_course
 
         user = UserFactory()
@@ -123,7 +124,7 @@ class TestGetApplicationForCourse:
         assert result is None
 
 
-def _created_ago(application, days: int):
+def _created_ago(application: CourseApplication, days: int) -> CourseApplication:
     """Backdate `application` so creation order is not left to the clock."""
     CourseApplication.objects.filter(pk=application.pk).update(
         created_at=timezone.now() - timedelta(days=days)
@@ -155,7 +156,9 @@ class TestGetDashboardApplications:
 
         assert set(get_dashboard_applications(user)) == {first, second}
 
-    def test_a_withdrawn_application_is_never_listed(self, mock_site_context):
+    def test_a_withdrawn_application_is_never_listed(
+        self, mock_site_context: Site
+    ) -> None:
         from freedom_ls.course_applications.queries import get_dashboard_applications
 
         user = UserFactory()
@@ -164,8 +167,8 @@ class TestGetDashboardApplications:
         assert list(get_dashboard_applications(user)) == []
 
     def test_a_rejected_application_is_listed_while_nothing_newer_exists(
-        self, mock_site_context
-    ):
+        self, mock_site_context: Site
+    ) -> None:
         from freedom_ls.course_applications.queries import get_dashboard_applications
 
         user = UserFactory()
@@ -178,8 +181,8 @@ class TestGetDashboardApplications:
         [{}, {"approved": True}, {"rejected": True}, {"withdrawn": True}],
     )
     def test_a_newer_application_for_the_course_hides_the_rejection(
-        self, mock_site_context, newer_traits
-    ):
+        self, mock_site_context: Site, newer_traits: dict[str, bool]
+    ) -> None:
         from freedom_ls.course_applications.queries import get_dashboard_applications
 
         user = UserFactory()
@@ -192,8 +195,8 @@ class TestGetDashboardApplications:
         assert old not in get_dashboard_applications(user)
 
     def test_another_users_newer_application_does_not_hide_the_rejection(
-        self, mock_site_context
-    ):
+        self, mock_site_context: Site
+    ) -> None:
         from freedom_ls.course_applications.queries import get_dashboard_applications
 
         user = UserFactory()
@@ -206,8 +209,8 @@ class TestGetDashboardApplications:
         assert list(get_dashboard_applications(user)) == [rejected]
 
     def test_a_newer_application_on_another_course_does_not_hide_the_rejection(
-        self, mock_site_context
-    ):
+        self, mock_site_context: Site
+    ) -> None:
         from freedom_ls.course_applications.queries import get_dashboard_applications
 
         user = UserFactory()
@@ -217,8 +220,8 @@ class TestGetDashboardApplications:
         assert set(get_dashboard_applications(user)) == {rejected, other}
 
     def test_another_sites_newer_application_does_not_hide_the_rejection(
-        self, mock_site_context
-    ):
+        self, mock_site_context: Site
+    ) -> None:
         from django.contrib.sites.models import Site
 
         from freedom_ls.course_applications.queries import get_dashboard_applications
@@ -234,8 +237,8 @@ class TestGetDashboardApplications:
         assert list(get_dashboard_applications(user)) == [rejected]
 
     def test_open_applications_come_first_then_approved_and_rejected_newest_first(
-        self, mock_site_context
-    ):
+        self, mock_site_context: Site
+    ) -> None:
         from freedom_ls.course_applications.queries import get_dashboard_applications
 
         user = UserFactory()
@@ -263,7 +266,9 @@ class TestGetDashboardApplications:
 
 @pytest.mark.django_db
 class TestOrganisationForNewApplication:
-    def test_a_course_with_one_owning_organisation_returns_it(self, mock_site_context):
+    def test_a_course_with_one_owning_organisation_returns_it(
+        self, mock_site_context: Site
+    ) -> None:
         from freedom_ls.course_applications.queries import (
             organisation_for_new_application,
         )
@@ -276,8 +281,8 @@ class TestOrganisationForNewApplication:
 
     @pytest.mark.parametrize("owner_count", [0, 2])
     def test_a_course_without_exactly_one_owner_returns_the_site_default(
-        self, mock_site_context, owner_count
-    ):
+        self, mock_site_context: Site, owner_count: int
+    ) -> None:
         from freedom_ls.course_applications.queries import (
             organisation_for_new_application,
         )
@@ -300,7 +305,7 @@ class TestOrganisationForNewApplication:
     ],
 )
 def test_sitting_belongs_to_a_non_draft_application(
-    mock_site_context: None, traits: dict[str, object], expected: bool
+    mock_site_context: Site, traits: dict[str, object], expected: bool
 ) -> None:
     from freedom_ls.course_applications.queries import (
         sitting_belongs_to_a_non_draft_application,
@@ -314,7 +319,7 @@ def test_sitting_belongs_to_a_non_draft_application(
 
 @pytest.mark.django_db
 def test_a_sitting_with_no_application_is_not_locked_by_applications(
-    mock_site_context: None,
+    mock_site_context: Site,
 ) -> None:
     from freedom_ls.course_applications.queries import (
         sitting_belongs_to_a_non_draft_application,

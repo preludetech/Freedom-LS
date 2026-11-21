@@ -10,7 +10,11 @@ import re
 
 import pytest
 from playwright.sync_api import Page, expect
+from pytest_django.live_server_helper import LiveServer
 
+from django.contrib.sites.models import Site
+
+from freedom_ls.accounts.models import User
 from freedom_ls.conftest import reverse_url
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.tests.helpers import gated_course_with_form
@@ -28,8 +32,11 @@ if app_not_installed("freedom_ls.course_applications"):
 # transaction=True so the Playwright browser (separate connection) sees committed data
 @pytest.mark.django_db(transaction=True)
 def test_an_applicant_withdraws_a_submitted_application_through_the_dialog(
-    live_server, logged_in_page: Page, logged_in_user, mock_site_context
-):
+    live_server: LiveServer,
+    logged_in_page: Page,
+    logged_in_user: User,
+    mock_site_context: Site,
+) -> None:
     application = CourseApplicationFactory(user=logged_in_user)
     logged_in_page.goto(
         reverse_url(
@@ -66,8 +73,11 @@ def test_an_applicant_withdraws_a_submitted_application_through_the_dialog(
 @pytest.mark.playwright
 @pytest.mark.django_db(transaction=True)
 def test_an_applicant_applies_again_after_withdrawing(
-    live_server, logged_in_page: Page, logged_in_user, mock_site_context
-):
+    live_server: LiveServer,
+    logged_in_page: Page,
+    logged_in_user: User,
+    mock_site_context: Site,
+) -> None:
     course, _form = gated_course_with_form()
     application = CourseApplicationFactory(
         user=logged_in_user, course=course, withdrawn=True

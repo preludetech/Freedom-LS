@@ -7,7 +7,7 @@ import smtplib
 import threading
 import time
 from datetime import timedelta
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple, cast
 from unittest.mock import patch
 from urllib.parse import urlencode
 
@@ -19,6 +19,7 @@ from allauth.account.models import EmailAddress
 
 from django.contrib.messages import get_messages
 from django.contrib.sessions.backends.db import SessionStore
+from django.contrib.sites.models import Site
 from django.core import mail
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -45,6 +46,9 @@ from freedom_ls.tests.app_guards import app_not_installed
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.images import png_bytes
 from freedom_ls.tests.site_context import site_context
+
+if TYPE_CHECKING:
+    from django.test.client import _MonkeyPatchedWSGIResponse
 
 if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
@@ -194,8 +198,8 @@ class TestApplyAfterAClosedApplication:
     """An account whose latest application is closed can start another."""
 
     def test_post_after_a_withdrawn_application_creates_a_submitted_one(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         course = CourseFactory()
         CourseApplicationFactory(user=user, course=course, withdrawn=True)
@@ -214,8 +218,8 @@ class TestApplyAfterAClosedApplication:
         )
 
     def test_post_after_a_rejected_application_creates_a_submitted_one(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         course = CourseFactory()
         CourseApplicationFactory(user=user, course=course, rejected=True)
@@ -230,8 +234,8 @@ class TestApplyAfterAClosedApplication:
         ).exists()
 
     def test_get_after_a_withdrawn_application_starts_a_draft_for_a_form_course(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         course, _form = gated_course_with_form()
         CourseApplicationFactory(user=user, course=course, withdrawn=True)
@@ -247,8 +251,8 @@ class TestApplyAfterAClosedApplication:
         assert draft.form_progress is not None
 
     def test_each_new_application_records_its_own_conversion(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         course = CourseFactory()
         CourseApplicationFactory(user=user, course=course, withdrawn=True)
@@ -265,8 +269,8 @@ class TestApplyAfterAClosedApplication:
         assert conversion.object_id == str(new.pk)
 
     def test_post_with_an_active_application_redirects_to_it(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         course = CourseFactory()
         CourseApplicationFactory(user=user, course=course, withdrawn=True)
@@ -283,8 +287,8 @@ class TestApplyAfterAClosedApplication:
         assert CourseApplication.objects.filter(user=user, course=course).count() == 2
 
     def test_post_on_a_coming_soon_course_redirects_to_the_course_detail_page(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
         CourseApplicationFactory(user=user, course=course, withdrawn=True)
@@ -300,8 +304,8 @@ class TestApplyAfterAClosedApplication:
         assert CourseApplication.objects.filter(user=user, course=course).count() == 1
 
     def test_withdrawn_status_page_links_to_apply_again(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         application = CourseApplicationFactory(user=user, withdrawn=True)
         client.force_login(user)
@@ -324,8 +328,8 @@ class TestApplyViewPost:
     """POST /apply/<slug>/ — creates application and redirects to status."""
 
     def test_post_for_a_no_form_course_creates_a_submitted_application(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         course = CourseFactory()
         client.force_login(user)
@@ -343,8 +347,8 @@ class TestApplyViewPost:
         assert app.organisation == organisation_for_new_application(course)
 
     def test_post_for_a_form_course_creates_a_draft_application(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         course, _form = gated_course_with_form()
         client.force_login(user)
@@ -505,8 +509,8 @@ class TestApplicationStatusActionRow:
     """Every state keeps its actions and "Back to dashboard" in one row."""
 
     def test_withdraw_control_and_back_to_dashboard_share_one_row(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         """Back to dashboard used to drop below the withdraw control on open applications."""
         user = UserFactory()
         application = CourseApplicationFactory(user=user)
@@ -543,8 +547,8 @@ class TestApplicationStatusView:
         assert response.status_code == 200
 
     def test_status_page_of_a_submitted_application_says_it_is_waiting(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         app = CourseApplicationFactory(user=user)
         client.force_login(user)
@@ -708,8 +712,8 @@ class TestApplyStartsTheForm:
 @pytest.mark.django_db
 class TestApplicationStatusResumes:
     def test_a_submitted_application_renders_its_status(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         course, _form = gated_course_with_form()
         app = _applied(client, course)
         submit_application(app)
@@ -729,7 +733,7 @@ def _resume(pk: object) -> str:
 @pytest.mark.django_db
 class TestResumeApplication:
     def test_a_claimed_draft_resumes_at_its_form(
-        self, client: Client, mock_site_context: None
+        self, client: Client, mock_site_context: Site
     ) -> None:
         course, _form = gated_course_with_form()
         app = _applied(client, course)
@@ -739,7 +743,7 @@ class TestResumeApplication:
         assert response["Location"] == _page_url(app, 1)
 
     def test_a_submitted_application_goes_to_its_status_page(
-        self, client: Client, mock_site_context: None
+        self, client: Client, mock_site_context: Site
     ) -> None:
         course, _form = gated_course_with_form()
         app = _applied(client, course)
@@ -753,7 +757,7 @@ class TestResumeApplication:
         )
 
     def test_someone_elses_application_is_not_found(
-        self, client: Client, mock_site_context: None
+        self, client: Client, mock_site_context: Site
     ) -> None:
         course, _form = gated_course_with_form()
         app = _applied(client, course)
@@ -762,7 +766,7 @@ class TestResumeApplication:
         assert client.get(_resume(app.pk)).status_code == 404
 
     def test_a_visitor_is_sent_to_log_in(
-        self, client: Client, mock_site_context: None
+        self, client: Client, mock_site_context: Site
     ) -> None:
         course, _form = gated_course_with_form()
         app = _applied(client, course)
@@ -801,8 +805,8 @@ class TestAPageLessForm:
         assert response["Location"] == _check_url(app)
 
     def test_the_status_page_continues_on_the_check_page(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         course = _gated_course_with_a_page_less_form()
         app = _applied(client, course)
 
@@ -1288,8 +1292,8 @@ class TestCheckYourAnswers:
         ]
 
     def test_submitting_leaves_the_application_submitted(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         course, form = gated_course_with_form()
         app = _applied(client, course)
         name = _questions_on(form, 1)[0]
@@ -1302,8 +1306,8 @@ class TestCheckYourAnswers:
         assert app.submitted_at is not None
 
     def test_posting_for_an_application_that_is_not_a_draft_changes_nothing(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         course, _form = gated_course_with_form()
         app = _applied(client, course)
         CourseApplication.objects.filter(pk=app.pk).update(
@@ -1322,15 +1326,15 @@ class TestCheckYourAnswers:
         assert app.form_progress.completed_time is None
 
     def test_losing_a_race_to_submit_leaves_the_sitting_open(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         course, form = gated_course_with_form()
         app = _applied(client, course)
         name = _questions_on(form, 1)[0]
         client.post(_page_url(app, 1), {f"question_{name.id}": "Ada"})
         real_submit = submit_application
 
-        def withdraw_then_submit(application):
+        def withdraw_then_submit(application: CourseApplication) -> CourseApplication:
             CourseApplication.objects.filter(pk=application.pk).update(
                 state=CourseApplication.State.WITHDRAWN,
                 withdrawn_at=timezone.now(),
@@ -1644,8 +1648,13 @@ class TestCheckYourAnswersWhenNotADraft:
         ],
     )
     def test_a_non_draft_application_is_read_only_with_a_notice_for_its_state(
-        self, client, mock_site_context, state, submitted, notice
-    ):
+        self,
+        client: Client,
+        mock_site_context: Site,
+        state: CourseApplication.State,
+        submitted: bool,
+        notice: str,
+    ) -> None:
         """The page used to keep inviting edits on a withdrawn draft, and told
         a decided or withdrawn application it was still waiting for review."""
         course, _form = gated_course_with_form()
@@ -1669,8 +1678,8 @@ class TestCheckYourAnswersWhenNotADraft:
         assert reverse("course_applications:status", kwargs={"pk": app.pk}) in body
 
     def test_a_draft_shows_the_intro_edit_links_and_no_notice(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         course, _form = gated_course_with_form()
         app = _applied(client, course)
 
@@ -3624,8 +3633,8 @@ def test_claim_of_a_draft_application_renders_the_confirm_page(client, claimable
 
 @pytest.mark.django_db
 def test_claim_get_of_a_rejected_application_does_not_say_to_finish_it(
-    client, claimable
-):
+    client: Client, claimable: CourseApplication
+) -> None:
     """The confirm page heading used to tell the person to finish an
     application that had already been decided."""
     CourseApplication.objects.filter(pk=claimable.pk).update(
@@ -3742,8 +3751,8 @@ def test_claim_post_of_a_draft_redirects_to_set_password_with_the_status_page_as
 
 @pytest.mark.django_db
 def test_status_page_after_a_draft_claim_continues_on_the_first_form_page(
-    client, claimable_draft
-):
+    client: Client, claimable_draft: CourseApplication
+) -> None:
     _claim(client, claimable_draft)
 
     response = client.get(
@@ -3776,8 +3785,8 @@ def test_claim_post_of_a_draft_drops_the_applicant_from_the_claiming_session(
 
 @pytest.mark.django_db
 def test_claim_post_of_a_draft_for_an_existing_account_lands_on_the_status_page(
-    client, mock_site_context
-):
+    client: Client, mock_site_context: Site
+) -> None:
     user = UserFactory(email="ada@example.com")
     EmailAddressFactory(user=user)
     application = _draft_application()
@@ -3997,8 +4006,9 @@ def test_claim_get_with_nothing_held_says_nothing_is_discarded(client, claimable
 @pytest.mark.django_db
 @pytest.mark.parametrize("closed", [{"rejected": True}, {"withdrawn": True}])
 def test_claim_get_over_only_a_held_closed_application_holds_nothing(
-    client, claimable_draft, closed
-):
+    client: Client, claimable_draft: CourseApplication, closed: dict[str, bool]
+) -> None:
+    assert claimable_draft.anonymous_applicant is not None
     user = UserFactory(email=claimable_draft.anonymous_applicant.email)
     EmailAddressFactory(user=user)
     CourseApplicationFactory(user=user, course=claimable_draft.course, **closed)
@@ -4010,8 +4020,8 @@ def test_claim_get_over_only_a_held_closed_application_holds_nothing(
 
 @pytest.mark.django_db
 def test_claim_post_of_a_rejected_application_leaves_the_account_holding_both(
-    client, mock_site_context
-):
+    client: Client, mock_site_context: Site
+) -> None:
     incoming = CourseApplicationFactory(anonymous=True, rejected=True)
     _stamp_consent(incoming.anonymous_applicant)
     user = UserFactory(email=incoming.anonymous_applicant.email)
@@ -4029,7 +4039,7 @@ def test_claim_post_of_a_rejected_application_leaves_the_account_holding_both(
 @pytest.mark.django_db
 @pytest.mark.parametrize("draft", [True, False])
 def test_claim_get_of_a_rejected_application_says_nothing_is_replaced_or_discarded(
-    client: Client, mock_site_context: None, draft: bool
+    client: Client, mock_site_context: Site, draft: bool
 ) -> None:
     incoming = CourseApplicationFactory(anonymous=True, rejected=True)
     _account_holding(incoming, draft=draft)
@@ -4046,8 +4056,8 @@ def test_claim_get_of_a_rejected_application_says_nothing_is_replaced_or_discard
 
 @pytest.mark.django_db
 def test_claim_get_for_a_passwordless_account_says_a_password_comes_next(
-    client, claimable_for_passwordless_user
-):
+    client: Client, claimable_for_passwordless_user: CourseApplication
+) -> None:
     response = client.get(
         _claim_url(claimable_for_passwordless_user.anonymous_applicant)
     )
@@ -4579,8 +4589,8 @@ def test_form_page_notice_shows_not_sent_when_the_send_was_refused(
     [CourseApplication.State.WITHDRAWN, CourseApplication.State.REJECTED],
 )
 def test_read_only_form_page_never_says_submitted_for_an_unsubmitted_state(
-    client, mock_site_context, state
-):
+    client: Client, mock_site_context: Site, state: CourseApplication.State
+) -> None:
     """The read-only notice used to say "submitted" for a withdrawn or rejected application."""
     application = _anonymous_draft(client)
     user = UserFactory()
@@ -4609,7 +4619,7 @@ def test_read_only_form_page_never_says_submitted_for_an_unsubmitted_state(
 
 @pytest.mark.django_db
 def test_read_only_form_page_of_an_approved_application_says_a_decision_was_made(
-    client: Client, mock_site_context: None
+    client: Client, mock_site_context: Site
 ) -> None:
     application = _anonymous_draft(client)
     user = UserFactory()
@@ -5615,8 +5625,8 @@ def test_a_visitor_who_does_not_own_the_application_writes_no_served_paper(
 
 @pytest.mark.django_db
 def test_resuming_a_quiz_application_continues_on_the_first_served_page(
-    client, quiz_application
-):
+    client: Client, quiz_application: QuizApplication
+) -> None:
     app = quiz_application.application
 
     response = client.get(reverse("course_applications:status", kwargs={"pk": app.pk}))
@@ -5764,21 +5774,24 @@ def test_an_anonymous_applicant_sees_the_previous_served_page_link_on_the_others
 # ---------------------------------------------------------------------------
 
 
-def _status_url(app) -> str:
+def _status_url(app: CourseApplication) -> str:
     return reverse("course_applications:status", kwargs={"pk": app.pk})
 
 
-def _withdraw_url(app) -> str:
+def _withdraw_url(app: CourseApplication) -> str:
     return reverse("course_applications:withdraw", kwargs={"pk": app.pk})
 
 
-def _claimed_draft(user):
-    return CourseApplicationFactory(
-        user=user, form_progress=FormProgressFactory(user=user)
+def _claimed_draft(user: User) -> CourseApplication:
+    return cast(
+        CourseApplication,
+        CourseApplicationFactory(
+            user=user, form_progress=FormProgressFactory(user=user)
+        ),
     )
 
 
-def _messages_of(response) -> list[str]:
+def _messages_of(response: _MonkeyPatchedWSGIResponse) -> list[str]:
     return [str(m) for m in get_messages(response.wsgi_request)]
 
 
@@ -5794,7 +5807,7 @@ _CLOSED_FIELDS = {
 }
 
 
-def _close_in_place(app, state: str) -> None:
+def _close_in_place(app: CourseApplication, state: str) -> None:
     fields = {name: make() for name, make in _CLOSED_FIELDS[state].items()}
     CourseApplication.objects.filter(pk=app.pk).update(state=state, **fields)
 
@@ -5802,8 +5815,8 @@ def _close_in_place(app, state: str) -> None:
 @pytest.mark.django_db
 class TestWithdrawApplicationView:
     def test_owner_withdraw_redirects_to_status_and_stores_withdrawn(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         app = CourseApplicationFactory(user=user)
         client.force_login(user)
@@ -5814,7 +5827,9 @@ class TestWithdrawApplicationView:
         assert response["Location"] == _status_url(app)
         assert app.state == CourseApplication.State.WITHDRAWN
 
-    def test_owner_withdraw_says_it_was_withdrawn(self, client, mock_site_context):
+    def test_owner_withdraw_says_it_was_withdrawn(
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         app = CourseApplicationFactory(user=user)
         client.force_login(user)
@@ -5829,8 +5844,8 @@ class TestWithdrawApplicationView:
         ids=["withdrawn", "approved", "rejected"],
     )
     def test_withdraw_of_a_closed_or_decided_application_is_refused(
-        self, client, mock_site_context, trait
-    ):
+        self, client: Client, mock_site_context: Site, trait: dict[str, bool]
+    ) -> None:
         user = UserFactory()
         app = CourseApplicationFactory(user=user, **trait)
         before = CourseApplication.objects.get(pk=app.pk)
@@ -5846,8 +5861,8 @@ class TestWithdrawApplicationView:
         assert (after.state, after.updated_at) == (before.state, before.updated_at)
 
     def test_withdraw_of_another_accounts_application_is_404(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         app = CourseApplicationFactory(user=UserFactory())
         client.force_login(UserFactory())
 
@@ -5856,8 +5871,8 @@ class TestWithdrawApplicationView:
         assert response.status_code == 404
 
     def test_withdraw_of_an_unclaimed_application_in_its_own_session_is_404(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         app = _anonymous_draft(client)
 
         response = client.post(_withdraw_url(app))
@@ -5865,8 +5880,8 @@ class TestWithdrawApplicationView:
         assert response.status_code == 404
 
     def test_withdraw_of_an_unclaimed_application_changes_nothing(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         app = _anonymous_draft(client)
 
         client.post(_withdraw_url(app))
@@ -5875,8 +5890,8 @@ class TestWithdrawApplicationView:
         assert app.state == CourseApplication.State.DRAFT
 
     def test_withdraw_by_a_signed_out_visitor_redirects_to_login_for_the_status_page(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         app = CourseApplicationFactory(user=UserFactory())
 
         response = client.post(_withdraw_url(app))
@@ -5885,7 +5900,9 @@ class TestWithdrawApplicationView:
             f"{reverse('account_login')}?next={_status_url(app)}"
         )
 
-    def test_withdraw_by_get_is_405(self, client, mock_site_context):
+    def test_withdraw_by_get_is_405(
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         app = CourseApplicationFactory(user=user)
         client.force_login(user)
@@ -5897,7 +5914,9 @@ class TestWithdrawApplicationView:
 
 @pytest.mark.django_db
 class TestApplicationStatusStates:
-    def test_a_claimed_draft_renders_its_status_page(self, client, mock_site_context):
+    def test_a_claimed_draft_renders_its_status_page(
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         app = _claimed_draft(user)
         client.force_login(user)
@@ -5907,7 +5926,9 @@ class TestApplicationStatusStates:
         assert response.status_code == 200
         assert "Not submitted" in response.content.decode()
 
-    def test_a_claimed_draft_links_to_its_resume_url(self, client, mock_site_context):
+    def test_a_claimed_draft_links_to_its_resume_url(
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         course, _form = gated_course_with_form()
         app = _applied(client, course)
 
@@ -5916,7 +5937,9 @@ class TestApplicationStatusStates:
         assert f'href="{_page_url(app, 1)}"' in body
         assert "Continue application" in body
 
-    def test_a_claimed_draft_offers_withdraw(self, client, mock_site_context):
+    def test_a_claimed_draft_offers_withdraw(
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         app = _claimed_draft(user)
         client.force_login(user)
@@ -5925,7 +5948,9 @@ class TestApplicationStatusStates:
 
         assert f'action="{_withdraw_url(app)}"' in body
 
-    def test_an_unclaimed_draft_is_sent_to_its_form(self, client, mock_site_context):
+    def test_an_unclaimed_draft_is_sent_to_its_form(
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         app = _anonymous_draft(client)
 
         response = client.get(_status_url(app))
@@ -5933,8 +5958,8 @@ class TestApplicationStatusStates:
         assert response["Location"] == _page_url(app, 1)
 
     def test_a_submitted_application_shows_state_date_and_withdraw(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         app = CourseApplicationFactory(user=user)
         client.force_login(user)
@@ -5946,8 +5971,8 @@ class TestApplicationStatusStates:
         assert f'action="{_withdraw_url(app)}"' in body
 
     def test_a_withdrawn_application_says_so_and_offers_no_withdraw(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         app = CourseApplicationFactory(user=user, withdrawn=True)
         client.force_login(user)
@@ -5958,8 +5983,8 @@ class TestApplicationStatusStates:
         assert _withdraw_url(app) not in body
 
     def test_a_withdrawn_draft_renders_instead_of_resuming_its_form(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         app = CourseApplicationFactory(
             user=user,
@@ -5973,7 +5998,9 @@ class TestApplicationStatusStates:
         assert response.status_code == 200
         assert "You withdrew your application" in response.content.decode()
 
-    def test_the_page_title_holds_the_state_label(self, client, mock_site_context):
+    def test_the_page_title_holds_the_state_label(
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         app = CourseApplicationFactory(user=user, withdrawn=True)
         client.force_login(user)
@@ -5983,8 +6010,8 @@ class TestApplicationStatusStates:
         assert re.search(r"<title>[^<]*Withdrawn · Application", body)
 
     def test_an_unclaimed_submitted_application_offers_no_withdraw(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         app = _anonymous_draft(client)
         CourseApplication.objects.filter(pk=app.pk).update(
             state=CourseApplication.State.SUBMITTED, submitted_at=timezone.now()
@@ -6000,8 +6027,8 @@ class TestApplicationStatusStates:
 class TestClosedApplicationAcceptsNoWrites:
     @pytest.mark.parametrize("state", ["withdrawn", "rejected"])
     def test_a_form_page_post_redirects_to_status_and_changes_no_answer(
-        self, client, mock_site_context, state
-    ):
+        self, client: Client, mock_site_context: Site, state: str
+    ) -> None:
         course, form = gated_course_with_form()
         app = _applied(client, course)
         name = _questions_on(form, 1)[0]
@@ -6016,8 +6043,8 @@ class TestClosedApplicationAcceptsNoWrites:
 
     @pytest.mark.parametrize("state", ["withdrawn", "rejected"])
     def test_a_check_your_answers_post_redirects_to_status_and_keeps_the_state(
-        self, client, mock_site_context, state
-    ):
+        self, client: Client, mock_site_context: Site, state: str
+    ) -> None:
         course, _form = gated_course_with_form()
         app = _applied(client, course)
         _close_in_place(app, state)
@@ -6032,8 +6059,8 @@ class TestClosedApplicationAcceptsNoWrites:
 @pytest.mark.django_db
 class TestDecidedApplicationStatusPage:
     def test_an_approved_application_shows_the_decision_and_no_withdraw(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         app = CourseApplicationFactory(user=user, approved=True)
         client.force_login(user)
@@ -6045,8 +6072,8 @@ class TestDecidedApplicationStatusPage:
         assert _withdraw_url(app) not in body
 
     def test_a_rejected_application_shows_the_message_and_offers_apply_again(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         app = CourseApplicationFactory(user=user, rejected=True)
         client.force_login(user)
@@ -6066,8 +6093,8 @@ class TestDecidedApplicationStatusPage:
         assert _withdraw_url(app) not in body
 
     def test_a_rejection_message_is_escaped_and_keeps_its_line_breaks(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         app = CourseApplicationFactory(
             user=user, rejected=True, rejection_message="<script>x</script>\nSecond"
@@ -6080,8 +6107,8 @@ class TestDecidedApplicationStatusPage:
         assert "&lt;script&gt;x&lt;/script&gt;<br>Second" in body
 
     def test_an_unclaimed_rejected_application_shows_message_beside_claim_notice(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         app = _anonymous_draft(client)
         CourseApplication.objects.filter(pk=app.pk).update(
             state=CourseApplication.State.REJECTED,
@@ -6097,8 +6124,8 @@ class TestDecidedApplicationStatusPage:
         assert "Apply again" not in body
 
     def test_an_unclaimed_rejected_application_claim_notice_does_not_say_it_awaits_review(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         """The claim notice above a decision used to say "Before anyone reviews
         it", contradicting the decision shown right below it."""
         app = _anonymous_draft(client)
@@ -6117,8 +6144,8 @@ class TestDecidedApplicationStatusPage:
         )
 
     def test_the_status_page_reads_what_reject_application_stored(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         user = UserFactory()
         app = CourseApplicationFactory(user=user)
         reject_application(app, actor=UserFactory(), message="  Come back in spring.  ")
@@ -6132,7 +6159,7 @@ class TestDecidedApplicationStatusPage:
 @pytest.mark.django_db
 @pytest.mark.parametrize("route", ["question_file_upload", "question_file_remove"])
 def test_a_withdrawn_draft_refuses_file_changes(
-    client: Client, mock_site_context: None, route: str
+    client: Client, mock_site_context: Site, route: str
 ) -> None:
     course, form = gated_course_with_form()
     app = _applied(client, course)
