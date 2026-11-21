@@ -10,6 +10,8 @@ if "freedom_ls.qa_helpers" not in settings.INSTALLED_APPS:  # pragma: no cover
     pytest.skip("qa_helpers not installed", allow_module_level=True)
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.course_applications.transitions import withdraw_application
 from freedom_ls.qa_helpers.management.commands.qa_create_second_application_form_course import (
     QUESTIONS,
     _get_or_create_application,
@@ -39,3 +41,18 @@ def test_the_completed_sitting_records_the_questions_it_was_asked(mock_site_cont
     assert rerun.pk == application.pk
     assert rerun.form_progress is not None
     assert rerun.form_progress.asked == sitting.asked
+
+
+@pytest.mark.django_db
+def test_a_rerun_after_a_withdrawal_submits_a_new_application(mock_site_context):
+    site = mock_site_context
+    user = UserFactory()
+    form, questions = _get_or_create_form(site)
+    course = _get_or_create_course(site, form)
+    first = _get_or_create_application(site, user, course, form, questions)
+    withdraw_application(first)
+
+    rerun = _get_or_create_application(site, user, course, form, questions)
+
+    assert rerun.pk != first.pk
+    assert rerun.state == CourseApplication.State.SUBMITTED

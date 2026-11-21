@@ -24,7 +24,7 @@ from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseCategory
 from freedom_ls.course_applications.factories import CourseApplicationFactory
-from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.course_applications.models import ACTIVE_STATES, CourseApplication
 from freedom_ls.course_applications.transitions import submit_application
 from freedom_ls.form_engine.enums import QuestionType
 from freedom_ls.form_engine.exports import answer_cell
@@ -130,7 +130,9 @@ def _get_or_create_application(
     site: Site, user: User, course: Course, form: Form, questions: list[FormQuestion]
 ) -> CourseApplication:
     application: CourseApplication | None = (
-        CourseApplication.objects.filter(user=user, course=course, site=site)
+        CourseApplication.objects.filter(
+            user=user, course=course, site=site, state__in=ACTIVE_STATES
+        )
         .select_related("form_progress")
         .first()
     )

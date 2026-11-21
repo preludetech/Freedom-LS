@@ -27,7 +27,7 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course
 from freedom_ls.course_applications.factories import CourseApplicationFactory
-from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.course_applications.models import ACTIVE_STATES, CourseApplication
 from freedom_ls.course_applications.transitions import submit_application
 from freedom_ls.form_engine.factories import (
     FormProgressFactory,
@@ -88,7 +88,9 @@ def _ensure_application(
     answers: list[tuple[FormQuestion, str]],
 ) -> CourseApplication:
     application: CourseApplication | None = (
-        CourseApplication.objects.filter(user=user, course=course, site=site)
+        CourseApplication.objects.filter(
+            user=user, course=course, site=site, state__in=ACTIVE_STATES
+        )
         .select_related("form_progress")
         .first()
     )

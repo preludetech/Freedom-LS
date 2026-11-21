@@ -37,7 +37,7 @@ from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_applications.factories import CourseApplicationFactory
-from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.course_applications.models import ACTIVE_STATES, CourseApplication
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -204,7 +204,9 @@ def _ensure_application(
 ) -> CourseApplication:
     course = _ensure_gated_course(site, seeded.title, form)
     application: CourseApplication | None = (
-        CourseApplication._base_manager.filter(site=site, user=user, course=course)
+        CourseApplication._base_manager.filter(
+            site=site, user=user, course=course, state__in=ACTIVE_STATES
+        )
         .select_related("form_progress")
         .first()
     )
@@ -241,6 +243,9 @@ def _ensure_application(
             else CourseApplication.State.DRAFT
         ),
         submitted_at=created_at + timedelta(minutes=20) if seeded.submitted else None,
+        decided_at=None,
+        withdrawn_at=None,
+        rejection_message="",
     )
     return application
 

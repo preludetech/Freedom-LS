@@ -17,6 +17,10 @@ if "freedom_ls.qa_helpers" not in settings.INSTALLED_APPS:  # pragma: no cover
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.course_applications.transitions import (
+    reject_application,
+    withdraw_application,
+)
 from freedom_ls.form_engine.factories import FormProgressFactory
 from freedom_ls.form_engine.models import FormProgress
 from freedom_ls.qa_helpers.management.commands.qa_create_dashboard_applications_panel import (
@@ -71,3 +75,31 @@ def test_an_empty_seed_leaves_the_persona_with_no_applications(mock_site_context
 
     assert not CourseApplication._base_manager.filter(user=user).exists()
     assert not FormProgress._base_manager.filter(user=user).exists()
+
+
+@pytest.mark.django_db
+def test_reseeding_replaces_applications_closed_since_the_last_seed(mock_site_context):
+    site = mock_site_context
+    user = UserFactory()
+    form, question = _ensure_form(site)
+    wanted = [
+        SeededApplication("Seeded Draft", 2, False),
+        SeededApplication("Seeded Submitted", 1, True),
+    ]
+    _seed_applications(site, user, wanted, form, question)
+    draft = CourseApplication._base_manager.get(user=user, course__title="Seeded Draft")
+    submitted = CourseApplication._base_manager.get(
+        user=user, course__title="Seeded Submitted"
+    )
+    withdraw_application(draft)
+    reject_application(submitted, actor=UserFactory(), message="Not this time.")
+
+    _seed_applications(site, user, wanted, form, question)
+
+    applications = CourseApplication._base_manager.filter(user=user).order_by(
+        "-created_at"
+    )
+    assert [(a.course.title, a.state) for a in applications] == [
+        ("Seeded Submitted", CourseApplication.State.SUBMITTED),
+        ("Seeded Draft", CourseApplication.State.DRAFT),
+    ]
