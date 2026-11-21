@@ -213,6 +213,33 @@ def test_clip_seeked_near_the_end_returns_to_the_start(
 
     expect(play).to_have_attribute("aria-pressed", "false", timeout=10_000)
     expect(_elapsed(page)).to_have_text("0:00")
+    expect(play.locator("[data-icon='media_play']")).to_be_visible()
+
+    play.click()
+    expect(play).to_have_attribute("aria-pressed", "true")
+
+
+def test_clip_seeked_while_playing_from_a_host_without_range_still_ends(
+    live_server,
+    live_server_site,
+    mock_site_context,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    """A seek the host can never serve must not freeze the bar while sound plays."""
+    page = logged_in_page
+    course = _clip_course(logged_in_user)
+    page.route("**/content/audio/**", _serve_without_ranges)
+    page.goto(form_item_url(live_server, course, "view_course_item"))
+    play = page.get_by_role("button", name=f"Play {FIRST_CLIP}")
+
+    play.click()
+    expect(play).to_have_attribute("aria-pressed", "true", timeout=10_000)
+    page.wait_for_timeout(1500)
+    _seek_bar(page).fill("28")
+
+    # Either the seek lands and the clip ends, or the bar goes back to following the audio.
+    expect(_elapsed(page)).not_to_have_text("0:28", timeout=5_000)
 
 
 def test_clip_without_a_stored_duration_enables_its_seek_bar_after_play(
@@ -446,9 +473,10 @@ def test_failed_clip_shows_an_error_and_retries_from_its_position(
     play.click()
 
     expect(status).to_have_text("This audio couldn't load.")
-    expect(play).to_be_disabled()
     expect(_seek_bar(page)).to_be_hidden()
-    expect(try_again).to_be_visible()
+    expect(try_again).to_be_enabled()
+    expect(try_again.locator("[data-icon='retry']")).to_be_visible()
+    expect(page.get_by_role("button", name="Try again", exact=True)).to_have_count(0)
 
     page.unroute("**/content/audio/**")
     page.route("**/content/audio/**", _serve_with_ranges)
@@ -513,17 +541,17 @@ def _serve_without_ranges(route: Route) -> None:
     )
 
 
-def test_seek_before_play_is_kept_when_the_host_ignores_range(
+def test_seek_before_play_gives_way_when_the_host_ignores_range(
     live_server,
     live_server_site,
     mock_site_context,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
-    """A seek made before the audio loaded used to be dropped, so playback began at 0:00.
+    """A host that ignores Range leaves the file unseekable, so the sound starts at 0:00.
 
-    The seek was applied when the metadata arrived, before the target was
-    seekable on a host that does not honour Range.
+    Once the whole file has loaded the seek can never land, and the bar shows
+    where the sound really is rather than staying at the chosen point.
     """
     page = logged_in_page
     course = _clip_course(logged_in_user)
@@ -535,5 +563,4 @@ def test_seek_before_play_is_kept_when_the_host_ignores_range(
     play.click()
 
     expect(play).to_have_attribute("aria-pressed", "true", timeout=10_000)
-    page.wait_for_timeout(1500)
-    assert _to_seconds(_elapsed(page).inner_text()) >= 20
+    expect(_elapsed(page)).to_have_text(re.compile(r"0:0\d"), timeout=5_000)

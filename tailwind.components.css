@@ -221,26 +221,26 @@
 @layer components {
     .btn {
         @apply inline-flex items-center justify-center gap-2 px-6 py-2 font-medium rounded-md
-               focus:outline-none focus:ring-2 focus:ring-offset-2
+               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
                disabled:opacity-50 disabled:cursor-not-allowed
                no-underline cursor-pointer transition-colors
     }
     /* Button component variants */
     .btn-primary {
         @apply bg-primary text-on-primary
-               hover:bg-primary-hover focus:ring-primary
+               hover:bg-primary-hover focus-visible:ring-primary
     }
 
     /* The outline is an inset ring, not a border, so it adds no height or
      * width and a secondary button is the size of every other variant. */
     .btn-secondary {
         @apply bg-transparent text-primary inset-ring inset-ring-primary
-               hover:bg-primary/10 focus:ring-primary
+               hover:bg-primary/10 focus-visible:ring-primary
     }
 
     .btn-ghost {
         @apply bg-transparent text-primary
-               hover:bg-primary/10 focus:ring-primary
+               hover:bg-primary/10 focus-visible:ring-primary
     }
 
     /* Text-only link button — no background fill in any state. On hover the
@@ -249,23 +249,23 @@
      * so both the colour and the scale animate. */
     .btn-link {
         @apply bg-transparent text-primary font-semibold
-               hover:text-primary-hover focus:ring-primary
+               hover:text-primary-hover focus-visible:ring-primary
                transition hover:scale-105
     }
 
     .btn-accent {
         @apply bg-accent text-on-accent
-               hover:bg-accent-hover focus:ring-accent
+               hover:bg-accent-hover focus-visible:ring-accent
     }
 
     .btn-success {
         @apply bg-success text-on-success
-               hover:bg-success-hover focus:ring-success
+               hover:bg-success-hover focus-visible:ring-success
     }
 
     .btn-error {
         @apply bg-error text-on-error
-               hover:bg-error-hover focus:ring-error
+               hover:bg-error-hover focus-visible:ring-error
     }
 
     /* Small button size — overrides .btn padding (must come after .btn) */

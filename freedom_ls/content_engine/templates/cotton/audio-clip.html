@@ -30,9 +30,13 @@ screen readers, which read the seek bar's aria-valuetext instead.
 A missing or non-audio file, or an empty title, renders a red box naming the
 src instead. The status line is always in the DOM and only its text changes,
 so screen readers announce each change. When the audio fails to load or play,
-the card turns red, Play is disabled and the seek row gives way to the status
-text and a Try again button; Try again reloads through the redirect and plays
-from the saved position.
+the card turns red and the seek row gives way to the status text. The play
+button turns red, shows the retry icon and is named "Try again: <title>";
+pressing it reloads through the redirect and plays from the saved position.
+When the clip ends it returns to 0:00 showing Play, dropping any seek still
+waiting, so the next press plays from the start.
+Each icon sits in a flex wrapper so no text baseline pushes it low, and the
+play triangle moves right a pixel to sit at its optical centre.
 {% endcomment %}
 
 {% with file_obj=src|get_file_by_path:content_instance %}
@@ -50,12 +54,14 @@ from the saved position.
          data-duration="{% if file_obj.duration_seconds is not None %}{{ file_obj.duration_seconds|unlocalize }}{% endif %}">
       <div class="flex items-start gap-3 rounded-lg border border-border bg-surface p-3 group-data-[state=failed]:border-error group-data-[state=failed]:bg-error-light group-data-[state=failed]:text-on-error-light">
         <c-button variant="primary" aria_label="Play {{ title }}" x-ref="play"
-                  x-bind:aria-pressed="playing" x-bind:disabled="failed" x-on:click="toggle"
+                  x-bind:aria-label="playLabel" x-bind:aria-pressed="playing" x-on:click="toggle"
                   data-src="{% url 'content_engine:audio_file' file_obj.pk %}"
-                  class="size-11 shrink-0 rounded-pill p-0 disabled:cursor-not-allowed disabled:opacity-50">
-          <span x-show="showPlayIcon"><c-icon name="media_play" class="size-5" /></span>
-          <span x-show="loading" x-cloak><c-icon name="loading" class="size-5 animate-spin motion-reduce:animate-none" /></span>
-          <span x-show="playing" x-cloak><c-icon name="media_pause" class="size-5" /></span>
+                  data-play-label="Play {{ title }}" data-retry-label="Try again: {{ title }}"
+                  class="size-11 shrink-0 rounded-pill p-0 group-data-[state=failed]:bg-error group-data-[state=failed]:text-on-error group-data-[state=failed]:hover:bg-error-hover group-data-[state=failed]:focus-visible:ring-error">
+          <span x-show="showPlayIcon" class="flex translate-x-px"><c-icon name="media_play" class="size-5" /></span>
+          <span x-show="loading" x-cloak class="flex"><c-icon name="loading" class="size-5 animate-spin motion-reduce:animate-none" /></span>
+          <span x-show="playing" x-cloak class="flex"><c-icon name="media_pause" class="size-5" /></span>
+          <span x-show="failed" x-cloak class="flex"><c-icon name="retry" class="size-5" /></span>
         </c-button>
         <div class="min-w-0 flex-1">
           <div class="flex items-baseline gap-2">
@@ -78,12 +84,7 @@ from the saved position.
               <span class="text-muted">/ <span x-text="totalText">{% if file_obj.duration_seconds is None %}--:--{% else %}{{ file_obj.duration_seconds|clip_time:file_obj.duration_seconds }}{% endif %}</span></span>
             </span>
           </div>
-          <div class="flex flex-wrap items-center gap-3">
-            <p role="status" class="text-sm" x-text="statusText"></p>
-            <div x-show="failed" x-transition x-cloak>
-              <c-button variant="secondary" size="small" aria_label="Try again: {{ title }}" x-on:click="retry">Try again</c-button>
-            </div>
-          </div>
+          <p role="status" class="text-sm" x-text="statusText"></p>
           {% if slot.strip %}
             <c-button variant="link" size="small" x-on:click="toggleTranscript"
                       x-bind:aria-expanded="transcriptOpen" x-bind:aria-controls="$id('audio-clip-transcript')"

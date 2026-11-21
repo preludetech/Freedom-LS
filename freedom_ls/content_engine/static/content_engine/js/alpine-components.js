@@ -352,7 +352,12 @@ document.addEventListener("alpine:init", () => {
             return this.failed ? "This audio couldn't load." : "";
         },
         get showPlayIcon() {
-            return this.state === "paused" || this.state === "failed";
+            return this.state === "paused";
+        },
+        // In the failed state the play button is the retry control.
+        get playLabel() {
+            const { playLabel, retryLabel } = this.$refs.play.dataset;
+            return this.failed ? retryLabel : playLabel;
         },
         get seekMax() {
             return this.duration ?? 0;
@@ -386,13 +391,10 @@ document.addEventListener("alpine:init", () => {
         },
         _seekTo(seconds) {
             this.elapsed = seconds;
+            this.pendingSeek = seconds;
             const audio = clipElements.get(this._id);
-            if (!audio || !this._isSeekable(audio, seconds)) {
-                this.pendingSeek = seconds;
-                return;
-            }
             // No play() here, so a paused clip stays paused.
-            audio.currentTime = seconds;
+            if (audio) this._applyPendingSeek(audio);
         },
         // A host that ignores Range only makes the buffered part seekable, and
         // the browser drops a seek to anywhere else.
@@ -404,14 +406,30 @@ document.addEventListener("alpine:init", () => {
             }
             return false;
         },
-        // Applies the saved seek once the audio can reach it.
+        // Applies the saved seek once the audio can reach it. A host that
+        // ignores Range leaves a fully loaded file unseekable, so the seek can
+        // never land: drop it and let the bar follow the audio again.
         _applyPendingSeek(audio) {
-            if (this.pendingSeek === null || !this._isSeekable(audio, this.pendingSeek)) return;
-            audio.currentTime = this.pendingSeek;
+            if (this.pendingSeek === null) return;
+            if (this._isSeekable(audio, this.pendingSeek)) {
+                audio.currentTime = this.pendingSeek;
+            } else if (!this._fullyLoaded(audio)) {
+                return;
+            }
             this.pendingSeek = null;
+            this.elapsed = audio.currentTime;
+        },
+        _fullyLoaded(audio) {
+            const { buffered, duration } = audio;
+            return Number.isFinite(duration) && buffered.length > 0
+                && buffered.start(0) === 0 && buffered.end(buffered.length - 1) >= duration - 0.5;
         },
 
         toggle() {
+            if (this.failed) {
+                this.retry();
+                return;
+            }
             if (this.state === "playing" || this.state === "loading") {
                 this._element().pause();
                 return;
@@ -442,6 +460,9 @@ document.addEventListener("alpine:init", () => {
             // More of the file arrived, which may make a saved seek reachable.
             audio.addEventListener("progress", () => this._applyPendingSeek(audio));
             audio.addEventListener("ended", () => {
+                // A seek still waiting or a drag left open would freeze the bar past the end.
+                this.pendingSeek = null;
+                this.dragging = false;
                 audio.currentTime = 0;
                 this.elapsed = 0;
                 this.state = "paused";

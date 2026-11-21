@@ -200,15 +200,16 @@ class TestErrorState:
         assert status.get("x-text") == "statusText"
         assert (status.text or "").strip() == ""
 
-    def test_try_again_button_is_named_after_the_clip(
+    def test_play_button_carries_the_retry_name_for_the_error_state(
         self, mock_site_context: object
     ) -> None:
         _audio_file()
 
         tree = _tree(CLIP.format(extra=""))
 
-        (button,) = tree.xpath("//button[@aria-label='Try again: The talk']")
-        assert button.get("x-on:click") == "retry"
+        (button,) = tree.xpath("//button[@data-retry-label='Try again: The talk']")
+        assert button.get("aria-label") == "Play The talk"
+        assert not tree.xpath("//button[normalize-space()='Try again']")
 
 
 class TestTranscript:
