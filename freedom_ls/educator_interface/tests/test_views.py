@@ -71,6 +71,9 @@ from freedom_ls.educator_interface.panels.course.data_tables import (
 from freedom_ls.educator_interface.panels.learner.bulk_actions import (
     DeactivateLearnersBulkAction,
 )
+from freedom_ls.educator_interface.panels.learner.data_table_panels import (
+    LearnerHistoryPanel,
+)
 from freedom_ls.educator_interface.panels.learner.data_tables import (
     CohortLearnerDataTable,
     LearnerDataTable,
@@ -5455,7 +5458,7 @@ def test_the_first_use_message_is_a_sentence(table: type[DataTable]) -> None:
 
 
 @pytest.mark.parametrize(
-    "panel", [educator_views.LearnerHistoryPanel, educator_views.CohortHistoryPanel]
+    "panel", [LearnerHistoryPanel, educator_views.CohortHistoryPanel]
 )
 def test_a_history_panel_says_what_will_be_recorded(panel: type) -> None:
     assert panel.empty_message.endswith(".")
