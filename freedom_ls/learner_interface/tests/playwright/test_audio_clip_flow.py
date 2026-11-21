@@ -486,6 +486,8 @@ def test_play_button_sits_in_the_vertical_centre_of_the_clip(
     play.click()
     try_again = page.get_by_role("button", name=f"Try again: {FIRST_CLIP}")
     expect(group.get_by_role("status")).to_have_text("This audio couldn't load.")
+    # The seek row leaves with a transition; measure once the card has settled.
+    expect(group.get_by_role("slider")).to_be_hidden()
     _assert_vertically_centred(try_again, group)
 
     # Opening the transcript below leaves the button where it was.
