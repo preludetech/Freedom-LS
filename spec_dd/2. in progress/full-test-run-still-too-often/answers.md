@@ -1,0 +1,7 @@
+# Answers: full-test-run-still-too-often
+
+Asked by `/sdd:start` before the spec was written.
+
+- Q: `/sdd:finish_worktree` Step 1 always runs the full suite, even when `/sdd:implement_plan`'s full run already passed and only `spec_dd/` files changed since. Should it become a checkpoint run (nothing, or only what changed since the last green full run)? → A: Checkpoint: use the full-run record, skip when nothing test-visible changed since the last green full run, otherwise run what the selector picks. (asked up front)
+- Q: When main brings in a change that matches an escalation glob (another spec's migration, `conftest.py`, `pyproject.toml`), the rebase and checkpoint runs escalate to the full suite even when the branch's code never touches those apps. What should a change that came from main trigger? → A: Branch-related only. Main already passed CI, so main's changes count only where they meet the branch: tests of the apps the branch touches, plus apps main changed that the branch's apps depend on. An escalation glob from main escalates only within that set. A dependency-file change (`pyproject.toml`, `uv.lock`) still escalates. (asked up front)
+- Q: Should `/sdd:implement_plan` Step 3 keep its unconditional full run after the last batch? → A: Keep it. It is the first proof the whole feature works, and with the finish run as a checkpoint it becomes the only full run most specs get. (asked up front)
