@@ -12,6 +12,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 ### In progress
 
 - 🔴 High · `faster-test-runs-1-fast-password-hasher` (Faster test runs)
+- 🔴 High · `faster-test-runs-8-narrower-targeted-tier` (Faster test runs)
 - 🔴 High · `educator-interface-refactor-5-learner` (Educator interface code layout, via `sacaa-compliance`)
 - 🔴 High · `sacaa-compliance-3-question-pools` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-1-content-save-safety` (SACAA content versions and access)
@@ -28,7 +29,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `faster-test-runs-4-playwright-tests` (Faster test runs)
 - 🔴 High · `faster-test-runs-5-full-suite-on-github-actions` (Faster test runs)
 - 🔴 High · `faster-test-runs-6-prune-slow-tests` (Faster test runs)
-- 🔴 High · `faster-test-runs-8-narrower-targeted-tier` (Faster test runs)
 - 🔴 High · `faster-test-runs-9-machine-wide-test-run-limit` (Faster test runs)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-4-question-access` (SACAA content versions and access)
 - 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
@@ -87,7 +87,7 @@ Cut the time and machine load of test runs so several worktrees can work at once
 - `faster-test-runs-5-full-suite-on-github-actions` — **ready** — The full suite runs on free GitHub runners in parallel jobs, started on demand by an SDD run.
 - `faster-test-runs-6-prune-slow-tests` — **ready** — Remaining slow and redundant tests are merged or removed from a measured per-test ranking.
 - `faster-test-runs-7-claude-cloud-test-runs` — **blocked** by `faster-test-runs-1-fast-password-hasher`, `faster-test-runs-2-reuse-test-database`, `faster-test-runs-3-permission-matrix-test`, `faster-test-runs-4-playwright-tests`, `faster-test-runs-5-full-suite-on-github-actions`, `faster-test-runs-6-prune-slow-tests`, `faster-test-runs-8-narrower-targeted-tier`, `faster-test-runs-9-machine-wide-test-run-limit`, `faster-test-runs-10-rerun-only-failures-in-a-batch` — Fallback: a test run or SDD batch is handed to a Claude Code cloud session.
-- `faster-test-runs-8-narrower-targeted-tier` — **ready** — A batch's targeted test run covers the tests its change can affect, not most of the suite.
+- `faster-test-runs-8-narrower-targeted-tier` — **in progress** — A batch's targeted test run covers the tests its change can affect, not most of the suite.
 - `faster-test-runs-9-machine-wide-test-run-limit` — **ready** — Test runs from every worktree share one CPU and memory limit, and a waiting run says so.
 - `faster-test-runs-10-rerun-only-failures-in-a-batch` — **ready** — After a failure a batch re-runs only the failed tests; the whole-tier gate stays at the final full run.
 
