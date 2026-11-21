@@ -856,7 +856,17 @@ def application_form_page(
     if request.method == "POST":
         if read_only:
             return redirect("course_applications:status", pk=app.pk)
-        submission = submit_page(current, request.POST, form_progress)
+        with transaction.atomic():
+            # The row lock the transitions take: a withdraw or submit from
+            # another tab cannot land between this check and the save.
+            locked_state = (
+                CourseApplication._base_manager.select_for_update()
+                .values_list("state", flat=True)
+                .get(pk=app.pk)
+            )
+            if locked_state != CourseApplication.State.DRAFT:
+                return redirect("course_applications:status", pk=app.pk)
+            submission = submit_page(current, request.POST, form_progress)
         # The answers just saved can change which pages come next, and so what
         # a rejected page's count and page-jump nav show.
         path = current_path(form_progress)

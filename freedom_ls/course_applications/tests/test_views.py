@@ -6186,6 +6186,29 @@ class TestClosedApplicationAcceptsNoWrites:
         assert response["Location"] == _status_url(app)
         assert answer.text_answer == "Ada"
 
+    def test_a_form_page_post_changes_no_answer_when_withdrawn_mid_request(
+        self, client: Client, mock_site_context: Site
+    ) -> None:
+        """The view has already read the draft when another tab withdraws it."""
+        from freedom_ls.course_applications import views
+
+        course, form = gated_course_with_form()
+        app = _applied(client, course)
+        name = _questions_on(form, 1)[0]
+        client.post(_page_url(app, 1), {f"question_{name.id}": "Ada"})
+        serve = views.ensure_served_paper
+
+        def serve_then_withdraw(form_progress: FormProgress) -> None:
+            serve(form_progress)
+            _close_in_place(app, "withdrawn")
+
+        with patch.object(views, "ensure_served_paper", serve_then_withdraw):
+            response = client.post(_page_url(app, 1), {f"question_{name.id}": "Grace"})
+
+        answer = app.form_progress.answers.get(question=name)
+        assert response["Location"] == _status_url(app)
+        assert answer.text_answer == "Ada"
+
     @pytest.mark.parametrize("state", ["withdrawn", "rejected"])
     def test_a_check_your_answers_post_redirects_to_status_and_keeps_the_state(
         self, client: Client, mock_site_context: Site, state: str
