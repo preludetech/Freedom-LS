@@ -23,7 +23,7 @@ from freedom_ls.icons.loader import (
 )
 from freedom_ls.icons.mappings import ICON_SETS, required_glyphs
 
-DEFAULT_SOURCE = Path("node_modules/@iconify-json")
+DEFAULT_SOURCE = Path(__file__).resolve().parents[1] / "node_modules" / "@iconify-json"
 
 
 def build_subset(upstream: IconifyData, glyphs: set[str]) -> IconifyData:
@@ -104,6 +104,9 @@ def main(argv: list[str] | None = None) -> int:
     for set_name in ICON_SETS:
         package_dir = PACKAGE_MAP[set_name]
         upstream_dir = source / package_dir
+        if not (upstream_dir / "icons.json").is_file():
+            print(f"{upstream_dir / 'icons.json'} not found. Run npm install first.")
+            return 1
         upstream: IconifyData = json.loads(
             (upstream_dir / "icons.json").read_text(encoding="utf-8")
         )

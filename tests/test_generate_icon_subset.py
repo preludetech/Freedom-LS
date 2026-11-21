@@ -192,6 +192,19 @@ class TestMain:
         assert exit_code == 0
         assert manifest["demo"]["missing_glyphs"] == ["x-solid"]
 
+    def test_missing_set_package_fails_telling_the_maintainer_to_install(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        source = tmp_path / "source"
+        source.mkdir()
+
+        exit_code = main(["--source", str(source), "--output", str(tmp_path / "out")])
+
+        assert exit_code == 1
+        assert capsys.readouterr().out == (
+            f"{source / 'demo' / 'icons.json'} not found. Run npm install first.\n"
+        )
+
     def test_missing_source_fails_telling_the_maintainer_to_install(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -262,8 +275,13 @@ class TestMain:
         assert not (output / "demo" / "LICENSE").exists()
 
 
+@pytest.mark.dev_tooling
+def test_the_default_source_is_the_repos_node_modules_wherever_it_runs_from() -> None:
+    assert DEFAULT_SOURCE == REPO_ROOT / "node_modules" / "@iconify-json"
+
+
 def upstream_dir(set_name: str) -> Path:
-    return REPO_ROOT / DEFAULT_SOURCE / PACKAGE_MAP[set_name]
+    return DEFAULT_SOURCE / PACKAGE_MAP[set_name]
 
 
 @pytest.mark.parametrize("set_name", list(ICON_SETS))
