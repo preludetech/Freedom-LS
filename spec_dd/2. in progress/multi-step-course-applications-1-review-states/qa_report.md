@@ -1,101 +1,112 @@
-# Frontend QA report: Application review states
+# Frontend QA report: multi-step-course-applications-1-review-states
 
-Run date: 2026-11-21. Server on port 8444, on branch `multi-step-course-applications-1-review-states` (branch badge confirmed). Test plan: `3. frontend_qa.md`.
-
-## Summary
-
-- Tests recorded: all of plan Tests 1 to 8 at desktop; mobile and tablet passes on the key pages.
-- Result: every plan test passed. One extra visual check failed (bug B1, pending triage).
+Test plan run: `3. frontend_qa.md`. Result: every test and layout record passed. No bugs.
 
 ## Methodology
 
-Screenshots were collected into `screenshots/` beside this report. Every image referenced here exists in that directory. The smoke gate passed, so no steps were skipped because of it.
-
-The run also covered pre-step work, from the `note` record:
-
-- Rebase onto origin/main: 38 commits replayed, one conflict (`docs/product/learner-experience.md` Last-updated date; the branch's 2026-11-21 was kept). The lost-change check found only context drift.
-- Targeted tests (course_applications, form_engine, application qa_helpers, learner_interface form runner, course detail and listing): 3816 passed. The full suite was not run; the user asked for targeted tests only.
-- Upstream-change review: unchanged.
-- Front-end check folded into this run: the upstream change to `form_engine/question.html` renders on the application form pages visited here (checked in 2.3 mobile, no overflow, no console errors).
+Screenshots were collected into `screenshots/` beside this report. Every image referenced below exists there. The run used desktop for all sections (1 to 8), then repeated the key states at mobile (375) and tablet (768). Compression ran and found nothing to compress.
 
 ## Diff scoping
 
-Class: FULL. Changed files: `freedom_ls/course_applications/templates/...`, `freedom_ls/course_applications/static/...` and many `.py` files. Nothing was skipped: desktop, mobile and tablet passes all ran.
+Class: FULL. Changed files that triggered it:
+
+- `freedom_ls/course_applications/templates/...`
+- `freedom_ls/course_applications/static/...`
+- `freedom_ls/learner_interface/templates/learner_interface/course_detail.html`
+- `freedom_ls/course_applications/*.py`
+- `freedom_ls/form_engine/*.py`
+- `docs/...`
+
+Nothing was skipped. Desktop, mobile and tablet passes all ran.
 
 ## Smoke gate
 
-Passed. Pages loaded: `/` and `/applications/status/41a16a1a-4de0-4c63-bad1-503fa997889e/`.
+Outcome: pass. Pages loaded: `/` and `/applications/status/f7f5cd64-a2d7-4ce4-816b-6a3ef6a7b4c0/`.
+
+## Test results
+
+| Section | Viewport | Result |
+|---|---|---|
+| 1.1 to 1.11 | desktop | all pass |
+| 2.1 to 2.6 | desktop | all pass |
+| 3.1 to 3.5 | desktop | all pass |
+| 4.1 to 4.4 | desktop | all pass |
+| 5.1 to 5.4 | desktop | all pass |
+| 6.1, 6.2 | desktop | all pass |
+| 7.1 to 7.3 | desktop | all pass |
+| 8.1, 8.2 | desktop | all pass |
+| 3.1, 2.2, 1.4, 3.3, 2.4, 2.5 | mobile | all pass |
+| 3.1, 2.2, 1.4 | tablet | all pass |
 
 ## Design check
 
 No design states tested.
 
-## Bug B1: Used or invalid claim-link page lacks the blocked-page treatment
-
-Manifestations:
-
-- `5.4-visual`, desktop
-- `5.4`, mobile (the page itself works; it shows the same layout)
-
-Screenshots:
-
-![](screenshots/page-2026-11-21T10-23-18-992Z.png)
-![](screenshots/page-2026-11-21T10-26-12-382Z.png)
-
-Expected: per `.claude/skills/brand-guidelines/visual.md`, a page a person cannot use shows a large centred `<c-icon>` (size-12) with the explanation as plain text under it, never a callout. The outlined "Browse courses" button stays (plan 5.4).
-
-Actual: a left-aligned heading "This link is invalid or has already been used" and a "Browse courses" button. There is no icon and no explanatory text. The layout (`claim.html`, else-branch) predates the branch; the branch only restyled the button.
-
 ## Layout probe
 
-| Test id | Viewport | URL | Screenshot | Result |
-|---|---|---|---|---|
-| 1.1 | desktop | `/` | ![](screenshots/page-2026-11-21T10-15-08-293Z.png) | clean |
-| 1.2 | desktop | `/applications/status/<F1>/` | ![](screenshots/page-2026-11-21T10-15-22-446Z.png) | clean |
-| 1.11 | desktop | `/applications/application/<old F1>/page/1/` | ![](screenshots/page-2026-11-21T10-16-59-685Z.png) | clean |
-| 2.1 | desktop | `/` | ![](screenshots/page-2026-11-21T10-17-35-710Z.png) | clean |
-| 2.2 | desktop | `/applications/status/<F5>/` | ![](screenshots/page-2026-11-21T10-17-46-075Z.png) | clean |
-| 2.5 | desktop | `/applications/application/<F5>/check-your-answers/` | ![](screenshots/page-2026-11-21T10-18-25-252Z.png) | clean |
-| 3.3 | desktop | `/applications/status/<F4>/` | ![](screenshots/page-2026-11-21T10-19-58-640Z.png) | clean |
-| 5.1 | desktop | `/applications/status/<anon G>/` | ![](screenshots/page-2026-11-21T10-21-31-870Z.png) | clean |
-| 5.4 | desktop | `/applications/claim/<token>/` | ![](screenshots/page-2026-11-21T10-23-18-992Z.png) | clean |
-| 8.1 | desktop | `/admin/freedom_ls_course_applications/courseapplication/?state__exact=withdrawn` | ![](screenshots/page-2026-11-21T10-24-35-115Z.png) | clean |
-| 1.1 | mobile | `/` | ![](screenshots/page-2026-11-21T10-25-11-133Z.png) | clean |
-| 3.3 | mobile | `/applications/status/<F4 declined>/` | ![](screenshots/page-2026-11-21T10-25-19-816Z.png) | clean |
-| 2.2 | mobile | `/applications/status/<F4 draft>/` | ![](screenshots/page-2026-11-21T10-25-27-341Z.png) | clean |
-| 2.5 | mobile | `/applications/application/<F5>/check-your-answers/` | ![](screenshots/page-2026-11-21T10-25-55-434Z.png) | clean |
-| 2.3 | mobile | `/applications/application/<F4 draft>/page/1/` | ![](screenshots/page-2026-11-21T10-26-03-938Z.png) | clean |
-| 1.1 | tablet | `/` | ![](screenshots/page-2026-11-21T10-26-20-099Z.png) | clean |
-| 2.2 | tablet | `/applications/status/<F4 draft>/` | ![](screenshots/page-2026-11-21T10-26-49-287Z.png) | clean |
+The probe's configured regions were not found on these learner pages, because they sit outside the `#interface-main` shell. Only the overflow check applied. No flags were raised.
 
-The layout probe flags nothing: the B1 miss is a brand rule, not a layout flag.
+| Test | Viewport | URL | Screenshot | Result |
+|---|---|---|---|---|
+| 1.1 | desktop | `/` | [shot](screenshots/page-2026-11-21T13-18-13-083Z.png) | clean |
+| 1.2 | desktop | `/applications/status/<F1>/` | [shot](screenshots/page-2026-11-21T13-18-01-388Z.png) | clean |
+| 1.4 | desktop | `/applications/status/<F1>/` (dialog) | [shot](screenshots/page-2026-11-21T13-18-36-567Z.png) | clean |
+| 1.7 | desktop | `/applications/status/<F1>/` (withdrawn) | [shot](screenshots/page-2026-11-21T13-19-26-973Z.png) | clean |
+| 1.10 | desktop | `/courses/qa-review-f1/detail/` | [shot](screenshots/page-2026-11-21T13-19-49-277Z.png) | clean |
+| 1.11 | desktop | `/applications/application/<old F1>/page/1/` | [shot](screenshots/page-2026-11-21T13-20-11-729Z.png) | clean |
+| 2.1 | desktop | `/` | [shot](screenshots/page-2026-11-21T13-20-44-458Z.png) | clean |
+| 2.2 | desktop | `/applications/status/<F5>/` | [shot](screenshots/page-2026-11-21T13-20-54-924Z.png) | clean |
+| 2.5 | desktop | `/applications/application/<F4>/check-your-answers/` | [shot](screenshots/page-2026-11-21T13-21-34-956Z.png) | clean |
+| 3.2 | desktop | `/applications/status/<F3>/` | [shot](screenshots/page-2026-11-21T13-23-53-225Z.png) | clean |
+| 3.3 | desktop | `/applications/status/<F4>/` | [shot](screenshots/page-2026-11-21T13-24-02-447Z.png) | clean |
+| 5.1 | desktop | `/applications/status/<G anon>/` | [shot](screenshots/page-2026-11-21T13-25-31-809Z.png) | clean |
+| 5.4 | desktop | `/applications/claim/<token>/` | [shot](screenshots/page-2026-11-21T13-26-01-948Z.png) | clean |
+| 8.1 | desktop | `/admin/freedom_ls_course_applications/courseapplication/?state__exact=withdrawn` | [shot](screenshots/page-2026-11-21T13-28-23-892Z.png) | clean |
+| 8.2 | desktop | `/admin/freedom_ls_course_applications/courseapplication/<F4>/change/` | [shot](screenshots/page-2026-11-21T13-28-38-807Z.png) | clean |
+| 3.1 | mobile | `/` | [shot](screenshots/page-2026-11-21T13-29-12-654Z.png) | clean |
+| 2.2 | mobile | `/applications/status/<new F4 draft>/` | [shot](screenshots/page-2026-11-21T13-29-23-671Z.png) | clean |
+| 1.4 | mobile | `/applications/status/<new F4 draft>/` (dialog) | [shot](screenshots/page-2026-11-21T13-29-31-072Z.png) | clean |
+| 3.3 | mobile | `/applications/status/<F4>/` | [shot](screenshots/page-2026-11-21T13-29-41-720Z.png) | clean |
+| 2.4 | mobile | `/applications/status/<F5>/` | [shot](screenshots/page-2026-11-21T13-29-49-590Z.png) | clean |
+| 2.5 | mobile | `/applications/application/<F5>/check-your-answers/` | [shot](screenshots/page-2026-11-21T13-29-58-505Z.png) | clean |
+| 3.1 | tablet | `/` | [shot](screenshots/page-2026-11-21T13-30-19-112Z.png) | clean |
+| 2.2 | tablet | `/applications/status/<new F4 draft>/` | [shot](screenshots/page-2026-11-21T13-30-35-532Z.png) | clean |
+| 1.4 | tablet | `/applications/status/<new F4 draft>/` (dialog) | [shot](screenshots/page-2026-11-21T13-30-41-469Z.png) | clean |
+
+Key screenshots:
+
+![](screenshots/page-2026-11-21T13-18-01-388Z.png)
+![](screenshots/page-2026-11-21T13-24-02-447Z.png)
+![](screenshots/page-2026-11-21T13-29-23-671Z.png)
 
 ## Data changes
 
-| What changed | Made by | Files written |
+| What changed | Call or command | Files written |
 |---|---|---|
-| Reset applicants A and B and courses F1 to F5, G and N to the plan's Data section. The command was extended for the `furthest_page` FK, a 3-page form, and `--reject-pk` and `--message`. | `sdd:qa-data-helper` via `qa_create_application_review_states` | `freedom_ls/qa_helpers/management/commands/qa_create_application_review_states.py` |
-| Rejected anonymous application a667ad46 on course G with message "Not this time." through `reject_application`. | `sdd:qa-data-helper` (`qa_create_application_review_states --reject-pk`) | none |
+| Seeded review-state QA data (applicants A and B, courses F1-F5, G, N reseeded on DemoDev) | `uv run python manage.py qa_create_application_review_states` | none |
+| Created and rejected an anonymous application on G, for tests 2.6 and 5 | Browser apply on `/applications/apply/qa-review-g/` as `qa_anon_draft_g@example.com`, then `qa_create_application_review_states --reject-pk cfb6e67f-96d0-45fd-9888-260658b71aeb --message 'Not this time.'` | none |
+| Claimed the anonymous G application, which created a new dev account `qa_anon_draft_g@example.com` (test 5.3) | Browser claim flow | none |
 
 ## Bug status
 
-| Bug | Title | Status |
-|---|---|---|
-| B1 | Used or invalid claim-link page lacks the blocked-page treatment | **FIXED** (commit: eafd1baea) |
-
-Re-verified on the live server: centred lock icon, the explanation "Each link works once. If you need another, start your application again." and the outlined "Browse courses" button, with no horizontal scroll at 1920px or 375px.
-
-![](screenshots/page-2026-11-21T10-39-13-825Z.png)
-![](screenshots/page-2026-11-21T10-39-14-326Z.png)
+| Bug | Status |
+|---|---|
+| none recorded | n/a |
 
 ## General notes
 
-- Plan 1.8: browser Back re-fetches the withdrawn page rather than showing a stale copy, so the repeat POST was replayed by a form submit. The result matched: "This application can no longer be withdrawn."
-- Plan 5.3: the claim link was computed by the data helper because the sent email payload is scrubbed.
-- Plan 1.4 on mobile: the dialog buttons stack full width with Withdraw (red) above Keep. No rule file sets the mobile stacking order, so this is recorded without a verdict.
-- Plan 2.5 on mobile: the fixed branch badge overlays the button in the full-page capture only. This is dev tooling, not the product.
-- Plan 6.1: the unchanged `apply.html` confirm copy still says "you will be notified of the outcome". The file predates this branch. No action attached.
-- Plan 8.1: the admin keeps a boolean "Submitted" column (true for rows withdrawn after submission). The plan does not cover it. The console showed Django admin's own RelatedObjectLookups "unload" permissions-policy message.
-- Full-page captures `page-2026-11-21T10-15-00-534Z.png` and `page-2026-11-21T10-25-35-345Z.png` are in the screenshots directory but are not referenced by any record, so they are not linked here. The `fb-*` and `fb2-*` files came from an earlier feedback session, not this run; they are not committed with this report.
+Observations (no failures, no action attached):
 
-status: ok · reason: 1 bug — 1 fixed, 0 unresolved; report rendered, screenshots verified
+- The read-only form page for a withdrawn application (test 1.11) has no Back link and no link to the status page.
+- The claim-invalid page (test 5.4) has the tab title "Finish your application".
+- The confirm page for course N, which has no form (test 6.1), still says "you will be notified of the outcome".
+- Application row titles on the dashboard use `font-medium`, while course row titles are bold (test 3.1, tablet). This is pre-existing on main and not in the spec.
+
+Other notes:
+
+- On test 1.7 the withdraw toast was not observed (the script waited 30s). The toast was checked and seen in test 2.4.
+- In the mobile check of 2.5, the dev branch badge overlaps the "Your application" button in the full-page shot only. It is a dev-only overlay.
+- In the mobile check of 3.3, the declined application had been superseded by a newer F4 draft, so that page showed the "newer application" next step. It is still a valid check of wrapping and escaping.
+- An extra screenshot, `page-2026-11-21T13-25-00-000Z.png`, sits in `screenshots/` without a scratch record. Nothing refers to it.
+
+status: ok · reason: report rendered, 0 bugs documented

@@ -1,0 +1,71 @@
+- generic [ref=f10e1]:
+  - banner [ref=f10e2]:
+    - link [ref=f10e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f10e4]
+      - heading "FirstClass" [level=1] [ref=f10e5]
+    - navigation [ref=f10e6]:
+      - generic [ref=f10e7]:
+        - generic [ref=f10e8]:
+          - button "Notifications, none new" [ref=f10e9]
+          - status:
+            - generic [ref=f10e13]: Notifications, none new
+        - button "Open user menu for Ada ReviewA" [ref=f10e15] [cursor=pointer]:
+          - generic [ref=f10e16]:
+            - generic [ref=f10e17]: Open user menu for Ada ReviewA
+            - generic [aria-hidden] [ref=f10e18]: AR
+  - generic:
+    - status
+    - alert
+  - main [ref=f10e19]:
+    - generic [ref=f10e20]:
+      - link "Back" [ref=f10e21] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f10e25]:
+        - heading "Your application" [level=1] [ref=f10e26]
+        - paragraph [ref=f10e27]:
+          - text: Your application for
+          - strong [ref=f10e28]: QA Review F1 Submitted A
+          - text: is waiting for review. The decision will show here.
+        - region [ref=f10e29]:
+          - heading "Details" [level=2] [ref=f10e31]
+          - generic [ref=f10e32]:
+            - generic [ref=f10e33]:
+              - term [ref=f10e34]: Course
+              - definition [ref=f10e35]:
+                - link "QA Review F1 Submitted A" [ref=f10e36] [cursor=pointer]:
+                  - /url: /courses/qa-review-f1/detail/
+            - generic [ref=f10e37]:
+              - term [ref=f10e38]: Status
+              - definition [ref=f10e39]:
+                - generic [ref=f10e40]: Waiting for review
+            - generic [ref=f10e41]:
+              - term [ref=f10e42]: Started
+              - definition [ref=f10e43]:
+                - time [ref=f10e44]: 21 Nov 2026
+            - generic [ref=f10e45]:
+              - term [ref=f10e46]: Submitted
+              - definition [ref=f10e47]:
+                - time [ref=f10e48]: 21 Nov 2026
+            - generic [ref=f10e49]:
+              - term [ref=f10e50]: Next step
+              - definition [ref=f10e51]: Nothing. We will review your application.
+        - generic [ref=f10e53]:
+          - button "Withdraw application" [ref=f10e55] [cursor=pointer]
+          - dialog [ref=f10e56]:
+            - generic [ref=f10e59]:
+              - heading "Withdraw your application?" [level=2] [ref=f10e61]
+              - paragraph [ref=f10e63]: Your application for QA Review F1 Submitted A is waiting for review. If you withdraw it, nobody will review it. You can apply again later.
+              - generic [ref=f10e64]:
+                - button "Keep application" [active] [ref=f10e65] [cursor=pointer]
+                - button "Withdraw application" [ref=f10e66] [cursor=pointer]
+  - contentinfo [ref=f10e67]:
+    - generic [ref=f10e68]:
+      - paragraph [ref=f10e69]: © 2026 FirstClass
+      - navigation "Legal" [ref=f10e70]:
+        - link "Terms and Conditions" [ref=f10e71] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f10e72] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f10e73] [cursor=pointer]: multi-step-course-applications-1-review-states
+  - generic "Show toolbar" [ref=f10e75]: DJDT

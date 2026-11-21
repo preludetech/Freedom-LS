@@ -1,0 +1,73 @@
+- generic [ref=f90e1]:
+  - banner [ref=f90e2]:
+    - link [ref=f90e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f90e4]
+      - heading "FirstClass" [level=1] [ref=f90e5]
+    - navigation [ref=f90e6]:
+      - generic [ref=f90e7]:
+        - generic [ref=f90e8]:
+          - button "Notifications, none new" [ref=f90e9]
+          - status:
+            - generic [ref=f90e13]: Notifications, none new
+        - button "Open user menu for Ben ReviewB" [ref=f90e15] [cursor=pointer]:
+          - generic [ref=f90e16]:
+            - generic [ref=f90e17]: Open user menu for Ben ReviewB
+            - generic [aria-hidden] [ref=f90e18]: BR
+  - generic:
+    - status
+    - alert
+  - main [ref=f90e19]:
+    - generic [ref=f90e20]:
+      - link "Back" [ref=f90e21] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f90e25]:
+        - heading "Your application" [level=1] [ref=f90e26]
+        - paragraph [ref=f90e27]:
+          - text: You started your application for
+          - strong [ref=f90e28]: QA Review F4 Rejected B
+          - text: but have not submitted it.
+        - region [ref=f90e29]:
+          - heading "Details" [level=2] [ref=f90e31]
+          - generic [ref=f90e32]:
+            - generic [ref=f90e33]:
+              - term [ref=f90e34]: Course
+              - definition [ref=f90e35]:
+                - link "QA Review F4 Rejected B" [ref=f90e36] [cursor=pointer]:
+                  - /url: /courses/qa-review-f4/detail/
+            - generic [ref=f90e37]:
+              - term [ref=f90e38]: Status
+              - definition [ref=f90e39]:
+                - generic [ref=f90e40]: Not submitted
+            - generic [ref=f90e41]:
+              - term [ref=f90e42]: Started
+              - definition [ref=f90e43]:
+                - time [ref=f90e44]: 21 Nov 2026
+            - generic [ref=f90e45]:
+              - term [ref=f90e46]: Progress
+              - definition [ref=f90e47]: 0 of 3 questions answered
+            - generic [ref=f90e48]:
+              - term [ref=f90e49]: Next step
+              - definition [ref=f90e50]: Finish and submit your application.
+        - generic [ref=f90e51]:
+          - link "Continue application" [ref=f90e52] [cursor=pointer]:
+            - /url: /applications/application/ae827d16-5375-49a5-8b82-eca507b68f38/page/1/
+          - generic [ref=f90e53]:
+            - button "Withdraw application" [ref=f90e55] [cursor=pointer]
+            - dialog [ref=f90e56]:
+              - generic [ref=f90e59]:
+                - heading "Withdraw your application?" [level=2] [ref=f90e61]
+                - paragraph [ref=f90e63]: Your application for QA Review F4 Rejected B is a draft. If you withdraw it, nobody will review it. You can apply again later.
+                - generic [ref=f90e64]:
+                  - button "Keep application" [active] [ref=f90e65] [cursor=pointer]
+                  - button "Withdraw application" [ref=f90e66] [cursor=pointer]
+  - contentinfo [ref=f90e67]:
+    - generic [ref=f90e68]:
+      - paragraph [ref=f90e69]: © 2026 FirstClass
+      - navigation "Legal" [ref=f90e70]:
+        - link "Terms and Conditions" [ref=f90e71] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f90e72] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f90e73] [cursor=pointer]: multi-step-course-applications-1-review-states
+  - generic "Show toolbar" [ref=f90e75]: DJDT
