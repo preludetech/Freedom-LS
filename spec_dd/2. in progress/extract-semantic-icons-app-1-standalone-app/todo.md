@@ -10,8 +10,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 2. Plan
 
-- [ ] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
+- [x] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
 - [ ] (user) Review both plans and edit where needed
+- [ ] (user) Force-push the branch, which was rebased onto main before planning and declined by the permission check: `git push origin HEAD --force-with-lease --force-if-includes`
 
 ## 3. Implementation and QA
 
@@ -23,6 +24,10 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 4. Documentation and pull request
 
 - [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [ ] (cmd) Update `claude_plugins/fls-dev/skills/icon-usage/` (SKILL.md, `resources/configuring-icons.md`, `resources/custom-icon-backend.md`): the `SEMANTIC_ICONS_*` names, `SEMANTIC_ICONS_ICONIFY_DIR`, the bundled-data lookup and overlay, and the standalone command (spec: Documentation and downstream)
+- [ ] (cmd) Update `claude_plugins/fls-dev/skills/testing/SKILL.md`: the icons standalone command `uv run pytest -c freedom_ls/icons/tests/standalone_pytest.ini freedom_ls/icons/tests` beside the panel framework's, and `SEMANTIC_ICONS_ICONIFY_DIR` (spec: Documentation and downstream)
+- [ ] (cmd) Update `claude_plugins/fls-dev/resources/testing.md`: rename `FREEDOM_LS_ICON_SET` to `SEMANTIC_ICONS_SET` in the pinned-config rule, add the icons standalone command, and add the generator's `[[tool.test_tiers.tooling]]` entries (spec: Documentation and downstream)
+- [ ] (cmd) Update `claude_plugins/fls-dev/skills/app-settings/SKILL.md`: the standalone-app copy rule, the `SAME_SOURCE` invariant, and that `required_settings_errors` is not copied (spec: Documentation and downstream)
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
