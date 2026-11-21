@@ -32,8 +32,9 @@ Three things to keep in mind when reading the numbers.
 
 ## What narrow does to the buckets
 
-Of the 71 batches that were `full` or wide off, 40 left those buckets. Nine batches are narrower
-than a `full` run yet still wide: 10 stay at 28-plus directories. Conftest changes went
+Of the 71 batches that were `full` or wide off, 40 left those buckets. Ten batches still select 28-plus
+directories on. Thirteen batches stay `full` on an unmapped path and four on a dependency file,
+where narrow has nothing to say. Conftest changes went
 from 13 `full` batches to 3, the `urls.py`, `apps.py` and `factories.py` escalations to none.
 
 The estimated serial test time falls from a median of 54.2 minutes per batch to 14.4. Across all
