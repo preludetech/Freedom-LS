@@ -5,8 +5,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 1. Spec
 
-- [ ] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
+- [x] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
 - [ ] (user) Review the spec and edit where needed; after substantial hand edits, run `/sdd:spec_review`
+- [ ] (human) Decide whether to fix the existing underscore-named autouse fixtures in `freedom_ls/conftest.py` (`_disable_force_site_name`, `_isolate_media_root`, `_disable_preview_overrides`, `_clear_*`): `from freedom_ls.conftest import *` skips underscore names, so concrete projects never get them. Found by the spec review; outside this spec's scope.
 
 ## 2. Plan
 
