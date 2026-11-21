@@ -15,6 +15,7 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course as CourseModel
+from freedom_ls.educator_interface.panels.course.panels import CourseDetailsPanel
 from freedom_ls.educator_interface.tests.helpers import (
     _get_document,
     _interface_url,
@@ -22,10 +23,8 @@ from freedom_ls.educator_interface.tests.helpers import (
 from freedom_ls.organisations.factories import OrganisationFactory
 
 
-def test_course_details_panel_does_not_edit_visibility():
+def test_course_details_panel_does_not_edit_visibility() -> None:
     """The educator course details panel never exposes visibility for editing."""
-    from freedom_ls.educator_interface.panels.course.panels import CourseDetailsPanel
-
     assert "visibility" not in CourseDetailsPanel.fields
 
 
@@ -41,7 +40,7 @@ def _course_details_text(client: Client, course: CourseModel) -> str:
 @pytest.mark.django_db
 def test_course_details_show_each_set_field_with_the_learner_label(
     staff_client: Client,
-):
+) -> None:
     course = CourseFactory(
         title="Algebra",
         subtitle="Start here",
@@ -74,7 +73,7 @@ def test_course_details_show_each_set_field_with_the_learner_label(
 @pytest.mark.django_db
 def test_course_details_list_each_learning_outcome_on_its_own(
     staff_client: Client,
-):
+) -> None:
     """An outcome can hold a comma, so joining them with commas would lose
     where one ends and the next begins."""
     organisation = OrganisationFactory()
@@ -92,7 +91,7 @@ def test_course_details_list_each_learning_outcome_on_its_own(
 
 
 @pytest.mark.django_db
-def test_course_details_label_the_category_row_category(staff_client: Client):
+def test_course_details_label_the_category_row_category(staff_client: Client) -> None:
     """The category row read "Dashboard category" (the model field's verbose
     name) instead of the learner page's word, "Category"."""
     course = CourseFactory(dashboard_category=CourseCategoryFactory(title="Maths"))
@@ -104,7 +103,7 @@ def test_course_details_label_the_category_row_category(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_course_details_leave_out_rows_without_a_value(staff_client: Client):
+def test_course_details_leave_out_rows_without_a_value(staff_client: Client) -> None:
     course = CourseFactory(
         subtitle="",
         estimated_duration=None,
@@ -122,7 +121,7 @@ def test_course_details_leave_out_rows_without_a_value(staff_client: Client):
 @pytest.mark.django_db
 def test_course_details_lesson_count_reads_the_number_of_topics(
     staff_client: Client,
-):
+) -> None:
     course = CourseFactory()
     for order in range(3):
         ContentCollectionItemFactory(

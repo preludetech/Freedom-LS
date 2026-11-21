@@ -307,7 +307,7 @@ panel with framework actions that call the other app's forms and flows.
   child rows cannot have bulk actions: the framework raises `ImproperlyConfigured` for both.
   The `childRows` Alpine component in `alpine-components.js` runs the chevrons. A note row (an
   empty group's "no items") is `get_row_template_name`, not a column. `CourseOutlineTable` in
-  `educator_interface/views.py` is the worked example, with `compact = True`.
+  `educator_interface/panels/course/content_preview.py` is the worked example, with `compact = True`.
 - A sequence-backed table's panel overrides `get_row_sequence(request)` to return a list of row
   objects for rows that are computed, not stored; `get_queryset` stays a `QuerySet` for every
   other table. It pages and shows its empty state, nothing more: no `search_fields`, no filters,

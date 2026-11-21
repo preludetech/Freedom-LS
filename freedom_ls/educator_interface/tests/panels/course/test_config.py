@@ -33,7 +33,7 @@ def test_the_courses_list_holds_a_course_only_when_it_reaches_the_organisation(
     logged_in_client: Callable[[User], Client],
     row: str,
     reached: bool,
-):
+) -> None:
     organisation = OrganisationFactory()
     courses = course_per_reach_row(organisation)
     client = logged_in_client(organisation_admin_viewer(organisation))
@@ -51,7 +51,7 @@ def test_the_course_detail_url_answers_only_for_a_course_that_reaches_the_organi
     logged_in_client: Callable[[User], Client],
     row: str,
     reached: bool,
-):
+) -> None:
     organisation = OrganisationFactory()
     courses = course_per_reach_row(organisation)
     client = logged_in_client(organisation_admin_viewer(organisation))

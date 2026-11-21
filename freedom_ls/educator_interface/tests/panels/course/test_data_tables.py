@@ -261,7 +261,7 @@ def test_course_page_cohort_table_shows_cohort_status_and_registration_status(
 @pytest.mark.django_db
 def test_the_courses_list_renders_its_empty_state_when_no_course_is_available(
     mock_site_context: Site, logged_in_client: Callable[[User], Client]
-):
+) -> None:
     organisation = OrganisationFactory()
     CourseFactory(audience=CourseAudience.PUBLIC).organisations.add(
         OrganisationFactory()
@@ -276,7 +276,7 @@ def test_the_courses_list_renders_its_empty_state_when_no_course_is_available(
 @pytest.mark.django_db
 def test_courses_list_names_the_owner_under_a_shared_course_only(
     mock_site_context: Site, logged_in_client: Callable[[User], Client]
-):
+) -> None:
     """Two courses with one title looked identical in the Title column."""
     organisation = OrganisationFactory(name="Harbour College")
     own = CourseFactory(title="Own Safety", audience=CourseAudience.PUBLIC)

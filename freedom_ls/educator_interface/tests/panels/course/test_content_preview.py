@@ -51,7 +51,7 @@ from freedom_ls.tests.site_context import site_context
 
 
 @pytest.mark.django_db
-def test_course_page_buttons_are_only_preview_triggers(staff_client: Client):
+def test_course_page_buttons_are_only_preview_triggers(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     course = CourseFactory()
     ContentCollectionItemFactory(
@@ -96,7 +96,7 @@ def _outline_numbers(panel: lxml.html.HtmlElement) -> list[str]:
 
 
 @pytest.mark.django_db
-def test_course_content_numbers_rows_in_collection_order(staff_client: Client):
+def test_course_content_numbers_rows_in_collection_order(staff_client: Client) -> None:
     course = CourseFactory()
     ContentCollectionItemFactory(
         collection_object=course, child_object=TopicFactory(), order=0
@@ -133,7 +133,7 @@ def test_course_content_numbers_rows_in_collection_order(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_course_content_part_rows_are_expandable_buttons(staff_client: Client):
+def test_course_content_part_rows_are_expandable_buttons(staff_client: Client) -> None:
     course = CourseFactory()
     part = CoursePartFactory()
     ContentCollectionItemFactory(collection_object=course, child_object=part, order=0)
@@ -162,7 +162,7 @@ def test_course_content_part_rows_are_expandable_buttons(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_a_multi_page_form_expands_into_one_row_per_page(staff_client: Client):
+def test_a_multi_page_form_expands_into_one_row_per_page(staff_client: Client) -> None:
     course = CourseFactory()
     survey = FormFactory(title="Survey")
     first = FormPageFactory(form=survey, title="About you", order=0)
@@ -202,7 +202,7 @@ def test_a_multi_page_form_expands_into_one_row_per_page(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_course_content_shows_every_row_on_one_page(staff_client: Client):
+def test_course_content_shows_every_row_on_one_page(staff_client: Client) -> None:
     course = CourseFactory()
     topics = [TopicFactory(title=f"Topic {number:03d}") for number in range(60)]
     for order, topic in enumerate(topics):
@@ -221,7 +221,7 @@ def test_course_content_shows_every_row_on_one_page(staff_client: Client):
 @pytest.mark.django_db
 def test_course_content_counts_nested_rows_but_not_the_details_or_notes(
     staff_client: Client,
-):
+) -> None:
     course = CourseFactory()
     part = CoursePartFactory(title="Warm up")
     ContentCollectionItemFactory(collection_object=course, child_object=part, order=0)
@@ -241,7 +241,7 @@ def test_course_content_counts_nested_rows_but_not_the_details_or_notes(
 @pytest.mark.django_db
 def test_course_content_cards_mirror_the_rows_without_repeating_ids(
     staff_client: Client,
-):
+) -> None:
     course = CourseFactory()
     part = CoursePartFactory(title="Warm up")
     ContentCollectionItemFactory(collection_object=course, child_object=part, order=0)
@@ -261,7 +261,7 @@ def test_course_content_cards_mirror_the_rows_without_repeating_ids(
 
 
 @pytest.mark.django_db
-def test_course_content_empty_course_shows_empty_state(staff_client: Client):
+def test_course_content_empty_course_shows_empty_state(staff_client: Client) -> None:
     panel = _course_content_panel(staff_client, CourseFactory())
 
     assert "No content in this course yet." in panel.text_content()
@@ -271,7 +271,7 @@ def test_course_content_empty_course_shows_empty_state(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_course_content_empty_part_shows_empty_message(staff_client: Client):
+def test_course_content_empty_part_shows_empty_message(staff_client: Client) -> None:
     course = CourseFactory()
     ContentCollectionItemFactory(
         collection_object=course, child_object=CoursePartFactory(), order=0
@@ -286,7 +286,7 @@ def test_course_content_empty_part_shows_empty_message(staff_client: Client):
 @pytest.mark.parametrize("in_development", [True, False])
 def test_course_content_callout_shows_only_while_in_development(
     staff_client: Client, in_development: bool
-):
+) -> None:
     course = CourseFactory(table_of_contents_in_development=in_development)
 
     panel = _course_content_panel(staff_client, course)
@@ -323,7 +323,7 @@ def test_course_content_callout_has_space_below_it_before_the_table(
 @pytest.mark.django_db
 def test_course_content_query_count_stays_bounded_as_children_grow(
     staff_client: Client, django_assert_max_num_queries
-):
+) -> None:
     course = CourseFactory()
     part = CoursePartFactory()
     ContentCollectionItemFactory(collection_object=course, child_object=part, order=0)
@@ -363,7 +363,7 @@ def _course_with_topic(topic: Model | None = None) -> tuple[CourseModel, Model]:
 @pytest.mark.django_db
 def test_a_topic_row_carries_a_preview_trigger_for_its_collection_item(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     course, item = _course_with_topic(TopicFactory(title="Intro"))
 
@@ -383,7 +383,7 @@ def test_a_topic_row_carries_a_preview_trigger_for_its_collection_item(
 @pytest.mark.django_db
 def test_opening_a_topic_preview_renders_it_read_only_in_the_wide_dialog(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     course, item = _course_with_topic(
         TopicFactory(title="Intro", content="Hello **learners**")
@@ -408,7 +408,7 @@ def test_opening_a_topic_preview_renders_it_read_only_in_the_wide_dialog(
 @pytest.mark.django_db
 def test_the_course_page_loads_katex_before_the_content_components(
     staff_client: Client,
-):
+) -> None:
     """A previewed equation typesets only when KaTeX is on the page by the
     time the equation component starts."""
     organisation = OrganisationFactory()
@@ -424,7 +424,7 @@ def test_the_course_page_loads_katex_before_the_content_components(
 
 
 @pytest.mark.django_db
-def test_a_topic_holding_a_content_link_previews(staff_client: Client):
+def test_a_topic_holding_a_content_link_previews(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     TopicFactory(file_path="1. welcome/content.md")
     topic = TopicFactory(
@@ -444,7 +444,7 @@ def test_a_topic_holding_a_content_link_previews(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_opening_a_topic_preview_writes_nothing(staff_client: Client):
+def test_opening_a_topic_preview_writes_nothing(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     FileFactory(file_path="pic.png", mime_type="image/png")
     FileFactory(file_path="notes.txt")
@@ -476,7 +476,7 @@ def test_opening_a_topic_preview_writes_nothing(staff_client: Client):
 @pytest.mark.django_db
 def test_a_topic_preview_renders_a_speak_button_and_the_course_page_loads_its_script(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     FileFactory(
         file_path="bravo.mp3", file_type=File.FileType.AUDIO, mime_type="audio/mpeg"
@@ -496,7 +496,7 @@ def test_a_topic_preview_renders_a_speak_button_and_the_course_page_loads_its_sc
 
 
 @pytest.mark.django_db
-def test_a_preview_of_another_courses_item_is_a_404(staff_client: Client):
+def test_a_preview_of_another_courses_item_is_a_404(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     course, _item = _course_with_topic()
     _other_course, other_item = _course_with_topic()
@@ -508,7 +508,7 @@ def test_a_preview_of_another_courses_item_is_a_404(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_a_preview_of_an_item_on_another_site_is_a_404(staff_client: Client):
+def test_a_preview_of_an_item_on_another_site_is_a_404(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     course, _item = _course_with_topic()
     with site_context(SiteFactory()):
@@ -521,7 +521,7 @@ def test_a_preview_of_an_item_on_another_site_is_a_404(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_a_preview_of_a_part_row_is_a_404(staff_client: Client):
+def test_a_preview_of_a_part_row_is_a_404(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     course, _item = _course_with_topic()
     part_item = ContentCollectionItemFactory(
@@ -540,7 +540,7 @@ def test_a_preview_of_a_part_row_is_a_404(staff_client: Client):
 )
 def test_a_preview_with_a_missing_or_malformed_item_is_a_404(
     staff_client: Client, item: str
-):
+) -> None:
     organisation = OrganisationFactory()
     course, _item = _course_with_topic()
     url = _preview_url(staff_client, organisation, course)
@@ -551,7 +551,9 @@ def test_a_preview_with_a_missing_or_malformed_item_is_a_404(
 
 
 @pytest.mark.django_db
-def test_a_preview_without_the_htmx_header_or_by_post_is_a_404(staff_client: Client):
+def test_a_preview_without_the_htmx_header_or_by_post_is_a_404(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     course, item = _course_with_topic()
     url = _preview_url(staff_client, organisation, course)
@@ -566,7 +568,7 @@ def test_a_preview_without_the_htmx_header_or_by_post_is_a_404(staff_client: Cli
 @pytest.mark.parametrize("kind", ["topic", "form"])
 def test_the_preview_url_built_for_the_denial_tests_is_the_published_one(
     staff_client: Client, kind: str
-):
+) -> None:
     organisation = OrganisationFactory()
     course, item = _course_with_topic() if kind == "topic" else _course_with_form()
 
@@ -580,7 +582,7 @@ def test_the_preview_url_built_for_the_denial_tests_is_the_published_one(
 @pytest.mark.django_db
 def test_a_topic_inside_a_part_nested_in_a_part_can_be_previewed(
     staff_client: Client,
-):
+) -> None:
     """The outline shows a Preview button at every depth, but the preview used
     to find items only one part deep, so a nested part's topic returned 404."""
     organisation = OrganisationFactory()
@@ -604,7 +606,7 @@ def test_a_topic_inside_a_part_nested_in_a_part_can_be_previewed(
 @pytest.mark.django_db
 def test_a_course_belonging_only_to_another_organisation_cannot_be_previewed(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     course, item = _course_with_topic()
     course.organisations.add(OrganisationFactory())
@@ -619,7 +621,7 @@ def test_a_course_belonging_only_to_another_organisation_cannot_be_previewed(
 @pytest.mark.django_db
 def test_a_user_with_no_role_in_the_organisation_cannot_preview(
     mock_site_context: Site, logged_in_client
-):
+) -> None:
     organisation = OrganisationFactory()
     course, item = _course_with_topic()
     action_url = _content_action_url(organisation, course, "preview_content")
@@ -658,7 +660,7 @@ def _course_with_form(form: Model | None = None) -> tuple[CourseModel, Model]:
 @pytest.mark.django_db
 def test_opening_a_form_preview_renders_every_question_type_disabled(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     form = FormFactory(title="Intake", content="Tell us **more**")
     page = FormPageFactory(form=form, title="About you")
@@ -693,7 +695,7 @@ def test_opening_a_form_preview_renders_every_question_type_disabled(
 @pytest.mark.django_db
 def test_a_form_preview_lists_options_and_the_dropdown_answer_key_as_authored(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     form = FormFactory(title="Intake")
     page = FormPageFactory(form=form, order=0)
@@ -736,7 +738,7 @@ def _three_page_form(title: str = "Survey") -> tuple[Model, Model]:
 @pytest.mark.django_db
 def test_a_page_previews_alone_headed_by_its_place_and_its_condition(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     form, second = _three_page_form()
     course, item = _course_with_form(form)
@@ -769,7 +771,7 @@ def test_a_page_previews_alone_headed_by_its_place_and_its_condition(
 @pytest.mark.django_db
 def test_a_page_condition_names_its_question_as_rendered_text(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     form = FormFactory(title="Survey")
     first = FormPageFactory(form=form, title="First page", order=0)
@@ -797,7 +799,7 @@ def test_a_page_condition_names_its_question_as_rendered_text(
 
 
 @pytest.mark.django_db
-def test_a_multi_page_form_previews_its_start_page(staff_client: Client):
+def test_a_multi_page_form_previews_its_start_page(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     form, _second = _three_page_form()
     course, item = _course_with_form(form)
@@ -816,7 +818,7 @@ def test_a_multi_page_form_previews_its_start_page(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_a_page_of_another_form_is_not_found(staff_client: Client):
+def test_a_page_of_another_form_is_not_found(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     form, _second = _three_page_form()
     _other, other_page = _three_page_form(title="Other survey")
@@ -831,7 +833,7 @@ def test_a_page_of_another_form_is_not_found(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_a_page_on_a_topic_is_not_found(staff_client: Client):
+def test_a_page_on_a_topic_is_not_found(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     _form, page = _three_page_form()
     course, item = _course_with_topic()
@@ -845,7 +847,7 @@ def test_a_page_on_a_topic_is_not_found(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_opening_a_form_preview_writes_nothing(staff_client: Client):
+def test_opening_a_form_preview_writes_nothing(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     form = FormFactory()
     page = FormPageFactory(form=form)
@@ -870,7 +872,7 @@ def test_opening_a_form_preview_writes_nothing(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_a_preview_of_another_courses_form_is_a_404(staff_client: Client):
+def test_a_preview_of_another_courses_form_is_a_404(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     course, _item = _course_with_form()
     _other_course, other_item = _course_with_form()
@@ -882,7 +884,7 @@ def test_a_preview_of_another_courses_form_is_a_404(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_a_preview_of_a_form_on_another_site_is_a_404(staff_client: Client):
+def test_a_preview_of_a_form_on_another_site_is_a_404(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     course, _item = _course_with_form()
     with site_context(SiteFactory()):
@@ -897,7 +899,7 @@ def test_a_preview_of_a_form_on_another_site_is_a_404(staff_client: Client):
 @pytest.mark.django_db
 def test_a_form_of_a_course_belonging_only_to_another_organisation_cannot_be_previewed(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     course, item = _course_with_form()
     course.organisations.add(OrganisationFactory())
@@ -911,7 +913,7 @@ def test_a_form_of_a_course_belonging_only_to_another_organisation_cannot_be_pre
 @pytest.mark.django_db
 def test_a_form_preview_without_the_htmx_header_or_by_post_is_a_404(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     course, item = _course_with_form()
     url = _preview_url(staff_client, organisation, course)
@@ -925,7 +927,7 @@ def test_a_form_preview_without_the_htmx_header_or_by_post_is_a_404(
 @pytest.mark.django_db
 def test_a_user_with_no_role_cannot_preview_a_form(
     mock_site_context: Site, logged_in_client
-):
+) -> None:
     organisation = OrganisationFactory()
     course, item = _course_with_form()
     action_url = _content_action_url(organisation, course, "preview_content")
@@ -946,7 +948,7 @@ def _marks(document: lxml.html.HtmlElement) -> list[lxml.html.HtmlElement]:
 
 
 @pytest.mark.django_db
-def test_a_quiz_preview_marks_exactly_the_correct_options(staff_client: Client):
+def test_a_quiz_preview_marks_exactly_the_correct_options(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     form = FormFactory()
     page = FormPageFactory(form=form)
@@ -988,7 +990,7 @@ def _course_details_preview_url(organisation: Organisation, course: CourseModel)
 @pytest.mark.django_db
 def test_the_course_content_table_opens_with_the_course_details_row(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     course, _item = _course_with_topic()
 
@@ -1009,7 +1011,7 @@ def test_the_course_content_table_opens_with_the_course_details_row(
 @pytest.mark.django_db
 def test_opening_the_course_details_preview_renders_the_learner_facing_page(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     course, _item = _course_with_topic()
     course.title = "Intro to Rust"
@@ -1044,7 +1046,9 @@ def test_opening_the_course_details_preview_renders_the_learner_facing_page(
 
 
 @pytest.mark.django_db
-def test_opening_the_course_details_preview_writes_nothing(staff_client: Client):
+def test_opening_the_course_details_preview_writes_nothing(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     course, _item = _course_with_topic()
     counted = [
@@ -1068,7 +1072,7 @@ def test_opening_the_course_details_preview_writes_nothing(staff_client: Client)
 @pytest.mark.django_db
 def test_the_course_details_preview_without_the_htmx_header_or_by_post_is_a_404(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     course, _item = _course_with_topic()
     url = _course_details_preview_url(organisation, course)
@@ -1082,7 +1086,7 @@ def test_the_course_details_preview_without_the_htmx_header_or_by_post_is_a_404(
 @pytest.mark.django_db
 def test_a_course_belonging_only_to_another_organisation_has_no_details_preview(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     course, _item = _course_with_topic()
     course.organisations.add(OrganisationFactory())
@@ -1097,7 +1101,7 @@ def test_a_course_belonging_only_to_another_organisation_has_no_details_preview(
 @pytest.mark.django_db
 def test_a_user_with_no_role_cannot_open_the_course_details_preview(
     mock_site_context: Site, logged_in_client
-):
+) -> None:
     organisation = OrganisationFactory()
     course, _item = _course_with_topic()
 
@@ -1130,7 +1134,7 @@ def test_the_content_panel_shows_its_outline_only_for_an_available_course(
     logged_in_client: Callable[[User], Client],
     row: str,
     available: bool,
-):
+) -> None:
     organisation = OrganisationFactory()
     course = course_per_reach_row(organisation)[row]
     _topic_item_of(course)
@@ -1155,7 +1159,7 @@ def test_the_preview_actions_answer_only_for_an_available_course(
     logged_in_client: Callable[[User], Client],
     row: str,
     available: bool,
-):
+) -> None:
     organisation = OrganisationFactory()
     course = course_per_reach_row(organisation)[row]
     item_pk = _topic_item_of(course)
@@ -1173,7 +1177,7 @@ def test_the_preview_actions_answer_only_for_an_available_course(
 @pytest.mark.django_db
 def test_a_form_page_of_a_course_held_only_through_a_registration_cannot_be_previewed(
     mock_site_context: Site, logged_in_client: Callable[[User], Client]
-):
+) -> None:
     organisation = OrganisationFactory()
     course = course_per_reach_row(organisation)["held"]
     form = FormFactory()
