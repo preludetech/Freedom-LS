@@ -14,7 +14,13 @@ from freedom_ls.base.git_utils import (
     head_commit_of,
     uncommitted_paths,
 )
-from freedom_ls.tests.git_repos import commit_all, init_repo
+from freedom_ls.tests.git_repos import (
+    add_linked_worktree,
+    commit_all,
+    detach_head,
+    init_repo,
+    pack_all_refs,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -295,3 +301,135 @@ def test_head_commit_of_a_repo_with_no_commits_raises(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="no commits"):
         head_commit_of(tmp_path / "empty")
+
+
+@pytest.fixture
+def repo_with_subdirectory(committed_content_repo: Path) -> Path:
+    """The committed repo plus a committed `courses/` subdirectory."""
+    (committed_content_repo / "courses").mkdir()
+    (committed_content_repo / "courses" / "intro.md").write_text("intro\n")
+    commit_all(committed_content_repo)
+    return committed_content_repo
+
+
+def test_find_repo_root_from_a_subdirectory_returns_the_repo_root(
+    repo_with_subdirectory: Path,
+) -> None:
+    assert (
+        find_repo_root(repo_with_subdirectory / "courses")
+        == repo_with_subdirectory.resolve()
+    )
+
+
+def test_find_repo_root_from_a_file_returns_the_repo_root(
+    repo_with_subdirectory: Path,
+) -> None:
+    assert (
+        find_repo_root(repo_with_subdirectory / "courses" / "intro.md")
+        == repo_with_subdirectory.resolve()
+    )
+
+
+def test_uncommitted_paths_reports_only_what_is_under_the_subdirectory(
+    repo_with_subdirectory: Path,
+) -> None:
+    (repo_with_subdirectory / "topic.md").write_text("changed\n")
+    (repo_with_subdirectory / "courses" / "new.md").write_text("new\n")
+
+    assert uncommitted_paths(repo_with_subdirectory / "courses") == [
+        UncommittedPath("courses/new.md", "untracked")
+    ]
+
+
+def test_uncommitted_paths_for_a_single_file_reports_that_file_only(
+    repo_with_subdirectory: Path,
+) -> None:
+    (repo_with_subdirectory / "topic.md").write_text("changed\n")
+    (repo_with_subdirectory / "courses" / "intro.md").write_text("changed\n")
+
+    assert uncommitted_paths(repo_with_subdirectory / "topic.md") == [
+        UncommittedPath("topic.md", "modified")
+    ]
+
+
+def test_uncommitted_paths_for_a_staged_then_modified_file_is_one_entry(
+    committed_content_repo: Path,
+) -> None:
+    _stage(committed_content_repo)
+    (committed_content_repo / "topic.md").write_text("changed again\n")
+
+    assert uncommitted_paths(committed_content_repo) == [
+        UncommittedPath("topic.md", "staged, modified")
+    ]
+
+
+def test_uncommitted_paths_for_a_staged_then_deleted_file_is_one_entry(
+    committed_content_repo: Path,
+) -> None:
+    _stage(committed_content_repo)
+    _delete(committed_content_repo)
+
+    assert uncommitted_paths(committed_content_repo) == [
+        UncommittedPath("topic.md", "staged, deleted")
+    ]
+
+
+def test_uncommitted_paths_ignores_a_gitignored_file(
+    committed_content_repo: Path,
+) -> None:
+    (committed_content_repo / ".gitignore").write_text("ignored.md\n")
+    commit_all(committed_content_repo)
+    (committed_content_repo / "ignored.md").write_text("ignored\n")
+
+    assert uncommitted_paths(committed_content_repo) == []
+
+
+@pytest.fixture
+def linked_worktree(committed_content_repo: Path, tmp_path: Path) -> Path:
+    worktree_dir = tmp_path / "linked_worktree"
+    add_linked_worktree(committed_content_repo, worktree_dir)
+    return worktree_dir
+
+
+def test_find_repo_root_in_a_linked_worktree_returns_the_worktree(
+    linked_worktree: Path,
+) -> None:
+    assert find_repo_root(linked_worktree) == linked_worktree.resolve()
+
+
+def test_uncommitted_paths_in_a_linked_worktree_are_the_worktrees_own(
+    committed_content_repo: Path, linked_worktree: Path
+) -> None:
+    (linked_worktree / "topic.md").write_text("changed in the worktree\n")
+
+    assert uncommitted_paths(linked_worktree) == [
+        UncommittedPath("topic.md", "modified")
+    ]
+    assert uncommitted_paths(committed_content_repo) == []
+
+
+def test_head_commit_of_a_linked_worktree_follows_the_worktrees_own_head(
+    committed_content_repo: Path, linked_worktree: Path
+) -> None:
+    (linked_worktree / "second.md").write_text("second\n")
+    sha = commit_all(linked_worktree)
+
+    assert head_commit_of(linked_worktree) == sha
+    assert head_commit_of(committed_content_repo) != sha
+
+
+def test_head_commit_of_a_detached_head_returns_the_commit(
+    committed_content_repo: Path,
+) -> None:
+    sha = detach_head(committed_content_repo)
+
+    assert head_commit_of(committed_content_repo) == sha
+
+
+def test_head_commit_of_packed_refs_returns_the_commit(
+    committed_content_repo: Path,
+) -> None:
+    sha = head_commit_of(committed_content_repo)
+    pack_all_refs(committed_content_repo)
+
+    assert head_commit_of(committed_content_repo) == sha

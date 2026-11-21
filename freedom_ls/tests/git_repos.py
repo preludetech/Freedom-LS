@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 from dulwich import porcelain
+from dulwich.repo import Repo
 
 AUTHOR = b"Test Author <test@example.com>"
 
@@ -40,3 +41,23 @@ def committed_content_repo(tmp_path: Path) -> Path:
     )
     commit_all(repo_dir)
     return repo_dir
+
+
+def add_linked_worktree(repo_dir: Path, worktree_dir: Path) -> None:
+    """Add a linked worktree of `repo_dir` at `worktree_dir`, on a new branch."""
+    porcelain.worktree_add(
+        str(repo_dir), str(worktree_dir), branch=b"linked", commit=None
+    )
+
+
+def detach_head(repo_dir: Path) -> str:
+    """Point HEAD at the commit it names instead of a branch. Returns that sha."""
+    with Repo(str(repo_dir)) as repo:
+        sha = repo.head().decode("ascii")
+    (repo_dir / ".git" / "HEAD").write_text(f"{sha}\n")
+    return sha
+
+
+def pack_all_refs(repo_dir: Path) -> None:
+    """Move every loose ref into packed-refs and delete the loose files."""
+    porcelain.pack_refs(str(repo_dir), all=True)

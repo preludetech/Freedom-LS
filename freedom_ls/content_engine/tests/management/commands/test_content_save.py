@@ -67,7 +67,7 @@ from freedom_ls.form_engine.models import (
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.tests.factories import SiteFactory
-from freedom_ls.tests.git_repos import commit_all, init_repo
+from freedom_ls.tests.git_repos import add_linked_worktree, commit_all, init_repo
 from freedom_ls.tests.images import (
     break_png_chunk_crc,
     photographic_jpeg_bytes,
@@ -4482,3 +4482,65 @@ def test_a_repo_with_no_commits_is_refused(site, mock_site_context, tmp_path: Pa
         _save_from_repo(tmp_path / "empty", site)
 
     assert Topic.objects.count() == 0
+
+
+@pytest.fixture
+def repo_with_courses_directory(committed_content_repo: Path) -> Path:
+    """The committed repo plus a committed `courses/` subdirectory holding a topic."""
+    (committed_content_repo / "courses").mkdir()
+    (committed_content_repo / "courses" / "intro.md").write_text(
+        "---\ncontent_type: TOPIC\ntitle: Intro Topic\n"
+        "uuid: 10000000-0000-0000-0000-000000000002\n---\n\nIntro.\n"
+    )
+    commit_all(committed_content_repo)
+    return committed_content_repo
+
+
+@pytest.mark.django_db
+def test_a_subdirectory_saves_while_a_file_elsewhere_in_the_repo_is_dirty(
+    site, mock_site_context, repo_with_courses_directory
+):
+    (repo_with_courses_directory / "topic.md").write_text("changed\n")
+
+    _save_from_repo(repo_with_courses_directory / "courses", site)
+
+    assert Topic.objects.filter(title="Intro Topic").exists()
+
+
+@pytest.mark.django_db
+def test_a_dirty_file_under_the_subdirectory_is_refused(
+    site, mock_site_context, repo_with_courses_directory
+):
+    (repo_with_courses_directory / "courses" / "new.md").write_text("new\n")
+
+    with pytest.raises(CommandError, match="loads only committed content") as exc_info:
+        _save_from_repo(repo_with_courses_directory / "courses", site)
+
+    assert "courses/new.md" in str(exc_info.value)
+    assert Topic.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_a_linked_worktree_saves(
+    site, mock_site_context, committed_content_repo, tmp_path: Path
+):
+    worktree_dir = tmp_path / "linked_worktree"
+    add_linked_worktree(committed_content_repo, worktree_dir)
+
+    _save_from_repo(worktree_dir, site)
+
+    assert Topic.objects.filter(title="A Topic").exists()
+
+
+@pytest.mark.django_db
+def test_a_gitignored_file_the_scanner_skips_does_not_block(
+    site, mock_site_context, committed_content_repo
+):
+    (committed_content_repo / ".gitignore").write_text("_drafts/\n")
+    commit_all(committed_content_repo)
+    (committed_content_repo / "_drafts").mkdir()
+    (committed_content_repo / "_drafts" / "wip.md").write_text("work in progress\n")
+
+    _save_from_repo(committed_content_repo, site)
+
+    assert Topic.objects.filter(title="A Topic").exists()
