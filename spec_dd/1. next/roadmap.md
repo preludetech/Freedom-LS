@@ -23,6 +23,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 ### Ready to start
 
 - 🔴 High · `faster-test-runs-10-rerun-only-failures-in-a-batch` (Faster test runs)
+- 🔴 High · `faster-test-runs-12-reliable-full-run-record` (Faster test runs)
 - 🔴 High · `faster-test-runs-2-reuse-test-database` (Faster test runs)
 - 🔴 High · `faster-test-runs-3-permission-matrix-test` (Faster test runs)
 - 🔴 High · `faster-test-runs-4-playwright-tests` (Faster test runs)
@@ -87,25 +88,30 @@ Cut the time and machine load of test runs so several worktrees can work at once
 - `faster-test-runs-4-playwright-tests` — **ready** — Playwright tests sign in without the login form, and same-page tests merge into one flow.
 - `faster-test-runs-5-full-suite-on-github-actions` — **ready** — The full suite runs on free GitHub runners in parallel jobs, started on demand by an SDD run.
 - `faster-test-runs-6-prune-slow-tests` — **ready** — Remaining slow and redundant tests are merged or removed from a measured per-test ranking.
-- `faster-test-runs-7-claude-cloud-test-runs` — **blocked** by `faster-test-runs-1-fast-password-hasher`, `faster-test-runs-2-reuse-test-database`, `faster-test-runs-3-permission-matrix-test`, `faster-test-runs-4-playwright-tests`, `faster-test-runs-5-full-suite-on-github-actions`, `faster-test-runs-6-prune-slow-tests`, `faster-test-runs-8-narrower-targeted-tier`, `faster-test-runs-9-machine-wide-test-run-limit`, `faster-test-runs-10-rerun-only-failures-in-a-batch` — Fallback: a test run or SDD batch is handed to a Claude Code cloud session.
+- `faster-test-runs-7-claude-cloud-test-runs` — **blocked** by `faster-test-runs-1-fast-password-hasher`, `faster-test-runs-2-reuse-test-database`, `faster-test-runs-3-permission-matrix-test`, `faster-test-runs-4-playwright-tests`, `faster-test-runs-5-full-suite-on-github-actions`, `faster-test-runs-6-prune-slow-tests`, `faster-test-runs-8-narrower-targeted-tier`, `faster-test-runs-9-machine-wide-test-run-limit`, `faster-test-runs-10-rerun-only-failures-in-a-batch`, `faster-test-runs-11-record-failed-full-runs`, `faster-test-runs-12-reliable-full-run-record`, `faster-test-runs-13-checkpoint-shared-paths` — Fallback: a test run or SDD batch is handed to a Claude Code cloud session.
 - `faster-test-runs-8-narrower-targeted-tier` — **in progress** — A batch's targeted test run covers the tests its change can affect, not most of the suite.
 - `faster-test-runs-9-machine-wide-test-run-limit` — **ready** — Test runs from every worktree share one CPU and memory limit, and a waiting run says so.
 - `faster-test-runs-10-rerun-only-failures-in-a-batch` — **ready** — After a failure a batch re-runs only the failed tests; the whole-tier gate stays at the final full run.
+- `faster-test-runs-11-record-failed-full-runs` — **blocked** by `faster-test-runs-12-reliable-full-run-record` — A failed full run records its failed tests, so the next checkpoint re-runs those, not the whole suite.
+- `faster-test-runs-12-reliable-full-run-record` — **ready** — Every full run writes its own record, or prints why it recorded nothing.
+- `faster-test-runs-13-checkpoint-shared-paths` — **blocked** by `faster-test-runs-8-narrower-targeted-tier` — A `finish_worktree` checkpoint tests main's change to a file the branch changed earlier as main's change.
 
 ![Faster test runs](roadmap_diagrams/faster-test-runs.svg)
 
 **Notes**
-- Every spec except `faster-test-runs-7-claude-cloud-test-runs` can start now and run in parallel.
+- Every spec can start now and run in parallel, except `faster-test-runs-7-claude-cloud-test-runs` and the two below.
+- `faster-test-runs-11-record-failed-full-runs` extends the record `faster-test-runs-12-reliable-full-run-record` makes reliable; `faster-test-runs-13-checkpoint-shared-paths` changes the selector after `faster-test-runs-8-narrower-targeted-tier`.
 - Suggested order by saving: `faster-test-runs-1-fast-password-hasher`, `faster-test-runs-2-reuse-test-database`, then the rest.
 - `faster-test-runs-7-claude-cloud-test-runs` waits on the others because the owner wants it only if they are not enough.
 - Collision: `faster-test-runs-2-reuse-test-database` and `faster-test-runs-5-full-suite-on-github-actions` both change the test tier definition and its runner.
 - Collision: `faster-test-runs-8-narrower-targeted-tier` changes the test selector, `faster-test-runs-9-machine-wide-test-run-limit` the runner, and `faster-test-runs-10-rerun-only-failures-in-a-batch` the tier definition.
+- Collision: `faster-test-runs-12-reliable-full-run-record` may change the runner too, beside `faster-test-runs-9-machine-wide-test-run-limit`.
 - Decision: generic `sdd` and `ds` plugins stay generic; project values reach them through per-project configuration.
 - Decision: no spec reduces what is tested without naming the test that still covers it.
 - Assumption: every spec reports its before and after timings against `faster-test-runs/research_test_timings.md`.
 - Open: whether coverage is still enforced across parallel jobs (owned by `faster-test-runs-5-full-suite-on-github-actions`).
 - Out of scope: paid runners, squashing migrations, changes to the First Class workflow.
-- References: `faster-test-runs/research_test_timings.md`, `faster-test-runs/research_batch_test_load.md`.
+- References: `faster-test-runs/research_test_timings.md`, `faster-test-runs/research_batch_test_load.md`, `faster-test-runs/research_finish_worktree_reruns.md`.
 
 ## Educator interface code layout
 

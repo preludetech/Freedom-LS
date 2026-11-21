@@ -1,6 +1,6 @@
 # A pytest run reuses the test database
 
-Spec 2 of 10 in the Faster test runs effort. Read the "Faster test runs" section of
+Spec 2 of 13 in the Faster test runs effort. Read the "Faster test runs" section of
 `spec_dd/1. next/roadmap.md` first: it holds the build order, what this spec depends on and may
 run beside, the decisions already taken and the assumptions every idea in the effort makes.
 
