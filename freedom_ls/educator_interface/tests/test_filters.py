@@ -15,15 +15,13 @@ from freedom_ls.educator_interface.filters import (
     LearnerCourseFilter,
     LearnerStatusFilter,
 )
+from freedom_ls.educator_interface.panels.cohort.data_tables import CohortDataTable
 from freedom_ls.educator_interface.panels.common.filters import VisibleCourseFilter
 from freedom_ls.educator_interface.tests.helpers import (
     COURSE_REACH_ROWS,
     _any_request,
     _educator_request,
     course_per_reach_row,
-)
-from freedom_ls.educator_interface.views import (
-    CohortDataTable,
 )
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,

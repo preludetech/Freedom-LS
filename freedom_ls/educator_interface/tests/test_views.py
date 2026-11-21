@@ -64,6 +64,10 @@ from freedom_ls.educator_interface.messaging import OwnConversation
 from freedom_ls.educator_interface.panels.audit_log.data_tables import (
     OrganisationAuditLogTable,
 )
+from freedom_ls.educator_interface.panels.cohort.data_tables import (
+    CohortDataTable,
+    LearnerCohortDataTable,
+)
 from freedom_ls.educator_interface.panels.course.data_tables import (
     CourseCohortRegistrationDataTable,
     CourseDataTable,
@@ -105,9 +109,6 @@ from freedom_ls.educator_interface.tests.helpers import (
 from freedom_ls.educator_interface.tests.interface_walk import (
     WalkedPanel,
     walk_interface,
-)
-from freedom_ls.educator_interface.views import (
-    CohortDataTable,
 )
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -5787,8 +5788,8 @@ def test_the_cohort_learners_tab_hides_the_import_link_from_a_cohort_admin(
 EDUCATOR_TABLES: list[type[DataTable]] = [
     educator_views.LearnerDataTable,
     educator_views.CohortLearnerDataTable,
-    educator_views.CohortDataTable,
-    educator_views.LearnerCohortDataTable,
+    CohortDataTable,
+    LearnerCohortDataTable,
     CourseDataTable,
     educator_views.CohortCourseRegistrationDataTable,
     CourseCohortRegistrationDataTable,
