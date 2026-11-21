@@ -5,7 +5,6 @@ from __future__ import annotations
 import csv
 import io
 import json
-import uuid
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
@@ -146,8 +145,6 @@ from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.tests.site_context import drop_ambient_request
 
 if TYPE_CHECKING:
-    from pytest_django.fixtures import SettingsWrapper
-
     from django.test.client import _MonkeyPatchedWSGIResponse
 
 
@@ -2271,7 +2268,8 @@ def test_the_upload_page_states_the_row_and_file_size_limits(
 ):
     settings.LEARNER_IMPORT_MAX_ROWS = 1500
     monkeypatch.setattr(
-        "freedom_ls.educator_interface.views.MAX_UPLOAD_BYTES", 2 * 1024 * 1024
+        "freedom_ls.educator_interface.panels.learner.import_views.MAX_UPLOAD_BYTES",
+        2 * 1024 * 1024,
     )
 
     page = _get_document(

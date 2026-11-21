@@ -1,5 +1,7 @@
 from django.urls import re_path
 
+from freedom_ls.educator_interface.panels.learner import import_views
+
 from . import views
 
 app_name = "educator_interface"
@@ -15,37 +17,37 @@ urlpatterns = [
     ),
     re_path(
         r"^organisations/(?P<organisation_slug>[-\w]+)/learners/(?P<learner_pk>[0-9a-f-]{36})/conversations/(?P<conversation_pk>[0-9a-f-]{36})/older/$",
-        views.partial_oversight_thread_older,
+        import_views.partial_oversight_thread_older,
         name="oversight_thread_older",
     ),
     re_path(
         r"^organisations/(?P<organisation_slug>[-\w]+)/learners/import/$",
-        views.learner_import,
+        import_views.learner_import,
         name="learner_import",
     ),
     re_path(
         r"^organisations/(?P<organisation_slug>[-\w]+)/learners/import/(?P<import_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/$",
-        views.learner_import_preview,
+        import_views.learner_import_preview,
         name="learner_import_preview",
     ),
     re_path(
         r"^organisations/(?P<organisation_slug>[-\w]+)/learners/import/template\.csv$",
-        views.learner_import_template,
+        import_views.learner_import_template,
         name="learner_import_template",
     ),
     re_path(
         r"^organisations/(?P<organisation_slug>[-\w]+)/learners/import/(?P<import_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/errors\.csv$",
-        views.learner_import_errors,
+        import_views.learner_import_errors,
         name="learner_import_errors",
     ),
     re_path(
         r"^organisations/(?P<organisation_slug>[-\w]+)/learners/import/(?P<import_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/result/$",
-        views.learner_import_result,
+        import_views.learner_import_result,
         name="learner_import_result",
     ),
     re_path(
         r"^organisations/(?P<organisation_slug>[-\w]+)/learners/import/(?P<import_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/status/$",
-        views.partial_learner_import_status,
+        import_views.partial_learner_import_status,
         name="learner_import_status",
     ),
     # Django's slug path converters belong to path(), which cannot express a
