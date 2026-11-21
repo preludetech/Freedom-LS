@@ -86,10 +86,8 @@
                                 {% comment %} Decorative chevron: state is conveyed by
                                 aria-expanded, so it is hidden from AT. {% endcomment %}
                                 <span class="text-muted shrink-0 text-sm" aria-hidden="true">
-                                    <span x-show="expanded" x-cloak>
-                                        <c-icon name="collapse" class="size-4" />
-                                    </span>
-                                    <span data-toggle-icon>
+                                    <span class="inline-flex motion-safe:transition-[rotate]"
+                                          x-bind:class="expanded ? 'rotate-180' : ''">
                                         <c-icon name="expand" class="size-4" />
                                     </span>
                                 </span>

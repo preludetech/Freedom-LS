@@ -5265,3 +5265,32 @@ def test_outline_panel_text_never_says_due_or_overdue(due_course):
     assert "Next deadline" in toc or "Missed deadline" in toc
     assert "Due" not in toc
     assert "Overdue" not in toc
+
+
+@pytest.mark.django_db
+def test_outline_course_part_chevron_points_up_while_open(
+    course_with_nested_structure, authenticated_client
+):
+    """An open course part in the outline showed a right chevron. It must be the
+    down chevron turned up, the same disclosure pattern the panel framework uses."""
+    url = reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": "test-course", "index": 1},
+    )
+
+    html = authenticated_client.get(url).content.decode()
+
+    buttons = lxml.html.fromstring(html).cssselect(
+        '#course-toc-region li[x-data="coursePart"] > button'
+    )
+    assert buttons
+    for button in buttons:
+        assert button.cssselect('[data-icon="collapse"]') == []
+        [icon] = button.cssselect('[data-icon="expand"]')
+        rotating = [
+            ancestor
+            for ancestor in icon.iterancestors()
+            if "rotate-180" in ancestor.get("x-bind:class", "")
+            and "expanded" in ancestor.get("x-bind:class", "")
+        ]
+        assert rotating
