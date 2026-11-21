@@ -17,6 +17,7 @@ from freedom_ls.icons.checks import (
     check_overrides_exist,
     check_variant_support,
 )
+from freedom_ls.icons.config import DEPRECATED_SETTINGS
 
 from .helpers import write_icon_set
 
@@ -235,7 +236,15 @@ def test_the_hint_gives_the_rename_the_removal_and_the_id(
     )
 
 
-def test_default_settings_produce_no_icons_check_output() -> None:
+def test_default_settings_produce_no_icons_check_output(
+    settings: SettingsWrapper,
+) -> None:
+    # Unset every icons setting, new and deprecated, so the checks see the app's declared
+    # defaults whatever the host project configures.
+    for new_name, old_name in DEPRECATED_SETTINGS.items():
+        setattr(settings, new_name, None)
+        setattr(settings, old_name, None)
+    settings.SEMANTIC_ICONS_ICONIFY_DIR = None
     # Only the icons app's own checks are run: Django's other checks need a database or
     # other installed apps, which a host with no database does not have.
     icons_checks = [
