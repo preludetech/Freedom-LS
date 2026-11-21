@@ -14,6 +14,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `educator-interface-refactor-5-learner` (Educator interface code layout, via `sacaa-compliance`)
 - 🔴 High · `sacaa-compliance-3-question-pools` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-1-content-save-safety` (SACAA content versions and access)
+- 🔴 High · `reference-material-content-1-authoring` (Reference material)
 - 🔴 High · `multi-step-course-applications-1-review-states` (Multi-step course applications)
 - 🟠 Medium · `content-widget-longer-audio` (Audio content widgets)
 - 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
@@ -23,7 +24,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 - 🔴 High · `sacaa-compliance-content-versions-and-access-4-question-access` (SACAA content versions and access)
 - 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
-- 🔴 High · `reference-material-content-1-authoring` (Reference material)
 - 🔴 High · `learner-public-profile-2-profile-and-page` (Learner public profiles)
 - 🟠 Medium · `content-widget-sayit-reveal-4-audio-access-control` (Audio content widgets)
 - 🟠 Medium · `deadlines-4-learner-self-pause` (Deadlines)
@@ -163,7 +163,7 @@ Priority: 🔴 High
 
 Reference parts, such as regulations, that learners consult at any time beside a course's learning path, and courses that are only libraries. Parent: `reference-material-content`.
 
-- `reference-material-content-1-authoring` — **ready** — Authors attach reference parts to a course with a `reference:` key; `content_save` stores, validates and cleans them up.
+- `reference-material-content-1-authoring` — **in progress** — Authors attach reference parts to a course with a `reference:` key; `content_save` stores, validates and cleans them up.
 - `reference-material-content-2-learner-reference` — **blocked** by `reference-material-content-1-authoring` — Registered learners open a course's reference listing and read reference topics from any player page, with nothing tracked.
 - `reference-material-content-3-educator-reference` — **blocked** by `reference-material-content-1-authoring` — Educators see a course's reference parts in the course outline and preview reference topics.
 - `reference-material-content-4-library-courses` — **blocked** by `reference-material-content-2-learner-reference`, `reference-material-content-3-educator-reference` — A course with only reference material opens its reference listing, shows no progress anywhere and can never be finished.
