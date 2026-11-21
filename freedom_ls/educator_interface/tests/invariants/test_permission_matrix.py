@@ -783,49 +783,133 @@ def _gated_true_cases() -> list[tuple[str, str, str, str]]:
     ]
 
 
-@pytest.mark.django_db
-@pytest.mark.parametrize(
-    ("capability", "role", "kind", "relation"), _gated_true_cases()
-)
-def test_deactivating_the_staff_member_row_withdraws_the_grant(
-    mock_site_context: Site, capability: str, role: str, kind: str, relation: str
-) -> None:
-    """The StaffMember gate: an organisation or cohort grant counts
-    only while the grant holder's StaffMember row for that
-    organisation is active. Deactivating it must withdraw exactly this
-    answer, and reactivating it must restore exactly this answer, with the
-    role assignment and guardian rows never touched."""
-    world = _build_world(mock_site_context)
+def _walk_deactivation(world: World, role: str) -> _Walk:
+    """The StaffMember gate, one role at a time.
+
+    Every gated cell of a role hangs off that role's single StaffMember row, so one
+    deactivate and reactivate checks all of them both ways.
+
+    All three steps share one world on purpose: the row each step reads is the
+    one the step before changed.
+    """
+    walk = _Walk(f"role {role}")
     user = world.users[role]
-    scope = world.scopes[(kind, relation)]
+    cells = [
+        (capability, kind, relation)
+        for capability, cell_role, kind, relation in _gated_true_cases()
+        if cell_role == role
+    ]
+    scopes = {
+        (kind, relation): world.scopes[(kind, relation)] for _, kind, relation in cells
+    }
     member = StaffMember.objects.get(user=user)
 
-    def _assignment_snapshot() -> set[tuple[int, int, int, str, str, bool]]:
-        return {
-            (a.user_id, a.site_id, a.content_type_id, a.object_id, a.role, a.is_active)
-            for a in ObjectRoleAssignment.objects.filter(user=user)
-        }
-
-    def _guardian_snapshot() -> frozenset[str]:
-        return frozenset(get_perms(user, scope))
-
-    assert can(user, capability, scope) is True
-    before_assignments = _assignment_snapshot()
-    before_guardian = _guardian_snapshot()
+    _check_gated_cells(walk, "active", True, user, role, cells, world)
+    before = _Snapshots.take(user, scopes)
 
     member.is_active = False
     member.save(update_fields=["is_active"])
+    try:
+        _check_gated_cells(walk, "deactivated", False, user, role, cells, world)
+        _check_snapshots(
+            walk, "deactivated", role, before, _Snapshots.take(user, scopes)
+        )
+    finally:
+        member.is_active = True
+        member.save(update_fields=["is_active"])
+    _check_gated_cells(walk, "reactivated", True, user, role, cells, world)
+    _check_snapshots(walk, "reactivated", role, before, _Snapshots.take(user, scopes))
+    return walk
 
-    assert can(user, capability, scope) is False
-    assert _assignment_snapshot() == before_assignments
-    assert _guardian_snapshot() == before_guardian
 
-    member.is_active = True
-    member.save(update_fields=["is_active"])
+class _Snapshots(NamedTuple):
+    """What deactivating a StaffMember row must never touch."""
 
-    assert can(user, capability, scope) is True
-    assert _assignment_snapshot() == before_assignments
-    assert _guardian_snapshot() == before_guardian
+    assignments: list[tuple[int, int, int, str, str, bool]]
+    guardian: dict[tuple[str, str], list[str]]
+
+    @classmethod
+    def take(
+        cls, user: AbstractBaseUser, scopes: dict[tuple[str, str], Model]
+    ) -> _Snapshots:
+        return cls(
+            assignments=sorted(
+                (
+                    a.user_id,
+                    a.site_id,
+                    a.content_type_id,
+                    a.object_id,
+                    a.role,
+                    a.is_active,
+                )
+                for a in ObjectRoleAssignment.objects.filter(user=user)
+            ),
+            guardian={
+                key: sorted(get_perms(user, scope)) for key, scope in scopes.items()
+            },
+        )
+
+
+def _check_gated_cells(
+    walk: _Walk,
+    step: str,
+    expected: bool,
+    user: AbstractBaseUser,
+    role: str,
+    cells: list[tuple[str, str, str]],
+    world: World,
+) -> None:
+    for capability, kind, relation in cells:
+        walk.check(
+            _always(expected),
+            partial(can, user, capability, world.scopes[(kind, relation)]),
+            step=step,
+            capability=capability,
+            role=role,
+            kind=kind,
+            relation=relation,
+        )
+
+
+def _check_snapshots(
+    walk: _Walk, step: str, role: str, before: _Snapshots, now: _Snapshots
+) -> None:
+    walk.check(
+        _always(before.assignments),
+        _always(now.assignments),
+        same=operator.eq,
+        step=step,
+        role=role,
+        snapshot="assignments",
+    )
+    for (kind, relation), perms in before.guardian.items():
+        walk.check(
+            _always(perms),
+            _always(now.guardian[(kind, relation)]),
+            same=operator.eq,
+            step=step,
+            role=role,
+            snapshot="guardian",
+            kind=kind,
+            relation=relation,
+        )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("role", GATED_ROLES)
+def test_deactivating_the_staff_member_row_withdraws_the_grant(
+    mock_site_context: Site, role: str
+) -> None:
+    """The StaffMember gate: an organisation or cohort grant counts
+    only while the grant holder's StaffMember row for that
+    organisation is active. Deactivating it must withdraw every gated
+    answer the role holds, and reactivating it must restore every one,
+    with the role assignment and guardian rows never touched."""
+    world = _build_world(mock_site_context)
+
+    walk = _walk_deactivation(world, role)
+
+    walk.report()
 
 
 @pytest.mark.django_db
