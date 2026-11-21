@@ -191,8 +191,8 @@ def logged_in_user(db, live_server_site, mock_site_context) -> User:
     """
     user: User = UserFactory(password=_LOGGED_IN_PASSWORD)
 
-    # The verified address lets a page read it (allauth no longer authenticates
-    # this user, since ``sign_in`` skips the login form).
+    # A verified primary address, for pages that read it. ``sign_in`` skips the
+    # login form, so allauth never checks this address itself.
     EmailAddress.objects.get_or_create(
         user=user,
         email=user.email,
