@@ -44,7 +44,7 @@ trigger is.
                   x-bind:aria-expanded="revealed" x-bind:aria-controls="$id('audio-answer')"
                   x-on:click="reveal">
             <c-icon name="reveal_hidden" class="size-6" />
-            <span class="sr-only">Reveal answer</span>
+            <span class="sr-only">Reveal answer for {{ symbol }}</span>
           </button>
           <div x-ref="answer" x-bind:id="$id('audio-answer')" class="invisible col-start-1 row-start-1 flex min-w-0 items-center gap-3"
                x-bind:class="answerClass" inert x-bind:inert="!revealed"

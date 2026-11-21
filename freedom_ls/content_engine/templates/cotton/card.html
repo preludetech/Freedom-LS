@@ -1,4 +1,4 @@
-<c-vars src="" alt="" title="" size="medium" />
+<c-vars markdown="" src="" alt="" title="" size="medium" />
 
 {% load content_tags %}
 
@@ -21,7 +21,8 @@ Attributes:
 
 The body is the default slot. render_markdown has already converted it to
 HTML and nh3 has sanitised it before Cotton renders this template, which is
-why it is emitted unescaped. The header image is
+why it is emitted unescaped. Under a raw-HTML parent it arrives unconverted,
+and markdown_body converts it. The header image is
 cropped to a fixed height with object-cover so cards of the same size line up
 regardless of the source image's aspect ratio.
 {% endcomment %}
@@ -46,7 +47,7 @@ regardless of the source image's aspect ratio.
         {% if title %}
             <h3 class="font-semibold text-on-surface">{{ title }}</h3>
         {% endif %}
-        {{ slot }}
+        {% markdown_body slot markdown %}
     </div>
 </div>
 {% endpartialdef %}

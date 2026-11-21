@@ -248,6 +248,8 @@ document.addEventListener("alpine:init", () => {
             hide() {
                 this._clearHideTimer();
                 if (this._sounding()) this._stop();
+                // The error line points at the play button, which hides now.
+                this.failed = false;
                 const focusWasInAnswer = this.$refs.answer.contains(document.activeElement);
                 this.revealed = false;
                 if (focusWasInAnswer) this.$nextTick(() => this.$refs.revealButton.focus());

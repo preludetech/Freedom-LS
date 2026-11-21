@@ -1,5 +1,6 @@
 import re
 from copy import deepcopy
+from functools import cache
 
 import markdown
 import nh3
@@ -14,35 +15,40 @@ from freedom_ls.markdown_rendering.config import config
 
 _cotton_compiler = CottonCompiler()
 
-# The six slot widgets, plus c-slot and the layout wrappers c-grid and
-# c-image-grid that can hold them. md_in_html converts the body of an element
-# marked markdown="1" only when its parent is marked too, so a card inside a
-# grid needs the grid marked. Widget children of a marked element stay raw.
-MARKDOWN_BODY_TAGS: tuple[str, ...] = (
-    "c-accordion",
-    "c-admonition",
-    "c-card",
-    "c-flashcard",
-    "c-pull-quote",
-    "c-table",
-    "c-slot",
-    "c-grid",
-    "c-image-grid",
-)
 
-# An opening tag at the start of a line or straight after another tag, so a
-# tag quoted in inline code (`<c-card>`) is left alone.
-_MARKDOWN_BODY_OPENING = re.compile(
-    r"(^|>)(\s*)<(" + "|".join(map(re.escape, MARKDOWN_BODY_TAGS)) + r")(?=[\s>/])",
-    re.MULTILINE,
-)
+# md_in_html converts the body of an element marked markdown="1" only when its
+# parent is marked too, so a card inside a grid needs the grid marked. Under an
+# unmarked parent (raw HTML such as <div>, or a widget missing from
+# MARKDOWN_BODY_TAGS) the body stays raw and the element keeps markdown="1";
+# the widget template sees that and converts the body itself with
+# {% markdown_body %}.
+#
+# An opening tag counts at the start of a line or straight after another tag.
+# Inline code spans are matched first and returned untouched, so a tag quoted
+# in inline code (`<c-card>`) is left alone.
+@cache
+def _markdown_body_opening(tags: tuple[str, ...]) -> re.Pattern[str]:
+    return re.compile(
+        r"(?P<code>(?P<ticks>`+).*?(?P=ticks))"
+        r"|(?P<lead>^|>)(?P<space>\s*)<(?P<tag>"
+        + "|".join(map(re.escape, tags))
+        + r")(?=[\s>/])",
+        re.MULTILINE,
+    )
+
+
+def _mark_opening(match: re.Match[str]) -> str:
+    if match["code"] is not None:
+        return match["code"]
+    return f'{match["lead"]}{match["space"]}<{match["tag"]} markdown="1"'
 
 
 class _MarkMarkdownBodies(Preprocessor):
     """Ask md_in_html to convert the body of every widget whose body is markdown."""
 
     def run(self, lines: list[str]) -> list[str]:
-        text = _MARKDOWN_BODY_OPENING.sub(r'\1\2<\3 markdown="1"', "\n".join(lines))
+        pattern = _markdown_body_opening(tuple(config.MARKDOWN_BODY_TAGS))
+        text = pattern.sub(_mark_opening, "\n".join(lines))
         return text.split("\n")
 
 
@@ -83,7 +89,12 @@ def render_markdown(
 
     attributes = deepcopy(nh3.ALLOWED_ATTRIBUTES)
     for k, v in allowed_attribute_tags.items():
-        attributes[k] = v
+        attributes[k] = set(v)
+    # A body left unconverted under an unmarked parent keeps markdown="1", so
+    # its widget template knows to convert it.
+    for tag in config.MARKDOWN_BODY_TAGS:
+        if tag in attributes:
+            attributes[tag].add("markdown")
 
     # Permit the read-only checkbox markup emitted by pymdownx.tasklist. The
     # checkboxes are always rendered `disabled`, so they carry no interactive

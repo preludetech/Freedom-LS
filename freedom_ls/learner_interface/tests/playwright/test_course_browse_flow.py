@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 from PIL import Image
 from playwright.sync_api import FloatRect, Locator, Page, ViewportSize, expect
+from pytest_django.live_server_helper import LiveServer
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
@@ -193,6 +194,7 @@ def _audio_widgets_course(user: User) -> Course:
         "<c-flashcard>\n"
         '<c-slot name="front">\n\n'
         f"{FLASHCARD_PROMPT}\n\n"
+        "[Pronunciation guide](#pronunciation-guide)\n\n"
         f'<c-audio src="audio/quebec.mp3" label="{FRONT_AUDIO_LABEL}"></c-audio>\n\n'
         "</c-slot>\n"
         '<c-slot name="back">\n\n'
@@ -576,7 +578,7 @@ def test_speak_button_shows_an_error_line_and_retries_on_the_next_press(
 
 
 def test_learner_practises_with_audio_widgets(
-    live_server,
+    live_server: LiveServer,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -628,6 +630,8 @@ def test_learner_practises_with_audio_widgets(
     page.clock.fast_forward(3000)
     expect(play).to_have_count(1)
     play.click()
+    # Wait for playback to start: the button reads unpressed while loading.
+    expect(play).to_have_attribute("aria-pressed", "true")
     expect(play).to_have_attribute("aria-pressed", "false")
     page.clock.fast_forward(3000)
     expect(play).to_have_count(1)
@@ -697,6 +701,11 @@ def test_learner_practises_with_audio_widgets(
     expect(front_play).to_have_attribute("aria-pressed", "true")
     expect(flip).to_have_attribute("aria-pressed", "false")
 
+    # A link on the face follows without flipping the card.
+    page.get_by_role("link", name="Pronunciation guide").click()
+    expect(page).to_have_url(re.compile(r"#pronunciation-guide$"))
+    expect(flip).to_have_attribute("aria-pressed", "false")
+
     # Prose on the face still flips it, and the answer's button is then reachable.
     prose = _box(page.get_by_text(FLASHCARD_PROMPT))
     page.mouse.click(prose["x"] + prose["width"] / 2, prose["y"] + prose["height"] / 2)
@@ -724,18 +733,23 @@ def test_a_reveal_whose_audio_fails_still_shows_the_answer(
     page = logged_in_page
     course = _audio_widgets_course(logged_in_user)
     page.route(re.compile(r"/content/audio/"), lambda route: route.abort())
+    page.clock.install()
     page.goto(_item_url(live_server, course, 1))
     widget = page.locator("[x-data='audioReveal']").first
     reveal = widget.get_by_role("button", name="Reveal answer")
+    error_line = widget.get_by_role("status").filter(
+        has_text="Audio could not be played. Try again."
+    )
 
     reveal.click()
 
     expect(page.get_by_text(REVEAL_A_LABEL).first).to_be_visible()
-    expect(
-        widget.get_by_role("status").filter(
-            has_text="Audio could not be played. Try again."
-        )
-    ).to_be_visible()
+    expect(error_line).to_be_visible()
+
+    # The error line hides with the answer.
+    page.clock.fast_forward(6000)
+    expect(reveal).to_have_attribute("aria-expanded", "false")
+    expect(error_line).to_be_hidden()
 
 
 @pytest.mark.browser_context_args(timezone_id="America/New_York", locale="en-US")

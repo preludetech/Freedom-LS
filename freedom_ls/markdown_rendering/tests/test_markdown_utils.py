@@ -5,15 +5,13 @@ from pathlib import Path
 
 import pytest
 
+from django.http import HttpRequest
 from django.test import override_settings
 from django.utils.safestring import SafeString
 
 from freedom_ls.content_engine.models import File
 from freedom_ls.markdown_rendering.config import config
-from freedom_ls.markdown_rendering.markdown_utils import (
-    MARKDOWN_BODY_TAGS,
-    render_markdown,
-)
+from freedom_ls.markdown_rendering.markdown_utils import render_markdown
 
 
 @pytest.fixture
@@ -1073,6 +1071,8 @@ class _FakeContentInstance:
         return path
 
 
+# Local rather than shared with content_engine's component helpers: the
+# import contracts keep this app's tests off content_engine's test modules.
 def audio_file(file_path: str) -> File:
     file_obj: File = File.objects.create(
         file=file_path,
@@ -1084,7 +1084,7 @@ def audio_file(file_path: str) -> File:
     return file_obj
 
 
-def _render_in_topic(markup: str, request: object) -> str:
+def _render_in_topic(markup: str, request: HttpRequest) -> str:
     return str(
         render_markdown(
             markup, request, context={"content_instance": _FakeContentInstance()}
@@ -1098,8 +1098,8 @@ class TestSlotWidgetBodies:
 
     @_SLOT_WIDGETS
     def test_nested_audio_keeps_its_player_markup(
-        self, mock_request, mock_site_context, opening, closing
-    ):
+        self, mock_request: HttpRequest, opening: str, closing: str
+    ) -> None:
         audio_file("audio/bravo.mp3")
 
         result = _render_in_topic(
@@ -1113,8 +1113,8 @@ class TestSlotWidgetBodies:
 
     @_SLOT_WIDGETS
     def test_nested_audio_keeps_every_allow_listed_attribute(
-        self, mock_request, mock_site_context, opening, closing
-    ):
+        self, mock_request: HttpRequest, opening: str, closing: str
+    ) -> None:
         audio_file("audio/bravo.mp3")
 
         result = _render_in_topic(
@@ -1131,8 +1131,8 @@ class TestSlotWidgetBodies:
 
     @_SLOT_WIDGETS
     def test_nested_table_keeps_its_labelled_scroll_region(
-        self, mock_request, opening, closing
-    ):
+        self, mock_request: HttpRequest, opening: str, closing: str
+    ) -> None:
         """A c-table in a markdown slot keeps its labelled scroll region because the slot body is converted once, before the widget renders."""
         result = render_markdown(
             f'{opening}\n\n<c-table caption="Nested plans">\n\n'
@@ -1145,7 +1145,9 @@ class TestSlotWidgetBodies:
         assert "<caption>Nested plans</caption>" in result
 
     @_SLOT_WIDGETS
-    def test_markdown_in_the_slot_renders(self, mock_request, opening, closing):
+    def test_markdown_in_the_slot_renders(
+        self, mock_request: HttpRequest, opening: str, closing: str
+    ) -> None:
         result = render_markdown(
             f"{opening}\n\n*soft*\n\n- one\n- two\n\n"
             "| A | B |\n|---|---|\n| 1 | 2 |\n\n"
@@ -1160,8 +1162,8 @@ class TestSlotWidgetBodies:
 
     @_SLOT_WIDGETS
     def test_unsafe_markup_in_the_slot_is_stripped(
-        self, mock_request, opening, closing
-    ):
+        self, mock_request: HttpRequest, opening: str, closing: str
+    ) -> None:
         result = render_markdown(
             f"{opening}\n\n<script>alert(1)</script>\n\n"
             '<p onclick="alert(2)">text</p>\n\n'
@@ -1175,8 +1177,8 @@ class TestSlotWidgetBodies:
 
     @_SLOT_WIDGETS
     def test_template_variable_in_the_slot_is_escaped(
-        self, mock_request, opening, closing
-    ):
+        self, mock_request: HttpRequest, opening: str, closing: str
+    ) -> None:
         result = render_markdown(
             f"{opening}\n\n{{{{ payload }}}}\n\n{closing}",
             mock_request,
@@ -1191,7 +1193,9 @@ class TestSlotWidgetBodies:
 class TestMarkdownBodyMarking:
     """Which opening tags get markdown="1", and which are left alone."""
 
-    def test_card_inside_a_grid_converts_its_body(self, mock_request):
+    def test_card_inside_a_grid_converts_its_body(
+        self, mock_request: HttpRequest
+    ) -> None:
         result = render_markdown(
             '<c-grid>\n\n<c-card title="One">\n\n**bold**\n\n</c-card>\n\n</c-grid>',
             mock_request,
@@ -1200,28 +1204,37 @@ class TestMarkdownBodyMarking:
         assert "<strong>bold</strong>" in result
         assert "markdown=" not in result
 
-    def test_fenced_block_holding_a_widget_tag_is_not_marked(self, mock_request):
+    def test_fenced_block_holding_a_widget_tag_is_not_marked(
+        self, mock_request: HttpRequest
+    ) -> None:
         result = render_markdown("```html\n<c-card>\n```", mock_request)
 
         assert 'markdown="1"' not in result
         assert "&lt;c-card&gt;" in result
 
-    def test_inline_code_holding_a_widget_tag_is_not_marked(self, mock_request):
+    def test_inline_code_holding_a_widget_tag_is_not_marked(
+        self, mock_request: HttpRequest
+    ) -> None:
         result = render_markdown("Write `<c-card>` to start one.", mock_request)
 
         assert 'markdown="1"' not in result
         assert "<code>&lt;c-card&gt;</code>" in result
 
-    def test_tag_sharing_a_prefix_is_not_marked(self, mock_request):
+    def test_tag_sharing_a_prefix_is_not_marked(
+        self, mock_request: HttpRequest
+    ) -> None:
         result = render_markdown("<c-cardx>text</c-cardx>", mock_request)
 
         assert 'markdown="1"' not in result
 
-    def test_every_slot_emitting_widget_is_marked(self):
+    def test_every_slot_emitting_widget_is_marked(self) -> None:
         slot_emitters = {
             "c-" + path.stem
             for path in _COTTON_TEMPLATES.glob("*.html")
-            if re.search(r"{{\s*(slot|front|back)\s*}}", path.read_text())
+            if re.search(
+                r"{{\s*(slot|front|back)\b|markdown_body\s+(slot|front|back)\b",
+                path.read_text(),
+            )
         }
 
         slot_widgets = (
@@ -1229,4 +1242,78 @@ class TestMarkdownBodyMarking:
         )
 
         assert slot_widgets
-        assert slot_widgets <= set(MARKDOWN_BODY_TAGS)
+        assert slot_widgets <= set(config.MARKDOWN_BODY_TAGS)
+
+    def test_inline_code_after_a_tag_is_not_marked(
+        self, mock_request: HttpRequest
+    ) -> None:
+        result = render_markdown("Nest them like `<c-grid><c-card>`.", mock_request)
+
+        assert 'markdown="1"' not in result
+        assert "<code>&lt;c-grid&gt;&lt;c-card&gt;</code>" in result
+
+    def test_project_body_tag_converts_nested_widget_body(
+        self, mock_request: HttpRequest
+    ) -> None:
+        markup = "<c-tabs>\n\n<c-card>\n\n**bold**\n\n</c-card>\n\n</c-tabs>"
+
+        with override_settings(
+            MARKDOWN_BODY_TAGS=(*config.MARKDOWN_BODY_TAGS, "c-tabs"),
+            MARKDOWN_TEMPLATE_RENDER_ON=False,
+        ):
+            result = render_markdown(markup, mock_request)
+
+        assert "<strong>bold</strong>" in result
+
+
+_RAW_HTML_PARENTS = pytest.mark.parametrize(
+    ("parent_opening", "parent_closing"),
+    [("<div>", "</div>"), ("<details>\n<summary>More</summary>", "</details>")],
+    ids=["div", "details"],
+)
+
+
+@pytest.mark.django_db
+class TestSlotWidgetUnderRawHtml:
+    """Under a parent render_markdown does not mark, the widget converts its own body."""
+
+    @_RAW_HTML_PARENTS
+    @_SLOT_WIDGETS
+    def test_markdown_in_the_slot_renders(
+        self,
+        mock_request: HttpRequest,
+        parent_opening: str,
+        parent_closing: str,
+        opening: str,
+        closing: str,
+    ) -> None:
+        result = render_markdown(
+            f"{parent_opening}\n\n{opening}\n\n**bold**\n\n"
+            "| A | B |\n|---|---|\n| 1 | 2 |\n\n"
+            f"{closing}\n\n{parent_closing}",
+            mock_request,
+        )
+
+        assert "<strong>bold</strong>" in result
+        assert "<table" in result
+        assert "**bold**" not in result
+        assert "markdown=" not in result
+
+    @_RAW_HTML_PARENTS
+    @_SLOT_WIDGETS
+    def test_unsafe_markup_in_the_slot_is_stripped(
+        self,
+        mock_request: HttpRequest,
+        parent_opening: str,
+        parent_closing: str,
+        opening: str,
+        closing: str,
+    ) -> None:
+        result = render_markdown(
+            f"{parent_opening}\n\n{opening}\n\n<script>alert(1)</script>\n\n"
+            f"[link](javascript:alert(3))\n\n{closing}\n\n{parent_closing}",
+            mock_request,
+        )
+
+        assert "<script" not in result
+        assert "javascript:" not in result

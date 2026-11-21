@@ -1,4 +1,6 @@
-<c-vars title="" open="__unset__" />
+<c-vars markdown="" title="" open="__unset__" />
+
+{% load content_tags %}
 
 {% comment %}
 Accordion component — a native <details>/<summary> disclosure widget.
@@ -72,7 +74,7 @@ Editorial note:
                 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]">
         {% comment %}min-h-0 is what lets a grid child collapse inside a 0fr row.{% endcomment %}
         <div class="min-h-0 overflow-hidden px-5 pb-5 space-y-4">
-            {{ slot }}
+            {% markdown_body slot markdown %}
         </div>
     </div>
 </details>

@@ -169,6 +169,25 @@ def markdown(context, value):
     return render_markdown(value, request)
 
 
+@register.simple_tag(takes_context=True)
+def markdown_body(
+    context: template.Context, value: str, unconverted: str
+) -> SafeString | str:
+    """Emit a slot widget's body, converting it only if render_markdown could not.
+
+    render_markdown converts a widget's body in its one markdown pass, except
+    under a parent it does not mark (raw HTML such as <div>, or a widget missing
+    from MARKDOWN_BODY_TAGS). There the widget keeps its markdown="1" attribute
+    and its body is still markdown, so it is converted here. Interactive widgets
+    nested in such a body are sanitised a second time and lose their scripting.
+
+    Usage: {% markdown_body slot markdown %}
+    """
+    if unconverted:
+        return render_markdown(value, context.get("request"))
+    return value
+
+
 @register.filter
 def get_content_by_path(file_path, content_instance):
     """

@@ -55,7 +55,7 @@ These widgets are for authored markdown only. App templates (pages, panels, dial
 
 `c-audio-reveal` is a say-it-then-reveal card: the `symbol` tile is the prompt, and clicking the space where the answer will appear shows it and plays the audio. `symbol` is required on it.
 
-**Slot widgets** (`c-accordion`, `c-admonition`, `c-card`, `c-flashcard`, `c-pull-quote`, `c-table`) have a body that is author markdown. `render_markdown` converts that body once, and the widget template emits its slot as-is (`{{ slot }}`), as `c-grid` does. Do not run `{% markdown slot %}` in a widget template: a second pass re-converts rendered widget markup. Any widget can nest inside a slot widget.
+**Slot widgets** (`c-accordion`, `c-admonition`, `c-card`, `c-flashcard`, `c-pull-quote`, `c-table`) have a body that is author markdown. `render_markdown` converts that body once for every tag in the `MARKDOWN_BODY_TAGS` setting (`freedom_ls/markdown_rendering/config.py`). The widget template declares `markdown=""` in `c-vars` and emits its slot with `{% markdown_body slot markdown %}`: as-is normally, converted when the widget sits under a parent `render_markdown` does not mark (raw HTML such as `<div>`), which leaves `markdown="1"` on it. A new slot widget goes into `MARKDOWN_BODY_TAGS`. Do not run `{% markdown slot %}` in a widget template: a second pass re-converts rendered widget markup. Any widget can nest inside a slot widget.
 
 ## Adding New Components
 

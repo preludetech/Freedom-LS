@@ -37,7 +37,7 @@ prefix.
 `your_project/course_extras/templates/cotton/worked-example.html`:
 
 ```django
-<c-vars title="Worked example" difficulty="" />
+<c-vars markdown="" title="Worked example" difficulty="" />
 
 {% load content_tags %}
 
@@ -57,14 +57,17 @@ The body slot is Markdown.
         {% if difficulty %}<span class="text-muted text-sm">({{ difficulty }})</span>{% endif %}
     </h3>
     <div class="mt-3 space-y-4">
-        {% markdown slot %}
+        {% markdown_body slot markdown %}
     </div>
 </section>
 ```
 
-The Markdown parser treats your tag as a block-level HTML element and leaves everything inside it
-alone, so the body reaches the template as unparsed Markdown text. `{% markdown slot %}` renders
-it. Leave the tag out and authors see their `**asterisks**` and `1.` list markers on the page.
+`render_markdown` converts the body of every tag in the `MARKDOWN_BODY_TAGS` setting in its one
+Markdown pass, so add your tag to that setting (step 2). Under a parent it does not convert, such as
+a raw `<div>`, the body arrives unconverted and the tag still carries `markdown="1"`.
+`{% markdown_body slot markdown %}` emits the body as it is, or converts it in that case. Declare
+`markdown=""` in `c-vars` so the attribute is read. Don't use `{% markdown slot %}`: a second pass
+re-sanitises FLS widgets nested in your body and strips their interactive markup.
 
 ### Don't reuse an FLS widget's name
 
@@ -98,6 +101,18 @@ disappears from your rendered content. Keep the FLS entries.
 That also means your copy can fall behind FLS. When an FLS release adds a widget or an attribute,
 its upgrade notes list `MARKDOWN_ALLOWED_TAGS` under `changed_settings`. Copy the new entries
 across, or the new attribute is stripped and the widget quietly renders its default.
+
+If your widget's body is Markdown, also add its tag to `MARKDOWN_BODY_TAGS`. Keep FLS's tags in the
+tuple, or their bodies stop converting:
+
+```python
+from freedom_ls.markdown_rendering.config import MarkdownRenderingConfig
+
+MARKDOWN_BODY_TAGS = (
+    *MarkdownRenderingConfig.declared_settings["MARKDOWN_BODY_TAGS"].default,
+    "c-worked-example",
+)
+```
 
 List every attribute your template reads. An attribute missing from the set never reaches the
 template, so `<c-worked-example difficulty="harder">` with only `{"title"}` allowed renders with no

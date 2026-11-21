@@ -1,4 +1,4 @@
-<c-vars caption="" />
+<c-vars markdown="" caption="" />
 
 {% load content_tags %}
 {% comment %}
@@ -12,7 +12,8 @@ Attribute:
 
 The slot arrives as HTML that render_markdown has already converted and nh3
 has sanitised, so the wrapper and caption work at any nesting depth, including
-inside an accordion, flashcard slot or admonition.
+inside an accordion, flashcard slot or admonition. Under a raw-HTML parent it
+arrives unconverted, and markdown_body converts it first.
 
 Independent of the base app's c-data-table.
 {% endcomment %}
@@ -26,5 +27,5 @@ Independent of the base app's c-data-table.
      tabindex="0"
      role="group"
      aria-label="{{ caption|default:'Data table' }}">
-    {% if caption %}{{ slot|inject_table_caption:caption }}{% else %}{{ slot }}{% endif %}
+    {% markdown_body slot markdown as body %}{% if caption %}{{ body|inject_table_caption:caption }}{% else %}{{ body }}{% endif %}
 </div>

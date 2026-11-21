@@ -114,8 +114,8 @@ class TestResolvedWidget:
         (button,) = _by_attribute(tree, "x-on:click", "reveal")
         assert button.xpath(".//*[@data-icon='reveal_hidden']")
         (name,) = button.xpath(".//span[contains(@class, 'sr-only')]")
-        assert name.text_content() == "Reveal answer"
-        assert button.text_content().strip() == "Reveal answer"
+        assert name.text_content() == "Reveal answer for N"
+        assert button.text_content().strip() == "Reveal answer for N"
         assert "cursor-pointer" in button.get("class")
 
     def test_there_is_no_reveal_or_hide_toggle(self, mock_site_context: object) -> None:

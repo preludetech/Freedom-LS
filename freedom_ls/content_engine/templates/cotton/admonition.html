@@ -1,4 +1,4 @@
-<c-vars type="default" title="" />
+<c-vars markdown="" type="default" title="" />
 
 {% load content_tags %}
 {% load base_tags %}
@@ -30,7 +30,7 @@ Accessibility:
         <span id="{{ label_id }}">{% if title %}{{ title }}{% else %}{{ cfg.label }}{% endif %}</span>
     </div>
     <div class="{{ text }} px-2 space-y-4">
-        {{ slot }}
+        {% markdown_body slot markdown %}
     </div>
 </div>
 {% endpartialdef %}

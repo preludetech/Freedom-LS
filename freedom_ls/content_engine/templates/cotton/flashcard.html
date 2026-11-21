@@ -1,4 +1,6 @@
-<c-vars size="standard" />
+<c-vars markdown="" size="standard" />
+
+{% load content_tags %}
 
 {% comment %}
 Flashcard component — a two-sided flip card for question/answer content.
@@ -13,7 +15,8 @@ Named slots:
   back   The answer / reveal face.
   Both slots arrive as HTML that render_markdown has already converted and nh3
   has sanitised before Cotton renders this template, which is why they are
-  emitted unescaped.
+  emitted unescaped. Under a raw-HTML parent they arrive unconverted, and
+  markdown_body converts them.
 
 Alpine component:
   `flashcard` (registered in alpine-components.js) manages flipped state,
@@ -37,9 +40,11 @@ Accessibility:
 Layering:
   The flip trigger sits *below* the face stack, and the stack is transparent to
   pointer events. A click on prose therefore falls through to the trigger and
-  flips the card, while a scrolling table or code block, or a button such as a
-  c-audio play button — the only descendants that take pointer events back —
-  can be swiped or pressed without the trigger swallowing the gesture. Putting
+  flips the card, while a scrolling table or code block, or an interactive
+  element (a button such as a c-audio play button, a link, an accordion's
+  summary, an embedded video or PDF) — the only descendants that take pointer
+  events back — can be swiped or pressed without the trigger swallowing the
+  gesture. Putting
   the trigger on top instead makes those scrollers unreachable: each face has
   a transform, so it is a stacking context, and no z-index on a descendant can
   lift it above a sibling of the face.
@@ -95,9 +100,9 @@ Styling:
         pointer-events: auto;
     }
 
-    /* Any button in a face takes pointer events back, so pressing it does not
-     * fall through to the flip trigger underneath. */
-    .flashcard-face button {
+    /* Any interactive element in a face takes pointer events back, so using
+     * it does not fall through to the flip trigger underneath. */
+    .flashcard-face :is(a, button, summary, iframe, audio, video, input, select, textarea, label) {
         pointer-events: auto;
     }
 
@@ -196,7 +201,7 @@ Styling:
                     <div class="absolute top-4 left-5 font-mono text-xs font-medium
                                 uppercase tracking-widest text-muted"
                          aria-hidden="true">Question</div>
-                    {{ front }}
+                    {% markdown_body front markdown %}
                     <div class="absolute bottom-3.5 right-5 flex items-center gap-1.5
                                 text-xs text-muted"
                          aria-hidden="true">
@@ -220,7 +225,7 @@ Styling:
                     <div class="absolute top-4 left-5 font-mono text-xs font-medium
                                 uppercase tracking-widest text-(--flashcard-accent)"
                          aria-hidden="true">Answer</div>
-                    {{ back }}
+                    {% markdown_body back markdown %}
                     <div class="absolute bottom-3.5 right-5 flex items-center gap-1.5
                                 text-xs text-(--flashcard-hint)"
                          aria-hidden="true">
