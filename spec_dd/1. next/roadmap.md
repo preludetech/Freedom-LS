@@ -12,7 +12,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 ### In progress
 
 - 🔴 High · `educator-interface-refactor-5-learner` (Educator interface code layout, via `sacaa-compliance`)
-- 🔴 High · `sacaa-compliance-2-shuffle` (SACAA compliance)
 - 🔴 High · `multi-step-course-applications-1-review-states` (Multi-step course applications)
 - 🟠 Medium · `content-widget-longer-audio` (Audio content widgets)
 - 🟠 Medium · `content-widget-sayit-reveal-2-say-it-reveal` (Audio content widgets)
@@ -21,6 +20,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### Ready to start
 
+- 🔴 High · `sacaa-compliance-3-question-pools` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-1-content-save-safety` (SACAA content versions and access)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-4-question-access` (SACAA content versions and access)
 - 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
@@ -59,7 +59,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### Needs work on main first
 
-- ⚪ Priority not set · `panel-framework-tech-debt-polish` (Panel framework): cut it with `/sdd:roadmap panel-framework-tech-debt-polish` (the directory is empty).
+None.
 
 ![Up next](roadmap_diagrams/up-next.svg)
 
@@ -93,8 +93,7 @@ Priority: 🔴 High
 
 Quiz randomisation and a per-attempt record of the paper served, for training organisations audited by SACAA. Parent: `sacaa-compliance`.
 
-- `sacaa-compliance-2-shuffle` — **in progress** — Authors opt a quiz into shuffling pages, questions and answer options; locked options and keep-together groups stay put.
-- `sacaa-compliance-3-question-pools` — **blocked** by `sacaa-compliance-2-shuffle` — Authors set a quiz page to draw N questions per attempt; every learner is scored out of the same total.
+- `sacaa-compliance-3-question-pools` — **ready** — Authors set a quiz page to draw N questions per attempt; every learner is scored out of the same total.
 - `sacaa-compliance-4-attempt-review` — **blocked** by `educator-interface-refactor-5-learner` — Educators see one learner's quiz attempt: paper served, answers and score. The form export carries the served order.
 
 ![SACAA compliance](roadmap_diagrams/sacaa-compliance.svg)
@@ -118,7 +117,7 @@ Question versions, retired content, safer content saves and logged access to que
 
 - `sacaa-compliance-content-versions-and-access-1-content-save-safety` — **ready** — Content authors run `content_save` over several clean git repos; missing uuids fail unless `--generate-uuids`; DEBUG creates missing organisations.
 - `sacaa-compliance-content-versions-and-access-2-retire-removed-content` — **blocked** by `sacaa-compliance-content-versions-and-access-1-content-save-safety` — One `content_save` covers a site's whole source; content gone from it is retired, served to no one, kept for audit.
-- `sacaa-compliance-content-versions-and-access-3-question-versions` — **blocked** by `sacaa-compliance-content-versions-and-access-2-retire-removed-content`, `sacaa-compliance-2-shuffle` — Every question change saves an immutable version; attempts keep the version served; results, export and admin answers read it.
+- `sacaa-compliance-content-versions-and-access-3-question-versions` — **blocked** by `sacaa-compliance-content-versions-and-access-2-retire-removed-content` — Every question change saves an immutable version; attempts keep the version served; results, export and admin answers read it.
 - `sacaa-compliance-content-versions-and-access-4-question-access` — **ready** — A new role may view course questions and answers in the educator interface; each view is audited; admin question pages go.
 - `sacaa-compliance-content-versions-and-access-5-answered-version-review` — **blocked** by `sacaa-compliance-4-attempt-review`, `sacaa-compliance-content-versions-and-access-3-question-versions`, `sacaa-compliance-content-versions-and-access-4-question-access` — Educators reviewing an attempt see the question version answered, when it changed, and whether it is still served.
 
@@ -435,6 +434,5 @@ Gaps in the panel framework's dialogs and responses.
 
 - `panel-framework-close-and-toast-response` — **ready** — Panel actions get a built-in response that closes the dialog and shows a toast without swapping content.
 - `panel-framework-dialogs-without-javascript` — **ready** — Single-record dialog triggers work with JavaScript off, opening the dialog server-side over its page.
-- `panel-framework-tech-debt-polish` — **ready** — Panel framework tech-debt clean-up; scope not written yet. Before starting: cut it with `/sdd:roadmap panel-framework-tech-debt-polish` (the directory is empty).
 
 ![Panel framework](roadmap_diagrams/panel-framework.svg)
