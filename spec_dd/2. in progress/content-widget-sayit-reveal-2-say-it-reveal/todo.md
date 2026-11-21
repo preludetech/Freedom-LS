@@ -19,7 +19,6 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
-- [ ] (user) Run the two manual QA checks only a person can stage, from 3. frontend_qa.md: test 4.5 (with VoiceOver or NVDA, Reveal on B announces "Bravo" once and Hide announces nothing) and test 10 (on iOS Safari and Android Chrome, Reveal plays on the first tap, and again after Hide then Reveal); file anything that fails as a QA bug
 
 ## 4. Documentation and pull request
 
