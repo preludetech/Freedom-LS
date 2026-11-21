@@ -11,6 +11,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### In progress
 
+- 🔴 High · `faster-test-runs-1-fast-password-hasher` (Faster test runs)
 - 🔴 High · `educator-interface-refactor-5-learner` (Educator interface code layout, via `sacaa-compliance`)
 - 🔴 High · `sacaa-compliance-3-question-pools` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-1-content-save-safety` (SACAA content versions and access)
@@ -21,7 +22,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### Ready to start
 
-- 🔴 High · `faster-test-runs-1-fast-password-hasher` (Faster test runs)
 - 🔴 High · `faster-test-runs-2-reuse-test-database` (Faster test runs)
 - 🔴 High · `faster-test-runs-4-playwright-tests` (Faster test runs)
 - 🔴 High · `faster-test-runs-5-full-suite-on-github-actions` (Faster test runs)
@@ -75,7 +75,7 @@ Priority: 🔴 High
 
 Cut the time and machine load of test runs so several worktrees can work at once. Parent: `faster-test-runs`.
 
-- `faster-test-runs-1-fast-password-hasher` — **ready** — Tests hash passwords with a fast hasher; production and the dev server keep Argon2.
+- `faster-test-runs-1-fast-password-hasher` — **in progress** — Tests hash passwords with a fast hasher; production and the dev server keep Argon2.
 - `faster-test-runs-2-reuse-test-database` — **ready** — A pytest run reuses the test database and rebuilds it only when migrations change.
 - `faster-test-runs-3-permission-matrix-test` — **blocked** by `faster-test-runs-1-fast-password-hasher` — The permission matrix test builds its users and cohorts once, with every cell still checked.
 - `faster-test-runs-4-playwright-tests` — **ready** — Playwright tests sign in without the login form, and same-page tests merge into one flow.
