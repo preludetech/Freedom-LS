@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 from pytest_django.fixtures import SettingsWrapper
 
-from django.apps import apps
-from django.core.checks import CheckMessage, run_checks
+from django.core.checks import CheckMessage
+from django.core.checks.registry import registry
 from django.test import override_settings
 
 from freedom_ls.icons.checks import (
@@ -235,12 +235,16 @@ def test_the_hint_gives_the_rename_the_removal_and_the_id(
     )
 
 
-@pytest.mark.django_db
 def test_default_settings_produce_no_icons_check_output() -> None:
-    # Checks that are not tied to a model run whatever app_configs says, so other apps'
-    # messages are filtered out by id prefix.
-    found = run_checks(app_configs=[apps.get_app_config("icons")])
+    # Only the icons app's own checks are run: Django's other checks need a database or
+    # other installed apps, which a host with no database does not have.
+    icons_checks = [
+        check
+        for check in registry.registered_checks
+        if check.__module__ == "freedom_ls.icons.checks"
+    ]
 
-    assert [
-        message for message in found if (message.id or "").startswith("icons.")
-    ] == []
+    found = [message for check in icons_checks for message in check(app_configs=None)]
+
+    assert len(icons_checks) == 7
+    assert found == []

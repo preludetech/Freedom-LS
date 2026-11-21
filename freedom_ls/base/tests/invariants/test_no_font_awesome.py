@@ -1,7 +1,8 @@
+import importlib.util
 import re
 from pathlib import Path
 
-TEMPLATE_DIR = Path(__file__).resolve().parent.parent.parent.parent  # freedom_ls/
+TEMPLATE_DIR = Path(__file__).resolve().parents[3]  # freedom_ls/
 
 FA_PATTERNS = [
     (re.compile(r"\bfa-\w+"), "Font Awesome icon class"),
@@ -47,7 +48,14 @@ def test_no_inline_svg_icons_in_templates() -> None:
     )
 
 
-COTTON_ICON_PATH = Path("icons/templates/cotton/icon.html")
+def _icon_component_path() -> Path:
+    """The icon component, found through the import system so the test follows the app if it moves."""
+    spec = importlib.util.find_spec("freedom_ls.icons")
+    assert spec is not None
+    assert spec.submodule_search_locations is not None
+    return (
+        Path(spec.submodule_search_locations[0]) / "templates" / "cotton" / "icon.html"
+    )
 
 
 def test_no_direct_icon_tags_load_outside_cotton() -> None:
@@ -59,7 +67,7 @@ def test_no_direct_icon_tags_load_outside_cotton() -> None:
     violations: list[str] = []
     for path in _get_template_files():
         rel_path = path.relative_to(TEMPLATE_DIR)
-        if rel_path == COTTON_ICON_PATH:
+        if path.resolve() == _icon_component_path().resolve():
             continue
         content = path.read_text()
         if icon_tags_pattern.search(content):
