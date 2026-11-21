@@ -31,6 +31,13 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:document`: in `claude_plugins/fls-dev/skills/domain-glossary/SKILL.md`, add the noun `application`, add it to the "Changes" noun list, add verb rows `approved` (not `accepted`, `admitted`) and `rejected` (not `declined`, `denied`), and add the **withdraw** row to "Words that are already taken" (spec "Audit and glossary")
 - [x] (cmd) Run `/sdd:document`: in `docs/api.md`, add `state`, `organisation_id`, `decided_at` and `withdrawn_at` to the course-applications field table and example payload (spec "Documentation and downstream")
 - [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [x] (cmd) Code review fix: claim confirm page no longer warns of a replace/discard when the incoming application is closed
+- [x] (cmd) Code review fix: withdrawn drafts refuse file upload/remove (form_engine sitting_locks)
+- [x] (cmd) Code review fix: dashboard Continue application resumes the draft via a resume route
+- [x] (cmd) Code review fix: attach_to_user re-reads the incoming state under a lock
+- [x] (cmd) Code review fix: phone-question QA scenario reopens its application to draft
+- [x] (cmd) Code review fix: approved form pages say a decision was made
+- [x] (cmd) Code review fix: type hints on functions this branch added
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
 ## 5. Cleanup
