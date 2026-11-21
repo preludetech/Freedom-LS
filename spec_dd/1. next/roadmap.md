@@ -18,7 +18,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🟠 Medium · `content-widget-longer-audio` (Audio content widgets)
 - 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
 - ⚪ Priority not set · `extract-semantic-icons-app-1-standalone-app` (Semantic icons extraction)
-- ⚪ Priority not set · `full-test-run-still-too-often` (Tooling and operations)
 
 ### Ready to start
 
@@ -423,7 +422,6 @@ Developer tooling, deployment and downstream fixes.
 - `forced-site-name-for-host-based-site-lookup` — **ready** — `FORCE_SITE_NAME` reaches host-based site lookup in development, so every dev port works.
 - `audit-log-describe-test-flake` — **ready** — Find and fix why the audit-log describe test fails in loaded full runs but passes alone.
 - `dev-site-bootstrap-command` — **ready** — A development command that creates the forced-name dev Site and a verified dev superuser.
-- `full-test-run-still-too-often` — **in progress** — SDD rebases run only the tests the changed code affects, not the full suite after spec-only changes.
 
 ![Tooling and operations](roadmap_diagrams/tooling-and-operations.svg)
 
