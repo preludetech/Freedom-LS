@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1288" height="443" viewBox="0 0 1288 443" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4b5563"/></marker></defs>
+<rect width="1288" height="443" fill="#ffffff"/>
+<text x="24" y="38" font-size="15" font-weight="bold" fill="#111827">SACAA content versions and access</text>
+<path d="M274.0,90.5 C314.0,90.5 314.0,171.5 354.0,171.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M604.0,171.5 C644.0,171.5 644.0,183.5 684.0,183.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,166.0 C314.0,166.0 314.0,225.0 354.0,225.0 L604.0,225.0 C644.0,225.0 644.0,183.5 684.0,183.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,324.5 C314.0,324.5 314.0,273.0 354.0,273.0 L604.0,273.0 C644.0,273.0 644.0,261.0 684.0,261.0 L934.0,261.0 C974.0,261.0 974.0,207.5 1014.0,207.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M934.0,183.5 C974.0,183.5 974.0,207.5 1014.0,207.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,241.5 C314.0,241.5 314.0,249.0 354.0,249.0 L604.0,249.0 C644.0,249.0 644.0,237.0 684.0,237.0 L934.0,237.0 C974.0,237.0 974.0,207.5 1014.0,207.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<rect x="24.0" y="58.0" width="250" height="65" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M32.0,58.0 H30.0 A6,6 0 0 0 24.0,64.0 V117.0 A6,6 0 0 0 30.0,123.0 H32.0 Z" fill="#991b1b"/>
+<text x="40.0" y="80.0" fill="#111827">sacaa-compliance-content-</text>
+<text x="40.0" y="95.0" fill="#111827">versions-and-access-1-content-</text>
+<text x="40.0" y="110.0" fill="#111827">save-safety</text>
+<rect x="354.0" y="139.0" width="250" height="65" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M362.0,139.0 H360.0 A6,6 0 0 0 354.0,145.0 V198.0 A6,6 0 0 0 360.0,204.0 H362.0 Z" fill="#991b1b"/>
+<text x="370.0" y="161.0" fill="#111827">sacaa-compliance-content-</text>
+<text x="370.0" y="176.0" fill="#111827">versions-and-access-2-retire-</text>
+<text x="370.0" y="191.0" fill="#111827">removed-content</text>
+<rect x="684.0" y="151.0" width="250" height="65" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M692.0,151.0 H690.0 A6,6 0 0 0 684.0,157.0 V210.0 A6,6 0 0 0 690.0,216.0 H692.0 Z" fill="#991b1b"/>
+<text x="700.0" y="173.0" fill="#111827">sacaa-compliance-content-</text>
+<text x="700.0" y="188.0" fill="#111827">versions-and-access-3-</text>
+<text x="700.0" y="203.0" fill="#111827">question-versions</text>
+<rect x="24.0" y="209.0" width="250" height="65" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M32.0,209.0 H30.0 A6,6 0 0 0 24.0,215.0 V268.0 A6,6 0 0 0 30.0,274.0 H32.0 Z" fill="#991b1b"/>
+<text x="40.0" y="231.0" fill="#111827">sacaa-compliance-content-</text>
+<text x="40.0" y="246.0" fill="#111827">versions-and-access-4-</text>
+<text x="40.0" y="261.0" fill="#111827">question-access</text>
+<rect x="1014.0" y="175.0" width="250" height="65" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M1022.0,175.0 H1020.0 A6,6 0 0 0 1014.0,181.0 V234.0 A6,6 0 0 0 1020.0,240.0 H1022.0 Z" fill="#991b1b"/>
+<text x="1030.0" y="197.0" fill="#111827">sacaa-compliance-content-</text>
+<text x="1030.0" y="212.0" fill="#111827">versions-and-access-5-</text>
+<text x="1030.0" y="227.0" fill="#111827">answered-version-review</text>
+<rect x="24.0" y="141.0" width="250" height="50" rx="6" fill="#ffffff" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="5 4"/>
+<path d="M32.0,141.0 H30.0 A6,6 0 0 0 24.0,147.0 V185.0 A6,6 0 0 0 30.0,191.0 H32.0 Z" fill="#991b1b"/>
+<text x="40.0" y="163.0" fill="#111827">sacaa-compliance-2-shuffle</text>
+<text x="40.0" y="178.0" fill="#6b7280" font-style="italic">SACAA compliance</text>
+<rect x="24.0" y="292.0" width="250" height="65" rx="6" fill="#ffffff" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="5 4"/>
+<path d="M32.0,292.0 H30.0 A6,6 0 0 0 24.0,298.0 V351.0 A6,6 0 0 0 30.0,357.0 H32.0 Z" fill="#991b1b"/>
+<text x="40.0" y="314.0" fill="#111827">sacaa-compliance-4-attempt-</text>
+<text x="40.0" y="329.0" fill="#111827">review</text>
+<text x="40.0" y="344.0" fill="#6b7280" font-style="italic">SACAA compliance</text>
+<rect x="24.0" y="381" width="16" height="12" rx="3" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+<text x="46.0" y="391" fill="#374151">in progress</text>
+<rect x="154.3" y="381" width="16" height="12" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="176.3" y="391" fill="#374151">ready</text>
+<rect x="240.8" y="381" width="16" height="12" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+<text x="262.8" y="391" fill="#374151">needs work on main first</text>
+<rect x="466.0" y="381" width="16" height="12" rx="3" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="488.0" y="391" fill="#374151">blocked</text>
+<rect x="567.1" y="381" width="16" height="12" rx="3" fill="#ffffff" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="589.1" y="391" fill="#374151">other feature</text>
+<text x="24" y="413" fill="#374151">Priority:</text>
+<rect x="101.7" y="403" width="16" height="12" rx="3" fill="#991b1b"/>
+<text x="123.7" y="413" fill="#374151">High</text>
+<rect x="180.9" y="403" width="16" height="12" rx="3" fill="#fb923c"/>
+<text x="202.9" y="413" fill="#374151">Medium</text>
+<rect x="274.7" y="403" width="16" height="12" rx="3" fill="#facc15"/>
+<text x="296.7" y="413" fill="#374151">Low</text>
+<rect x="346.6" y="403" width="16" height="12" rx="3" fill="#9ca3af"/>
+<text x="368.6" y="413" fill="#374151">Priority not set</text>
+</svg>

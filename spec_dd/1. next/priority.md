@@ -8,6 +8,7 @@ adds anything missing under "Priority not set"; move it from there to the level 
 ## High
 
 - `sacaa-compliance`
+- `sacaa-compliance-content-versions-and-access`
 - `extract_panels_framework`
 - `learner-public-profile`
 - `multi-step-course-applications`
@@ -40,3 +41,6 @@ adds anything missing under "Priority not set"; move it from there to the level 
 - `housekeeping-sentry-cron-checkin`
 - `audit-log-describe-test-flake`
 - `extract-semantic-icons-app`
+- `panel-framework-close-and-toast-response`
+- `panel-framework-dialogs-without-javascript`
+- `panel-framework-tech-debt-polish`

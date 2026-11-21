@@ -22,6 +22,8 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### Ready to start
 
+- 🔴 High · `sacaa-compliance-content-versions-and-access-1-content-save-safety` (SACAA content versions and access)
+- 🔴 High · `sacaa-compliance-content-versions-and-access-4-question-access` (SACAA content versions and access)
 - 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
 - 🔴 High · `learner-public-profile-2-profile-and-page` (Learner public profiles)
 - 🟠 Medium · `content-widget-sayit-reveal-4-audio-access-control` (Audio content widgets)
@@ -53,10 +55,12 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - ⚪ Priority not set · `learner-interface-features-5-protected-video` (Learner interface features)
 - ⚪ Priority not set · `housekeeping-sentry-cron-checkin` (Tooling and operations)
 - ⚪ Priority not set · `audit-log-describe-test-flake` (Tooling and operations)
+- ⚪ Priority not set · `panel-framework-close-and-toast-response` (Panel framework)
+- ⚪ Priority not set · `panel-framework-dialogs-without-javascript` (Panel framework)
 
 ### Needs work on main first
 
-None.
+- ⚪ Priority not set · `panel-framework-tech-debt-polish` (Panel framework): cut it with `/sdd:roadmap panel-framework-tech-debt-polish` (the directory is empty).
 
 ![Up next](roadmap_diagrams/up-next.svg)
 
@@ -107,6 +111,32 @@ Quiz randomisation and a per-attempt record of the paper served, for training or
 - Assumption: no SACAA text found mandates a randomisation mechanic; the client's ATO manual is the audit reference, so the effort ships common practice.
 - Out of scope: exam time limits, retake waiting periods, frozen copies of question text (`content_snapshots`, paused), difficulty-weighted draws, banks shared across forms, draws by course section.
 - References: `sacaa-compliance/research_sacaa_requirements.md` and `sacaa-compliance/research_form_engine_seams.md`.
+
+## SACAA content versions and access
+
+Priority: 🔴 High
+
+Question versions, retired content, safer content saves and logged access to question banks, for SACAA audits. Parent: `sacaa-compliance-content-versions-and-access`.
+
+- `sacaa-compliance-content-versions-and-access-1-content-save-safety` — **ready** — Content authors run `content_save` over several clean git repos; missing uuids fail unless `--generate-uuids`; DEBUG creates missing organisations.
+- `sacaa-compliance-content-versions-and-access-2-retire-removed-content` — **blocked** by `sacaa-compliance-content-versions-and-access-1-content-save-safety` — One `content_save` covers a site's whole source; content gone from it is retired, served to no one, kept for audit.
+- `sacaa-compliance-content-versions-and-access-3-question-versions` — **blocked** by `sacaa-compliance-content-versions-and-access-2-retire-removed-content`, `sacaa-compliance-2-shuffle` — Every question change saves an immutable version; attempts keep the version served; results, export and admin answers read it.
+- `sacaa-compliance-content-versions-and-access-4-question-access` — **ready** — A new role may view course questions and answers in the educator interface; each view is audited; admin question pages go.
+- `sacaa-compliance-content-versions-and-access-5-answered-version-review` — **blocked** by `sacaa-compliance-4-attempt-review`, `sacaa-compliance-content-versions-and-access-3-question-versions`, `sacaa-compliance-content-versions-and-access-4-question-access` — Educators reviewing an attempt see the question version answered, when it changed, and whether it is still served.
+
+![SACAA content versions and access](roadmap_diagrams/sacaa-content-versions-and-access.svg)
+
+**Notes**
+- Build order: `sacaa-compliance-content-versions-and-access-1-content-save-safety`, `sacaa-compliance-content-versions-and-access-2-retire-removed-content`, `sacaa-compliance-content-versions-and-access-3-question-versions` in series; `sacaa-compliance-content-versions-and-access-4-question-access` runs beside them; `sacaa-compliance-content-versions-and-access-5-answered-version-review` last.
+- Collisions: the first three all change `content_save`; `sacaa-compliance-content-versions-and-access-3-question-versions` changes the served paper after `sacaa-compliance-2-shuffle` and collides with `sacaa-compliance-3-question-pools`.
+- Decided: each source path is a git repo with a clean tree before the save, checked on disk only; `--generate-uuids` dirties it afterwards by design; the commit hash is recorded.
+- Decided: retired content is served to no one; progress, answers and attempts are kept; content back in the source is un-retired; nothing is deleted.
+- Decided: `FormQuestion` keeps its uuid and each change makes an immutable version; an attempt pins its versions at start and finishes on them.
+- Decided: a new organisation-scoped role holds the question-viewing permission. It gates the content preview, the cohort report quiz panel (screen and PDF) and the answered-version review. Every view is audited, superusers' included.
+- Decided: the Django admin loses its question and option pages and QUIZ answer views; survey and application answers stay.
+- Assumption: a version covers question text, type, required, bounds and every option's text, value, order and correctness; `FormContent` and `FormPage` are not versioned.
+- Out of scope: `content_snapshots` (paused), versioning topics or courses, regrading, the learner's `quiz_show_incorrect` results.
+- References: `research_content_save_pipeline.md` and `research_question_versioning_prior_art.md`, both in the parent.
 
 ## Panel framework extraction
 
@@ -398,3 +428,15 @@ The icons app becomes an installable package another Django project can use and 
 - Assumed: the panel framework package does not depend on this one; FLS meets the panel framework's icon host contract through it.
 - Out of scope: changing how templates call `<c-icon>`, new icon sets beyond the four, an icon picker UI.
 - References: `research_coupling_audit.md` in the parent; the extract_panels_framework research files for packaging.
+
+## Panel framework
+
+Priority: ⚪ Priority not set
+
+Gaps in the panel framework's dialogs and responses.
+
+- `panel-framework-close-and-toast-response` — **ready** — Panel actions get a built-in response that closes the dialog and shows a toast without swapping content.
+- `panel-framework-dialogs-without-javascript` — **ready** — Single-record dialog triggers work with JavaScript off, opening the dialog server-side over its page.
+- `panel-framework-tech-debt-polish` — **ready** — Panel framework tech-debt clean-up; scope not written yet. Before starting: cut it with `/sdd:roadmap panel-framework-tech-debt-polish` (the directory is empty).
+
+![Panel framework](roadmap_diagrams/panel-framework.svg)
