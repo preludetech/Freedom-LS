@@ -1,11 +1,11 @@
 # Roadmap
 
-_Last updated: 2026-11-13_
+_Last updated: 2026-11-21_
 
 ## Summary
 
 - This is the canonical home for features that are planned, partially built, or not started. Other product docs link here rather than restating half-built status.
-- **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (organisation and cohort roles are managed in the educator interface; site admin is still assigned by a developer, and records edited directly in the Django admin are not logged), notifications (in-app bell and notification centre built, off by default; email and most events not built), direct messaging (one-to-one conversations built, off by default; moderation, email, real-time delivery, group messaging and help requests from the course player not built), xAPI (non-functional stub), site-aware user groups (drafted, disabled), registration rules (HR attributes and rules that register learners built; rules that recommend, educator-interface screens and CSV import not built).
+- **Half-built:** course applications (apply flow, authored application form, and application states with withdraw and re-apply built; reviewer workflow not built), role-based access control (organisation and cohort roles are managed in the educator interface; site admin is still assigned by a developer, and records edited directly in the Django admin are not logged), notifications (in-app bell and notification centre built, off by default; email and most events not built), direct messaging (one-to-one conversations built, off by default; moderation, email, real-time delivery, group messaging and help requests from the course player not built), xAPI (non-functional stub), site-aware user groups (drafted, disabled), registration rules (HR attributes and rules that register learners built; rules that recommend, educator-interface screens and CSV import not built).
 - **Not built:** 2FA/MFA, educator-interface management of deadlines (overrides, pausing, extending and the deadline policy), notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, the deliberately deferred organisation capabilities, and the deliberately deferred cohort report capabilities.
 - Shipped features are documented in their own product docs; this one covers only what is incomplete.
 
@@ -27,13 +27,13 @@ See [educator interface](./educator-interface.md#organisation-scope) and [admin 
 
 ## Course Applications
 
-**Status: Access type, apply flow, and authored application form built; review/approval workflow not built.**
+**Status: Access type, apply flow, authored application form, and application states built; reviewer workflow not built.**
 
-A course can be configured as free or application-gated. A learner browsing an application-gated course sees an "Apply now" prompt; confirming creates an application. Where the course names an application form, the applicant works through it, including a file-upload question if the form has one, before reaching the status page; a gated course with no form goes straight to the status page. A superuser reads submitted answers and downloads uploaded files in the Django admin; other staff cannot. See [configuration and extension](./configuration-and-extension.md) for the access backend, [learner experience](./learner-experience.md) for the applicant's flow, and [admin interface](./admin-interface.md) for the admin's answer and file views.
+A course can be configured as free or application-gated. A learner browsing an application-gated course sees an "Apply now" prompt; confirming creates an application. Where the course names an application form, the applicant works through it, including a file-upload question if the form has one, before reaching the status page; a gated course with no form goes straight to the status page. The status page shows the application's state: the applicant can withdraw an open application, reads the reviewer's message if it is rejected, and can apply again after a rejected or withdrawn one. Staff with view permission read submitted answers and download uploaded files in the Django admin. See [configuration and extension](./configuration-and-extension.md) for the access backend, [learner experience](./learner-experience.md) for the applicant's flow, and [admin interface](./admin-interface.md) for the admin's answer and file views.
 
 What remains missing:
 
-- **Review and approval** — nobody can review, approve, reject, request changes on, or withdraw an application. There are no reviewer roles or permissions, no audit trail, and no admin or educator review screen. The applicant's status page is static and never reflects a decision.
+- **Review and approval** — there are no reviewer roles or permissions, no inbox, and no admin or educator review screen, so nobody can approve or reject an application through the product yet. Also not built: requesting changes or reopening the form, registering the applicant on approval, email about decisions, webhooks for application events, and undoing a decision or a withdrawal.
 - **Malware scanning of uploaded files** — an upload's real type and size are checked and images are re-encoded, but nothing inspects the contents for a malicious payload; a reviewer downloads what was submitted, unmodified in the case of a PDF. This is a deliberate, tracked deferral; see [security and data handling](./security-and-data-handling.md#applicant-uploads-built).
 - **A retention or expiry policy for uploaded files** — see [data retention](#data-retention-deletion-and-subject-rights).
 - **Some question-authoring options** — a page, question or content block can be shown only when an earlier choice answer matches, but only on a single condition: several conditions cannot be combined, and conditions on a non-choice answer or on a numeric or text comparison are not supported. There is no boolean question type and no per-question upload limit.
