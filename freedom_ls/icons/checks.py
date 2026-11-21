@@ -5,12 +5,14 @@ E = Error, W = Warning. Checks run automatically on runserver, migrate,
 test, and ``manage.py check``.
 
 E001 — Unknown icon set name.
-E002 — Iconify JSON file not found on disk.
+E002 — The active set's icons.json is missing: from the configured
+       SEMANTIC_ICONS_ICONIFY_DIR when it is usable, otherwise from the bundled data.
 E003 — Mapping value (base icon name) not found in Iconify JSON.
 E004 — Variant-suffixed icon name not found in Iconify JSON.
 E005 — Override key is not a valid semantic icon name.
 E006 — Override icon name not found in Iconify JSON.
 E007 — Mapping keys don't match SEMANTIC_ICON_NAMES.
+E008 — SEMANTIC_ICONS_ICONIFY_DIR is not an absolute path to an existing directory.
 W001 — Warn if commonly used variants (outline, solid) are unsupported.
 W002 — FREEDOM_LS_ICON_SET is still set; use SEMANTIC_ICONS_SET.
 W003 — FREEDOM_LS_ICON_OVERRIDES is still set; use SEMANTIC_ICONS_OVERRIDES.
@@ -20,37 +22,73 @@ W004 — FREEDOM_LS_ICON_BACKEND is still set; use SEMANTIC_ICONS_BACKEND.
 from django.core.checks import CheckMessage, Error, Warning, register
 
 from freedom_ls.icons.config import DEPRECATED_SETTINGS, config, project_value
-from freedom_ls.icons.loader import PACKAGE_MAP, iconify_json_path
+from freedom_ls.icons.loader import (
+    BUNDLED_DATA_DIR,
+    PACKAGE_MAP,
+    set_file,
+    usable_iconify_dir,
+)
 from freedom_ls.icons.mappings import ICON_SETS
 from freedom_ls.icons.semantic_names import SEMANTIC_ICON_NAMES
 
 
 @register()
+def check_iconify_dir(**kwargs: object) -> list[CheckMessage]:
+    """E008: the configured directory is not an absolute path to an existing directory.
+
+    Checked here rather than at render time: rendering falls back to bundled data, and
+    `manage.py check --deploy` is where a deploy finds the mistake.
+    """
+    value = config.SEMANTIC_ICONS_ICONIFY_DIR
+    if value is None or usable_iconify_dir() is not None:
+        return []
+    return [
+        Error(
+            f"SEMANTIC_ICONS_ICONIFY_DIR is {str(value)!r}, which is not an absolute "
+            "path to an existing directory.",
+            hint=(
+                "Fix the path, or remove SEMANTIC_ICONS_ICONIFY_DIR to use the "
+                "bundled icon data."
+            ),
+            id="icons.E008",
+        )
+    ]
+
+
+@register()
 def check_iconify_json_exists(**kwargs: object) -> list[CheckMessage]:
     """E001/E002: Check that the icon set is known and its JSON file exists."""
-    errors: list[CheckMessage] = []
     icon_set_name: str = config.SEMANTIC_ICONS_SET
     pkg = PACKAGE_MAP.get(icon_set_name)
     if pkg is None:
-        errors.append(
+        return [
             Error(
                 f"Unknown icon set: {icon_set_name!r}",
                 hint=f"Available sets: {sorted(PACKAGE_MAP)}",
                 id="icons.E001",
             )
-        )
-        return errors
+        ]
 
-    json_path = iconify_json_path(pkg)
-    if not json_path.exists():
-        errors.append(
-            Error(
-                f"Iconify JSON file not found for icon set {icon_set_name!r}",
-                hint=f"Run: npm install @iconify-json/{pkg}",
-                id="icons.E002",
-            )
+    if config.SEMANTIC_ICONS_ICONIFY_DIR is None:
+        json_path = set_file(BUNDLED_DATA_DIR, icon_set_name)
+    else:
+        directory = usable_iconify_dir()
+        if directory is None:
+            return []  # E008 reports the directory
+        json_path = set_file(directory, icon_set_name)
+
+    if json_path.exists():
+        return []
+    return [
+        Error(
+            f"Iconify JSON file not found for icon set {icon_set_name!r}: {json_path}",
+            hint=(
+                "Set SEMANTIC_ICONS_ICONIFY_DIR to a directory laid out like "
+                f"node_modules/@iconify-json, holding {pkg}/icons.json."
+            ),
+            id="icons.E002",
         )
-    return errors
+    ]
 
 
 @register()
@@ -124,6 +162,10 @@ def check_overrides_exist(**kwargs: object) -> list[CheckMessage]:
                 Error(
                     f"Override {semantic_name!r} -> {icon_name!r} not found in "
                     f"{icon_set_name!r} Iconify JSON",
+                    hint=(
+                        "Pick a glyph in the active set's bundled data, or point "
+                        "SEMANTIC_ICONS_ICONIFY_DIR at full data that has it."
+                    ),
                     id="icons.E006",
                 )
             )

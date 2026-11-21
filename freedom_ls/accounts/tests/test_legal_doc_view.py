@@ -9,7 +9,7 @@ import pytest
 from django.test import Client
 from django.urls import reverse
 
-from freedom_ls.icons.loader import _cache
+from freedom_ls.icons.loader import clear_cache
 
 _TERMS = """---
 version: "1.0"
@@ -49,13 +49,13 @@ def with_terms(mock_legal_blobs, mock_site_context):
 def cold_icon_cache() -> Iterator[None]:
     """Empty the icon loader's cache around the test.
 
-    The loader reads its JSON from ``BASE_DIR/node_modules`` once and memoises
-    it, so a page only re-reads that path when the cache is cold. Emptying it
-    makes the read happen here rather than depending on which tests ran first.
+    The loader reads the configured icon directory once and memoises it, so a
+    page only re-reads it when the cache is cold. Emptying it makes the read
+    happen here rather than depending on which tests ran first.
     """
-    _cache.clear()
+    clear_cache()
     yield
-    _cache.clear()
+    clear_cache()
 
 
 @pytest.mark.django_db
@@ -79,11 +79,11 @@ def test_missing_doc_returns_404(mock_site_context, mock_legal_blobs):
 def test_missing_doc_returns_404_with_a_cold_icon_cache(
     mock_site_context, mock_legal_blobs, cold_icon_cache
 ):
-    """The stubbed BASE_DIR must still reach the real node_modules.
+    """Icons on the 404 page resolve under the stubbed BASE_DIR.
 
     `mock_legal_blobs` repoints BASE_DIR at a tmp dir so the legal-doc loader
-    reads fixture blobs. The icon loader reads that same setting, and the 404
-    page it renders carries icons, so they have to resolve under the stub too.
+    reads fixture blobs. The icon loader reads an absolute configured directory
+    and the bundled data, so the stub does not affect the icons the page carries.
     """
     client = Client()
     response = client.get(reverse("accounts:legal_doc", kwargs={"doc_type": "terms"}))

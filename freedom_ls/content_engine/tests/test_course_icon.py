@@ -13,6 +13,8 @@ from freedom_ls.content_engine.course_icon import (
     IconResolutionError,
     render_course_icon,
 )
+from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.models import Course
 from freedom_ls.icons.backend import get_icon_backend
 from freedom_ls.icons.loader import load_iconify_data
 
@@ -182,3 +184,16 @@ def test_active_set_respects_settings(monkeypatch: pytest.MonkeyPatch) -> None:
 
     out = render_course_icon("drone")
     assert "<svg" in out
+
+
+@pytest.mark.fls_internal
+@pytest.mark.django_db
+def test_a_saved_course_renders_a_glyph_outside_the_required_glyphs(
+    mock_site_context,
+) -> None:
+    CourseFactory(icon="no-such-glyph", icon_fallback="heroicons:scale")
+    course = Course.objects.get()
+
+    out = render_course_icon(course.icon, course.icon_fallback)
+
+    assert load_iconify_data("heroicons")["icons"]["scale"]["body"] in out

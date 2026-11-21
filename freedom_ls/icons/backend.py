@@ -5,7 +5,7 @@ from django.utils.html import escape
 from django.utils.module_loading import import_string
 
 from freedom_ls.icons.config import config
-from freedom_ls.icons.loader import load_iconify_data
+from freedom_ls.icons.loader import DEFAULT_ICON_SIZE, load_iconify_data
 from freedom_ls.icons.mappings import ICON_SETS
 
 _DANGEROUS_SVG_PATTERN = re.compile(r"<script|<foreignObject|on\w+\s*=", re.IGNORECASE)
@@ -57,8 +57,8 @@ def build_svg(
     icon_data = icons[lookup_name]
 
     body = _validate_svg_body(icon_data["body"])
-    width = int(icon_data.get("width", data.get("width", 24)))
-    height = int(icon_data.get("height", data.get("height", 24)))
+    width = int(icon_data.get("width", data.get("width", DEFAULT_ICON_SIZE)))
+    height = int(icon_data.get("height", data.get("height", DEFAULT_ICON_SIZE)))
 
     if aria_label:
         accessibility = f'role="img" aria-label="{escape(aria_label)}"'

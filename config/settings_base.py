@@ -66,6 +66,11 @@ FLS_THEMES_DIRS: list[Path] = [
 # key in `freedom_ls.icons.mappings.ICON_SETS`.
 SEMANTIC_ICONS_SET = "heroicons"
 
+# Authors may name any glyph in any of the four sets for `Course.icon`,
+# `Course.icon_fallback` and admonition `icon_fallback`, so FLS reads the full upstream
+# data rather than only the bundled required glyphs.
+SEMANTIC_ICONS_ICONIFY_DIR = BASE_DIR / "node_modules" / "@iconify-json"
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/

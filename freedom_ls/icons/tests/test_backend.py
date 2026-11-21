@@ -1,5 +1,6 @@
 import re
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 
@@ -9,9 +10,12 @@ from freedom_ls.icons.backend import (
     DefaultIconBackend,
     IconBackend,
     _validate_svg_body,
+    build_svg,
     get_icon_backend,
 )
-from freedom_ls.icons.loader import load_iconify_data
+from freedom_ls.icons.loader import DEFAULT_ICON_SIZE, load_iconify_data
+
+from .helpers import write_icon_set
 
 
 class MockBackend(IconBackend):
@@ -194,6 +198,20 @@ class TestDefaultIconBackendRender:
     def test_unsupported_variant_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="not supported"):
             render_icon("success", variant="solid")
+
+
+class TestBuildSvg:
+    def test_an_entry_with_no_size_from_a_file_with_no_size_draws_at_the_default(
+        self, iconify_dir: Path
+    ) -> None:
+        write_icon_set(
+            iconify_dir, "phosphor", {"icons": {"sizeless": {"body": "<g/>"}}}
+        )
+
+        svg = build_svg("phosphor", "sizeless", "size-5", "")
+
+        assert f'width="{DEFAULT_ICON_SIZE}" height="{DEFAULT_ICON_SIZE}"' in svg
+        assert DEFAULT_ICON_SIZE == 24
 
 
 class TestValidateSvgBody:
