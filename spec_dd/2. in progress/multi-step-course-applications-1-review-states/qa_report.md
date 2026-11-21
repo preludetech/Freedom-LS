@@ -131,8 +131,8 @@ The layout probe flags no overflow. The visual defects it did not flag (B1, B4, 
 | B2 | Read-only application form page says 'submitted' for a withdrawn or rejected application | **FIXED** (commit: 23e354ea5) |
 | B3 | Unclaimed decided application still reads as awaiting review in the claim notice and claim page | **FIXED** (commit: 01dba4815) |
 | B4 | 'View your previous application' wraps onto two lines at 375px | **FIXED** (commit: 1df2c5126) |
-| B5 | Withdrawn or rejected application's check-your-answers page still invites edits and submission | UNRESOLVED (red lane, product decision filed in `todo.md`) |
-| B6 | Rejected dashboard row has no 'Apply again' below the sm breakpoint | UNRESOLVED (red lane, product decision filed in `todo.md`) |
+| B5 | Withdrawn or rejected application's check-your-answers page still invites edits and submission | **FIXED** (commit: 4e2b1710d) — Withdrawn or rejected application's check-your-answers page still invites edits and submission — after the fix: ![](screenshots/fixed/page-2026-11-21T02-55-47-332Z.png) ![](screenshots/fixed/page-2026-11-21T02-55-57-937Z.png) |
+| B6 | Rejected dashboard row has no 'Apply again' below the sm breakpoint | **WONTFIX** — Rejected dashboard row has no 'Apply again' below the sm breakpoint (reason: phone rows stay one tap target; Apply again is on the status page) |
 
 ## General notes
 
@@ -141,4 +141,4 @@ The layout probe flags no overflow. The visual defects it did not flag (B1, B4, 
 - Extra screenshots not referenced by a record row above, kept as supporting evidence: `page-2026-11-20T18-46-59-482Z.png`, `page-2026-11-20T18-47-20-593Z.png` (withdraw dialog), `page-2026-11-20T18-48-22-683Z.png`, `page-2026-11-20T18-50-32-871Z.png`, `page-2026-11-20T18-50-48-666Z.png`, `page-2026-11-20T18-51-09-691Z.png`, `page-2026-11-20T18-52-30-660Z.png`, `page-2026-11-20T18-53-11-920Z.png` and `page-2026-11-20T18-53-50-568Z.png`.
 - No tests were skipped.
 
-status: ok · reason: 6 bugs — 4 fixed, 2 unresolved (product decisions); report rendered, screenshots verified
+status: ok · reason: 6 bugs — 5 fixed, 1 won't fix, 0 unresolved; report rendered, screenshots verified
