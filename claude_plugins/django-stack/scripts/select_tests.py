@@ -405,20 +405,24 @@ def narrowed(decisions: list[Decision]) -> list[Decision]:
 
 
 def imports_decision(
-    path: str, app: App, graph: ModuleGraph, project_root: Path
+    path: str, app: App | None, graph: ModuleGraph, project_root: Path
 ) -> Decision:
     """The test files that reach the module `path` through imports, outside the owning
-    app's tests directory, which the owner decision already selects.
+    app's tests directory, which the owner decision already selects. A module no app owns
+    has no such directory to leave out.
 
     A browser test is kept only when the change is one a browser can see.
     """
-    owner_tests = tests_dir_of(app, project_root)
+    owner_tests = None if app is None else tests_dir_of(app, project_root)
     keep_browser_tests = first_match(path, UI_GLOBS) is not None
     files = sorted(
         f
         for f in graph.test_files_reaching({path_module_name(path)})
-        if not targets_overlap(f, owner_tests)
-        and (keep_browser_tests or playwright_tests_root(PurePosixPath(f)) is None)
+        if owner_tests is None
+        or (
+            not targets_overlap(f, owner_tests)
+            and (keep_browser_tests or playwright_tests_root(PurePosixPath(f)) is None)
+        )
     )
     reason = f"{len(files)} test files through imports"
     if not files:
@@ -434,6 +438,20 @@ def narrow_app_python(
         owner_decision(path, app, project_root),
         imports_decision(path, app, graph(), project_root),
     ]
+
+
+def narrow_loose_python(
+    path: str, config: TierConfig, graph: Callable[[], ModuleGraph], project_root: Path
+) -> list[Decision] | None:
+    """The test files that import a Python module no app owns, plus its tooling targets.
+
+    None when both select nothing, so the caller goes on to the unmapped-path rule.
+    """
+    reached = imports_decision(path, None, graph(), project_root)
+    tooling = decide_tooling(path, config, project_root) or []
+    if not any(d.kind == "select" for d in [reached, *tooling]):
+        return None
+    return [reached, *tooling]
 
 
 def decide(
@@ -470,6 +488,11 @@ def decide(
         if config.narrow and path.endswith(".py"):
             return narrowed(narrow_app_python(path, app, graph, project_root))
         return decide_app_path(path, app, apps, edges, project_root)
+
+    if config.narrow and path.endswith(".py"):
+        loose = narrow_loose_python(path, config, graph, project_root)
+        if loose is not None:
+            return narrowed(loose)
 
     tooling = decide_tooling(path, config, project_root)
     if tooling is not None:

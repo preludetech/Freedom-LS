@@ -2414,3 +2414,85 @@ def test_relative_import_deeper_than_the_package_adds_no_name_and_raises_nothing
     # Assert
     assert result.returncode == 0
     assert result.stderr == ""
+
+
+def test_module_outside_any_app_selects_only_the_test_files_importing_it(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    narrow_import_repo(
+        tmp_path,
+        {
+            "pkg/testing_helpers.py": "",
+            "pkg/beta/tests/test_a.py": "import pkg.testing_helpers\n",
+        },
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/testing_helpers.py")
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: targeted"]
+    assert lines(result.stdout, "why") == [
+        "why: pkg/testing_helpers.py -> pkg/beta/tests/test_a.py "
+        f"(1 test files through imports) {TAIL}",
+    ]
+    assert lines(result.stdout, "command") == [
+        "command: uv run pytest -n auto --no-cov pkg/beta/tests/test_a.py"
+    ]
+
+
+def test_module_outside_any_app_under_a_tooling_entry_selects_its_targets_and_importers(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    tooling = (
+        f"{NARROW_TABLE}\n[[tool.test_tiers.tooling]]\n"
+        'glob = "scripts/**"\ntests = ["tests/test_tooling.py"]\n'
+    )
+    narrow_import_repo(
+        tmp_path,
+        {
+            "pyproject.toml": tooling,
+            "scripts/tool.py": "",
+            "tests/test_tooling.py": "",
+            "pkg/beta/tests/test_uses_tool.py": "import scripts.tool\n",
+        },
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "scripts/tool.py")
+
+    # Assert
+    assert lines(result.stdout, "why") == [
+        "why: scripts/tool.py -> pkg/beta/tests/test_uses_tool.py "
+        f"(1 test files through imports) {TAIL}",
+        f"why: scripts/tool.py -> tests/test_tooling.py (tooling) {TAIL}",
+    ]
+    assert lines(result.stdout, "command") == [
+        "command: uv run pytest -n auto --no-cov "
+        "pkg/beta/tests/test_uses_tool.py tests/test_tooling.py"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("path", "tracked", "reason"),
+    [
+        ("loose.py", True, "full (unmapped path)"),
+        ("notes/readme.txt", True, "full (unmapped path)"),
+        ("loose.py", False, "none (untracked and unmapped)"),
+    ],
+)
+def test_path_outside_any_app_that_nothing_reaches_is_decided_as_unmapped(
+    tmp_path: Path, path: str, tracked: bool, reason: str
+) -> None:
+    # Arrange
+    narrow_import_repo(tmp_path, {path: ""} if tracked else None)
+    if not tracked:
+        write_tree(tmp_path, {path: ""})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "--working-tree", path)
+
+    # Assert
+    assert f"why: {path} -> {reason}" in lines(result.stdout, "why")
