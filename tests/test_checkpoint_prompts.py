@@ -14,6 +14,7 @@ pytestmark = pytest.mark.dev_tooling
 ROOT = Path(__file__).resolve().parents[1]
 COMMANDS = ROOT / "claude_plugins/sdd/commands"
 RESOURCES = ROOT / "claude_plugins/sdd/resources"
+TEST_TIERS = ROOT / "claude_plugins/django-stack/resources/test_tiers.md"
 TIER_FULL = re.compile(r"<tier>`?:? *`full`")
 TIER_CHECKPOINT = re.compile(r"<tier>`?:? *`checkpoint`")
 
@@ -153,3 +154,11 @@ def test_run_test_tier_prefixes_its_script_paths_with_the_plugins_root() -> None
     text = (COMMANDS / "protected/run_test_tier.md").read_text()
 
     assert "`<PLUGINS_ROOT>/`" in text
+
+
+def test_tier_definition_tells_a_checkpoint_to_select_wide() -> None:
+    text = TEST_TIERS.read_text()
+    targeted = text.split("- **targeted.**", 1)[1].split("- **full.**", 1)[0]
+
+    assert ".claude/ds/scripts/select_tests.sh --wide <diff arguments>" in targeted
+    assert "checkpoint" in targeted

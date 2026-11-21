@@ -27,6 +27,13 @@ live here and nowhere else.
   `${CLAUDE_PLUGIN_ROOT}/scripts/select_tests.py`; the project's own are `none`, `escalation` and
   `dependency_files` in `[tool.test_tiers]` in `pyproject.toml`. The script applies them; never apply them by
   hand. Done when every `why:` line is accounted for and the printed command exits zero.
+
+  A checkpoint selects wide. Its `<selector>` is the wrapper followed by `--wide`, and the targeted
+  run after a `targeted` resolution passes `--wide` before the resolved `<diff>`:
+
+  ```
+  .claude/ds/scripts/select_tests.sh --wide <diff arguments>
+  ```
 - **full.** The whole suite, in parallel:
 
   ```

@@ -8,6 +8,8 @@ a `pyproject.toml` plus a namespace package (`pkg/`, no `__init__.py`) holding a
 from __future__ import annotations
 
 import subprocess
+from collections.abc import Callable
+from functools import partial
 from pathlib import Path
 
 import pytest
@@ -2753,3 +2755,85 @@ def test_app_migration_is_full(tmp_path: Path) -> None:
     assert lines(result.stdout, "why") == [
         "why: pkg/alpha/migrations/0002_x.py -> full (matches **/migrations/**)"
     ]
+
+
+def upstream_scenario(
+    base: dict[str, str], main_change: dict[str, str], branch_change: dict[str, str]
+) -> Callable[[Path], None]:
+    return partial(
+        repo_with_upstream_range,
+        base=base,
+        main_change=main_change,
+        branch_change=branch_change,
+    )
+
+
+UPSTREAM_SCENARIOS = {
+    "unrelated app migration": upstream_scenario(
+        app_b_tree(),
+        {"pkg/app_b/migrations/0002_x.py": ""},
+        {"pkg/alpha/services.py": "x = 1\n"},
+    ),
+    "module in an app a branch app imports": upstream_scenario(
+        imported_app_tree(),
+        {"pkg/alpha/services.py": "x = 1\n"},
+        {"pkg/beta/views.py": "x = 1\n"},
+    ),
+    "module in an app outside the branch apps": upstream_scenario(
+        app_b_tree(),
+        {"pkg/app_b/services.py": "x = 1\n"},
+        {"pkg/alpha/services.py": "x = 1\n"},
+    ),
+    "migration in a related app": upstream_scenario(
+        imported_app_tree(),
+        {"pkg/alpha/migrations/0002_x.py": ""},
+        {"pkg/beta/views.py": "x = 1\n"},
+    ),
+    "docs path": upstream_scenario(
+        app_b_tree(), {"docs/guide.md": ""}, {"pkg/alpha/services.py": "x = 1\n"}
+    ),
+    "uncommitted path main also changed": uncommitted_upstream_path_repo,
+}
+
+
+@pytest.mark.parametrize(
+    "scenario", UPSTREAM_SCENARIOS.values(), ids=list(UPSTREAM_SCENARIOS)
+)
+def test_upstream_decisions_are_the_same_with_and_without_narrow(
+    tmp_path: Path, scenario: Callable[[Path], None]
+) -> None:
+    # Arrange
+    scenario(tmp_path)
+
+    # Act
+    without_narrow = run_script(SCRIPT, tmp_path, *UPSTREAM)
+    write_tree(tmp_path, {"pyproject.toml": NARROW_TABLE})
+    with_narrow = run_script(SCRIPT, tmp_path, *UPSTREAM)
+
+    # Assert
+    from_main = [
+        line for line in lines(with_narrow.stdout, "why") if "from main;" in line
+    ]
+    assert from_main == [
+        line for line in lines(without_narrow.stdout, "why") if "from main;" in line
+    ]
+
+
+def test_tests_changed_in_with_narrow_adds_the_test_files_without_raising_the_tier(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    repo_with_upstream_range(
+        tmp_path,
+        app_b_tree() | {"pyproject.toml": NARROW_TABLE},
+        {"pkg/app_b/tests/test_extra.py": ""},
+        {"docs/guide.md": ""},
+    )
+
+    # Act
+    result = run_script(
+        SCRIPT, tmp_path, *UPSTREAM, "--tests-changed-in", "HEAD~2..HEAD~1"
+    )
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: none"]
