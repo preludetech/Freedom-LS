@@ -468,7 +468,7 @@ Result: 12 tests -> 8 tests
 | Node | Checks (one line) | Signs in | Shared setup | Verdict | Into / covered by |
 | --- | --- | --- | --- | --- | --- |
 | test_form_flow.py::test_learner_works_through_forms_and_quizzes | Answer tally, multi-page survey, required-answer gate on the submit dialog, leave prompt, dialog focus trap, exit-and-submit, QA-viewport overflow | form-fixture | five courses via `_scored_quiz_course`, `_four_input_types_course`, `_two_page_survey_course`, `_submit_on_exit_course` | merges | `test_learner_works_through_forms_and_quizzes` (host flow) |
-| test_form_flow.py::test_page_indicator_counts_a_gated_page_once_its_gate_is_open | After answering "5" the indicator reads "Page 2 of 3" | form-fixture | `_two_page_survey_course`, same survey as the host flow | merges | `test_learner_works_through_forms_and_quizzes` (needs a second survey attempt, or answer "5" in the host flow's survey and adjust its "of 2" checks; the rendered text may alternatively move to Client, where `views/test_form_runner.py::test_the_page_indicator_reads_the_position_on_the_path` may already cover it: unverified) |
+| test_form_flow.py::test_page_indicator_counts_a_gated_page_once_its_gate_is_open | After answering "5" the indicator reads "Page 2 of 3" | form-fixture | `_two_page_survey_course`, same survey as the host flow | merges | `test_learner_works_through_forms_and_quizzes` (needs a second survey attempt, or answer "5" in the host flow's survey and adjust its "of 2" checks) |
 | test_form_flow.py::test_form_pages_line_their_header_up_with_their_content | Header lines up with content on landing, results and course-finish pages at 1920px | form-fixture | `_scored_quiz_course`, then submit | merges | `test_quiz_player_layout_flow` (host) |
 | test_form_flow.py::test_a_long_form_page_scrolls_only_the_player_region | Document height equals viewport height on a long form page | form-fixture | own 8-question long-text form | stays | none |
 | test_form_flow.py::test_footer_buttons_share_the_question_column_edges | Next button right edge matches the option rows at tablet and desktop widths | form-fixture | `_scored_quiz_course`, started form | merges | `test_quiz_player_layout_flow` (resize through the viewports on the runner page, before the submit step) |
@@ -482,7 +482,7 @@ Result: 8 tests -> 5 tests
 
 | Node | Checks (one line) | Signs in | Shared setup | Verdict | Into / covered by |
 | --- | --- | --- | --- | --- | --- |
-| test_organisation_course_flow.py::test_learner_sees_only_their_organisations_course_with_its_byline | Dashboard lists only the learner's organisation's course with its byline; other organisation's course gives 404 (the 404 could be a Client check, but `learner_interface` tests likely already cover it: unverified); overflow at QA viewports | form-fixture | two organisations, two same-titled courses, one registration | merges | `test_organisation_course_flow` (host) |
+| test_organisation_course_flow.py::test_learner_sees_only_their_organisations_course_with_its_byline | Dashboard lists only the learner's organisation's course with its byline; other organisation's course gives 404; overflow at QA viewports | form-fixture | two organisations, two same-titled courses, one registration | merges | `test_organisation_course_flow` (host) |
 | test_organisation_course_flow.py::test_clicking_the_card_byline_opens_the_course | Pointer click on the byline opens the course | form-fixture | organisation course card on the dashboard | merges | `test_organisation_course_flow` (last step, because it navigates away) |
 | test_organisation_course_flow.py::test_row_eyebrow_chips_wrap_without_overlapping_or_clipping_on_a_phone | At 375px the row's price and status chips wrap without overlapping the difficulty or clipping | form-fixture | one organisation course with price and difficulty, `courses` page | merges | `test_organisation_course_flow` (give the learner's own course the price and difficulty; scope the row selector to that course instead of "first row") |
 
@@ -539,15 +539,15 @@ Result: 2 tests -> 1 test
 
 Directory: `freedom_ls/panel_framework/tests/playwright/` (conftest.py has only a session CSS check; helpers.py and assertions.py are viewport and layout helpers).
 
-Every test but one runs against the stub shell with no sign-in, so `Signs in` is `none` throughout. The exception is `test_component_reference_flow`, which already calls `Client.force_login` inline (`_sign_in_as_staff`). That helper becomes the shared session fixture, and I mark it `none`. There are no `form-fixture` or `form-inline` rows. The savings come only from merging.
+Every test but one runs against the stub shell with no sign-in, so `Signs in` is `none` throughout. The exception is `test_component_reference_flow`, which already calls `Client.force_login` inline (`_sign_in_as_staff`). That helper stays in that file (see `1. spec.md`), and I mark it `none`. There are no `form-fixture` or `form-inline` rows. The savings come only from merging.
 
-Nothing here is verdict `goes`, and no test moves to Client wholesale. Some sub-checks inside merged flows could leave the browser. They are listed under "Sub-checks that could leave the browser" after each table. Those are proposals for the owner to approve, because the existing Client tests that would take them are not confirmed.
+Nothing here is verdict `goes`, and no test moves to Client wholesale. Some sub-checks inside merged flows could leave the browser. They are listed under "Sub-checks that could leave the browser" after each table. `1. spec.md` keeps every one of them in its flow.
 
 ### freedom_ls/panel_framework/tests/playwright/test_component_reference_flow.py
 
 | Node | Checks (one line) | Signs in | Shared setup | Verdict | Into / covered by |
 | --- | --- | --- | --- | --- | --- |
-| `test_component_reference_flow` | Component reference page: progress colour, button heights, base styles, chevron toggle, overflow and tap target per viewport | none (inline `force_login` + cookie, becomes the shared fixture) | staff user only | stays | `test_component_reference_flow` (already a single flow; its viewport loop already resizes one page) |
+| `test_component_reference_flow` | Component reference page: progress colour, button heights, base styles, chevron toggle, overflow and tap target per viewport | none (inline `force_login` + cookie, stays its own helper) | staff user only | stays | `test_component_reference_flow` (already a single flow; its viewport loop already resizes one page) |
 
 Sub-checks that could leave the browser (proposal): `section > h2` count of 19 and the URL staying on `/components/` (markup and auth). Candidate home: a new Client test in `freedom_ls/panel_framework/tests/test_reference.py`. The `h2` count would then be dropped from the flow.
 
@@ -585,7 +585,7 @@ Result: 4 tests -> 1 tests
 | `test_a_row_detail_opens_and_closes_by_mouse_and_keyboard` | Row detail toggles by mouse and keyboard, resets on page fetch, phone card toggle | none | stub with kind=a, PAGE_SIZE+2 rows, `__tabs/detail` | merges | `test_data_table_row_expansion_flow` |
 | `test_a_group_row_hides_and_shows_its_descendants_by_mouse_and_keyboard` | Group rows collapse and expand descendants, compact row heights, overflow at 3 widths | none | stub "host", `__tabs/childrows` and `__tabs/compact` | merges | `test_data_table_row_expansion_flow` (same stub, other tabs) |
 
-Sub-checks that could leave the browser (proposal, owner to approve):
+Sub-checks that could leave the browser (not adopted: kept in the flow, per `1. spec.md`):
 - Bulk confirm text "This will affect N stub models." and result "N stub models changed.": already covered by `test_bulk_actions.py` (lines 303, 324, 542 and 554 assert exactly these strings). The matching DB assertions (`is_active`) are covered there too. I did not confirm exact test names.
 - The no-JS bulk POST ends at the list URL with the headline text. Covered server-side by `test_bulk_actions.py` (lines 1454 and 1478 assert "2 stub models changed."). The browser still needs to prove that the no-JS form posts and that Cancel is a link.
 - Markup attributes: the page-2 link `href` carrying `stubs-sort=-name&stubs-page=2`, `[data-panel]` count of 1, and the closed `#stubs-sheet` having no `open` attribute. These are plain markup checks and could move to a Client test for the stub list view in `test_views.py`. I did not confirm which existing test covers them.
@@ -605,7 +605,7 @@ Result: 14 tests -> 4 tests
 
 The flow builds one parent stub per tab up front, so the existing step-by-step state (empty list, announcer text) is not disturbed. The layout cases fold into the viewport loop that already resizes the page.
 
-Sub-checks that could leave the browser (proposal): the text "This is no longer available" after an entry is deleted behind the page's back, and the 422 or 404 behind it. I found no Client test asserting that string for the editable list, so this would be a new Client test in `test_actions.py`. Until the owner approves, keep it in the flow.
+Sub-checks that could leave the browser (proposal): the text "This is no longer available" after an entry is deleted behind the page's back, and the 422 or 404 behind it. I found no Client test asserting that string for the editable list, so this would be a new Client test in `test_actions.py`. Not adopted: it stays in the flow, per `1. spec.md`.
 
 Result: 6 tests -> 1 tests
 
@@ -654,7 +654,7 @@ Result: 20 tests -> 2 tests
 
 The flow uses one `details` page per stub and one data build. The two parametrized pairs share the Retire Item dialog, so each viewport runs the scroll check and then the spacing check, with the tall filler added last.
 
-Sub-checks that could leave the browser (proposal, owner to approve):
+Sub-checks that could leave the browser (not adopted: kept in the flow, per `1. spec.md`):
 - "It still has 1 learner." refusal text and focus target: the text is a response property. I found no existing Client test asserting it, so this needs a new Client test in `test_actions.py`. The focus part stays in the browser.
 - "This field is required." under the field after the 422, plus `is_active` unchanged on an empty reason and changed after a filled one: covered by `test_actions.py` (line 2513 asserts the string). I did not confirm the DB-effect assertions.
 - Deleting the stub and redirecting to the list: Client delete-action tests in `test_actions.py` very likely cover it; not confirmed by name.
@@ -690,7 +690,7 @@ Result: 7 tests -> 1 tests
   - instance_dialogs 7 -> 1
   - quick_view 7 -> 1
 - Goes: 0.
-- Moves to Client (whole tests): 0. Sub-checks proposed to leave the browser, all pending owner approval:
+- Moves to Client (whole tests): 0. Sub-checks that could leave the browser, all kept in their flows per `1. spec.md`:
   - `section > h2` count (component reference).
   - Page-2 link `href` and the closed-sheet markup checks (data table).
   - The "This is no longer available" text (editable list).
