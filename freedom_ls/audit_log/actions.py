@@ -101,7 +101,10 @@ def _describe_rename(entry: AuditLogEntry) -> str:
 
 
 def _describe_state_change(entry: AuditLogEntry) -> str:
-    return f"From {entry.details.get('from', '')} to {entry.details.get('to', '')}"
+    # The codes stand in for entries written before the labels were stored.
+    source = entry.details.get("from_label") or entry.details.get("from", "")
+    target = entry.details.get("to_label") or entry.details.get("to", "")
+    return f"From {source} to {target}"
 
 
 def _describe_learner_added(entry: AuditLogEntry) -> str:

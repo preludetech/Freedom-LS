@@ -131,6 +131,16 @@ def test_validate_action_names_the_valid_codes_for_an_unknown_one():
             "From submitted to rejected",
         ),
         (
+            "application.rejected",
+            {
+                "from": "submitted",
+                "to": "rejected",
+                "from_label": "Waiting for review",
+                "to_label": "Declined",
+            },
+            "From Waiting for review to Declined",
+        ),
+        (
             "role.assigned",
             {"role": "cohort_admin", "role_label": "Cohort admin", "scope": "Cohort A"},
             "Cohort admin on Cohort A",

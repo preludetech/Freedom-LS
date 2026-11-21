@@ -351,15 +351,20 @@ class TestRejectApplication:
 @pytest.mark.django_db
 class TestDecisionAudit:
     @pytest.mark.parametrize(
-        ("function", "action", "to"),
+        ("function", "action", "to", "to_label"),
         [
-            ("approve_application", "application.approved", "approved"),
-            ("reject_application", "application.rejected", "rejected"),
+            ("approve_application", "application.approved", "approved", "Approved"),
+            ("reject_application", "application.rejected", "rejected", "Declined"),
         ],
         ids=["approve", "reject"],
     )
     def test_a_decision_writes_exactly_one_entry_naming_the_move(
-        self, mock_site_context: Site, function: str, action: str, to: str
+        self,
+        mock_site_context: Site,
+        function: str,
+        action: str,
+        to: str,
+        to_label: str,
     ) -> None:
         application = CourseApplicationFactory()
 
@@ -367,7 +372,12 @@ class TestDecisionAudit:
 
         entry = AuditLogEntry.objects.get()
         assert entry.action == action
-        assert entry.details == {"from": "submitted", "to": to}
+        assert entry.details == {
+            "from": "submitted",
+            "to": to,
+            "from_label": "Waiting for review",
+            "to_label": to_label,
+        }
         assert entry.organisation == application.organisation
         assert entry.subjects == [
             subject_key(application),

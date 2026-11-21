@@ -82,7 +82,12 @@ def _move(
                 target_label=f"{application.course.title} application {application.pk}",
                 organisation=application.organisation,
                 subjects=(application.course,),
-                details={"from": from_state, "to": to},
+                details={
+                    "from": from_state,
+                    "to": to,
+                    "from_label": State(from_state).label,
+                    "to_label": to.label,
+                },
             )
     return application
 
