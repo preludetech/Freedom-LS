@@ -2342,7 +2342,7 @@ class TestLearnerMessagesTab:
         learner = _msg_learner(organisation)
         _msg_conversation(colleague, learner.user)
         monkeypatch.setattr(
-            "freedom_ls.educator_interface.views.own_conversation_with",
+            "freedom_ls.educator_interface.panels.learner.messages.own_conversation_with",
             lambda request, learner: OwnConversation(None, False),
         )
 
@@ -2396,7 +2396,7 @@ class TestLearnerMessagesTab:
         educator = _msg_educator(organisation)
         learner = _msg_learner(organisation)
         monkeypatch.setattr(
-            "freedom_ls.educator_interface.views.send_message",
+            "freedom_ls.educator_interface.panels.learner.messages.send_message",
             lambda **kwargs: SendResult(refusal=MessagingRefusal.NO_RELATIONSHIP),
         )
 
@@ -2418,11 +2418,11 @@ class TestLearnerMessagesTab:
         educator = _msg_educator(organisation)
         learner = _msg_learner(organisation)
         monkeypatch.setattr(
-            "freedom_ls.educator_interface.views.own_conversation_with",
+            "freedom_ls.educator_interface.panels.learner.messages.own_conversation_with",
             lambda request, learner: OwnConversation(None, False),
         )
         monkeypatch.setattr(
-            "freedom_ls.educator_interface.views.send_message",
+            "freedom_ls.educator_interface.panels.learner.messages.send_message",
             lambda **kwargs: SendResult(refusal=MessagingRefusal.NO_RELATIONSHIP),
         )
 
