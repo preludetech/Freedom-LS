@@ -219,7 +219,14 @@ in the tier definition, then committed:
 git commit -m "<branch>: fix <what> after rebase"
 ```
 
-Three attempts. If the run still fails after that, stop with `status: failed`.
+Then re-run:
+
+- A failed `targeted` run follows the tier definition's failed-only re-run. Select with one
+  selector call over the committed fix: `--range <sha before the fix>..HEAD`.
+- A failed `full` run follows the whole-tier re-run.
+
+Three fix attempts, of either re-run. If the re-run still fails after that, stop with
+`status: failed`.
 
 ## Step 10: Pre-commit
 
