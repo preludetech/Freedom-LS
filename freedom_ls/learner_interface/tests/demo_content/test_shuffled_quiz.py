@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import pytest
 
+from django.contrib.sites.models import Site
+
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.form_engine import served_paper as served_paper_module
 from freedom_ls.form_engine.conditions import ServedPaper, served_path
@@ -48,8 +50,11 @@ def _served_order(form: Form, paper: ServedPaper) -> list[object]:
 
 @pytest.mark.django_db
 def test_two_sittings_with_different_seeds_get_different_papers(
-    site, loaded_demo_content, mock_site_context, monkeypatch
-):
+    site: Site,
+    loaded_demo_content: Site,
+    mock_site_context: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     form = Form.objects.get(title=QUIZ_TITLE, site=site)
 
     first = _sit(form, FIRST_SEED, monkeypatch)
@@ -60,8 +65,11 @@ def test_two_sittings_with_different_seeds_get_different_papers(
 
 @pytest.mark.django_db
 def test_a_sitting_shows_the_same_order_after_a_reload_and_after_resuming(
-    site, loaded_demo_content, mock_site_context, monkeypatch
-):
+    site: Site,
+    loaded_demo_content: Site,
+    mock_site_context: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     form = Form.objects.get(title=QUIZ_TITLE, site=site)
     progress = _sit(form, FIRST_SEED, monkeypatch)
     before = _served_order(form, progress.served_paper)
@@ -79,8 +87,11 @@ def test_a_sitting_shows_the_same_order_after_a_reload_and_after_resuming(
 
 @pytest.mark.django_db
 def test_a_re_sit_with_a_second_seed_gets_a_different_paper(
-    site, loaded_demo_content, mock_site_context, monkeypatch
-):
+    site: Site,
+    loaded_demo_content: Site,
+    mock_site_context: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     form = Form.objects.get(title=QUIZ_TITLE, site=site)
     user = UserFactory()
     monkeypatch.setattr(served_paper_module, "new_seed", lambda: FIRST_SEED)

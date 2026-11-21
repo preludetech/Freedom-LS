@@ -21,6 +21,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
 - [x] (user) Decide whether the fls-content plugin's bundled validator (`claude_plugins/fls-content/validate/validate.py`) should also run the cross-file shuffle checks (`validate_form_shuffle`: group on non-QUIZ, locked with shuffle_options off, group on two pages, split group). It already mirrors `validate_form_conditions` and now has the shuffle fields, but not this pass. If yes, port it during `/sdd:document`'s course-author plugin hook
+- [ ] (user) Decide how to fix the PR 266 review finding on resume after an author edit: `FormProgress.furthest_page_reached` stores an authored page number (`freedom_ls/form_engine/paging.py:53`, `_first_number_above` in `conditions.py`). On a shuffled paper, an author adding or removing a page mid-sitting can send resume and the page-jump limit to an unrelated page. Options: store the furthest page by id (new model field plus migration), or clamp it to the furthest answered page on served papers
 
 ## 4. Documentation and pull request
 

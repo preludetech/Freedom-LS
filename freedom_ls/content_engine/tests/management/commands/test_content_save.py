@@ -4293,8 +4293,11 @@ _SHUFFLE_FIELDS = {
 @pytest.mark.django_db
 @pytest.mark.parametrize("field", list(_SHUFFLE_FIELDS))
 def test_a_saved_quiz_stores_the_shuffle_fields(
-    site, mock_site_context, tmp_path, field
-):
+    site: Site,
+    mock_site_context: object,
+    tmp_path: Path,
+    field: str,
+) -> None:
     _write_shuffle_quiz(tmp_path / "quiz", authored=True)
 
     save_content_to_db(tmp_path, site.name)
@@ -4305,8 +4308,11 @@ def test_a_saved_quiz_stores_the_shuffle_fields(
 @pytest.mark.django_db
 @pytest.mark.parametrize("field", list(_SHUFFLE_FIELDS))
 def test_removing_a_shuffle_field_resets_it_on_the_next_save(
-    site, mock_site_context, tmp_path, field
-):
+    site: Site,
+    mock_site_context: object,
+    tmp_path: Path,
+    field: str,
+) -> None:
     _write_shuffle_quiz(tmp_path / "quiz", authored=True)
     save_content_to_db(tmp_path, site.name)
 

@@ -1245,16 +1245,25 @@ def _locked_option_errors(
     child: _FormChildSection, label: str, form: Form
 ) -> list[str]:
     """One error per locked option on a question of a form that never shuffles
-    its options. A content block has no options."""
+    its options. A content block has no options.
+
+    Only a QUIZ form can shuffle its options, so on any other form the one fix
+    is to remove locked.
+    """
     if not isinstance(child, FormQuestion) or form.shuffle_options:
         return []
+    if form.strategy == FormStrategy.QUIZ:
+        reason = "shuffle_options is off for this form, so it never moves."
+        fix = "Set shuffle_options: true in the form front matter, or remove locked."
+    else:
+        reason = f"options only shuffle on QUIZ forms (this form is {form.strategy})."
+        fix = "Remove locked."
     return [
         _shuffle_error(
             child,
             label,
-            f'option "{option.text}" is locked, but shuffle_options is off for '
-            "this form, so it never moves.",
-            "Set shuffle_options: true in the form front matter, or remove locked.",
+            f'option "{option.text}" is locked, but {reason}',
+            fix,
             "options",
         )
         for option in child.options or []

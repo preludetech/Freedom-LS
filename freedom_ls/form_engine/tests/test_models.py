@@ -727,7 +727,9 @@ def _serve_in_order(progress: FormProgress, served: list[FormQuestion]) -> None:
 
 
 @pytest.mark.django_db
-def test_incorrect_answers_carry_the_number_the_learner_was_shown(mock_site_context):
+def test_incorrect_answers_carry_the_number_the_learner_was_shown(
+    mock_site_context: object,
+) -> None:
     progress, (first, second, third) = _three_question_quiz()
     _serve_in_order(progress, [third, first, second])
 
@@ -742,8 +744,8 @@ def test_incorrect_answers_carry_the_number_the_learner_was_shown(mock_site_cont
 
 @pytest.mark.django_db
 def test_incorrect_answers_without_a_served_paper_carry_the_authored_number(
-    mock_site_context,
-):
+    mock_site_context: object,
+) -> None:
     progress, (first, second, third) = _three_question_quiz()
 
     incorrect = progress.get_incorrect_quiz_answers()
@@ -756,7 +758,9 @@ def test_incorrect_answers_without_a_served_paper_carry_the_authored_number(
 
 
 @pytest.mark.django_db
-def test_incorrect_answers_numbers_skip_a_free_text_question(mock_site_context):
+def test_incorrect_answers_numbers_skip_a_free_text_question(
+    mock_site_context: object,
+) -> None:
     progress, (first, free_text, third) = _three_question_quiz("short_text")
     _serve_in_order(progress, [third, free_text, first])
 
@@ -766,3 +770,55 @@ def test_incorrect_answers_numbers_skip_a_free_text_question(mock_site_context):
         (third, 1),
         (first, 3),
     ]
+
+
+@pytest.mark.django_db
+def test_incorrect_answers_list_options_in_the_order_the_learner_was_shown(
+    mock_site_context: object,
+) -> None:
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ)
+    page: FormPage = FormPageFactory(form=form, order=0)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=page, type="checkboxes", order=0
+    )
+    options: list[QuestionOption] = [
+        QuestionOptionFactory(question=question, order=order, correct=correct)
+        for order, correct in enumerate([True, False, True, False])
+    ]
+    a, b, c, d = options
+    progress: FormProgress = FormProgressFactory(form=form)
+    progress.served_paper = served_paper_of(
+        [(page, [question])], {question: [d, c, b, a]}
+    )
+    progress.save()
+    answer = QuestionAnswerFactory(form_progress=progress, question=question)
+    answer.selected_options.set([b, d])
+
+    (item,) = progress.get_incorrect_quiz_answers()
+
+    assert item["learner_selected"] == [d, b]
+    assert item["correct_options"] == [c, a]
+
+
+@pytest.mark.django_db
+def test_incorrect_answers_without_a_served_paper_list_options_in_authored_order(
+    mock_site_context: object,
+) -> None:
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ)
+    page: FormPage = FormPageFactory(form=form, order=0)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=page, type="checkboxes", order=0
+    )
+    options: list[QuestionOption] = [
+        QuestionOptionFactory(question=question, order=order, correct=correct)
+        for order, correct in enumerate([True, False, True, False])
+    ]
+    a, b, c, d = options
+    progress: FormProgress = FormProgressFactory(form=form)
+    answer = QuestionAnswerFactory(form_progress=progress, question=question)
+    answer.selected_options.set([d, b])
+
+    (item,) = progress.get_incorrect_quiz_answers()
+
+    assert item["learner_selected"] == [b, d]
+    assert item["correct_options"] == [a, c]

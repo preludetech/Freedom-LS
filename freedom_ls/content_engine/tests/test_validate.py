@@ -1830,7 +1830,12 @@ def test_locked_option_on_a_non_quiz_form_fails(tmp_path: Path) -> None:
 
     (error,) = _shuffle_errors(tmp_path)
 
-    assert 'option "Yes" is locked, but shuffle_options is off' in error
+    assert (
+        'option "Yes" is locked, but options only shuffle on QUIZ forms '
+        "(this form is UNSCORED)." in error
+    )
+    assert "Remove locked." in error
+    assert "shuffle_options: true" not in error
 
 
 def test_locked_option_with_shuffle_options_off_fails_naming_the_fix(

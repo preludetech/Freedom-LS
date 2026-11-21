@@ -779,6 +779,19 @@ class FormProgress(SiteAwareModel):
 
             if not is_correct:
                 correct_options = list(question.options.filter(correct=True))
+                if served is not None:
+                    # Listed in the order this learner was shown them, which on
+                    # a shuffled paper is not the authored one.
+                    # An option missing from the paper sorts last rather than
+                    # dropping out of the review.
+                    shown = served.options_of(question)
+                    place = {o.id: index for index, o in enumerate(shown)}
+                    correct_options = sorted(
+                        correct_options, key=lambda o: place.get(o.id, len(place))
+                    )
+                    selected_options = sorted(
+                        selected_options, key=lambda o: place.get(o.id, len(place))
+                    )
 
                 incorrect_answers.append(
                     {

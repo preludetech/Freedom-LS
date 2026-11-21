@@ -335,21 +335,18 @@ def test_build_served_paper_with_shuffle_pages_lists_every_page_once(
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize(
-    ("seed", "expected"),
-    [(1, [3, 2, 0, 1, 4]), (2, [1, 3, 4, 2, 0])],
-)
 def test_build_served_paper_with_shuffle_pages_orders_pages_from_the_seed(
-    five_page_form: Form,
-    monkeypatch: pytest.MonkeyPatch,
-    seed: int,
-    expected: list[int],
+    five_page_form: Form, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(served_paper_module, "new_seed", lambda: seed)
+    def served_for(seed: int) -> list[int]:
+        monkeypatch.setattr(served_paper_module, "new_seed", lambda: seed)
+        return _served_page_indexes(five_page_form)
 
-    served = _served_page_indexes(five_page_form)
+    orders = {seed: served_for(seed) for seed in range(10)}
 
-    assert served == expected
+    assert all(served_for(seed) == order for seed, order in orders.items())
+    assert len({tuple(order) for order in orders.values()}) > 1
+    assert any(order != list(range(5)) for order in orders.values())
 
 
 @pytest.mark.django_db

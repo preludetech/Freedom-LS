@@ -1032,6 +1032,27 @@ def test_a_locked_option_with_shuffle_options_off_fails(tmp_path: Path) -> None:
     )
 
 
+def test_a_locked_option_on_a_non_quiz_form_says_to_remove_locked(
+    tmp_path: Path,
+) -> None:
+    form_dir = write_shuffle_form(
+        tmp_path,
+        "strategy: CATEGORY_VALUE_SUM\n",
+        "---\nquestion: Pick one\ntype: multiple_choice\n"
+        "options:\n  - text: A\n    value: a\n"
+        "  - text: None of the above\n    value: z\n    locked: true\n",
+    )
+
+    result = run_validator(form_dir)
+
+    assert_validator_fails(
+        result,
+        'option "None of the above" is locked, but options only shuffle on QUIZ forms',
+    )
+    assert "Remove locked." in result.stdout + result.stderr
+    assert "shuffle_options: true" not in result.stdout + result.stderr
+
+
 def test_a_split_group_fails(tmp_path: Path) -> None:
     form_dir = write_shuffle_form(
         tmp_path,

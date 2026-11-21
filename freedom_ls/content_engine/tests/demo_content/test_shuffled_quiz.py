@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from django.conf import settings
+from django.contrib.sites.models import Site
 
 from freedom_ls.content_engine.validate import validate
 from freedom_ls.form_engine.models import Form, QuestionOption
@@ -25,8 +26,10 @@ GROUP_NAME = "sky-picture"
 
 @pytest.mark.django_db
 def test_the_demo_quiz_has_three_pages_and_every_shuffle_knob_on(
-    site, loaded_demo_content, mock_site_context
-):
+    site: Site,
+    loaded_demo_content: Site,
+    mock_site_context: object,
+) -> None:
     form = Form.objects.get(title=QUIZ_TITLE, site=site)
 
     assert (
@@ -39,8 +42,10 @@ def test_the_demo_quiz_has_three_pages_and_every_shuffle_knob_on(
 
 @pytest.mark.django_db
 def test_the_demo_quiz_locks_exactly_one_option_reading_all_of_the_above(
-    site, loaded_demo_content, mock_site_context
-):
+    site: Site,
+    loaded_demo_content: Site,
+    mock_site_context: object,
+) -> None:
     locked = QuestionOption.objects.filter(
         question__form_page__form__title=QUIZ_TITLE, locked=True
     )
@@ -50,8 +55,10 @@ def test_the_demo_quiz_locks_exactly_one_option_reading_all_of_the_above(
 
 @pytest.mark.django_db
 def test_the_demo_quiz_groups_a_picture_with_two_questions_beside_ungrouped_ones(
-    site, loaded_demo_content, mock_site_context
-):
+    site: Site,
+    loaded_demo_content: Site,
+    mock_site_context: object,
+) -> None:
     form = Form.objects.get(title=QUIZ_TITLE, site=site)
     page = form.pages.get(title=GROUP_PAGE_TITLE)
     children = page.children()
@@ -67,7 +74,7 @@ def test_the_demo_quiz_groups_a_picture_with_two_questions_beside_ungrouped_ones
 
 def test_the_demo_quiz_fails_validation_when_a_question_splits_the_group(
     tmp_path: Path,
-):
+) -> None:
     demo_root = settings.BASE_DIR / "demo_content"
     shutil.copy(demo_root / "course_categories.yaml", tmp_path)
     shutil.copytree(demo_root / DEMO_COURSE, tmp_path / DEMO_COURSE)

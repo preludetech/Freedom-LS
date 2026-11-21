@@ -1,11 +1,15 @@
 """Factories for form_engine models."""
 
+from collections.abc import Callable
+from unittest import mock
+
 import factory
 
 from django.core.files.base import ContentFile
 from django.utils.text import slugify
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.form_engine import served_paper as served_paper_module
 from freedom_ls.form_engine.conditions import ServedPage, ServedPaper
 from freedom_ls.form_engine.models import (
     Form,
@@ -18,7 +22,7 @@ from freedom_ls.form_engine.models import (
     QuestionAnswerFile,
     QuestionOption,
 )
-from freedom_ls.form_engine.served_paper import new_seed
+from freedom_ls.form_engine.served_paper import build_served_paper, new_seed
 from freedom_ls.site_aware_models.factories import SiteAwareFactory
 
 
@@ -136,3 +140,22 @@ def served_paper_of(
         "pages": served_pages,
         "options": served_options,
     }
+
+
+SEED_SEARCH_LIMIT = 1000
+
+
+def seed_serving(form: Form, wanted: Callable[[ServedPaper], bool]) -> int:
+    """The first seed whose served paper for `form` satisfies `wanted`.
+
+    `random.shuffle` output is not stable across Python versions, so a test that
+    needs a particular shuffled layout searches for a seed that gives it rather
+    than hard-coding one.
+    """
+    for seed in range(SEED_SEARCH_LIMIT):
+        with mock.patch.object(served_paper_module, "new_seed", return_value=seed):
+            if wanted(build_served_paper(form)):
+                return seed
+    raise AssertionError(
+        f"no seed below {SEED_SEARCH_LIMIT} serves {form} the paper the test wants"
+    )

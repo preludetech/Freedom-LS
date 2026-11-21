@@ -15,6 +15,7 @@ from uuid import UUID
 
 import pytest
 from playwright.sync_api import Dialog, Page, expect
+from pytest_django.live_server_helper import LiveServer
 
 from freedom_ls.accounts.models import User
 from freedom_ls.conftest import reverse_url
@@ -26,6 +27,7 @@ from freedom_ls.form_engine.factories import (
     FormPageFactory,
     FormQuestionFactory,
     QuestionOptionFactory,
+    seed_serving,
 )
 from freedom_ls.form_engine.models import (
     Form,
@@ -462,10 +464,6 @@ def test_a_preselected_phone_country_does_not_count_as_an_answer(
         assert_no_horizontal_overflow(page)
 
 
-# The shuffle is scoped by page and question id, so these seeds give the same
-# paper on every run only because the rows below carry fixed ids. Seed 3 serves
-# the grouped page first and puts its checkboxes question ahead of the group.
-SHUFFLE_SEED = 3
 STEM_TEXT = "Read this passage before answering"
 QUESTION_TEXTS = {
     "multiple_choice": "Which one is right",
@@ -534,6 +532,20 @@ def _shuffled_quiz_course() -> ShuffledQuizCourse:
     return ShuffledQuizCourse(course, form, stem, questions)
 
 
+def _serves_the_grouped_page_first(
+    quiz: ShuffledQuizCourse, paper: ServedPaper
+) -> bool:
+    """Whether the paper serves the authored pages as 2, 3, 1 and puts the
+    grouped page's checkboxes question ahead of the group."""
+    page_ids = [page["id"] for page in paper["pages"]]
+    (grouped,) = [p for p in paper["pages"] if p["id"] == str(quiz.stem.form_page_id)]
+    children = grouped["children"]
+    return page_ids == [str(UUID(int=2)), str(UUID(int=3)), str(UUID(int=1))] and (
+        children.index(str(quiz.questions["checkboxes"].id))
+        < children.index(str(quiz.stem.id))
+    )
+
+
 def _served_page_texts(
     quiz: ShuffledQuizCourse, paper: ServedPaper
 ) -> tuple[list[str], list[int], dict[str, list[str]]]:
@@ -595,7 +607,7 @@ def _expect_page_follows_paper(
 
 
 def test_a_shuffled_quiz_shows_the_served_order_on_every_visit(
-    live_server,
+    live_server: LiveServer,
     logged_in_page: Page,
     logged_in_user: User,
     monkeypatch: pytest.MonkeyPatch,
@@ -603,9 +615,12 @@ def test_a_shuffled_quiz_shows_the_served_order_on_every_visit(
     page = logged_in_page
     quiz = _shuffled_quiz_course()
     register_user_for_course(quiz.course, logged_in_user)
-    monkeypatch.setattr(
-        "freedom_ls.form_engine.served_paper.new_seed", lambda: SHUFFLE_SEED
+    # `random.shuffle` output is not stable across Python versions, so the
+    # seed is searched for rather than fixed.
+    seed = seed_serving(
+        quiz.form, lambda paper: _serves_the_grouped_page_first(quiz, paper)
     )
+    monkeypatch.setattr("freedom_ls.form_engine.served_paper.new_seed", lambda: seed)
 
     # The first served page is the grouped one, though it is authored second.
     landing = navigate_to_form(page, live_server, quiz.course)
