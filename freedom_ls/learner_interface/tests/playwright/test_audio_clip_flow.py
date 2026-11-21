@@ -453,6 +453,48 @@ def test_clip_fits_every_viewport(
         assert_no_horizontal_overflow(page)
 
 
+def _assert_vertically_centred(inner: Locator, outer: Locator) -> None:
+    inner_box = inner.bounding_box()
+    outer_box = outer.bounding_box()
+    assert inner_box
+    assert outer_box
+    inner_middle = inner_box["y"] + inner_box["height"] / 2
+    outer_middle = outer_box["y"] + outer_box["height"] / 2
+    assert abs(inner_middle - outer_middle) <= 1
+
+
+def test_play_button_sits_in_the_vertical_centre_of_the_clip(
+    live_server,
+    live_server_site,
+    mock_site_context,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    course = _clip_course(logged_in_user)
+    page.route("**/content/audio/**", lambda route: route.abort())
+    page.goto(form_item_url(live_server, course, "view_course_item"))
+    group = page.get_by_role("group", name=FIRST_CLIP)
+    play = page.get_by_role("button", name=f"Play {FIRST_CLIP}")
+
+    _assert_vertically_centred(play, group)
+    _assert_vertically_centred(
+        page.get_by_role("button", name=f"Play {SECOND_CLIP}"),
+        page.get_by_role("group", name=SECOND_CLIP),
+    )
+
+    play.click()
+    try_again = page.get_by_role("button", name=f"Try again: {FIRST_CLIP}")
+    expect(group.get_by_role("status")).to_have_text("This audio couldn't load.")
+    _assert_vertically_centred(try_again, group)
+
+    # Opening the transcript below leaves the button where it was.
+    before = try_again.bounding_box()
+    _transcript_toggle(page).click()
+    expect(page.get_by_text(TRANSCRIPT)).to_be_visible()
+    assert try_again.bounding_box() == before
+
+
 def test_failed_clip_shows_an_error_and_retries_from_its_position(
     live_server,
     live_server_site,

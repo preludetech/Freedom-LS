@@ -37,6 +37,10 @@ When the clip ends it returns to 0:00 showing Play, dropping any seek still
 waiting, so the next press plays from the start.
 Each icon sits in a flex wrapper so no text baseline pushes it low, and the
 play triangle moves right a pixel to sit at its optical centre.
+The play button sits in the vertical centre of the card in every state, beside
+the title, seek or status row and transcript toggle. The transcript panel sits
+below that row, indented to the column (ml-14 = the button's 44 px plus the
+12 px gap), so opening it does not move the button.
 {% endcomment %}
 
 {% with file_obj=src|get_file_by_path:content_instance %}
@@ -52,52 +56,56 @@ play triangle moves right a pixel to sit at its optical centre.
          role="group"
          x-bind:aria-labelledby="$id('audio-clip-title')"
          data-duration="{% if file_obj.duration_seconds is not None %}{{ file_obj.duration_seconds|unlocalize }}{% endif %}">
-      <div class="flex items-start gap-3 rounded-lg border border-border bg-surface p-3 group-data-[state=failed]:border-error group-data-[state=failed]:bg-error-light group-data-[state=failed]:text-on-error-light">
-        <c-button variant="primary" aria_label="Play {{ title }}" x-ref="play"
-                  x-bind:aria-label="playLabel" x-bind:aria-pressed="playing" x-on:click="toggle"
-                  data-src="{% url 'content_engine:audio_file' file_obj.pk %}"
-                  data-play-label="Play {{ title }}" data-retry-label="Try again: {{ title }}"
-                  class="size-11 shrink-0 rounded-pill p-0 group-data-[state=failed]:bg-error group-data-[state=failed]:text-on-error group-data-[state=failed]:hover:bg-error-hover group-data-[state=failed]:focus-visible:ring-error">
-          <span x-show="showPlayIcon" class="flex translate-x-px"><c-icon name="media_play" class="size-5" /></span>
-          <span x-show="loading" x-cloak class="flex"><c-icon name="loading" class="size-5 animate-spin motion-reduce:animate-none" /></span>
-          <span x-show="playing" x-cloak class="flex"><c-icon name="media_pause" class="size-5" /></span>
-          <span x-show="failed" x-cloak class="flex"><c-icon name="retry" class="size-5" /></span>
-        </c-button>
-        <div class="min-w-0 flex-1">
-          <div class="flex items-baseline gap-2">
-            <span x-bind:id="$id('audio-clip-title')" title="{{ title }}" class="min-w-0 flex-1 truncate font-bold group-data-[state=failed]:overflow-visible group-data-[state=failed]:whitespace-normal">{{ title }}</span>
-            {% if kind.strip %}<span class="shrink-0 font-mono text-xs text-muted">{{ kind }}</span>{% endif %}
-          </div>
-          <div class="flex items-center gap-3" x-show="!failed" x-transition>
-            <input type="range" min="0" step="any" value="0"
-                   {% if file_obj.duration_seconds is not None %}max="{{ file_obj.duration_seconds|unlocalize }}"{% endif %}
-                   {% if file_obj.duration_seconds is None %}disabled{% endif %}
-                   x-bind:max="seekMax" x-bind:value="elapsed" x-bind:disabled="seekDisabled"
-                   x-bind:aria-valuetext="valueText" x-bind:style="playedStyle"
-                   x-on:input="seekInput" x-on:change="seekChange" x-on:keydown="seekKey"
-                   aria-label="Seek {{ title }}"
-                   aria-valuetext="{{ 0|clip_value_text:file_obj.duration_seconds }}"
-                   x-ref="seek"
-                   class="h-11 min-w-0 flex-1 accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
-            <span aria-hidden="true" class="shrink-0 text-sm tabular-nums">
-              <span x-text="elapsedText">{{ 0|clip_time:file_obj.duration_seconds }}</span>
-              <span class="text-muted">/ <span x-text="totalText">{% if file_obj.duration_seconds is None %}--:--{% else %}{{ file_obj.duration_seconds|clip_time:file_obj.duration_seconds }}{% endif %}</span></span>
-            </span>
-          </div>
-          <p role="status" class="text-sm" x-text="statusText"></p>
-          {% if slot.strip %}
-            <c-button variant="link" size="small" x-on:click="toggleTranscript"
-                      x-bind:aria-expanded="transcriptOpen" x-bind:aria-controls="$id('audio-clip-transcript')"
-                      class="group/transcript gap-1">
-              <c-icon name="dropdown" class="size-4 group-aria-expanded/transcript:rotate-180 motion-safe:transition-[rotate]" />
-              <span x-text="transcriptToggleText">Show transcript</span>
-            </c-button>
-            <div x-bind:id="$id('audio-clip-transcript')" x-show="transcriptOpen" x-collapse x-cloak
-                 class="mt-2 space-y-4 text-sm motion-reduce:transition-none!">
-              {% markdown slot %}
+      <div class="rounded-lg border border-border bg-surface p-3 group-data-[state=failed]:border-error group-data-[state=failed]:bg-error-light group-data-[state=failed]:text-on-error-light">
+        <div class="flex items-center gap-3">
+          <c-button variant="primary" aria_label="Play {{ title }}" x-ref="play"
+                    x-bind:aria-label="playLabel" x-bind:aria-pressed="playing" x-on:click="toggle"
+                    data-src="{% url 'content_engine:audio_file' file_obj.pk %}"
+                    data-play-label="Play {{ title }}" data-retry-label="Try again: {{ title }}"
+                    class="size-11 shrink-0 rounded-pill p-0 group-data-[state=failed]:bg-error group-data-[state=failed]:text-on-error group-data-[state=failed]:hover:bg-error-hover group-data-[state=failed]:focus-visible:ring-error">
+            <span x-show="showPlayIcon" class="flex translate-x-px"><c-icon name="media_play" class="size-5" /></span>
+            <span x-show="loading" x-cloak class="flex"><c-icon name="loading" class="size-5 animate-spin motion-reduce:animate-none" /></span>
+            <span x-show="playing" x-cloak class="flex"><c-icon name="media_pause" class="size-5" /></span>
+            <span x-show="failed" x-cloak class="flex"><c-icon name="retry" class="size-5" /></span>
+          </c-button>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-baseline gap-2">
+              <span x-bind:id="$id('audio-clip-title')" title="{{ title }}" class="min-w-0 flex-1 truncate font-bold group-data-[state=failed]:overflow-visible group-data-[state=failed]:whitespace-normal">{{ title }}</span>
+              {% if kind.strip %}<span class="shrink-0 font-mono text-xs text-muted">{{ kind }}</span>{% endif %}
             </div>
-          {% endif %}
+            <div class="flex items-center gap-3" x-show="!failed" x-transition>
+              <input type="range" min="0" step="any" value="0"
+                     {% if file_obj.duration_seconds is not None %}max="{{ file_obj.duration_seconds|unlocalize }}"{% endif %}
+                     {% if file_obj.duration_seconds is None %}disabled{% endif %}
+                     x-bind:max="seekMax" x-bind:value="elapsed" x-bind:disabled="seekDisabled"
+                     x-bind:aria-valuetext="valueText" x-bind:style="playedStyle"
+                     x-on:input="seekInput" x-on:change="seekChange" x-on:keydown="seekKey"
+                     aria-label="Seek {{ title }}"
+                     aria-valuetext="{{ 0|clip_value_text:file_obj.duration_seconds }}"
+                     x-ref="seek"
+                     class="h-11 min-w-0 flex-1 accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
+              <span aria-hidden="true" class="shrink-0 text-sm tabular-nums">
+                <span x-text="elapsedText">{{ 0|clip_time:file_obj.duration_seconds }}</span>
+                <span class="text-muted">/ <span x-text="totalText">{% if file_obj.duration_seconds is None %}--:--{% else %}{{ file_obj.duration_seconds|clip_time:file_obj.duration_seconds }}{% endif %}</span></span>
+              </span>
+            </div>
+            <p role="status" class="text-sm" x-text="statusText"></p>
+            {% if slot.strip %}
+              <c-button variant="link" size="small" x-on:click="toggleTranscript"
+                        x-bind:aria-expanded="transcriptOpen" x-bind:aria-controls="$id('audio-clip-transcript')"
+                        class="group/transcript gap-1">
+                <c-icon name="dropdown" class="size-4 group-aria-expanded/transcript:rotate-180 motion-safe:transition-[rotate]" />
+                <span x-text="transcriptToggleText">Show transcript</span>
+              </c-button>
+            {% endif %}
+          </div>
         </div>
+        {% if slot.strip %}
+          <div x-bind:id="$id('audio-clip-transcript')" x-show="transcriptOpen" x-collapse x-cloak
+               class="ml-14 mt-2 space-y-4 text-sm motion-reduce:transition-none!">
+            {% markdown slot %}
+          </div>
+        {% endif %}
       </div>
     </div>
   {% endif %}
