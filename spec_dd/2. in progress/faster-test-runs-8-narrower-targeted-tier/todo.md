@@ -18,10 +18,11 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 3. Implementation and QA
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
+- [ ] (user) Decide whether the selector's run time with `narrow` on (median 6.0s, max 8.2s against the 10s target; one loaded run took 9.5s, see `replay.md`) needs a cache for the module graph; if so, a follow-up spec adds one
 
 ## 4. Documentation and pull request
 
