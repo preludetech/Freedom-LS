@@ -140,15 +140,27 @@ def _visible_entries(directory: Path, ignore: frozenset[Path]) -> Iterator[Path]
             yield entry
 
 
+# The directory beside a course file that holds its reference parts.
+REFERENCE_DIR_NAME = "reference"
+
+
 def auto_discovered_children(
-    collection_file: Path, *, ignore: frozenset[Path] = frozenset()
+    collection_file: Path,
+    *,
+    ignore: frozenset[Path] = frozenset(),
+    is_course: bool = False,
 ) -> list[Path]:
     """The children a collection without a children: list gets: every content file and
     content directory beside it, in name order, skipping what the directory walk skips
-    and what the ignore list names, course_categories.yaml and articles. Resolved keys,
-    as the loader stores them."""
+    and what the ignore list names, course_categories.yaml and articles. A course also
+    skips its reference directory. Resolved keys, as the loader stores them."""
     found: list[Path] = []
     for item in _visible_entries(collection_file.parent, ignore):
+        # A course's reference parts are attached by its reference: list, never as
+        # children. Skipped before anything in it is read, so a broken file there
+        # cannot fail the course.
+        if is_course and item.is_dir() and item.name == REFERENCE_DIR_NAME:
+            continue
         if item.is_file() and item.suffix in [".md", ".yaml", ".yml"]:
             if item != collection_file:
                 # A loose course_categories.yaml in a course directory belongs at the
@@ -788,7 +800,11 @@ def collection_children(
         ]
     return [
         (path, None)
-        for path in auto_discovered_children(collection.file_path, ignore=ignore)
+        for path in auto_discovered_children(
+            collection.file_path,
+            ignore=ignore,
+            is_course=isinstance(collection, Course),
+        )
     ]
 
 

@@ -1193,6 +1193,39 @@ def test_auto_discovered_children_skips_what_the_walk_skips(tmp_path: Path) -> N
     ]
 
 
+@pytest.mark.parametrize(
+    ("name", "content"),
+    [
+        ("part.yaml", "---\ncontent_type: COURSE_PART\ntitle: A Part\n---\n"),
+        ("topic.md", "---\ncontent_type: TOPIC\ntitle: A Topic\n---\n"),
+        ("broken.md", "---\ncontent_type: [unclosed\n---\n"),
+    ],
+)
+def test_course_auto_discovery_adopts_nothing_from_reference_directory(
+    tmp_path: Path, name: str, content: str
+) -> None:
+    course_file = _course(tmp_path / "course.md")
+    _write_widget_file(tmp_path / "reference" / name, content)
+    _topic(tmp_path / "01-topic.md")
+
+    found = auto_discovered_children(course_file, is_course=True)
+
+    assert found == [(tmp_path / "01-topic.md").resolve()]
+
+
+def test_part_auto_discovery_still_adopts_reference_subdirectory(
+    tmp_path: Path,
+) -> None:
+    part_file = _write_widget_file(
+        tmp_path / "part.yaml", "---\ncontent_type: COURSE_PART\ntitle: A Part\n---\n"
+    )
+    _topic(tmp_path / "reference" / "content.md")
+
+    found = auto_discovered_children(part_file)
+
+    assert found == [(tmp_path / "reference" / "content.md").resolve()]
+
+
 # Cross-file validation of a form's `when` conditions.
 
 
