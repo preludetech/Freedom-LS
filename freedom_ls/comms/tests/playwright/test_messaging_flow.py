@@ -166,13 +166,16 @@ def test_picker_search_choose_and_send_on_a_phone(
         assert_no_horizontal_overflow(page)
 
 
-def test_new_message_from_the_messages_page_on_a_desktop(
+def test_messages_page_new_message_flow(
     live_server,
     logged_in_page: Page,
     logged_in_user: User,
     mock_site_context,
     settings,
 ) -> None:
+    """On the messages page at desktop width: the New message link swaps the
+    picker into the thread pane without a reload, a send leaves /messages/new,
+    and a thread picked from the pane picker fits the viewport."""
     settings.MESSAGING_ENABLED = True
     settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
     page = logged_in_page
@@ -187,14 +190,42 @@ def test_new_message_from_the_messages_page_on_a_desktop(
         page.locator(":visible")
     ).click()
     expect(page.locator("#thread-pane #recipient-picker")).to_be_visible()
-    assert page.evaluate("window.sameDocument === true")
+    assert page.evaluate("window.sameDocument === true"), (
+        "New message link reloaded the document"
+    )
 
     page.get_by_role("link", name="Kai Ngata").click()
     page.get_by_label("Message to Kai Ngata").fill("Hello Kai")
     page.get_by_role("button", name="Send").click()
 
     expect(page.get_by_text("Hello Kai")).to_be_visible()
-    assert "/messages/new" not in page.url
+    assert "/messages/new" not in page.url, "send left the user on /messages/new"
+
+    # Picking someone in the pane picker swaps the thread in without the page
+    # setup a full load gives it, which once left the document one header
+    # taller than the viewport and pushed the composer below the fold.
+    viewport = {"width": 1920, "height": 1080}
+    page.set_viewport_size(viewport)
+    page.goto(reverse_url(live_server, "conversations:inbox"))
+    page.get_by_label("Conversations").get_by_role("link", name="New message").and_(
+        page.locator(":visible")
+    ).click()
+    expect(page.locator("#thread-pane #recipient-picker")).to_be_visible()
+    page.locator("#recipient-results").get_by_role("link", name="Kai Ngata").click()
+
+    send = page.get_by_role("button", name="Send")
+    expect(send).to_be_visible()
+    expect(page, "pane picker did not land on the thread URL").to_have_url(
+        re.compile(r"/messages/[0-9a-f-]{36}/$")
+    )
+    send_bottom = send.evaluate("el => el.getBoundingClientRect().bottom")
+    scroll_height = page.evaluate("document.documentElement.scrollHeight")
+    assert send_bottom <= viewport["height"], (
+        "Send below the fold after the pane picker"
+    )
+    assert scroll_height <= viewport["height"], (
+        "document taller than the viewport after the pane picker"
+    )
 
 
 def test_thread_receives_a_polled_message_and_keeps_the_typed_draft(
@@ -255,220 +286,102 @@ def _sent_bodies(conversation: Conversation) -> list[str]:
     return list(
         Message.objects.filter(conversation=conversation)
         .exclude(body="Welcome to the course")
+        .order_by("created_at")
         .values_list("body", flat=True)
     )
 
 
-def test_a_double_click_on_send_posts_once_and_focus_returns_to_the_box(
+def test_thread_composer_flow(
     live_server,
     logged_in_page: Page,
     logged_in_user: User,
     mock_site_context,
     settings,
 ) -> None:
+    """The composer on a thread page: a double click posts once and returns
+    focus to the box, Send is disabled while a request is in flight, Ctrl+Enter
+    sends, the character counter shows only near the limit, a network failure
+    offers a Retry that sends once with the same client key, and a refused send
+    keeps the draft and shows the reason."""
     page = logged_in_page
     conversation = _open_thread(live_server, page, logged_in_user, settings)
-
     box = page.get_by_label("Message to Kai Ngata")
+    send = page.get_by_role("button", name="Send")
+    sent: list[str] = []
+
+    # A double click on Send posts once and focus returns to the box.
     box.fill("Only once")
-    page.get_by_role("button", name="Send").dblclick()
-
+    send.dblclick()
     expect(page.get_by_text("Only once")).to_have_count(1)
-    expect(box).to_be_focused()
-    assert _sent_bodies(conversation) == ["Only once"]
+    expect(box, "focus did not return to the box after sending").to_be_focused()
+    sent.append("Only once")
+    assert _sent_bodies(conversation) == sent, "double click did not post exactly once"
 
-
-def test_send_button_is_disabled_while_the_send_is_in_flight(
-    live_server,
-    logged_in_page: Page,
-    logged_in_user: User,
-    mock_site_context,
-    settings,
-) -> None:
-    """The Send button stayed enabled for the whole request because the form, not the button, issues it."""
-    page = logged_in_page
-    conversation = _open_thread(live_server, page, logged_in_user, settings)
-
+    # The Send button stays disabled for the whole request. It used to stay
+    # enabled because the form, not the button, issues the request.
     def delay_then_continue(route) -> None:
         page.wait_for_timeout(1500)
         route.continue_()
 
     page.route("**/messages/*/send/", delay_then_continue)
-    page.get_by_label("Message to Kai Ngata").fill("Slow send")
-    send = page.get_by_role("button", name="Send")
+    box.fill("Slow send")
     send.click()
-
-    expect(send).to_be_disabled()
+    expect(send, "Send enabled while the request was in flight").to_be_disabled()
     expect(page.get_by_text("Slow send")).to_have_count(1)
     expect(send).to_be_enabled()
-    assert _sent_bodies(conversation) == ["Slow send"]
+    page.unroute("**/messages/*/send/", delay_then_continue)
+    sent.append("Slow send")
+    assert _sent_bodies(conversation) == sent, "slow send did not post exactly once"
 
-
-def test_ctrl_enter_sends_the_message(
-    live_server,
-    logged_in_page: Page,
-    logged_in_user: User,
-    mock_site_context,
-    settings,
-) -> None:
-    page = logged_in_page
-    conversation = _open_thread(live_server, page, logged_in_user, settings)
-
+    # Ctrl+Enter sends, and the hint says so.
     expect(page.get_by_text("Ctrl+Enter to send")).to_be_visible()
-    box = page.get_by_label("Message to Kai Ngata")
     box.fill("From the keyboard")
     box.press("Control+Enter")
-
     expect(page.get_by_text("From the keyboard")).to_be_visible()
-    assert _sent_bodies(conversation) == ["From the keyboard"]
+    sent.append("From the keyboard")
+    assert _sent_bodies(conversation) == sent, "Ctrl+Enter did not send the message"
 
-
-def test_a_refused_send_keeps_the_draft_and_shows_the_reason(
-    live_server,
-    logged_in_page: Page,
-    logged_in_user: User,
-    mock_site_context,
-    settings,
-) -> None:
-    page = logged_in_page
-    conversation = _open_thread(live_server, page, logged_in_user, settings)
-    settings.MESSAGING_POLICY = f"{__name__}.ClosedPolicy"
-
-    box = page.get_by_label("Message to Kai Ngata")
-    box.fill("Still my draft")
-    page.get_by_role("button", name="Send").click()
-
-    expect(page.locator("#composer").get_by_role("alert")).to_be_visible()
-    expect(page.get_by_label("Message to Kai Ngata")).to_have_value("Still my draft")
-    assert _sent_bodies(conversation) == []
-
-
-def test_the_counter_appears_near_the_limit(
-    live_server,
-    logged_in_page: Page,
-    logged_in_user: User,
-    mock_site_context,
-    settings,
-) -> None:
-    page = logged_in_page
-    _open_thread(live_server, page, logged_in_user, settings)
-
-    box = page.get_by_label("Message to Kai Ngata")
-    box.fill("a" * 1799)
+    # The counter is hidden at 1799 characters and shows 150 left at 1850.
     counter = page.locator("#composer [aria-live=polite]")
-    expect(counter).to_be_hidden()
+    box.fill("a" * 1799)
+    expect(counter, "counter shown at 1799 characters").to_be_hidden()
     box.fill("a" * 1850)
     expect(counter).to_have_text("150 characters left")
+    box.fill("")
 
-
-def test_a_network_failure_offers_retry_that_sends_once_with_the_same_key(
-    live_server,
-    logged_in_page: Page,
-    logged_in_user: User,
-    mock_site_context,
-    settings,
-) -> None:
-    page = logged_in_page
-    conversation = _open_thread(live_server, page, logged_in_user, settings)
+    # A network failure offers Retry, which sends once with the same key.
     key = page.locator("#composer input[name=client_key]").input_value()
-
     page.route("**/messages/*/send/", lambda route: route.abort())
-    box = page.get_by_label("Message to Kai Ngata")
     box.fill("Flaky network")
-    page.get_by_role("button", name="Send").click()
-
+    send.click()
     alert = page.get_by_role("alert").filter(has_text="Not sent. Check your connection")
     expect(alert).to_be_visible()
-    assert _sent_bodies(conversation) == []
+    assert _sent_bodies(conversation) == sent, "aborted request still stored a message"
 
     page.unroute("**/messages/*/send/")
     alert.get_by_role("button", name="Retry").click()
-
     expect(page.get_by_text("Flaky network")).to_have_count(1)
     expect(alert).to_be_hidden()
-    assert _sent_bodies(conversation) == ["Flaky network"]
-    assert page.locator("#composer input[name=client_key]").input_value() != key
+    sent.append("Flaky network")
+    assert _sent_bodies(conversation) == sent, "Retry did not send exactly once"
+    assert page.locator("#composer input[name=client_key]").input_value() != key, (
+        "client key was not rotated after the retry"
+    )
+
+    # A refused send keeps the draft and shows the reason. Last, because it
+    # switches the policy to one that refuses every reply.
+    settings.MESSAGING_POLICY = f"{__name__}.ClosedPolicy"
+    box.fill("Still my draft")
+    send.click()
+    expect(page.locator("#composer").get_by_role("alert")).to_be_visible()
+    expect(box, "refused send cleared the draft").to_have_value("Still my draft")
+    assert _sent_bodies(conversation) == sent, "refused send stored a message"
 
 
 OFFSET_IN_LOG = (
     "el => el.getBoundingClientRect().top"
     " - document.querySelector('#thread-log').getBoundingClientRect().top"
 )
-
-
-def test_loading_earlier_messages_from_the_top_keeps_the_readers_place(
-    live_server,
-    logged_in_page: Page,
-    logged_in_user: User,
-    mock_site_context,
-    settings,
-) -> None:
-    """Prepending older messages with the log scrolled to the top used to
-    leave scrollTop at 0, jumping the reader to the oldest message."""
-    settings.MESSAGING_ENABLED = True
-    settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
-    page = logged_in_page
-    kai = UserFactory(first_name="Kai", last_name="Ngata")
-    conversation = ConversationFactory(between=(logged_in_user, kai))
-    for number in range(1, 66):
-        MessageFactory(
-            conversation=conversation, sender=kai, body=f"Entry {number:02d}"
-        )
-    page.goto(
-        reverse_url(live_server, "conversations:thread", kwargs={"pk": conversation.pk})
-    )
-    log = page.locator("#thread-log")
-    reading = page.get_by_text("Entry 36", exact=True)
-    expect(reading).to_be_visible()
-
-    # The reader sits at the top of the log, looking at the oldest loaded entry.
-    log.evaluate("el => { el.scrollTop = 0; }")
-    top_before = reading.evaluate(OFFSET_IN_LOG)
-
-    page.get_by_role("button", name="Load earlier messages").click()
-    expect(page.get_by_text("Entry 06", exact=True)).to_be_attached()
-
-    # The log scrolled by the height of the prepended entries, so the entry
-    # the reader was looking at has not moved.
-    page.wait_for_function("() => document.querySelector('#thread-log').scrollTop > 0")
-    top_after = reading.evaluate(OFFSET_IN_LOG)
-    assert abs(top_after - top_before) < 2
-
-
-def test_loading_the_last_page_of_earlier_messages_does_not_shift_the_view(
-    live_server,
-    logged_in_page: Page,
-    logged_in_user: User,
-    mock_site_context,
-    settings,
-) -> None:
-    """Loading the final page removed the load-earlier control above the log,
-    which grew the log and moved the entry the reader was looking at upward."""
-    settings.MESSAGING_ENABLED = True
-    settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
-    page = logged_in_page
-    page.set_viewport_size({"width": 1280, "height": 800})
-    kai = UserFactory(first_name="Kai", last_name="Ngata")
-    conversation = ConversationFactory(between=(logged_in_user, kai))
-    for number in range(1, 36):
-        MessageFactory(
-            conversation=conversation, sender=kai, body=f"Entry {number:02d}"
-        )
-    page.goto(
-        reverse_url(live_server, "conversations:thread", kwargs={"pk": conversation.pk})
-    )
-    reading = page.get_by_text("Entry 06", exact=True)
-    expect(reading).to_be_visible()
-    page.locator("#thread-log").evaluate("el => { el.scrollTop = 0; }")
-    top_before = reading.evaluate("el => el.getBoundingClientRect().top")
-
-    page.get_by_role("button", name="Load earlier messages").click()
-    expect(page.get_by_text("Entry 01", exact=True)).to_be_attached()
-    expect(page.get_by_role("button", name="Load earlier messages")).to_have_count(0)
-
-    page.wait_for_function("() => document.querySelector('#thread-log').scrollTop > 0")
-    top_after = reading.evaluate("el => el.getBoundingClientRect().top")
-    assert abs(top_after - top_before) < 2
 
 
 COMPOSER_VIEWPORTS = [
@@ -479,72 +392,81 @@ COMPOSER_VIEWPORTS = [
 ]
 
 
-def test_composer_stays_inside_the_viewport_on_the_thread_page(
+def test_long_thread_flow(
     live_server,
     logged_in_page: Page,
     logged_in_user: User,
     mock_site_context,
     settings,
 ) -> None:
-    """The site footer and page spacing were stacked on top of a viewport-tall
-    pane, so the document scrolled and pushed the composer below the fold."""
+    """A 65-message thread: loading earlier messages from the top keeps the
+    reader's place, loading the final page removes the control without shifting
+    the view, and the composer stays inside the viewport at every width."""
     settings.MESSAGING_ENABLED = True
     settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
     page = logged_in_page
+    page.set_viewport_size({"width": 1280, "height": 800})
     kai = UserFactory(first_name="Kai", last_name="Ngata")
     conversation = ConversationFactory(between=(logged_in_user, kai))
-    for number in range(1, 36):
+    for number in range(1, 66):
         MessageFactory(
             conversation=conversation, sender=kai, body=f"Entry {number:02d}"
         )
     thread_url = reverse_url(
         live_server, "conversations:thread", kwargs={"pk": conversation.pk}
     )
+    page.goto(thread_url)
+    log = page.locator("#thread-log")
+    load_earlier = page.get_by_role("button", name="Load earlier messages")
+    reading = page.get_by_text("Entry 36", exact=True)
+    expect(reading).to_be_visible()
 
+    # Prepending older messages with the log scrolled to the top used to leave
+    # scrollTop at 0, jumping the reader to the oldest message. The log scrolls
+    # by the height of the prepended entries, so the entry the reader was
+    # looking at has not moved.
+    log.evaluate("el => { el.scrollTop = 0; }")
+    top_before = reading.evaluate(OFFSET_IN_LOG)
+    load_earlier.click()
+    expect(page.get_by_text("Entry 06", exact=True)).to_be_attached()
+    page.wait_for_function("() => document.querySelector('#thread-log').scrollTop > 0")
+    top_after = reading.evaluate(OFFSET_IN_LOG)
+    assert abs(top_after - top_before) < 2, (
+        "first load-earlier moved the entry the reader was looking at"
+    )
+
+    # Loading the final page removed the control above the log, which grew the
+    # log and moved the entry the reader was looking at upward.
+    reading = page.get_by_text("Entry 06", exact=True)
+    log.evaluate("el => { el.scrollTop = 0; }")
+    top_before = reading.evaluate("el => el.getBoundingClientRect().top")
+    load_earlier.click()
+    expect(page.get_by_text("Entry 01", exact=True)).to_be_attached()
+    expect(load_earlier, "load-earlier control left after the last page").to_have_count(
+        0
+    )
+    page.wait_for_function("() => document.querySelector('#thread-log').scrollTop > 0")
+    top_after = reading.evaluate("el => el.getBoundingClientRect().top")
+    assert abs(top_after - top_before) < 2, "final load-earlier page shifted the view"
+
+    # The site footer and page spacing were once stacked on top of a
+    # viewport-tall pane, so the document scrolled and pushed the composer
+    # below the fold.
     for viewport in COMPOSER_VIEWPORTS:
+        width = viewport["width"]
         page.set_viewport_size(viewport)
         page.goto(thread_url)
-        expect(page.get_by_text("Entry 35", exact=True)).to_be_visible()
+        expect(page.get_by_text("Entry 65", exact=True)).to_be_visible()
         send = page.get_by_role("button", name="Send")
-        expect(send).to_be_visible()
+        expect(send, f"Send not visible at {width}px").to_be_visible()
         hint_bottom = page.get_by_text("Ctrl+Enter").first.evaluate(
             "el => el.getBoundingClientRect().bottom"
         )
         send_bottom = send.evaluate("el => el.getBoundingClientRect().bottom")
         scroll_height = page.evaluate("document.documentElement.scrollHeight")
-        assert max(hint_bottom, send_bottom) <= viewport["height"], viewport
-        assert scroll_height <= viewport["height"], viewport
-
-
-def test_thread_opened_from_the_pane_picker_fits_the_viewport(
-    live_server,
-    logged_in_page: Page,
-    logged_in_user: User,
-    mock_site_context,
-    settings,
-) -> None:
-    """Picking someone in the messages page's pane picker swapped the thread in
-    without the page setup a full load gives it, so the document came out one
-    header taller than the viewport and pushed the composer below the fold."""
-    settings.MESSAGING_ENABLED = True
-    settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
-    page = logged_in_page
-    viewport = {"width": 1920, "height": 1080}
-    page.set_viewport_size(viewport)
-    kai = UserFactory(first_name="Kai", last_name="Ngata")
-    ConversationFactory(between=(logged_in_user, kai))
-
-    page.goto(reverse_url(live_server, "conversations:inbox"))
-    page.get_by_label("Conversations").get_by_role("link", name="New message").and_(
-        page.locator(":visible")
-    ).click()
-    expect(page.locator("#thread-pane #recipient-picker")).to_be_visible()
-    page.locator("#recipient-results").get_by_role("link", name="Kai Ngata").click()
-
-    send = page.get_by_role("button", name="Send")
-    expect(send).to_be_visible()
-    expect(page).to_have_url(re.compile(r"/messages/[0-9a-f-]{36}/$"))
-    send_bottom = send.evaluate("el => el.getBoundingClientRect().bottom")
-    scroll_height = page.evaluate("document.documentElement.scrollHeight")
-    assert send_bottom <= viewport["height"]
-    assert scroll_height <= viewport["height"]
+        assert max(hint_bottom, send_bottom) <= viewport["height"], (
+            f"composer below the fold at {width}px"
+        )
+        assert scroll_height <= viewport["height"], (
+            f"document taller than the viewport at {width}px"
+        )
