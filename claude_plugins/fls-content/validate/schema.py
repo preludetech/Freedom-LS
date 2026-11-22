@@ -40,7 +40,7 @@ Schema for yaml structures like this:
 import re
 import unicodedata
 from collections import Counter, defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import date, time, timedelta
 from decimal import Decimal
 from enum import StrEnum
@@ -190,6 +190,9 @@ class DueDateFields(BaseModel):
         and names its path instead."""
         return getattr(self, "file_path", None)
 
+    def sets_a_due_key(self) -> bool:
+        return any(getattr(self, name) is not None for name in DUE_DATE_FIELD_NAMES)
+
     @field_validator("due_date", mode="before")
     @classmethod
     def _due_date_is_a_date(cls, value: object) -> object:
@@ -245,9 +248,6 @@ class PlacementDueDate(DueDateFields):
 
     def _due_date_subject(self) -> Path | None:
         return self.path
-
-    def sets_a_due_key(self) -> bool:
-        return any(getattr(self, name) is not None for name in DUE_DATE_FIELD_NAMES)
 
     def holds_due_value(self) -> bool:
         """Whether the entry replaces the child file's value: any due key, or no_due_date."""
@@ -680,6 +680,37 @@ def _validate_price(price: "FixedPrice | RangePrice | DiscountedPrice") -> None:
         )
 
 
+# Module level: pydantic would turn an underscore name in a class body into a
+# private attribute. `no_due_date` lives on `PlacementDueDate`, not in
+# `DUE_DATE_FIELD_NAMES`, so it is named separately.
+_REFERENCE_ENTRY_REJECTED_KEYS = (
+    *sorted(DUE_DATE_FIELD_NAMES),
+    "no_due_date",
+    "children",
+)
+
+
+class ReferenceEntry(BaseModel):
+    """One entry of a course's reference: list. It names a part and nothing else."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _takes_only_a_path(cls, data: object) -> object:
+        if not isinstance(data, Mapping):
+            raise ValueError(
+                f"a reference entry is a mapping with a path key, not {data!r}; "
+                "write `- path: <part.yaml>`"
+            )
+        for key in _REFERENCE_ENTRY_REJECTED_KEYS:
+            if key in data:
+                raise ValueError(f"{key}: a reference entry takes only path")
+        return data
+
+    path: Path = Field(..., description="Path to the reference part's part.yaml")
+
+
 class Course(BaseContentModel, content_type=ContentType.COURSE):
     """
     You can think of this as a folder. It contains an ordered list of child content.
@@ -690,6 +721,11 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
     children: list[Child] = Field(
         default_factory=list,
         description="List of child content references",
+    )
+
+    reference: list[ReferenceEntry] = Field(
+        default_factory=list,
+        description="Parts offered as reference material, outside the learning path",
     )
 
     content: str | None = Field(None, description="Markdown content body")

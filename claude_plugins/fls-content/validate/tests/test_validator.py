@@ -1967,6 +1967,271 @@ def test_section_topic_in_sibling_directory_passes(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+# A course's reference: list.
+
+_PART_FILE = "---\ncontent_type: COURSE_PART\ntitle: A Part\n---\n"
+_TOPIC_FILE = "---\ncontent_type: TOPIC\ntitle: A Topic\n---\n"
+
+
+def _course_dir(tmp_path: Path) -> Path:
+    course_dir = tmp_path / "course_dir"
+    course_dir.mkdir()
+    return course_dir
+
+
+def _write(path: Path, content: str) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+    return path
+
+
+def write_reference_course(
+    directory: Path, *, children: list[str] | None, reference_block: str
+) -> Path:
+    """A course.md with an optional children: list and a literal reference: block."""
+    children_block = ""
+    if children is not None:
+        children_block = "children:\n" + "".join(f"  - path: {c}\n" for c in children)
+    return _write(
+        directory / "course.md",
+        f"---\ncontent_type: COURSE\ntitle: A Course\n{children_block}"
+        f"{reference_block}---\n",
+    )
+
+
+def _reference_block(*paths: str) -> str:
+    return "reference:\n" + "".join(f"  - path: {p}\n" for p in paths)
+
+
+def _part_listing(path: Path, children: list[str]) -> Path:
+    listed = "".join(f"  - path: {c}\n" for c in children)
+    return _write(
+        path,
+        f"---\ncontent_type: COURSE_PART\ntitle: A Part\nchildren:\n{listed}---\n",
+    )
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "due_date: 2026-03-14",
+        "due_time: '09:00'",
+        "due_days_after_registration: 3",
+        "no_due_date: true",
+        "children: []",
+    ],
+)
+def test_reference_entry_with_a_due_key_or_children_fails(
+    tmp_path: Path, key: str
+) -> None:
+    course_dir = _course_dir(tmp_path)
+    _write(course_dir / "glossary" / "part.yaml", _PART_FILE)
+    write_reference_course(
+        course_dir,
+        children=None,
+        reference_block=f"reference:\n  - path: glossary/part.yaml\n    {key}\n",
+    )
+
+    result = run_validator(course_dir)
+
+    assert_validator_fails(
+        result, f"{key.split(':')[0]}: a reference entry takes only path"
+    )
+
+
+def test_bare_string_reference_entry_fails(tmp_path: Path) -> None:
+    course_dir = _course_dir(tmp_path)
+    write_reference_course(
+        course_dir,
+        children=None,
+        reference_block="reference:\n  - glossary/part.yaml\n",
+    )
+
+    result = run_validator(course_dir)
+
+    assert_validator_fails(result, "a reference entry is a mapping with a path key")
+
+
+def test_reference_key_in_a_part_file_fails(tmp_path: Path) -> None:
+    course_dir = _course_dir(tmp_path)
+    _write(
+        course_dir / "part.yaml",
+        "---\ncontent_type: COURSE_PART\ntitle: A Part\n"
+        "reference:\n  - path: other/part.yaml\n---\n",
+    )
+
+    result = run_validator(course_dir)
+
+    assert_validator_fails(result, "reference")
+
+
+def test_reference_directory_is_not_auto_discovered_as_course_children(
+    tmp_path: Path,
+) -> None:
+    course_dir = _course_dir(tmp_path)
+    write_reference_course(
+        course_dir,
+        children=None,
+        reference_block=_reference_block("reference/part.yaml"),
+    )
+    write_valid_topic(course_dir)
+    _write(course_dir / "reference" / "part.yaml", _PART_FILE)
+
+    result = run_validator(course_dir)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_part_named_twice_in_a_reference_list_fails(tmp_path: Path) -> None:
+    course_dir = _course_dir(tmp_path)
+    _write(course_dir / "glossary" / "part.yaml", _PART_FILE)
+    write_reference_course(
+        course_dir,
+        children=["01. intro.md"],
+        reference_block=_reference_block("glossary/part.yaml", "./glossary/part.yaml"),
+    )
+    write_valid_topic(course_dir)
+
+    result = run_validator(course_dir)
+
+    assert_validator_fails(result, "Invalid reference list")
+    assert "reference[1]" in result.stdout + result.stderr
+    assert "this part is named twice" in result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("explicit_children", [True, False])
+def test_reference_part_that_is_also_a_child_fails(
+    tmp_path: Path, explicit_children: bool
+) -> None:
+    course_dir = _course_dir(tmp_path)
+    _write(course_dir / "glossary" / "part.yaml", _PART_FILE)
+    write_reference_course(
+        course_dir,
+        children=["glossary/part.yaml"] if explicit_children else None,
+        reference_block=_reference_block("glossary/part.yaml"),
+    )
+
+    result = run_validator(course_dir)
+
+    assert_validator_fails(result, "this part is also one of the course's children")
+    assert "reference[0]" in result.stdout + result.stderr
+
+
+def test_reference_entry_naming_a_topic_fails(tmp_path: Path) -> None:
+    course_dir = _course_dir(tmp_path)
+    write_valid_topic(course_dir)
+    _write(course_dir / "topic.md", _TOPIC_FILE)
+    write_reference_course(
+        course_dir,
+        children=["01. intro.md"],
+        reference_block=_reference_block("topic.md"),
+    )
+
+    result = run_validator(course_dir)
+
+    assert_validator_fails(result, "this file is a TOPIC, not a COURSE_PART")
+    assert "reference[0]" in result.stdout + result.stderr
+
+
+@pytest.mark.parametrize(
+    ("child_name", "child_type", "child_content"),
+    [
+        (
+            "child.md",
+            "ACTIVITY",
+            "---\ncontent_type: ACTIVITY\ntitle: An Activity\nlevel: 1\n---\n\nBody.\n",
+        ),
+        ("child.md", "FORM", None),
+        ("inner/part.yaml", "COURSE_PART", _PART_FILE),
+    ],
+)
+def test_reference_part_holding_a_non_topic_child_fails(
+    tmp_path: Path, child_name: str, child_type: str, child_content: str | None
+) -> None:
+    course_dir = _course_dir(tmp_path)
+    write_valid_topic(course_dir)
+    _part_listing(course_dir / "glossary" / "part.yaml", [child_name])
+    if child_content is None:
+        write_valid_form(course_dir / "glossary")
+        (course_dir / "glossary" / "form.md").rename(
+            course_dir / "glossary" / child_name
+        )
+    else:
+        _write(course_dir / "glossary" / child_name, child_content)
+    write_reference_course(
+        course_dir,
+        children=["01. intro.md"],
+        reference_block=_reference_block("glossary/part.yaml"),
+    )
+
+    result = run_validator(course_dir)
+
+    assert_validator_fails(result, f"the part's child {child_name} is a {child_type}")
+    assert "reference[0]" in result.stdout + result.stderr
+
+
+def test_reference_part_topic_with_a_due_key_fails(tmp_path: Path) -> None:
+    course_dir = _course_dir(tmp_path)
+    write_valid_topic(course_dir)
+    _part_listing(course_dir / "glossary" / "part.yaml", ["topic.md"])
+    _write(
+        course_dir / "glossary" / "topic.md",
+        "---\ncontent_type: TOPIC\ntitle: A Topic\ndue_days_after_registration: 3\n---\n",
+    )
+    write_reference_course(
+        course_dir,
+        children=["01. intro.md"],
+        reference_block=_reference_block("glossary/part.yaml"),
+    )
+
+    result = run_validator(course_dir)
+
+    assert_validator_fails(result, "the part's topic topic.md sets a due date")
+    assert "reference[0]" in result.stdout + result.stderr
+
+
+def test_reference_part_children_entry_with_a_due_key_fails(tmp_path: Path) -> None:
+    course_dir = _course_dir(tmp_path)
+    write_valid_topic(course_dir)
+    _write(course_dir / "glossary" / "topic.md", _TOPIC_FILE)
+    _write(
+        course_dir / "glossary" / "part.yaml",
+        "---\ncontent_type: COURSE_PART\ntitle: A Part\nchildren:\n"
+        "  - path: topic.md\n    due_days_after_registration: 3\n---\n",
+    )
+    write_reference_course(
+        course_dir,
+        children=["01. intro.md"],
+        reference_block=_reference_block("glossary/part.yaml"),
+    )
+
+    result = run_validator(course_dir)
+
+    assert_validator_fails(
+        result, "the part's children: entry topic.md sets a due date"
+    )
+    assert "reference[0]" in result.stdout + result.stderr
+
+
+def test_reference_part_outside_the_validated_path_is_checked(tmp_path: Path) -> None:
+    course_dir = _course_dir(tmp_path)
+    write_valid_topic(course_dir)
+    _part_listing(tmp_path / "shared" / "part.yaml", ["topic.md"])
+    _write(
+        tmp_path / "shared" / "topic.md",
+        "---\ncontent_type: TOPIC\ntitle: A Topic\ndue_days_after_registration: 3\n---\n",
+    )
+    write_reference_course(
+        course_dir,
+        children=["01. intro.md"],
+        reference_block=_reference_block("../shared/part.yaml"),
+    )
+
+    result = run_validator(course_dir)
+
+    assert_validator_fails(result, "the part's topic topic.md sets a due date")
+
+
 def write_ignore_list(directory: Path, entries: list[str]) -> None:
     """Add an ignore: list to the repo-root .fls-content.yaml."""
     config = directory / ".fls-content.yaml"
