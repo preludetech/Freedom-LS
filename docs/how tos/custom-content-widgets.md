@@ -147,7 +147,8 @@ Four people share a R480 bill and one of them pays an extra R60 tip. How much do
 Put the tags on their own lines with blank lines around the body, the way the demo content in
 `demo_content/` writes `c-admonition`.
 
-Run `content_save` as usual. It does not check widgets or their attributes, so a typo in a tag or
+Run `content_save` as usual. For new content, run it once with `--generate-uuids` and commit the
+changed files first, because a plain run refuses files without a uuid or with uncommitted changes. It does not check widgets or their attributes, so a typo in a tag or
 attribute name only shows up when someone looks at the rendered page.
 
 ---
