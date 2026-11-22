@@ -63,6 +63,10 @@ pass, `incomplete` when it reports unfinished tests, and `fail` otherwise.
 python3 claude_plugins/sdd/scripts/full_run_record.py write --verdict <verdict> --sha "<sha>"
 ```
 
+A remote full run (the tier definition's `command:` was a remote command) is recorded only when
+its `run: tested <sha>` equals `<sha>`; otherwise pass `--verdict fail`. A fallback local run is
+recorded as any local run.
+
 The script records `<sha>` only when HEAD is still that commit and the tree is clean. A commit
 another process made during the run leaves no record, so the next checkpoint is a full run.
 
@@ -79,6 +83,9 @@ tier: none|targeted|full · summary: <the verdict line, or "no tests run"> · fa
 
 `failed:` appears only when the run failed. It is the failed set as the tier definition defines it.
 A failed-only re-run's summary is the tier definition's reporting line for it.
+
+The summary of a remote full run ends `(remote: <url>)` from its `run: url` line; a fallback
+run's ends `(local: <reason>)` with the `UNAVAILABLE` reason.
 
 `tier:` names the tier that ran. For a checkpoint, the summary starts with the resolver's `why:`:
 `tier: none · summary: no test-visible change since full green at abc1234`, or

@@ -116,3 +116,20 @@ def test_wrapper_runs_the_plugin_script_from_the_project_root(
     # Assert
     assert result.returncode == 0
     assert stub_tools.log_lines() == [str(REPO_ROOT)]
+
+
+def test_select_tests_wrapper_passes_the_remote_switch_to_the_script(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    (stub_tools.bin_dir / "uv").write_text(
+        '#!/bin/sh\nprintf \'%s\\n\' "$DS_TEST_REMOTE" >> "$STUB_LOG_FILE"\n'
+    )
+    environment = stub_tools.env(DS_TEST_REMOTE="off")
+
+    # Act
+    result = run_script(WRAPPER_DIR / "select_tests.sh", tmp_path, environment)
+
+    # Assert
+    assert result.returncode == 0
+    assert stub_tools.log_lines() == ["off"]

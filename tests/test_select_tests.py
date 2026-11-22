@@ -7,6 +7,7 @@ a `pyproject.toml` plus a namespace package (`pkg/`, no `__init__.py`) holding a
 
 from __future__ import annotations
 
+import os
 import subprocess
 from collections.abc import Callable
 from functools import partial
@@ -2982,3 +2983,93 @@ def test_tests_changed_in_with_narrow_adds_the_test_files_without_raising_the_ti
 
     # Assert
     assert lines(result.stdout, "tier") == ["tier: none"]
+
+
+REMOTE_TABLE = '[tool.test_tiers.remote]\ncommand = "remote-runner --flag"\n'
+MIGRATION_PATH = "pkg/alpha/migrations/0001_initial.py"
+
+
+def remote_environment(**variables: str) -> dict[str, str]:
+    """The process environment without `DS_TEST_REMOTE`, plus `variables`."""
+    environment = {k: v for k, v in os.environ.items() if k != "DS_TEST_REMOTE"}
+    return environment | variables
+
+
+def test_full_tier_with_a_remote_command_prints_it_and_the_local_command_as_fallback(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app() | {"pyproject.toml": REMOTE_TABLE})
+
+    # Act
+    result = run_script(
+        SCRIPT, tmp_path, MIGRATION_PATH, environment=remote_environment()
+    )
+
+    # Assert
+    assert lines(result.stdout, "command") == ["command: remote-runner --flag"]
+    assert lines(result.stdout, "fallback") == ["fallback: uv run pytest -n auto"]
+
+
+def test_remote_off_prints_only_the_local_full_command(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app() | {"pyproject.toml": REMOTE_TABLE})
+
+    # Act
+    result = run_script(
+        SCRIPT,
+        tmp_path,
+        MIGRATION_PATH,
+        environment=remote_environment(DS_TEST_REMOTE="off"),
+    )
+
+    # Assert
+    assert lines(result.stdout, "command") == [FULL_COMMAND]
+    assert lines(result.stdout, "fallback") == []
+
+
+def test_targeted_tier_with_a_remote_command_prints_no_fallback(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app() | {"pyproject.toml": REMOTE_TABLE})
+
+    # Act
+    result = run_script(
+        SCRIPT, tmp_path, "pkg/alpha/services.py", environment=remote_environment()
+    )
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: targeted"]
+    assert lines(result.stdout, "fallback") == []
+
+
+@pytest.mark.parametrize(
+    ("table", "message"),
+    [
+        (
+            "[tool.test_tiers]\nremote = 3\n",
+            "[tool.test_tiers] 'remote' must be a table",
+        ),
+        (
+            "[tool.test_tiers.remote]\ncommand = 3\n",
+            "[tool.test_tiers.remote] 'command' must be a non-empty string",
+        ),
+        (
+            '[tool.test_tiers.remote]\ncommand = "  "\n',
+            "[tool.test_tiers.remote] 'command' must be a non-empty string",
+        ),
+    ],
+)
+def test_malformed_remote_entry_exits_2_naming_the_key(
+    tmp_path: Path, table: str, message: str
+) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app() | {"pyproject.toml": table})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "docs/a.md")
+
+    # Assert
+    assert result.returncode == 2
+    assert message in result.stderr

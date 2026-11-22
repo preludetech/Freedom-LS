@@ -7,7 +7,9 @@ Usage:
         [--upstream-range <old>..<new>] [--tests-changed-in <rev>..<rev>] [--wide] [<path>...]
 
 Prints `tier:`, one `why:` line per changed path and, for a targeted or full
-run, the `command:` to run. Project-specific globs come from `[tool.test_tiers]`
+run, the `command:` to run. A full tier with `[tool.test_tiers.remote] command` set prints
+that command on `command:` and the local full command on `fallback:`; `DS_TEST_REMOTE=off`
+prints the local command alone. Project-specific globs come from `[tool.test_tiers]`
 in `pyproject.toml`. Stdlib only, like its siblings.
 
 `--upstream-range` names the paths another line of history brought in (main, after a
@@ -20,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import functools
+import os
 import re
 import shlex
 import subprocess
@@ -100,6 +103,8 @@ NARROW_TAIL = "(narrow; the rest is left to a full run)"
 
 RUNNER_WRAPPER = ".claude/ds/scripts/run_tests.sh"
 
+REMOTE_OFF_ENV = "DS_TEST_REMOTE"
+
 FULL_COMMAND = "uv run pytest -n auto"
 TARGETED_PREFIX = "uv run pytest -n auto --no-cov"
 
@@ -122,6 +127,8 @@ class TierConfig:
     narrow: bool = False
     # pytest's `testpaths`: where the import graph looks for test files. Empty means anywhere.
     test_roots: tuple[str, ...] = ()
+    # The command that runs the full tier somewhere else, or None to run it here.
+    remote_command: str | None = None
 
     @property
     def escalation(self) -> tuple[str, ...]:
@@ -183,6 +190,19 @@ def narrow_setting(table: dict[str, object]) -> bool:
     return value
 
 
+def remote_command(table: dict[str, object]) -> str | None:
+    """`[tool.test_tiers.remote] command`. The table's other keys belong to that command."""
+    remote = table.get("remote", {})
+    if not isinstance(remote, dict):
+        raise ConfigError("[tool.test_tiers] 'remote' must be a table")
+    value = remote.get("command")
+    if value is not None and (not isinstance(value, str) or not value.strip()):
+        raise ConfigError(
+            "[tool.test_tiers.remote] 'command' must be a non-empty string"
+        )
+    return value
+
+
 def pytest_testpaths(data: dict[str, object]) -> tuple[str, ...]:
     """`[tool.pytest.ini_options].testpaths`, empty when the project sets none. pytest owns
     the key, so a value this script cannot read is treated as unset rather than an error."""
@@ -218,6 +238,7 @@ def load_tier_config(project_root: Path) -> TierConfig:
         markers=marker_expression(table),
         narrow=narrow_setting(table),
         test_roots=pytest_testpaths(data),
+        remote_command=remote_command(table),
     )
 
 
@@ -1043,7 +1064,13 @@ def main() -> int:
         tail = f" {NARROW_TAIL}" if d.narrowed else ""
         print(f"why: {d.path} -> {outcome} ({d.reason}){tail}")
     if tier == "full":
-        print(f"command: {full_command(config, project_root)}")
+        local = full_command(config, project_root)
+        remote_off = os.environ.get(REMOTE_OFF_ENV) == "off"
+        if config.remote_command is not None and not remote_off:
+            print(f"command: {config.remote_command}")
+            print(f"fallback: {local}")
+        else:
+            print(f"command: {local}")
     elif tier == "targeted":
         print(f"command: {compose_command(selected, touched, config, project_root)}")
     return 0

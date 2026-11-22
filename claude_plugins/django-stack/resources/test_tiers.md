@@ -58,6 +58,17 @@ live here and nowhere else.
   starts with `.claude/ds/scripts/run_tests.sh`. Run it as printed. Coverage and its threshold run
   wherever the project puts them: in `addopts`, or in CI only.
 
+  With `[tool.test_tiers.remote] command` set, a `tier: full` result prints that command on
+  `command:` and the local full command on `fallback:`. Run `command:` in the background as any
+  full tier. `DS_TEST_REMOTE=off` makes the wrapper print the local command alone.
+
+  A remote command meets this contract: it prints the runner's `run:` lines, `run: tested <sha>`
+  and `run: RESULT PASS|FAIL|UNAVAILABLE`; it exits 0 only on `PASS`; its failed set is its
+  `run: failed` lines; the table's other keys are its own.
+
+  On `run: RESULT UNAVAILABLE <reason>`, quote the reason and run the `fallback:` line as the
+  full tier. Its result is the tier's result.
+
 ## How to run a tier
 
 Run `targeted` and `full` with the Bash tool's `run_in_background: true` and wait for the completion
@@ -106,7 +117,7 @@ Pass `--no-cov` on `pytest --co` and any other partial run too.
 Report the tier that ran as `tier: none|targeted|full`.
 
 With the test runner, quote `run: summary (merged)` and `run: RESULT ...`, not pytest's own last
-line. The step is done at `RESULT PASS`. `RESULT INCOMPLETE` means tests were left unfinished
+line, a remote full run's included. The step is done at `RESULT PASS`. `RESULT INCOMPLETE` means tests were left unfinished
 after the retries: report it as blocked on memory, not as a failure to fix. `RESULT FAIL` is a
 failure to fix, including a test counted as failed because it crashed its worker every time.
 
@@ -126,6 +137,10 @@ are the `run: failed <node id>` and `run: unfinished <node id>` lines. When the 
 fallback), they are the node IDs on pytest's `FAILED <node id> - <message>` short-summary lines. A
 run that printed `run: failed ... and <n> more` has too many to list, so it takes the whole-tier
 re-run, whatever the caller asked for.
+
+A remote full run's `RESULT FAIL` with `run: failed` lines takes the failed-only re-run, run
+locally. One with no `run: failed` line (its `run: coverage` line names the reason) has no
+failed set, so it takes the whole-tier re-run, which starts at the full tier.
 
 Fix the failure, then re-run as the caller says. A caller that names neither re-run gets the
 whole-tier re-run.
