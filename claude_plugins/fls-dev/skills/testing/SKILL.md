@@ -142,6 +142,18 @@ Add `needs_fls_host` to a `panel_framework` test that fails under the standalone
 
 **Reach for `fls_internal` last.** Every portable test is integration signal for a downstream. Before marking a test `fls_internal`, de-brand it first (pin the input or assert the contract). Only mark it when it genuinely depends on FLS's own repo/brand/demo state (e.g. it reads `demo_content/`). Prefer a file-level `pytestmark = pytest.mark.fls_internal` only for wholly brand-coupled files; mark individual tests in mixed files.
 
+## The test-cost ranking
+
+```bash
+uv run python scripts/rank_test_costs.py
+```
+
+Run it after pruning tests, or when the suite feels slower. It runs the whole suite once (without the Playwright, `ci_only` and `weasyprint` tests) under a cost recorder with `-n 4`, then writes `test_organisation/test_cost_ranking.md`. The last run took about 318 seconds of wall time, 5.3 minutes. The command takes no arguments.
+
+`test_organisation/test_cost_ranking.md` holds a header (date, commit, test count, CPU and wall seconds, run conditions) and the cost, in seconds and share of the total, of each area, of the top 50 files and of the top 200 test functions. It is generated: do not edit it by hand. Compare costs only between runs made under similar machine load, since the header records the load.
+
+Nothing fails on slowness: no test or hook has a time limit. A run with failing tests exits non-zero and leaves the ranking as it was.
+
 ## Memory settings
 
 The test runner sizes its xdist worker count to free memory. `claude_plugins/django-stack/resources/test_tiers.md` defines what each setting means; this section records FLS's values and how they were measured.
