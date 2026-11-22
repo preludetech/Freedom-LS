@@ -47,15 +47,20 @@ if TYPE_CHECKING:
     from freedom_ls.content_engine.models import Course
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def _disable_force_site_name() -> Iterator[None]:
     """Ensure FORCE_SITE_NAME is always None during tests.
 
-    Session-scoped, not per test: the live server answers requests on its own
+    Module-scoped, not per test: the live server answers requests on its own
     threads, and one still in flight as a test ends would otherwise read the
     dev settings' pinned name between tests. A read that straddles the next
     test's override also leaves that name cached on `django.conf.settings`
     for the whole of that test, so its requests fail to resolve a site.
+
+    Not session-scoped: in a concrete project this file is a subdirectory
+    conftest, and a session fixture would keep the override for the project's
+    own tests that run after FLS's. `freedom_ls/` is not a Python package, so
+    package scope would fall back to session too.
     """
     with override_settings(FORCE_SITE_NAME=None):
         yield
