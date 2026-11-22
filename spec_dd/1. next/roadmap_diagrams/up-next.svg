@@ -185,7 +185,7 @@
 <text x="1030.0" y="782.5" fill="#111827">multi-step-course-</text>
 <text x="1030.0" y="797.5" fill="#111827">applications-11-applicant-</text>
 <text x="1030.0" y="812.5" fill="#111827">picks-onward-courses</text>
-<rect x="24.0" y="1259.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<rect x="24.0" y="1259.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M32.0,1259.0 H30.0 A6,6 0 0 0 24.0,1265.0 V1303.0 A6,6 0 0 0 30.0,1309.0 H32.0 Z" fill="#fb923c"/>
 <text x="40.0" y="1281.0" fill="#111827">educator-interface-refactor-6-</text>
 <text x="40.0" y="1296.0" fill="#111827">cohort</text>
