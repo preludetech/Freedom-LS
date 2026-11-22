@@ -99,3 +99,23 @@ Same commands and method as the "before" samples (serial, `-n 0 -p no:randomly -
 - Commit tested: `8d941327f64284f84269f42df05618a05c1f8e43`. Command: `.claude/ds/scripts/run_tests.sh uv run pytest -n auto -m 'not ci_only and not weasyprint'` (once).
 - `run: summary (merged): 19832 passed, 0 failed, 3 skipped in 814.9s`; `run: RESULT PASS`. 19835 collected, 19835 finished.
 - Files other specs own: `git diff main...HEAD` (against the merge base, since main has moved on and the branch is not rebased) is empty for `.github/workflows/tests.yml`, `run_tests.py`, `select_tests.py` and `test_tiers.md`; `pyproject.toml` shows the one new `[[tool.test_tiers.tooling]]` entry as its only `[tool.test_tiers]` change, plus the ruff per-file ignore for the ranking script.
+
+## Rerun of the last ranking
+
+- Commit tested: `45d65c17989804feb418ad9d3647cff808d0f20b`. Main base SHA unchanged: `0a72a807fc4f9abcee739a256cb702c972d0ab4a`.
+- Command: `/usr/bin/time -v uv run python scripts/rank_test_costs.py` (`-n 4`, `--no-cov`, random order off).
+- Result: 18773 passed, 3 skipped; 18776 tests recorded.
+- Total CPU: 1621.8 s. Wall: 530.6 s. Summed test cost: 1852.3 s. Database setup: 85.5 s across 4 workers.
+- Cross-check: `/usr/bin/time` user 1468.45 s + system 153.85 s = 1622.30 s against the header's 1621.8 s (0.03%). Wall 8:51.22. Max resident set size 901716 kB.
+- Load average (1, 5, 15 min) and CPU pressure `some avg60`:
+  - start: 13.64 10.28 10.97, 7.40
+  - end: 20.97 18.41 14.63, 24.32
+  - first run, for comparison: start 10.26 10.88 9.41, 4.80; end 7.33 9.85 9.60, 1.59.
+
+### Result of the rerun
+
+- Target 1185.3 CPU seconds; rerun 1621.8. **Over the target by 436.5 s.** The machine was quieter at the start than for the last run but got busier during it (pressure 7.40 to 24.32), and stayed busier than the first run throughout.
+- Areas the pruning did not touch (everything outside `freedom_ls/messaging_policy`): 1161.6 s in the first run, 1617.9 s here (x1.393; the last run was x1.830).
+- Indicative total at the first run's load: 1621.8 / 1.393 = about 1164 CPU s, under the target.
+- Indicative saving from the area that was pruned: `freedom_ls/messaging_policy` cost 294.6 s in the first run and 234.1 s here; 234.1 / 1.393 = about 168 s, so about 127 s of test cost saved, about 120 CPU s at the 0.9465 ratio. That is short of the 192.9 CPU s needed and well under slice 4's 229.4 CPU s estimate.
+- The two indicative figures disagree (one under the target, one over), and both rest on a load ratio. The run is not a clean measurement of the target.
