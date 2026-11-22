@@ -9,7 +9,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('freedom_ls_content_engine', '0013_course_shared_with'),
+        ('freedom_ls_content_engine', '0014_file_duration_seconds'),
         ('sites', '0002_alter_domain_unique'),
     ]
 
