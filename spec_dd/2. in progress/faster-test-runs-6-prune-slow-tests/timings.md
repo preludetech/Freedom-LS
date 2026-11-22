@@ -119,3 +119,35 @@ Same commands and method as the "before" samples (serial, `-n 0 -p no:randomly -
 - Indicative total at the first run's load: 1621.8 / 1.393 = about 1164 CPU s, under the target.
 - Indicative saving from the area that was pruned: `freedom_ls/messaging_policy` cost 294.6 s in the first run and 234.1 s here; 234.1 / 1.393 = about 168 s, so about 127 s of test cost saved, about 120 CPU s at the 0.9465 ratio. That is short of the 192.9 CPU s needed and well under slice 4's 229.4 CPU s estimate.
 - The two indicative figures disagree (one under the target, one over), and both rest on a load ratio. The run is not a clean measurement of the target.
+
+## Ranking run after the second pruning pass
+
+- Commit tested: `595c530ca5540e0983337cf3ecf6cfc40ed183dc`, no `-dirty`. The ranking it wrote is committed as `afc221b6f`.
+- **The branch was rebased onto main between the rerun above and this run.** Old base `0a72a807fc4f9abcee739a256cb702c972d0ab4a`, new base `29ab2524863ad7b621e11ceac465831e80c43ab4` (125 commits). Main added 19 test files and changed 27.
+- A first attempt at this run failed on eleven tests in `tests/test_full_run_record.py`, which main brought in: the test project it builds copied `select_tests.py` without the `module_graph.py` it imports. Fixed in `595c530ca`; no ranking was written from the failed run.
+- Command: `/usr/bin/time -v uv run python scripts/rank_test_costs.py` (`-n 4`, `--no-cov`, random order off).
+- Result: 19071 passed, 3 skipped; 19074 tests recorded (18778 in the first run).
+- Total CPU: 1081.9 s. Wall: 317.8 s. Summed test cost: 1123.2 s. Database setup: 50.4 s across 4 workers.
+- Cross-check: `/usr/bin/time` user 972.33 s + system 109.79 s = 1082.12 s against the header's 1081.9 s (0.02%). Wall 5:17.97. Max resident set size 917304 kB.
+- Load average (1, 5, 15 min) and CPU pressure `some avg60`:
+  - start: 2.59 3.98 5.87, 0.06
+  - end: 4.57 4.53 5.57, 0.00
+  - first run, for comparison: start 10.26 10.88 9.41, 4.80; end 7.33 9.85 9.60, 1.59.
+
+### Result after the second pass
+
+- Target 1185.3 CPU seconds; this run 1081.9. **Under the target by 103.4 s**, with 296 more tests than the first run. The machine was quieter than for the first run, so the two totals are still not like for like; the figures below say by how much.
+- Load ratio: the 34 areas (of 42) that neither main nor the pruning touched, and whose test count is unchanged (11991 tests), cost 652.4 s in the first run and 556.8 s here: x0.853.
+- The target moved with the rebase. Tests in the 19 test files main added: 475, costing 95.9 s here, which is 95.9 / 0.853 = 112.4 s at the first run's load, or 106.4 CPU seconds at the 0.9465 ratio. The cost of the tests main removed cannot be subtracted, because `.sdd-work/test_costs_first.json` was deleted when the records were first closed; the net count (475 added, 296 more in total, 2 merged away by the pruning) puts them near 177 tests. So the adjusted target is at most 1185.3 + 106.4 = 1291.7 CPU seconds, and lower by whatever those removed tests cost.
+- This run at the first run's load: 1081.9 / 0.853 = about 1268 CPU seconds, under the adjusted target's upper bound by about 23 s. The removed tests' cost is the uncertainty in that margin.
+- The pruned tests on their own, which the rebase does not touch:
+
+  | | First run | This run | At the first run's load (/ 0.853) |
+  |---|---|---|---|
+  | `freedom_ls/messaging_policy` (area) | 294.6 s | 94.6 s | 110.9 s |
+  | `test_comparison_winner_on_each_side_of_the_lossy_wins_divisor` | 14.8 s | 2.7 s | 3.2 s |
+
+  Saved: 183.7 + 11.6 = 195.3 s of test cost, about 184.9 CPU seconds at the 0.9465 ratio, against the 192.9 the target needs: 8 s short on this view, within the noise of the load ratio (database setup alone moved by x0.77 between the two runs).
+- Reading: the run as measured is under the target. Brought to the first run's load, one view puts it just under the adjusted target and the other puts the saving 4% short of what the target needs. The pruning cut the costliest area from 294.6 s to about 111 s of test cost, about 13% of the first run's total CPU. Pruning stopped where the remaining candidates above the 7.28 s threshold have no cheaper form (see `pruned_tests.md`).
+- Coverage: no whole-suite coverage run was made after the second pass, and the "before" report was no longer there to compare with. Each changed test file was compared against itself instead (see `pruned_tests.md`): no file under `freedom_ls/` lost a line or a branch.
+- Tests run for the second pass: the targeted tier on its commit (312 passed, 0 failed), and this ranking run over the whole suite without the Playwright tests (19071 passed). The full tier was not run again after the rebase onto main.
