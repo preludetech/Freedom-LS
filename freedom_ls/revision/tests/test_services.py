@@ -5,6 +5,7 @@ import pytest
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.form_engine.factories import FormQuestionFactory, QuestionOptionFactory
 from freedom_ls.form_engine.models import FormProgress, QuestionAnswer
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.revision.models import RevisionReview, RevisionSchedule
@@ -12,6 +13,7 @@ from freedom_ls.revision.services import (
     RevisionSessionState,
     build_session,
     record_answer,
+    shuffled_options,
 )
 from freedom_ls.revision.tests.helpers import (
     finish_topic,
@@ -136,6 +138,64 @@ def test_build_session_holds_at_most_the_configured_size(mock_site_context, sett
 
 
 def test_state_past_its_last_question_has_no_current_question():
-    state = RevisionSessionState(question_ids=(uuid4(),), started_at=NOW, index=0)
+    state = RevisionSessionState(
+        question_ids=(uuid4(),), seeds=(1,), started_at=NOW, index=0
+    )
 
     assert state.advanced().current_question_id is None
+
+
+def test_state_with_fewer_seeds_than_questions_is_rejected():
+    with pytest.raises(ValueError, match="same length"):
+        RevisionSessionState(question_ids=(uuid4(),), seeds=(), started_at=NOW)
+
+
+@pytest.mark.django_db
+def test_build_session_gives_each_question_a_seed(banked):
+    user, record, _ = banked
+
+    state = build_session(user, record, NOW)
+
+    assert len(state.seeds) == len(state.question_ids) == 1
+
+
+def _ten_options(*, locked_index: int | None = None):
+    question = FormQuestionFactory(type="multiple_choice")
+    for index in range(10):
+        QuestionOptionFactory(
+            question=question,
+            text=f"Option {index}",
+            order=index,
+            locked=index == locked_index,
+        )
+    return question
+
+
+@pytest.mark.django_db
+def test_shuffled_options_keep_a_locked_option_at_its_index(mock_site_context):
+    question = _ten_options(locked_index=9)
+
+    options = shuffled_options(question, 12345)
+
+    assert options[9].text == "Option 9"
+
+
+@pytest.mark.django_db
+def test_shuffled_options_for_the_same_seed_are_in_the_same_order(mock_site_context):
+    question = _ten_options()
+
+    first = shuffled_options(question, 777)
+    second = shuffled_options(question, 777)
+
+    assert [o.id for o in first] == [o.id for o in second]
+
+
+@pytest.mark.django_db
+def test_shuffled_options_differ_between_seeds(mock_site_context):
+    question = _ten_options()
+
+    orders = {
+        tuple(o.id for o in shuffled_options(question, seed)) for seed in range(5)
+    }
+
+    assert len(orders) > 1

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from unittest.mock import patch
 
 import pytest
 import time_machine
@@ -20,7 +21,7 @@ from freedom_ls.learner_interface.tests.helpers import topic_completion
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.revision.factories import RevisionReviewFactory
 from freedom_ls.revision.models import RevisionReview
-from freedom_ls.revision.services import RevisionSessionState
+from freedom_ls.revision.services import RevisionSessionState, shuffled_options
 from freedom_ls.revision.tests.helpers import (
     choice_question,
     finish_topic,
@@ -131,6 +132,7 @@ def _store_session(
 ):
     state = RevisionSessionState(
         question_ids=tuple(q.pk for q in questions),
+        seeds=tuple(range(1, len(questions) + 1)),
         started_at=started_at or datetime(2026, 1, 1, tzinfo=UTC),
         index=index,
     )
@@ -390,3 +392,51 @@ def test_start_with_ready_questions_stores_a_session(mock_site_context):
         response.status_code,
         f"revision_session:{course.id}" in client.session,
     ) == (303, True)
+
+
+def _option_texts_in_order(html: str, options) -> list[str]:
+    """The option texts, in the order they appear in `html`."""
+    return sorted((option.text for option in options), key=html.index)
+
+
+@pytest.mark.django_db
+def test_card_renders_options_in_the_order_the_stored_seed_gives(mock_site_context):
+    course, _, (question,), client = _banked_session()
+    expected = [o.text for o in shuffled_options(question, 1)]
+
+    html = client.get(_revision_url(course)).content.decode()
+
+    assert _option_texts_in_order(html, question.options.all()) == expected
+
+
+@pytest.mark.django_db
+def test_feedback_renders_options_in_the_order_the_stored_seed_gives(
+    mock_site_context,
+):
+    course, user, (question,), client = _banked_session()
+    RevisionReviewFactory(
+        user=user,
+        question=question,
+        course=course,
+        reviewed_at=datetime(2026, 6, 1, tzinfo=UTC),
+    )
+    expected = [o.text for o in shuffled_options(question, 1)]
+
+    html = client.get(_revision_url(course)).content.decode()
+
+    assert _option_texts_in_order(html, question.options.all()) == expected
+
+
+@pytest.mark.django_db
+def test_start_stores_a_seed_from_new_seed(mock_site_context):
+    course = CourseFactory()
+    topic, _ = place_topic(course)
+    question_testing_topic(topic)
+    user = UserFactory()
+    finish_topic(course_progress_record(course, user), topic)
+    client = _client_for(user)
+
+    with patch("freedom_ls.revision.services.new_seed", return_value=4242):
+        client.post(_route_url("course_revision_start", course))
+
+    assert client.session[f"revision_session:{course.id}"]["seeds"] == [4242]

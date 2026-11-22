@@ -64,9 +64,13 @@ def _country_for_an_empty_question(
 def question_options(context: Context) -> list[QuestionOption]:
     """The options of the question being drawn, in the order this sitting is served them.
 
-    Reads `question` and `sitting_path` from the context. A page drawn with
-    no sitting behind it has no path and shows the options as authored.
+    Reads `revision_options`, `question` and `sitting_path` from the context.
+    Revision passes the order it shuffled, because it has no sitting. A page
+    drawn with no sitting behind it has no path and shows the options as authored.
     """
+    revision_options: list[QuestionOption] | None = context.get("revision_options")
+    if revision_options is not None:
+        return revision_options
     question = context["question"]
     path: SittingPath | None = context.get("sitting_path")
     if path is None:

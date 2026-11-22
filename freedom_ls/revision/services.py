@@ -1,16 +1,18 @@
 from __future__ import annotations
 
 from datetime import datetime
+from random import Random
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from django.db import transaction
 from django.db.models import QuerySet
 
-from freedom_ls.form_engine.models import FormQuestion
+from freedom_ls.form_engine.models import FormQuestion, QuestionOption
 from freedom_ls.form_engine.scoring import is_quiz_answer_correct
+from freedom_ls.form_engine.served_paper import new_seed, shuffle_with_locks
 from freedom_ls.revision import scheduler
 from freedom_ls.revision.config import config
 from freedom_ls.revision.models import RevisionReview, RevisionSchedule
@@ -27,8 +29,15 @@ class RevisionSessionState(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     question_ids: tuple[UUID, ...]
+    seeds: tuple[int, ...]
     started_at: datetime
     index: int = Field(default=0, ge=0)
+
+    @model_validator(mode="after")
+    def _one_seed_per_question(self) -> RevisionSessionState:
+        if len(self.seeds) != len(self.question_ids):
+            raise ValueError("seeds and question_ids must be the same length")
+        return self
 
     @property
     def current_question_id(self) -> UUID | None:
@@ -46,7 +55,22 @@ def build_session(
 ) -> RevisionSessionState:
     questions = due_questions(user, record, now)[: config.REVISION_SESSION_SIZE]
     return RevisionSessionState(
-        question_ids=tuple(question.pk for question in questions), started_at=now
+        question_ids=tuple(question.pk for question in questions),
+        seeds=tuple(new_seed() for _ in questions),
+        started_at=now,
+    )
+
+
+def shuffled_options(question: FormQuestion, seed: int) -> list[QuestionOption]:
+    """The question's options in the order this showing serves them.
+
+    Rebuilt from the seed on every render rather than stored, so a reload
+    shows the order the learner was first given.
+    """
+    return shuffle_with_locks(
+        list(question.options.all()),
+        lambda option: option.locked,
+        Random(seed),  # noqa: S311 - ordering, not security
     )
 
 

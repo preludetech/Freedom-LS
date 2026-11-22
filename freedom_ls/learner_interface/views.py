@@ -120,6 +120,7 @@ from freedom_ls.revision.services import (
     build_session,
     record_answer,
     session_reviews,
+    shuffled_options,
 )
 from freedom_ls.site_aware_models.models import get_cached_site
 from freedom_ls.site_aware_models.time_zones import shows_time_zone_to_learners
@@ -2562,6 +2563,7 @@ def _revision_card_context(
     return "learner_interface/partials/revision_card.html", {
         "course": course,
         "question": question,
+        "revision_options": shuffled_options(question, state.seeds[state.index]),
         "review": review,
         "position": state.index + 1,
         "total": len(state.question_ids),

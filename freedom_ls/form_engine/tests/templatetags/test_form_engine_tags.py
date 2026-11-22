@@ -693,3 +693,23 @@ def test_question_options_are_authored_order_when_no_path_is_in_the_context(
     options = question_options(Context({"question": question}))
 
     assert [option.text for option in options] == ["Alpha", "Beta"]
+
+
+@pytest.mark.django_db
+def test_question_options_prefer_revision_options_over_the_sitting_path(
+    served_options,
+):
+    question, path = served_options
+    authored = list(question.options.all())
+
+    options = question_options(
+        Context(
+            {
+                "question": question,
+                "sitting_path": path,
+                "revision_options": authored,
+            }
+        )
+    )
+
+    assert [option.text for option in options] == ["Alpha", "Beta"]
