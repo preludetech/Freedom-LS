@@ -15,10 +15,12 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 3. Implementation and QA
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
+- [ ] (user) Decide on the CPU target miss recorded in `timings.md`: the last ranking run measured 1680.1 CPU s against the 1185.3 target, under much higher load (load 15.9→32.6, CPU pressure 12.2→49.8, against 10.3→7.3 and 4.8→1.6 in the first run). Choose one: accept the pruning estimate (229.4 CPU s saved, 192.9 needed); rerun `uv run python scripts/rank_test_costs.py` on a quieter machine and update `timings.md`; or prune more, starting from `content_engine/tests/test_images.py::test_comparison_winner_on_each_side_of_the_lossy_wins_divisor` (14.8 s)
+- [ ] (user) Push the rebased branch: the force-push after the rebase onto main was blocked by the permission check, so run `! git push origin HEAD --force-with-lease --force-if-includes`
 
 ## 4. Documentation and pull request
 
