@@ -27,6 +27,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (user) Force-push the branch again: `/sdd:document` rebased it onto main (which gained the content-save-safety spec) and the auto-mode classifier blocked the push. Run `! git push origin reference-material-content-1-authoring --force-with-lease --force-if-includes`, then `/sdd:make_pr_quickly`
 - [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
 - [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [x] (cmd) Fix the three important PR review findings: a `reference:` part outside the loaded source path and one under a `_`/`.` folder are refused before any write; moving a part to `reference:` recalculates the course's stored progress percentages
+- [ ] (user) Decide on the remaining PR review nits: the overlap error says "children:" for an auto-discovered child (`validate.py` `validate_reference_lists`), and moving a part to `reference:` leaves topic-level deadline overrides/extensions for that course in place (`content_save.py` `remove_part_placement`)
+- [ ] (user) Decide whether `children:` should resolve across `content_save` sources: today a child in another source fails at load time with "names a child … that was not loaded" (pre-existing)
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
 ## 5. Cleanup

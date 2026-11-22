@@ -78,7 +78,10 @@ from freedom_ls.content_engine.prices import KIND_FIELDS
 from freedom_ls.content_engine.schema import Child, CourseCategories
 from freedom_ls.content_engine.schema import Course as CourseSchema
 from freedom_ls.content_engine.schema import CoursePart as CoursePartSchema
-from freedom_ls.content_engine.signals import collection_items_synced
+from freedom_ls.content_engine.signals import (
+    collection_items_synced,
+    part_placements_removed,
+)
 from freedom_ls.content_engine.validate import (
     CONFIG_FILE_NAME,
     IMAGE_EXTENSIONS,
@@ -948,6 +951,15 @@ _PLACEMENT_CASCADES = (
 )
 
 
+@dataclass(frozen=True)
+class RemovedPlacement:
+    """A course's placement of a part that the course now lists as reference material,
+    deleted by this load, with the line that reports it."""
+
+    course: Course
+    report_line: str
+
+
 def remove_part_placement(site: Site, course: Course, part: CoursePart) -> str | None:
     """Delete this course's placement of a part it now lists as reference material, and
     say what went with it. None when the course did not place the part."""
@@ -974,10 +986,10 @@ def sync_reference_parts(
     site: Site,
     collections_data: Sequence[tuple[Course | CoursePart, BaseBaseContentModel]],
     content_by_path: Mapping[Path, models.Model],
-) -> list[str]:
+) -> list[RemovedPlacement]:
     """Write each loaded course's reference parts from its reference: list. Returns the
-    lines that report what was removed, for the caller to print once the load is safe."""
-    removal_lines: list[str] = []
+    part placements it removed, for the caller to report once the load is safe."""
+    removed: list[RemovedPlacement] = []
     for course, schema_item in collections_data:
         if not isinstance(course, Course) or not isinstance(schema_item, CourseSchema):
             continue
@@ -991,8 +1003,8 @@ def sync_reference_parts(
                 # nobody notices.
                 raise ValueError(
                     f"Course '{course.title}' lists {part_path} under reference:, "
-                    "but it was not loaded; include its directory in the "
-                    "content_save sources"
+                    "but it was not loaded with the course; load a directory that "
+                    "holds both the course and the part"
                 )
             if not isinstance(part, CoursePart):
                 raise ValueError(
@@ -1016,8 +1028,8 @@ def sync_reference_parts(
         for part in parts:
             line = remove_part_placement(site, course, part)
             if line is not None:
-                removal_lines.append(line)
-    return removal_lines
+                removed.append(RemovedPlacement(course, line))
+    return removed
 
 
 def get_file_type_from_extension(file_path):
@@ -1546,7 +1558,7 @@ def _write_source(
                     f"{child_path} that was not loaded"
                 )
 
-    removal_lines = sync_reference_parts(site, collections_data, content_by_path)
+    removed_placements = sync_reference_parts(site, collections_data, content_by_path)
 
     # A course is written before the parts it places, so the part's own rows exist only
     # now. Every part placement of every course in this load is reconciled: one whose
@@ -1601,7 +1613,13 @@ def _write_source(
         written=written,
         moved=moved,
     )
-    return image_statuses, removal_lines
+    if removed_placements:
+        part_placements_removed.send(
+            sender=ContentCollectionItem,
+            site=site,
+            courses=list({r.course.pk: r.course for r in removed_placements}.values()),
+        )
+    return image_statuses, [r.report_line for r in removed_placements]
 
 
 @dataclass(frozen=True)
@@ -1645,7 +1663,9 @@ def save_content_to_db(
         for source in sources
         for error in (
             *validate_children_lists(source.all_parsed, ignore=source.ignore),
-            *validate_reference_lists(source.all_parsed, ignore=source.ignore),
+            *validate_reference_lists(
+                source.all_parsed, ignore=source.ignore, loaded_root=source.path
+            ),
             *validate_due_date_placements(source.all_parsed, ignore=source.ignore),
             *validate_form_section_placement(
                 source.all_parsed, check_form_folder=source.path.is_dir()

@@ -1071,11 +1071,15 @@ def validate_reference_lists(
     all_parsed: Sequence[BaseBaseContentModel],
     *,
     ignore: frozenset[Path] = frozenset(),
+    loaded_root: Path | None = None,
 ) -> list[str]:
     """Check every course's reference: list against the files it names.
 
     A reference part sits outside the learning path, so it may not also be a child of the
-    course, it must be a part file, and it holds topics with no due dates.
+    course, it must be a part file the loader reads, and it holds topics with no due dates.
+    Without loaded_root, a part beyond the validated path is read from disk, as a
+    single-directory validate run needs. content_save passes the path it loads: it links
+    only parts it loads with the course.
     """
     errors: list[str] = []
     # Reads from disk when a part sits outside the validated path, so validating one
@@ -1116,6 +1120,27 @@ def validate_reference_lists(
             # never loaded.
             if is_ignored(key, ignore):
                 errors.append(error(problem=IGNORED_PROBLEM, fix=IGNORED_FIX))
+                continue
+            # The skip rule looks only at names below the directory content_save is
+            # given, so the walk's base is the deepest directory holding both files.
+            base = Path(os.path.commonpath([content_key(course.file_path).parent, key]))
+            if is_loader_skipped(key, base):
+                errors.append(
+                    error(
+                        problem="content_save skips this part: a name on its path starts with _ or .",
+                        fix="Move the part to a folder content_save reads: no name on its path may start with _ or .",
+                    )
+                )
+                continue
+            if loaded_root is not None and not key.is_relative_to(
+                content_key(loaded_root)
+            ):
+                errors.append(
+                    error(
+                        problem="this part is not loaded with the course: it sits outside the directory content_save was given",
+                        fix="Load a directory that holds both the course and the part.",
+                    )
+                )
                 continue
             target = by_path.get(key)
             if target is None:

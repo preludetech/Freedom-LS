@@ -4714,8 +4714,38 @@ def test_a_reference_path_that_was_not_loaded_raises_and_writes_nothing(
             "  - path: ../outside/part.yaml\n---\n"
         )
 
-        with pytest.raises(ValueError, match="under reference:, but it was not loaded"):
+        with pytest.raises(
+            ValueError, match="sits outside the directory content_save was given"
+        ):
             save_content_to_db(course_dir, site.name)
+
+    assert not CourseReferencePart.objects.exists()
+    assert not Course.objects.exists()
+
+
+@pytest.mark.django_db
+def test_a_reference_part_in_another_source_path_raises_and_writes_nothing(
+    site: Site, mock_site_context: Site
+) -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "reference"
+        shared_dir = Path(tmpdir) / "shared"
+        (shared_dir / "Glossary").mkdir(parents=True)
+        (shared_dir / "Glossary" / "part.yaml").write_text(
+            "---\ncontent_type: COURSE_PART\ntitle: shared\n"
+            "uuid: 20000000-0000-0000-0000-000000000055\n"
+        )
+        _write_course_with_reference(course_dir, ["glossary"])
+        (course_dir / "course.md").write_text(
+            f"---\ncontent_type: COURSE\ntitle: Reference course\nuuid: {COURSE_UUID}\n"
+            "children:\n  - path: intro.md\nreference:\n"
+            "  - path: ../shared/Glossary/part.yaml\n---\n"
+        )
+
+        with pytest.raises(
+            ValueError, match="sits outside the directory content_save was given"
+        ):
+            save_content_to_db([course_dir, shared_dir], site.name)
 
     assert not CourseReferencePart.objects.exists()
     assert not Course.objects.exists()

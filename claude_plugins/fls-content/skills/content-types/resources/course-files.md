@@ -115,9 +115,10 @@ and fails validation.
 
 `reference:` lists parts that sit beside the course's learning path: material a learner looks things up in, not steps to
 work through. Each entry names a part's `part.yaml`, relative to `course.md`, and nothing else. The part can sit anywhere
-in the repo, including a directory shared with other courses, but not in a path the repo's `ignore:` list names. A part
-outside the course's directory is saved only when `content_save` is given a directory that holds it too, such as the repo
-root.
+in the repo, including a directory shared with other courses, but not in a path the repo's `ignore:` list names, and not
+under a folder whose name starts with `_` or `.`. A part outside the course's directory is saved only when one directory
+given to `content_save` holds both the course and the part, such as the repo root. Passing the shared directory as a
+separate source path does not work: `content_save` refuses the entry before writing anything.
 
 ```yaml
 children:

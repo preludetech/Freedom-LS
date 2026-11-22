@@ -2082,6 +2082,22 @@ def test_reference_directory_is_not_auto_discovered_as_course_children(
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+def test_reference_part_under_a_skipped_folder_fails(tmp_path: Path) -> None:
+    course_dir = _course_dir(tmp_path)
+    _write(course_dir / "_drafts" / "Glossary" / "part.yaml", _PART_FILE)
+    write_reference_course(
+        course_dir,
+        children=["01. intro.md"],
+        reference_block=_reference_block("_drafts/Glossary/part.yaml"),
+    )
+    write_valid_topic(course_dir)
+
+    result = run_validator(course_dir)
+
+    assert_validator_fails(result, "Invalid reference list")
+    assert "content_save skips this part" in result.stdout + result.stderr
+
+
 def test_part_named_twice_in_a_reference_list_fails(tmp_path: Path) -> None:
     course_dir = _course_dir(tmp_path)
     _write(course_dir / "glossary" / "part.yaml", _PART_FILE)

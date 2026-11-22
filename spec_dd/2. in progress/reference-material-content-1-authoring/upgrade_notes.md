@@ -31,14 +31,19 @@ learning path and never count toward completion.
   file that is not a `COURSE_PART`. It gets the same error for a reference part that holds anything
   but topics, or where anything sets a due key: an entry of the part's own `children:` list, or a
   topic's frontmatter. A `reference:` entry with any key besides `path`, a bare-string entry, or a
-  `reference:` key in a `part.yaml` fails at parse time. Content without a `reference:` key is
-  unaffected.
+  `reference:` key in a `part.yaml` fails at parse time. `save_content_to_db` also refuses a
+  `reference:` entry whose part sits outside the source path being loaded (a part in a second source
+  path counts as outside), or under a folder whose name starts with `_` or `.`. Content without a
+  `reference:` key is unaffected.
 - **Moving a part from `children:` to `reference:` deletes data.** On the next `content_save`, the
   course's part placement (`ContentCollectionItem`) of that part is deleted. The delete takes with
   it every `CoursePartChildDueDate`, `CohortDeadlineOverride`, `LearnerDeadlineOverride` and
   `DeadlineExtension` on that placement, including overrides and extensions educators entered by
   hand. `content_save` prints one `Removed part placement: …` line per deleted placement, with the
-  counts. Another course's placement of the same part is untouched.
+  counts. Another course's placement of the same part is untouched. In the same load, every stored
+  `CourseProgress.progress_percentage` for that course is recalculated against the shorter learning
+  path (the new `content_engine.signals.part_placements_removed` signal, received in
+  `learner_progress`). `completed_time` is not set by this.
 
 ## Manual steps
 

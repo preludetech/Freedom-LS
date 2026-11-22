@@ -1351,6 +1351,54 @@ def test_a_reference_entry_naming_an_ignored_path_fails(tmp_path: Path) -> None:
     assert IGNORED_PROBLEM in errors[0]
 
 
+@pytest.mark.parametrize("skipped", ["_drafts", ".hidden"])
+def test_a_reference_entry_under_a_skipped_folder_fails(
+    tmp_path: Path, skipped: str
+) -> None:
+    _part(tmp_path / skipped / "Glossary" / "part.yaml")
+    _course_with_lists(
+        tmp_path / "course.md",
+        children=["intro.md"],
+        reference=[f"{skipped}/Glossary/part.yaml"],
+    )
+    parsed = parse_single_file(tmp_path / "course.md")
+
+    errors = validate_reference_lists(parsed)
+
+    assert len(errors) == 1
+    assert "reference[0]" in errors[0]
+    assert "content_save skips this part" in errors[0]
+
+
+def test_a_reference_part_outside_the_loaded_root_fails(tmp_path: Path) -> None:
+    _part(tmp_path / "shared" / "Glossary" / "part.yaml")
+    course_file = _course_with_lists(
+        tmp_path / "course" / "course.md",
+        children=["intro.md"],
+        reference=["../shared/Glossary/part.yaml"],
+    )
+    parsed = parse_single_file(course_file)
+
+    errors = validate_reference_lists(parsed, loaded_root=tmp_path / "course")
+
+    assert len(errors) == 1
+    assert "reference[0]" in errors[0]
+    assert "sits outside the directory content_save was given" in errors[0]
+
+
+def test_a_reference_part_outside_the_validated_path_passes_without_loaded_root(
+    tmp_path: Path,
+) -> None:
+    _part(tmp_path / "shared" / "Glossary" / "part.yaml")
+    course_file = _course_with_lists(
+        tmp_path / "course" / "course.md",
+        children=["intro.md"],
+        reference=["../shared/Glossary/part.yaml"],
+    )
+
+    assert validate_reference_lists(parse_single_file(course_file)) == []
+
+
 def test_a_distinct_reference_part_outside_the_learning_path_passes(
     tmp_path: Path,
 ) -> None:
