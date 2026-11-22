@@ -220,6 +220,19 @@ def uncommitted_paths(path: Path) -> list[UncommittedPath]:
     ]
 
 
+def tracked_files(path: Path) -> frozenset[Path]:
+    """The resolved absolute path of every file in the index of the repo holding `path`.
+
+    Staged files count. Untracked and gitignored files are not in the index.
+    """
+    root = find_repo_root(path)
+    if root is None:
+        raise ValueError(f"{path} is not inside a git repository.")
+    with closing(Repo(str(root))) as repo:
+        index = repo.open_index()
+        return frozenset(root / os.fsdecode(name) for name in index)
+
+
 def head_commit_of(path: Path) -> str:
     """The full sha of HEAD for the repo holding `path`.
 

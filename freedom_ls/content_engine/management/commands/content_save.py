@@ -32,8 +32,10 @@ from django.utils.module_loading import import_string
 from django.utils.text import slugify
 
 from freedom_ls.base.git_utils import (
+    UncommittedPath,
     find_repo_root,
     head_commit_of,
+    tracked_files,
     uncommitted_paths,
 )
 from freedom_ls.content_base.schema import (
@@ -1593,19 +1595,64 @@ def _refuse_missing_uuids(sources: Sequence[_ParsedSource]) -> None:
     )
 
 
+CONFIG_FILE_NAME = ".fls-content.yaml"
+
+# Lines shown per group in the uncommitted-files refusal before "... and N more".
+UNCOMMITTED_LINES_SHOWN = 20
+
+
+def _uncommitted_lines(entries: Sequence[UncommittedPath]) -> list[str]:
+    width = max(len(entry.kind) for entry in entries)
+    return [f"{entry.kind.ljust(width)}  {entry.path}" for entry in entries]
+
+
+def _uncommitted_under(source: Path, root: Path) -> list[UncommittedPath]:
+    """Every file under `source` the save would read that no commit holds.
+
+    Adds the gitignored files the directory scan still reads: they are in no
+    commit and git status does not report them.
+    """
+    entries = uncommitted_paths(source)
+    listed = {entry.path for entry in entries}
+    tracked = tracked_files(source)
+    for file_path in get_all_files(source.resolve()):
+        key = content_key(file_path)
+        relative = key.relative_to(root).as_posix()
+        if key not in tracked and relative not in listed:
+            entries.append(
+                UncommittedPath(path=relative, kind="untracked (gitignored)")
+            )
+    return sorted(entries, key=lambda entry: entry.path)
+
+
+def _uncommitted_config_file(root: Path) -> UncommittedPath | None:
+    """The repo's `.fls-content.yaml` when it exists but no commit holds its current text."""
+    config_file = root / CONFIG_FILE_NAME
+    if not config_file.exists():
+        return None
+    entries = uncommitted_paths(config_file)
+    if entries:
+        return entries[0]
+    if config_file not in tracked_files(root):
+        return UncommittedPath(path=CONFIG_FILE_NAME, kind="untracked (gitignored)")
+    return None
+
+
 def check_committed(paths: Sequence[str]) -> list[str]:
     """Refuse any source path that is not a clean, committed git tree.
 
-    Uncommitted files from every path come back in one refusal, one group per
-    path, headed by the path as it was typed. Returns the HEAD commit each path
-    will be loaded from.
+    Uncommitted files from every path come back in one refusal. Each content
+    repo root's `.fls-content.yaml` is listed once, under the root, before one
+    group per path headed by the path as it was typed. Returns the HEAD commit
+    each path will be loaded from.
     """
     commits: list[str] = []
-    dirty: list[tuple[str, list[str]]] = []
-    dirty_count = 0
+    root_entries: dict[Path, UncommittedPath] = {}
+    dirty: list[tuple[str, list[UncommittedPath]]] = []
     for path in paths:
         source = Path(path)
-        if find_repo_root(source) is None:
+        root = find_repo_root(source)
+        if root is None:
             raise CommandError(
                 _refusal(
                     "content_save loads only committed content: "
@@ -1624,23 +1671,26 @@ def check_committed(paths: Sequence[str]) -> list[str]:
                     "Make a first commit, then run again.",
                 )
             ) from error
-        uncommitted = uncommitted_paths(source)
-        if uncommitted:
-            width = max(len(entry.kind) for entry in uncommitted)
-            dirty_count += len(uncommitted)
-            dirty.append(
-                (
-                    f"Source path: {path}",
-                    [f"{e.kind.ljust(width)}  {e.path}" for e in uncommitted],
-                )
-            )
-    if dirty:
+        if root not in root_entries and (entry := _uncommitted_config_file(root)):
+            root_entries[root] = entry
+        entries = _uncommitted_under(source, root)
+        if source.resolve() == root:
+            entries = [e for e in entries if e.path != CONFIG_FILE_NAME]
+        if entries:
+            dirty.append((f"Source path: {path}", entries))
+    if root_entries or dirty:
+        groups = [
+            (f"Content repo root: {root}", _uncommitted_lines([entry]))
+            for root, entry in root_entries.items()
+        ] + [(heading, _uncommitted_lines(entries)) for heading, entries in dirty]
+        count = len(root_entries) + sum(len(entries) for _, entries in dirty)
         raise CommandError(
             _refusal(
                 "content_save loads only committed content: "
-                f"{dirty_count} uncommitted file{'s' if dirty_count != 1 else ''}.",
-                dirty,
+                f"{count} uncommitted file{'s' if count != 1 else ''}.",
+                groups,
                 "Commit or remove these files, then run again.",
+                limit=UNCOMMITTED_LINES_SHOWN,
             )
         )
     return commits

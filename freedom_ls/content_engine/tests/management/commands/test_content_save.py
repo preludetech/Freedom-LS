@@ -4928,3 +4928,139 @@ def test_dirty_files_in_two_paths_come_back_in_one_refusal_grouped_by_path(
     assert "one.md" in message
     assert f"Source path: {second}" in message
     assert "two.md" in message
+
+
+@pytest.fixture
+def repo_with_gitignored_course_file(committed_content_repo: Path) -> Path:
+    """A committed repo with `courses/`, a committed intro topic and a gitignored `secret.md`."""
+    (committed_content_repo / ".gitignore").write_text("secret.md\n")
+    (committed_content_repo / "courses").mkdir()
+    (committed_content_repo / "courses" / "intro.md").write_text(
+        "---\ncontent_type: TOPIC\ntitle: Intro Topic\n"
+        "uuid: 10000000-0000-0000-0000-000000000002\n---\n\nIntro.\n"
+    )
+    commit_all(committed_content_repo)
+    (committed_content_repo / "courses" / "secret.md").write_text(
+        "---\ncontent_type: TOPIC\ntitle: Secret\n"
+        "uuid: 10000000-0000-0000-0000-000000000003\n---\n\nSecret.\n"
+    )
+    return committed_content_repo
+
+
+@pytest.mark.django_db
+def test_a_gitignored_content_file_is_refused_as_untracked_gitignored(
+    site, mock_site_context, repo_with_gitignored_course_file
+):
+    with pytest.raises(CommandError, match="loads only committed content") as exc_info:
+        _save_from_repo(repo_with_gitignored_course_file / "courses", site)
+
+    assert "untracked (gitignored)  courses/secret.md" in str(exc_info.value)
+    assert Topic.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_a_gitignored_content_file_is_refused_for_a_relative_source_path(
+    site, mock_site_context, repo_with_gitignored_course_file, monkeypatch
+):
+    monkeypatch.chdir(repo_with_gitignored_course_file)
+
+    with pytest.raises(CommandError, match="loads only committed content") as exc_info:
+        _save_from_repo(Path("courses"), site)
+
+    assert "untracked (gitignored)  courses/secret.md" in str(exc_info.value)
+
+
+@pytest.mark.django_db
+def test_an_uncommitted_config_file_at_the_repo_root_is_refused_under_the_root_heading(
+    site, mock_site_context, repo_with_courses_directory
+):
+    (repo_with_courses_directory / ".fls-content.yaml").write_text("a: 1\n")
+
+    with pytest.raises(CommandError, match="loads only committed content") as exc_info:
+        _save_from_repo(repo_with_courses_directory / "courses", site)
+
+    message = str(exc_info.value)
+    root = repo_with_courses_directory.resolve()
+    assert f"Content repo root: {root}\n  untracked  .fls-content.yaml" in message
+    assert "1 uncommitted file." in message
+
+
+@pytest.mark.django_db
+def test_a_modified_config_file_is_refused_under_the_root_heading(
+    site, mock_site_context, repo_with_courses_directory
+):
+    (repo_with_courses_directory / ".fls-content.yaml").write_text("a: 1\n")
+    commit_all(repo_with_courses_directory)
+    (repo_with_courses_directory / ".fls-content.yaml").write_text("a: 2\n")
+
+    with pytest.raises(CommandError, match="loads only committed content") as exc_info:
+        _save_from_repo(repo_with_courses_directory / "courses", site)
+
+    assert "modified  .fls-content.yaml" in str(exc_info.value)
+
+
+@pytest.mark.django_db
+def test_a_gitignored_config_file_is_refused_as_untracked_gitignored(
+    site, mock_site_context, repo_with_courses_directory
+):
+    (repo_with_courses_directory / ".gitignore").write_text(".fls-content.yaml\n")
+    commit_all(repo_with_courses_directory)
+    (repo_with_courses_directory / ".fls-content.yaml").write_text("a: 1\n")
+
+    with pytest.raises(CommandError, match="loads only committed content") as exc_info:
+        _save_from_repo(repo_with_courses_directory / "courses", site)
+
+    assert "untracked (gitignored)  .fls-content.yaml" in str(exc_info.value)
+
+
+@pytest.mark.django_db
+def test_a_config_file_is_listed_once_when_the_source_path_is_the_repo_root(
+    site, mock_site_context, committed_content_repo
+):
+    (committed_content_repo / ".fls-content.yaml").write_text("a: 1\n")
+
+    with pytest.raises(CommandError, match="loads only committed content") as exc_info:
+        _save_from_repo(committed_content_repo, site)
+
+    assert str(exc_info.value).count(".fls-content.yaml") == 1
+    assert "1 uncommitted file." in str(exc_info.value)
+
+
+@pytest.mark.django_db
+def test_a_config_file_is_listed_once_for_two_paths_in_one_repo(
+    site, mock_site_context, repo_with_courses_directory
+):
+    (repo_with_courses_directory / "more").mkdir()
+    (repo_with_courses_directory / "more" / "extra.md").write_text(
+        "---\ncontent_type: TOPIC\ntitle: Extra\n"
+        "uuid: 10000000-0000-0000-0000-000000000004\n---\n\nExtra.\n"
+    )
+    commit_all(repo_with_courses_directory)
+    (repo_with_courses_directory / ".fls-content.yaml").write_text("a: 1\n")
+
+    with pytest.raises(CommandError, match="loads only committed content") as exc_info:
+        call_command(
+            "content_save",
+            str(repo_with_courses_directory / "courses"),
+            str(repo_with_courses_directory / "more"),
+            site.name,
+            "--traceback",
+        )
+
+    assert str(exc_info.value).count(".fls-content.yaml") == 1
+
+
+@pytest.mark.django_db
+def test_twenty_five_dirty_files_show_twenty_and_a_count_of_the_rest(
+    site, mock_site_context, committed_content_repo
+):
+    for number in range(25):
+        (committed_content_repo / f"new_{number:02d}.md").write_text("new\n")
+
+    with pytest.raises(CommandError, match="25 uncommitted files") as exc_info:
+        _save_from_repo(committed_content_repo, site)
+
+    message = str(exc_info.value)
+    assert "new_19.md" in message
+    assert "new_20.md" not in message
+    assert "... and 5 more" in message

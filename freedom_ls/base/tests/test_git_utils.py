@@ -12,6 +12,7 @@ from freedom_ls.base.git_utils import (
     get_current_branch,
     get_head_commit,
     head_commit_of,
+    tracked_files,
     uncommitted_paths,
 )
 from freedom_ls.tests.git_repos import (
@@ -433,3 +434,48 @@ def test_head_commit_of_packed_refs_returns_the_commit(
     pack_all_refs(committed_content_repo)
 
     assert head_commit_of(committed_content_repo) == sha
+
+
+def _tracking_fixture_files(repo: Path) -> None:
+    """Add a staged file, an untracked file and a gitignored file to a committed repo."""
+    (repo / ".gitignore").write_text("ignored.md\n")
+    commit_all(repo)
+    (repo / "staged.md").write_text("staged\n")
+    porcelain.add(str(repo), paths=[str(repo / "staged.md")])
+    (repo / "untracked.md").write_text("untracked\n")
+    (repo / "ignored.md").write_text("ignored\n")
+
+
+def test_tracked_files_holds_committed_and_staged_files_only(
+    committed_content_repo: Path,
+) -> None:
+    _tracking_fixture_files(committed_content_repo)
+    root = committed_content_repo.resolve()
+
+    assert tracked_files(committed_content_repo) == frozenset(
+        {root / "topic.md", root / ".gitignore", root / "staged.md"}
+    )
+
+
+def test_tracked_files_from_a_subdirectory_covers_the_whole_repo(
+    committed_content_repo: Path,
+) -> None:
+    (committed_content_repo / "courses").mkdir()
+
+    assert (committed_content_repo.resolve() / "topic.md") in tracked_files(
+        committed_content_repo / "courses"
+    )
+
+
+def test_tracked_files_in_a_linked_worktree_are_the_worktrees_own(
+    committed_content_repo: Path, linked_worktree: Path
+) -> None:
+    (linked_worktree / "staged.md").write_text("staged\n")
+    porcelain.add(str(linked_worktree), paths=[str(linked_worktree / "staged.md")])
+
+    assert tracked_files(linked_worktree) == frozenset(
+        {
+            linked_worktree.resolve() / "topic.md",
+            linked_worktree.resolve() / "staged.md",
+        }
+    )
