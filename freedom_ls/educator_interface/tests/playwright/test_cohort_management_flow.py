@@ -184,8 +184,7 @@ def test_educator_manages_cohorts_and_learners(
     page.goto(interface_url(live_server, organisation_a.slug, "learners"))
     _assert_quick_view_triggers_line_up(page)
 
-    # Keyboard: Tab to the trigger, Enter opens the drawer with focus inside
-    # it, Esc closes it and returns focus to the trigger.
+    # Keyboard users must land inside the drawer and get back to where they were.
     kai_trigger = page.locator("#learners-table").get_by_role(
         "link", name="Quick view: Kai Ngata"
     )

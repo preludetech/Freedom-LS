@@ -69,7 +69,7 @@ def test_cohort_settings_tab_flow(
     modal = page.locator("#app-modal")
     main = page.locator("#main-content")
 
-    # Keyboard: Tab to Deactivate, open the dialog, dismiss it with Esc.
+    # Keyboard.
     trigger = main.get_by_role("button", name="Deactivate", exact=True).first
     expect(trigger).to_be_visible()
     _tab_to(page, trigger)
@@ -108,7 +108,7 @@ def test_cohort_settings_tab_flow(
     page.wait_for_load_state("networkidle")
     assert failed == []
 
-    # Rename: the title updates, no modal stays open and focus stays on the field.
+    # Rename.
     name_panel = page.locator("section[data-panel='name']")
     name_panel.get_by_label("Name").fill("New Name")
     name_panel.get_by_role("button", name="Save", exact=True).click()
