@@ -1,6 +1,6 @@
 # Admin Interface
 
-_Last updated: 2026-11-21_
+_Last updated: 2026-11-22_
 
 ## Summary
 
@@ -161,6 +161,8 @@ Articles are the exception: because loading never deletes one, the admin is wher
 Underneath the admin the same protection holds for anything reaching the database another way: a form question a learner has answered, a course anyone is registered for, and the form progress record behind a course application cannot be deleted while those records exist.
 
 Course categories are authored content too, and the admin is stricter with them: it refuses to create one as well as to delete one, because the category vocabulary belongs to the content repo. An administrator can see and edit an existing category's title, description, ordering, and whether it gets a section of its own on the dashboard, and can see on a course's own page which category places it on the dashboard and what else it belongs to — but any such edit lasts only until the next content load, which rewrites the category from its file. See [content editing workflow](./content-editing-workflow.md) for how categories are authored and [learner experience](./learner-experience.md) for what one does on the dashboard.
+
+A course's own page also lists its [reference parts](./content-editing-workflow.md#course-frontmatter-options), in order, read-only: they come from the course file when content is loaded, so they cannot be added, changed or deleted in the admin.
 
 ## Webhook Test-Send
 
