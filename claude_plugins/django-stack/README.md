@@ -123,6 +123,20 @@ Rationale cut from the prompt files an agent reads at run time.
   and the tests its own paths select. `pyproject.toml`, `uv.lock`, `.python-version`,
   `package.json` and `package-lock.json` are a separate dependency-file list, which
   `dependency_files` extends; a change to one forces `full` whichever side made it.
+  An optional `[tool.test_tiers.remote]` table with a `command` runs every full tier somewhere
+  else, such as in CI, with the local full command as the fallback:
+
+  ```toml
+  [tool.test_tiers.remote]
+  command = "uv run python path/to/your_remote_runner.py"
+  ```
+
+  The command prints the runner's `run:` lines, `run: tested <sha>` and
+  `run: RESULT PASS|FAIL|UNAVAILABLE`, and exits 0 only on `PASS`. Its failed tests are its
+  `run: failed` lines. Any other key in the table belongs to the command, not to `ds`.
+  `DS_TEST_REMOTE=off` skips it and runs the local full command. `DS_TEST_RECORD_PATH` names a
+  file for `run_tests.sh` to keep its run record at, on every result, instead of a temporary file
+  that a passing run deletes. The full contract is in `resources/test_tiers.md`.
 - **QA diff scoping.** A misclassification must over-test, never under-test, which is why anything
   unmatched is `FULL`.
 - **Code comments.** A comment is a promise to the future reader that the code can't keep on its
