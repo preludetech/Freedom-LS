@@ -24,6 +24,7 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.utils import assign_object_role
+from freedom_ls.tests.playwright_fixtures import sign_in
 from freedom_ls.tests.playwright_helpers import (
     QA_VIEWPORTS,
     assert_no_horizontal_overflow,
@@ -45,6 +46,19 @@ def test_educator_navigates_and_creates_a_cohort_on_a_phone(
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
+    """The navigation sheet and the create-cohort bottom sheet on a phone, and
+    the sidebar across the breakpoint:
+    - the sheet opens its own dialog, closes on Esc with focus returned, and
+      drops its slide under reduced motion;
+    - a section link loads over htmx, and switching organisation closes the
+      sheet and Back restores the previous organisation;
+    - widening past the breakpoint docks the sidebar, however its dialog is
+      re-shown, and during its closing transition;
+    - the create-cohort sheet fits its field and buttons, keeps its form, and
+      asks before discarding a draft;
+    - the first Tab on a desktop page reaches the site header;
+    - the organisation switcher popover opens under its trigger.
+    """
     page = educator_logged_in_page
     organisation_a = OrganisationFactory(name="Org A")
     organisation_b = OrganisationFactory(name="Org B")
@@ -198,23 +212,11 @@ def test_educator_navigates_and_creates_a_cohort_on_a_phone(
         "document.querySelector('header.header').contains(document.activeElement)"
     )
 
-
-def test_the_docked_sidebar_is_a_column_whenever_its_dialog_is_open(
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: AbstractBaseUser,
-) -> None:
-    """The grid's columns follow the dialog's own open state, so a sidebar
-    re-shown by any path, not only the controller's, is a column beside the
-    content and never a band above it."""
-    page = educator_logged_in_page
-    organisation = OrganisationFactory(name="Org A")
-    assign_object_role(educator_user, organisation, "organisation_admin")
+    # The closing-transition check below needs the slide animation back on.
+    page.emulate_media(reduced_motion="no-preference")
     page.set_viewport_size(QA_VIEWPORTS[2])
-    page.goto(interface_url(live_server, organisation.slug, "cohorts"))
-    sidebar = page.locator("dialog[aria-label='Navigation']")
-    expect(sidebar).to_be_visible()
-
+    page.goto(cohorts_url)
+    expect(sheet).to_be_visible()
     docked_beside_content = """() => {
         const sidebar = document.querySelector("dialog[aria-label='Navigation']");
         const main = document.getElementById("interface-main");
@@ -224,8 +226,8 @@ def test_the_docked_sidebar_is_a_column_whenever_its_dialog_is_open(
     }"""
     page.wait_for_function(docked_beside_content)
 
-    # Closing and re-showing the dialog directly, without the controller,
-    # still lays it out as a column: the columns are keyed on [open].
+    # The grid's columns follow the dialog's own open state, so a sidebar
+    # re-shown directly, without the controller, is still a column.
     page.evaluate("document.querySelector(\"dialog[aria-label='Navigation']\").close()")
     page.wait_for_function(
         "() => document.getElementById('interface-main').getBoundingClientRect().x === 0"
@@ -234,17 +236,37 @@ def test_the_docked_sidebar_is_a_column_whenever_its_dialog_is_open(
     page.wait_for_function(docked_beside_content)
 
     # Widening past the breakpoint while the sheet is open, with its closing
-    # transition running (no reduced motion here), still docks it: the sheet
-    # stays in the top layer until the transition ends, and a dock attempted
-    # before then is refused by the browser.
-    page.set_viewport_size(QA_VIEWPORTS[0])
-    expect(sidebar).to_be_hidden()
-    page.get_by_role("button", name="Open navigation panel").click()
+    # transition running, still docks it: the sheet stays in the top layer
+    # until the transition ends, and a dock attempted before then is refused by
+    # the browser.
+    page.set_viewport_size(_PHONE)
+    expect(sheet).to_be_hidden()
+    toggle.click()
     expect(page.locator("dialog[aria-label='Navigation']:modal")).to_have_count(1)
     page.set_viewport_size(QA_VIEWPORTS[2])
     expect(page.locator("dialog[aria-label='Navigation']:modal")).to_have_count(0)
-    expect(sidebar).to_be_visible()
+    expect(sheet).to_be_visible()
     page.wait_for_function(docked_beside_content)
+
+    # Organisation switcher popover.
+    page.set_viewport_size({"width": 1024, "height": 768})
+    page.goto(cohorts_url)
+    trigger = page.get_by_role("button", name="Switch organisation")
+    trigger.click()
+    expect(page.get_by_role("menuitemradio").first).to_be_visible()
+    trigger_box = trigger.bounding_box()
+    options_box = page.get_by_role("menu", name="Switch organisation").bounding_box()
+    assert trigger_box is not None
+    assert options_box is not None
+    assert abs(options_box["y"] - (trigger_box["y"] + trigger_box["height"])) < 16, (
+        "switcher popover not directly under its trigger at 1024px"
+    )
+    assert options_box["x"] >= trigger_box["x"] - 1, (
+        "switcher popover starts left of its trigger at 1024px"
+    )
+    assert options_box["x"] < trigger_box["x"] + trigger_box["width"], (
+        "switcher popover starts right of its trigger at 1024px"
+    )
 
 
 def test_a_page_with_a_sortable_table_keeps_its_sidebar_across_the_breakpoint(
@@ -319,49 +341,18 @@ def test_dashboard_fills_its_lazy_figures_without_overflow_at_every_width(
         assert_no_horizontal_overflow(page)
 
 
-def test_the_organisation_switcher_popover_opens_under_its_trigger(
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: AbstractBaseUser,
-) -> None:
-    page = educator_logged_in_page
-    organisation_a = OrganisationFactory(name="Org A")
-    organisation_b = OrganisationFactory(name="Org B")
-    assign_object_role(educator_user, organisation_a, "organisation_admin")
-    assign_object_role(educator_user, organisation_b, "organisation_admin")
-    page.set_viewport_size({"width": 1024, "height": 768})
-    page.goto(interface_url(live_server, organisation_a.slug, "cohorts"))
-
-    trigger = page.get_by_role("button", name="Switch organisation")
-    trigger.click()
-    options = page.get_by_role("menuitemradio")
-    expect(options.first).to_be_visible()
-
-    trigger_box = trigger.bounding_box()
-    options_box = page.get_by_role("menu", name="Switch organisation").bounding_box()
-    assert trigger_box is not None
-    assert options_box is not None
-    assert abs(options_box["y"] - (trigger_box["y"] + trigger_box["height"])) < 16
-    assert options_box["x"] >= trigger_box["x"] - 1
-    assert options_box["x"] < trigger_box["x"] + trigger_box["width"]
-
-
-def _scriptless_page(browser: Browser, logged_in_page: Page) -> Page:
-    """A page in a context with scripting off, sharing the login session."""
-    context = browser.new_context(java_script_enabled=False)
-    context.add_cookies(logged_in_page.context.cookies())
-    return context.new_page()
-
-
-def test_navigation_shows_as_a_left_column_with_javascript_off(
+def test_navigation_without_javascript_flow(
     browser: Browser,
     live_server,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
-    """With scripting off nothing opened the navigation dialog, so an educator
-    page had no navigation at all. It now docks as the left column at lg and
-    wider, in the same place and width as with scripting on."""
+    """With scripting off nothing opens the navigation dialog, so it is laid
+    out statically:
+    - at 1920 it docks as the left column, in the same place and width as with
+      scripting on;
+    - on a phone it is a block above the content.
+    """
     organisation = OrganisationFactory(name="Org A")
     assign_object_role(educator_user, organisation, "organisation_admin")
     assign_object_role(
@@ -369,58 +360,53 @@ def test_navigation_shows_as_a_left_column_with_javascript_off(
     )
     url = interface_url(live_server, organisation.slug, "learners")
     page = educator_logged_in_page
-    page.set_viewport_size({"width": 1920, "height": 1080})
+    page.set_viewport_size(QA_VIEWPORTS[2])
     page.goto(url)
     with_script = page.locator("dialog[aria-label='Navigation']").bounding_box()
 
-    plain = _scriptless_page(browser, educator_logged_in_page)
+    context = browser.new_context(java_script_enabled=False)
     try:
-        plain.set_viewport_size({"width": 1920, "height": 1080})
-        plain.goto(url)
+        plain = context.new_page()
+        sign_in(plain, live_server, educator_user)
         nav = plain.locator("dialog[aria-label='Navigation']")
+        open_navigation = plain.get_by_role("button", name="Open navigation panel")
+
+        # Left column at 1920.
+        plain.set_viewport_size(QA_VIEWPORTS[2])
+        plain.goto(url)
         expect(nav.get_by_role("link", name="Cohorts")).to_be_visible()
         expect(nav.get_by_role("link", name="Learners")).to_be_visible()
         expect(nav.get_by_title("Org A")).to_be_visible()
-        expect(plain.get_by_role("button", name="Open navigation panel")).to_be_hidden()
+        expect(open_navigation).to_be_hidden()
         without_script = nav.bounding_box()
         content = plain.locator("#interface-main").bounding_box()
         assert without_script is not None
         assert content is not None
         assert with_script is not None
-        assert without_script["x"] == with_script["x"]
-        assert without_script["width"] == with_script["width"]
-        assert content["x"] >= without_script["x"] + without_script["width"]
+        assert without_script["x"] == with_script["x"], (
+            "scriptless navigation not in the scripted column's place at 1920px"
+        )
+        assert without_script["width"] == with_script["width"], (
+            "scriptless navigation not the scripted column's width at 1920px"
+        )
+        assert content["x"] >= without_script["x"] + without_script["width"], (
+            "content overlaps the scriptless navigation column at 1920px"
+        )
         assert_no_horizontal_overflow(plain)
-    finally:
-        plain.context.close()
 
-
-def test_navigation_shows_above_the_content_with_javascript_off_on_a_phone(
-    browser: Browser,
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: AbstractBaseUser,
-) -> None:
-    """Below lg with scripting off the navigation is a static block above the
-    content instead of a dialog that never opens."""
-    organisation = OrganisationFactory(name="Org A")
-    assign_object_role(educator_user, organisation, "organisation_admin")
-    assign_object_role(
-        educator_user, OrganisationFactory(name="Org B"), "organisation_admin"
-    )
-    plain = _scriptless_page(browser, educator_logged_in_page)
-    try:
+        # Block above the content on a phone.
         plain.set_viewport_size(_PHONE)
-        plain.goto(interface_url(live_server, organisation.slug, "learners"))
-        nav = plain.locator("dialog[aria-label='Navigation']")
+        plain.goto(url)
         expect(nav.get_by_role("link", name="Cohorts")).to_be_visible()
         expect(nav.get_by_title("Org A")).to_be_visible()
-        expect(plain.get_by_role("button", name="Open navigation panel")).to_be_hidden()
+        expect(open_navigation).to_be_hidden()
         box = nav.bounding_box()
         content = plain.locator("#interface-main").bounding_box()
         assert box is not None
         assert content is not None
-        assert box["y"] + box["height"] <= content["y"] + 1
+        assert box["y"] + box["height"] <= content["y"] + 1, (
+            "scriptless navigation not above the content at 375px"
+        )
         assert_no_horizontal_overflow(plain)
     finally:
-        plain.context.close()
+        context.close()

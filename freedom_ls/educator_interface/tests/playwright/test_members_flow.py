@@ -155,123 +155,191 @@ def _staff_buttons_outside_the_viewport(page: Page) -> list[str]:
     return labels
 
 
-def test_the_staff_list_is_cards_wherever_its_table_would_not_fit(
+def test_staff_list_layout_flow(
     live_server,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
-    """Four columns of roles and buttons need more room than a tablet, or the
-    space beside the quick view, gives."""
+    """The Staff list's layout across widths and its filter reset:
+    - a table at 1280, cards beside the quick view and cards at 768, with no
+      button cut off by the viewport edge;
+    - row actions and the toolbar's Filter and Sort meet the 44px touch target
+      at 375;
+    - a nameless member's long email does not scroll a phone sideways;
+    - the change-cohorts dialog titled with a long email stays inside a 375px
+      viewport;
+    - Clear filters after a no-match search empties the search box.
+    """
     page = educator_logged_in_page
     organisation = OrganisationFactory(name="Org A")
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, educator_user, "organisation_admin", organisation)
     cohort = CohortFactory(organisation=organisation, name="Alpha Cohort")
+    long_name_cohort = CohortFactory(
+        organisation=organisation, name="A Cohort With A Rather Long Name Indeed"
+    )
     colleague = UserFactory(first_name="Cara", last_name="Colleague")
     assign_role(grantor, colleague, "cohort_viewer", cohort)
-    main = page.locator("#main-content")
-    table = main.get_by_role("table")
-    card = main.locator("[data-card-primary-line]").first
-
-    page.set_viewport_size({"width": 1280, "height": 800})
-    page.goto(interface_url(live_server, organisation.slug, "staff"))
-    expect(table).to_be_visible()
-    expect(card).to_be_hidden()
-
-    main.get_by_role("row").filter(has_text="Cara Colleague").locator(
-        "[hx-get*='__quick-view']"
-    ).click()
-    expect(page.get_by_text("Quick view", exact=True)).to_be_visible()
-    expect(card).to_be_visible()
-    expect(table).to_be_hidden()
-    assert _staff_buttons_outside_the_viewport(page) == []
-    assert_no_horizontal_overflow(page)
-
-    page.set_viewport_size({"width": 768, "height": 1024})
-    page.goto(interface_url(live_server, organisation.slug, "staff"))
-    expect(card).to_be_visible()
-    expect(table).to_be_hidden()
-    assert _staff_buttons_outside_the_viewport(page) == []
-    assert_no_horizontal_overflow(page)
-
-
-def test_clear_filters_after_a_no_match_search_empties_the_search_box(
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: AbstractBaseUser,
-) -> None:
-    """The search box survives the region swap, so the server's empty value
-    has to reach it; otherwise the box contradicts the restored list."""
-    page = educator_logged_in_page
-    organisation = OrganisationFactory(name="Org A")
-    grantor = LearnerFactory(user__superuser=True).user
-    assign_role(grantor, educator_user, "organisation_admin", organisation)
-    page.goto(interface_url(live_server, organisation.slug, "staff"))
-    main = page.locator("#main-content")
-    search = main.locator("#staff-q")
-    search.fill("zzz")
-    # The empty state renders once for the table and once for the card list.
-    expect(
-        main.get_by_text("No staff members match these filters.").first
-    ).to_be_visible()
-
-    main.get_by_role("link", name="Clear filters", exact=True).first.click()
-
-    expect(main.get_by_text("No staff members match these filters.")).to_have_count(0)
-    expect(search).to_have_value("")
-
-
-def test_phone_row_actions_and_toolbar_controls_meet_the_touch_target(
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: AbstractBaseUser,
-) -> None:
-    page = educator_logged_in_page
-    organisation = OrganisationFactory(name="Org A")
-    grantor = LearnerFactory(user__superuser=True).user
-    assign_role(grantor, educator_user, "organisation_admin", organisation)
-    cohort = CohortFactory(organisation=organisation, name="Alpha Cohort")
     viewer = UserFactory(
         email="viewer@example.com", first_name="Vee", last_name="Viewer"
     )
     assign_role(grantor, viewer, "cohort_viewer", cohort)
-    page.set_viewport_size(QA_VIEWPORTS[0])
-    page.goto(interface_url(live_server, organisation.slug, "staff"))
+    nameless_admin = UserFactory(
+        email="nameless.lower.educator.with.a.very.long.address@example.com",
+        first_name="",
+        last_name="",
+    )
+    assign_role(grantor, nameless_admin, "organisation_admin", organisation)
+    nameless_viewer = UserFactory(
+        email="nameless.cohort.viewer.with.a.very.long.address@example.com",
+        first_name="",
+        last_name="",
+    )
+    assign_role(grantor, nameless_viewer, "cohort_viewer", long_name_cohort)
+    staff_url = interface_url(live_server, organisation.slug, "staff")
     main = page.locator("#main-content")
-    card = main.locator("li").filter(has_text="Vee Viewer")
-    expect(card).to_be_visible()
+    table = main.get_by_role("table")
+    card = main.locator("[data-card-primary-line]").first
 
+    # Table at 1280, cards beside the quick view, cards at 768.
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(staff_url)
+    expect(table, "table hidden at 1280px").to_be_visible()
+    expect(card, "cards shown at 1280px without the quick view").to_be_hidden()
+    main.get_by_role("row").filter(has_text="Cara Colleague").locator(
+        "[hx-get*='__quick-view']"
+    ).click()
+    expect(page.get_by_text("Quick view", exact=True)).to_be_visible()
+    expect(card, "cards hidden beside the quick view").to_be_visible()
+    expect(table, "table shown beside the quick view").to_be_hidden()
+    assert _staff_buttons_outside_the_viewport(page) == [], (
+        "button cut off beside the quick view at 1280px"
+    )
+    assert_no_horizontal_overflow(page)
+
+    page.set_viewport_size({"width": 768, "height": 1024})
+    page.goto(staff_url)
+    expect(card, "cards hidden at 768px").to_be_visible()
+    expect(table, "table shown at 768px").to_be_hidden()
+    assert _staff_buttons_outside_the_viewport(page) == [], "button cut off at 768px"
+    assert_no_horizontal_overflow(page)
+
+    # Touch targets on a phone.
+    page.set_viewport_size(QA_VIEWPORTS[0])
+    page.goto(staff_url)
+    vee_card = main.locator("li").filter(has_text="Vee Viewer")
+    expect(vee_card).to_be_visible()
     for control in (
-        card.get_by_role(
+        vee_card.get_by_role(
             "button", name="Deactivate Cohort viewer for Vee Viewer", exact=True
         ),
-        card.get_by_role("button", name="Deactivate Vee Viewer", exact=True),
+        vee_card.get_by_role("button", name="Deactivate Vee Viewer", exact=True),
         main.get_by_role("button", name="Filter"),
         main.get_by_role("button", name="Sort"),
     ):
         height = control.evaluate(TOUCH_HEIGHT)
         assert round(height) >= 44, f"{control} is {height}px high to the touch"
 
+    # A nameless member is shown by their email, which used to run past the
+    # card edge.
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(staff_url)
+    expect(
+        main.get_by_text(nameless_admin.email).locator("visible=true").first,
+        "long nameless email not visible at 390px",
+    ).to_be_visible()
+    assert_no_horizontal_overflow(page)
 
-def test_the_add_member_button_stays_in_view_on_the_role_step_at_375(
+    # The dialog title wraps and the host clips, so nothing pushes the dialog
+    # off the left edge or scrolls the page sideways.
+    page.set_viewport_size({"width": 375, "height": 812})
+    page.goto(staff_url)
+    main.get_by_role(
+        "button",
+        name=f"Change Cohort viewer cohorts for {nameless_viewer.email}",
+        exact=True,
+    ).first.click()
+    modal = page.locator("#app-modal")
+    expect(
+        modal.get_by_role("heading", name=f"Change cohorts for {nameless_viewer.email}")
+    ).to_be_visible()
+    assert_no_horizontal_overflow(page)
+    box = modal.bounding_box()
+    assert box is not None
+    assert box["x"] >= 0, "change-cohorts dialog off the left edge at 375px"
+    assert box["x"] + box["width"] <= 375, (
+        "change-cohorts dialog past the right edge at 375px"
+    )
+    assert modal.evaluate("el => el.scrollWidth <= el.clientWidth"), (
+        "change-cohorts dialog scrolls sideways at 375px"
+    )
+
+    # The search box survives the region swap, so the server's empty value has
+    # to reach it; otherwise the box contradicts the restored list.
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(staff_url)
+    search = main.locator("#staff-q")
+    search.fill("zzz")
+    # The empty state renders once for the table and once for the card list.
+    expect(
+        main.get_by_text("No staff members match these filters.").first
+    ).to_be_visible()
+    main.get_by_role("link", name="Clear filters", exact=True).first.click()
+    expect(main.get_by_text("No staff members match these filters.")).to_have_count(0)
+    expect(search, "search box not emptied by Clear filters").to_have_value("")
+
+
+def test_add_staff_dialog_layout_flow(
     live_server,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
+    """The Add staff dialog's layout:
+    - the search results listbox shares the email input's left edge and width
+      at 1280 and 375;
+    - the Next button stays in view on the role step at 375 with 30 cohorts.
+    """
     page = educator_logged_in_page
     organisation = OrganisationFactory(name="Org A")
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, educator_user, "organisation_admin", organisation)
     for number in range(30):
         CohortFactory(organisation=organisation, name=f"Cohort {number:02d}")
-    UserFactory(email="existing@example.com", first_name="Erin", last_name="Existing")
-    page.set_viewport_size({"width": 375, "height": 812})
-    page.goto(interface_url(live_server, organisation.slug, "staff"))
+    LearnerFactory(
+        organisation=organisation,
+        user__email="existing@example.com",
+        user__first_name="Erin",
+        user__last_name="Existing",
+    )
+    staff_url = interface_url(live_server, organisation.slug, "staff")
     modal = page.locator("#app-modal")
-
-    page.locator("#main-content").get_by_role(
+    add_staff = page.locator("#main-content").get_by_role(
         "button", name="Add staff member", exact=True
-    ).first.click()
+    )
+
+    # The results listbox used to sit indented from the input it drops down from.
+    for width in (1280, 375):
+        page.set_viewport_size({"width": width, "height": 800})
+        page.goto(staff_url)
+        add_staff.first.click()
+        modal.get_by_label("Email address").fill("existing")
+        listbox = modal.locator("#staff-search-listbox")
+        expect(listbox, f"search results hidden at {width}px").to_be_visible()
+        input_box = modal.locator("#staff-search-input").bounding_box()
+        list_box = listbox.bounding_box()
+        assert input_box is not None
+        assert list_box is not None
+        assert abs(list_box["x"] - input_box["x"]) <= 1, (
+            f"results listbox left edge differs from the input at {width}px"
+        )
+        assert abs(list_box["width"] - input_box["width"]) <= 1, (
+            f"results listbox width differs from the input at {width}px"
+        )
+
+    # Role step.
+    page.set_viewport_size({"width": 375, "height": 812})
+    page.goto(staff_url)
+    add_staff.first.click()
     modal.get_by_label("Email address").fill("existing@example.com")
     # Clicking Next while the as-you-type search is still pending loses the click
     # on a loaded machine, so wait for the search to swap in its results first.
@@ -280,115 +348,7 @@ def test_the_add_member_button_stays_in_view_on_the_role_step_at_375(
     )
     modal.get_by_role("button", name="Next", exact=True).click()
     modal.get_by_text("Cohort admin", exact=True).click()
-
-    expect(modal.get_by_role("button", name="Next", exact=True)).to_be_in_viewport(
-        ratio=1
-    )
-
-
-def test_long_email_of_a_nameless_member_does_not_scroll_a_phone_sideways(
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: AbstractBaseUser,
-) -> None:
-    """A nameless member is shown by their email. A long one used to run past the
-    card edge and make the page scroll sideways on a phone."""
-    page = educator_logged_in_page
-    organisation = OrganisationFactory(name="Org A")
-    grantor = LearnerFactory(user__superuser=True).user
-    assign_role(grantor, educator_user, "organisation_admin", organisation)
-    member = UserFactory(
-        email="nameless.lower.educator.with.a.very.long.address@example.com",
-        first_name="",
-        last_name="",
-    )
-    assign_role(grantor, member, "organisation_admin", organisation)
-
-    page.set_viewport_size({"width": 390, "height": 844})
-    page.goto(interface_url(live_server, organisation.slug, "staff"))
-
     expect(
-        page.locator("#main-content")
-        .get_by_text(member.email)
-        .locator("visible=true")
-        .first
-    ).to_be_visible()
-    assert_no_horizontal_overflow(page)
-
-
-def test_the_change_cohorts_dialog_for_a_long_email_fits_a_phone(
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: AbstractBaseUser,
-) -> None:
-    """A dialog titled with a long email stays inside a 375px viewport: the
-    title wraps and the host clips, so nothing pushes the dialog off the left
-    edge or scrolls the page sideways."""
-    page = educator_logged_in_page
-    organisation = OrganisationFactory(name="Org A")
-    grantor = LearnerFactory(user__superuser=True).user
-    assign_role(grantor, educator_user, "organisation_admin", organisation)
-    cohort = CohortFactory(
-        organisation=organisation, name="A Cohort With A Rather Long Name Indeed"
-    )
-    member = UserFactory(
-        email="nameless.lower.educator.with.a.very.long.address@example.com",
-        first_name="",
-        last_name="",
-    )
-    assign_role(grantor, member, "cohort_viewer", cohort)
-
-    page.set_viewport_size({"width": 375, "height": 812})
-    page.goto(interface_url(live_server, organisation.slug, "staff"))
-    page.locator("#main-content").get_by_role(
-        "button", name=f"Change Cohort viewer cohorts for {member.email}", exact=True
-    ).first.click()
-    modal = page.locator("#app-modal")
-    expect(
-        modal.get_by_role("heading", name=f"Change cohorts for {member.email}")
-    ).to_be_visible()
-
-    assert_no_horizontal_overflow(page)
-    box = modal.bounding_box()
-    assert box is not None
-    assert box["x"] >= 0
-    assert box["x"] + box["width"] <= 375
-    assert modal.evaluate("el => el.scrollWidth <= el.clientWidth")
-
-
-@pytest.mark.parametrize("width", [1280, 375])
-def test_staff_search_results_share_the_email_input_left_edge_and_width(
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: AbstractBaseUser,
-    width: int,
-) -> None:
-    """The results listbox used to sit indented from the email input it drops
-    down from; it must share the input's left edge and width."""
-    page = educator_logged_in_page
-    organisation = OrganisationFactory(name="Org A")
-    grantor = LearnerFactory(user__superuser=True).user
-    assign_role(grantor, educator_user, "organisation_admin", organisation)
-    LearnerFactory(
-        organisation=organisation,
-        user__email="existing@example.com",
-        user__first_name="Erin",
-        user__last_name="Existing",
-    )
-    page.set_viewport_size({"width": width, "height": 800})
-    page.goto(interface_url(live_server, organisation.slug, "staff"))
-    modal = page.locator("#app-modal")
-
-    page.locator("#main-content").get_by_role(
-        "button", name="Add staff member", exact=True
-    ).first.click()
-    modal.get_by_label("Email address").fill("existing")
-    listbox = modal.locator("#staff-search-listbox")
-    expect(listbox).to_be_visible()
-
-    input_box = modal.locator("#staff-search-input").bounding_box()
-    list_box = listbox.bounding_box()
-    assert input_box is not None
-    assert list_box is not None
-    assert abs(list_box["x"] - input_box["x"]) <= 1
-    assert abs(list_box["width"] - input_box["width"]) <= 1
+        modal.get_by_role("button", name="Next", exact=True),
+        "Next button out of view on the role step at 375px",
+    ).to_be_in_viewport(ratio=1)

@@ -61,13 +61,20 @@ def _tab_href(organisation_slug: str) -> re.Pattern[str]:
     )
 
 
-def test_messaging_a_learner_from_the_quick_view(
+def test_quick_view_messaging_flow(
     live_server,
     educator_logged_in_page: Page,
     educator_user: User,
     mock_site_context,
     settings,
 ) -> None:
+    """Messaging a learner from the quick view:
+    - a send keeps the drawer open, and the Open conversation link points at
+      the learner's Messages tab;
+    - an unsent draft asks before another learner opens or the drawer closes;
+    - on a phone the drawer is a bottom sheet that sends and does not overflow
+      sideways, and the drawer holding the box fits at every viewport.
+    """
     settings.MESSAGING_ENABLED = True
     settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
     page = educator_logged_in_page
@@ -134,47 +141,31 @@ def test_messaging_a_learner_from_the_quick_view(
     expect(quick_view).to_be_visible()
     expect(box).to_have_value("")
 
-
-def test_sending_from_the_quick_view_bottom_sheet_on_a_phone(
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: User,
-    mock_site_context,
-    settings,
-) -> None:
-    settings.MESSAGING_ENABLED = True
-    settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
-    page = educator_logged_in_page
+    # Bottom sheet on a phone.
     page.set_viewport_size(PHONE)
-    organisation = OrganisationFactory()
-    grantor = LearnerFactory(user__superuser=True).user
-    assign_role(grantor, educator_user, "organisation_admin", organisation)
-    LearnerFactory(
-        organisation=organisation,
-        user=UserFactory(first_name="Kai", last_name="Ngata"),
-    )
-    quick_view = page.locator("#quick-view")
-
     page.goto(_learners_url(live_server, organisation.slug))
     page.get_by_role("link", name="Quick view: Kai Ngata", exact=True).first.click()
     expect(quick_view).to_be_visible()
     expect(quick_view).to_have_css("transform", "none")
     sheet = quick_view.bounding_box()
     assert sheet is not None
-    assert sheet["x"] == 0
-    assert sheet["width"] == PHONE["width"]
-    assert sheet["y"] + sheet["height"] == PHONE["height"]
+    assert sheet["x"] == 0, "bottom sheet not at the left edge at 375px"
+    assert sheet["width"] == PHONE["width"], "bottom sheet not full width at 375px"
+    assert sheet["y"] + sheet["height"] == PHONE["height"], (
+        "bottom sheet not flush with the bottom edge at 375px"
+    )
 
-    quick_view.get_by_label("Message to Kai Ngata").fill("On my way")
+    box.fill("On my way")
     quick_view.get_by_role("button", name="Send").click()
     expect(quick_view.locator("#quick-view-message-box")).to_contain_text("On my way")
     expect(quick_view).to_be_visible()
     assert_no_horizontal_overflow(page)
 
-    # Layout: the drawer holding the box has no horizontal overflow at any viewport.
+    # The drawer holding the box has no horizontal overflow at any viewport.
     for viewport in QA_VIEWPORTS:
+        width = viewport["width"]
         page.set_viewport_size(viewport)
         page.goto(_learners_url(live_server, organisation.slug))
         page.get_by_role("link", name="Quick view: Kai Ngata", exact=True).first.click()
-        expect(quick_view.get_by_label("Message to Kai Ngata")).to_be_visible()
+        expect(box, f"message box hidden at {width}px").to_be_visible()
         assert_no_horizontal_overflow(page)
