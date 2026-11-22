@@ -1540,6 +1540,20 @@ def test_worker_killed_by_the_same_test_every_time_counts_that_test_as_failed(
     )
 
 
+def test_worker_killed_by_the_same_test_every_time_writes_its_failure_to_the_record(
+    crash_every_time_run: RealRun,
+) -> None:
+    failed = [
+        event
+        for event in crash_every_time_run.record_events()
+        if event["event"] == "outcome" and event["outcome"] == "failed"
+    ]
+
+    assert [(event["nodeid"], "longrepr" in event) for event in failed] == [
+        ("test_sample.py::test_kills_its_worker_every_time", True)
+    ]
+
+
 def test_worker_killed_by_the_same_test_every_time_says_how_many_tests_did_it(
     crash_every_time_run: RealRun,
 ) -> None:

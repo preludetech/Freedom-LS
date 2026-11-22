@@ -103,6 +103,9 @@ EXIT_TESTS_FAILED = 1
 FAILED_SET_LINE_LIMIT = 200
 EXIT_INCOMPLETE = 75
 
+# The failure text recorded for a test that took its xdist worker down in every attempt.
+REPEAT_CRASH_TEXT = "crashed its xdist worker in every pytest attempt"
+
 # Seconds between memory polls while waiting, and between progress lines.
 POLL_INTERVAL_S = 5
 HEARTBEAT_INTERVAL_S = 60
@@ -664,6 +667,17 @@ def run_with_retries(
     repeat_crashers = state.crashed_every_attempt()
     if repeat_crashers:
         state.outcomes.update(dict.fromkeys(repeat_crashers, "failed"))
+        # A kept record is read by whoever asked for it, so it must name these failures too.
+        for nodeid in sorted(repeat_crashers):
+            append_record(
+                record,
+                {
+                    "event": "outcome",
+                    "nodeid": nodeid,
+                    "outcome": "failed",
+                    "longrepr": REPEAT_CRASH_TEXT,
+                },
+            )
         print(
             "run: tests that crashed their xdist worker in every pytest attempt: "
             f"{len(repeat_crashers)} (counted as failed)"
