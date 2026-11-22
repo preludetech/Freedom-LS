@@ -28,7 +28,7 @@ repos:
     hooks:
       - id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
-        exclude: '(^|/)design_source/|^\.test_durations$'
+        exclude: '(^|/)design_source/'
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.10

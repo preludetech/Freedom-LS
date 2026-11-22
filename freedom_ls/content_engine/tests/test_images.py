@@ -329,6 +329,7 @@ def test_tiny_already_minimal_png_is_kept_unchanged():
         (already_minimal_png_bytes(), ".png"),
         (photographic_jpeg_bytes(), ".jpg"),
     ],
+    ids=["svg", "animated-gif", "minimal-png", "photographic-jpeg"],
 )
 def test_non_undecodable_decisions_carry_no_error(raw, suffix):
     decision = optimise_image(raw, suffix)

@@ -571,6 +571,7 @@ def test_user_form_has_no_picture_fields(mock_site_context):
         (gif_bytes(), WRONG_TYPE),
         (truncated_jpeg_bytes(), UNREADABLE),
     ],
+    ids=["not-an-image", "gif", "truncated-jpeg"],
 )
 def test_profile_picture_form_puts_a_rejected_picture_on_the_field(
     mock_site_context, data: bytes, message: str

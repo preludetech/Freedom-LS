@@ -19,7 +19,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
-- [ ] (user) Decide whether the 5.8 MB `.test_durations` file stays committed at the repository root: the implementation excluded it from the `check-added-large-files` and `detect-secrets` pre-commit hooks in `.pre-commit-config.yaml`. Keep it, or move the durations elsewhere and drop the exclusions
+- [x] (user) Decide whether the 5.8 MB `.test_durations` file stays committed at the repository root: the implementation excluded it from the `check-added-large-files` and `detect-secrets` pre-commit hooks in `.pre-commit-config.yaml`. Keep it, or move the durations elsewhere and drop the exclusions
 
 ## 4. Documentation and pull request
 
