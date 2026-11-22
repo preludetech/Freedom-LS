@@ -43,7 +43,9 @@ due_time: "17:00"
 ---
 ```
 
-Due dates apply to TOPIC and FORM files only, not to ACTIVITY, ARTICLE or `course.md`.
+Due dates apply to TOPIC and FORM files only, not to ACTIVITY, ARTICLE or `course.md`. A topic in a reference part (one
+listed under `reference:` in `course.md`) must carry no due key: validation rejects it, because reference material has no
+deadline. See `course-files.md`, "Reference parts".
 
 ### Heading rule (load-bearing)
 

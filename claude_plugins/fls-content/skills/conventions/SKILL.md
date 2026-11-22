@@ -30,6 +30,11 @@ course.md
         2. more-questions.yaml ← another form-page file (more questions)
 03. Something/                ← Topics can be top level items, they dont need to be inside Course Parts
     content.md
+reference/                    ← optional: reference parts, listed under reference: in course.md (never a child)
+    01. Glossary/
+        part.yaml
+        01. terms/
+            content.md
 ```
 
 Form-page files live **inside** the form directory alongside `form.md`. Each numbered
@@ -84,7 +89,8 @@ The FLS scanner (`validate.py`) skips these files and directories; they are neve
 
 Note: when a `course.md`/`part.yaml` omits `children:`, `content_save`'s child
 auto-discovery walk applies only the first two rules (the `_`/`.`-prefix rules); it does not
-skip `README.md`, `CLAUDE.md`, or a trailing `~`. See the `fls-content:content-types`
+skip `README.md`, `CLAUDE.md`, or a trailing `~`. A course's auto-discovery also skips a
+directory named `reference`. See the `fls-content:content-types`
 skill's `resources/file-layout.md#child-auto-discovery` for the exact rule.
 
 ## UUID rules (load-bearing — read before creating any file)

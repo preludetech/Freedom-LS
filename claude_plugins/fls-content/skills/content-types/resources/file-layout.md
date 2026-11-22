@@ -48,6 +48,26 @@ my-course/
           1. page.yaml
 ```
 
+## Course with reference parts
+
+```
+my-course/
+  course.md                 ← lists the parts under reference:
+  01. Getting Started/      ← COURSE_PART in the learning path
+      part.yaml
+      01. welcome/
+          content.md
+  reference/                ← optional home for the course's reference parts (not a child)
+      01. Airspace Rules/   ← COURSE_PART listed under reference:
+          part.yaml
+          01. airspace-classes/
+              content.md
+```
+
+A reference part holds topics only. It is attached through `reference:` in `course.md` (see
+[`course-files.md`](course-files.md#reference-parts)); a part elsewhere in the repo, such as one shared by several courses,
+works the same way.
+
 ## Course categories declaration (repo root)
 
 If a repo declares dashboard categories, exactly one `COURSE_CATEGORIES` file lives outside
@@ -124,6 +144,9 @@ applies. Prefix a draft file/directory with `_` to keep it out of an auto-discov
 
 Auto-discovery also skips ARTICLE and COURSE_CATEGORIES files, wherever they sit: neither is
 ever a collection child.
+
+A COURSE also skips a directory named `reference` beside its `course.md`: it is never a child, whatever it holds, and nothing
+in it is read during discovery. A COURSE_PART has no such rule.
 
 ## Image path resolution
 

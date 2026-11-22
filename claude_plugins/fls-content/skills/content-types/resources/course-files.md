@@ -31,6 +31,7 @@ A course can contain COURSE_PARTs (sections that group topics and forms), but th
 | `estimated_duration` | `str` | No | Duration string e.g. `"1:30:00"` (HH:MM:SS) |
 | `time_limit_days` | `int` (>= 1) | No | Days after the learner registers by which the whole course is due; the last day counts in full. Deleting the key removes the limit on the next load. A course takes no `due_date` or `due_time`; due dates for individual topics and forms go in those files (see `topic-files.md`, "Due dates"). |
 | `children` | `list` | No | Explicit ordered list of child paths; if omitted, auto-discovered alphabetically |
+| `reference` | `list` | No | Parts offered as reference material beside the learning path, each `- path: <part.yaml>`. See [Reference parts](#reference-parts) below. |
 | `content` | `str` | No | Optional markdown intro body |
 | `access_config` | `dict` | No | How learners get access to the course. See [Course access configuration](#course-access-configuration) below. Absent → `free`. |
 | `price` | `dict` | No | What the course costs. Display only — no payment is processed. See [Course pricing](#course-pricing) below. Omit for no price. |
@@ -109,6 +110,55 @@ children:
 Due keys and `no_due_date` fail on an ACTIVITY, ARTICLE or part entry. A nested `children:` list fails on a topic,
 form or activity entry and in `part.yaml`'s own entries. The old `overrides:` key on a `children:` entry is removed
 and fails validation.
+
+### Reference parts
+
+`reference:` lists parts that sit beside the course's learning path: material a learner looks things up in, not steps to
+work through. Each entry names a part's `part.yaml`, relative to `course.md`, and nothing else. The part can sit anywhere
+in the repo, including a directory shared with other courses.
+
+```yaml
+children:
+  - path: 01. Flying Basics/part.yaml
+reference:
+  - path: reference/01. Airspace Rules/part.yaml
+  - path: ../shared_reference_material/01. Glossary/part.yaml
+```
+
+Rules:
+
+- An entry takes only `path`. A due key, `no_due_date` or `children:` on it fails validation.
+- A reference part must be a COURSE_PART and holds topics only. No topic in it may set a due key (see `topic-files.md`,
+  "Due dates"), and no `children:` entry in its `part.yaml` may set a due key or `no_due_date`: reference material has no deadline.
+- Name each part once, and never list a part under both `children:` and `reference:`.
+- Keep a course's own reference parts in a `reference/` directory beside `course.md` if you like: auto-discovery skips a
+  directory of that name, so it is never read as a child. A part there still has to be listed under `reference:` to be used.
+
+A bad entry fails validation under the header `Invalid reference list`, naming the field `reference[0]`, `reference[1]`, ...:
+
+```
+❌ Invalid reference list in my-course/course.md
+Content type: COURSE
+
+  • Field: reference[0]
+    Problem: this part is also one of the course's children
+    Given value: '01. Flying Basics/part.yaml'
+
+    List the part under children: or under reference:, not both.
+```
+
+`reference:` in the file is the whole list. Delete an entry and the next `content_save` stops offering that part as reference
+material for the course.
+
+If you move a part from `children:` to `reference:`, `content_save` also removes the course's placement of that part, along with
+the deadline records tied to it, and reports it before the success line:
+
+```
+Removed part placement: <course.md> no longer places <part.yaml> in its learning path (it is listed under reference:).
+  Deleted with it: 0 cohort deadline override(s), 0 learner deadline override(s), 0 deadline extension(s), 0 part child due date(s).
+```
+
+Read the counts before you commit to the move: a non-zero count means deadlines set for that placement are gone.
 
 ### Course categories
 
