@@ -31,6 +31,7 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     CoursePartChildDueDateFactory,
     CoursePartFactory,
+    CourseReferencePartFactory,
     TopicFactory,
 )
 from freedom_ls.content_engine.models import (
@@ -40,6 +41,7 @@ from freedom_ls.content_engine.models import (
     Course,
     CourseCategory,
     CoursePart,
+    CourseReferencePart,
     File,
     Topic,
 )
@@ -193,6 +195,78 @@ def _course_change_payload(response, **overrides: str) -> dict[str, str]:
         payload[f"{prefix}-MAX_NUM_FORMS"] = "1000"
     payload.update(overrides)
     return payload
+
+
+@pytest.mark.django_db
+class TestCourseReferencePartInline:
+    """A course's reference parts are shown on its change page and cannot be edited there."""
+
+    def _course_with_reference_parts(self, titles: list[str]):
+        course = CourseFactory()
+        for order, title in enumerate(titles):
+            CourseReferencePartFactory(
+                course=course, course_part=CoursePartFactory(title=title), order=order
+            )
+        return course
+
+    def _change_page(self, staff_client, course: Course) -> str:
+        response = staff_client.get(_course_change_url(course))
+        assert response.status_code == 200
+        html: str = response.content.decode()
+        return html
+
+    def test_the_change_page_lists_the_parts_in_order_with_no_add_or_delete(
+        self, staff_client
+    ) -> None:
+        # The titles sort the opposite way to `order`, so a title sort would flip them.
+        course = CourseFactory()
+        CourseReferencePartFactory(
+            course=course, course_part=CoursePartFactory(title="Zulu Part"), order=0
+        )
+        CourseReferencePartFactory(
+            course=course, course_part=CoursePartFactory(title="Alpha Part"), order=1
+        )
+
+        html = self._change_page(staff_client, course)
+
+        assert html.index("Zulu Part") < html.index("Alpha Part")
+        assert 'name="reference_parts-MAX_NUM_FORMS" value="0"' in html
+        assert not re.search(r'name="reference_parts-\d+-DELETE"', html)
+
+    def test_the_change_page_query_count_does_not_grow_with_reference_parts(
+        self, staff_client, django_assert_max_num_queries
+    ) -> None:
+        course = self._course_with_reference_parts(["Part 0"])
+        # A first render fills the content-type and permission caches.
+        self._change_page(staff_client, course)
+        with CaptureQueriesContext(connection) as one_row:
+            self._change_page(staff_client, course)
+        for order in range(1, 5):
+            CourseReferencePartFactory(
+                course=course,
+                course_part=CoursePartFactory(title=f"Part {order}"),
+                order=order,
+            )
+
+        with django_assert_max_num_queries(len(one_row)):
+            self._change_page(staff_client, course)
+
+    def test_posting_the_change_form_leaves_the_rows_unchanged(
+        self, staff_client
+    ) -> None:
+        course = self._course_with_reference_parts(["Alpha Part", "Beta Part"])
+        url = _course_change_url(course)
+
+        response = staff_client.post(
+            url, _course_change_payload(staff_client.get(url), title="Reworded")
+        )
+
+        assert response.status_code == 302
+        assert list(
+            CourseReferencePart.objects.filter(course=course).values_list(
+                "course_part__title", "order"
+            )
+        ) == [("Alpha Part", 0), ("Beta Part", 1)]
 
 
 @pytest.mark.django_db

@@ -21,6 +21,7 @@ from .models import (
     CourseCategory,
     CoursePart,
     CoursePartChildDueDate,
+    CourseReferencePart,
     File,
     Topic,
 )
@@ -182,6 +183,28 @@ class ContentCollectionItemInline(GenericTabularInline):
     can_delete = False
 
 
+class CourseReferencePartInline(TabularInline):
+    """The parts this course offers as reference material. Read-only: the loader writes
+    them from course.md."""
+
+    model = CourseReferencePart
+    fields = ("course_part", "order")
+    readonly_fields = fields
+    extra = 0
+    max_num = 0
+    can_delete = False
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet[CourseReferencePart]:
+        rows: QuerySet[CourseReferencePart] = super().get_queryset(request)
+        # A row's heading names both its part and its course.
+        return rows.select_related("course", "course_part")
+
+    def has_add_permission(
+        self, request: HttpRequest, obj: Course | None = None
+    ) -> bool:
+        return False
+
+
 @admin.register(Course)
 class CourseAdmin(SiteAwareModelAdmin):
     list_display = [
@@ -202,7 +225,7 @@ class CourseAdmin(SiteAwareModelAdmin):
         "shared_with",
         "audience",
     )
-    inlines = [ContentCollectionItemInline]
+    inlines = [ContentCollectionItemInline, CourseReferencePartInline]
 
     fieldsets = (
         (
