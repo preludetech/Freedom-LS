@@ -49,6 +49,30 @@ Serial, `-n 0 -p no:randomly --no-cov -p scripts.record_test_costs`, three runs 
 - course_access (230 tests): fastest test-body time 4.58 s. Copy: `.sdd-work/costs_course_access_before.json`.
 - accounts (658 tests, 2 deselected): fastest run wall 77.5 s (pytest-reported 72.50 s), database setup 25.4 s. Copy: `.sdd-work/costs_accounts_before.json`.
 
+## Coverage after
+
+- Command: the coverage-before command, unchanged (`-n 4`).
+- Result: 18815 passed, 3 skipped; total coverage 96.56% (required 92%). Pytest time 734.40 s; `/usr/bin/time` wall 12:19.28; max resident set size 865328 kB.
+- Load average and CPU pressure: start 9.53 14.76 17.16, 4.77; end 19.99 21.01 18.05, 23.05.
+- Report: `.sdd-work/coverage_after.json`. Per-file comparison: `pruned_tests.md`; no file lost coverage.
+
+## "After" samples
+
+Same commands and method as the "before" samples (serial, `-n 0 -p no:randomly --no-cov -p scripts.record_test_costs`, three runs each, fastest kept). The machine was busier than for the "before" samples, so these figures overstate the after state.
+
+| App | Run | Load average at start | Test-body time (sum of `call`) | Wall | Database setup |
+|---|---|---|---|---|---|
+| course_access | 1 (kept) | 18.33 20.53 17.95 | 5.89 s | 33.55 s | 21.4 s |
+| course_access | 2 | 18.70 20.39 18.00 | 10.01 s | 47.58 s | 28.1 s |
+| course_access | 3 | 23.56 21.43 18.48 | 11.22 s | 50.72 s | 28.9 s |
+| accounts | 1 (kept) | 26.79 22.59 19.03 | 26.14 s | 90.76 s | 24.9 s |
+| accounts | 2 | 26.39 23.63 19.73 | 29.06 s | 97.69 s | 26.7 s |
+| accounts | 3 | 28.32 25.19 20.68 | 25.16 s | 93.84 s | 26.4 s |
+
+- course_access (230 tests): fastest test-body time 5.89 s (before 4.58 s). Copy: `.sdd-work/costs_course_access_after.json`.
+- accounts (658 tests, 2 deselected): fastest run wall 90.76 s (before 77.5 s), database setup 24.9 s (before 25.4 s). Copy: `.sdd-work/costs_accounts_after.json`.
+- Both apps are untouched by the pruning; the differences are load (1-minute load average 18 to 28 here, against 16 to 30 before, with the pressure and the slow runs both higher), not the code.
+
 ## Last ranking run
 
 (filled in by the last slice)
