@@ -12,7 +12,8 @@ command has an xdist `-n` option, the runner appends its own `-n <k>`, which pyt
 reads last. A number the command gives is a ceiling on `k`, and `-n 0` stays serial.
 A pytest attempt that crashes (an xdist worker dies, or the controller is killed) is
 retried for the tests that never finished, and the run ends in one verdict line. A
-pytest that exits before its session starts (a usage error) is not retried. Setting `DS_TEST_MEMORY_GUARD=off` runs the command unchanged. `--capacity`
+pytest that exits before its session starts (a usage error) is not retried. Setting `DS_TEST_MEMORY_GUARD=off` runs the command unchanged, apart from the record
+plugin when `DS_TEST_RECORD_PATH` names a record file. `--capacity`
 prints how many units of `<unit-mb>` fit in free memory, at least 1.
 
 When `TMPDIR` is unset, the run's temporary files go to `/var/tmp`, which is on disk,
@@ -223,9 +224,33 @@ def is_pytest_command(argv: list[str]) -> bool:
     )
 
 
+def child_environment() -> dict[str, str]:
+    """This process's environment, with this directory on `PYTHONPATH` so pytest finds the
+    record plugin."""
+    scripts_dir = str(Path(__file__).resolve().parent)
+    child_env = dict(os.environ)
+    child_env["PYTHONPATH"] = os.pathsep.join(
+        [scripts_dir, *filter(None, [child_env.get("PYTHONPATH")])]
+    )
+    return child_env
+
+
+def record_options(record: Path) -> list[str]:
+    """The pytest options that load the record plugin and point it at `record`."""
+    return ["-p", "ds_run_record", f"--ds-record={record}"]
+
+
 def run_plain(argv: list[str]) -> int:
-    """Run the command as given and return its exit code."""
-    return subprocess.run(argv, check=False).returncode  # noqa: S603
+    """Run the command as given and return its exit code.
+
+    A caller that names a record file still gets one; nothing else is added.
+    """
+    if not os.environ.get(RECORD_PATH_VARIABLE):
+        return subprocess.run(argv, check=False).returncode  # noqa: S603
+    command = argv + record_options(make_record_file(os.environ))
+    return subprocess.run(  # noqa: S603
+        command, env=child_environment(), check=False
+    ).returncode
 
 
 def meminfo_path() -> Path:
@@ -458,7 +483,7 @@ def attempt_command(
     command = list(argv)
     if distributes(argv):
         command += ["-n", str(k), "--max-worker-restart=0"]
-    command += ["-p", "ds_run_record", f"--ds-record={record}"]
+    command += record_options(record)
     if only_file is not None:
         command.append(f"--ds-only-nodeids={only_file}")
         # The runner and the pytest it starts share one environment when both go through
@@ -559,11 +584,7 @@ def run_attempt(
     argv: list[str], k: int, record: Path, only_file: Path | None, oom_score_adj: int
 ) -> int:
     """Run one pytest attempt and return its exit code. Nothing it started outlives it."""
-    scripts_dir = str(Path(__file__).resolve().parent)
-    child_env = dict(os.environ)
-    child_env["PYTHONPATH"] = os.pathsep.join(
-        [scripts_dir, *filter(None, [child_env.get("PYTHONPATH")])]
-    )
+    child_env = child_environment()
     command = attempt_command(argv, k, record, only_file)
     # The runner's own score is never written: only the pytest child gets it.
     set_score = (

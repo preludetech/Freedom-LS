@@ -417,6 +417,31 @@ def test_missing_meminfo_runs_the_command_as_given_and_says_so(
     )
 
 
+@pytest.mark.parametrize(
+    "variables",
+    [
+        {"DS_TEST_MEMORY_GUARD": "off"},
+        {"DS_TEST_MEMINFO_PATH": "no_such_meminfo"},
+    ],
+    ids=["guard_off", "no_meminfo"],
+)
+def test_command_run_as_given_still_writes_the_named_record(
+    stub_tools: StubTools, tmp_path: Path, variables: dict[str, str]
+) -> None:
+    # Arrange
+    kept = tmp_path / "reports" / "unit.jsonl"
+    meminfo = write_meminfo(tmp_path, 4096)
+    settings = {"DS_TEST_MEMINFO_PATH": str(meminfo), **variables}
+
+    # Act
+    run_runner(
+        stub_tools, tmp_path, ["pytest"], DS_TEST_RECORD_PATH=str(kept), **settings
+    )
+
+    # Assert
+    assert recorded_events(kept) == ["finished"]
+
+
 def write_pyproject(tmp_path: Path, memory_table: str) -> None:
     (tmp_path / "pyproject.toml").write_text(
         f"[tool.test_tiers.memory]\n{memory_table}\n", encoding="utf-8"
