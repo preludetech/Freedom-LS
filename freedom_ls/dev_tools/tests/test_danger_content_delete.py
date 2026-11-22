@@ -13,9 +13,16 @@ from django.utils import timezone
 from freedom_ls.content_engine.factories import (
     ArticleFactory,
     CoursePartFactory,
+    CourseReferencePartFactory,
     TopicFactory,
 )
-from freedom_ls.content_engine.models import Article, Course, CoursePart, Topic
+from freedom_ls.content_engine.models import (
+    Article,
+    Course,
+    CoursePart,
+    CourseReferencePart,
+    Topic,
+)
 from freedom_ls.form_engine.factories import (
     FormPageFactory,
     FormProgressFactory,
@@ -131,3 +138,14 @@ def test_danger_content_delete_succeeds_with_a_question_naming_a_topic_and_a_par
     assert Topic.objects.count() == 0
     assert CoursePart.objects.count() == 0
     assert FormQuestion.objects.count() == 0
+
+
+def test_danger_content_delete_counts_and_removes_course_reference_parts(
+    mock_site_context, capsys
+):
+    CourseReferencePartFactory()
+
+    call_command("danger_content_delete", "--yes")
+
+    assert "Course Reference Parts: 1" in capsys.readouterr().out
+    assert CourseReferencePart.objects.count() == 0

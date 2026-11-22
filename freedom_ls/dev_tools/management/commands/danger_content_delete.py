@@ -9,6 +9,7 @@ from freedom_ls.content_engine.models import (
     ContentCollectionItem,
     Course,
     CoursePart,
+    CourseReferencePart,
     File,
     Topic,
 )
@@ -49,6 +50,7 @@ def command(yes: bool) -> None:
         ("Question Options", QuestionOption),
         ("Topics", Topic),
         ("Activities", Activity),
+        ("Course Reference Parts", CourseReferencePart),
         ("Courses", Course),
         ("Course Parts", CoursePart),
         ("Articles", Article),
