@@ -15,7 +15,7 @@ import tempfile
 import time
 import tomllib
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Protocol
@@ -34,6 +34,7 @@ PARTITION_STEP = "Check the partition"
 COVERAGE_PRESENT_STEP = "Check every group's coverage data is present"
 COVERAGE_CHECK_STEP = "Check combined coverage"
 STANDALONE_PREFIX = "standalone-"
+COVERAGE_JOB_PREFIX = "unit-"  # the jobs whose coverage data the coverage job combines
 STANDALONE_NODE_PREFIX = "freedom_ls/{app}/tests/"
 DEFAULT_START_TIMEOUT_S = 900
 DEFAULT_RUN_TIMEOUT_S = 1800
@@ -42,7 +43,6 @@ FIND_RUN_ATTEMPTS = 10
 FIND_RUN_INTERVAL_S = 3
 RUN_LIST_LIMIT = 20
 VIEW_FIELDS = "status,conclusion,headSha,jobs,createdAt,updatedAt"
-OUTCOME_SEVERITY = {"passed": 0, "skipped": 1, "failed": 2}
 WORK_DIR = Path(".sdd-work")
 
 run_tests = ds_runner.load_run_tests()  # the generic runner, imported by path
@@ -53,6 +53,8 @@ class RunStateView(Protocol):
 
     collected: set[str]
     outcomes: dict[str, str]
+    failures: dict[str, str]
+    attempt: int
 
 
 class Unavailable(Exception):  # noqa: N818 - a verdict outcome, not an error
@@ -113,10 +115,9 @@ class Progress:
 
 @dataclass
 class GroupReport:
-    """One test job's group report: its run state and the text of each failure."""
+    """One test job's group report: its run state, failure texts included."""
 
     state: RunStateView
-    failures: dict[str, str] = field(default_factory=dict)
 
 
 def run_tool(argv: list[str]) -> subprocess.CompletedProcess[str]:
@@ -195,6 +196,18 @@ def push_if_needed(branch: str) -> str:
     if branch in {"main", "master"}:
         raise Unavailable(
             f"origin/{branch} lacks HEAD and {branch} is never pushed from here"
+        )
+    # A tip HEAD does not contain (a rebased branch, or one the local clone lacks) would be
+    # rejected by the plain push below.
+    if (
+        remote_tip
+        and run_tool(
+            ["git", "merge-base", "--is-ancestor", remote_tip, "HEAD"]
+        ).returncode
+        != 0
+    ):
+        raise Unavailable(
+            f"origin/{branch} has diverged from HEAD; push it with --force-with-lease first"
         )
     upstream = run_tool(
         ["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]
@@ -454,6 +467,17 @@ def classify(
     if failed_steps(coverage_job) == {COVERAGE_CHECK_STEP}:
         if coverage_total is None:
             raise Unavailable("coverage failed and uploaded no coverage-total")
+        # A retry runs without coverage and a crashed worker's data is lost, so after one
+        # the total is too low by an unknown amount. A pass still stands.
+        retried = sorted(
+            name
+            for name, state in states.items()
+            if name.startswith(COVERAGE_JOB_PREFIX) and state.attempt > 1
+        )
+        if retried:
+            raise Unavailable(
+                f"coverage incomplete: {retried[0]} retried after a crash"
+            )
         return Verdict("FAIL", coverage=coverage_total)
     raise Unavailable(describe_failure(coverage_job, set()))
 
@@ -463,25 +487,11 @@ def prefixed(report: GroupReport, prefix: str) -> GroupReport:
     state = run_tests.RunState()
     state.collected = {prefix + node for node in report.state.collected}
     state.outcomes = {prefix + node: out for node, out in report.state.outcomes.items()}
-    return GroupReport(
-        state, {prefix + node: text for node, text in report.failures.items()}
-    )
-
-
-def failure_texts(path: Path) -> dict[str, str]:
-    """The `longrepr` of each failed test in a group report; the first outcome wins."""
-    texts: dict[str, str] = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
-        try:
-            event: object = json.loads(line)
-        except json.JSONDecodeError:
-            continue  # a truncated last line; `read_attempt` rejects any other
-        if not isinstance(event, dict) or event.get("event") != "outcome":
-            continue
-        node = event.get("nodeid")
-        if isinstance(node, str) and event.get("outcome") == "failed":
-            texts.setdefault(node, str(event.get("longrepr", "")))
-    return texts
+    state.failures = {
+        prefix + node: text for node, text in report.state.failures.items()
+    }
+    state.attempt = report.state.attempt
+    return GroupReport(state)
 
 
 def load_group_report(job: Job, directory: Path) -> GroupReport:
@@ -493,7 +503,7 @@ def load_group_report(job: Job, directory: Path) -> GroupReport:
         run_tests.read_attempt(path, state)
     except json.JSONDecodeError:
         raise Unavailable(f"{job.name} group report is malformed") from None
-    report = GroupReport(state, failure_texts(path))
+    report = GroupReport(state)
     if job.name.startswith(STANDALONE_PREFIX):
         app = job.name.removeprefix(STANDALONE_PREFIX)
         return prefixed(report, STANDALONE_NODE_PREFIX.format(app=app))
@@ -523,7 +533,9 @@ def merge_states(states: list[RunStateView]) -> RunStateView:
         for node, outcome in state.outcomes.items():
             previous = merged.outcomes.get(node, outcome)
             merged.outcomes[node] = max(
-                previous, outcome, key=lambda name: OUTCOME_SEVERITY.get(name, 0)
+                previous,
+                outcome,
+                key=lambda name: run_tests.OUTCOME_SEVERITY.get(name, 0),
             )
     return merged
 
@@ -545,7 +557,7 @@ def write_failure_log(
     path = WORK_DIR / f"remote_full_run_{branch.replace('/', '-')}.txt"
     texts: dict[str, str] = {}
     for report in reports:
-        for node, text in report.failures.items():
+        for node, text in report.state.failures.items():
             texts.setdefault(node, text)
     path.write_text(
         "".join(f"{node}\n{texts.get(node, '')}\n\n" for node in sorted(failed)),
@@ -627,6 +639,9 @@ def main() -> int:
         return execute(progress)
     except Unavailable as error:
         return report_unavailable(str(error), progress)
+    # The caller needs a RESULT line whatever broke, and a run still going is cancelled.
+    except Exception as error:
+        return report_unavailable(f"{type(error).__name__}: {error}", progress)
 
 
 if __name__ == "__main__":

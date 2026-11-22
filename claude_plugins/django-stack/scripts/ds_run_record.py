@@ -1,7 +1,7 @@
 """Pytest plugin that records what an attempt collected and finished, one JSON line per event.
 
 Load it with `-p ds_run_record` and `PYTHONPATH` set to this directory. It imports only the
-standard library and pytest, so it works with or without xdist.
+standard library, pytest and the runner beside it, so it works with or without xdist.
 """
 
 from __future__ import annotations
@@ -13,11 +13,9 @@ from pathlib import Path
 from typing import TextIO
 
 import pytest
+from run_tests import OUTCOME_SEVERITY
 
 WORKER_CRASH = re.compile(r"worker '.+' crashed while running")
-
-# Higher wins when a test's phases disagree.
-OUTCOME_SEVERITY = {"passed": 0, "skipped": 1, "failed": 2}
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:

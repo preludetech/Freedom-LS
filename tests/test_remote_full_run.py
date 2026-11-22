@@ -207,6 +207,7 @@ class Scenario:
                 "rev-parse HEAD": [{"stdout": f"{HEAD}\n"}],
                 "rev-parse --abbrev-ref": [{}],
                 "ls-remote": [{"stdout": f"{HEAD}\trefs/heads/{self.branch}\n"}],
+                "merge-base --is-ancestor": [{}],
                 "push": [{}],
             },
             "gh": {
@@ -342,6 +343,15 @@ def test_a_failed_precondition_is_unavailable_and_dispatches_nothing(
     ) == (UNAVAILABLE_EXIT, f"run: RESULT UNAVAILABLE {reason}", [])
 
 
+def test_an_unexpected_error_is_unavailable_with_a_result_line(tmp_path: Path) -> None:
+    outcome = run_script(Scenario(), tmp_path, pyproject="[tool.test_tiers.remote\n")
+
+    assert (
+        outcome.process.returncode,
+        outcome.lines[-1].startswith("run: RESULT UNAVAILABLE TOMLDecodeError: "),
+    ) == (UNAVAILABLE_EXIT, True)
+
+
 def test_a_missing_gh_is_unavailable_and_dispatches_nothing(tmp_path: Path) -> None:
     outcome = run_script(Scenario(), tmp_path, with_gh=False)
 
@@ -396,6 +406,25 @@ def test_a_rejected_push_is_unavailable_and_names_the_rejection(
 
     assert unavailable_line(outcome) == (
         "run: RESULT UNAVAILABLE push rejected: ! [rejected] feature"
+    )
+
+
+def test_an_origin_branch_that_head_does_not_contain_is_unavailable_and_not_pushed(
+    tmp_path: Path,
+) -> None:
+    scenario = Scenario()
+    scenario.answer("git", "ls-remote", {"stdout": "f" * 40 + "\trefs/heads/feature\n"})
+    scenario.answer("git", "merge-base --is-ancestor", {"status": 1})
+
+    outcome = run_script(scenario, tmp_path)
+
+    assert (
+        unavailable_line(outcome),
+        [call for call in outcome.calls if call.startswith("git push")],
+    ) == (
+        "run: RESULT UNAVAILABLE origin/feature has diverged from HEAD; "
+        "push it with --force-with-lease first",
+        [],
     )
 
 
@@ -728,6 +757,27 @@ def test_a_coverage_failure_prints_the_percentages_and_no_failed_test(
     assert "run: coverage 91% below 92%" in outcome.lines
     assert [line for line in outcome.lines if line.startswith("run: failed")] == []
     assert (outcome.process.returncode, outcome.lines[-1]) == (1, "run: RESULT FAIL")
+
+
+def test_a_coverage_failure_after_a_unit_group_retried_is_unavailable(
+    tmp_path: Path,
+) -> None:
+    jobs = coverage_failing_jobs()
+    retried = report_text([jobs[0].node()]) + "".join(
+        json.dumps(event) + "\n"
+        for event in (
+            {"event": "attempt", "n": 2, "k": 1},
+            {"event": "finished", "exitstatus": 0},
+        )
+    )
+    jobs[0] = replace(jobs[0], report=retried)
+    scenario = Scenario(jobs=jobs, coverage_total="total=91\nfail_under=92\n")
+
+    outcome = run_script(scenario, tmp_path)
+
+    assert unavailable_line(outcome) == (
+        "run: RESULT UNAVAILABLE coverage incomplete: unit-1 retried after a crash"
+    )
 
 
 def test_a_coverage_failure_without_a_coverage_total_is_unavailable(

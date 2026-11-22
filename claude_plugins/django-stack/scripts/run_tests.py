@@ -104,6 +104,9 @@ EXIT_TESTS_FAILED = 1
 FAILED_SET_LINE_LIMIT = 200
 EXIT_INCOMPLETE = 75
 
+# Higher wins when a test's phases, or two reports of one test, disagree.
+OUTCOME_SEVERITY = {"passed": 0, "skipped": 1, "failed": 2}
+
 # The failure text recorded for a test that took its xdist worker down in every attempt.
 REPEAT_CRASH_TEXT = "crashed its xdist worker in every pytest attempt"
 
@@ -393,6 +396,7 @@ class RunState:
 
     collected: set[str] = field(default_factory=set)  # union over pytest attempts
     outcomes: dict[str, str] = field(default_factory=dict)  # first outcome written wins
+    failures: dict[str, str] = field(default_factory=dict)  # failed node id -> its text
     crashed_reports: int = 0  # crashed lines in the latest pytest attempt
     session_finished: bool = False  # the latest pytest attempt wrote its finished line
     crash_retried: bool = False  # any pytest attempt of this run crashed
@@ -448,6 +452,8 @@ def apply_event(event: dict[str, object], state: RunState) -> None:
         state.collected.update(str(item) for item in nodeids)
     elif kind == "outcome" and isinstance(nodeid, str) and isinstance(outcome, str):
         state.outcomes.setdefault(nodeid, outcome)
+        if outcome == "failed":
+            state.failures.setdefault(nodeid, str(event.get("longrepr", "")))
     elif kind == "crashed":
         state.crashed_reports += 1
         if isinstance(nodeid, str):
