@@ -54,12 +54,130 @@ def _no_js_page(
         context.close()
 
 
-def test_data_table_interaction(
+def _check_bar_takes_toolbar_place(page: Page, list_url: str) -> None:
+    """The selection bar replaces the toolbar in its row without moving the
+    table; Clear brings the toolbar back. Below lg it does the same."""
+    table = page.locator("#stubs-table")
+    bar = page.locator("[data-total-count]")
+    search = table.get_by_role("searchbox")
+    row_checkboxes = table.locator("tbody input[name='keys']")
+    top_of_table = "el => el.querySelector('table').getBoundingClientRect().top"
+
+    page.set_viewport_size(QA_VIEWPORTS[2])
+    page.goto(list_url)
+    expect(bar, "selection bar shown with nothing selected").to_be_hidden()
+    expect(search, "toolbar search hidden with nothing selected").to_be_visible()
+    top_before = table.evaluate(top_of_table)
+
+    # The toolbar and the bar swap in one frame: sampled frame by frame, a
+    # swap a frame apart leaves the table a row higher or lower for that frame.
+    assert _tops_after_click(row_checkboxes.first) == [top_before] * 6, (
+        "table moved when the bar replaced the toolbar"
+    )
+    expect(bar, "bar hidden after selecting a row").to_be_visible()
+    expect(search, "toolbar still shown beside the bar").to_be_hidden()
+
+    assert (
+        _tops_after_click(bar.get_by_role("button", name="Clear", exact=True))
+        == [top_before] * 6
+    ), "table moved when the toolbar replaced the bar"
+    expect(bar, "bar still shown after Clear").to_be_hidden()
+    expect(search, "toolbar hidden after Clear").to_be_visible()
+    expect(table.locator("tbody input[name='keys']:checked")).to_have_count(0)
+    assert table.evaluate(top_of_table) == top_before, "table top changed after Clear"
+
+    page.set_viewport_size(QA_VIEWPORTS[1])
+    page.goto(list_url)
+    page.locator("#stubs-table input[name='keys']:visible").first.check()
+    expect(bar, "bar hidden at 768px with a row selected").to_be_visible()
+    expect(search, "toolbar shown beside the bar at 768px").to_be_hidden()
+
+
+def _check_clearing_bar_returns_focus(page: Page, list_url: str) -> None:
+    """Emptying the selection hides the bar that held focus, so focus goes to
+    the page checkbox on screen: the header's on desktop, the card list's on
+    a phone."""
+    table = page.locator("#stubs-table")
+    bar = page.locator("[data-total-count]")
+    clear = bar.get_by_role("button", name="Clear", exact=True)
+    select_all = bar.get_by_role("button", name=re.compile(r"^(Select|Deselect) all"))
+
+    page.set_viewport_size(QA_VIEWPORTS[2])
+    page.goto(list_url)
+    header_checkbox = table.locator("thead").get_by_label("Select all on this page")
+    table.locator("tbody input[name='keys']").first.check()
+    clear.click()
+    expect(header_checkbox, "header checkbox unfocused after Clear").to_be_focused()
+
+    table.locator("tbody input[name='keys']").first.check()
+    # A partial selection leaves the bar checkbox unchecked and indeterminate,
+    # so it is ticked to cover the page before it is unticked.
+    bar_checkbox = bar.get_by_label("Select page")
+    bar_checkbox.check()
+    bar_checkbox.uncheck()
+    expect(
+        header_checkbox, "header checkbox unfocused after unticking the page"
+    ).to_be_focused()
+
+    page.set_viewport_size(QA_VIEWPORTS[0])
+    page.goto(list_url)
+    card_checkbox = table.locator(".md\\:hidden").get_by_label(
+        "Select all on this page"
+    )
+    cards = table.locator("ul li input[name='keys']")
+    cards.first.check()
+    clear.click()
+    expect(card_checkbox, "card checkbox unfocused after Clear").to_be_focused()
+
+    cards.first.check()
+    select_all.click()
+    select_all.click()
+    expect(select_all).to_be_hidden()
+    expect(card_checkbox, "card checkbox unfocused after Deselect all").to_be_focused()
+
+
+_IS_TOPMOST = """el => {
+    const box = el.getBoundingClientRect();
+    return document.elementFromPoint(
+        box.x + box.width / 2, box.y + box.height / 2) === el;
+}"""
+
+
+def _tops_after_click(control: Locator) -> list[float]:
+    """Click a control inside the table region and read the table's top
+    over the next six frames."""
+    tops: list[float] = control.evaluate(
+        """async control => {
+            const table = control.closest('[data-table-region]').querySelector('table');
+            const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
+            control.click();
+            const tops = [];
+            for (let i = 0; i < 6; i++) {
+                await frame();
+                tops.push(table.getBoundingClientRect().top);
+            }
+            return tops;
+        }"""
+    )
+    return tops
+
+
+def test_data_table_flow(
     page: Page,
     live_server: pytest_django.live_server_helper.LiveServer,
     live_server_site: Site,
     mock_site_context: None,
 ) -> None:
+    """The stub data table from sort to layout.
+
+    Proves sorting, paging, search and two tables on one page, the header
+    checkbox, the bulk-action modal, tab history, the phone navigation toggle
+    and, at each viewport: no overflow, the filter sheet, phone cards and
+    touch targets, the sticky selection bar, the bulk-action fieldset drawing
+    no box, the More actions menu staying on screen, the bar taking the
+    toolbar's place without moving the table, and focus returning to the page
+    checkbox after Clear.
+    """
     stubs = [make_stub(name=f"row-{i:02d}") for i in range(PAGE_SIZE + 5)]
     list_url = f"{live_server.url}{_LIST_PATH}"
     page.set_viewport_size(QA_VIEWPORTS[2])
@@ -268,6 +386,7 @@ def test_data_table_interaction(
 
     # Layout at each viewport.
     for viewport in QA_VIEWPORTS:
+        width = viewport["width"]
         page.set_viewport_size(viewport)
         page.goto(list_url)
         assert_no_horizontal_overflow(page)
@@ -341,231 +460,77 @@ def test_data_table_interaction(
             )
             assert icon_width == 16
 
-
-def test_more_actions_menu_stays_inside_the_viewport(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    """The "More actions" menu once opened off the screen, leaving its last
-    item out of reach."""
-    for i in range(PAGE_SIZE):
-        make_stub(name=f"row-{i:02d}")
-    list_url = f"{live_server.url}{_LIST_PATH}"
-
-    for viewport in QA_VIEWPORTS:
-        page.set_viewport_size(viewport)
         page.goto(list_url)
-        page.locator("#stubs-table input[name='keys']:visible").first.check()
+        checkboxes = page.locator("#stubs-table input[name='keys']:visible")
+        checkboxes.first.check()
+        bar = page.locator("[data-total-count]")
+        expect(bar, f"selection bar hidden at {width}px").to_be_visible()
+        assert bar.evaluate("el => getComputedStyle(el).position") == "sticky", (
+            f"bar not sticky at {width}px"
+        )
+        bar_bottom = bar.evaluate("el => el.getBoundingClientRect().bottom")
+        first_top = checkboxes.first.evaluate("el => el.getBoundingClientRect().top")
+        assert bar_bottom <= first_top, f"bar below the first row at {width}px"
+
+        if is_phone:
+            actions = bar.locator("fieldset")
+            expect(actions).to_be_visible()
+            box_styles = actions.evaluate(
+                """el => {
+                    const s = getComputedStyle(el);
+                    return [s.borderTopWidth, s.paddingTop, s.paddingLeft, s.borderTopLeftRadius];
+                }"""
+            )
+            assert box_styles == ["0px", "0px", "0px", "0px"], (
+                f"bulk-action fieldset draws a box at {width}px"
+            )
+
+        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        bar_box = bar.bounding_box()
+        assert bar_box is not None
+        assert 0 <= bar_box["y"] < viewport["height"] / 2, (
+            f"bar scrolled out of view at {width}px"
+        )
+        assert page.get_by_role("link", name="Next", exact=True).evaluate(
+            _IS_TOPMOST
+        ), f"bar covers the pager at {width}px"
+
+        page.evaluate("window.scrollTo(0, 0)")
         more = page.get_by_role("button", name="More actions")
         chevron = more.locator("svg")
         expect(chevron).to_have_css("rotate", "none")
         more.click()
-        # The chevron turns up while the menu is open.
-        expect(chevron).to_have_css("rotate", "180deg")
+        expect(chevron, f"More actions chevron not turned up at {width}px").to_have_css(
+            "rotate", "180deg"
+        )
         last_item = (
             page.get_by_role("menu", name="More actions").get_by_role("menuitem").last
         )
         expect(last_item).to_be_visible()
-        box = last_item.bounding_box()
-        assert box is not None
-        assert box["y"] >= 0, f"menu item above the viewport at {viewport}"
-        assert box["y"] + box["height"] <= viewport["height"], (
-            f"menu item below the viewport at {viewport}"
+        item_box = last_item.bounding_box()
+        assert item_box is not None
+        assert item_box["y"] >= 0, f"menu item above the viewport at {width}px"
+        assert item_box["y"] + item_box["height"] <= viewport["height"], (
+            f"menu item below the viewport at {width}px"
         )
 
-
-_IS_TOPMOST = """el => {
-    const box = el.getBoundingClientRect();
-    return document.elementFromPoint(
-        box.x + box.width / 2, box.y + box.height / 2) === el;
-}"""
+    _check_bar_takes_toolbar_place(page, list_url)
+    _check_clearing_bar_returns_focus(page, list_url)
 
 
-def test_selection_bar_sticks_above_the_table_at_every_width(
+def test_data_table_select_all_flow(
     page: Page,
     live_server: pytest_django.live_server_helper.LiveServer,
     live_server_site: Site,
     mock_site_context: None,
 ) -> None:
-    """The bar sat above the table on the desktop and at the bottom of the
-    viewport below lg. It has one place at every width: above the table, in
-    the toolbar's row, sticking under the header while the page scrolls."""
-    for i in range(PAGE_SIZE + 1):
-        make_stub(name=f"row-{i:02d}")
-    list_url = f"{live_server.url}{_LIST_PATH}"
-    bar = page.locator("[data-total-count]")
+    """Select all matching across pages, then on a single-page table.
 
-    for viewport in QA_VIEWPORTS:
-        page.set_viewport_size(viewport)
-        page.goto(list_url)
-        checkboxes = page.locator("#stubs-table input[name='keys']:visible")
-        checkboxes.first.check()
-        expect(bar).to_be_visible()
-
-        assert bar.evaluate("el => getComputedStyle(el).position") == "sticky", (
-            f"bar position at {viewport}"
-        )
-        bar_bottom = bar.evaluate("el => el.getBoundingClientRect().bottom")
-        first_top = checkboxes.first.evaluate("el => el.getBoundingClientRect().top")
-        assert bar_bottom <= first_top, f"bar below the first row at {viewport}"
-
-        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-        box = bar.bounding_box()
-        assert box is not None
-        assert 0 <= box["y"] < viewport["height"] / 2, (
-            f"bar scrolled out of view at {viewport}"
-        )
-        assert page.get_by_role("link", name="Next", exact=True).evaluate(
-            _IS_TOPMOST
-        ), f"bar covers the pager at {viewport}"
-
-
-def _tops_after_click(control: Locator) -> list[float]:
-    """Click a control inside the table region and read the table's top
-    over the next six frames."""
-    tops: list[float] = control.evaluate(
-        """async control => {
-            const table = control.closest('[data-table-region]').querySelector('table');
-            const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
-            control.click();
-            const tops = [];
-            for (let i = 0; i < 6; i++) {
-                await frame();
-                tops.push(table.getBoundingClientRect().top);
-            }
-            return tops;
-        }"""
-    )
-    return tops
-
-
-def test_the_bar_takes_the_toolbars_place_at_every_width(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    """The selection bar replaces the toolbar in its row without moving the
-    table; Clear brings the toolbar back. Below lg it does the same."""
-    for i in range(PAGE_SIZE):
-        make_stub(name=f"row-{i:02d}")
-    list_url = f"{live_server.url}{_LIST_PATH}"
-    table = page.locator("#stubs-table")
-    bar = page.locator("[data-total-count]")
-    search = table.get_by_role("searchbox")
-    row_checkboxes = table.locator("tbody input[name='keys']")
-    top_of_table = "el => el.querySelector('table').getBoundingClientRect().top"
-
-    page.set_viewport_size(QA_VIEWPORTS[2])
-    page.goto(list_url)
-    expect(bar).to_be_hidden()
-    expect(search).to_be_visible()
-    top_before = table.evaluate(top_of_table)
-
-    # The toolbar and the bar swap in one frame: sampled frame by frame, a
-    # swap a frame apart leaves the table a row higher or lower for that frame.
-    assert _tops_after_click(row_checkboxes.first) == [top_before] * 6
-    expect(bar).to_be_visible()
-    expect(search).to_be_hidden()
-
-    assert (
-        _tops_after_click(bar.get_by_role("button", name="Clear", exact=True))
-        == [top_before] * 6
-    )
-    expect(bar).to_be_hidden()
-    expect(search).to_be_visible()
-    expect(table.locator("tbody input[name='keys']:checked")).to_have_count(0)
-    assert table.evaluate(top_of_table) == top_before
-
-    page.set_viewport_size(QA_VIEWPORTS[1])
-    page.goto(list_url)
-    page.locator("#stubs-table input[name='keys']:visible").first.check()
-    expect(bar).to_be_visible()
-    expect(search).to_be_hidden()
-
-
-def test_selection_bar_actions_fieldset_draws_no_box(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    """The fieldset wrapping the bulk-action buttons picked up the global
-    fieldset border and padding, boxing the buttons and, on a phone, making
-    the fixed selection bar cover a large part of the screen."""
-    make_stub(name="row-00")
-    page.set_viewport_size(_PHONE_VIEWPORT)
-    page.goto(f"{live_server.url}{_LIST_PATH}")
-    page.locator("#stubs-table input[name='keys']:visible").first.check()
-
-    actions = page.locator("[data-total-count] fieldset")
-    expect(actions).to_be_visible()
-    box_styles = actions.evaluate(
-        """el => {
-            const s = getComputedStyle(el);
-            return [s.borderTopWidth, s.paddingTop, s.paddingLeft, s.borderTopLeftRadius];
-        }"""
-    )
-    assert box_styles == ["0px", "0px", "0px", "0px"]
-
-
-def test_clearing_the_bar_returns_focus_to_the_page_checkbox(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    """Emptying the selection hides the bar that held focus, so focus goes to
-    the page checkbox on screen: the header's on desktop, the card list's on
-    a phone."""
-    for i in range(PAGE_SIZE + 3):
-        make_stub(name=f"row-{i:02d}")
-    list_url = f"{live_server.url}{_LIST_PATH}"
-    table = page.locator("#stubs-table")
-    bar = page.locator("[data-total-count]")
-    clear = bar.get_by_role("button", name="Clear", exact=True)
-    select_all = bar.get_by_role("button", name=re.compile(r"^(Select|Deselect) all"))
-
-    page.set_viewport_size(QA_VIEWPORTS[2])
-    page.goto(list_url)
-    header_checkbox = table.locator("thead").get_by_label("Select all on this page")
-    table.locator("tbody input[name='keys']").first.check()
-    clear.click()
-    expect(header_checkbox).to_be_focused()
-
-    table.locator("tbody input[name='keys']").first.check()
-    # A partial selection leaves the bar checkbox unchecked and indeterminate,
-    # so it is ticked to cover the page before it is unticked.
-    bar_checkbox = bar.get_by_label("Select page")
-    bar_checkbox.check()
-    bar_checkbox.uncheck()
-    expect(header_checkbox).to_be_focused()
-
-    page.set_viewport_size(QA_VIEWPORTS[0])
-    page.goto(list_url)
-    card_checkbox = table.locator(".md\\:hidden").get_by_label(
-        "Select all on this page"
-    )
-    cards = table.locator("ul li input[name='keys']")
-    cards.first.check()
-    clear.click()
-    expect(card_checkbox).to_be_focused()
-
-    cards.first.check()
-    select_all.click()
-    select_all.click()
-    expect(select_all).to_be_hidden()
-    expect(card_checkbox).to_be_focused()
-
-
-def test_select_all_matching_spans_every_page(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
+    Proves the selection status, Select all and Deselect all, partial
+    selection, a bulk run over every match, sort and Clear resetting the
+    selection, no overflow at each viewport, and Select all staying in page
+    mode when one page holds every row.
+    """
     matching = 2 * PAGE_SIZE + 3
     for i in range(matching):
         make_stub(name=f"pick-{i:02d}")
@@ -671,63 +636,78 @@ def test_select_all_matching_spans_every_page(
         page.goto(filtered_url)
         assert_no_horizontal_overflow(page)
 
-
-def test_select_all_on_a_single_page_table_stays_in_page_mode(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    rows = PAGE_SIZE - 1
-    for i in range(rows):
-        make_stub(name=f"row-{i:02d}")
     page.set_viewport_size(QA_VIEWPORTS[2])
-    page.goto(f"{live_server.url}{_LIST_PATH}")
-
-    status = page.locator("#stubs-table").get_by_role("status")
-    bar = page.locator("[data-total-count]")
-    row_checkboxes = page.locator("#stubs-table tbody input[name='keys']")
+    page.goto(f"{live_server.url}{_LIST_PATH}?stubs-q=other")
+    single_page_rows = 4
     row_checkboxes.first.check()
-    bar.get_by_role("button", name=f"Select all {rows}").click()
+    bar.get_by_role("button", name=f"Select all {single_page_rows}").click()
 
     expect(page.locator("#stubs-table tbody input[name='keys']:checked")).to_have_count(
-        rows
+        single_page_rows
     )
     expect(bar.get_by_role("button", name="Deselect all")).to_be_visible()
-    expect(status).to_have_text(f"{rows} selected")
+    expect(status).to_have_text(f"{single_page_rows} selected")
     expect(page.locator("input[name='mode']")).to_have_value("keys")
 
 
-def test_filter_sheet_is_visible_with_javascript_off(
+def test_data_table_no_js_flow(
     browser: Browser,
     live_server: pytest_django.live_server_helper.LiveServer,
     live_server_site: Site,
     mock_site_context: None,
 ) -> None:
-    for i in range(3):
+    """The data table with JavaScript off.
+
+    Proves the filter sheet is visible, the sticky bar covers nothing at each
+    width, the More actions trigger is hidden in favour of a <details> menu,
+    and a bulk action confirms and posts as plain forms. The bulk post runs
+    last because it changes rows.
+    """
+    for i in range(PAGE_SIZE + 1):
         make_stub(name=f"row-{i:02d}")
+    list_url = f"{live_server.url}{_LIST_PATH}"
 
     with _no_js_page(browser, _PHONE_VIEWPORT) as no_js_page:
-        no_js_page.goto(f"{live_server.url}{_LIST_PATH}")
+        no_js_page.goto(list_url)
 
         sheet = no_js_page.locator("#stubs-sheet")
-        expect(sheet).to_be_visible()
+        expect(sheet, "filter sheet hidden with JavaScript off").to_be_visible()
         expect(sheet).to_have_css("opacity", "1")
         expect(sheet).to_have_css("transform", "none")
 
+        for viewport in QA_VIEWPORTS:
+            width = viewport["width"]
+            no_js_page.set_viewport_size(viewport)
+            no_js_page.goto(list_url)
 
-def test_bulk_action_posts_with_javascript_off(
-    browser: Browser,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    for i in range(3):
-        make_stub(name=f"row-{i:02d}")
+            bar = no_js_page.locator("[data-total-count]")
+            assert bar.evaluate("el => getComputedStyle(el).position") == "sticky", (
+                f"bar not sticky with JavaScript off at {width}px"
+            )
 
-    with _no_js_page(browser) as no_js_page:
-        no_js_page.goto(f"{live_server.url}{_LIST_PATH}")
+            no_js_page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            assert no_js_page.get_by_role("link", name="Next", exact=True).evaluate(
+                _IS_TOPMOST
+            ), f"bar covers the pager with JavaScript off at {width}px"
 
+        no_js_page.goto(list_url)
+        no_js_page.locator("#stubs-table tbody input[name='keys']").nth(0).check()
+
+        expect(no_js_page.get_by_role("button", name="Mark processed")).to_be_visible()
+        expect(
+            no_js_page.get_by_role("button", name="More actions"),
+            "More actions trigger shown inert with JavaScript off",
+        ).to_be_hidden()
+
+        # In its place a <details> menu opens without script, never loose buttons.
+        more = no_js_page.locator("[data-total-count] details")
+        menu = more.get_by_role("menu", name="More actions")
+        expect(menu).to_be_hidden()
+        more.locator("summary").click()
+        expect(menu).to_be_visible()
+        expect(menu.get_by_role("menuitem").first).to_be_visible()
+
+        no_js_page.goto(list_url)
         row_checkboxes = no_js_page.locator("#stubs-table tbody input[name='keys']")
         row_checkboxes.nth(0).check()
         row_checkboxes.nth(1).check()
@@ -757,63 +737,19 @@ def test_bulk_action_posts_with_javascript_off(
     assert active_by_name["row-02"] is True
 
 
-def test_the_bar_covers_nothing_with_javascript_off(
-    browser: Browser,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    """With JavaScript off the bar always shows, under the toolbar, and
-    sticks there: scrolled to the end, the pager's Next link is not under it."""
-    for i in range(PAGE_SIZE + 1):
-        make_stub(name=f"row-{i:02d}")
-
-    with _no_js_page(browser) as no_js_page:
-        for viewport in QA_VIEWPORTS:
-            no_js_page.set_viewport_size(viewport)
-            no_js_page.goto(f"{live_server.url}{_LIST_PATH}")
-
-            bar = no_js_page.locator("[data-total-count]")
-            assert bar.evaluate("el => getComputedStyle(el).position") == "sticky"
-
-            no_js_page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            assert no_js_page.get_by_role("link", name="Next", exact=True).evaluate(
-                _IS_TOPMOST
-            ), f"bar covers the pager at {viewport}"
-
-
-def test_more_actions_trigger_is_hidden_with_javascript_off(
-    browser: Browser,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    """The More actions menu opens through Alpine, so its trigger used to show inert."""
-    for i in range(3):
-        make_stub(name=f"row-{i:02d}")
-
-    with _no_js_page(browser) as no_js_page:
-        no_js_page.goto(f"{live_server.url}{_LIST_PATH}")
-        no_js_page.locator("#stubs-table tbody input[name='keys']").nth(0).check()
-
-        expect(no_js_page.get_by_role("button", name="Mark processed")).to_be_visible()
-        expect(no_js_page.get_by_role("button", name="More actions")).to_be_hidden()
-
-        # In its place a <details> menu opens without script, never loose buttons.
-        more = no_js_page.locator("[data-total-count] details")
-        menu = more.get_by_role("menu", name="More actions")
-        expect(menu).to_be_hidden()
-        more.locator("summary").click()
-        expect(menu).to_be_visible()
-        expect(menu.get_by_role("menuitem").first).to_be_visible()
-
-
-def test_a_row_detail_opens_and_closes_by_mouse_and_keyboard(
+def test_data_table_row_expansion_flow(
     page: Page,
     live_server: pytest_django.live_server_helper.LiveServer,
     live_server_site: Site,
     mock_site_context: None,
 ) -> None:
+    """Row detail and group rows on one stub.
+
+    Proves a row detail opens and closes by mouse and keyboard, closes again
+    when a page is fetched and toggles on a phone card, then that group rows
+    hide and show their descendants by mouse and keyboard, compact rows are
+    level, and the tables overflow at no width.
+    """
     stubs = [make_stub(name=f"row-{i:02d}", kind="a") for i in range(PAGE_SIZE + 2)]
     detail_url = f"{live_server.url}{_FRAMEWORK_PATH}/stubs/{stubs[0].pk}/__tabs/detail"
     page.set_viewport_size(QA_VIEWPORTS[2])
@@ -868,16 +804,10 @@ def test_a_row_detail_opens_and_closes_by_mouse_and_keyboard(
     expect(card_detail).to_be_hidden()
     expect(card_toggle).to_have_attribute("aria-expanded", "false")
 
-
-def test_a_group_row_hides_and_shows_its_descendants_by_mouse_and_keyboard(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    stub = make_stub(name="host")
     page.set_viewport_size(QA_VIEWPORTS[2])
-    page.goto(f"{live_server.url}{_FRAMEWORK_PATH}/stubs/{stub.pk}/__tabs/childrows")
+    page.goto(
+        f"{live_server.url}{_FRAMEWORK_PATH}/stubs/{stubs[0].pk}/__tabs/childrows"
+    )
     table = page.locator("#childrows-table table")
     outer = table.get_by_role("button", name="group", exact=True)
     inner = table.get_by_role("button", name="inner-group", exact=True)
@@ -951,11 +881,13 @@ def test_a_group_row_hides_and_shows_its_descendants_by_mouse_and_keyboard(
     for viewport in (QA_VIEWPORTS[1], QA_VIEWPORTS[2]):
         page.set_viewport_size(viewport)
         page.goto(
-            f"{live_server.url}{_FRAMEWORK_PATH}/stubs/{stub.pk}/__tabs/childrows"
+            f"{live_server.url}{_FRAMEWORK_PATH}/stubs/{stubs[0].pk}/__tabs/childrows"
         )
         default_row = page.locator("#childrows-table tbody tr", has_text="top-leaf")
         default_height = default_row.bounding_box()
-        page.goto(f"{live_server.url}{_FRAMEWORK_PATH}/stubs/{stub.pk}/__tabs/compact")
+        page.goto(
+            f"{live_server.url}{_FRAMEWORK_PATH}/stubs/{stubs[0].pk}/__tabs/compact"
+        )
         compact_rows = page.locator("#compact-table tbody tr")
         expect(compact_rows).to_have_count(5)
         compact_heights = [row.bounding_box() for row in compact_rows.all()]

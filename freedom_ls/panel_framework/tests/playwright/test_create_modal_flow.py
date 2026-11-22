@@ -51,12 +51,21 @@ def _name_cells(page: Page) -> Locator:
     return page.locator("#stubs-table tbody tr td:nth-child(2)")
 
 
-def test_create_modal_lifecycle(
+def test_create_modal_flow(
     page: Page,
     live_server: pytest_django.live_server_helper.LiveServer,
     live_server_site: Site,
     mock_site_context: None,
 ) -> None:
+    """The create modal from open to submit, then its layout and submit guards.
+
+    Proves focus on open, Esc and the discard prompt, Cancel, the error summary
+    taking focus, "Add and add another", backdrop and close-control behaviour,
+    Enter submitting as Add, history entries after Add, the modal's layout at
+    each viewport (wrapped footer actions stay right-aligned on a phone), both
+    submits disabling while the create POST is held, and a double-click on Add
+    posting once.
+    """
     page_size = StubDataTable.get_page_size()
     make_stub(name="Existing")
     for i in range(page_size + 5):
@@ -240,21 +249,29 @@ def test_create_modal_lifecycle(
         # A label that word-wraps makes its button a whole line taller.
         assert max(heights) < 1.5 * min(heights)
 
+        if viewport["width"] == 375:
+            footer = page.locator("#app-modal [data-modal-footer]:visible")
+            footer_box = footer.bounding_box()
+            last_box = footer.locator("button:visible").last.bounding_box()
+            cancel_box = footer.get_by_role("button", name="Cancel").bounding_box()
+            assert footer_box is not None
+            assert last_box is not None
+            assert cancel_box is not None
+            assert last_box["y"] > cancel_box["y"] + cancel_box["height"] - 1, (
+                "footer actions did not wrap below Cancel at 375px"
+            )
+            # The footer has px-6 (24px) padding.
+            assert last_box["x"] + last_box["width"] == pytest.approx(
+                footer_box["x"] + footer_box["width"] - 24, abs=1
+            ), "wrapped footer actions not right-aligned at 375px"
+
         page.keyboard.press("Escape")
         expect(modal).to_be_hidden()
 
-
-def test_add_disables_every_submit_while_pending(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
     # The handler only parks the route: a handler that blocks also blocks the
     # assertions below, which then run after the response has arrived.
     held: list[Route] = []
-
-    page.goto(f"{live_server.url}{_LIST_PATH}")
+    page.goto(list_url)
     name_field = _open_create_modal(page)
     name_field.fill("Beta")
     page.route("**/__actions/create_item", lambda route: held.append(route))
@@ -266,67 +283,35 @@ def test_add_disables_every_submit_while_pending(
     add_button = submit_buttons.nth(1)
     add_button.click()
 
-    expect(add_another_button).to_be_disabled()
-    expect(add_button).to_be_disabled()
+    expect(
+        add_another_button, "Add and add another enabled while create is pending"
+    ).to_be_disabled()
+    expect(add_button, "Add enabled while create is pending").to_be_disabled()
 
     for _ in range(100):
         if held:
             break
         page.wait_for_timeout(50)
     held[0].continue_()
-    expect(page.locator("#app-modal")).to_be_hidden()
+    expect(modal).to_be_hidden()
+    page.unroute("**/__actions/create_item")
 
-
-def test_double_clicking_add_creates_one_row(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
     post_count = {"total": 0}
 
     def _count_then_continue(route: Route) -> None:
         post_count["total"] += 1
         route.continue_()
 
-    page.goto(f"{live_server.url}{_LIST_PATH}")
+    page.goto(list_url)
     name_field = _open_create_modal(page)
     name_field.fill("Gamma")
     page.route("**/__actions/create_item", _count_then_continue)
 
     page.get_by_role("button", name="Add", exact=True).dblclick()
 
-    expect(page.locator("#app-modal")).to_be_hidden()
-    assert post_count["total"] == 1
-    assert StubModel.objects.filter(name="Gamma").count() == 1
-
-
-def test_wrapped_footer_actions_stay_right_aligned_on_a_phone(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    """Actions that wrap onto their own footer row stay at the right edge.
-
-    The wrapped action group used to be the only item on its flex line and sat
-    at the left, so the primary button ended short of the body's right edge.
-    """
-    make_stub(name="Existing")
-    page.set_viewport_size({"width": 375, "height": 812})
-    page.goto(f"{live_server.url}{_LIST_PATH}")
-    _open_create_modal(page)
-
-    footer = page.locator("#app-modal [data-modal-footer]:visible")
-    footer_box = footer.bounding_box()
-    last_box = footer.locator("button:visible").last.bounding_box()
-    cancel_box = footer.get_by_role("button", name="Cancel").bounding_box()
-    assert footer_box is not None
-    assert last_box is not None
-    assert cancel_box is not None
-    # The actions wrapped below Cancel.
-    assert last_box["y"] > cancel_box["y"] + cancel_box["height"] - 1
-    # The footer has px-6 (24px) padding.
-    assert last_box["x"] + last_box["width"] == pytest.approx(
-        footer_box["x"] + footer_box["width"] - 24, abs=1
+    expect(modal).to_be_hidden()
+    assert post_count["total"] == 1, "double-clicking Add posted more than once"
+    assert StubModel.objects.filter(name="Gamma").count() == 1, (
+        "double-clicking Add created more than one row"
     )
+    page.unroute("**/__actions/create_item")
