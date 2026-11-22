@@ -779,6 +779,22 @@ def test_feedback_shows_the_explanation_after_an_answer(
 
 
 @pytest.mark.django_db
+def test_why_label_is_not_sized_by_a_page_level_heading_style(mock_site_context):
+    """The Why label is a heading no larger than the result line and question.
+
+    It used to be an h3, which the base layer sizes as a page section heading,
+    so it outranked "Incorrect." and the question inside the same card.
+    """
+    html = _feedback_html(explanation="Because.", answer_correctly=False)
+
+    block = re.search(
+        r'data-testid="revision-explanation">\s*<(h\d)[^>]*>\s*Why\s*</\1>', html
+    )
+    assert block is not None
+    assert block.group(1) in {"h5", "h6"}
+
+
+@pytest.mark.django_db
 def test_feedback_shows_no_why_block_for_a_question_without_an_explanation(
     mock_site_context,
 ):
