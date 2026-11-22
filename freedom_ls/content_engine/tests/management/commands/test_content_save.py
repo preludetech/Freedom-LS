@@ -4733,6 +4733,197 @@ def test_a_reference_entry_naming_a_file_that_is_not_a_part_raises(
     assert not CourseReferencePart.objects.exists()
 
 
+_MOVING_PART_UUID = "20000000-0000-0000-0000-000000000061"
+_MOVING_TOPIC_UUID = "20000000-0000-0000-0000-000000000062"
+
+
+def _write_course_placing_or_referencing_part(
+    course_dir: Path, course_uuid: str, *, reference: bool
+) -> None:
+    """A course holding one part that has one topic with a due date on its placement.
+    The part sits under reference: when `reference` is true, else under children:. A
+    separate intro topic is always placed, so children: is never empty and the course
+    does not fall back to auto-discovering the part."""
+    shutil.rmtree(course_dir, ignore_errors=True)
+    part_dir = course_dir / "part"
+    part_dir.mkdir(parents=True)
+    (course_dir / "intro.md").write_text(
+        "---\ncontent_type: TOPIC\ntitle: Intro\n"
+        "uuid: 20000000-0000-0000-0000-000000000064\n---\n\nBody\n"
+    )
+    (part_dir / "topic.md").write_text(
+        f"---\ncontent_type: TOPIC\ntitle: Moving topic\nuuid: {_MOVING_TOPIC_UUID}\n"
+        "---\n\nBody\n"
+    )
+    (part_dir / "part.yaml").write_text(
+        f"---\ncontent_type: COURSE_PART\ntitle: Moving part\nuuid: {_MOVING_PART_UUID}\n"
+        "children:\n  - path: topic.md\n"
+    )
+    if reference:
+        lists = "children:\n  - path: intro.md\nreference:\n  - path: part/part.yaml\n"
+    else:
+        lists = (
+            "children:\n  - path: intro.md\n  - path: part/part.yaml\n    children:\n"
+            "      - path: topic.md\n        due_days_after_registration: 5\n"
+        )
+    (course_dir / "course.md").write_text(
+        f"---\ncontent_type: COURSE\ntitle: Course {course_uuid[-1]}\n"
+        f"uuid: {course_uuid}\n{lists}---\n"
+    )
+
+
+_SECOND_COURSE_UUID = "20000000-0000-0000-0000-000000000063"
+
+
+def _moving_part_placements(course_uuid: str) -> list[ContentCollectionItem]:
+    return list(
+        ContentCollectionItem.objects.filter(
+            collection_id=course_uuid, child_id=_MOVING_PART_UUID
+        )
+    )
+
+
+@pytest.mark.django_db
+def test_moving_a_part_to_reference_deletes_its_placement_and_child_due_dates(
+    site, mock_site_context
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "moving"
+        _write_course_placing_or_referencing_part(
+            course_dir, COURSE_UUID, reference=False
+        )
+        save_content_to_db(course_dir, site.name)
+        assert CoursePartChildDueDate.objects.count() == 1
+
+        _write_course_placing_or_referencing_part(
+            course_dir, COURSE_UUID, reference=True
+        )
+        save_content_to_db(course_dir, site.name)
+
+    assert _moving_part_placements(COURSE_UUID) == []
+    assert not CoursePartChildDueDate.objects.exists()
+    assert CourseReferencePart.objects.get().course_part_id == uuid.UUID(
+        _MOVING_PART_UUID
+    )
+
+
+@pytest.mark.django_db
+def test_moving_a_part_to_reference_reports_the_course_part_and_counts(
+    site, mock_site_context, capsys
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "moving"
+        _write_course_placing_or_referencing_part(
+            course_dir, COURSE_UUID, reference=False
+        )
+        save_content_to_db(course_dir, site.name)
+        capsys.readouterr()
+
+        _write_course_placing_or_referencing_part(
+            course_dir, COURSE_UUID, reference=True
+        )
+        save_content_to_db(course_dir, site.name)
+
+    output = capsys.readouterr().out
+    assert "Removed part placement: course.md no longer places part/part.yaml" in output
+    assert "1 part child due date(s)" in output
+    assert "0 deadline extension(s)" in output
+
+
+@pytest.mark.django_db
+def test_the_moved_part_is_not_among_the_course_items(site, mock_site_context):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "moving"
+        _write_course_placing_or_referencing_part(
+            course_dir, COURSE_UUID, reference=False
+        )
+        save_content_to_db(course_dir, site.name)
+        _write_course_placing_or_referencing_part(
+            course_dir, COURSE_UUID, reference=True
+        )
+        save_content_to_db(course_dir, site.name)
+
+    assert Course.objects.get(pk=COURSE_UUID).children() == [
+        Topic.objects.get(title="Intro")
+    ]
+
+
+@pytest.mark.django_db
+def test_another_courses_placement_of_the_moved_part_survives(site, mock_site_context):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        first_dir = Path(tmpdir) / "first"
+        second_dir = Path(tmpdir) / "second"
+        for directory, course_uuid in (
+            (first_dir, COURSE_UUID),
+            (second_dir, _SECOND_COURSE_UUID),
+        ):
+            _write_course_placing_or_referencing_part(
+                directory, course_uuid, reference=False
+            )
+            save_content_to_db(directory, site.name)
+        _write_course_placing_or_referencing_part(
+            first_dir, COURSE_UUID, reference=True
+        )
+        save_content_to_db(first_dir, site.name)
+
+    assert _moving_part_placements(COURSE_UUID) == []
+    assert len(_moving_part_placements(_SECOND_COURSE_UUID)) == 1
+    assert (
+        CoursePartChildDueDate.objects.get().part_collection_item.collection_id
+        == uuid.UUID(_SECOND_COURSE_UUID)
+    )
+
+
+@pytest.mark.django_db
+def test_a_second_unchanged_load_prints_no_removal_line(
+    site, mock_site_context, capsys
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "moving"
+        _write_course_placing_or_referencing_part(
+            course_dir, COURSE_UUID, reference=False
+        )
+        save_content_to_db(course_dir, site.name)
+        _write_course_placing_or_referencing_part(
+            course_dir, COURSE_UUID, reference=True
+        )
+        save_content_to_db(course_dir, site.name)
+        capsys.readouterr()
+
+        save_content_to_db(course_dir, site.name)
+
+    assert "Removed part placement" not in capsys.readouterr().out
+
+
+@pytest.mark.django_db
+def test_a_load_that_fails_after_the_cleanup_prints_no_removal_line(
+    site, mock_site_context, capsys, monkeypatch
+):
+    def fail_after_the_cleanup(*args: object) -> None:
+        raise RuntimeError("fails after the cleanup")
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "moving"
+        _write_course_placing_or_referencing_part(
+            course_dir, COURSE_UUID, reference=False
+        )
+        save_content_to_db(course_dir, site.name)
+        _write_course_placing_or_referencing_part(
+            course_dir, COURSE_UUID, reference=True
+        )
+        capsys.readouterr()
+        monkeypatch.setattr(
+            "freedom_ls.content_engine.management.commands.content_save.moved_children",
+            fail_after_the_cleanup,
+        )
+
+        with pytest.raises(RuntimeError, match="fails after the cleanup"):
+            save_content_to_db(course_dir, site.name)
+
+    assert "Removed part placement" not in capsys.readouterr().out
+    assert len(_moving_part_placements(COURSE_UUID)) == 1
+
+
 # The command loads only committed content.
 
 

@@ -936,6 +936,39 @@ def _sync_section_rows[Row: (FormQuestionTopic, FormQuestionCoursePart)](
     )
 
 
+# What deleting a part placement cascades to, as Django's collector labels it, and how
+# the report names it. Labels, not imports: the deadline models live in an app that
+# depends on this one.
+_PLACEMENT_CASCADES = (
+    ("freedom_ls_deadlines.CohortDeadlineOverride", "cohort deadline override(s)"),
+    ("freedom_ls_deadlines.LearnerDeadlineOverride", "learner deadline override(s)"),
+    ("freedom_ls_deadlines.DeadlineExtension", "deadline extension(s)"),
+    ("freedom_ls_content_engine.CoursePartChildDueDate", "part child due date(s)"),
+)
+
+
+def remove_part_placement(site: Site, course: Course, part: CoursePart) -> str | None:
+    """Delete this course's placement of a part it now lists as reference material, and
+    say what went with it. None when the course did not place the part."""
+    total, deleted = ContentCollectionItem.objects.filter(
+        site=site,
+        collection_type=DjangoContentType.objects.get_for_model(Course),
+        collection_id=course.id,
+        child_type=DjangoContentType.objects.get_for_model(CoursePart),
+        child_id=part.id,
+    ).delete()
+    if not total:
+        return None
+    counts = ", ".join(
+        f"{deleted.get(label, 0)} {noun}" for label, noun in _PLACEMENT_CASCADES
+    )
+    return (
+        f"Removed part placement: {course.file_path} no longer places {part.file_path} "
+        "in its learning path (it is listed under reference:).\n"
+        f"  Deleted with it: {counts}."
+    )
+
+
 def sync_reference_parts(
     site: Site,
     collections_data: list[tuple[Course | CoursePart, BaseBaseContentModel]],
@@ -943,10 +976,12 @@ def sync_reference_parts(
 ) -> list[str]:
     """Write each loaded course's reference parts from its reference: list. Returns the
     lines that report what was removed, for the caller to print once the load is safe."""
+    removal_lines: list[str] = []
     for course, schema_item in collections_data:
         if not isinstance(course, Course) or not isinstance(schema_item, CourseSchema):
             continue
         part_ids: list[uuid.UUID] = []
+        parts: list[CoursePart] = []
         for order, entry in enumerate(schema_item.reference):
             part_path = resolve_author_path(schema_item.file_path, entry.path)
             part = content_by_path.get(part_path)
@@ -966,12 +1001,21 @@ def sync_reference_parts(
                 site=site, course=course, course_part=part, defaults={"order": order}
             )
             part_ids.append(part.id)
+            parts.append(part)
         # The file is the single source of a course's reference parts, so a row the
         # list no longer names goes. Only courses in this load are touched.
         CourseReferencePart.objects.filter(site=site, course=course).exclude(
             course_part_id__in=part_ids
         ).delete()
-    return []
+        # Runs before the part child due date reconcile, which would delete the
+        # placement's child due dates first and leave the report counting none, and
+        # before moved_children, whose reads of the course's viewable items would
+        # still see this stale placement.
+        for part in parts:
+            line = remove_part_placement(site, course, part)
+            if line is not None:
+                removal_lines.append(line)
+    return removal_lines
 
 
 def get_file_type_from_extension(file_path):
@@ -1497,7 +1541,7 @@ def _write_source(source: _ParsedSource, site: Site) -> list[ImageEncodeStatus]:
                     f"{child_path} that was not loaded"
                 )
 
-    sync_reference_parts(site, collections_data, content_by_path)
+    removal_lines = sync_reference_parts(site, collections_data, content_by_path)
 
     # A course is written before the parts it places, so the part's own rows exist only
     # now. Every part placement of every course in this load is reconciled: one whose
@@ -1630,6 +1674,8 @@ def save_content_to_db(
             for order, source_commit in enumerate(source_commits)
         )
 
+    for line in removal_lines:
+        click.echo(line)
     click.echo(f"✓ Successfully saved all content for site: {site_name}")
 
     counts = Counter(image_statuses)

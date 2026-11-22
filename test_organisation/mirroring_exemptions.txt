@@ -28,3 +28,5 @@ freedom_ls/panel_framework/tests/test_import_guard.py  # checks every module's i
 freedom_ls/panel_framework/tests/test_standalone_fixtures.py  # checks which modules the standalone run loads, which mirrors no single module
 freedom_ls/content_engine/tests/components/  # tests of Cotton component templates, which have no Python module
 freedom_ls/accounts/tests/test_allauth_pages.py  # tests of allauth's management page layout, a template with no Python module
+freedom_ls/deadlines/tests/invariants/  # loads content through content_save and checks what a moved part leaves behind in deadlines; mirrors no module
+freedom_ls/learner_progress/tests/invariants/  # loads content through content_save and checks progress after a part moves to reference; mirrors no module
