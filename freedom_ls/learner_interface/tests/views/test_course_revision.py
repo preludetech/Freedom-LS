@@ -885,6 +885,30 @@ def test_guessed_post_after_a_right_answer_shows_the_toggle_pressed(mock_site_co
 
 
 @pytest.mark.django_db
+def test_guessed_toggle_looks_different_when_pressed_than_when_released(
+    mock_site_context,
+):
+    """A pressed toggle used to render exactly like a released one.
+
+    Pressed is a filled button with a check icon, so it does not rely on colour alone.
+    """
+    course, _, client = _right_answer_then_guessed()
+
+    def _toggle_markup(response) -> tuple[bool, bool]:
+        html = response.content.decode()
+        marker = html.index('data-testid="revision-guessed"')
+        button = html[
+            html.rindex("<button", 0, marker) : html.index("</button>", marker)
+        ]
+        return 'data-variant="primary"' in button, "<svg" in button
+
+    pressed = _toggle_markup(_post_guessed(client, course))
+    released = _toggle_markup(_post_guessed(client, course))
+
+    assert (pressed, released) == ((True, True), (False, False))
+
+
+@pytest.mark.django_db
 def test_guessed_post_on_a_guessed_review_shows_the_toggle_released(mock_site_context):
     course, _, client = _right_answer_then_guessed()
     _post_guessed(client, course)

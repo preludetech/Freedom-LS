@@ -29,7 +29,8 @@
     {% endif %}
     {% if review.was_correct %}
         <div>
-            <c-button variant="secondary"
+            <c-button variant="{% if review.guessed %}primary{% else %}secondary{% endif %}"
+                      icon_left="{% if review.guessed %}check{% endif %}"
                       aria-pressed="{% if review.guessed %}true{% else %}false{% endif %}"
                       hx-post="{% url 'learner_interface:course_revision_guessed' course.slug %}"
                       hx-target="#revision-card"
