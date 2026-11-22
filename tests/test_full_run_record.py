@@ -25,7 +25,12 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "claude_plugins" / "sdd" / "scripts" / "full_run_record.py"
 SELECTOR_SOURCES = tuple(
     (REPO_ROOT / "claude_plugins" / "django-stack" / "scripts" / name)
-    for name in ("select_tests.py", "check_test_mirroring.py", "generate_app_map.py")
+    for name in (
+        "select_tests.py",
+        "module_graph.py",
+        "check_test_mirroring.py",
+        "generate_app_map.py",
+    )
 )
 SELECTOR = ".claude/ds/scripts/select_tests.sh"
 TIER_CONFIG = '[tool.test_tiers]\nnone = ["spec_dd/**"]\n'
