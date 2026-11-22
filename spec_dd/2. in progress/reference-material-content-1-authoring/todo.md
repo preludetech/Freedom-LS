@@ -20,7 +20,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
 - [x] (user) Force-push the branch: it was rebased onto main and the auto-mode classifier blocked the push. Run `! git push origin reference-material-content-1-authoring --force-with-lease --force-if-includes`; until then origin holds the pre-rebase history
-- [ ] (user) Decide whether a `reference:` entry naming a path in `.fls-content.yaml`'s `ignore:` list should get its own validator error ("content_save skips this file: it is in the .fls-content.yaml ignore list"), as a `children:` entry does since the content-save-safety spec landed. Today it fails only at load time as "was not loaded". If yes, add the check to `validate_reference_lists` and its offline copy.
+- [x] (user) Decide whether a `reference:` entry naming a path in `.fls-content.yaml`'s `ignore:` list should get its own validator error ("content_save skips this file: it is in the .fls-content.yaml ignore list"), as a `children:` entry does since the content-save-safety spec landed. Today it fails only at load time as "was not loaded". If yes, add the check to `validate_reference_lists` and its offline copy.
 
 ## 4. Documentation and pull request
 
