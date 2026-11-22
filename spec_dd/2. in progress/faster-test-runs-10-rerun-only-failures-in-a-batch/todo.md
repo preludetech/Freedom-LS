@@ -22,9 +22,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 4. Documentation and pull request
 
-- [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
-- [ ] (cmd) Update `claude_plugins/sdd/commands/README.md` where it describes the whole-tier re-run after a batch, integration or final-run fix (e.g. the Step 3 fix paragraph), naming the failed-only re-run (spec "Documentation and downstream")
-- [ ] (cmd) Update the `implement_plan` and `rebase` diagrams in `claude_plugins/sdd/docs/diagrams/` where they describe the whole-tier re-run; `python3 claude_plugins/sdd/scripts/check_diagrams.py` must pass (spec "Documentation and downstream")
+- [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [x] (cmd) Update `claude_plugins/sdd/commands/README.md` where it describes the whole-tier re-run after a batch, integration or final-run fix (e.g. the Step 3 fix paragraph), naming the failed-only re-run (spec "Documentation and downstream")
+- [x] (cmd) Update the `implement_plan` and `rebase` diagrams in `claude_plugins/sdd/docs/diagrams/` where they describe the whole-tier re-run; `python3 claude_plugins/sdd/scripts/check_diagrams.py` must pass (spec "Documentation and downstream")
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
