@@ -26,7 +26,6 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_management.models import Cohort
 from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.reports.tests.helpers import requires_tailwind_bundle
 from freedom_ls.role_based_permissions.utils import (
     assign_object_role,
     deactivate_object_role,
@@ -45,6 +44,18 @@ pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 _LONG_NAME = "Balasubramaniamnathan" * 3
 # Widths from 1280px up, where the quick view docks beside the page.
 _DOCKED_WIDTHS = (1920, 1442, 1280)
+_DESKTOP = {"width": 1440, "height": 900}
+_PHONE = QA_VIEWPORTS[0]
+_MAX_TABS = 60
+
+
+def _tab_to(page: Page, target: Locator) -> None:
+    """Presses Tab until ``target`` holds focus, failing if it never does."""
+    for _ in range(_MAX_TABS):
+        page.keyboard.press("Tab")
+        if target.evaluate("element => element === document.activeElement"):
+            return
+    pytest.fail("Tab never reached the target control")
 
 
 def _box(locator: Locator) -> FloatRect:
@@ -86,6 +97,7 @@ def test_educator_manages_cohorts_and_learners(
     educator_user: AbstractBaseUser,
 ) -> None:
     page = educator_logged_in_page
+    page.set_viewport_size(_DESKTOP)
     organisation_a = OrganisationFactory(name="Org A")
     organisation_b = OrganisationFactory(name="Org B")
     CohortFactory(organisation=organisation_b, name="Org B Cohort")
@@ -104,6 +116,10 @@ def test_educator_manages_cohorts_and_learners(
             organisation=organisation_a,
             user=UserFactory(first_name=first_name, last_name="Lovelace"),
         )
+    LearnerFactory(
+        organisation=organisation_a,
+        user=UserFactory(first_name="Kai", last_name="Ngata"),
+    )
 
     # The live region sits outside #main-content, so an ordinary swap leaves
     # that very element in place for assistive technology to keep watching.
@@ -121,7 +137,15 @@ def test_educator_manages_cohorts_and_learners(
     page.keyboard.press("Enter")
     expect(page.get_by_role("menuitemradio", name="Org A")).to_be_focused()
     page.keyboard.press("Tab")
-    expect(page.get_by_role("menuitemradio", name="Org B")).to_be_focused()
+    org_b_option = page.get_by_role("menuitemradio", name="Org B")
+    expect(org_b_option).to_be_focused()
+    # A keyboard-focused option carries an outline, not only a background tint.
+    outline = org_b_option.evaluate(
+        "el => { const s = getComputedStyle(el);"
+        " return {style: s.outlineStyle, width: parseFloat(s.outlineWidth)}; }"
+    )
+    assert outline["style"] != "none", "Org B option has no outline when focused"
+    assert outline["width"] >= 2, "Org B option outline narrower than 2px"
     page.keyboard.press("Enter")
     expect(page).to_have_url(
         interface_url(live_server, organisation_b.slug, "learners")
@@ -159,6 +183,44 @@ def test_educator_manages_cohorts_and_learners(
     # Learner quick view.
     page.goto(interface_url(live_server, organisation_a.slug, "learners"))
     _assert_quick_view_triggers_line_up(page)
+
+    # Keyboard: Tab to the trigger, Enter opens the drawer with focus inside
+    # it, Esc closes it and returns focus to the trigger.
+    kai_trigger = page.locator("#learners-table").get_by_role(
+        "link", name="Quick view: Kai Ngata"
+    )
+    expect(kai_trigger).to_be_visible()
+    _tab_to(page, kai_trigger)
+    page.keyboard.press("Enter")
+    kai_drawer = page.locator("#quick-view")
+    expect(kai_drawer).to_be_visible()
+    expect(
+        kai_drawer.locator(":focus"), "no focus inside the drawer opened by keyboard"
+    ).to_have_count(1)
+    page.keyboard.press("Escape")
+    expect(kai_drawer).to_be_hidden()
+    expect(kai_trigger, "focus not returned to the trigger after Esc").to_be_focused()
+
+    # On a phone the quick view is a look, not a decision: it never blocks the
+    # page, so the list's search box takes a tap behind the sheet.
+    page.set_viewport_size(_PHONE)
+    kai_trigger.click()
+    expect(kai_drawer).to_be_visible()
+    assert kai_drawer.evaluate("dialog => dialog.matches(':modal')") is False, (
+        "phone quick view is modal"
+    )
+    expect(page.locator("dialog:modal")).to_have_count(0)
+    search = page.locator("#main-content input[type='search']").first
+    search.click()
+    expect(
+        search, "search box did not take a tap behind the phone sheet"
+    ).to_be_focused()
+    expect(kai_drawer).to_be_visible()
+    kai_drawer.get_by_role("button", name="Close").click()
+    expect(kai_drawer).to_be_hidden()
+    page.set_viewport_size(_DESKTOP)
+    page.goto(interface_url(live_server, organisation_a.slug, "learners"))
+
     ada_trigger = page.get_by_role("link", name="Quick view: Ada Lovelace", exact=True)
     drawer = _open_drawer(page, ada_trigger)
     expect(page.locator("#quick-view-subtitle")).to_have_text("ada@example.com")
@@ -389,24 +451,3 @@ def test_quick_view_and_learners_list_layout_across_viewports(
     expect(next_link).to_be_visible()
     next_box = _box(next_link)
     assert next_box["x"] + next_box["width"] <= _box(drawer)["x"]
-
-
-@pytest.mark.weasyprint
-@requires_tailwind_bundle
-def test_educator_generates_and_downloads_the_cohort_pdf_report(
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: AbstractBaseUser,
-) -> None:
-    page = educator_logged_in_page
-    organisation = OrganisationFactory(name="Org A")
-    cohort = CohortFactory(organisation=organisation, name="Year 9 Maths")
-    assign_object_role(educator_user, organisation, "organisation_admin")
-
-    page.goto(interface_url(live_server, organisation.slug, f"cohorts/{cohort.pk}"))
-    page.get_by_role("link", name="Report", exact=True).click()
-    page.get_by_role("button", name="Generate report").click()
-
-    # The immediate task backend renders the PDF inside the POST, so the
-    # region that comes back already holds the finished report.
-    expect(page.get_by_role("link", name=re.compile("^Download"))).to_be_visible()

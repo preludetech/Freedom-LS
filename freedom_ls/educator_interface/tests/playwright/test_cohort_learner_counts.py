@@ -1,5 +1,12 @@
-"""The cohort page's learner counts follow a membership change made from the
-Learners tab, without a page reload."""
+"""The cohort Learners tab after a member is removed through the confirmation
+dialog.
+
+The flow proves:
+
+- the Learners tab count follows the removal without a page reload;
+- focus is not left on ``<body>``: the table refresh removes the trigger the
+  closing dialog had just refocused.
+"""
 
 from __future__ import annotations
 
@@ -26,12 +33,13 @@ from .helpers import interface_url
 pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
 
-def test_removing_a_member_updates_the_tab_learner_count(
+def test_cohort_learners_tab_flow(
     live_server,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
     page = educator_logged_in_page
+    page.set_viewport_size({"width": 1440, "height": 900})
     organisation = OrganisationFactory(name="Org A")
     cohort = CohortFactory(organisation=organisation, name="Evening group")
     for first_name in ("Ada", "Grace"):
@@ -61,3 +69,6 @@ def test_removing_a_member_updates_the_tab_learner_count(
 
     expect(modal).to_be_hidden()
     expect(page.get_by_role("link", name="Learners 1", exact=True)).to_be_visible()
+    assert page.evaluate(
+        "document.activeElement !== null && document.activeElement !== document.body"
+    ), "focus dropped to <body> after confirming the row removal"
