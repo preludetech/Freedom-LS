@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
@@ -19,7 +19,10 @@ from freedom_ls.deadlines.factories import (
 )
 from freedom_ls.learner_interface.tests.helpers import topic_completion
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
-from freedom_ls.revision.factories import RevisionReviewFactory
+from freedom_ls.revision.factories import (
+    RevisionReviewFactory,
+    RevisionScheduleFactory,
+)
 from freedom_ls.revision.models import RevisionReview
 from freedom_ls.revision.services import RevisionSessionState, shuffled_options
 from freedom_ls.revision.tests.helpers import (
@@ -440,3 +443,53 @@ def test_start_stores_a_seed_from_new_seed(mock_site_context):
         client.post(_route_url("course_revision_start", course))
 
     assert client.session[f"revision_session:{course.id}"]["seeds"] == [4242]
+
+
+def _course_with_due_backlog(user, size: int):
+    """A course whose learner has `size` reviewed questions due."""
+    course = CourseFactory()
+    topic, _ = place_topic(course)
+    finish_topic(course_progress_record(course, user), topic)
+    now = datetime.now(UTC)
+    for _ in range(size):
+        RevisionScheduleFactory(
+            user=user,
+            question=question_testing_topic(topic),
+            due=now - timedelta(days=1),
+        )
+    return course
+
+
+@pytest.mark.django_db
+def test_start_screen_caps_a_long_backlog_at_forty_plus(mock_site_context):
+    user = UserFactory()
+    course = _course_with_due_backlog(user, 45)
+
+    response = _client_for(user).get(_revision_url(course))
+
+    assert "40+ ready" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_start_screen_shows_forty_exactly_without_a_plus(mock_site_context):
+    user = UserFactory()
+    course = _course_with_due_backlog(user, 40)
+
+    response = _client_for(user).get(_revision_url(course))
+
+    assert "40 ready" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_session_over_a_long_backlog_holds_the_configured_size(
+    mock_site_context, settings
+):
+    settings.REVISION_SESSION_SIZE = 15
+    user = UserFactory()
+    course = _course_with_due_backlog(user, 100)
+    client = _client_for(user)
+
+    client.post(_route_url("course_revision_start", course))
+
+    stored = client.session[f"revision_session:{course.id}"]
+    assert len(stored["question_ids"]) == 15

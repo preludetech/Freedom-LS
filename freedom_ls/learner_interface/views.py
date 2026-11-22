@@ -2573,6 +2573,16 @@ def _revision_card_context(
     }
 
 
+COURSE_READY_CAP = 40
+SECTION_READY_CAP = 10
+
+
+def _ready_text(user: User, record: CourseProgress, now: datetime, *, cap: int) -> str:
+    # Counts one past the cap, so "40" and "more than 40" can be told apart.
+    count = ready_count(user, record, now, limit=cap + 1)
+    return f"{cap}+ ready" if count > cap else f"{count} ready"
+
+
 @login_required
 def course_revision(request: HttpRequest, course_slug: str) -> HttpResponse:
     """The revision page: the start screen, or the session's current card or end line."""
@@ -2582,11 +2592,13 @@ def course_revision(request: HttpRequest, course_slug: str) -> HttpResponse:
     course, record = gate
     state = _revision_state(request, course)
     if state is None:
+        ready_text = _ready_text(
+            cast("User", request.user), record, timezone.now(), cap=COURSE_READY_CAP
+        )
         context: dict[str, object] = {
             "course": course,
-            "ready_count": ready_count(
-                cast("User", request.user), record, timezone.now()
-            ),
+            "ready_text": ready_text,
+            "has_ready": ready_text != "0 ready",
             "card_template": "learner_interface/partials/revision_start.html",
         }
     else:

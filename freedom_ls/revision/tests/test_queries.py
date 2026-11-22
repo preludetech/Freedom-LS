@@ -250,7 +250,7 @@ def test_question_scheduled_for_later_is_not_ready(mock_site_context):
     now = timezone.now()
     RevisionScheduleFactory(user=user, question=question, due=now + timedelta(days=3))
 
-    assert ready_count(user, record, now) == 0
+    assert ready_count(user, record, now, limit=41) == 0
 
 
 @pytest.mark.django_db
@@ -286,3 +286,120 @@ def test_due_questions_follow_course_order(mock_site_context):
     questions = due_questions(user, record, timezone.now())
 
     assert [q.pk for q in questions] == [earlier_question.pk, later_question.pk]
+
+
+def _banked_question_with_schedule(topic, user, *, now, due, stability):
+    question = question_testing_topic(topic)
+    RevisionScheduleFactory(
+        user=user,
+        question=question,
+        state=2,
+        stability=stability,
+        difficulty=5.0,
+        due=due,
+        last_review=now - timedelta(days=10),
+    )
+    return question
+
+
+@pytest.mark.django_db
+def test_due_question_with_lower_retrievability_comes_first(mock_site_context):
+    course = CourseFactory()
+    topic, _ = place_topic(course)
+    user = UserFactory()
+    record = course_progress_record(course, user)
+    finish_topic(record, topic)
+    now = timezone.now()
+    # Same age since review, so the lower stability has decayed further.
+    sturdy = _banked_question_with_schedule(
+        topic, user, now=now, due=now - timedelta(days=1), stability=50.0
+    )
+    fading = _banked_question_with_schedule(
+        topic, user, now=now, due=now - timedelta(days=1), stability=2.0
+    )
+
+    questions = due_questions(user, record, now)
+
+    assert [q.pk for q in questions] == [fading.pk, sturdy.pk]
+
+
+@pytest.mark.django_db
+def test_due_reviewed_questions_come_before_never_reviewed_ones(mock_site_context):
+    course = CourseFactory()
+    topic, _ = place_topic(course)
+    user = UserFactory()
+    record = course_progress_record(course, user)
+    finish_topic(record, topic)
+    now = timezone.now()
+    never_reviewed = question_testing_topic(topic)
+    reviewed = _banked_question_with_schedule(
+        topic, user, now=now, due=now - timedelta(days=1), stability=5.0
+    )
+
+    questions = due_questions(user, record, now)
+
+    assert [q.pk for q in questions] == [reviewed.pk, never_reviewed.pk]
+
+
+@pytest.mark.django_db
+def test_never_reviewed_questions_follow_course_order_after_reviewed_ones(
+    mock_site_context,
+):
+    course = CourseFactory()
+    first, _ = place_topic(course, order=0)
+    second, _ = place_topic(course, order=1)
+    user = UserFactory()
+    record = course_progress_record(course, user)
+    finish_topic(record, first)
+    finish_topic(record, second)
+    now = timezone.now()
+    later = question_testing_topic(second)
+    earlier = question_testing_topic(first)
+
+    questions = due_questions(user, record, now)
+
+    assert [q.pk for q in questions] == [earlier.pk, later.pk]
+
+
+@pytest.mark.django_db
+def test_question_not_yet_due_is_not_in_due_questions(mock_site_context):
+    course = CourseFactory()
+    topic, _ = place_topic(course)
+    user = UserFactory()
+    record = course_progress_record(course, user)
+    finish_topic(record, topic)
+    now = timezone.now()
+    _banked_question_with_schedule(
+        topic, user, now=now, due=now + timedelta(days=3), stability=5.0
+    )
+
+    assert due_questions(user, record, now) == []
+
+
+@pytest.mark.django_db
+def test_ready_count_stops_at_the_limit(mock_site_context):
+    course = CourseFactory()
+    topic, _ = place_topic(course)
+    for _ in range(5):
+        question_testing_topic(topic)
+    user = UserFactory()
+    record = course_progress_record(course, user)
+    finish_topic(record, topic)
+
+    assert ready_count(user, record, timezone.now(), limit=3) == 3
+
+
+@pytest.mark.django_db
+def test_ready_count_runs_one_query(mock_site_context, django_assert_max_num_queries):
+    course = CourseFactory()
+    topic, _ = place_topic(course)
+    for _ in range(5):
+        question_testing_topic(topic)
+    user = UserFactory()
+    record = course_progress_record(course, user)
+    finish_topic(record, topic)
+    now = timezone.now()
+    bank_questions(record)  # memoises the placed sections on the record
+
+    with django_assert_max_num_queries(1):
+        ready_count(user, record, now, limit=41)

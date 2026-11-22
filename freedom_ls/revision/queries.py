@@ -16,6 +16,7 @@ from freedom_ls.form_engine.enums import OPTION_QUESTION_TYPES
 from freedom_ls.form_engine.models import Form, FormQuestion, QuestionOption
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.queries import completed_collection_item_ids
+from freedom_ls.revision import scheduler
 from freedom_ls.revision.models import RevisionSchedule
 
 if TYPE_CHECKING:
@@ -167,8 +168,15 @@ def _ready(user: User, record: CourseProgress, now: datetime) -> QuerySet[FormQu
     )
 
 
-def ready_count(user: User, record: CourseProgress, now: datetime) -> int:
-    return _ready(user, record, now).count()
+def ready_count(
+    user: User, record: CourseProgress, now: datetime, *, limit: int
+) -> int:
+    """How many bank questions are ready, counted no further than `limit`.
+
+    A learner back after a long break may have hundreds due; the page only
+    ever says "40+", so the database stops counting there.
+    """
+    return len(_ready(user, record, now).values_list("pk", flat=True)[:limit])
 
 
 def due_questions(
@@ -176,8 +184,10 @@ def due_questions(
 ) -> list[FormQuestion]:
     """The ready questions in the order a session asks them.
 
-    Course order: a question sits where its first section sits, and questions
-    of one section keep their form, page and question order.
+    Questions the learner has reviewed come first, the one they are most
+    likely to have forgotten (lowest retrievability) leading. Never-reviewed
+    questions follow in course order: a question sits where its first section
+    sits, and questions of one section keep their form, page and question order.
     """
     position = {
         section_id: index
@@ -189,6 +199,12 @@ def due_questions(
         .prefetch_related("formquestiontopic_set", "formquestioncoursepart_set")
         .order_by("form_page__form_id", "form_page__order", "order", "pk")
     )
+    schedules = {
+        schedule.question_id: schedule
+        for schedule in RevisionSchedule.objects.filter(
+            user=user, question__in=questions
+        )
+    }
 
     def first_section(question: FormQuestion) -> int:
         named = [row.topic_id for row in question.formquestiontopic_set.all()] + [
@@ -198,5 +214,25 @@ def due_questions(
             position[section_id] for section_id in named if section_id in position
         )
 
+    def retrievability(question: FormQuestion) -> float:
+        schedule = schedules[question.pk]
+        return scheduler.retrievability(
+            scheduler.card_from_columns(
+                state=schedule.state,
+                step=schedule.step,
+                stability=schedule.stability,
+                difficulty=schedule.difficulty,
+                due=schedule.due,
+                last_review=schedule.last_review,
+            ),
+            now,
+        )
+
+    reviewed = [question for question in questions if question.pk in schedules]
+    never_reviewed = [
+        question for question in questions if question.pk not in schedules
+    ]
     # A stable sort keeps the database's form, page and question order within a section.
-    return sorted(questions, key=first_section)
+    return sorted(reviewed, key=retrievability) + sorted(
+        never_reviewed, key=first_section
+    )
