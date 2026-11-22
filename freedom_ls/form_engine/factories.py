@@ -159,3 +159,12 @@ def seed_serving(form: Form, wanted: Callable[[ServedPaper], bool]) -> int:
     raise AssertionError(
         f"no seed below {SEED_SEARCH_LIMIT} serves {form} the paper the test wants"
     )
+
+
+def served_papers_over_seeds(form: Form, seeds: range) -> list[ServedPaper]:
+    """The paper `form` serves for each seed, in seed order."""
+    papers: list[ServedPaper] = []
+    for seed in seeds:
+        with mock.patch.object(served_paper_module, "new_seed", return_value=seed):
+            papers.append(build_served_paper(form))
+    return papers

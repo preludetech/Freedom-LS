@@ -359,6 +359,7 @@ title: Quiz 3
 uuid: 00000000-0000-0000-0000-000000000004
 quiz_show_incorrect: true
 quiz_pass_percentage: 70
+quiz_pass_percentage: 70
 ---
 """)
         (quiz_3_dir / "1. page.yaml").write_text("""---
@@ -400,6 +401,7 @@ strategy: QUIZ
 title: Quiz 5
 uuid: 00000000-0000-0000-0000-00000000000a
 quiz_show_incorrect: true
+quiz_pass_percentage: 70
 quiz_pass_percentage: 70
 ---
 """)
@@ -520,6 +522,7 @@ strategy: QUIZ
 title: Quiz 3
 uuid: 10000000-0000-0000-0000-000000000004
 quiz_show_incorrect: true
+quiz_pass_percentage: 70
 quiz_pass_percentage: 70
 ---
 """)
@@ -2661,6 +2664,7 @@ title: Submit On Exit Quiz
 uuid: aaaaaaaa-0000-0000-0000-000000000002
 quiz_show_incorrect: true
 quiz_pass_percentage: 70
+quiz_pass_percentage: 70
 {submit_on_exit_line}---
 """)
     (quiz_dir / "1. page.yaml").write_text("""---
@@ -3978,6 +3982,7 @@ strategy: QUIZ
 title: Knowledge check
 quiz_show_incorrect: true
 quiz_pass_percentage: 70
+quiz_pass_percentage: 70
 ---
 """)
     (quiz_dir / "1. page.yaml").write_text(f"""---
@@ -4121,6 +4126,7 @@ content_type: FORM
 strategy: QUIZ
 title: Knowledge check
 quiz_show_incorrect: true
+quiz_pass_percentage: 70
 quiz_pass_percentage: 70
 {form_sections_line}
 ---
@@ -4380,6 +4386,7 @@ strategy: QUIZ
 title: Shuffled quiz
 uuid: {_SHUFFLE_FORM_UUID}
 quiz_show_incorrect: true
+quiz_pass_percentage: 70
 quiz_pass_percentage: 70
 {knob_lines}---
 """)
@@ -6076,3 +6083,47 @@ def test_the_removal_report_is_printed_after_the_load_commits(
         save_content_to_db(course_dir, site.name)
 
     assert printed_inside_a_transaction == [False, False, False]
+
+
+_DRAW_FORM_UUID = "40000000-0000-0000-0000-000000000001"
+_DRAW_PAGE_UUID = "40000000-0000-0000-0000-000000000002"
+
+
+def _write_quiz_with_draw(directory: Path, *, draw: int | None) -> None:
+    directory.mkdir(exist_ok=True)
+    (directory / "form.md").write_text(f"""---
+content_type: FORM
+strategy: QUIZ
+quiz_show_incorrect: true
+quiz_pass_percentage: 70
+title: Drawn quiz
+uuid: {_DRAW_FORM_UUID}
+---
+""")
+    draw_line = f"draw: {draw}\n" if draw is not None else ""
+    (directory / "1. page.yaml").write_text(f"""---
+content_type: FORM_PAGE
+title: Pool
+uuid: {_DRAW_PAGE_UUID}
+{draw_line}---
+question: Which one?
+type: multiple_choice
+options:
+  - text: "A"
+    value: "a"
+    correct: true
+  - text: "B"
+    value: "b"
+""")
+
+
+@pytest.mark.django_db
+def test_a_page_draw_is_stored_and_then_cleared(site, mock_site_context, tmp_path):
+    _write_quiz_with_draw(tmp_path / "quiz", draw=2)
+    save_content_to_db(tmp_path, site.name)
+    assert FormPage.objects.get(id=_DRAW_PAGE_UUID).draw == 2
+
+    _write_quiz_with_draw(tmp_path / "quiz", draw=None)
+    save_content_to_db(tmp_path, site.name)
+
+    assert FormPage.objects.get(id=_DRAW_PAGE_UUID).draw is None

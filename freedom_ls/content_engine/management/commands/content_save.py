@@ -780,8 +780,8 @@ def save_form_page(
     condition_option: QuestionOption | None = None,
 ) -> FormPage:
     """Save a FormPage to the database."""
-    # condition_option is written even when None: save_with_uuid drops None
-    # keys, so leaving it out would keep whatever condition the row had from an
+    # condition_option and draw are written even when None: save_with_uuid drops
+    # None keys, so leaving them out would keep whatever the row had from an
     # earlier import.
     page: FormPage = save_with_uuid(
         FormPage,
@@ -792,6 +792,7 @@ def save_form_page(
         form=form,
         order=order,
         condition_option=condition_option,
+        draw=item.draw,
     )
     return page
 

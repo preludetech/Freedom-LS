@@ -86,8 +86,24 @@ def shuffle_units[T: Groupable](children: Sequence[T]) -> list[list[T]]:
     return units
 
 
+def _drawn_units[T](units: list[T], page: FormPage, seed: int) -> list[T]:
+    """The units a sitting is served from the page, in authored order.
+
+    The draw has its own generator, so turning a shuffle knob on or off, or
+    editing another page, leaves the drawn set unchanged for the same seed.
+    Sorting the picked indices keeps authored order; the page shuffle, when
+    it is on, reorders afterwards. A draw above the unit count serves every
+    unit rather than refusing the sitting.
+    """
+    if page.draw is None:
+        return units
+    rng = _scope_rng(seed, f"draw:{page.id}")
+    picked = sorted(rng.sample(range(len(units)), min(page.draw, len(units))))
+    return [units[index] for index in picked]
+
+
 def _served_children(page: FormPage, form: Form, seed: int) -> list[FormChild]:
-    units = shuffle_units(page.children())
+    units = _drawn_units(shuffle_units(page.children()), page, seed)
     if form.shuffle_questions:
         _scope_rng(seed, f"page:{page.id}").shuffle(units)
     return [child for unit in units for child in unit]
@@ -110,9 +126,9 @@ def build_served_paper(form: Form) -> ServedPaper:
                 option_ids = [str(o.id) for o in _served_options(child, form, seed)]
                 if option_ids:
                     options[str(child.id)] = option_ids
-    # The seed drives the one-time shuffle when the paper is written.
-    # `random.shuffle` output is not stable across Python versions, so nothing
-    # rebuilds an order from it; the stored lists are the record.
+    # The seed drives the one-time draw and shuffle when the paper is written.
+    # `random.sample` and `random.shuffle` output is not stable across Python
+    # versions, so nothing rebuilds a paper from it; the stored lists are the record.
     return {"seed": seed, "pages": pages, "options": options}
 
 

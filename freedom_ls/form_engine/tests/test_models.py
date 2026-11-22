@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 import pytest
 
+from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import ProtectedError, RestrictedError
@@ -821,3 +822,13 @@ def test_incorrect_answers_without_a_served_paper_list_options_in_authored_order
 
     assert item["learner_selected"] == [b, d]
     assert item["correct_options"] == [a, c]
+
+
+@pytest.mark.django_db
+def test_a_page_draw_of_zero_fails_validation(mock_site_context):
+    page = FormPageFactory.build(draw=0)
+
+    with pytest.raises(ValidationError) as excinfo:
+        page.full_clean(exclude=["form", "site", "condition_option"])
+
+    assert "draw" in excinfo.value.message_dict

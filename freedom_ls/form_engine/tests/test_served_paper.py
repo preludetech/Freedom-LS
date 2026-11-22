@@ -23,8 +23,15 @@ from freedom_ls.form_engine.factories import (
     FormQuestionFactory,
     QuestionOptionFactory,
     served_paper_of,
+    served_papers_over_seeds,
 )
-from freedom_ls.form_engine.models import Form, FormProgress, FormQuestion, FormStrategy
+from freedom_ls.form_engine.models import (
+    Form,
+    FormPage,
+    FormProgress,
+    FormQuestion,
+    FormStrategy,
+)
 from freedom_ls.form_engine.served_paper import (
     build_served_paper,
     ensure_served_paper,
@@ -535,3 +542,135 @@ def test_build_served_paper_with_every_knob_on_serves_permutations_of_the_author
     assert paper["options"].keys() == authored_options.keys()
     for question_id, option_ids in paper["options"].items():
         assert sorted(option_ids) == sorted(authored_options[question_id])
+
+
+def _drawing_page_form(
+    *, units: int, draw: int | None, grouped: bool = False, **knobs: bool
+) -> tuple[Form, FormPage]:
+    """A QUIZ form with one page of `units` single questions, or of `units`
+    groups (a content block then two questions) when `grouped`."""
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ, **knobs)
+    page: FormPage = FormPageFactory(form=form, order=0, draw=draw)
+    order = 0
+    for unit in range(units):
+        group = f"g{unit}" if grouped else ""
+        if grouped:
+            FormContentFactory(form_page=page, order=order, group=group)
+            order += 1
+        for _ in range(2 if grouped else 1):
+            question = FormQuestionFactory(form_page=page, order=order, group=group)
+            QuestionOptionFactory(question=question, order=0)
+            order += 1
+    return form, page
+
+
+def _paper_children(form: Form, seed: int) -> list[str]:
+    (paper,) = served_papers_over_seeds(
+        Form.objects.get(pk=form.pk), range(seed, seed + 1)
+    )
+    return paper["pages"][0]["children"]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("seed", range(20))
+def test_a_drawing_page_serves_exactly_draw_questions_in_authored_order(
+    mock_site_context: object, seed: int
+) -> None:
+    form, page = _drawing_page_form(units=6, draw=3)
+    authored = [str(c.id) for c in page.children()]
+
+    served = _paper_children(form, seed)
+
+    assert len(served) == 3
+    assert served == sorted(served, key=authored.index)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("seed", range(20))
+def test_a_drawing_page_of_groups_serves_draw_groups_whole_content_first(
+    mock_site_context: object, seed: int
+) -> None:
+    form, page = _drawing_page_form(units=5, draw=2, grouped=True)
+    authored = [str(c.id) for c in page.children()]
+    group_ids = [authored[i : i + 3] for i in range(0, 15, 3)]
+
+    served = _paper_children(form, seed)
+
+    served_groups = [served[0:3], served[3:6]]
+    assert len(served) == 6
+    assert all(group in group_ids for group in served_groups)
+    assert served_groups == sorted(served_groups, key=group_ids.index)
+
+
+@pytest.mark.django_db
+def test_options_hold_an_entry_for_each_drawn_question_and_none_for_an_undrawn_one(
+    mock_site_context: object,
+) -> None:
+    form, page = _drawing_page_form(units=6, draw=2)
+    (paper,) = served_papers_over_seeds(Form.objects.get(pk=form.pk), range(4, 5))
+
+    drawn = set(paper["pages"][0]["children"])
+    all_ids = {str(c.id) for c in page.children()}
+    assert set(paper["options"]) == drawn
+    assert not (all_ids - drawn) & set(paper["options"])
+
+
+@pytest.mark.django_db
+def test_every_unit_of_a_drawing_page_is_drawn_over_a_range_of_seeds(
+    mock_site_context: object,
+) -> None:
+    form, page = _drawing_page_form(units=5, draw=2)
+
+    papers = served_papers_over_seeds(Form.objects.get(pk=form.pk), range(60))
+
+    drawn = {child for paper in papers for child in paper["pages"][0]["children"]}
+    assert drawn == {str(c.id) for c in page.children()}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "knob", ["shuffle_questions", "shuffle_pages", "shuffle_options"]
+)
+def test_the_drawn_set_ignores_each_shuffle_knob(
+    mock_site_context: object, knob: str
+) -> None:
+    form, _ = _drawing_page_form(units=8, draw=3)
+    per_seed_before = [set(_paper_children(form, seed)) for seed in range(10)]
+
+    setattr(form, knob, True)
+    form.save()
+
+    per_seed_after = [set(_paper_children(form, seed)) for seed in range(10)]
+    assert per_seed_after == per_seed_before
+
+
+@pytest.mark.django_db
+def test_the_drawn_set_ignores_another_pages_children(
+    mock_site_context: object,
+) -> None:
+    form, _ = _drawing_page_form(units=8, draw=3)
+    other = FormPageFactory(form=form, order=1)
+    FormQuestionFactory(form_page=other, order=0)
+    before = [set(_paper_children(form, seed)) for seed in range(10)]
+
+    FormQuestionFactory(form_page=other, order=1)
+
+    assert [set(_paper_children(form, seed)) for seed in range(10)] == before
+
+
+@pytest.mark.django_db
+def test_a_draw_above_the_unit_count_serves_every_unit(
+    mock_site_context: object,
+) -> None:
+    form, page = _drawing_page_form(units=3, draw=10)
+
+    served = _paper_children(form, 1)
+
+    assert served == [str(c.id) for c in page.children()]
+
+
+@pytest.mark.django_db
+def test_a_page_with_no_draw_serves_every_child(mock_site_context: object) -> None:
+    form, page = _drawing_page_form(units=4, draw=None)
+
+    assert _paper_children(form, 1) == [str(c.id) for c in page.children()]

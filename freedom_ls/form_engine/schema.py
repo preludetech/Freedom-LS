@@ -211,6 +211,14 @@ class FormPage(BaseContentModel, content_type=ContentType.FORM_PAGE):
     """A page within a form."""
 
     when: Condition | None = Field(None, description=WHEN_DESCRIPTION)
+    draw: int | None = Field(
+        None,
+        ge=1,
+        description=(
+            "Serve this many of the page's questions or groups to each attempt, drawn at "
+            "random. QUIZ forms only. Leave out to serve every one."
+        ),
+    )
 
     def derive_content_type(self, data):
         if "content" in data:

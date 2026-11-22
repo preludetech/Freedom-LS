@@ -8,6 +8,7 @@ from uuid import UUID
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.files.storage import Storage
+from django.core.validators import MinValueValidator
 from django.db import models, transaction
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -128,6 +129,15 @@ class FormPage(TitledContent):
         blank=True,
         on_delete=models.RESTRICT,
         related_name="gated_pages",
+    )
+    draw = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        help_text=_(
+            "If set, each sitting of a quiz serves this many of the page's questions or "
+            "groups, drawn at random. If empty (default), every one is served."
+        ),
     )
 
     def children(self):

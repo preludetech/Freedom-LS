@@ -629,3 +629,24 @@ def test_a_locked_option_parses() -> None:
     )
 
     assert [o.locked for o in question.options or []] == [True, False]
+
+
+def _page_with_draw(draw: int) -> FormPage:
+    return FormPage.model_validate(
+        {
+            "content_type": "FORM_PAGE",
+            "file_path": "forms/quiz/1. page.yaml",
+            "title": "Page",
+            "draw": draw,
+        }
+    )
+
+
+def test_a_page_accepts_a_positive_draw() -> None:
+    assert _page_with_draw(3).draw == 3
+
+
+@pytest.mark.parametrize("draw", [0, -1])
+def test_a_page_rejects_a_draw_below_one(draw: int) -> None:
+    with pytest.raises(ValidationError):
+        _page_with_draw(draw)
