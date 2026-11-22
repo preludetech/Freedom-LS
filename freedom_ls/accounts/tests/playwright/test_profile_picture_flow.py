@@ -47,30 +47,6 @@ def assert_header_avatar(
     assert page.evaluate(f"window.{NO_RELOAD_MARKER}") is True
 
 
-def test_a_name_save_keeps_the_picture_the_user_has_chosen(
-    live_server, logged_in_page: Page, logged_in_user: User
-) -> None:
-    page = logged_in_page
-    page.goto(
-        reverse_url(
-            live_server,
-            "accounts:account_profile",
-            kwargs={"path_string": "personal-details"},
-        )
-    )
-    page.get_by_label(PICTURE_LABEL).set_input_files(
-        {"name": "me.jpg", "mimeType": "image/jpeg", "buffer": jpeg_bytes()}
-    )
-
-    page.get_by_label("First name").fill("Grace")
-    page.get_by_label("Last name").fill("Hopper")
-    page.get_by_role("button", name="Save", exact=True).click()
-
-    expect(page.get_by_text("Name saved")).to_be_visible()
-    expect(page.locator("#account-picture-preview")).to_contain_text("GH")
-    assert page.get_by_label(PICTURE_LABEL).evaluate("input => input.files.length") == 1
-
-
 def test_the_name_and_picture_forms_save_with_javascript_off(
     live_server, browser: Browser, logged_in_page: Page, logged_in_user: User
 ) -> None:
@@ -112,10 +88,42 @@ def test_the_name_and_picture_forms_save_with_javascript_off(
     context.close()
 
 
-def test_change_the_name_picture_email_and_password_on_panels(
+def test_personal_details_flow(
     live_server, logged_in_page: Page, logged_in_user: User
 ) -> None:
+    """The Personal details page end to end.
+
+    Proves: a name save leaves a chosen-but-unsaved picture in the file input
+    and shows its initials; the account URL lands on Personal details; the
+    forms' fields sit flush; name and picture save inline with toasts and
+    without a reload, updating the header avatar; a wrong file type shows its
+    error beside the label and keeps the saved picture; the remove dialog
+    deletes the picture and keeps focus in the panel; submits sit in the card
+    footers; an email address adds and removes; a wrong current password shows
+    an alert; and the layout holds at each viewport.
+    """
     page = logged_in_page
+    page.goto(
+        reverse_url(
+            live_server,
+            "accounts:account_profile",
+            kwargs={"path_string": "personal-details"},
+        )
+    )
+    page.get_by_label(PICTURE_LABEL).set_input_files(
+        {"name": "me.jpg", "mimeType": "image/jpeg", "buffer": jpeg_bytes()}
+    )
+    page.get_by_label("First name").fill("Grace")
+    page.get_by_label("Last name").fill("Hopper")
+    page.get_by_role("button", name="Save", exact=True).click()
+
+    expect(page.get_by_text("Name saved")).to_be_visible()
+    expect(page.locator("#account-picture-preview")).to_contain_text("GH")
+    assert (
+        page.get_by_label(PICTURE_LABEL).evaluate("input => input.files.length") == 1
+    ), "name save dropped the chosen picture from the file input"
+
+    # A fresh load, so the next steps start without the earlier toast or file.
     page.goto(reverse_url(live_server, "accounts:account_profile"))
 
     expect(page).to_have_url(
@@ -181,9 +189,10 @@ def test_change_the_name_picture_email_and_password_on_panels(
     expect(page.get_by_role("button", name="Remove picture")).to_have_count(0)
     # The refresh removed the button the closing dialog had refocused; focus
     # must land somewhere in the panel, not fall back to <body>.
-    assert page.evaluate(
-        "document.activeElement.closest('[data-panel=\"profile-picture\"]') !== null"
-    )
+    expect(
+        page.locator('[data-panel="profile-picture"]:focus-within'),
+        "focus fell out of the profile picture panel after the refresh",
+    ).to_have_count(1)
     assert_header_avatar(page, name="Ada Lovelace", initials="AL", picture=False)
     assert User._base_manager.get(pk=logged_in_user.pk).profile_picture.name == ""
 
