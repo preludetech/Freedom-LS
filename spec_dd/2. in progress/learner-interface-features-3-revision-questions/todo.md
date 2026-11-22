@@ -9,8 +9,8 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (user) Review the spec and edit where needed; after substantial hand edits, run `/sdd:spec_review`
 - [x] (user) This branch was cut from `sacaa-compliance-2-shuffle`, not main, and carries 9 of its commits; decide whether to rebase onto main (dropping them) before the spec is written
 - [ ] (user) Run `/sdd:roadmap` on main to add a bullet for the new idea `educator-revision-analytics`
-- [ ] (user) Force-push the rebased branch (the permission system refused it): `git push origin learner-interface-features-3-revision-questions --force-with-lease --force-if-includes`
-- [ ] (user) The pre-step rebase stopped before its front-end check and upstream-change review because the push was refused; after pushing, let the next SDD step's pre-step rebase run them
+- [x] (user) Force-push the rebased branch (the permission system refused it): `git push origin learner-interface-features-3-revision-questions --force-with-lease --force-if-includes`
+- [x] (user) The pre-step rebase stopped before its front-end check and upstream-change review because the push was refused; after pushing, let the next SDD step's pre-step rebase run them
 
 ## 2. Plan
 
@@ -19,10 +19,11 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 3. Implementation and QA
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
+- [ ] (user) Decide whether the demo bank form `demo_content/functionality_demo_revision_bank/form.md` may stay `strategy: QUIZ` (the plan said `UNSCORED`, but the validator only allows a `locked` option on a shuffled QUIZ form); if UNSCORED matters more, drop the locked "All of the above" option and switch the strategy
 
 ## 4. Documentation and pull request
 
