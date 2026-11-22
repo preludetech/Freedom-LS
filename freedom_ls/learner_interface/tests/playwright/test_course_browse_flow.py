@@ -757,8 +757,6 @@ def test_audio_widgets_flow(
         >= 4.5
     )
 
-    # A reveal whose audio fails still shows the answer and hides the error
-    # line with it.
     audio_requests = re.compile(r"/content/audio/")
     page.route(audio_requests, lambda route: route.abort())
     page.goto(_item_url(live_server, course, 1))
