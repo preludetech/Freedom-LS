@@ -21,6 +21,8 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### Ready to start
 
+- 🔴 High · `sacaa-complianc-deletion-and-declaration-1-force-delete` (SACAA record retention and declarations)
+- 🔴 High · `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` (SACAA record retention and declarations)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-2-retire-removed-content` (SACAA content versions and access)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-4-question-access` (SACAA content versions and access)
 - 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
@@ -63,8 +65,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - ⚪ Priority not set · `extract-semantic-icons-app-2-host-icons` (Semantic icons extraction)
 - ⚪ Priority not set · `panel-framework-close-and-toast-response` (Panel framework)
 - ⚪ Priority not set · `panel-framework-dialogs-without-javascript` (Panel framework)
-- ⚪ Priority not set · `sacaa-complianc-deletion-and-declaration-1-force-delete` (SACAA record retention and declarations)
-- ⚪ Priority not set · `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` (SACAA record retention and declarations)
 
 ### Needs work on main first
 
@@ -95,6 +95,29 @@ Reference parts, such as regulations, that learners consult at any time beside a
 - Assumed: a topic may sit in both a learning-path part and a reference part; only a whole part is barred from both lists of one course.
 - Out of scope: nesting deeper than part, then topics (planned later), PDFs and files, search, forms in reference.
 - References: `research_learner_player.md` and `research_educator_content.md` in the parent.
+
+## SACAA record retention and declarations
+
+Priority: 🔴 High
+
+Keeping learner records for SACAA's five-year rule, and signed quiz declarations, for training organisations audited by SACAA. Parent: `sacaa-complianc-deletion-and-declaration`.
+
+- `sacaa-complianc-deletion-and-declaration-1-force-delete` — **ready** — Admins can no longer delete users; superusers force delete a user or learner with a logged reason; users get a last-active time.
+- `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` — **ready** — A quiz can make learners tick a declaration and type their name before the first page; FLS stores it immutably.
+
+![SACAA record retention and declarations](roadmap_diagrams/sacaa-record-retention-and-declarations.svg)
+
+**Notes**
+- Build order: the two specs share no code and run in parallel.
+- Collisions: `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` changes the form schema, `Form`, `FormProgress`, `content_save` and `form_start`, like `sacaa-compliance-2-shuffle` and `sacaa-compliance-3-question-pools`; it rebases onto whichever lands first.
+- Decided: only superusers force delete, at any time, with a required reason written to the audit log; no retention-window gate and no automatic cleanup.
+- Decided: force delete replaces the User admin's delete button and "delete selected" action as the one erasure path.
+- Decided: each quiz sets whether its declaration is signed on every attempt or once per learner; the typed name must be non-empty and is stored as typed.
+- Assumption: force deleting a user removes every record today's user deletion removes, plus their course progress, which today blocks deletion (`PROTECT`).
+- Assumption: force deleting a learner removes that `Learner` and its registrations, cohort memberships and course progress in that organisation; the `User` stays.
+- Assumption: of `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` and `sacaa-compliance-4-attempt-review`, whichever lands second shows the declaration on the educator attempt view.
+- Out of scope: locking progress, attempt and answer records in the admin; self-service account deletion; declarations on non-quiz forms.
+- References: CAR 141.01.17 five-year retention in `sacaa-compliance/research_sacaa_requirements.md`.
 
 ## SACAA compliance
 
@@ -497,26 +520,3 @@ Gaps in the panel framework's dialogs and responses.
 - `panel-framework-tech-debt-polish` — **ready** — Tech debt and polish work on the panel framework; no idea written yet. Before starting: cut it with `/sdd:roadmap panel-framework-tech-debt-polish` (the directory is empty).
 
 ![Panel framework](roadmap_diagrams/panel-framework.svg)
-
-## SACAA record retention and declarations
-
-Priority: ⚪ Priority not set
-
-Keeping learner records for SACAA's five-year rule, and signed quiz declarations, for training organisations audited by SACAA. Parent: `sacaa-complianc-deletion-and-declaration`.
-
-- `sacaa-complianc-deletion-and-declaration-1-force-delete` — **ready** — Admins can no longer delete users; superusers force delete a user or learner with a logged reason; users get a last-active time.
-- `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` — **ready** — A quiz can make learners tick a declaration and type their name before the first page; FLS stores it immutably.
-
-![SACAA record retention and declarations](roadmap_diagrams/sacaa-record-retention-and-declarations.svg)
-
-**Notes**
-- Build order: the two specs share no code and run in parallel.
-- Collisions: `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` changes the form schema, `Form`, `FormProgress`, `content_save` and `form_start`, like `sacaa-compliance-2-shuffle` and `sacaa-compliance-3-question-pools`; it rebases onto whichever lands first.
-- Decided: only superusers force delete, at any time, with a required reason written to the audit log; no retention-window gate and no automatic cleanup.
-- Decided: force delete replaces the User admin's delete button and "delete selected" action as the one erasure path.
-- Decided: each quiz sets whether its declaration is signed on every attempt or once per learner; the typed name must be non-empty and is stored as typed.
-- Assumption: force deleting a user removes every record today's user deletion removes, plus their course progress, which today blocks deletion (`PROTECT`).
-- Assumption: force deleting a learner removes that `Learner` and its registrations, cohort memberships and course progress in that organisation; the `User` stays.
-- Assumption: of `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` and `sacaa-compliance-4-attempt-review`, whichever lands second shows the declaration on the educator attempt view.
-- Out of scope: locking progress, attempt and answer records in the admin; self-service account deletion; declarations on non-quiz forms.
-- References: CAR 141.01.17 five-year retention in `sacaa-compliance/research_sacaa_requirements.md`.
