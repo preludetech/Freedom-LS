@@ -7,6 +7,8 @@ from datetime import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, cast
 
+from pydantic import ValidationError as PydanticValidationError
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.sites.models import Site
@@ -65,7 +67,7 @@ from freedom_ls.form_engine.conditions import (
     current_path,
     sitting_path,
 )
-from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
+from freedom_ls.form_engine.models import Form, FormProgress, FormQuestion, FormStrategy
 from freedom_ls.form_engine.page_flow import (
     CurrentPage,
     PageSubmission,
@@ -111,7 +113,14 @@ from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.referral_tracking.conversions import record_conversion
 from freedom_ls.referral_tracking.models import ConversionKind
-from freedom_ls.revision.queries import bank_questions
+from freedom_ls.revision.models import RevisionReview
+from freedom_ls.revision.queries import bank_questions, ready_count
+from freedom_ls.revision.services import (
+    RevisionSessionState,
+    build_session,
+    record_answer,
+    session_reviews,
+)
 from freedom_ls.site_aware_models.models import get_cached_site
 from freedom_ls.site_aware_models.time_zones import shows_time_zone_to_learners
 
@@ -2466,18 +2475,206 @@ def _revision_record(
     return course, record
 
 
+def _revision_state(
+    request: HttpRequest, course: Course
+) -> RevisionSessionState | None:
+    """The learner's revision session for this course, or None when there is none or it is unreadable."""
+    stored = request.session.get(_revision_session_key(course))
+    if stored is None:
+        return None
+    try:
+        return RevisionSessionState.model_validate(stored)
+    except PydanticValidationError:
+        return None
+
+
+def _revision_session_key(course: Course) -> str:
+    return f"revision_session:{course.id}"
+
+
+def _store_revision_state(
+    request: HttpRequest, course: Course, state: RevisionSessionState
+) -> None:
+    request.session[_revision_session_key(course)] = state.model_dump(mode="json")
+
+
+def _current_revision_question(
+    record: CourseProgress, state: RevisionSessionState
+) -> tuple[FormQuestion | None, RevisionSessionState]:
+    """The question the session is on, read through the bank, and the state after skipping.
+
+    A question that has left the bank since the session was built is skipped,
+    so a session never serves a question the learner may no longer revise.
+    """
+    while (question_id := state.current_question_id) is not None:
+        question = (
+            bank_questions(record)
+            .filter(pk=question_id)
+            .prefetch_related("options")
+            .first()
+        )
+        if question is not None:
+            return question, state
+        state = state.advanced()
+    return None, state
+
+
+def _revision_review_of(
+    user: User, state: RevisionSessionState, question: FormQuestion
+) -> RevisionReview | None:
+    """The review of this question written during this session, if any."""
+    review: RevisionReview | None = (
+        session_reviews(user, state).filter(question=question).first()
+    )
+    return review
+
+
+def _render_revision_card(
+    request: HttpRequest,
+    course: Course,
+    record: CourseProgress,
+    state: RevisionSessionState,
+    *,
+    error: str = "",
+    status: int = 200,
+) -> HttpResponse:
+    """The `#revision-card` partial for wherever the session now is."""
+    template, context = _revision_card_context(request, course, record, state)
+    context["error"] = error
+    return render(request, template, context, status=status)
+
+
+def _revision_card_context(
+    request: HttpRequest,
+    course: Course,
+    record: CourseProgress,
+    state: RevisionSessionState,
+) -> tuple[str, dict[str, object]]:
+    question, state = _current_revision_question(record, state)
+    if question is None:
+        reviews = session_reviews(cast("User", request.user), state)
+        return "learner_interface/partials/revision_end.html", {
+            "course": course,
+            "answered_count": reviews.count(),
+            "right_count": reviews.filter(was_correct=True).count(),
+        }
+    review = _revision_review_of(cast("User", request.user), state, question)
+    return "learner_interface/partials/revision_card.html", {
+        "course": course,
+        "question": question,
+        "review": review,
+        "position": state.index + 1,
+        "total": len(state.question_ids),
+        "question_positions": {question.id: state.index + 1},
+        "rejected_answers": {},
+        "existing_answers": {},
+    }
+
+
 @login_required
 def course_revision(request: HttpRequest, course_slug: str) -> HttpResponse:
-    """The revision start screen: how many questions the learner can revise."""
+    """The revision page: the start screen, or the session's current card or end line."""
     gate = _revision_record(request, course_slug)
     if isinstance(gate, HttpResponseRedirect):
         return gate
     course, record = gate
-    return render(
-        request,
-        "learner_interface/course_revision.html",
-        {"course": course, "ready_count": bank_questions(record).count()},
+    state = _revision_state(request, course)
+    if state is None:
+        context: dict[str, object] = {
+            "course": course,
+            "ready_count": ready_count(
+                cast("User", request.user), record, timezone.now()
+            ),
+            "card_template": "learner_interface/partials/revision_start.html",
+        }
+    else:
+        card_template, context = _revision_card_context(request, course, record, state)
+        context["card_template"] = card_template
+        context["error"] = ""
+    return render(request, "learner_interface/course_revision.html", context)
+
+
+@login_required
+@require_POST
+def course_revision_start(request: HttpRequest, course_slug: str) -> HttpResponse:
+    """Start a revision session over the ready questions, when there are any."""
+    gate = _revision_record(request, course_slug)
+    if isinstance(gate, HttpResponseRedirect):
+        return gate
+    course, record = gate
+    state = build_session(cast("User", request.user), record, timezone.now())
+    if state.question_ids:
+        _store_revision_state(request, course, state)
+    response = redirect("learner_interface:course_revision", course_slug=course.slug)
+    # See Other: the browser follows a POST with a GET of the revision page.
+    response.status_code = 303
+    return response
+
+
+@login_required
+@require_POST
+def partial_course_revision_answer(
+    request: HttpRequest, course_slug: str
+) -> HttpResponse:
+    """Mark the posted answer to the session's current question and show its feedback."""
+    gate = _revision_record(request, course_slug)
+    if isinstance(gate, HttpResponseRedirect):
+        return gate
+    course, record = gate
+    state = _revision_state(request, course)
+    if state is None:
+        return redirect("learner_interface:course_revision", course_slug=course.slug)
+    question, state = _current_revision_question(record, state)
+    if question is None:
+        _store_revision_state(request, course, state)
+        return redirect("learner_interface:course_revision", course_slug=course.slug)
+    # Skipped questions moved the index; keep the state the learner now sits on.
+    _store_revision_state(request, course, state)
+
+    if _revision_review_of(cast("User", request.user), state, question) is not None:
+        return _render_revision_card(request, course, record, state)
+
+    own_option_ids = {option.id for option in question.options.all()}
+    selected: set[uuid.UUID] = set()
+    for value in request.POST.getlist(f"question_{question.id}"):
+        try:
+            option_id = uuid.UUID(value)
+        except ValueError:
+            continue
+        if option_id in own_option_ids:
+            selected.add(option_id)
+    if not selected:
+        return _render_revision_card(
+            request, course, record, state, error="Choose an answer.", status=422
+        )
+    record_answer(
+        cast("User", request.user), record, question, selected, timezone.now()
     )
+    return _render_revision_card(request, course, record, state)
+
+
+@login_required
+@require_POST
+def partial_course_revision_next(
+    request: HttpRequest, course_slug: str
+) -> HttpResponse:
+    """Move to the next question once the current one has been answered."""
+    gate = _revision_record(request, course_slug)
+    if isinstance(gate, HttpResponseRedirect):
+        return gate
+    course, record = gate
+    state = _revision_state(request, course)
+    if state is None:
+        return redirect("learner_interface:course_revision", course_slug=course.slug)
+    question, state = _current_revision_question(record, state)
+    if question is not None and _revision_review_of(
+        cast("User", request.user), state, question
+    ):
+        state = state.advanced()
+    _store_revision_state(request, course, state)
+    if request.headers.get("HX-Request") != "true":
+        return redirect("learner_interface:course_revision", course_slug=course.slug)
+    return _render_revision_card(request, course, record, state)
 
 
 @login_required

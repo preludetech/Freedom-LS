@@ -1140,6 +1140,7 @@ dependencies = [
     { name = "djangorestframework" },
     { name = "drf-spectacular" },
     { name = "dulwich" },
+    { name = "fsrs" },
     { name = "httpx" },
     { name = "jinja2" },
     { name = "markdown-headdown" },
@@ -1259,6 +1260,7 @@ requires-dist = [
     { name = "drf-spectacular", specifier = ">=0.30.0" },
     { name = "dulwich", specifier = ">=0.24.0" },
     { name = "factory-boy", marker = "extra == 'dev'", specifier = ">=3.3.3" },
+    { name = "fsrs", specifier = ">=6.3.3" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "import-linter", marker = "extra == 'dev'", specifier = ">=2.15" },
     { name = "ipython", marker = "extra == 'dev'", specifier = ">=9.7.0" },
@@ -1332,6 +1334,18 @@ dev = [
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "ruff", specifier = ">=0.14.10" },
     { name = "time-machine", specifier = ">=3.2.0" },
+]
+
+[[package]]
+name = "fsrs"
+version = "6.3.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4e/4d/a18d9850b883977ec445a69464aa0bb852910c98c42e2adabc8e0519ba00/fsrs-6.3.3.tar.gz", hash = "sha256:916ef5c7de96508c9077e1888b9786ef33babb3f59ac3108926cebfcaadccff6", size = 33686, upload-time = "2026-11-13T02:50:57.891Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/54/a9/a3a2a3c423ee08ced77906a2456631a50d10054c27f83fdf415c02198f93/fsrs-6.3.3-py3-none-any.whl", hash = "sha256:0e06323c564fdb429bf65f8d0d3d5ace05b19e005ac080f015dc8631ad3901e2", size = 22926, upload-time = "2026-11-13T02:50:56.901Z" },
 ]
 
 [[package]]

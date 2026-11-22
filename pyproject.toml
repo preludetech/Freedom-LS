@@ -44,6 +44,7 @@ dependencies = [
     "phonenumberslite>=9.0.43",
     "mutagen>=1.48.1",
     "dulwich>=0.24.0",
+    "fsrs>=6.3.3",
 ]
 
 [project.optional-dependencies]

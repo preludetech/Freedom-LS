@@ -1,4 +1,12 @@
-<section id="revision-card" class="surface p-6 space-y-2">
+<section id="revision-card" class="surface p-6 space-y-4">
     <h1>Revision</h1>
     <p class="text-lg text-muted">{{ ready_count }} ready</p>
+    {% if ready_count %}
+        <form method="post" action="{% url 'learner_interface:course_revision_start' course.slug %}">
+            {% csrf_token %}
+            <c-button type="submit">All sections</c-button>
+        </form>
+    {% else %}
+        <p>You're all caught up.</p>
+    {% endif %}
 </section>

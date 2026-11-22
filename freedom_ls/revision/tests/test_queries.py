@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import pytest
 
 from django.utils import timezone
@@ -14,7 +16,8 @@ from freedom_ls.form_engine.factories import (
 from freedom_ls.learner_progress.factories import TopicProgressFactory
 from freedom_ls.learner_progress.models import TopicProgress
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
-from freedom_ls.revision.queries import bank_questions
+from freedom_ls.revision.factories import RevisionScheduleFactory
+from freedom_ls.revision.queries import bank_questions, due_questions, ready_count
 from freedom_ls.revision.tests.helpers import (
     complete_form,
     finish_topic,
@@ -234,3 +237,52 @@ def test_question_of_a_form_placed_in_no_course_needs_no_completion(
     banked = list(bank_questions(record))
 
     assert banked == [question]
+
+
+@pytest.mark.django_db
+def test_question_scheduled_for_later_is_not_ready(mock_site_context):
+    course = CourseFactory()
+    topic, _ = place_topic(course)
+    question = question_testing_topic(topic)
+    user = UserFactory()
+    record = course_progress_record(course, user)
+    finish_topic(record, topic)
+    now = timezone.now()
+    RevisionScheduleFactory(user=user, question=question, due=now + timedelta(days=3))
+
+    assert ready_count(user, record, now) == 0
+
+
+@pytest.mark.django_db
+def test_question_without_a_schedule_and_one_that_is_due_are_ready(mock_site_context):
+    course = CourseFactory()
+    topic, _ = place_topic(course)
+    unscheduled = question_testing_topic(topic)
+    due = question_testing_topic(topic)
+    user = UserFactory()
+    record = course_progress_record(course, user)
+    finish_topic(record, topic)
+    now = timezone.now()
+    RevisionScheduleFactory(user=user, question=due, due=now - timedelta(days=1))
+
+    assert {q.pk for q in due_questions(user, record, now)} == {
+        unscheduled.pk,
+        due.pk,
+    }
+
+
+@pytest.mark.django_db
+def test_due_questions_follow_course_order(mock_site_context):
+    course = CourseFactory()
+    first, _ = place_topic(course, order=0)
+    second, _ = place_topic(course, order=1)
+    later_question = question_testing_topic(second)
+    earlier_question = question_testing_topic(first)
+    user = UserFactory()
+    record = course_progress_record(course, user)
+    finish_topic(record, first)
+    finish_topic(record, second)
+
+    questions = due_questions(user, record, timezone.now())
+
+    assert [q.pk for q in questions] == [earlier_question.pk, later_question.pk]

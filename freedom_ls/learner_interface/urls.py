@@ -34,6 +34,21 @@ urlpatterns = [
         name="course_revision",
     ),
     path(
+        "courses/<slug:course_slug>/revision/start/",
+        views.course_revision_start,
+        name="course_revision_start",
+    ),
+    path(
+        "courses/<slug:course_slug>/revision/answer/",
+        views.partial_course_revision_answer,
+        name="course_revision_answer",
+    ),
+    path(
+        "courses/<slug:course_slug>/revision/next/",
+        views.partial_course_revision_next,
+        name="course_revision_next",
+    ),
+    path(
         "courses/<slug:course_slug>/<int:index>/",
         views.view_course_item,
         name="view_course_item",

@@ -1,0 +1,17 @@
+<div id="revision-card" class="surface p-6 space-y-4">
+    <p class="text-sm text-muted" data-testid="revision-progress">{{ position }} of {{ total }}</p>
+    {% if review %}
+        {% include "learner_interface/partials/revision_feedback.html" %}
+    {% else %}
+        <form hx-post="{% url 'learner_interface:course_revision_answer' course.slug %}"
+              hx-target="#revision-card"
+              hx-swap="outerHTML"
+              class="space-y-4">
+            {% include "form_engine/question.html" %}
+            {% if error %}
+                <p class="text-sm text-error"><span class="sr-only">Error: </span>{{ error }}</p>
+            {% endif %}
+            <c-button type="submit">Check answer</c-button>
+        </form>
+    {% endif %}
+</div>

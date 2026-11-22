@@ -1,0 +1,4 @@
+<div id="revision-card" class="surface p-6 space-y-4">
+    <p class="text-lg" data-testid="revision-end">{{ answered_count }} answered, {{ right_count }} right.</p>
+    <c-button variant="link" href="{% url 'learner_interface:course_detail' course.slug %}">Back to course</c-button>
+</div>

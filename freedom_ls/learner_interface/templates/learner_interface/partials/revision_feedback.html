@@ -1,0 +1,23 @@
+{% load form_engine_tags %}
+<div class="space-y-4" data-testid="revision-feedback">
+    <p class="flex items-center gap-2 font-semibold">
+        {% if review.was_correct %}
+            <c-icon name="success" class="size-5 text-success" />Correct.
+        {% else %}
+            <c-icon name="error" class="size-5 text-error" />Incorrect.
+        {% endif %}
+    </p>
+    <div class="prose">{{ question.rendered_question }}</div>
+    {% question_options as options %}
+    <ul class="space-y-2">
+        {% for option in options %}
+            <li class="flex items-start gap-3 p-3 rounded-md border border-border">
+                <span class="text-on-surface">{{ option.text }}</span>
+                {% if option.correct %}<c-correct-answer-mark class="ms-auto" />{% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+    <c-button hx-post="{% url 'learner_interface:course_revision_next' course.slug %}"
+              hx-target="#revision-card"
+              hx-swap="outerHTML">Next</c-button>
+</div>

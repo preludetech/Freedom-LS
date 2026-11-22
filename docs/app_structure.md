@@ -254,9 +254,12 @@ flowchart TB
     reports --> organisations
     reports --> panel_framework
     reports --> site_aware_models
+    revision --> accounts
+    revision --> base
     revision --> content_engine
     revision --> form_engine
     revision --> learner_progress
+    revision --> site_aware_models
     role_based_permissions --> accounts
     role_based_permissions --> audit_log
     role_based_permissions --> base
@@ -302,7 +305,6 @@ flowchart TB
     registration_rules -.-> comms
     registration_rules -.-> webhooks
     reports -.-> role_based_permissions
-    revision -.-> accounts
     role_based_permissions -.-> learner_management
     site_aware_models -.-> accounts
     site_aware_models -.-> content_engine
@@ -354,7 +356,7 @@ flowchart TB
 | referral_tracking | accounts, api, base, site_aware_models | — |
 | registration_rules | accounts, base, content_engine, course_recommendations, hr_attributes, learner_management, learner_progress, organisations, site_aware_models | comms, webhooks |
 | reports | accounts, base, content_engine, form_engine, learner_management, learner_progress, organisations, panel_framework, site_aware_models | role_based_permissions |
-| revision | content_engine, form_engine, learner_progress | accounts |
+| revision | accounts, base, content_engine, form_engine, learner_progress, site_aware_models | — |
 | role_based_permissions | accounts, audit_log, base, organisations, site_aware_models | learner_management |
 | site_aware_models | base | accounts, content_engine, learner_management, learner_progress, organisations |
 | tiktok_pixel | base | accounts, content_engine, learner_management |

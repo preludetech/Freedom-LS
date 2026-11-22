@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from django.db.models import Exists, OuterRef, Q, QuerySet
@@ -14,6 +16,10 @@ from freedom_ls.form_engine.enums import OPTION_QUESTION_TYPES
 from freedom_ls.form_engine.models import Form, FormQuestion, QuestionOption
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.queries import completed_collection_item_ids
+from freedom_ls.revision.models import RevisionSchedule
+
+if TYPE_CHECKING:
+    from freedom_ls.accounts.models import User
 
 
 @dataclass(frozen=True)
@@ -148,3 +154,49 @@ def bank_questions(record: CourseProgress) -> QuerySet[FormQuestion]:
         # in no course, so it is never in this set.
         .exclude(form_page__form_id__in=placed.uncompleted_form_ids)
     )
+
+
+def _ready(user: User, record: CourseProgress, now: datetime) -> QuerySet[FormQuestion]:
+    """Bank questions the user has no schedule for, or whose schedule is due."""
+    return bank_questions(record).exclude(
+        Exists(
+            RevisionSchedule.objects.filter(
+                user=user, question=OuterRef("pk"), due__gt=now
+            )
+        )
+    )
+
+
+def ready_count(user: User, record: CourseProgress, now: datetime) -> int:
+    return _ready(user, record, now).count()
+
+
+def due_questions(
+    user: User, record: CourseProgress, now: datetime
+) -> list[FormQuestion]:
+    """The ready questions in the order a session asks them.
+
+    Course order: a question sits where its first section sits, and questions
+    of one section keep their form, page and question order.
+    """
+    position = {
+        section_id: index
+        for index, section_id in enumerate(_placed_sections(record).order)
+    }
+    questions = list(
+        _ready(user, record, now)
+        .select_related("form_page__form")
+        .prefetch_related("formquestiontopic_set", "formquestioncoursepart_set")
+        .order_by("form_page__form_id", "form_page__order", "order", "pk")
+    )
+
+    def first_section(question: FormQuestion) -> int:
+        named = [row.topic_id for row in question.formquestiontopic_set.all()] + [
+            row.course_part_id for row in question.formquestioncoursepart_set.all()
+        ]
+        return min(
+            position[section_id] for section_id in named if section_id in position
+        )
+
+    # A stable sort keeps the database's form, page and question order within a section.
+    return sorted(questions, key=first_section)
