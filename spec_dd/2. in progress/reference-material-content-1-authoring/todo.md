@@ -24,9 +24,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 4. Documentation and pull request
 
-- [ ] (user) Force-push the branch again: `/sdd:document` rebased it onto main (which gained the content-save-safety spec) and the auto-mode classifier blocked the push. Run `! git push origin reference-material-content-1-authoring --force-with-lease --force-if-includes`, then `/sdd:make_pr_quickly`
+- [x] (user) Force-push the branch again: `/sdd:document` rebased it onto main (which gained the content-save-safety spec) and the auto-mode classifier blocked the push. Run `! git push origin reference-material-content-1-authoring --force-with-lease --force-if-includes`, then `/sdd:make_pr_quickly`
 - [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
-- [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
 ## 5. Cleanup
