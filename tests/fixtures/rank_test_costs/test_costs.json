@@ -1,0 +1,14 @@
+{
+  "tests": {
+    "freedom_ls/alpha/tests/test_a.py::test_p[1]": {"setup": 0.5, "call": 1.25, "teardown": 0.25},
+    "freedom_ls/alpha/tests/test_a.py::test_p[2]": {"setup": 0.5, "call": 1.25, "teardown": 0.25},
+    "freedom_ls/alpha/tests/test_a.py::test_q": {"setup": 0.0, "call": 0.96, "teardown": 0.0},
+    "freedom_ls/alpha/tests/test_b.py::test_r": {"setup": 0.0, "call": 1.04, "teardown": 0.0},
+    "freedom_ls/beta/tests/test_c.py::TestC::test_s[p::q]": {"setup": 1.0, "call": 2.0, "teardown": 0.0},
+    "tests/test_d.py::test_t": {"setup": 0.0, "call": 0.26, "teardown": 0.0},
+    "tests/test_d.py::test_u": {"setup": 0.0, "call": 0.24, "teardown": 0.0}
+  },
+  "django_db_setup": {"gw0": 1.5, "gw1": 2.0},
+  "test_count": 7,
+  "outcomes": {"passed": 7}
+}
