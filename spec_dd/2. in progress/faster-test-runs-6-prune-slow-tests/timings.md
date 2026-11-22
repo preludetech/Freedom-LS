@@ -93,3 +93,9 @@ Same commands and method as the "before" samples (serial, `-n 0 -p no:randomly -
 - Indicative figure at the first run's load: dividing the last run's CPU seconds by that x1.83 gives about 918 s. This is arithmetic on a noisy ratio, not a measurement; the measurement is the 1680.1 s above.
 - Pruning did not stop on the 0.5% rule (threshold 7.28 s): the next candidate in the first ranking, `freedom_ls/content_engine/tests/test_images.py::test_comparison_winner_on_each_side_of_the_lossy_wins_divisor` (14.8 s), is above it. Pruning stopped because slice 4's estimate reached the target: 242.36 s saved x 0.9465 = 229.4 CPU seconds, against the 192.9 needed (1378.2 - 1185.3).
 - With load and pressure clearly higher than in the first run, no rerun was made. The decision (accept slice 4's estimate, rerun on a quieter machine, or prune more) is the user's.
+
+## Full tier
+
+- Commit tested: `8d941327f64284f84269f42df05618a05c1f8e43`. Command: `.claude/ds/scripts/run_tests.sh uv run pytest -n auto -m 'not ci_only and not weasyprint'` (once).
+- `run: summary (merged): 19832 passed, 0 failed, 3 skipped in 814.9s`; `run: RESULT PASS`. 19835 collected, 19835 finished.
+- Files other specs own: `git diff main...HEAD` (against the merge base, since main has moved on and the branch is not rebased) is empty for `.github/workflows/tests.yml`, `run_tests.py`, `select_tests.py` and `test_tiers.md`; `pyproject.toml` shows the one new `[[tool.test_tiers.tooling]]` entry as its only `[tool.test_tiers]` change, plus the ruff per-file ignore for the ranking script.
