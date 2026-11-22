@@ -5134,3 +5134,151 @@ def test_save_content_to_db_without_source_commits_records_nothing(
     save_content_to_db(committed_content_repo, site.name)
 
     assert ContentSave.objects.count() == 0
+
+
+IGNORED_TOPIC_UUID = "10000000-0000-0000-0000-0000000000a1"
+
+
+def _write_ignored_content(repo_dir: Path) -> None:
+    """Commit a `.fls-content.yaml` ignoring `drafts/` and `notes.md`, both holding topics.
+
+    The topics would be saved if the list were not read.
+    """
+    (repo_dir / ".fls-content.yaml").write_text("ignore:\n  - drafts\n  - notes.md\n")
+    (repo_dir / "drafts").mkdir()
+    (repo_dir / "drafts" / "draft.md").write_text(
+        "---\ncontent_type: TOPIC\ntitle: Draft Topic\n"
+        "uuid: 10000000-0000-0000-0000-0000000000a2\n---\n\nDraft.\n"
+    )
+    (repo_dir / "notes.md").write_text(
+        "---\ncontent_type: TOPIC\ntitle: Notes Topic\n"
+        f"uuid: {IGNORED_TOPIC_UUID}\n---\n\nNotes.\n"
+    )
+    commit_all(repo_dir)
+
+
+@pytest.mark.django_db
+def test_the_command_saves_neither_an_ignored_file_nor_an_ignored_folder(
+    site, mock_site_context, committed_content_repo
+):
+    _write_ignored_content(committed_content_repo)
+
+    _save_from_repo(committed_content_repo, site)
+
+    assert set(Topic.objects.values_list("title", flat=True)) == {"A Topic"}
+
+
+@pytest.mark.django_db
+def test_a_direct_save_saves_neither_an_ignored_file_nor_an_ignored_folder(
+    site, mock_site_context, committed_content_repo
+):
+    _write_ignored_content(committed_content_repo)
+
+    save_content_to_db(committed_content_repo, site.name)
+
+    assert set(Topic.objects.values_list("title", flat=True)) == {"A Topic"}
+
+
+@pytest.mark.django_db
+def test_a_direct_save_does_not_auto_discover_an_ignored_child(
+    site, mock_site_context, tmp_path: Path
+):
+    repo_dir = tmp_path / "repo"
+    init_repo(repo_dir)
+    course_dir = repo_dir / "course"
+    (course_dir / "skipped").mkdir(parents=True)
+    (course_dir / "Course.md").write_text(
+        "---\ncontent_type: COURSE\ntitle: A Course\n"
+        "uuid: 10000000-0000-0000-0000-0000000000b1\n---\n"
+    )
+    (course_dir / "kept.md").write_text(
+        "---\ncontent_type: TOPIC\ntitle: Kept\n"
+        "uuid: 10000000-0000-0000-0000-0000000000b2\n---\n"
+    )
+    (course_dir / "skipped" / "skipped.md").write_text(
+        "---\ncontent_type: TOPIC\ntitle: Skipped\n"
+        "uuid: 10000000-0000-0000-0000-0000000000b3\n---\n"
+    )
+    (repo_dir / ".fls-content.yaml").write_text("ignore:\n  - course/skipped\n")
+    commit_all(repo_dir)
+
+    save_content_to_db(repo_dir, site.name)
+
+    assert set(Topic.objects.values_list("title", flat=True)) == {"Kept"}
+
+
+@pytest.mark.django_db
+def test_a_children_entry_naming_an_ignored_path_fails_the_command(
+    site, mock_site_context, committed_content_repo
+):
+    (committed_content_repo / "Course.md").write_text(
+        "---\ncontent_type: COURSE\ntitle: A Course\n"
+        "uuid: 10000000-0000-0000-0000-0000000000b4\n"
+        "children:\n  - path: notes.md\n---\n"
+    )
+    _write_ignored_content(committed_content_repo)
+
+    with pytest.raises(ValueError, match=r"notes\.md"):
+        _save_from_repo(committed_content_repo, site)
+
+    assert Course.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_a_malformed_ignore_entry_is_refused_before_the_git_check_naming_the_entry(
+    site, mock_site_context, committed_content_repo
+):
+    (committed_content_repo / ".fls-content.yaml").write_text("ignore:\n  - /abs\n")
+    (committed_content_repo / "topic.md").write_text("changed\n")
+
+    with pytest.raises(CommandError, match="Invalid ignore entry '/abs'") as exc_info:
+        _save_from_repo(committed_content_repo, site)
+
+    assert ".fls-content.yaml" in str(exc_info.value)
+    assert "uncommitted" not in str(exc_info.value)
+
+
+@pytest.mark.django_db
+def test_an_ignored_file_with_uncommitted_changes_is_refused_with_the_marker(
+    site, mock_site_context, committed_content_repo
+):
+    _write_ignored_content(committed_content_repo)
+    (committed_content_repo / "notes.md").write_text("changed\n")
+
+    with pytest.raises(CommandError, match="loads only committed content") as exc_info:
+        _save_from_repo(committed_content_repo, site)
+
+    assert (
+        "modified  notes.md  (in the .fls-content.yaml ignore list; "
+        "it still has to be committed)"
+    ) in str(exc_info.value)
+
+
+@pytest.mark.django_db
+def test_a_gitignored_file_on_the_ignore_list_does_not_block(
+    site, mock_site_context, committed_content_repo
+):
+    (committed_content_repo / ".gitignore").write_text("notes.md\n")
+    _write_ignored_content(committed_content_repo)
+
+    _save_from_repo(committed_content_repo, site)
+
+    assert Topic.objects.filter(title="A Topic").exists()
+
+
+@pytest.mark.django_db
+def test_a_missing_config_file_ignores_nothing(
+    site, mock_site_context, committed_content_repo
+):
+    (committed_content_repo / "notes.md").write_text(
+        "---\ncontent_type: TOPIC\ntitle: Notes Topic\n"
+        f"uuid: {IGNORED_TOPIC_UUID}\n---\n\nNotes.\n"
+    )
+    commit_all(committed_content_repo)
+
+    _save_from_repo(committed_content_repo, site)
+
+    assert set(Topic.objects.values_list("title", flat=True)) == {
+        "A Topic",
+        "Notes Topic",
+    }

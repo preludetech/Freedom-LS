@@ -46,6 +46,7 @@ from freedom_ls.content_base.schema import (
 )
 from freedom_ls.content_base.schema import ContentType as SchemaContentType
 from freedom_ls.content_engine.config import config
+from freedom_ls.content_engine.ignore_list import ignore_list_for
 from freedom_ls.content_engine.image_cache import CACHE_DIR_NAME, ImageCache
 from freedom_ls.content_engine.images import (
     ImageEncodeDecision,
@@ -81,6 +82,7 @@ from freedom_ls.content_engine.validate import (
     effective_sections,
     form_section_label,
     get_all_files,
+    is_ignored,
     parse_single_file,
     resolve_author_path,
     split_yaml_documents,
@@ -1082,16 +1084,18 @@ class _ParsedSource:
     all_files: list[Path]
     content_files: set[Path]
     all_parsed: list[BaseBaseContentModel]
+    ignore: frozenset[Path]
 
 
 def _parse_source(path: Path) -> _ParsedSource:
-    all_files = get_all_files(path)
+    ignore = ignore_list_for(path)
+    all_files = get_all_files(path, ignore=ignore)
     content_files = {f for f in all_files if f.suffix in [".md", ".yaml", ".yml"]}
     all_parsed: list[BaseBaseContentModel] = []
     for file_path in all_files:
         if file_path in content_files:
             all_parsed.extend(parse_single_file(file_path))
-    return _ParsedSource(path, all_files, content_files, all_parsed)
+    return _ParsedSource(path, all_files, content_files, all_parsed, ignore)
 
 
 def _relative_to_source(source: Path, file_path: Path) -> str:
@@ -1354,7 +1358,9 @@ def _write_source(source, site):
 
         # Create ContentCollectionItem entries for each child. An auto-discovered
         # child has no entry.
-        for order, (child_path, entry) in enumerate(collection_children(schema_item)):
+        for order, (child_path, entry) in enumerate(
+            collection_children(schema_item, ignore=source.ignore)
+        ):
             child_content = content_by_path.get(child_path)
             if child_content:
                 # Get the Django ContentType for both collection and child
@@ -1489,9 +1495,11 @@ def save_content_to_db(
         error
         for source in sources
         for error in (
-            *validate_children_lists(source.all_parsed),
-            *validate_due_date_placements(source.all_parsed),
-            *validate_question_sections(source.all_parsed, loaded_root=source.path),
+            *validate_children_lists(source.all_parsed, ignore=source.ignore),
+            *validate_due_date_placements(source.all_parsed, ignore=source.ignore),
+            *validate_question_sections(
+                source.all_parsed, loaded_root=source.path, ignore=source.ignore
+            ),
         )
     ]
     if placement_errors:
@@ -1629,12 +1637,32 @@ CONFIG_FILE_NAME = ".fls-content.yaml"
 UNCOMMITTED_LINES_SHOWN = 20
 
 
-def _uncommitted_lines(entries: Sequence[UncommittedPath]) -> list[str]:
+IGNORED_BUT_UNCOMMITTED = (
+    "(in the .fls-content.yaml ignore list; it still has to be committed)"
+)
+
+
+def _uncommitted_lines(
+    entries: Sequence[UncommittedPath],
+    root: Path,
+    ignore: frozenset[Path],
+) -> list[str]:
+    """One line per entry, marking those the ignore list covers: they stay refused."""
     width = max(len(entry.kind) for entry in entries)
-    return [f"{entry.kind.ljust(width)}  {entry.path}" for entry in entries]
+    return [
+        f"{entry.kind.ljust(width)}  {entry.path}"
+        + (
+            f"  {IGNORED_BUT_UNCOMMITTED}"
+            if is_ignored(root / entry.path, ignore)
+            else ""
+        )
+        for entry in entries
+    ]
 
 
-def _uncommitted_under(source: Path, root: Path) -> list[UncommittedPath]:
+def _uncommitted_under(
+    source: Path, root: Path, ignore: frozenset[Path]
+) -> list[UncommittedPath]:
     """Every file under `source` the save would read that no commit holds.
 
     Adds the gitignored files the directory scan still reads: they are in no
@@ -1643,7 +1671,7 @@ def _uncommitted_under(source: Path, root: Path) -> list[UncommittedPath]:
     entries = uncommitted_paths(source)
     listed = {entry.path for entry in entries}
     tracked = tracked_files(source)
-    for file_path in get_all_files(source.resolve()):
+    for file_path in get_all_files(source.resolve(), ignore=ignore):
         key = content_key(file_path)
         relative = key.relative_to(root).as_posix()
         if key not in tracked and relative not in listed:
@@ -1666,18 +1694,22 @@ def _uncommitted_config_file(root: Path) -> UncommittedPath | None:
     return None
 
 
-def check_committed(paths: Sequence[str]) -> list[SourceCommit]:
+def check_committed(
+    paths: Sequence[str], ignores: Sequence[frozenset[Path]]
+) -> list[SourceCommit]:
     """Refuse any source path that is not a clean, committed git tree.
 
     Uncommitted files from every path come back in one refusal. Each content
     repo root's `.fls-content.yaml` is listed once, under the root, before one
     group per path headed by the path as it was typed. Returns the HEAD commit
-    each path will be loaded from, in the order the paths were given.
+    each path will be loaded from, in the order the paths were given. `ignores`
+    holds each path's ignore list, in the same order: it narrows which gitignored
+    files count as read, and exempts nothing from the dirty-file list.
     """
     commits: list[SourceCommit] = []
     root_entries: dict[Path, UncommittedPath] = {}
-    dirty: list[tuple[str, list[UncommittedPath]]] = []
-    for path in paths:
+    dirty: list[tuple[str, list[UncommittedPath], Path, frozenset[Path]]] = []
+    for path, ignore in zip(paths, ignores, strict=True):
         source = Path(path)
         root = find_repo_root(source)
         if root is None:
@@ -1709,17 +1741,23 @@ def check_committed(paths: Sequence[str]) -> list[SourceCommit]:
         )
         if root not in root_entries and (entry := _uncommitted_config_file(root)):
             root_entries[root] = entry
-        entries = _uncommitted_under(source, root)
+        entries = _uncommitted_under(source, root, ignore)
         if source.resolve() == root:
             entries = [e for e in entries if e.path != CONFIG_FILE_NAME]
         if entries:
-            dirty.append((f"Source path: {path}", entries))
+            dirty.append((f"Source path: {path}", entries, root, ignore))
     if root_entries or dirty:
         groups = [
-            (f"Content repo root: {root}", _uncommitted_lines([entry]))
+            (
+                f"Content repo root: {root}",
+                _uncommitted_lines([entry], root, frozenset()),
+            )
             for root, entry in root_entries.items()
-        ] + [(heading, _uncommitted_lines(entries)) for heading, entries in dirty]
-        count = len(root_entries) + sum(len(entries) for _, entries in dirty)
+        ] + [
+            (heading, _uncommitted_lines(entries, root, ignore))
+            for heading, entries, root, ignore in dirty
+        ]
+        count = len(root_entries) + sum(len(entries) for _, entries, _, _ in dirty)
         raise CommandError(
             _refusal(
                 "content_save loads only committed content: "
@@ -1732,8 +1770,13 @@ def check_committed(paths: Sequence[str]) -> list[SourceCommit]:
     return commits
 
 
-def check_source_paths(paths: Sequence[str]) -> None:
-    """Refuse a source path that does not exist, repeats, or sits inside another."""
+def check_source_paths(paths: Sequence[str]) -> list[frozenset[Path]]:
+    """Refuse a source path that does not exist, repeats, or sits inside another.
+
+    Returns each path's ignore list, in the order the paths were given. A
+    malformed `ignore:` entry in a `.fls-content.yaml` is refused here, naming
+    the entry and the file.
+    """
     resolved: list[tuple[str, Path]] = []
     for path in paths:
         if not Path(path).exists():
@@ -1768,6 +1811,13 @@ def check_source_paths(paths: Sequence[str]) -> None:
                     "Give each directory once, then run again.",
                 )
             )
+    ignores: list[frozenset[Path]] = []
+    for path in paths:
+        try:
+            ignores.append(ignore_list_for(Path(path)))
+        except ValueError as error:
+            raise CommandError(str(error).strip()) from error
+    return ignores
 
 
 @click.command()
@@ -1790,13 +1840,13 @@ def command(paths, site_name, generate_uuids):
     staged, deleted or untracked files. No path may be, or sit inside,
     another. A file without a uuid is refused unless --generate-uuids is given.
     """
-    check_source_paths(paths)
-    source_commits = check_committed(paths)
+    ignores = check_source_paths(paths)
+    source_commits = check_committed(paths, ignores)
     logger.info("Validating content...")
     reports: list[str] = []
-    for path in paths:
+    for path, ignore in zip(paths, ignores, strict=True):
         try:
-            validate(path)
+            validate(path, ignore=ignore)
         except ValueError as error:
             reports.append(f"Source path: {path}\n{error}")
     if reports:
