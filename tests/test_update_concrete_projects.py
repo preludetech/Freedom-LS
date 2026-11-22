@@ -77,7 +77,6 @@ def test_config_local_template_has_an_empty_concrete_projects_section() -> None:
         "Bash(git -C * rev-parse *)",
         "Bash(git -C * log*)",
         "Bash(git -C * diff*)",
-        "Bash(git switch *)",
         "Bash(git -C * fetch origin main)",
         "Bash(git -C * submodule status*)",
         "Bash(git -C * remote get-url *)",
@@ -201,8 +200,11 @@ def test_loop_names_the_gate_flags_and_every_cell_result(spelled: str) -> None:
     [
         "land_on_main.sh land",
         "rebase origin/main",
-        "git switch main",
-        "git branch -d fix/",
+        "git worktree add -b fix-<slug> <wt> origin/main",
+        "Setup script",
+        "Teardown script",
+        "git worktree remove <wt>",
+        "git branch -d fix-<slug>",
         "idea_standard.md",
         "blocked-on-spec",
         "parked on",
@@ -213,6 +215,13 @@ def test_failure_handling_names_every_path(spelled: str) -> None:
     text = COMMAND.read_text()
 
     assert spelled in text
+
+
+def test_small_fix_never_moves_the_main_worktree_off_main() -> None:
+    text = COMMAND.read_text()
+
+    assert "git switch" not in text
+    assert "git checkout -b" not in text
 
 
 def project_root_section() -> str:

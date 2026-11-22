@@ -275,11 +275,14 @@ Print a stop card: project, spec, step, failing ids, diff stat, class and propos
 
 **Size test.** A fix is small when all hold: no model or migration change; no new setting; at most three FLS files plus one test file; one regression test covers it. A borderline case takes the small fix, and the call is recorded in report section 8.
 
-**Small fix.** In the FLS `main` worktree, each command its own Bash call:
+**Small fix.** The fix is made in a sibling worktree, never in the FLS `main` worktree: the operator keeps using `main` as `main` throughout the run, so it never leaves the `main` branch. `<wt>` is the bare repo's directory plus `/fix-<slug>`. From the `main` worktree, each command its own Bash call:
 
 ```
-git switch -c fix/<slug>
+git fetch origin main
+git worktree add -b fix-<slug> <wt> origin/main
 ```
+
+Then run the `Setup script` from `.claude/sdd/config.md` from inside `<wt>`. It gives the branch its own databases, so its test runs never share `test_db_main_*` with the `main` worktree or a concrete project whose checkout is also named `main`. Every later command in this section runs from inside `<wt>`.
 
 Write the regression test and see it fail, then write the fix and see it pass. Run the targeted tier:
 
@@ -293,15 +296,15 @@ Run the command it prints. Then:
 git commit -m "fix: <what> (found integrating <spec> into <project>)"
 ```
 
-The fix lands without a separate approval question; the size test and the targeted tier are the gates. Print `git diff main...HEAD --stat` and the regression test name so the transcript shows what lands, then:
+The fix lands without a separate approval question; the size test and the targeted tier are the gates. Print `git diff origin/main...HEAD --stat` and the regression test name so the transcript shows what lands, then:
 
 ```
 claude_plugins/sdd/scripts/land_on_main.sh land
 ```
 
 - Exit 7 means `origin/main` moved: run `git rebase origin/main`, then `land_on_main.sh land` once more.
-- Any other non-zero exit stops the run. Print the script's message, the name of the `fix/` branch the worktree is left on, and `git switch main` as the way back.
-- Exit 0: record the fix commit with `git rev-parse HEAD` while still on the `fix/` branch, run `git switch main` (the script already fast-forwarded it), then `git branch -d fix/<slug>`. If git refuses because the landed commit is a rebased copy, confirm `git log --oneline -1 origin/main` shows the fix subject and use `git branch -D fix/<slug>`.
+- Any other non-zero exit stops the run. Print the script's message and `<wt>`, which keeps the unlanded fix.
+- Exit 0: record the fix commit with `git rev-parse HEAD`. The script already fast-forwarded the `main` worktree; confirm `git log --oneline -1`, run in the `main` worktree, shows the fix subject. Then clean up: run the `Teardown script` from `.claude/sdd/config.md` from inside `<wt>`, and from the `main` worktree `git worktree remove <wt>` and `git branch -d fix-<slug>`. If git refuses because the landed commit is a rebased copy, confirm `git log --oneline -1 origin/main` shows the fix subject and use `git branch -D fix-<slug>`.
 
 **Retry.** Re-run the cell with `<spec-commit>` set to the fix commit; every remaining cell for that spec in this run uses it too. Folding: the done specs whose commits lie in `<spec-commit>..<fix-commit>`, with `<spec-commit>` the cell's original one, are listed. Their notes flags are OR-ed into the cell's flags and their `changed_template_paths` concatenated. The commit subject becomes `Update FLS: <spec>, <spec>, …` naming every folded spec. When the project's `Update FLS:` subjects already name a folded spec, fold only the ones it lacks. One fix attempt per cell: a second failure is `blocked-on-fix`, with the evidence in the cell result file.
 
@@ -409,4 +412,4 @@ At the end of a complete run, `Glob` `.sdd-work/update_concrete_*`, including th
 
 Each project path should be listed under `permissions.additionalDirectories` in `.claude/settings.local.json` (gitignored); Step 1 checks it. Writes into a project prompt unless the session runs in `acceptEdits` mode.
 
-`.claude/settings.json` allows the read-only `git -C` verbs including `branch --show-current`, `git -C … add`, `git -C … rm`, the path-scoped `git -C … checkout -- <path>` and `checkout HEAD -- <path>`, `git -C … submodule update`, `uv run --directory` for the test run, `check`, `makemigrations --check`, `migrate --check` and `git commit`, `uv sync --directory`, `npm --prefix … run tailwind_build`, the one `shell -c` settings dump spelled in `## QA in the concrete project`, and the two wrappers `concrete_pointer_move.sh` and `concrete_rollback.sh`. The wrappers are what keep a cell from prompting: each refuses a path not listed under `## Concrete Projects`, the pointer move refuses a commit off FLS `origin/main`, and the rollback refuses a commit that is not HEAD or its ancestor. It denies `--no-verify` commits in a project, and the `.claude/hooks/guard_force_push.sh` PreToolUse hook denies a force push to a project's `main` or `master`. `migrate`, `makemigrations`, `npm install`, seed commands and `push` keep prompting by design, and Step 3's will-prompt line names the cells that hit them. A bare `reset --hard`, `clean`, `rmdir` or submodule `checkout` prompts too; this command runs them only through the wrappers. The `fetch` entry is pinned to `git -C … fetch origin main`, the only form this command and the shared resource run, because `git fetch` accepts `--upload-pack=<cmd>`.
+`.claude/settings.json` allows the read-only `git -C` verbs including `branch --show-current`, `git -C … add`, `git -C … rm`, the path-scoped `git -C … checkout -- <path>` and `checkout HEAD -- <path>`, `git -C … submodule update`, `uv run --directory` for the test run, `check`, `makemigrations --check`, `migrate --check` and `git commit`, `uv sync --directory`, `npm --prefix … run tailwind_build`, the one `shell -c` settings dump spelled in `## QA in the concrete project`, and the two wrappers `concrete_pointer_move.sh` and `concrete_rollback.sh`. The wrappers are what keep a cell from prompting: each refuses a path not listed under `## Concrete Projects`, the pointer move refuses a commit off FLS `origin/main`, and the rollback refuses a commit that is not HEAD or its ancestor. It denies `--no-verify` commits in a project, and the `.claude/hooks/guard_force_push.sh` PreToolUse hook denies a force push to a project's `main` or `master`. `migrate`, `makemigrations`, `npm install`, seed commands and `push` keep prompting by design, as do the small fix's `git worktree add` and `git worktree remove`, and Step 3's will-prompt line names the cells that hit them. A bare `reset --hard`, `clean`, `rmdir` or submodule `checkout` prompts too; this command runs them only through the wrappers. The `fetch` entry is pinned to `git -C … fetch origin main`, the only form this command and the shared resource run, because `git fetch` accepts `--upload-pack=<cmd>`.
