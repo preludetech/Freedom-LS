@@ -9,7 +9,7 @@
     </p>
     <div class="prose">{{ question.rendered_question }}</div>
     {% question_options as options %}
-    <ul class="space-y-2">
+    <ul class="list-none ml-0 space-y-2">
         {% for option in options %}
             <li class="flex items-start gap-3 p-3 rounded-md border border-border">
                 <span class="text-on-surface">{{ option.text }}</span>

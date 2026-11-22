@@ -10,7 +10,7 @@ feedback and the layout at real widths.
 from __future__ import annotations
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Locator, Page, expect
 from pytest_django.live_server_helper import LiveServer
 
 from django.utils import timezone
@@ -69,6 +69,12 @@ def _press_check_answer(page: Page) -> None:
     page.get_by_role("button", name="Check answer").click()
 
 
+def _left_edge(locator: Locator) -> float:
+    box = locator.bounding_box()
+    assert box is not None
+    return box["x"]
+
+
 def test_learner_works_through_a_revision_session(
     live_server: LiveServer,
     logged_in_page: Page,
@@ -108,6 +114,12 @@ def test_learner_works_through_a_revision_session(
     expect(feedback.get_by_text("Your answer")).to_be_visible()
     expect(feedback.get_by_text(EXPLANATION)).to_be_visible()
     expect(feedback.get_by_role("link", name="Revise: Write Errors")).to_be_visible()
+    # The option list shares the card's left edge instead of being indented.
+    assert _left_edge(feedback.locator("ul")) == _left_edge(feedback.locator("p").first)
+    assert (
+        feedback.locator("ul").evaluate("el => getComputedStyle(el).listStyleType")
+        == "none"
+    )
 
     click_next(page)
     expect(page.get_by_text("Question number 2?")).to_be_visible()
@@ -136,6 +148,9 @@ def test_learner_works_through_a_revision_session(
     missed = page.get_by_test_id("revision-missed")
     expect(missed.get_by_text("Question number 1?")).to_be_visible()
     expect(missed.get_by_role("link", name="Revise: Write Errors")).to_be_visible()
+    # The missed list shares the card's left edge and shows no bullet markers.
+    assert _left_edge(missed) == _left_edge(page.get_by_test_id("revision-end"))
+    assert missed.evaluate("el => getComputedStyle(el).listStyleType") == "none"
 
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
