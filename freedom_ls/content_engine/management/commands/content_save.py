@@ -972,7 +972,7 @@ def remove_part_placement(site: Site, course: Course, part: CoursePart) -> str |
 
 def sync_reference_parts(
     site: Site,
-    collections_data: list[tuple[Course | CoursePart, BaseBaseContentModel]],
+    collections_data: Sequence[tuple[Course | CoursePart, BaseBaseContentModel]],
     content_by_path: Mapping[Path, models.Model],
 ) -> list[str]:
     """Write each loaded course's reference parts from its reference: list. Returns the
@@ -1270,8 +1270,11 @@ def _items_of[T: BaseBaseContentModel](
     return [item for item in items if isinstance(item, schema)]
 
 
-def _write_source(source: _ParsedSource, site: Site) -> list[ImageEncodeStatus]:
-    """Write a `_ParsedSource`'s files and content rows. Returns its image statuses."""
+def _write_source(
+    source: _ParsedSource, site: Site
+) -> tuple[list[ImageEncodeStatus], list[str]]:
+    """Write a `_ParsedSource`'s files and content rows. Returns its image statuses and
+    the lines that report the part placements it removed."""
     # The statuses alone: an ImageEncodeDecision carries the encoded bytes,
     # and holding one per image would keep every encode of the run in memory
     # to produce a count.
@@ -1597,7 +1600,7 @@ def _write_source(source: _ParsedSource, site: Site) -> list[ImageEncodeStatus]:
         written=written,
         moved=moved,
     )
-    return image_statuses
+    return image_statuses, removal_lines
 
 
 @dataclass(frozen=True)
@@ -1658,9 +1661,14 @@ def save_content_to_db(
         _refuse_missing_uuids(sources)
     _refuse_relative_path_collisions(sources)
 
-    image_statuses = [
-        status for source in sources for status in _write_source(source, site)
-    ]
+    image_statuses: list[ImageEncodeStatus] = []
+    # Printed only once every source is written, so a load that rolls back has
+    # reported no removal.
+    removal_lines: list[str] = []
+    for source in sources:
+        source_statuses, source_removals = _write_source(source, site)
+        image_statuses.extend(source_statuses)
+        removal_lines.extend(source_removals)
 
     if source_commits is not None:
         content_save = ContentSave.objects.create(
