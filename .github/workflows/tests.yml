@@ -132,9 +132,13 @@ jobs:
           if-no-files-found: ignore
 
   playwright-tests:
-    name: playwright
+    name: playwright-${{ matrix.group }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [1, 2]
 
     services:
       postgres:
@@ -185,13 +189,14 @@ jobs:
           DS_TEST_RECORD_PATH: ${{ runner.temp }}/group-report.jsonl
         run: >-
           .claude/ds/scripts/run_tests.sh uv run pytest -n auto -m "$BROWSER_MARKERS"
+          --splits ${{ strategy.job-total }} --group ${{ matrix.group }} $SPLIT_FLAGS
           --randomly-seed=${{ github.run_id }} --tb=short
 
       - name: Upload group report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: group-report-playwright
+          name: group-report-playwright-${{ matrix.group }}
           path: ${{ runner.temp }}/group-report.jsonl
           if-no-files-found: ignore
 
@@ -199,7 +204,7 @@ jobs:
         uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: playwright-traces
+          name: playwright-traces-${{ matrix.group }}
           path: test-results/
           retention-days: 7
 
@@ -317,3 +322,73 @@ jobs:
 
       - name: Check combined coverage
         run: uv run coverage report --fail-under="$COVERAGE_FAIL_UNDER"
+
+  test-verdict:
+    needs: [unit-tests, playwright-tests, standalone-tests, coverage]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: fls_dev
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: db
+        ports:
+          - 6543:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install Python dependencies
+        run: uv sync
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build Tailwind CSS
+        run: npm run tailwind_build
+
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: group-report-*
+          path: group-reports/
+
+      - name: Check every test job succeeded
+        if: always()
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          echo "$RESULTS"
+          jq -e 'all(. == "success")' <<<"$RESULTS" >/dev/null || { echo "test-verdict: a needed job did not succeed"; exit 1; }
+
+      # Each pool's group reports must together hold exactly the tests a fresh collection finds,
+      # each once, so a group given the wrong split count cannot hide a test.
+      - name: Check the partition
+        if: always()
+        run: |
+          uv run pytest --collect-only -q -m "$UNIT_MARKERS" --randomly-seed=${{ github.run_id }} > unit_collection.txt
+          uv run pytest --collect-only -q -m "$BROWSER_MARKERS" --randomly-seed=${{ github.run_id }} > browser_collection.txt
+          uv run python claude_plugins/fls-dev/scripts/check_test_partition.py --collection unit_collection.txt group-reports/group-report-unit-*/group-report.jsonl
+          uv run python claude_plugins/fls-dev/scripts/check_test_partition.py --collection browser_collection.txt group-reports/group-report-playwright-*/group-report.jsonl

@@ -173,3 +173,24 @@ def test_test_job_uploads_its_group_report_always(job_id: str) -> None:
     assert [(step["if"], as_table(step["with"])["path"]) for step in uploads] == [
         ("always()", "${{ runner.temp }}/group-report.jsonl")
     ]
+
+
+def test_verdict_job_needs_every_test_job_and_coverage() -> None:
+    needs = as_list(jobs()["test-verdict"]["needs"])
+
+    assert set(needs) == {*TEST_JOB_IDS, "coverage"}
+
+
+@pytest.mark.parametrize(
+    "job_id",
+    [
+        key
+        for key in TEST_JOB_IDS
+        if "strategy" in jobs()[key] and key != STANDALONE_JOB
+    ],
+)
+def test_split_test_job_passes_its_group_to_pytest(job_id: str) -> None:
+    command = run_command(job_id)
+
+    assert "--splits ${{ strategy.job-total }}" in command
+    assert "--group ${{ matrix.group }}" in command
