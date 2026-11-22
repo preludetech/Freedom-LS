@@ -114,7 +114,12 @@ from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.referral_tracking.conversions import record_conversion
 from freedom_ls.referral_tracking.models import ConversionKind
 from freedom_ls.revision.models import RevisionReview
-from freedom_ls.revision.queries import bank_questions, ready_count
+from freedom_ls.revision.queries import (
+    bank_questions,
+    question_sections,
+    ready_count,
+    section_first_placement,
+)
 from freedom_ls.revision.services import (
     RevisionSessionState,
     build_session,
@@ -2520,6 +2525,55 @@ def _current_revision_question(
     return None, state
 
 
+@dataclass(frozen=True)
+class SectionLink:
+    title: str
+    url: str
+
+
+def _openable_positions(
+    user: RequestUser, course: Course, record: CourseProgress
+) -> dict[uuid.UUID, int]:
+    """Placement id to its 1-based player position, for every placement this learner can open.
+
+    Read from the outline the player itself gates on, so a section link is
+    never offered for a page the player would refuse.
+    """
+    # Index 0 marks no row as current.
+    rows = _player_course_index(user, course, 0, record).rows
+    outline: list[dict] = []
+    for row in rows:
+        if "children" in row:
+            outline.extend(row["children"])
+        else:
+            outline.append(row)
+    return {
+        item.pk: position
+        for position, (item, row) in enumerate(
+            zip(course.viewable_collection_items(), outline, strict=True), start=1
+        )
+        if row["status"] not in (BLOCKED, CLOSED)
+    }
+
+
+def _section_links(
+    record: CourseProgress,
+    question: FormQuestion,
+    openable: Mapping[uuid.UUID, int],
+) -> list[SectionLink]:
+    links = []
+    for section in question_sections(record, question):
+        placement = section_first_placement(record.course, section)
+        if placement is None or placement.pk not in openable:
+            continue
+        url = reverse(
+            "learner_interface:view_course_item",
+            kwargs={"course_slug": record.course.slug, "index": openable[placement.pk]},
+        )
+        links.append(SectionLink(title=section.title, url=url))
+    return links
+
+
 def _revision_review_of(
     user: User, state: RevisionSessionState, question: FormQuestion
 ) -> RevisionReview | None:
@@ -2560,9 +2614,19 @@ def _revision_card_context(
             "right_count": reviews.filter(was_correct=True).count(),
         }
     review = _revision_review_of(cast("User", request.user), state, question)
+    section_links = (
+        _section_links(
+            record,
+            question,
+            _openable_positions(request.user, course, record),
+        )
+        if review is not None
+        else []
+    )
     return "learner_interface/partials/revision_card.html", {
         "course": course,
         "question": question,
+        "section_links": section_links,
         "revision_options": shuffled_options(question, state.seeds[state.index]),
         "review": review,
         "position": state.index + 1,
@@ -2870,6 +2934,8 @@ def form_submit_and_exit(
 
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from django.db.models import QuerySet
 
     from freedom_ls.accounts.models import User

@@ -7,7 +7,12 @@ from uuid import UUID
 
 from django.db.models import Exists, OuterRef, Q, QuerySet
 
-from freedom_ls.content_engine.models import CoursePart, Topic
+from freedom_ls.content_engine.models import (
+    ContentCollectionItem,
+    Course,
+    CoursePart,
+    Topic,
+)
 from freedom_ls.content_engine.models.question_sections import (
     FormQuestionCoursePart,
     FormQuestionTopic,
@@ -236,3 +241,41 @@ def due_questions(
     return sorted(reviewed, key=retrievability) + sorted(
         never_reviewed, key=first_section
     )
+
+
+def question_sections(
+    record: CourseProgress, question: FormQuestion
+) -> list[Topic | CoursePart]:
+    """The sections this question names that are placed in the record's course, in course order."""
+    named = {row.topic_id for row in question.formquestiontopic_set.all()} | {
+        row.course_part_id for row in question.formquestioncoursepart_set.all()
+    }
+    placed: dict[UUID, Topic | CoursePart] = {}
+    for item in record.course.collection_items_flat():
+        child = item.child
+        if isinstance(child, Topic | CoursePart):
+            placed.setdefault(child.pk, child)
+    return [
+        placed[section_id]
+        for section_id in _placed_sections(record).order
+        if section_id in named and section_id in placed
+    ]
+
+
+def section_first_placement(
+    course: Course, section: Topic | CoursePart
+) -> ContentCollectionItem | None:
+    """The placement a learner opens to revise this section.
+
+    A Topic's first placement in the course. A CoursePart is not a page, so
+    its first nested placement stands in for it.
+    """
+    for item in course.collection_items_flat():
+        child = item.child
+        if not isinstance(child, Topic | CoursePart) or child.pk != section.pk:
+            continue
+        if isinstance(section, Topic):
+            return item
+        nested = section.collection_items()
+        return nested[0] if nested else None
+    return None

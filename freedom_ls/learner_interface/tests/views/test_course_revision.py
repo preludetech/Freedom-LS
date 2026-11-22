@@ -525,3 +525,75 @@ def test_feedback_shows_no_why_block_for_a_question_without_an_explanation(
     html = _feedback_html(explanation="", answer_correctly=True)
 
     assert 'data-testid="revision-explanation"' not in html
+
+
+def _answered_html(*, answer_correctly: bool):
+    course, _, (question,), client = _banked_session()
+    option = _right_option(question) if answer_correctly else _wrong_option(question)
+    _post_answer(client, course, question, [str(option.id)])
+    html = client.get(_revision_url(course)).content.decode()
+    return course, question, option, html
+
+
+@pytest.mark.django_db
+def test_wrong_answer_marks_the_chosen_option_and_the_correct_one(mock_site_context):
+    _, _, _, html = _answered_html(answer_correctly=False)
+
+    assert "Your answer" in html
+    assert "Correct answer" in html
+
+
+@pytest.mark.django_db
+def test_right_answer_shows_no_wrong_choice_mark(mock_site_context):
+    _, _, _, html = _answered_html(answer_correctly=True)
+
+    assert "Your answer" not in html
+
+
+@pytest.mark.django_db
+def test_section_control_after_a_wrong_answer_is_a_filled_button(mock_site_context):
+    course, _, _, html = _answered_html(answer_correctly=False)
+    href = reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+
+    assert f'href="{href}"' in html
+    assert 'data-variant="primary"' in html
+    assert "Revise: " in html
+
+
+@pytest.mark.django_db
+def test_section_control_after_a_right_answer_is_a_link_button(mock_site_context):
+    course, _, _, html = _answered_html(answer_correctly=True)
+    href = reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+
+    assert f'href="{href}"' in html
+    assert 'data-variant="link"' in html
+
+
+@pytest.mark.django_db
+def test_section_control_is_absent_when_the_placement_is_blocked(mock_site_context):
+    course, _, (question,), client = _banked_session()
+    option = _wrong_option(question)
+
+    with patch(
+        "freedom_ls.learner_interface.views._openable_positions", return_value={}
+    ):
+        _post_answer(client, course, question, [str(option.id)])
+        html = client.get(_revision_url(course)).content.decode()
+
+    assert "Revise: " not in html
+
+
+@pytest.mark.django_db
+def test_feedback_root_is_announced_and_takes_focus(mock_site_context):
+    _, _, _, html = _answered_html(answer_correctly=False)
+
+    assert 'id="revision-feedback"' in html
+    assert 'aria-live="polite"' in html
+    assert 'tabindex="-1"' in html
+    assert 'x-data="revisionFeedback"' in html

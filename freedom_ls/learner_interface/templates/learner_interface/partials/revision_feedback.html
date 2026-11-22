@@ -1,5 +1,5 @@
 {% load form_engine_tags %}
-<div class="space-y-4" data-testid="revision-feedback">
+<div id="revision-feedback" aria-live="polite" tabindex="-1" x-data="revisionFeedback" class="space-y-4" data-testid="revision-feedback">
     <p class="flex items-center gap-2 font-semibold">
         {% if review.was_correct %}
             <c-icon name="success" class="size-5 text-success" />Correct.
@@ -13,7 +13,11 @@
         {% for option in options %}
             <li class="flex items-start gap-3 p-3 rounded-md border border-border">
                 <span class="text-on-surface">{{ option.text }}</span>
-                {% if option.correct %}<c-correct-answer-mark class="ms-auto" />{% endif %}
+                {% if option.correct %}
+                    <c-correct-answer-mark class="ms-auto" />
+                {% elif option.id|stringformat:"s" in review.selected_option_ids %}
+                    <c-correct-answer-mark wrong_choice="true" class="ms-auto" />
+                {% endif %}
             </li>
         {% endfor %}
     </ul>
@@ -23,6 +27,13 @@
             <div class="prose">{{ question.rendered_explanation }}</div>
         </div>
     {% endif %}
+    {% for link in section_links %}
+        {% if review.was_correct %}
+            <c-button variant="link" href="{{ link.url }}">Revise: {{ link.title }}</c-button>
+        {% else %}
+            <c-button href="{{ link.url }}">Revise: {{ link.title }}</c-button>
+        {% endif %}
+    {% endfor %}
     <c-button hx-post="{% url 'learner_interface:course_revision_next' course.slug %}"
               hx-target="#revision-card"
               hx-swap="outerHTML">Next</c-button>

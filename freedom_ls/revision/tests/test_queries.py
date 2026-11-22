@@ -17,7 +17,13 @@ from freedom_ls.learner_progress.factories import TopicProgressFactory
 from freedom_ls.learner_progress.models import TopicProgress
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.revision.factories import RevisionScheduleFactory
-from freedom_ls.revision.queries import bank_questions, due_questions, ready_count
+from freedom_ls.revision.queries import (
+    bank_questions,
+    due_questions,
+    question_sections,
+    ready_count,
+    section_first_placement,
+)
 from freedom_ls.revision.tests.helpers import (
     complete_form,
     finish_topic,
@@ -403,3 +409,40 @@ def test_ready_count_runs_one_query(mock_site_context, django_assert_max_num_que
 
     with django_assert_max_num_queries(1):
         ready_count(user, record, now, limit=41)
+
+
+@pytest.mark.django_db
+def test_part_section_opens_at_its_first_nested_placement(mock_site_context):
+    course = CourseFactory()
+    part, topics = place_part_with_topics(course, 2)
+
+    placement = section_first_placement(course, part)
+
+    assert placement is not None
+    assert placement.child == topics[0]
+
+
+@pytest.mark.django_db
+def test_topic_section_opens_at_its_own_placement(mock_site_context):
+    course = CourseFactory()
+    topic, item = place_topic(course)
+
+    assert section_first_placement(course, topic) == item
+
+
+@pytest.mark.django_db
+def test_question_sections_lists_only_placed_sections_in_course_order(
+    mock_site_context,
+):
+    course = CourseFactory()
+    first, _ = place_topic(course, order=0)
+    second, _ = place_topic(course, order=1)
+    unplaced = TopicFactory()
+    question = question_testing_topic(second)
+    for topic in (first, unplaced):
+        FormQuestionTopic.objects.create(question=question, topic=topic)
+    record = course_progress_record(course, UserFactory())
+
+    sections = question_sections(record, question)
+
+    assert sections == [first, second]

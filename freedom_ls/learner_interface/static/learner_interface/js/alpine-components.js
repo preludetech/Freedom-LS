@@ -19,6 +19,14 @@ document.addEventListener("alpine:init", () => {
     // input/change event — answers the server pre-filled do not.
     let runnerDirty = false;
 
+    // Revision feedback (learner_interface/partials/revision_feedback.html):
+    // takes focus when it is swapped in, so a screen reader reads the result.
+    Alpine.data("revisionFeedback", () => ({
+        init() {
+            this.$el.focus();
+        },
+    }));
+
     // Course part expand/collapse (learner_interface/partials/course_minimal_toc.html)
     Alpine.data("coursePart", () => ({
         expanded: false,
