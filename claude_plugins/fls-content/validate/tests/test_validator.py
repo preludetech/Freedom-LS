@@ -1965,3 +1965,150 @@ def test_section_topic_in_sibling_directory_passes(tmp_path: Path) -> None:
     result = run_validator(form_dir)
 
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def write_ignore_list(directory: Path, entries: list[str]) -> None:
+    """Add an ignore: list to the repo-root .fls-content.yaml."""
+    config = directory / ".fls-content.yaml"
+    config.write_text(
+        config.read_text(encoding="utf-8")
+        + "ignore:\n"
+        + "".join(f"  - {entry}\n" for entry in entries),
+        encoding="utf-8",
+    )
+
+
+def write_invalid_topic(path: Path) -> None:
+    """Write a TOPIC file the validator rejects: it has no title."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("---\ncontent_type: TOPIC\n---\n\nBody.\n", encoding="utf-8")
+
+
+def test_ignored_invalid_file_does_not_fail_validation(tmp_path: Path) -> None:
+    """A file listed under ignore: is never parsed, so its errors are not reported."""
+    course_dir = tmp_path / "course"
+    course_dir.mkdir()
+    write_course_with_children(course_dir, "")
+    write_invalid_topic(course_dir / "broken.md")
+    write_ignore_list(tmp_path, ["course/broken.md"])
+
+    result = run_validator(course_dir)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_invalid_file_fails_when_it_is_not_ignored(tmp_path: Path) -> None:
+    """The same tree without the ignore: entry fails on the invalid file."""
+    course_dir = tmp_path / "course"
+    course_dir.mkdir()
+    write_course_with_children(course_dir, "")
+    write_invalid_topic(course_dir / "broken.md")
+
+    result = run_validator(course_dir)
+
+    assert result.returncode != 0
+
+
+def test_ignored_folder_does_not_fail_validation(tmp_path: Path) -> None:
+    """Every file inside a folder listed under ignore: is left out."""
+    course_dir = tmp_path / "course"
+    course_dir.mkdir()
+    write_course_with_children(course_dir, "")
+    write_invalid_topic(course_dir / "drafts" / "broken.md")
+    write_ignore_list(tmp_path, ["./course/drafts/"])
+
+    result = run_validator(course_dir)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_ignoring_a_folder_does_not_ignore_a_sibling_with_a_longer_name(
+    tmp_path: Path,
+) -> None:
+    """Entries match by path component: ignoring docs leaves docs-old validated."""
+    write_invalid_topic(tmp_path / "docs-old" / "broken.md")
+    write_ignore_list(tmp_path, ["docs"])
+
+    result = run_validator(tmp_path / "docs-old")
+
+    assert result.returncode != 0
+
+
+def test_tree_whose_only_content_file_is_ignored_reports_no_content_files(
+    tmp_path: Path,
+) -> None:
+    """With every content file ignored there is nothing to validate, and the run says so."""
+    content_dir = tmp_path / "content"
+    content_dir.mkdir()
+    write_valid_topic(content_dir)
+    write_ignore_list(tmp_path, ["content/01. intro.md"])
+
+    result = run_validator(content_dir)
+
+    assert result.returncode == 3
+    assert "No content files" in result.stderr
+
+
+def test_children_entry_naming_an_ignored_path_fails(tmp_path: Path) -> None:
+    """A children: entry keeps pointing at a file content_save skips, which is an error."""
+    course_dir = tmp_path / "course"
+    course_dir.mkdir()
+    write_course_with_children(course_dir, "children:\n  - path: topic.md\n")
+    write_valid_topic(course_dir, "topic.md")
+    write_ignore_list(tmp_path, ["course/topic.md"])
+
+    result = run_validator(course_dir)
+
+    assert_validator_fails(result, "it is in the .fls-content.yaml ignore list")
+    assert "Invalid children list" in result.stdout + result.stderr
+
+
+def test_sections_target_naming_an_ignored_path_fails(tmp_path: Path) -> None:
+    """A sections: target in the ignore list is reported with the ignore-list reason."""
+    form_dir = write_sections_form(tmp_path, "sections: [topic.md]\n")
+    write_ignore_list(tmp_path, [f"{form_dir.name}/topic.md"])
+
+    result = run_validator(form_dir)
+
+    assert_validator_fails(result, "it is in the .fls-content.yaml ignore list")
+
+
+@pytest.mark.parametrize(
+    "entry",
+    ["/etc/passwd", "../outside", "docs/*.md", "docs/?", "docs/[ab]", "''"],
+)
+def test_malformed_ignore_entry_fails_naming_the_entry(
+    tmp_path: Path, entry: str
+) -> None:
+    """An absolute, parent-relative, wildcard or empty entry is rejected by name."""
+    write_valid_topic(tmp_path)
+    write_ignore_list(tmp_path, [entry])
+
+    result = run_validator(tmp_path / "01. intro.md")
+
+    assert_validator_fails(result, "Invalid ignore entry")
+    assert entry.strip("'") in result.stdout + result.stderr
+
+
+def test_image_reference_to_an_ignored_file_fails_as_a_missing_file(
+    tmp_path: Path,
+) -> None:
+    """An ignored image is absent from the saved files, so the article's image is missing."""
+    article_dir = tmp_path / "articles"
+    article_dir.mkdir()
+    (article_dir / "cover.png").write_bytes(b"png")
+    write_article(article_dir, "article.md", extra='image: cover.png\nimage_alt: ""\n')
+    write_ignore_list(tmp_path, ["articles/cover.png"])
+
+    result = run_validator(article_dir)
+
+    assert_validator_fails(result, "no file at this path")
+
+
+def test_config_without_an_ignore_key_ignores_nothing(tmp_path: Path) -> None:
+    """A repo config with no ignore: key leaves every file validated."""
+    write_invalid_topic(tmp_path / "broken.md")
+
+    result = run_validator(tmp_path)
+
+    assert result.returncode != 0
