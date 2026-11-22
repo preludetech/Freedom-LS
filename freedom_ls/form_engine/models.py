@@ -245,6 +245,10 @@ class FormQuestion(BaseContent):
         related_name="gated_questions",
     )
 
+    # Set by the content loader when the question's file no longer holds it. The
+    # row stays because quiz answers protect it.
+    dropped_from_source_at = models.DateTimeField(null=True, blank=True)
+
     question = models.TextField()
     explanation = models.TextField(
         blank=True,

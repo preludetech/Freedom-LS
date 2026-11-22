@@ -73,6 +73,7 @@ from freedom_ls.form_engine.models import (
     FormQuestion,
     QuestionOption,
 )
+from freedom_ls.form_engine.signals import form_questions_dropped
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.tests.factories import SiteFactory
@@ -6168,3 +6169,137 @@ def test_a_page_draw_is_stored_and_then_cleared(site, mock_site_context, tmp_pat
     save_content_to_db(tmp_path, site.name)
 
     assert FormPage.objects.get(id=_DRAW_PAGE_UUID).draw is None
+
+
+_BANK_FORM_UUIDS = {
+    "a": "40000000-0000-0000-0000-00000000000a",
+    "b": "40000000-0000-0000-0000-00000000000b",
+}
+_BANK_QUESTION_UUIDS = {
+    "one": "40000000-0000-0000-0000-000000000001",
+    "two": "40000000-0000-0000-0000-000000000002",
+}
+_BANK_PAGE_UUIDS = {
+    "a": "40000000-0000-0000-0000-0000000000a1",
+    "b": "40000000-0000-0000-0000-0000000000b1",
+}
+
+
+def _write_bank_form(directory: Path, form: str, questions: list[str]) -> None:
+    """A one-page form `form` holding the questions named in `questions`."""
+    directory.mkdir(exist_ok=True)
+    (directory / "form.md").write_text(f"""---
+content_type: FORM
+strategy: UNSCORED
+title: Form {form}
+uuid: {_BANK_FORM_UUIDS[form]}
+---
+""")
+    body = "".join(
+        f"""---
+question: Question {name}?
+type: multiple_choice
+uuid: {_BANK_QUESTION_UUIDS[name]}
+options:
+  - text: "Yes"
+    value: "yes"
+    correct: true
+  - text: "No"
+    value: "no"
+"""
+        for name in questions
+    )
+    (directory / "1. page.yaml").write_text(f"""---
+content_type: FORM_PAGE
+title: Page {form}
+uuid: {_BANK_PAGE_UUIDS[form]}
+{body}""")
+
+
+def _dropped_question_ids() -> set[uuid.UUID]:
+    return set(
+        FormQuestion._base_manager.filter(
+            dropped_from_source_at__isnull=False
+        ).values_list("pk", flat=True)
+    )
+
+
+@pytest.fixture
+def dropped_signal_ids():
+    received: list[list[uuid.UUID]] = []
+
+    def collect(sender: object, question_ids: list[uuid.UUID], **kwargs: object):
+        received.append(question_ids)
+
+    form_questions_dropped.connect(collect)
+    yield received
+    form_questions_dropped.disconnect(collect)
+
+
+@pytest.mark.django_db
+def test_a_question_removed_from_its_file_is_marked_dropped(
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
+    _write_bank_form(tmp_path / "a", "a", ["one", "two"])
+    save_content_to_db(tmp_path, site.name)
+    _write_bank_form(tmp_path / "a", "a", ["one"])
+
+    save_content_to_db(tmp_path, site.name)
+
+    assert _dropped_question_ids() == {uuid.UUID(_BANK_QUESTION_UUIDS["two"])}
+
+
+@pytest.mark.django_db
+def test_a_question_restored_to_its_file_is_unmarked(
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
+    _write_bank_form(tmp_path / "a", "a", ["one", "two"])
+    save_content_to_db(tmp_path, site.name)
+    _write_bank_form(tmp_path / "a", "a", ["one"])
+    save_content_to_db(tmp_path, site.name)
+    _write_bank_form(tmp_path / "a", "a", ["one", "two"])
+
+    save_content_to_db(tmp_path, site.name)
+
+    assert _dropped_question_ids() == set()
+
+
+@pytest.mark.django_db
+def test_a_question_moved_between_two_form_files_is_not_marked(
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
+    _write_bank_form(tmp_path / "a", "a", ["one", "two"])
+    _write_bank_form(tmp_path / "b", "b", [])
+    save_content_to_db(tmp_path, site.name)
+    _write_bank_form(tmp_path / "a", "a", ["one"])
+    _write_bank_form(tmp_path / "b", "b", ["two"])
+
+    save_content_to_db(tmp_path, site.name)
+
+    assert _dropped_question_ids() == set()
+
+
+@pytest.mark.django_db
+def test_loading_one_form_does_not_mark_another_forms_questions(
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
+    _write_bank_form(tmp_path / "a", "a", ["one"])
+    _write_bank_form(tmp_path / "b", "b", ["two"])
+    save_content_to_db(tmp_path, site.name)
+
+    save_content_to_db(tmp_path / "a", site.name)
+
+    assert _dropped_question_ids() == set()
+
+
+@pytest.mark.django_db
+def test_the_dropped_signal_carries_the_dropped_question_ids(
+    site: Site, mock_site_context: Site, tmp_path: Path, dropped_signal_ids
+) -> None:
+    _write_bank_form(tmp_path / "a", "a", ["one", "two"])
+    save_content_to_db(tmp_path, site.name)
+    _write_bank_form(tmp_path / "a", "a", ["one"])
+
+    save_content_to_db(tmp_path, site.name)
+
+    assert dropped_signal_ids == [[uuid.UUID(_BANK_QUESTION_UUIDS["two"])]]

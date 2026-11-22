@@ -13,6 +13,7 @@ from freedom_ls.form_engine.factories import (
     FormQuestionFactory,
     QuestionOptionFactory,
 )
+from freedom_ls.form_engine.models import FormQuestion
 from freedom_ls.learner_progress.factories import TopicProgressFactory
 from freedom_ls.learner_progress.models import TopicProgress
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
@@ -66,6 +67,32 @@ def test_completion_with_no_signal_still_banks_the_sections_questions(
     banked = list(bank_questions(record))
 
     assert banked == [question]
+
+
+@pytest.mark.django_db
+def test_a_question_dropped_from_its_file_is_not_banked(mock_site_context):
+    course = CourseFactory()
+    topic, item = place_topic(course)
+    question = question_testing_topic(topic)
+    FormQuestion.objects.filter(pk=question.pk).update(
+        dropped_from_source_at=timezone.now()
+    )
+    user = UserFactory()
+    record = course_progress_record(course, user)
+    TopicProgress.objects.bulk_create(
+        [
+            TopicProgressFactory.build(
+                course_progress=record,
+                topic=topic,
+                collection_item=item,
+                complete_time=timezone.now(),
+            )
+        ]
+    )
+
+    banked = list(bank_questions(record))
+
+    assert banked == []
 
 
 @pytest.mark.django_db

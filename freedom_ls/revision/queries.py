@@ -95,7 +95,9 @@ def _placed_sections(record: CourseProgress) -> _PlacedSections:
 
 def _revisable_questions() -> QuerySet[FormQuestion]:
     """Questions that can be asked in revision at all, whoever the learner is."""
-    return FormQuestion.objects.filter(type__in=OPTION_QUESTION_TYPES).filter(
+    return FormQuestion.objects.filter(
+        type__in=OPTION_QUESTION_TYPES, dropped_from_source_at__isnull=True
+    ).filter(
         Exists(QuestionOption.objects.filter(question=OuterRef("pk"), correct=True))
     )
 

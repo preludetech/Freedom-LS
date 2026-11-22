@@ -29,6 +29,7 @@ from django.core.files import File as DjangoFile
 from django.core.files.base import ContentFile
 from django.core.management.base import CommandError
 from django.db import models, transaction
+from django.utils import timezone
 from django.utils.module_loading import import_string
 from django.utils.text import slugify
 
@@ -110,6 +111,7 @@ from freedom_ls.form_engine.models import (
     QuestionOption,
 )
 from freedom_ls.form_engine.schema import Condition
+from freedom_ls.form_engine.signals import form_questions_dropped
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.site_aware_models.slugs import get_unique_slug
 
@@ -876,6 +878,33 @@ def save_form_question(
     return question, saved_options
 
 
+def mark_dropped_questions(
+    site: Site, loaded_form_ids: set[uuid.UUID], seen_question_ids: set[uuid.UUID]
+) -> None:
+    """Mark the loaded forms' questions that their files no longer hold, and unmark the rest.
+
+    Scoped to forms this run loaded, so a partial load never marks another
+    form's questions. A question moved to another loaded form was saved onto
+    its new page first, so it is seen and stays unmarked.
+    """
+    # The load runs with no request, so there is no current site to filter
+    # by: the base manager with an explicit site, as the loader's other reads do.
+    questions = FormQuestion._base_manager.filter(site=site)
+    dropped = list(
+        questions.filter(form_page__form_id__in=loaded_form_ids)
+        .exclude(pk__in=seen_question_ids)
+        .values_list("pk", flat=True)
+    )
+    questions.filter(pk__in=dropped, dropped_from_source_at__isnull=True).update(
+        dropped_from_source_at=timezone.now()
+    )
+    questions.filter(
+        pk__in=seen_question_ids, dropped_from_source_at__isnull=False
+    ).update(dropped_from_source_at=None)
+    if dropped:
+        form_questions_dropped.send(sender=FormQuestion, question_ids=dropped)
+
+
 def replace_question_sections(
     sections_by_question: Sequence[tuple[FormQuestion, list[models.Model]]],
 ) -> None:
@@ -1392,6 +1421,7 @@ def _write_source(
             pages_by_form[file_path.parent].append((file_path, page_items))
 
     sections_by_question: list[tuple[FormQuestion, list[models.Model]]] = []
+    seen_question_ids: set[uuid.UUID] = set()
     # Save form pages and their content in alphabetical order per form
     for form_dir, form_pages in pages_by_form.items():
         parent_form, form_item = forms_by_dir[form_dir]
@@ -1451,6 +1481,7 @@ def _write_source(
                                 item.when, options_by_slug, file_path
                             ),
                         )
+                        seen_question_ids.add(question.pk)
                         declarer, section_paths = effective_sections(item, form_item)
                         sections_by_question.append(
                             (
@@ -1470,6 +1501,11 @@ def _write_source(
                         )
 
     replace_question_sections(sections_by_question)
+    mark_dropped_questions(
+        site,
+        {form.pk for form, _ in forms_by_dir.values()},
+        seen_question_ids,
+    )
 
     # Bind each course to the application form its access_config names. Writing
     # None when the key is absent is what makes deleting the line unbind the
