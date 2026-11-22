@@ -19,6 +19,7 @@ from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.revision.factories import RevisionScheduleFactory
 from freedom_ls.revision.queries import (
     bank_questions,
+    bank_sections,
     due_questions,
     question_sections,
     ready_count,
@@ -446,3 +447,73 @@ def test_question_sections_lists_only_placed_sections_in_course_order(
     sections = question_sections(record, question)
 
     assert sections == [first, second]
+
+
+@pytest.mark.django_db
+def test_bank_sections_lists_only_sections_with_bank_questions(mock_site_context):
+    course = CourseFactory()
+    with_questions, _ = place_topic(course, order=0)
+    without_questions, _ = place_topic(course, order=1)
+    question_testing_topic(with_questions)
+    record = course_progress_record(course, UserFactory())
+    finish_topic(record, with_questions)
+    finish_topic(record, without_questions)
+
+    sections = bank_sections(record)
+
+    assert sections == [with_questions]
+
+
+@pytest.mark.django_db
+def test_bank_sections_are_in_course_order(mock_site_context):
+    course = CourseFactory()
+    second, _ = place_topic(course, order=1)
+    first, _ = place_topic(course, order=0)
+    question_testing_topic(second)
+    question_testing_topic(first)
+    record = course_progress_record(course, UserFactory())
+    finish_topic(record, first)
+    finish_topic(record, second)
+
+    sections = bank_sections(record)
+
+    assert sections == [first, second]
+
+
+@pytest.mark.django_db
+def test_due_questions_for_a_section_hold_only_that_sections_questions(
+    mock_site_context,
+):
+    course = CourseFactory()
+    wanted, _ = place_topic(course, order=0)
+    other, _ = place_topic(course, order=1)
+    question = question_testing_topic(wanted)
+    question_testing_topic(other)
+    user = UserFactory()
+    record = course_progress_record(course, user)
+    finish_topic(record, wanted)
+    finish_topic(record, other)
+
+    due = due_questions(user, record, timezone.now(), wanted)
+
+    assert due == [question]
+
+
+@pytest.mark.django_db
+def test_ready_count_for_a_section_counts_only_that_sections_questions(
+    mock_site_context,
+):
+    course = CourseFactory()
+    wanted, _ = place_topic(course, order=0)
+    other, _ = place_topic(course, order=1)
+    question_testing_topic(wanted)
+    question_testing_topic(other)
+    question_testing_topic(other)
+    user = UserFactory()
+    record = course_progress_record(course, user)
+    finish_topic(record, wanted)
+    finish_topic(record, other)
+
+    count = ready_count(user, record, timezone.now(), limit=10, section=wanted)
+
+    assert count == 1

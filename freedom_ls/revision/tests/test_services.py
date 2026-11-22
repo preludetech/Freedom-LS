@@ -141,6 +141,25 @@ def test_build_session_holds_at_most_the_configured_size(mock_site_context, sett
     assert len(state.question_ids) == 2
 
 
+@pytest.mark.django_db
+def test_build_session_for_a_section_holds_only_that_sections_questions(
+    mock_site_context,
+):
+    course = CourseFactory()
+    wanted, _ = place_topic(course, order=0)
+    other, _ = place_topic(course, order=1)
+    question = question_testing_topic(wanted)
+    question_testing_topic(other)
+    user = UserFactory()
+    record = course_progress_record(course, user)
+    finish_topic(record, wanted)
+    finish_topic(record, other)
+
+    state = build_session(user, record, NOW, wanted)
+
+    assert state.question_ids == (question.pk,)
+
+
 def test_state_past_its_last_question_has_no_current_question():
     state = RevisionSessionState(
         question_ids=(uuid4(),), seeds=(1,), started_at=NOW, index=0

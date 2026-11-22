@@ -9,4 +9,23 @@
     {% else %}
         <p>You're all caught up.</p>
     {% endif %}
+    {% if section_rows %}
+        <ul class="divide-y divide-border">
+            {% for row in section_rows %}
+                <li class="flex items-center justify-between gap-4 py-3">
+                    <div>
+                        <p class="font-medium">{{ row.section.title }}</p>
+                        <p id="section-ready-{{ row.section.pk }}" class="text-sm text-muted">{{ row.ready_text }}</p>
+                    </div>
+                    <form method="post" action="{% url 'learner_interface:course_revision_start' course.slug %}?section={{ row.section.pk }}">
+                        {% csrf_token %}
+                        <c-button type="submit"
+                                  aria_label="Revise {{ row.section.title }}"
+                                  aria_describedby="section-ready-{{ row.section.pk }}"
+                                  disabled="{% if not row.has_ready %}disabled{% endif %}">Revise</c-button>
+                    </form>
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
 </section>

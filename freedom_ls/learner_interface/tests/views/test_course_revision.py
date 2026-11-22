@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
 import time_machine
@@ -32,6 +34,9 @@ from freedom_ls.revision.tests.helpers import (
     question_testing_topic,
 )
 from freedom_ls.tests.factories import SiteFactory
+
+QUERIES_BASE = 42
+QUERIES_PER_SECTION = 2
 
 
 def _revision_url(course) -> str:
@@ -419,6 +424,131 @@ def test_start_with_ready_questions_stores_a_session(mock_site_context):
         response.status_code,
         f"revision_session:{course.id}" in client.session,
     ) == (303, True)
+
+
+def _start_section_url(course, section_id) -> str:
+    return f"{_route_url('course_revision_start', course)}?section={section_id}"
+
+
+def _two_finished_sections():
+    course = CourseFactory()
+    first, _ = place_topic(course, order=0)
+    second, _ = place_topic(course, order=1)
+    user = UserFactory()
+    record = course_progress_record(course, user)
+    finish_topic(record, first)
+    finish_topic(record, second)
+    return course, user, first, second
+
+
+@pytest.mark.django_db
+def test_start_screen_lists_only_sections_with_bank_questions(mock_site_context):
+    course, user, first, second = _two_finished_sections()
+    question_testing_topic(first)
+
+    content = _client_for(user).get(_revision_url(course)).content.decode()
+
+    assert (first.title in content, second.title in content) == (True, False)
+
+
+@pytest.mark.django_db
+def test_start_screen_lists_sections_in_course_order(mock_site_context):
+    course, user, first, second = _two_finished_sections()
+    question_testing_topic(first)
+    question_testing_topic(second)
+
+    content = _client_for(user).get(_revision_url(course)).content.decode()
+
+    assert content.index(first.title) < content.index(second.title)
+
+
+@pytest.mark.django_db
+def test_section_start_stores_a_session_of_that_sections_questions_only(
+    mock_site_context,
+):
+    course, user, first, second = _two_finished_sections()
+    wanted = question_testing_topic(first)
+    question_testing_topic(second)
+    client = _client_for(user)
+
+    client.post(_start_section_url(course, first.pk))
+
+    stored = client.session[f"revision_session:{course.id}"]["question_ids"]
+    assert stored == [str(wanted.pk)]
+
+
+@pytest.mark.django_db
+def test_section_ready_count_reads_ten_plus_past_the_cap(mock_site_context):
+    course, user, first, _second = _two_finished_sections()
+    for _ in range(11):
+        question_testing_topic(first)
+
+    response = _client_for(user).get(_revision_url(course))
+
+    assert "10+ ready" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_section_start_with_an_unknown_id_is_not_found(mock_site_context):
+    course, user, _first, _second = _two_finished_sections()
+
+    response = _client_for(user).post(_start_section_url(course, uuid4()))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_section_start_with_a_section_of_another_course_is_not_found(
+    mock_site_context,
+):
+    course, user, first, _second = _two_finished_sections()
+    question_testing_topic(first)
+    other_course = CourseFactory()
+    foreign, _ = place_topic(other_course)
+    question_testing_topic(foreign)
+    finish_topic(course_progress_record(other_course, user), foreign)
+
+    response = _client_for(user).post(_start_section_url(course, foreign.pk))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_section_with_nothing_ready_has_a_disabled_button(mock_site_context):
+    course, user, first, _second = _two_finished_sections()
+    question = question_testing_topic(first)
+    RevisionScheduleFactory(
+        user=user, question=question, due=datetime(2099, 1, 1, tzinfo=UTC)
+    )
+
+    content = _client_for(user).get(_revision_url(course)).content.decode()
+
+    assert re.search(r"<button[^>]*disabled[^>]*>\s*Revise", content) is not None
+
+
+def _finished_course_with_sections(section_count: int):
+    course = CourseFactory()
+    user = UserFactory()
+    record = course_progress_record(course, user)
+    for order in range(section_count):
+        topic, _ = place_topic(course, order=order)
+        question_testing_topic(topic)
+        finish_topic(record, topic)
+    return course, user
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("section_count", [2, 6])
+def test_start_screen_queries_grow_by_a_fixed_step_per_section(
+    section_count, mock_site_context, django_assert_max_num_queries
+):
+    course, user = _finished_course_with_sections(section_count)
+    client = _client_for(user)
+
+    with django_assert_max_num_queries(
+        QUERIES_BASE + QUERIES_PER_SECTION * section_count
+    ):
+        client.get(_revision_url(course))
 
 
 def _option_texts_in_order(html: str, options) -> list[str]:

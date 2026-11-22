@@ -33,6 +33,7 @@ from freedom_ls.content_engine.models import (
     ContentCollectionItem,
     Course,
     CourseCategory,
+    CoursePart,
     CourseVisibility,
     Topic,
 )
@@ -116,6 +117,7 @@ from freedom_ls.referral_tracking.models import ConversionKind
 from freedom_ls.revision.models import RevisionReview
 from freedom_ls.revision.queries import (
     bank_questions,
+    bank_sections,
     question_sections,
     ready_count,
     section_first_placement,
@@ -2643,9 +2645,16 @@ COURSE_READY_CAP = 40
 SECTION_READY_CAP = 10
 
 
-def _ready_text(user: User, record: CourseProgress, now: datetime, *, cap: int) -> str:
+def _ready_text(
+    user: User,
+    record: CourseProgress,
+    now: datetime,
+    *,
+    cap: int,
+    section: Topic | CoursePart | None = None,
+) -> str:
     # Counts one past the cap, so "40" and "more than 40" can be told apart.
-    count = ready_count(user, record, now, limit=cap + 1)
+    count = ready_count(user, record, now, limit=cap + 1, section=section)
     return f"{cap}+ ready" if count > cap else f"{count} ready"
 
 
@@ -2665,6 +2674,23 @@ def course_revision(request: HttpRequest, course_slug: str) -> HttpResponse:
             "course": course,
             "ready_text": ready_text,
             "has_ready": ready_text != "0 ready",
+            "section_rows": [
+                {
+                    "section": section,
+                    "ready_text": section_ready_text,
+                    "has_ready": section_ready_text != "0 ready",
+                }
+                for section in bank_sections(record)
+                for section_ready_text in [
+                    _ready_text(
+                        cast("User", request.user),
+                        record,
+                        timezone.now(),
+                        cap=SECTION_READY_CAP,
+                        section=section,
+                    )
+                ]
+            ],
             "card_template": "learner_interface/partials/revision_start.html",
         }
     else:
@@ -2682,7 +2708,17 @@ def course_revision_start(request: HttpRequest, course_slug: str) -> HttpRespons
     if isinstance(gate, HttpResponseRedirect):
         return gate
     course, record = gate
-    state = build_session(cast("User", request.user), record, timezone.now())
+    section = None
+    section_id = request.GET.get("section")
+    if section_id is not None:
+        # Only a section this learner's bank names may be chosen, so an id
+        # from another course or site, or one that is not an id, selects nothing.
+        section = next(
+            (s for s in bank_sections(record) if str(s.pk) == section_id), None
+        )
+        if section is None:
+            raise Http404
+    state = build_session(cast("User", request.user), record, timezone.now(), section)
     if state.question_ids:
         _store_revision_state(request, course, state)
     response = redirect("learner_interface:course_revision", course_slug=course.slug)

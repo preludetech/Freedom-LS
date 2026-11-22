@@ -162,30 +162,70 @@ def bank_questions(record: CourseProgress) -> QuerySet[FormQuestion]:
     )
 
 
-def _ready(user: User, record: CourseProgress, now: datetime) -> QuerySet[FormQuestion]:
+def bank_sections(record: CourseProgress) -> list[Topic | CoursePart]:
+    """The placed sections that at least one bank question names, in course order."""
+    banked = bank_questions(record)
+    named: set[UUID] = set(
+        FormQuestionTopic.objects.filter(question__in=banked).values_list(
+            "topic_id", flat=True
+        )
+    ) | set(
+        FormQuestionCoursePart.objects.filter(question__in=banked).values_list(
+            "course_part_id", flat=True
+        )
+    )
+    placed: dict[UUID, Topic | CoursePart] = {}
+    for item in record.course.collection_items_flat():
+        child = item.child
+        if isinstance(child, Topic | CoursePart):
+            placed.setdefault(child.pk, child)
+    return [
+        placed[section_id]
+        for section_id in _placed_sections(record).order
+        if section_id in named and section_id in placed
+    ]
+
+
+def _ready(
+    user: User,
+    record: CourseProgress,
+    now: datetime,
+    section: Topic | CoursePart | None = None,
+) -> QuerySet[FormQuestion]:
     """Bank questions the user has no schedule for, or whose schedule is due."""
-    return bank_questions(record).exclude(
+    ready = bank_questions(record).exclude(
         Exists(
             RevisionSchedule.objects.filter(
                 user=user, question=OuterRef("pk"), due__gt=now
             )
         )
     )
+    if section is not None:
+        ready = ready.filter(_naming(section))
+    return ready
 
 
 def ready_count(
-    user: User, record: CourseProgress, now: datetime, *, limit: int
+    user: User,
+    record: CourseProgress,
+    now: datetime,
+    *,
+    limit: int,
+    section: Topic | CoursePart | None = None,
 ) -> int:
     """How many bank questions are ready, counted no further than `limit`.
 
     A learner back after a long break may have hundreds due; the page only
     ever says "40+", so the database stops counting there.
     """
-    return len(_ready(user, record, now).values_list("pk", flat=True)[:limit])
+    return len(_ready(user, record, now, section).values_list("pk", flat=True)[:limit])
 
 
 def due_questions(
-    user: User, record: CourseProgress, now: datetime
+    user: User,
+    record: CourseProgress,
+    now: datetime,
+    section: Topic | CoursePart | None = None,
 ) -> list[FormQuestion]:
     """The ready questions in the order a session asks them.
 
@@ -199,7 +239,7 @@ def due_questions(
         for index, section_id in enumerate(_placed_sections(record).order)
     }
     questions = list(
-        _ready(user, record, now)
+        _ready(user, record, now, section)
         .select_related("form_page__form")
         .prefetch_related("formquestiontopic_set", "formquestioncoursepart_set")
         .order_by("form_page__form_id", "form_page__order", "order", "pk")

@@ -20,6 +20,7 @@ from freedom_ls.revision.queries import due_questions
 
 if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
+    from freedom_ls.content_engine.models import CoursePart, Topic
     from freedom_ls.learner_progress.models import CourseProgress
 
 
@@ -51,9 +52,14 @@ class RevisionSessionState(BaseModel):
 
 
 def build_session(
-    user: User, record: CourseProgress, now: datetime
+    user: User,
+    record: CourseProgress,
+    now: datetime,
+    section: Topic | CoursePart | None = None,
 ) -> RevisionSessionState:
-    questions = due_questions(user, record, now)[: config.REVISION_SESSION_SIZE]
+    questions = due_questions(user, record, now, section)[
+        : config.REVISION_SESSION_SIZE
+    ]
     return RevisionSessionState(
         question_ids=tuple(question.pk for question in questions),
         seeds=tuple(new_seed() for _ in questions),
