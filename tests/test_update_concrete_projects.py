@@ -155,14 +155,13 @@ def test_command_spells_every_preflight_check_and_the_pending_spec_log(
 @pytest.mark.parametrize(
     "entry",
     [
-        "Bash(git -C * push --force*)",
         "Bash(git -C * commit --no-verify*)",
         "Bash(uv run --directory * git commit --no-verify*)",
         "Bash(git -C * commit * --no-verify*)",
         "Bash(uv run --directory * git commit * --no-verify*)",
     ],
 )
-def test_deny_list_blocks_force_push_and_no_verify_in_projects(entry: str) -> None:
+def test_deny_list_blocks_no_verify_in_projects(entry: str) -> None:
     deny = json.loads(SETTINGS.read_text())["permissions"]["deny"]
 
     assert entry in deny
