@@ -19,7 +19,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
-- [ ] (user) Re-run the full test tier (`claude_plugins/sdd/commands/protected/run_test_tier.md` with `full`) when other worktrees are not running tests: the final-verification run was killed for low system memory. A pass confirms the branch; a failure goes to `/sdd:qa_fix`.
+- [x] (user) Re-run the full test tier (`claude_plugins/sdd/commands/protected/run_test_tier.md` with `full`) when other worktrees are not running tests: the final-verification run was killed for low system memory. A pass confirms the branch; a failure goes to `/sdd:qa_fix`.
 
 ## 4. Documentation and pull request
 
@@ -29,5 +29,5 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 5. Cleanup
 
-- [ ] (cmd) Run `/sdd:finish_worktree` to close out the worktree and land it on main
+- [x] (cmd) Run `/sdd:finish_worktree` to close out the worktree and land it on main
 - [ ] (user) Remove the worktree and delete the branch once main has it
