@@ -15,10 +15,11 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 3. Implementation and QA
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
+- [ ] (user) Decide whether `_write_source` in `freedom_ls/content_engine/management/commands/content_save.py` stays without type hints. Annotating it needs about 14 `isinstance` narrowings where parsed items reach the narrower `save_*` helpers, which goes against the "type hints on every function" rule. Keep it as it is, or ask for the narrowing refactor.
 
 ## 4. Documentation and pull request
 
