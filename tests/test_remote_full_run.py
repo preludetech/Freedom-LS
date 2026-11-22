@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import subprocess
 import sys
 from dataclasses import dataclass, field, replace
@@ -34,10 +35,13 @@ UNAVAILABLE_EXIT = 69
 
 # Answers from the JSON script the test wrote: the longest key that starts the joined
 # arguments wins, a list of responses is served one call at a time (the last repeats), and
-# `files` are written under the directory given after `-D`.
+# `files` are written under the directory given after `-D`. `@RUN_TOKEN@` in a response's
+# stdout becomes the token the latest `gh workflow run` passed.
 STUB_TOOL = f"""#!{sys.executable}
 import json
+import re
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -64,7 +68,11 @@ if "-D" in sys.argv:
     for relative, text in response.get("files", {{}}).items():
         (target / relative).parent.mkdir(parents=True, exist_ok=True)
         (target / relative).write_text(text)
-sys.stdout.write(response.get("stdout", ""))
+stdout = response.get("stdout", "")
+tokens = re.findall(r"run_token=(\\S+)", Path(os.environ["STUB_LOG_FILE"]).read_text())
+if tokens:
+    stdout = stdout.replace("@RUN_TOKEN@", tokens[-1])
+sys.stdout.write(stdout)
 sys.stderr.write(response.get("stderr", ""))
 sys.exit(response.get("status", 0))
 """
@@ -153,6 +161,18 @@ def passing_jobs() -> list[JobSpec]:
     ]
 
 
+def listed_run(title: str, run_id: int = 777) -> dict[str, object]:
+    return {
+        "databaseId": run_id,
+        "displayTitle": title,
+        "url": f"https://github.com/octo/repo/actions/runs/{run_id}",
+    }
+
+
+def run_list(*runs: dict[str, object]) -> str:
+    return json.dumps(list(runs))
+
+
 @dataclass
 class Scenario:
     """The stub tools' answers for one run of the script."""
@@ -190,9 +210,9 @@ class Scenario:
                 "push": [{}],
             },
             "gh": {
-                "--version": [{"stdout": "gh version 2.87.0 (2026-01-01)\n"}],
                 "auth status": [{}],
-                "workflow run": [{"stdout": f"{RUN_URL}\n"}],
+                "workflow run": [{}],
+                "run list": [{"stdout": run_list(listed_run("@RUN_TOKEN@"))}],
                 "run view": [{"stdout": json.dumps(completed)}],
                 "run download": [{"files": files}],
                 "run cancel": [{}],
@@ -299,7 +319,6 @@ def test_a_pass_prints_the_runner_count_lines_with_the_run_duration(
     [
         ("dirty", "tracked files have uncommitted changes"),
         ("detached", "HEAD is detached"),
-        ("old_gh", "gh 2.86.9 is older than 2.87.0"),
         ("no_auth", "gh is not logged in"),
     ],
 )
@@ -310,9 +329,6 @@ def test_a_failed_precondition_is_unavailable_and_dispatches_nothing(
     edits = {
         "dirty": lambda: scenario.answer("git", "status", {"stdout": " M a.py\n"}),
         "detached": lambda: scenario.answer("git", "symbolic-ref", {"status": 1}),
-        "old_gh": lambda: scenario.answer(
-            "gh", "--version", {"stdout": "gh version 2.86.9 (2026-01-01)\n"}
-        ),
         "no_auth": lambda: scenario.answer("gh", "auth status", {"status": 1}),
     }
     edits[scenario_edit]()
@@ -362,7 +378,9 @@ def test_main_missing_from_origin_is_unavailable_and_never_pushed(
 def test_main_that_origin_has_is_dispatched(tmp_path: Path) -> None:
     outcome = run_script(Scenario(branch="main"), tmp_path)
 
-    assert runs_started(outcome) == ["gh workflow run tests.yml --ref=main"]
+    assert [call.split(" -f ")[0] for call in runs_started(outcome)] == [
+        "gh workflow run tests.yml --ref=main"
+    ]
 
 
 def test_a_rejected_push_is_unavailable_and_names_the_rejection(
@@ -419,14 +437,85 @@ def test_an_unreachable_origin_is_unavailable(tmp_path: Path) -> None:
     assert unavailable_line(outcome) == "run: RESULT UNAVAILABLE cannot reach origin"
 
 
-def test_a_dispatch_that_prints_no_url_is_unavailable(tmp_path: Path) -> None:
+def test_the_dispatch_passes_a_run_token(tmp_path: Path) -> None:
+    outcome = run_script(Scenario(), tmp_path)
+
+    (started,) = runs_started(outcome)
+    assert re.fullmatch(
+        r"gh workflow run tests\.yml --ref=feature -f run_token=[0-9a-f]{32}", started
+    )
+
+
+def test_the_run_is_listed_by_branch_and_dispatch_event(tmp_path: Path) -> None:
+    outcome = run_script(Scenario(), tmp_path)
+
+    (listing,) = [call for call in outcome.calls if call.startswith("gh run list")]
+    assert "--workflow=tests.yml --branch=feature --event=workflow_dispatch" in listing
+
+
+def test_a_failed_dispatch_is_unavailable_and_names_the_error(tmp_path: Path) -> None:
     scenario = Scenario()
-    scenario.answer("gh", "workflow run", {"stdout": "queued\n"})
+    scenario.answer(
+        "gh", "workflow run", {"status": 1, "stderr": "HTTP 404: Not Found\n"}
+    )
 
     outcome = run_script(scenario, tmp_path)
 
     assert unavailable_line(outcome) == (
-        "run: RESULT UNAVAILABLE gh workflow run printed no run URL"
+        "run: RESULT UNAVAILABLE gh workflow run failed: HTTP 404: Not Found"
+    )
+
+
+def test_a_run_listed_only_on_a_later_listing_is_found(tmp_path: Path) -> None:
+    scenario = Scenario()
+    scenario.answer(
+        "gh",
+        "run list",
+        {"stdout": run_list()},
+        {"status": 1},
+        {"stdout": run_list(listed_run("@RUN_TOKEN@"))},
+    )
+
+    outcome = run_script(scenario, tmp_path)
+
+    assert (outcome.lines[0], outcome.lines[-1]) == (
+        f"remote: run {RUN_URL}",
+        "run: RESULT PASS",
+    )
+
+
+def test_the_run_titled_with_this_dispatchs_token_is_the_one_followed(
+    tmp_path: Path,
+) -> None:
+    scenario = Scenario()
+    scenario.answer(
+        "gh",
+        "run list",
+        {
+            "stdout": run_list(
+                listed_run("another-dispatchs-token", 888),
+                listed_run("@RUN_TOKEN@"),
+            )
+        },
+    )
+
+    outcome = run_script(scenario, tmp_path)
+
+    views = [call for call in outcome.calls if call.startswith("gh run view")]
+    assert (outcome.lines[0], {view.split()[3] for view in views}) == (
+        f"remote: run {RUN_URL}",
+        {"777"},
+    )
+
+
+def test_a_dispatched_run_that_never_appears_is_unavailable(tmp_path: Path) -> None:
+    scenario = Scenario()
+    scenario.answer("gh", "run list", {"stdout": run_list()})
+
+    outcome = run_script(scenario, tmp_path)
+
+    assert unavailable_line(outcome) == (
+        "run: RESULT UNAVAILABLE the dispatched run did not appear in gh run list"
     )
 
 

@@ -9,12 +9,12 @@ gives no test verdict, so the caller can run the tier locally instead.
 from __future__ import annotations
 
 import json
-import re
 import subprocess
 import sys
 import tempfile
 import time
 import tomllib
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -26,7 +26,6 @@ WORKFLOW = "tests.yml"
 POLL_INTERVAL_S = 20
 QUIET_HEARTBEAT_S = 60
 EXIT_PASS, EXIT_FAIL, EXIT_UNAVAILABLE = 0, 1, 69  # 69 is sysexits' EX_UNAVAILABLE
-MIN_GH = (2, 87, 0)  # the first gh whose `workflow run` prints the new run's URL
 NON_TEST_JOBS = frozenset({"coverage", "test-verdict"})
 TEST_JOB_PREFIXES = ("unit-", "playwright-", "standalone-")
 TEST_STEP = "Run tests"
@@ -39,8 +38,9 @@ STANDALONE_NODE_PREFIX = "freedom_ls/{app}/tests/"
 DEFAULT_START_TIMEOUT_S = 900
 DEFAULT_RUN_TIMEOUT_S = 1800
 MAX_UNREACHABLE_VIEWS = 3
-RUN_URL = re.compile(r"https://github\.com/[^/\s]+/[^/\s]+/actions/runs/(\d+)")
-GH_VERSION = re.compile(r"(\d+)\.(\d+)\.(\d+)")
+FIND_RUN_ATTEMPTS = 10
+FIND_RUN_INTERVAL_S = 3
+RUN_LIST_LIMIT = 20
 VIEW_FIELDS = "status,conclusion,headSha,jobs,createdAt,updatedAt"
 OUTCOME_SEVERITY = {"passed": 0, "skipped": 1, "failed": 2}
 WORK_DIR = Path(".sdd-work")
@@ -166,16 +166,6 @@ def current_branch() -> str:
 
 
 def check_gh() -> None:
-    result = run_tool(["gh", "--version"])
-    match = GH_VERSION.search(first_line(result.stdout))
-    if result.returncode != 0 or match is None:
-        raise Unavailable("cannot read the gh version")
-    found = tuple(int(part) for part in match.groups())
-    if found < MIN_GH:
-        wanted = ".".join(str(part) for part in MIN_GH)
-        raise Unavailable(
-            f"gh {'.'.join(str(part) for part in found)} is older than {wanted}"
-        )
     if run_tool(["gh", "auth", "status"]).returncode != 0:
         raise Unavailable("gh is not logged in")
 
@@ -220,12 +210,60 @@ def push_if_needed(branch: str) -> str:
 
 
 def dispatch(branch: str) -> tuple[str, str]:
-    """Start the workflow for `branch`; returns the run's id and URL."""
-    result = run_tool(["gh", "workflow", "run", WORKFLOW, f"--ref={branch}"])
-    match = RUN_URL.search(result.stdout + result.stderr)
-    if result.returncode != 0 or match is None:
-        raise Unavailable("gh workflow run printed no run URL")
-    return match.group(1), match.group(0)
+    """Start the workflow for `branch`; returns the run's id and URL.
+
+    The run is titled with a fresh token, so the run found afterwards is this dispatch's own
+    even when another dispatch on the branch lands at the same moment.
+    """
+    token = uuid.uuid4().hex
+    result = run_tool(
+        [
+            "gh",
+            "workflow",
+            "run",
+            WORKFLOW,
+            f"--ref={branch}",
+            "-f",
+            f"run_token={token}",
+        ]
+    )
+    if result.returncode != 0:
+        raise Unavailable(f"gh workflow run failed: {first_line(result.stderr)}")
+    for attempt in range(FIND_RUN_ATTEMPTS):
+        if attempt:
+            time.sleep(run_tests.scaled(FIND_RUN_INTERVAL_S))
+        found = find_run(branch, token)
+        if found is not None:
+            return found
+    raise Unavailable("the dispatched run did not appear in gh run list")
+
+
+def find_run(branch: str, token: str) -> tuple[str, str] | None:
+    """The id and URL of the dispatched run titled `token`, or None when it is not listed yet."""
+    result = run_tool(
+        [
+            "gh",
+            "run",
+            "list",
+            f"--workflow={WORKFLOW}",
+            f"--branch={branch}",
+            "--event=workflow_dispatch",
+            f"--limit={RUN_LIST_LIMIT}",
+            "--json=databaseId,displayTitle,url",
+        ]
+    )
+    if result.returncode != 0:
+        return None
+    try:
+        runs: object = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    for run in runs if isinstance(runs, list) else []:
+        if isinstance(run, dict) and run.get("displayTitle") == token:
+            run_id, url = run.get("databaseId"), run.get("url")
+            if isinstance(run_id, int) and isinstance(url, str):
+                return str(run_id), url
+    return None
 
 
 def text_field(table: dict[str, object], key: str) -> str:

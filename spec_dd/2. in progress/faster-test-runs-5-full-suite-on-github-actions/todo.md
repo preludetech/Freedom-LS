@@ -33,7 +33,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 5. Cleanup
 
 - [ ] (cmd) Run `/sdd:finish_worktree` to close out the worktree and land it on main
-- [ ] (user) Upgrade `gh` to 2.87.0 or later (this machine has 2.46.0); until then every remote full run falls back to a local run
+- [x] (user) Upgrade `gh` to 2.87.0 or later (this machine has 2.46.0); until then every remote full run falls back to a local run
 - [ ] (user) Once main has the workflow, dispatch `Tests` on a branch and confirm it passes with every test group under 12 minutes (spec "Testing")
 - [ ] (user) On a dispatch, confirm `test-verdict` fails when one test group is given the wrong `--splits`, and `coverage` fails with `--fail-under` raised above the measured combined coverage (spec "Testing")
 - [ ] (user) Report before and after times against `spec_dd/1. next/faster-test-runs/research_test_timings.md`: workflow wall time and a remote full run's wait, queue included (spec "Testing")

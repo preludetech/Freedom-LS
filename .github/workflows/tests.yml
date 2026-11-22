@@ -1,9 +1,16 @@
 name: Tests
+# A dispatch titles its run with its token so the dispatching script can find that run.
+run-name: ${{ inputs.run_token || github.event.head_commit.message }}
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      run_token:
+        description: Lets the dispatching script find this run
+        type: string
+        required: false
 
 # No job writes to the repository; artifacts need no extra scope.
 permissions:
