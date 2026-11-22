@@ -1,6 +1,6 @@
 # Security and Data Handling
 
-_Last updated: 2026-11-17_
+_Last updated: 2026-11-22_
 
 This is the cross-cutting reviewer document. Every claim is labelled by its actual state: **built** (in code and active), **operational** (requires correct deployment configuration), or **not yet built**.
 
@@ -29,7 +29,7 @@ This is the cross-cutting reviewer document. Every claim is labelled by its actu
 
 **Pre-commit gates (built).** Every commit runs secret detection against a maintained baseline, private-key detection, a Python security linter at medium-and-above severity, linting and formatting, project-wide static type checking, shell linting, and file-hygiene checks including a 1 MB limit on added files. The authoritative list is `.pre-commit-config.yaml`.
 
-**CI (built).** Pull requests run the test suite plus a security workflow covering static security analysis, dependency vulnerability auditing, and pattern-based scanning — and a job that runs Django's own `check --deploy` against the production settings, failing on warnings. This catches a weak or misconfigured production setting before it ships.
+**CI (built).** The full test suite runs on every push to main and on demand for any branch, not automatically on pull requests. Pull requests run a security workflow covering static security analysis, dependency vulnerability auditing, and pattern-based scanning — and a job that runs Django's own `check --deploy` against the production settings, failing on warnings. This catches a weak or misconfigured production setting before it ships.
 
 **GitHub platform features (operational).** Branch protection, Dependabot alerts, secret scanning, and CodeQL are configuration, not code. See [`../deployment-security-checklist.md`](../deployment-security-checklist.md) §11 — not duplicated here.
 
