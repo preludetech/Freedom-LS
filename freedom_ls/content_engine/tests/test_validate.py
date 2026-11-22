@@ -2937,8 +2937,6 @@ def test_validate_lists_a_draw_error_in_the_report(tmp_path: Path) -> None:
         validate(tmp_path)
 
 
-# Warnings about scored choice questions that name sections without explaining.
-
 _TOPIC_FILE = "---\ncontent_type: TOPIC\ntitle: A Topic\n---\n"
 
 
