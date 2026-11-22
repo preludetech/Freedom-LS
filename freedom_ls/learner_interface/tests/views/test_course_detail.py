@@ -6,7 +6,7 @@ import dataclasses
 import itertools
 import re
 from collections.abc import Callable
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import cast
 
@@ -43,9 +43,12 @@ from freedom_ls.content_engine.models import (
 from freedom_ls.content_engine.prices import CoursePrice
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_interest.factories import CourseInterestFactory
-from freedom_ls.deadlines.factories import CourseDeadlineConfigFactory
+from freedom_ls.deadlines.factories import (
+    CourseDeadlineConfigFactory,
+    CoursePauseFactory,
+)
 from freedom_ls.form_engine.factories import FormFactory
-from freedom_ls.form_engine.models import FormStrategy
+from freedom_ls.form_engine.models import FormQuestion, FormStrategy
 from freedom_ls.learner_interface.tests.helpers import (
     form_attempt,
     set_due_date,
@@ -67,6 +70,12 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
+from freedom_ls.revision.factories import RevisionScheduleFactory
+from freedom_ls.revision.tests.helpers import (
+    finish_topic,
+    place_topic,
+    question_testing_topic,
+)
 from freedom_ls.tests.app_guards import app_not_installed
 
 # The wrapper the express-interest partial renders around its call to action.
@@ -1896,7 +1905,143 @@ def test_detail_page_query_count_does_not_grow_with_items(
 
     # The policy is resolved for a registered learner; with close_items off, the
     # deadlines themselves are not, since no row could read Closed.
-    with django_assert_max_num_queries(44):
+    with django_assert_max_num_queries(48):
+        response = client.get(url)
+
+    assert response.status_code == 200
+
+
+def _course_with_bank(
+    question_count: int, **course_fields: object
+) -> tuple[Course, User]:
+    """A course and a learner whose bank holds `question_count` ready questions."""
+    course = CourseFactory(**course_fields)
+    topic, _ = place_topic(course)
+    for _ in range(question_count):
+        question_testing_topic(topic)
+    user = UserFactory()
+    record_fields = (
+        {"created_at": datetime(2026, 3, 1, 10, 0, tzinfo=UTC)} if course_fields else {}
+    )
+    finish_topic(course_progress_record(course, user, **record_fields), topic)
+    return cast(Course, course), cast(User, user)
+
+
+def _revision_card(client: Client, course: Course) -> list[lxml.html.HtmlElement]:
+    html = _detail_html(client, course)
+    return list(lxml.html.fromstring(html).cssselect('[data-testid="revision-link"]'))
+
+
+def _client_for(user: User) -> Client:
+    client = Client()
+    client.force_login(user)
+    return client
+
+
+def _anonymous_with_bank() -> tuple[Course, Client]:
+    course, _ = _course_with_bank(1)
+    return course, Client()
+
+
+def _unregistered_with_bank() -> tuple[Course, Client]:
+    course, _ = _course_with_bank(1)
+    return course, _client_for(UserFactory())
+
+
+def _empty_bank() -> tuple[Course, Client]:
+    course, user = _course_with_bank(0)
+    return course, _client_for(user)
+
+
+def _paused_with_bank() -> tuple[Course, Client]:
+    course, user = _course_with_bank(1)
+    CoursePauseFactory(course_progress=course_progress_record(course, user))
+    return course, _client_for(user)
+
+
+def _ended_with_bank() -> tuple[Course, Client]:
+    course, user = _course_with_bank(1, time_limit_days=30)
+    CourseDeadlineConfigFactory(course=course, end_course_access="on")
+    return course, _client_for(user)
+
+
+@pytest.mark.django_db
+def test_revision_card_shows_the_ready_count_to_a_learner_with_a_bank(
+    mock_site_context,
+):
+    course, user = _course_with_bank(3)
+
+    card = _revision_card(_client_for(user), course)
+
+    assert "3 ready" in card[0].text_content()
+
+
+@pytest.mark.django_db
+def test_revision_card_links_to_the_revision_page(mock_site_context):
+    course, user = _course_with_bank(1)
+
+    card = _revision_card(_client_for(user), course)
+
+    assert card[0].cssselect("a")[0].get("href") == reverse(
+        "learner_interface:course_revision", kwargs={"course_slug": course.slug}
+    )
+
+
+@pytest.mark.django_db
+def test_revision_card_reads_forty_plus_past_the_cap(mock_site_context):
+    course, user = _course_with_bank(41)
+
+    card = _revision_card(_client_for(user), course)
+
+    assert "40+ ready" in card[0].text_content()
+
+
+@pytest.mark.django_db
+def test_revision_card_says_all_caught_up_when_nothing_is_ready(mock_site_context):
+    course, user = _course_with_bank(1)
+    RevisionScheduleFactory(
+        user=user,
+        question=FormQuestion.objects.get(),
+        due=timezone.now() + timedelta(days=5),
+    )
+
+    card = _revision_card(_client_for(user), course)
+
+    assert "You're all caught up." in card[0].text_content()
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        _anonymous_with_bank,
+        _unregistered_with_bank,
+        _empty_bank,
+        _paused_with_bank,
+        _ended_with_bank,
+    ],
+)
+def test_revision_card_is_absent_without_a_usable_bank(scenario, mock_site_context):
+    course, client = scenario()
+
+    card = _revision_card(client, course)
+
+    assert card == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("question_count", [1, 12])
+def test_detail_page_with_a_bank_stays_under_the_query_bound(
+    question_count, mock_site_context, django_assert_max_num_queries
+):
+    course, user = _course_with_bank(question_count)
+    client = _client_for(user)
+    url = reverse(
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+    )
+
+    with django_assert_max_num_queries(50):
         response = client.get(url)
 
     assert response.status_code == 200

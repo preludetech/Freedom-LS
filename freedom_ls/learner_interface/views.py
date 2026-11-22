@@ -1044,6 +1044,9 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
                 else []
             ),
             "children": children,
+            "revision_ready_text": _revision_ready_text(
+                cast("User", request.user), course_progress, decision, timezone.now()
+            ),
             "is_registered": is_registered,
             "is_coming_soon": is_coming_soon,
             "start_url": start_url,
@@ -1608,6 +1611,7 @@ def view_course_item(request, course_slug, index):
         course_progress=course_progress,
         outline_mode=_outline_mode(decision),
         reference_linked=decision.can_access_content,
+        decision=decision,
     )
 
     if entry is not None and closed:
@@ -1743,6 +1747,7 @@ def _player_chrome_context(
     outline_mode: OutlineMode = OutlineMode.FULL,
     *,
     reference_linked: bool,
+    decision: CourseAccessDecision | None = None,
 ) -> dict:
     """Build the shared player-chrome context (TOC, breadcrumb, header, title).
 
@@ -1758,6 +1763,9 @@ def _player_chrome_context(
 
     ``reference_linked`` is whether the learner can read the reference pages, so the
     sidebar's reference topics link only when following them would not bounce.
+
+    ``decision`` gates the outline's link to the revision page; without one the link is
+    left out.
     """
     user = request.user
     if viewable_items is None:
@@ -1808,6 +1816,13 @@ def _player_chrome_context(
         "index": index,
         "paused": outline_mode is OutlineMode.PAUSED,
         "reference_linked": reference_linked,
+        "revision_ready_text": (
+            _revision_ready_text(
+                cast("User", user), course_progress, decision, timezone.now()
+            )
+            if decision is not None
+            else None
+        ),
         **_time_zone_context(request),
     }
 
@@ -2027,6 +2042,7 @@ def _render_form_fill_page(
     submission: PageSubmission,
     *,
     reference_linked: bool,
+    decision: CourseAccessDecision,
     course_index: PlayerCourseIndex | None = None,
 ) -> HttpResponse:
     """Render one runner page, carrying whatever a submission was rejected for.
@@ -2067,6 +2083,7 @@ def _render_form_fill_page(
             course_index=course_index,
             course_progress=course_progress,
             reference_linked=reference_linked,
+            decision=decision,
         ),
         **answered_counts(form_progress, current.questions, current.path),
         # URLs the exit dialog acts on.
@@ -2181,6 +2198,7 @@ def form_fill_page(
         form_progress,
         submission,
         reference_linked=decision.can_access_content,
+        decision=decision,
         course_index=player_index,
     )
 
@@ -2266,6 +2284,7 @@ def course_form_complete(request, course_slug, index):
         course_progress=course_progress,
         outline_mode=_outline_mode(decision),
         reference_linked=decision.can_access_content,
+        decision=decision,
     )
     course_index = chrome["course_index"]
     # A closed form refuses a new sitting, so its results offer no retry. Read off
@@ -2697,6 +2716,23 @@ def _ready_text(
     return f"{cap}+ ready" if count > cap else f"{count} ready"
 
 
+def _revision_ready_text(
+    user: User,
+    record: CourseProgress | None,
+    decision: CourseAccessDecision,
+    now: datetime,
+) -> str | None:
+    """The words on the course's link to its revision page, or None when it shows no link."""
+    if (
+        record is None
+        or not decision.can_access_content
+        or not bank_questions(record).exists()
+    ):
+        return None
+    ready_text = _ready_text(user, record, now, cap=COURSE_READY_CAP)
+    return "You're all caught up." if ready_text == "0 ready" else ready_text
+
+
 def _revision_section_rows(
     user: User, record: CourseProgress
 ) -> list[dict[str, object]]:
@@ -3024,6 +3060,7 @@ def form_submit_and_exit(
                     form_progress,
                     submission,
                     reference_linked=decision.can_access_content,
+                    decision=decision,
                 )
         form_progress.complete()  # idempotent
 

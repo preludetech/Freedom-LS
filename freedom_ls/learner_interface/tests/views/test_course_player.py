@@ -99,6 +99,11 @@ from freedom_ls.learner_progress.tests.quiz_fixtures import ScoredQuiz, SitQuiz
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.revision.tests.helpers import (
+    finish_topic,
+    place_topic,
+    question_testing_topic,
+)
 from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
 
 # Tests for view_course_item with nested course structure.
@@ -1527,7 +1532,7 @@ def test_player_page_query_count_is_bounded(
         "learner_interface:view_course_item",
         kwargs={"course_slug": "resume-course", "index": 1},
     )
-    with django_assert_max_num_queries(54):
+    with django_assert_max_num_queries(58):
         response = client.get(url)
     assert response.status_code == 200
 
@@ -1576,7 +1581,7 @@ def test_player_page_query_count_does_not_grow_with_items(
         "learner_interface:view_course_item",
         kwargs={"course_slug": "big-course", "index": 1},
     )
-    with django_assert_max_num_queries(54):
+    with django_assert_max_num_queries(58):
         response = client.get(url)
     assert response.status_code == 200
 
@@ -4148,7 +4153,7 @@ def test_player_page_query_count_with_deadlines_does_not_grow_with_items(
         kwargs={"course_slug": course.slug, "index": 1},
     )
 
-    with django_assert_max_num_queries(56):
+    with django_assert_max_num_queries(60):
         response = client.get(url)
 
     assert response.status_code == 200
@@ -5294,3 +5299,27 @@ def test_outline_course_part_chevron_points_up_while_open(
             and "expanded" in ancestor.get("x-bind:class", "")
         ]
         assert rotating
+
+
+@pytest.mark.django_db
+def test_outline_panel_shows_the_revision_line_for_a_learner_with_a_bank(
+    mock_site_context,
+):
+    course = CourseFactory()
+    topic, _ = place_topic(course)
+    question_testing_topic(topic)
+    user = UserFactory()
+    finish_topic(course_progress_record(course, user), topic)
+    client = Client()
+    client.force_login(user)
+    url = reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+
+    response = client.get(url)
+
+    line = lxml.html.fromstring(response.content.decode()).cssselect(
+        '#course-toc-region [data-testid="revision-link"]'
+    )
+    assert "1 ready" in line[0].text_content()

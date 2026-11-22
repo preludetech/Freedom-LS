@@ -1,0 +1,17 @@
+{% comment %}
+The course's link to its revision page. Takes revision_ready_text (the words on the
+link), course and compact. Not compact is the course detail card under the start
+button; compact is the one line under the outline panel's progress bar.
+{% endcomment %}
+{% if compact %}
+    <p class="mt-2 text-sm flex items-center gap-2" data-testid="revision-link">
+        <c-button variant="link" href="{% url 'learner_interface:course_revision' course.slug %}">Revision</c-button>
+        <span class="text-muted">{{ revision_ready_text }}</span>
+    </p>
+{% else %}
+    <div class="surface p-6 rounded-xl space-y-3" data-testid="revision-link">
+        <h3 class="text-sm font-semibold uppercase tracking-wide text-muted">Revision</h3>
+        <p class="text-sm">{{ revision_ready_text }}</p>
+        <c-button href="{% url 'learner_interface:course_revision' course.slug %}" class="w-full">Revise</c-button>
+    </div>
+{% endif %}

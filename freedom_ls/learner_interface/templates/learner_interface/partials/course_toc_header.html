@@ -20,6 +20,9 @@ or ended access.
                                label="Progress for {{ course.title }}"
                                suffix=" complete" />
     </div>
+    {% if revision_ready_text %}
+        {% include "learner_interface/partials/revision_link.html" with compact=True %}
+    {% endif %}
     {% if next_deadline_card %}
         {% comment %}Plain text: no border, no tint, no chip.{% endcomment %}
         <div class="mt-3 space-y-2" data-testid="outline-deadline">
