@@ -1322,14 +1322,33 @@ def test_a_reference_entry_naming_a_topic_fails_naming_its_type(
     assert "this file is a TOPIC, not a COURSE_PART" in errors[0]
 
 
-def test_a_reference_entry_naming_nothing_gives_no_message_here(
-    tmp_path: Path,
-) -> None:
+def test_a_reference_entry_naming_nothing_fails(tmp_path: Path) -> None:
     _course_with_lists(
         tmp_path / "course.md", children=["intro.md"], reference=["missing/part.yaml"]
     )
 
-    assert _reference_list_errors(tmp_path) == []
+    errors = _reference_list_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "Invalid reference list" in errors[0]
+    assert "reference[0]" in errors[0]
+    assert "no file at this path" in errors[0]
+
+
+def test_a_reference_entry_naming_an_ignored_path_fails(tmp_path: Path) -> None:
+    _part(tmp_path / "drafts" / "part.yaml")
+    _course_with_lists(
+        tmp_path / "course.md", children=["intro.md"], reference=["drafts/part.yaml"]
+    )
+    ignore = frozenset({content_key(tmp_path / "drafts")})
+    parsed = parse_single_file(tmp_path / "course.md")
+
+    errors = validate_reference_lists(parsed, ignore=ignore)
+
+    assert len(errors) == 1
+    assert "Invalid reference list" in errors[0]
+    assert "reference[0]" in errors[0]
+    assert IGNORED_PROBLEM in errors[0]
 
 
 def test_a_distinct_reference_part_outside_the_learning_path_passes(

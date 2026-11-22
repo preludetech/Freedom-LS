@@ -1104,10 +1104,22 @@ def validate_reference_lists(
                         fix="List the part under children: or under reference:, not both.",
                     )
                 )
+            if not key.is_file():
+                errors.append(
+                    error(
+                        problem="no file at this path",
+                        fix="Point the entry at a part.yaml; paths are relative to course.md.",
+                    )
+                )
+                continue
+            # The loader skips an ignored file, so the entry would name a part that is
+            # never loaded.
+            if is_ignored(key, ignore):
+                errors.append(error(problem=IGNORED_PROBLEM, fix=IGNORED_FIX))
+                continue
             target = by_path.get(key)
             if target is None:
-                # Nothing at this path, or a file that does not parse: the loader's
-                # "was not loaded" error and the file's own validation report those.
+                # A file that does not parse: its own validation reports it.
                 continue
             if not isinstance(target, CoursePart):
                 errors.append(

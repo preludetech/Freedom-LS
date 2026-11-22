@@ -4581,8 +4581,8 @@ def _reference_titles_in_order() -> list[str]:
 
 @pytest.mark.django_db
 def test_a_reference_list_writes_one_row_per_entry_in_list_order(
-    site, mock_site_context
-):
+    site: Site, mock_site_context: Site
+) -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         course_dir = Path(tmpdir) / "reference"
         _write_course_with_reference(course_dir, ["glossary", "faq"])
@@ -4598,8 +4598,8 @@ def test_a_reference_list_writes_one_row_per_entry_in_list_order(
 
 @pytest.mark.django_db
 def test_reordering_the_reference_list_and_reloading_reorders_the_rows(
-    site, mock_site_context
-):
+    site: Site, mock_site_context: Site
+) -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         course_dir = Path(tmpdir) / "reference"
         _write_course_with_reference(course_dir, ["glossary", "faq"])
@@ -4613,8 +4613,8 @@ def test_reordering_the_reference_list_and_reloading_reorders_the_rows(
 
 @pytest.mark.django_db
 def test_reloading_unchanged_files_keeps_the_same_reference_rows(
-    site, mock_site_context
-):
+    site: Site, mock_site_context: Site
+) -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         course_dir = Path(tmpdir) / "reference"
         _write_course_with_reference(course_dir, ["glossary", "faq"])
@@ -4645,8 +4645,8 @@ def _write_second_reference_course(course_dir: Path) -> None:
 
 @pytest.mark.django_db
 def test_removing_an_entry_from_the_reference_list_deletes_its_row_on_reload(
-    site, mock_site_context
-):
+    site: Site, mock_site_context: Site
+) -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         course_dir = Path(tmpdir) / "reference"
         _write_course_with_reference(course_dir, ["glossary", "faq"])
@@ -4661,8 +4661,8 @@ def test_removing_an_entry_from_the_reference_list_deletes_its_row_on_reload(
 
 @pytest.mark.django_db
 def test_removing_the_reference_key_deletes_every_row_on_reload(
-    site, mock_site_context
-):
+    site: Site, mock_site_context: Site
+) -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         course_dir = Path(tmpdir) / "reference"
         _write_course_with_reference(course_dir, ["glossary", "faq"])
@@ -4679,8 +4679,8 @@ def test_removing_the_reference_key_deletes_every_row_on_reload(
 
 @pytest.mark.django_db
 def test_a_course_missing_from_a_later_load_keeps_its_reference_rows(
-    site, mock_site_context
-):
+    site: Site, mock_site_context: Site
+) -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         first_dir = Path(tmpdir) / "first"
         second_dir = Path(tmpdir) / "second"
@@ -4697,8 +4697,8 @@ def test_a_course_missing_from_a_later_load_keeps_its_reference_rows(
 
 @pytest.mark.django_db
 def test_a_reference_path_that_was_not_loaded_raises_and_writes_nothing(
-    site, mock_site_context
-):
+    site: Site, mock_site_context: Site
+) -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         course_dir = Path(tmpdir) / "reference"
         outside_dir = Path(tmpdir) / "outside"
@@ -4714,7 +4714,7 @@ def test_a_reference_path_that_was_not_loaded_raises_and_writes_nothing(
             "  - path: ../outside/part.yaml\n---\n"
         )
 
-        with pytest.raises(ValueError, match="was not loaded"):
+        with pytest.raises(ValueError, match="under reference:, but it was not loaded"):
             save_content_to_db(course_dir, site.name)
 
     assert not CourseReferencePart.objects.exists()
@@ -4723,8 +4723,8 @@ def test_a_reference_path_that_was_not_loaded_raises_and_writes_nothing(
 
 @pytest.mark.django_db
 def test_a_reference_entry_naming_a_file_that_is_not_a_part_raises(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     course_file = tmp_path / "course.md"
     course_file.write_text(
         f"---\ncontent_type: COURSE\ntitle: Reference course\nuuid: {COURSE_UUID}\n"
@@ -4756,8 +4756,12 @@ def test_a_reference_entry_naming_a_file_that_is_not_a_part_raises(
     ],
 )
 def test_a_bad_reference_list_raises_before_any_write(
-    site, mock_site_context, tmp_path, entries, problem
-):
+    site: Site,
+    mock_site_context: Site,
+    tmp_path: Path,
+    entries: list[str],
+    problem: str,
+) -> None:
     _write_course_with_reference(tmp_path, ["glossary"])
     (tmp_path / "topic.md").write_text(
         "---\ncontent_type: TOPIC\ntitle: A Topic\n"
@@ -4780,8 +4784,8 @@ def test_a_bad_reference_list_raises_before_any_write(
 
 @pytest.mark.django_db
 def test_a_reference_part_that_is_also_a_child_raises_before_any_write(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _write_course_with_reference(tmp_path, ["glossary"])
     (tmp_path / "course.md").write_text(
         f"---\ncontent_type: COURSE\ntitle: Reference course\nuuid: {COURSE_UUID}\n"
@@ -4818,8 +4822,13 @@ def test_a_reference_part_that_is_also_a_child_raises_before_any_write(
     ],
 )
 def test_a_bad_reference_part_raises_before_any_write(
-    site, mock_site_context, tmp_path, part_yaml, child_file, problem
-):
+    site: Site,
+    mock_site_context: Site,
+    tmp_path: Path,
+    part_yaml: str,
+    child_file: str,
+    problem: str,
+) -> None:
     _write_course_with_reference(tmp_path, ["glossary"])
     (tmp_path / "glossary" / "child.md").write_text(child_file)
     (tmp_path / "glossary" / "part.yaml").write_text(
@@ -4888,8 +4897,8 @@ def _moving_part_placements(course_uuid: str) -> list[ContentCollectionItem]:
 
 @pytest.mark.django_db
 def test_moving_a_part_to_reference_deletes_its_placement_and_child_due_dates(
-    site, mock_site_context
-):
+    site: Site, mock_site_context: Site
+) -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         course_dir = Path(tmpdir) / "moving"
         _write_course_placing_or_referencing_part(
@@ -4912,8 +4921,8 @@ def test_moving_a_part_to_reference_deletes_its_placement_and_child_due_dates(
 
 @pytest.mark.django_db
 def test_moving_a_part_to_reference_reports_the_course_part_and_counts(
-    site, mock_site_context, capsys
-):
+    site: Site, mock_site_context: Site, capsys: pytest.CaptureFixture[str]
+) -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         course_dir = Path(tmpdir) / "moving"
         _write_course_placing_or_referencing_part(
@@ -4934,7 +4943,9 @@ def test_moving_a_part_to_reference_reports_the_course_part_and_counts(
 
 
 @pytest.mark.django_db
-def test_the_moved_part_is_not_among_the_course_items(site, mock_site_context):
+def test_the_moved_part_is_not_among_the_course_items(
+    site: Site, mock_site_context: Site
+) -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         course_dir = Path(tmpdir) / "moving"
         _write_course_placing_or_referencing_part(
@@ -4952,7 +4963,9 @@ def test_the_moved_part_is_not_among_the_course_items(site, mock_site_context):
 
 
 @pytest.mark.django_db
-def test_another_courses_placement_of_the_moved_part_survives(site, mock_site_context):
+def test_another_courses_placement_of_the_moved_part_survives(
+    site: Site, mock_site_context: Site
+) -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         first_dir = Path(tmpdir) / "first"
         second_dir = Path(tmpdir) / "second"
@@ -4979,8 +4992,8 @@ def test_another_courses_placement_of_the_moved_part_survives(site, mock_site_co
 
 @pytest.mark.django_db
 def test_a_second_unchanged_load_prints_no_removal_line(
-    site, mock_site_context, capsys
-):
+    site: Site, mock_site_context: Site, capsys: pytest.CaptureFixture[str]
+) -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         course_dir = Path(tmpdir) / "moving"
         _write_course_placing_or_referencing_part(
@@ -5000,8 +5013,11 @@ def test_a_second_unchanged_load_prints_no_removal_line(
 
 @pytest.mark.django_db
 def test_a_load_that_fails_after_the_cleanup_prints_no_removal_line(
-    site, mock_site_context, capsys, monkeypatch
-):
+    site: Site,
+    mock_site_context: Site,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     def fail_after_the_cleanup(*args: object) -> None:
         raise RuntimeError("fails after the cleanup")
 

@@ -990,8 +990,9 @@ def sync_reference_parts(
                 # A silently dropped entry is a course missing reference material
                 # nobody notices.
                 raise ValueError(
-                    f"Collection '{course.title}' names a child at "
-                    f"{part_path} that was not loaded"
+                    f"Course '{course.title}' lists {part_path} under reference:, "
+                    "but it was not loaded; include its directory in the "
+                    "content_save sources"
                 )
             if not isinstance(part, CoursePart):
                 raise ValueError(

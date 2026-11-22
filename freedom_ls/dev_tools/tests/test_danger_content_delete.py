@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from django.apps import apps
+from django.contrib.sites.models import Site
 from django.core.management import call_command
 from django.db import transaction
 from django.db.models import ProtectedError
@@ -141,8 +142,8 @@ def test_danger_content_delete_succeeds_with_a_question_naming_a_topic_and_a_par
 
 
 def test_danger_content_delete_counts_and_removes_course_reference_parts(
-    mock_site_context, capsys
-):
+    mock_site_context: Site, capsys: pytest.CaptureFixture[str]
+) -> None:
     CourseReferencePartFactory()
 
     call_command("danger_content_delete", "--yes")

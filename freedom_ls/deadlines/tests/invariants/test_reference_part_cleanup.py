@@ -93,7 +93,7 @@ def _deadline_counts(course_uuid: str) -> tuple[int, int, int]:
 
 @pytest.mark.django_db
 def test_moving_a_part_to_reference_deletes_the_deadlines_on_its_placement_only(
-    site: Site, mock_site_context, capsys: pytest.CaptureFixture[str]
+    site: Site, mock_site_context: Site, capsys: pytest.CaptureFixture[str]
 ) -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         first_dir = Path(tmpdir) / "first"

@@ -6,10 +6,11 @@ import re
 from decimal import Decimal
 
 import pytest
+from pytest_django.fixtures import DjangoAssertNumQueries
 
 from django.contrib import admin
 from django.db import connection
-from django.test import RequestFactory, override_settings
+from django.test import Client, RequestFactory, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
@@ -201,22 +202,22 @@ def _course_change_payload(response, **overrides: str) -> dict[str, str]:
 class TestCourseReferencePartInline:
     """A course's reference parts are shown on its change page and cannot be edited there."""
 
-    def _course_with_reference_parts(self, titles: list[str]):
-        course = CourseFactory()
+    def _course_with_reference_parts(self, titles: list[str]) -> Course:
+        course: Course = CourseFactory()
         for order, title in enumerate(titles):
             CourseReferencePartFactory(
                 course=course, course_part=CoursePartFactory(title=title), order=order
             )
         return course
 
-    def _change_page(self, staff_client, course: Course) -> str:
+    def _change_page(self, staff_client: Client, course: Course) -> str:
         response = staff_client.get(_course_change_url(course))
         assert response.status_code == 200
         html: str = response.content.decode()
         return html
 
     def test_the_change_page_lists_the_parts_in_order_with_no_add_or_delete(
-        self, staff_client
+        self, staff_client: Client
     ) -> None:
         # The titles sort the opposite way to `order`, so a title sort would flip them.
         course = CourseFactory()
@@ -234,7 +235,9 @@ class TestCourseReferencePartInline:
         assert not re.search(r'name="reference_parts-\d+-DELETE"', html)
 
     def test_the_change_page_query_count_does_not_grow_with_reference_parts(
-        self, staff_client, django_assert_max_num_queries
+        self,
+        staff_client: Client,
+        django_assert_max_num_queries: DjangoAssertNumQueries,
     ) -> None:
         course = self._course_with_reference_parts(["Part 0"])
         # A first render fills the content-type and permission caches.
@@ -252,7 +255,7 @@ class TestCourseReferencePartInline:
             self._change_page(staff_client, course)
 
     def test_posting_the_change_form_leaves_the_rows_unchanged(
-        self, staff_client
+        self, staff_client: Client
     ) -> None:
         course = self._course_with_reference_parts(["Alpha Part", "Beta Part"])
         url = _course_change_url(course)

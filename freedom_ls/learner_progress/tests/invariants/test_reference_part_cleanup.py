@@ -51,7 +51,7 @@ def _write_course(course_dir: Path, *, reference: bool) -> None:
 
 @pytest.mark.django_db
 def test_the_moved_parts_topics_no_longer_count_towards_course_progress(
-    site: Site, mock_site_context
+    site: Site, mock_site_context: Site
 ) -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         course_dir = Path(tmpdir) / "course"

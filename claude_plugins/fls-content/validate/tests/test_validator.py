@@ -2117,6 +2117,39 @@ def test_reference_part_that_is_also_a_child_fails(
     assert "reference[0]" in result.stdout + result.stderr
 
 
+def test_reference_entry_naming_nothing_fails(tmp_path: Path) -> None:
+    course_dir = _course_dir(tmp_path)
+    write_valid_topic(course_dir)
+    write_reference_course(
+        course_dir,
+        children=["01. intro.md"],
+        reference_block=_reference_block("missing/part.yaml"),
+    )
+
+    result = run_validator(course_dir)
+
+    assert_validator_fails(result, "no file at this path")
+    assert "reference[0]" in result.stdout + result.stderr
+
+
+def test_reference_entry_naming_an_ignored_path_fails(tmp_path: Path) -> None:
+    course_dir = _course_dir(tmp_path)
+    write_valid_topic(course_dir)
+    _write(tmp_path / "shared" / "drafts" / "part.yaml", _PART_FILE)
+    write_reference_course(
+        course_dir,
+        children=["01. intro.md"],
+        reference_block=_reference_block("../shared/drafts/part.yaml"),
+    )
+    write_ignore_list(tmp_path, ["shared/drafts"])
+
+    result = run_validator(course_dir)
+
+    assert_validator_fails(result, "it is in the .fls-content.yaml ignore list")
+    assert "Invalid reference list" in result.stdout + result.stderr
+    assert "reference[0]" in result.stdout + result.stderr
+
+
 def test_reference_entry_naming_a_topic_fails(tmp_path: Path) -> None:
     course_dir = _course_dir(tmp_path)
     write_valid_topic(course_dir)
