@@ -1,0 +1,14 @@
+{% extends "_base.html" %}
+
+{% block head_title %}
+    Revision: {{ course.title }}
+{% endblock head_title %}
+
+{% block content %}
+    <c-page width="narrow">
+        <div class="space-y-6">
+            <c-back-link href="{% url 'learner_interface:course_detail' course_slug=course.slug %}">Back to course</c-back-link>
+            {% include "learner_interface/partials/revision_start.html" %}
+        </div>
+    </c-page>
+{% endblock content %}

@@ -111,6 +111,7 @@ from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.referral_tracking.conversions import record_conversion
 from freedom_ls.referral_tracking.models import ConversionKind
+from freedom_ls.revision.queries import bank_questions
 from freedom_ls.site_aware_models.models import get_cached_site
 from freedom_ls.site_aware_models.time_zones import shows_time_zone_to_learners
 
@@ -1158,6 +1159,7 @@ class PlayerRoute(StrEnum):
     FORM_RESULTS = "form_results"
     SUBMIT_AND_EXIT = "submit_and_exit"
     FINISH = "finish"
+    REVISION = "revision"
 
 
 def _course_access_decision(user: RequestUser, course: Course) -> CourseAccessDecision:
@@ -2443,6 +2445,38 @@ def course_reference_topic(
             ),
             **_reference_sidebar_context(request, course),
         },
+    )
+
+
+def _revision_record(
+    request: HttpRequest, course_slug: str
+) -> tuple[Course, CourseProgress] | HttpResponseRedirect:
+    """The gate every revision view passes first: the course and the learner's record, or the redirect."""
+    course = get_object_or_404(Course, slug=course_slug)
+    no_access = _course_access_redirect(
+        _course_access_decision(request.user, course),
+        course,
+        route=PlayerRoute.REVISION,
+    )
+    if no_access is not None:
+        return no_access
+    record = _ensure_player_course_progress(request.user, course)
+    if record is None:
+        raise Http404("No course progress record for this learner and course.")
+    return course, record
+
+
+@login_required
+def course_revision(request: HttpRequest, course_slug: str) -> HttpResponse:
+    """The revision start screen: how many questions the learner can revise."""
+    gate = _revision_record(request, course_slug)
+    if isinstance(gate, HttpResponseRedirect):
+        return gate
+    course, record = gate
+    return render(
+        request,
+        "learner_interface/course_revision.html",
+        {"course": course, "ready_count": bank_questions(record).count()},
     )
 
 

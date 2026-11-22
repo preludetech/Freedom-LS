@@ -29,6 +29,11 @@ urlpatterns = [
         name="course_reference_topic",
     ),
     path(
+        "courses/<slug:course_slug>/revision/",
+        views.course_revision,
+        name="course_revision",
+    ),
+    path(
         "courses/<slug:course_slug>/<int:index>/",
         views.view_course_item,
         name="view_course_item",
