@@ -138,6 +138,12 @@ markers = "not ci_only and not weasyprint"
 max_workers = 4
 per_worker_mb = 768
 
+# The full tier runs on GitHub Actions; DS_TEST_REMOTE=off runs it locally.
+[tool.test_tiers.remote]
+command = "uv run python claude_plugins/fls-dev/scripts/remote_full_run.py"
+start_timeout_s = 900
+run_timeout_s = 1800
+
 # This repository hosts the plugins; their scripts and templates are tested in tests/.
 [[tool.test_tiers.tooling]]
 glob = "claude_plugins/*/scripts/**"

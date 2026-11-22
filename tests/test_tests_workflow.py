@@ -11,6 +11,8 @@ from pathlib import Path
 import pytest
 import yaml
 
+from tests.test_remote_full_run import remote
+
 pytestmark = pytest.mark.dev_tooling
 
 WORKFLOW_PATH = (
@@ -194,3 +196,31 @@ def test_split_test_job_passes_its_group_to_pytest(job_id: str) -> None:
 
     assert "--splits ${{ strategy.job-total }}" in command
     assert "--group ${{ matrix.group }}" in command
+
+
+def step_names(job_id: str) -> list[object]:
+    return [step.get("name") for step in steps_of(jobs()[job_id])]
+
+
+@pytest.mark.parametrize(
+    ("step_name", "job_ids"),
+    [
+        (remote.TEST_STEP, TEST_JOB_IDS),
+        (remote.JOBS_STEP, ["test-verdict"]),
+        (remote.PARTITION_STEP, ["test-verdict"]),
+        (remote.COVERAGE_PRESENT_STEP, ["coverage"]),
+        (remote.COVERAGE_CHECK_STEP, ["coverage"]),
+    ],
+    ids=lambda value: value if isinstance(value, str) else None,
+)
+def test_each_step_the_remote_command_reads_exists_in_its_job(
+    step_name: str, job_ids: list[str]
+) -> None:
+    assert all(step_name in step_names(job_id) for job_id in job_ids)
+
+
+@pytest.mark.parametrize("job_id", TEST_JOB_IDS)
+def test_each_test_job_name_starts_with_a_prefix_the_remote_command_recognises(
+    job_id: str,
+) -> None:
+    assert job_name_expression(job_id).startswith(remote.TEST_JOB_PREFIXES)
