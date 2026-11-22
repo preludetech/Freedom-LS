@@ -74,6 +74,9 @@ TOOLING: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("tests/**", ("tests",)),
 )
 
+# Python modules Django loads by name ({% load %}), so no import shows who uses them.
+NAME_LOADED_GLOBS: tuple[str, ...] = ("**/templatetags/**",)
+
 # Changes a browser can see; the touched app's browser tests stay in the targeted run.
 UI_GLOBS: tuple[str, ...] = (
     "**/templates/**",
@@ -117,6 +120,8 @@ class TierConfig:
     markers: str | None = None
     # When true, a change selects the tests it can reach instead of whole related apps.
     narrow: bool = False
+    # pytest's `testpaths`: where the import graph looks for test files. Empty means anywhere.
+    test_roots: tuple[str, ...] = ()
 
     @property
     def escalation(self) -> tuple[str, ...]:
@@ -178,6 +183,22 @@ def narrow_setting(table: dict[str, object]) -> bool:
     return value
 
 
+def pytest_testpaths(data: dict[str, object]) -> tuple[str, ...]:
+    """`[tool.pytest.ini_options].testpaths`, empty when the project sets none. pytest owns
+    the key, so a value this script cannot read is treated as unset rather than an error."""
+    tool = data.get("tool")
+    pytest_table = tool.get("pytest") if isinstance(tool, dict) else None
+    options = (
+        pytest_table.get("ini_options") if isinstance(pytest_table, dict) else None
+    )
+    value = options.get("testpaths") if isinstance(options, dict) else None
+    if isinstance(value, str):
+        return tuple(value.split())
+    if isinstance(value, list) and all(isinstance(p, str) for p in value):
+        return tuple(p.rstrip("/") for p in value)
+    return ()
+
+
 def load_tier_config(project_root: Path) -> TierConfig:
     """Read `[tool.test_tiers]`, with the generic lists extended by the project's.
 
@@ -196,6 +217,7 @@ def load_tier_config(project_root: Path) -> TierConfig:
         tooling=TOOLING + tooling_entries(table),
         markers=marker_expression(table),
         narrow=narrow_setting(table),
+        test_roots=pytest_testpaths(data),
     )
 
 
@@ -413,25 +435,19 @@ def narrowed(decisions: list[Decision]) -> list[Decision]:
     return [replace(d, narrowed=True) if d.kind != "full" else d for d in decisions]
 
 
-def imports_decision(
-    path: str, app: App | None, graph: ModuleGraph, project_root: Path
-) -> Decision:
-    """The test files that reach the module `path` through imports, outside the owning
-    app's tests directory, which the owner decision already selects. A module no app owns
-    has no such directory to leave out.
+def imports_decision(path: str, covered: str | None, graph: ModuleGraph) -> Decision:
+    """The test files that reach the module `path` through imports, outside `covered`: the
+    directory another decision for `path` already selects (the owning app's tests, or a
+    conftest's own subtree), or None when there is none.
 
     A browser test is kept only when the change is one a browser can see.
     """
-    owner_tests = None if app is None else tests_dir_of(app, project_root)
     keep_browser_tests = first_match(path, UI_GLOBS) is not None
     files = sorted(
         f
         for f in graph.test_files_reaching({path_module_name(path)})
-        if owner_tests is None
-        or (
-            not targets_overlap(f, owner_tests)
-            and (keep_browser_tests or playwright_tests_root(PurePosixPath(f)) is None)
-        )
+        if (covered is None or not targets_overlap(f, covered))
+        and (keep_browser_tests or playwright_tests_root(PurePosixPath(f)) is None)
     )
     reason = f"{len(files)} test files through imports"
     if not files:
@@ -445,7 +461,24 @@ def narrow_app_python(
     """The owning app's tests, plus the test files that import the module."""
     return [
         owner_decision(path, app, project_root),
-        imports_decision(path, app, graph(), project_root),
+        imports_decision(path, tests_dir_of(app, project_root), graph()),
+    ]
+
+
+def narrow_with_app_hop(
+    path: str,
+    app: App,
+    apps: list[App],
+    edges: Edges | None,
+    graph: Callable[[], ModuleGraph],
+    project_root: Path,
+) -> list[Decision]:
+    """Rule 3.1 plus one app hop, for a module loaded by name, which no import shows."""
+    if edges is None:
+        return [Decision(path, "full", (), f"{APP_MAP} missing")]
+    return [
+        *narrow_app_python(path, app, graph, project_root),
+        *one_app_hop(path, app, apps, edges, project_root),
     ]
 
 
@@ -468,28 +501,29 @@ def narrow_loose_python(
 
     None when both select nothing, so the caller goes on to the unmapped-path rule.
     """
-    reached = imports_decision(path, None, graph(), project_root)
+    reached = imports_decision(path, None, graph())
     tooling = decide_tooling(path, config, project_root) or []
     if not any(d.kind == "select" for d in [reached, *tooling]):
         return None
     return [reached, *tooling]
 
 
-def conftest_decision(path: str, apps: list[App], project_root: Path) -> list[Decision]:
-    """A conftest applies to the tests below its directory. One in a directory above an
-    app's own is loaded by every app under it, so it is the whole suite."""
+def conftest_decision(
+    path: str, apps: list[App], graph: Callable[[], ModuleGraph], project_root: Path
+) -> list[Decision]:
+    """A conftest applies to the tests below its directory, plus any test file elsewhere
+    that imports a helper from it. One in a directory above an app's own is loaded by every
+    app under it, so it is the whole suite."""
     directory = PurePosixPath(path).parent
     root = project_root / directory
     if any(root != app.directory and root in app.directory.parents for app in apps):
         return [Decision(path, "full", (), "matches **/conftest.py")]
-    return [
-        Decision(
-            path,
-            "select",
-            (directory.as_posix(),),
-            f"conftest scope {directory.as_posix()}",
-        )
-    ]
+    scope = directory.as_posix()
+    decisions = [Decision(path, "select", (scope,), f"conftest scope {scope}")]
+    reached = imports_decision(path, scope, graph())
+    if reached.kind == "select":
+        decisions.append(reached)
+    return decisions
 
 
 def narrow_escalation(
@@ -503,7 +537,8 @@ def narrow_escalation(
 ) -> list[Decision] | None:
     """The decisions for a path that matches an escalation glob, with the built-in globs
     narrowed. None when the path is not escalated, or when it belongs to the rules that
-    follow (no owning app, so the loose-module rule applies).
+    follow (no owning app, so the loose-module rule applies). A `urls.py` or `apps.py` no
+    app owns stays `full`: settings name it by a dotted path, so no import shows who uses it.
     """
     project_glob = first_match(path, config.project_escalation)
     if project_glob is not None:
@@ -514,17 +549,15 @@ def narrow_escalation(
     if glob == "**/migrations/**":
         return [Decision(path, "full", (), f"matches {glob}")]
     if glob == "**/conftest.py":
-        return narrowed(conftest_decision(path, apps, project_root))
+        return narrowed(conftest_decision(path, apps, graph, project_root))
+    loaded_by_name = glob in ("**/urls.py", "**/apps.py")
     if app is None:
+        if loaded_by_name:
+            return [Decision(path, "full", (), f"matches {glob}")]
         return None
-    if glob in ("**/urls.py", "**/apps.py"):
-        if edges is None:
-            return [Decision(path, "full", (), f"{APP_MAP} missing")]
+    if loaded_by_name:
         return narrowed(
-            [
-                *narrow_app_python(path, app, graph, project_root),
-                *one_app_hop(path, app, apps, edges, project_root),
-            ]
+            narrow_with_app_hop(path, app, apps, edges, graph, project_root)
         )
     if glob == "**/fixtures/**" and not path.endswith(".py"):
         return narrowed(narrow_app_file(path, app, apps, edges, project_root))
@@ -570,6 +603,10 @@ def decide(
             return [Decision(path, "full", (), f"matches {escalation_glob}")]
 
     if app is not None:
+        if config.narrow and first_match(path, NAME_LOADED_GLOBS) is not None:
+            return narrowed(
+                narrow_with_app_hop(path, app, apps, edges, graph, project_root)
+            )
         if config.narrow and path.endswith(".py"):
             return narrowed(narrow_app_python(path, app, graph, project_root))
         if config.narrow:
@@ -953,7 +990,8 @@ def main() -> int:
     apps = find_apps(project_root)
     edges = parse_existing_edges(project_root / APP_MAP)
     # Without the app map the related apps cannot be computed, so every path takes the
-    # branch rules and an app-owned one is `full`.
+    # branch rules and an app-owned one is `full`, except under narrow, where an app-owned
+    # Python module still narrows through the import graph.
     upstream: frozenset[str] = frozenset()
     context: BranchContext | None = None
     if split is not None and edges is not None:
@@ -961,7 +999,9 @@ def main() -> int:
         branch_paths = (set(paths) - upstream) | split.own_paths
         context = branch_context(branch_paths, apps, edges, config, project_root)
     graph = functools.cache(
-        lambda: module_graph.build(project_root, tracked_python_files())
+        lambda: module_graph.build(
+            project_root, tracked_python_files(), config.test_roots
+        )
     )
     try:
         decisions = [

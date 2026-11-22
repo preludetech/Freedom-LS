@@ -61,10 +61,13 @@ def demo_content_readers_outside_targets() -> list[str]:
     return offenders
 
 
-def recent_commits() -> list[str]:
-    return git_output(
-        "log", "--first-parent", f"-{RECENT_COMMIT_COUNT}", "--format=%H"
-    ).split()
+def recent_commit(project: Path, index: int) -> str:
+    """The commit `index` steps back along first parents from `project`'s HEAD. Resolved when
+    the test runs, not at collection, so every xdist worker collects the same test ids even
+    when a commit lands mid-run."""
+    result = run_command(["git", "rev-parse", f"HEAD~{index}"], project)
+    result.check_returncode()
+    return result.stdout.strip()
 
 
 def selection(project: Path, *args: str) -> tuple[str, str]:
@@ -111,11 +114,12 @@ def test_test_files_reading_demo_content_sit_under_the_demo_content_targets() ->
     assert offenders == []
 
 
-@pytest.mark.parametrize("commit", recent_commits())
+@pytest.mark.parametrize("index", range(RECENT_COMMIT_COUNT))
 def test_wide_selection_matches_no_narrow_key_for_recent_commit(
-    clone: Path, commit: str
+    clone: Path, index: int
 ) -> None:
     # Arrange
+    commit = recent_commit(clone, index)
     configured = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     without_key = configured.replace(NARROW_SETTING, "")
     with_key = without_key.replace(

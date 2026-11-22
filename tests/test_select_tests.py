@@ -2477,6 +2477,74 @@ def test_module_outside_any_app_under_a_tooling_entry_selects_its_targets_and_im
     ]
 
 
+TESTPATHS_TABLE = '[tool.pytest.ini_options]\ntestpaths = ["pkg"]\n'
+
+
+@pytest.mark.parametrize(
+    ("importer", "selected"),
+    [("scripts/select_tests.py", False), ("pkg/contrib/test_conformance.py", True)],
+)
+def test_file_named_like_a_test_is_selected_by_import_only_inside_pytest_testpaths(
+    tmp_path: Path, importer: str, selected: bool
+) -> None:
+    # Arrange
+    narrow_import_repo(
+        tmp_path,
+        {
+            "pyproject.toml": f"{NARROW_TABLE}{TESTPATHS_TABLE}",
+            importer: "import pkg.alpha.leaf\n",
+        },
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/leaf.py")
+
+    # Assert
+    assert (importer in command_args(result)) is selected
+
+
+def test_test_file_deleted_in_the_working_tree_is_not_selected_through_its_conftest(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    narrow_import_repo(
+        tmp_path,
+        {
+            "pkg/gamma/tests/conftest.py": "import pkg.alpha.leaf\n",
+            "pkg/gamma/tests/test_old.py": "",
+        },
+    )
+    (tmp_path / "pkg/gamma/tests/test_old.py").unlink()
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/leaf.py")
+
+    # Assert
+    assert "pkg/gamma/tests/test_old.py" not in command_args(result)
+
+
+def test_browser_test_reaching_a_module_outside_any_app_is_left_out_for_a_non_ui_change(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    narrow_import_repo(
+        tmp_path,
+        {
+            "pkg/testing_helpers.py": "",
+            "pkg/beta/tests/test_a.py": "import pkg.testing_helpers\n",
+            "pkg/beta/tests/playwright/test_ui.py": "import pkg.testing_helpers\n",
+        },
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/testing_helpers.py")
+
+    # Assert
+    assert lines(result.stdout, "command") == [
+        "command: uv run pytest -n auto --no-cov pkg/beta/tests/test_a.py"
+    ]
+
+
 @pytest.mark.parametrize(
     ("path", "tracked", "reason"),
     [
@@ -2658,27 +2726,104 @@ def test_app_module_named_by_an_escalation_glob_selects_its_app_and_its_importer
     ]
 
 
-@pytest.mark.parametrize(
-    ("path", "importer"),
-    [
-        ("pkg/factories.py", "tests/test_imports_pkg_factories.py"),
-        ("pkg/urls.py", "tests/test_imports_pkg_urls.py"),
-    ],
-)
 def test_ownerless_escalation_named_module_follows_the_loose_module_rule(
-    tmp_path: Path, path: str, importer: str
+    tmp_path: Path,
 ) -> None:
     # Arrange
     escalation_repo(tmp_path)
 
     # Act
-    result = run_script(SCRIPT, tmp_path, path)
+    result = run_script(SCRIPT, tmp_path, "pkg/factories.py")
 
     # Assert
     assert lines(result.stdout, "why") == [
-        f"why: {path} -> {importer} (1 test files through imports) {TAIL}"
+        "why: pkg/factories.py -> tests/test_imports_pkg_factories.py "
+        f"(1 test files through imports) {TAIL}"
     ]
     assert "runtime dep" not in result.stdout
+
+
+def test_ownerless_urls_module_is_full_since_settings_load_it_by_name(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    escalation_repo(tmp_path)
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/urls.py")
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: full"]
+    assert lines(result.stdout, "why") == [
+        "why: pkg/urls.py -> full (matches **/urls.py)"
+    ]
+
+
+def test_conftest_whose_helper_another_app_imports_also_selects_that_test_file(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    escalation_repo(
+        tmp_path,
+        {
+            "pkg/gamma/tests/test_uses_helper.py": (
+                "from pkg.beta.tests.conftest import make_thing\n"
+            )
+        },
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/beta/tests/conftest.py")
+
+    # Assert
+    assert lines(result.stdout, "why") == [
+        "why: pkg/beta/tests/conftest.py -> pkg/beta/tests "
+        f"(conftest scope pkg/beta/tests) {TAIL}",
+        "why: pkg/beta/tests/conftest.py -> pkg/gamma/tests/test_uses_helper.py "
+        f"(1 test files through imports) {TAIL}",
+    ]
+
+
+TEMPLATE_TAGS = "pkg/alpha/templatetags/alpha_tags.py"
+
+
+def test_app_template_tag_module_selects_its_importers_and_one_app_hop(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    git_repo(
+        tmp_path,
+        narrow_chain_tree()
+        | {"pkg/alpha/templatetags/__init__.py": "", TEMPLATE_TAGS: ""},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, TEMPLATE_TAGS)
+
+    # Assert
+    assert lines(result.stdout, "why") == [
+        f"why: {TEMPLATE_TAGS} -> pkg/alpha/tests (owning app alpha) {TAIL}",
+        f"why: {TEMPLATE_TAGS} -> none (0 test files through imports) {TAIL}",
+        f"why: {TEMPLATE_TAGS} -> pkg/beta/tests "
+        f"(beta has a runtime dep on alpha) {TAIL}",
+        f"why: {TEMPLATE_TAGS} -> pkg/gamma/tests "
+        f"(gamma has a test-only dep on alpha) {TAIL}",
+    ]
+
+
+def test_app_template_tag_module_without_an_app_map_is_full(tmp_path: Path) -> None:
+    # Arrange
+    tree = narrow_chain_tree() | {TEMPLATE_TAGS: ""}
+    del tree["docs/app_structure.md"]
+    git_repo(tmp_path, tree)
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, TEMPLATE_TAGS)
+
+    # Assert
+    assert lines(result.stdout, "why") == [
+        f"why: {TEMPLATE_TAGS} -> full (docs/app_structure.md missing)"
+    ]
 
 
 def test_app_urls_and_apps_modules_select_their_importers_and_one_app_hop(

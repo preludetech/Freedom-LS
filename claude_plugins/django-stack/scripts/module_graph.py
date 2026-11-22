@@ -79,12 +79,26 @@ def conftests_above(test_path: str, conftests: set[str]) -> set[str]:
     }
 
 
+def is_test_file(path: str, test_roots: tuple[str, ...]) -> bool:
+    """A file pytest collects: its name matches a collected pattern and, when the project
+    sets `testpaths`, it sits under one of them. A script named like a test elsewhere is not
+    a test file."""
+    posix = PurePosixPath(path)
+    if not is_collected(posix.name):
+        return False
+    return not test_roots or any(
+        posix.is_relative_to(PurePosixPath(root)) for root in test_roots
+    )
+
+
 @dataclass(frozen=True)
 class ModuleGraph:
     # module name -> names of the modules that import it
     importing_modules: dict[str, set[str]]
-    # module name -> repo-relative path, for every tracked module
+    # module name -> repo-relative path, for every tracked module the checkout still has
     paths: dict[str, str]
+    # pytest's `testpaths`, empty when the project sets none
+    test_roots: tuple[str, ...] = ()
 
     def test_files_reaching(self, modules: set[str]) -> set[str]:
         """The paths of the test files that import any of `modules`, directly or through
@@ -99,16 +113,19 @@ class ModuleGraph:
         return {
             self.paths[name]
             for name in reached
-            if is_collected(PurePosixPath(self.paths[name]).name)
+            if is_test_file(self.paths[name], self.test_roots)
         }
 
 
-def build(project_root: Path, tracked: list[str]) -> ModuleGraph:
+def build(
+    project_root: Path, tracked: list[str], test_roots: tuple[str, ...] = ()
+) -> ModuleGraph:
     """Parse each tracked `.py` file once and record who imports whom.
 
     A file the working tree has deleted is skipped, since it is simply gone; a file that
     does not parse is skipped with a warning. Each collected test file also gets an edge from
-    every `conftest.py` above it, since pytest loads those without an import.
+    every `conftest.py` above it, since pytest loads those without an import. Test files
+    are the collected names under `test_roots` (pytest's `testpaths`), or anywhere without.
     """
     importing_modules: dict[str, set[str]] = {}
     paths: dict[str, str] = {}
@@ -116,23 +133,26 @@ def build(project_root: Path, tracked: list[str]) -> ModuleGraph:
     conftests = {p for p in sources if PurePosixPath(p).name == "conftest.py"}
     for path in sources:
         name = path_module_name(path)
-        paths[name] = path
         try:
-            tree = ast.parse(
-                (project_root / path).read_text(encoding="utf-8"), filename=path
-            )
+            source = (project_root / path).read_text(encoding="utf-8")
         except FileNotFoundError:
             continue
-        except (SyntaxError, UnicodeDecodeError) as exc:
+        except UnicodeDecodeError as exc:
+            print(f"WARN: could not parse {path}: {exc}", file=sys.stderr)
+            continue
+        paths[name] = path
+        try:
+            tree = ast.parse(source, filename=path)
+        except SyntaxError as exc:
             print(f"WARN: could not parse {path}: {exc}", file=sys.stderr)
             continue
         is_package = PurePosixPath(path).name == "__init__.py"
         for imported in imported_names(tree, name, is_package):
             importing_modules.setdefault(imported, set()).add(name)
     for path in paths.values():
-        if is_collected(PurePosixPath(path).name):
+        if is_test_file(path, test_roots):
             for conftest in conftests_above(path, conftests):
                 importing_modules.setdefault(path_module_name(conftest), set()).add(
                     path_module_name(path)
                 )
-    return ModuleGraph(importing_modules, paths)
+    return ModuleGraph(importing_modules, paths, test_roots)

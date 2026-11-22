@@ -70,11 +70,13 @@ Read `${CLAUDE_PLUGIN_ROOT}/commands/protected/run_test_tier.md` and follow it w
 
 ```
 git add <path> [<path> ...]
-git commit -m "hotfix: <what was broken>"
+git commit -m "hotfix: <what was broken>" -- <path> [<path> ...]
 ```
 
-Commit as the project's `CLAUDE.md` says. The pre-commit hooks are a gate, so `--no-verify` is out.
-When a hook rewrites a file, re-stage the same paths and commit again. When a hook fails on your
+The paths after `--` keep the commit to your own files: another process's staged files stay
+staged and out of it. Commit as the project's `CLAUDE.md` says. The pre-commit hooks are a gate, so
+`--no-verify` is out. When a hook rewrites a file, re-stage the same paths and commit again with
+the same paths after `--`. When a hook fails on your
 change, fix it and commit again.
 
 ## Step 7: Push
@@ -91,7 +93,9 @@ git rebase origin/main
 git push origin main
 ```
 
-If git refuses to start the rebase, report its message. If the rebase stops on a conflict, run
+Git refuses to start the rebase while another process has unstaged edits to tracked files in
+this worktree; that is expected here, not a fault to work around. If git refuses to start the
+rebase, report its message. If the rebase stops on a conflict, run
 `git rebase --abort`. Either way stop there and report `local only`: the commit is on local `main`
 and the user decides what happens next. No force-push and no stash.
 
@@ -99,7 +103,8 @@ and the user decides what happens next. No force-push and no stash.
 
 Search the project's documentation for the behaviour the fix changed. A fix that restores what the
 docs already describe needs nothing. When a doc now says something false, correct those lines and
-commit them as `hotfix: document <what changed>`, then push as in Step 7.
+commit them as in Step 6, with the doc paths after `--` and the message
+`hotfix: document <what changed>`, then push as in Step 7.
 
 ## Step 9: Report
 
