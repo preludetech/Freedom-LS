@@ -148,6 +148,36 @@ def test_only_nodeids_runs_only_listed_tests(tmp_path: Path, extra: list[str]) -
     ]
 
 
+# Stands in for pytest-split: a last-running hook that keeps every other collected item.
+SPLITTING_CONFTEST = """\
+import pytest
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_collection_modifyitems(config, items):
+    items[:] = items[::2]
+"""
+
+
+@pytest.mark.parametrize("extra", [[], XDIST], ids=["no_xdist", "xdist"])
+def test_only_nodeids_filters_after_a_plugin_that_splits_the_collection(
+    tmp_path: Path, extra: list[str]
+) -> None:
+    (tmp_path / "conftest.py").write_text(SPLITTING_CONFTEST)
+    (tmp_path / "only.txt").write_text(
+        "test_sample.py::test_pass\ntest_sample.py::test_skip_in_setup\n"
+    )
+
+    events, _ = run_pytest(
+        tmp_path, f"--ds-only-nodeids={tmp_path / 'only.txt'}", *extra
+    )
+
+    assert sorted(str(line["nodeid"]) for line in outcome_lines(events)) == [
+        "test_sample.py::test_pass",
+        "test_sample.py::test_skip_in_setup",
+    ]
+
+
 def test_plugin_records_with_xdist_absent(tmp_path: Path) -> None:
     events, stderr = run_pytest(tmp_path)
 

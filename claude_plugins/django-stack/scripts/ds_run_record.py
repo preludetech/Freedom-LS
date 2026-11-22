@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Generator
 from pathlib import Path
 from typing import TextIO
 
@@ -31,11 +32,18 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     )
 
 
+@pytest.hookimpl(wrapper=True)
 def pytest_collection_modifyitems(
     config: pytest.Config, items: list[pytest.Item]
-) -> None:
+) -> Generator[None]:
     """Deselect every item not listed. Runs on xdist workers too: collection happens there,
-    and every worker must collect the same set."""
+    and every worker must collect the same set.
+
+    A wrapper, so the filter runs after every other plugin's hook. A plugin that splits the
+    collection into groups (pytest-split) then picks its group from the whole collection, as
+    it did in the attempt being retried, instead of splitting the listed tests again.
+    """
+    yield
     only_file = config.getoption("--ds-only-nodeids")
     if only_file is None:
         return
