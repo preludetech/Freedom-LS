@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+from functools import partial
 from typing import cast
 
 import pytest
@@ -111,9 +112,12 @@ def test_small_screenshot_png_comes_back_lossless():
 @pytest.mark.parametrize(
     ("builder", "expected_lossless"),
     [
-        (photographic_png_bytes, False),
+        # At 500 x 375 the lossless candidate is still over SECOND_ENCODE_BYTES,
+        # so the divisor decides; a larger photograph only slows the encodes.
+        (partial(photographic_png_bytes, 500, 375), False),
         (camera_exif_png_bytes, True),
     ],
+    ids=["photograph", "camera_exif_flat_fill"],
 )
 def test_comparison_winner_on_each_side_of_the_lossy_wins_divisor(
     builder, expected_lossless

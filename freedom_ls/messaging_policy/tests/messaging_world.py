@@ -28,12 +28,15 @@ def world_users(world: World) -> dict[str, User]:
 
 
 def recipients_pairs(
-    world: World, policy: LayeredMessagingPolicy
+    world: World,
+    policy: LayeredMessagingPolicy,
+    senders: dict[str, User] | None = None,
 ) -> set[tuple[str, str]]:
-    """(sender, recipient) for every recipient in recipients_for(sender)."""
+    """(sender, recipient) for every recipient in recipients_for(sender), over
+    `senders` (every user in the world when omitted)."""
     users = world_users(world)
     reached_by: dict[int, set[int]] = {}
-    for sender in users.values():
+    for sender in (senders or users).values():
         reached_by[sender.pk] = set(
             policy.recipients_for(sender=sender, site=world.site).values_list(
                 "pk", flat=True
@@ -41,7 +44,7 @@ def recipients_pairs(
         )
     return {
         (sender_name, recipient_name)
-        for sender_name, sender in users.items()
+        for sender_name, sender in (senders or users).items()
         for recipient_name, recipient in users.items()
         if recipient.pk in reached_by[sender.pk]
     }

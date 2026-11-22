@@ -4,7 +4,7 @@ cohort-peer and course-peer candidates resolved through the settings layer."""
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import NamedTuple, cast
 from uuid import UUID, uuid4
 
@@ -444,17 +444,31 @@ def test_recipients_for_include_a_cohort_peer_only_when_the_flag_is_open(
     assert (peer in closed, peer in opened) == (False, True)
 
 
-@pytest.mark.parametrize("flag", ["open", "closed"])
+# A sender with no learner row has no candidates, so no flag and no configuration
+# row decides who it reaches: the second flag value can only change the answer
+# for the senders that hold learner rows.
+@pytest.mark.parametrize(
+    ("flag", "senders_of"),
+    [("open", world_users), ("closed", learner_senders)],
+    ids=["open_every_sender", "closed_learner_senders"],
+)
 def test_recipients_for_and_can_start_agree_on_every_pair(
     policy: LayeredMessagingPolicy,
     world: World,
     settings: SettingsWrapper,
     flag: str,
+    senders_of: Callable[[World], dict[str, User]],
 ) -> None:
     settings.MESSAGING_DEFAULT_FLAGS = {**ALL_CLOSED, "learner_to_cohort_peer": flag}
     add_configuration_rows(world)
+    SiteMessagingConfigFactory(site=world.site)
+    CohortMessagingConfigFactory(cohort=world.cohorts["c2"])
+    CohortMessagingConfigFactory(cohort=world.cohorts["c3"])
+    senders = senders_of(world)
 
-    assert recipients_pairs(world, policy) == allowed_pairs(world, policy)
+    assert recipients_pairs(world, policy, senders) == allowed_pairs(
+        world, policy, senders
+    )
 
 
 def test_a_recipient_reached_by_several_paths_is_listed_once(
@@ -883,12 +897,12 @@ def test_all_inherit_rows_give_the_same_outcome_as_no_rows(
 ) -> None:
     open_cohort_peers(settings)
     senders = learner_senders(world)
-    without_rows = allowed_pairs(world, policy, senders)
+    without_rows = recipients_pairs(world, policy, senders)
 
     SiteMessagingConfigFactory(site=world.site)
     _add_inherit_rows(world)
 
-    assert allowed_pairs(world, policy, senders) == without_rows
+    assert recipients_pairs(world, policy, senders) == without_rows
 
 
 def _put_in_cohorts(*cohorts: Cohort, learners: tuple[Learner, ...]) -> None:
@@ -1493,6 +1507,24 @@ def _bulk_decisions(
     return bulk
 
 
+def _answer_each_direction_once(
+    policy: LayeredMessagingPolicy, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Make can_start keep its answer per (sender, recipient). can_reply asks for
+    both directions of a pair, so replying each way round would run every
+    direction's query twice. The answers hold only while the world is unchanged."""
+    ask = policy.can_start
+    answers: dict[tuple[int, int], MessagingDecision] = {}
+
+    def can_start(*, sender: User, recipient: User, site: Site) -> MessagingDecision:
+        key = (sender.pk, recipient.pk)
+        if key not in answers:
+            answers[key] = ask(sender=sender, recipient=recipient, site=site)
+        return answers[key]
+
+    monkeypatch.setattr(policy, "can_start", can_start)
+
+
 def _single_decisions(
     policy: LayeredMessagingPolicy, world: World, users: dict[str, User]
 ) -> dict[tuple[str, str], MessagingDecision]:
@@ -1522,11 +1554,13 @@ def test_can_reply_many_matches_can_reply_for_every_pair(
     world: World,
     settings: SettingsWrapper,
     flags: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     settings.MESSAGING_DEFAULT_FLAGS = flags
     settings.MESSAGING_OFFERED_EDUCATOR_ROLES = ["cohort_admin"]
     add_configuration_rows(world)
     users = _reply_users(world)
+    _answer_each_direction_once(policy, monkeypatch)
 
     bulk = _bulk_decisions(policy, world, users)
     single = _single_decisions(policy, world, users)
