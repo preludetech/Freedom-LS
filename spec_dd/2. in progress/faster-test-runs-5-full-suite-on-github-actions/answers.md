@@ -11,3 +11,7 @@ Asked by `/sdd:start` before the spec was written.
 - Q: How should the workflow fix the Playwright install failure on ubuntu-latest (26.04)? → A: Pin `ubuntu-24.04` for every test job; no Playwright bump (asked while research ran)
 - Q: Which marker set should the remote full run cover? → A: Superset: include `ci_only` and `weasyprint` (install the WeasyPrint system libraries on the runner); a remote pass still counts as a full run (asked while research ran)
 - Q: Should a remote full-tier verdict include the lint and type-check jobs? → A: Tests only: the verdict reads the test jobs and the coverage combine job (asked while research ran)
+- Q: Where should each test job's group report come from? → A: Extend the generic test runner: an opt-in keep path and failure text on failed outcomes (asked at review)
+- Q: How should the remote command avoid queueing behind a pull_request run (26 jobs vs the 20-job limit)? → A: "we dont need the pr run. Just tests." Read as: drop the `pull_request` trigger; dispatch runs run the test jobs only (asked at review)
+- Q: When should FLS's remote default switch on? → A: Ship enabled and rely on the local fallback (asked at review)
+- Q: Split by test or by file, given `--dist loadfile`? → A: By test, then measure each group against a 12-minute bar (asked at review)
