@@ -14,6 +14,7 @@ options:
 - text: A file format for storing images
   uuid: 5ba12635-eca5-48b5-aa47-a1b2e8db37f0
   value: wrong2
+explanation: A course part is a group of related topics and forms inside a course. It gives a long course a clear structure, so learners see a few named parts instead of one long list.
 question: What is a course part?
 required: true
 sections:
@@ -32,6 +33,7 @@ options:
   text: Both topics and forms
   uuid: 27eab794-9ca5-4a81-9e79-c308ee0df39f
   value: correct
+explanation: A part can hold topics and forms together, in whatever order the author chooses. It is not limited to one kind of content.
 question: What types of content can a course part contain?
 required: true
 type: multiple_choice
@@ -48,6 +50,7 @@ options:
 - text: form.md
   uuid: 467ff8d4-b5b3-4605-b87b-32781da57ff4
   value: wrong2
+explanation: The loader treats a directory as a course part when it contains a part.yaml file. That file holds the part's title and other details.
 question: Which file identifies a directory as a course part?
 required: true
 type: multiple_choice

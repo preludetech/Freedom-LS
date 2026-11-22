@@ -1,0 +1,82 @@
+---
+content_type: FORM_PAGE
+title: Revision questions
+uuid: 88a8a741-29b5-4c22-8154-1a6050975ce4
+---
+explanation: A course part groups related topics and forms under one title. It organises
+  a course without adding any content of its own.
+options:
+- correct: true
+  text: A named group of related topics and forms
+  uuid: 5d4f3f94-bcd1-4e50-b233-b6e31f1a5b13
+  value: v1
+- text: A single page of a topic
+  uuid: a10fb129-47ec-4d25-aa21-300e928c8d89
+  value: v2
+- text: A user account role
+  uuid: adb8d513-7a0d-4fe2-b76f-7d52e1f68fcc
+  value: v3
+question: Which of these best describes a course part?
+required: true
+type: multiple_choice
+uuid: 5e37094e-62a6-4771-8d0f-c0aef90b5d16
+---
+explanation: Parts mix topics and forms freely, so an author can put a quiz straight
+  after the reading it tests.
+options:
+- text: A course part always holds exactly one form
+  uuid: 6c663887-cb2d-47a8-b8b6-6beecf5af99b
+  value: v4
+- correct: true
+  text: A course part can hold topics and forms together
+  uuid: 5642c27c-c463-42e7-ba73-3376842292c9
+  value: v5
+- text: A course part can only hold topics
+  uuid: c266c2f4-93d9-4846-9a01-1341501a53da
+  value: v6
+question: What can a course part hold?
+required: true
+type: multiple_choice
+uuid: 07cd8fb3-d0fe-4aa4-9d58-159c72779fb0
+---
+explanation: Because a part lives in its own directory, several courses can place
+  the same part and share its content.
+options:
+- text: Course content is never reused
+  uuid: 7af755a5-bb8f-4bca-a247-1ab812d053a3
+  value: v7
+- correct: true
+  text: One part can be placed in more than one course
+  uuid: 69b039d8-59f4-4baa-a1bf-85f4f056c600
+  value: v8
+- text: Parts can only be used once per site
+  uuid: 8966c6d9-ff4d-4c82-a45f-e2a3091d654f
+  value: v9
+question: Can the same course part appear in more than one course?
+required: true
+sections:
+- ../functionality_demo_course_parts/02. Core Concepts/01. key-ideas/content.md
+type: multiple_choice
+uuid: 2276e72b-861d-45ce-adcc-44c4b54e9cbf
+---
+explanation: Every one of the listed kinds of content can be placed in a course. The
+  answer that covers all three kinds together is the correct one.
+options:
+- text: Topics
+  uuid: bd9db55e-9149-41d7-ba28-2b9cc9283a53
+  value: v10
+- text: Forms
+  uuid: a4cecc6b-e347-4a9c-98a1-4d51402a6612
+  value: v11
+- text: Course parts
+  uuid: 7b4693db-fc48-454e-9ec0-123b3d45186d
+  value: v12
+- correct: true
+  locked: true
+  text: All of the above
+  uuid: d9fe6635-b118-4e81-9e94-8ecf381475c1
+  value: v13
+question: Which kinds of content can an author place in a course?
+required: true
+type: multiple_choice
+uuid: 46d1328c-6949-4fa9-8526-a222ed91dee2
