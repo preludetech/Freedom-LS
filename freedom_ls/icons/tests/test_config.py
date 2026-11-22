@@ -67,7 +67,9 @@ def test_default_applies_when_neither_name_is_set(
 ) -> None:
     config = IconsConfig()
 
-    assert getattr(config, new_name) == default
+    # Clear both names: a project running this suite may set its own icon set.
+    with override_settings(**{new_name: None, old_name: None}):
+        assert getattr(config, new_name) == default
 
 
 @pytest.mark.parametrize(RENAMED_PARAMS, RENAMED)
