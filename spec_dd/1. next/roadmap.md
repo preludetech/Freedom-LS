@@ -16,7 +16,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `faster-test-runs-6-prune-slow-tests` (Faster test runs)
 - 🔴 High · `educator-interface-refactor-5-learner` (Educator interface code layout, via `sacaa-compliance`)
 - 🔴 High · `sacaa-compliance-3-question-pools` (SACAA compliance)
-- 🔴 High · `sacaa-compliance-content-versions-and-access-1-content-save-safety` (SACAA content versions and access)
 - 🔴 High · `reference-material-content-1-authoring` (Reference material)
 - 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
 
@@ -26,6 +25,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `faster-test-runs-13-checkpoint-shared-paths` (Faster test runs)
 - 🔴 High · `faster-test-runs-2-reuse-test-database` (Faster test runs)
 - 🔴 High · `faster-test-runs-9-machine-wide-test-run-limit` (Faster test runs)
+- 🔴 High · `sacaa-compliance-content-versions-and-access-2-retire-removed-content` (SACAA content versions and access)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-4-question-access` (SACAA content versions and access)
 - 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
 - 🔴 High · `learner-public-profile-2-profile-and-page` (Learner public profiles)
@@ -157,8 +157,7 @@ Priority: 🔴 High
 
 Question versions, retired content, safer content saves and logged access to question banks, for SACAA audits. Parent: `sacaa-compliance-content-versions-and-access`.
 
-- `sacaa-compliance-content-versions-and-access-1-content-save-safety` — **in progress** — Content authors run `content_save` over several clean git repos; missing uuids fail unless `--generate-uuids`; DEBUG creates missing organisations.
-- `sacaa-compliance-content-versions-and-access-2-retire-removed-content` — **blocked** by `sacaa-compliance-content-versions-and-access-1-content-save-safety` — One `content_save` covers a site's whole source; content gone from it is retired, served to no one, kept for audit.
+- `sacaa-compliance-content-versions-and-access-2-retire-removed-content` — **ready** — One `content_save` covers a site's whole source; content gone from it is retired, served to no one, kept for audit.
 - `sacaa-compliance-content-versions-and-access-3-question-versions` — **blocked** by `sacaa-compliance-content-versions-and-access-2-retire-removed-content` — Every question change saves an immutable version; attempts keep the version served; results, export and admin answers read it.
 - `sacaa-compliance-content-versions-and-access-4-question-access` — **ready** — A new role may view course questions and answers in the educator interface; each view is audited; admin question pages go.
 - `sacaa-compliance-content-versions-and-access-5-answered-version-review` — **blocked** by `sacaa-compliance-4-attempt-review`, `sacaa-compliance-content-versions-and-access-3-question-versions`, `sacaa-compliance-content-versions-and-access-4-question-access` — Educators reviewing an attempt see the question version answered, when it changed, and whether it is still served.
