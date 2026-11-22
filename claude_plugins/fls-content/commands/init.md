@@ -106,6 +106,12 @@ admonition_types:
 access_types:
   - free               # open to everyone; learners self-enrol
   - application_gated  # learner submits an application before they can enrol
+
+# Paths content_save, content_validate and the offline validator leave out: not parsed,
+# uploaded or auto-discovered. Each entry is an exact path relative to the repo root (a file,
+# or a folder that covers everything beneath it); no wildcards. Ignored files still have to
+# be committed, or content_save refuses.
+ignore: []
 ```
 
 After writing, confirm to the author:

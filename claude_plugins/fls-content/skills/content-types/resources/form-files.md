@@ -28,7 +28,7 @@ A form lives in a **numbered subdirectory** (e.g. `03. quiz/`) containing:
 | `due_date` | date | No | Fixed due date as a YAML date, e.g. `2026-03-14` (no time). Not allowed together with `due_days_after_registration`. |
 | `due_days_after_registration` | `int` (>= 0) | No | Due this many days after the learner registers for the course. Not allowed together with `due_date`. |
 | `due_time` | `str` | No | Quoted 24-hour `"HH:MM"`. Needs `due_date` or `due_days_after_registration`. Without it the form is due at the end of that day. |
-| `uuid` | `str` | No | Written by `content_save` — **omit on new files** |
+| `uuid` | `str` | No | Written by `content_save --generate-uuids`, then you commit the result — **omit on new files** |
 
 A shuffle knob set to `true` on a `CATEGORY_VALUE_SUM` or `UNSCORED` form fails validation with `<knob> should only be set when strategy is QUIZ`. The knobs go in `form.md` only, never in a page header.
 
@@ -96,7 +96,7 @@ The **first** `---`-delimited YAML section is the FORM_PAGE.
 | `subtitle` | `str` | No | Optional subtitle |
 | `description` | `str` | No | Optional instruction text |
 | `when` | mapping | No | Show this page only when an earlier answer matches. See "Conditional pages, questions and content (`when`)" below |
-| `uuid` | `str` | No | Written by `content_save` — **omit on new files** |
+| `uuid` | `str` | No | Written by `content_save --generate-uuids`, then you commit the result — **omit on new files** |
 
 ### Example FORM_PAGE section
 
@@ -133,7 +133,7 @@ The parser selects `FORM_QUESTION` when a subsequent section contains a `questio
 | `when` | mapping | No | Show this question only when an earlier answer matches. See "Conditional pages, questions and content (`when`)" below |
 | `sections` | `list[path]` | No | Paths to the topic markdown files or `part.yaml` files this question tests, relative to the page yaml's directory. Overrides the form's `sections:` for this question; `sections: []` means none. See the `sections` section below |
 | `group` | `str` | No | QUIZ forms only. Keep-together group: children of one page that share this name stay together, in authored order, when the page's questions shuffle. See "Shuffling a quiz" below |
-| `uuid` | `str` | No | Written by `content_save` — **omit on new files** |
+| `uuid` | `str` | No | Written by `content_save --generate-uuids`, then you commit the result — **omit on new files** |
 | `meta` | `dict` | No | Optional metadata |
 | `tags` | `list[str]` | No | Optional tags |
 
@@ -145,7 +145,7 @@ Each option in `options`:
 | `value` | `int` or `str` | Yes | Stored value |
 | `correct` | `bool` | No | For QUIZ strategy — marks the correct answer |
 | `locked` | `bool` | No (default `false`) | Used in shuffled quizzes: keep this option at its authored position while the others shuffle. Only valid when the form sets `shuffle_options: true` |
-| `uuid` | `str` | No | Written by `content_save` |
+| `uuid` | `str` | No | Written by `content_save --generate-uuids`, then you commit the result |
 
 ### Multiple-choice question example
 

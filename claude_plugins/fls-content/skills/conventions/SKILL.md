@@ -89,11 +89,11 @@ skill's `resources/file-layout.md#child-auto-discovery` for the exact rule.
 
 ## UUID rules (load-bearing — read before creating any file)
 
-1. **Omit `uuid` on new content.** Do not write a `uuid:` field. `content_save` generates a UUID and writes it back into the source file on first run.
+1. **Omit `uuid` on new content.** Do not write a `uuid:` field. The author runs `content_save --generate-uuids <path> <site>`, which writes a UUID into each file that lacks one, then commits the changed files. A plain `content_save` refuses content that is missing a uuid, and refuses unless every file it reads is committed to git.
 2. **Never edit an existing `uuid:`.** The UUID is the stable identity for the DB row; editing it breaks the upsert and may silently create a duplicate.
 3. **Never duplicate a UUID across files.** Two files with the same UUID cause one to silently overwrite the other on `content_save`.
-4. **Never hand-create a UUID.** Not even with a UUID4 generator: omit the field, run `content_save`, let it write the UUID back.
-5. **This applies to `course_categories.yaml` too.** Each entry in its `categories:` list gets its own `uuid` written back on first run, exactly like any other file's `uuid:` field. Omit it on a new entry; never hand-edit an existing one.
+4. **Never hand-create a UUID.** Not even with a UUID4 generator: omit the field, run `content_save --generate-uuids`, let it write the UUID back, then commit the changed files.
+5. **This applies to `course_categories.yaml` too.** Each entry in its `categories:` list gets its own `uuid` written back by `content_save --generate-uuids`, exactly like any other file's `uuid:` field. Omit it on a new entry; never hand-edit an existing one.
 
 Example of a **correct** new topic (no uuid field):
 
@@ -107,7 +107,7 @@ description: Learn what variables are and how to use them.
 Body content here...
 ```
 
-After the first `content_save`, the file gains a `uuid:` field.
+After `content_save --generate-uuids`, the file gains a `uuid:` field; commit it.
 
 ## Quoting price amounts (load-bearing)
 

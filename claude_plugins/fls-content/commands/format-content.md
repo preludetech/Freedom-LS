@@ -104,6 +104,7 @@ everything that changed.
 2. Review the full change set: `git diff`
 3. Validate the structure: `/fls-content:validate-content`
 4. Delete this file before running `content_save`.
+5. Commit the converted files: `content_save` refuses to run while any file it reads is uncommitted.
 ```
 
 Omit any section (`## Proposals`, `## Flags`, `## Warnings`) that has no items.

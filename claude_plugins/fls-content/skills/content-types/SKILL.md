@@ -46,7 +46,7 @@ All models use `extra="forbid"`: any unrecognised frontmatter key fails validati
 |---|---|---|
 | `content_type` | Yes | One of the ten values above |
 | `title` | Yes (most types) | Display title |
-| `uuid` | No | Written by `content_save` on first run — **never hand-create** |
+| `uuid` | No | Written when you run `content_save --generate-uuids`, then you commit the result — **never hand-create** |
 | `subtitle` | No | Optional subtitle |
 | `description` | No | Optional description |
 | `tags` | No | `list[str]`. Omit the key to leave stored tags untouched on `content_save`; `tags: []` (or a bare `tags:`) clears them |

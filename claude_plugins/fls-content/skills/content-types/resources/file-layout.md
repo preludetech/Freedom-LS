@@ -107,6 +107,8 @@ The FLS scanner skips:
 
 `.fls-content.yaml` (the deployment config) starts with `.`, so it is never scanned. `.claude/fls-content/widgets/` (the content repo's widget declarations, see the `fls-content:widget-reference` skill) is never scanned either: it sits inside `.claude/`.
 
+The optional `ignore:` list in `.fls-content.yaml` names more paths to leave out: exact POSIX paths relative to the repo root, each a file or a folder (a folder covers everything beneath it; no wildcards, no absolute paths, no `..`). Ignored paths are not parsed, uploaded or auto-discovered, an explicit `children:` entry or `sections:` target naming one is an error, and ignored files must still be committed.
+
 ## Child auto-discovery
 
 When a COURSE or COURSE_PART has no explicit `children:` list, `content_save` auto-discovers children by iterating the directory alphabetically. Ordering therefore depends on correct `NN.` numbering. For custom ordering, add an explicit `children:` list in `course.md` or `part.yaml`.

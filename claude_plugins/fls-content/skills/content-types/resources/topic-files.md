@@ -21,7 +21,7 @@ form is preferred.
 | `due_date` | date | No | Fixed due date as a YAML date, e.g. `2026-03-14`. A date with a time (`2026-03-14 00:00:00`) is rejected. Not allowed together with `due_days_after_registration`. |
 | `due_days_after_registration` | `int` (>= 0) | No | Due this many days after the learner registers for the course. Not allowed together with `due_date`. |
 | `due_time` | `str` | No | Time of day the item falls due, a **quoted** 24-hour `"HH:MM"` such as `"17:00"`. Needs `due_date` or `due_days_after_registration`. Without it the item is due at the end of that day. |
-| `uuid` | `str` | No | Written by `content_save` — **omit on new files** |
+| `uuid` | `str` | No | Written by `content_save --generate-uuids`, then you commit the result — **omit on new files** |
 | `tags` | `list[str]` | No | Optional tag list |
 | `meta` | `dict` | No | Arbitrary metadata for downstream use |
 

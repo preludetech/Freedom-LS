@@ -21,7 +21,7 @@ A course can contain COURSE_PARTs (sections that group topics and forms), but th
 | `organisations` | `list[str]` | No | Slugs of the organisations the course belongs to, resolved per site; an unknown slug fails the load. Defaults to `[]`. |
 | `audience` | `organisation_learners` or `public` | No | Who may see a course that has organisations: only learners of those organisations, or everyone. Defaults to `organisation_learners`. |
 | `shared_with` | `list[str]` | No | Slugs of other organisations whose educators the course is shared with, resolved per site. Needs `organisations`, and must not repeat a slug or name an owning organisation. Defaults to `[]`. |
-| `uuid` | `str` | No | Written by `content_save` — **omit on new files** |
+| `uuid` | `str` | No | Written by `content_save --generate-uuids`, then you commit the result — **omit on new files** |
 | `icon` | `str` | No | Semantic icon name (e.g. `"notes"`) or literal glyph |
 | `icon_fallback` | `str` | No | `"<iconset>:<glyph>"` (e.g. `"phosphor:drone"`); only valid when `icon` is also set |
 | `learning_outcomes` | `list[str]` | No | "What you'll learn" bullet list |
@@ -451,7 +451,7 @@ One `part.yaml` per course-part subdirectory; its presence identifies the direct
 | `title` | `str` | Yes | Part display title |
 | `subtitle` | `str` | No | Optional subtitle |
 | `description` | `str` | No | Optional description |
-| `uuid` | `str` | No | Written by `content_save` — **omit on new files, and NEVER EDIT existing UUIDs** |
+| `uuid` | `str` | No | Written by `content_save --generate-uuids`, then you commit the result — **omit on new files, and NEVER EDIT existing UUIDs** |
 | `children` | `list` | No | Explicit ordered child list; if omitted, auto-discovered |
 | `tags` | `list[str]` | No | Optional tag list |
 | `meta` | `dict` | No | Arbitrary metadata |
@@ -466,7 +466,7 @@ content_type: COURSE_PART
 title: Getting Started
 ```
 
-### Example (after content_save — uuid added)
+### Example (after content_save --generate-uuids — uuid added)
 
 ```yaml
 ---
@@ -499,7 +499,7 @@ validation:
 | `title` | `str` | Yes | Category display title |
 | `description` | `str` | No | Optional description |
 | `show_on_dashboard` | `bool` | No | Whether the dashboard gives this category its own section. Defaults to `true`. |
-| `uuid` | `str` | No | Written by `content_save` — **omit on new entries, never hand-edit an existing one** |
+| `uuid` | `str` | No | Written by `content_save --generate-uuids`, then you commit the result — **omit on new entries, never hand-edit an existing one** |
 
 An entry takes those five keys and nothing else (no per-entry `content_type`, `tags`, or
 `meta`).
@@ -541,8 +541,8 @@ categories:
 ---
 ```
 
-After `content_save`, each entry gains a `uuid:` key — see `demo_content/course_categories.yaml`
-for the saved form.
+After `content_save --generate-uuids`, each entry gains a `uuid:` key (commit the changed file) —
+see `demo_content/course_categories.yaml` for the saved form.
 
 Directory layout reference: see [`file-layout.md`](file-layout.md).
 UUID and numbering rules: see the `fls-content:conventions` skill.

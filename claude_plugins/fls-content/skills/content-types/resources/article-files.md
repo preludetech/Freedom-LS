@@ -34,7 +34,7 @@ functionality_demo_articles/
 | `description` | `str` | No | Also shown on `c-article-card` |
 | `image` | `str` | No | Path to an image file, relative to this article's file. Shown on `c-article-card`. Needs `image_alt`. See [Article image](#article-image) |
 | `image_alt` | `str` | **Yes when `image` is set** | Alt text for the image. `image_alt: ""` marks it as decorative; leaving the key out fails validation |
-| `uuid` | `str` | No | Written by `content_save` — **omit on new files** |
+| `uuid` | `str` | No | Written by `content_save --generate-uuids`, then you commit the result — **omit on new files** |
 | `tags` | `list[str]` | No | |
 | `meta` | `dict` | No | |
 
