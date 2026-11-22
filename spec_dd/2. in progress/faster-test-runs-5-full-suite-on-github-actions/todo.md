@@ -28,7 +28,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) In `claude_plugins/django-stack/README.md`, document the optional `[tool.test_tiers.remote]` table, the remote command contract and `DS_TEST_RECORD_PATH`, with no FLS value (spec "Documentation and downstream")
 - [x] (cmd) In `claude_plugins/sdd/README.md`, document how a full tier runs a remote command and records it, with no FLS value (spec "Documentation and downstream")
 - [x] (cmd) In `.claude/settings.json`, add allow rules for `uv run python claude_plugins/fls-dev/scripts/remote_full_run.py`, `gh workflow run`, `gh run view`, `gh run download` and `gh run cancel` (spec "Documentation and downstream")
-- [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 
 ## 5. Cleanup
 
