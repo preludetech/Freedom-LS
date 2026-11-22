@@ -45,6 +45,7 @@ from freedom_ls.content_engine.management.commands.content_save import (
 from freedom_ls.content_engine.models import (
     Article,
     ContentCollectionItem,
+    ContentSave,
     Course,
     CourseCategory,
     CoursePart,
@@ -5064,3 +5065,72 @@ def test_twenty_five_dirty_files_show_twenty_and_a_count_of_the_rest(
     assert "new_19.md" in message
     assert "new_20.md" not in message
     assert "... and 5 more" in message
+
+
+def _topic_at(directory: Path, name: str, topic_uuid: str) -> Path:
+    return _commit_tree(directory, {name: _topic_text(name, topic_uuid)})
+
+
+@pytest.mark.django_db
+def test_a_run_over_two_paths_records_each_path_with_its_commit(
+    site, mock_site_context, tmp_path: Path
+):
+    first = _topic_at(tmp_path / "first", "first.md", TOPIC_UUID)
+    second = _topic_at(tmp_path / "second", "second.md", _SECOND_TOPIC_UUID)
+    (second / "courses").mkdir()
+    (second / "courses" / "inner.md").write_text(
+        _topic_text("Inner", _THIRD_TOPIC_UUID)
+    )
+    first_sha = commit_all(first)
+    second_sha = commit_all(second)
+
+    _save_from_repos(site, first, second / "courses")
+
+    content_save = ContentSave.objects.get()
+    sources = [
+        (source.order, source.repo_path, source.commit)
+        for source in content_save.sources.order_by("order")
+    ]
+    assert sources == [(0, "", first_sha), (1, "courses", second_sha)]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("generate_uuids", [True, False])
+def test_the_record_stores_whether_uuids_were_generated(
+    site, mock_site_context, committed_content_repo, generate_uuids: bool
+):
+    drop_ambient_request()
+    flags = ["--generate-uuids"] if generate_uuids else []
+
+    call_command(
+        "content_save", str(committed_content_repo), site.name, *flags, "--traceback"
+    )
+
+    assert ContentSave.objects.get().generate_uuids is generate_uuids
+
+
+@pytest.mark.django_db
+def test_a_save_that_fails_while_writing_leaves_no_record(
+    site, mock_site_context, committed_content_repo, monkeypatch
+):
+    def fail_to_write(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("write failed")
+
+    monkeypatch.setattr(
+        "freedom_ls.content_engine.management.commands.content_save.save_topic",
+        fail_to_write,
+    )
+
+    with pytest.raises(RuntimeError, match="write failed"):
+        _save_from_repo(committed_content_repo, site)
+
+    assert ContentSave.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_save_content_to_db_without_source_commits_records_nothing(
+    site, mock_site_context, committed_content_repo
+):
+    save_content_to_db(committed_content_repo, site.name)
+
+    assert ContentSave.objects.count() == 0

@@ -1,4 +1,5 @@
 from .articles import Article, ArticleVisibility
+from .content_saves import ContentSave, ContentSaveSource
 from .courses import (
     ContentCollectionItem,
     Course,
@@ -19,6 +20,8 @@ __all__ = [
     "Article",
     "ArticleVisibility",
     "ContentCollectionItem",
+    "ContentSave",
+    "ContentSaveSource",
     "Course",
     "CourseAudience",
     "CourseCategory",

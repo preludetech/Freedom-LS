@@ -12,6 +12,8 @@ from freedom_ls.content_engine.models import (
     Article,
     ArticleVisibility,
     ContentCollectionItem,
+    ContentSave,
+    ContentSaveSource,
     Course,
     CourseCategory,
     CoursePart,
@@ -138,3 +140,24 @@ class FileFactory(SiteAwareFactory):
     original_filename = factory.Faker("file_name")
     mime_type = "text/plain"
     file = factory.django.FileField(filename="test.txt")
+
+
+class ContentSaveFactory(SiteAwareFactory):
+    """Factory for ContentSave model."""
+
+    class Meta:
+        model = ContentSave
+
+    generate_uuids = False
+
+
+class ContentSaveSourceFactory(factory.django.DjangoModelFactory):
+    """Factory for ContentSaveSource model."""
+
+    class Meta:
+        model = ContentSaveSource
+
+    content_save = factory.SubFactory(ContentSaveFactory)
+    order = factory.Sequence(lambda n: n)
+    repo_path = ""
+    commit = factory.Sequence(lambda n: f"{n:040x}")

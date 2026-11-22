@@ -55,6 +55,8 @@ from freedom_ls.content_engine.models import (
     Activity,
     Article,
     ContentCollectionItem,
+    ContentSave,
+    ContentSaveSource,
     Course,
     CourseCategory,
     CoursePart,
@@ -1447,18 +1449,30 @@ def _write_source(source, site):
     return image_statuses
 
 
+@dataclass(frozen=True)
+class SourceCommit:
+    """The commit one source path is loaded from."""
+
+    path: Path
+    repo_path: str  # the source path relative to its content repo root, "" for the root
+    commit: str  # the HEAD commit read by the git check
+
+
 @transaction.atomic
 def save_content_to_db(
     paths: Path | str | Sequence[Path | str],
     site_name: str,
     *,
     generate_uuids: bool = True,
+    source_commits: Sequence[SourceCommit] | None = None,
 ):
     """Scan through all validated files of every source path and save them as one.
 
     Every source path is parsed and checked before the first write. With
     `generate_uuids=False` a file that lacks a uuid is refused instead of
-    being given one, so a save never rewrites the content files.
+    being given one, so a save never rewrites the content files. When
+    `source_commits` is given, a `ContentSave` records the commit each source
+    path was loaded from, in the same transaction as the content rows.
     """
     site = Site.objects.get(
         name=site_name,
@@ -1490,6 +1504,20 @@ def save_content_to_db(
     image_statuses = [
         status for source in sources for status in _write_source(source, site)
     ]
+
+    if source_commits is not None:
+        content_save = ContentSave.objects.create(
+            site=site, generate_uuids=generate_uuids
+        )
+        ContentSaveSource.objects.bulk_create(
+            ContentSaveSource(
+                content_save=content_save,
+                order=order,
+                repo_path=source_commit.repo_path,
+                commit=source_commit.commit,
+            )
+            for order, source_commit in enumerate(source_commits)
+        )
 
     click.echo(f"✓ Successfully saved all content for site: {site_name}")
 
@@ -1638,15 +1666,15 @@ def _uncommitted_config_file(root: Path) -> UncommittedPath | None:
     return None
 
 
-def check_committed(paths: Sequence[str]) -> list[str]:
+def check_committed(paths: Sequence[str]) -> list[SourceCommit]:
     """Refuse any source path that is not a clean, committed git tree.
 
     Uncommitted files from every path come back in one refusal. Each content
     repo root's `.fls-content.yaml` is listed once, under the root, before one
     group per path headed by the path as it was typed. Returns the HEAD commit
-    each path will be loaded from.
+    each path will be loaded from, in the order the paths were given.
     """
-    commits: list[str] = []
+    commits: list[SourceCommit] = []
     root_entries: dict[Path, UncommittedPath] = {}
     dirty: list[tuple[str, list[UncommittedPath]]] = []
     for path in paths:
@@ -1662,7 +1690,7 @@ def check_committed(paths: Sequence[str]) -> list[str]:
                 )
             )
         try:
-            commits.append(head_commit_of(source))
+            commit = head_commit_of(source)
         except ValueError as error:
             raise CommandError(
                 _refusal(
@@ -1671,6 +1699,14 @@ def check_committed(paths: Sequence[str]) -> list[str]:
                     "Make a first commit, then run again.",
                 )
             ) from error
+        repo_path = source.resolve().relative_to(root).as_posix()
+        commits.append(
+            SourceCommit(
+                path=source,
+                repo_path="" if repo_path == "." else repo_path,
+                commit=commit,
+            )
+        )
         if root not in root_entries and (entry := _uncommitted_config_file(root)):
             root_entries[root] = entry
         entries = _uncommitted_under(source, root)
@@ -1755,7 +1791,7 @@ def command(paths, site_name, generate_uuids):
     another. A file without a uuid is refused unless --generate-uuids is given.
     """
     check_source_paths(paths)
-    check_committed(paths)
+    source_commits = check_committed(paths)
     logger.info("Validating content...")
     reports: list[str] = []
     for path in paths:
@@ -1768,4 +1804,9 @@ def command(paths, site_name, generate_uuids):
     logger.info("Validation complete!")
 
     logger.info("Saving to database...")
-    save_content_to_db(paths, site_name, generate_uuids=generate_uuids)
+    save_content_to_db(
+        paths,
+        site_name,
+        generate_uuids=generate_uuids,
+        source_commits=source_commits,
+    )
