@@ -51,6 +51,11 @@ def test_opening_a_learner_and_their_courses_tab(
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
+    """Opening a learner from the list shows their Courses tab; the sidebar
+    shows the educator's profile picture, then their initials once the file
+    is gone; and at every viewport the pages do not overflow and the
+    registration rows sit on the left edge of the Registrations heading (they
+    used to be indented by the default list margin)."""
     page = educator_logged_in_page
     organisation = OrganisationFactory(name="Org A")
     learner = LearnerFactory(
@@ -97,6 +102,26 @@ def test_opening_a_learner_and_their_courses_tab(
         page.goto(learner_url)
         assert_no_horizontal_overflow(page)
 
+        page.goto(
+            interface_url(live_server, organisation.slug, f"learners/{learner.pk}")
+        )
+        heading = page.get_by_role("heading", name="Registrations", exact=True)
+        row = page.get_by_test_id("registration-row")
+        expect(
+            row, f"registration row not shown at {viewport['width']}px"
+        ).to_be_visible()
+        heading_box = heading.bounding_box()
+        row_box = row.bounding_box()
+        assert heading_box is not None
+        assert row_box is not None
+        heading_left = heading_box["x"]
+        row_left = row_box["x"]
+        # Within a pixel: sub-pixel rounding is not an indent.
+        assert abs(row_left - heading_left) < 1, (
+            f"registration row at x={row_left}, heading at x={heading_left} "
+            f"at {viewport['width']}px"
+        )
+
 
 def test_the_courses_tab_card_with_an_attempts_table_fits_every_viewport(
     live_server,
@@ -131,69 +156,6 @@ def test_the_courses_tab_card_with_an_attempts_table_fits_every_viewport(
         expect(page.get_by_text("1 of 1 items")).to_be_visible()
         expect(page.get_by_text("Passed", exact=True)).to_be_visible()
         assert_no_horizontal_overflow(page)
-
-
-def test_deactivating_then_reactivating_a_learner_from_its_settings_tab(
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: AbstractBaseUser,
-) -> None:
-    page = educator_logged_in_page
-    organisation = OrganisationFactory(name="Org A")
-    learner = LearnerFactory(
-        organisation=organisation,
-        user__first_name="Ada",
-        user__last_name="Lovelace",
-    )
-    grantor = LearnerFactory(user__superuser=True).user
-    assign_role(grantor, educator_user, "organisation_admin", organisation)
-    page.goto(
-        interface_url(
-            live_server, organisation.slug, f"learners/{learner.pk}/__tabs/settings"
-        )
-    )
-    modal = page.locator("#app-modal")
-    main = page.locator("#main-content")
-    header = page.locator("#instance-header")
-
-    expect(header.get_by_text("Active", exact=True)).to_have_count(0)
-    main.get_by_role("button", name="Deactivate", exact=True).first.click()
-    modal.get_by_role("button", name="Deactivate", exact=True).click()
-
-    # The header refreshes on the learner-changed event and shows the badge.
-    expect(modal).to_be_hidden()
-    expect(header.get_by_text("Inactive", exact=True)).to_be_visible()
-    main.get_by_role("button", name="Reactivate", exact=True).first.click()
-    modal.get_by_role("button", name="Reactivate", exact=True).click()
-    expect(modal).to_be_hidden()
-    expect(header.get_by_text("Inactive", exact=True)).to_have_count(0)
-    expect(
-        main.get_by_role("button", name="Deactivate", exact=True).first
-    ).to_be_visible()
-
-
-def test_the_learner_name_form_on_the_settings_tab_has_no_space_below_its_field_row(
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: AbstractBaseUser,
-) -> None:
-    page = educator_logged_in_page
-    organisation = OrganisationFactory(name="Org A")
-    learner = LearnerFactory(
-        organisation=organisation,
-        user__first_name="Ada",
-        user__last_name="Lovelace",
-    )
-    # Editing the learner's name changes their user, which only a superuser may do.
-    educator_user.is_superuser = True
-    educator_user.save()
-    page.goto(
-        interface_url(
-            live_server, organisation.slug, f"learners/{learner.pk}/__tabs/settings"
-        )
-    )
-
-    assert_no_space_below_field_row(page.locator("#learner-name-form"))
 
 
 def test_moving_a_learner_between_cohorts_carries_their_progress(
@@ -249,11 +211,17 @@ def test_moving_a_learner_between_cohorts_carries_their_progress(
     expect(main.get_by_text("1 of 2 items")).to_be_visible()
 
 
-def test_a_deactivation_reason_shows_on_the_learner_history_and_the_audit_log(
+def test_learner_settings_flow(
     live_server,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
+    """The Settings tab's name form has no space below its field row.
+    Deactivating a learner with a 500-character reason shows the Inactive
+    badge, the reason in the History row detail (wrapped inside the table)
+    and in the audit log as a table row and as a card on a phone, with no
+    overflow at any viewport. Reactivating clears the badge and brings back
+    the Deactivate button."""
     page = educator_logged_in_page
     organisation = OrganisationFactory(name="Org A")
     learner = LearnerFactory(
@@ -261,23 +229,33 @@ def test_a_deactivation_reason_shows_on_the_learner_history_and_the_audit_log(
         user__first_name="Ada",
         user__last_name="Lovelace",
     )
-    grantor = LearnerFactory(user__superuser=True).user
-    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    # Editing the learner's name changes their user, which only a superuser may do.
+    educator_user.is_superuser = True
+    educator_user.save()
     reason = "abcdefghij" * 50
-    page.goto(
-        interface_url(
-            live_server, organisation.slug, f"learners/{learner.pk}/__tabs/settings"
-        )
+    settings_url = interface_url(
+        live_server, organisation.slug, f"learners/{learner.pk}/__tabs/settings"
     )
+    audit_log_url = interface_url(live_server, organisation.slug, "audit-log")
+    page.goto(settings_url)
     modal = page.locator("#app-modal")
     main = page.locator("#main-content")
+    header = page.locator("#instance-header")
 
+    assert_no_space_below_field_row(page.locator("#learner-name-form"))
+
+    # Deactivate.
+    expect(header.get_by_text("Active", exact=True)).to_have_count(0)
     main.get_by_role("button", name="Deactivate", exact=True).first.click()
     modal.get_by_label("Reason (optional)").fill(reason)
     modal.get_by_role("button", name="Deactivate", exact=True).click()
 
+    # The header refreshes on the learner-changed event and shows the badge.
     expect(modal).to_be_hidden()
+    expect(header.get_by_text("Inactive", exact=True)).to_be_visible()
     expect(main.get_by_text("Inactive", exact=True).first).to_be_visible()
+
+    # History.
     page.get_by_role("link", name="History", exact=True).click()
     history_row = main.get_by_role("row").filter(has_text="Learner deactivated")
     expect(history_row).to_have_count(1)
@@ -293,13 +271,15 @@ def test_a_deactivation_reason_shows_on_the_learner_history_and_the_audit_log(
     assert table.evaluate("t => t.offsetWidth <= t.parentElement.clientWidth"), (
         "the History table is wider than its wrapper"
     )
-    page.goto(interface_url(live_server, organisation.slug, "audit-log"))
+
+    # Audit log.
+    page.goto(audit_log_url)
     row = main.get_by_role("row").filter(has_text="Learner deactivated")
     expect(row.get_by_text("Ada Lovelace").first).to_be_visible()
     row.get_by_role("button", name="More about", exact=False).click()
     expect(main.locator("tr[data-row-detail]").get_by_text(reason)).to_be_visible()
     page.set_viewport_size({"width": 375, "height": 800})
-    page.goto(interface_url(live_server, organisation.slug, "audit-log"))
+    page.goto(audit_log_url)
     card = main.locator("li").filter(has_text="Learner deactivated")
     card_toggle = card.get_by_role("button", name="More about", exact=False)
     card_toggle.click()
@@ -307,41 +287,15 @@ def test_a_deactivation_reason_shows_on_the_learner_history_and_the_audit_log(
     expect(card.get_by_text(reason)).to_be_visible()
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
-        page.goto(interface_url(live_server, organisation.slug, "audit-log"))
+        page.goto(audit_log_url)
         assert_no_horizontal_overflow(page)
 
-
-def test_registration_rows_share_the_left_edge_of_the_registrations_heading(
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: AbstractBaseUser,
-) -> None:
-    """The registration rows used to sit indented past the card heading
-    because the list kept the default list margin."""
-    page = educator_logged_in_page
-    organisation = OrganisationFactory(name="Org A")
-    learner = LearnerFactory(organisation=organisation)
-    LearnerCourseRegistrationFactory(
-        learner=learner, course=CourseFactory(title="Algebra")
-    )
-    grantor = LearnerFactory(user__superuser=True).user
-    assign_role(grantor, educator_user, "organisation_admin", organisation)
-
-    for viewport in QA_VIEWPORTS:
-        page.set_viewport_size(viewport)
-        page.goto(
-            interface_url(live_server, organisation.slug, f"learners/{learner.pk}")
-        )
-        heading = page.get_by_role("heading", name="Registrations", exact=True)
-        row = page.get_by_test_id("registration-row")
-        expect(row).to_be_visible()
-        heading_box = heading.bounding_box()
-        row_box = row.bounding_box()
-        assert heading_box is not None
-        assert row_box is not None
-        heading_left = heading_box["x"]
-        row_left = row_box["x"]
-        # Within a pixel: sub-pixel rounding is not an indent.
-        assert abs(row_left - heading_left) < 1, (
-            f"registration row at x={row_left}, heading at x={heading_left}"
-        )
+    # Reactivate.
+    page.goto(settings_url)
+    main.get_by_role("button", name="Reactivate", exact=True).first.click()
+    modal.get_by_role("button", name="Reactivate", exact=True).click()
+    expect(modal).to_be_hidden()
+    expect(header.get_by_text("Inactive", exact=True)).to_have_count(0)
+    expect(
+        main.get_by_role("button", name="Deactivate", exact=True).first
+    ).to_be_visible()

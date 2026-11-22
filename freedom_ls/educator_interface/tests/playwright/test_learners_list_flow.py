@@ -20,6 +20,7 @@ from freedom_ls.learner_management.factories import CohortFactory, LearnerFactor
 from freedom_ls.learner_management.models import CohortMembership, Learner
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.tests.playwright_fixtures import sign_in
 from freedom_ls.tests.playwright_helpers import (
     QA_VIEWPORTS,
     assert_no_horizontal_overflow,
@@ -256,245 +257,6 @@ def test_a_background_bulk_run_keeps_the_reader_on_the_table_until_it_finishes(
         assert_no_horizontal_overflow(page)
 
 
-def test_bulk_deactivate_with_javascript_off_returns_to_the_list_with_a_flash(
-    browser: Browser,
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: AbstractBaseUser,
-) -> None:
-    organisation = OrganisationFactory(name="Org A")
-    grantor = LearnerFactory(user__superuser=True).user
-    assign_role(grantor, educator_user, "organisation_admin", organisation)
-    learners = [LearnerFactory(organisation=organisation) for _ in range(2)]
-    # The session cookie carries the login into a context with scripting off.
-    context = browser.new_context(java_script_enabled=False)
-    context.add_cookies(educator_logged_in_page.context.cookies())
-    page = context.new_page()
-
-    try:
-        page.goto(interface_url(live_server, organisation.slug, "learners"))
-        rows = page.locator("#learners-table tbody input[name='keys']")
-        rows.nth(0).check()
-        rows.nth(1).check()
-        page.get_by_role("button", name="Deactivate", exact=True).first.click()
-        page.get_by_role("button", name="Deactivate", exact=True).last.click()
-
-        expect(page).to_have_url(
-            interface_url(live_server, organisation.slug, "learners")
-        )
-        expect(page.get_by_text("2 learners changed.")).to_be_visible()
-    finally:
-        context.close()
-
-    assert not any(
-        learner.is_active
-        for learner in Learner.objects.filter(
-            pk__in=[learner.pk for learner in learners]
-        )
-    )
-
-
-def test_bulk_picker_returns_to_no_choice_when_the_choice_is_cleared(
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: AbstractBaseUser,
-) -> None:
-    """Setting the picker back to no choice used to leave the previous
-    target's title and enabled confirm on screen, because the required select
-    blocked the re-post."""
-    page = educator_logged_in_page
-    organisation = OrganisationFactory(name="Org A")
-    grantor = LearnerFactory(user__superuser=True).user
-    assign_role(grantor, educator_user, "organisation_admin", organisation)
-    CohortFactory(organisation=organisation, name="Evening group")
-    LearnerFactory(organisation=organisation)
-    page.goto(interface_url(live_server, organisation.slug, "learners"))
-    modal = page.locator("#app-modal")
-
-    page.locator("#learners-table tbody input[name='keys']").first.check()
-    page.locator("#main-content").get_by_role(
-        "button", name="Add to cohort", exact=True
-    ).click()
-    modal.get_by_label("Cohort").select_option(label="Evening group")
-    expect(modal.get_by_text("Add 1 learner to Evening group?")).to_be_visible()
-    modal.get_by_label("Cohort").select_option(index=0)
-
-    expect(modal.get_by_text("Add to cohort?", exact=True)).to_be_visible()
-    expect(modal.get_by_text("Choose a cohort first.")).to_be_visible()
-    expect(
-        modal.get_by_role("button", name="Add to cohort", exact=True)
-    ).to_be_disabled()
-    expect(modal.get_by_text("This field is required.")).to_have_count(0)
-
-
-def test_bulk_add_to_cohort_with_javascript_off_asks_for_the_cohort_first(
-    browser: Browser,
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: AbstractBaseUser,
-) -> None:
-    organisation = OrganisationFactory(name="Org A")
-    grantor = LearnerFactory(user__superuser=True).user
-    assign_role(grantor, educator_user, "organisation_admin", organisation)
-    cohort = CohortFactory(organisation=organisation, name="Evening group")
-    learner = LearnerFactory(organisation=organisation)
-    context = browser.new_context(java_script_enabled=False)
-    context.add_cookies(educator_logged_in_page.context.cookies())
-    page = context.new_page()
-
-    try:
-        page.goto(interface_url(live_server, organisation.slug, "learners"))
-        page.locator("#learners-table tbody input[name='keys']").first.check()
-        page.get_by_role("button", name="Add to cohort", exact=True).first.click()
-        page.get_by_label("Cohort", exact=True).select_option(label="Evening group")
-        page.get_by_role("button", name="Show what changes").click()
-        page.get_by_role("button", name="Add to cohort", exact=True).last.click()
-
-        expect(page.get_by_text("1 learner changed.")).to_be_visible()
-    finally:
-        context.close()
-
-    assert CohortMembership.objects.filter(cohort=cohort, learner=learner).exists()
-
-
-def test_mobile_selection_bar_does_not_cover_the_last_card_checkbox(
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: AbstractBaseUser,
-) -> None:
-    """Below md the selection bar once sat fixed over the last cards, so
-    their checkboxes could not be tapped once a row was ticked."""
-    page = educator_logged_in_page
-    organisation = OrganisationFactory(name="Org A")
-    grantor = LearnerFactory(user__superuser=True).user
-    assign_role(grantor, educator_user, "organisation_admin", organisation)
-    for _ in range(LearnerDataTable.get_page_size() + 1):
-        LearnerFactory(organisation=organisation)
-    page.set_viewport_size({"width": 375, "height": 812})
-    page.goto(interface_url(live_server, organisation.slug, "learners"))
-    checkboxes = page.locator("ul input[name='keys']")
-
-    checkboxes.first.check()
-    checkboxes.last.scroll_into_view_if_needed()
-    page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-
-    topmost_is_checkbox = checkboxes.last.evaluate(
-        """el => {
-            const box = el.getBoundingClientRect();
-            const hit = document.elementFromPoint(
-                box.x + box.width / 2, box.y + box.height / 2);
-            return hit === el;
-        }"""
-    )
-    assert topmost_is_checkbox
-
-    next_link = page.get_by_role("link", name="Next", exact=True)
-    next_is_topmost = next_link.evaluate(
-        """el => {
-            const box = el.getBoundingClientRect();
-            const hit = document.elementFromPoint(
-                box.x + box.width / 2, box.y + box.height / 2);
-            return hit === el;
-        }"""
-    )
-    assert next_is_topmost
-
-
-def test_more_actions_menu_stays_open_after_one_click(
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: AbstractBaseUser,
-) -> None:
-    """One click on "More actions" opened the menu and closed it again a few
-    milliseconds later, because opening scrolled the page and any scroll
-    closes a dropdown."""
-    page = educator_logged_in_page
-    organisation = OrganisationFactory(name="Org A")
-    grantor = LearnerFactory(user__superuser=True).user
-    assign_role(grantor, educator_user, "organisation_admin", organisation)
-    for _ in range(30):
-        LearnerFactory(organisation=organisation)
-    page.set_viewport_size({"width": 1440, "height": 900})
-    page.goto(interface_url(live_server, organisation.slug, "learners"))
-    main = page.locator("#main-content")
-
-    main.locator("#learners-table input[name='keys']").first.check()
-    trigger = main.get_by_role("button", name="More actions")
-    trigger.click()
-    page.wait_for_timeout(500)
-
-    expect(trigger).to_have_attribute("aria-expanded", "true")
-    expect(main.get_by_role("menuitem").last).to_be_visible()
-
-    page.mouse.wheel(0, 300)
-    expect(trigger).to_have_attribute("aria-expanded", "false")
-
-
-def test_the_toolbar_is_one_row_at_tablet_and_desktop_widths(
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: AbstractBaseUser,
-) -> None:
-    """At 768 the search, filter chips, Add filter and Export CSV took two
-    rows; the search field gives up width instead."""
-    page = educator_logged_in_page
-    organisation = OrganisationFactory(name="Org A")
-    grantor = LearnerFactory(user__superuser=True).user
-    assign_role(grantor, educator_user, "organisation_admin", organisation)
-    LearnerFactory(organisation=organisation)
-    # Add filter shows only while a hidden filter has a choice to offer.
-    CohortFactory(organisation=organisation, name="Evening group")
-
-    for viewport in QA_VIEWPORTS[1:]:
-        page.set_viewport_size(viewport)
-        page.goto(interface_url(live_server, organisation.slug, "learners"))
-        controls = [
-            page.get_by_role("searchbox"),
-            page.get_by_text("Add filter"),
-            page.get_by_role("link", name="Export CSV"),
-        ]
-        middles = []
-        for control in controls:
-            box = control.bounding_box()
-            assert box is not None
-            middles.append(box["y"] + box["height"] / 2)
-        assert max(middles) - min(middles) < 8, f"toolbar wraps at {viewport}"
-
-
-def test_the_learners_table_is_cards_where_its_columns_would_not_fit(
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: AbstractBaseUser,
-) -> None:
-    """On a tablet the learners table stayed a table and squeezed each name to
-    a few letters; it shows as cards wherever its own container is narrow."""
-    page = educator_logged_in_page
-    organisation = OrganisationFactory(name="Org A")
-    grantor = LearnerFactory(user__superuser=True).user
-    assign_role(grantor, educator_user, "organisation_admin", organisation)
-    LearnerFactory(
-        organisation=organisation,
-        user__first_name="Aaron",
-        user__last_name="Abercrombie",
-    )
-    main = page.locator("#main-content")
-    table = main.get_by_role("table")
-    card = main.locator("[data-card-primary-line]").first
-    url = interface_url(live_server, organisation.slug, "learners")
-
-    page.set_viewport_size({"width": 1920, "height": 1080})
-    page.goto(url)
-    expect(table).to_be_visible()
-    expect(card).to_be_hidden()
-
-    page.set_viewport_size({"width": 768, "height": 1024})
-    page.goto(url)
-    expect(card).to_be_visible()
-    expect(table).to_be_hidden()
-    expect(main.locator("ul").get_by_text("Aaron Abercrombie").first).to_be_visible()
-    assert_no_horizontal_overflow(page)
-
-
 def test_the_cohort_learners_table_is_cards_with_its_buttons_in_view_on_a_tablet(
     live_server,
     educator_logged_in_page: Page,
@@ -532,30 +294,199 @@ def test_the_cohort_learners_table_is_cards_with_its_buttons_in_view_on_a_tablet
     assert_no_horizontal_overflow(page)
 
 
-def test_learners_table_at_tablet_width_offers_the_sort_menu_while_it_shows_cards(
+def test_learners_list_without_javascript_flow(
+    browser: Browser,
+    live_server,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """With scripting off, bulk deactivate returns to the list with the
+    "2 learners changed." flash, and bulk add to cohort asks for the cohort
+    first, then shows what changes, then reports "1 learner changed."
+    """
+    organisation = OrganisationFactory(name="Org A")
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    cohort = CohortFactory(organisation=organisation, name="Evening group")
+    deactivated = [LearnerFactory(organisation=organisation) for _ in range(2)]
+    remaining = LearnerFactory(organisation=organisation)
+    context = browser.new_context(java_script_enabled=False)
+    page = context.new_page()
+    list_url = interface_url(live_server, organisation.slug, "learners")
+
+    try:
+        sign_in(page, live_server, educator_user)
+
+        # Bulk deactivate.
+        page.goto(list_url)
+        rows = page.locator("#learners-table tbody input[name='keys']")
+        for learner in deactivated:
+            rows.and_(page.locator(f"[value='{learner.pk}']")).check()
+        page.get_by_role("button", name="Deactivate", exact=True).first.click()
+        page.get_by_role("button", name="Deactivate", exact=True).last.click()
+
+        expect(page).to_have_url(list_url)
+        expect(page.get_by_text("2 learners changed.")).to_be_visible()
+
+        # Add to cohort. The default Status filter now hides the two
+        # deactivated learners, leaving one row.
+        page.goto(list_url)
+        page.locator("#learners-table tbody input[name='keys']").first.check()
+        page.get_by_role("button", name="Add to cohort", exact=True).first.click()
+        page.get_by_label("Cohort", exact=True).select_option(label="Evening group")
+        page.get_by_role("button", name="Show what changes").click()
+        page.get_by_role("button", name="Add to cohort", exact=True).last.click()
+
+        expect(page.get_by_text("1 learner changed.")).to_be_visible()
+    finally:
+        context.close()
+
+    assert not any(
+        learner.is_active
+        for learner in Learner.objects.filter(
+            pk__in=[learner.pk for learner in deactivated]
+        )
+    ), "bulk deactivate left a learner active"
+    assert CohortMembership.objects.filter(cohort=cohort, learner=remaining).exists(), (
+        "bulk add did not add the learner to the cohort"
+    )
+
+
+def test_learners_list_layout_flow(
     live_server,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
-    """At 768px the table is cards with no column headers, and the toolbar had
-    no Sort menu, so the list could not be sorted. Sort shows exactly while the
-    cards do and gives way to the column headers once the table returns.
-    """
+    """At 768, 1440 and 1920 the search, Add filter and Export CSV share one
+    row (at 768 they used to take two). The table is cards, with a Sort menu
+    and no column headers, wherever its own container is narrow (it used to
+    squeeze each name to a few letters at 768), and a table with column
+    headers and no Sort menu at 1920. Setting the cohort picker back to no
+    choice returns the dialog to "Add to cohort?" with confirm disabled (it
+    used to keep the previous target's title and enabled confirm)."""
     page = educator_logged_in_page
     organisation = OrganisationFactory(name="Org A")
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, educator_user, "organisation_admin", organisation)
-    LearnerFactory(organisation=organisation)
-    page.set_viewport_size({"width": 768, "height": 1024})
-
-    page.goto(interface_url(live_server, organisation.slug, "learners"))
+    LearnerFactory(
+        organisation=organisation,
+        user__first_name="Aaron",
+        user__last_name="Abercrombie",
+    )
+    # Add filter shows only while a hidden filter has a choice to offer.
+    CohortFactory(organisation=organisation, name="Evening group")
+    url = interface_url(live_server, organisation.slug, "learners")
     main = page.locator("#main-content")
+    table = main.get_by_role("table")
+    card = main.locator("[data-card-primary-line]").first
 
-    expect(main.locator("[data-row-cards], ul.divide-y").first).to_be_visible()
+    # Toolbar.
+    for viewport in QA_VIEWPORTS[1:]:
+        page.set_viewport_size(viewport)
+        page.goto(url)
+        controls = [
+            page.get_by_role("searchbox"),
+            page.get_by_text("Add filter"),
+            page.get_by_role("link", name="Export CSV"),
+        ]
+        middles = []
+        for control in controls:
+            box = control.bounding_box()
+            assert box is not None
+            middles.append(box["y"] + box["height"] / 2)
+        assert max(middles) - min(middles) < 8, f"toolbar wraps at {viewport}"
+
+    # Cards and sort menu at 768.
+    page.set_viewport_size({"width": 768, "height": 1024})
+    page.goto(url)
+    expect(card, "cards not shown at 768px").to_be_visible()
+    expect(table, "table shown at 768px").to_be_hidden()
+    expect(main.locator("ul").get_by_text("Aaron Abercrombie").first).to_be_visible()
+    assert_no_horizontal_overflow(page)
     expect(main.get_by_role("columnheader").first).to_be_hidden()
-    expect(main.get_by_role("button", name="Sort", exact=True)).to_be_visible()
+    expect(
+        main.get_by_role("button", name="Sort", exact=True),
+        "Sort menu missing at 768px",
+    ).to_be_visible()
 
+    # Table at 1920.
     page.set_viewport_size({"width": 1920, "height": 1080})
-
+    page.goto(url)
+    expect(table, "table not shown at 1920px").to_be_visible()
+    expect(card, "cards shown at 1920px").to_be_hidden()
     expect(main.get_by_role("columnheader").first).to_be_visible()
-    expect(main.get_by_role("button", name="Sort", exact=True)).to_be_hidden()
+    expect(
+        main.get_by_role("button", name="Sort", exact=True),
+        "Sort menu shown at 1920px",
+    ).to_be_hidden()
+
+    # Cleared picker. It opens a dialog, so it runs last.
+    modal = page.locator("#app-modal")
+    page.locator("#learners-table tbody input[name='keys']").first.check()
+    main.get_by_role("button", name="Add to cohort", exact=True).click()
+    modal.get_by_label("Cohort").select_option(label="Evening group")
+    expect(modal.get_by_text("Add 1 learner to Evening group?")).to_be_visible()
+    modal.get_by_label("Cohort").select_option(index=0)
+
+    expect(modal.get_by_text("Add to cohort?", exact=True)).to_be_visible()
+    expect(modal.get_by_text("Choose a cohort first.")).to_be_visible()
+    expect(
+        modal.get_by_role("button", name="Add to cohort", exact=True)
+    ).to_be_disabled()
+    expect(modal.get_by_text("This field is required.")).to_have_count(0)
+
+
+def test_learners_list_selection_flow(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """On a phone the selection bar does not cover the last card checkbox or
+    the Next link (it once sat fixed over the last cards, so they could not
+    be tapped once a row was ticked). On a desktop one click on "More actions"
+    opens the menu and keeps it open (opening scrolled the page and any scroll
+    closes a dropdown), and a scroll then closes it."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    for _ in range(max(30, LearnerDataTable.get_page_size() + 1)):
+        LearnerFactory(organisation=organisation)
+    url = interface_url(live_server, organisation.slug, "learners")
+    topmost = """el => {
+        const box = el.getBoundingClientRect();
+        const hit = document.elementFromPoint(
+            box.x + box.width / 2, box.y + box.height / 2);
+        return hit === el;
+    }"""
+
+    # Selection bar on a phone.
+    page.set_viewport_size({"width": 375, "height": 812})
+    page.goto(url)
+    checkboxes = page.locator("ul input[name='keys']")
+    checkboxes.first.check()
+    checkboxes.last.scroll_into_view_if_needed()
+    page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+    assert checkboxes.last.evaluate(topmost), (
+        "selection bar covers the last card checkbox"
+    )
+    next_link = page.get_by_role("link", name="Next", exact=True)
+    assert next_link.evaluate(topmost), "selection bar covers the Next link"
+
+    # More actions menu on a desktop.
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.goto(url)
+    main = page.locator("#main-content")
+    main.locator("#learners-table input[name='keys']").first.check()
+    trigger = main.get_by_role("button", name="More actions")
+    trigger.click()
+    page.wait_for_timeout(500)
+
+    expect(trigger, "More actions menu closed after one click").to_have_attribute(
+        "aria-expanded", "true"
+    )
+    expect(main.get_by_role("menuitem").last).to_be_visible()
+
+    page.mouse.wheel(0, 300)
+    expect(trigger, "More actions menu stayed open on scroll").to_have_attribute(
+        "aria-expanded", "false"
+    )

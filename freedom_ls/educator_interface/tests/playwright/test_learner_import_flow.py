@@ -3,6 +3,10 @@ filter the preview to the errors, confirm, read the result and download the
 error file. The classification and wording are covered by the Client tests;
 what only a browser shows is the file upload, the download and the layout of
 the preview and result pages at every viewport.
+
+The flow also proves that a notice focused only by script is drawn without an
+outline (the browser's heavy default outline used to show) while the Upload
+button keeps its focus ring on Tab.
 """
 
 from __future__ import annotations
@@ -213,32 +217,14 @@ def test_import_a_file_with_errors_then_download_the_error_rows(
                 assert label_box is not None
                 assert label_box["width"] <= 1
 
-
-def test_script_focused_notice_has_no_outline_but_buttons_keep_their_ring(
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: AbstractBaseUser,
-    tmp_path: Path,
-) -> None:
-    """A notice that takes focus only by script was drawn inside the browser's
-    heavy default outline. Real controls must keep their focus ring."""
-    page = educator_logged_in_page
-    organisation = OrganisationFactory(name="Org A")
-    grantor = LearnerFactory(user__superuser=True).user
-    assign_role(grantor, educator_user, "organisation_admin", organisation)
-    bad = tmp_path / "bad-header.csv"
-    bad.write_text("name\nAda\n")
-
-    page.goto(interface_url(live_server, organisation.slug, "learners"))
-    page.get_by_role("link", name="Import learners").first.click()
-    page.get_by_label("CSV file").set_input_files(str(bad))
-    page.get_by_role("button", name="Upload and preview").click()
-
+    # Script focus.
+    show_upload_error()
     notice = page.locator("#main-content [role=alert]")
-    expect(notice).to_contain_text("The file could not be uploaded.")
     notice.focus()
     expect(notice).to_be_focused()
-    assert notice.evaluate("el => getComputedStyle(el).outlineStyle") == "none"
+    assert notice.evaluate("el => getComputedStyle(el).outlineStyle") == "none", (
+        "script-focused notice drew an outline"
+    )
 
     button = page.get_by_role("button", name="Upload and preview")
     for _ in range(40):
@@ -252,4 +238,6 @@ def test_script_focused_notice_has_no_outline_but_buttons_keep_their_ring(
             return [style.outlineStyle, style.boxShadow];
         }"""
     )
-    assert ring[0] != "none" or ring[1] != "none"
+    assert ring[0] != "none" or ring[1] != "none", (
+        "Upload button lost its focus ring on Tab"
+    )

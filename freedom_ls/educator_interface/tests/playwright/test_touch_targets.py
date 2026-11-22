@@ -44,11 +44,14 @@ _SMALLEST_CONTROL = """() => {
 _BUTTON_HEIGHT = """(button) => button.getBoundingClientRect().height"""
 
 
-def test_header_tabs_search_and_dialog_controls_are_44px_on_a_phone(
+def test_touch_targets_flow(
     live_server,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
+    """On a phone no header, tab, search or dialog control is under 44px to
+    the touch, a small button keeps its desktop look (under 40px tall) and a
+    dialog footer's Cancel is 44px tall."""
     page = educator_logged_in_page
     organisation = OrganisationFactory(name="Org A")
     cohort = CohortFactory(organisation=organisation, name="Alpha Cohort")
@@ -56,39 +59,28 @@ def test_header_tabs_search_and_dialog_controls_are_44px_on_a_phone(
     page.set_viewport_size(_PHONE)
 
     page.goto(interface_url(live_server, organisation.slug, "cohorts"))
-    assert page.evaluate(_SMALLEST_CONTROL) == []
+    assert page.evaluate(_SMALLEST_CONTROL) == [], "cohorts page has a small control"
 
     page.goto(interface_url(live_server, organisation.slug, f"cohorts/{cohort.pk}"))
-    assert page.evaluate(_SMALLEST_CONTROL) == []
-
-    page.goto(interface_url(live_server, organisation.slug, "cohorts"))
-    page.get_by_role("button", name="Create cohort", exact=True).click()
-    page.get_by_role("dialog", name="Create cohort").wait_for()
-    assert page.evaluate(_SMALLEST_CONTROL) == []
-
-    page.goto(interface_url(live_server, organisation.slug, "learners"))
-    page.get_by_role("button", name="Filter", exact=True).click()
-    page.get_by_role("dialog", name="Filter").wait_for()
-    assert page.evaluate(_SMALLEST_CONTROL) == []
-
-
-def test_a_small_button_keeps_its_desktop_look_on_a_phone_and_a_dialog_footer_is_44px(
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: AbstractBaseUser,
-) -> None:
-    page = educator_logged_in_page
-    organisation = OrganisationFactory(name="Org A")
-    assign_object_role(educator_user, organisation, "organisation_admin")
-    page.set_viewport_size(_PHONE)
-
-    page.goto(interface_url(live_server, organisation.slug, "learners"))
-    filter_button = page.get_by_role("button", name="Filter", exact=True)
-    assert filter_button.evaluate(_BUTTON_HEIGHT) < 40
+    assert page.evaluate(_SMALLEST_CONTROL) == [], (
+        "cohort detail page has a small control"
+    )
 
     page.goto(interface_url(live_server, organisation.slug, "cohorts"))
     page.get_by_role("button", name="Create cohort", exact=True).first.click()
     dialog = page.get_by_role("dialog", name="Create cohort")
     dialog.wait_for()
+    assert page.evaluate(_SMALLEST_CONTROL) == [], "create dialog has a small control"
     cancel = dialog.locator("footer").get_by_role("button", name="Cancel")
-    assert round(cancel.evaluate(_BUTTON_HEIGHT)) >= 44
+    assert round(cancel.evaluate(_BUTTON_HEIGHT)) >= 44, (
+        "dialog footer Cancel under 44px tall"
+    )
+
+    page.goto(interface_url(live_server, organisation.slug, "learners"))
+    filter_button = page.get_by_role("button", name="Filter", exact=True)
+    assert filter_button.evaluate(_BUTTON_HEIGHT) < 40, (
+        "Filter button taller than its desktop look"
+    )
+    filter_button.click()
+    page.get_by_role("dialog", name="Filter").wait_for()
+    assert page.evaluate(_SMALLEST_CONTROL) == [], "filter dialog has a small control"
