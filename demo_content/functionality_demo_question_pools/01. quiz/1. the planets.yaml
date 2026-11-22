@@ -1,0 +1,95 @@
+---
+content_type: FORM_PAGE
+draw: 3
+title: The planets
+uuid: 0105637c-cf47-4fed-828c-38ebbbefdd56
+---
+options:
+- correct: true
+  text: Mercury
+  uuid: 04624c25-9182-49c3-8610-aad4eaf6a2f6
+  value: mercury
+- text: Venus
+  uuid: 73dab0df-c204-4587-9c4e-2eb7ffa3f45d
+  value: venus
+- text: Earth
+  uuid: 4ca463ef-ee6e-43a0-a66f-ac7ff317ed5a
+  value: earth
+question: Which planet is closest to the Sun?
+type: multiple_choice
+uuid: be52dfc6-022f-427e-971b-696cfbfe33ae
+---
+options:
+- correct: true
+  text: Saturn
+  uuid: 3bd7ec7a-207a-47f4-8032-334b383d0494
+  value: saturn
+- text: Mars
+  uuid: aa21fdc9-7e57-4d8e-bccc-d10c141fbe35
+  value: mars
+- text: Mercury
+  uuid: 70652ca1-d5f9-40bf-9a0f-869e0fa26eee
+  value: mercury
+question: Which planet has the most visible rings?
+type: multiple_choice
+uuid: 7de4474e-9885-467a-a683-67b9dae2abb9
+---
+options:
+- correct: true
+  text: Mars
+  uuid: 2d908ffb-a932-4441-baad-cab96d253526
+  value: mars
+- text: Jupiter
+  uuid: 734778b5-dd35-4ead-baeb-c53f85f6b278
+  value: jupiter
+- text: Neptune
+  uuid: 8f1ae7fc-241c-41af-940c-ea6286626999
+  value: neptune
+question: Which planet is known as the Red Planet?
+type: multiple_choice
+uuid: 85d72ae1-8748-4acf-9995-d53c60ae5bfb
+---
+options:
+- correct: true
+  text: Jupiter
+  uuid: faac7d88-07cb-425c-a0b9-371a8d04fb74
+  value: jupiter
+- text: Saturn
+  uuid: fa69b7b0-dccd-4c7a-9c04-2f6fc7378a14
+  value: saturn
+- text: Earth
+  uuid: d7f91b50-7efa-4d54-ac88-02450f9f5531
+  value: earth
+question: What is the largest planet in the Solar System?
+type: multiple_choice
+uuid: cde6f6ab-09b8-4a70-aa48-2ec4a11ccaeb
+---
+options:
+- correct: true
+  text: Earth
+  uuid: 64e4627c-112d-477d-a125-6b442995b9b8
+  value: earth
+- text: Venus
+  uuid: 1d821f9f-c3ec-4e0d-8a46-16c66062e47e
+  value: venus
+- text: Uranus
+  uuid: d7797b9a-7008-4c45-9b76-1f834aa4125f
+  value: uranus
+question: Which planet do we live on?
+type: multiple_choice
+uuid: 42d8f4b0-39b4-49ff-a6f2-5d5b2dac32ec
+---
+options:
+- correct: true
+  text: Neptune
+  uuid: 1038f665-a9d3-4ffe-9044-59af5021920e
+  value: neptune
+- text: Uranus
+  uuid: 2b3e22b1-bb0a-4f56-b302-231bdf2d41d2
+  value: uranus
+- text: Saturn
+  uuid: 9b3e1ff1-d09d-4ce4-9263-dd3db5b8694a
+  value: saturn
+question: Which planet is farthest from the Sun?
+type: multiple_choice
+uuid: 02ccdcd6-b061-4e68-be8a-22e420188974

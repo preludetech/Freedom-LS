@@ -2461,3 +2461,93 @@ def test_page_file_without_a_form_page_section_fails(tmp_path: Path) -> None:
     result = run_validator(form_dir)
 
     assert_validator_fails(result, "no FORM_PAGE section")
+
+
+# Drawing pages: draw serves some of a page's questions or groups per sitting
+
+
+def _draw_question(text: str, group: str = "") -> str:
+    group_line = f"group: {group}\n" if group else ""
+    return f"---\nquestion: {text}\ntype: short_text\n{group_line}"
+
+
+def _write_draw_form(
+    directory: Path, draw: str, page_block: str, header: str = QUIZ_HEADER
+) -> Path:
+    form_dir = write_shuffle_form(directory, header, page_block)
+    (form_dir / "1. page.yaml").write_text(
+        f"---\ncontent_type: FORM_PAGE\ntitle: Page\ndraw: {draw}\n---\n{page_block}",
+        encoding="utf-8",
+    )
+    return form_dir
+
+
+def test_a_draw_within_the_questions_on_the_page_validates(tmp_path: Path) -> None:
+    form_dir = _write_draw_form(
+        tmp_path, "1", _draw_question("One?") + _draw_question("Two?")
+    )
+
+    result = run_validator(form_dir)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("draw", ["", "true", "2.0", "0"])
+def test_a_bare_boolean_decimal_or_zero_draw_fails(tmp_path: Path, draw: str) -> None:
+    form_dir = _write_draw_form(tmp_path, draw, _draw_question("One?"))
+
+    result = run_validator(form_dir)
+
+    assert result.returncode != 0
+    assert "Traceback" not in result.stdout + result.stderr
+
+
+def test_a_draw_above_the_number_of_questions_fails(tmp_path: Path) -> None:
+    form_dir = _write_draw_form(
+        tmp_path, "3", _draw_question("One?") + _draw_question("Two?")
+    )
+
+    result = run_validator(form_dir)
+
+    assert_validator_fails(
+        result, "draw is 3, but this page has 2 questions or groups to draw from."
+    )
+
+
+def test_a_draw_on_a_non_quiz_form_fails(tmp_path: Path) -> None:
+    form_dir = _write_draw_form(
+        tmp_path,
+        "1",
+        _draw_question("One?"),
+        header="strategy: CATEGORY_VALUE_SUM\n",
+    )
+
+    result = run_validator(form_dir)
+
+    assert_validator_fails(result, "draw is only allowed on QUIZ forms")
+
+
+def test_groups_of_different_sizes_on_a_drawing_page_fail(tmp_path: Path) -> None:
+    form_dir = _write_draw_form(
+        tmp_path,
+        "1",
+        _draw_question("A1?", "a")
+        + _draw_question("A2?", "a")
+        + _draw_question("B1?", "b"),
+    )
+
+    result = run_validator(form_dir)
+
+    assert_validator_fails(result, "must each hold the same number of questions")
+
+
+def test_a_content_block_with_no_question_on_a_drawing_page_fails(
+    tmp_path: Path,
+) -> None:
+    form_dir = _write_draw_form(
+        tmp_path, "1", "---\ncontent: A loose passage.\n" + _draw_question("One?")
+    )
+
+    result = run_validator(form_dir)
+
+    assert_validator_fails(result, "has no question to travel with on a drawing page")

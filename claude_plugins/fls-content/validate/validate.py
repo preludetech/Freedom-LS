@@ -1720,6 +1720,44 @@ def _split_group_errors(children: list[tuple[_FormChildSection, str]]) -> list[s
     return errors
 
 
+def _group_layout_errors(form_pages: _FormPages) -> list[list[str]]:
+    """Per page, in page order, the errors that make its groups malformed: a
+    group split by another child, or a group used on an earlier page.
+
+    Units are formed from consecutive runs of one group, so a page with any of
+    these has no well-formed units. Returns exactly one list per page, empty
+    for a page with no FORM_PAGE section and for every page of a non-QUIZ
+    form, since only QUIZ forms group.
+    """
+    is_quiz = form_pages.form.strategy == FormStrategy.QUIZ
+    first_page_of_group: dict[str, tuple[int, str]] = {}  # group -> (index, title)
+    result: list[list[str]] = []
+    for page_index, page in enumerate(form_pages.pages):
+        page_errors: list[str] = []
+        result.append(page_errors)
+        if not is_quiz or page.page is None:
+            continue
+        children = page.children
+        page_errors.extend(_split_group_errors(children))
+        # A group repeats within a page; one cross-page error per later page is enough.
+        for group, (child, label) in _first_member_of_each_group(children).items():
+            first_index, first_title = first_page_of_group.setdefault(
+                group, (page_index, page.page.title)
+            )
+            if first_index != page_index:
+                page_errors.append(
+                    _shuffle_error(
+                        child,
+                        label,
+                        f'group "{group}" is used on page "{first_title}" '
+                        f'and page "{page.page.title}". A group stays on one page.',
+                        "Rename one of the groups, or move its members onto one page.",
+                        "group",
+                    )
+                )
+    return result
+
+
 def validate_form_shuffle(all_parsed: Sequence[BaseBaseContentModel]) -> list[str]:
     """Check group and locked against the form's strategy and shuffle knobs.
 
@@ -1729,10 +1767,9 @@ def validate_form_shuffle(all_parsed: Sequence[BaseBaseContentModel]) -> list[st
     for form_pages in _form_pages(all_parsed):
         form = form_pages.form
         is_quiz = form.strategy == FormStrategy.QUIZ
-        first_page_of_group: dict[str, tuple[int, str]] = {}  # group -> (index, title)
-        for page_index, page in enumerate(form_pages.pages):
-            children = page.children
-            for child, label in children:
+        layout = _group_layout_errors(form_pages)
+        for page, page_layout_errors in zip(form_pages.pages, layout, strict=True):
+            for child, label in page.children:
                 errors.extend(_locked_option_errors(child, label, form))
                 if child.group and not is_quiz:
                     errors.append(
@@ -1745,25 +1782,113 @@ def validate_form_shuffle(all_parsed: Sequence[BaseBaseContentModel]) -> list[st
                             "group",
                         )
                     )
-            if not is_quiz or page.page is None:
-                continue
-            errors.extend(_split_group_errors(children))
-            # A group repeats within a page; one cross-page error per later page is enough.
-            for group, (child, label) in _first_member_of_each_group(children).items():
-                first_index, first_title = first_page_of_group.setdefault(
-                    group, (page_index, page.page.title)
+            errors.extend(page_layout_errors)
+    return errors
+
+
+def _shuffle_units(
+    children: list[tuple[_FormChildSection, str]],
+) -> list[list[tuple[_FormChildSection, str]]]:
+    """A run of children sharing a group is one unit; every other child is its own."""
+    units: list[list[tuple[_FormChildSection, str]]] = []
+    for group, run in itertools.groupby(children, key=lambda c: c[0].group):
+        members = list(run)
+        units.extend([members] if group else [[member] for member in members])
+    return units
+
+
+def _draw_error(
+    item: _FormSection, label: str, problem: str, fix: str, field: str
+) -> str:
+    return _form_error(
+        item.file_path, label, problem, fix, field=field, header="Invalid draw"
+    )
+
+
+def _question_count(unit: list[tuple[_FormChildSection, str]]) -> int:
+    return sum(isinstance(child, FormQuestion) for child, _ in unit)
+
+
+def _page_draw_errors(page: _PageSections, form: Form) -> list[str]:
+    """The draw errors of one page that has a draw and well-formed groups."""
+    draw_page = page.page
+    if draw_page is None or draw_page.draw is None:
+        return []
+    page_label = form_section_label(draw_page, 0)
+    if form.strategy != FormStrategy.QUIZ:
+        return [
+            _draw_error(
+                draw_page,
+                page_label,
+                f"draw is only allowed on QUIZ forms (this form is {form.strategy}).",
+                "Remove draw, or change the form's strategy to QUIZ.",
+                "draw",
+            )
+        ]
+    errors: list[str] = []
+    units = _shuffle_units(page.children)
+    if draw_page.draw > len(units):
+        errors.append(
+            _draw_error(
+                draw_page,
+                page_label,
+                f"draw is {draw_page.draw}, but this page has {len(units)} "
+                "questions or groups to draw from.",
+                f"Lower draw to {len(units)} or less, or add questions to the page.",
+                "draw",
+            )
+        )
+    for unit in units:
+        if _question_count(unit) == 0:
+            child, label = unit[0]
+            errors.append(
+                _draw_error(
+                    child,
+                    label,
+                    f"{label} has no question to travel with on a drawing page.",
+                    "Put it in a group with the questions it introduces.",
+                    "group",
                 )
-                if first_index != page_index:
-                    errors.append(
-                        _shuffle_error(
-                            child,
-                            label,
-                            f'group "{group}" is used on page "{first_title}" '
-                            f'and page "{page.page.title}". A group stays on one page.',
-                            "Rename one of the groups, or move its members onto one page.",
-                            "group",
-                        )
-                    )
+            )
+    with_questions = [unit for unit in units if _question_count(unit) > 0]
+    if with_questions:
+        first = with_questions[0]
+        differing = next(
+            (u for u in with_questions if _question_count(u) != _question_count(first)),
+            None,
+        )
+        if differing is not None:
+            errors.append(
+                _draw_error(
+                    draw_page,
+                    page_label,
+                    "questions and groups on a drawing page must each hold the "
+                    f"same number of questions; {first[0][1]} holds "
+                    f"{_question_count(first)} and {differing[0][1]} holds "
+                    f"{_question_count(differing)}.",
+                    "Split the page so each page's questions or groups are the "
+                    "same size.",
+                    "draw",
+                )
+            )
+    return errors
+
+
+def validate_form_draw(all_parsed: Sequence[BaseBaseContentModel]) -> list[str]:
+    """Check each drawing page against its form's strategy and its units.
+
+    Every error is reported, never just the first. A page whose groups are
+    malformed is skipped: the shuffle pass reports it, and its units cannot
+    be counted.
+    """
+    errors: list[str] = []
+    for form_pages in _form_pages(all_parsed):
+        form = form_pages.form
+        layout = _group_layout_errors(form_pages)
+        for page, page_layout_errors in zip(form_pages.pages, layout, strict=True):
+            if page.page is None or page.page.draw is None or page_layout_errors:
+                continue
+            errors.extend(_page_draw_errors(page, form))
     return errors
 
 
@@ -1878,6 +2003,8 @@ def validate(path):
     for message in validate_form_section_placement(
         all_parsed, check_form_folder=path.is_dir()
     ):
+        failed_files.append((path, message))
+    for message in validate_form_draw(all_parsed):
         failed_files.append((path, message))
     for message in validate_question_sections(all_parsed, ignore=ignore):
         failed_files.append((path, message))

@@ -1,0 +1,153 @@
+---
+content_type: FORM_PAGE
+draw: 2
+title: Short passages
+uuid: efb27337-0fb0-4a5d-a093-61c6101ca9d8
+---
+content: The Moon's pull on the oceans raises the water twice a day on most coasts.
+  The high points are called high tides and the low points are called low tides.
+group: tides
+uuid: 8309e9f4-6510-43d2-865b-54c86dc17986
+---
+group: tides
+options:
+- correct: true
+  text: The Moon's pull
+  uuid: 9fa4b41e-57e9-4493-8928-6e188a649a2c
+  value: the_moon_s_pull
+- text: The wind
+  uuid: ec4313e4-3b78-410d-b528-41ed78e06c6f
+  value: the_wind
+- text: Ocean fish
+  uuid: 4683bf75-d2e4-465a-b4d9-56f94ec3f88e
+  value: ocean_fish
+question: What causes the tides?
+type: multiple_choice
+uuid: a2fef063-16d6-40eb-9fe4-9f071777c435
+---
+group: tides
+options:
+- correct: true
+  text: Two
+  uuid: 5ae5b406-4522-4f9f-8d82-0a5a3875de42
+  value: two
+- text: One
+  uuid: e64ae57d-704a-4de3-9b6c-a22497f16c05
+  value: one
+- text: Six
+  uuid: 676bc6b9-409a-4a05-94c3-04e624651935
+  value: six
+question: How many high tides do most coasts have each day?
+type: multiple_choice
+uuid: 97a16f5c-23d4-48f4-958d-05813467d6e3
+---
+content: Earth's axis is tilted. When the northern half leans towards the Sun it has
+  summer, and the southern half has winter at the same time.
+group: seasons
+uuid: 819309ef-7fa9-4a0e-832c-17e2d7547770
+---
+group: seasons
+options:
+- correct: true
+  text: The tilt of its axis
+  uuid: b77d5be4-a300-4aae-93a9-c4c4313023a8
+  value: the_tilt_of_its_axis
+- text: Its distance from Mars
+  uuid: d6fced43-65e9-43d2-9fd7-9b9d90816e4a
+  value: its_distance_from_mars
+- text: The phases of the Moon
+  uuid: 6565618e-91cc-4173-beac-b4523500980d
+  value: the_phases_of_the_moon
+question: What gives Earth its seasons?
+type: multiple_choice
+uuid: 7f574a5e-2f7d-43f5-8579-80dca06612e7
+---
+group: seasons
+options:
+- correct: true
+  text: Winter
+  uuid: a0c02c35-27a5-4b62-b5b5-97d975098dff
+  value: winter
+- text: Summer
+  uuid: 2b38bea0-ee90-49fa-b567-465800f0d621
+  value: summer
+- text: Spring only
+  uuid: 11c37014-ff64-4d3f-b0da-35b8cf1b584c
+  value: spring_only
+question: When the northern half has summer, what does the southern half have?
+type: multiple_choice
+uuid: 7f342cbe-c04a-4c0a-9bc4-7951e9cef715
+---
+content: A solar eclipse happens when the Moon passes between the Earth and the Sun.
+  For a short time the Moon blocks the Sun's light from part of the Earth.
+group: eclipse
+uuid: 11328d5e-a348-4522-bd7f-a5fbab9afafa
+---
+group: eclipse
+options:
+- correct: true
+  text: The Moon between Earth and the Sun
+  uuid: 83d854e0-3631-4913-b241-7bd5ea7c109f
+  value: the_moon_between_earth_and_the_sun
+- text: The Earth between the Moon and the Sun
+  uuid: 29a62ad9-08d1-4617-8d3c-f6994c33a419
+  value: the_earth_between_the_moon_and_the_sun
+- text: The Sun between Earth and the Moon
+  uuid: 6f82a144-0471-4007-ac26-1f0571ca4686
+  value: the_sun_between_earth_and_the_moon
+question: What does a solar eclipse need?
+type: multiple_choice
+uuid: b95b5015-b5e6-411f-a337-d48a45c57873
+---
+group: eclipse
+options:
+- correct: true
+  text: Sunlight
+  uuid: a9c1d2a2-3315-4f9c-86d4-67a0a58f4ebd
+  value: sunlight
+- text: Starlight
+  uuid: 6498e561-a36a-48bd-a3fc-5a92f16ea797
+  value: starlight
+- text: Radio signals
+  uuid: a742eae9-e704-4932-a3a3-8d847c4642ff
+  value: radio_signals
+question: What does the Moon block during a solar eclipse?
+type: multiple_choice
+uuid: ac9544a1-2561-49fe-bb29-c195ccb0eb02
+---
+content: A comet is a ball of ice and dust that orbits the Sun. As it nears the Sun,
+  the ice warms and streams away as a glowing tail.
+group: comets
+uuid: 64eb5530-2e15-416a-94e1-a33f6e14eb20
+---
+group: comets
+options:
+- correct: true
+  text: Ice and dust
+  uuid: fb0c5206-fccb-4efc-801b-3686408552da
+  value: ice_and_dust
+- text: Solid iron
+  uuid: bdae43b3-c2e8-48df-b5a4-92b609521163
+  value: solid_iron
+- text: Liquid water
+  uuid: 2d1995ce-5d8d-488a-a76f-6319f28d073b
+  value: liquid_water
+question: What is a comet mostly made of?
+type: multiple_choice
+uuid: f5f8dc8b-de7d-44b5-8996-e0396270b7a0
+---
+group: comets
+options:
+- correct: true
+  text: Warming ice streaming away
+  uuid: 73b03b16-c74b-4abd-8cf4-e8302093af5a
+  value: warming_ice_streaming_away
+- text: Wind from Earth
+  uuid: be691cb3-fb2c-4630-a2c1-ad44debcc844
+  value: wind_from_earth
+- text: Burning rock
+  uuid: 9d461362-a6d1-4094-ac94-50aea492ecd4
+  value: burning_rock
+question: What makes a comet's tail?
+type: multiple_choice
+uuid: 9ebebb7c-a723-48e5-8f59-712dbbee8055
