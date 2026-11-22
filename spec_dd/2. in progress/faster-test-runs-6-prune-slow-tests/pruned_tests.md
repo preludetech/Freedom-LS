@@ -14,7 +14,14 @@ Seconds saved so far (before minus after, summed over the changed-tests table): 
 
 ## Candidates left unchanged
 
+- `freedom_ls/content_engine/tests/test_images.py::test_comparison_winner_on_each_side_of_the_lossy_wins_divisor` (14.8 s in the first ranking): not reached; pruning stopped first. A 500 x 375 photograph still takes the lossy side, so it is the next candidate.
+- The `course_recommendations` 0002 and `course_applications` 0010 migration tests (7.3 s to 8.7 s): not reached; their cost is migrating the whole schema back and forward, which is what they test.
+
 ## Per-file coverage comparison
 
 | File | Covered lines before | Covered lines after | Covered branches before | Covered branches after |
 |---|---|---|---|---|
+
+## Why pruning stopped
+
+The summed savings reached the target estimate: 242.36 s of test cost x 0.9465 = 229.4 CPU seconds, against the 192.9 CPU seconds the target needs. The five costliest functions, all in `freedom_ls/messaging_policy/tests/test_policy.py`, accounted for all of it. The first ranking's next function (14.8 s) was still above the 7.28 s threshold, so the target was the stopping rule. The before figures were taken under heavier load than the after figures (the file took 555 s before and 354 s after), so the true saving is smaller than 242 s; the last ranking run is the measurement.
