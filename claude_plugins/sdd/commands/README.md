@@ -94,7 +94,7 @@ An optional suffix argument (`/sdd:plan_from_spec <spec> 2b`) selects a second p
 
 ![The `/sdd:implement_plan` flow as six flowcharts: the main flow of Steps 0 to 7, then one chart each for a batch wave, the batch sub-agent, the Design check, the Batch review and the final verification with its full run.](../docs/diagrams/implement_plan.drawio.svg)
 
-The orchestrator reads the plan and forms batch waves from the batches whose predecessors are done. Each batch sub-agent implements its steps, runs a targeted test run and commits. After a batch, the Design check compares screenshots with the design, and the Batch review applies the `Comment standard` and `Test standard` hooks to the added lines. Step 3 runs the full test tier once, at the end. The main flow is the chart at the top left; the batch wave, the batch sub-agent, the Design check, the Batch review and the final verification each have their own chart.
+The orchestrator reads the plan and forms batch waves from the batches whose predecessors are done. Each batch sub-agent implements its steps, runs a targeted test run and commits. When that run fails, the sub-agent fixes it and re-runs only the failed tests, plus the tests the fix's own diff selects, instead of the whole tier. The integration run after a wave and each fix batch take the same failed-only re-run. After a batch, the Design check compares screenshots with the design, and the Batch review applies the `Comment standard` and `Test standard` hooks to the added lines. Step 3 runs the full test tier once, at the end. The main flow is the chart at the top left; the batch wave, the batch sub-agent, the Design check, the Batch review and the final verification each have their own chart.
 
 Run `/implement_plan` to execute the implementation plan. It runs batch waves: up to `Parallel batches` (the key in `.claude/sdd/config.md`) independent batches at a time, each in its own batch worktree. When the batches are done it continues into the QA command. An optional suffix argument (`/implement_plan 2b`) selects the plan `2b. plan.md`, commits its batches as `[batch 2b.N]` and resumes only from those commits. Without a suffix, it runs `2. plan.md` with `[batch N]` commits. After each slice that builds a designed screen, it runs the design check through the `Design check` hook in `.claude/sdd/config.md`, and sends any design misses (unmet lines of the plan's design checklist) to fix batches.
 
@@ -187,7 +187,7 @@ Every feature-branch command starts by following `commands/protected/pre_step_re
 
 One step asks for the `full` tier outright, and the overview diagram marks it in red.
 
-**`/sdd:implement_plan` Step 3** asks for the `full` tier outright, once, after the last batch. When it fails, the fix sub-agent re-runs the failing tests by node ID until they pass, then runs the `targeted` tier over the fix's commit range. It does not repeat the full run. The checkpoint in `finish_worktree` covers the fixes.
+**`/sdd:implement_plan` Step 3** asks for the `full` tier outright, once, after the last batch. When it fails, the fix sub-agent re-runs the failing tests by node ID until they pass, then takes the failed-only re-run: the failed and unfinished node IDs from the full run, plus the `targeted` selection over the fix's commit range. It does not repeat the full run. The checkpoint in `finish_worktree` covers the fixes.
 
 `do_qa` (after the last fix) and `qa_fix` Step 7 run the `targeted` tier over their fix commits.
 
