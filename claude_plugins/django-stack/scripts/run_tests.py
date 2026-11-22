@@ -15,6 +15,9 @@ retried for the tests that never finished, and the run ends in one verdict line.
 pytest that exits before its session starts (a usage error) is not retried. Setting `DS_TEST_MEMORY_GUARD=off` runs the command unchanged. `--capacity`
 prints how many units of `<unit-mb>` fit in free memory, at least 1.
 
+When `TMPDIR` is unset, the run's temporary files go to `/var/tmp`, which is on disk,
+instead of `/tmp`.
+
 Each setting comes from its environment variable, then from `[tool.test_tiers.memory]` in
 `pyproject.toml`, then from the default. Stdlib only, like its siblings.
 """
@@ -80,6 +83,9 @@ KILL_DEADLINE_S = 5
 
 # Node-id files written for retries and not yet deleted, so a signal handler can remove them.
 LIVE_NODE_ID_FILES: list[Path] = []
+
+# Where the run's temporary files go when TMPDIR is unset: on disk, where /tmp may be in RAM.
+DISK_TEMP_DIR = Path("/var/tmp")  # noqa: S108  # nosec B108
 
 DEFAULT_MEMINFO = Path("/proc/meminfo")
 DEFAULT_PSI = Path("/proc/pressure/memory")
@@ -724,6 +730,18 @@ def make_record_file() -> Path:
     return Path(name)
 
 
+def use_disk_temp_dir() -> None:
+    """Give this run and its pytest the disk-backed temp directory.
+
+    `/tmp` is often a small RAM-backed filesystem, and parallel browser tests fill it. A
+    `TMPDIR` that is already set is left alone. Not a directory in the project: tests that
+    need a path outside any git repository use the temp directory for it.
+    """
+    if os.environ.get("TMPDIR") or not DISK_TEMP_DIR.is_dir():
+        return
+    os.environ["TMPDIR"] = str(DISK_TEMP_DIR)
+
+
 def main() -> int:
     # pytest writes straight to the same pipe or file. Without this the runner's lines sit
     # in a block buffer and come out after pytest's output, or only at exit.
@@ -752,6 +770,7 @@ def run(argv: list[str]) -> int:
             file=sys.stderr,
         )
         return 2
+    use_disk_temp_dir()
     if os.environ.get("DS_TEST_MEMORY_GUARD") == "off":
         return run_plain(argv)
     settings = load_memory_settings(Path.cwd(), os.environ)

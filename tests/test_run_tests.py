@@ -36,11 +36,14 @@ SCRIPT = REPO_ROOT / "claude_plugins" / "django-stack" / "scripts" / "run_tests.
 # itself by signal after writing what the value names: `uncollected` writes nothing,
 # `collected` writes the collected line and one outcome, `truncated` also leaves a partial
 # last line. When $STUB_PYTEST_NO_SESSION is set it exits without the `finished` line, as
-# pytest does on a usage error.
+# pytest does on a usage error. When $STUB_TMPDIR_FILE is set it writes its $TMPDIR there.
 STUB_PYTEST = r"""#!/bin/sh
 printf 'pytest %s\n' "$*" >> "$STUB_LOG_FILE"
 if [ -n "${STUB_PYTEST_SAYS:-}" ]; then
     printf '%s\n' "$STUB_PYTEST_SAYS"
+fi
+if [ -n "${STUB_TMPDIR_FILE:-}" ]; then
+    printf '%s' "${TMPDIR:-}" > "$STUB_TMPDIR_FILE"
 fi
 for arg in "$@"; do
     case "$arg" in
@@ -361,6 +364,35 @@ def test_guard_off_passes_the_command_through_unchanged_without_a_ram_line(
     # Assert
     assert logged_tokens(stub_tools) == ["pytest", "-n", "auto", "-k", "ab"]
     assert "ram:" not in result.stdout
+
+
+@pytest.mark.parametrize("guard", ["on", "off"])
+def test_pytest_gets_the_disk_temp_dir_when_tmpdir_is_unset(
+    stub_tools: StubTools, tmp_path: Path, guard: str
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+    seen = tmp_path / "seen_tmpdir"
+    env = runner_env(
+        stub_tools,
+        tmp_path,
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        DS_TEST_MEMORY_GUARD=guard,
+        STUB_TMPDIR_FILE=str(seen),
+    )
+    del env["TMPDIR"]
+
+    # Act
+    subprocess.run(  # noqa: S603
+        [sys.executable, str(SCRIPT), "pytest"],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        check=False,
+    )
+
+    # Assert
+    assert seen.read_text(encoding="utf-8") == "/var/tmp"  # noqa: S108
 
 
 def test_missing_meminfo_runs_the_command_as_given_and_says_so(
