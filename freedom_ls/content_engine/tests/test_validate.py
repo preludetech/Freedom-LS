@@ -7,6 +7,7 @@ import pytest
 
 from freedom_ls.content_engine.validate import (
     IGNORED_PROBLEM,
+    _shuffle_units,
     auto_discovered_children,
     content_key,
     get_all_files,
@@ -17,11 +18,14 @@ from freedom_ls.content_engine.validate import (
     validate_children_lists,
     validate_due_date_placements,
     validate_form_conditions,
+    validate_form_draw,
     validate_form_section_placement,
     validate_form_shuffle,
     validate_question_sections,
     validate_reference_lists,
 )
+from freedom_ls.form_engine.schema import FormContent, FormQuestion
+from freedom_ls.form_engine.served_paper import shuffle_units
 
 # Tests for the content scanner: file discovery and cross-file validation
 # of an article's `image` path.
@@ -2719,3 +2723,263 @@ def test_validating_one_page_file_of_a_form_does_not_flag_its_folder(
     )
 
     validate(form_dir / "1. page.yaml")
+
+
+# Cross-file validation of a drawing page's `draw`.
+
+
+def _draw_errors(directory: Path) -> list[str]:
+    return validate_form_draw(_parsed(directory))
+
+
+def _drawing_page(draw: int, sections: str, title: str = "Page 1") -> str:
+    return _page(title, sections, when=f"draw: {draw}\n")
+
+
+def _quiz_form_with_drawing_page(directory: Path, draw: int, sections: str) -> None:
+    _gated_form(
+        directory,
+        {"1. page.yaml": _drawing_page(draw, sections)},
+        strategy="QUIZ",
+        quiz_fields=_QUIZ_FIELDS,
+    )
+
+
+@pytest.mark.parametrize("strategy", ["CATEGORY_VALUE_SUM", "UNSCORED"])
+def test_draw_on_a_non_quiz_form_fails_naming_the_strategy(
+    tmp_path: Path, strategy: str
+) -> None:
+    _gated_form(
+        tmp_path,
+        {"1. page.yaml": _drawing_page(1, "---\nquestion: Name?\ntype: short_text\n")},
+        strategy=strategy,
+    )
+
+    (error,) = _draw_errors(tmp_path)
+
+    assert "Invalid draw" in error
+    assert f"draw is only allowed on QUIZ forms (this form is {strategy})." in error
+    assert "Remove draw, or change the form's strategy to QUIZ." in error
+    assert 'page "Page 1" → draw' in error
+
+
+def test_draw_above_the_unit_count_fails_naming_both_numbers(tmp_path: Path) -> None:
+    _quiz_form_with_drawing_page(
+        tmp_path, 3, _quiz_question("Q1") + _quiz_question("Q2")
+    )
+
+    (error,) = _draw_errors(tmp_path)
+
+    assert "draw is 3, but this page has 2 questions or groups to draw from." in error
+    assert "Lower draw to 2 or less, or add questions to the page." in error
+    assert 'page "Page 1" → draw' in error
+
+
+def test_a_loose_content_block_on_a_drawing_page_fails(tmp_path: Path) -> None:
+    _quiz_form_with_drawing_page(
+        tmp_path, 1, _quiz_content("Intro") + _quiz_question("Q1")
+    )
+
+    (error,) = _draw_errors(tmp_path)
+
+    assert "content block 1 has no question to travel with on a drawing page." in error
+    assert "Put it in a group with the questions it introduces." in error
+    assert "content block 1 → group" in error
+
+
+def test_a_group_of_content_only_on_a_drawing_page_fails(tmp_path: Path) -> None:
+    _quiz_form_with_drawing_page(
+        tmp_path,
+        1,
+        _quiz_content("Intro", "a") + _quiz_question("Q1") + _quiz_question("Q2"),
+    )
+
+    (error,) = _draw_errors(tmp_path)
+
+    assert "content block 1 has no question to travel with" in error
+
+
+def test_a_group_beside_a_single_question_fails_naming_both_sizes(
+    tmp_path: Path,
+) -> None:
+    _quiz_form_with_drawing_page(
+        tmp_path,
+        1,
+        _quiz_question("Q1", "a") + _quiz_question("Q2", "a") + _quiz_question("Q3"),
+    )
+
+    (error,) = _draw_errors(tmp_path)
+
+    assert (
+        "questions and groups on a drawing page must each hold the same number of "
+        'questions; question "Q1" holds 2 and question "Q3" holds 1.'
+    ) in error
+    assert (
+        "Split the page so each page's questions or groups are the same size." in error
+    )
+    assert 'page "Page 1" → draw' in error
+
+
+@pytest.mark.parametrize(
+    ("draw", "sections"),
+    [
+        (2, _quiz_question("Q1") + _quiz_question("Q2") + _quiz_question("Q3")),
+        (
+            2,
+            _quiz_content("Intro A", "a")
+            + _quiz_question("Q1", "a")
+            + _quiz_content("Intro B", "b")
+            + _quiz_question("Q2", "b"),
+        ),
+        (3, _quiz_question("Q1") + _quiz_question("Q2") + _quiz_question("Q3")),
+    ],
+    ids=["single questions", "groups with content blocks", "draw equals unit count"],
+)
+def test_a_well_formed_drawing_page_passes(
+    tmp_path: Path, draw: int, sections: str
+) -> None:
+    _quiz_form_with_drawing_page(tmp_path, draw, sections)
+
+    assert _draw_errors(tmp_path) == []
+
+
+def test_a_mixed_size_and_a_loose_content_block_are_reported_in_one_run(
+    tmp_path: Path,
+) -> None:
+    _quiz_form_with_drawing_page(
+        tmp_path,
+        1,
+        _quiz_content("Intro")
+        + _quiz_question("Q1", "a")
+        + _quiz_question("Q2", "a")
+        + _quiz_question("Q3"),
+    )
+
+    errors = _draw_errors(tmp_path)
+
+    assert len(errors) == 2
+    assert any("has no question to travel with" in e for e in errors)
+    assert any("must each hold the same number of questions" in e for e in errors)
+
+
+def test_errors_on_two_pages_of_one_form_are_both_reported(tmp_path: Path) -> None:
+    _gated_form(
+        tmp_path,
+        {
+            "1. page.yaml": _drawing_page(5, _quiz_question("Q1"), "Page 1"),
+            "2. page.yaml": _drawing_page(5, _quiz_question("Q2"), "Page 2"),
+        },
+        strategy="QUIZ",
+        quiz_fields=_QUIZ_FIELDS,
+    )
+
+    errors = _draw_errors(tmp_path)
+
+    assert len(errors) == 2
+    assert 'page "Page 1" → draw' in errors[0]
+    assert 'page "Page 2" → draw' in errors[1]
+
+
+def test_a_split_group_on_a_drawing_page_reports_only_the_shuffle_error(
+    tmp_path: Path,
+) -> None:
+    _quiz_form_with_drawing_page(
+        tmp_path,
+        5,
+        _quiz_question("Q1", "a") + _quiz_question("Q2") + _quiz_question("Q3", "a"),
+    )
+
+    assert _draw_errors(tmp_path) == []
+    assert len(_shuffle_errors(tmp_path)) == 1
+
+
+def test_a_group_on_two_pages_skips_the_draw_check_of_the_later_page(
+    tmp_path: Path,
+) -> None:
+    _gated_form(
+        tmp_path,
+        {
+            "1. page.yaml": _page("Page 1", _quiz_question("Q1", "a")),
+            "2. page.yaml": _drawing_page(5, _quiz_question("Q2", "a"), "Page 2"),
+        },
+        strategy="QUIZ",
+        quiz_fields=_QUIZ_FIELDS,
+    )
+
+    assert _draw_errors(tmp_path) == []
+
+
+def test_a_drawing_quiz_page_with_when_fails_with_the_condition_message(
+    tmp_path: Path,
+) -> None:
+    _gated_form(
+        tmp_path,
+        {
+            "1. page.yaml": _page("Page 1", _quiz_question("Q1")),
+            "2. page.yaml": _page(
+                "Page 2",
+                _quiz_question("Q2"),
+                when="draw: 1\n" + _when("q1", "equals", "yes"),
+            ),
+        },
+        strategy="QUIZ",
+        quiz_fields=_QUIZ_FIELDS,
+    )
+
+    errors = validate_form_conditions(_parsed(tmp_path))
+
+    assert errors
+    assert all("Invalid condition" in e for e in errors)
+
+
+def test_validate_lists_a_draw_error_in_the_report(tmp_path: Path) -> None:
+    _quiz_form_with_drawing_page(tmp_path, 3, _quiz_question("Q1"))
+
+    with pytest.raises(ValueError, match="Invalid draw"):
+        validate(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "layout",
+    [
+        [("question", None), ("question", None)],
+        [("question", "a"), ("question", "a")],
+        [("question", "a"), ("question", "a"), ("question", "b"), ("question", "b")],
+        [("question", None), ("question", "a"), ("question", "a"), ("question", None)],
+        [
+            ("content", None),
+            ("content", "a"),
+            ("question", "a"),
+            ("content", "b"),
+            ("question", "b"),
+            ("content", None),
+        ],
+    ],
+    ids=[
+        "single children only",
+        "one group",
+        "two adjacent groups",
+        "group between single children",
+        "content blocks in and out of groups",
+    ],
+)
+def test_the_validator_and_the_served_paper_form_the_same_units(
+    tmp_path: Path, layout: list[tuple[str, str | None]]
+) -> None:
+    sections = "".join(
+        _quiz_content(f"C{i}", group)
+        if kind == "content"
+        else _quiz_question(f"Q{i}", group)
+        for i, (kind, group) in enumerate(layout)
+    )
+    _quiz_form_with_drawing_page(tmp_path, 1, sections)
+    children = [
+        item
+        for item in _parsed(tmp_path)
+        if isinstance(item, (FormContent, FormQuestion))
+    ]
+
+    validator_units = _shuffle_units([(child, "") for child in children])
+    paper_units = shuffle_units(children)
+
+    assert [[c for c, _ in unit] for unit in validator_units] == paper_units
