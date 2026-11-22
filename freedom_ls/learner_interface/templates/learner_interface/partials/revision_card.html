@@ -4,6 +4,7 @@
         {% include "learner_interface/partials/revision_feedback.html" %}
     {% else %}
         <form hx-post="{% url 'learner_interface:course_revision_answer' course.slug %}"
+              novalidate
               hx-target="#revision-card"
               hx-swap="outerHTML"
               class="space-y-4">

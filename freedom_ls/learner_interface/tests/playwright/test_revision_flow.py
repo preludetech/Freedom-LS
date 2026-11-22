@@ -114,6 +114,13 @@ def test_learner_works_through_a_revision_session(
     page.get_by_role("button", name="All sections").click()
 
     expect(page.get_by_text("Question number 1?")).to_be_visible()
+    # Checking with nothing selected reaches the server and shows the card's own
+    # error; the browser's native validation bubble used to block the request.
+    _press_check_answer(page)
+    expect(
+        page.locator("#revision-card").get_by_text("Choose an answer.")
+    ).to_be_visible()
+    expect(page.get_by_text("Question number 1?")).to_be_visible()
     answer_multiple_choice_question(page, "Wrong 1")
     _press_check_answer(page)
     expect(feedback).to_be_focused()
