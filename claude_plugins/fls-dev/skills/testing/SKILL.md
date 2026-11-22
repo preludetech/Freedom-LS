@@ -117,15 +117,21 @@ What runs where:
 
 - `uv run pytest` runs `not ci_only and not weasyprint and not dev_tooling` (the `addopts` `-m`), without coverage. `--cov` opts in. It includes `playwright` and `fls_internal`: that is FLS regression testing. `testpaths` covers `freedom_ls`, `tests` and `claude_plugins/fls-content`.
 - The test tiers (`select_tests.sh`) pass `-m 'not ci_only and not weasyprint'`, from `[tool.test_tiers] markers`, so `dev_tooling` tests run when a tier selects them. `addopts` also sets `--dist loadfile`: under `-n auto` a module's tests stay on one worker.
-- CI runs three jobs. The unit job runs `-m "not playwright and not dev_tooling" --cov` with the coverage gate, and includes `weasyprint` because CI has the system libraries. The developer-tooling job runs `-m "dev_tooling and not playwright"`. The Playwright job runs `-m playwright -n auto`, which the root conftest caps at four workers.
-- The panel framework's unit tests also run with no FLS around them, in CI's unit job after the coverage step. This is a documented command, not a `[tool.test_tiers]` tier:
+- CI (`.github/workflows/tests.yml`) runs on push to main and on `workflow_dispatch`, not on pull requests. Its test jobs:
+  - `unit-1` to `unit-6` run `-m "not playwright" --cov` (`UNIT_MARKERS`), so they include `ci_only`, `weasyprint` and `dev_tooling` tests; CI has the system libraries.
+  - `playwright-1` and `playwright-2` run `-m playwright` (`BROWSER_MARKERS`), both with `-n auto` (the root conftest caps it at four workers).
+  - Each group takes its share of the tests with `pytest-split`, from `.test_durations`, and a random seed set from the run ID.
+  - `standalone-panel_framework` and `standalone-icons` run the two standalone commands below, each with its own `standalone_pytest.ini`.
+  - `coverage` combines the unit groups' coverage data and fails under 92%.
+  - `test-verdict` fails unless every test job and `coverage` succeeded, and checks that the groups' reports together hold each collected test exactly once.
+- The panel framework's unit tests also run with no FLS around them, in CI's `standalone-panel_framework` job. This is a documented command, not a `[tool.test_tiers]` tier:
 
 ```bash
 uv run pytest -c freedom_ls/panel_framework/tests/standalone_pytest.ini freedom_ls/panel_framework/tests
 ```
 
   `standalone_pytest.ini` sets `--ds=freedom_ls.panel_framework.tests.standalone_settings` (in-memory SQLite, `standalone_app/` for the user model, no stand-in templates: the framework ships every template it renders), adds `-m "not needs_fls_host"`, skips only `playwright` (`norecursedirs`), so the `components` and `invariants` tiers run too, and blocks network access. `standalone_fixtures.py` supplies the `site` and `mock_site_context` fixtures; FLS's conftest does not load.
-- The icons app's tests run the same way, in the same CI step:
+- The icons app's tests run the same way, in CI's `standalone-icons` job:
 
 ```bash
 uv run pytest -c freedom_ls/icons/tests/standalone_pytest.ini freedom_ls/icons/tests
@@ -153,6 +159,28 @@ Run it after pruning tests, or when the suite feels slower. It runs the whole su
 `test_organisation/test_cost_ranking.md` holds a header (date, commit, test count, CPU and wall seconds, the database setup and teardown time kept out of the test costs, run conditions) and the cost, in seconds and share of the total, of each area, of the top 50 files and of the top 200 test functions. It is generated: do not edit it by hand. Compare costs only between runs made under similar machine load, since the header records the load.
 
 Nothing fails on slowness: no test or hook has a time limit. A run with failing tests exits non-zero and leaves the ranking as it was.
+
+## Remote full run
+
+The `full` tier runs on GitHub Actions. `[tool.test_tiers.remote]` in `pyproject.toml` sets the command, `uv run python claude_plugins/fls-dev/scripts/remote_full_run.py`. It pushes the branch if needed, dispatches the `Tests` workflow, waits for it and prints the runner's `run:` lines, ending in `run: RESULT PASS`, `FAIL` or `UNAVAILABLE <reason>`. Run it as any full tier, through the test runner in the background (`Skill(sdd:protected:run_test_tier)`).
+
+- `RESULT UNAVAILABLE`: GitHub gave no verdict. Quote the reason and run the `fallback:` line, the local full command.
+- `DS_TEST_REMOTE=off` skips the remote command: the full tier runs locally and never calls `gh`.
+
+Reading a remote failure:
+
+- Each `run: failed <node id>` line is a failed test. Re-run those locally, as for a local failure.
+- `.sdd-work/remote_full_run_<branch>.txt` (the `run: log` line, `/` in the branch name written as `-`) holds each failed node ID and its failure text. Read it before re-running.
+- A `RESULT FAIL` with no `run: failed` line is not a test failure. `run: coverage <n>% below <m>%` means the coverage gate failed. Otherwise open the `run: url` page and read the failing job.
+
+Refreshing `.test_durations`, which splits the groups evenly: run both pools in the background through the test runner, then commit the file. The second run merges into the first's output.
+
+```bash
+.claude/ds/scripts/run_tests.sh uv run pytest -n auto --no-cov -m 'not playwright' --store-durations --durations-path .test_durations
+.claude/ds/scripts/run_tests.sh uv run pytest -n auto --no-cov -m 'playwright' --store-durations --durations-path .test_durations
+```
+
+Refresh it when a group runs much longer than the others.
 
 ## Memory settings
 
