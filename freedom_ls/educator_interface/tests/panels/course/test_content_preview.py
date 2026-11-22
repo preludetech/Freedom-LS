@@ -42,7 +42,11 @@ from freedom_ls.form_engine.factories import (
     FormQuestionFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.form_engine.models import FormProgress, QuestionAnswer
+from freedom_ls.form_engine.models import (
+    FormProgress,
+    FormStrategy,
+    QuestionAnswer,
+)
 from freedom_ls.learner_management.models import (
     LearnerCourseRegistration,
 )
@@ -1030,6 +1034,89 @@ def test_a_multi_page_form_previews_its_start_page(staff_client: Client) -> None
     assert "2 questions" in html
     for absent in ("Do you smoke?", "First page", "Shown only if", "<form", "Start"):
         assert absent not in html
+
+
+def _drawing_page_preview(
+    client: Client, form: Model, page: Model | None
+) -> lxml.html.HtmlElement:
+    """The read-only preview of one page of the form, or of its start page."""
+    organisation = OrganisationFactory()
+    course, item = _course_with_form(form)
+    url = _preview_url(client, organisation, course)
+    query = f"item={item.pk}" + (f"&page={page.pk}" if page else "")
+    response = client.get(f"{url}?{query}", HTTP_HX_REQUEST="true")
+    assert response.status_code == 200
+    return lxml.html.fromstring(response.content)
+
+
+def _drawing_lines(document: lxml.html.HtmlElement) -> list[str]:
+    return [
+        " ".join(p.text_content().split())
+        for p in document.cssselect("p")
+        if p.text_content().strip().startswith("Draws")
+    ]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("group_size", "unit_count", "draw", "expected"),
+    [
+        (1, 4, 2, "Draws 2 of 4 questions per attempt"),
+        (2, 3, 2, "Draws 2 of 3 groups (4 questions) per attempt"),
+    ],
+)
+def test_a_drawing_page_preview_says_what_a_sitting_draws(
+    staff_client: Client,
+    group_size: int,
+    unit_count: int,
+    draw: int,
+    expected: str,
+) -> None:
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    page = FormPageFactory(form=form, title="Pool", order=0, draw=draw)
+    for unit in range(unit_count):
+        for member in range(group_size):
+            FormQuestionFactory(
+                form_page=page,
+                order=unit * group_size + member,
+                question=f"Pool question {unit}-{member}",
+                group=f"case-{unit}" if group_size > 1 else "",
+            )
+
+    document = _drawing_page_preview(staff_client, form, page)
+
+    assert _drawing_lines(document) == [expected]
+    html = lxml.html.tostring(document, encoding="unicode")
+    for unit in range(unit_count):
+        for member in range(group_size):
+            assert f"Pool question {unit}-{member}" in html
+
+
+@pytest.mark.django_db
+def test_a_page_with_no_draw_has_no_drawing_line(staff_client: Client) -> None:
+    form, second = _three_page_form()
+
+    document = _drawing_page_preview(staff_client, form, second)
+
+    assert _drawing_lines(document) == []
+
+
+@pytest.mark.django_db
+def test_the_start_page_counts_only_what_a_sitting_draws(
+    staff_client: Client,
+) -> None:
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    pool = FormPageFactory(form=form, order=0, draw=2)
+    for order in range(5):
+        FormQuestionFactory(form_page=pool, order=order)
+    plain = FormPageFactory(form=form, order=1)
+    FormQuestionFactory(form_page=plain, order=0)
+
+    document = _drawing_page_preview(staff_client, form, None)
+
+    text = " ".join(document.text_content().split())
+    assert "3 questions" in text
+    assert "6 questions" not in text
 
 
 @pytest.mark.django_db

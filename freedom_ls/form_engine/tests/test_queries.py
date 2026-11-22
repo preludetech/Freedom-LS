@@ -444,3 +444,28 @@ def test_counting_sitting_questions_stays_within_a_fixed_query_budget(
 
     with django_assert_max_num_queries(8):
         count_sitting_questions(form)
+
+
+@pytest.mark.parametrize(
+    ("counts", "expected"),
+    [
+        (
+            DrawingPageCounts(2, 4, 1, False),
+            "Draws 2 of 4 questions per attempt",
+        ),
+        (
+            DrawingPageCounts(1, 1, 1, False),
+            "Draws 1 of 1 question per attempt",
+        ),
+        (
+            DrawingPageCounts(2, 3, 2, True),
+            "Draws 2 of 3 groups (4 questions) per attempt",
+        ),
+        (
+            DrawingPageCounts(1, 1, 1, True),
+            "Draws 1 of 1 group (1 question) per attempt",
+        ),
+    ],
+)
+def test_a_drawing_page_summary_pluralises_questions_and_groups(counts, expected):
+    assert counts.summary == expected

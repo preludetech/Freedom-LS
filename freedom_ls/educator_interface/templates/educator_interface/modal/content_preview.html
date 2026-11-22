@@ -15,6 +15,9 @@ meets first when it has several.
         {% else %}
             <h3 class="text-lg font-semibold">{{ entry.page.title }}</h3>
         {% endif %}
+        {% if entry.drawing %}
+            <p class="text-muted">{{ entry.drawing.summary }}</p>
+        {% endif %}
         {% if entry.page.condition_option %}
             <p class="text-muted">Shown only if {{ entry.condition_question }} is answered {{ entry.page.condition_option.text }}</p>
         {% endif %}

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from django.db.models import prefetch_related_objects
+from django.utils.translation import ngettext
 
 from .conditions import (
     FORM_TREE_LOOKUPS,
@@ -84,6 +85,25 @@ class DrawingPageCounts:
     @property
     def drawn_question_count(self) -> int:
         return self.drawn_unit_count * self.questions_per_unit
+
+    @property
+    def summary(self) -> str:
+        """One line saying what a sitting draws from the page."""
+        if not self.units_are_groups:
+            return ngettext(
+                "Draws %(drawn)d of %(total)d question per attempt",
+                "Draws %(drawn)d of %(total)d questions per attempt",
+                self.unit_count,
+            ) % {"drawn": self.drawn_unit_count, "total": self.unit_count}
+        groups = ngettext(
+            "Draws %(drawn)d of %(total)d group",
+            "Draws %(drawn)d of %(total)d groups",
+            self.unit_count,
+        ) % {"drawn": self.drawn_unit_count, "total": self.unit_count}
+        questions = ngettext(
+            "%(count)d question", "%(count)d questions", self.drawn_question_count
+        ) % {"count": self.drawn_question_count}
+        return f"{groups} ({questions}) per attempt"
 
 
 def drawing_page_counts(page: FormPage) -> DrawingPageCounts | None:

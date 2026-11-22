@@ -27,6 +27,7 @@ from freedom_ls.educator_interface.panels.common.request import (
 )
 from freedom_ls.form_engine.conditions import full_path
 from freedom_ls.form_engine.models import Form, FormPage
+from freedom_ls.form_engine.queries import count_sitting_questions, drawing_page_counts
 from freedom_ls.learner_management.queries import is_course_available_to_organisation
 from freedom_ls.panel_framework.actions import PanelAction, count_phrase
 from freedom_ls.panel_framework.context import PanelContext
@@ -431,12 +432,13 @@ def _form_preview_context(form: Form, page_pk: UUID | None) -> dict[str, object]
                 "page": page,
                 "page_children": path.children_of(page),
                 "condition_question": _condition_question_text(page),
+                "drawing": drawing_page_counts(page),
             }
             for page in pages
         ],
         "page_position": position,
         "total_pages": path.page_count,
-        "question_count": len(path.question_positions()),
+        "question_count": count_sitting_questions(form),
         "question_positions": path.question_positions(),
         "existing_answers": {},
         "rejected_answers": {},
