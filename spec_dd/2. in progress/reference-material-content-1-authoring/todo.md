@@ -33,4 +33,4 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 - [ ] (cmd) Run `/sdd:finish_worktree` to close out the worktree and land it on main
 - [ ] (user) Remove the worktree and delete the branch once main has it
-- [ ] (user) Correct `claude_plugins/fls-dev/skills/admin-interface/SKILL.md`: it says inlines use `SiteAwareTabularInline`, which does not exist in `freedom_ls/site_aware_models/admin.py` (existing inlines use unfold `TabularInline`). Either add the class or fix the skill line.
+- [x] (user) Correct `claude_plugins/fls-dev/skills/admin-interface/SKILL.md`: it says inlines use `SiteAwareTabularInline`, which does not exist in `freedom_ls/site_aware_models/admin.py` (existing inlines use unfold `TabularInline`). Either add the class or fix the skill line.

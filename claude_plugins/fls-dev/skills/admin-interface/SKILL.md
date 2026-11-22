@@ -14,6 +14,6 @@ Full patterns and examples: `${CLAUDE_PLUGIN_ROOT}/resources/admin_interface.md`
 
 - All admin classes extend `SiteAwareModelAdmin` (not plain `ModelAdmin`).
 - Use Unfold's `ModelAdmin` as the base; `SiteAwareModelAdmin` re-exports it.
-- Inlines use `SiteAwareTabularInline` or `SiteAwareStackedInline`.
+- Inlines extend Unfold's `TabularInline` or `StackedInline` (`from unfold.admin import TabularInline`), not Django's `admin.TabularInline`. Example: `CourseReferencePartInline` in `freedom_ls/content_engine/admin.py`. There is no site-aware inline base, so `SiteAwareModelAdmin`'s `exclude` does not reach inlines: an inline on a site-aware model keeps `site` out itself with an explicit `fields` list or `exclude = ["site"]`.
 - An admin that needs a CSV export extends `SiteAwareExportModelAdmin` (same module) and declares `resource_classes` with a `SiteAwareModelResource` subclass from `freedom_ls/site_aware_models/admin_exports.py`. Never set `IMPORT_EXPORT_FORMATS` or `IMPORT_EXPORT_ESCAPE_FORMULAE_ON_EXPORT`: the base fixes the format in code so formula escaping and the BOM cannot be lost.
-- Never display or allow editing of the `site` field. `SiteAwareModelAdmin` excludes it automatically; a base that doesn't inherit from it (e.g. `GuardedModelAdmin`) needs a manual `exclude = ["site"]`.
+- Never display or allow editing of the `site` field. `SiteAwareModelAdmin` excludes it automatically; a base that doesn't inherit from it (e.g. `GuardedModelAdmin`) needs a manual `exclude = ["site"]`, as does every inline.
