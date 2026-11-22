@@ -205,6 +205,17 @@ def test_learner_works_through_forms_and_quizzes(
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
+    """A learner works through forms and quizzes in the browser.
+
+    - The answered tally counts each kind of answer, and the submit dialog shows the count.
+    - A multi-page survey numbers and marks its questions, carries answers across pages,
+      offers to continue, and counts a gated page once its gate is open.
+    - Required questions and checkbox groups hold the submit dialog shut.
+    - The leave prompt arms only once an answer exists and stays quiet on submit.
+    - The submit dialog traps focus, and the landing page lists the scored attempt.
+    - Leaving a submit-on-exit quiz scores the page as it stands.
+    - Option rows fit every QA viewport.
+    """
     page = logged_in_page
     quiz = _scored_quiz_course("Quiz Course", "quiz-course")
     checkbox_quiz = _scored_quiz_course(
@@ -249,9 +260,14 @@ def test_learner_works_through_forms_and_quizzes(
     page.goto(survey_landing)
     page.get_by_role("link", name="Continue Form").click()
     expect(page.get_by_test_id("page-indicator")).to_have_text("Page 2 of 2")
+    page.goto(form_item_url(live_server, survey, "form_fill_page", page_number=1))
+    answer_multiple_choice_question(page, "5")
+    click_next(page)
+    expect(page.get_by_test_id("page-indicator")).to_have_text("Page 2 of 3")
     for option in ("Option A", "Option B"):
         page.get_by_text(option, exact=True).click()
     page.get_by_label("Explain your answer").fill("This is my explanation.")
+    click_next(page)
     submit_form(page)
     expect(page).to_have_url(form_item_url(live_server, survey, "course_form_complete"))
 
@@ -321,39 +337,65 @@ def test_learner_works_through_forms_and_quizzes(
         assert_no_horizontal_overflow(page)
 
 
-def test_page_indicator_counts_a_gated_page_once_its_gate_is_open(
+def test_quiz_player_layout_flow(
     live_server,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
-    page = logged_in_page
-    survey = _two_page_survey_course()
-    register_user_for_course(survey, logged_in_user)
+    """The quiz player lines up its chrome with its content.
 
-    navigate_to_form(page, live_server, survey)
-    start_form(page)
-    expect(page.get_by_test_id("page-indicator")).to_have_text("Page 1 of 2")
-    answer_multiple_choice_question(page, "5")
-    page.get_by_label("What is your name?").fill("John Doe")
-    click_next(page)
-
-    expect(page.get_by_test_id("page-indicator")).to_have_text("Page 2 of 3")
-
-
-def test_form_pages_line_their_header_up_with_their_content(
-    live_server,
-    logged_in_page: Page,
-    logged_in_user: User,
-) -> None:
+    - The header lines up with the content on the landing page at 1920px.
+    - The footer's Next button ends where the option rows end at tablet and
+      desktop widths. It used to be 32px wider than the question column.
+    - The exit dialog's backdrop sits over the footer. The dialog used to live
+      inside the top bar's stacking context, so the footer painted above the
+      backdrop and stayed undimmed and clickable.
+    - The header lines up with the content on the results and course-finish pages.
+    """
     page = logged_in_page
     course = _scored_quiz_course("Aligned Course", "aligned-course")
     register_user_for_course(course, logged_in_user)
-    page.set_viewport_size({"width": 1920, "height": 1080})
 
+    page.set_viewport_size({"width": 1920, "height": 1080})
     navigate_to_form(page, live_server, course)
     assert_header_lines_up_with_content(page)
 
     start_form(page)
+    for viewport in QA_VIEWPORTS[1:]:
+        width = viewport["width"]
+        page.set_viewport_size(viewport)
+        expect(
+            page.get_by_text("Alpha", exact=True), f"Alpha option hidden at {width}px"
+        ).to_be_visible()
+
+        option_box = page.locator("label", has_text="Alpha").bounding_box()
+        next_box = page.get_by_role("button", name="Next").bounding_box()
+        assert option_box is not None
+        assert next_box is not None
+        option_right = option_box["x"] + option_box["width"]
+        next_right = next_box["x"] + next_box["width"]
+        assert abs(option_right - next_right) <= 2, (
+            f"Next button edge differs from the option rows at {width}px: "
+            f"options end at x={option_right}, Next ends at x={next_right}"
+        )
+
+    page.get_by_role("button", name="Exit test").click()
+    exit_dialog = page.get_by_role("dialog")
+    expect(exit_dialog, "exit dialog did not open").to_be_visible()
+    next_box = page.get_by_role("button", name="Next").bounding_box()
+    assert next_box is not None
+    footer_on_top = page.evaluate(
+        """([x, y]) => {
+            const top = document.elementFromPoint(x, y);
+            return top !== null && top.closest("[role=dialog]") === null;
+        }""",
+        [next_box["x"] + next_box["width"] / 2, next_box["y"] + next_box["height"] / 2],
+    )
+    assert footer_on_top is False, "exit dialog backdrop sits under the footer"
+    page.keyboard.press("Escape")
+    expect(exit_dialog, "exit dialog did not close").to_be_hidden()
+
+    page.set_viewport_size({"width": 1920, "height": 1080})
     answer_multiple_choice_question(page, "Beta")
     submit_form(page)
     expect(page).to_have_url(form_item_url(live_server, course, "course_form_complete"))
@@ -404,69 +446,6 @@ def test_a_long_form_page_scrolls_only_the_player_region(
         "() => [document.documentElement.scrollHeight, window.innerHeight]"
     )
     assert heights[0] == heights[1]
-
-
-def test_footer_buttons_share_the_question_column_edges(
-    live_server,
-    logged_in_page: Page,
-    logged_in_user: User,
-) -> None:
-    """The footer's Next button ends where the option rows end.
-
-    The footer row used to be 32px wider than the question column, so Next
-    stuck out past the column's right edge at tablet and desktop widths.
-    """
-    page = logged_in_page
-    course = _scored_quiz_course("Footer Course", "footer-course")
-    register_user_for_course(course, logged_in_user)
-    navigate_to_form(page, live_server, course)
-    start_form(page)
-
-    for viewport in QA_VIEWPORTS[1:]:
-        page.set_viewport_size(viewport)
-        expect(page.get_by_text("Alpha", exact=True)).to_be_visible()
-
-        option_box = page.locator("label", has_text="Alpha").bounding_box()
-        next_box = page.get_by_role("button", name="Next").bounding_box()
-        assert option_box is not None
-        assert next_box is not None
-        option_right = option_box["x"] + option_box["width"]
-        next_right = next_box["x"] + next_box["width"]
-        assert abs(option_right - next_right) <= 2, (
-            f"{viewport['width']}px: options end at x={option_right}, "
-            f"Next ends at x={next_right}"
-        )
-
-
-def test_exit_dialog_backdrop_covers_the_footer(
-    live_server,
-    logged_in_page: Page,
-    logged_in_user: User,
-) -> None:
-    """The exit dialog's backdrop sits over the footer, not under it.
-
-    The dialog lived inside the top bar's stacking context, so the footer
-    painted above the backdrop and stayed undimmed and clickable.
-    """
-    page = logged_in_page
-    course = _scored_quiz_course("Backdrop Course", "backdrop-course")
-    register_user_for_course(course, logged_in_user)
-    navigate_to_form(page, live_server, course)
-    start_form(page)
-
-    page.get_by_role("button", name="Exit test").click()
-    expect(page.get_by_role("dialog")).to_be_visible()
-
-    next_box = page.get_by_role("button", name="Next").bounding_box()
-    assert next_box is not None
-    footer_on_top = page.evaluate(
-        """([x, y]) => {
-            const top = document.elementFromPoint(x, y);
-            return top !== null && top.closest("[role=dialog]") === null;
-        }""",
-        [next_box["x"] + next_box["width"] / 2, next_box["y"] + next_box["height"] / 2],
-    )
-    assert footer_on_top is False
 
 
 @pytest.mark.browser_context_args(locale="en-ZA")

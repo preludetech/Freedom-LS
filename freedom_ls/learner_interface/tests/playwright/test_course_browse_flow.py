@@ -51,6 +51,9 @@ from freedom_ls.tests.playwright_helpers import (
     contrast_ratio,
 )
 
+# The application path exists only when course_applications is installed.
+course_applications_installed = not app_not_installed("freedom_ls.course_applications")
+
 # transaction=True so the live server's own DB connection sees the fixture
 # data this test's connection committed.
 pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
@@ -318,6 +321,18 @@ def test_learner_browses_a_course(
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
+    """A learner browses a course and its content.
+
+    - A course card opens its course from anywhere on the card.
+    - The outline's part opens, closes and stays open across pages.
+    - Flashcards keep wide answers in a phone-width card and flip on prose.
+    - A picture's spotlight locks the background scroll when open.
+    - Speak buttons load on press, play one at a time and describe themselves.
+    - Back closes the mobile outline sheet without leaving the page.
+    - Layout holds at every QA viewport, and the price strip stacks on phones.
+    - A missed-deadline outline row keeps its title visible at 1920px.
+    - A speak button whose audio fails shows an error line and retries on the next press.
+    """
     page = logged_in_page
     course = _browse_course(logged_in_user)
     grid_url = _item_url(live_server, course, 1)
@@ -545,27 +560,33 @@ def test_learner_browses_a_course(
         assert len(boxes) >= 2
         assert len({round(box["x"] + box["width"]) for box in boxes}) == 1
 
+    # A missed-deadline row's chip and date used to squeeze its title to zero width.
+    page.set_viewport_size({"width": 1920, "height": 1080})
+    page.goto(grid_url)
+    outline = page.get_by_role("navigation", name="Course outline")
+    expect(outline.get_by_text("Missed deadline", exact=True)).to_be_visible()
+    # The clipping box, not the text inside it: an overflowing text node still
+    # reports its full width while the box that hides it is zero wide.
+    missed_title_box = outline.locator("span.truncate", has_text=LONG_TOPIC_TITLE)
+    assert _box(missed_title_box)["width"] > 0, (
+        "missed-deadline outline row title has no width at 1920px"
+    )
 
-def test_speak_button_shows_an_error_line_and_retries_on_the_next_press(
-    live_server,
-    logged_in_page: Page,
-    logged_in_user: User,
-) -> None:
-    page = logged_in_page
-    course = _browse_course(logged_in_user)
     audio_requests = re.compile(r"/content/audio/")
     page.route(audio_requests, lambda route: route.abort())
-    page.goto(_item_url(live_server, course, 5))
-    button = page.get_by_role("button", name=f"Play pronunciation of {AUDIO_A_LABEL}")
+    page.goto(audio_url)
+    retry_button = page.get_by_role(
+        "button", name=f"Play pronunciation of {AUDIO_A_LABEL}"
+    )
     error_line = page.get_by_role("status").filter(
         has_text="Audio could not be played. Try again."
     )
     expect(error_line.first).to_be_hidden()
 
     # A failed load returns the button to idle and shows the error line.
-    button.click()
+    retry_button.click()
     expect(error_line.first).to_be_visible()
-    expect(button).to_have_attribute("aria-pressed", "false")
+    expect(retry_button).to_have_attribute("aria-pressed", "false")
 
     # The next press retries, and a load that works clears the error line.
     page.unroute(audio_requests)
@@ -575,16 +596,25 @@ def test_speak_button_shows_an_error_line_and_retries_on_the_next_press(
             body=BEEP_MP3.read_bytes(), content_type="audio/mpeg"
         ),
     )
-    button.click()
-    expect(button).to_have_attribute("aria-pressed", "true")
+    retry_button.click()
+    expect(retry_button).to_have_attribute("aria-pressed", "true")
     expect(error_line.first).to_be_hidden()
+    page.unroute(audio_requests)
 
 
-def test_learner_practises_with_audio_widgets(
+def test_audio_widgets_flow(
     live_server: LiveServer,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
+    """A learner practises with the audio widgets.
+
+    - An audio reveal loads nothing until revealed, then plays, auto-hides and hands focus back.
+    - Only one sound plays at a time.
+    - The widgets do not overflow and the reveal button is a touch target at every width.
+    - A flashcard's face plays audio without flipping, and its respelling is legible.
+    - A reveal whose audio fails still shows the answer and hides the error line with it.
+    """
     page = logged_in_page
     course = _audio_widgets_course(logged_in_user)
     requested: list[str] = []
@@ -727,32 +757,23 @@ def test_learner_practises_with_audio_widgets(
         >= 4.5
     )
 
-
-def test_a_reveal_whose_audio_fails_still_shows_the_answer(
-    live_server,
-    logged_in_page: Page,
-    logged_in_user: User,
-) -> None:
-    page = logged_in_page
-    course = _audio_widgets_course(logged_in_user)
-    page.route(re.compile(r"/content/audio/"), lambda route: route.abort())
-    page.clock.install()
+    # A reveal whose audio fails still shows the answer and hides the error
+    # line with it.
+    audio_requests = re.compile(r"/content/audio/")
+    page.route(audio_requests, lambda route: route.abort())
     page.goto(_item_url(live_server, course, 1))
-    widget = page.locator("[x-data='audioReveal']").first
-    reveal = widget.get_by_role("button", name="Reveal answer")
-    error_line = widget.get_by_role("status").filter(
+    failing_widget = page.locator("[x-data='audioReveal']").first
+    failing_reveal = failing_widget.get_by_role("button", name="Reveal answer")
+    failing_error_line = failing_widget.get_by_role("status").filter(
         has_text="Audio could not be played. Try again."
     )
-
-    reveal.click()
-
+    failing_reveal.click()
     expect(page.get_by_text(REVEAL_A_LABEL).first).to_be_visible()
-    expect(error_line).to_be_visible()
-
-    # The error line hides with the answer.
+    expect(failing_error_line).to_be_visible()
     page.clock.fast_forward(6000)
-    expect(reveal).to_have_attribute("aria-expanded", "false")
-    expect(error_line).to_be_hidden()
+    expect(failing_reveal).to_have_attribute("aria-expanded", "false")
+    expect(failing_error_line).to_be_hidden()
+    page.unroute(audio_requests)
 
 
 @pytest.mark.browser_context_args(timezone_id="America/New_York", locale="en-US")
@@ -781,32 +802,6 @@ def test_due_date_reads_in_the_browser_time_zone(
     zone_config.save()
     page.reload()
     expect(due).to_have_text("15 Mar 2999, 17:59 EDT")
-
-
-def test_missed_deadline_row_keeps_its_title_visible_in_the_desktop_sidebar(
-    live_server,
-    logged_in_page: Page,
-    logged_in_user: User,
-) -> None:
-    """A missed-deadline row's chip and date used to squeeze its title to zero width."""
-    page = logged_in_page
-    course = CourseFactory(title="Overdue Course", slug="overdue-course")
-    topic = TopicFactory(title="Welcome to the Course", slug="overdue-topic")
-    ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
-    LearnerCourseRegistrationFactory(
-        learner__user=logged_in_user, course=course, is_active=True
-    )
-    set_due_date(course, topic, due_date=date(2000, 1, 1))
-
-    page.set_viewport_size({"width": 1920, "height": 1080})
-    page.goto(_item_url(live_server, course, 1))
-
-    outline = page.get_by_role("navigation", name="Course outline")
-    expect(outline.get_by_text("Missed deadline", exact=True)).to_be_visible()
-    # The clipping box, not the text inside it: an overflowing text node still
-    # reports its full width while the box that hides it is zero wide.
-    title_box = outline.locator("span.truncate", has_text="Welcome to the Course")
-    assert _box(title_box)["width"] > 0
 
 
 def test_desktop_outline_stays_viewport_height_after_reloading_a_scrolled_page(
@@ -1089,11 +1084,19 @@ def _assert_deadline_line_ends_the_card(page: Page) -> None:
     assert not _boxes_overlap(line_box, mark_box)
 
 
-def test_back_on_the_course_detail_page_returns_where_the_learner_came_from(
+def test_course_detail_back_flow(
     live_server,
     logged_in_page: Page,
     mock_site_context,
 ) -> None:
+    """The course detail page's Back link returns to where the learner came from.
+
+    - From the dashboard, from the courses list and with no referrer, Back goes to the right page.
+    - A modified click on Back opens a new tab and leaves this one on the course.
+    - The detail page does not overflow at any QA viewport.
+    - Where course_applications is installed, cancelling an application returns to
+      the course and Back then leaves it instead of bouncing back to the application.
+    """
     page = logged_in_page
     course = CourseFactory(
         title="Back Link Course",
@@ -1135,36 +1138,27 @@ def test_back_on_the_course_detail_page_returns_where_the_learner_came_from(
         page.goto(detail_url)
         assert_no_horizontal_overflow(page)
 
+    if course_applications_installed:
+        gated_course = CourseFactory(
+            title="Gated Back Course",
+            slug="gated-back-course",
+            access_config={"access_type": "application_gated"},
+        )
+        gated_detail_url = _detail_url(live_server, gated_course)
 
-@pytest.mark.skipif(
-    app_not_installed("freedom_ls.course_applications"),
-    reason="course_applications not installed",
-)
-def test_back_does_not_bounce_between_the_course_and_its_application(
-    live_server,
-    logged_in_page: Page,
-    mock_site_context,
-) -> None:
-    """Cancelling an application returns to the course; Back must then leave it."""
-    page = logged_in_page
-    course = CourseFactory(
-        title="Gated Back Course",
-        slug="gated-back-course",
-        access_config={"access_type": "application_gated"},
-    )
-    dashboard_url = str(reverse_url(live_server, "learner_interface:dashboard"))
-    detail_url = _detail_url(live_server, course)
+        page.set_viewport_size({"width": 1280, "height": 800})
+        page.goto(dashboard_url)
+        page.locator("article", has_text="Gated Back Course").get_by_role(
+            "link", name="Details"
+        ).click()
+        expect(page).to_have_url(gated_detail_url)
+        page.get_by_role("link", name="Apply now").click()
+        page.get_by_role("link", name="Cancel").click()
+        expect(page).to_have_url(gated_detail_url)
 
-    page.goto(dashboard_url)
-    page.get_by_role("link", name="Details").first.click()
-    expect(page).to_have_url(detail_url)
-    page.get_by_role("link", name="Apply now").click()
-    page.get_by_role("link", name="Cancel").click()
-    expect(page).to_have_url(detail_url)
+        page.get_by_role("link", name="Back").click()
 
-    page.get_by_role("link", name="Back").click()
-
-    expect(page).to_have_url(dashboard_url)
+        expect(page).to_have_url(dashboard_url)
 
 
 @pytest.mark.skipif(
