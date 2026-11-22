@@ -75,8 +75,21 @@ Same commands and method as the "before" samples (serial, `-n 0 -p no:randomly -
 
 ## Last ranking run
 
-(filled in by the last slice)
+- Commit tested: `3f63bbee7ac5b4898086cedece5e75a2af511262` (ranking committed on top of it; the header names no `-dirty`).
+- Main base SHA unchanged: `0a72a807fc4f9abcee739a256cb702c972d0ab4a` (no rebase between the first run and this one).
+- Command: `/usr/bin/time -v uv run python scripts/rank_test_costs.py` (`-n 4`, `--no-cov`, random order off).
+- Result: 18774 passed, 3 skipped; 18776 tests recorded (first run 18778: the pruning merged 4 tests into 2).
+- Total CPU: 1680.1 s. Wall: 676.0 s. Summed test cost: 2419.0 s. Database setup: 84.2 s across 4 workers.
+- Cross-check: `/usr/bin/time` user 1520.64 s + system 159.97 s = 1680.61 s against the header's 1680.1 s (0.03%). Wall 11:16.89. Max resident set size 837992 kB.
+- Load average (1, 5, 15 min) and CPU pressure `some avg60`:
+  - start: 15.89 26.47 25.47, 12.22
+  - end: 32.58 30.93 27.31, 49.77
+  - first run, for comparison: start 10.26 10.88 9.41, 4.80; end 7.33 9.85 9.60, 1.59.
 
 ## Result
 
-(filled in by the last slice)
+- Target 1185.3 CPU seconds; last run 1680.1. **Over the target by 494.8 s, but the run is not comparable with the first.** The machine was far busier: CPU pressure avg60 12.22 at the start and 49.77 at the end (first run 4.80 and 1.59), and the 1-minute load average 15.89 rising to 32.58 (first run 10.26 falling to 7.33), on 16 CPUs. Other worktrees were running their suites.
+- Evidence that the load, not the code, set the figure: the 18774 tests that exist in both runs cost 1325.4 s in the first run and 2334.9 s in the last (x1.76). The tests outside `freedom_ls/messaging_policy/tests/test_policy.py`, which the pruning did not touch, went from 1169.7 s to 2141.3 s (x1.83). Database setup went from 65.7 s to 84.2 s.
+- Indicative figure at the first run's load: dividing the last run's CPU seconds by that x1.83 gives about 918 s. This is arithmetic on a noisy ratio, not a measurement; the measurement is the 1680.1 s above.
+- Pruning did not stop on the 0.5% rule (threshold 7.28 s): the next candidate in the first ranking, `freedom_ls/content_engine/tests/test_images.py::test_comparison_winner_on_each_side_of_the_lossy_wins_divisor` (14.8 s), is above it. Pruning stopped because slice 4's estimate reached the target: 242.36 s saved x 0.9465 = 229.4 CPU seconds, against the 192.9 needed (1378.2 - 1185.3).
+- With load and pressure clearly higher than in the first run, no rerun was made. The decision (accept slice 4's estimate, rerun on a quieter machine, or prune more) is the user's.
