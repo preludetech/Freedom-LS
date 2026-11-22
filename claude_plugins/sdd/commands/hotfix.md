@@ -1,5 +1,5 @@
 ---
-description: Fix one small bug on main, with a regression test and the targeted tests, then commit and push
+description: Fix one small bug on main, run the targeted tests, then commit and push
 allowed-tools: Bash, Read, Edit, Write, Glob, Grep, Skill, AskUserQuestion
 argument-hint: "<what is broken>"
 ---
@@ -32,21 +32,27 @@ Stop and recommend `/sdd:start` when the fix needs any of these:
 - a decision about how the product should behave
 - changes in more than a handful of files
 
-## Step 3: RED
+## Step 3: Decide on a test
 
-Load each skill under `## Testing Skills` in `.claude/sdd/config.md` (`config.local.md` wins) with
-the `Skill` tool. Write one test that reproduces the bug. Its name says what used to break.
+A test is for a behaviour bug that nothing covers yet. Take the first line that fits:
 
-Run it as the single test run in the `Test tiers` file under `## Test Hooks` defines. A blank
-`Test tiers` runs the project's plain test command for that one test. The test must fail. If it
-passes, you have not reproduced the bug: go back to Step 2.
+1. **No test.** The fix changes nothing a test can observe: wording, copy, a comment,
+   documentation, a plugin or `CLAUDE.md` file, config no code path reads. Go to Step 4.
+2. **Change an existing test.** A test already covers this code and missed the bug. Add the case
+   to it: an assertion or a parametrize row, in the test function that is there.
+3. **One new test**, when the bug is in behaviour and no existing test sits near it. Its name says
+   what used to break.
 
-A fix with no behaviour to test (copy, a comment, a markdown file) skips this step and the GREEN
-run. Say so in the report.
+On lines 2 and 3, load each skill under `## Testing Skills` in `.claude/sdd/config.md`
+(`config.local.md` wins) with the `Skill` tool, then get to RED: run the test as the single test
+run in the `Test tiers` file under `## Test Hooks` defines. A blank `Test tiers` runs the project's
+plain test command for that one test. It must fail. If it passes, you have not reproduced the bug:
+go back to Step 2.
 
-## Step 4: Fix, GREEN
+## Step 4: Fix
 
-Make the smallest change that passes the test. Run the same single test. It must pass.
+Make the smallest change that fixes the bug. With a test from Step 3, run that single test again.
+It must pass.
 
 ## Step 5: Targeted tier
 
@@ -98,6 +104,6 @@ commit them as `hotfix: document <what changed>`, then push as in Step 7.
 ## Step 9: Report
 
 - the commit sha, and `pushed` or `local only` with git's message
-- the test added, or why there is none
+- the test changed or added, or `no test: <reason>`
 - the tier that ran and its verdict line
 - the doc changed, or `no doc needed`
