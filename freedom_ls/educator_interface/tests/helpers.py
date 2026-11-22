@@ -794,24 +794,6 @@ def _course_option_values(response: _MonkeyPatchedWSGIResponse) -> set[str]:
     }
 
 
-def _quick_view_url(organisation_slug: str, path_string: str) -> str:
-    return reverse(
-        "educator_interface:interface",
-        kwargs={
-            "organisation_slug": organisation_slug,
-            "path_string": f"{path_string}/__quick-view",
-        },
-    )
-
-
-def _get_quick_view(
-    client: Client, organisation: Organisation, path_string: str
-) -> _MonkeyPatchedWSGIResponse:
-    return client.get(
-        _quick_view_url(organisation.slug, path_string), HTTP_HX_REQUEST="true"
-    )
-
-
 def _org_admin(organisation: Organisation) -> User:
     admin = cast(User, UserFactory(staff=True))
     assign_object_role(admin, organisation, "organisation_admin")
