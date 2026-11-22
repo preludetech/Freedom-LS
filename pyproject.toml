@@ -152,6 +152,11 @@ tests = ["tests"]
 glob = "scripts/generate_icon_subset.py"
 tests = ["tests/test_generate_icon_subset.py"]
 
+# The cost recorder and the ranking script share one test module.
+[[tool.test_tiers.tooling]]
+glob = "scripts/*_test_costs.py"
+tests = ["tests/test_rank_test_costs.py"]
+
 [[tool.test_tiers.tooling]]
 glob = "freedom_ls/icons/data/**"
 tests = ["tests/test_generate_icon_subset.py"]
