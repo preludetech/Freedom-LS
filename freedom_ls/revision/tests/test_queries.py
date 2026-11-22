@@ -23,7 +23,10 @@ from freedom_ls.revision.factories import (
 from freedom_ls.revision.queries import (
     bank_questions,
     bank_sections,
+    course_has_revision_questions,
     due_questions,
+    last_reviewed_at,
+    next_ready_at,
     question_sections,
     ready_count,
     section_first_placement,
@@ -588,3 +591,66 @@ def test_wrong_review_older_than_the_window_does_not_count(mock_site_context, se
     _review_answers(user, course, question, wrong=3, right=3, ago_hours=0)
 
     assert weak_sections(user, record) == set()
+
+
+@pytest.mark.django_db
+def test_next_ready_at_is_the_earliest_due_after_now(mock_site_context):
+    _course, user, record, topic, question = _finished_topic_with_question()
+    later = question_testing_topic(topic)
+    now = timezone.now()
+    soon = now + timedelta(days=2)
+    RevisionScheduleFactory(user=user, question=question, due=soon)
+    RevisionScheduleFactory(user=user, question=later, due=now + timedelta(days=9))
+
+    assert next_ready_at(user, record, now) == soon
+
+
+@pytest.mark.django_db
+def test_next_ready_at_ignores_a_schedule_already_due(mock_site_context):
+    _, user, record, _topic, question = _finished_topic_with_question()
+    now = timezone.now()
+    RevisionScheduleFactory(user=user, question=question, due=now - timedelta(days=1))
+
+    assert next_ready_at(user, record, now) is None
+
+
+@pytest.mark.django_db
+def test_course_has_revision_questions_before_any_section_is_finished(
+    mock_site_context,
+):
+    course = CourseFactory()
+    topic, _ = place_topic(course)
+    question_testing_topic(topic)
+
+    assert course_has_revision_questions(course) is True
+
+
+@pytest.mark.django_db
+def test_course_without_questions_naming_its_sections_has_none(mock_site_context):
+    course = CourseFactory()
+    place_topic(course)
+    question_testing_topic(TopicFactory())
+
+    assert course_has_revision_questions(course) is False
+
+
+@pytest.mark.django_db
+def test_last_reviewed_at_is_the_latest_review_in_the_course(mock_site_context):
+    course, user, _record, _topic, question = _finished_topic_with_question()
+    now = timezone.now()
+    RevisionReviewFactory(
+        user=user, course=course, question=question, reviewed_at=now - timedelta(days=5)
+    )
+    RevisionReviewFactory(
+        user=user, course=course, question=question, reviewed_at=now - timedelta(days=2)
+    )
+    RevisionReviewFactory(user=user, question=question, reviewed_at=now)
+
+    assert last_reviewed_at(user, course) == now - timedelta(days=2)
+
+
+@pytest.mark.django_db
+def test_last_reviewed_at_is_none_without_reviews(mock_site_context):
+    course, user, *_ = _finished_topic_with_question()
+
+    assert last_reviewed_at(user, course) is None

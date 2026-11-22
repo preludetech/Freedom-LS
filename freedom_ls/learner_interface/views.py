@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import TYPE_CHECKING, cast
 
@@ -118,6 +118,9 @@ from freedom_ls.revision.models import RevisionReview
 from freedom_ls.revision.queries import (
     bank_questions,
     bank_sections,
+    course_has_revision_questions,
+    last_reviewed_at,
+    next_ready_at,
     question_sections,
     ready_count,
     section_first_placement,
@@ -2604,6 +2607,43 @@ def _render_revision_card(
     return render(request, template, context, status=status)
 
 
+def _revision_end_context(
+    request: HttpRequest,
+    course: Course,
+    record: CourseProgress,
+    state: RevisionSessionState,
+) -> dict[str, object]:
+    user = cast("User", request.user)
+    now = timezone.now()
+    reviews = session_reviews(user, state)
+    missed_reviews = list(
+        reviews.filter(was_correct=False)
+        .select_related("question")
+        .prefetch_related(
+            "question__formquestiontopic_set", "question__formquestioncoursepart_set"
+        )
+        .order_by("reviewed_at")
+    )
+    # Built once for every missed question, and only when there is one to link.
+    openable = (
+        _openable_positions(request.user, course, record) if missed_reviews else {}
+    )
+    return {
+        "course": course,
+        "answered_count": reviews.count(),
+        "right_count": reviews.filter(was_correct=True).count(),
+        "missed": [
+            {
+                "question": review.question,
+                "section_links": _section_links(record, review.question, openable),
+            }
+            for review in missed_reviews
+        ],
+        "next_ready_at": next_ready_at(user, record, now),
+        "has_more_ready": ready_count(user, record, now, limit=1) > 0,
+    }
+
+
 def _revision_card_context(
     request: HttpRequest,
     course: Course,
@@ -2612,12 +2652,9 @@ def _revision_card_context(
 ) -> tuple[str, dict[str, object]]:
     question, state = _current_revision_question(record, state)
     if question is None:
-        reviews = session_reviews(cast("User", request.user), state)
-        return "learner_interface/partials/revision_end.html", {
-            "course": course,
-            "answered_count": reviews.count(),
-            "right_count": reviews.filter(was_correct=True).count(),
-        }
+        return "learner_interface/partials/revision_end.html", _revision_end_context(
+            request, course, record, state
+        )
     review = _revision_review_of(cast("User", request.user), state, question)
     section_links = (
         _section_links(
@@ -2643,6 +2680,7 @@ def _revision_card_context(
 
 
 COURSE_READY_CAP = 40
+WELCOME_BACK_AFTER = timedelta(days=14)
 SECTION_READY_CAP = 10
 
 
@@ -2681,6 +2719,30 @@ def _revision_section_rows(
     return sorted(rows, key=lambda row: not row["is_weak"])
 
 
+def _revision_start_context(
+    user: User, course: Course, record: CourseProgress
+) -> dict[str, object]:
+    """The start screen's context, decided in order: no questions, empty bank, then the sections."""
+    if not course_has_revision_questions(course):
+        return {"course": course, "has_questions": False}
+    if not bank_questions(record).exists():
+        return {"course": course, "has_questions": True, "bank_is_empty": True}
+    now = timezone.now()
+    ready_text = _ready_text(user, record, now, cap=COURSE_READY_CAP)
+    last_review = last_reviewed_at(user, course)
+    return {
+        "course": course,
+        "has_questions": True,
+        "bank_is_empty": False,
+        "ready_text": ready_text,
+        "has_ready": ready_text != "0 ready",
+        "next_ready_at": next_ready_at(user, record, now),
+        "welcome_back": last_review is not None
+        and now - last_review >= WELCOME_BACK_AFTER,
+        "section_rows": _revision_section_rows(user, record),
+    }
+
+
 @login_required
 def course_revision(request: HttpRequest, course_slug: str) -> HttpResponse:
     """The revision page: the start screen, or the session's current card or end line."""
@@ -2690,15 +2752,9 @@ def course_revision(request: HttpRequest, course_slug: str) -> HttpResponse:
     course, record = gate
     state = _revision_state(request, course)
     if state is None:
-        ready_text = _ready_text(
-            cast("User", request.user), record, timezone.now(), cap=COURSE_READY_CAP
-        )
         context: dict[str, object] = {
-            "course": course,
-            "ready_text": ready_text,
-            "has_ready": ready_text != "0 ready",
-            "section_rows": _revision_section_rows(cast("User", request.user), record),
             "card_template": "learner_interface/partials/revision_start.html",
+            **_revision_start_context(cast("User", request.user), course, record),
         }
     else:
         card_template, context = _revision_card_context(request, course, record, state)

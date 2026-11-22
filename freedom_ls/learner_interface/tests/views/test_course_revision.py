@@ -35,7 +35,7 @@ from freedom_ls.revision.tests.helpers import (
 )
 from freedom_ls.tests.factories import SiteFactory
 
-QUERIES_BASE = 42
+QUERIES_BASE = 46
 QUERIES_PER_SECTION = 3
 
 
@@ -382,10 +382,44 @@ def test_next_after_an_answer_moves_to_the_next_question(mock_site_context):
     assert _stored_index(client, course) == 1
 
 
+def _course_with_everything_scheduled_later(*, due_in: timedelta):
+    """A learner who finished a section whose only question is scheduled `due_in` from now."""
+    course = CourseFactory()
+    topic, _ = place_topic(course)
+    question = question_testing_topic(topic)
+    user = UserFactory()
+    finish_topic(course_progress_record(course, user), topic)
+    RevisionScheduleFactory(
+        user=user, question=question, due=datetime.now(UTC) + due_in
+    )
+    return course, user, question
+
+
 @pytest.mark.django_db
 def test_learner_with_nothing_ready_sees_all_caught_up_and_no_start_button(
     mock_site_context,
 ):
+    course, user, _ = _course_with_everything_scheduled_later(due_in=timedelta(days=3))
+
+    response = _client_for(user).get(_revision_url(course))
+
+    content = response.content.decode()
+    assert "You're all caught up." in content
+    assert f'action="{_route_url("course_revision_start", course)}"' not in content
+
+
+@pytest.mark.django_db
+def test_caught_up_screen_shows_when_the_next_question_is_ready(mock_site_context):
+    course, user, _ = _course_with_everything_scheduled_later(due_in=timedelta(days=3))
+    ready_on = (datetime.now(UTC) + timedelta(days=3)).strftime("%Y-%m-%d")
+
+    content = _client_for(user).get(_revision_url(course)).content.decode()
+
+    assert f'datetime="{ready_on}"' in content
+
+
+@pytest.mark.django_db
+def test_course_without_revision_questions_says_so_and_links_back(mock_site_context):
     course = CourseFactory()
     user = UserFactory()
     course_progress_record(course, user)
@@ -393,8 +427,29 @@ def test_learner_with_nothing_ready_sees_all_caught_up_and_no_start_button(
     response = _client_for(user).get(_revision_url(course))
 
     content = response.content.decode()
-    assert "You're all caught up." in content
-    assert _route_url("course_revision_start", course) not in content
+    assert response.status_code == 200
+    assert "This course has no revision questions." in content
+    assert f'href="{_detail_url(course)}"' in content
+    assert 'data-variant="link"' in content
+
+
+@pytest.mark.django_db
+def test_empty_bank_says_questions_appear_after_a_section_and_links_to_the_course(
+    mock_site_context,
+):
+    course = CourseFactory()
+    topic, _ = place_topic(course)
+    question_testing_topic(topic)
+    user = UserFactory()
+    course_progress_record(course, user)
+
+    response = _client_for(user).get(_revision_url(course))
+
+    content = response.content.decode()
+    home = reverse("learner_interface:course_home", kwargs={"course_slug": course.slug})
+    assert response.status_code == 200
+    assert "Questions appear here after you finish a section." in content
+    assert f'href="{home}"' in content
 
 
 @pytest.mark.django_db
@@ -879,3 +934,119 @@ def test_guessed_toggle_is_offered_after_a_right_answer(mock_site_context):
     _, _, _, html = _answered_html(answer_correctly=True)
 
     assert "We'll ask you this one again sooner." in html
+
+
+def _ended_session(*, answer_correctly: bool):
+    """A session whose one question was answered and whose index is past the end."""
+    course, user, (question,), client = _banked_session()
+    option = _right_option(question) if answer_correctly else _wrong_option(question)
+    _post_answer(client, course, question, [str(option.id)])
+    _store_session(client, course, [question], index=1)
+    return course, user, question, client
+
+
+@pytest.mark.django_db
+def test_end_screen_lists_the_missed_question_with_its_section_link(
+    mock_site_context,
+):
+    course, _, question, client = _ended_session(answer_correctly=False)
+    href = reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+
+    html = client.get(_revision_url(course)).content.decode()
+
+    assert question.question in html
+    assert f'href="{href}"' in html
+
+
+@pytest.mark.django_db
+def test_end_screen_lists_no_question_that_was_answered_right(mock_site_context):
+    course, _, question, client = _ended_session(answer_correctly=True)
+
+    html = client.get(_revision_url(course)).content.decode()
+
+    assert question.question not in html
+
+
+@pytest.mark.django_db
+def test_end_screen_shows_no_option_marks(mock_site_context):
+    course, _, _, client = _ended_session(answer_correctly=False)
+
+    html = client.get(_revision_url(course)).content.decode()
+
+    assert "correct-answer-mark" not in html
+    assert "Your answer" not in html
+
+
+@pytest.mark.django_db
+def test_end_screen_offers_revise_more_when_a_question_is_ready(mock_site_context):
+    course, _, (first, _second), client = _banked_session(question_count=2)
+    _post_answer(client, course, first, [str(_right_option(first).id)])
+    _store_session(client, course, [first], index=1)
+
+    html = client.get(_revision_url(course)).content.decode()
+
+    assert "Revise more" in html
+
+
+@pytest.mark.django_db
+def test_end_screen_has_no_revise_more_when_nothing_is_ready(mock_site_context):
+    course, _, _, client = _ended_session(answer_correctly=True)
+
+    html = client.get(_revision_url(course)).content.decode()
+
+    assert "Revise more" not in html
+
+
+@pytest.mark.django_db
+def test_end_screen_shows_when_the_next_question_is_ready(mock_site_context):
+    course, _, _, client = _ended_session(answer_correctly=True)
+
+    html = client.get(_revision_url(course)).content.decode()
+
+    assert "Next question ready" in html
+
+
+def _learner_last_reviewed(days_ago: int):
+    course, user, question = _course_with_everything_scheduled_later(
+        due_in=timedelta(days=30)
+    )
+    now = datetime(2026, 8, 1, 12, tzinfo=UTC)
+    RevisionReviewFactory(
+        user=user,
+        question=question,
+        course=course,
+        reviewed_at=now - timedelta(days=days_ago),
+    )
+    return course, user, now
+
+
+@pytest.mark.django_db
+def test_welcome_back_line_shows_after_fourteen_days(mock_site_context):
+    course, user, now = _learner_last_reviewed(14)
+
+    with time_machine.travel(now, tick=False):
+        html = _client_for(user).get(_revision_url(course)).content.decode()
+
+    assert "Welcome back." in html
+
+
+@pytest.mark.django_db
+def test_welcome_back_line_is_absent_after_thirteen_days(mock_site_context):
+    course, user, now = _learner_last_reviewed(13)
+
+    with time_machine.travel(now, tick=False):
+        html = _client_for(user).get(_revision_url(course)).content.decode()
+
+    assert "Welcome back." not in html
+
+
+@pytest.mark.django_db
+def test_welcome_back_line_is_absent_for_a_learner_with_no_reviews(mock_site_context):
+    course, user, _ = _course_with_everything_scheduled_later(due_in=timedelta(days=30))
+
+    html = _client_for(user).get(_revision_url(course)).content.decode()
+
+    assert "Welcome back." not in html

@@ -1,4 +1,25 @@
 <div id="revision-card" class="surface p-6 space-y-4">
     <p class="text-lg" data-testid="revision-end">{{ answered_count }} answered, {{ right_count }} right.</p>
+    {% if missed %}
+        <ul class="divide-y divide-border" data-testid="revision-missed">
+            {% for item in missed %}
+                <li class="py-3 space-y-2">
+                    <div>{{ item.question.rendered_question }}</div>
+                    {% for link in item.section_links %}
+                        <c-button variant="link" href="{{ link.url }}">Revise: {{ link.title }}</c-button>
+                    {% endfor %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+    {% if next_ready_at %}
+        <p class="text-muted" data-testid="revision-next-ready">Next question ready <c-date :value="next_ready_at" /></p>
+    {% endif %}
+    {% if has_more_ready %}
+        <form method="post" action="{% url 'learner_interface:course_revision_start' course.slug %}">
+            {% csrf_token %}
+            <c-button type="submit">Revise more</c-button>
+        </form>
+    {% endif %}
     <c-button variant="link" href="{% url 'learner_interface:course_detail' course.slug %}">Back to course</c-button>
 </div>

@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from django.db.models import Exists, OuterRef, Q, QuerySet
+from django.db.models import Exists, Max, Min, OuterRef, Q, QuerySet
 
 from freedom_ls.content_engine.models import (
     ContentCollectionItem,
@@ -345,3 +345,51 @@ def section_first_placement(
         nested = section.collection_items()
         return nested[0] if nested else None
     return None
+
+
+def next_ready_at(user: User, record: CourseProgress, now: datetime) -> datetime | None:
+    """When the soonest scheduled bank question falls due, or None when none is waiting."""
+    due: datetime | None = RevisionSchedule.objects.filter(
+        user=user, question__in=bank_questions(record), due__gt=now
+    ).aggregate(soonest=Min("due"))["soonest"]
+    return due
+
+
+def course_has_revision_questions(course: Course) -> bool:
+    """Whether any revisable question names a section placed in this course.
+
+    Asks nothing of the learner's progress: a course whose sections nobody
+    has finished still has questions waiting.
+    """
+    topic_ids: set[UUID] = set()
+    part_ids: set[UUID] = set()
+    for item in course.collection_items_flat():
+        child = item.child
+        if isinstance(child, Topic):
+            topic_ids.add(child.pk)
+        elif isinstance(child, CoursePart):
+            part_ids.add(child.pk)
+    return (
+        _revisable_questions()
+        .filter(
+            Exists(
+                FormQuestionTopic.objects.filter(
+                    question=OuterRef("pk"), topic_id__in=topic_ids
+                )
+            )
+            | Exists(
+                FormQuestionCoursePart.objects.filter(
+                    question=OuterRef("pk"), course_part_id__in=part_ids
+                )
+            )
+        )
+        .exists()
+    )
+
+
+def last_reviewed_at(user: User, course: Course) -> datetime | None:
+    """When this user last answered a revision question in this course."""
+    reviewed: datetime | None = RevisionReview.objects.filter(
+        user=user, course=course
+    ).aggregate(latest=Max("reviewed_at"))["latest"]
+    return reviewed

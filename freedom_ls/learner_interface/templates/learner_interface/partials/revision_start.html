@@ -1,5 +1,15 @@
 <section id="revision-card" class="surface p-6 space-y-4">
     <h1>Revision</h1>
+    {% if not has_questions %}
+        <p>This course has no revision questions.</p>
+        <c-button variant="link" href="{% url 'learner_interface:course_detail' course.slug %}">Back to course</c-button>
+    {% elif bank_is_empty %}
+        <p>Questions appear here after you finish a section.</p>
+        <c-button href="{% url 'learner_interface:course_home' course.slug %}">Continue course</c-button>
+    {% else %}
+    {% if welcome_back %}
+        <p data-testid="revision-welcome-back">Welcome back. We'll start with the ones you're most likely to have forgotten.</p>
+    {% endif %}
     <p class="text-lg text-muted">{{ ready_text }}</p>
     {% if has_ready %}
         <form method="post" action="{% url 'learner_interface:course_revision_start' course.slug %}">
@@ -8,6 +18,9 @@
         </form>
     {% else %}
         <p>You're all caught up.</p>
+        {% if next_ready_at %}
+            <p class="text-muted" data-testid="revision-next-ready">Next question ready <c-date :value="next_ready_at" /></p>
+        {% endif %}
     {% endif %}
     {% if section_rows %}
         <ul class="divide-y divide-border">
@@ -33,5 +46,6 @@
                 </li>
             {% endfor %}
         </ul>
+    {% endif %}
     {% endif %}
 </section>
