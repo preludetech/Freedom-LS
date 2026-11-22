@@ -12,10 +12,12 @@ from freedom_ls.base.git_utils import (
     get_current_branch,
     get_head_commit,
     head_commit_of,
+    submodule_paths,
     tracked_files,
     uncommitted_paths,
 )
 from freedom_ls.tests.git_repos import (
+    add_committed_submodule,
     add_linked_worktree,
     commit_all,
     detach_head,
@@ -479,3 +481,26 @@ def test_tracked_files_in_a_linked_worktree_are_the_worktrees_own(
             linked_worktree.resolve() / "staged.md",
         }
     )
+
+
+def test_submodule_paths_lists_a_committed_submodule(tmp_path: Path) -> None:
+    repo_dir = tmp_path / "repo"
+    init_repo(repo_dir)
+    (repo_dir / "topic.md").write_text("topic\n")
+    commit_all(repo_dir)
+    add_committed_submodule(repo_dir, "assets")
+
+    assert submodule_paths(repo_dir) == ["assets"]
+
+
+def test_submodule_paths_leaves_out_a_submodule_outside_the_path(
+    tmp_path: Path,
+) -> None:
+    repo_dir = tmp_path / "repo"
+    init_repo(repo_dir)
+    (repo_dir / "courses").mkdir()
+    (repo_dir / "courses" / "topic.md").write_text("topic\n")
+    commit_all(repo_dir)
+    add_committed_submodule(repo_dir, "assets")
+
+    assert submodule_paths(repo_dir / "courses") == []

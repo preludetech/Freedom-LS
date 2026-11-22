@@ -17,6 +17,7 @@ from freedom_ls.content_engine.validate import (
     validate_children_lists,
     validate_due_date_placements,
     validate_form_conditions,
+    validate_form_section_placement,
     validate_form_shuffle,
     validate_question_sections,
 )
@@ -2003,7 +2004,17 @@ def test_read_ignore_list_strips_a_leading_dot_slash_and_trailing_slash(
 
 @pytest.mark.parametrize(
     "entry",
-    ["/etc/passwd", "../outside", "docs/../x", "*.md", "docs?", "[ab]", "''", "./"],
+    [
+        "/etc/passwd",
+        "../outside",
+        "docs/../x",
+        "*.md",
+        "docs?",
+        "[ab]",
+        "''",
+        "./",
+        ".",
+    ],
 )
 def test_read_ignore_list_rejects_a_malformed_entry(tmp_path: Path, entry: str) -> None:
     _ignore_file(tmp_path, f"ignore:\n  - {entry}\n")
@@ -2062,6 +2073,17 @@ def test_an_ignored_file_and_an_ignored_folder_are_absent_from_get_all_files(
     found = get_all_files(tmp_path, ignore=ignore)
 
     assert found == [tmp_path / "keep.md"]
+
+
+def test_an_ignored_file_given_directly_is_absent_from_get_all_files(
+    tmp_path: Path,
+) -> None:
+    _topic(tmp_path / "drafts" / "a.md")
+    ignore = frozenset({content_key(tmp_path / "drafts")})
+
+    found = get_all_files(tmp_path / "drafts" / "a.md", ignore=ignore)
+
+    assert found == []
 
 
 def test_an_ignored_child_is_left_out_of_auto_discovery(tmp_path: Path) -> None:
@@ -2127,3 +2149,66 @@ def test_an_image_reference_to_an_ignored_file_fails_as_a_missing_file(
 
     with pytest.raises(ValueError, match="Field: image"):
         validate(tmp_path, ignore=ignore)
+
+
+def _parsed(directory: Path) -> list:
+    return [
+        item
+        for file_path in get_all_files(directory)
+        if file_path.suffix in {".md", ".yaml", ".yml"}
+        for item in parse_single_file(file_path)
+    ]
+
+
+_PAGELESS_QUESTION = "---\ncontent_type: FORM_QUESTION\n" + _NAME_QUESTION
+
+
+def test_form_sections_in_a_form_page_file_are_placed(tmp_path: Path) -> None:
+    form_dir = _gated_form(
+        tmp_path, {"1. page.yaml": _page("Page", f"---\n{_NAME_QUESTION}")}
+    )
+
+    assert validate_form_section_placement(_parsed(form_dir)) == []
+
+
+def test_a_page_file_with_no_form_page_section_is_an_error(tmp_path: Path) -> None:
+    form_dir = _gated_form(tmp_path, {"1. page.yaml": _PAGELESS_QUESTION})
+
+    errors = validate_form_section_placement(_parsed(form_dir))
+
+    assert len(errors) == 1
+    assert "1. page.yaml" in errors[0]
+    assert 'question "Full name?"' in errors[0]
+    assert "no FORM_PAGE section" in errors[0]
+
+
+def test_a_form_page_outside_a_form_folder_is_an_error(tmp_path: Path) -> None:
+    _write_widget_file(tmp_path / "loose" / "1. page.yaml", _page("Loose"))
+
+    errors = validate_form_section_placement(_parsed(tmp_path / "loose"))
+
+    assert len(errors) == 1
+    assert 'page "Loose"' in errors[0]
+    assert "no FORM" in errors[0]
+
+
+def test_the_form_folder_check_can_be_skipped_for_a_single_file_run(
+    tmp_path: Path,
+) -> None:
+    _write_widget_file(tmp_path / "loose" / "1. page.yaml", _page("Loose"))
+
+    errors = validate_form_section_placement(
+        _parsed(tmp_path / "loose"), check_form_folder=False
+    )
+
+    assert errors == []
+
+
+def test_validating_one_page_file_of_a_form_does_not_flag_its_folder(
+    tmp_path: Path,
+) -> None:
+    form_dir = _gated_form(
+        tmp_path, {"1. page.yaml": _page("Page", f"---\n{_NAME_QUESTION}")}
+    )
+
+    validate(form_dir / "1. page.yaml")

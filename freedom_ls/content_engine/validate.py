@@ -50,14 +50,14 @@ IGNORED_PROBLEM = (
 )
 IGNORED_FIX = "Remove this entry, or remove the line from ignore: in .fls-content.yaml."
 
-_IGNORE_FILE_NAME = ".fls-content.yaml"
+CONFIG_FILE_NAME = ".fls-content.yaml"
 _GLOB_CHARACTERS = frozenset("*?[")
 
 
 def _ignore_entry(entry: object, root: Path) -> Path:
     """One ignore: entry as a resolved key, or ValueError when it is not a plain
     relative path inside the content repo."""
-    where = f"{root / _IGNORE_FILE_NAME}"
+    where = f"{root / CONFIG_FILE_NAME}"
     if not isinstance(entry, str):
         raise ValueError(
             f"\n❌ Invalid ignore entry {entry!r} in {where}\n"
@@ -67,6 +67,8 @@ def _ignore_entry(entry: object, root: Path) -> Path:
     problem = None
     if not cleaned:
         problem = "it is empty"
+    elif cleaned == ".":
+        problem = "it names the whole repo"
     elif cleaned.startswith("/"):
         problem = "it is an absolute path"
     elif ".." in cleaned.split("/"):
@@ -88,7 +90,7 @@ def read_ignore_list(root: Path) -> frozenset[Path]:
     No file, or no ignore: key, gives an empty set. The file comes from a checkout, so
     it is parsed with safe_load and can never construct Python objects.
     """
-    config_file = root / _IGNORE_FILE_NAME
+    config_file = root / CONFIG_FILE_NAME
     if not config_file.is_file():
         return frozenset()
     try:
@@ -213,7 +215,7 @@ def is_loader_skipped(
     )
 
 
-def get_all_files(path, *, ignore: frozenset[Path] = frozenset()):
+def get_all_files(path: Path, *, ignore: frozenset[Path] = frozenset()) -> list[Path]:
     """
     if path points to a regular file, then return it
 
@@ -227,7 +229,7 @@ def get_all_files(path, *, ignore: frozenset[Path] = frozenset()):
     """
 
     if path.is_file():
-        return [path]
+        return [] if is_ignored(path, ignore) else [path]
     elif path.is_dir():
         # Recursively find all files, excluding those that match skip criteria
         return sorted(
@@ -1313,6 +1315,51 @@ def _condition_problem(
     return None
 
 
+def validate_form_section_placement(
+    all_parsed: Sequence[BaseBaseContentModel], *, check_form_folder: bool = True
+) -> list[str]:
+    """Flag form sections content_save would never save, one error per file.
+
+    A page file is saved only from a folder that holds a FORM, and its content
+    blocks and questions only when the file has a FORM_PAGE section.
+    `check_form_folder=False` skips the folder rule, for a run on one file whose
+    form file was not read.
+    """
+    form_dirs = {item.file_path.parent for item in all_parsed if isinstance(item, Form)}
+    sections_by_file: dict[Path, list[_FormSection]] = {}
+    for item in all_parsed:
+        if isinstance(item, (FormPage, FormContent, FormQuestion)):
+            sections_by_file.setdefault(item.file_path, []).append(item)
+    errors: list[str] = []
+    for file_path, sections in sections_by_file.items():
+        first = sections[0]
+        target = form_section_label(first, 1)
+        if check_form_folder and file_path.parent not in form_dirs:
+            errors.append(
+                _form_error(
+                    file_path,
+                    target,
+                    "this folder holds no FORM, so content_save never saves this file.",
+                    "Move the file into a form's folder, or add a FORM file to this folder.",
+                    field="content_type",
+                    header="Form section outside a form",
+                )
+            )
+        elif not any(isinstance(section, FormPage) for section in sections):
+            errors.append(
+                _form_error(
+                    file_path,
+                    target,
+                    "the file has no FORM_PAGE section, so content_save never saves "
+                    "its content blocks or questions.",
+                    "Add a FORM_PAGE section at the top of the file.",
+                    field="content_type",
+                    header="Form section outside a page",
+                )
+            )
+    return errors
+
+
 def validate_form_conditions(all_parsed: Sequence[BaseBaseContentModel]) -> list[str]:
     """Check every `when` against the questions the same form declares earlier.
 
@@ -1518,7 +1565,7 @@ def validate_article_images(all_parsed: list, all_file_paths: list[Path]) -> lis
     return errors
 
 
-def validate(path, *, ignore: frozenset[Path] = frozenset()):
+def validate(path: Path | str, *, ignore: frozenset[Path] = frozenset()) -> None:
     """
     Validate all content files in a directory or a single file.
 
@@ -1583,6 +1630,10 @@ def validate(path, *, ignore: frozenset[Path] = frozenset()):
     for message in validate_form_conditions(all_parsed):
         failed_files.append((path, message))
     for message in validate_form_shuffle(all_parsed):
+        failed_files.append((path, message))
+    for message in validate_form_section_placement(
+        all_parsed, check_form_folder=path.is_dir()
+    ):
         failed_files.append((path, message))
     for message in validate_question_sections(all_parsed, ignore=ignore):
         failed_files.append((path, message))

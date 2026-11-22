@@ -6,6 +6,8 @@ from pathlib import Path
 
 from dulwich import porcelain
 from dulwich.errors import NotGitRepository
+from dulwich.index import IndexEntry
+from dulwich.objects import S_ISGITLINK
 from dulwich.repo import Repo
 
 _cached_branch: str | None = None
@@ -188,14 +190,20 @@ def find_repo_root(path: Path) -> Path | None:
         return Path(repo.path).resolve()
 
 
+def _require_repo_root(path: Path) -> Path:
+    """The root of the git repo holding `path`; ValueError outside any repo."""
+    root = find_repo_root(path)
+    if root is None:
+        raise ValueError(f"{path} is not inside a git repository.")
+    return root
+
+
 def uncommitted_paths(path: Path) -> list[UncommittedPath]:
     """Every file equal to, or under, `path` that differs from the HEAD commit.
 
     Untracked files count; gitignored ones do not. Sorted by path.
     """
-    root = find_repo_root(path)
-    if root is None:
-        raise ValueError(f"{path} is not inside a git repository.")
+    root = _require_repo_root(path)
     status = porcelain.status(str(root), untracked_files="all")
     kinds: dict[str, str] = {}
     for names in (
@@ -225,12 +233,31 @@ def tracked_files(path: Path) -> frozenset[Path]:
 
     Staged files count. Untracked and gitignored files are not in the index.
     """
-    root = find_repo_root(path)
-    if root is None:
-        raise ValueError(f"{path} is not inside a git repository.")
+    root = _require_repo_root(path)
     with closing(Repo(str(root))) as repo:
         index = repo.open_index()
         return frozenset(root / os.fsdecode(name) for name in index)
+
+
+def submodule_paths(path: Path) -> list[str]:
+    """Every git submodule equal to, or under, `path`, POSIX and relative to the repo root.
+
+    Read from the index, where a submodule is a single gitlink entry. Sorted.
+    """
+    root = _require_repo_root(path)
+    scope = path.resolve()
+    with closing(Repo(str(root))) as repo:
+        index = repo.open_index()
+        names = [
+            os.fsdecode(name)
+            for name, entry in index.items()
+            if isinstance(entry, IndexEntry) and S_ISGITLINK(entry.mode)
+        ]
+    return sorted(
+        name
+        for name in names
+        if (root / name) == scope or scope in (root / name).parents
+    )
 
 
 def head_commit_of(path: Path) -> str:
@@ -238,9 +265,7 @@ def head_commit_of(path: Path) -> str:
 
     Raises ValueError when the path is in no repo or the repo has no commit yet.
     """
-    root = find_repo_root(path)
-    if root is None:
-        raise ValueError(f"{path} is not inside a git repository.")
+    root = _require_repo_root(path)
     with closing(Repo(str(root))) as repo:
         try:
             return repo.head().decode("ascii")

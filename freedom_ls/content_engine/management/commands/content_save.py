@@ -36,6 +36,7 @@ from freedom_ls.base.git_utils import (
     UncommittedPath,
     find_repo_root,
     head_commit_of,
+    submodule_paths,
     tracked_files,
     uncommitted_paths,
 )
@@ -75,8 +76,10 @@ from freedom_ls.content_engine.moved_children import (
 from freedom_ls.content_engine.prices import KIND_FIELDS
 from freedom_ls.content_engine.schema import Child, CourseCategories
 from freedom_ls.content_engine.schema import Course as CourseSchema
+from freedom_ls.content_engine.schema import CoursePart as CoursePartSchema
 from freedom_ls.content_engine.signals import collection_items_synced
 from freedom_ls.content_engine.validate import (
+    CONFIG_FILE_NAME,
     IMAGE_EXTENSIONS,
     collection_children,
     content_key,
@@ -90,6 +93,7 @@ from freedom_ls.content_engine.validate import (
     validate,
     validate_children_lists,
     validate_due_date_placements,
+    validate_form_section_placement,
     validate_question_sections,
 )
 from freedom_ls.form_engine import schema as form_schema
@@ -1128,10 +1132,13 @@ class _ParsedSource:
     ignore: frozenset[Path]
 
 
+CONTENT_SUFFIXES = frozenset({".md", ".yaml", ".yml"})
+
+
 def _parse_source(path: Path) -> _ParsedSource:
     ignore = ignore_list_for(path)
     all_files = get_all_files(path, ignore=ignore)
-    content_files = {f for f in all_files if f.suffix in [".md", ".yaml", ".yml"]}
+    content_files = {f for f in all_files if f.suffix in CONTENT_SUFFIXES}
     all_parsed: list[BaseBaseContentModel] = []
     for file_path in all_files:
         if file_path in content_files:
@@ -1171,13 +1178,15 @@ def _refuse_relative_path_collisions(sources: Sequence[_ParsedSource]) -> None:
     )
 
 
-def _write_source(source, site):
-    """Write a `_ParsedSource`'s files and content rows. Returns its image statuses.
+def _items_of[T: BaseBaseContentModel](
+    items: Sequence[BaseBaseContentModel], schema: type[T]
+) -> list[T]:
+    """The parsed items of one schema class, in their original order."""
+    return [item for item in items if isinstance(item, schema)]
 
-    Left unannotated: the parsed items are typed `BaseBaseContentModel`, and the
-    `save_*` functions that take them are narrower, so annotating this body would
-    need a type narrowing at every dispatch.
-    """
+
+def _write_source(source: _ParsedSource, site: Site) -> list[ImageEncodeStatus]:
+    """Write a `_ParsedSource`'s files and content rows. Returns its image statuses."""
     # The statuses alone: an ImageEncodeDecision carries the encoded bytes,
     # and holding one per image would keep every encode of the run in memory
     # to produce a count.
@@ -1242,15 +1251,18 @@ def _write_source(source, site):
         logger.info(f"Saved Article: {article.title}")
 
     # Save Courses and CourseParts
-    collections_data = []  # Store (collection_obj, schema_item) for later children processing
-    for item in grouped.get(SchemaContentType.COURSE, []):
+    # (collection_obj, schema_item), kept for the children processing below
+    collections_data: list[
+        tuple[Course | CoursePart, CourseSchema | CoursePartSchema]
+    ] = []
+    for item in _items_of(source.all_parsed, CourseSchema):
         collection = save_course(item, site, source.path)
         content_by_path[content_key(item.file_path)] = collection
         schema_by_path[content_key(item.file_path)] = item
         collections_data.append((collection, item))
         logger.info(f"Saved Course: {collection.title}")
 
-    for item in grouped.get(SchemaContentType.COURSE_PART, []):
+    for item in _items_of(source.all_parsed, CoursePartSchema):
         collection = save_course_part(item, site, source.path)
         content_by_path[content_key(item.file_path)] = collection
         schema_by_path[content_key(item.file_path)] = item
@@ -1259,7 +1271,7 @@ def _write_source(source, site):
 
     # Save Forms and track them by directory
     forms_by_dir: dict[Path, tuple[Form, form_schema.Form]] = {}
-    for item in grouped.get(SchemaContentType.FORM, []):
+    for item in _items_of(source.all_parsed, form_schema.Form):
         form = save_form(item, site, source.path)
         forms_by_dir[item.file_path.parent] = (form, item)
         content_by_path[content_key(item.file_path)] = form
@@ -1267,12 +1279,14 @@ def _write_source(source, site):
         logger.info(f"Saved Form: {form.title}")
 
     # Group form pages by file
-    pages_by_file = defaultdict(list)
-    for item in grouped.get(SchemaContentType.FORM_PAGE, []):
+    pages_by_file: defaultdict[Path, list[form_schema.FormPage]] = defaultdict(list)
+    for item in _items_of(source.all_parsed, form_schema.FormPage):
         pages_by_file[item.file_path].append(item)
 
     # Group pages by parent form directory
-    pages_by_form = defaultdict(list)
+    pages_by_form: defaultdict[Path, list[tuple[Path, list[form_schema.FormPage]]]] = (
+        defaultdict(list)
+    )
     for file_path, page_items in pages_by_file.items():
         form_entry = forms_by_dir.get(file_path.parent)
         if form_entry:
@@ -1306,13 +1320,14 @@ def _write_source(source, site):
                     item
                     for item in source.all_parsed
                     if item.file_path == file_path
-                    and item.content_type
-                    in (SchemaContentType.FORM_CONTENT, SchemaContentType.FORM_QUESTION)
+                    and isinstance(
+                        item, (form_schema.FormContent, form_schema.FormQuestion)
+                    )
                 ]
 
                 # Save texts and questions in the order they appear in the file
                 for content_order, item in enumerate(file_content_items):
-                    if item.content_type == SchemaContentType.FORM_CONTENT:
+                    if isinstance(item, form_schema.FormContent):
                         save_form_content(
                             item,
                             form_page,
@@ -1326,7 +1341,7 @@ def _write_source(source, site):
                         logger.info(
                             f"Saved FormContent in {form_page.title} (order={content_order})"
                         )
-                    elif item.content_type == SchemaContentType.FORM_QUESTION:
+                    else:
                         question, saved_options = save_form_question(
                             item,
                             form_page,
@@ -1366,7 +1381,9 @@ def _write_source(source, site):
     # form has to be resolved against the file that declared it, which only the
     # loader can do — so the key is read here rather than by the access backend.
     for collection, schema_item in collections_data:
-        if not isinstance(collection, Course):
+        if not isinstance(collection, Course) or not isinstance(
+            schema_item, CourseSchema
+        ):
             continue
         form = None
         author_path = (schema_item.access_config or {}).get("application_form")
@@ -1387,7 +1404,7 @@ def _write_source(source, site):
     created: list[ContentCollectionItem] = []
     row_by_placement: dict[tuple[uuid.UUID, Path], ContentCollectionItem] = {}
     for collection, schema_item in collections_data:
-        if schema_item.content_type == SchemaContentType.COURSE:
+        if isinstance(collection, Course) and isinstance(schema_item, CourseSchema):
             # A replace, not a merge: a slug dropped from `categories` and
             # reloaded drops that membership, which is the one place a load
             # takes something away rather than only adding or updating.
@@ -1449,7 +1466,7 @@ def _write_source(source, site):
     kept: list[uuid.UUID] = []
     loaded_course_ids: list[uuid.UUID] = []
     for collection, schema_item in collections_data:
-        if schema_item.content_type != SchemaContentType.COURSE:
+        if not isinstance(schema_item, CourseSchema):
             continue
         loaded_course_ids.append(collection.id)
         for entry in schema_item.children or []:
@@ -1512,7 +1529,7 @@ def save_content_to_db(
     *,
     generate_uuids: bool = True,
     source_commits: Sequence[SourceCommit] | None = None,
-):
+) -> None:
     """Scan through all validated files of every source path and save them as one.
 
     Every source path is parsed and checked before the first write. With
@@ -1538,6 +1555,9 @@ def save_content_to_db(
         for error in (
             *validate_children_lists(source.all_parsed, ignore=source.ignore),
             *validate_due_date_placements(source.all_parsed, ignore=source.ignore),
+            *validate_form_section_placement(
+                source.all_parsed, check_form_folder=source.path.is_dir()
+            ),
             *validate_question_sections(
                 source.all_parsed, loaded_root=source.path, ignore=source.ignore
             ),
@@ -1672,8 +1692,6 @@ def _refuse_missing_uuids(sources: Sequence[_ParsedSource]) -> None:
     )
 
 
-CONFIG_FILE_NAME = ".fls-content.yaml"
-
 # Lines shown per group in the uncommitted-files refusal before "... and N more".
 UNCOMMITTED_LINES_SHOWN = 20
 
@@ -1712,10 +1730,11 @@ def _uncommitted_under(
     entries = uncommitted_paths(source)
     listed = {entry.path for entry in entries}
     tracked = tracked_files(source)
+    # The scan path, not the resolved one: a committed symlink is tracked as the
+    # link itself, and its target may sit outside the repo.
     for file_path in get_all_files(source.resolve(), ignore=ignore):
-        key = content_key(file_path)
-        relative = key.relative_to(root).as_posix()
-        if key not in tracked and relative not in listed:
+        relative = file_path.relative_to(root).as_posix()
+        if file_path not in tracked and relative not in listed:
             entries.append(
                 UncommittedPath(path=relative, kind="untracked (gitignored)")
             )
@@ -1780,6 +1799,17 @@ def check_committed(
                 commit=commit,
             )
         )
+        if submodules := submodule_paths(source):
+            raise CommandError(
+                _refusal(
+                    f"content_save does not load content from git submodules: {path} "
+                    f"holds {len(submodules)} submodule"
+                    f"{'s' if len(submodules) != 1 else ''}.",
+                    [(f"Content repo root: {root}", submodules)],
+                    "Copy the files into the content repo, or remove the submodule, "
+                    "then run again.",
+                )
+            )
         if root not in root_entries and (entry := _uncommitted_config_file(root)):
             root_entries[root] = entry
         entries = _uncommitted_under(source, root, ignore)
@@ -1855,10 +1885,52 @@ def check_source_paths(paths: Sequence[str]) -> list[frozenset[Path]]:
     ignores: list[frozenset[Path]] = []
     for path in paths:
         try:
-            ignores.append(ignore_list_for(Path(path)))
+            ignore = ignore_list_for(Path(path))
         except ValueError as error:
             raise CommandError(str(error).strip()) from error
+        if is_ignored(Path(path), ignore):
+            raise CommandError(
+                _refusal(
+                    f"content_save was given {path}, which is in the "
+                    f"{CONFIG_FILE_NAME} ignore list, so nothing in it would be saved.",
+                    [],
+                    f"Remove it from ignore: in {CONFIG_FILE_NAME}, or give another "
+                    "source path, then run again.",
+                )
+            )
+        ignores.append(ignore)
     return ignores
+
+
+def check_has_content(paths: Sequence[str], ignores: Sequence[frozenset[Path]]) -> None:
+    """Refuse a source path with no file to load, and a run with no content file.
+
+    A path holding only images or documents is allowed: another path's content
+    can use them.
+    """
+    found_content = False
+    for path, ignore in zip(paths, ignores, strict=True):
+        files = get_all_files(Path(path), ignore=ignore)
+        if not files:
+            raise CommandError(
+                _refusal(
+                    f"content_save found no files to load in {path}.",
+                    [],
+                    "Give a path that holds content, then run again.",
+                )
+            )
+        found_content = found_content or any(
+            f.suffix in CONTENT_SUFFIXES for f in files
+        )
+    if not found_content:
+        raise CommandError(
+            _refusal(
+                "content_save found no content files in "
+                f"{', '.join(paths)}: nothing would be saved.",
+                [],
+                "Give a path that holds .md or .yaml content files, then run again.",
+            )
+        )
 
 
 @click.command()
@@ -1870,7 +1942,7 @@ def check_source_paths(paths: Sequence[str]) -> list[frozenset[Path]]:
     default=False,
     help="Write a new uuid into every content file that lacks one.",
 )
-def command(paths, site_name, generate_uuids):
+def command(paths: tuple[str, ...], site_name: str, generate_uuids: bool) -> None:
     """Validate and save committed content to the database.
 
     Several source paths load as one save:
@@ -1883,6 +1955,7 @@ def command(paths, site_name, generate_uuids):
     """
     ignores = check_source_paths(paths)
     source_commits = check_committed(paths, ignores)
+    check_has_content(paths, ignores)
     logger.info("Validating content...")
     reports: list[str] = []
     for path, ignore in zip(paths, ignores, strict=True):

@@ -71,6 +71,7 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.git_repos import (
     TOPIC_UUID,
+    add_committed_submodule,
     add_linked_worktree,
     commit_all,
     init_repo,
@@ -4666,6 +4667,10 @@ def test_a_gitignored_file_the_scanner_skips_does_not_block(
     assert Topic.objects.filter(title="A Topic").exists()
 
 
+_FORM_WITH_UUID = (
+    "---\ncontent_type: FORM\nstrategy: CATEGORY_VALUE_SUM\ntitle: A Form\n"
+    "uuid: 10000000-0000-0000-0000-0000000000c0\n---\n"
+)
 _PAGE_HEADER = (
     "---\ncontent_type: FORM_PAGE\ntitle: A Page\n"
     "uuid: 10000000-0000-0000-0000-0000000000c1\n---\n"
@@ -4762,7 +4767,11 @@ def _tree_snapshot(directory: Path) -> dict[str, str]:
 def test_a_missing_uuid_is_refused_and_named(
     site, mock_site_context, tmp_path: Path, filename: str, text: str, description: str
 ):
-    repo = _commit_tree(tmp_path / "repo", {filename: text})
+    files = {filename: text}
+    if filename == "page.yaml":
+        # A page file is only saved from a folder that holds a FORM.
+        files["form.md"] = _FORM_WITH_UUID
+    repo = _commit_tree(tmp_path / "repo", files)
 
     with pytest.raises(CommandError, match="missing uuid") as exc_info:
         _save_from_repo(repo, site)
@@ -4963,9 +4972,11 @@ def test_a_database_failure_in_the_second_path_rolls_back_the_first(
 def test_the_same_relative_path_in_two_paths_is_refused_naming_both(
     site, mock_site_context, tmp_path: Path, relative: str, text: str | None
 ):
+    # The run needs a content file even when the clash is between uploaded files.
     first = _commit_tree(
         tmp_path / "first",
-        {relative: text or _topic_text("First", TOPIC_UUID)},
+        {relative: text or _topic_text("First", TOPIC_UUID)}
+        | ({"intro.md": _topic_text("Intro", _THIRD_TOPIC_UUID)} if text else {}),
     )
     second = _commit_tree(
         tmp_path / "second",
@@ -5396,3 +5407,106 @@ def test_a_missing_config_file_ignores_nothing(
         "A Topic",
         "Notes Topic",
     }
+
+
+@pytest.mark.django_db
+def test_a_committed_symlink_to_a_file_outside_the_repo_saves(
+    site, mock_site_context, tmp_path: Path, committed_content_repo
+):
+    outside = tmp_path / "outside.png"
+    outside.write_bytes(b"shared image")
+    (committed_content_repo / "img.png").symlink_to(outside)
+    commit_all(committed_content_repo)
+
+    _save_from_repo(committed_content_repo, site)
+
+    assert Topic.objects.filter(title="A Topic").exists()
+
+
+@pytest.mark.django_db
+def test_a_source_path_holding_a_submodule_is_refused_naming_the_submodule(
+    site, mock_site_context, committed_content_repo
+):
+    add_committed_submodule(committed_content_repo, "assets")
+
+    with pytest.raises(CommandError, match="git submodule") as exc_info:
+        _save_from_repo(committed_content_repo, site)
+
+    message = str(exc_info.value)
+    assert "  assets" in message
+    assert "untracked (gitignored)" not in message
+    assert Topic.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_an_ignored_source_path_is_refused(
+    site, mock_site_context, committed_content_repo
+):
+    _write_ignored_content(committed_content_repo)
+
+    with pytest.raises(CommandError, match="ignore list") as exc_info:
+        _save_from_repo(committed_content_repo / "drafts", site)
+
+    assert "drafts" in str(exc_info.value)
+    assert Topic.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_an_ignored_file_given_as_the_source_path_is_refused(
+    site, mock_site_context, committed_content_repo
+):
+    _write_ignored_content(committed_content_repo)
+
+    with pytest.raises(CommandError, match="ignore list"):
+        _save_from_repo(committed_content_repo / "notes.md", site)
+
+    assert Topic.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_an_ignore_entry_naming_the_whole_repo_is_refused(
+    site, mock_site_context, committed_content_repo
+):
+    (committed_content_repo / ".fls-content.yaml").write_text("ignore:\n  - .\n")
+    commit_all(committed_content_repo)
+
+    with pytest.raises(CommandError, match=r"Invalid ignore entry '\.'") as exc_info:
+        _save_from_repo(committed_content_repo, site)
+
+    assert "names the whole repo" in str(exc_info.value)
+
+
+@pytest.mark.django_db
+def test_a_source_path_with_no_content_files_is_refused(
+    site, mock_site_context, committed_content_repo
+):
+    (committed_content_repo / "images").mkdir()
+    (committed_content_repo / "images" / "notes.txt").write_text("no content\n")
+    commit_all(committed_content_repo)
+
+    with pytest.raises(CommandError, match="no content files"):
+        _save_from_repo(committed_content_repo / "images", site)
+
+    assert ContentSave.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_a_form_question_in_a_page_file_without_a_form_page_fails_validation(
+    site, mock_site_context, committed_content_repo
+):
+    form_dir = committed_content_repo / "a-form"
+    form_dir.mkdir()
+    (form_dir / "form.md").write_text(
+        "---\ncontent_type: FORM\ntitle: A Form\nstrategy: UNSCORED\n"
+        "uuid: 10000000-0000-0000-0000-0000000000c1\n---\n"
+    )
+    (form_dir / "1. page.yaml").write_text(
+        "---\ncontent_type: FORM_QUESTION\nquestion: Full name?\n"
+        "slug: full_name\ntype: short_text\n"
+    )
+    commit_all(committed_content_repo)
+
+    with pytest.raises(ValueError, match="no FORM_PAGE section"):
+        _save_from_repo(committed_content_repo, site)
+
+    assert Topic.objects.count() == 0

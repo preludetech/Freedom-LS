@@ -2049,6 +2049,19 @@ def test_tree_whose_only_content_file_is_ignored_reports_no_content_files(
     assert "No content files" in result.stderr
 
 
+def test_an_ignored_file_given_directly_is_not_validated(tmp_path: Path) -> None:
+    """A file in the ignore list is skipped even when it is the path given."""
+    content_dir = tmp_path / "content"
+    content_dir.mkdir()
+    write_valid_topic(content_dir)
+    write_ignore_list(tmp_path, ["content"])
+
+    result = run_validator(content_dir / "01. intro.md", repo_root=tmp_path)
+
+    assert result.returncode == 3
+    assert "No content files" in result.stderr
+
+
 def test_children_entry_naming_an_ignored_path_fails(tmp_path: Path) -> None:
     """A children: entry keeps pointing at a file content_save skips, which is an error."""
     course_dir = tmp_path / "course"
@@ -2075,7 +2088,7 @@ def test_sections_target_naming_an_ignored_path_fails(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize(
     "entry",
-    ["/etc/passwd", "../outside", "docs/*.md", "docs/?", "docs/[ab]", "''"],
+    ["/etc/passwd", "../outside", "docs/*.md", "docs/?", "docs/[ab]", "''", "."],
 )
 def test_malformed_ignore_entry_fails_naming_the_entry(
     tmp_path: Path, entry: str
@@ -2112,3 +2125,20 @@ def test_config_without_an_ignore_key_ignores_nothing(tmp_path: Path) -> None:
     result = run_validator(tmp_path)
 
     assert result.returncode != 0
+
+
+def test_page_file_without_a_form_page_section_fails(tmp_path: Path) -> None:
+    """A question in a page file with no FORM_PAGE section is never saved, so it fails."""
+    form_dir = tmp_path / "a-form"
+    form_dir.mkdir()
+    (form_dir / "form.md").write_text(
+        "---\ncontent_type: FORM\ntitle: A Form\nstrategy: UNSCORED\n---\n"
+    )
+    (form_dir / "1. page.yaml").write_text(
+        "---\ncontent_type: FORM_QUESTION\nquestion: Full name?\n"
+        "slug: full_name\ntype: short_text\n"
+    )
+
+    result = run_validator(form_dir)
+
+    assert_validator_fails(result, "no FORM_PAGE section")
