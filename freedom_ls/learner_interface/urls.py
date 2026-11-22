@@ -49,6 +49,11 @@ urlpatterns = [
         name="course_revision_next",
     ),
     path(
+        "courses/<slug:course_slug>/revision/guessed/",
+        views.partial_course_revision_guessed,
+        name="course_revision_guessed",
+    ),
+    path(
         "courses/<slug:course_slug>/<int:index>/",
         views.view_course_item,
         name="view_course_item",

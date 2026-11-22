@@ -128,6 +128,48 @@ def record_answer(
     return review
 
 
+class GuessRefused(Exception):  # noqa: N818 - a refusal, named for what the caller sees
+    """The review can't be re-rated: it was wrong, or a later review has replaced it."""
+
+
+@transaction.atomic
+def mark_guessed(review: RevisionReview) -> RevisionReview:
+    """Flip "I guessed" on a right answer and re-rate it.
+
+    Replays the review from the card it started from, at the instant it was
+    first given, so the schedule ends up where a first-time rating would
+    have put it and a second tap undoes the first.
+    """
+    schedule = RevisionSchedule.objects.select_for_update().get(
+        user=review.user, question=review.question
+    )
+    latest = (
+        RevisionReview.objects.filter(user=review.user, question=review.question)
+        .order_by("-reviewed_at")
+        .first()
+    )
+    if not review.was_correct or latest is None or latest.pk != review.pk:
+        raise GuessRefused
+    guessed = not review.guessed
+    after, rating = scheduler.review(
+        review.schedule_before,
+        scheduler.rating_for(True, guessed),
+        review.reviewed_at,
+    )
+    columns = scheduler.columns_from_card(after)
+    schedule.state = columns["state"]
+    schedule.step = columns["step"]
+    schedule.stability = columns["stability"]
+    schedule.difficulty = columns["difficulty"]
+    schedule.due = columns["due"]
+    schedule.last_review = columns["last_review"]
+    schedule.save()
+    review.guessed = guessed
+    review.rating = int(rating)
+    review.save()
+    return review
+
+
 def session_reviews(
     user: User, state: RevisionSessionState
 ) -> QuerySet[RevisionReview]:

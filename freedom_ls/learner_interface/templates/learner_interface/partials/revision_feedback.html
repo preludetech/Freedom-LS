@@ -27,6 +27,17 @@
             <div class="prose">{{ question.rendered_explanation }}</div>
         </div>
     {% endif %}
+    {% if review.was_correct %}
+        <div>
+            <c-button variant="secondary"
+                      aria-pressed="{% if review.guessed %}true{% else %}false{% endif %}"
+                      hx-post="{% url 'learner_interface:course_revision_guessed' course.slug %}"
+                      hx-target="#revision-card"
+                      hx-swap="outerHTML"
+                      data-testid="revision-guessed">I guessed</c-button>
+            <p class="text-sm text-muted mt-1">We'll ask you this one again sooner.</p>
+        </div>
+    {% endif %}
     {% for link in section_links %}
         {% if review.was_correct %}
             <c-button variant="link" href="{{ link.url }}">Revise: {{ link.title }}</c-button>

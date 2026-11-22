@@ -2,16 +2,20 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
+from fsrs import Rating
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.form_engine.factories import FormQuestionFactory, QuestionOptionFactory
 from freedom_ls.form_engine.models import FormProgress, QuestionAnswer
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
+from freedom_ls.revision import scheduler
 from freedom_ls.revision.models import RevisionReview, RevisionSchedule
 from freedom_ls.revision.services import (
+    GuessRefused,
     RevisionSessionState,
     build_session,
+    mark_guessed,
     record_answer,
     shuffled_options,
 )
@@ -199,3 +203,104 @@ def test_shuffled_options_differ_between_seeds(mock_site_context):
     }
 
     assert len(orders) > 1
+
+
+def _schedule_columns(schedule) -> tuple:
+    return (
+        schedule.state,
+        schedule.step,
+        schedule.stability,
+        schedule.difficulty,
+        schedule.due,
+        schedule.last_review,
+    )
+
+
+def _banked_for(user):
+    course = CourseFactory()
+    topic, _ = place_topic(course)
+    question = question_testing_topic(topic)
+    record = course_progress_record(course, user)
+    finish_topic(record, topic)
+    return user, record, question
+
+
+def _due(user, question):
+    return RevisionSchedule.objects.get(user=user, question=question).due
+
+
+@pytest.mark.django_db
+def test_guessed_right_answer_is_due_sooner_than_one_left_alone(mock_site_context):
+    left_user, left_record, left_question = _banked_for(UserFactory())
+    user, record, question = _banked_for(UserFactory())
+    record_answer(
+        left_user, left_record, left_question, _correct_ids(left_question), NOW
+    )
+    review = record_answer(user, record, question, _correct_ids(question), NOW)
+
+    mark_guessed(review)
+
+    assert _due(user, question) < _due(left_user, left_question)
+
+
+@pytest.mark.django_db
+def test_re_rated_schedule_equals_a_first_time_hard(banked):
+    user, record, question = banked
+    review = record_answer(user, record, question, _correct_ids(question), NOW)
+    first_time_hard = scheduler.review(scheduler.new_card(NOW), Rating.Hard, NOW)[0]
+
+    mark_guessed(review)
+
+    schedule = RevisionSchedule.objects.get(user=user, question=question)
+    assert _schedule_columns(schedule) == tuple(
+        scheduler.columns_from_card(first_time_hard).values()
+    )
+
+
+@pytest.mark.django_db
+def test_second_tap_restores_the_good_schedule(banked):
+    user, record, question = banked
+    review = record_answer(user, record, question, _correct_ids(question), NOW)
+    good = _schedule_columns(RevisionSchedule.objects.get(user=user, question=question))
+    mark_guessed(review)
+
+    mark_guessed(review)
+
+    schedule = RevisionSchedule.objects.get(user=user, question=question)
+    assert (_schedule_columns(schedule), review.guessed, review.rating) == (
+        good,
+        False,
+        int(Rating.Good),
+    )
+
+
+@pytest.mark.django_db
+def test_guessing_a_wrong_answer_is_refused(banked):
+    user, record, question = banked
+    review = record_answer(user, record, question, _wrong_ids(question), NOW)
+
+    with pytest.raises(GuessRefused):
+        mark_guessed(review)
+
+
+@pytest.mark.django_db
+def test_guessing_a_review_a_later_one_replaced_is_refused(banked):
+    user, record, question = banked
+    stale = record_answer(user, record, question, _correct_ids(question), NOW)
+    record_answer(
+        user, record, question, _correct_ids(question), NOW + timedelta(days=3)
+    )
+
+    with pytest.raises(GuessRefused):
+        mark_guessed(stale)
+
+
+@pytest.mark.django_db
+def test_guessing_leaves_reps_and_lapses_unchanged(banked):
+    user, record, question = banked
+    review = record_answer(user, record, question, _correct_ids(question), NOW)
+
+    mark_guessed(review)
+
+    schedule = RevisionSchedule.objects.get(user=user, question=question)
+    assert (schedule.reps, schedule.lapses) == (1, 0)

@@ -121,8 +121,10 @@ from freedom_ls.revision.queries import (
     section_first_placement,
 )
 from freedom_ls.revision.services import (
+    GuessRefused,
     RevisionSessionState,
     build_session,
+    mark_guessed,
     record_answer,
     session_reviews,
     shuffled_options,
@@ -2945,3 +2947,32 @@ if TYPE_CHECKING:
         DashboardContribution,
         RequestUser,
     )
+
+
+@login_required
+@require_POST
+def partial_course_revision_guessed(
+    request: HttpRequest, course_slug: str
+) -> HttpResponse:
+    """Flip "I guessed" on the current question's right answer."""
+    gate = _revision_record(request, course_slug)
+    if isinstance(gate, HttpResponseRedirect):
+        return gate
+    course, record = gate
+    state = _revision_state(request, course)
+    if state is None:
+        return redirect("learner_interface:course_revision", course_slug=course.slug)
+    question, state = _current_revision_question(record, state)
+    if question is None:
+        _store_revision_state(request, course, state)
+        return redirect("learner_interface:course_revision", course_slug=course.slug)
+    _store_revision_state(request, course, state)
+
+    review = _revision_review_of(cast("User", request.user), state, question)
+    if review is None:
+        return _render_revision_card(request, course, record, state, status=422)
+    try:
+        mark_guessed(review)
+    except GuessRefused:
+        return _render_revision_card(request, course, record, state, status=422)
+    return _render_revision_card(request, course, record, state)

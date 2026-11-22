@@ -178,7 +178,13 @@ def _wrong_option(question):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    "route", ["course_revision_start", "course_revision_answer", "course_revision_next"]
+    "route",
+    [
+        "course_revision_start",
+        "course_revision_answer",
+        "course_revision_next",
+        "course_revision_guessed",
+    ],
 )
 def test_post_routes_turn_away_an_unregistered_learner(route, mock_site_context):
     course = CourseFactory()
@@ -191,7 +197,13 @@ def test_post_routes_turn_away_an_unregistered_learner(route, mock_site_context)
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    "route", ["course_revision_start", "course_revision_answer", "course_revision_next"]
+    "route",
+    [
+        "course_revision_start",
+        "course_revision_answer",
+        "course_revision_next",
+        "course_revision_guessed",
+    ],
 )
 def test_post_routes_turn_away_a_paused_course(route, mock_site_context):
     course = CourseFactory()
@@ -206,7 +218,13 @@ def test_post_routes_turn_away_a_paused_course(route, mock_site_context):
 @pytest.mark.django_db
 @time_machine.travel(datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
 @pytest.mark.parametrize(
-    "route", ["course_revision_start", "course_revision_answer", "course_revision_next"]
+    "route",
+    [
+        "course_revision_start",
+        "course_revision_answer",
+        "course_revision_next",
+        "course_revision_guessed",
+    ],
 )
 def test_post_routes_turn_away_an_ended_registration(route, mock_site_context):
     course = CourseFactory(time_limit_days=30)
@@ -223,7 +241,13 @@ def test_post_routes_turn_away_an_ended_registration(route, mock_site_context):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    "route", ["course_revision_start", "course_revision_answer", "course_revision_next"]
+    "route",
+    [
+        "course_revision_start",
+        "course_revision_answer",
+        "course_revision_next",
+        "course_revision_guessed",
+    ],
 )
 def test_post_routes_do_not_find_a_course_on_another_site(route, mock_site_context):
     course = CourseFactory(site=SiteFactory())
@@ -597,3 +621,80 @@ def test_feedback_root_is_announced_and_takes_focus(mock_site_context):
     assert 'aria-live="polite"' in html
     assert 'tabindex="-1"' in html
     assert 'x-data="revisionFeedback"' in html
+
+
+def _post_guessed(client: Client, course):
+    return client.post(
+        _route_url("course_revision_guessed", course), HTTP_HX_REQUEST="true"
+    )
+
+
+def _right_answer_then_guessed():
+    course, _, (question,), client = _banked_session()
+    _post_answer(client, course, question, [str(_right_option(question).id)])
+    return course, question, client
+
+
+@pytest.mark.django_db
+def test_guessed_post_after_a_right_answer_shows_the_toggle_pressed(mock_site_context):
+    course, _, client = _right_answer_then_guessed()
+
+    response = _post_guessed(client, course)
+
+    assert (
+        response.status_code,
+        'aria-pressed="true"' in response.content.decode(),
+        RevisionReview.objects.get().rating,
+    ) == (200, True, 2)
+
+
+@pytest.mark.django_db
+def test_guessed_post_on_a_guessed_review_shows_the_toggle_released(mock_site_context):
+    course, _, client = _right_answer_then_guessed()
+    _post_guessed(client, course)
+
+    response = _post_guessed(client, course)
+
+    assert (
+        'aria-pressed="false"' in response.content.decode(),
+        RevisionReview.objects.get().rating,
+    ) == (True, 3)
+
+
+@pytest.mark.django_db
+def test_guessed_post_with_the_question_unanswered_returns_422(mock_site_context):
+    course, _, _, client = _banked_session()
+
+    response = _post_guessed(client, course)
+
+    assert response.status_code == 422
+
+
+@pytest.mark.django_db
+def test_guessed_post_after_the_session_moved_on_returns_422(mock_site_context):
+    course, user, questions, client = _banked_session(question_count=2)
+    RevisionReviewFactory(
+        user=user,
+        question=questions[0],
+        course=course,
+        reviewed_at=datetime(2026, 6, 1, tzinfo=UTC),
+    )
+    _store_session(client, course, questions, index=1)
+
+    response = _post_guessed(client, course)
+
+    assert response.status_code == 422
+
+
+@pytest.mark.django_db
+def test_guessed_toggle_is_absent_after_a_wrong_answer(mock_site_context):
+    _, _, _, html = _answered_html(answer_correctly=False)
+
+    assert 'data-testid="revision-guessed"' not in html
+
+
+@pytest.mark.django_db
+def test_guessed_toggle_is_offered_after_a_right_answer(mock_site_context):
+    _, _, _, html = _answered_html(answer_correctly=True)
+
+    assert "We'll ask you this one again sooner." in html
