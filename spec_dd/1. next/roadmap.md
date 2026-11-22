@@ -14,7 +14,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `faster-test-runs-4-playwright-tests` (Faster test runs)
 - 🔴 High · `faster-test-runs-5-full-suite-on-github-actions` (Faster test runs)
 - 🔴 High · `faster-test-runs-6-prune-slow-tests` (Faster test runs)
-- 🔴 High · `educator-interface-refactor-5-learner` (Educator interface code layout, via `sacaa-compliance`)
 - 🔴 High · `sacaa-compliance-3-question-pools` (SACAA compliance)
 - 🔴 High · `reference-material-content-1-authoring` (Reference material)
 - 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
@@ -25,12 +24,14 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `faster-test-runs-13-checkpoint-shared-paths` (Faster test runs)
 - 🔴 High · `faster-test-runs-2-reuse-test-database` (Faster test runs)
 - 🔴 High · `faster-test-runs-9-machine-wide-test-run-limit` (Faster test runs)
+- 🔴 High · `sacaa-compliance-4-attempt-review` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-2-retire-removed-content` (SACAA content versions and access)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-4-question-access` (SACAA content versions and access)
 - 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
 - 🔴 High · `learner-public-profile-2-profile-and-page` (Learner public profiles)
 - 🔴 High · `multi-step-course-applications-2-reviewers-and-inbox` (Multi-step course applications)
 - 🔴 High · `multi-step-course-applications-4-reopen-form` (Multi-step course applications)
+- 🟠 Medium · `educator-interface-refactor-6-cohort` (Educator interface code layout)
 - 🟠 Medium · `content-widget-sayit-reveal-4-audio-access-control` (Audio content widgets)
 - 🟠 Medium · `deadlines-4-learner-self-pause` (Deadlines)
 - 🟠 Medium · `deadlines-5-reminders` (Deadlines)
@@ -105,30 +106,6 @@ Cut the time and machine load of test runs so several worktrees can work at once
 - Out of scope: paid runners, squashing migrations, changes to the First Class workflow.
 - References: `faster-test-runs/research_test_timings.md`, `faster-test-runs/research_batch_test_load.md`, `faster-test-runs/research_finish_worktree_reruns.md`.
 
-## Educator interface code layout
-
-Priority: 🔴 High
-
-The educator interface's `views.py` and `actions.py` split into one `panels/<area>/` package per area, with tests mirrored. Parent: `educator-interface-refactor`.
-
-- `educator-interface-refactor-5-learner` — **in progress** — Moves the learner area, membership actions and import views into `panels/learner/`, breaks the learner/cohort cycle, and migrates stored bulk-action paths.
-- `educator-interface-refactor-6-cohort` — **blocked** by `educator-interface-refactor-5-learner` — Moves the cohort area, including reports and report download, into `panels/cohort/`, and migrates stored bulk-action paths.
-- `educator-interface-refactor-7-cleanup` — **blocked** by `educator-interface-refactor-6-cohort` — Deletes the emptied flat modules, trims `views.py` to the shell, and sweeps up old paths, docs and baselines.
-
-![Educator interface code layout](roadmap_diagrams/educator-interface-code-layout.svg)
-
-**Notes**
-- `educator-interface-refactor-3-staff` and `educator-interface-refactor-4-course` run in parallel with `educator-interface-refactor-2-dashboard-and-audit-log`. `educator-interface-refactor-5-learner` and then `educator-interface-refactor-6-cohort` follow it, and `educator-interface-refactor-7-cleanup` comes last.
-- Collisions: the parallel specs all cut ranges from `views.py`, `actions.py`, `test_views.py` and `test_actions.py`, and add lines to one import block. Each removes only its own ranges, so the conflicts stay mechanical.
-- Land the effort before `extract_panels_framework-5-package-and-install` and before the specs that add educator panels (`deadlines-6-educator-management`, `deadlines-7-educator-at-risk`, `corporate-job-course-recommendations-4-educator-interface-screens`, `audit-log-coverage-gaps`). Otherwise rebase them onto it.
-- Decided: a pure move. URL names, paths, the app label and template paths stay. There's no re-export shim. Each spec repoints every import and `mock.patch` string for what it moves.
-- Decided: an area holds `config.py`, `data_tables.py`, `data_table_panels.py`, `panels.py`, `instance_view.py` (a file), `actions.py`, `bulk_actions.py`, `filters.py` and `quick_view.py`, each only where it has content. Every `__init__.py` is empty.
-- Decided: a spec that moves registered bulk actions adds a new data migration rewriting `BulkActionRun.action_path`, with a reverse, and sets `requires_migrations: true`.
-- Decided: tests move with their code to `tests/panels/<area>/test_<module>.py`. `invariants/`, `playwright/` and `migrations/` stay where they are.
-- Assumed: `course` and `staff` are two areas. A cross-subclassed table lives in the area whose rows it lists. Learner import views go in `learner/import_views.py`.
-- Out of scope: any behaviour, UI, URL or template change, and the flat domain modules (`forms.py`, `staff.py`, `learner_import.py`, `messaging.py`).
-- References: `research_code_inventory.md`, `research_collisions.md` and `research_downstream_imports.md`, all in the parent.
-
 ## SACAA compliance
 
 Priority: 🔴 High
@@ -136,7 +113,7 @@ Priority: 🔴 High
 Quiz randomisation and a per-attempt record of the paper served, for training organisations audited by SACAA. Parent: `sacaa-compliance`.
 
 - `sacaa-compliance-3-question-pools` — **in progress** — Authors set a quiz page to draw N questions per attempt; every learner is scored out of the same total.
-- `sacaa-compliance-4-attempt-review` — **blocked** by `educator-interface-refactor-5-learner` — Educators see one learner's quiz attempt: paper served, answers and score. The form export carries the served order.
+- `sacaa-compliance-4-attempt-review` — **ready** — Educators see one learner's quiz attempt: paper served, answers and score. The form export carries the served order.
 
 ![SACAA compliance](roadmap_diagrams/sacaa-compliance.svg)
 
@@ -282,6 +259,29 @@ Applications become steps an applicant works through over weeks, decided by a de
   - what a resolver failure does (`multi-step-course-applications-5-requirements-and-resolver`).
 - Out of scope: outside systems reporting a step done, provider lists and distance ranking, more than one sign-off, and scanning uploaded files (not planned).
 - References: `research_review_foundations.md`, `research_help_requests.md` and `intake_courses_case.md` in the parent.
+
+## Educator interface code layout
+
+Priority: 🟠 Medium
+
+The educator interface's `views.py` and `actions.py` split into one `panels/<area>/` package per area, with tests mirrored. Parent: `educator-interface-refactor`.
+
+- `educator-interface-refactor-6-cohort` — **ready** — Moves the cohort area, including reports and report download, into `panels/cohort/`, and migrates stored bulk-action paths.
+- `educator-interface-refactor-7-cleanup` — **blocked** by `educator-interface-refactor-6-cohort` — Deletes the emptied flat modules, trims `views.py` to the shell, and sweeps up old paths, docs and baselines.
+
+![Educator interface code layout](roadmap_diagrams/educator-interface-code-layout.svg)
+
+**Notes**
+- `educator-interface-refactor-3-staff` and `educator-interface-refactor-4-course` run in parallel with `educator-interface-refactor-2-dashboard-and-audit-log`. `educator-interface-refactor-5-learner` and then `educator-interface-refactor-6-cohort` follow it, and `educator-interface-refactor-7-cleanup` comes last.
+- Collisions: the parallel specs all cut ranges from `views.py`, `actions.py`, `test_views.py` and `test_actions.py`, and add lines to one import block. Each removes only its own ranges, so the conflicts stay mechanical.
+- Land the effort before `extract_panels_framework-5-package-and-install` and before the specs that add educator panels (`deadlines-6-educator-management`, `deadlines-7-educator-at-risk`, `corporate-job-course-recommendations-4-educator-interface-screens`, `audit-log-coverage-gaps`). Otherwise rebase them onto it.
+- Decided: a pure move. URL names, paths, the app label and template paths stay. There's no re-export shim. Each spec repoints every import and `mock.patch` string for what it moves.
+- Decided: an area holds `config.py`, `data_tables.py`, `data_table_panels.py`, `panels.py`, `instance_view.py` (a file), `actions.py`, `bulk_actions.py`, `filters.py` and `quick_view.py`, each only where it has content. Every `__init__.py` is empty.
+- Decided: a spec that moves registered bulk actions adds a new data migration rewriting `BulkActionRun.action_path`, with a reverse, and sets `requires_migrations: true`.
+- Decided: tests move with their code to `tests/panels/<area>/test_<module>.py`. `invariants/`, `playwright/` and `migrations/` stay where they are.
+- Assumed: `course` and `staff` are two areas. A cross-subclassed table lives in the area whose rows it lists. Learner import views go in `learner/import_views.py`.
+- Out of scope: any behaviour, UI, URL or template change, and the flat domain modules (`forms.py`, `staff.py`, `learner_import.py`, `messaging.py`).
+- References: `research_code_inventory.md`, `research_collisions.md` and `research_downstream_imports.md`, all in the parent.
 
 ## Learner interface features
 
