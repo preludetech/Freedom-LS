@@ -167,6 +167,10 @@ Two choices behind the order. Step 0.5 runs the main-worktree sync before anythi
 
 `/sdd:commit_quickly` is the fast commit path for use during implementation: it stages the already-staged index if there is one, otherwise the files Claude touched this conversation (`mine`; `all` stages everything), and commits without running the test suite. Use it mid-implementation, when you already know the state of the work and want it recorded. When the commit is a checkpoint you have not verified, use a commit command that runs the targeted test tier first, if the project has one.
 
+`/sdd:hotfix <what is broken>` fixes one small bug in the main worktree, with no spec, plan or worktree. It writes a regression test and sees it fail, makes the fix, runs the targeted test tier on the files it touched, commits to `main` as `hotfix: <what was broken>` and pushes. It never runs the full suite unasked: when the test selector wants one, it asks first. It stops and recommends `/sdd:start` when the fix needs a migration, a new dependency, a product decision or more than a handful of files. After the push it corrects any doc the fix made wrong, as a second commit. It does not run the documentation hooks, which need a spec directory.
+
+![The `/sdd:hotfix` flow: the branch check, finding the cause, the failing test, the fix, the targeted tier, the commit, the push, the documentation commit and the report, with each stopping state to the right.](../docs/diagrams/hotfix.drawio.svg)
+
 ## The pre-step rebase
 
 ![The pre-step rebase flow: skip conditions, the project's Rebase command, the Front-end check hook, the upstream-change scan and the upstream-change review.](../docs/diagrams/rebase.drawio.svg)

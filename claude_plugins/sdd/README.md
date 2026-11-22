@@ -12,10 +12,10 @@ Manifest name: `sdd`. Namespace: `/sdd:*`, `Skill(sdd:*)`.
 
 ## What's inside (counted from disk)
 
-### Commands (16 files)
+### Commands (17 files)
 Flat under `commands/`: `README` (the workflow guide), `init`, `roadmap`, `register_design`, `start`,
 `spec_from_idea`, `spec_review`, `plan_from_spec`, `implement_plan`, `document`, `commit_quickly`,
-`make_pr_quickly`, `finish_worktree`, `capture_feedback`, `do_qa`, `qa_fix`.
+`make_pr_quickly`, `finish_worktree`, `capture_feedback`, `do_qa`, `qa_fix`, `hotfix`.
 
 `/sdd:document` invokes the skills the project lists under `## Documentation Hooks` in
 `.claude/sdd/config.md`, in order, in hook mode, then executes the documentation items in `todo.md` and opens the pull request. Each hook is a skill that commits
