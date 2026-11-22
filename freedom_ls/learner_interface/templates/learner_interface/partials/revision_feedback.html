@@ -40,7 +40,7 @@
     {% endif %}
     {% for link in section_links %}
         {% if review.was_correct %}
-            <c-button variant="link" href="{{ link.url }}">Revise: {{ link.title }}</c-button>
+            <c-button variant="link" class="px-0" href="{{ link.url }}">Revise: {{ link.title }}</c-button>
         {% else %}
             <c-button href="{{ link.url }}">Revise: {{ link.title }}</c-button>
         {% endif %}

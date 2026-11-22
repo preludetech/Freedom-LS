@@ -75,6 +75,13 @@ def _left_edge(locator: Locator) -> float:
     return box["x"]
 
 
+def _text_left_edge(locator: Locator) -> float:
+    """Left edge of a link's label: its box edge plus its own left padding."""
+    return _left_edge(locator) + float(
+        locator.evaluate("el => parseFloat(getComputedStyle(el).paddingLeft)")
+    )
+
+
 def test_learner_works_through_a_revision_session(
     live_server: LiveServer,
     logged_in_page: Page,
@@ -134,6 +141,10 @@ def test_learner_works_through_a_revision_session(
 
     page.reload()
     expect(feedback.get_by_text("Correct.")).to_be_visible()
+    # The text-style section link sits on the card's left edge, not inset by button padding.
+    assert _text_left_edge(
+        feedback.get_by_role("link", name="Revise: Write Errors")
+    ) == _left_edge(feedback.get_by_text("Correct."))
     expect(feedback.get_by_role("button", name="I guessed")).to_have_attribute(
         "aria-pressed", "true"
     )
@@ -151,6 +162,18 @@ def test_learner_works_through_a_revision_session(
     # The missed list shares the card's left edge and shows no bullet markers.
     assert _left_edge(missed) == _left_edge(page.get_by_test_id("revision-end"))
     assert missed.evaluate("el => getComputedStyle(el).listStyleType") == "none"
+    # Text-style links share that left edge too, not inset by button padding.
+    end_edge = _left_edge(page.get_by_test_id("revision-end"))
+    assert (
+        _text_left_edge(missed.get_by_role("link", name="Revise: Write Errors"))
+        == end_edge
+    )
+    assert (
+        _text_left_edge(
+            page.locator("#revision-card").get_by_role("link", name="Back to course")
+        )
+        == end_edge
+    )
 
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)

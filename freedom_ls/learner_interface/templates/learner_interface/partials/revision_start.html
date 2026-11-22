@@ -2,7 +2,7 @@
     <h1>Revision</h1>
     {% if not has_questions %}
         <p>This course has no revision questions.</p>
-        <c-button variant="link" href="{% url 'learner_interface:course_detail' course.slug %}">Back to course</c-button>
+        <c-button variant="link" class="px-0" href="{% url 'learner_interface:course_detail' course.slug %}">Back to course</c-button>
     {% elif bank_is_empty %}
         <p>Questions appear here after you finish a section.</p>
         <c-button href="{% url 'learner_interface:course_home' course.slug %}">Continue course</c-button>

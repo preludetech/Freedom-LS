@@ -6,7 +6,7 @@
                 <li class="py-3 space-y-2">
                     <div>{{ item.question.rendered_question }}</div>
                     {% for link in item.section_links %}
-                        <c-button variant="link" href="{{ link.url }}">Revise: {{ link.title }}</c-button>
+                        <c-button variant="link" class="px-0" href="{{ link.url }}">Revise: {{ link.title }}</c-button>
                     {% endfor %}
                 </li>
             {% endfor %}
@@ -21,5 +21,5 @@
             <c-button type="submit">Revise more</c-button>
         </form>
     {% endif %}
-    <c-button variant="link" href="{% url 'learner_interface:course_detail' course.slug %}">Back to course</c-button>
+    <c-button variant="link" class="px-0" href="{% url 'learner_interface:course_detail' course.slug %}">Back to course</c-button>
 </div>

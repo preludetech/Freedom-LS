@@ -5,7 +5,7 @@ button; compact is the one line under the outline panel's progress bar.
 {% endcomment %}
 {% if compact %}
     <p class="mt-2 text-sm flex items-center gap-2" data-testid="revision-link">
-        <c-button variant="link" href="{% url 'learner_interface:course_revision' course.slug %}">Revision</c-button>
+        <c-button variant="link" class="px-0" href="{% url 'learner_interface:course_revision' course.slug %}">Revision</c-button>
         <span class="text-muted">{{ revision_ready_text }}</span>
     </p>
 {% else %}
