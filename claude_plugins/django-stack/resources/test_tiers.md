@@ -103,7 +103,8 @@ Each setting comes from its environment variable, then from `[tool.test_tiers.me
 | `max_retries` | `DS_TEST_MAX_RETRIES` | 2 | Crash retries after the first pytest attempt |
 | `oom_score_adj` | `DS_TEST_OOM_SCORE_ADJ` | 500 | Set on the pytest child; 0 skips |
 
-`DS_TEST_MEMORY_GUARD=off` runs the command unchanged: no gate, sizing, retry or extra lines.
+`DS_TEST_MEMORY_GUARD=off` runs the command unchanged: no gate, sizing, retry or extra lines. A
+record file that `DS_TEST_RECORD_PATH` names is still written.
 
 ## A single test run
 

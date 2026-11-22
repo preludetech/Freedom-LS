@@ -194,7 +194,17 @@ Follow `${CLAUDE_PLUGIN_ROOT}/resources/test_tiers.md`.
 
 `<tier>` is `none` → report `tier: none` and go to Step 10. The caller runs its own tier.
 
-`<tier>` is `full` → run the full tier.
+`<tier>` is `full` → run the full tier. A remote full tier tests what `origin` holds, and the
+rebase rewrote the branch, so first:
+
+- Upstream (from Step 1) →
+
+      git push origin HEAD --force-with-lease --force-if-includes
+
+  A refusal is handled as in Step 12. Step 12 still pushes, so commits made after this one reach
+  `origin` too.
+- No upstream → nothing is pushed. Run the full tier with `DS_TEST_REMOTE=off` before the command,
+  so it runs locally.
 
 `<tier>` is `targeted` →
 
