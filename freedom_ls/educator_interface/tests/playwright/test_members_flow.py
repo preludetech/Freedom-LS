@@ -201,7 +201,6 @@ def test_staff_list_layout_flow(
     table = main.get_by_role("table")
     card = main.locator("[data-card-primary-line]").first
 
-    # Table at 1280, cards beside the quick view, cards at 768.
     page.set_viewport_size({"width": 1280, "height": 800})
     page.goto(staff_url)
     expect(table, "table hidden at 1280px").to_be_visible()
@@ -224,7 +223,6 @@ def test_staff_list_layout_flow(
     assert _staff_buttons_outside_the_viewport(page) == [], "button cut off at 768px"
     assert_no_horizontal_overflow(page)
 
-    # Touch targets on a phone.
     page.set_viewport_size(QA_VIEWPORTS[0])
     page.goto(staff_url)
     vee_card = main.locator("li").filter(has_text="Vee Viewer")
@@ -336,7 +334,6 @@ def test_add_staff_dialog_layout_flow(
             f"results listbox width differs from the input at {width}px"
         )
 
-    # Role step.
     page.set_viewport_size({"width": 375, "height": 812})
     page.goto(staff_url)
     add_staff.first.click()

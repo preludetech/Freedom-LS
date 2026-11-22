@@ -141,7 +141,6 @@ def test_quick_view_messaging_flow(
     expect(quick_view).to_be_visible()
     expect(box).to_have_value("")
 
-    # Bottom sheet on a phone.
     page.set_viewport_size(PHONE)
     page.goto(_learners_url(live_server, organisation.slug))
     page.get_by_role("link", name="Quick view: Kai Ngata", exact=True).first.click()
@@ -161,7 +160,6 @@ def test_quick_view_messaging_flow(
     expect(quick_view).to_be_visible()
     assert_no_horizontal_overflow(page)
 
-    # The drawer holding the box has no horizontal overflow at any viewport.
     for viewport in QA_VIEWPORTS:
         width = viewport["width"]
         page.set_viewport_size(viewport)

@@ -41,7 +41,7 @@ _PHONE = QA_VIEWPORTS[0]
 _DESKTOP = {"width": 1442, "height": 900}
 
 
-def test_educator_navigates_and_creates_a_cohort_on_a_phone(
+def test_mobile_navigation_flow(
     live_server,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
@@ -248,7 +248,6 @@ def test_educator_navigates_and_creates_a_cohort_on_a_phone(
     expect(sheet).to_be_visible()
     page.wait_for_function(docked_beside_content)
 
-    # Organisation switcher popover.
     page.set_viewport_size({"width": 1024, "height": 768})
     page.goto(cohorts_url)
     trigger = page.get_by_role("button", name="Switch organisation")
@@ -371,7 +370,6 @@ def test_navigation_without_javascript_flow(
         nav = plain.locator("dialog[aria-label='Navigation']")
         open_navigation = plain.get_by_role("button", name="Open navigation panel")
 
-        # Left column at 1920.
         plain.set_viewport_size(QA_VIEWPORTS[2])
         plain.goto(url)
         expect(nav.get_by_role("link", name="Cohorts")).to_be_visible()
@@ -394,7 +392,6 @@ def test_navigation_without_javascript_flow(
         )
         assert_no_horizontal_overflow(plain)
 
-        # Block above the content on a phone.
         plain.set_viewport_size(_PHONE)
         plain.goto(url)
         expect(nav.get_by_role("link", name="Cohorts")).to_be_visible()
