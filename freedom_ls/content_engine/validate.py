@@ -1003,6 +1003,76 @@ def validate_children_lists(
     return errors
 
 
+_reference_list_error = functools.partial(
+    _reference_error, header="Invalid reference list"
+)
+_PART_NAMED_TWICE = {
+    "problem": "this part is named twice",
+    "fix": "Name each part once.",
+}
+
+
+def _learning_path_keys(course: Course, ignore: frozenset[Path]) -> set[Path]:
+    try:
+        return {path for path, _ in collection_children(course, ignore=ignore)}
+    except ValueError:
+        # Auto-discovery met a file that does not parse. That file's own validation
+        # reports it, and the loader stops on it, so the overlap check is skipped.
+        return set()
+
+
+def validate_reference_lists(
+    all_parsed: Sequence[BaseBaseContentModel],
+    *,
+    ignore: frozenset[Path] = frozenset(),
+) -> list[str]:
+    """Check every course's reference: list against the files it names.
+
+    A reference part sits outside the learning path, so it may not also be a child of the
+    course, and it must be a part file.
+    """
+    errors: list[str] = []
+    # Reads from disk when a part sits outside the validated path, so validating one
+    # course directory gives the same answer as loading the whole tree.
+    by_path = _ParsedByPath(all_parsed, ignore=ignore)
+    for course in all_parsed:
+        if not isinstance(course, Course) or not course.reference:
+            continue
+        keys = [resolve_author_path(course.file_path, e.path) for e in course.reference]
+        repeated = _repeated_indices(keys)
+        learning_path = _learning_path_keys(course, ignore)
+        for index, (entry, key) in enumerate(zip(course.reference, keys, strict=True)):
+            error = functools.partial(
+                _reference_list_error,
+                course.file_path,
+                course.content_type,
+                f"reference[{index}]",
+                str(entry.path),
+            )
+            if index in repeated:
+                errors.append(error(**_PART_NAMED_TWICE))
+            if key in learning_path:
+                errors.append(
+                    error(
+                        problem="this part is also one of the course's children",
+                        fix="List the part under children: or under reference:, not both.",
+                    )
+                )
+            target = by_path.get(key)
+            if target is None:
+                # Nothing at this path, or a file that does not parse: the loader's
+                # "was not loaded" error and the file's own validation report those.
+                continue
+            if not isinstance(target, CoursePart):
+                errors.append(
+                    error(
+                        problem=f"this file is a {target.content_type}, not a COURSE_PART",
+                        fix="Point the entry at a part.yaml.",
+                    )
+                )
+    return errors
+
+
 def validate_due_date_placements(
     all_parsed: Sequence[BaseBaseContentModel],
     *,
@@ -1640,6 +1710,8 @@ def validate(path: Path | str, *, ignore: frozenset[Path] = frozenset()) -> None
     for message in validate_widget_references(all_parsed):
         failed_files.append((path, message))
     for message in validate_children_lists(all_parsed, ignore=ignore):
+        failed_files.append((path, message))
+    for message in validate_reference_lists(all_parsed, ignore=ignore):
         failed_files.append((path, message))
     for message in validate_due_date_placements(all_parsed, ignore=ignore):
         failed_files.append((path, message))

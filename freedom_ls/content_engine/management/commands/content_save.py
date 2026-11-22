@@ -96,6 +96,7 @@ from freedom_ls.content_engine.validate import (
     validate_due_date_placements,
     validate_form_section_placement,
     validate_question_sections,
+    validate_reference_lists,
 )
 from freedom_ls.form_engine import schema as form_schema
 from freedom_ls.form_engine.models import (
@@ -1640,6 +1641,7 @@ def save_content_to_db(
         for source in sources
         for error in (
             *validate_children_lists(source.all_parsed, ignore=source.ignore),
+            *validate_reference_lists(source.all_parsed, ignore=source.ignore),
             *validate_due_date_placements(source.all_parsed, ignore=source.ignore),
             *validate_form_section_placement(
                 source.all_parsed, check_form_folder=source.path.is_dir()

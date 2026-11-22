@@ -20,6 +20,7 @@ from freedom_ls.content_engine.validate import (
     validate_form_section_placement,
     validate_form_shuffle,
     validate_question_sections,
+    validate_reference_lists,
 )
 
 # Tests for the content scanner: file discovery and cross-file validation
@@ -1224,6 +1225,136 @@ def test_part_auto_discovery_still_adopts_reference_subdirectory(
     found = auto_discovered_children(part_file)
 
     assert found == [(tmp_path / "reference" / "content.md").resolve()]
+
+
+# Cross-file validation of a course's `reference:` list.
+
+
+def _reference_list_errors(directory: Path) -> list[str]:
+    parsed = [
+        item
+        for file_path in get_all_files(directory)
+        for item in parse_single_file(file_path)
+    ]
+    return validate_reference_lists(parsed)
+
+
+def _course_with_lists(
+    path: Path, *, children: list[str], reference: list[str]
+) -> Path:
+    """A course with the given children: and reference: paths. A child named intro.md
+    is written beside the course as a topic."""
+    if "intro.md" in children:
+        _topic(path.parent / "intro.md")
+    child_lines = "".join(f"  - path: {c}\n" for c in children)
+    reference_lines = "".join(f"  - path: {r}\n" for r in reference)
+    children_block = f"children:\n{child_lines}"
+    return _write_widget_file(
+        path,
+        "---\ncontent_type: COURSE\ntitle: A Course\n"
+        f"{children_block}reference:\n{reference_lines}---\n",
+    )
+
+
+def test_a_part_named_twice_in_a_reference_list_fails(tmp_path: Path) -> None:
+    _part(tmp_path / "glossary" / "part.yaml")
+    _course_with_lists(
+        tmp_path / "course.md",
+        children=["intro.md"],
+        reference=["glossary/part.yaml", "./glossary/part.yaml"],
+    )
+
+    errors = _reference_list_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "Invalid reference list" in errors[0]
+    assert "course.md" in errors[0]
+    assert "reference[1]" in errors[0]
+    assert "this part is named twice" in errors[0]
+
+
+def test_a_reference_part_that_is_an_explicit_child_fails(tmp_path: Path) -> None:
+    _part(tmp_path / "glossary" / "part.yaml")
+    _course_with_lists(
+        tmp_path / "course.md",
+        children=["glossary/part.yaml"],
+        reference=["glossary/part.yaml"],
+    )
+
+    errors = _reference_list_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "Invalid reference list" in errors[0]
+    assert "reference[0]" in errors[0]
+    assert "this part is also one of the course's children" in errors[0]
+
+
+def test_a_reference_part_that_is_an_auto_discovered_child_fails(
+    tmp_path: Path,
+) -> None:
+    _part(tmp_path / "glossary" / "part.yaml")
+    _write_widget_file(
+        tmp_path / "course.md",
+        "---\ncontent_type: COURSE\ntitle: A Course\n"
+        "reference:\n  - path: glossary/part.yaml\n---\n",
+    )
+
+    errors = _reference_list_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "reference[0]" in errors[0]
+    assert "this part is also one of the course's children" in errors[0]
+
+
+def test_a_reference_entry_naming_a_topic_fails_naming_its_type(
+    tmp_path: Path,
+) -> None:
+    _topic(tmp_path / "topic.md")
+    _course_with_lists(
+        tmp_path / "course.md", children=["intro.md"], reference=["topic.md"]
+    )
+
+    errors = _reference_list_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "Invalid reference list" in errors[0]
+    assert "reference[0]" in errors[0]
+    assert "this file is a TOPIC, not a COURSE_PART" in errors[0]
+
+
+def test_a_reference_entry_naming_nothing_gives_no_message_here(
+    tmp_path: Path,
+) -> None:
+    _course_with_lists(
+        tmp_path / "course.md", children=["intro.md"], reference=["missing/part.yaml"]
+    )
+
+    assert _reference_list_errors(tmp_path) == []
+
+
+def test_a_distinct_reference_part_outside_the_learning_path_passes(
+    tmp_path: Path,
+) -> None:
+    _part(tmp_path / "glossary" / "part.yaml")
+    _course_with_lists(
+        tmp_path / "course.md", children=["intro.md"], reference=["glossary/part.yaml"]
+    )
+
+    assert _reference_list_errors(tmp_path) == []
+
+
+def test_validate_lists_a_repeated_reference_part_in_the_report(tmp_path: Path) -> None:
+    _part(tmp_path / "glossary" / "part.yaml")
+    _course_with_lists(
+        tmp_path / "course.md",
+        children=["intro.md"],
+        reference=["glossary/part.yaml", "glossary/part.yaml"],
+    )
+
+    with pytest.raises(ValueError, match="Validation failed") as exc_info:
+        validate(tmp_path)
+
+    assert "this part is named twice" in str(exc_info.value)
 
 
 # Cross-file validation of a form's `when` conditions.

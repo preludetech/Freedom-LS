@@ -4545,10 +4545,20 @@ _REFERENCE_UUIDS = {
 }
 
 
+def _write_intro_topic(course_dir: Path) -> None:
+    """The one learning path child of a reference course. A course with no children:
+    entries auto-discovers every part beside it, which would place the reference parts."""
+    (course_dir / "intro.md").write_text(
+        "---\ncontent_type: TOPIC\ntitle: Intro\n---\n\nBody\n"
+    )
+
+
 def _write_course_with_reference(course_dir: Path, order: list[str]) -> None:
-    """A course with no learning path whose reference: list names the parts in `order`."""
+    """A course whose learning path is one intro topic and whose reference: list names
+    the parts in `order`."""
     shutil.rmtree(course_dir, ignore_errors=True)
     course_dir.mkdir(parents=True)
+    _write_intro_topic(course_dir)
     for name, part_uuid in _REFERENCE_UUIDS.items():
         part_dir = course_dir / name
         part_dir.mkdir()
@@ -4558,7 +4568,7 @@ def _write_course_with_reference(course_dir: Path, order: list[str]) -> None:
     entries = "".join(f"  - path: {name}/part.yaml\n" for name in order)
     (course_dir / "course.md").write_text(
         f"---\ncontent_type: COURSE\ntitle: Reference course\nuuid: {COURSE_UUID}\n"
-        f"children: []\nreference:\n{entries}---\n"
+        f"children:\n  - path: intro.md\nreference:\n{entries}---\n"
     )
 
 
@@ -4619,6 +4629,7 @@ def test_reloading_unchanged_files_keeps_the_same_reference_rows(
 def _write_second_reference_course(course_dir: Path) -> None:
     """A second course, with its own reference part, in a directory of its own."""
     course_dir.mkdir(parents=True)
+    _write_intro_topic(course_dir)
     part_dir = course_dir / "appendix"
     part_dir.mkdir()
     (part_dir / "part.yaml").write_text(
@@ -4628,7 +4639,7 @@ def _write_second_reference_course(course_dir: Path) -> None:
     (course_dir / "course.md").write_text(
         "---\ncontent_type: COURSE\ntitle: Second course\n"
         "uuid: 20000000-0000-0000-0000-000000000002\n"
-        "children: []\nreference:\n  - path: appendix/part.yaml\n---\n"
+        "children:\n  - path: intro.md\nreference:\n  - path: appendix/part.yaml\n---\n"
     )
 
 
@@ -4699,7 +4710,7 @@ def test_a_reference_path_that_was_not_loaded_raises_and_writes_nothing(
         _write_course_with_reference(course_dir, ["glossary"])
         (course_dir / "course.md").write_text(
             f"---\ncontent_type: COURSE\ntitle: Reference course\nuuid: {COURSE_UUID}\n"
-            "children: []\nreference:\n  - path: glossary/part.yaml\n"
+            "children:\n  - path: intro.md\nreference:\n  - path: glossary/part.yaml\n"
             "  - path: ../outside/part.yaml\n---\n"
         )
 
@@ -4730,6 +4741,58 @@ def test_a_reference_entry_naming_a_file_that_is_not_a_part_raises(
             {resolve_author_path(course_file, "topic.md"): topic},
         )
 
+    assert not CourseReferencePart.objects.exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("entries", "problem"),
+    [
+        (
+            ["glossary/part.yaml", "glossary/part.yaml"],
+            "this part is named twice",
+        ),
+        (["topic.md"], "this file is a TOPIC, not a COURSE_PART"),
+    ],
+)
+def test_a_bad_reference_list_raises_before_any_write(
+    site, mock_site_context, tmp_path, entries, problem
+):
+    _write_course_with_reference(tmp_path, ["glossary"])
+    (tmp_path / "topic.md").write_text(
+        "---\ncontent_type: TOPIC\ntitle: A Topic\n"
+        "uuid: 20000000-0000-0000-0000-000000000063\n---\n\nBody\n"
+    )
+    listed = "".join(f"  - path: {entry}\n" for entry in entries)
+    (tmp_path / "course.md").write_text(
+        f"---\ncontent_type: COURSE\ntitle: Reference course\nuuid: {COURSE_UUID}\n"
+        f"children:\n  - path: intro.md\nreference:\n{listed}---\n"
+    )
+
+    with pytest.raises(ValueError, match="Invalid reference list") as exc_info:
+        save_content_to_db(tmp_path, site.name)
+
+    assert "reference[" in str(exc_info.value)
+    assert problem in str(exc_info.value)
+    assert not Course.objects.exists()
+    assert not CourseReferencePart.objects.exists()
+
+
+@pytest.mark.django_db
+def test_a_reference_part_that_is_also_a_child_raises_before_any_write(
+    site, mock_site_context, tmp_path
+):
+    _write_course_with_reference(tmp_path, ["glossary"])
+    (tmp_path / "course.md").write_text(
+        f"---\ncontent_type: COURSE\ntitle: Reference course\nuuid: {COURSE_UUID}\n"
+        "children:\n  - path: glossary/part.yaml\n"
+        "reference:\n  - path: glossary/part.yaml\n---\n"
+    )
+
+    with pytest.raises(ValueError, match="also one of the course's children"):
+        save_content_to_db(tmp_path, site.name)
+
+    assert not Course.objects.exists()
     assert not CourseReferencePart.objects.exists()
 
 
