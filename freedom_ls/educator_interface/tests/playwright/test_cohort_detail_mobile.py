@@ -19,7 +19,7 @@ from django.urls import reverse
 from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.tests.playwright_fixtures import _LOGGED_IN_PASSWORD, _login_via_ui
+from freedom_ls.tests.playwright_fixtures import _LOGGED_IN_PASSWORD, sign_in
 
 # transaction=True so the live server's own DB connection sees the fixture
 # data this test's connection committed.
@@ -49,15 +49,19 @@ def mobile_educator_page(
 ) -> Page:
     """A Playwright Page at a phone viewport, logged in as mobile_educator."""
     page.set_viewport_size({"width": _PHONE_WIDTH, "height": 812})
-    _login_via_ui(page, live_server, str(mobile_educator.email), _LOGGED_IN_PASSWORD)
+    sign_in(page, live_server, mobile_educator)
     return page
 
 
-def test_cohort_page_header_and_tabs_fit_a_phone(
+def test_cohort_detail_mobile_flow(
     live_server,
     mobile_educator_page: Page,
     mobile_educator: AbstractBaseUser,
 ) -> None:
+    """At 375px the cohort header carries no badge or stats, the tabs are
+    visible, the page does not overflow horizontally, and the History tab opens
+    with the active tab in view of the scrolling strip."""
+    page = mobile_educator_page
     organisation = OrganisationFactory()
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, mobile_educator, "organisation_admin", organisation)
@@ -70,50 +74,39 @@ def test_cohort_page_header_and_tabs_fit_a_phone(
             "path_string": f"cohorts/{cohort.pk}",
         },
     )
-    mobile_educator_page.goto(f"{live_server.url}{path}")
+    page.goto(f"{live_server.url}{path}")
 
-    expect(mobile_educator_page.locator("#instance-title")).to_have_text(
-        "Evening group"
-    )
-    header = mobile_educator_page.locator("#instance-title").locator(
+    expect(page.locator("#instance-title")).to_have_text("Evening group")
+    header = page.locator("#instance-title").locator(
         "xpath=ancestor::div[contains(@class, 'justify-between')][1]"
     )
     # Active is the default state and the tabs count learners and courses,
     # so the header carries neither a badge nor stats.
-    expect(header.get_by_text("Active", exact=True)).to_have_count(0)
-    expect(header.get_by_text("Learners", exact=True)).to_have_count(0)
-    tabs = mobile_educator_page.get_by_role("navigation", name="Cohort sections")
+    expect(
+        header.get_by_text("Active", exact=True), "header shows a badge"
+    ).to_have_count(0)
+    expect(
+        header.get_by_text("Learners", exact=True), "header shows stats"
+    ).to_have_count(0)
+    tabs = page.get_by_role("navigation", name="Cohort sections")
     expect(tabs.get_by_role("link", name=re.compile("^Learners"))).to_be_visible()
     expect(tabs.get_by_role("link", name="Overview")).to_be_visible()
-    assert (
-        mobile_educator_page.evaluate("document.documentElement.scrollWidth")
-        <= _PHONE_WIDTH
+    assert page.evaluate("document.documentElement.scrollWidth") <= _PHONE_WIDTH, (
+        "cohort page overflows horizontally at 375px"
     )
 
-
-def test_the_tab_strip_opens_with_the_active_tab_in_view_on_a_phone(
-    live_server,
-    mobile_educator_page: Page,
-    mobile_educator: AbstractBaseUser,
-) -> None:
-    """The strip scrolls sideways on a phone, and the last tabs start off
-    screen."""
-    organisation = OrganisationFactory()
-    grantor = LearnerFactory(user__superuser=True).user
-    assign_role(grantor, mobile_educator, "organisation_admin", organisation)
-    cohort = CohortFactory(organisation=organisation, name="Evening group")
-    path = reverse(
+    # The strip scrolls sideways on a phone, and the last tabs start off screen.
+    history_path = reverse(
         "educator_interface:interface",
         kwargs={
             "organisation_slug": organisation.slug,
             "path_string": f"cohorts/{cohort.pk}/__tabs/history",
         },
     )
-
-    mobile_educator_page.goto(f"{live_server.url}{path}")
-
-    tabs = mobile_educator_page.get_by_role("navigation", name="Cohort sections")
+    page.goto(f"{live_server.url}{history_path}")
     active = tabs.locator("a[aria-current='page']")
     expect(active).to_have_text("History")
     # Short of 1 only by the sub-pixel rounding of the strip's own edge.
-    expect(active).to_be_in_viewport(ratio=0.99)
+    expect(active, "History tab not in view of the tab strip").to_be_in_viewport(
+        ratio=0.99
+    )

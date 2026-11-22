@@ -1,5 +1,10 @@
-"""The audit log's "What" filter: a grouped checklist applied once, in the
-desktop toolbar and in the phone sheet."""
+"""The audit log page, in one flow.
+
+Proves: at 768px the When cell keeps date and time on one line and the Who
+cell stays at least 160px wide beside a long What cell; at 375px the Filter
+sheet lists the actions under collapsed groups and filters to the ticked
+action; on desktop the toolbar "What" checklist narrows the log and sets the
+``audit_log-what`` URL parameter."""
 
 from __future__ import annotations
 
@@ -22,82 +27,10 @@ pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
 def _seed(educator_user: AbstractBaseUser):
     organisation = OrganisationFactory(name="Org A")
-    grantor = LearnerFactory(user__superuser=True).user
+    grantor = LearnerFactory(user__superuser=True, user__email="demodev@email.com").user
     assign_role(grantor, educator_user, "organisation_admin", organisation)
     AuditLogEntryFactory(target=organisation, actor=grantor, action="cohort.created")
     AuditLogEntryFactory(target=organisation, actor=grantor, action="cohort.renamed")
-    return organisation
-
-
-def test_ticking_an_action_in_the_toolbar_checklist_narrows_the_log(
-    live_server, educator_logged_in_page: Page, educator_user: AbstractBaseUser
-) -> None:
-    page = educator_logged_in_page
-    organisation = _seed(educator_user)
-    page.goto(interface_url(live_server, organisation.slug, "audit-log"))
-    main = page.locator("#main-content")
-    # Header row, the two seeded entries and the role assignment that gave
-    # the educator access.
-    expect(main.get_by_role("row")).to_have_count(4)
-
-    main.get_by_text("Add filter", exact=True).click()
-    main.locator("summary", has_text="What").click()
-    checklist = main.locator("form").filter(
-        has=page.get_by_role("button", name="Apply", exact=True)
-    )
-    checklist.get_by_label("Cohort created", exact=True).check()
-    checklist.get_by_role("button", name="Apply", exact=True).click()
-
-    expect(page).to_have_url(re.compile(r"audit_log-what=cohort\.created"))
-    expect(main.get_by_role("row")).to_have_count(2)
-
-
-def test_the_phone_sheet_lists_the_actions_under_collapsed_groups(
-    live_server, educator_logged_in_page: Page, educator_user: AbstractBaseUser
-) -> None:
-    page = educator_logged_in_page
-    organisation = _seed(educator_user)
-    page.set_viewport_size({"width": 375, "height": 812})
-    page.goto(interface_url(live_server, organisation.slug, "audit-log"))
-
-    page.get_by_role("button", name="Filter", exact=True).click()
-    sheet = page.get_by_role("dialog", name="Filter")
-    expect(sheet).to_be_visible()
-    sheet.get_by_text("Cohorts", exact=True).click()
-    sheet.get_by_label("Cohort created", exact=True).check()
-    sheet.get_by_role("button", name="Show results", exact=True).click()
-
-    expect(page).to_have_url(re.compile(r"audit_log-what=cohort\.created"))
-    expect(page.locator("#main-content").get_by_role("listitem")).to_have_count(1)
-
-
-def test_when_cell_keeps_date_and_time_on_one_line_at_the_md_breakpoint(
-    live_server, educator_logged_in_page: Page, educator_user: AbstractBaseUser
-) -> None:
-    """At 768px the When cell wrapped the time under the date, making every
-    audit log row two lines tall."""
-    page = educator_logged_in_page
-    organisation = _seed(educator_user)
-    page.set_viewport_size({"width": 768, "height": 1024})
-    page.goto(interface_url(live_server, organisation.slug, "audit-log"))
-
-    spans = page.locator("#main-content table tbody tr time").first.locator("span")
-    date_box = spans.nth(0).bounding_box()
-    time_box = spans.nth(1).bounding_box()
-    assert date_box is not None
-    assert time_box is not None
-    assert time_box["y"] == date_box["y"]
-
-
-def test_who_cell_keeps_the_actor_name_readable_at_the_md_breakpoint(
-    live_server, educator_logged_in_page: Page, educator_user: AbstractBaseUser
-) -> None:
-    """At 768px a long What cell squeezed the Who column to a single
-    character, leaving the actor's name unreadable."""
-    page = educator_logged_in_page
-    organisation = OrganisationFactory(name="Org A")
-    grantor = LearnerFactory(user__superuser=True, user__email="demodev@email.com").user
-    assign_role(grantor, educator_user, "organisation_admin", organisation)
     AuditLogEntryFactory(
         target=organisation,
         actor=grantor,
@@ -105,9 +38,74 @@ def test_who_cell_keeps_the_actor_name_readable_at_the_md_breakpoint(
         target_label="Learner registered for course Functionality Demo - Course Parts "
         * 3,
     )
-    page.set_viewport_size({"width": 768, "height": 1024})
-    page.goto(interface_url(live_server, organisation.slug, "audit-log"))
+    return organisation
 
-    who_cell = page.locator("#main-content table tbody tr td").nth(2)
-    width = who_cell.evaluate("el => el.getBoundingClientRect().width")
-    assert width >= 160
+
+def test_audit_log_flow(
+    live_server, educator_logged_in_page: Page, educator_user: AbstractBaseUser
+) -> None:
+    """Covers the 768px When and Who cell layout, the 375px Filter sheet and
+    the desktop "What" checklist."""
+    page = educator_logged_in_page
+    organisation = _seed(educator_user)
+    audit_log_url = interface_url(live_server, organisation.slug, "audit-log")
+    main = page.locator("#main-content")
+
+    # At 768px the When cell wrapped the time under the date, making every
+    # audit log row two lines tall.
+    page.set_viewport_size({"width": 768, "height": 1024})
+    page.goto(audit_log_url)
+    spans = main.locator("table tbody tr time").first.locator("span")
+    date_box = spans.nth(0).bounding_box()
+    time_box = spans.nth(1).bounding_box()
+    assert date_box is not None, "When cell date span has no box at 768px"
+    assert time_box is not None, "When cell time span has no box at 768px"
+    assert time_box["y"] == date_box["y"], (
+        "When cell wraps the time under the date at 768px"
+    )
+
+    # A long What cell squeezed the Who column to a single character.
+    long_label_row = main.locator("table tbody tr").filter(
+        has_text="Learner registered for course"
+    )
+    who_width = (
+        long_label_row.locator("td")
+        .nth(2)
+        .evaluate("el => el.getBoundingClientRect().width")
+    )
+    assert who_width >= 160, "Who cell narrower than 160px at 768px"
+
+    # The phone sheet lists the actions under collapsed groups. Filtering
+    # navigates, so this runs before the desktop checklist reloads the page.
+    page.set_viewport_size({"width": 375, "height": 812})
+    page.goto(audit_log_url)
+    page.get_by_role("button", name="Filter", exact=True).click()
+    sheet = page.get_by_role("dialog", name="Filter")
+    expect(sheet, "Filter sheet not visible at 375px").to_be_visible()
+    sheet.get_by_text("Cohorts", exact=True).click()
+    sheet.get_by_label("Cohort created", exact=True).check()
+    sheet.get_by_role("button", name="Show results", exact=True).click()
+    expect(page, "phone sheet did not set the what filter in the URL").to_have_url(
+        re.compile(r"audit_log-what=cohort\.created")
+    )
+    expect(
+        main.get_by_role("listitem"), "phone sheet filter should leave two entries"
+    ).to_have_count(2)
+
+    # Desktop toolbar checklist, from an unfiltered page.
+    page.set_viewport_size({"width": 1280, "height": 900})
+    page.goto(audit_log_url)
+    # Header row, the three seeded entries and the role assignment that gave
+    # the educator access.
+    expect(main.get_by_role("row"), "unfiltered log row count").to_have_count(5)
+    main.get_by_text("Add filter", exact=True).click()
+    main.locator("summary", has_text="What").click()
+    checklist = main.locator("form").filter(
+        has=page.get_by_role("button", name="Apply", exact=True)
+    )
+    checklist.get_by_label("Cohort created", exact=True).check()
+    checklist.get_by_role("button", name="Apply", exact=True).click()
+    expect(
+        page, "toolbar checklist did not set the what filter in the URL"
+    ).to_have_url(re.compile(r"audit_log-what=cohort\.created"))
+    expect(main.get_by_role("row"), "filtered log row count").to_have_count(3)
