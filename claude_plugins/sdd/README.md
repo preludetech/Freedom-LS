@@ -56,6 +56,14 @@ the consuming specs at it. `spec_from_idea` and `plan_from_spec` read any `desig
 key under `## Test Hooks` in `.claude/sdd/config.md`; a blank key falls back to the project's plain pytest command.
 The `Pre-test rebuild` key in the same section names a script `/sdd:finish_worktree` runs before its checkpoint run.
 
+A `full` tier is recorded: `claude_plugins/sdd/scripts/full_run_record.py` notes the commit before the run and writes
+the verdict after it, so a later `checkpoint` can tell whether a full run already covers the code. When the tier
+definition prints a remote command (the optional `[tool.test_tiers.remote]` table, see
+`claude_plugins/django-stack/README.md`), `run_test_tier` runs that command for the full tier. Its run is recorded only when
+the `run: tested <sha>` line matches the commit noted before the run; otherwise it is recorded as a fail. When the
+command reports `UNAVAILABLE`, the helper runs the local full command and records that run as any local run. The
+returned summary ends `(remote: <url>)` or `(local: <reason>)`.
+
 `/sdd:init` wires this plugin into a project (its own `enabledPlugins` key + `Skill(sdd:*)` permission +
 `.claude/sdd/` config). It expects the shared launcher artifacts (`claude.sh`, the `SessionStart` hook,
 the `.gitignore` `settings.local.json` line) to exist and does not create them.
