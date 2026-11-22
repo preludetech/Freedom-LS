@@ -16,7 +16,10 @@ from freedom_ls.form_engine.factories import (
 from freedom_ls.learner_progress.factories import TopicProgressFactory
 from freedom_ls.learner_progress.models import TopicProgress
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
-from freedom_ls.revision.factories import RevisionScheduleFactory
+from freedom_ls.revision.factories import (
+    RevisionReviewFactory,
+    RevisionScheduleFactory,
+)
 from freedom_ls.revision.queries import (
     bank_questions,
     bank_sections,
@@ -24,6 +27,7 @@ from freedom_ls.revision.queries import (
     question_sections,
     ready_count,
     section_first_placement,
+    weak_sections,
 )
 from freedom_ls.revision.tests.helpers import (
     complete_form,
@@ -517,3 +521,70 @@ def test_ready_count_for_a_section_counts_only_that_sections_questions(
     count = ready_count(user, record, timezone.now(), limit=10, section=wanted)
 
     assert count == 1
+
+
+def _review_answers(user, course, question, *, wrong: int, right: int, ago_hours: int):
+    """`wrong` wrong reviews, then `right` right ones, the newest `ago_hours` old."""
+    now = timezone.now()
+    for index in range(wrong + right):
+        RevisionReviewFactory(
+            user=user,
+            course=course,
+            question=question,
+            was_correct=index >= wrong,
+            reviewed_at=now - timedelta(hours=ago_hours + (wrong + right - index)),
+        )
+
+
+def _finished_topic_with_question():
+    course = CourseFactory()
+    topic, _ = place_topic(course)
+    question = question_testing_topic(topic)
+    user = UserFactory()
+    record = course_progress_record(course, user)
+    finish_topic(record, topic)
+    return course, user, record, topic, question
+
+
+@pytest.mark.django_db
+def test_section_below_the_minimum_sample_is_not_weak(mock_site_context, settings):
+    settings.REVISION_WEAK_WINDOW = 10
+    settings.REVISION_WEAK_MIN_REVIEWS = 5
+    settings.REVISION_WEAK_MISS_RATE = 0.4
+    course, user, record, _topic, question = _finished_topic_with_question()
+    _review_answers(user, course, question, wrong=4, right=0, ago_hours=0)
+
+    assert weak_sections(user, record) == set()
+
+
+@pytest.mark.django_db
+def test_section_at_the_miss_rate_is_weak(mock_site_context, settings):
+    settings.REVISION_WEAK_WINDOW = 10
+    settings.REVISION_WEAK_MIN_REVIEWS = 5
+    settings.REVISION_WEAK_MISS_RATE = 0.4
+    course, user, record, topic, question = _finished_topic_with_question()
+    _review_answers(user, course, question, wrong=2, right=3, ago_hours=0)
+
+    assert weak_sections(user, record) == {topic.pk}
+
+
+@pytest.mark.django_db
+def test_section_below_the_miss_rate_is_not_weak(mock_site_context, settings):
+    settings.REVISION_WEAK_WINDOW = 10
+    settings.REVISION_WEAK_MIN_REVIEWS = 5
+    settings.REVISION_WEAK_MISS_RATE = 0.4
+    course, user, record, _topic, question = _finished_topic_with_question()
+    _review_answers(user, course, question, wrong=1, right=4, ago_hours=0)
+
+    assert weak_sections(user, record) == set()
+
+
+@pytest.mark.django_db
+def test_wrong_review_older_than_the_window_does_not_count(mock_site_context, settings):
+    settings.REVISION_WEAK_WINDOW = 3
+    settings.REVISION_WEAK_MIN_REVIEWS = 3
+    settings.REVISION_WEAK_MISS_RATE = 0.4
+    course, user, record, _topic, question = _finished_topic_with_question()
+    _review_answers(user, course, question, wrong=3, right=3, ago_hours=0)
+
+    assert weak_sections(user, record) == set()

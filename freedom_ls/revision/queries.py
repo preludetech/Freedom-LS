@@ -22,7 +22,8 @@ from freedom_ls.form_engine.models import Form, FormQuestion, QuestionOption
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.queries import completed_collection_item_ids
 from freedom_ls.revision import scheduler
-from freedom_ls.revision.models import RevisionSchedule
+from freedom_ls.revision.config import config
+from freedom_ls.revision.models import RevisionReview, RevisionSchedule
 
 if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
@@ -184,6 +185,31 @@ def bank_sections(record: CourseProgress) -> list[Topic | CoursePart]:
         for section_id in _placed_sections(record).order
         if section_id in named and section_id in placed
     ]
+
+
+def weak_sections(user: User, record: CourseProgress) -> set[UUID]:
+    """The ids of the course's sections this learner keeps getting wrong.
+
+    Read from the review log on every call, never stored: the flag clears
+    by itself once recent answers improve.
+    """
+    weak: set[UUID] = set()
+    for section in bank_sections(record):
+        # One bounded query per section: the window is a LIMIT on that
+        # section's reviews, which one grouped query could not express
+        # without a window function over the whole log.
+        recent = list(
+            RevisionReview.objects.filter(user=user)
+            .filter(question__in=FormQuestion.objects.filter(_naming(section)))
+            .order_by("-reviewed_at")
+            .values_list("was_correct", flat=True)[: config.REVISION_WEAK_WINDOW]
+        )
+        if len(recent) < config.REVISION_WEAK_MIN_REVIEWS:
+            continue
+        missed = recent.count(False)
+        if missed / len(recent) >= config.REVISION_WEAK_MISS_RATE:
+            weak.add(section.pk)
+    return weak
 
 
 def _ready(

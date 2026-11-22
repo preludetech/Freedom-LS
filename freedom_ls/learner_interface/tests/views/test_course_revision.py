@@ -36,7 +36,7 @@ from freedom_ls.revision.tests.helpers import (
 from freedom_ls.tests.factories import SiteFactory
 
 QUERIES_BASE = 42
-QUERIES_PER_SECTION = 2
+QUERIES_PER_SECTION = 3
 
 
 def _revision_url(course) -> str:
@@ -524,6 +524,57 @@ def test_section_with_nothing_ready_has_a_disabled_button(mock_site_context):
     content = _client_for(user).get(_revision_url(course)).content.decode()
 
     assert re.search(r"<button[^>]*disabled[^>]*>\s*Revise", content) is not None
+
+
+def _wrong_reviews(user, course, question, count: int) -> None:
+    RevisionReviewFactory.create_batch(
+        count, user=user, course=course, question=question, was_correct=False
+    )
+
+
+@pytest.mark.django_db
+def test_weak_section_is_listed_before_an_earlier_section_that_is_not(
+    mock_site_context, settings
+):
+    settings.REVISION_WEAK_WINDOW = 10
+    settings.REVISION_WEAK_MIN_REVIEWS = 5
+    settings.REVISION_WEAK_MISS_RATE = 0.4
+    course, user, first, second = _two_finished_sections()
+    question_testing_topic(first)
+    weak_question = question_testing_topic(second)
+    _wrong_reviews(user, course, weak_question, 5)
+
+    content = _client_for(user).get(_revision_url(course)).content.decode()
+
+    assert content.index(second.title) < content.index(first.title)
+
+
+@pytest.mark.django_db
+def test_weak_section_row_shows_the_needs_revision_badge(mock_site_context, settings):
+    settings.REVISION_WEAK_WINDOW = 10
+    settings.REVISION_WEAK_MIN_REVIEWS = 5
+    settings.REVISION_WEAK_MISS_RATE = 0.4
+    course, user, first, _second = _two_finished_sections()
+    question = question_testing_topic(first)
+    _wrong_reviews(user, course, question, 5)
+
+    content = _client_for(user).get(_revision_url(course)).content.decode()
+
+    assert "Needs revision" in content
+
+
+@pytest.mark.django_db
+def test_section_below_the_minimum_sample_shows_no_badge(mock_site_context, settings):
+    settings.REVISION_WEAK_WINDOW = 10
+    settings.REVISION_WEAK_MIN_REVIEWS = 5
+    settings.REVISION_WEAK_MISS_RATE = 0.4
+    course, user, first, _second = _two_finished_sections()
+    question = question_testing_topic(first)
+    _wrong_reviews(user, course, question, 4)
+
+    content = _client_for(user).get(_revision_url(course)).content.decode()
+
+    assert "Needs revision" not in content
 
 
 def _finished_course_with_sections(section_count: int):

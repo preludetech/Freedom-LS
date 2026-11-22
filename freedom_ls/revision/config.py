@@ -6,10 +6,16 @@ from freedom_ls.base.app_settings import AppSettings, Setting
 class RevisionSettings(AppSettings):
     REVISION_SESSION_SIZE: int
     REVISION_DESIRED_RETENTION: float
+    REVISION_WEAK_WINDOW: int
+    REVISION_WEAK_MIN_REVIEWS: int
+    REVISION_WEAK_MISS_RATE: float
 
     declared_settings = {
         "REVISION_SESSION_SIZE": Setting(default=15),
         "REVISION_DESIRED_RETENTION": Setting(default=0.9),
+        "REVISION_WEAK_WINDOW": Setting(default=10),
+        "REVISION_WEAK_MIN_REVIEWS": Setting(default=5),
+        "REVISION_WEAK_MISS_RATE": Setting(default=0.4),
     }
 
 

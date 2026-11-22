@@ -121,6 +121,7 @@ from freedom_ls.revision.queries import (
     question_sections,
     ready_count,
     section_first_placement,
+    weak_sections,
 )
 from freedom_ls.revision.services import (
     GuessRefused,
@@ -2658,6 +2659,28 @@ def _ready_text(
     return f"{cap}+ ready" if count > cap else f"{count} ready"
 
 
+def _revision_section_rows(
+    user: User, record: CourseProgress
+) -> list[dict[str, object]]:
+    """One row per bank section: weak sections first, course order within each group."""
+    weak = weak_sections(user, record)
+    rows: list[dict[str, object]] = []
+    for section in bank_sections(record):
+        section_ready_text = _ready_text(
+            user, record, timezone.now(), cap=SECTION_READY_CAP, section=section
+        )
+        rows.append(
+            {
+                "section": section,
+                "ready_text": section_ready_text,
+                "has_ready": section_ready_text != "0 ready",
+                "is_weak": section.pk in weak,
+            }
+        )
+    # A stable sort keeps course order inside each group.
+    return sorted(rows, key=lambda row: not row["is_weak"])
+
+
 @login_required
 def course_revision(request: HttpRequest, course_slug: str) -> HttpResponse:
     """The revision page: the start screen, or the session's current card or end line."""
@@ -2674,23 +2697,7 @@ def course_revision(request: HttpRequest, course_slug: str) -> HttpResponse:
             "course": course,
             "ready_text": ready_text,
             "has_ready": ready_text != "0 ready",
-            "section_rows": [
-                {
-                    "section": section,
-                    "ready_text": section_ready_text,
-                    "has_ready": section_ready_text != "0 ready",
-                }
-                for section in bank_sections(record)
-                for section_ready_text in [
-                    _ready_text(
-                        cast("User", request.user),
-                        record,
-                        timezone.now(),
-                        cap=SECTION_READY_CAP,
-                        section=section,
-                    )
-                ]
-            ],
+            "section_rows": _revision_section_rows(cast("User", request.user), record),
             "card_template": "learner_interface/partials/revision_start.html",
         }
     else:

@@ -15,6 +15,12 @@
                 <li class="flex items-center justify-between gap-4 py-3">
                     <div>
                         <p class="font-medium">{{ row.section.title }}</p>
+                        {% if row.is_weak %}
+                            <span class="inline-flex items-center gap-1">
+                                <c-icon name="warning" class="size-3" />
+                                <c-panel-status-badge tone="warning" label="Needs revision" />
+                            </span>
+                        {% endif %}
                         <p id="section-ready-{{ row.section.pk }}" class="text-sm text-muted">{{ row.ready_text }}</p>
                     </div>
                     <form method="post" action="{% url 'learner_interface:course_revision_start' course.slug %}?section={{ row.section.pk }}">
