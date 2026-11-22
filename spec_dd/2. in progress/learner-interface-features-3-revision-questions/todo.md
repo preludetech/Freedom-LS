@@ -20,10 +20,11 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
 - [ ] (user) Decide whether the demo bank form `demo_content/functionality_demo_revision_bank/form.md` may stay `strategy: QUIZ` (the plan said `UNSCORED`, but the validator only allows a `locked` option on a shuffled QUIZ form); if UNSCORED matters more, drop the locked "All of the above" option and switch the strategy
+- [ ] (user) Decide how a learner gets back to the revision start screen and its section list once a session has ended (today every visit to /courses/<course>/revision/ re-shows the finished session's end screen): clear the finished state on the next visit, or add a 'Back to revision' control to the end screen; then fix QA bug B5 test first
 
 ## 4. Documentation and pull request
 
