@@ -1357,6 +1357,206 @@ def test_validate_lists_a_repeated_reference_part_in_the_report(tmp_path: Path) 
     assert "this part is named twice" in str(exc_info.value)
 
 
+_DUE_TOPIC = "---\ncontent_type: TOPIC\ntitle: A Topic\n{key}---\n"
+_CHILD_FILES = {
+    "ACTIVITY": "---\ncontent_type: ACTIVITY\ntitle: An Activity\n---\nBody\n",
+    "FORM": "---\ncontent_type: FORM\ntitle: A Form\nstrategy: UNSCORED\n---\n",
+    "COURSE_PART": "---\ncontent_type: COURSE_PART\ntitle: Inner\n---\n",
+}
+
+
+def _reference_course(directory: Path, part_path: str = "glossary/part.yaml") -> Path:
+    return _course_with_lists(
+        directory / "course.md", children=["intro.md"], reference=[part_path]
+    )
+
+
+@pytest.mark.parametrize("child_type", sorted(_CHILD_FILES))
+def test_a_reference_part_holding_a_non_topic_child_fails(
+    tmp_path: Path, child_type: str
+) -> None:
+    child_name = "inner/part.yaml" if child_type == "COURSE_PART" else "child.md"
+    _part_listing(tmp_path / "glossary" / "part.yaml", [child_name])
+    _write_widget_file(tmp_path / "glossary" / child_name, _CHILD_FILES[child_type])
+    _reference_course(tmp_path)
+
+    errors = _reference_list_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "Invalid reference list" in errors[0]
+    assert "reference[0]" in errors[0]
+    assert f"the part's child {child_name} is a {child_type}" in errors[0]
+
+
+@pytest.mark.parametrize(
+    "due_key",
+    ["due_date: 2026-03-14\n", "due_days_after_registration: 3\n"],
+)
+def test_a_reference_part_topic_with_a_due_key_fails(
+    tmp_path: Path, due_key: str
+) -> None:
+    _part_listing(tmp_path / "glossary" / "part.yaml", ["topic.md"])
+    _write_widget_file(
+        tmp_path / "glossary" / "topic.md", _DUE_TOPIC.format(key=due_key)
+    )
+    _reference_course(tmp_path)
+
+    errors = _reference_list_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "Invalid reference list" in errors[0]
+    assert "reference[0]" in errors[0]
+    assert "the part's topic topic.md sets a due date" in errors[0]
+
+
+def test_a_reference_part_children_entry_with_a_due_key_fails(tmp_path: Path) -> None:
+    _topic(tmp_path / "glossary" / "topic.md")
+    _write_widget_file(
+        tmp_path / "glossary" / "part.yaml",
+        "---\ncontent_type: COURSE_PART\ntitle: A Part\nchildren:\n"
+        "  - path: topic.md\n    due_days_after_registration: 3\n---\n",
+    )
+    _reference_course(tmp_path)
+
+    errors = _reference_list_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "reference[0]" in errors[0]
+    assert "the part's children: entry topic.md sets a due date" in errors[0]
+
+
+@pytest.mark.parametrize(
+    ("child_name", "child_content", "problem"),
+    [
+        (
+            "child.md",
+            _CHILD_FILES["ACTIVITY"],
+            "the part's child child.md is a ACTIVITY",
+        ),
+        (
+            "topic.md",
+            _DUE_TOPIC.format(key="due_date: 2026-03-14\n"),
+            "the part's topic topic.md sets a due date",
+        ),
+    ],
+)
+def test_a_reference_part_outside_the_validated_path_is_checked(
+    tmp_path: Path, child_name: str, child_content: str, problem: str
+) -> None:
+    _part_listing(tmp_path / "shared" / "part.yaml", [child_name])
+    _write_widget_file(tmp_path / "shared" / child_name, child_content)
+    _reference_course(tmp_path / "course_dir", "../shared/part.yaml")
+
+    with pytest.raises(ValueError, match="Validation failed") as exc_info:
+        validate(tmp_path / "course_dir")
+
+    assert problem in str(exc_info.value)
+
+
+def test_a_children_entry_due_key_in_a_part_outside_the_validated_path_fails(
+    tmp_path: Path,
+) -> None:
+    _topic(tmp_path / "shared" / "topic.md")
+    _write_widget_file(
+        tmp_path / "shared" / "part.yaml",
+        "---\ncontent_type: COURSE_PART\ntitle: A Part\nchildren:\n"
+        "  - path: topic.md\n    due_date: 2026-03-14\n---\n",
+    )
+    _reference_course(tmp_path / "course_dir", "../shared/part.yaml")
+
+    with pytest.raises(ValueError, match="Validation failed") as exc_info:
+        validate(tmp_path / "course_dir")
+
+    assert "the part's children: entry topic.md sets a due date" in str(exc_info.value)
+
+
+def test_a_file_beside_a_reference_part_that_does_not_parse_is_reported(
+    tmp_path: Path,
+) -> None:
+    _part(tmp_path / "shared" / "part.yaml")
+    _write_widget_file(
+        tmp_path / "shared" / "broken.md", "---\ncontent_type: [unclosed\n---\n"
+    )
+    _reference_course(tmp_path / "course_dir", "../shared/part.yaml")
+
+    errors = _reference_list_errors(tmp_path / "course_dir")
+
+    assert len(errors) == 1
+    assert "a file beside the part does not parse" in errors[0]
+
+
+def test_a_topic_in_a_learning_path_part_and_a_reference_part_passes(
+    tmp_path: Path,
+) -> None:
+    _topic(tmp_path / "shared" / "topic.md")
+    _part_listing(tmp_path / "learn" / "part.yaml", ["../shared/topic.md"])
+    _part_listing(tmp_path / "glossary" / "part.yaml", ["../shared/topic.md"])
+    _topic(tmp_path / "intro.md")
+    _write_widget_file(
+        tmp_path / "course.md",
+        "---\ncontent_type: COURSE\ntitle: A Course\n"
+        "children:\n  - path: learn/part.yaml\n"
+        "reference:\n  - path: glossary/part.yaml\n---\n",
+    )
+
+    assert _reference_list_errors(tmp_path) == []
+
+
+def test_a_reference_part_placed_by_another_course_with_a_due_list_passes(
+    tmp_path: Path,
+) -> None:
+    _topic(tmp_path / "shared" / "topic.md")
+    _part_listing(tmp_path / "shared" / "part.yaml", ["topic.md"])
+    _write_widget_file(
+        tmp_path / "placing" / "course.md",
+        "---\ncontent_type: COURSE\ntitle: Placing\nchildren:\n"
+        "  - path: ../shared/part.yaml\n    children:\n"
+        "      - path: topic.md\n        due_days_after_registration: 5\n---\n",
+    )
+    _topic(tmp_path / "referencing" / "intro.md")
+    _course_with_lists(
+        tmp_path / "referencing" / "course.md",
+        children=["intro.md"],
+        reference=["../shared/part.yaml"],
+    )
+
+    assert _reference_list_errors(tmp_path) == []
+
+
+def test_a_bad_part_listed_by_two_courses_reports_once_per_course(
+    tmp_path: Path,
+) -> None:
+    _part_listing(tmp_path / "shared" / "part.yaml", ["child.md"])
+    _write_widget_file(tmp_path / "shared" / "child.md", _CHILD_FILES["ACTIVITY"])
+    for name in ("one", "two"):
+        _topic(tmp_path / name / "intro.md")
+        _course_with_lists(
+            tmp_path / name / "course.md",
+            children=["intro.md"],
+            reference=["../shared/part.yaml"],
+        )
+
+    errors = _reference_list_errors(tmp_path)
+
+    assert len(errors) == 2
+    assert sum("one/course.md" in e for e in errors) == 1
+    assert sum("two/course.md" in e for e in errors) == 1
+
+
+def test_a_bad_part_named_twice_in_one_course_reports_once(tmp_path: Path) -> None:
+    _part_listing(tmp_path / "glossary" / "part.yaml", ["child.md"])
+    _write_widget_file(tmp_path / "glossary" / "child.md", _CHILD_FILES["ACTIVITY"])
+    _course_with_lists(
+        tmp_path / "course.md",
+        children=["intro.md"],
+        reference=["glossary/part.yaml", "glossary/part.yaml"],
+    )
+
+    errors = _reference_list_errors(tmp_path)
+
+    assert len([e for e in errors if "is a ACTIVITY" in e]) == 1
+
+
 # Cross-file validation of a form's `when` conditions.
 
 

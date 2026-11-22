@@ -82,6 +82,9 @@ class DueDateFields(BaseModel):
         and names its path instead."""
         return getattr(self, "file_path", None)
 
+    def sets_a_due_key(self) -> bool:
+        return any(getattr(self, name) is not None for name in DUE_DATE_FIELD_NAMES)
+
     @field_validator("due_date", mode="before")
     @classmethod
     def _due_date_is_a_date(cls, value: object) -> object:
@@ -137,9 +140,6 @@ class PlacementDueDate(DueDateFields):
 
     def _due_date_subject(self) -> Path | None:
         return self.path
-
-    def sets_a_due_key(self) -> bool:
-        return any(getattr(self, name) is not None for name in DUE_DATE_FIELD_NAMES)
 
     def holds_due_value(self) -> bool:
         """Whether the entry replaces the child file's value: any due key, or no_due_date."""

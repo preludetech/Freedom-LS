@@ -20,7 +20,7 @@ import yaml
 from pydantic import ValidationError
 
 from freedom_ls.content_base.schema import SCHEMAS, BaseBaseContentModel, ContentType
-from freedom_ls.content_engine.schema import Child, Course, CoursePart
+from freedom_ls.content_engine.schema import Child, Course, CoursePart, Topic
 from freedom_ls.form_engine.schema import (
     Condition,
     Form,
@@ -1021,6 +1021,52 @@ def _learning_path_keys(course: Course, ignore: frozenset[Path]) -> set[Path]:
         return set()
 
 
+def _reference_part_errors(
+    error: Callable[..., str], part: CoursePart, by_path: _ParsedByPath
+) -> list[str]:
+    """A reference part holds topics, and nothing in it carries a due date."""
+    # The part may sit outside the validated path, where the per-file pass never saw its
+    # siblings, so a file that does not parse is reported here rather than raised.
+    try:
+        children = by_path.children_of(part)
+    except ValueError as e:
+        return [
+            error(
+                problem=f"a file beside the part does not parse: {e}",
+                fix="Fix that file first.",
+            )
+        ]
+    errors: list[str] = []
+    for key in children:
+        child = by_path.get(key)
+        if child is None:
+            continue
+        shown = _shown_relative_to(key, part.file_path.parent)
+        if child.content_type != ContentType.TOPIC:
+            errors.append(
+                error(
+                    problem=f"the part's child {shown} is a {child.content_type}",
+                    fix="A reference part holds topics only.",
+                )
+            )
+        elif isinstance(child, Topic) and child.sets_a_due_key():
+            errors.append(
+                error(
+                    problem=f"the part's topic {shown} sets a due date",
+                    fix="Remove the due keys from the topic file; reference material has no deadline.",
+                )
+            )
+    errors.extend(
+        error(
+            problem=f"the part's children: entry {entry.path} sets a due date",
+            fix="Remove the due keys from part.yaml; reference material has no deadline.",
+        )
+        for entry in part.children or []
+        if entry.holds_due_value()
+    )
+    return errors
+
+
 def validate_reference_lists(
     all_parsed: Sequence[BaseBaseContentModel],
     *,
@@ -1029,7 +1075,7 @@ def validate_reference_lists(
     """Check every course's reference: list against the files it names.
 
     A reference part sits outside the learning path, so it may not also be a child of the
-    course, and it must be a part file.
+    course, it must be a part file, and it holds topics with no due dates.
     """
     errors: list[str] = []
     # Reads from disk when a part sits outside the validated path, so validating one
@@ -1070,6 +1116,8 @@ def validate_reference_lists(
                         fix="Point the entry at a part.yaml.",
                     )
                 )
+            elif index not in repeated:
+                errors.extend(_reference_part_errors(error, target, by_path))
     return errors
 
 

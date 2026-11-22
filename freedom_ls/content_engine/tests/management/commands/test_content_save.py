@@ -4796,6 +4796,46 @@ def test_a_reference_part_that_is_also_a_child_raises_before_any_write(
     assert not CourseReferencePart.objects.exists()
 
 
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("part_yaml", "child_file", "problem"),
+    [
+        (
+            "children:\n  - path: child.md\n",
+            "---\ncontent_type: ACTIVITY\ntitle: An Activity\n---\n\nBody\n",
+            "the part's child child.md is a ACTIVITY",
+        ),
+        (
+            "children:\n  - path: child.md\n",
+            "---\ncontent_type: TOPIC\ntitle: A Topic\ndue_date: 2026-03-14\n---\n\nBody\n",
+            "the part's topic child.md sets a due date",
+        ),
+        (
+            "children:\n  - path: child.md\n    due_days_after_registration: 3\n",
+            "---\ncontent_type: TOPIC\ntitle: A Topic\n---\n\nBody\n",
+            "the part's children: entry child.md sets a due date",
+        ),
+    ],
+)
+def test_a_bad_reference_part_raises_before_any_write(
+    site, mock_site_context, tmp_path, part_yaml, child_file, problem
+):
+    _write_course_with_reference(tmp_path, ["glossary"])
+    (tmp_path / "glossary" / "child.md").write_text(child_file)
+    (tmp_path / "glossary" / "part.yaml").write_text(
+        "---\ncontent_type: COURSE_PART\ntitle: glossary\n"
+        f"uuid: {_REFERENCE_UUIDS['glossary']}\n{part_yaml}"
+    )
+
+    with pytest.raises(ValueError, match="Invalid reference list") as exc_info:
+        save_content_to_db(tmp_path, site.name)
+
+    assert "reference[0]" in str(exc_info.value)
+    assert problem in str(exc_info.value)
+    assert not Course.objects.exists()
+    assert not CourseReferencePart.objects.exists()
+
+
 _MOVING_PART_UUID = "20000000-0000-0000-0000-000000000061"
 _MOVING_TOPIC_UUID = "20000000-0000-0000-0000-000000000062"
 
