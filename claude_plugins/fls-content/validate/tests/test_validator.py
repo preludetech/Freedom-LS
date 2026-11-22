@@ -2129,7 +2129,12 @@ def test_reference_part_that_is_also_a_child_fails(
 
     result = run_validator(course_dir)
 
-    assert_validator_fails(result, "this part is also one of the course's children")
+    expected = (
+        "this part is also one of the course's children"
+        if explicit_children
+        else "auto-discovery also makes it a child"
+    )
+    assert_validator_fails(result, expected)
     assert "reference[0]" in result.stdout + result.stderr
 
 

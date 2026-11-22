@@ -38,12 +38,16 @@ learning path and never count toward completion.
 - **Moving a part from `children:` to `reference:` deletes data.** On the next `content_save`, the
   course's part placement (`ContentCollectionItem`) of that part is deleted. The delete takes with
   it every `CoursePartChildDueDate`, `CohortDeadlineOverride`, `LearnerDeadlineOverride` and
-  `DeadlineExtension` on that placement, including overrides and extensions educators entered by
-  hand. `content_save` prints one `Removed part placement: …` line per deleted placement, with the
-  counts. Another course's placement of the same part is untouched. In the same load, every stored
-  `CourseProgress.progress_percentage` for that course is recalculated against the shorter learning
-  path (the new `content_engine.signals.part_placements_removed` signal, received in
-  `learner_progress`). `completed_time` is not set by this.
+  `DeadlineExtension` on that placement. It also deletes that course's overrides and extensions on
+  the part's own topic rows (through the course's cohort registrations and learners' progress
+  records), including ones educators entered by hand. `content_save` prints one
+  `Removed part placement: …` line per deleted placement, with counts that include the topic-level
+  rows. Another course's placement of the same part, and that course's deadlines on the part's
+  topics, are untouched. In the same load, every stored `CourseProgress.progress_percentage` for
+  that course is recalculated against the shorter learning path; `completed_time` is not set by
+  this. Both cleanups run on the new `content_engine.signals.part_placement_removed` signal, sent
+  once per removed placement with `site`, `course` and `part`. A receiver may return a mapping of
+  model label to rows deleted, which `content_save` adds to its report.
 
 ## Manual steps
 
@@ -51,4 +55,5 @@ learning path and never count toward completion.
 - If your content has a directory named `reference` beside a `course.md` that has no `children:`
   list, decide whether it should stay in the learning path (see Breaking changes).
 - Before moving a part to `reference:` on a site with live cohorts, check the deadline overrides
-  and extensions on that course's placement of the part: the move deletes them.
+  and extensions on that course's placement of the part and on the part's topics: the move
+  deletes them.

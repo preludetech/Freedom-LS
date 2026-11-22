@@ -80,7 +80,7 @@ from freedom_ls.content_engine.schema import Course as CourseSchema
 from freedom_ls.content_engine.schema import CoursePart as CoursePartSchema
 from freedom_ls.content_engine.signals import (
     collection_items_synced,
-    part_placements_removed,
+    part_placement_removed,
 )
 from freedom_ls.content_engine.validate import (
     CONFIG_FILE_NAME,
@@ -940,24 +940,16 @@ def _sync_section_rows[Row: (FormQuestionTopic, FormQuestionCoursePart)](
     )
 
 
-# What deleting a part placement cascades to, as Django's collector labels it, and how
-# the report names it. Labels, not imports: the deadline models live in an app that
-# depends on this one.
+# What deleting a part placement takes with it, as Django's collector labels it, and how
+# the report names it: the placement's own cascades plus what part_placement_removed
+# receivers report. Labels, not imports: the deadline models live in an app that depends
+# on this one.
 _PLACEMENT_CASCADES = (
     ("freedom_ls_deadlines.CohortDeadlineOverride", "cohort deadline override(s)"),
     ("freedom_ls_deadlines.LearnerDeadlineOverride", "learner deadline override(s)"),
     ("freedom_ls_deadlines.DeadlineExtension", "deadline extension(s)"),
     ("freedom_ls_content_engine.CoursePartChildDueDate", "part child due date(s)"),
 )
-
-
-@dataclass(frozen=True)
-class RemovedPlacement:
-    """A course's placement of a part that the course now lists as reference material,
-    deleted by this load, with the line that reports it."""
-
-    course: Course
-    report_line: str
 
 
 def remove_part_placement(site: Site, course: Course, part: CoursePart) -> str | None:
@@ -972,8 +964,14 @@ def remove_part_placement(site: Site, course: Course, part: CoursePart) -> str |
     ).delete()
     if not total:
         return None
+    deleted_by_label = Counter(deleted)
+    for _receiver, response in part_placement_removed.send(
+        sender=ContentCollectionItem, site=site, course=course, part=part
+    ):
+        if response:
+            deleted_by_label.update(response)
     counts = ", ".join(
-        f"{deleted.get(label, 0)} {noun}" for label, noun in _PLACEMENT_CASCADES
+        f"{deleted_by_label[label]} {noun}" for label, noun in _PLACEMENT_CASCADES
     )
     return (
         f"Removed part placement: {course.file_path} no longer places {part.file_path} "
@@ -986,10 +984,10 @@ def sync_reference_parts(
     site: Site,
     collections_data: Sequence[tuple[Course | CoursePart, BaseBaseContentModel]],
     content_by_path: Mapping[Path, models.Model],
-) -> list[RemovedPlacement]:
+) -> list[str]:
     """Write each loaded course's reference parts from its reference: list. Returns the
-    part placements it removed, for the caller to report once the load is safe."""
-    removed: list[RemovedPlacement] = []
+    lines that report what was removed, for the caller to print once the load is safe."""
+    removal_lines: list[str] = []
     for course, schema_item in collections_data:
         if not isinstance(course, Course) or not isinstance(schema_item, CourseSchema):
             continue
@@ -1028,8 +1026,8 @@ def sync_reference_parts(
         for part in parts:
             line = remove_part_placement(site, course, part)
             if line is not None:
-                removed.append(RemovedPlacement(course, line))
-    return removed
+                removal_lines.append(line)
+    return removal_lines
 
 
 def get_file_type_from_extension(file_path):
@@ -1558,7 +1556,7 @@ def _write_source(
                     f"{child_path} that was not loaded"
                 )
 
-    removed_placements = sync_reference_parts(site, collections_data, content_by_path)
+    removal_lines = sync_reference_parts(site, collections_data, content_by_path)
 
     # A course is written before the parts it places, so the part's own rows exist only
     # now. Every part placement of every course in this load is reconciled: one whose
@@ -1613,13 +1611,7 @@ def _write_source(
         written=written,
         moved=moved,
     )
-    if removed_placements:
-        part_placements_removed.send(
-            sender=ContentCollectionItem,
-            site=site,
-            courses=list({r.course.pk: r.course for r in removed_placements}.values()),
-        )
-    return image_statuses, [r.report_line for r in removed_placements]
+    return image_statuses, removal_lines
 
 
 @dataclass(frozen=True)

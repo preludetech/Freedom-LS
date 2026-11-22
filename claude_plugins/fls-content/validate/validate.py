@@ -1164,7 +1164,20 @@ def validate_reference_lists(
             )
             if index in repeated:
                 errors.append(error(**_PART_NAMED_TWICE))
-            if key in learning_path:
+            if key in learning_path and not course.children:
+                errors.append(
+                    error(
+                        problem=(
+                            "this part sits beside course.md, and the course has no "
+                            "children: list, so auto-discovery also makes it a child"
+                        ),
+                        fix=(
+                            "Move the part into the reference/ directory beside "
+                            "course.md, or write a children: list that leaves it out."
+                        ),
+                    )
+                )
+            elif key in learning_path:
                 errors.append(
                     error(
                         problem="this part is also one of the course's children",

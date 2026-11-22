@@ -1303,7 +1303,9 @@ def test_a_reference_part_that_is_an_auto_discovered_child_fails(
 
     assert len(errors) == 1
     assert "reference[0]" in errors[0]
-    assert "this part is also one of the course's children" in errors[0]
+    assert "auto-discovery also makes it a child" in errors[0]
+    assert "Move the part into the reference/ directory" in errors[0]
+    assert "children: or under reference:, not both" not in errors[0]
 
 
 def test_a_reference_entry_naming_a_topic_fails_naming_its_type(

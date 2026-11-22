@@ -21,8 +21,8 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
 
-from freedom_ls.content_engine.models import ContentCollectionItem, Course
-from freedom_ls.content_engine.signals import part_placements_removed
+from freedom_ls.content_engine.models import ContentCollectionItem, Course, CoursePart
+from freedom_ls.content_engine.signals import part_placement_removed
 from freedom_ls.form_engine.models import FormProgress
 from freedom_ls.form_engine.signals import form_attempt_completed
 from freedom_ls.learner_management.models import (
@@ -140,12 +140,13 @@ def recalculate_course_progress_on_form_attempt(
 
 
 @receiver(
-    part_placements_removed, dispatch_uid="learner_progress.part_placements_removed"
+    part_placement_removed, dispatch_uid="learner_progress.part_placement_removed"
 )
 def recalculate_course_progress_on_placement_removal(
     sender: type[ContentCollectionItem],
     site: Site,
-    courses: list[Course],
+    course: Course,
+    part: CoursePart,
     **kwargs: object,
 ) -> None:
     """Recalculate every record of a course whose learning path a content load shortened.
@@ -154,7 +155,7 @@ def recalculate_course_progress_on_placement_removal(
     record left alone would keep the percentage it had against the longer path.
     """
     records = CourseProgress._base_manager.filter(
-        site=site, course__in=courses
+        site=site, course=course
     ).select_related("course")
     for record in records.iterator():
         recalculate_progress_percentage(record)

@@ -12,8 +12,10 @@ from django.dispatch import Signal
 # already followed it). A receiver that raises rolls the load back.
 collection_items_synced = Signal()
 
-# Sent once per load that deleted a course's placement of a part the course now lists
-# under reference:, inside the load's transaction, with `site` and `courses` (each course
-# that lost a placement, once). The course's learning path is shorter from here on, so a
-# percentage stored against it is stale. A receiver that raises rolls the load back.
-part_placements_removed = Signal()
+# Sent inside the load's transaction each time a load deletes a course's placement of a
+# part the course now lists under reference:, with `site`, `course` and `part`. The
+# placement row is already gone, so the course's learning path no longer holds the part.
+# A receiver that deletes rows returns what Django's delete() returns per model, a
+# mapping of model label to rows deleted, and content_save adds it to the counts it
+# reports. A receiver that raises rolls the load back.
+part_placement_removed = Signal()
