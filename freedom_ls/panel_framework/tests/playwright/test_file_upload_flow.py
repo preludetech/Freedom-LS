@@ -1,8 +1,8 @@
-"""Browser flows for the loading text of a form that carries a file.
+"""Browser flows for the loading text and request errors of a form that carries a file.
 
 Each case holds the upload request open with a route, so the button's in-flight
-text can be read, then answers it. The stub views have no authentication, so
-the flows need no login.
+text can be read, then answers it, and removes the route. The stub views have
+no authentication, so the flows need no login.
 """
 
 from __future__ import annotations
@@ -39,6 +39,10 @@ def _hold_requests(page: Page, action_name: str) -> list[Route]:
     return held
 
 
+def _release_requests(page: Page, action_name: str) -> None:
+    page.unroute(f"**/__actions/{action_name}")
+
+
 def _submit_button(container: Locator) -> Locator:
     # The button's accessible name follows its in-flight text, so the submit
     # button is found by its type rather than by "Save".
@@ -58,10 +62,9 @@ def _held_request(page: Page, held: list[Route], index: int) -> Route:
 
 
 def _open_upload_tab(
-    page: Page, live_server: pytest_django.live_server_helper.LiveServer
+    page: Page, live_server: pytest_django.live_server_helper.LiveServer, stub_pk: int
 ) -> None:
-    stub = make_stub()
-    page.goto(f"{live_server.url}/test-panel/framework/stubs/{stub.pk}/__tabs/upload")
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/{stub_pk}/__tabs/upload")
 
 
 def _open_dialog(page: Page) -> Locator:
@@ -83,265 +86,144 @@ def _submit_without_file(form: Locator, save: Locator) -> None:
     save.click()
 
 
-def test_dialog_reads_uploading_while_a_file_goes_up(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    _open_upload_tab(page, live_server)
-    held = _hold_requests(page, "upload")
-    dialog = _open_dialog(page)
-    save = _submit_button(dialog)
-
-    _submit_with_file(dialog, save)
-
-    expect(save).to_be_disabled()
-    expect(save).to_have_text("Uploading…", use_inner_text=True)
-    _held_request(page, held, 0).fulfill(status=204)
-
-
-def test_dialog_reads_saving_when_no_file_is_chosen(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    _open_upload_tab(page, live_server)
-    held = _hold_requests(page, "upload")
-    dialog = _open_dialog(page)
-    save = _submit_button(dialog)
-
-    _submit_without_file(dialog, save)
-
-    expect(save).to_be_disabled()
-    expect(save).to_have_text("Saving…", use_inner_text=True)
-    _held_request(page, held, 0).fulfill(status=204)
-
-
-def test_dialog_reads_saving_after_a_failed_upload_is_cleared(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    _open_upload_tab(page, live_server)
-    held = _hold_requests(page, "upload")
-    dialog = _open_dialog(page)
-    save = _submit_button(dialog)
-
-    _submit_with_file(dialog, save)
-    expect(save).to_have_text("Uploading…", use_inner_text=True)
-    _held_request(page, held, 0).fulfill(status=500)
-    expect(save).to_be_enabled()
-
-    dialog.get_by_label("Attachment").set_input_files([])
-    save.click()
-
-    expect(save).to_have_text("Saving…", use_inner_text=True)
-    _held_request(page, held, 1).fulfill(status=204)
-
-
-def test_inline_form_reads_uploading_while_a_file_goes_up(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    _open_upload_tab(page, live_server)
-    held = _hold_requests(page, "upload_inline")
-    form = page.locator("#stub-upload-form")
-    save = _inline_submit_button(page)
-
-    _submit_with_file(form, save)
-
-    expect(save).to_be_disabled()
-    expect(save).to_have_text("Uploading…", use_inner_text=True)
-    _held_request(page, held, 0).fulfill(status=204)
-
-
-def test_inline_form_reads_saving_when_no_file_is_chosen(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    _open_upload_tab(page, live_server)
-    held = _hold_requests(page, "upload_inline")
-    form = page.locator("#stub-upload-form")
-    save = _inline_submit_button(page)
-
-    _submit_without_file(form, save)
-
-    expect(save).to_be_disabled()
-    expect(save).to_have_text("Saving…", use_inner_text=True)
-    _held_request(page, held, 0).fulfill(status=204)
-
-
-def test_inline_form_reads_saving_after_a_failed_upload_is_cleared(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    _open_upload_tab(page, live_server)
-    held = _hold_requests(page, "upload_inline")
-    form = page.locator("#stub-upload-form")
-    save = _inline_submit_button(page)
-
-    _submit_with_file(form, save)
-    expect(save).to_have_text("Uploading…", use_inner_text=True)
-    _held_request(page, held, 0).fulfill(status=500)
-    expect(save).to_be_enabled()
-
-    form.get_by_label("Attachment").set_input_files([])
-    save.click()
-
-    expect(save).to_have_text("Saving…", use_inner_text=True)
-    _held_request(page, held, 1).fulfill(status=204)
-
-
 _TOO_LARGE_MESSAGE = "The file may be too large to upload. Choose a smaller file."
 _GENERIC_MESSAGE = "Your changes could not be saved. Try again."
 _FAILURES = [(413, _TOO_LARGE_MESSAGE), (500, _GENERIC_MESSAGE)]
 
 
-@pytest.mark.parametrize(("status", "message"), _FAILURES)
-def test_dialog_shows_the_request_error_and_can_be_saved_again(
+def _computed_colour(locator: Locator) -> str:
+    return str(locator.evaluate("el => getComputedStyle(el).color"))
+
+
+def test_file_upload_dialog_flow(
     page: Page,
     live_server: pytest_django.live_server_helper.LiveServer,
     live_server_site: Site,
     mock_site_context: None,
-    status: int,
-    message: str,
 ) -> None:
-    _open_upload_tab(page, live_server)
+    """The upload dialog's request handling, each case from a fresh load.
+
+    Proves that the button reads "Uploading..." while a file goes up, "Saving..."
+    with no file and after a failed upload is cleared; that 413 and 500 show
+    the matching alert with focus on it and the form can be saved again; that
+    a dialog with no file field shows the generic error on a 500; that an
+    aborted request and a scripted 403 show the generic error; that a response
+    carrying a toast adds no request error; that Escape closes a clean dialog,
+    asks before discarding a chosen file and closes after the file is cleared;
+    that the alert is drawn in the holder's error colour; and that a 404
+    reloads the page with no error alert.
+    """
+    stub = make_stub()
+
+    _open_upload_tab(page, live_server, stub.pk)
     held = _hold_requests(page, "upload")
     dialog = _open_dialog(page)
     save = _submit_button(dialog)
-
     _submit_with_file(dialog, save)
-    _held_request(page, held, 0).fulfill(status=status, body="Server error")
+    expect(save, "button not disabled while a file uploads").to_be_disabled()
+    expect(save, "button text while a file uploads").to_have_text(
+        "Uploading…", use_inner_text=True
+    )
+    _held_request(page, held, 0).fulfill(status=204)
+    _release_requests(page, "upload")
 
-    alert = dialog.get_by_role("alert")
-    expect(alert).to_have_text(message)
-    expect(dialog.locator("[data-request-error]")).to_be_focused()
-    expect(dialog).to_be_visible()
-    expect(dialog.get_by_label("Title")).to_have_value("Notes")
-    expect(save).to_be_enabled()
+    _open_upload_tab(page, live_server, stub.pk)
+    held = _hold_requests(page, "upload")
+    dialog = _open_dialog(page)
+    save = _submit_button(dialog)
+    _submit_without_file(dialog, save)
+    expect(save, "button not disabled while saving without a file").to_be_disabled()
+    expect(save, "button text with no file chosen").to_have_text(
+        "Saving…", use_inner_text=True
+    )
+    _held_request(page, held, 0).fulfill(status=204)
+    _release_requests(page, "upload")
 
+    _open_upload_tab(page, live_server, stub.pk)
+    held = _hold_requests(page, "upload")
+    dialog = _open_dialog(page)
+    save = _submit_button(dialog)
+    _submit_with_file(dialog, save)
+    expect(save, "button text while a file uploads before failing").to_have_text(
+        "Uploading…", use_inner_text=True
+    )
+    _held_request(page, held, 0).fulfill(status=500)
+    expect(save, "button not re-enabled after a failed upload").to_be_enabled()
+    dialog.get_by_label("Attachment").set_input_files([])
     save.click()
+    expect(save, "button text after a failed upload is cleared").to_have_text(
+        "Saving…", use_inner_text=True
+    )
     _held_request(page, held, 1).fulfill(status=204)
+    _release_requests(page, "upload")
 
-    expect(alert).to_have_count(0)
+    for status, message in _FAILURES:
+        _open_upload_tab(page, live_server, stub.pk)
+        held = _hold_requests(page, "upload")
+        dialog = _open_dialog(page)
+        save = _submit_button(dialog)
+        _submit_with_file(dialog, save)
+        _held_request(page, held, 0).fulfill(status=status, body="Server error")
+        alert = dialog.get_by_role("alert")
+        expect(alert, f"alert text for a {status}").to_have_text(message)
+        expect(
+            dialog.locator("[data-request-error]"),
+            f"request error not focused after a {status}",
+        ).to_be_focused()
+        expect(dialog, f"dialog closed after a {status}").to_be_visible()
+        expect(
+            dialog.get_by_label("Title"), f"title lost after a {status}"
+        ).to_have_value("Notes")
+        expect(save, f"button not re-enabled after a {status}").to_be_enabled()
+        save.click()
+        _held_request(page, held, 1).fulfill(status=204)
+        expect(
+            alert, f"alert still shown after a saved retry of a {status}"
+        ).to_have_count(0)
+        _release_requests(page, "upload")
 
-
-@pytest.mark.parametrize(("status", "message"), _FAILURES)
-def test_inline_form_shows_the_request_error_and_keeps_what_was_typed(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-    status: int,
-    message: str,
-) -> None:
-    _open_upload_tab(page, live_server)
-    held = _hold_requests(page, "upload_inline")
-    form = page.locator("#stub-upload-form")
-    save = _inline_submit_button(page)
-
-    _submit_with_file(form, save)
-    _held_request(page, held, 0).fulfill(status=status, body="Server error")
-
-    expect(form.get_by_role("alert")).to_have_text(message)
-    expect(form.get_by_label("Title")).to_have_value("Notes")
-    expect(save).to_be_enabled()
-
-
-def test_dialog_without_a_file_field_shows_the_generic_request_error(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    make_stub()
     held = _hold_requests(page, "create_item")
     page.goto(f"{live_server.url}/test-panel/framework/stubs")
     page.get_by_role("button", name="Create Item").click()
     dialog = page.locator("#app-modal")
     expect(dialog).to_be_visible()
-
     dialog.get_by_label("Name").fill("Widget")
     dialog.get_by_role("button", name="Add", exact=True).click()
     _held_request(page, held, 0).fulfill(status=500, body="Server error")
+    expect(
+        dialog.get_by_role("alert"), "generic error for a dialog with no file field"
+    ).to_have_text(_GENERIC_MESSAGE)
+    _release_requests(page, "create_item")
 
-    expect(dialog.get_by_role("alert")).to_have_text(_GENERIC_MESSAGE)
-
-
-def test_dialog_shows_the_generic_request_error_when_the_request_cannot_be_sent(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    _open_upload_tab(page, live_server)
+    _open_upload_tab(page, live_server, stub.pk)
     held = _hold_requests(page, "upload")
     dialog = _open_dialog(page)
-
     _submit_without_file(dialog, _submit_button(dialog))
     _held_request(page, held, 0).abort()
+    expect(
+        dialog.get_by_role("alert"), "generic error for an aborted request"
+    ).to_have_text(_GENERIC_MESSAGE)
+    _release_requests(page, "upload")
 
-    expect(dialog.get_by_role("alert")).to_have_text(_GENERIC_MESSAGE)
-
-
-def test_dialog_shows_no_request_error_when_the_page_reloads_for_a_404(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    _open_upload_tab(page, live_server)
-    held = _hold_requests(page, "upload")
-    dialog = _open_dialog(page)
-
-    _submit_without_file(dialog, _submit_button(dialog))
-    with page.expect_navigation():
-        _held_request(page, held, 0).fulfill(status=404, body="Not found")
-
-    expect(page.get_by_text(_GENERIC_MESSAGE)).to_have_count(0)
-    expect(page.get_by_text(_TOO_LARGE_MESSAGE)).to_have_count(0)
-
-
-def test_dialog_shows_the_generic_request_error_for_a_scripted_403(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    _open_upload_tab(page, live_server)
+    _open_upload_tab(page, live_server, stub.pk)
     held = _hold_requests(page, "upload")
     dialog = _open_dialog(page)
     dialog.get_by_label("Title").fill("Notes")
-
     # An event a script dispatches is not a user action, so the page does not
     # reload.
     dialog.locator("form").evaluate("form => htmx.trigger(form, 'submit')")
     _held_request(page, held, 0).fulfill(status=403, body="Forbidden")
+    expect(
+        dialog.get_by_role("alert"), "generic error for a scripted 403"
+    ).to_have_text(_GENERIC_MESSAGE)
+    expect(
+        dialog.get_by_label("Title"), "title lost after a scripted 403"
+    ).to_have_value("Notes")
+    _release_requests(page, "upload")
 
-    expect(dialog.get_by_role("alert")).to_have_text(_GENERIC_MESSAGE)
-    expect(dialog.get_by_label("Title")).to_have_value("Notes")
-
-
-def test_dialog_adds_no_request_error_when_the_response_carries_a_toast(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    _open_upload_tab(page, live_server)
+    _open_upload_tab(page, live_server, stub.pk)
     held = _hold_requests(page, "upload")
     dialog = _open_dialog(page)
-
     _submit_without_file(dialog, _submit_button(dialog))
     _held_request(page, held, 0).fulfill(
         status=500,
@@ -351,86 +233,151 @@ def test_dialog_adds_no_request_error_when_the_response_carries_a_toast(
             "<p>The server is busy.</p></div>"
         ),
     )
+    expect(
+        page.get_by_text("The server is busy."), "toast from the response not shown"
+    ).to_be_attached()
+    expect(
+        page.get_by_text(_GENERIC_MESSAGE), "request error added beside a toast"
+    ).to_have_count(0)
+    _release_requests(page, "upload")
 
-    expect(page.get_by_text("The server is busy.")).to_be_attached()
-    expect(page.get_by_text(_GENERIC_MESSAGE)).to_have_count(0)
-
-
-def test_escape_closes_the_dialog_when_nothing_has_changed(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    _open_upload_tab(page, live_server)
+    _open_upload_tab(page, live_server, stub.pk)
     dialog = _open_dialog(page)
-
     page.keyboard.press("Escape")
+    expect(dialog, "Escape did not close a clean dialog").to_be_hidden()
 
-    expect(dialog).to_be_hidden()
-
-
-def test_choosing_a_file_makes_escape_ask_before_discarding(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    _open_upload_tab(page, live_server)
+    _open_upload_tab(page, live_server, stub.pk)
     dialog = _open_dialog(page)
     attachment = dialog.get_by_label("Attachment")
     attachment.set_input_files(_FILE)
-
     page.keyboard.press("Escape")
-
-    expect(page.get_by_role("dialog", name="Discard changes?")).to_be_visible()
+    expect(
+        page.get_by_role("dialog", name="Discard changes?"),
+        "Escape did not ask before discarding a chosen file",
+    ).to_be_visible()
     page.get_by_role("button", name="Keep editing").click()
-    expect(dialog).to_be_visible()
-    assert attachment.evaluate("input => input.files[0].name") == "notes.txt"
+    expect(dialog, "dialog closed after Keep editing").to_be_visible()
+    assert attachment.evaluate("input => input.files[0].name") == "notes.txt", (
+        "chosen file lost after Keep editing"
+    )
 
-
-def test_clearing_a_chosen_file_makes_escape_close_without_asking(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    _open_upload_tab(page, live_server)
+    _open_upload_tab(page, live_server, stub.pk)
     dialog = _open_dialog(page)
     attachment = dialog.get_by_label("Attachment")
     attachment.set_input_files(_FILE)
     attachment.set_input_files([])
-
     page.keyboard.press("Escape")
+    expect(dialog, "Escape did not close after the file was cleared").to_be_hidden()
+    expect(
+        page.get_by_role("dialog", name="Discard changes?"),
+        "Escape asked to discard after the file was cleared",
+    ).to_have_count(0)
 
-    expect(dialog).to_be_hidden()
-    expect(page.get_by_role("dialog", name="Discard changes?")).to_have_count(0)
+    _open_upload_tab(page, live_server, stub.pk)
+    held = _hold_requests(page, "upload")
+    dialog = _open_dialog(page)
+    _submit_with_file(dialog, _submit_button(dialog))
+    _held_request(page, held, 0).fulfill(status=500, body="Server error")
+    alert = dialog.get_by_role("alert")
+    expect(alert).to_have_text(_GENERIC_MESSAGE)
+    holder = dialog.locator("[data-request-error]")
+    assert _computed_colour(alert) == _computed_colour(holder), (
+        "dialog alert colour differs from the holder's error colour"
+    )
+    _release_requests(page, "upload")
+
+    _open_upload_tab(page, live_server, stub.pk)
+    held = _hold_requests(page, "upload")
+    dialog = _open_dialog(page)
+    _submit_without_file(dialog, _submit_button(dialog))
+    with page.expect_navigation():
+        _held_request(page, held, 0).fulfill(status=404, body="Not found")
+    expect(
+        page.get_by_text(_GENERIC_MESSAGE), "generic error shown after a 404 reload"
+    ).to_have_count(0)
+    expect(
+        page.get_by_text(_TOO_LARGE_MESSAGE), "too-large error shown after a 404 reload"
+    ).to_have_count(0)
+    _release_requests(page, "upload")
 
 
-def _computed_colour(locator: Locator) -> str:
-    return str(locator.evaluate("el => getComputedStyle(el).color"))
-
-
-@pytest.mark.parametrize("container_selector", ["dialog[open]", "#stub-upload-form"])
-def test_request_error_message_is_drawn_in_the_holder_error_colour(
+def test_file_upload_inline_flow(
     page: Page,
     live_server: pytest_django.live_server_helper.LiveServer,
     live_server_site: Site,
     mock_site_context: None,
-    container_selector: str,
 ) -> None:
-    """The alert inserted into the request-error holder used to take the body
-    text colour from the base paragraph rule instead of the error colour."""
-    _open_upload_tab(page, live_server)
-    inline = container_selector == "#stub-upload-form"
-    held = _hold_requests(page, "upload_inline" if inline else "upload")
-    container = page.locator("#stub-upload-form") if inline else _open_dialog(page)
-    save = _inline_submit_button(page) if inline else _submit_button(container)
+    """The inline upload form's request handling, each case from a fresh load.
 
-    _submit_with_file(container, save)
+    Proves that Save reads "Uploading..." while a file goes up, "Saving..." with
+    no file and after a failed upload is cleared; that 413 and 500 show the
+    matching alert and keep the typed title; and that the alert is drawn in the
+    holder's error colour.
+    """
+    stub = make_stub()
+
+    _open_upload_tab(page, live_server, stub.pk)
+    held = _hold_requests(page, "upload_inline")
+    form = page.locator("#stub-upload-form")
+    save = _inline_submit_button(page)
+    _submit_with_file(form, save)
+    expect(save, "inline Save not disabled while a file uploads").to_be_disabled()
+    expect(save, "inline Save text while a file uploads").to_have_text(
+        "Uploading…", use_inner_text=True
+    )
+    _held_request(page, held, 0).fulfill(status=204)
+    _release_requests(page, "upload_inline")
+
+    _open_upload_tab(page, live_server, stub.pk)
+    held = _hold_requests(page, "upload_inline")
+    _submit_without_file(form, save)
+    expect(
+        save, "inline Save not disabled while saving without a file"
+    ).to_be_disabled()
+    expect(save, "inline Save text with no file chosen").to_have_text(
+        "Saving…", use_inner_text=True
+    )
+    _held_request(page, held, 0).fulfill(status=204)
+    _release_requests(page, "upload_inline")
+
+    _open_upload_tab(page, live_server, stub.pk)
+    held = _hold_requests(page, "upload_inline")
+    _submit_with_file(form, save)
+    expect(save, "inline Save text while a file uploads before failing").to_have_text(
+        "Uploading…", use_inner_text=True
+    )
+    _held_request(page, held, 0).fulfill(status=500)
+    expect(save, "inline Save not re-enabled after a failed upload").to_be_enabled()
+    form.get_by_label("Attachment").set_input_files([])
+    save.click()
+    expect(save, "inline Save text after a failed upload is cleared").to_have_text(
+        "Saving…", use_inner_text=True
+    )
+    _held_request(page, held, 1).fulfill(status=204)
+    _release_requests(page, "upload_inline")
+
+    for status, message in _FAILURES:
+        _open_upload_tab(page, live_server, stub.pk)
+        held = _hold_requests(page, "upload_inline")
+        _submit_with_file(form, save)
+        _held_request(page, held, 0).fulfill(status=status, body="Server error")
+        expect(
+            form.get_by_role("alert"), f"inline alert text for a {status}"
+        ).to_have_text(message)
+        expect(
+            form.get_by_label("Title"), f"inline title lost after a {status}"
+        ).to_have_value("Notes")
+        expect(save, f"inline Save not re-enabled after a {status}").to_be_enabled()
+        _release_requests(page, "upload_inline")
+
+    _open_upload_tab(page, live_server, stub.pk)
+    held = _hold_requests(page, "upload_inline")
+    _submit_with_file(form, save)
     _held_request(page, held, 0).fulfill(status=500, body="Server error")
-
-    alert = container.get_by_role("alert")
+    alert = form.get_by_role("alert")
     expect(alert).to_have_text(_GENERIC_MESSAGE)
-    holder = container.locator("[data-request-error]")
-    assert _computed_colour(alert) == _computed_colour(holder)
+    holder = form.locator("[data-request-error]")
+    assert _computed_colour(alert) == _computed_colour(holder), (
+        "inline alert colour differs from the holder's error colour"
+    )
+    _release_requests(page, "upload_inline")

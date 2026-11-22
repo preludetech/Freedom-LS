@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import pytest
 import pytest_django.live_server_helper
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Locator, Page, ViewportSize, expect
 
 from django.contrib.sites.models import Site
 
@@ -18,18 +18,19 @@ from .helpers import assert_no_horizontal_overflow
 pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
 _LONG_UNBROKEN_NAME = "maximilianoalexandrovich.longname.qa@example-university.com"
-_NARROW_VIEWPORT = {"width": 392, "height": 850}
+_NARROW_VIEWPORT: ViewportSize = {"width": 392, "height": 850}
+_LAYOUT_VIEWPORTS: tuple[ViewportSize, ...] = (
+    {"width": 1920, "height": 1080},
+    {"width": 375, "height": 812},
+)
 
 
-def test_instance_dialogs_and_heading(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
+_BASE_PATH = "/test-panel/framework/stubs"
+
+
+def _check_message_and_confirm_dialogs_and_live_heading(
+    page: Page, base: str, stub: StubModel
 ) -> None:
-    stub = make_stub(name="Original Name")
-    long_stub = make_stub(name=_LONG_UNBROKEN_NAME)
-    base = f"{live_server.url}/test-panel/framework/stubs"
     modal = page.locator("#app-modal")
 
     page.goto(f"{base}/{stub.pk}/__tabs/details")
@@ -100,37 +101,14 @@ def test_instance_dialogs_and_heading(
     ).to_be_visible()
     StubModel.objects.filter(pk=stub.pk).update(name="Original Name")
 
-    # A long title with no spaces does not widen the page.
-    page.set_viewport_size(_NARROW_VIEWPORT)
-    page.goto(f"{base}/{long_stub.pk}")
-    expect(page.locator("#instance-title")).to_have_text(_LONG_UNBROKEN_NAME)
-    assert_no_horizontal_overflow(page)
 
-    # The delete dialog focuses Cancel, and confirming deletes the row and
-    # navigates to the list.
-    page.set_viewport_size({"width": 1280, "height": 800})
-    page.goto(f"{base}/{stub.pk}/__tabs/details")
-    page.get_by_role("button", name="Delete", exact=True).click()
-    expect(page.get_by_role("button", name="Cancel")).to_be_focused()
-    # Scoped to the dialog: the trigger with the same name sits behind it,
-    # outside #app-modal.
-    modal.get_by_role("button", name="Delete", exact=True).click()
-    expect(modal).to_be_hidden()
-    expect(page).to_have_url(f"{base}")
-    assert not StubModel.objects.filter(pk=stub.pk).exists()
-
-
-def test_refused_delete_moves_focus_to_its_error_notice(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
+def _check_refused_delete_moves_focus_to_its_error_notice(
+    page: Page, base: str, stub: StubModel
 ) -> None:
     """A delete refused on submit re-renders the dialog with an error notice,
     and focus must land on that notice. It used to fall back to the Cancel
     button, whose autofocus the swap re-applied after the refusal handler."""
-    stub = make_stub(name="Refused")
-    page.goto(f"{live_server.url}/test-panel/framework/stubs/{stub.pk}/__tabs/details")
+    page.goto(f"{base}/{stub.pk}/__tabs/details")
 
     page.get_by_role("button", name="Delete Refused", exact=True).click()
     dialog = page.locator("#app-modal")
@@ -142,18 +120,14 @@ def test_refused_delete_moves_focus_to_its_error_notice(
     expect(notice).to_be_focused()
 
 
-def test_empty_required_reason_keeps_dialog_open_with_error_until_filled(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
+def _check_empty_required_reason_keeps_dialog_open(
+    page: Page, base: str, stub: StubModel
 ) -> None:
     """A required reason is checked on the server only, since the field has no
     browser-side `required`. An empty submit must swap the 422 response into
     the open dialog with the error under the field and perform nothing; a
     typed reason then closes the dialog and runs the action."""
-    stub = make_stub(name="Needs reason")
-    page.goto(f"{live_server.url}/test-panel/framework/stubs/{stub.pk}/__tabs/details")
+    page.goto(f"{base}/{stub.pk}/__tabs/details")
 
     page.get_by_role("button", name="Suspend Item").click()
     modal = page.locator("#app-modal")
@@ -174,56 +148,68 @@ def test_empty_required_reason_keeps_dialog_open_with_error_until_filled(
     assert not stub.is_active
 
 
-@pytest.mark.parametrize(
-    "viewport", [{"width": 1920, "height": 1080}, {"width": 375, "height": 812}]
-)
-def test_only_the_dialog_body_scrolls_between_full_width_header_and_footer(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-    viewport: dict[str, int],
+def _check_long_title_does_not_widen_the_page(
+    page: Page, base: str, long_stub: StubModel
 ) -> None:
-    """The header and footer rules stopped short of the dialog's right edge
-    because the dialog itself scrolled, so its scrollbar gutter sat beside
-    them. Now the header and footer span the dialog's full width and, with tall content the body scrolls while the footer stays in view."""
-    stub = make_stub(name="Scrolling")
+    # A long title with no spaces does not widen the page.
+    page.set_viewport_size(_NARROW_VIEWPORT)
+    page.goto(f"{base}/{long_stub.pk}")
+    expect(page.locator("#instance-title")).to_have_text(_LONG_UNBROKEN_NAME)
+    assert_no_horizontal_overflow(page)
+
+
+def _check_delete_dialog_removes_the_row(
+    page: Page, base: str, stub: StubModel
+) -> None:
+    modal = page.locator("#app-modal")
+    # The delete dialog focuses Cancel, and confirming deletes the row and
+    # navigates to the list.
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{base}/{stub.pk}/__tabs/details")
+    page.get_by_role("button", name="Delete", exact=True).click()
+    expect(page.get_by_role("button", name="Cancel")).to_be_focused()
+    # Scoped to the dialog: the trigger with the same name sits behind it,
+    # outside #app-modal.
+    modal.get_by_role("button", name="Delete", exact=True).click()
+    expect(modal).to_be_hidden()
+    expect(page).to_have_url(f"{base}")
+    assert not StubModel.objects.filter(pk=stub.pk).exists()
+
+
+def _check_retire_dialog_layout(
+    page: Page, base: str, stub: StubModel, viewport: ViewportSize
+) -> None:
+    """The header and footer span the dialog's full width and, with tall
+    content, only the body scrolls while the footer stays in view; the content
+    has equal space each side and the fade shows only while content lies
+    below the fold."""
+    width = viewport["width"]
     page.set_viewport_size(viewport)
-    page.goto(f"{live_server.url}/test-panel/framework/stubs/{stub.pk}/__tabs/details")
+    page.goto(f"{base}/{stub.pk}/__tabs/details")
     page.get_by_role("button", name="Retire Item").click()
     modal = page.locator("#app-modal")
     expect(modal.get_by_role("button", name="Cancel")).to_be_visible()
     # The phone sheet slides up; measure once it has settled.
     expect(modal).to_have_css("transform", "none")
 
-    def measure() -> dict[str, float]:
-        measured: dict[str, float] = modal.evaluate(
-            """dialog => {
-                const rect = (el) => el.getBoundingClientRect();
-                const box = rect(dialog);
-                const bw = parseFloat(getComputedStyle(dialog).borderLeftWidth);
-                const header = rect(dialog.querySelector('#app-modal-body header'));
-                const footer = rect(dialog.querySelector('#app-modal-body footer'));
-                const body = dialog.querySelector('#app-modal-body [data-modal-scroll]');
-                const style = getComputedStyle(body);
-                return {
-                    headerLeft: header.left - box.left - bw,
-                    headerRight: box.right - bw - header.right,
-                    footerLeft: footer.left - box.left - bw,
-                    footerRight: box.right - bw - footer.right,
-                    dialogScrolls: dialog.scrollHeight > dialog.clientHeight + 1,
-                    bodyScrolls: body.scrollHeight > body.clientHeight + 1,
-                    footerBottom: footer.bottom,
-                    dialogBottom: box.bottom,
-                    viewportHeight: innerHeight,
-                };
-            }"""
-        )
-        return measured
-
-    short = measure()
+    short = _measure_edges(modal)
     for key in ("headerLeft", "headerRight", "footerLeft", "footerRight"):
-        assert abs(short[key]) <= 1, (key, short)
+        assert abs(short[key]) <= 1, (f"{key} gap at {width}px", short)
+
+    fits = _measure_spacing(modal)
+    assert abs(fits["left"] - fits["right"]) <= 1, (
+        f"unequal side space at {width}px",
+        fits,
+    )
+    assert fits["gapAboveFooter"] >= fits["padTop"] - 1, (
+        f"gap above the footer smaller than the top padding at {width}px",
+        fits,
+    )
+    assert not fits["scrolls"], (f"short content scrolls at {width}px", fits)
+    assert fits["fadeOpacity"] == 0, (
+        f"fade shown for short content at {width}px",
+        fits,
+    )
 
     modal.evaluate(
         """dialog => {
@@ -232,90 +218,121 @@ def test_only_the_dialog_body_scrolls_between_full_width_header_and_footer(
             dialog.querySelector('#app-modal-body [data-modal-scroll]').append(tall);
         }"""
     )
-    tall = measure()
-    assert tall["bodyScrolls"], tall
-    assert not tall["dialogScrolls"], tall
-    assert tall["footerBottom"] <= tall["viewportHeight"], tall
+    tall = _measure_edges(modal)
+    assert tall["bodyScrolls"], (f"body does not scroll at {width}px", tall)
+    assert not tall["dialogScrolls"], (f"dialog scrolls at {width}px", tall)
+    assert tall["footerBottom"] <= tall["viewportHeight"], (
+        f"footer below the viewport at {width}px",
+        tall,
+    )
     for key in ("headerRight", "footerRight"):
-        assert abs(tall[key]) <= 1, (key, tall)
-    expect(modal.locator("#app-modal-body footer")).to_be_in_viewport()
-    expect(modal.locator("#app-modal-body [data-modal-scroll]")).to_have_attribute(
+        assert abs(tall[key]) <= 1, (f"{key} gap with tall content at {width}px", tall)
+    expect(
+        modal.locator("#app-modal-body footer"), f"footer out of view at {width}px"
+    ).to_be_in_viewport()
+    body = modal.locator("#app-modal-body [data-modal-scroll]")
+    expect(body, f"more-below marker missing at {width}px").to_have_attribute(
         "data-more-below", "true"
     )
-
-
-@pytest.mark.parametrize(
-    "viewport", [{"width": 1920, "height": 1080}, {"width": 375, "height": 812}]
-)
-def test_dialog_body_content_has_equal_space_each_side_and_fade_only_when_needed(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-    viewport: dict[str, int],
-) -> None:
-    """The body's always-visible scrollbar track sat on top of its padding, so
-    the content had less space on its left than on its right, and the bottom
-    fade washed out the last lines even when everything fitted. The space from
-    the dialog's edges to the content is now equal, the body keeps its bottom
-    padding, and the fade shows only while content lies below the fold."""
-    stub = make_stub(name="Equal space")
-    page.set_viewport_size(viewport)
-    page.goto(f"{live_server.url}/test-panel/framework/stubs/{stub.pk}/__tabs/details")
-    page.get_by_role("button", name="Retire Item").click()
-    modal = page.locator("#app-modal")
-    expect(modal.get_by_role("button", name="Cancel")).to_be_visible()
-    expect(modal).to_have_css("transform", "none")
-
-    def measure() -> dict[str, float]:
-        measured: dict[str, float] = modal.evaluate(
-            """dialog => {
-                const body = dialog.querySelector('#app-modal-body [data-modal-scroll]');
-                const footer = dialog.querySelector('#app-modal-body footer');
-                const box = dialog.getBoundingClientRect();
-                const bw = parseFloat(getComputedStyle(dialog).borderLeftWidth);
-                const kids = Array.from(body.children).filter(
-                    (el) => el.getBoundingClientRect().width > 0);
-                const first = kids[0].getBoundingClientRect();
-                const last = kids[kids.length - 1].getBoundingClientRect();
-                const fade = getComputedStyle(body, '::after');
-                return {
-                    left: first.left - box.left - bw,
-                    right: box.right - bw - first.right,
-                    track: body.offsetWidth - body.clientWidth,
-                    gapAboveFooter: footer.getBoundingClientRect().top - last.bottom,
-                    padTop: parseFloat(getComputedStyle(body).paddingTop),
-                    fadeOpacity: parseFloat(fade.opacity),
-                    scrolls: body.scrollHeight > body.clientHeight + 1,
-                };
-            }"""
-        )
-        return measured
-
-    fits = measure()
-    assert abs(fits["left"] - fits["right"]) <= 1, fits
-    assert fits["gapAboveFooter"] >= fits["padTop"] - 1, fits
-    assert not fits["scrolls"], fits
-    assert fits["fadeOpacity"] == 0, fits
-
-    body = modal.locator("#app-modal-body [data-modal-scroll]")
-    modal.evaluate(
-        """dialog => {
-            const tall = document.createElement('div');
-            tall.style.height = '3000px';
-            dialog.querySelector('#app-modal-body [data-modal-scroll]').append(tall);
-        }"""
-    )
-    expect(body).to_have_attribute("data-more-below", "true")
     page.wait_for_function(
         "getComputedStyle(document.querySelector('#app-modal-body [data-modal-scroll]'),"
         " '::after').opacity === '1'"
     )
     body.evaluate("el => { el.scrollTop = el.scrollHeight; }")
-    expect(body).to_have_attribute("data-more-below", "false")
+    expect(body, f"more-below marker kept at the end at {width}px").to_have_attribute(
+        "data-more-below", "false"
+    )
     page.wait_for_function(
         "getComputedStyle(document.querySelector('#app-modal-body [data-modal-scroll]'),"
         " '::after').opacity === '0'"
     )
-    ended = measure()
-    assert abs(ended["left"] - ended["right"]) <= 1, ended
+    ended = _measure_spacing(modal)
+    assert abs(ended["left"] - ended["right"]) <= 1, (
+        f"unequal side space after scrolling at {width}px",
+        ended,
+    )
+
+
+def _measure_edges(modal: Locator) -> dict[str, float]:
+    measured: dict[str, float] = modal.evaluate(
+        """dialog => {
+            const rect = (el) => el.getBoundingClientRect();
+            const box = rect(dialog);
+            const bw = parseFloat(getComputedStyle(dialog).borderLeftWidth);
+            const header = rect(dialog.querySelector('#app-modal-body header'));
+            const footer = rect(dialog.querySelector('#app-modal-body footer'));
+            const body = dialog.querySelector('#app-modal-body [data-modal-scroll]');
+            const style = getComputedStyle(body);
+            return {
+                headerLeft: header.left - box.left - bw,
+                headerRight: box.right - bw - header.right,
+                footerLeft: footer.left - box.left - bw,
+                footerRight: box.right - bw - footer.right,
+                dialogScrolls: dialog.scrollHeight > dialog.clientHeight + 1,
+                bodyScrolls: body.scrollHeight > body.clientHeight + 1,
+                footerBottom: footer.bottom,
+                dialogBottom: box.bottom,
+                viewportHeight: innerHeight,
+            };
+        }"""
+    )
+    return measured
+
+
+def _measure_spacing(modal: Locator) -> dict[str, float]:
+    measured: dict[str, float] = modal.evaluate(
+        """dialog => {
+            const body = dialog.querySelector('#app-modal-body [data-modal-scroll]');
+            const footer = dialog.querySelector('#app-modal-body footer');
+            const box = dialog.getBoundingClientRect();
+            const bw = parseFloat(getComputedStyle(dialog).borderLeftWidth);
+            const kids = Array.from(body.children).filter(
+                (el) => el.getBoundingClientRect().width > 0);
+            const first = kids[0].getBoundingClientRect();
+            const last = kids[kids.length - 1].getBoundingClientRect();
+            const fade = getComputedStyle(body, '::after');
+            return {
+                left: first.left - box.left - bw,
+                right: box.right - bw - first.right,
+                track: body.offsetWidth - body.clientWidth,
+                gapAboveFooter: footer.getBoundingClientRect().top - last.bottom,
+                padTop: parseFloat(getComputedStyle(body).paddingTop),
+                fadeOpacity: parseFloat(fade.opacity),
+                scrolls: body.scrollHeight > body.clientHeight + 1,
+            };
+        }"""
+    )
+    return measured
+
+
+def test_instance_dialogs_flow(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    """One flow over the instance page's dialogs and live heading.
+
+    Proves the message dialog's focus and backdrop; the confirm dialog's reason
+    and discard prompt; the live heading, tab title and header refresh; that a
+    refused delete focuses its error notice; that an empty required reason
+    keeps the dialog open with an error until filled; that a long unbroken
+    title does not widen the page; at 1920x1080 and 375x812 that the Retire
+    Item dialog has a full-width header and footer, scrolls only its body and
+    spaces its content equally with a fade only when needed; and that deleting
+    removes the row and returns to the list.
+    """
+    base = f"{live_server.url}{_BASE_PATH}"
+    stub = make_stub(name="Original Name")
+    long_stub = make_stub(name=_LONG_UNBROKEN_NAME)
+    refused_stub = make_stub(name="Refused")
+    reason_stub = make_stub(name="Needs reason")
+    layout_stub = make_stub(name="Layout")
+
+    _check_message_and_confirm_dialogs_and_live_heading(page, base, stub)
+    _check_refused_delete_moves_focus_to_its_error_notice(page, base, refused_stub)
+    _check_empty_required_reason_keeps_dialog_open(page, base, reason_stub)
+    _check_long_title_does_not_widen_the_page(page, base, long_stub)
+    for viewport in _LAYOUT_VIEWPORTS:
+        _check_retire_dialog_layout(page, base, layout_stub, viewport)
+    _check_delete_dialog_removes_the_row(page, base, stub)

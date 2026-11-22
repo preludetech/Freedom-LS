@@ -13,6 +13,7 @@ from playwright.sync_api import Locator, Page, Request, Route, ViewportSize, exp
 from django.contrib.sites.models import Site
 
 from ..helpers import make_stub
+from ..stub_models import StubModel
 from .helpers import QA_VIEWPORTS, assert_no_horizontal_overflow
 
 pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
@@ -78,21 +79,16 @@ def _go_back_and_wait_for_restore(page: Page) -> None:
     )
 
 
-def test_quick_view_drawer(
+def _check_drawer(
     page: Page,
     live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
+    alpha_pk: int,
+    detail_pk: int,
 ) -> None:
-    alpha = make_stub(name="Alpha")
-    make_stub(name="Beta")
-    detail_stub = make_stub(name="History Target")
-    for i in range(9):
-        make_stub(name=f"row-{i:02d}")
     list_url = f"{live_server.url}{_LIST_PATH}"
     # The sidebar's own reverse()d link has no trailing slash.
     sidebar_list_url = f"{live_server.url}{_FRAMEWORK_PATH}/stubs"
-    detail_url = f"{live_server.url}{_FRAMEWORK_PATH}/stubs/{detail_stub.pk}"
+    detail_url = f"{live_server.url}{_FRAMEWORK_PATH}/stubs/{detail_pk}"
     quick_view = page.locator("#quick-view")
     content = page.locator("[data-stub-quick-view]")
     page_errors: list[str] = []
@@ -130,7 +126,7 @@ def test_quick_view_drawer(
     beta_trigger.click()
     expect(quick_view).to_be_visible()
     expect(content).to_have_text("Beta")
-    assert requests == []
+    assert requests == [], "an unexpected quick-view request was made"
 
     # Esc closes the drawer and returns focus to the trigger.
     page.keyboard.press("Escape")
@@ -142,7 +138,7 @@ def test_quick_view_drawer(
         alpha_trigger.click(modifiers=["Control"])
     new_page = new_page_info.value
     new_page.wait_for_load_state()
-    expect(new_page).to_have_url(f"{live_server.url}{_FRAMEWORK_PATH}/stubs/{alpha.pk}")
+    expect(new_page).to_have_url(f"{live_server.url}{_FRAMEWORK_PATH}/stubs/{alpha_pk}")
     expect(quick_view).to_be_hidden()
     new_page.close()
 
@@ -151,9 +147,9 @@ def test_quick_view_drawer(
     page.get_by_role("button", name="Create Item").click()
     expect(page.locator("#app-modal")).to_be_visible()
     page.evaluate(
-        f"htmx.ajax('GET', '{_FRAMEWORK_PATH}/stubs/{detail_stub.pk}', "
+        f"htmx.ajax('GET', '{_FRAMEWORK_PATH}/stubs/{detail_pk}', "
         f"{{target: '#main-content', swap: 'outerHTML', "
-        f"push: '{_FRAMEWORK_PATH}/stubs/{detail_stub.pk}'}})"
+        f"push: '{_FRAMEWORK_PATH}/stubs/{detail_pk}'}})"
     )
     expect(page).to_have_url(detail_url)
     _go_back_and_wait_for_restore(page)
@@ -180,7 +176,7 @@ def test_quick_view_drawer(
     expect(page.locator("#quick-view-title")).to_have_text("History Target")
     expect(content).to_have_text("History Target")
     expect(history_trigger).to_have_attribute("aria-expanded", "true")
-    assert len(requests) == 1
+    assert len(requests) == 1, "reopening the drawer did not refetch exactly once"
 
     # A history-restore swap carries no detail.target; the event is dispatched
     # directly because whether a live listener sees it depends on when Alpine
@@ -191,7 +187,7 @@ def test_quick_view_drawer(
         "document.body.dispatchEvent(new CustomEvent('htmx:afterSwap', "
         "{bubbles: true, detail: {elt: document.body}}))"
     )
-    assert page_errors == []
+    assert page_errors == [], "the page raised an error"
 
     # Layout at each viewport.
     for viewport in QA_VIEWPORTS:
@@ -211,11 +207,12 @@ def test_quick_view_drawer(
 
         # Never modal: the page behind the drawer stays usable at every width.
         expect(page.locator("dialog:modal")).to_have_count(0)
-        assert page.evaluate("getComputedStyle(document.documentElement).overflow") != (
-            "hidden"
-        )
+        assert (
+            page.evaluate("getComputedStyle(document.documentElement).overflow")
+            != "hidden"
+        ), f"page scroll locked behind the drawer at {width}px"
         box = quick_view.bounding_box()
-        assert box is not None
+        assert box is not None, f"drawer has no box at {width}px"
 
         if is_phone:
             assert box["x"] == pytest.approx(0, abs=1)
@@ -270,7 +267,7 @@ def test_quick_view_drawer(
         if is_phone:
             # The page scrolls its last row clear of the sheet.
             page.evaluate("window.scrollTo(0, document.documentElement.scrollHeight)")
-            row_box = _trigger(page, "row-06").bounding_box()
+            row_box = _trigger(page, "row-05").bounding_box()
             sheet_box = quick_view.bounding_box()
             assert row_box is not None
             assert sheet_box is not None
@@ -278,7 +275,9 @@ def test_quick_view_drawer(
 
         # The drawer is not displayed under print media.
         page.emulate_media(media="print")
-        assert quick_view.evaluate("el => getComputedStyle(el).display") == "none"
+        assert quick_view.evaluate("el => getComputedStyle(el).display") == "none", (
+            f"drawer shown under print media at {width}px"
+        )
         page.emulate_media(media="screen")
 
         page.keyboard.press("Escape")
@@ -298,16 +297,12 @@ def test_quick_view_drawer(
     expect(quick_view).to_be_visible()
     expect(page.locator("dialog:modal")).to_have_count(0)
     expect(content).to_have_text("Alpha")
-    assert requests == []
+    assert requests == [], "an unexpected quick-view request was made"
 
 
-def test_server_error_shows_retry_and_retry_loads(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
+def _check_server_error_shows_retry_and_retry_loads(
+    page: Page, live_server: pytest_django.live_server_helper.LiveServer
 ) -> None:
-    make_stub(name="Alpha")
     page.goto(f"{live_server.url}{_LIST_PATH}")
     _fail_first_quick_view(page)
 
@@ -316,19 +311,16 @@ def test_server_error_shows_retry_and_retry_loads(
 
     page.get_by_role("button", name="Retry").click()
     expect(page.locator("[data-stub-quick-view]")).to_have_text("Alpha")
+    page.unroute("**/__quick-view")
 
 
-def test_back_to_a_shown_row_after_another_failed_loads_it_again(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
+def _check_back_to_a_shown_row_after_another_failed(
+    page: Page, live_server: pytest_django.live_server_helper.LiveServer
 ) -> None:
-    make_stub(name="Alpha")
-    beta = make_stub(name="Beta")
     page.goto(f"{live_server.url}{_LIST_PATH}")
+    beta_pk = _stub_pk("Beta")
     page.route(
-        f"**/{beta.pk}/__quick-view",
+        f"**/{beta_pk}/__quick-view",
         lambda route: route.fulfill(status=500, body="boom"),
     )
 
@@ -340,19 +332,16 @@ def test_back_to_a_shown_row_after_another_failed_loads_it_again(
     _trigger(page, "Alpha").click()
     expect(page.locator("#quick-view")).to_be_visible()
     expect(page.locator("[data-stub-quick-view]")).to_have_text("Alpha")
+    page.unroute(f"**/{beta_pk}/__quick-view")
 
 
-def test_reopening_a_row_after_closing_mid_load_shows_the_reopened_row(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
+def _check_reopening_after_closing_mid_load(
+    page: Page, live_server: pytest_django.live_server_helper.LiveServer
 ) -> None:
-    make_stub(name="Alpha")
-    beta = make_stub(name="Beta")
     page.goto(f"{live_server.url}{_LIST_PATH}")
+    beta_pk = _stub_pk("Beta")
     held: list[Route] = []
-    page.route(f"**/{beta.pk}/__quick-view", lambda route: held.append(route))
+    page.route(f"**/{beta_pk}/__quick-view", lambda route: held.append(route))
 
     _trigger(page, "Alpha").click()
     expect(page.locator("[data-stub-quick-view]")).to_have_text("Alpha")
@@ -364,15 +353,12 @@ def test_reopening_a_row_after_closing_mid_load_shows_the_reopened_row(
     _trigger(page, "Alpha").click()
     expect(page.locator("[data-stub-quick-view]")).to_have_text("Alpha")
     expect(_trigger(page, "Alpha")).to_have_attribute("aria-expanded", "true")
+    page.unroute(f"**/{beta_pk}/__quick-view")
 
 
-def test_reopening_a_row_whose_load_failed_requests_it_again(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
+def _check_reopening_a_failed_row_requests_it_again(
+    page: Page, live_server: pytest_django.live_server_helper.LiveServer
 ) -> None:
-    make_stub(name="Alpha")
     page.goto(f"{live_server.url}{_LIST_PATH}")
     attempts = _fail_first_quick_view(page)
     trigger = _trigger(page, "Alpha")
@@ -384,17 +370,13 @@ def test_reopening_a_row_whose_load_failed_requests_it_again(
 
     trigger.click()
     expect(page.locator("[data-stub-quick-view]")).to_have_text("Alpha")
-    assert attempts["count"] == 2
+    assert attempts["count"] == 2, "a failed row was not requested again on reopen"
+    page.unroute("**/__quick-view")
 
 
-def test_unsent_draft_asks_before_the_drawer_is_left(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
+def _check_unsent_draft_asks_before_the_drawer_is_left(
+    page: Page, live_server: pytest_django.live_server_helper.LiveServer
 ) -> None:
-    make_stub(name="Alpha")
-    make_stub(name="Beta")
     quick_view = page.locator("#quick-view")
     content = page.locator("[data-stub-quick-view]")
     prompt = page.locator("#quick-view [data-discard-prompt]")
@@ -429,7 +411,9 @@ def test_unsent_draft_asks_before_the_drawer_is_left(
             body: el.querySelector("[data-discard-body]").getBoundingClientRect().x,
         })"""
     )
-    assert edges["body"] == pytest.approx(edges["heading"], abs=1)
+    assert edges["body"] == pytest.approx(edges["heading"], abs=1), (
+        "discard sentence does not start at the heading's edge"
+    )
     prompt.get_by_role("button", name="Keep editing").click()
     expect(prompt).to_be_hidden()
     expect(note).to_have_value("half a thought")
@@ -458,14 +442,9 @@ def test_unsent_draft_asks_before_the_drawer_is_left(
     expect(quick_view).to_be_hidden()
 
 
-def test_a_form_without_discard_wording_gets_the_default_after_one_with_its_own(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
+def _check_default_discard_wording_after_custom_wording(
+    page: Page, live_server: pytest_django.live_server_helper.LiveServer
 ) -> None:
-    make_stub(name="Alpha")
-    make_stub(name="Plain")
     content = page.locator("[data-stub-quick-view]")
     prompt = page.locator("#quick-view [data-discard-prompt]")
     note = page.get_by_label("Note")
@@ -489,3 +468,40 @@ def test_a_form_without_discard_wording_gets_the_default_after_one_with_its_own(
         prompt.get_by_text("The changes you made haven't been saved.")
     ).to_be_visible()
     expect(prompt.get_by_text("Discard your message?")).to_be_hidden()
+
+
+def _stub_pk(name: str) -> int:
+    pk: int = StubModel.objects.get(name=name).pk
+    return pk
+
+
+def test_quick_view_flow(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    """One flow over the ``#quick-view`` drawer on the stub list.
+
+    Proves the drawer's loading title and focus, switching rows, Esc, ctrl-click
+    and history restore; its layout and print behaviour at every viewport and
+    across the docking breakpoint; that a 500 shows Retry and Retry loads the
+    row; that a shown row loads again after another failed, and a reopened row
+    shows after closing mid-load or after a failed load; that an unsent draft
+    asks before the drawer is left; and that a form without its own discard
+    wording gets the default after one with its own.
+    """
+    alpha = make_stub(name="Alpha")
+    make_stub(name="Beta")
+    detail_stub = make_stub(name="History Target")
+    make_stub(name="Plain")
+    for i in range(9):
+        make_stub(name=f"row-{i:02d}")
+
+    _check_drawer(page, live_server, alpha.pk, detail_stub.pk)
+    _check_server_error_shows_retry_and_retry_loads(page, live_server)
+    _check_back_to_a_shown_row_after_another_failed(page, live_server)
+    _check_reopening_after_closing_mid_load(page, live_server)
+    _check_reopening_a_failed_row_requests_it_again(page, live_server)
+    _check_unsent_draft_asks_before_the_drawer_is_left(page, live_server)
+    _check_default_discard_wording_after_custom_wording(page, live_server)

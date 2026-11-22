@@ -18,11 +18,33 @@ from .helpers import QA_VIEWPORTS, assert_no_horizontal_overflow
 pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
 
-def test_editable_list_adds_edits_and_removes_without_a_page_load(
+def test_editable_list_flow(
     page: Page,
     live_server: pytest_django.live_server_helper.LiveServer,
     live_server_site: Site,
     mock_site_context: None,
+) -> None:
+    """One flow over the editable-list panel on the stub instance page.
+
+    Proves that add, edit and remove update the list without a page load, with
+    focus and announcer text; that an entry deleted behind the page's back is
+    reported as unavailable; the cap line; "Add and add another"; the table
+    layout's focus; that the dialogs stay inside the viewport; that a list
+    without an Edit trigger announces and focuses the entry's Remove; that a
+    slow refresh is not taken for the next Add's answer; that saving one entry
+    twice announces both saves; and that each row and card lays out its Edit
+    and Remove buttons tidily at every viewport on both layouts.
+    """
+    _check_add_edit_remove_without_a_page_load(page, live_server)
+    _check_entry_without_an_edit_trigger(page, live_server)
+    _check_slow_refresh_from_add_another(page, live_server)
+    _check_saving_one_entry_twice(page, live_server)
+    for tab in ("entries", "entries_table"):
+        _check_footer_layout(page, live_server, tab)
+
+
+def _check_add_edit_remove_without_a_page_load(
+    page: Page, live_server: pytest_django.live_server_helper.LiveServer
 ) -> None:
     parent = make_stub(name="Parent")
     modal = page.locator("#app-modal")
@@ -109,7 +131,9 @@ def test_editable_list_adds_edits_and_removes_without_a_page_load(
     expect(modal).to_be_hidden()
 
     # No step loaded a page.
-    assert page.evaluate("window.pageLoadMarker") == "still here"
+    assert page.evaluate("window.pageLoadMarker") == "still here", (
+        "a step loaded a page"
+    )
 
     # A full list shows the cap line with focus on it and no Add trigger.
     page.goto(
@@ -173,17 +197,18 @@ def test_editable_list_adds_edits_and_removes_without_a_page_load(
             expect(modal).to_be_visible()
             box = modal.bounding_box()
             assert box is not None
-            assert box["x"] >= 0
-            assert box["x"] + box["width"] <= viewport["width"]
+            assert box["x"] >= 0, (
+                f"Dialog starts left of the viewport at {viewport['width']}px"
+            )
+            assert box["x"] + box["width"] <= viewport["width"], (
+                f"Dialog runs past the right edge at {viewport['width']}px"
+            )
             page.keyboard.press("Escape")
             expect(modal).to_be_hidden()
 
 
-def test_editable_list_without_an_edit_trigger_announces_and_focuses_the_entry(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
+def _check_entry_without_an_edit_trigger(
+    page: Page, live_server: pytest_django.live_server_helper.LiveServer
 ) -> None:
     """A person who may add and remove but not change still hears which entry
     changed, and focus lands on that entry's own trigger."""
@@ -212,11 +237,8 @@ def test_editable_list_without_an_edit_trigger_announces_and_focuses_the_entry(
     expect(panel.get_by_role("button", name="Remove Beta")).to_be_focused()
 
 
-def test_a_slow_refresh_from_add_another_is_not_taken_for_the_next_adds_answer(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
+def _check_slow_refresh_from_add_another(
+    page: Page, live_server: pytest_django.live_server_helper.LiveServer
 ) -> None:
     """The list's refresh after "Add and add another" arrives late, after the
     next plain Add has closed the dialog. It shows the list before that Add,
@@ -246,7 +268,7 @@ def test_a_slow_refresh_from_add_another_is_not_taken_for_the_next_adds_answer(
     modal.get_by_label("Title").fill("Beta")
     modal.get_by_role("button", name="Add", exact=True).click()
     expect(modal).to_be_hidden()
-    assert len(held) == 1
+    assert len(held) == 1, "the first list refresh was not held"
 
     # htmx queues the plain Add's refresh behind the held one, so it runs
     # once the stale list has landed.
@@ -258,11 +280,8 @@ def test_a_slow_refresh_from_add_another_is_not_taken_for_the_next_adds_answer(
     expect(panel.get_by_role("button", name="Edit Beta")).to_be_focused()
 
 
-def test_saving_one_entry_twice_announces_both_saves(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
+def _check_saving_one_entry_twice(
+    page: Page, live_server: pytest_django.live_server_helper.LiveServer
 ) -> None:
     """A live region whose text does not change is not read again, so the
     announcer is emptied before each message."""
@@ -299,21 +318,16 @@ def test_saving_one_entry_twice_announces_both_saves(
         "Saved Alpha.",
         "",
         "Saved Alpha.",
-    ]
+    ], "announcer did not clear and refill between the two saves"
 
 
-@pytest.mark.parametrize("tab", ["entries", "entries_table"])
-def test_each_list_row_and_card_lays_its_buttons_out_in_a_tidy_footer(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-    tab: str,
+def _check_footer_layout(
+    page: Page, live_server: pytest_django.live_server_helper.LiveServer, tab: str
 ) -> None:
     """Every entry's Edit and Remove sit side by side under its title and
     detail, starting at the title's left edge, each as wide as its label, at
     the same offset on every entry whether or not it has a detail."""
-    parent = make_stub(name="Parent")
+    parent = make_stub(name=f"Footer parent {tab}")
     entries_and_details = {
         "Nomsa Dlamini": "Mother, 082 555 0101",
         "Pieter van Wyk": "Neighbour, 083 555 0142",
@@ -327,6 +341,7 @@ def test_each_list_row_and_card_lays_its_buttons_out_in_a_tidy_footer(
     page.wait_for_load_state("networkidle")
 
     for viewport in QA_VIEWPORTS:
+        width = viewport["width"]
         page.set_viewport_size(viewport)
         entries = page.locator("li[data-editable-list-entry]:visible")
         if tab == "entries_table" and entries.count() == 0:
@@ -340,9 +355,13 @@ def test_each_list_row_and_card_lays_its_buttons_out_in_a_tidy_footer(
                 ).bounding_box()
                 assert edit_box is not None
                 assert remove_box is not None
-                assert edit_box["y"] == pytest.approx(remove_box["y"], abs=1)
+                assert edit_box["y"] == pytest.approx(remove_box["y"], abs=1), (
+                    f"Edit and Remove of {title} not on one line in the table at {width}px"
+                )
             continue
-        assert entries.count() == len(entries_and_details)
+        assert entries.count() == len(entries_and_details), (
+            f"Wrong visible entry count at {width}px on {tab}"
+        )
         offsets: set[int] = set()
         for title, detail in entries_and_details.items():
             entry = entries.filter(has=page.get_by_role("button", name=f"Edit {title}"))
@@ -362,12 +381,24 @@ def test_each_list_row_and_card_lays_its_buttons_out_in_a_tidy_footer(
             assert edit_box is not None
             assert remove_box is not None
             assert entry_box is not None
-            assert edit_box["y"] == pytest.approx(remove_box["y"], abs=1)
+            assert edit_box["y"] == pytest.approx(remove_box["y"], abs=1), (
+                f"Edit and Remove of {title} not on one line at {width}px on {tab}"
+            )
             gap_under_text = edit_box["y"] - (text_box["y"] + text_box["height"])
-            assert 8 <= gap_under_text <= 16
-            assert edit_box["x"] == pytest.approx(title_box["x"], abs=1)
-            assert remove_box["x"] > edit_box["x"] + edit_box["width"]
+            assert 8 <= gap_under_text <= 16, (
+                f"Buttons of {title} not 8-16px under the text at {width}px on {tab}"
+            )
+            assert edit_box["x"] == pytest.approx(title_box["x"], abs=1), (
+                f"Edit of {title} not at the title's left edge at {width}px on {tab}"
+            )
+            assert remove_box["x"] > edit_box["x"] + edit_box["width"], (
+                f"Remove of {title} not beside Edit at {width}px on {tab}"
+            )
             for box in (edit_box, remove_box):
-                assert box["width"] < entry_box["width"] / 4
+                assert box["width"] < entry_box["width"] / 4, (
+                    f"Button of {title} wider than a quarter of its entry at {width}px on {tab}"
+                )
             offsets.add(round(edit_box["x"] - entry_box["x"]))
-        assert len(offsets) == 1
+        assert len(offsets) == 1, (
+            f"Button offsets differ between entries at {width}px on {tab}"
+        )
