@@ -40,11 +40,6 @@ def sidebar(
 
 
 @pytest.fixture
-def _messaging_on(settings: pytest_django.fixtures.SettingsWrapper) -> None:
-    settings.MESSAGING_ENABLED = True
-
-
-@pytest.fixture
 def _messaging_off(settings: pytest_django.fixtures.SettingsWrapper) -> None:
     settings.MESSAGING_ENABLED = False
 

@@ -114,7 +114,7 @@ class LearnerBulkAction(EducatorBulkAction):
 
 class CohortMembershipBulkAction(LearnerBulkAction):
     """Adds learners to, or removes them from, the one cohort the educator
-    picks. `staff_member_ids` holds the selected learners already in that cohort,
+    picks. `already_member_ids` holds the selected learners already in that cohort,
     read once per classification so previewing costs a fixed number of queries
     however many learners are selected."""
 
@@ -123,7 +123,7 @@ class CohortMembershipBulkAction(LearnerBulkAction):
     # organisation, with a ValueError; a cohort deactivated between the
     # confirmation and the run fails each learner instead of aborting the run.
     failure_exceptions = (ValueError,)
-    staff_member_ids: frozenset[object] = frozenset()
+    already_member_ids: frozenset[object] = frozenset()
 
     def get_form(
         self, request: HttpRequest, data: QueryDict | None
@@ -156,7 +156,7 @@ class CohortMembershipBulkAction(LearnerBulkAction):
         queryset: QuerySet,
         cleaned_data: dict[str, object],
     ) -> dict[str, BulkOutcome] | None:
-        self.staff_member_ids = frozenset(
+        self.already_member_ids = frozenset(
             CohortMembership.objects.filter(
                 cohort=cleaned_data["cohort"], learner__in=queryset
             ).values_list("learner_id", flat=True)
@@ -188,7 +188,7 @@ class AddToCohortBulkAction(CohortMembershipBulkAction):
     unchanged_reason = "already in the cohort"
 
     def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
-        return self.unchanged_reason if obj.pk in self.staff_member_ids else None
+        return self.unchanged_reason if obj.pk in self.already_member_ids else None
 
     def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
         return add_to_cohort(
@@ -211,7 +211,7 @@ class RemoveFromCohortBulkAction(CohortMembershipBulkAction):
     unchanged_reason = "not a member"
 
     def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
-        return None if obj.pk in self.staff_member_ids else self.unchanged_reason
+        return None if obj.pk in self.already_member_ids else self.unchanged_reason
 
     def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
         return remove_from_cohort(

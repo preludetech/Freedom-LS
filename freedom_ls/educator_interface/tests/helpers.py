@@ -810,7 +810,7 @@ def _view_conversation_url(learner: Learner) -> str:
 
 def _open_conversation(
     client: Client, learner: Learner, conversation: object, **extra: str
-):
+) -> _MonkeyPatchedWSGIResponse:
     return client.get(
         f"{_view_conversation_url(learner)}?conversation={conversation}",
         HTTP_HX_REQUEST="true",

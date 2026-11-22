@@ -38,7 +38,7 @@ instance pages that puts each action here:
 
 A log or History table sorts on `created_at`, `actor_label`, `action` and `target_label` and
 filters on who, what and when (`AuditActorFilter` and `AuditActionFilter` in
-`freedom_ls/educator_interface/filters.py`, and the framework's `PeriodFilter`), on the organisation Audit log and on every History
+`freedom_ls/educator_interface/panels/audit_log/filters.py`, and the framework's `PeriodFilter`), on the organisation Audit log and on every History
 tab alike.
 
 ## Course outline and content previews

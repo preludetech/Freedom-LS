@@ -54,11 +54,6 @@ from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.tests.factories import SiteFactory
 
 
-@pytest.fixture
-def _messaging_on(settings) -> None:
-    settings.MESSAGING_ENABLED = True
-
-
 @pytest.fixture(autouse=True)
 def _site_context(mock_site_context):
     """Every test here builds site-aware objects and assigns roles."""

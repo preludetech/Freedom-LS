@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 import pytest
 
 from django.contrib.sites.models import Site
@@ -15,10 +17,21 @@ RUNS = "freedom_ls_panel_framework"
 ACTIONS = "freedom_ls.educator_interface.actions."
 
 
+@pytest.fixture
+def migrated_back_to_the_leaf() -> Iterator[None]:
+    """The test migrates down to zero and up to 0001; leave the schema at the
+    leaf so later tests see the full schema."""
+    yield
+    executor = MigrationExecutor(connection)
+    executor.loader.build_graph()
+    executor.migrate(executor.loader.graph.leaf_nodes())
+
+
 # transaction=True: the test migrates backwards and forwards.
 @pytest.mark.django_db(transaction=True)
 def test_runs_recorded_under_the_old_class_names_point_at_the_new_ones(
     mock_site_context: object,
+    migrated_back_to_the_leaf: None,
 ) -> None:
     user = UserFactory()
     site = Site.objects.get_current()
