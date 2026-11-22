@@ -76,6 +76,7 @@ dev = [
     "import-linter>=2.15",
     "lxml>=6.1.0",
     "cssselect>=1.4.0",
+    "pytest-split>=0.11.0",
 ]
 
 [tool.setuptools.packages.find]
@@ -125,7 +126,7 @@ escalation = [
     "freedom_ls/content_base/**",
 ]
 # A targeted run narrows to the tests that can reach the change. The full run that closes an
-# implementation and CI on the pull request cover what narrowing leaves out.
+# implementation, which runs on GitHub Actions, covers what narrowing leaves out.
 narrow = true
 # The marker expression the tiers run with. It drops `not dev_tooling` from the default
 # filter, so a tier that selects tests/, freedom_ls/dev_tools/tests or the content validator
@@ -196,6 +197,8 @@ tests = ["tests/test_check_diagrams.py"]
 
 [tool.coverage.run]
 branch = true
+parallel = true
+relative_files = true
 source = ["freedom_ls"]
 omit = [
     "*/migrations/*",
@@ -211,8 +214,8 @@ omit = [
     # the risk is, not to move this number.
     "*/qa_helpers/*",
     # dev_tools is developer tooling too: the danger_ commands, create_demo_data and
-    # the guard that keeps them out of production. Its tests run in the dev-tooling CI
-    # job, which carries no coverage, so counting it here would only lower the number.
+    # the guard that keeps them out of production. It never runs in production, so it stays
+    # out of the coverage number even though its tests run in the unit groups.
     "*/dev_tools/*",
 ]
 
@@ -263,6 +266,7 @@ dev = [
     "import-linter>=2.15",
     "lxml>=6.1.0",
     "cssselect>=1.4.0",
+    "pytest-split>=0.11.0",
 ]
 
 

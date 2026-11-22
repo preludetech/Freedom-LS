@@ -17,6 +17,8 @@ repos:
       - id: check-merge-conflict
       - id: check-added-large-files
         args: ['--maxkb=1024']
+        # pytest-split's duration table holds one entry per test, so it outgrows the limit.
+        exclude: '^\.test_durations$'
       - id: check-ast
       - id: debug-statements
       - id: detect-private-key
@@ -26,7 +28,7 @@ repos:
     hooks:
       - id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
-        exclude: '(^|/)design_source/'
+        exclude: '(^|/)design_source/|^\.test_durations$'
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.10

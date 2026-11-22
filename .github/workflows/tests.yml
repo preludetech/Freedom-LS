@@ -3,16 +3,26 @@ name: Tests
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
+# No job writes to the repository; artifacts need no extra scope.
+permissions:
+  contents: read
+
+# Every run tests one commit for someone waiting on its verdict, so none cancels another.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.run_id }}
+  cancel-in-progress: false
+
+env:
+  UNIT_MARKERS: not playwright
+  BROWSER_MARKERS: playwright
+  SPLIT_FLAGS: --splitting-algorithm least_duration --durations-path .test_durations
 
 jobs:
   lint:
     name: Lint
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -29,6 +39,7 @@ jobs:
 
   type-check:
     name: Type check
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -42,8 +53,13 @@ jobs:
           DJANGO_SETTINGS_MODULE: config.settings_dev
 
   unit-tests:
-    runs-on: ubuntu-latest
+    name: unit-${{ matrix.group }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [1, 2, 3, 4, 5, 6]
 
     services:
       postgres:
@@ -65,6 +81,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
 
       - name: Set up Python
         run: uv python install 3.13
@@ -84,63 +102,29 @@ jobs:
       - name: Build Tailwind CSS
         run: npm run tailwind_build
 
-      - name: Run unit tests
-        run: uv run pytest -m "not playwright and not dev_tooling" -n auto --cov --cov-fail-under=92
+      - name: Install the WeasyPrint system libraries
+        run: sudo apt-get update && sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b libcairo2 libgdk-pixbuf-2.0-0
 
-      - name: Run the panel framework's unit tests on their own
-        run: uv run pytest -c freedom_ls/panel_framework/tests/standalone_pytest.ini freedom_ls/panel_framework/tests
-
-      - name: Run the icons app's unit tests on their own
-        run: uv run pytest -c freedom_ls/icons/tests/standalone_pytest.ini freedom_ls/icons/tests
-
-  dev-tooling-tests:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    services:
-      postgres:
-        image: postgres:17
+      - name: Run tests
         env:
-          POSTGRES_USER: fls_dev
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: db
-        ports:
-          - 6543:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          COVERAGE_FILE: .coverage.unit-${{ matrix.group }}
+        run: >-
+          .claude/ds/scripts/run_tests.sh uv run pytest -n auto -m "$UNIT_MARKERS"
+          --splits ${{ strategy.job-total }} --group ${{ matrix.group }} $SPLIT_FLAGS
+          --randomly-seed=${{ github.run_id }} --tb=short --cov
 
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-
-      - name: Set up Python
-        run: uv python install 3.13
-
-      - name: Install Python dependencies
-        run: uv sync
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
+      - name: Upload coverage data
+        if: always()
+        uses: actions/upload-artifact@v7
         with:
-          node-version: 20
-          cache: npm
-
-      - name: Install npm dependencies
-        run: npm ci
-
-      - name: Build Tailwind CSS
-        run: npm run tailwind_build
-
-      - name: Run developer-tooling tests
-        run: uv run pytest -m "dev_tooling and not playwright"
+          name: coverage-unit-${{ matrix.group }}
+          path: .coverage.unit-${{ matrix.group }}*
+          include-hidden-files: true
+          if-no-files-found: ignore
 
   playwright-tests:
-    runs-on: ubuntu-latest
+    name: playwright
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
 
     services:
@@ -163,6 +147,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
 
       - name: Set up Python
         run: uv python install 3.13
@@ -185,8 +171,10 @@ jobs:
       - name: Install Playwright browsers
         run: uv run playwright install --with-deps chromium
 
-      - name: Run Playwright tests
-        run: uv run pytest -m playwright -n auto
+      - name: Run tests
+        run: >-
+          .claude/ds/scripts/run_tests.sh uv run pytest -n auto -m "$BROWSER_MARKERS"
+          --randomly-seed=${{ github.run_id }} --tb=short
 
       - name: Upload Playwright traces
         uses: actions/upload-artifact@v7
@@ -195,3 +183,108 @@ jobs:
           name: playwright-traces
           path: test-results/
           retention-days: 7
+
+  standalone-tests:
+    name: standalone-${{ matrix.app }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [panel_framework, icons]
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: fls_dev
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: db
+        ports:
+          - 6543:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install Python dependencies
+        run: uv sync
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build Tailwind CSS
+        run: npm run tailwind_build
+
+      # Each standalone config carries its own marker expression, so neither marker variable applies.
+      - name: Run tests
+        run: >-
+          .claude/ds/scripts/run_tests.sh uv run pytest
+          -c freedom_ls/${{ matrix.app }}/tests/standalone_pytest.ini freedom_ls/${{ matrix.app }}/tests
+          --randomly-seed=${{ github.run_id }} --tb=short
+
+  coverage:
+    needs: unit-tests
+    if: always()
+    runs-on: ubuntu-24.04
+    env:
+      COVERAGE_FAIL_UNDER: 92
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install Python dependencies
+        run: uv sync
+
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: coverage-unit-*
+          path: coverage-data/
+
+      - name: Check every group's coverage data is present
+        # Same count as the unit-tests matrix; tests/test_tests_workflow.py keeps the two equal.
+        env:
+          UNIT_GROUP_COUNT: 6
+        run: |
+          for k in $(seq 1 "$UNIT_GROUP_COUNT"); do
+            ls coverage-data/coverage-unit-$k/.coverage.unit-$k* >/dev/null || { echo "coverage data missing for unit-$k"; exit 1; }
+          done
+
+      - name: Combine coverage
+        run: uv run coverage combine coverage-data/*/ && uv run coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Write coverage total
+        run: printf 'total=%s\nfail_under=%s\n' "$(uv run coverage report --format=total)" "$COVERAGE_FAIL_UNDER" > coverage_total.txt
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: coverage-total
+          path: coverage_total.txt
+
+      - name: Check combined coverage
+        run: uv run coverage report --fail-under="$COVERAGE_FAIL_UNDER"
