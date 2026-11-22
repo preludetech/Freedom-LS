@@ -13,6 +13,7 @@ from django.core.files.storage import Storage
 from django.core.validators import MinValueValidator
 from django.db import models, transaction
 from django.utils import timezone
+from django.utils.safestring import SafeString
 from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 
@@ -245,6 +246,14 @@ class FormQuestion(BaseContent):
     )
 
     question = models.TextField()
+    explanation = models.TextField(
+        blank=True,
+        default="",
+        help_text=_(
+            "Markdown shown after the question is answered in revision: why the "
+            "correct answer is correct."
+        ),
+    )
     type = models.CharField(
         max_length=20,
         choices=QuestionType.choices,
@@ -291,6 +300,10 @@ class FormQuestion(BaseContent):
         # No request: cotton components embedded in question markdown render
         # without request context, so none of them may depend on it.
         return render_markdown(self.question, None)
+
+    def rendered_explanation(self) -> SafeString:
+        # No request, for the reason rendered_question gives.
+        return render_markdown(self.explanation, None)
 
     def question_number(self):
         """

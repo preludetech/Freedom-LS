@@ -1402,6 +1402,14 @@ class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION)
     options: list[QuestionOption] | None = Field(
         None, description="Options for multiple choice questions"
     )
+    explanation: str | None = Field(
+        None,
+        description=(
+            "Markdown shown after the question is answered in revision: why the "
+            "correct answer is correct. Never refer to an option by its letter or "
+            "position, because options are shuffled."
+        ),
+    )
 
     min: str = Field(
         "",

@@ -3811,7 +3811,11 @@ _GATE_CONTENT_UUID = "30000000-0000-0000-0000-000000000006"
 
 
 def _write_gated_form(
-    directory: Path, *, when: str = "", slug: str = "employed"
+    directory: Path,
+    *,
+    when: str = "",
+    slug: str = "employed",
+    explanation: str = "",
 ) -> None:
     """A two-page form whose second page, a question and a text block all name
     the first page's question in `when`. Options carry no uuid, so every call
@@ -3826,6 +3830,8 @@ uuid: {_GATE_FORM_UUID}
 ---
 """)
     slug_line = f"slug: {slug}\n" if slug else ""
+    if explanation:
+        slug_line += f"explanation: {explanation}\n"
     (directory / "1. source.yaml").write_text(f"""---
 content_type: FORM_PAGE
 title: Source
@@ -3917,6 +3923,27 @@ def test_the_question_slug_is_written_and_then_cleared(
 
     assert written == "employed"
     assert FormQuestion.objects.get(id=_GATE_SOURCE_QUESTION_UUID).slug == ""
+
+
+@pytest.mark.django_db
+def test_the_question_explanation_is_written(site, mock_site_context, tmp_path):
+    _write_gated_form(tmp_path / "gated", explanation="Because of **reasons**.")
+
+    save_content_to_db(tmp_path, site.name)
+
+    question = FormQuestion.objects.get(id=_GATE_SOURCE_QUESTION_UUID)
+    assert question.explanation == "Because of **reasons**."
+
+
+@pytest.mark.django_db
+def test_removing_the_explanation_clears_it(site, mock_site_context, tmp_path):
+    _write_gated_form(tmp_path / "gated", explanation="Because.")
+    save_content_to_db(tmp_path, site.name)
+
+    _write_gated_form(tmp_path / "gated")
+    save_content_to_db(tmp_path, site.name)
+
+    assert FormQuestion.objects.get(id=_GATE_SOURCE_QUESTION_UUID).explanation == ""
 
 
 @pytest.mark.django_db

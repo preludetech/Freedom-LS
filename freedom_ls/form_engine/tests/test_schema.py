@@ -158,6 +158,34 @@ def test_dropdown_question_validates():
     assert question.type == QuestionType.DROPDOWN
 
 
+def _question_with(**extra: object) -> FormQuestion:
+    return FormQuestion.model_validate(
+        {
+            "content_type": "FORM_QUESTION",
+            "file_path": "forms/quiz/1. page.yaml",
+            "question": "Which region?",
+            "type": "multiple_choice",
+            "options": [
+                {"text": "North", "value": 1, "correct": True},
+                {"text": "South", "value": 2},
+            ],
+            **extra,
+        }
+    )
+
+
+def test_question_accepts_an_explanation():
+    question = _question_with(explanation="North is **correct**.")
+
+    assert question.explanation == "North is **correct**."
+
+
+def test_question_accepts_no_explanation():
+    question = _question_with()
+
+    assert question.explanation is None
+
+
 # min / max
 
 

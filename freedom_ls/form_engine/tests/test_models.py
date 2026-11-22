@@ -985,3 +985,10 @@ def test_the_size_of_a_file_missing_from_storage_is_none(
     answer_file.file.storage.delete(answer_file.file.name)
 
     assert answer_file.size_or_none is None
+
+
+@pytest.mark.django_db
+def test_rendered_explanation_renders_markdown(mock_site_context):
+    question = FormQuestionFactory(explanation="It is **bold** because.")
+
+    assert "<strong>bold</strong>" in question.rendered_explanation()

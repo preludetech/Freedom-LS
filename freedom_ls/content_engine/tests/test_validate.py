@@ -9,6 +9,7 @@ from freedom_ls.content_engine.validate import (
     IGNORED_PROBLEM,
     auto_discovered_children,
     content_key,
+    explanation_warnings,
     get_all_files,
     is_ignored,
     parse_single_file,
@@ -2934,3 +2935,72 @@ def test_validate_lists_a_draw_error_in_the_report(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="Invalid draw"):
         validate(tmp_path)
+
+
+# Warnings about scored choice questions that name sections without explaining.
+
+_TOPIC_FILE = "---\ncontent_type: TOPIC\ntitle: A Topic\n---\n"
+
+
+def _explained_question(
+    *,
+    question_type: str = "multiple_choice",
+    correct: bool = True,
+    sections: str = "sections: [../topic.md]\n",
+    explanation: str = "",
+) -> str:
+    correct_line = "    correct: true\n" if correct else ""
+    explanation_line = f"explanation: {explanation}\n" if explanation else ""
+    return (
+        f"---\nquestion: Pick one\ntype: {question_type}\n{sections}"
+        f"{explanation_line}"
+        f'options:\n  - text: "Yes"\n    value: "yes"\n{correct_line}'
+        f'  - text: "No"\n    value: "no"\n'
+    )
+
+
+def _warnings_for(directory: Path, question: str) -> list[str]:
+    _write_widget_file(directory / "topic.md", _TOPIC_FILE)
+    _quiz_with_pages(directory, [question])
+    parsed = [
+        item
+        for file_path in get_all_files(directory)
+        if file_path.suffix in {".md", ".yaml", ".yml"}
+        for item in parse_single_file(file_path)
+    ]
+    return explanation_warnings(parsed)
+
+
+def test_a_scored_choice_question_with_sections_and_no_explanation_warns(
+    tmp_path: Path,
+) -> None:
+    (warning,) = _warnings_for(tmp_path, _explained_question())
+
+    assert 'question "Pick one"' in warning
+    assert "no explanation" in warning
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        _explained_question(explanation="Because yes."),
+        _explained_question(sections=""),
+        _explained_question(correct=False),
+        _explained_question(question_type="short_text"),
+    ],
+    ids=["explained", "no-sections", "no-correct-option", "free-text"],
+)
+def test_other_questions_draw_no_explanation_warning(
+    tmp_path: Path, question: str
+) -> None:
+    assert _warnings_for(tmp_path, question) == []
+
+
+@pytest.mark.dev_tooling
+def test_validate_does_not_raise_when_the_only_finding_is_a_warning(
+    tmp_path: Path,
+) -> None:
+    _write_widget_file(tmp_path / "topic.md", _TOPIC_FILE)
+    _quiz_with_pages(tmp_path, [_explained_question()])
+
+    validate(tmp_path)

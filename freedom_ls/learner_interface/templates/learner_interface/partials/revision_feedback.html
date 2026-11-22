@@ -17,6 +17,12 @@
             </li>
         {% endfor %}
     </ul>
+    {% if question.explanation %}
+        <div data-testid="revision-explanation">
+            <h3 class="font-semibold">Why</h3>
+            <div class="prose">{{ question.rendered_explanation }}</div>
+        </div>
+    {% endif %}
     <c-button hx-post="{% url 'learner_interface:course_revision_next' course.slug %}"
               hx-target="#revision-card"
               hx-swap="outerHTML">Next</c-button>

@@ -493,3 +493,35 @@ def test_session_over_a_long_backlog_holds_the_configured_size(
 
     stored = client.session[f"revision_session:{course.id}"]
     assert len(stored["question_ids"]) == 15
+
+
+def _feedback_html(*, explanation: str, answer_correctly: bool) -> str:
+    course, _, (question,), client = _banked_session()
+    question.explanation = explanation
+    question.save()
+    option = _right_option(question) if answer_correctly else _wrong_option(question)
+    _post_answer(client, course, question, [str(option.id)])
+
+    return str(client.get(_revision_url(course)).content.decode())
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("answer_correctly", [True, False], ids=["right", "wrong"])
+def test_feedback_shows_the_explanation_after_an_answer(
+    answer_correctly, mock_site_context
+):
+    html = _feedback_html(
+        explanation="Because **it is**.", answer_correctly=answer_correctly
+    )
+
+    assert "<strong>it is</strong>" in html
+    assert "Why" in html
+
+
+@pytest.mark.django_db
+def test_feedback_shows_no_why_block_for_a_question_without_an_explanation(
+    mock_site_context,
+):
+    html = _feedback_html(explanation="", answer_correctly=True)
+
+    assert 'data-testid="revision-explanation"' not in html

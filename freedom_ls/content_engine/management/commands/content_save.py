@@ -834,9 +834,9 @@ def save_form_question(
 
     Returns the question and the options this call saved, keyed by value.
     """
-    # Exclude 'options' since they're handled separately below. slug and group are
-    # written even when the file has none: the dump drops None, so removing one
-    # would otherwise leave the stored value.
+    # Exclude 'options' since they're handled separately below. slug, group and
+    # explanation are written even when the file has none: the dump drops None, so
+    # removing one would otherwise leave the stored value.
     question = save_with_uuid(
         FormQuestion,
         item,
@@ -848,6 +848,7 @@ def save_form_question(
         condition_option=condition_option,
         slug=item.slug or "",
         group=item.group or "",
+        explanation=item.explanation or "",
     )
 
     saved_options: dict[str, QuestionOption] = {}
