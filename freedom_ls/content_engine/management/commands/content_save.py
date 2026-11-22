@@ -1020,9 +1020,7 @@ def sync_reference_parts(
             course_part_id__in=part_ids
         ).delete()
         # Runs before the part child due date reconcile, which would delete the
-        # placement's child due dates first and leave the report counting none, and
-        # before moved_children, whose reads of the course's viewable items would
-        # still see this stale placement.
+        # placement's child due dates first and leave the report counting none.
         for part in parts:
             line = remove_part_placement(site, course, part)
             if line is not None:
@@ -1556,6 +1554,22 @@ def _write_source(
                     f"{child_path} that was not loaded"
                 )
 
+    # Before the reference sync: a child moved out of a part that becomes reference
+    # material is only seen as moved while the course still places that part, and what
+    # follows the child must reach its new row before the removal deletes what is left.
+    loaded_collections = {
+        (DjangoContentType.objects.get_for_model(collection).pk, collection.id)
+        for collection, _ in collections_data
+    }
+    moved = moved_children(site, written, loaded_collections)
+    carry_placement_due_dates(site, moved)
+    collection_items_synced.send(
+        sender=ContentCollectionItem,
+        site=site,
+        created=created,
+        written=written,
+        moved=moved,
+    )
     removal_lines = sync_reference_parts(site, collections_data, content_by_path)
 
     # A course is written before the parts it places, so the part's own rows exist only
@@ -1598,19 +1612,6 @@ def _write_source(
         part_collection_item__collection_id__in=loaded_course_ids,
     ).exclude(pk__in=kept).delete()
 
-    loaded_collections = {
-        (DjangoContentType.objects.get_for_model(collection).pk, collection.id)
-        for collection, _ in collections_data
-    }
-    moved = moved_children(site, written, loaded_collections)
-    carry_placement_due_dates(site, moved)
-    collection_items_synced.send(
-        sender=ContentCollectionItem,
-        site=site,
-        created=created,
-        written=written,
-        moved=moved,
-    )
     return image_statuses, removal_lines
 
 
@@ -1623,7 +1624,6 @@ class SourceCommit:
     commit: str  # the HEAD commit read by the git check
 
 
-@transaction.atomic
 def save_content_to_db(
     paths: Path | str | Sequence[Path | str],
     site_name: str,
@@ -1639,6 +1639,33 @@ def save_content_to_db(
     `source_commits` is given, a `ContentSave` records the commit each source
     path was loaded from, in the same transaction as the content rows.
     """
+    # Printed only once the load's transaction is over, so a load that rolls back,
+    # at its commit included, has reported no removal and no success.
+    image_statuses, removal_lines = _write_sources(
+        paths, site_name, generate_uuids=generate_uuids, source_commits=source_commits
+    )
+    for line in removal_lines:
+        click.echo(line)
+    click.echo(f"✓ Successfully saved all content for site: {site_name}")
+
+    counts = Counter(image_statuses)
+    per_status = ", ".join(
+        f"{counts[status]} {status}" for status in ImageEncodeStatus if status in counts
+    )
+    summary = f"Images: {len(image_statuses)} seen"
+    click.echo(f"{summary} ({per_status})." if per_status else f"{summary}.")
+
+
+@transaction.atomic
+def _write_sources(
+    paths: Path | str | Sequence[Path | str],
+    site_name: str,
+    *,
+    generate_uuids: bool,
+    source_commits: Sequence[SourceCommit] | None,
+) -> tuple[list[ImageEncodeStatus], list[str]]:
+    """Write every source path in one transaction. Returns the image statuses and the
+    lines that report what was removed."""
     site = Site.objects.get(
         name=site_name,
     )
@@ -1675,8 +1702,6 @@ def save_content_to_db(
     _refuse_relative_path_collisions(sources)
 
     image_statuses: list[ImageEncodeStatus] = []
-    # Printed only once every source is written, so a load that rolls back has
-    # reported no removal.
     removal_lines: list[str] = []
     for source in sources:
         source_statuses, source_removals = _write_source(source, site)
@@ -1697,16 +1722,7 @@ def save_content_to_db(
             for order, source_commit in enumerate(source_commits)
         )
 
-    for line in removal_lines:
-        click.echo(line)
-    click.echo(f"✓ Successfully saved all content for site: {site_name}")
-
-    counts = Counter(image_statuses)
-    per_status = ", ".join(
-        f"{counts[status]} {status}" for status in ImageEncodeStatus if status in counts
-    )
-    summary = f"Images: {len(image_statuses)} seen"
-    click.echo(f"{summary} ({per_status})." if per_status else f"{summary}.")
+    return image_statuses, removal_lines
 
 
 def _refusal(

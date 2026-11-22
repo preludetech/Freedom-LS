@@ -1539,6 +1539,80 @@ def test_a_children_entry_due_key_in_a_part_outside_the_validated_path_fails(
     assert "the part's children: entry topic.md sets a due date" in str(exc_info.value)
 
 
+def test_a_reference_part_children_entry_with_no_due_date_fails_naming_the_key(
+    tmp_path: Path,
+) -> None:
+    _topic(tmp_path / "glossary" / "topic.md")
+    _write_widget_file(
+        tmp_path / "glossary" / "part.yaml",
+        "---\ncontent_type: COURSE_PART\ntitle: A Part\nchildren:\n"
+        "  - path: topic.md\n    no_due_date: true\n---\n",
+    )
+    _reference_course(tmp_path)
+
+    errors = _reference_list_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "the part's children: entry topic.md carries no_due_date" in errors[0]
+
+
+def test_a_repeated_reference_part_still_has_its_children_checked(
+    tmp_path: Path,
+) -> None:
+    _part_listing(tmp_path / "glossary" / "part.yaml", ["child.md"])
+    _write_widget_file(tmp_path / "glossary" / "child.md", _CHILD_FILES["ACTIVITY"])
+    _course_with_lists(
+        tmp_path / "course.md",
+        children=["intro.md"],
+        reference=["glossary/part.yaml", "./glossary/part.yaml"],
+    )
+
+    errors = _reference_list_errors(tmp_path)
+
+    assert len(errors) == 2
+    assert "the part's child child.md is a ACTIVITY" in errors[0]
+    assert "this part is named twice" in errors[1]
+
+
+def test_a_missing_child_of_a_reference_part_outside_the_validated_path_is_reported(
+    tmp_path: Path,
+) -> None:
+    _part_listing(tmp_path / "shared" / "part.yaml", ["missing.md"])
+    _reference_course(tmp_path / "course_dir", "../shared/part.yaml")
+
+    errors = _reference_list_errors(tmp_path / "course_dir")
+
+    assert len(errors) == 1
+    assert "the part's child missing.md is missing or does not parse" in errors[0]
+
+
+def test_a_part_in_the_reference_directory_that_the_list_does_not_name_fails(
+    tmp_path: Path,
+) -> None:
+    _part(tmp_path / "reference" / "glossary" / "part.yaml")
+    _part(tmp_path / "reference" / "regs" / "part.yaml")
+    _reference_course(tmp_path, "reference/glossary/part.yaml")
+
+    errors = _reference_list_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "Invalid reference list" in errors[0]
+    assert "reference/regs/part.yaml" in errors[0]
+    assert "not listed under reference:" in errors[0]
+
+
+def test_a_part_in_the_reference_directory_of_a_course_with_no_list_fails(
+    tmp_path: Path,
+) -> None:
+    _part(tmp_path / "reference" / "regs" / "part.yaml")
+    _course(tmp_path / "course.md")
+
+    errors = _reference_list_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "reference/regs/part.yaml" in errors[0]
+
+
 def test_a_file_beside_a_reference_part_that_does_not_parse_is_reported(
     tmp_path: Path,
 ) -> None:

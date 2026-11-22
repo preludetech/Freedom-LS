@@ -48,6 +48,7 @@ from freedom_ls.learner_progress.queries import (
 )
 from freedom_ls.learner_progress.utils import (
     calculate_course_progress_percentage,
+    completable_items,
     ensure_course_progress_record,
     ensure_course_progress_records_for_cohort_registration,
     plan_progress_carry,
@@ -153,11 +154,19 @@ def recalculate_course_progress_on_placement_removal(
 
     No completion fires for this: the learner did nothing, the course lost a part. A
     record left alone would keep the percentage it had against the longer path.
+
+    A course left with nothing to complete keeps its records as they are: the
+    percentage of an empty path is 0, which would undo a finished learner's 100.
     """
-    records = CourseProgress._base_manager.filter(
+    # A fresh instance, shared by every record: Course memoizes its tree, and the
+    # caller's may predate the removal.
+    fresh_course = Course._base_manager.get(pk=course.pk)
+    if not completable_items(fresh_course):
+        return
+    for record in CourseProgress._base_manager.filter(
         site=site, course=course
-    ).select_related("course")
-    for record in records.iterator():
+    ).iterator():
+        record.course = fresh_course
         recalculate_progress_percentage(record)
 
 

@@ -5048,7 +5048,7 @@ def test_a_load_that_fails_after_the_cleanup_prints_no_removal_line(
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def fail_after_the_cleanup(*args: object) -> None:
+    def fail_after_the_cleanup(**kwargs: object) -> None:
         raise RuntimeError("fails after the cleanup")
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -5061,13 +5061,10 @@ def test_a_load_that_fails_after_the_cleanup_prints_no_removal_line(
             course_dir, COURSE_UUID, reference=True
         )
         capsys.readouterr()
-        monkeypatch.setattr(
-            "freedom_ls.content_engine.management.commands.content_save.moved_children",
-            fail_after_the_cleanup,
-        )
+        monkeypatch.setattr(ContentSave.objects, "create", fail_after_the_cleanup)
 
         with pytest.raises(RuntimeError, match="fails after the cleanup"):
-            save_content_to_db(course_dir, site.name)
+            save_content_to_db(course_dir, site.name, source_commits=[])
 
     assert "Removed part placement" not in capsys.readouterr().out
     assert len(_moving_part_placements(COURSE_UUID)) == 1
@@ -6051,3 +6048,31 @@ def test_a_form_question_in_a_page_file_without_a_form_page_fails_validation(
         _save_from_repo(committed_content_repo, site)
 
     assert Topic.objects.count() == 0
+
+
+@pytest.mark.django_db(transaction=True)
+def test_the_removal_report_is_printed_after_the_load_commits(
+    site: Site, mock_site_context: Site, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    printed_inside_a_transaction: list[bool] = []
+
+    def record_echo(message: str) -> None:
+        printed_inside_a_transaction.append(connection.in_atomic_block)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "moving"
+        _write_course_placing_or_referencing_part(
+            course_dir, COURSE_UUID, reference=False
+        )
+        save_content_to_db(course_dir, site.name)
+        _write_course_placing_or_referencing_part(
+            course_dir, COURSE_UUID, reference=True
+        )
+        monkeypatch.setattr(
+            "freedom_ls.content_engine.management.commands.content_save.click.echo",
+            record_echo,
+        )
+
+        save_content_to_db(course_dir, site.name)
+
+    assert printed_inside_a_transaction == [False, False, False]

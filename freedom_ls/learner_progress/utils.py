@@ -11,7 +11,7 @@ from uuid import UUID
 
 from django.db import IntegrityError, transaction
 
-from freedom_ls.content_engine.models import Course
+from freedom_ls.content_engine.models import ContentCollectionItem, Course
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
@@ -19,6 +19,15 @@ from freedom_ls.learner_management.models import (
     LearnerCourseRegistration,
 )
 from freedom_ls.learner_progress.models import CourseProgress
+
+
+def completable_items(course: Course) -> list[ContentCollectionItem]:
+    """The course's placements a learner can complete: its topics and forms."""
+    return [
+        item
+        for item in course.viewable_collection_items()
+        if item.child is not None and item.child.content_type in ("TOPIC", "FORM")
+    ]
 
 
 def calculate_course_progress_percentage(
@@ -35,11 +44,7 @@ def calculate_course_progress_percentage(
     the part sentinels; the TOPIC/FORM filter drops Activities, which are
     placeable but have no completion to record.
     """
-    completable = [
-        item
-        for item in course.viewable_collection_items()
-        if item.child is not None and item.child.content_type in ("TOPIC", "FORM")
-    ]
+    completable = completable_items(course)
     if not completable:
         return 0
 

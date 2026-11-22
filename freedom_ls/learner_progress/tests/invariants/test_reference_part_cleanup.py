@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import cast
 
 import pytest
+from pytest_django import DjangoAssertNumQueries
 
 from django.contrib.sites.models import Site
 from django.utils import timezone
@@ -15,7 +16,12 @@ from django.utils import timezone
 from freedom_ls.content_engine.management.commands.content_save import (
     save_content_to_db,
 )
-from freedom_ls.content_engine.models import ContentCollectionItem, Course
+from freedom_ls.content_engine.models import (
+    ContentCollectionItem,
+    Course,
+    CoursePart,
+)
+from freedom_ls.content_engine.signals import part_placement_removed
 from freedom_ls.learner_progress.factories import (
     CourseProgressFactory,
     TopicProgressFactory,
@@ -135,3 +141,69 @@ def test_a_reload_that_removes_no_placement_leaves_stored_progress_alone(
     record.refresh_from_db()
     assert record.progress_percentage == 50
     assert record.updated_at == updated_at
+
+
+def _write_course_of_one_part(course_dir: Path, *, reference: bool) -> None:
+    """A course whose only content is one part holding one topic, in its reference/
+    directory; the part sits under reference: when `reference` is true and under
+    children: otherwise."""
+    shutil.rmtree(course_dir, ignore_errors=True)
+    part_dir = course_dir / "reference" / "part"
+    part_dir.mkdir(parents=True)
+    (part_dir / "inside.md").write_text(
+        f"---\ncontent_type: TOPIC\ntitle: Inside\nuuid: {_PART_TOPIC_UUID}\n"
+        "---\n\nBody\n"
+    )
+    (part_dir / "part.yaml").write_text(
+        f"---\ncontent_type: COURSE_PART\ntitle: Part\nuuid: {_PART_UUID}\n"
+        "children:\n  - path: inside.md\n"
+    )
+    key = "reference" if reference else "children"
+    (course_dir / "course.md").write_text(
+        f"---\ncontent_type: COURSE\ntitle: Course\nuuid: {_COURSE_UUID}\n"
+        f"{key}:\n  - path: reference/part/part.yaml\n---\n"
+    )
+
+
+@pytest.mark.django_db
+def test_a_finished_learner_keeps_100_percent_when_the_whole_path_becomes_reference(
+    site: Site, mock_site_context: Site
+) -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "course"
+        _write_course_of_one_part(course_dir, reference=False)
+        save_content_to_db(course_dir, site.name)
+        record = cast(
+            CourseProgress,
+            CourseProgressFactory(
+                course=Course.objects.get(pk=_COURSE_UUID), progress_percentage=100
+            ),
+        )
+
+        _write_course_of_one_part(course_dir, reference=True)
+        save_content_to_db(course_dir, site.name)
+
+    record.refresh_from_db()
+    assert record.progress_percentage == 100
+
+
+@pytest.mark.django_db
+def test_the_recalculation_cost_does_not_grow_with_the_learners(
+    site: Site,
+    mock_site_context: Site,
+    django_assert_max_num_queries: DjangoAssertNumQueries,
+) -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "course"
+        _write_course(course_dir, reference=False)
+        save_content_to_db(course_dir, site.name)
+        course = Course.objects.get(pk=_COURSE_UUID)
+        CourseProgressFactory.create_batch(10, course=course)
+        part = CoursePart.objects.get(pk=_PART_UUID)
+
+        # The course tree is read once, then four queries a record. Reading the tree
+        # again for every record takes about ninety.
+        with django_assert_max_num_queries(60):
+            part_placement_removed.send(
+                sender=ContentCollectionItem, site=site, course=course, part=part
+            )

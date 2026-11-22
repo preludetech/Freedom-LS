@@ -120,6 +120,28 @@ def test_moving_a_topic_carries_both_override_models_to_the_new_row(
 
 
 @pytest.mark.django_db
+def test_a_topic_moved_out_of_a_part_that_becomes_reference_keeps_its_overrides(
+    site, mock_site_context, tmp_path
+):
+    _, cohort_override, learner_override = _first_load_with_overrides(tmp_path, site)
+    write_topic(tmp_path / PART_A, "staying")
+    _move_topic_to_part_b(tmp_path)
+    (tmp_path / "reference").mkdir()
+    (tmp_path / PART_A).rename(tmp_path / "reference" / PART_A)
+    course_file = tmp_path / "course.md"
+    course_file.write_text(
+        course_file.read_text().removesuffix("---\n")
+        + f"reference:\n  - path: reference/{PART_A}/part.yaml\n---\n"
+    )
+
+    _load(tmp_path, site)
+
+    new_row = _row_in_part(_topic(), PART_B)
+    assert _item_of(cohort_override) == new_row.pk
+    assert _item_of(learner_override) == new_row.pk
+
+
+@pytest.mark.django_db
 def test_moving_a_topic_back_carries_the_overrides_to_the_row_it_left(
     site, mock_site_context, tmp_path
 ):
