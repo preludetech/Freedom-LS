@@ -151,7 +151,6 @@ def _check_empty_required_reason_keeps_dialog_open(
 def _check_long_title_does_not_widen_the_page(
     page: Page, base: str, long_stub: StubModel
 ) -> None:
-    # A long title with no spaces does not widen the page.
     page.set_viewport_size(_NARROW_VIEWPORT)
     page.goto(f"{base}/{long_stub.pk}")
     expect(page.locator("#instance-title")).to_have_text(_LONG_UNBROKEN_NAME)
@@ -162,8 +161,6 @@ def _check_delete_dialog_removes_the_row(
     page: Page, base: str, stub: StubModel
 ) -> None:
     modal = page.locator("#app-modal")
-    # The delete dialog focuses Cancel, and confirming deletes the row and
-    # navigates to the list.
     page.set_viewport_size({"width": 1280, "height": 800})
     page.goto(f"{base}/{stub.pk}/__tabs/details")
     page.get_by_role("button", name="Delete", exact=True).click()
