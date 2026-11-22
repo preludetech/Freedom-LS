@@ -32,24 +32,53 @@ def recipients_pairs(
 ) -> set[tuple[str, str]]:
     """(sender, recipient) for every recipient in recipients_for(sender)."""
     users = world_users(world)
+    reached_by: dict[int, set[int]] = {}
+    for sender in users.values():
+        reached_by[sender.pk] = set(
+            policy.recipients_for(sender=sender, site=world.site).values_list(
+                "pk", flat=True
+            )
+        )
     return {
         (sender_name, recipient_name)
         for sender_name, sender in users.items()
         for recipient_name, recipient in users.items()
-        if policy.recipients_for(sender=sender, site=world.site)
-        .filter(pk=recipient.pk)
-        .exists()
+        if recipient.pk in reached_by[sender.pk]
     }
 
 
-def allowed_pairs(world: World, policy: LayeredMessagingPolicy) -> set[tuple[str, str]]:
-    """(sender, recipient) for every pair can_start allows."""
+def learner_senders(world: World) -> dict[str, User]:
+    """The senders a candidate row can change the outcome for: every learner's
+    user, plus one role holder who holds no learner row. A user with no learner
+    row has no candidates, so only the role route decides who it may start with
+    and no configuration row is read."""
+    return {
+        **{name: learner.user for name, learner in world.learners.items()},
+        "c1_admin": world.role_holders["c1_admin"],
+    }
+
+
+def allowed_pairs(
+    world: World,
+    policy: LayeredMessagingPolicy,
+    senders: dict[str, User] | None = None,
+) -> set[tuple[str, str]]:
+    """(sender, recipient) for every pair can_start allows, over `senders`
+    (every user in the world when omitted). Two names for one user share an
+    answer, so the policy is asked once per pair of users."""
     users = world_users(world)
+    answers: dict[tuple[int, int], bool] = {}
+    for sender in (senders or users).values():
+        for recipient in users.values():
+            if (sender.pk, recipient.pk) not in answers:
+                answers[(sender.pk, recipient.pk)] = policy.can_start(
+                    sender=sender, recipient=recipient, site=world.site
+                ).allowed
     return {
         (sender_name, recipient_name)
-        for sender_name, sender in users.items()
+        for sender_name, sender in (senders or users).items()
         for recipient_name, recipient in users.items()
-        if policy.can_start(sender=sender, recipient=recipient, site=world.site).allowed
+        if answers[(sender.pk, recipient.pk)]
     }
 
 

@@ -55,6 +55,7 @@ from freedom_ls.messaging_policy.policy import LayeredMessagingPolicy
 from freedom_ls.messaging_policy.tests.messaging_world import (
     add_configuration_rows,
     allowed_pairs,
+    learner_senders,
     recipients_pairs,
     world_users,
 )
@@ -877,15 +878,17 @@ def test_a_site_row_with_the_cohort_peer_flag_open_beats_a_closed_setting(
     assert decision.allowed is True
 
 
-def test_an_all_inherit_site_row_gives_the_same_outcome_as_no_row(
+def test_all_inherit_rows_give_the_same_outcome_as_no_rows(
     policy: LayeredMessagingPolicy, world: World, settings: SettingsWrapper
 ) -> None:
     open_cohort_peers(settings)
-    without_row = allowed_pairs(world, policy)
+    senders = learner_senders(world)
+    without_rows = allowed_pairs(world, policy, senders)
 
     SiteMessagingConfigFactory(site=world.site)
+    _add_inherit_rows(world)
 
-    assert allowed_pairs(world, policy) == without_row
+    assert allowed_pairs(world, policy, senders) == without_rows
 
 
 def _put_in_cohorts(*cohorts: Cohort, learners: tuple[Learner, ...]) -> None:
@@ -1015,17 +1018,6 @@ def test_a_closed_organisation_row_closes_a_cohort_registration_left_on_inherit(
     )
 
     assert decision.reason == MessagingRefusal.CLOSED_BY_CONFIGURATION
-
-
-def test_all_inherit_cohort_rows_give_the_same_outcome_as_no_cohort_rows(
-    policy: LayeredMessagingPolicy, world: World, settings: SettingsWrapper
-) -> None:
-    open_cohort_peers(settings)
-    without_rows = allowed_pairs(world, policy)
-
-    _add_inherit_rows(world)
-
-    assert allowed_pairs(world, policy) == without_rows
 
 
 PEER_FLAGS_CLOSED = {
@@ -1468,21 +1460,25 @@ def test_a_recipient_no_group_claims_still_appears_under_others(
 
 REPLY_FLAG_SETTINGS = {
     "all_closed": ALL_CLOSED,
-    "cohort_peers_open": {**ALL_CLOSED, "learner_to_cohort_peer": "open"},
-    "educators_open": {**ALL_CLOSED, "learner_to_educator": "open"},
+    "educators_and_cohort_peers_open": {
+        **ALL_CLOSED,
+        "learner_to_educator": "open",
+        "learner_to_cohort_peer": "open",
+    },
 }
 
 
-def _decisions_both_ways(
-    policy: LayeredMessagingPolicy, world: World
-) -> tuple[
-    dict[tuple[str, str], MessagingDecision], dict[tuple[str, str], MessagingDecision]
-]:
-    """The bulk and the single answer for every ordered pair of users in the world,
-    plus an inactive user, each keyed by (sender name, recipient name)."""
-    users = {**world_users(world), "inactive": UserFactory(is_active=False)}
+def _reply_users(world: World) -> dict[str, User]:
+    """Every user in the world plus an inactive one, by name."""
+    return {**world_users(world), "inactive": cast(User, UserFactory(is_active=False))}
+
+
+def _bulk_decisions(
+    policy: LayeredMessagingPolicy, world: World, users: dict[str, User]
+) -> dict[tuple[str, str], MessagingDecision]:
+    """can_reply_many for every ordered pair of `users`, keyed by (sender name,
+    recipient name)."""
     bulk: dict[tuple[str, str], MessagingDecision] = {}
-    single: dict[tuple[str, str], MessagingDecision] = {}
     for sender_name, sender in users.items():
         conversations = {name: Conversation(pk=uuid4()) for name in users}
         by_pk = policy.can_reply_many(
@@ -1490,16 +1486,34 @@ def _decisions_both_ways(
             pairs=[(conversations[name], user) for name, user in users.items()],
             site=world.site,
         )
-        for recipient_name, recipient in users.items():
-            conversation = conversations[recipient_name]
-            bulk[(sender_name, recipient_name)] = by_pk[conversation.pk]
-            single[(sender_name, recipient_name)] = policy.can_reply(
-                sender=sender,
-                recipient=recipient,
-                site=world.site,
-                conversation=conversation,
-            )
-    return bulk, single
+        for recipient_name in users:
+            bulk[(sender_name, recipient_name)] = by_pk[
+                conversations[recipient_name].pk
+            ]
+    return bulk
+
+
+def _single_decisions(
+    policy: LayeredMessagingPolicy, world: World, users: dict[str, User]
+) -> dict[tuple[str, str], MessagingDecision]:
+    """can_reply for every ordered pair of `users`, keyed like _bulk_decisions.
+    Two names for one user share an answer, because can_reply reads the
+    conversation only for its identity."""
+    by_pks: dict[tuple[int, int], MessagingDecision] = {}
+    for sender in users.values():
+        for recipient in users.values():
+            if (sender.pk, recipient.pk) not in by_pks:
+                by_pks[(sender.pk, recipient.pk)] = policy.can_reply(
+                    sender=sender,
+                    recipient=recipient,
+                    site=world.site,
+                    conversation=Conversation(pk=uuid4()),
+                )
+    return {
+        (sender_name, recipient_name): by_pks[(sender.pk, recipient.pk)]
+        for sender_name, sender in users.items()
+        for recipient_name, recipient in users.items()
+    }
 
 
 @pytest.mark.parametrize("flags", REPLY_FLAG_SETTINGS.values(), ids=REPLY_FLAG_SETTINGS)
@@ -1512,8 +1526,10 @@ def test_can_reply_many_matches_can_reply_for_every_pair(
     settings.MESSAGING_DEFAULT_FLAGS = flags
     settings.MESSAGING_OFFERED_EDUCATOR_ROLES = ["cohort_admin"]
     add_configuration_rows(world)
+    users = _reply_users(world)
 
-    bulk, single = _decisions_both_ways(policy, world)
+    bulk = _bulk_decisions(policy, world, users)
+    single = _single_decisions(policy, world, users)
 
     assert bulk == single
 
@@ -1523,7 +1539,7 @@ def test_can_reply_many_covers_allowed_and_refused_pairs(
 ) -> None:
     open_cohort_peers(settings)
 
-    bulk, _ = _decisions_both_ways(policy, world)
+    bulk = _bulk_decisions(policy, world, _reply_users(world))
 
     reasons = {decision.reason for decision in bulk.values()}
     assert reasons >= {
