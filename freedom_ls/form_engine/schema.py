@@ -220,6 +220,23 @@ class FormPage(BaseContentModel, content_type=ContentType.FORM_PAGE):
         ),
     )
 
+    @field_validator("draw", mode="before")
+    @classmethod
+    def _draw_is_a_whole_number(cls, value: object) -> object:
+        # Runs only when the key is present, so None here is a bare `draw:`,
+        # which would otherwise switch the draw off without saying so. YAML reads
+        # `true` as a bool and `2.0` as a float, and lax int parsing accepts both.
+        if value is None:
+            raise ValueError(
+                "draw: has no value. Write the number of questions or groups to draw, "
+                "or remove the key to serve them all."
+            )
+        if isinstance(value, bool | float):
+            raise ValueError(
+                "draw must be a whole number of questions or groups, such as draw: 5."
+            )
+        return value
+
     def derive_content_type(self, data):
         if "content" in data:
             return ContentType.FORM_CONTENT

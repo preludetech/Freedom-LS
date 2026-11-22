@@ -650,3 +650,39 @@ def test_a_page_accepts_a_positive_draw() -> None:
 def test_a_page_rejects_a_draw_below_one(draw: int) -> None:
     with pytest.raises(ValidationError):
         _page_with_draw(draw)
+
+
+@pytest.mark.parametrize(
+    ("draw", "message"),
+    [
+        (None, "draw: has no value"),
+        (True, "draw must be a whole number"),
+        (False, "draw must be a whole number"),
+        (2.0, "draw must be a whole number"),
+        (2.5, "draw must be a whole number"),
+    ],
+)
+def test_a_page_rejects_a_bare_boolean_or_decimal_draw(
+    draw: object, message: str
+) -> None:
+    with pytest.raises(ValidationError, match=message):
+        FormPage.model_validate(
+            {
+                "content_type": "FORM_PAGE",
+                "file_path": "forms/quiz/1. page.yaml",
+                "title": "Page",
+                "draw": draw,
+            }
+        )
+
+
+def test_a_page_without_a_draw_key_has_no_draw() -> None:
+    page = FormPage.model_validate(
+        {
+            "content_type": "FORM_PAGE",
+            "file_path": "forms/quiz/1. page.yaml",
+            "title": "Page",
+        }
+    )
+
+    assert page.draw is None
