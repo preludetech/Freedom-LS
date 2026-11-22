@@ -12,6 +12,7 @@ import re
 
 import pytest
 from playwright.sync_api import Page, expect
+from pytest_django.live_server_helper import LiveServer
 
 from django.contrib.auth.base_user import AbstractBaseUser
 
@@ -19,14 +20,15 @@ from freedom_ls.audit_log.factories import AuditLogEntryFactory
 from freedom_ls.learner_management.factories import LearnerFactory
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.models import Organisation
 
 from .helpers import interface_url
 
 pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
 
-def _seed(educator_user: AbstractBaseUser):
-    organisation = OrganisationFactory(name="Org A")
+def _seed(educator_user: AbstractBaseUser) -> Organisation:
+    organisation: Organisation = OrganisationFactory(name="Org A")
     grantor = LearnerFactory(user__superuser=True, user__email="demodev@email.com").user
     assign_role(grantor, educator_user, "organisation_admin", organisation)
     AuditLogEntryFactory(target=organisation, actor=grantor, action="cohort.created")
@@ -42,7 +44,9 @@ def _seed(educator_user: AbstractBaseUser):
 
 
 def test_audit_log_flow(
-    live_server, educator_logged_in_page: Page, educator_user: AbstractBaseUser
+    live_server: LiveServer,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
 ) -> None:
     """Covers the 768px When and Who cell layout, the 375px Filter sheet and
     the desktop "What" checklist."""

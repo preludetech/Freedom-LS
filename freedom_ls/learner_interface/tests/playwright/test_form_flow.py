@@ -201,7 +201,7 @@ def _record_beforeunload_dialogs(page: Page) -> list[Dialog]:
 
 
 def test_learner_works_through_forms_and_quizzes(
-    live_server,
+    live_server: LiveServer,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -338,7 +338,7 @@ def test_learner_works_through_forms_and_quizzes(
 
 
 def test_quiz_player_layout_flow(
-    live_server,
+    live_server: LiveServer,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -414,7 +414,7 @@ def test_quiz_player_layout_flow(
 
 
 def test_a_long_form_page_scrolls_only_the_player_region(
-    live_server,
+    live_server: LiveServer,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -450,7 +450,7 @@ def test_a_long_form_page_scrolls_only_the_player_region(
 
 @pytest.mark.browser_context_args(locale="en-ZA")
 def test_a_preselected_phone_country_does_not_count_as_an_answer(
-    live_server,
+    live_server: LiveServer,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:

@@ -11,7 +11,9 @@ from __future__ import annotations
 import pytest
 from allauth.account.models import EmailAddress
 from playwright.sync_api import Page, expect
+from pytest_django.live_server_helper import LiveServer
 
+from django.contrib.sites.models import Site
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -38,7 +40,7 @@ LONG_RAW_QUERY = "utm_source=facebook&fbclid=" + "x" * 100
 
 
 @pytest.fixture
-def admin_user(db, live_server_site, mock_site_context) -> User:
+def admin_user(db: None, live_server_site: Site, mock_site_context: Site) -> User:
     """A fresh, email-verified superuser."""
     user: User = UserFactory(superuser=True)
     EmailAddress.objects.get_or_create(
@@ -56,7 +58,7 @@ def referral_code(admin_user: User) -> ReferralCode:
     return code
 
 
-def _code_change_url(live_server, code: ReferralCode) -> str:
+def _code_change_url(live_server: LiveServer, code: ReferralCode) -> str:
     path = reverse(
         "admin:freedom_ls_referral_tracking_referralcode_change", args=[code.pk]
     )
@@ -64,7 +66,7 @@ def _code_change_url(live_server, code: ReferralCode) -> str:
 
 
 def test_referral_admin_flow(
-    live_server, page: Page, admin_user: User, referral_code: ReferralCode
+    live_server: LiveServer, page: Page, admin_user: User, referral_code: ReferralCode
 ) -> None:
     attribution = SignupAttributionFactory(raw_query=LONG_RAW_QUERY)
     first_touch = FirstTouchCountFactory()

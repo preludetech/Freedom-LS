@@ -11,8 +11,10 @@ from __future__ import annotations
 import pytest
 from allauth.account.models import EmailAddress
 from playwright.sync_api import Page, expect
+from pytest_django.live_server_helper import LiveServer
 
 from django.contrib.auth.base_user import AbstractBaseUser
+from django.contrib.sites.models import Site
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -31,7 +33,9 @@ _CLIPPED_CELLS_JS = """
 
 
 @pytest.fixture
-def admin_user(db, live_server_site, mock_site_context) -> AbstractBaseUser:
+def admin_user(
+    db: None, live_server_site: Site, mock_site_context: Site
+) -> AbstractBaseUser:
     """A fresh, email-verified superuser."""
     user: AbstractBaseUser = UserFactory(superuser=True)
     EmailAddress.objects.get_or_create(
@@ -43,7 +47,7 @@ def admin_user(db, live_server_site, mock_site_context) -> AbstractBaseUser:
 
 
 def test_changelist_card_cells_grow_to_fit_a_long_last_error(
-    live_server, page: Page, admin_user: AbstractBaseUser
+    live_server: LiveServer, page: Page, admin_user: AbstractBaseUser
 ) -> None:
     OutboundEmailFactory(
         failed=True,

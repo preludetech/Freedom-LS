@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import pytest
 from playwright.sync_api import Page, Response, expect
+from pytest_django.live_server_helper import LiveServer
 
 from django.contrib.auth.base_user import AbstractBaseUser
 
@@ -30,7 +31,7 @@ pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
 
 def test_add_change_and_remove_a_cohort_admin_refreshes_the_list(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
@@ -156,7 +157,7 @@ def _staff_buttons_outside_the_viewport(page: Page) -> list[str]:
 
 
 def test_staff_list_layout_flow(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
@@ -288,7 +289,7 @@ def test_staff_list_layout_flow(
 
 
 def test_add_staff_dialog_layout_flow(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:

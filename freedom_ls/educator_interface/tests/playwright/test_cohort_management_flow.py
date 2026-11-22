@@ -15,6 +15,7 @@ import pytest
 from guardian.shortcuts import assign_perm
 from playwright.sync_api import FloatRect, Locator, Page, Response, expect
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+from pytest_django.live_server_helper import LiveServer
 
 from django.contrib.auth.base_user import AbstractBaseUser
 
@@ -92,7 +93,7 @@ def _open_drawer(page: Page, trigger: Locator) -> Locator:
 
 
 def test_educator_manages_cohorts_and_learners(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
@@ -342,7 +343,7 @@ def test_educator_manages_cohorts_and_learners(
 
 
 def test_quick_view_and_learners_list_layout_across_viewports(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:

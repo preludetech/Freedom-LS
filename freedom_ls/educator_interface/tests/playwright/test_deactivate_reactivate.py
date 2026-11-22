@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import pytest
 from playwright.sync_api import Locator, Page, Response, expect
+from pytest_django.live_server_helper import LiveServer
 
 from django.contrib.auth.base_user import AbstractBaseUser
 
@@ -43,7 +44,7 @@ def _tab_to(page: Page, target: Locator) -> None:
 
 
 def test_cohort_settings_tab_flow(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:

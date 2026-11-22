@@ -9,6 +9,7 @@ from typing import cast
 
 import pytest
 from playwright.sync_api import Page, Route, expect
+from pytest_django.live_server_helper import LiveServer
 
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.core.files.base import ContentFile
@@ -90,7 +91,7 @@ def _seed_report_tab(
 
 
 def test_cohort_report_layout_flow(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
@@ -176,7 +177,7 @@ def test_cohort_report_layout_flow(
 @pytest.mark.weasyprint
 @requires_tailwind_bundle
 def test_cohort_report_generate_flow(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:

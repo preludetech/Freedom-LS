@@ -14,6 +14,7 @@ import re
 
 import pytest
 from playwright.sync_api import Page, expect
+from pytest_django.live_server_helper import LiveServer
 
 from django.contrib.auth.base_user import AbstractBaseUser
 
@@ -34,7 +35,7 @@ pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
 
 def test_cohort_learners_tab_flow(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
@@ -69,6 +70,10 @@ def test_cohort_learners_tab_flow(
 
     expect(modal).to_be_hidden()
     expect(page.get_by_role("link", name="Learners 1", exact=True)).to_be_visible()
-    assert page.evaluate(
+    # The tab count and the table refresh are separate swaps: wait for the table
+    # to drop Ada's row, so focus is read after the trigger it held is gone.
+    expect(main.get_by_role("row").filter(has_text="Ada")).to_have_count(0)
+    # Focus drops to <body> after confirming the row removal if it is not restored.
+    page.wait_for_function(
         "document.activeElement !== null && document.activeElement !== document.body"
-    ), "focus dropped to <body> after confirming the row removal"
+    )

@@ -57,8 +57,10 @@ from playwright.sync_api import Page, Playwright, expect
 from pytest_django.live_server_helper import LiveServer
 
 from django.conf import settings
+from django.contrib.auth import get_user
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.db import connections
+from django.http import HttpRequest
 from django.test import Client
 
 from freedom_ls.accounts.factories import UserFactory
@@ -161,9 +163,21 @@ def sign_in(page: Page, live_server: LiveServer, user: AbstractBaseUser) -> None
     ``user_logged_in`` as a real login does. Does not navigate.
     """
     client = Client()
-    # Axes's backend is first in AUTHENTICATION_BACKENDS and cannot be named for a
-    # session, so the session records the model backend.
-    client.force_login(user, backend="django.contrib.auth.backends.ModelBackend")
+    # Axes's backend cannot be named for a session, so the session records the
+    # first other backend the project configures.
+    backend = next(
+        path
+        for path in settings.AUTHENTICATION_BACKENDS
+        if not path.startswith("axes.")
+    )
+    client.force_login(user, backend=backend)
+    # Read the session back as a live request would, so a backend that cannot
+    # restore the user fails here rather than as a login redirect later.
+    request = HttpRequest()
+    request.session = client.session
+    assert get_user(request).is_authenticated, (
+        f"sign_in made a session that {backend} does not sign {user} in with"
+    )
     # The cookie name differs per worktree (settings_dev), so read it from settings.
     cookie_name = settings.SESSION_COOKIE_NAME
     page.context.add_cookies(

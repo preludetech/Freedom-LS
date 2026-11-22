@@ -10,6 +10,7 @@ import re
 
 import pytest
 from playwright.sync_api import Page, expect
+from pytest_django.live_server_helper import LiveServer
 
 from django.contrib.auth.base_user import AbstractBaseUser
 
@@ -24,7 +25,7 @@ pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
 
 def test_create_cohort_dialog_flow(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:

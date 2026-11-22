@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import pytest
 from playwright.sync_api import Page, expect
+from pytest_django.live_server_helper import LiveServer
 
 from django.contrib.auth.base_user import AbstractBaseUser
 
@@ -41,7 +42,7 @@ def _focus_is_on_the_page(page: Page) -> bool:
 
 
 def test_reactivating_a_registration_from_the_overview_card_keeps_focus_on_the_page(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:

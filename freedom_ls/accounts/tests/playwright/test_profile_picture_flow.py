@@ -12,6 +12,7 @@ import re
 
 import pytest
 from playwright.sync_api import Browser, Page, expect
+from pytest_django.live_server_helper import LiveServer
 
 from freedom_ls.accounts.models import User
 from freedom_ls.accounts.tests.profile_picture_samples import jpeg_bytes
@@ -48,7 +49,10 @@ def assert_header_avatar(
 
 
 def test_the_name_and_picture_forms_save_with_javascript_off(
-    live_server, browser: Browser, logged_in_page: Page, logged_in_user: User
+    live_server: LiveServer,
+    browser: Browser,
+    logged_in_page: Page,
+    logged_in_user: User,
 ) -> None:
     # Tall enough that the footer buttons sit above the bottom-right toast,
     # which nothing dismisses with JavaScript off.
@@ -89,7 +93,7 @@ def test_the_name_and_picture_forms_save_with_javascript_off(
 
 
 def test_personal_details_flow(
-    live_server, logged_in_page: Page, logged_in_user: User
+    live_server: LiveServer, logged_in_page: Page, logged_in_user: User
 ) -> None:
     """The Personal details page end to end.
 

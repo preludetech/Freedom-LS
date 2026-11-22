@@ -12,12 +12,17 @@ import re
 
 import pytest
 from playwright.sync_api import Page, expect
+from pytest_django.fixtures import SettingsWrapper
+from pytest_django.live_server_helper import LiveServer
 
+from django.contrib.sites.models import Site
+from django.db.models import QuerySet
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.comms.messaging_policy import MessagingDecision, MessagingPolicy
+from freedom_ls.comms.models import Conversation
 from freedom_ls.learner_management.factories import LearnerFactory
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
@@ -36,17 +41,21 @@ PHONE = {"width": 375, "height": 812}
 class OpenPolicy(MessagingPolicy):
     """Lets everyone on the site message everyone else."""
 
-    def can_start(self, *, sender, recipient, site):
+    def can_start(
+        self, *, sender: User, recipient: User, site: Site
+    ) -> MessagingDecision:
         return MessagingDecision.allow()
 
-    def can_reply(self, *, sender, recipient, site, conversation):
+    def can_reply(
+        self, *, sender: User, recipient: User, site: Site, conversation: Conversation
+    ) -> MessagingDecision:
         return MessagingDecision.allow()
 
-    def recipients_for(self, *, sender, site):
+    def recipients_for(self, *, sender: User, site: Site) -> QuerySet[User]:
         return User.objects.filter(site=site).exclude(pk=sender.pk)
 
 
-def _learners_url(live_server, organisation_slug: str) -> str:
+def _learners_url(live_server: LiveServer, organisation_slug: str) -> str:
     path = reverse(
         "educator_interface:interface",
         kwargs={"organisation_slug": organisation_slug, "path_string": "learners"},
@@ -62,11 +71,11 @@ def _tab_href(organisation_slug: str) -> re.Pattern[str]:
 
 
 def test_quick_view_messaging_flow(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: User,
-    mock_site_context,
-    settings,
+    mock_site_context: Site,
+    settings: SettingsWrapper,
 ) -> None:
     """Messaging a learner from the quick view:
     - a send keeps the drawer open, and the Open conversation link points at

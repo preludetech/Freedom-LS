@@ -8,6 +8,7 @@ from decimal import Decimal
 
 import pytest
 from playwright.sync_api import Page, expect
+from pytest_django.live_server_helper import LiveServer
 
 from freedom_ls.accounts.models import User
 from freedom_ls.conftest import reverse_url
@@ -55,7 +56,7 @@ ROW_EYEBROW_GEOMETRY = """(title) => {
 
 
 def test_organisation_course_flow(
-    live_server,
+    live_server: LiveServer,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:

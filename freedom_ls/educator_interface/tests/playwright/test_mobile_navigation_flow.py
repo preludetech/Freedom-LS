@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import pytest
 from playwright.sync_api import Browser, Page, expect
+from pytest_django.live_server_helper import LiveServer
 
 from django.contrib.auth.base_user import AbstractBaseUser
 
@@ -42,7 +43,7 @@ _DESKTOP = {"width": 1442, "height": 900}
 
 
 def test_mobile_navigation_flow(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
@@ -269,7 +270,7 @@ def test_mobile_navigation_flow(
 
 
 def test_a_page_with_a_sortable_table_keeps_its_sidebar_across_the_breakpoint(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
@@ -310,7 +311,7 @@ def test_a_page_with_a_sortable_table_keeps_its_sidebar_across_the_breakpoint(
 
 
 def test_dashboard_fills_its_lazy_figures_without_overflow_at_every_width(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
@@ -342,7 +343,7 @@ def test_dashboard_fills_its_lazy_figures_without_overflow_at_every_width(
 
 def test_navigation_without_javascript_flow(
     browser: Browser,
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:

@@ -317,7 +317,7 @@ def _browse_course(user: User) -> Course:
 
 
 def test_learner_browses_a_course(
-    live_server,
+    live_server: LiveServer,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -776,7 +776,7 @@ def test_audio_widgets_flow(
 
 @pytest.mark.browser_context_args(timezone_id="America/New_York", locale="en-US")
 def test_due_date_reads_in_the_browser_time_zone(
-    live_server,
+    live_server: LiveServer,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -803,7 +803,7 @@ def test_due_date_reads_in_the_browser_time_zone(
 
 
 def test_desktop_outline_stays_viewport_height_after_reloading_a_scrolled_page(
-    live_server,
+    live_server: LiveServer,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -834,7 +834,7 @@ def test_desktop_outline_stays_viewport_height_after_reloading_a_scrolled_page(
 
 
 def test_mobile_outline_sheet_and_drawer_stay_within_the_viewport(
-    live_server,
+    live_server: LiveServer,
     logged_in_page: Page,
     logged_in_user: User,
 ) -> None:
@@ -899,10 +899,10 @@ def test_mobile_outline_sheet_and_drawer_stay_within_the_viewport(
     app_not_installed("freedom_ls.blog"), reason="the article card needs the blog"
 )
 def test_learner_browses_a_grid_of_article_and_course_cards(
-    live_server,
+    live_server: LiveServer,
     page: Page,
-    live_server_site,
-    mock_site_context,
+    live_server_site: Site,
+    mock_site_context: Site,
 ) -> None:
     ArticleFactory(
         title="Card Target Article",
@@ -964,10 +964,10 @@ def test_learner_browses_a_grid_of_article_and_course_cards(
 
 
 def test_dashboard_sections_page_as_rows_on_phones_and_tablets(
-    live_server,
+    live_server: LiveServer,
     logged_in_page: Page,
     logged_in_user: User,
-    mock_site_context,
+    mock_site_context: Site,
 ) -> None:
     page = logged_in_page
     dated = CourseFactory(
@@ -1083,9 +1083,9 @@ def _assert_deadline_line_ends_the_card(page: Page) -> None:
 
 
 def test_course_detail_back_flow(
-    live_server,
+    live_server: LiveServer,
     logged_in_page: Page,
-    mock_site_context,
+    mock_site_context: Site,
 ) -> None:
     """The course detail page's Back link returns to where the learner came from.
 
@@ -1136,27 +1136,30 @@ def test_course_detail_back_flow(
         page.goto(detail_url)
         assert_no_horizontal_overflow(page)
 
-    if course_applications_installed:
-        gated_course = CourseFactory(
-            title="Gated Back Course",
-            slug="gated-back-course",
-            access_config={"access_type": "application_gated"},
-        )
-        gated_detail_url = _detail_url(live_server, gated_course)
+    # Last step: report the application case as skipped where it cannot run.
+    if not course_applications_installed:
+        pytest.skip("course_applications not installed; application Back case not run")
 
-        page.set_viewport_size({"width": 1280, "height": 800})
-        page.goto(dashboard_url)
-        page.locator("article", has_text="Gated Back Course").get_by_role(
-            "link", name="Details"
-        ).click()
-        expect(page).to_have_url(gated_detail_url)
-        page.get_by_role("link", name="Apply now").click()
-        page.get_by_role("link", name="Cancel").click()
-        expect(page).to_have_url(gated_detail_url)
+    gated_course = CourseFactory(
+        title="Gated Back Course",
+        slug="gated-back-course",
+        access_config={"access_type": "application_gated"},
+    )
+    gated_detail_url = _detail_url(live_server, gated_course)
 
-        page.get_by_role("link", name="Back").click()
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(dashboard_url)
+    page.locator("article", has_text="Gated Back Course").get_by_role(
+        "link", name="Details"
+    ).click()
+    expect(page).to_have_url(gated_detail_url)
+    page.get_by_role("link", name="Apply now").click()
+    page.get_by_role("link", name="Cancel").click()
+    expect(page).to_have_url(gated_detail_url)
 
-        expect(page).to_have_url(dashboard_url)
+    page.get_by_role("link", name="Back").click()
+
+    expect(page).to_have_url(dashboard_url)
 
 
 @pytest.mark.skipif(

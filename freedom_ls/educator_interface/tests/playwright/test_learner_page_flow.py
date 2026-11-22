@@ -7,6 +7,7 @@ import re
 
 import pytest
 from playwright.sync_api import Page, expect
+from pytest_django.live_server_helper import LiveServer
 
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.core.files.base import ContentFile
@@ -47,7 +48,7 @@ pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
 
 def test_opening_a_learner_and_their_courses_tab(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
@@ -124,7 +125,7 @@ def test_opening_a_learner_and_their_courses_tab(
 
 
 def test_the_courses_tab_card_with_an_attempts_table_fits_every_viewport(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
@@ -159,7 +160,7 @@ def test_the_courses_tab_card_with_an_attempts_table_fits_every_viewport(
 
 
 def test_moving_a_learner_between_cohorts_carries_their_progress(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
@@ -212,16 +213,16 @@ def test_moving_a_learner_between_cohorts_carries_their_progress(
 
 
 def test_learner_settings_flow(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
-    """The Settings tab's name form has no space below its field row.
-    Deactivating a learner with a 500-character reason shows the Inactive
-    badge, the reason in the History row detail (wrapped inside the table)
-    and in the audit log as a table row and as a card on a phone, with no
-    overflow at any viewport. Reactivating clears the badge and brings back
-    the Deactivate button."""
+    """An organisation admin deactivating a learner with a 500-character
+    reason sees the Inactive badge, the reason in the History row detail
+    (wrapped inside the table) and in the audit log as a table row and as a
+    card on a phone, with no overflow at any viewport. Reactivating clears the
+    badge and brings back the Deactivate button. For a superuser, the Settings
+    tab's name form has no space below its field row."""
     page = educator_logged_in_page
     organisation = OrganisationFactory(name="Org A")
     learner = LearnerFactory(
@@ -229,9 +230,8 @@ def test_learner_settings_flow(
         user__first_name="Ada",
         user__last_name="Lovelace",
     )
-    # Editing the learner's name changes their user, which only a superuser may do.
-    educator_user.is_superuser = True
-    educator_user.save()
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
     reason = "abcdefghij" * 50
     settings_url = interface_url(
         live_server, organisation.slug, f"learners/{learner.pk}/__tabs/settings"
@@ -241,8 +241,6 @@ def test_learner_settings_flow(
     modal = page.locator("#app-modal")
     main = page.locator("#main-content")
     header = page.locator("#instance-header")
-
-    assert_no_space_below_field_row(page.locator("#learner-name-form"))
 
     # Deactivate.
     expect(header.get_by_text("Active", exact=True)).to_have_count(0)
@@ -299,3 +297,9 @@ def test_learner_settings_flow(
     expect(
         main.get_by_role("button", name="Deactivate", exact=True).first
     ).to_be_visible()
+
+    # Editing the learner's name changes their user, which only a superuser may do.
+    educator_user.is_superuser = True
+    educator_user.save()
+    page.goto(settings_url)
+    assert_no_space_below_field_row(page.locator("#learner-name-form"))

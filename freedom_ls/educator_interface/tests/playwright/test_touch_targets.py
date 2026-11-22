@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import pytest
 from playwright.sync_api import Page
+from pytest_django.live_server_helper import LiveServer
 
 from django.contrib.auth.base_user import AbstractBaseUser
 
@@ -45,7 +46,7 @@ _BUTTON_HEIGHT = """(button) => button.getBoundingClientRect().height"""
 
 
 def test_touch_targets_flow(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:

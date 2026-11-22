@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import pytest
 from playwright.sync_api import Browser, expect
+from pytest_django.live_server_helper import LiveServer
+
+from django.contrib.sites.models import Site
 
 _TIME_ELEMENT = (
     '<time id="when" datetime="{instant}" x-data="localTime" '
@@ -14,7 +17,7 @@ _TIME_ELEMENT = (
 @pytest.mark.playwright
 @pytest.mark.django_db(transaction=True)
 def test_local_time_uses_the_project_format_in_any_browser_locale(
-    browser: Browser, live_server, live_server_site
+    browser: Browser, live_server: LiveServer, live_server_site: Site
 ) -> None:
     """A localTime element reads "6 Nov 2026, 14:03" whatever the browser locale is.
 

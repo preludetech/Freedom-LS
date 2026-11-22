@@ -11,6 +11,8 @@ import re
 
 import pytest
 from playwright.sync_api import Browser, Page, Response, Route, expect
+from pytest_django.fixtures import SettingsWrapper
+from pytest_django.live_server_helper import LiveServer
 
 from django.contrib.auth.base_user import AbstractBaseUser
 
@@ -34,7 +36,7 @@ pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
 
 def test_add_learners_reports_each_address_and_refreshes_the_list(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
@@ -89,7 +91,7 @@ def test_add_learners_reports_each_address_and_refreshes_the_list(
 
 
 def test_bulk_add_then_remove_cohort_for_every_matching_learner(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
@@ -160,10 +162,10 @@ def test_bulk_add_then_remove_cohort_for_every_matching_learner(
 
 
 def test_a_background_bulk_run_keeps_the_reader_on_the_table_until_it_finishes(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
-    settings,
+    settings: SettingsWrapper,
 ) -> None:
     settings.BULK_BACKGROUND_THRESHOLD = 1
     page = educator_logged_in_page
@@ -258,7 +260,7 @@ def test_a_background_bulk_run_keeps_the_reader_on_the_table_until_it_finishes(
 
 
 def test_the_cohort_learners_table_is_cards_with_its_buttons_in_view_on_a_tablet(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
@@ -296,7 +298,7 @@ def test_the_cohort_learners_table_is_cards_with_its_buttons_in_view_on_a_tablet
 
 def test_learners_list_without_javascript_flow(
     browser: Browser,
-    live_server,
+    live_server: LiveServer,
     educator_user: AbstractBaseUser,
 ) -> None:
     """With scripting off, bulk deactivate returns to the list with the
@@ -352,7 +354,7 @@ def test_learners_list_without_javascript_flow(
 
 
 def test_learners_list_layout_flow(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
@@ -408,9 +410,9 @@ def test_learners_list_layout_flow(
         "Sort menu missing at 768px",
     ).to_be_visible()
 
-    # Table at 1920.
+    # Table at 1920: resizing the open page, without a reload, brings the
+    # column headers back and hides the Sort menu.
     page.set_viewport_size({"width": 1920, "height": 1080})
-    page.goto(url)
     expect(table, "table not shown at 1920px").to_be_visible()
     expect(card, "cards shown at 1920px").to_be_hidden()
     expect(main.get_by_role("columnheader").first).to_be_visible()
@@ -436,7 +438,7 @@ def test_learners_list_layout_flow(
 
 
 def test_learners_list_selection_flow(
-    live_server,
+    live_server: LiveServer,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:

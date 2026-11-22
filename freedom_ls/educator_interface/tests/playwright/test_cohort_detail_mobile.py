@@ -12,8 +12,10 @@ from typing import cast
 import pytest
 from allauth.account.models import EmailAddress
 from playwright.sync_api import Page, expect
+from pytest_django.live_server_helper import LiveServer
 
 from django.contrib.auth.base_user import AbstractBaseUser
+from django.contrib.sites.models import Site
 from django.urls import reverse
 
 from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
@@ -29,7 +31,9 @@ _PHONE_WIDTH = 375
 
 
 @pytest.fixture
-def mobile_educator(db, live_server_site, mock_site_context) -> AbstractBaseUser:
+def mobile_educator(
+    db: None, live_server_site: Site, mock_site_context: Site
+) -> AbstractBaseUser:
     """A fresh, email-verified staff user."""
     user = cast(
         AbstractBaseUser,
@@ -45,7 +49,7 @@ def mobile_educator(db, live_server_site, mock_site_context) -> AbstractBaseUser
 
 @pytest.fixture
 def mobile_educator_page(
-    page: Page, live_server, mobile_educator: AbstractBaseUser
+    page: Page, live_server: LiveServer, mobile_educator: AbstractBaseUser
 ) -> Page:
     """A Playwright Page at a phone viewport, logged in as mobile_educator."""
     page.set_viewport_size({"width": _PHONE_WIDTH, "height": 812})
@@ -54,7 +58,7 @@ def mobile_educator_page(
 
 
 def test_cohort_detail_mobile_flow(
-    live_server,
+    live_server: LiveServer,
     mobile_educator_page: Page,
     mobile_educator: AbstractBaseUser,
 ) -> None:

@@ -5,7 +5,9 @@ from __future__ import annotations
 import pytest
 from allauth.account.models import EmailAddress
 from playwright.sync_api import Page
+from pytest_django.live_server_helper import LiveServer
 
+from django.contrib.sites.models import Site
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -22,7 +24,7 @@ pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
 
 @pytest.fixture
-def admin_user(db, live_server_site, mock_site_context) -> User:
+def admin_user(db: None, live_server_site: Site, mock_site_context: Site) -> User:
     """A fresh, email-verified superuser."""
     user: User = UserFactory(superuser=True)
     EmailAddress.objects.get_or_create(
@@ -33,7 +35,9 @@ def admin_user(db, live_server_site, mock_site_context) -> User:
     return user
 
 
-def test_api_key_add_form_flow(live_server, page: Page, admin_user: User) -> None:
+def test_api_key_add_form_flow(
+    live_server: LiveServer, page: Page, admin_user: User
+) -> None:
     """The add form fits every viewport, shows scope labels in full and wraps the issued key.
 
     Long scope labels used to not wrap, so the form scrolled sideways, and they were cut

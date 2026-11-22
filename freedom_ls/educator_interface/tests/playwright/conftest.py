@@ -15,7 +15,7 @@ from freedom_ls.tests.playwright_fixtures import _LOGGED_IN_PASSWORD, sign_in
 
 
 @pytest.fixture
-def educator_user(db, live_server_site: Site, mock_site_context: Site) -> User:
+def educator_user(db: None, live_server_site: Site, mock_site_context: Site) -> User:
     """A fresh, email-verified staff user.
 
     A staff variant of freedom_ls.tests.playwright_fixtures.logged_in_user —
@@ -42,7 +42,9 @@ def educator_logged_in_page(
 
 
 @pytest.fixture
-def cohort_admin_user(db, live_server_site: Site, mock_site_context: Site) -> User:
+def cohort_admin_user(
+    db: None, live_server_site: Site, mock_site_context: Site
+) -> User:
     """A fresh, email-verified staff user who holds no role until a test
     grants one."""
     user: User = UserFactory(staff=True, password=_LOGGED_IN_PASSWORD)

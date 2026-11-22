@@ -11,7 +11,12 @@ import re
 from typing import cast
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page, Route, expect
+from pytest_django.fixtures import SettingsWrapper
+from pytest_django.live_server_helper import LiveServer
+
+from django.contrib.sites.models import Site
+from django.db.models import QuerySet
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
@@ -38,29 +43,35 @@ PHONE = {"width": 375, "height": 812}
 class OpenPolicy(MessagingPolicy):
     """Lets everyone on the site message everyone else."""
 
-    def can_start(self, *, sender, recipient, site):
+    def can_start(
+        self, *, sender: User, recipient: User, site: Site
+    ) -> MessagingDecision:
         return MessagingDecision.allow()
 
-    def can_reply(self, *, sender, recipient, site, conversation):
+    def can_reply(
+        self, *, sender: User, recipient: User, site: Site, conversation: Conversation
+    ) -> MessagingDecision:
         return MessagingDecision.allow()
 
-    def recipients_for(self, *, sender, site):
+    def recipients_for(self, *, sender: User, site: Site) -> QuerySet[User]:
         return User.objects.filter(site=site).exclude(pk=sender.pk)
 
 
 class ClosedPolicy(OpenPolicy):
     """Refuses every reply."""
 
-    def can_reply(self, *, sender, recipient, site, conversation):
+    def can_reply(
+        self, *, sender: User, recipient: User, site: Site, conversation: Conversation
+    ) -> MessagingDecision:
         return MessagingDecision.refuse(MessagingRefusal.CLOSED_BY_CONFIGURATION)
 
 
 def test_inbox_to_thread_and_back_on_a_phone(
-    live_server,
+    live_server: LiveServer,
     logged_in_page: Page,
     logged_in_user: User,
-    mock_site_context,
-    settings,
+    mock_site_context: Site,
+    settings: SettingsWrapper,
 ) -> None:
     settings.MESSAGING_ENABLED = True
     page = logged_in_page
@@ -129,11 +140,11 @@ def test_inbox_to_thread_and_back_on_a_phone(
 
 
 def test_picker_search_choose_and_send_on_a_phone(
-    live_server,
+    live_server: LiveServer,
     logged_in_page: Page,
     logged_in_user: User,
-    mock_site_context,
-    settings,
+    mock_site_context: Site,
+    settings: SettingsWrapper,
 ) -> None:
     settings.MESSAGING_ENABLED = True
     settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
@@ -167,11 +178,11 @@ def test_picker_search_choose_and_send_on_a_phone(
 
 
 def test_messages_page_new_message_flow(
-    live_server,
+    live_server: LiveServer,
     logged_in_page: Page,
     logged_in_user: User,
-    mock_site_context,
-    settings,
+    mock_site_context: Site,
+    settings: SettingsWrapper,
 ) -> None:
     """On the messages page at desktop width: the New message link swaps the
     picker into the thread pane without a reload, a send leaves /messages/new,
@@ -229,11 +240,11 @@ def test_messages_page_new_message_flow(
 
 
 def test_thread_receives_a_polled_message_and_keeps_the_typed_draft(
-    live_server,
+    live_server: LiveServer,
     logged_in_page: Page,
     logged_in_user: User,
-    mock_site_context,
-    settings,
+    mock_site_context: Site,
+    settings: SettingsWrapper,
 ) -> None:
     settings.MESSAGING_ENABLED = True
     settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
@@ -269,7 +280,9 @@ def test_thread_receives_a_polled_message_and_keeps_the_typed_draft(
         assert_no_horizontal_overflow(page)
 
 
-def _open_thread(live_server, page: Page, user: User, settings) -> Conversation:
+def _open_thread(
+    live_server: LiveServer, page: Page, user: User, settings: SettingsWrapper
+) -> Conversation:
     settings.MESSAGING_ENABLED = True
     settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
     kai = UserFactory(first_name="Kai", last_name="Ngata")
@@ -292,11 +305,11 @@ def _sent_bodies(conversation: Conversation) -> list[str]:
 
 
 def test_thread_composer_flow(
-    live_server,
+    live_server: LiveServer,
     logged_in_page: Page,
     logged_in_user: User,
-    mock_site_context,
-    settings,
+    mock_site_context: Site,
+    settings: SettingsWrapper,
 ) -> None:
     """The composer on a thread page: a double click posts once and returns
     focus to the box, Send is disabled while a request is in flight, Ctrl+Enter
@@ -319,7 +332,7 @@ def test_thread_composer_flow(
 
     # The Send button stays disabled for the whole request. It used to stay
     # enabled because the form, not the button, issues the request.
-    def delay_then_continue(route) -> None:
+    def delay_then_continue(route: Route) -> None:
         page.wait_for_timeout(1500)
         route.continue_()
 
@@ -393,11 +406,11 @@ COMPOSER_VIEWPORTS = [
 
 
 def test_long_thread_flow(
-    live_server,
+    live_server: LiveServer,
     logged_in_page: Page,
     logged_in_user: User,
-    mock_site_context,
-    settings,
+    mock_site_context: Site,
+    settings: SettingsWrapper,
 ) -> None:
     """A 65-message thread: loading earlier messages from the top keeps the
     reader's place, loading the final page removes the control without shifting

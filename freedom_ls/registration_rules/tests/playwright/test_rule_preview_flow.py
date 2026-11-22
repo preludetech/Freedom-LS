@@ -5,10 +5,13 @@ from __future__ import annotations
 import pytest
 from allauth.account.models import EmailAddress
 from playwright.sync_api import Page, expect
+from pytest_django.live_server_helper import LiveServer
 
+from django.contrib.sites.models import Site
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.hr_attributes.factories import (
     DepartmentFactory,
@@ -32,9 +35,9 @@ pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
 
 @pytest.fixture
-def admin_user(db, live_server_site, mock_site_context):
+def admin_user(db: None, live_server_site: Site, mock_site_context: Site) -> User:
     """A fresh, email-verified superuser."""
-    user = UserFactory(superuser=True)
+    user: User = UserFactory(superuser=True)
     EmailAddress.objects.get_or_create(
         user=user,
         email=user.email,
@@ -44,7 +47,7 @@ def admin_user(db, live_server_site, mock_site_context):
 
 
 @pytest.fixture
-def admin_page(page: Page, live_server, admin_user) -> Page:
+def admin_page(page: Page, live_server: LiveServer, admin_user: User) -> Page:
     """A Playwright Page logged in as admin_user."""
     sign_in(page, live_server, admin_user)
     return page
@@ -58,7 +61,7 @@ def _pick_autocomplete(page: Page, label: str, text: str) -> None:
 
 
 def test_enabling_a_rule_previews_then_registers_the_matching_learner(
-    live_server, admin_page: Page, live_server_site
+    live_server: LiveServer, admin_page: Page, live_server_site: Site
 ) -> None:
     # Arrange
     organisation = OrganisationFactory(name="Acme Finance")
@@ -131,7 +134,7 @@ def test_enabling_a_rule_previews_then_registers_the_matching_learner(
 
 
 def test_a_recommend_rule_shows_the_course_as_recommended_until_the_learner_registers(
-    live_server, admin_page: Page, live_server_site
+    live_server: LiveServer, admin_page: Page, live_server_site: Site
 ) -> None:
     # Arrange
     organisation = OrganisationFactory(name="Acme Finance")

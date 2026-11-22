@@ -11,7 +11,9 @@ from __future__ import annotations
 import pytest
 from allauth.account.models import EmailAddress
 from playwright.sync_api import Page, expect
+from pytest_django.live_server_helper import LiveServer
 
+from django.contrib.sites.models import Site
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -37,7 +39,7 @@ _CLIPPED_CELLS_JS = """
 
 
 @pytest.fixture
-def admin_user(db, live_server_site, mock_site_context) -> User:
+def admin_user(db: None, live_server_site: Site, mock_site_context: Site) -> User:
     """A fresh, email-verified superuser."""
     user: User = UserFactory(superuser=True)
     EmailAddress.objects.get_or_create(
@@ -49,7 +51,7 @@ def admin_user(db, live_server_site, mock_site_context) -> User:
 
 
 @pytest.fixture
-def phone_admin_page(page: Page, live_server, admin_user: User) -> Page:
+def phone_admin_page(page: Page, live_server: LiveServer, admin_user: User) -> Page:
     """A Playwright Page at a phone viewport, logged in as admin_user."""
     page.set_viewport_size(_PHONE_VIEWPORT)
     sign_in(page, live_server, admin_user)
@@ -57,7 +59,7 @@ def phone_admin_page(page: Page, live_server, admin_user: User) -> Page:
 
 
 def test_changelist_card_cells_grow_to_fit_wrapped_values(
-    live_server, phone_admin_page: Page
+    live_server: LiveServer, phone_admin_page: Page
 ) -> None:
     learner = LearnerFactory(
         user=UserFactory(email="a.rather.long.learner.address@example.com")
@@ -75,7 +77,7 @@ def test_changelist_card_cells_grow_to_fit_wrapped_values(
 
 
 def test_offered_roles_options_are_comfortable_tap_targets(
-    live_server, phone_admin_page: Page
+    live_server: LiveServer, phone_admin_page: Page
 ) -> None:
     """The offered-roles checkboxes were bare native inputs stacked 17px apart."""
     config = SiteMessagingConfigFactory()

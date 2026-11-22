@@ -9,10 +9,11 @@ from __future__ import annotations
 
 import re
 from datetime import timedelta
+from pathlib import Path
 from urllib.parse import urlparse
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Browser, Page, Request, expect
 from pytest_django.live_server_helper import LiveServer
 
 from django.contrib.sites.models import Site
@@ -43,7 +44,7 @@ def _upload_requests(page: Page) -> list[str]:
     """Every file-upload request the page issues from now on, by URL."""
     seen: list[str] = []
 
-    def record(request) -> None:
+    def record(request: Request) -> None:
         if "/file/upload/" in request.url:
             seen.append(request.url)
 
@@ -55,8 +56,8 @@ def _upload_requests(page: Page) -> list[str]:
 # transaction=True so the Playwright browser (separate connection) sees committed data
 @pytest.mark.django_db(transaction=True)
 def test_an_applicant_application_flow(
-    live_server, logged_in_page: Page, logged_in_user, tmp_path
-):
+    live_server: LiveServer, logged_in_page: Page, logged_in_user: User, tmp_path: Path
+) -> None:
     """A signed-in applicant fills in, attaches, changes their mind and submits.
 
     Proves: the employer page appears for Yes and takes an answer; an oversize
@@ -222,8 +223,12 @@ def test_an_applicant_application_flow(
 @pytest.mark.playwright
 @pytest.mark.django_db(transaction=True)
 def test_an_anonymous_applicant_flow(
-    live_server, live_server_site, mock_site_context, page: Page, tmp_path
-):
+    live_server: LiveServer,
+    live_server_site: Site,
+    mock_site_context: Site,
+    page: Page,
+    tmp_path: Path,
+) -> None:
     """An anonymous visitor applies from the details step to the submit.
 
     Proves: the details step asks who is applying; the claim notice names the
@@ -341,8 +346,12 @@ def test_an_anonymous_applicant_flow(
 @pytest.mark.playwright
 @pytest.mark.django_db(transaction=True)
 def test_the_claim_link_from_the_details_step_signs_a_second_browser_in_on_the_draft(
-    live_server, live_server_site, mock_site_context, page: Page, browser
-):
+    live_server: LiveServer,
+    live_server_site: Site,
+    mock_site_context: Site,
+    page: Page,
+    browser: Browser,
+) -> None:
     """The live server shares the test process, so the locmem outbox holds the
     email the details step sent."""
     course, _form = gated_course_with_form()
@@ -421,8 +430,11 @@ def test_a_rejected_rows_details_lead_to_apply_again_and_a_new_application(
 @pytest.mark.playwright
 @pytest.mark.django_db(transaction=True)
 def test_a_learner_pages_through_their_applications(
-    live_server, logged_in_page: Page, logged_in_user, mock_site_context
-):
+    live_server: LiveServer,
+    logged_in_page: Page,
+    logged_in_user: User,
+    mock_site_context: Site,
+) -> None:
     page = logged_in_page
     applications = []
     now = timezone.now()
