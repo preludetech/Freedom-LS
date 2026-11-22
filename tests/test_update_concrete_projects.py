@@ -324,3 +324,15 @@ def test_scans_start_before_the_steps_that_do_not_feed_them() -> None:
     ]
 
     assert order == sorted(order)
+
+
+def test_pull_in_scan_skips_code_an_fls_idea_already_covers() -> None:
+    text = COMMAND.read_text()
+    section = text[
+        text.index("## Pull-in scan") : text.index("## Step 5: After the last spec")
+    ]
+
+    assert "spec_dd/1. next/" in section
+    assert "spec_dd/2. in progress/" in section
+    assert "## Already in FLS" in section
+    assert "Step 3 asks nothing about the `## Already in FLS` lines" in section

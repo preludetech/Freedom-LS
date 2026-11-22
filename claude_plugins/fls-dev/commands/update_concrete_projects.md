@@ -336,6 +336,7 @@ Once per project per run, find concrete-project code that belongs in FLS and put
 - the read set: `apps/`, `templates/`, `config/`, `pyproject.toml`, and `spec_dd/fls_integration/declined_pull_ins.md` when it exists;
 - the never-read set: `submodules/`, `spec_dd/for_freedom_ls/`, and every environment file whose name starts with a dot and `env`;
 - that FLS's app boundaries are in `docs/app_structure.md`, which the worker reads;
+- FLS's open ideas and specs, read from the FLS `main` worktree: every `idea.md` under `spec_dd/1. next/` and every `1. spec.md` and `idea.md` under `spec_dd/2. in progress/`. A candidate one of them already covers, because it names the candidate's project paths as a reference implementation or proposes the same feature, is not a card;
 - the rule from Rules about text that comes from a concrete project, restated as written there.
 
 The worker returns at most ten cards. Each card holds:
@@ -347,7 +348,9 @@ The worker returns at most ten cards. Each card holds:
 - size `S`, `M` or `L`;
 - whether the project would delete its copy.
 
-Code whose path is on the declined list is left out. The file ends with a `status: ok` footer.
+Code whose path is on the declined list is left out. Code an FLS idea or spec already covers is left out of the cards and listed under a closing `## Already in FLS` heading, one `- <project paths> | <FLS idea or spec path>` line each. The file ends with a `status: ok` footer.
+
+Step 3 asks nothing about the `## Already in FLS` lines, and Step 5 writes nothing for them.
 
 **Questions.** In Step 3, one question per card, labelled with its project, with these options in this order:
 
@@ -391,7 +394,7 @@ Sections, in this order:
    ~~~
 5. FLS changes made: each fix commit (subject, SHA, the spec and the regression test) and each idea (path, slug). `none` when there are none.
 6. Workarounds: removed (path, spec), declined, still needed and unmatched, read from the workaround files and the cell result counts. `none` when no cell listed any.
-7. Pull-in candidates: each idea written (slug, path), each candidate declined (path), each deferred (path). `none` when the scan found no candidates.
+7. Pull-in candidates: each idea written (slug, path), each candidate declined (path), each deferred (path), and each `## Already in FLS` line (project paths, FLS idea or spec path). `none` when the scan found no candidates.
 8. Assumed defaults: every `assumed` line of the answers file that concerns this project, and every borderline size call.
 
 ## End of run
