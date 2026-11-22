@@ -7,16 +7,16 @@ adds anything missing under "Priority not set"; move it from there to the level 
 
 ## High
 
-- `faster-test-runs`
+- `reference-material-content`
 - `sacaa-compliance`
 - `sacaa-compliance-content-versions-and-access`
 - `extract_panels_framework`
-- `reference-material-content`
 - `learner-public-profile`
 - `multi-step-course-applications`
 
 ## Medium
 
+- `faster-test-runs`
 - `educator-interface-refactor`
 - `content-widget-sayit-reveal`
 - `deadlines`
@@ -48,3 +48,4 @@ adds anything missing under "Priority not set"; move it from there to the level 
 - `panel-framework-close-and-toast-response`
 - `panel-framework-dialogs-without-javascript`
 - `sacaa-complianc-deletion-and-declaration`
+- `panel-framework-tech-debt-polish`

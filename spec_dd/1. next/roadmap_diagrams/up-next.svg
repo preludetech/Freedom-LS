@@ -2,184 +2,184 @@
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4b5563"/></marker></defs>
 <rect width="1288" height="1421" fill="#ffffff"/>
 <text x="24" y="38" font-size="15" font-weight="bold" fill="#111827">Up next</text>
-<path d="M274.0,96.0 C314.0,96.0 314.0,61.0 354.0,61.0 L604.0,61.0 C644.0,61.0 644.0,480.5 684.0,480.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,164.0 C314.0,164.0 314.0,85.0 354.0,85.0 L604.0,85.0 C644.0,85.0 644.0,480.5 684.0,480.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,232.0 C314.0,232.0 314.0,109.0 354.0,109.0 L604.0,109.0 C644.0,109.0 644.0,480.5 684.0,480.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,300.0 C314.0,300.0 314.0,133.0 354.0,133.0 L604.0,133.0 C644.0,133.0 644.0,480.5 684.0,480.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M604.0,179.0 C644.0,179.0 644.0,480.5 684.0,480.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,368.0 C314.0,368.0 314.0,225.0 354.0,225.0 L604.0,225.0 C644.0,225.0 644.0,480.5 684.0,480.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,436.0 C314.0,436.0 314.0,249.0 354.0,249.0 L604.0,249.0 C644.0,249.0 644.0,480.5 684.0,480.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,368.0 C314.0,368.0 314.0,179.0 354.0,179.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,647.5 C314.0,647.5 314.0,560.5 354.0,560.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,572.0 C314.0,572.0 314.0,507.0 354.0,507.0 L604.0,507.0 C644.0,507.0 644.0,701.0 684.0,701.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M604.0,560.5 C644.0,560.5 644.0,701.0 684.0,701.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,730.5 C314.0,730.5 314.0,614.0 354.0,614.0 L604.0,614.0 C644.0,614.0 644.0,701.0 684.0,701.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,1025.0 C314.0,1025.0 314.0,796.0 354.0,796.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,806.0 C314.0,806.0 314.0,660.0 354.0,660.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,806.0 C314.0,806.0 314.0,728.0 354.0,728.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M604.0,660.0 C644.0,660.0 644.0,776.5 684.0,776.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M604.0,728.0 C644.0,728.0 644.0,776.5 684.0,776.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,957.0 C314.0,957.0 314.0,378.0 354.0,378.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,957.0 C314.0,957.0 314.0,1000.0 354.0,1000.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M604.0,378.0 C644.0,378.0 644.0,565.0 684.0,565.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M934.0,565.0 C974.0,565.0 974.0,696.5 1014.0,696.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,957.0 C314.0,957.0 314.0,1068.0 354.0,1068.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,881.5 C314.0,881.5 314.0,453.5 354.0,453.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,504.0 C314.0,504.0 314.0,302.5 354.0,302.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M604.0,302.5 C644.0,302.5 644.0,526.5 684.0,526.5 L934.0,526.5 C974.0,526.5 974.0,621.0 1014.0,621.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M934.0,625.5 C974.0,625.5 974.0,621.0 1014.0,621.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,881.5 C314.0,881.5 314.0,1136.0 354.0,1136.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M604.0,453.5 C644.0,453.5 644.0,625.5 684.0,625.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M934.0,625.5 C974.0,625.5 974.0,772.0 1014.0,772.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,96.0 C314.0,96.0 314.0,83.0 354.0,83.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,96.0 C314.0,96.0 314.0,151.0 354.0,151.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M604.0,83.0 C644.0,83.0 644.0,480.5 684.0,480.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M604.0,151.0 C644.0,151.0 644.0,480.5 684.0,480.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,239.5 C314.0,239.5 314.0,318.5 354.0,318.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,164.0 C314.0,164.0 314.0,265.0 354.0,265.0 L604.0,265.0 C644.0,265.0 644.0,609.0 684.0,609.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M604.0,318.5 C644.0,318.5 644.0,609.0 684.0,609.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,322.5 C314.0,322.5 314.0,372.0 354.0,372.0 L604.0,372.0 C644.0,372.0 644.0,609.0 684.0,609.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,466.0 C314.0,466.0 314.0,584.0 354.0,584.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,806.0 C314.0,806.0 314.0,219.0 354.0,219.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,806.0 C314.0,806.0 314.0,1000.0 354.0,1000.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M604.0,219.0 C644.0,219.0 644.0,541.0 684.0,541.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M934.0,541.0 C974.0,541.0 974.0,613.5 1014.0,613.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,806.0 C314.0,806.0 314.0,1068.0 354.0,1068.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,949.5 C314.0,949.5 314.0,508.5 354.0,508.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,398.0 C314.0,398.0 314.0,425.5 354.0,425.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M604.0,425.5 C644.0,425.5 644.0,662.5 684.0,662.5 L934.0,662.5 C974.0,662.5 974.0,689.0 1014.0,689.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M934.0,708.5 C974.0,708.5 974.0,689.0 1014.0,689.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,949.5 C314.0,949.5 314.0,1136.0 354.0,1136.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M604.0,508.5 C644.0,508.5 644.0,708.5 684.0,708.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M934.0,708.5 C974.0,708.5 974.0,772.0 1014.0,772.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,602.0 C314.0,602.0 314.0,698.0 354.0,698.0 L604.0,698.0 C644.0,698.0 644.0,844.5 684.0,844.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,670.0 C314.0,670.0 314.0,722.0 354.0,722.0 L604.0,722.0 C644.0,722.0 644.0,844.5 684.0,844.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,738.0 C314.0,738.0 314.0,746.0 354.0,746.0 L604.0,746.0 C644.0,746.0 644.0,844.5 684.0,844.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,874.0 C314.0,874.0 314.0,770.0 354.0,770.0 L604.0,770.0 C644.0,770.0 644.0,844.5 684.0,844.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M604.0,816.0 C644.0,816.0 644.0,844.5 684.0,844.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,1025.0 C314.0,1025.0 314.0,862.0 354.0,862.0 L604.0,862.0 C644.0,862.0 644.0,844.5 684.0,844.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,1093.0 C314.0,1093.0 314.0,886.0 354.0,886.0 L604.0,886.0 C644.0,886.0 644.0,844.5 684.0,844.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,1025.0 C314.0,1025.0 314.0,816.0 354.0,816.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M274.0,1229.0 C314.0,1229.0 314.0,1257.0 354.0,1257.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M274.0,1161.0 C314.0,1161.0 314.0,932.0 354.0,932.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M274.0,1161.0 C314.0,1161.0 314.0,1196.5 354.0,1196.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M604.0,932.0 C644.0,932.0 644.0,912.5 684.0,912.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M274.0,1297.0 C314.0,1297.0 314.0,1317.5 354.0,1317.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,1093.0 C314.0,1093.0 314.0,864.0 354.0,864.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,1025.0 C314.0,1025.0 314.0,864.0 354.0,864.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M604.0,864.0 C644.0,864.0 644.0,844.5 684.0,844.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M604.0,796.0 C644.0,796.0 644.0,844.5 684.0,844.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<rect x="24.0" y="71.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M274.0,534.0 C314.0,534.0 314.0,652.0 354.0,652.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,466.0 C314.0,466.0 314.0,652.0 354.0,652.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M604.0,652.0 C644.0,652.0 644.0,776.5 684.0,776.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M604.0,584.0 C644.0,584.0 644.0,776.5 684.0,776.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<rect x="24.0" y="71.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M32.0,71.0 H30.0 A6,6 0 0 0 24.0,77.0 V115.0 A6,6 0 0 0 30.0,121.0 H32.0 Z" fill="#991b1b"/>
-<text x="40.0" y="93.0" fill="#111827">faster-test-runs-2-reuse-test-</text>
-<text x="40.0" y="108.0" fill="#111827">database</text>
-<rect x="24.0" y="139.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
-<path d="M32.0,139.0 H30.0 A6,6 0 0 0 24.0,145.0 V183.0 A6,6 0 0 0 30.0,189.0 H32.0 Z" fill="#991b1b"/>
-<text x="40.0" y="161.0" fill="#111827">faster-test-runs-5-full-suite-</text>
-<text x="40.0" y="176.0" fill="#111827">on-github-actions</text>
-<rect x="24.0" y="207.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
-<path d="M32.0,207.0 H30.0 A6,6 0 0 0 24.0,213.0 V251.0 A6,6 0 0 0 30.0,257.0 H32.0 Z" fill="#991b1b"/>
-<text x="40.0" y="229.0" fill="#111827">faster-test-runs-6-prune-slow-</text>
-<text x="40.0" y="244.0" fill="#111827">tests</text>
+<text x="40.0" y="93.0" fill="#111827">reference-material-content-1-</text>
+<text x="40.0" y="108.0" fill="#111827">authoring</text>
+<rect x="354.0" y="58.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M362.0,58.0 H360.0 A6,6 0 0 0 354.0,64.0 V102.0 A6,6 0 0 0 360.0,108.0 H362.0 Z" fill="#991b1b"/>
+<text x="370.0" y="80.0" fill="#111827">reference-material-content-2-</text>
+<text x="370.0" y="95.0" fill="#111827">learner-reference</text>
+<rect x="354.0" y="126.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M362.0,126.0 H360.0 A6,6 0 0 0 354.0,132.0 V170.0 A6,6 0 0 0 360.0,176.0 H362.0 Z" fill="#991b1b"/>
+<text x="370.0" y="148.0" fill="#111827">reference-material-content-3-</text>
+<text x="370.0" y="163.0" fill="#111827">educator-reference</text>
 <rect x="684.0" y="455.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
 <path d="M692.0,455.5 H690.0 A6,6 0 0 0 684.0,461.5 V499.5 A6,6 0 0 0 690.0,505.5 H692.0 Z" fill="#facc15"/>
-<text x="700.0" y="477.5" fill="#111827">faster-test-runs-7-claude-</text>
-<text x="700.0" y="492.5" fill="#111827">cloud-test-runs</text>
-<rect x="24.0" y="275.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,275.0 H30.0 A6,6 0 0 0 24.0,281.0 V319.0 A6,6 0 0 0 30.0,325.0 H32.0 Z" fill="#991b1b"/>
-<text x="40.0" y="297.0" fill="#111827">faster-test-runs-9-machine-</text>
-<text x="40.0" y="312.0" fill="#111827">wide-test-run-limit</text>
-<rect x="354.0" y="154.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M362.0,154.0 H360.0 A6,6 0 0 0 354.0,160.0 V198.0 A6,6 0 0 0 360.0,204.0 H362.0 Z" fill="#991b1b"/>
-<text x="370.0" y="176.0" fill="#111827">faster-test-runs-11-record-</text>
-<text x="370.0" y="191.0" fill="#111827">failed-full-runs</text>
-<rect x="24.0" y="343.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,343.0 H30.0 A6,6 0 0 0 24.0,349.0 V387.0 A6,6 0 0 0 30.0,393.0 H32.0 Z" fill="#991b1b"/>
-<text x="40.0" y="365.0" fill="#111827">faster-test-runs-12-reliable-</text>
-<text x="40.0" y="380.0" fill="#111827">full-run-record</text>
-<rect x="24.0" y="411.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,411.0 H30.0 A6,6 0 0 0 24.0,417.0 V455.0 A6,6 0 0 0 30.0,461.0 H32.0 Z" fill="#991b1b"/>
-<text x="40.0" y="433.0" fill="#111827">faster-test-runs-13-</text>
-<text x="40.0" y="448.0" fill="#111827">checkpoint-shared-paths</text>
-<rect x="24.0" y="547.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,547.0 H30.0 A6,6 0 0 0 24.0,553.0 V591.0 A6,6 0 0 0 30.0,597.0 H32.0 Z" fill="#991b1b"/>
-<text x="40.0" y="569.0" fill="#111827">sacaa-compliance-4-attempt-</text>
-<text x="40.0" y="584.0" fill="#111827">review</text>
-<rect x="24.0" y="615.0" width="250" height="65" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,615.0 H30.0 A6,6 0 0 0 24.0,621.0 V674.0 A6,6 0 0 0 30.0,680.0 H32.0 Z" fill="#991b1b"/>
-<text x="40.0" y="637.0" fill="#111827">sacaa-compliance-content-</text>
-<text x="40.0" y="652.0" fill="#111827">versions-and-access-2-retire-</text>
-<text x="40.0" y="667.0" fill="#111827">removed-content</text>
-<rect x="354.0" y="528.0" width="250" height="65" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M362.0,528.0 H360.0 A6,6 0 0 0 354.0,534.0 V587.0 A6,6 0 0 0 360.0,593.0 H362.0 Z" fill="#991b1b"/>
-<text x="370.0" y="550.0" fill="#111827">sacaa-compliance-content-</text>
-<text x="370.0" y="565.0" fill="#111827">versions-and-access-3-</text>
-<text x="370.0" y="580.0" fill="#111827">question-versions</text>
-<rect x="24.0" y="698.0" width="250" height="65" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,698.0 H30.0 A6,6 0 0 0 24.0,704.0 V757.0 A6,6 0 0 0 30.0,763.0 H32.0 Z" fill="#991b1b"/>
-<text x="40.0" y="720.0" fill="#111827">sacaa-compliance-content-</text>
-<text x="40.0" y="735.0" fill="#111827">versions-and-access-4-</text>
-<text x="40.0" y="750.0" fill="#111827">question-access</text>
-<rect x="684.0" y="668.5" width="250" height="65" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M692.0,668.5 H690.0 A6,6 0 0 0 684.0,674.5 V727.5 A6,6 0 0 0 690.0,733.5 H692.0 Z" fill="#991b1b"/>
-<text x="700.0" y="690.5" fill="#111827">sacaa-compliance-content-</text>
-<text x="700.0" y="705.5" fill="#111827">versions-and-access-5-</text>
-<text x="700.0" y="720.5" fill="#111827">answered-version-review</text>
-<rect x="24.0" y="1000.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,1000.0 H30.0 A6,6 0 0 0 24.0,1006.0 V1044.0 A6,6 0 0 0 30.0,1050.0 H32.0 Z" fill="#991b1b"/>
-<text x="40.0" y="1022.0" fill="#111827">extract_panels_framework-5-</text>
-<text x="40.0" y="1037.0" fill="#111827">package-and-install</text>
-<rect x="354.0" y="771.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M362.0,771.0 H360.0 A6,6 0 0 0 354.0,777.0 V815.0 A6,6 0 0 0 360.0,821.0 H362.0 Z" fill="#991b1b"/>
-<text x="370.0" y="793.0" fill="#111827">extract_panels_framework-6-</text>
-<text x="370.0" y="808.0" fill="#111827">claude-plugin</text>
-<rect x="24.0" y="781.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+<text x="700.0" y="477.5" fill="#111827">reference-material-content-4-</text>
+<text x="700.0" y="492.5" fill="#111827">library-courses</text>
+<rect x="24.0" y="139.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M32.0,139.0 H30.0 A6,6 0 0 0 24.0,145.0 V183.0 A6,6 0 0 0 30.0,189.0 H32.0 Z" fill="#991b1b"/>
+<text x="40.0" y="161.0" fill="#111827">sacaa-compliance-4-attempt-</text>
+<text x="40.0" y="176.0" fill="#111827">review</text>
+<rect x="24.0" y="207.0" width="250" height="65" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M32.0,207.0 H30.0 A6,6 0 0 0 24.0,213.0 V266.0 A6,6 0 0 0 30.0,272.0 H32.0 Z" fill="#991b1b"/>
+<text x="40.0" y="229.0" fill="#111827">sacaa-compliance-content-</text>
+<text x="40.0" y="244.0" fill="#111827">versions-and-access-2-retire-</text>
+<text x="40.0" y="259.0" fill="#111827">removed-content</text>
+<rect x="354.0" y="286.0" width="250" height="65" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M362.0,286.0 H360.0 A6,6 0 0 0 354.0,292.0 V345.0 A6,6 0 0 0 360.0,351.0 H362.0 Z" fill="#991b1b"/>
+<text x="370.0" y="308.0" fill="#111827">sacaa-compliance-content-</text>
+<text x="370.0" y="323.0" fill="#111827">versions-and-access-3-</text>
+<text x="370.0" y="338.0" fill="#111827">question-versions</text>
+<rect x="24.0" y="290.0" width="250" height="65" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M32.0,290.0 H30.0 A6,6 0 0 0 24.0,296.0 V349.0 A6,6 0 0 0 30.0,355.0 H32.0 Z" fill="#991b1b"/>
+<text x="40.0" y="312.0" fill="#111827">sacaa-compliance-content-</text>
+<text x="40.0" y="327.0" fill="#111827">versions-and-access-4-</text>
+<text x="40.0" y="342.0" fill="#111827">question-access</text>
+<rect x="684.0" y="576.5" width="250" height="65" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M692.0,576.5 H690.0 A6,6 0 0 0 684.0,582.5 V635.5 A6,6 0 0 0 690.0,641.5 H692.0 Z" fill="#991b1b"/>
+<text x="700.0" y="598.5" fill="#111827">sacaa-compliance-content-</text>
+<text x="700.0" y="613.5" fill="#111827">versions-and-access-5-</text>
+<text x="700.0" y="628.5" fill="#111827">answered-version-review</text>
+<rect x="24.0" y="441.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M32.0,441.0 H30.0 A6,6 0 0 0 24.0,447.0 V485.0 A6,6 0 0 0 30.0,491.0 H32.0 Z" fill="#991b1b"/>
+<text x="40.0" y="463.0" fill="#111827">extract_panels_framework-5-</text>
+<text x="40.0" y="478.0" fill="#111827">package-and-install</text>
+<rect x="354.0" y="559.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M362.0,559.0 H360.0 A6,6 0 0 0 354.0,565.0 V603.0 A6,6 0 0 0 360.0,609.0 H362.0 Z" fill="#991b1b"/>
+<text x="370.0" y="581.0" fill="#111827">extract_panels_framework-6-</text>
+<text x="370.0" y="596.0" fill="#111827">claude-plugin</text>
+<rect x="24.0" y="781.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <path d="M32.0,781.0 H30.0 A6,6 0 0 0 24.0,787.0 V825.0 A6,6 0 0 0 30.0,831.0 H32.0 Z" fill="#991b1b"/>
-<text x="40.0" y="803.0" fill="#111827">reference-material-content-1-</text>
-<text x="40.0" y="818.0" fill="#111827">authoring</text>
-<rect x="354.0" y="635.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M362.0,635.0 H360.0 A6,6 0 0 0 354.0,641.0 V679.0 A6,6 0 0 0 360.0,685.0 H362.0 Z" fill="#991b1b"/>
-<text x="370.0" y="657.0" fill="#111827">reference-material-content-2-</text>
-<text x="370.0" y="672.0" fill="#111827">learner-reference</text>
-<rect x="354.0" y="703.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M362.0,703.0 H360.0 A6,6 0 0 0 354.0,709.0 V747.0 A6,6 0 0 0 360.0,753.0 H362.0 Z" fill="#991b1b"/>
-<text x="370.0" y="725.0" fill="#111827">reference-material-content-3-</text>
-<text x="370.0" y="740.0" fill="#111827">educator-reference</text>
-<rect x="684.0" y="751.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M692.0,751.5 H690.0 A6,6 0 0 0 684.0,757.5 V795.5 A6,6 0 0 0 690.0,801.5 H692.0 Z" fill="#facc15"/>
-<text x="700.0" y="773.5" fill="#111827">reference-material-content-4-</text>
-<text x="700.0" y="788.5" fill="#111827">library-courses</text>
-<rect x="24.0" y="932.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,932.0 H30.0 A6,6 0 0 0 24.0,938.0 V976.0 A6,6 0 0 0 30.0,982.0 H32.0 Z" fill="#991b1b"/>
-<text x="40.0" y="954.0" fill="#111827">learner-public-profile-2-</text>
-<text x="40.0" y="969.0" fill="#111827">profile-and-page</text>
-<rect x="354.0" y="353.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M362.0,353.0 H360.0 A6,6 0 0 0 354.0,359.0 V397.0 A6,6 0 0 0 360.0,403.0 H362.0 Z" fill="#991b1b"/>
-<text x="370.0" y="375.0" fill="#111827">learner-public-profile-3-</text>
-<text x="370.0" y="390.0" fill="#111827">completed-courses</text>
+<text x="40.0" y="803.0" fill="#111827">learner-public-profile-2-</text>
+<text x="40.0" y="818.0" fill="#111827">profile-and-page</text>
+<rect x="354.0" y="194.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M362.0,194.0 H360.0 A6,6 0 0 0 354.0,200.0 V238.0 A6,6 0 0 0 360.0,244.0 H362.0 Z" fill="#991b1b"/>
+<text x="370.0" y="216.0" fill="#111827">learner-public-profile-3-</text>
+<text x="370.0" y="231.0" fill="#111827">completed-courses</text>
 <rect x="354.0" y="975.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
 <path d="M362.0,975.0 H360.0 A6,6 0 0 0 354.0,981.0 V1019.0 A6,6 0 0 0 360.0,1025.0 H362.0 Z" fill="#991b1b"/>
 <text x="370.0" y="997.0" fill="#111827">learner-public-profile-4-</text>
 <text x="370.0" y="1012.0" fill="#111827">certificates</text>
-<rect x="684.0" y="547.5" width="250" height="35" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M692.0,547.5 H690.0 A6,6 0 0 0 684.0,553.5 V576.5 A6,6 0 0 0 690.0,582.5 H692.0 Z" fill="#991b1b"/>
-<text x="700.0" y="569.5" fill="#111827">learner-public-profile-5-index</text>
-<rect x="1014.0" y="671.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M1022.0,671.5 H1020.0 A6,6 0 0 0 1014.0,677.5 V715.5 A6,6 0 0 0 1020.0,721.5 H1022.0 Z" fill="#991b1b"/>
-<text x="1030.0" y="693.5" fill="#111827">learner-public-profile-6-</text>
-<text x="1030.0" y="708.5" fill="#111827">index-access</text>
+<rect x="684.0" y="523.5" width="250" height="35" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M692.0,523.5 H690.0 A6,6 0 0 0 684.0,529.5 V552.5 A6,6 0 0 0 690.0,558.5 H692.0 Z" fill="#991b1b"/>
+<text x="700.0" y="545.5" fill="#111827">learner-public-profile-5-index</text>
+<rect x="1014.0" y="588.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M1022.0,588.5 H1020.0 A6,6 0 0 0 1014.0,594.5 V632.5 A6,6 0 0 0 1020.0,638.5 H1022.0 Z" fill="#991b1b"/>
+<text x="1030.0" y="610.5" fill="#111827">learner-public-profile-6-</text>
+<text x="1030.0" y="625.5" fill="#111827">index-access</text>
 <rect x="354.0" y="1043.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
 <path d="M362.0,1043.0 H360.0 A6,6 0 0 0 354.0,1049.0 V1087.0 A6,6 0 0 0 360.0,1093.0 H362.0 Z" fill="#991b1b"/>
 <text x="370.0" y="1065.0" fill="#111827">learner-public-profile-7-</text>
 <text x="370.0" y="1080.0" fill="#111827">contact</text>
-<rect x="24.0" y="849.0" width="250" height="65" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,849.0 H30.0 A6,6 0 0 0 24.0,855.0 V908.0 A6,6 0 0 0 30.0,914.0 H32.0 Z" fill="#991b1b"/>
-<text x="40.0" y="871.0" fill="#111827">multi-step-course-</text>
-<text x="40.0" y="886.0" fill="#111827">applications-2-reviewers-and-</text>
-<text x="40.0" y="901.0" fill="#111827">inbox</text>
-<rect x="354.0" y="421.0" width="250" height="65" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M362.0,421.0 H360.0 A6,6 0 0 0 354.0,427.0 V480.0 A6,6 0 0 0 360.0,486.0 H362.0 Z" fill="#991b1b"/>
-<text x="370.0" y="443.0" fill="#111827">multi-step-course-</text>
-<text x="370.0" y="458.0" fill="#111827">applications-3-approval-</text>
-<text x="370.0" y="473.0" fill="#111827">outcome</text>
-<rect x="24.0" y="479.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,479.0 H30.0 A6,6 0 0 0 24.0,485.0 V523.0 A6,6 0 0 0 30.0,529.0 H32.0 Z" fill="#991b1b"/>
-<text x="40.0" y="501.0" fill="#111827">multi-step-course-</text>
-<text x="40.0" y="516.0" fill="#111827">applications-4-reopen-form</text>
-<rect x="354.0" y="270.0" width="250" height="65" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M362.0,270.0 H360.0 A6,6 0 0 0 354.0,276.0 V329.0 A6,6 0 0 0 360.0,335.0 H362.0 Z" fill="#991b1b"/>
-<text x="370.0" y="292.0" fill="#111827">multi-step-course-</text>
-<text x="370.0" y="307.0" fill="#111827">applications-5-requirements-</text>
-<text x="370.0" y="322.0" fill="#111827">and-resolver</text>
-<rect x="1014.0" y="588.5" width="250" height="65" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M1022.0,588.5 H1020.0 A6,6 0 0 0 1014.0,594.5 V647.5 A6,6 0 0 0 1020.0,653.5 H1022.0 Z" fill="#991b1b"/>
-<text x="1030.0" y="610.5" fill="#111827">multi-step-course-</text>
-<text x="1030.0" y="625.5" fill="#111827">applications-6-reviewer-</text>
-<text x="1030.0" y="640.5" fill="#111827">verdicts</text>
+<rect x="24.0" y="917.0" width="250" height="65" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M32.0,917.0 H30.0 A6,6 0 0 0 24.0,923.0 V976.0 A6,6 0 0 0 30.0,982.0 H32.0 Z" fill="#991b1b"/>
+<text x="40.0" y="939.0" fill="#111827">multi-step-course-</text>
+<text x="40.0" y="954.0" fill="#111827">applications-2-reviewers-and-</text>
+<text x="40.0" y="969.0" fill="#111827">inbox</text>
+<rect x="354.0" y="476.0" width="250" height="65" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M362.0,476.0 H360.0 A6,6 0 0 0 354.0,482.0 V535.0 A6,6 0 0 0 360.0,541.0 H362.0 Z" fill="#991b1b"/>
+<text x="370.0" y="498.0" fill="#111827">multi-step-course-</text>
+<text x="370.0" y="513.0" fill="#111827">applications-3-approval-</text>
+<text x="370.0" y="528.0" fill="#111827">outcome</text>
+<rect x="24.0" y="373.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M32.0,373.0 H30.0 A6,6 0 0 0 24.0,379.0 V417.0 A6,6 0 0 0 30.0,423.0 H32.0 Z" fill="#991b1b"/>
+<text x="40.0" y="395.0" fill="#111827">multi-step-course-</text>
+<text x="40.0" y="410.0" fill="#111827">applications-4-reopen-form</text>
+<rect x="354.0" y="393.0" width="250" height="65" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M362.0,393.0 H360.0 A6,6 0 0 0 354.0,399.0 V452.0 A6,6 0 0 0 360.0,458.0 H362.0 Z" fill="#991b1b"/>
+<text x="370.0" y="415.0" fill="#111827">multi-step-course-</text>
+<text x="370.0" y="430.0" fill="#111827">applications-5-requirements-</text>
+<text x="370.0" y="445.0" fill="#111827">and-resolver</text>
+<rect x="1014.0" y="656.5" width="250" height="65" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M1022.0,656.5 H1020.0 A6,6 0 0 0 1014.0,662.5 V715.5 A6,6 0 0 0 1020.0,721.5 H1022.0 Z" fill="#991b1b"/>
+<text x="1030.0" y="678.5" fill="#111827">multi-step-course-</text>
+<text x="1030.0" y="693.5" fill="#111827">applications-6-reviewer-</text>
+<text x="1030.0" y="708.5" fill="#111827">verdicts</text>
 <rect x="354.0" y="1111.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
 <path d="M362.0,1111.0 H360.0 A6,6 0 0 0 354.0,1117.0 V1155.0 A6,6 0 0 0 360.0,1161.0 H362.0 Z" fill="#991b1b"/>
 <text x="370.0" y="1133.0" fill="#111827">multi-step-course-</text>
 <text x="370.0" y="1148.0" fill="#111827">applications-9-help-requests</text>
-<rect x="684.0" y="600.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M692.0,600.5 H690.0 A6,6 0 0 0 684.0,606.5 V644.5 A6,6 0 0 0 690.0,650.5 H692.0 Z" fill="#991b1b"/>
-<text x="700.0" y="622.5" fill="#111827">multi-step-course-</text>
-<text x="700.0" y="637.5" fill="#111827">applications-10-intake-courses</text>
+<rect x="684.0" y="683.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M692.0,683.5 H690.0 A6,6 0 0 0 684.0,689.5 V727.5 A6,6 0 0 0 690.0,733.5 H692.0 Z" fill="#991b1b"/>
+<text x="700.0" y="705.5" fill="#111827">multi-step-course-</text>
+<text x="700.0" y="720.5" fill="#111827">applications-10-intake-courses</text>
 <rect x="1014.0" y="739.5" width="250" height="65" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
 <path d="M1022.0,739.5 H1020.0 A6,6 0 0 0 1014.0,745.5 V798.5 A6,6 0 0 0 1020.0,804.5 H1022.0 Z" fill="#991b1b"/>
 <text x="1030.0" y="761.5" fill="#111827">multi-step-course-</text>
 <text x="1030.0" y="776.5" fill="#111827">applications-11-applicant-</text>
 <text x="1030.0" y="791.5" fill="#111827">picks-onward-courses</text>
+<rect x="24.0" y="577.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M32.0,577.0 H30.0 A6,6 0 0 0 24.0,583.0 V621.0 A6,6 0 0 0 30.0,627.0 H32.0 Z" fill="#fb923c"/>
+<text x="40.0" y="599.0" fill="#111827">faster-test-runs-2-reuse-test-</text>
+<text x="40.0" y="614.0" fill="#111827">database</text>
+<rect x="24.0" y="645.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+<path d="M32.0,645.0 H30.0 A6,6 0 0 0 24.0,651.0 V689.0 A6,6 0 0 0 30.0,695.0 H32.0 Z" fill="#fb923c"/>
+<text x="40.0" y="667.0" fill="#111827">faster-test-runs-5-full-suite-</text>
+<text x="40.0" y="682.0" fill="#111827">on-github-actions</text>
+<rect x="24.0" y="713.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+<path d="M32.0,713.0 H30.0 A6,6 0 0 0 24.0,719.0 V757.0 A6,6 0 0 0 30.0,763.0 H32.0 Z" fill="#fb923c"/>
+<text x="40.0" y="735.0" fill="#111827">faster-test-runs-6-prune-slow-</text>
+<text x="40.0" y="750.0" fill="#111827">tests</text>
+<rect x="684.0" y="819.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M692.0,819.5 H690.0 A6,6 0 0 0 684.0,825.5 V863.5 A6,6 0 0 0 690.0,869.5 H692.0 Z" fill="#facc15"/>
+<text x="700.0" y="841.5" fill="#111827">faster-test-runs-7-claude-</text>
+<text x="700.0" y="856.5" fill="#111827">cloud-test-runs</text>
+<rect x="24.0" y="849.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M32.0,849.0 H30.0 A6,6 0 0 0 24.0,855.0 V893.0 A6,6 0 0 0 30.0,899.0 H32.0 Z" fill="#fb923c"/>
+<text x="40.0" y="871.0" fill="#111827">faster-test-runs-9-machine-</text>
+<text x="40.0" y="886.0" fill="#111827">wide-test-run-limit</text>
+<rect x="354.0" y="791.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M362.0,791.0 H360.0 A6,6 0 0 0 354.0,797.0 V835.0 A6,6 0 0 0 360.0,841.0 H362.0 Z" fill="#fb923c"/>
+<text x="370.0" y="813.0" fill="#111827">faster-test-runs-11-record-</text>
+<text x="370.0" y="828.0" fill="#111827">failed-full-runs</text>
+<rect x="24.0" y="1000.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M32.0,1000.0 H30.0 A6,6 0 0 0 24.0,1006.0 V1044.0 A6,6 0 0 0 30.0,1050.0 H32.0 Z" fill="#fb923c"/>
+<text x="40.0" y="1022.0" fill="#111827">faster-test-runs-12-reliable-</text>
+<text x="40.0" y="1037.0" fill="#111827">full-run-record</text>
+<rect x="24.0" y="1068.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M32.0,1068.0 H30.0 A6,6 0 0 0 24.0,1074.0 V1112.0 A6,6 0 0 0 30.0,1118.0 H32.0 Z" fill="#fb923c"/>
+<text x="40.0" y="1090.0" fill="#111827">faster-test-runs-13-</text>
+<text x="40.0" y="1105.0" fill="#111827">checkpoint-shared-paths</text>
 <rect x="24.0" y="1204.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M32.0,1204.0 H30.0 A6,6 0 0 0 24.0,1210.0 V1248.0 A6,6 0 0 0 30.0,1254.0 H32.0 Z" fill="#fb923c"/>
 <text x="40.0" y="1226.0" fill="#111827">educator-interface-refactor-6-</text>
@@ -210,18 +210,18 @@
 <rect x="354.0" y="1300.0" width="250" height="35" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
 <path d="M362.0,1300.0 H360.0 A6,6 0 0 0 354.0,1306.0 V1329.0 A6,6 0 0 0 360.0,1335.0 H362.0 Z" fill="#fb923c"/>
 <text x="370.0" y="1322.0" fill="#111827">user-communication-8-realtime</text>
-<rect x="24.0" y="1068.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,1068.0 H30.0 A6,6 0 0 0 24.0,1074.0 V1112.0 A6,6 0 0 0 30.0,1118.0 H32.0 Z" fill="#9ca3af"/>
-<text x="40.0" y="1090.0" fill="#111827">extract-semantic-icons-app-2-</text>
-<text x="40.0" y="1105.0" fill="#111827">host-icons</text>
-<rect x="354.0" y="839.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M362.0,839.0 H360.0 A6,6 0 0 0 354.0,845.0 V883.0 A6,6 0 0 0 360.0,889.0 H362.0 Z" fill="#9ca3af"/>
-<text x="370.0" y="861.0" fill="#111827">extract-semantic-icons-app-3-</text>
-<text x="370.0" y="876.0" fill="#111827">package-and-install</text>
-<rect x="684.0" y="819.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M692.0,819.5 H690.0 A6,6 0 0 0 684.0,825.5 V863.5 A6,6 0 0 0 690.0,869.5 H692.0 Z" fill="#9ca3af"/>
-<text x="700.0" y="841.5" fill="#111827">extract-semantic-icons-app-4-</text>
-<text x="700.0" y="856.5" fill="#111827">claude-plugin</text>
+<rect x="24.0" y="509.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M32.0,509.0 H30.0 A6,6 0 0 0 24.0,515.0 V553.0 A6,6 0 0 0 30.0,559.0 H32.0 Z" fill="#9ca3af"/>
+<text x="40.0" y="531.0" fill="#111827">extract-semantic-icons-app-2-</text>
+<text x="40.0" y="546.0" fill="#111827">host-icons</text>
+<rect x="354.0" y="627.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M362.0,627.0 H360.0 A6,6 0 0 0 354.0,633.0 V671.0 A6,6 0 0 0 360.0,677.0 H362.0 Z" fill="#9ca3af"/>
+<text x="370.0" y="649.0" fill="#111827">extract-semantic-icons-app-3-</text>
+<text x="370.0" y="664.0" fill="#111827">package-and-install</text>
+<rect x="684.0" y="751.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M692.0,751.5 H690.0 A6,6 0 0 0 684.0,757.5 V795.5 A6,6 0 0 0 690.0,801.5 H692.0 Z" fill="#9ca3af"/>
+<text x="700.0" y="773.5" fill="#111827">extract-semantic-icons-app-4-</text>
+<text x="700.0" y="788.5" fill="#111827">claude-plugin</text>
 <rect x="24.0" y="1359" width="16" height="12" rx="3" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <text x="46.0" y="1369" fill="#374151">in progress</text>
 <rect x="154.3" y="1359" width="16" height="12" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>

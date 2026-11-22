@@ -11,19 +11,15 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### In progress
 
-- 🔴 High · `faster-test-runs-5-full-suite-on-github-actions` (Faster test runs)
-- 🔴 High · `faster-test-runs-6-prune-slow-tests` (Faster test runs)
-- 🔴 High · `sacaa-compliance-3-question-pools` (SACAA compliance)
 - 🔴 High · `reference-material-content-1-authoring` (Reference material)
+- 🔴 High · `sacaa-compliance-3-question-pools` (SACAA compliance)
+- 🟠 Medium · `faster-test-runs-5-full-suite-on-github-actions` (Faster test runs)
+- 🟠 Medium · `faster-test-runs-6-prune-slow-tests` (Faster test runs)
 - 🟠 Medium · `educator-interface-refactor-6-cohort` (Educator interface code layout)
 - 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
 
 ### Ready to start
 
-- 🔴 High · `faster-test-runs-12-reliable-full-run-record` (Faster test runs)
-- 🔴 High · `faster-test-runs-13-checkpoint-shared-paths` (Faster test runs)
-- 🔴 High · `faster-test-runs-2-reuse-test-database` (Faster test runs)
-- 🔴 High · `faster-test-runs-9-machine-wide-test-run-limit` (Faster test runs)
 - 🔴 High · `sacaa-compliance-4-attempt-review` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-2-retire-removed-content` (SACAA content versions and access)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-4-question-access` (SACAA content versions and access)
@@ -31,6 +27,10 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `learner-public-profile-2-profile-and-page` (Learner public profiles)
 - 🔴 High · `multi-step-course-applications-2-reviewers-and-inbox` (Multi-step course applications)
 - 🔴 High · `multi-step-course-applications-4-reopen-form` (Multi-step course applications)
+- 🟠 Medium · `faster-test-runs-12-reliable-full-run-record` (Faster test runs)
+- 🟠 Medium · `faster-test-runs-13-checkpoint-shared-paths` (Faster test runs)
+- 🟠 Medium · `faster-test-runs-2-reuse-test-database` (Faster test runs)
+- 🟠 Medium · `faster-test-runs-9-machine-wide-test-run-limit` (Faster test runs)
 - 🟠 Medium · `content-widget-sayit-reveal-4-audio-access-control` (Audio content widgets)
 - 🟠 Medium · `deadlines-4-learner-self-pause` (Deadlines)
 - 🟠 Medium · `deadlines-5-reminders` (Deadlines)
@@ -68,41 +68,33 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### Needs work on main first
 
-None.
+- ⚪ Priority not set · `panel-framework-tech-debt-polish` (Panel framework): cut it with `/sdd:roadmap panel-framework-tech-debt-polish` (the directory is empty).
 
 ![Up next](roadmap_diagrams/up-next.svg)
 
-## Faster test runs
+## Reference material
 
 Priority: 🔴 High
 
-Cut the time and machine load of test runs so several worktrees can work at once. Parent: `faster-test-runs`.
+Reference parts, such as regulations, that learners consult at any time beside a course's learning path, and courses that are only libraries. Parent: `reference-material-content`.
 
-- `faster-test-runs-2-reuse-test-database` — **ready** — A pytest run reuses the test database and rebuilds it only when migrations change.
-- `faster-test-runs-5-full-suite-on-github-actions` — **in progress** — The full suite runs on free GitHub runners in parallel jobs, started on demand by an SDD run.
-- `faster-test-runs-6-prune-slow-tests` — **in progress** — Remaining slow and redundant tests are merged or removed from a measured per-test ranking.
-- `faster-test-runs-7-claude-cloud-test-runs` — **blocked** by `faster-test-runs-2-reuse-test-database`, `faster-test-runs-5-full-suite-on-github-actions`, `faster-test-runs-6-prune-slow-tests`, `faster-test-runs-9-machine-wide-test-run-limit`, `faster-test-runs-11-record-failed-full-runs`, `faster-test-runs-12-reliable-full-run-record`, `faster-test-runs-13-checkpoint-shared-paths` — Fallback: a test run or SDD batch is handed to a Claude Code cloud session.
-- `faster-test-runs-9-machine-wide-test-run-limit` — **ready** — Test runs from every worktree share one CPU and memory limit, and a waiting run says so.
-- `faster-test-runs-11-record-failed-full-runs` — **blocked** by `faster-test-runs-12-reliable-full-run-record` — A failed full run records its failed tests, so the next checkpoint re-runs those, not the whole suite.
-- `faster-test-runs-12-reliable-full-run-record` — **ready** — Every full run writes its own record, or prints why it recorded nothing.
-- `faster-test-runs-13-checkpoint-shared-paths` — **ready** — A `finish_worktree` checkpoint tests main's change to a file the branch changed earlier as main's change.
+- `reference-material-content-1-authoring` — **in progress** — Authors attach reference parts to a course with a `reference:` key; `content_save` stores, validates and cleans them up.
+- `reference-material-content-2-learner-reference` — **blocked** by `reference-material-content-1-authoring` — Registered learners open a course's reference listing and read reference topics from any player page, with nothing tracked.
+- `reference-material-content-3-educator-reference` — **blocked** by `reference-material-content-1-authoring` — Educators see a course's reference parts in the course outline and preview reference topics.
+- `reference-material-content-4-library-courses` — **blocked** by `reference-material-content-2-learner-reference`, `reference-material-content-3-educator-reference` — A course with only reference material opens its reference listing, shows no progress anywhere and can never be finished.
 
-![Faster test runs](roadmap_diagrams/faster-test-runs.svg)
+![Reference material](roadmap_diagrams/reference-material.svg)
 
 **Notes**
-- Every spec can start now and run in parallel, except `faster-test-runs-7-claude-cloud-test-runs` and the two below.
-- `faster-test-runs-11-record-failed-full-runs` extends the record `faster-test-runs-12-reliable-full-run-record` makes reliable; `faster-test-runs-13-checkpoint-shared-paths` changes the selector after `faster-test-runs-8-narrower-targeted-tier`.
-- Suggested order by saving: `faster-test-runs-1-fast-password-hasher`, `faster-test-runs-2-reuse-test-database`, then the rest.
-- `faster-test-runs-7-claude-cloud-test-runs` waits on the others because the owner wants it only if they are not enough.
-- Collision: `faster-test-runs-2-reuse-test-database` and `faster-test-runs-5-full-suite-on-github-actions` both change the test tier definition and its runner.
-- Collision: `faster-test-runs-8-narrower-targeted-tier` changes the test selector, `faster-test-runs-9-machine-wide-test-run-limit` the runner, and `faster-test-runs-10-rerun-only-failures-in-a-batch` the tier definition.
-- Collision: `faster-test-runs-12-reliable-full-run-record` may change the runner too, beside `faster-test-runs-9-machine-wide-test-run-limit`.
-- Decision: generic `sdd` and `ds` plugins stay generic; project values reach them through per-project configuration.
-- Decision: no spec reduces what is tested without naming the test that still covers it.
-- Assumption: every spec reports its before and after timings against `faster-test-runs/research_test_timings.md`.
-- Open: whether coverage is still enforced across parallel jobs (owned by `faster-test-runs-5-full-suite-on-github-actions`).
-- Out of scope: paid runners, squashing migrations, changes to the First Class workflow.
-- References: `faster-test-runs/research_test_timings.md`, `faster-test-runs/research_batch_test_load.md`, `faster-test-runs/research_finish_worktree_reruns.md`.
+- Build order: `reference-material-content-1-authoring` first; then `reference-material-content-2-learner-reference` and `reference-material-content-3-educator-reference` in parallel; `reference-material-content-4-library-courses` last, at low priority.
+- Collisions: `reference-material-content-1-authoring` changes `content_save`, the schema and the validator, like `sacaa-compliance-content-versions-and-access-1-content-save-safety` and `sacaa-compliance-content-versions-and-access-2-retire-removed-content`; whichever lands second rebases. `reference-material-content-4-library-courses` touches the learner and cohort progress panels that `educator-interface-refactor-5-learner` and `educator-interface-refactor-6-cohort` move.
+- Decided: reference parts are `CoursePart` rows attached by a new `CourseReferencePart(course, course_part, order)`; `Course.items` stays the learning path. Reference parts hold topics only, one level deep.
+- Decided: a part listed under `reference:` makes `content_save` delete that course's old collection item placing it, with its overrides and due dates, and report what it removed.
+- Decided: reading reference material records nothing (no progress, resume pointer or `started_at`) and follows lesson access, so it is closed while paused and after the time limit ends.
+- Decided: a library-only course shows no progress or completion anywhere and cannot be finished.
+- Assumed: a topic may sit in both a learning-path part and a reference part; only a whole part is barred from both lists of one course.
+- Out of scope: nesting deeper than part, then topics (planned later), PDFs and files, search, forms in reference.
+- References: `research_learner_player.md` and `research_educator_content.md` in the parent.
 
 ## SACAA compliance
 
@@ -171,30 +163,6 @@ The panel framework moves into its own installable package, because another Djan
 - The other project must not install the package before `extract_panels_framework-5-package-and-install`.
 - References: `research_packaging_and_distribution.md` and `research_coupling_audit.md`, both in the parent.
 
-## Reference material
-
-Priority: 🔴 High
-
-Reference parts, such as regulations, that learners consult at any time beside a course's learning path, and courses that are only libraries. Parent: `reference-material-content`.
-
-- `reference-material-content-1-authoring` — **in progress** — Authors attach reference parts to a course with a `reference:` key; `content_save` stores, validates and cleans them up.
-- `reference-material-content-2-learner-reference` — **blocked** by `reference-material-content-1-authoring` — Registered learners open a course's reference listing and read reference topics from any player page, with nothing tracked.
-- `reference-material-content-3-educator-reference` — **blocked** by `reference-material-content-1-authoring` — Educators see a course's reference parts in the course outline and preview reference topics.
-- `reference-material-content-4-library-courses` — **blocked** by `reference-material-content-2-learner-reference`, `reference-material-content-3-educator-reference` — A course with only reference material opens its reference listing, shows no progress anywhere and can never be finished.
-
-![Reference material](roadmap_diagrams/reference-material.svg)
-
-**Notes**
-- Build order: `reference-material-content-1-authoring` first; then `reference-material-content-2-learner-reference` and `reference-material-content-3-educator-reference` in parallel; `reference-material-content-4-library-courses` last, at low priority.
-- Collisions: `reference-material-content-1-authoring` changes `content_save`, the schema and the validator, like `sacaa-compliance-content-versions-and-access-1-content-save-safety` and `sacaa-compliance-content-versions-and-access-2-retire-removed-content`; whichever lands second rebases. `reference-material-content-4-library-courses` touches the learner and cohort progress panels that `educator-interface-refactor-5-learner` and `educator-interface-refactor-6-cohort` move.
-- Decided: reference parts are `CoursePart` rows attached by a new `CourseReferencePart(course, course_part, order)`; `Course.items` stays the learning path. Reference parts hold topics only, one level deep.
-- Decided: a part listed under `reference:` makes `content_save` delete that course's old collection item placing it, with its overrides and due dates, and report what it removed.
-- Decided: reading reference material records nothing (no progress, resume pointer or `started_at`) and follows lesson access, so it is closed while paused and after the time limit ends.
-- Decided: a library-only course shows no progress or completion anywhere and cannot be finished.
-- Assumed: a topic may sit in both a learning-path part and a reference part; only a whole part is barred from both lists of one course.
-- Out of scope: nesting deeper than part, then topics (planned later), PDFs and files, search, forms in reference.
-- References: `research_learner_player.md` and `research_educator_content.md` in the parent.
-
 ## Learner public profiles
 
 Priority: 🔴 High
@@ -257,6 +225,38 @@ Applications become steps an applicant works through over weeks, decided by a de
   - what a resolver failure does (`multi-step-course-applications-5-requirements-and-resolver`).
 - Out of scope: outside systems reporting a step done, provider lists and distance ranking, more than one sign-off, and scanning uploaded files (not planned).
 - References: `research_review_foundations.md`, `research_help_requests.md` and `intake_courses_case.md` in the parent.
+
+## Faster test runs
+
+Priority: 🟠 Medium
+
+Cut the time and machine load of test runs so several worktrees can work at once. Parent: `faster-test-runs`.
+
+- `faster-test-runs-2-reuse-test-database` — **ready** — A pytest run reuses the test database and rebuilds it only when migrations change.
+- `faster-test-runs-5-full-suite-on-github-actions` — **in progress** — The full suite runs on free GitHub runners in parallel jobs, started on demand by an SDD run.
+- `faster-test-runs-6-prune-slow-tests` — **in progress** — Remaining slow and redundant tests are merged or removed from a measured per-test ranking.
+- `faster-test-runs-7-claude-cloud-test-runs` — **blocked** by `faster-test-runs-2-reuse-test-database`, `faster-test-runs-5-full-suite-on-github-actions`, `faster-test-runs-6-prune-slow-tests`, `faster-test-runs-9-machine-wide-test-run-limit`, `faster-test-runs-11-record-failed-full-runs`, `faster-test-runs-12-reliable-full-run-record`, `faster-test-runs-13-checkpoint-shared-paths` — Fallback: a test run or SDD batch is handed to a Claude Code cloud session.
+- `faster-test-runs-9-machine-wide-test-run-limit` — **ready** — Test runs from every worktree share one CPU and memory limit, and a waiting run says so.
+- `faster-test-runs-11-record-failed-full-runs` — **blocked** by `faster-test-runs-12-reliable-full-run-record` — A failed full run records its failed tests, so the next checkpoint re-runs those, not the whole suite.
+- `faster-test-runs-12-reliable-full-run-record` — **ready** — Every full run writes its own record, or prints why it recorded nothing.
+- `faster-test-runs-13-checkpoint-shared-paths` — **ready** — A `finish_worktree` checkpoint tests main's change to a file the branch changed earlier as main's change.
+
+![Faster test runs](roadmap_diagrams/faster-test-runs.svg)
+
+**Notes**
+- Every spec can start now and run in parallel, except `faster-test-runs-7-claude-cloud-test-runs` and the two below.
+- `faster-test-runs-11-record-failed-full-runs` extends the record `faster-test-runs-12-reliable-full-run-record` makes reliable; `faster-test-runs-13-checkpoint-shared-paths` changes the selector after `faster-test-runs-8-narrower-targeted-tier`.
+- Suggested order by saving: `faster-test-runs-1-fast-password-hasher`, `faster-test-runs-2-reuse-test-database`, then the rest.
+- `faster-test-runs-7-claude-cloud-test-runs` waits on the others because the owner wants it only if they are not enough.
+- Collision: `faster-test-runs-2-reuse-test-database` and `faster-test-runs-5-full-suite-on-github-actions` both change the test tier definition and its runner.
+- Collision: `faster-test-runs-8-narrower-targeted-tier` changes the test selector, `faster-test-runs-9-machine-wide-test-run-limit` the runner, and `faster-test-runs-10-rerun-only-failures-in-a-batch` the tier definition.
+- Collision: `faster-test-runs-12-reliable-full-run-record` may change the runner too, beside `faster-test-runs-9-machine-wide-test-run-limit`.
+- Decision: generic `sdd` and `ds` plugins stay generic; project values reach them through per-project configuration.
+- Decision: no spec reduces what is tested without naming the test that still covers it.
+- Assumption: every spec reports its before and after timings against `faster-test-runs/research_test_timings.md`.
+- Open: whether coverage is still enforced across parallel jobs (owned by `faster-test-runs-5-full-suite-on-github-actions`).
+- Out of scope: paid runners, squashing migrations, changes to the First Class workflow.
+- References: `faster-test-runs/research_test_timings.md`, `faster-test-runs/research_batch_test_load.md`, `faster-test-runs/research_finish_worktree_reruns.md`.
 
 ## Educator interface code layout
 
@@ -494,6 +494,7 @@ Gaps in the panel framework's dialogs and responses.
 
 - `panel-framework-close-and-toast-response` — **ready** — Panel actions get a built-in response that closes the dialog and shows a toast without swapping content.
 - `panel-framework-dialogs-without-javascript` — **ready** — Single-record dialog triggers work with JavaScript off, opening the dialog server-side over its page.
+- `panel-framework-tech-debt-polish` — **ready** — Tech debt and polish work on the panel framework; no idea written yet. Before starting: cut it with `/sdd:roadmap panel-framework-tech-debt-polish` (the directory is empty).
 
 ![Panel framework](roadmap_diagrams/panel-framework.svg)
 
