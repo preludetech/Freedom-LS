@@ -5,7 +5,12 @@ from uuid import UUID
 
 from django.db.models import prefetch_related_objects
 
-from .conditions import FORM_TREE_LOOKUPS, SittingPath, sitting_path
+from .conditions import (
+    FORM_TREE_LOOKUPS,
+    SittingPath,
+    load_form_tree,
+    sitting_path,
+)
 from .models import (
     Form,
     FormPage,
@@ -14,6 +19,7 @@ from .models import (
     FormStrategy,
     QuestionAnswer,
 )
+from .served_paper import shuffle_units
 
 FINAL_GROUP_TITLE = "Questions no longer on the form"
 
@@ -66,6 +72,54 @@ def count_form_questions(form: Form) -> int:
     Avoids loading all child objects into memory.
     """
     return FormQuestion.objects.filter(form_page__form=form).count()
+
+
+@dataclass(frozen=True)
+class DrawingPageCounts:
+    drawn_unit_count: int
+    unit_count: int
+    questions_per_unit: int
+    units_are_groups: bool
+
+    @property
+    def drawn_question_count(self) -> int:
+        return self.drawn_unit_count * self.questions_per_unit
+
+
+def drawing_page_counts(page: FormPage) -> DrawingPageCounts | None:
+    """What one sitting draws from the page, or None when the page has no draw.
+
+    Questions per unit are read off the first unit: every unit of a drawing
+    page holds the same number once the content validator accepts it.
+    """
+    if page.draw is None:
+        return None
+    units = shuffle_units(page.children())
+    questions_per_unit = (
+        sum(isinstance(child, FormQuestion) for child in units[0]) if units else 0
+    )
+    return DrawingPageCounts(
+        drawn_unit_count=min(page.draw, len(units)),
+        unit_count=len(units),
+        questions_per_unit=questions_per_unit,
+        units_are_groups=any(child.group for unit in units for child in unit),
+    )
+
+
+def count_sitting_questions(form: Form) -> int:
+    """How many questions one sitting of the form is served.
+
+    A drawing page counts only what it draws, so the number never reveals
+    how many questions the page draws from.
+    """
+    load_form_tree(form)
+    total = 0
+    for page in form.pages.all():
+        counts = drawing_page_counts(page)
+        total += (
+            len(page_questions(page)) if counts is None else counts.drawn_question_count
+        )
+    return total
 
 
 def page_questions(form_page: FormPage) -> list[FormQuestion]:

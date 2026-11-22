@@ -28,6 +28,7 @@ from freedom_ls.form_engine.models import (
     FormStrategy,
     QuestionAnswerFile,
 )
+from freedom_ls.form_engine.served_paper import ensure_served_paper, served_child_ids
 from freedom_ls.form_engine.session_access import ANONYMOUS_FORM_PROGRESS_SESSION_KEY
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.images import png_bytes
@@ -973,3 +974,30 @@ def test_the_anonymous_session_loses_the_sitting_once_it_has_a_user(
     )
 
     assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_attaching_to_a_file_question_the_draw_left_out_is_not_found(
+    mock_site_context, client
+):
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    page = FormPageFactory(form=form, order=0, draw=1)
+    pool: list[FormQuestion] = [
+        FormQuestionFactory(form_page=page, type="file_upload", order=order)
+        for order in range(4)
+    ]
+    form_progress: FormProgress = FormProgressFactory(form=form, user=UserFactory())
+    ensure_served_paper(form_progress)
+    form_progress.refresh_from_db()
+    served = served_child_ids(form_progress.served_paper)
+    undrawn = next(question for question in pool if question.id not in served)
+    client.force_login(form_progress.user)
+
+    response = client.post(
+        _upload_url(form_progress, undrawn),
+        {"file": _png_upload()},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 404
+    assert QuestionAnswerFile.objects.count() == 0

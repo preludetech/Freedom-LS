@@ -30,8 +30,11 @@ from freedom_ls.form_engine.models import (
 )
 from freedom_ls.form_engine.queries import (
     FINAL_GROUP_TITLE,
+    DrawingPageCounts,
     answer_groups,
     attempt_completes_form,
+    count_sitting_questions,
+    drawing_page_counts,
     form_questions,
     quiz_verdict,
 )
@@ -367,3 +370,77 @@ def test_a_served_paper_that_omits_a_question_marks_it_not_asked(mock_site_conte
     rows = {row.question.id: row for group in groups for row in group.rows}
     assert rows[served.id].is_asked is True
     assert rows[unserved.id].is_asked is False
+
+
+def _drawing_form() -> Form:
+    """A form with a page drawing 2 of 4 single questions, a page drawing 1 of 3
+    two-question groups, and a page with no draw holding 3 questions."""
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ)
+    single_page = FormPageFactory(form=form, order=0, draw=2)
+    for order in range(4):
+        FormQuestionFactory(form_page=single_page, order=order)
+    group_page = FormPageFactory(form=form, order=1, draw=1)
+    for group in range(3):
+        for member in range(2):
+            FormQuestionFactory(
+                form_page=group_page, order=group * 2 + member, group=f"case-{group}"
+            )
+    plain_page = FormPageFactory(form=form, order=2)
+    for order in range(3):
+        FormQuestionFactory(form_page=plain_page, order=order)
+    return form
+
+
+@pytest.mark.django_db
+def test_a_sitting_counts_what_each_drawing_page_draws_and_every_question_elsewhere(
+    mock_site_context,
+):
+    assert count_sitting_questions(_drawing_form()) == 2 + 2 + 3
+
+
+@pytest.mark.django_db
+def test_a_draw_above_the_unit_count_counts_every_unit(mock_site_context):
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    page = FormPageFactory(form=form, draw=9)
+    for order in range(3):
+        FormQuestionFactory(form_page=page, order=order)
+
+    assert count_sitting_questions(form) == 3
+
+
+@pytest.mark.django_db
+def test_a_page_with_no_draw_has_no_drawing_counts(mock_site_context):
+    page = FormPageFactory()
+    FormQuestionFactory(form_page=page)
+
+    assert drawing_page_counts(page) is None
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("page_order", "expected"),
+    [
+        (0, DrawingPageCounts(2, 4, 1, False)),
+        (1, DrawingPageCounts(1, 3, 2, True)),
+    ],
+)
+def test_a_drawing_page_reports_its_units_and_questions_per_unit(
+    mock_site_context, page_order, expected
+):
+    form = _drawing_form()
+    page = form.pages.get(order=page_order)
+
+    assert drawing_page_counts(page) == expected
+    assert expected.drawn_question_count == (
+        expected.drawn_unit_count * expected.questions_per_unit
+    )
+
+
+@pytest.mark.django_db
+def test_counting_sitting_questions_stays_within_a_fixed_query_budget(
+    mock_site_context, django_assert_max_num_queries
+):
+    form = Form.objects.get(pk=_drawing_form().pk)
+
+    with django_assert_max_num_queries(8):
+        count_sitting_questions(form)

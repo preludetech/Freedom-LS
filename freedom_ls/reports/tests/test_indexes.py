@@ -34,6 +34,7 @@ from freedom_ls.form_engine.factories import (
     QuestionAnswerFactory,
     QuestionOptionFactory,
     served_paper_of,
+    served_papers_over_seeds,
 )
 from freedom_ls.form_engine.models import (
     Form,
@@ -1337,3 +1338,51 @@ class TestASittingIsPairedOnlyWithItsServedQuestions:
         sat = _load_everything(cohort, quiz.site_id)["sat"]
 
         assert list(sat.correctness.values()) == [False]
+
+
+class TestADrawnSittingIsPairedOnlyWithTheQuestionsItDrew:
+    def test_each_sitting_is_paired_only_with_the_questions_its_own_draw_served(
+        self, mock_site_context
+    ):
+        course: Course = CourseFactory()
+        quiz: Form = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
+        _attach(course, quiz, order=0)
+        page: FormPage = FormPageFactory(form=quiz, order=0, draw=2)
+        questions: list[FormQuestion] = [
+            FormQuestionFactory(
+                form_page=page, type=QuestionType.MULTIPLE_CHOICE, order=index
+            )
+            for index in range(5)
+        ]
+        for question in questions:
+            QuestionOptionFactory(question=question, text="Right", correct=True)
+        first_paper = served_papers_over_seeds(quiz, range(1))[0]
+        second_paper = next(
+            paper
+            for paper in served_papers_over_seeds(quiz, range(1, 200))
+            if set(paper["pages"][0]["children"])
+            != set(first_paper["pages"][0]["children"])
+        )
+        _, records = _cohort_registered_for(course, learner_count=2)
+        first, second = (
+            form_progress(
+                record, quiz, completed_time=timezone.now(), served_paper=paper
+            )
+            for record, paper in zip(records, [first_paper, second_paper], strict=True)
+        )
+        registration = records[0].cohort_registration
+        assert registration is not None
+        cohort = registration.cohort
+
+        sat = _load_everything(cohort, quiz.site_id)["sat"]
+
+        paired: dict[UUID, set[UUID]] = {first.id: set(), second.id: set()}
+        for attempt_id, question in sat.pairs:
+            paired[attempt_id].add(question.id)
+        assert paired[first.id] == {
+            UUID(child_id) for child_id in first_paper["pages"][0]["children"]
+        }
+        assert paired[second.id] == {
+            UUID(child_id) for child_id in second_paper["pages"][0]["children"]
+        }
+        assert paired[first.id] != paired[second.id]

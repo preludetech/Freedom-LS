@@ -4844,3 +4844,232 @@ def test_quiz_results_page_without_a_served_paper_labels_with_the_authored_numbe
     content = client.get(_complete_url(course)).content.decode()
 
     assert _question_label(content, q3) == "Question 3"
+
+
+# ---------------------------------------------------------------------------
+# A drawing page serves only the questions the sitting drew
+# ---------------------------------------------------------------------------
+
+POOL_SIZE = 5
+POOL_DRAW = 2
+
+
+@dataclass
+class PoolQuiz:
+    """A quiz whose first page draws POOL_DRAW of POOL_SIZE questions, then a fixed page."""
+
+    course: Course
+    form: Form
+    user: User
+    pool_page: FormPage
+    pool: list[FormQuestion]
+    closing: FormQuestion
+
+    @property
+    def sitting_question_count(self) -> int:
+        return POOL_DRAW + 1
+
+    def paper_of(self, sitting: FormProgress) -> ServedPaper:
+        assert sitting.served_paper is not None
+        return cast("ServedPaper", sitting.served_paper)
+
+    def drawn_pool_questions(self, sitting: FormProgress) -> list[FormQuestion]:
+        drawn = set(self.paper_of(sitting)["pages"][0]["children"])
+        return [question for question in self.pool if str(question.id) in drawn]
+
+
+@pytest.fixture
+def pool_quiz(
+    mock_site_context: object, client: Client, monkeypatch: pytest.MonkeyPatch
+) -> PoolQuiz:
+    form = FormFactory(
+        strategy=FormStrategy.QUIZ,
+        quiz_pass_percentage=50,
+        quiz_show_incorrect=True,
+    )
+    pool_page: FormPage = FormPageFactory(form=form, order=0, draw=POOL_DRAW)
+    closing_page: FormPage = FormPageFactory(form=form, order=1)
+    pool: list[FormQuestion] = [
+        FormQuestionFactory(
+            form_page=pool_page,
+            question=f"Pool question number {number}",
+            type="multiple_choice",
+            order=number,
+            required=True,
+        )
+        for number in range(POOL_SIZE)
+    ]
+    closing: FormQuestion = FormQuestionFactory(
+        form_page=closing_page,
+        question="Closing question",
+        type="multiple_choice",
+        order=0,
+        required=True,
+    )
+    for question in [*pool, closing]:
+        QuestionOptionFactory(question=question, text="Right", correct=True, order=0)
+        QuestionOptionFactory(question=question, text="Wrong", correct=False, order=1)
+    user: User = UserFactory()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    _set_new_seed(monkeypatch, seed_serving(form, lambda paper: True))
+    return PoolQuiz(course, form, user, pool_page, pool, closing)
+
+
+def _latest_sitting(quiz: PoolQuiz) -> FormProgress:
+    sitting: FormProgress = FormProgress.objects.filter(
+        form=quiz.form, user=quiz.user
+    ).latest("start_time")
+    return sitting
+
+
+def _sit_pool_quiz(
+    client: Client, quiz: PoolQuiz, *, option_text: str = "Right"
+) -> FormProgress:
+    """Start a sitting and post each served page, choosing `option_text` everywhere."""
+    client.get(_form_start_url(quiz.course))
+    sitting = _latest_sitting(quiz)
+    for page_number, served_page in enumerate(quiz.paper_of(sitting)["pages"], 1):
+        data = {
+            f"question_{child_id}": str(
+                QuestionOption.objects.get(question_id=child_id, text=option_text).id
+            )
+            for child_id in served_page["children"]
+        }
+        client.post(_fill_page_url(quiz.course, page_number), data)
+    completed = _latest_sitting(quiz)
+    assert completed.completed_time is not None
+    return completed
+
+
+def _resit_on_another_draw(
+    client: Client, quiz: PoolQuiz, monkeypatch: pytest.MonkeyPatch, first: FormProgress
+) -> int:
+    """Switch the next sitting to a seed that draws a different set; return the seed."""
+    first_drawn = quiz.paper_of(first)["pages"][0]["children"]
+    seed = seed_serving(
+        quiz.form, lambda paper: set(paper["pages"][0]["children"]) != set(first_drawn)
+    )
+    _set_new_seed(monkeypatch, seed)
+    return seed
+
+
+@pytest.mark.django_db
+def test_the_start_screen_counts_the_drawn_questions_not_the_pool(
+    pool_quiz: PoolQuiz, client: Client
+) -> None:
+    response = client.get(_landing_url(pool_quiz.course))
+    content = response.content.decode()
+
+    assert response.context["question_count"] == pool_quiz.sitting_question_count
+    assert f"{pool_quiz.sitting_question_count} questions" in content
+    assert f"{POOL_SIZE + 1} questions" not in content
+
+
+@pytest.mark.django_db
+def test_the_runner_counts_and_numbers_cover_only_the_drawn_questions(
+    pool_quiz: PoolQuiz, client: Client
+) -> None:
+    client.get(_form_start_url(pool_quiz.course))
+    sitting = _latest_sitting(pool_quiz)
+    drawn = pool_quiz.drawn_pool_questions(sitting)
+
+    response = client.get(_fill_page_url(pool_quiz.course, 1))
+
+    assert response.context["total_question_count"] == pool_quiz.sitting_question_count
+    assert response.context["answered_count"] == 0
+    assert response.context["question_positions"] == {
+        question.id: position
+        for position, question in enumerate([*drawn, pool_quiz.closing], 1)
+    }
+    assert [child.id for child in response.context["page_children"]] == [
+        question.id for question in drawn
+    ]
+
+
+@pytest.mark.django_db
+def test_reloading_and_resuming_a_drawn_sitting_show_the_same_children(
+    pool_quiz: PoolQuiz, client: Client
+) -> None:
+    client.get(_form_start_url(pool_quiz.course))
+    url = _fill_page_url(pool_quiz.course, 1)
+    first = [child.id for child in client.get(url).context["page_children"]]
+
+    reloaded = [child.id for child in client.get(url).context["page_children"]]
+    resumed = client.get(_form_start_url(pool_quiz.course), follow=True)
+
+    assert reloaded == first
+    assert [child.id for child in resumed.context["page_children"]] == first
+
+
+@pytest.mark.django_db
+def test_a_retake_on_another_seed_draws_a_different_set(
+    pool_quiz: PoolQuiz, client: Client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    first = _sit_pool_quiz(client, pool_quiz)
+    _resit_on_another_draw(client, pool_quiz, monkeypatch, first)
+
+    client.get(_form_start_url(pool_quiz.course))
+    second = _latest_sitting(pool_quiz)
+
+    assert second.pk != first.pk
+    assert {question.id for question in pool_quiz.drawn_pool_questions(second)} != {
+        question.id for question in pool_quiz.drawn_pool_questions(first)
+    }
+
+
+@pytest.mark.django_db
+def test_two_completed_draws_have_equal_max_scores_and_no_outdated_notice(
+    pool_quiz: PoolQuiz, client: Client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    first = _sit_pool_quiz(client, pool_quiz)
+    _resit_on_another_draw(client, pool_quiz, monkeypatch, first)
+    second = _sit_pool_quiz(client, pool_quiz)
+
+    response = client.get(_complete_url(pool_quiz.course))
+
+    assert first.scores is not None
+    assert second.scores is not None
+    assert first.scores["max_score"] == second.scores["max_score"]
+    assert second.scores["max_score"] == pool_quiz.sitting_question_count
+    assert response.context["stored_score_outdated"] is False
+    assert "not been re-marked" not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_the_results_review_names_no_undrawn_question(
+    pool_quiz: PoolQuiz, client: Client
+) -> None:
+    sitting = _sit_pool_quiz(client, pool_quiz, option_text="Wrong")
+    drawn = pool_quiz.drawn_pool_questions(sitting)
+    undrawn = [question for question in pool_quiz.pool if question not in drawn]
+
+    response = client.get(_complete_url(pool_quiz.course))
+    content = response.content.decode()
+
+    reviewed = [row["question"] for row in sitting.get_incorrect_quiz_answers()]
+    assert set(reviewed) == {*drawn, pool_quiz.closing}
+    assert all(question.question in content for question in drawn)
+    assert not any(question.question in content for question in undrawn)
+
+
+@pytest.mark.django_db
+def test_posting_an_answer_for_an_undrawn_question_stores_nothing_for_it(
+    pool_quiz: PoolQuiz, client: Client
+) -> None:
+    client.get(_form_start_url(pool_quiz.course))
+    sitting = _latest_sitting(pool_quiz)
+    drawn = pool_quiz.drawn_pool_questions(sitting)
+    undrawn = [question for question in pool_quiz.pool if question not in drawn]
+    data = {
+        f"question_{question.id}": str(question.options.get(text="Right").id)
+        for question in pool_quiz.pool
+    }
+
+    client.post(_fill_page_url(pool_quiz.course, 1), data)
+
+    assert set(sitting.answers.values_list("question_id", flat=True)) == {
+        question.id for question in drawn
+    }
+    assert not QuestionAnswer.objects.filter(question__in=undrawn).exists()

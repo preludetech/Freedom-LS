@@ -83,7 +83,7 @@ from freedom_ls.form_engine.paging import (
     unanswered_required_in_form,
     unanswered_required_message,
 )
-from freedom_ls.form_engine.queries import count_form_questions
+from freedom_ls.form_engine.queries import count_sitting_questions
 from freedom_ls.form_engine.served_paper import ensure_served_paper
 from freedom_ls.learner_management.learner_actions import self_register
 from freedom_ls.learner_management.queries import (
@@ -1908,7 +1908,7 @@ def view_form(
         "next_url": next_url,
         "previous_url": previous_url,
         **(player_context or {}),
-        "question_count": count_form_questions(form),
+        "question_count": count_sitting_questions(form),
         "page_count": form.pages.count(),
     }
 
