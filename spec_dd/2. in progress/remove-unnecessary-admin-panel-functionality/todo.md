@@ -5,7 +5,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 1. Spec
 
-- [ ] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
+- [x] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
+- [ ] (user) Write the follow-up idea for an educator-interface screen that edits learner HR attributes (they lose their only edit screen with Learner admin)
+- [ ] (user) Update `spec_dd/1. next/sacaa-complianc-deletion-and-declaration-1-force-delete/idea.md`: its `LearnerAdmin` target no longer exists
 - [ ] (user) Review the spec and edit where needed; after substantial hand edits, run `/sdd:spec_review`
 
 ## 2. Plan

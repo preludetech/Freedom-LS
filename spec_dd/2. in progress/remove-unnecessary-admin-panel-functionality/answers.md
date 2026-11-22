@@ -8,3 +8,6 @@ Asked by `/sdd:start` before the spec was written.
 - Q: Should a downstream project be able to turn the removed admins back on? → A: No. Remove them outright; a project that wants one registers its own admin. (asked up front)
 - Q: Should form definitions disappear from the admin entirely or stay as read-only pages? → A: Remove them entirely, the same as content_engine. (asked up front)
 - Q: Should the read-only progress and attempt admins also block delete and bulk delete? → A: Yes. No add, change or delete. (asked up front)
+- Q: Deadline overrides, pauses and extensions are only editable through inlines on the removed admins. What happens to them? → A: Drop them; wait for deadlines-6-educator-management. (asked while research ran)
+- Q: Where are learner HR attributes edited once Learner admin goes? → A: Drop the editing; a follow-up spec adds it. (asked while research ran)
+- Q: What replaces Learner admin as the place to create a Learner? → A: Nothing is needed. Authorised organisation users already add learners in the educator interface, and only the right people can do it. (asked while research ran)
