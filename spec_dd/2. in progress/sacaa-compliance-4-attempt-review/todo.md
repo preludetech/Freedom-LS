@@ -5,8 +5,10 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 1. Spec
 
-- [ ] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
+- [x] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
 - [ ] (user) Review the spec and edit where needed; after substantial hand edits, run `/sdd:spec_review`
+- [ ] (user) Confirm or overrule the three assumed defaults under `## Open questions` in `1. spec.md` (audit entry, admin `answer_groups`, time taken)
+- [ ] (user) Write the follow-up idea for the deferred quiz-attempt export (served order and seed for inspectors) in `spec_dd/1. next/`
 
 ## 2. Plan
 
