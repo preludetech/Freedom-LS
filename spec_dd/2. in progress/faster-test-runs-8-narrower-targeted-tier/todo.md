@@ -11,9 +11,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 2. Plan
 
 - [x] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
-- [ ] (cmd) Run `/sdd:document` In `claude_plugins/django-stack/resources/test_tiers.md`, targeted bullet only: describe the `narrow` key, the `mode: narrow` line and `--wide` by shape, with no project names (spec "Documentation and downstream"; the checkpoint `--wide` instruction is already there)
-- [ ] (cmd) Run `/sdd:document` In `claude_plugins/django-stack/README.md`: add `narrow` to the `[tool.test_tiers]` keys `scripts/select_tests.py` reads, and `--wide` to its flags (spec "Documentation and downstream")
-- [ ] (cmd) Run `/sdd:document` In `claude_plugins/fls-dev/resources/testing.md`: say FLS sets `narrow = true`, what it narrows, what it leaves to the full run (the spec's Decisions list), and the `demo_content/**` tooling rule (spec "Documentation and downstream")
+- [x] (cmd) Run `/sdd:document` In `claude_plugins/django-stack/resources/test_tiers.md`, targeted bullet only: describe the `narrow` key, the `mode: narrow` line and `--wide` by shape, with no project names (spec "Documentation and downstream"; the checkpoint `--wide` instruction is already there)
+- [x] (cmd) Run `/sdd:document` In `claude_plugins/django-stack/README.md`: add `narrow` to the `[tool.test_tiers]` keys `scripts/select_tests.py` reads, and `--wide` to its flags (spec "Documentation and downstream")
+- [x] (cmd) Run `/sdd:document` In `claude_plugins/fls-dev/resources/testing.md`: say FLS sets `narrow = true`, what it narrows, what it leaves to the full run (the spec's Decisions list), and the `demo_content/**` tooling rule (spec "Documentation and downstream")
 - [ ] (user) Review both plans and edit where needed
 
 ## 3. Implementation and QA

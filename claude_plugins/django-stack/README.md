@@ -112,9 +112,12 @@ Rationale cut from the prompt files an agent reads at run time.
     own model.
 - **Test tiers.** `--no-cov` makes the exit code mean pass or fail: in a project whose `addopts`
   turns coverage on, any run smaller than the whole suite fails the coverage threshold whatever
-  the test did. `scripts/select_tests.py` takes `--working-tree`, `--range`, `--upstream-range` and
-  `--tests-changed-in`; a project extends it through `none`, `escalation`, `dependency_files`,
-  `tooling` and `markers` in `[tool.test_tiers]`. `--upstream-range <old>..<new>` (given once) names
+  the test did. `scripts/select_tests.py` takes `--working-tree`, `--range`, `--upstream-range`,
+  `--tests-changed-in` and `--wide`; a project extends it through `none`, `escalation`,
+  `dependency_files`, `tooling`, `markers` and `narrow` in `[tool.test_tiers]`. `narrow` is off by
+  default because it leaves links the import graph cannot see to a later full run, and a project
+  without one would lose that check. `--wide` turns it off for one run, which is how a checkpoint
+  selects. `--upstream-range <old>..<new>` (given once) names
   the paths another line of history brought in, such as main after a rebase: such a path counts only
   where it meets the branch: the apps it changed, the apps those import, the apps that import them,
   and the tests its own paths select. `pyproject.toml`, `uv.lock`, `.python-version`,

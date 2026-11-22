@@ -28,6 +28,17 @@ live here and nowhere else.
   `dependency_files` in `[tool.test_tiers]` in `pyproject.toml`. The script applies them; never apply them by
   hand. Done when every `why:` line is accounted for and the printed command exits zero.
 
+  `narrow = true` in `[tool.test_tiers]` opts a project into narrow selection; it is off when the
+  key is absent or `false`. Under it, a changed Python module selects its own app's tests plus the
+  test files that import it, directly or through other modules, instead of every app that imports
+  the app. A non-Python file in an app selects its app plus the apps one hop away in the app map.
+  The generic escalation globs stop meaning `full`, except migrations and a `conftest.py` above an
+  app directory; the project's own `escalation` globs still mean `full`. A narrowed run prints
+  `mode: narrow` under the `tier:` line, and each narrowed `why:` line ends `(narrow; the rest is
+  left to a full run)`: links no import shows (a model named by string, receivers wired in
+  `AppConfig.ready`, dotted paths in settings, a template included from another app) wait for the
+  full run. `--wide` ignores `narrow` and selects whole related apps; it never prints `mode:`.
+
   A checkpoint selects wide. Its `<selector>` is the wrapper followed by `--wide`, and the targeted
   run after a `targeted` resolution passes `--wide` before the resolved `<diff>`:
 
