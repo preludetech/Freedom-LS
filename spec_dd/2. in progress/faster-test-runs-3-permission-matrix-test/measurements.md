@@ -3,7 +3,7 @@
 ## What was measured
 
 - Before: `freedom_ls/educator_interface/tests/invariants/test_permission_matrix.py` as it stood at the merge base with `origin/main` (`0325aab454b031b5ac6d6f089f87e9b1c2fd84f8`), restored under a temporary name.
-- After: the same file at commit `fb7564317e81d4c6b7533cbb9a8051bb62b3e3b5` (the walks).
+- After: the same file at commit `65221afb4` (the walks; the last commit that changed the file).
 - Password hasher in both runs: `django.contrib.auth.hashers.Argon2PasswordHasher` (first entry of `PASSWORD_HASHERS` under `config.settings_dev`; nothing overrides it for tests). Both runs came from one script, back to back, so they share the hasher and machine state.
 
 Command for each file:

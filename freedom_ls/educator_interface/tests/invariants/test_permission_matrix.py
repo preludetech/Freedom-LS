@@ -622,10 +622,10 @@ class _Walk:
         """Check one cell and keep any disagreement.
 
         Both sides are computed under the cell's name, so an error from either one
-        names the cell. `same` defaults to identity, which makes a truthy non-bool
-        answer fail where True is expected.
+        names the cell and carries the mismatches found before it. `same` defaults to
+        identity, which makes a truthy non-bool answer fail where True is expected.
         """
-        with _naming_the_cell(**coordinates):
+        with _naming_the_cell(self._earlier_mismatches(), **coordinates):
             expected_value = expected()
             actual_value = actual()
         self.checked += 1
@@ -638,8 +638,19 @@ class _Walk:
                 )
             )
 
+    def _earlier_mismatches(self) -> list[str]:
+        if not self.mismatches:
+            return []
+        header = f"{len(self.mismatches)} earlier mismatches for {self.subject}:"
+        return [header, *sorted(self.mismatches)]
+
     def report(self) -> None:
-        """Fail with every mismatch, sorted so the same failure always prints the same report."""
+        """Fail with every mismatch, sorted so the same failure always prints the same report.
+
+        A walk that checked no cell fails too: it would otherwise pass while testing nothing.
+        """
+        if not self.checked:
+            pytest.fail(f"no cells checked for {self.subject}", pytrace=False)
         if not self.mismatches:
             return
         lines = sorted(self.mismatches)
@@ -652,14 +663,19 @@ def _cell_line(**pairs: str) -> str:
 
 
 @contextmanager
-def _naming_the_cell(**coordinates: str) -> Iterator[None]:
-    """An error raised while checking a cell still fails the test, now naming the cell."""
+def _naming_the_cell(earlier: list[str], **coordinates: str) -> Iterator[None]:
+    """An error raised while checking a cell still fails the test, now naming the cell
+    and listing the mismatches the walk had already found, so the error hides none of them."""
     try:
         yield
-    # Broad on purpose: this only adds the cell's coordinates to whatever was raised and
-    # re-raises it, so nothing is swallowed. It is the only broad catch in this file.
+    # Broad on purpose, and approved as an exception to the catch-specific-exceptions rule:
+    # this only adds notes to whatever was raised and re-raises it, so nothing is swallowed,
+    # and naming types here would leave any other error without its cell. It is the only
+    # broad catch in this file.
     except Exception as error:
         error.add_note(_cell_line(**coordinates))
+        for line in earlier:
+            error.add_note(line)
         raise
 
 
