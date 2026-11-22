@@ -63,7 +63,7 @@ pass, `incomplete` when it reports unfinished tests, and `fail` otherwise.
 python3 claude_plugins/sdd/scripts/full_run_record.py write --verdict <verdict> --sha "<sha>"
 ```
 
-A remote full run (the tier definition's `command:` was a remote command) is recorded only when
+A remote full run (the tier ran the tier definition's remote command) is recorded only when
 its `run: tested <sha>` equals `<sha>`; otherwise pass `--verdict fail`. A fallback local run is
 recorded as any local run.
 
