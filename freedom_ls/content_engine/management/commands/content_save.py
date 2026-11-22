@@ -22,6 +22,7 @@ import frontmatter
 import mutagen
 import yaml
 
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.contrib.sites.models import Site
 from django.core.files import File as DjangoFile
@@ -657,6 +658,17 @@ def save_course(item, site, base_path):
     return course
 
 
+def _organisation_name_from_slug(slug: str) -> str:
+    """ "harbour-college" becomes "Harbour College".
+
+    Only the first letter of each word is capitalised: `str.title()` would also
+    capitalise after an apostrophe or a digit.
+    """
+    return " ".join(
+        word[:1].upper() + word[1:] for word in re.split(r"[-_]", slug) if word
+    )
+
+
 def _resolve_organisations(
     slugs: list[str], field: str, file_path: Path, site: Site
 ) -> list[Organisation]:
@@ -665,6 +677,35 @@ def _resolve_organisations(
         return []
     found = list(Organisation._base_manager.filter(site=site, slug__in=slugs))
     unknown = sorted(set(slugs) - {o.slug for o in found})
+    if unknown and settings.DEBUG:
+        # Development only: a clean checkout's demo content names organisations
+        # nobody has created yet. Looked up with an explicit site and the base
+        # manager because the loader runs with no request. `ensure_organisation`
+        # is not used: it may suffix the slug, and the course names this one.
+        for slug in unknown:
+            name = _organisation_name_from_slug(slug)
+            holder = Organisation._base_manager.filter(site=site, name=name).first()
+            if holder is not None:
+                raise CommandError(
+                    _refusal(
+                        f'content_save cannot create organisation "{slug}" '
+                        f"for {file_path}.",
+                        [
+                            (
+                                f'Its name would be "{name}", which organisation '
+                                f'"{holder.name}" (slug: {holder.slug}) already '
+                                "has on this site.",
+                                [],
+                            )
+                        ],
+                        "Rename that organisation, or use its slug in the course file.",
+                    )
+                )
+            organisation, _ = Organisation._base_manager.get_or_create(
+                site=site, slug=slug, defaults={"name": name}
+            )
+            found.append(organisation)
+        return found
     if unknown:
         valid = sorted(
             Organisation._base_manager.filter(site=site).values_list("slug", flat=True)

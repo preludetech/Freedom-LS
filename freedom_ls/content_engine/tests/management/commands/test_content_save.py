@@ -67,6 +67,7 @@ from freedom_ls.form_engine.models import (
     QuestionOption,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.models import Organisation
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.git_repos import (
     TOPIC_UUID,
@@ -3165,6 +3166,119 @@ def test_unknown_organisation_slug_fails_naming_slug_file_and_valid_slugs(
     assert "nope" in message
     assert "course.md" in message
     assert "alpha" in message
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("frontmatter", "field"),
+    [
+        ("organisations:\n  - harbour-college\n", "organisations"),
+        (
+            "organisations:\n  - alpha\nshared_with:\n  - harbour-college\n",
+            "shared_with",
+        ),
+    ],
+)
+def test_unknown_organisation_slug_creates_the_organisation_when_debug_is_on(
+    site, mock_site_context, settings, frontmatter: str, field: str
+):
+    settings.DEBUG = True
+    OrganisationFactory(name="Alpha", slug="alpha")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_dir = Path(tmpdir)
+        write_organisation_course(repo_dir, frontmatter)
+
+        save_content_to_db(repo_dir, site.name)
+
+    created = Organisation._base_manager.get(site=site, slug="harbour-college")
+    course = Course.objects.get(site=site, title="Org Course")
+    assert created.name == "Harbour College"
+    assert created in getattr(course, field).all()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("slug", "name"),
+    [
+        ("harbour-college", "Harbour College"),
+        ("north_campus", "North Campus"),
+        ("o-neil-2nd", "O Neil 2nd"),
+    ],
+)
+def test_created_organisation_name_is_the_slug_with_each_word_capitalised(
+    site, mock_site_context, settings, slug: str, name: str
+):
+    settings.DEBUG = True
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_dir = Path(tmpdir)
+        write_organisation_course(repo_dir, f"organisations:\n  - {slug}\n")
+
+        save_content_to_db(repo_dir, site.name)
+
+    assert Organisation._base_manager.get(site=site, slug=slug).name == name
+
+
+@pytest.mark.django_db
+def test_derived_name_held_by_another_organisation_is_refused(
+    site, mock_site_context, settings
+):
+    settings.DEBUG = True
+    OrganisationFactory(name="Harbour College", slug="harbour")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_dir = Path(tmpdir)
+        write_organisation_course(repo_dir, "organisations:\n  - harbour-college\n")
+
+        with pytest.raises(CommandError) as excinfo:
+            save_content_to_db(repo_dir, site.name)
+
+    message = str(excinfo.value)
+    assert "harbour-college" in message
+    assert "course.md" in message
+    assert "Harbour College" in message
+    assert "(slug: harbour)" in message
+
+
+@pytest.mark.django_db
+def test_organisation_created_before_a_later_failure_is_rolled_back(
+    site, mock_site_context, settings
+):
+    settings.DEBUG = True
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_dir = Path(tmpdir)
+        write_organisation_course(repo_dir, "organisations:\n  - harbour-college\n")
+        second_dir = repo_dir / "second_course"
+        second_dir.mkdir()
+        (second_dir / "course.md").write_text(
+            "---\ncontent_type: COURSE\ntitle: Second Course\n"
+            "uuid: 70000000-0000-0000-0000-000000000002\n"
+            "organisations:\n  - harbour_college\n---\n"
+        )
+
+        with pytest.raises(CommandError):
+            save_content_to_db(repo_dir, site.name)
+
+    assert not Organisation._base_manager.filter(
+        site=site, slug__in=["harbour-college", "harbour_college"]
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_existing_organisation_slug_is_linked_without_creating_another(
+    site, mock_site_context, settings
+):
+    settings.DEBUG = True
+    existing = OrganisationFactory(name="Some Other Name", slug="harbour-college")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_dir = Path(tmpdir)
+        write_organisation_course(repo_dir, "organisations:\n  - harbour-college\n")
+
+        save_content_to_db(repo_dir, site.name)
+
+    course = Course.objects.get(site=site, title="Org Course")
+    assert list(course.organisations.all()) == [existing]
+    assert not Organisation._base_manager.filter(
+        site=site, name="Harbour College"
+    ).exists()
 
 
 @pytest.mark.django_db
