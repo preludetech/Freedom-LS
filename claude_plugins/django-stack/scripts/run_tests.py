@@ -54,6 +54,9 @@ ACCEPTED_PREFIXES: tuple[tuple[str | None, ...], ...] = (
     ("uv", "run", "--directory", None, "pytest"),
 )
 
+# Names a file to keep the run file at, on every result, instead of a temporary file.
+RECORD_PATH_VARIABLE = "DS_TEST_RECORD_PATH"
+
 # Printed by `--capacity` when free memory cannot be read: large enough never to limit a caller.
 UNKNOWN_CAPACITY = 999
 
@@ -595,7 +598,11 @@ def write_only_file(only_file: Path | None, nodeids: set[str]) -> Path:
 
 
 def run_with_retries(
-    argv: list[str], settings: MemorySettings, first_k: int, record: Path
+    argv: list[str],
+    settings: MemorySettings,
+    first_k: int,
+    record: Path,
+    keep_record: bool,
 ) -> int:
     """Run pytest, retrying a crashed attempt for its unfinished tests; print the verdict."""
     state = RunState()
@@ -663,7 +670,7 @@ def run_with_retries(
         )
     label, exit_code = verdict(state, returncode)
     print_closing_lines(state, worker_counts, elapsed_s, label)
-    if label == "PASS":
+    if label == "PASS" and not keep_record:
         record.unlink(missing_ok=True)
     return exit_code
 
@@ -701,30 +708,45 @@ def failed_set_lines(state: RunState, include_unfinished: bool) -> list[str]:
     return lines
 
 
-def print_closing_lines(
-    state: RunState, worker_counts: list[int], elapsed_s: float, label: str
-) -> None:
+def count_lines(state: RunState, elapsed_s: float) -> list[str]:
+    """The `run: tests ...` and `run: summary (merged): ...` lines."""
     outcomes = list(state.outcomes.values())
     passed, failed, skipped = (
         outcomes.count(name) for name in ("passed", "failed", "skipped")
     )
+    return [
+        f"run: tests {len(state.collected)} collected, {len(outcomes)} finished, "
+        f"{failed} failed, {len(state.unfinished())} unfinished",
+        f"run: summary (merged): {passed} passed, {failed} failed, "
+        f"{skipped} skipped in {elapsed_s:.1f}s",
+    ]
+
+
+def print_closing_lines(
+    state: RunState, worker_counts: list[int], elapsed_s: float, label: str
+) -> None:
     workers = " -> ".join(str(count) for count in worker_counts)
     # An INCOMPLETE run is blocked on memory, so re-running its unfinished tests fixes nothing.
     for line in failed_set_lines(state, include_unfinished=label == "FAIL"):
         print(line)
     print(f"run: pytest attempts {len(worker_counts)}, xdist workers {workers}")
-    print(
-        f"run: tests {len(state.collected)} collected, {len(outcomes)} finished, "
-        f"{failed} failed, {len(state.unfinished())} unfinished"
-    )
-    print(
-        f"run: summary (merged): {passed} passed, {failed} failed, "
-        f"{skipped} skipped in {elapsed_s:.1f}s"
-    )
+    for line in count_lines(state, elapsed_s):
+        print(line)
     print(f"run: RESULT {label}")
 
 
-def make_record_file() -> Path:
+def make_record_file(variables: Mapping[str, str]) -> Path:
+    """The run file: the kept path when the caller names one, else a temporary file.
+
+    A kept file starts empty: one left by an earlier run at the same path would
+    otherwise fold that run's outcomes into this one.
+    """
+    kept = variables.get(RECORD_PATH_VARIABLE)
+    if kept:
+        path = Path(kept)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("", encoding="utf-8")
+        return path
     descriptor, name = tempfile.mkstemp(prefix="ds_run_record_", suffix=".jsonl")
     os.close(descriptor)
     return Path(name)
@@ -779,14 +801,15 @@ def run(argv: list[str]) -> int:
         return run_plain(argv)
     ceiling = worker_ceiling(argv, settings.max_workers)
     k = wait_for_memory(settings, ceiling, first_attempt=True)
-    record = make_record_file()
+    record = make_record_file(os.environ)
+    keep_record = bool(os.environ.get(RECORD_PATH_VARIABLE))
     print(
         f"ram: MemAvailable {mem_available_mb(meminfo_path())} MB, "
         f"{format_psi(psi_some_avg10(psi_path()))}, xdist workers -n {k}"
         f"{describe_sources(settings)}"
     )
     print(f"run: record {record}")
-    return run_with_retries(argv, settings, k, record)
+    return run_with_retries(argv, settings, k, record, keep_record)
 
 
 if __name__ == "__main__":

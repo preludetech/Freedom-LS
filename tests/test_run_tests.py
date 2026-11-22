@@ -912,6 +912,72 @@ def test_record_file_is_kept_after_a_failing_run(
     assert f"run: record {kept}" in result.stdout.splitlines()
 
 
+def recorded_events(path: Path) -> list[str]:
+    """The `event` name of each line in a run file."""
+    return [json.loads(line)["event"] for line in path.read_text().splitlines()]
+
+
+@pytest.mark.parametrize("pytest_exit", [0, 1], ids=["passing_run", "failing_run"])
+def test_run_file_is_kept_at_the_named_path_on_every_result(
+    stub_tools: StubTools, tmp_path: Path, pytest_exit: int
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+    kept = tmp_path / "reports" / "unit.jsonl"
+
+    # Act
+    run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        DS_TEST_RECORD_PATH=str(kept),
+        STUB_PYTEST_EXIT_CODE=pytest_exit,
+    )
+
+    # Assert
+    assert recorded_events(kept) == ["attempt", "finished"]
+
+
+def test_run_file_at_the_named_path_replaces_an_earlier_file(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+    kept = tmp_path / "unit.jsonl"
+    kept.write_text('{"event": "stale"}\n', encoding="utf-8")
+
+    # Act
+    run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        DS_TEST_RECORD_PATH=str(kept),
+    )
+
+    # Assert
+    assert "stale" not in recorded_events(kept)
+
+
+def test_run_file_without_a_named_path_is_a_temporary_file_that_a_pass_removes(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+
+    # Act
+    result = run_runner(
+        stub_tools, tmp_path, ["pytest"], DS_TEST_MEMINFO_PATH=str(meminfo)
+    )
+
+    # Assert
+    (record_line,) = [
+        line for line in result.stdout.splitlines() if line.startswith("run: record ")
+    ]
+    assert not Path(record_line.removeprefix("run: record ")).exists()
+
+
 @pytest.mark.parametrize(
     ("pytest_exit", "label"), [(0, "PASS"), (1, "FAIL"), (2, "FAIL"), (5, "FAIL")]
 )

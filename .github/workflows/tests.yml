@@ -107,11 +107,20 @@ jobs:
 
       - name: Run tests
         env:
+          DS_TEST_RECORD_PATH: ${{ runner.temp }}/group-report.jsonl
           COVERAGE_FILE: .coverage.unit-${{ matrix.group }}
         run: >-
           .claude/ds/scripts/run_tests.sh uv run pytest -n auto -m "$UNIT_MARKERS"
           --splits ${{ strategy.job-total }} --group ${{ matrix.group }} $SPLIT_FLAGS
           --randomly-seed=${{ github.run_id }} --tb=short --cov
+
+      - name: Upload group report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: group-report-unit-${{ matrix.group }}
+          path: ${{ runner.temp }}/group-report.jsonl
+          if-no-files-found: ignore
 
       - name: Upload coverage data
         if: always()
@@ -172,9 +181,19 @@ jobs:
         run: uv run playwright install --with-deps chromium
 
       - name: Run tests
+        env:
+          DS_TEST_RECORD_PATH: ${{ runner.temp }}/group-report.jsonl
         run: >-
           .claude/ds/scripts/run_tests.sh uv run pytest -n auto -m "$BROWSER_MARKERS"
           --randomly-seed=${{ github.run_id }} --tb=short
+
+      - name: Upload group report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: group-report-playwright
+          path: ${{ runner.temp }}/group-report.jsonl
+          if-no-files-found: ignore
 
       - name: Upload Playwright traces
         uses: actions/upload-artifact@v7
@@ -236,10 +255,20 @@ jobs:
 
       # Each standalone config carries its own marker expression, so neither marker variable applies.
       - name: Run tests
+        env:
+          DS_TEST_RECORD_PATH: ${{ runner.temp }}/group-report.jsonl
         run: >-
           .claude/ds/scripts/run_tests.sh uv run pytest
           -c freedom_ls/${{ matrix.app }}/tests/standalone_pytest.ini freedom_ls/${{ matrix.app }}/tests
           --randomly-seed=${{ github.run_id }} --tb=short
+
+      - name: Upload group report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: group-report-standalone-${{ matrix.app }}
+          path: ${{ runner.temp }}/group-report.jsonl
+          if-no-files-found: ignore
 
   coverage:
     needs: unit-tests

@@ -145,3 +145,31 @@ def test_concurrency_never_cancels_a_run() -> None:
     concurrency = as_table(load_workflow()["concurrency"])
 
     assert concurrency["cancel-in-progress"] is False
+
+
+def job_name_expression(job_id: str) -> str:
+    return str(jobs()[job_id]["name"])
+
+
+@pytest.mark.parametrize("job_id", TEST_JOB_IDS)
+def test_test_job_sets_record_path(job_id: str) -> None:
+    step = find_test_step(jobs()[job_id])
+    assert step is not None
+
+    env = as_table(step["env"])
+
+    assert env["DS_TEST_RECORD_PATH"] == "${{ runner.temp }}/group-report.jsonl"
+
+
+@pytest.mark.parametrize("job_id", TEST_JOB_IDS)
+def test_test_job_uploads_its_group_report_always(job_id: str) -> None:
+    uploads = [
+        step
+        for step in steps_of(jobs()[job_id])
+        if as_table(step.get("with", {})).get("name", "")
+        == f"group-report-{job_name_expression(job_id)}"
+    ]
+
+    assert [(step["if"], as_table(step["with"])["path"]) for step in uploads] == [
+        ("always()", "${{ runner.temp }}/group-report.jsonl")
+    ]

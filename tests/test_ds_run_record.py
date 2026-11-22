@@ -175,3 +175,33 @@ def test_finished_line_written_when_exitfirst_stops_the_session(tmp_path: Path) 
     events, _ = run_pytest(tmp_path, "-x")
 
     assert [event["event"] for event in events].count("finished") == 1
+
+
+def outcome_for(events: list[dict[str, object]], nodeid: str) -> dict[str, object]:
+    (line,) = [line for line in outcome_lines(events) if line["nodeid"] == nodeid]
+    return line
+
+
+def test_failed_outcome_carries_the_failure_text(tmp_path: Path) -> None:
+    events, _ = run_pytest(tmp_path, "--tb=short")
+
+    failed = outcome_for(events, "test_sample.py::test_fail")
+    assert "assert False" in str(failed["longrepr"])
+
+
+@pytest.mark.parametrize(
+    "nodeid", ["test_sample.py::test_pass", "test_sample.py::test_skip_in_setup"]
+)
+def test_passed_and_skipped_outcomes_have_no_failure_text(
+    tmp_path: Path, nodeid: str
+) -> None:
+    events, _ = run_pytest(tmp_path)
+
+    assert "longrepr" not in outcome_for(events, nodeid)
+
+
+def test_teardown_failure_carries_the_teardown_text(tmp_path: Path) -> None:
+    events, _ = run_pytest(tmp_path)
+
+    failed = outcome_for(events, "test_sample.py::test_teardown_error")
+    assert "teardown boom" in str(failed["longrepr"])

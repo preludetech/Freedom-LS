@@ -108,7 +108,14 @@ class Recorder:
         )
         if is_final:
             self._final.add(nodeid)
-            self._write({"event": "outcome", "nodeid": nodeid, "outcome": outcome})
+            event: dict[str, object] = {
+                "event": "outcome",
+                "nodeid": nodeid,
+                "outcome": outcome,
+            }
+            if outcome == "failed":
+                event["longrepr"] = report.longreprtext
+            self._write(event)
 
     def pytest_sessionfinish(self, session: pytest.Session, exitstatus: int) -> None:
         self._write({"event": "finished", "exitstatus": int(exitstatus)})
