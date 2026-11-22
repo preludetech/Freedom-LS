@@ -1,61 +1,70 @@
 # Frontend QA report: Reference material, authoring
 
+Branch: reference-material-content-1-authoring. The branch badge confirmed the branch. The server ran on port 8682. Viewports: desktop 1920x1080, mobile 375x812, tablet 768x1024.
+
+Result: all tests passed. No bugs.
+
 ## Methodology
 
-Screenshots were collected into `spec_dd/2. in progress/reference-material-content-1-authoring/screenshots/`, and every image referenced below exists beside this report. The run followed `3. frontend_qa.md`: tests 1 to 5 on desktop, then test 1 on mobile (375px) and tablet (768px). Nothing aborted.
+Screenshots were collected into `spec_dd/2. in progress/reference-material-content-1-authoring/screenshots/`. Every image linked below exists beside this report. Screenshot compression ran and found no PNG over 1024KB, so nothing was compressed. The Setup step `content_save ./demo_content DemoDev` ran before testing, and Test 5 ran it again.
 
 ## Diff scoping
 
-Class: **FULL**. Changed files that triggered it: `freedom_ls/content_engine/admin.py`, `freedom_ls/content_engine/management/commands/content_save.py`, `freedom_ls/content_engine/validate.py`, `freedom_ls/content_engine/models/courses.py`, `demo_content/functionality_demo_reference_material/**`, `demo_content/shared_reference_material/**`, `claude_plugins/fls-content/validate/**`, plus tests and schema.
+Class: FULL. Markdown, yaml and txt changes make the class FULL (Rule 4), though the plan says only the Django admin course page changes. The changed files include the `fls-content` plugin skills and validator, the demo content, the product docs, `content_base/schema.py`, `content_engine` (admin, models, schema, validate, `content_save`, migration 0016, tests), the deadlines and learner_progress invariant tests, `danger_content_delete`, and the spec files.
 
-Nothing was skipped. The only page changed is the admin course change page, so the mobile and tablet passes cover that page only.
+Nothing was skipped. Desktop, mobile and tablet all ran.
 
 ## Smoke gate
 
-Pass. Pages loaded: `/` and `/admin/freedom_ls_content_engine/course/1144be70-d209-4fde-98f8-3fb2459fdccb/change/`.
+Pass. Pages loaded:
+
+- http://127.0.0.1:8682/
+- http://127.0.0.1:8682/admin/freedom_ls_content_engine/course/?q=Reference+Material
 
 ## Test results
 
-| Test | Viewport | Result | Screenshot | Notes |
+| Test | Viewport | Screenshot | Result | Notes |
 |---|---|---|---|---|
-| 1 | desktop | pass | ![](screenshots/page-2026-11-22T08-51-30-438Z.png) | Collection items inline has one row, Flying Basics. Course reference parts inline lists Airspace Rules (order 0), then Glossary (order 1). Neither is in the collection items. Columns are Course part and Order only, with no site column. The console shows only Django admin's `RelatedObjectLookups.js` unload permissions-policy error, which is pre-existing and unrelated. |
-| 2a | desktop | pass | ![](screenshots/page-2026-11-22T08-51-30-438Z.png) | The reference parts inline has no Add another link, no delete checkbox, and no inputs or selects. The course part is a read-only link and the order is plain text. |
-| 2b | desktop | pass | ![](screenshots/page-2026-11-22T08-51-51-737Z.png) | Saving with no changes gave a "changed successfully" message and no error. On reopening, the reference rows were still Airspace Rules 0 and Glossary 1, and collection items were still only Flying Basics. |
-| 3 | desktop | pass | ![](screenshots/page-2026-11-22T08-52-13-449Z.png) | The Per-placement Due Dates course loads with no error. The reference parts inline shows its header with no rows and no add link. Collection items still lists Core Concepts. |
-| 4 | desktop | pass | ![](screenshots/page-2026-11-22T08-52-27-245Z.png) | The course list loads and shows the new course with its title and subtitle. The Airspace Rules part page loads, and collection items lists Airspace Classes (0) and No-fly Zones (1). There is no reference parts inline on the part page. |
-| 5 | desktop | pass | none (terminal check) | The second `content_save ./demo_content DemoDev` exited 0 and printed the "✓ Successfully saved all content for site: DemoDev" line, followed only by the image-optimisation summary line. There was no "Removed part placement" line. After reload the course page showed the same two reference rows, and collection items were still only Flying Basics. |
-| 1 | mobile | pass | ![](screenshots/page-2026-11-22T08-52-54-929Z.png) | The reference parts inline stacks into label/value cards (Course Part, Order) within the 375px viewport. There is no horizontal page scroll, and the Save buttons stack full width. |
-| 1 | tablet | pass | ![](screenshots/page-2026-11-22T08-53-05-984Z.png) | The reference parts inline stacks into label/value cards within the 768px viewport. There is no horizontal page scroll. |
+| 1 | desktop | ![](screenshots/page-2026-11-22T10-44-34-853Z.png) | pass | Collection items lists Flying Basics (0). Reference parts lists Airspace Rules (0), then Glossary (1). Neither is in collection items. Columns are Course part and Order only, with no site. |
+| 2 | desktop | ![](screenshots/page-2026-11-22T10-45-01-233Z.png) | pass | No Add another link, no delete control, no inputs or selects. Saving with no changes succeeded and the rows were unchanged on reopening. |
+| 3 | desktop | ![](screenshots/page-2026-11-22T10-45-19-651Z.png) | pass | Per-placement Due Dates course loads. Reference parts inline shows only its header row. Collection items still lists Core Concepts. |
+| 4.1 | desktop | ![](screenshots/page-2026-11-22T10-45-33-643Z.png) | pass | Course list loads with 19 courses. The new demo course shows its title and subtitle. |
+| 4.2 | desktop | ![](screenshots/page-2026-11-22T10-45-45-857Z.png) | pass | Airspace Rules part page lists Airspace Classes (0) and No-fly Zones (1). No reference parts inline. |
+| 5 | desktop | ![](screenshots/page-2026-11-22T10-46-21-257Z.png) | pass | Second `content_save` exited 0 with the success line and no `Removed part placement` lines. The reloaded page shows the same two reference rows and the single collection item. |
+| 1 | mobile | ![](screenshots/page-2026-11-22T10-46-34-837Z.png) | pass | Inline stacks into cards, rows in order, no horizontal scroll (scrollWidth 375). |
+| 1 | tablet | ![](screenshots/page-2026-11-22T10-46-43-026Z.png) | pass | Same stacked layout, no overflow (scrollWidth 768), read-only. |
 
 ## Design check
 
-No design states tested.
+None apply. This plan has no design tests, so no design states were tested.
 
 ## Layout probe
 
-| Test id | Viewport | URL | Screenshot | Result |
+The probe flagged nothing at any viewport. The probe's regions were all `missing` because the Django admin (Unfold) is outside the FLS shell the selectors name. That is not a flag.
+
+| Test | Viewport | URL | Screenshot | Result |
 |---|---|---|---|---|
-| 1 | desktop | `/admin/freedom_ls_content_engine/course/1144be70-d209-4fde-98f8-3fb2459fdccb/change/` | ![](screenshots/page-2026-11-22T08-51-30-438Z.png) | clean |
-| 2b | desktop | `/admin/freedom_ls_content_engine/course/` | ![](screenshots/page-2026-11-22T08-51-51-737Z.png) | clean |
-| 3 | desktop | `/admin/freedom_ls_content_engine/course/4d63a96b-feff-4a38-8aac-44742a5da6bd/change/` | ![](screenshots/page-2026-11-22T08-52-13-449Z.png) | clean |
-| 4 | desktop | `/admin/freedom_ls_content_engine/coursepart/20f5f898-69d9-4f08-9d97-af7a224e09fe/change/` | ![](screenshots/page-2026-11-22T08-52-27-245Z.png) | clean |
-| 1 | mobile | `/admin/freedom_ls_content_engine/course/1144be70-d209-4fde-98f8-3fb2459fdccb/change/` | ![](screenshots/page-2026-11-22T08-52-54-929Z.png) | clean |
-| 1 | tablet | `/admin/freedom_ls_content_engine/course/1144be70-d209-4fde-98f8-3fb2459fdccb/change/` | ![](screenshots/page-2026-11-22T08-53-05-984Z.png) | clean |
+| 1 | desktop | /admin/freedom_ls_content_engine/course/<id>/change/ | ![](screenshots/page-2026-11-22T10-44-34-853Z.png) | clean |
+| 2 | desktop | /admin/freedom_ls_content_engine/course/<id>/change/ | ![](screenshots/page-2026-11-22T10-45-01-233Z.png) | clean |
+| 3 | desktop | /admin/freedom_ls_content_engine/course/<id>/change/ | ![](screenshots/page-2026-11-22T10-45-19-651Z.png) | clean |
+| 4.1 | desktop | /admin/freedom_ls_content_engine/course/ | ![](screenshots/page-2026-11-22T10-45-33-643Z.png) | clean |
+| 4.2 | desktop | /admin/freedom_ls_content_engine/coursepart/<id>/change/ | ![](screenshots/page-2026-11-22T10-45-45-857Z.png) | clean |
+| 5 | desktop | /admin/freedom_ls_content_engine/course/<id>/change/ | ![](screenshots/page-2026-11-22T10-46-21-257Z.png) | clean |
+| 1 | mobile | /admin/freedom_ls_content_engine/course/<id>/change/ | ![](screenshots/page-2026-11-22T10-46-34-837Z.png) | clean |
+| 1 | tablet | /admin/freedom_ls_content_engine/course/<id>/change/ | ![](screenshots/page-2026-11-22T10-46-43-026Z.png) | clean |
 
 ## Data changes
 
-| What changed | Made by | Files written |
-|---|---|---|
-| The dev DB had no demo sites. `create_demo_data --yes` was run, then `content_save ./demo_content DemoDev`, which succeeded. | QA plan setup | none (no tracked files changed) |
+None. The only data load was the plan's Setup step `content_save ./demo_content DemoDev`, which the plan requires. No dev data was otherwise changed.
 
 ## Bug status
 
-No bugs in this run.
+No bugs.
 
 ## General notes
 
-- Test 5 is a terminal check, so it has no screenshot.
-- The only console message seen was Django admin's own `RelatedObjectLookups.js` unload permissions-policy error. It is pre-existing and unrelated to this work.
-- Learner and educator pages are unchanged by this work, so they were not tested.
+- Console noise on every admin page: Django admin's `RelatedObjectLookups.js` 'unload' permissions-policy violation, and a `favicon.ico` 404 on the admin login page. Both are pre-existing and unrelated to this work. They are observations, not bugs.
+- Plan wording, Test 5: the `content_save` output has an `Images: 8 seen (1 optimised, 7 passthrough).` line after the success line. It is printed on main too, so it is not a regression. The plan's "ends with" wording could be loosened.
+- Nothing was left untested.
 
 status: ok · reason: report rendered, 0 bugs documented
