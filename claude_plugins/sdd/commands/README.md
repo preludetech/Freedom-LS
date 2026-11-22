@@ -157,7 +157,7 @@ Run `/sdd:document`. It reads `## Documentation Hooks` in `.claude/sdd/config.md
 
 ## Step 7: Cleanup
 
-Once the PR is approved (or already merged), run `/sdd:finish_worktree`. It rebases, archives the spec and its roadmap row, lands the close-out on `main` by fast-forward push and brings the main worktree up to date. It stops, changing nothing on `main`, if the main worktree has uncommitted work or an operation in progress. Nobody runs `git merge` in the main worktree by hand. Then remove the worktree and delete the branch.
+Run `/sdd:finish_worktree` when you want the branch on `main`. It never looks at the pull request, so it does not wait for an approval. It rebases, archives the spec and its roadmap row, lands the close-out on `main` by fast-forward push and brings the main worktree up to date. It stops, changing nothing on `main`, if the main worktree has uncommitted work or an operation in progress. Nobody runs `git merge` in the main worktree by hand. Then remove the worktree and delete the branch.
 
 ![The `/sdd:finish_worktree` flow as six flowcharts: the main flow of Steps 0 to 8 with its stopping states, then one chart each for the checkpoint run, flaky tests, landing on main, the main-moved loop and a dirty main worktree.](../docs/diagrams/finish_worktree.drawio.svg)
 

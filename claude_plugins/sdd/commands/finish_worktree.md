@@ -26,6 +26,9 @@ git branch --show-current
 
 On `main` or `master`, stop: this command runs in a feature worktree only.
 
+Never look at the pull request: not whether it is approved, reviewed, open or merged. No `gh`
+call, and no todo item about the PR, stops or delays this command.
+
 # Step 0: Pre-step rebase
 
 Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps with `<tier>`:
