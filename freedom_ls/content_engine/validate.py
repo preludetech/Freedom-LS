@@ -11,7 +11,7 @@ import itertools
 import logging
 import os.path
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -37,12 +37,82 @@ IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg", ".webp"}
 
 
 def is_skipped_path(path: Path) -> bool:
-    """Whether a file or directory is ignored when scanning for content.
+    """Whether a file or directory is skipped when scanning for content.
 
-    Names starting with `_` or `.` are ignored, along with everything inside such
+    Names starting with `_` or `.` are skipped, along with everything inside such
     directories.
     """
     return path.name.startswith("_") or path.name.startswith(".")
+
+
+IGNORED_PROBLEM = (
+    "content_save skips this file: it is in the .fls-content.yaml ignore list"
+)
+IGNORED_FIX = "Remove this entry, or remove the line from ignore: in .fls-content.yaml."
+
+_IGNORE_FILE_NAME = ".fls-content.yaml"
+_GLOB_CHARACTERS = frozenset("*?[")
+
+
+def _ignore_entry(entry: object, root: Path) -> Path:
+    """One ignore: entry as a resolved key, or ValueError when it is not a plain
+    relative path inside the content repo."""
+    where = f"{root / _IGNORE_FILE_NAME}"
+    if not isinstance(entry, str):
+        raise ValueError(
+            f"\n❌ Invalid ignore entry {entry!r} in {where}\n"
+            "Each ignore: entry must be a string path."
+        )
+    cleaned = entry.removeprefix("./").rstrip("/")
+    problem = None
+    if not cleaned:
+        problem = "it is empty"
+    elif cleaned.startswith("/"):
+        problem = "it is an absolute path"
+    elif ".." in cleaned.split("/"):
+        problem = "it has a .. component"
+    elif _GLOB_CHARACTERS & set(cleaned):
+        problem = "wildcards are not supported"
+    if problem:
+        raise ValueError(
+            f"\n❌ Invalid ignore entry {entry!r} in {where}\n"
+            f"Problem: {problem}.\n"
+            "Write each entry as a file or folder path relative to the repo root."
+        )
+    return content_key(root / cleaned)
+
+
+def read_ignore_list(root: Path) -> frozenset[Path]:
+    """The paths a content repo's .fls-content.yaml lists under ignore:, as absolute paths.
+
+    No file, or no ignore: key, gives an empty set. The file comes from a checkout, so
+    it is parsed with safe_load and can never construct Python objects.
+    """
+    config_file = root / _IGNORE_FILE_NAME
+    if not config_file.is_file():
+        return frozenset()
+    try:
+        data = yaml.safe_load(config_file.read_text(encoding="utf-8"))
+    except yaml.YAMLError as e:
+        raise ValueError(f"\n❌ Cannot read {config_file}\nError: {e!s}") from e
+    if not isinstance(data, dict) or data.get("ignore") is None:
+        return frozenset()
+    entries = data["ignore"]
+    if not isinstance(entries, list):
+        raise ValueError(
+            f"\n❌ Invalid ignore: in {config_file}\n"
+            "ignore: must be a list of strings, each a path relative to the repo root."
+        )
+    return frozenset(_ignore_entry(entry, root) for entry in entries)
+
+
+def is_ignored(file_path: Path, ignore: frozenset[Path]) -> bool:
+    """Whether the path, or a folder above it, is in the ignore list."""
+    if not ignore:
+        return False
+    # Compared by path component, so ignoring "docs" never ignores "docs-old".
+    key = content_key(file_path)
+    return key in ignore or any(parent in ignore for parent in key.parents)
 
 
 def content_key(file_path: Path | str) -> Path:
@@ -60,17 +130,23 @@ def resolve_author_path(declaring_file: Path | str, author_path: Path | str) -> 
     return content_key(Path(declaring_file).parent / author_path)
 
 
-def auto_discovered_children(collection_file: Path) -> list[Path]:
+def _visible_entries(directory: Path, ignore: frozenset[Path]) -> Iterator[Path]:
+    """The entries of a directory the loader reads, in name order: not skipped by name
+    (the same rule as get_all_files) and not ignored."""
+    for entry in sorted(directory.iterdir()):
+        if not is_skipped_path(entry) and not is_ignored(entry, ignore):
+            yield entry
+
+
+def auto_discovered_children(
+    collection_file: Path, *, ignore: frozenset[Path] = frozenset()
+) -> list[Path]:
     """The children a collection without a children: list gets: every content file and
-    content directory beside it, in name order, skipping what the directory walk skips,
-    course_categories.yaml and articles. Resolved keys, as the loader stores them."""
+    content directory beside it, in name order, skipping what the directory walk skips
+    and what the ignore list names, course_categories.yaml and articles. Resolved keys,
+    as the loader stores them."""
     found: list[Path] = []
-    # Anything starting with _ or . is skipped, the same rule as get_all_files.
-    for item in sorted(
-        entry
-        for entry in collection_file.parent.iterdir()
-        if not is_skipped_path(entry)
-    ):
+    for item in _visible_entries(collection_file.parent, ignore):
         if item.is_file() and item.suffix in [".md", ".yaml", ".yml"]:
             if item != collection_file:
                 # A loose course_categories.yaml in a course directory belongs at the
@@ -89,9 +165,7 @@ def auto_discovered_children(collection_file: Path) -> list[Path]:
             # take priority because a COURSE_PART directory also contains topic files.
             collection_child: Path | None = None
             topic_file: Path | None = None
-            for f in sorted(item.iterdir()):
-                if is_skipped_path(f):
-                    continue
+            for f in _visible_entries(item, ignore):
                 if not (f.is_file() and f.suffix in [".md", ".yaml", ".yml"]):
                     continue
                 parsed = parse_single_file(f)
@@ -118,7 +192,9 @@ def auto_discovered_children(collection_file: Path) -> list[Path]:
     return found
 
 
-def is_loader_skipped(file_path: Path, base_path: Path) -> bool:
+def is_loader_skipped(
+    file_path: Path, base_path: Path, *, ignore: frozenset[Path] = frozenset()
+) -> bool:
     """Whether the directory walk from base_path leaves this file out.
 
     Only the directories between base_path and the file count, so a base_path
@@ -126,7 +202,7 @@ def is_loader_skipped(file_path: Path, base_path: Path) -> bool:
     """
     if file_path.name in ("README.md", "CLAUDE.md") or file_path.name.endswith("~"):
         return True
-    if is_skipped_path(file_path):
+    if is_skipped_path(file_path) or is_ignored(file_path, ignore):
         return True
     try:
         relative_path = file_path.relative_to(base_path)
@@ -137,7 +213,7 @@ def is_loader_skipped(file_path: Path, base_path: Path) -> bool:
     )
 
 
-def get_all_files(path):
+def get_all_files(path, *, ignore: frozenset[Path] = frozenset()):
     """
     if path points to a regular file, then return it
 
@@ -147,6 +223,7 @@ def get_all_files(path):
     - are named README.md
     - have names starting with an _ or .
     - are included in directories with names starting with an _ or . (recursive)
+    - are in the ignore list, or inside a folder in it
     """
 
     if path.is_file():
@@ -157,7 +234,7 @@ def get_all_files(path):
             [
                 f
                 for f in path.rglob("*")
-                if f.is_file() and not is_loader_skipped(f, path)
+                if f.is_file() and not is_loader_skipped(f, path, ignore=ignore)
             ]
         )
     else:
@@ -695,17 +772,22 @@ def _direct_entry_errors(
 
 
 def collection_children(
-    collection: Course | CoursePart,
+    collection: Course | CoursePart, *, ignore: frozenset[Path] = frozenset()
 ) -> list[tuple[Path, Child | None]]:
     """The collection's children as (resolved key, entry) pairs: the listed entries, else
     the auto-discovered files, which have no entry. The one rule for what a collection
-    holds, shared by the validator and the loader so the two never disagree."""
+    holds, shared by the validator and the loader so the two never disagree. The ignore
+    list only narrows auto-discovery: every listed entry is kept, and an ignored one is
+    reported by validate_children_lists."""
     if collection.children:
         return [
             (resolve_author_path(collection.file_path, child.path), child)
             for child in collection.children
         ]
-    return [(path, None) for path in auto_discovered_children(collection.file_path)]
+    return [
+        (path, None)
+        for path in auto_discovered_children(collection.file_path, ignore=ignore)
+    ]
 
 
 def _shown_relative_to(path: Path, directory: Path) -> str:
@@ -736,7 +818,13 @@ class _ParsedByPath:
     run is parsed from disk on first use. A file that does not exist, or does not parse,
     gives None: the unknown-child check and the file's own validation own those."""
 
-    def __init__(self, all_parsed: Sequence[BaseBaseContentModel]) -> None:
+    def __init__(
+        self,
+        all_parsed: Sequence[BaseBaseContentModel],
+        *,
+        ignore: frozenset[Path] = frozenset(),
+    ) -> None:
+        self._ignore = ignore
         self._items = {content_key(item.file_path): item for item in all_parsed}
         self._read: set[Path] = set()
         self._children: dict[Path, list[Path]] = {}
@@ -760,7 +848,9 @@ class _ParsedByPath:
         courses place it. Raises ValueError when a file beside the part does not parse."""
         key = content_key(part.file_path)
         if key not in self._children:
-            self._children[key] = [path for path, _ in collection_children(part)]
+            self._children[key] = [
+                path for path, _ in collection_children(part, ignore=self._ignore)
+            ]
         return self._children[key]
 
 
@@ -847,12 +937,17 @@ def _nested_list_errors(
     return errors
 
 
-def validate_children_lists(all_parsed: Sequence[BaseBaseContentModel]) -> list[str]:
+def validate_children_lists(
+    all_parsed: Sequence[BaseBaseContentModel],
+    *,
+    ignore: frozenset[Path] = frozenset(),
+) -> list[str]:
     """Check that no course or part names the same child twice in its children: list.
 
     The loader keeps one row per child of a collection, so a second entry would silently
     replace the first's order and dates. Paths are resolved the way the loader resolves
-    them, so two spellings of one file count as one child.
+    them, so two spellings of one file count as one child. An entry naming an ignored
+    path is an error too: content_save would skip the file it names.
     """
     errors: list[str] = []
     for item in all_parsed:
@@ -874,11 +969,26 @@ def validate_children_lists(all_parsed: Sequence[BaseBaseContentModel]) -> list[
             )
             for index in sorted(repeated)
         )
+        errors.extend(
+            _reference_error(
+                item.file_path,
+                item.content_type,
+                f"children[{index}]",
+                str(entry.path),
+                IGNORED_PROBLEM,
+                IGNORED_FIX,
+                header="Invalid children list",
+            )
+            for index, entry in enumerate(entries)
+            if is_ignored(resolve_author_path(item.file_path, entry.path), ignore)
+        )
     return errors
 
 
 def validate_due_date_placements(
     all_parsed: Sequence[BaseBaseContentModel],
+    *,
+    ignore: frozenset[Path] = frozenset(),
 ) -> list[str]:
     """Check every children: entry that sets a due date against the file it names.
 
@@ -887,7 +997,7 @@ def validate_due_date_placements(
     errors: list[str] = []
     # Keyed by content_key, not normpath: an entry's path is resolved the way the loader
     # resolves it, so the two agree on every file.
-    by_path = _ParsedByPath(all_parsed)
+    by_path = _ParsedByPath(all_parsed, ignore=ignore)
     for item in all_parsed:
         if not isinstance(item, (Course, CoursePart)):
             continue
@@ -965,7 +1075,10 @@ SECTION_SKIPPED_FIX = (
 
 
 def validate_question_sections(
-    all_parsed: Sequence[BaseBaseContentModel], *, loaded_root: Path | None = None
+    all_parsed: Sequence[BaseBaseContentModel],
+    *,
+    loaded_root: Path | None = None,
+    ignore: frozenset[Path] = frozenset(),
 ) -> list[str]:
     """Check every sections: list, on a form and on each question that sets its own.
 
@@ -975,7 +1088,7 @@ def validate_question_sections(
     """
     lookup: Callable[[Path], BaseBaseContentModel | None]
     if loaded_root is None:
-        lookup = _ParsedByPath(all_parsed).get
+        lookup = _ParsedByPath(all_parsed, ignore=ignore).get
     else:
         lookup = {content_key(item.file_path): item for item in all_parsed}.get
     errors: list[str] = []
@@ -985,7 +1098,7 @@ def validate_question_sections(
         keys = [resolve_author_path(declarer.file_path, p) for p in declarer.sections]
         repeated = _repeated_indices(keys)
         for index, (given, key) in enumerate(zip(declarer.sections, keys, strict=True)):
-            problem_fix = _section_problem(declarer, key, lookup, loaded_root)
+            problem_fix = _section_problem(declarer, key, lookup, loaded_root, ignore)
             if problem_fix is None and index in repeated:
                 problem_fix = ("this section is named twice", SECTION_REPEATED_FIX)
             if problem_fix is not None:
@@ -998,10 +1111,15 @@ def _section_problem(
     key: Path,
     lookup: Callable[[Path], BaseBaseContentModel | None],
     loaded_root: Path | None,
+    ignore: frozenset[Path] = frozenset(),
 ) -> tuple[str, str] | None:
     """The problem and fix for one sections: target, or None when it is a section."""
     if not key.is_file():
         return ("no file at this path", SECTION_FILE_FIX)
+    # Checked before is_loader_skipped, which is not given the ignore list: it would
+    # report the name rule as the reason.
+    if is_ignored(key, ignore):
+        return (IGNORED_PROBLEM, IGNORED_FIX)
     # The walk's base is the deepest directory holding both files: the skip
     # rule looks only at names below the directory content_save is given.
     base = Path(os.path.commonpath([content_key(declarer.file_path).parent, key]))
@@ -1400,12 +1518,13 @@ def validate_article_images(all_parsed: list, all_file_paths: list[Path]) -> lis
     return errors
 
 
-def validate(path):
+def validate(path, *, ignore: frozenset[Path] = frozenset()):
     """
     Validate all content files in a directory or a single file.
 
     Args:
         path: Path to a file or directory to validate
+        ignore: Files and folders content_save leaves out; see read_ignore_list
 
     Raises:
         ValueError: If validation fails with detailed error messages
@@ -1418,7 +1537,7 @@ def validate(path):
 
     # 2. get a list of all the file paths
     try:
-        all_file_paths = get_all_files(path)
+        all_file_paths = get_all_files(path, ignore=ignore)
     except Exception as e:
         raise ValueError(f"\n❌ Error scanning directory {path}\nError: {e!s}") from e
 
@@ -1457,15 +1576,15 @@ def validate(path):
         failed_files.append((path, message))
     for message in validate_widget_references(all_parsed):
         failed_files.append((path, message))
-    for message in validate_children_lists(all_parsed):
+    for message in validate_children_lists(all_parsed, ignore=ignore):
         failed_files.append((path, message))
-    for message in validate_due_date_placements(all_parsed):
+    for message in validate_due_date_placements(all_parsed, ignore=ignore):
         failed_files.append((path, message))
     for message in validate_form_conditions(all_parsed):
         failed_files.append((path, message))
     for message in validate_form_shuffle(all_parsed):
         failed_files.append((path, message))
-    for message in validate_question_sections(all_parsed):
+    for message in validate_question_sections(all_parsed, ignore=ignore):
         failed_files.append((path, message))
     # A single-file run has no sibling files to resolve an image against.
     if path.is_dir():

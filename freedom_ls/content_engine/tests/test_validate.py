@@ -6,9 +6,13 @@ from pathlib import Path
 import pytest
 
 from freedom_ls.content_engine.validate import (
+    IGNORED_PROBLEM,
     auto_discovered_children,
+    content_key,
     get_all_files,
+    is_ignored,
     parse_single_file,
+    read_ignore_list,
     validate,
     validate_children_lists,
     validate_due_date_placements,
@@ -1960,3 +1964,166 @@ def test_validate_lists_a_shuffle_error_in_the_report(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="Invalid shuffle setting"):
         validate(tmp_path)
+
+
+def _ignore_file(root: Path, text: str) -> None:
+    (root / ".fls-content.yaml").write_text(text)
+
+
+def test_read_ignore_list_without_a_config_file_is_empty(tmp_path: Path) -> None:
+    assert read_ignore_list(tmp_path) == frozenset()
+
+
+def test_read_ignore_list_without_an_ignore_key_is_empty(tmp_path: Path) -> None:
+    _ignore_file(tmp_path, "other: 1\n")
+
+    assert read_ignore_list(tmp_path) == frozenset()
+
+
+def test_read_ignore_list_returns_file_and_folder_entries_as_absolute_paths(
+    tmp_path: Path,
+) -> None:
+    _ignore_file(tmp_path, "ignore:\n  - drafts/old.md\n  - docs\n")
+
+    ignored = read_ignore_list(tmp_path)
+
+    assert ignored == {
+        content_key(tmp_path / "drafts" / "old.md"),
+        content_key(tmp_path / "docs"),
+    }
+
+
+def test_read_ignore_list_strips_a_leading_dot_slash_and_trailing_slash(
+    tmp_path: Path,
+) -> None:
+    _ignore_file(tmp_path, "ignore:\n  - ./docs/\n")
+
+    assert read_ignore_list(tmp_path) == {content_key(tmp_path / "docs")}
+
+
+@pytest.mark.parametrize(
+    "entry",
+    ["/etc/passwd", "../outside", "docs/../x", "*.md", "docs?", "[ab]", "''", "./"],
+)
+def test_read_ignore_list_rejects_a_malformed_entry(tmp_path: Path, entry: str) -> None:
+    _ignore_file(tmp_path, f"ignore:\n  - {entry}\n")
+
+    with pytest.raises(ValueError, match=r"\.fls-content\.yaml"):
+        read_ignore_list(tmp_path)
+
+
+def test_read_ignore_list_error_names_the_bad_entry(tmp_path: Path) -> None:
+    _ignore_file(tmp_path, "ignore:\n  - docs\n  - ../outside\n")
+
+    with pytest.raises(ValueError, match=r"\.\./outside"):
+        read_ignore_list(tmp_path)
+
+
+def test_read_ignore_list_rejects_an_ignore_key_that_is_not_a_list(
+    tmp_path: Path,
+) -> None:
+    _ignore_file(tmp_path, "ignore: docs\n")
+
+    with pytest.raises(ValueError, match="list of strings"):
+        read_ignore_list(tmp_path)
+
+
+def test_read_ignore_list_rejects_a_python_object_tag(tmp_path: Path) -> None:
+    _ignore_file(tmp_path, "ignore: !!python/object/apply:os.getcwd []\n")
+
+    with pytest.raises(ValueError, match=r"\.fls-content\.yaml"):
+        read_ignore_list(tmp_path)
+
+
+def test_ignoring_a_folder_does_not_ignore_a_folder_sharing_its_prefix(
+    tmp_path: Path,
+) -> None:
+    ignore = frozenset({content_key(tmp_path / "docs")})
+
+    assert is_ignored(tmp_path / "docs-old" / "a.md", ignore) is False
+
+
+def test_ignoring_a_folder_ignores_files_below_it(tmp_path: Path) -> None:
+    ignore = frozenset({content_key(tmp_path / "docs")})
+
+    assert is_ignored(tmp_path / "docs" / "deep" / "a.md", ignore) is True
+
+
+def test_an_ignored_file_and_an_ignored_folder_are_absent_from_get_all_files(
+    tmp_path: Path,
+) -> None:
+    _topic(tmp_path / "keep.md")
+    _topic(tmp_path / "drafts.md")
+    _topic(tmp_path / "docs" / "inner.md")
+    ignore = frozenset(
+        {content_key(tmp_path / "drafts.md"), content_key(tmp_path / "docs")}
+    )
+
+    found = get_all_files(tmp_path, ignore=ignore)
+
+    assert found == [tmp_path / "keep.md"]
+
+
+def test_an_ignored_child_is_left_out_of_auto_discovery(tmp_path: Path) -> None:
+    _course(tmp_path / "course.md")
+    _topic(tmp_path / "keep.md")
+    _topic(tmp_path / "drafts.md")
+    _topic(tmp_path / "folder" / "content.md")
+    ignore = frozenset(
+        {content_key(tmp_path / "drafts.md"), content_key(tmp_path / "folder")}
+    )
+
+    found = auto_discovered_children(tmp_path / "course.md", ignore=ignore)
+
+    assert found == [content_key(tmp_path / "keep.md")]
+
+
+def test_an_explicit_children_entry_naming_an_ignored_path_fails(
+    tmp_path: Path,
+) -> None:
+    _topic(tmp_path / "drafts.md")
+    _write_widget_file(
+        tmp_path / "course.md",
+        "---\ncontent_type: COURSE\ntitle: A Course\nchildren:\n"
+        "  - path: drafts.md\n---\n",
+    )
+    ignore = frozenset({content_key(tmp_path / "drafts.md")})
+    parsed = parse_single_file(tmp_path / "course.md")
+
+    errors = validate_children_lists(parsed, ignore=ignore)
+
+    assert len(errors) == 1
+    assert "Invalid children list" in errors[0]
+    assert IGNORED_PROBLEM in errors[0]
+    assert "children[0]" in errors[0]
+
+
+def test_a_sections_target_naming_an_ignored_path_fails_with_the_ignore_message(
+    tmp_path: Path,
+) -> None:
+    _topic_file(tmp_path / "topic.md")
+    _quiz(tmp_path, question_sections="sections: [../topic.md]")
+    ignore = frozenset({content_key(tmp_path / "topic.md")})
+    parsed = [
+        item
+        for file_path in get_all_files(tmp_path, ignore=ignore)
+        if file_path.suffix in (".md", ".yaml", ".yml")
+        for item in parse_single_file(file_path)
+    ]
+
+    errors = validate_question_sections(parsed, ignore=ignore)
+
+    assert len(errors) == 1
+    assert IGNORED_PROBLEM in errors[0]
+    assert "starts with _ or ." not in errors[0]
+
+
+def test_an_image_reference_to_an_ignored_file_fails_as_a_missing_file(
+    tmp_path: Path,
+) -> None:
+    _write(tmp_path / "images" / "cover.png", "png")
+    _article(tmp_path / "post.md", image="images/cover.png")
+    ignore = frozenset({content_key(tmp_path / "images" / "cover.png")})
+
+    with pytest.raises(ValueError, match="Field: image"):
+        validate(tmp_path, ignore=ignore)
