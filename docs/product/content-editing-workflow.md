@@ -1,11 +1,11 @@
 # Content Editing Workflow
 
-_Last updated: 2026-11-21_
+_Last updated: 2026-11-22_
 
 ## Summary
 
 - All course content, and the articles of a site's public blog, is authored as plain Markdown and YAML under version control; git provides the full history — timestamps, diffs, and rollback.
-- Content is loaded into the database by the `content_save` command, which validates first and then idempotently upserts each item by UUID. Re-running it is safe.
+- Content is loaded into the database by the `content_save` command, which loads only committed content, validates first, and then idempotently upserts each item by UUID. Re-running it is safe, and each run is recorded against the git commit it loaded.
 - Markdown renders through a four-stage pipeline: Markdown → sanitiser → content-widget compilation → template render.
 - Course images are re-encoded to WebP at ingest, so authors can commit camera and screenshot output as-is; filenames and `c-picture` references keep working unchanged.
 - A site's course categories are declared once per content repo, and each course names the categories it belongs to in its own frontmatter. See [learner experience](./learner-experience.md) for what the dashboard does with them.
@@ -16,13 +16,15 @@ _Last updated: 2026-11-21_
 
 Content lives as files on disk — Markdown for text-heavy items, YAML for structured data — committed to git alongside application code.
 
-**UUIDs in frontmatter.** On the first run of `content_save`, a UUID is written back into each file's frontmatter. That UUID is the stable identifier for the item and survives edits, renames, and re-saves.
+**UUIDs in frontmatter.** Every content item carries a UUID in its frontmatter. It is the stable identifier for the item and survives edits, renames, and re-saves. A new file has none: run `content_save` once with `--generate-uuids` to write them in, then commit the result. A run without the flag refuses content that lacks a UUID.
 
 **No GUI editor.** There is no admin-side or browser-based authoring interface. This is by design: the file system is the source of truth and git is the audit trail. Content records cannot be deleted from the admin either, except articles — see [admin interface](./admin-interface.md#content-cannot-be-deleted).
 
 **AI authoring.** Authors may use AI tools to draft or revise Markdown. This is a workflow affordance only — there is no AI integration in the application code.
 
-**Draft content.** Any file or directory whose name begins with `_` or `.` is skipped by the content scanner and never loaded, at any nesting level — a whole `_drafts/` directory or a single `_topic.md`. The scanner also skips `README.md`, `CLAUDE.md`, and any file whose name ends with `~`. To publish a draft, rename it to remove the leading underscore and re-run `content_save`.
+**Draft content.** Any file or directory whose name begins with `_` or `.` is skipped by the content scanner and never loaded, at any nesting level — a whole `_drafts/` directory or a single `_topic.md`. The scanner also skips `README.md`, `CLAUDE.md`, and any file whose name ends with `~`. To publish a draft, rename it to remove the leading underscore, commit, and re-run `content_save`.
+
+**Ignoring files.** A `.fls-content.yaml` at the content repository root can carry an `ignore:` list of exact file or folder paths, relative to the repo root, that `content_save` and `content_validate` leave out. It suits material that lives in the repo but is not course content. Ignored files must still be committed.
 
 Because draft content is never loaded, it cannot be previewed in the running application. To load a course but keep it away from learners — to review it in the app before launch — set its visibility to `hidden` instead.
 
@@ -43,7 +45,7 @@ Ten content types are available:
 | `FORM_QUESTION` | A question within a form page |
 | `FORM_CONTENT` | A non-question content block within a form page |
 
-Categories are declared in a single `course_categories.yaml` at the content repository root, one entry per category in the order they should appear; a second declaration anywhere in the repo is rejected at validation time, so a site has exactly one ordered list. Each entry gets a UUID written back into the file on its first load, like every other content type.
+Categories are declared in a single `course_categories.yaml` at the content repository root, one entry per category in the order they should appear; a second declaration anywhere in the repo is rejected at validation time, so a site has exactly one ordered list. Each entry carries a UUID, like every other content type.
 
 An article can sit anywhere in the content repository, inside or outside a course folder. It is either published or `hidden`, and its public URL comes from a `slug` that defaults to its file name. It can name an `author`, and `show_date` and `show_author` override the site-wide defaults for its byline. An article can carry one optional `image`, a path relative to the article file, with `image_alt` text required alongside it; the image appears on the article page, its cards and its social-sharing preview. Articles have no category, and there is no scheduled publishing. See [learner experience](./learner-experience.md#blog) for the public blog pages.
 
@@ -100,7 +102,7 @@ shared_with:
   - harbour-college
 ```
 
-`audience` is `organisation_learners` (the default) or `public`, and has no effect on a course that names no organisations. `shared_with` lists other organisations whose educators may use the course as its owners' educators do; a course that names no organisations cannot be shared, and removing an entry removes that share on the next load. Slugs are looked up among the organisations of the site being loaded, so an unknown slug fails the load. Both values show read-only in the course admin. What belonging to an organisation means for who sees the course is covered in [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
+`audience` is `organisation_learners` (the default) or `public`, and has no effect on a course that names no organisations. `shared_with` lists other organisations whose educators may use the course as its owners' educators do; a course that names no organisations cannot be shared, and removing an entry removes that share on the next load. Slugs are looked up among the organisations of the site being loaded, so an unknown slug fails the load. With `DEBUG` on, an unknown slug creates the organisation instead, so a development site loads without setup. Both values show read-only in the course admin. What belonging to an organisation means for who sees the course is covered in [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
 
 **Shuffled quizzes.** A QUIZ form can serve its pages, its questions and its answer options in a random order for each sitting, through three independent form options, `shuffle_pages`, `shuffle_questions` and `shuffle_options`, all off by default. On an option, `locked: true` pins it in place while the others move, which suits "All of the above". On a content block or question, a shared `group` value keeps a stimulus and its questions together as one block on one page. Validation rejects these options on any other form type, and a `locked` option or a `group` that could not work as written. What learners see is in [learner experience](./learner-experience.md#quiz-feedback); guidance on wording a quiz that shuffles safely lives in the `fls-content` authoring plugin described below.
 
@@ -110,12 +112,12 @@ Other course metadata — learning outcomes, difficulty (`beginner`, `intermedia
 
 ```
 uv run python manage.py content_validate <path>
-uv run python manage.py content_save <path> <site_name>
+uv run python manage.py content_save <path> [<path> ...] <site_name>
 ```
 
 Validation parses every YAML and Markdown file against strict schemas before any database write. Schemas are strict-mode: any field not defined causes a clear, file-located error rather than being silently ignored, which prevents data corruption from typos or schema drift. Invalid access configuration, an unrecognised visibility value, an invalid price, a malformed due date or time limit (for example, both `due_date` and `due_days_after_registration`, or a `due_time` with neither), and the invalid frontmatter combinations above are all caught here. Category references are checked across files too — a course naming a category no file declares, or naming a dashboard category it doesn't itself belong to, fails before anything is written — and the same check runs in the offline validator bundled with the `fls-content` plugin. A `when` condition is checked the same way, in both `content_save` and the offline validator: one that names an unknown question, a question on the same or a later page, a question that isn't a choice question, or a value the question doesn't offer fails before anything is written. The offline validator checks that `organisations`, `audience` and `shared_with` are well-formed but cannot check that a slug exists, since organisations belong to a site; `content_save` does that.
 
-`content_save` runs validation internally on every run and writes only if it passes. It scans the path, then upserts every item in a single atomic transaction, keyed on the frontmatter UUID — so re-running against unchanged files has no visible effect. A `children:` entry, an `application_form` path or a `sections` path that does not resolve to loaded content fails the whole load rather than being silently dropped. So does a due key on an entry for an activity, article or part, or a part's entry naming something the part does not contain; every such error is reported at once, and the offline validator catches the same ones.
+`content_save` loads only committed content: if any file under a source path is not committed to git, it refuses, lists the files, and changes nothing, so what is loaded always matches a commit. It runs validation internally on every run and writes only if it passes. It accepts several source paths and saves them as one, so content kept in more than one directory or repository loads together. It upserts every item in a single atomic transaction, keyed on the frontmatter UUID — so re-running against unchanged files has no visible effect. A `children:` entry, an `application_form` path or a `sections` path that does not resolve to loaded content fails the whole load rather than being silently dropped. So does a due key on an entry for an activity, article or part, or a part's entry naming something the part does not contain; every such error is reported at once, and the offline validator catches the same ones.
 
 Validation also checks the `path` of every `c-article-link`, `c-article-card` and `c-course-card`: it must point at a validated file of the right type, so a broken link or card fails before anything is written. Two articles with the same slug are rejected too, as is an article `image` that does not point at an image file in the repository.
 
@@ -179,14 +181,14 @@ Binary assets — images, PDFs, audio, video — are uploaded and stored by `con
 
 - **Offline reference** — the content types and their frontmatter, the available widgets (the built-ins plus any custom widgets the content repo declares) and their permitted attributes, file layout and numbering conventions, and UUID and escaping rules.
 - **Markdown conversion** (`/fls-content:format-content`) — reformats messy Markdown into valid FLS structure in place. Conservative by design: lossless transforms are applied automatically, while anything semantic is collected for author review rather than applied silently. Conversion accepts the custom widgets the content repo declares. Git is the safety net; there is no separate backup or dry-run mode.
-- **Offline validation** (`/fls-content:validate-content`) — runs a bundled Django-free copy of the schema validator, reporting the same errors as `content_validate` without needing a running FLS host. This is a structural pre-flight only; `content_save` on a host remains authoritative, since UUID assignment, icon resolution, cross-reference resolution, and asset upload happen there.
+- **Offline validation** (`/fls-content:validate-content`) — runs a bundled Django-free copy of the schema validator, reporting the same errors as `content_validate` without needing a running FLS host. This is a structural pre-flight only; `content_save` on a host remains authoritative, since the committed-content check, UUID generation, icon resolution, cross-reference resolution, and asset upload happen there.
 - **Repo scaffolding** (`/fls-content:init`) — creates a configuration file declaring the deployment's valid admonition types, so the plugin knows which are valid for that project. It never overwrites an existing config.
 
 The plugin is kept in sync with FLS automatically whenever authoring-relevant FLS code changes.
 
 ## Compliance: Version Control and Legal Documents
 
-**Audit trail.** Because all content lives in git, every change carries a commit timestamp, author, and diff, and rolling back is a standard git operation. There is no application-level versioning layer beyond what git provides.
+**Audit trail.** Because all content lives in git, every change carries a commit timestamp, author, and diff, and rolling back is a standard git operation. Each successful `content_save` run is recorded with the git commit of every source path it loaded, so the content version behind what is live can be established; no screen shows this record yet. There is no other application-level versioning layer beyond what git provides.
 
 **Legal documents.** Terms of service and privacy policy files are read from the git repository at HEAD, and their git blob hash identifies the exact version. For containerised deployments where a `.git` directory may not be present, a manifest recording each document's blob hash is generated at image-build time by the `build_legal_docs_manifest` command; where a deployment configures a manifest, that manifest — not git — is the source of truth.
 
