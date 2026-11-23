@@ -930,12 +930,59 @@ def test_reference_listing_separates_parts_more_than_topics(
         second = _box(page.get_by_role("link", name="Formulas Sheet 1"))
         next_heading = _box(
             page.locator("#interface-main")
-            .get_by_role("navigation", name="Reference")
+            .get_by_role("navigation", name="Reference topics")
             .get_by_role("button", name="Glossary")
         )
         topic_gap = second["y"] - (first["y"] + first["height"])
         part_gap = next_heading["y"] - (second["y"] + second["height"])
         assert part_gap > topic_gap, (viewport, part_gap, topic_gap)
+
+
+def test_part_link_on_the_reference_listing_lands_on_its_part(
+    live_server: LiveServer,
+    logged_in_page: Page,
+    logged_in_user: User,
+    live_server_site: Site,
+) -> None:
+    """Opening the listing at a part's anchor leaves that part's row in view once
+    the parts above it have opened."""
+    page = logged_in_page
+    course = CourseFactory(title="Anchor Course", slug="anchor-course")
+    LearnerCourseRegistrationFactory(
+        learner__user=logged_in_user, course=course, is_active=True
+    )
+    for part_order in range(3):
+        part = CoursePartFactory(title=f"Part {part_order}", slug=f"part-{part_order}")
+        CourseReferencePartFactory(course=course, course_part=part, order=part_order)
+        for order in range(12):
+            ContentCollectionItemFactory(
+                collection_object=part,
+                child_object=TopicFactory(
+                    title=f"Sheet {part_order}.{order}",
+                    slug=f"sheet-{part_order}-{order}",
+                ),
+                order=order,
+            )
+    listing_url = reverse_url(
+        live_server,
+        "learner_interface:course_reference",
+        kwargs={"course_slug": course.slug},
+    )
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto("about:blank")
+        page.goto(f"{listing_url}#part-2")
+        listing = page.locator("#interface-main")
+        for part_order in range(3):
+            expect(
+                listing.get_by_role("button", name=f"Part {part_order}")
+            ).to_have_attribute("aria-expanded", "true")
+        page.evaluate(
+            "new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))"
+        )
+        row = _box(page.locator("#part-2"))
+        assert 0 <= row["y"] < viewport["height"], (viewport, row)
 
 
 def test_mobile_outline_sheet_and_drawer_stay_within_the_viewport(

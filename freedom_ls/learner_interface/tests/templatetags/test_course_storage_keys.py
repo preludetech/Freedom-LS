@@ -15,3 +15,9 @@ def test_a_scoped_part_key_differs_from_the_learning_path_key() -> None:
     assert course_part_storage_key("flying", 2, "reference") == (
         "coursePart_reference_flying_2"
     )
+
+
+def test_a_scoped_part_key_can_name_the_part_by_slug() -> None:
+    assert course_part_storage_key("flying", "formulas", "reference") == (
+        "coursePart_reference_flying_formulas"
+    )

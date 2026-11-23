@@ -71,7 +71,7 @@
 course-children takes optional variables, each defaulting to the learning-path outline:
 outline_label names the <nav>; unnumbered drops the row numbers, and no_counter_column also drops
 their empty column; storage_scope gives the parts
-their own localStorage keys; expand_all opens every part on load; anchor_parts gives each part
+their own localStorage keys, keyed by each part's slug; expand_all opens every part on load; anchor_parts gives each part
 row id="<slug>" so a link can jump to it (set it on one outline per page, or the ids repeat).
 {% endcomment %}
 {% partialdef course-children %}
@@ -80,7 +80,13 @@ row id="<slug>" so a link can jump to it (set it on one outline per page, or the
             {% for child in children %}
                 {% if child.type == "COURSE_PART" %}
                     {% comment %} Course Part with expandable children. {% endcomment %}
-                    {% course_part_storage_key_tag course.slug forloop.counter storage_scope|default:"" as part_storage_key %}
+                    {% comment %}A scoped outline (the reference outline) keys a part by its slug, since its
+                    parts come and go as they gain and lose topics; the learning path keys by position.{% endcomment %}
+                    {% if storage_scope %}
+                        {% course_part_storage_key_tag course.slug child.slug storage_scope as part_storage_key %}
+                    {% else %}
+                        {% course_part_storage_key_tag course.slug forloop.counter as part_storage_key %}
+                    {% endif %}
 
                     <li x-data="coursePart"
                         data-storage-key="{{ part_storage_key }}"

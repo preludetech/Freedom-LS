@@ -1426,16 +1426,19 @@ def reference_outline(
     linked: bool,
     current_part: CoursePart | None = None,
     current_topic: Topic | None = None,
+    parts: list[ReferencePartTopics] | None = None,
 ) -> list[ReferenceOutlinePart]:
     """The course's reference parts as entries the course outline rows can draw.
 
     Parts and topics come from course_reference_topics, so the query count stays
-    fixed. Topic rows link to their reference topic pages only when linked is
+    fixed; a caller that has already read them passes them as parts. Topic rows link to their reference topic pages only when linked is
     set; a visitor who cannot read the material sees the titles alone. The
     current topic is the one current_topic names inside current_part.
     """
     outline: list[ReferenceOutlinePart] = []
-    for part in course_reference_topics(course):
+    if parts is None:
+        parts = course_reference_topics(course)
+    for part in parts:
         in_current_part = (
             current_part is not None and part.course_part.pk == current_part.pk
         )

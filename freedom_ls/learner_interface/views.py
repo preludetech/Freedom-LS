@@ -999,8 +999,11 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
         {
             "course": course,
             **course_details_context(course),
+            # The reference pages need a signed-in learner, so a backend that
+            # grants an anonymous request content access gets the titles alone.
             "reference_outline": reference_outline(
-                course, linked=decision.can_access_content
+                course,
+                linked=request.user.is_authenticated and decision.can_access_content,
             ),
             "extra_stats": (
                 [
@@ -1576,6 +1579,7 @@ def view_course_item(request, course_slug, index):
         course_index=player_index,
         course_progress=course_progress,
         outline_mode=_outline_mode(decision),
+        reference_linked=decision.can_access_content,
     )
 
     if entry is not None and closed:
@@ -1668,6 +1672,38 @@ def _ensure_player_course_progress(
     )
 
 
+def _outline_header_context(
+    course_progress: CourseProgress | None,
+    course_index: PlayerCourseIndex,
+    outline_mode: OutlineMode,
+) -> dict[str, object]:
+    """The outline panel header's organisation chip and next deadline."""
+    course_complete = (
+        course_progress is not None and course_progress.completed_time is not None
+    )
+    if outline_mode is not OutlineMode.FULL or course_complete:
+        # Neither carries a deadline on the dashboard either.
+        next_deadline = None
+    else:
+        next_deadline = next_deadline_card(
+            course_index.rows,
+            course_index.course_deadlines,
+            course_index.deadline_policy,
+            course_index.now,
+        )
+    return {
+        # Read off the record rather than resolving the registration a second
+        # time: the record's learner already names the organisation this pass
+        # is being studied through, which is what the header is reporting.
+        "course_organisation": (
+            course_progress.learner.organisation
+            if course_progress is not None
+            else None
+        ),
+        "next_deadline_card": next_deadline,
+    }
+
+
 def _player_chrome_context(
     request: HttpRequest,
     course: Course,
@@ -1677,6 +1713,8 @@ def _player_chrome_context(
     course_index: PlayerCourseIndex | None = None,
     course_progress: CourseProgress | None | Unresolved = UNRESOLVED,
     outline_mode: OutlineMode = OutlineMode.FULL,
+    *,
+    reference_linked: bool,
 ) -> dict:
     """Build the shared player-chrome context (TOC, breadcrumb, header, title).
 
@@ -1689,6 +1727,9 @@ def _player_chrome_context(
     ``outline_mode`` shapes the outline it builds for an ended or paused learner and
     withholds the next-deadline card from both. When ``course_index`` is passed in, it is
     built by the caller with the same mode.
+
+    ``reference_linked`` is whether the learner can read the reference pages, so the
+    sidebar's reference topics link only when following them would not bounce.
     """
     user = request.user
     if viewable_items is None:
@@ -1697,12 +1738,6 @@ def _player_chrome_context(
         course_progress = (
             course_progress_for(user, course) if user.is_authenticated else None
         )
-    # Read off the record rather than resolving the registration a second time:
-    # the record's learner already names the organisation this pass is being
-    # studied through, which is what the chrome is reporting.
-    course_organisation = (
-        course_progress.learner.organisation if course_progress is not None else None
-    )
     current_part = get_item_part(course, current_item)
 
     # The breadcrumb part crumb links to the part's first viewable item. Resolve
@@ -1730,34 +1765,21 @@ def _player_chrome_context(
         )
 
     rows = course_index.rows
-    course_complete = (
-        course_progress is not None and course_progress.completed_time is not None
-    )
-    if outline_mode is not OutlineMode.FULL or course_complete:
-        # Neither carries a deadline on the dashboard either.
-        next_deadline = None
-    else:
-        next_deadline = next_deadline_card(
-            rows,
-            course_index.course_deadlines,
-            course_index.deadline_policy,
-            course_index.now,
-        )
 
     return {
         "course_index": rows,
         "current_entry": current_entry(rows),
-        "next_deadline_card": next_deadline,
+        **_outline_header_context(course_progress, course_index, outline_mode),
         "current_part": current_part,
         "current_part_index": current_part_index,
         "course_progress": course_progress,
         # Without a record there is nowhere to write a completion, so the
         # templates hide the controls that would offer one.
         "can_record_progress": course_progress is not None,
-        "course_organisation": course_organisation,
         "item_title": current_item.title,
         "index": index,
         "paused": outline_mode is OutlineMode.PAUSED,
+        "reference_linked": reference_linked,
         **_time_zone_context(request),
     }
 
@@ -1976,6 +1998,7 @@ def _render_form_fill_page(
     form_progress: FormProgress | None,
     submission: PageSubmission,
     *,
+    reference_linked: bool,
     course_index: PlayerCourseIndex | None = None,
 ) -> HttpResponse:
     """Render one runner page, carrying whatever a submission was rejected for.
@@ -2015,6 +2038,7 @@ def _render_form_fill_page(
             index,
             course_index=course_index,
             course_progress=course_progress,
+            reference_linked=reference_linked,
         ),
         **answered_counts(form_progress, current.questions, current.path),
         # URLs the exit dialog acts on.
@@ -2128,6 +2152,7 @@ def form_fill_page(
         course_progress,
         form_progress,
         submission,
+        reference_linked=decision.can_access_content,
         course_index=player_index,
     )
 
@@ -2229,6 +2254,7 @@ def course_form_complete(request, course_slug, index):
         ),
         course_progress=course_progress,
         outline_mode=_outline_mode(decision),
+        reference_linked=decision.can_access_content,
     )
     course_index = chrome["course_index"]
     # A closed form refuses a new sitting, so its results offer no retry. Read off
@@ -2307,20 +2333,25 @@ def course_form_complete(request, course_slug, index):
 
 def _course_index_without_current_row(
     request: HttpRequest, course: Course, course_progress: CourseProgress | None
-) -> list[dict]:
+) -> PlayerCourseIndex:
     """The outline for a page that is not one of the course's items.
 
     The caller has confirmed content access, so no row is rendered locked for
     want of it.
     """
-    return get_course_index(
+    now = timezone.now()
+    course_deadlines = _deadlines_or_none(course_progress, now)
+    deadline_policy = _deadline_policy_or_none(course_progress)
+    rows = get_course_index(
         user=request.user,
         course=course,
         can_access_content=True,
         course_progress=course_progress,
-        course_deadlines=_deadlines_or_none(course_progress),
-        deadline_policy=_deadline_policy_or_none(course_progress),
+        course_deadlines=course_deadlines,
+        deadline_policy=deadline_policy,
+        now=now,
     )
+    return PlayerCourseIndex(rows, course_deadlines, deadline_policy, now)
 
 
 def _reference_access_redirect(
@@ -2347,12 +2378,13 @@ def _reference_sidebar_context(
     course still has no course progress record after reading its reference material.
     """
     course_progress = course_progress_for(cast("User", request.user), course)
+    course_index = _course_index_without_current_row(request, course, course_progress)
     return {
         "course_progress": course_progress,
-        "course_index": _course_index_without_current_row(
-            request, course, course_progress
-        ),
+        "course_index": course_index.rows,
+        **_outline_header_context(course_progress, course_index, OutlineMode.FULL),
         "on_reference_page": True,
+        "reference_linked": True,
         **_time_zone_context(request),
     }
 
@@ -2382,10 +2414,11 @@ def course_reference_topic(
     no_access = _reference_access_redirect(request, course)
     if no_access is not None:
         return no_access
-    parts = course_reference_topics(course, part_slug=part_slug)
-    if not parts:
+    # Every part is read, not just this one: the sidebar outline lists them all.
+    parts = course_reference_topics(course)
+    part = next((part for part in parts if part.course_part.slug == part_slug), None)
+    if part is None:
         raise Http404("No such reference part in this course.")
-    part = parts[0]
     position = next(
         (n for n, topic in enumerate(part.topics) if topic.slug == topic_slug), None
     )
@@ -2403,6 +2436,13 @@ def course_reference_topic(
             "course": course,
             "topic": topic,
             "current_part": part.course_part,
+            "reference_outline": reference_outline(
+                course,
+                linked=True,
+                current_part=part.course_part,
+                current_topic=topic,
+                parts=parts,
+            ),
             "previous_topic": previous_topic,
             "next_topic": next_topic,
             "previous_url": (
@@ -2484,7 +2524,9 @@ def course_finish(request, course_slug):
         # was withheld.
         "course_index": _course_index_without_current_row(
             request, course, course_progress
-        ),
+        ).rows,
+        # The finish page is open only to a learner with content access.
+        "reference_linked": True,
         **_time_zone_context(request),
     }
 
@@ -2585,6 +2627,7 @@ def form_submit_and_exit(
                     course_progress,
                     form_progress,
                     submission,
+                    reference_linked=decision.can_access_content,
                 )
         form_progress.complete()  # idempotent
 

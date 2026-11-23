@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import dataclasses
 import itertools
 import re
+from collections.abc import Callable
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import cast
@@ -12,7 +14,9 @@ import lxml.html
 import pytest
 import time_machine
 from django_cotton.compiler_regex import CottonCompiler
+from pytest_mock import MockerFixture
 
+from django.contrib.auth.models import AnonymousUser
 from django.contrib.sites.models import Site
 from django.http import HttpResponse
 from django.template import Context, Template
@@ -21,6 +25,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseCategoryFactory,
@@ -2015,8 +2020,8 @@ def _part_titles(section: lxml.html.HtmlElement) -> list[str]:
 
 @pytest.mark.django_db
 def test_detail_shows_reference_parts_as_outline_rows_without_links(
-    mock_site_context, client
-):
+    mock_site_context: Site, client: Client
+) -> None:
     course = _reference_course(["Glossary", "Cheat sheets"])
 
     (section,) = _reference_section(client, course)
@@ -2029,8 +2034,8 @@ def test_detail_shows_reference_parts_as_outline_rows_without_links(
 
 @pytest.mark.django_db
 def test_detail_puts_reference_inside_the_course_content_section(
-    mock_site_context, client
-):
+    mock_site_context: Site, client: Client
+) -> None:
     course = _reference_course(["Glossary"])
 
     (section,) = _reference_section(client, course)
@@ -2043,8 +2048,8 @@ def test_detail_puts_reference_inside_the_course_content_section(
 
 @pytest.mark.django_db
 def test_detail_links_reference_topics_for_a_registered_learner(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+) -> None:
     course = _reference_course(["Glossary"])
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, course=course, is_active=True)
@@ -2058,8 +2063,8 @@ def test_detail_links_reference_topics_for_a_registered_learner(
 @pytest.mark.django_db
 @time_machine.travel(ACCESS_ENDED_AT, tick=False)
 def test_detail_shows_reference_parts_for_an_ended_learner_with_no_outline(
-    mock_site_context, client
-):
+    mock_site_context: Site, client: Client
+) -> None:
     course = _ended_learner_detail(client)
     _reference_course(["Glossary"], course=course)
 
@@ -2071,15 +2076,17 @@ def test_detail_shows_reference_parts_for_an_ended_learner_with_no_outline(
 
 @pytest.mark.django_db
 def test_detail_shows_no_reference_section_without_reference_parts(
-    mock_site_context, client
-):
+    mock_site_context: Site, client: Client
+) -> None:
     course = CourseFactory()
 
     assert _reference_section(client, course) == []
 
 
 @pytest.mark.django_db
-def test_detail_shows_no_reference_section_for_empty_parts(mock_site_context, client):
+def test_detail_shows_no_reference_section_for_empty_parts(
+    mock_site_context: Site, client: Client
+) -> None:
     course = CourseFactory()
     CourseReferencePartFactory(course=course, course_part=CoursePartFactory())
 
@@ -2088,8 +2095,8 @@ def test_detail_shows_no_reference_section_for_empty_parts(mock_site_context, cl
 
 @pytest.mark.django_db
 def test_detail_shows_no_reference_section_for_parts_holding_no_topics(
-    mock_site_context, client
-):
+    mock_site_context: Site, client: Client
+) -> None:
     course = CourseFactory()
     part = CoursePartFactory()
     ContentCollectionItemFactory(
@@ -2102,11 +2109,31 @@ def test_detail_shows_no_reference_section_for_parts_holding_no_topics(
 
 @pytest.mark.django_db
 def test_detail_shows_no_reference_section_while_the_outline_is_in_development(
-    mock_site_context, client
-):
+    mock_site_context: Site, client: Client
+) -> None:
     course = _reference_course(
         ["Glossary"],
         course=cast(Course, CourseFactory(table_of_contents_in_development=True)),
     )
 
     assert _reference_section(client, course) == []
+
+
+@pytest.mark.django_db
+def test_detail_does_not_link_reference_topics_for_an_anonymous_visitor_a_backend_lets_in(
+    mock_site_context: Site, client: Client, mocker: MockerFixture
+) -> None:
+    """The reference pages need a signed-in learner, so a backend that grants an
+    anonymous request content access still gets the titles alone."""
+    course = _reference_course(["Glossary"])
+    backend = get_course_access_backend()
+    granted = dataclasses.replace(
+        backend.get_access(user=AnonymousUser(), course=course),
+        can_access_content=True,
+    )
+    mocker.patch.object(backend, "get_access_for_request", return_value=granted)
+
+    (section,) = _reference_section(client, course)
+
+    assert _part_titles(section) == ["Glossary"]
+    assert section.cssselect("a") == []
