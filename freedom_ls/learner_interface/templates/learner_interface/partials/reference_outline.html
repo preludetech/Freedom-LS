@@ -1,0 +1,17 @@
+{% comment %}
+The sidebar's Reference section: an eyebrow heading, in the style of the "Course outline" eyebrow,
+linking to the reference listing, with the reference outline under it in the course outline rows.
+Space alone separates it from the learning-path rows above.
+{% endcomment %}
+{% if reference_outline %}
+    <div class="mt-6">
+        <a href="{% url 'learner_interface:course_reference' course_slug=course.slug %}"
+           {% if on_reference_listing %}aria-current="page"{% endif %}
+           class="block text-xs font-semibold uppercase tracking-wide no-underline {% if on_reference_listing %}bg-primary/10 -mx-1 px-1 rounded text-on-surface{% else %}text-muted hover:text-primary{% endif %}">Reference</a>
+        <div class="mt-2">
+            {% with children=reference_outline %}
+                {% include "learner_interface/partials/course_minimal_toc.html#course-children" with outline_label="Reference" unnumbered=True storage_scope="reference" %}
+            {% endwith %}
+        </div>
+    </div>
+{% endif %}

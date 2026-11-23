@@ -39,6 +39,11 @@ document.addEventListener("alpine:init", () => {
                 this.expanded = true;
                 this._scrollCurrentIntoView();
             }
+            // A page that lists every part open (the reference listing) opens
+            // them on load, again without writing to localStorage.
+            if (this.$el.dataset.startExpanded === "true") {
+                this.expanded = true;
+            }
             this.$watch("expanded", () => this._updateUI());
             this.$nextTick(() => this._updateUI());
         },

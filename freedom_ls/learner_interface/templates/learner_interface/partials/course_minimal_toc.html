@@ -44,6 +44,12 @@
 {% endpartialdef %}
 
 {% partialdef content-row-inner %}
+    {% comment %}An unnumbered outline (the reference outline) keeps an empty column the counter's
+    width, so its icons and titles line up with numbered rows beside it. An outline with no
+    numbered neighbour (no_counter_column) drops the column, so its rows start on the content edge.{% endcomment %}
+    {% if unnumbered %}
+    {% if not no_counter_column %}<span class="{{ counter_width }} shrink-0" aria-hidden="true"></span>{% endif %}
+    {% else %}
     <span class="text-muted/50 {{ text_size }} {{ counter_width }} shrink-0 toc-counter {% if child_counter %}toc-counter-child{% else %}toc-counter-top{% endif %}">
         <span class="toc-counter-value">
             {% if child_counter %}
@@ -53,6 +59,7 @@
             {% endif %}
         </span>
     </span>
+    {% endif %}
     {% partial content-icon %}
     <span class="flex-1 min-w-0 truncate {{ text_size }}">
         {% partial content-title %}
@@ -60,18 +67,27 @@
     {% partial due-date %}
 {% endpartialdef %}
 
+{% comment %}
+course-children takes optional variables, each defaulting to the learning-path outline:
+outline_label names the <nav>; unnumbered drops the row numbers, and no_counter_column also drops
+their empty column; storage_scope gives the parts
+their own localStorage keys; expand_all opens every part on load; anchor_parts gives each part
+row id="<slug>" so a link can jump to it (set it on one outline per page, or the ids repeat).
+{% endcomment %}
 {% partialdef course-children %}
-    <nav aria-label="Course outline">
+    <nav aria-label="{{ outline_label|default:'Course outline' }}">
         <ul class="list-none ml-0 space-y-0">
             {% for child in children %}
                 {% if child.type == "COURSE_PART" %}
                     {% comment %} Course Part with expandable children. {% endcomment %}
-                    {% course_part_storage_key_tag course.slug forloop.counter as part_storage_key %}
+                    {% course_part_storage_key_tag course.slug forloop.counter storage_scope|default:"" as part_storage_key %}
 
                     <li x-data="coursePart"
                         data-storage-key="{{ part_storage_key }}"
                         {% if child.contains_current %}data-contains-current="true"{% endif %}
-                        class="py-1.5">
+                        {% if expand_all %}data-start-expanded="true"{% endif %}
+                        {% if anchor_parts %}id="{{ child.slug }}"{% endif %}
+                        class="py-1.5{% if anchor_parts %} scroll-mt-24{% endif %}">
                         {% comment %} Whole row toggles expand/collapse; chevron sits at the
                         right end where the status icon used to be. {% endcomment %}
                         <button x-on:click="toggleExpanded"

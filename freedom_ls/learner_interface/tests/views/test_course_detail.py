@@ -1983,7 +1983,7 @@ def test_detail_outline_shows_no_deadline_label_on_a_closed_row(due_topic_course
 
 
 # ---------------------------------------------------------------------------
-# The reference material section
+# The Reference sub-section of Course content
 # ---------------------------------------------------------------------------
 
 
@@ -2003,32 +2003,62 @@ def _reference_course(
 
 def _reference_section(client: Client, course: Course) -> list[lxml.html.HtmlElement]:
     page = lxml.html.fromstring(_detail_response_as(client, course).content.decode())
+    return list(page.cssselect('[data-testid="course-reference-outline"]'))
+
+
+def _part_titles(section: lxml.html.HtmlElement) -> list[str]:
     return [
-        section
-        for section in page.cssselect("section")
-        if section.cssselect("h2")
-        and section.cssselect("h2")[0].text_content().strip() == "Reference material"
+        button.cssselect("span.truncate")[0].text_content().strip()
+        for button in section.cssselect('li[x-data="coursePart"] > button')
     ]
 
 
 @pytest.mark.django_db
-def test_detail_lists_reference_part_titles_in_order_without_links(
+def test_detail_shows_reference_parts_as_outline_rows_without_links(
     mock_site_context, client
 ):
     course = _reference_course(["Glossary", "Cheat sheets"])
 
     (section,) = _reference_section(client, course)
 
-    assert [li.text_content() for li in section.cssselect("li")] == [
-        "Glossary",
-        "Cheat sheets",
-    ]
+    assert _part_titles(section) == ["Glossary", "Cheat sheets"]
+    assert section.cssselect('nav[aria-label="Reference"]')
     assert section.cssselect("a") == []
+    assert "Available to registered learners." in section.text_content()
+
+
+@pytest.mark.django_db
+def test_detail_puts_reference_inside_the_course_content_section(
+    mock_site_context, client
+):
+    course = _reference_course(["Glossary"])
+
+    (section,) = _reference_section(client, course)
+
+    enclosing = section.getparent()
+    assert enclosing.tag == "section"
+    assert enclosing.cssselect("h2")[0].text_content().strip() == "Course content"
+    assert section.cssselect("h2") == []
+
+
+@pytest.mark.django_db
+def test_detail_links_reference_topics_for_a_registered_learner(
+    mock_site_context, logged_in_client
+):
+    course = _reference_course(["Glossary"])
+    user = UserFactory()
+    LearnerCourseRegistrationFactory(learner__user=user, course=course, is_active=True)
+
+    (section,) = _reference_section(logged_in_client(user), course)
+
+    [link] = section.cssselect("a")
+    assert "/reference/" in link.get("href")
+    assert "Available to registered learners." not in section.text_content()
 
 
 @pytest.mark.django_db
 @time_machine.travel(ACCESS_ENDED_AT, tick=False)
-def test_detail_lists_reference_part_titles_for_an_ended_learner_with_no_outline(
+def test_detail_shows_reference_parts_for_an_ended_learner_with_no_outline(
     mock_site_context, client
 ):
     course = _ended_learner_detail(client)
@@ -2036,7 +2066,8 @@ def test_detail_lists_reference_part_titles_for_an_ended_learner_with_no_outline
 
     (section,) = _reference_section(client, course)
 
-    assert [li.text_content() for li in section.cssselect("li")] == ["Glossary"]
+    assert _part_titles(section) == ["Glossary"]
+    assert section.cssselect("a") == []
 
 
 @pytest.mark.django_db

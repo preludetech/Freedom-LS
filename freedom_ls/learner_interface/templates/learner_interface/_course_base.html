@@ -110,8 +110,8 @@ breadcrumbs. The h1 keeps its own top margin when there is no line above it.{% e
 
         {% comment %}
         Outside the course_index guard so a course with an empty learning path
-        still links to its reference material. A <div>, not a <nav>: the
-        #course-toc-region nav selectors must match only the outline.
+        still shows its reference material. Its rows sit in their own
+        <nav aria-label="Reference">, apart from the "Course outline" nav.
         {% endcomment %}
         {% reference_link %}
     </div>

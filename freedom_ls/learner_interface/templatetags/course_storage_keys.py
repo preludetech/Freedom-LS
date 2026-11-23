@@ -18,21 +18,26 @@ register = template.Library()
 COURSE_PART_STORAGE_KEY_PREFIX = "coursePart"
 
 
-def course_part_storage_key(course_slug: str, index: int) -> str:
+def course_part_storage_key(course_slug: str, index: int, scope: str = "") -> str:
     """Return the localStorage key for a course part's expand/collapse flag.
 
-    ``index`` is the 1-based position of the course-part inside the course
-    (matches Django's ``forloop.counter``).
+    ``index`` is the 1-based position of the course-part inside its list
+    (matches Django's ``forloop.counter``). ``scope`` names a list other than
+    the learning path, such as the reference outline, so its parts do not share
+    keys with the learning path's parts at the same positions.
     """
+    if scope:
+        return f"{COURSE_PART_STORAGE_KEY_PREFIX}_{scope}_{course_slug}_{index}"
     return f"{COURSE_PART_STORAGE_KEY_PREFIX}_{course_slug}_{index}"
 
 
 @register.simple_tag
-def course_part_storage_key_tag(course_slug: str, index: int) -> str:
+def course_part_storage_key_tag(course_slug: str, index: int, scope: str = "") -> str:
     """Template-tag wrapper around ``course_part_storage_key``.
 
     Usage:
         {% load course_storage_keys %}
         {% course_part_storage_key_tag course.slug forloop.counter %}
+        {% course_part_storage_key_tag course.slug forloop.counter "reference" %}
     """
-    return course_part_storage_key(course_slug, index)
+    return course_part_storage_key(course_slug, index, scope)

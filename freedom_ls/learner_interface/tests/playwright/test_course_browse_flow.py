@@ -840,7 +840,7 @@ def test_learner_reads_reference_topics_from_the_mobile_outline(
     logged_in_user: User,
     live_server_site: Site,
 ) -> None:
-    """The outline's Reference link opens the listing, and Next swaps topics in place."""
+    """The outline's Reference part opens to its topics, and Next swaps topics in place."""
     page = logged_in_page
     course = CourseFactory(title="Reference Course", slug="reference-course")
     LearnerCourseRegistrationFactory(
@@ -863,12 +863,14 @@ def test_learner_reads_reference_topics_from_the_mobile_outline(
     page.set_viewport_size({"width": 375, "height": 812})
     page.goto(_item_url(live_server, course, 1))
     page.get_by_role("button", name="Open course outline").click()
-    page.get_by_role("dialog", name="Course outline").get_by_role(
-        "link", name="Reference"
-    ).click()
-    expect(page.get_by_role("heading", name="Reference", level=1)).to_be_visible()
-
-    page.get_by_role("link", name="First Sheet").click()
+    reference = page.get_by_role("dialog", name="Course outline").get_by_role(
+        "navigation", name="Reference"
+    )
+    reference.get_by_role("button", name="Formulas").click()
+    expect(reference.get_by_role("button", name="Formulas")).to_have_attribute(
+        "aria-expanded", "true"
+    )
+    reference.get_by_role("link", name="First Sheet").click()
     expect(page.get_by_role("heading", name="First Sheet", level=1)).to_be_visible()
 
     page.get_by_role("link", name="Next: Second Sheet").click()
@@ -876,10 +878,10 @@ def test_learner_reads_reference_topics_from_the_mobile_outline(
     expect(page).to_have_url(re.compile(r"/reference/formulas/sheet-1/$"))
     page.get_by_role("button", name="Open course outline").click()
     expect(
-        page.get_by_role("dialog", name="Course outline").get_by_role(
-            "link", name="Reference"
-        )
-    ).to_have_attribute("aria-current", "page")
+        page.get_by_role("dialog", name="Course outline")
+        .get_by_role("navigation", name="Reference")
+        .locator('[aria-current="page"]')
+    ).to_have_text("Second Sheet")
     page.keyboard.press("Escape")
 
     page.get_by_role("navigation", name="Breadcrumb").get_by_role(
@@ -894,9 +896,9 @@ def test_reference_listing_separates_parts_more_than_topics(
     logged_in_user: User,
     live_server_site: Site,
 ) -> None:
-    """The gap between one part's last topic and the next part's heading
-    exceeds the gap between topics inside a part. It used to be smaller, so
-    topics did not read as grouped under their part heading."""
+    """The gap between one part's last topic and the next part's row exceeds
+    the gap between topics inside a part, so topics read as grouped under
+    their part."""
     page = logged_in_page
     course = CourseFactory(title="Spacing Course", slug="spacing-course")
     LearnerCourseRegistrationFactory(
@@ -926,7 +928,11 @@ def test_reference_listing_separates_parts_more_than_topics(
         )
         first = _box(page.get_by_role("link", name="Formulas Sheet 0"))
         second = _box(page.get_by_role("link", name="Formulas Sheet 1"))
-        next_heading = _box(page.get_by_role("heading", name="Glossary", level=2))
+        next_heading = _box(
+            page.locator("#interface-main")
+            .get_by_role("navigation", name="Reference")
+            .get_by_role("button", name="Glossary")
+        )
         topic_gap = second["y"] - (first["y"] + first["height"])
         part_gap = next_heading["y"] - (second["y"] + second["height"])
         assert part_gap > topic_gap, (viewport, part_gap, topic_gap)

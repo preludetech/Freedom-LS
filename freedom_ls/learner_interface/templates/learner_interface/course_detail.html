@@ -149,30 +149,37 @@
 
                     {% comment %}Course content ToC — reuse the existing course-children partialdef.
                     The partialdef requires children, course, is_registered — all supplied by the view.
-                    An ended learner whose policy keeps no outline gets no children, and no section.{% endcomment %}
-                    {% if not course.table_of_contents_in_development %}{% if children or not access_ended_at %}
+                    An ended learner whose policy keeps no outline gets no children, and no
+                    learning-path rows. The Reference sub-section does not share that condition: an
+                    ended learner still sees what the course offered, under the same heading.{% endcomment %}
+                    {% if not course.table_of_contents_in_development %}{% if children or not access_ended_at or reference_outline %}
                         <section>
                             <h2>
                                 Course content
                             </h2>
-                            <div class="mt-4">
-                                {% include "learner_interface/partials/course_minimal_toc.html#course-children" with hide_deadlines=True %}
-
-                            </div>
+                            {% if children or not access_ended_at %}
+                                <div class="mt-4">
+                                    {% include "learner_interface/partials/course_minimal_toc.html#course-children" with hide_deadlines=True %}
+                                </div>
+                            {% endif %}
+                            {% if reference_outline %}
+                                {% comment %}A sub-section of Course content, drawn in the same outline rows
+                                under an eyebrow heading. Topic titles link only for a learner who can open
+                                the content; the line under the heading is for visitors not registered.{% endcomment %}
+                                <div class="mt-6" data-testid="course-reference-outline">
+                                    <h3 class="text-xs font-semibold uppercase tracking-wide text-muted">Reference</h3>
+                                    {% if not is_registered %}
+                                        <p class="mt-1 text-sm text-muted">Available to registered learners.</p>
+                                    {% endif %}
+                                    <div class="mt-2">
+                                        {% with children=reference_outline %}
+                                            {% include "learner_interface/partials/course_minimal_toc.html#course-children" with outline_label="Reference" unnumbered=True storage_scope="reference" hide_deadlines=True %}
+                                        {% endwith %}
+                                    </div>
+                                </div>
+                            {% endif %}
                         </section>
                     {% endif %}{% endif %}
-
-                    {% comment %}Shown whatever the visitor's access, so an ended learner still sees what the
-                    course offered; only titles, because the material itself is for registered learners.{% endcomment %}
-                    {% if reference_part_titles and not course.table_of_contents_in_development %}
-                        <section>
-                            <h2>Reference material</h2>
-                            <p class="mt-2 text-sm text-muted">Available to registered learners.</p>
-                            <div class="mt-4">
-                                <ul>{% for title in reference_part_titles %}<li>{{ title }}</li>{% endfor %}</ul>
-                            </div>
-                        </section>
-                    {% endif %}
 
                 </div>
 

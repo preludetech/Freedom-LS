@@ -10,26 +10,20 @@
 
 {% block content %}
     <c-page flush="true" class="pt-0 lg:pt-0">
-        <div class="space-y-8">
-        {% for part in reference_part_topics %}
-            {% comment %}The scroll margin keeps an anchor jump clear of the sticky header.{% endcomment %}
-            <section id="{{ part.course_part.slug }}" class="scroll-mt-24">
-                <h2>{{ part.course_part.title }}</h2>
-                <ul>
-                    {% for topic in part.topics %}
-                        <li>
-                            <a href="{% url 'learner_interface:course_reference_topic' course_slug=course.slug part_slug=part.course_part.slug topic_slug=topic.slug %}"
-                               class="font-semibold text-primary no-underline hover:text-primary-hover">{{ topic.title }}</a>
-                        </li>
-                    {% endfor %}
-                </ul>
-            </section>
-        {% empty %}
+        {% comment %}The reference outline in the course outline rows, every part open. Each part
+        row carries its slug as an id, so the Part breadcrumb lands on it.{% endcomment %}
+        {% if reference_outline %}
+            {% comment %}Reading width keeps each part's chevron near its title.{% endcomment %}
+            <div class="max-w-reading">
+                {% with children=reference_outline %}
+                    {% include "learner_interface/partials/course_minimal_toc.html#course-children" with outline_label="Reference" unnumbered=True no_counter_column=True expand_all=True anchor_parts=True storage_scope="reference" %}
+                {% endwith %}
+            </div>
+        {% else %}
             <div class="text-center py-12">
                 <c-icon name="reference" class="size-12 text-muted" />
                 <p class="mt-4 text-muted">No reference material yet</p>
             </div>
-        {% endfor %}
-        </div>
+        {% endif %}
     </c-page>
 {% endblock content %}

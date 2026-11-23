@@ -33,6 +33,9 @@ from freedom_ls.deadlines.factories import (
 )
 from freedom_ls.deadlines.models import AfterAccessEnded
 from freedom_ls.form_engine.factories import FormFactory
+from freedom_ls.learner_interface.templatetags.course_storage_keys import (
+    course_part_storage_key,
+)
 from freedom_ls.learner_interface.tests.helpers import (
     form_attempt,
     set_due_date,
@@ -223,12 +226,25 @@ def test_parts_and_topics_render_in_order_under_their_part_anchor(mock_site_cont
 
     page = _page(client.get(_reference_url(course, "listing")))
 
-    sections = page.cssselect("#interface-main section")
-    assert [section.get("id") for section in sections] == [earlier.slug, later.slug]
-    assert [li.text_content().strip() for li in sections[1].cssselect("li")] == [
+    parts = page.cssselect('#interface-main nav[aria-label="Reference"] > ul > li')
+    assert [part.get("id") for part in parts] == [earlier.slug, later.slug]
+    assert [li.text_content().strip() for li in parts[1].cssselect("ul li")] == [
         "Zeta",
         "Alpha",
     ]
+
+
+@pytest.mark.django_db
+def test_the_listing_opens_every_part(mock_site_context):
+    course = CourseFactory()
+    _reference_part(course, TopicFactory(), order=0)
+    _reference_part(course, TopicFactory(), order=1)
+    client, _user = _registered_client(course)
+
+    page = _page(client.get(_reference_url(course, "listing")))
+
+    parts = page.cssselect('#interface-main nav[aria-label="Reference"] > ul > li')
+    assert [part.get("data-start-expanded") for part in parts] == ["true", "true"]
 
 
 @pytest.mark.django_db
@@ -240,7 +256,7 @@ def test_listing_topic_titles_link_to_their_reference_topic_page(mock_site_conte
 
     page = _page(client.get(_reference_url(course, "listing")))
 
-    link = page.cssselect(f'section[id="{part.slug}"] li a')[0]
+    link = page.cssselect(f'#interface-main li[id="{part.slug}"] ul a')[0]
     assert link.get("href") == _topic_url(course, part, topic.slug)
 
 
@@ -252,7 +268,7 @@ def test_a_part_holding_only_a_form_is_absent(mock_site_context):
 
     page = _page(client.get(_reference_url(course, "listing")))
 
-    assert page.cssselect(f'section[id="{form_only.slug}"]') == []
+    assert page.cssselect(f'[id="{form_only.slug}"]') == []
 
 
 @pytest.mark.django_db
@@ -265,7 +281,7 @@ def test_with_no_reference_topics_the_page_says_so(mock_site_context):
 
     assert "No reference material yet" in page.text_content()
     assert page.cssselect('#interface-main svg[data-icon="reference"]')
-    assert page.cssselect("#interface-main section") == []
+    assert page.cssselect('#interface-main nav[aria-label="Reference"]') == []
 
 
 @pytest.mark.django_db
@@ -643,7 +659,7 @@ def test_the_reference_link_is_absent_where_an_ended_learner_keeps_no_outline(
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     ("route", "current"),
-    [("listing", True), ("topic", True), ("player", False)],
+    [("listing", True), ("topic", False), ("player", False)],
 )
 def test_the_reference_link_is_current_only_on_reference_pages(
     mock_site_context, route, current
@@ -662,10 +678,55 @@ def test_the_reference_link_is_current_only_on_reference_pages(
 
 
 @pytest.mark.django_db
-def test_the_outline_stays_the_only_nav_in_the_outline_region(mock_site_context):
+def test_the_sidebar_lists_reference_parts_that_expand_to_topic_links(
+    mock_site_context,
+):
+    course = CourseFactory()
+    course.items.create(child=TopicFactory(), order=0)
+    topic = TopicFactory(title="Cheat sheet")
+    part = _reference_part(course, topic, order=0)
+    client, _user = _registered_client(course)
+
+    page = _page(client.get(_player_url(course, "topic_item")))
+
+    [outline] = page.cssselect('#course-toc-region nav[aria-label="Course outline"]')
+    [reference] = page.cssselect('#course-toc-region nav[aria-label="Reference"]')
+    [part_row] = reference.cssselect("ul > li[x-data='coursePart']")
+    assert part.title in part_row.cssselect("button")[0].text_content()
+    [link] = part_row.cssselect("ul a")
+    assert link.text_content().strip() == "Cheat sheet"
+    assert link.get("href") == _topic_url(course, part, topic.slug)
+    assert part_row.get("data-contains-current") is None
+    assert outline is not reference
+
+
+@pytest.mark.django_db
+def test_the_sidebar_marks_the_reference_topic_being_read(mock_site_context):
+    course = CourseFactory()
+    first, second = TopicFactory(title="First"), TopicFactory(title="Second")
+    part = _reference_part(course, first, second, order=0)
+    client, _user = _registered_client(course)
+
+    page = _page(client.get(_topic_url(course, part, second.slug)))
+
+    [part_row] = page.cssselect(
+        '#course-toc-region nav[aria-label="Reference"] li[x-data="coursePart"]'
+    )
+    assert part_row.get("data-contains-current") == "true"
+    [current] = part_row.cssselect('[aria-current="page"]')
+    assert current.text_content().strip() == "Second"
+
+
+@pytest.mark.django_db
+def test_reference_parts_keep_their_own_expanded_state_keys(mock_site_context):
     course = _player_course_with_reference()
     client, _user = _registered_client(course)
 
     page = _page(client.get(_player_url(course, "topic_item")))
 
-    assert len(page.cssselect("#course-toc-region nav")) == 1
+    [part_row] = page.cssselect(
+        '#course-toc-region nav[aria-label="Reference"] li[x-data="coursePart"]'
+    )
+    assert part_row.get("data-storage-key") == course_part_storage_key(
+        course.slug, 1, "reference"
+    )

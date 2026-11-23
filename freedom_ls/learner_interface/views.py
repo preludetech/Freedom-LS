@@ -31,7 +31,6 @@ from freedom_ls.content_engine.models import (
     ContentCollectionItem,
     Course,
     CourseCategory,
-    CoursePart,
     CourseVisibility,
     Topic,
 )
@@ -148,6 +147,8 @@ from .utils import (
     next_entry,
     outstanding_items,
     previous_entry,
+    reference_outline,
+    reference_topic_url,
     stamp_card_organisation,
     stamp_course_access_badge,
 )
@@ -998,9 +999,9 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
         {
             "course": course,
             **course_details_context(course),
-            "reference_part_titles": [
-                part.course_part.title for part in course_reference_topics(course)
-            ],
+            "reference_outline": reference_outline(
+                course, linked=decision.can_access_content
+            ),
             "extra_stats": (
                 [
                     {
@@ -2367,20 +2368,8 @@ def course_reference(request: HttpRequest, course_slug: str) -> HttpResponse:
         "learner_interface/course_reference.html",
         {
             "course": course,
-            "reference_part_topics": course_reference_topics(course),
+            "reference_outline": reference_outline(course, linked=True),
             **_reference_sidebar_context(request, course),
-        },
-    )
-
-
-def _reference_topic_url(course: Course, course_part: CoursePart, topic: Topic) -> str:
-    """The reference topic page for one topic of one of the course's reference parts."""
-    return reverse(
-        "learner_interface:course_reference_topic",
-        kwargs={
-            "course_slug": course.slug,
-            "part_slug": course_part.slug,
-            "topic_slug": topic.slug,
         },
     )
 
@@ -2417,12 +2406,12 @@ def course_reference_topic(
             "previous_topic": previous_topic,
             "next_topic": next_topic,
             "previous_url": (
-                _reference_topic_url(course, part.course_part, previous_topic)
+                reference_topic_url(course, part.course_part, previous_topic)
                 if previous_topic
                 else None
             ),
             "next_url": (
-                _reference_topic_url(course, part.course_part, next_topic)
+                reference_topic_url(course, part.course_part, next_topic)
                 if next_topic
                 else None
             ),

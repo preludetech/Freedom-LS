@@ -1387,3 +1387,80 @@ def course_reference_topics(
                 ReferencePartTopics(course_part=row.course_part, topics=topics)
             )
     return parts
+
+
+def reference_topic_url(course: Course, course_part: CoursePart, topic: Topic) -> str:
+    """The reference topic page for one topic of one of the course's reference parts."""
+    return reverse(
+        "learner_interface:course_reference_topic",
+        kwargs={
+            "course_slug": course.slug,
+            "part_slug": course_part.slug,
+            "topic_slug": topic.slug,
+        },
+    )
+
+
+class ReferenceOutlineTopic(TypedDict):
+    """A reference topic shaped as a course outline topic row."""
+
+    type: str
+    title: str
+    url: str | None
+    is_current: bool
+
+
+class ReferenceOutlinePart(TypedDict):
+    """A reference part shaped as a course outline part row."""
+
+    type: str
+    title: str
+    slug: str
+    contains_current: bool
+    children: list[ReferenceOutlineTopic]
+
+
+def reference_outline(
+    course: Course,
+    *,
+    linked: bool,
+    current_part: CoursePart | None = None,
+    current_topic: Topic | None = None,
+) -> list[ReferenceOutlinePart]:
+    """The course's reference parts as entries the course outline rows can draw.
+
+    Parts and topics come from course_reference_topics, so the query count stays
+    fixed. Topic rows link to their reference topic pages only when linked is
+    set; a visitor who cannot read the material sees the titles alone. The
+    current topic is the one current_topic names inside current_part.
+    """
+    outline: list[ReferenceOutlinePart] = []
+    for part in course_reference_topics(course):
+        in_current_part = (
+            current_part is not None and part.course_part.pk == current_part.pk
+        )
+        children: list[ReferenceOutlineTopic] = [
+            {
+                "type": "TOPIC",
+                "title": topic.title,
+                "url": (
+                    reference_topic_url(course, part.course_part, topic)
+                    if linked
+                    else None
+                ),
+                "is_current": in_current_part
+                and current_topic is not None
+                and topic.pk == current_topic.pk,
+            }
+            for topic in part.topics
+        ]
+        outline.append(
+            {
+                "type": "COURSE_PART",
+                "title": part.course_part.title,
+                "slug": part.course_part.slug,
+                "contains_current": any(child["is_current"] for child in children),
+                "children": children,
+            }
+        )
+    return outline

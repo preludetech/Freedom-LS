@@ -1,11 +1,13 @@
-"""Tests for the sidebar reference link tag."""
+"""Tests for the sidebar reference outline tag."""
 
 from __future__ import annotations
 
 import lxml.html
 import pytest
 
+from django.db import connection
 from django.template import Context, Template
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from freedom_ls.content_engine.factories import (
@@ -37,19 +39,40 @@ def _links(html: str) -> list[lxml.html.HtmlElement]:
     return links
 
 
+def _heading(html: str) -> lxml.html.HtmlElement:
+    [heading] = [
+        link
+        for link in _links(html)
+        if link.text_content().strip() == "Reference"
+        and "/reference/" in link.get("href", "")
+    ]
+    return heading
+
+
 @pytest.mark.django_db
-def test_the_link_points_at_the_reference_listing_when_the_course_has_reference_parts(
+def test_the_heading_links_to_the_reference_listing_when_the_course_has_reference_parts(
     mock_site_context,
 ):
     course = _course_with_reference()
 
     html = TEMPLATE.render(Context({"course": course}))
 
-    [link] = _links(html)
-    assert link.get("href") == reverse(
+    assert _heading(html).get("href") == reverse(
         "learner_interface:course_reference", kwargs={"course_slug": course.slug}
     )
-    assert link.cssselect('svg[data-icon="reference"]')
+
+
+@pytest.mark.django_db
+def test_the_reference_parts_render_as_outline_rows(mock_site_context):
+    course = _course_with_reference()
+
+    html = TEMPLATE.render(Context({"course": course}))
+
+    root = lxml.html.fromstring(html)
+    [nav] = root.cssselect('nav[aria-label="Reference"]')
+    assert len(nav.cssselect('li[x-data="coursePart"]')) == 1
+    assert nav.cssselect('svg[data-icon="folder"]')
+    assert nav.cssselect(".toc-counter") == []
 
 
 @pytest.mark.django_db
@@ -63,20 +86,30 @@ def test_nothing_renders_for_a_course_without_reference_parts(mock_site_context)
 @pytest.mark.parametrize(
     ("on_reference_page", "expected"), [(True, "page"), (False, None)]
 )
-def test_the_link_is_current_only_on_a_reference_page(
+def test_the_heading_is_current_only_on_the_reference_listing(
     mock_site_context, on_reference_page, expected
 ):
     course = _course_with_reference()
     context = Context({"course": course, "on_reference_page": on_reference_page})
 
-    [link] = _links(TEMPLATE.render(context))
-
-    assert link.get("aria-current") == expected
+    assert _heading(TEMPLATE.render(context)).get("aria-current") == expected
 
 
 @pytest.mark.django_db
-def test_the_tag_costs_one_query(mock_site_context, django_assert_max_num_queries):
-    course = _course_with_reference()
+def test_the_tag_query_count_does_not_grow_with_parts(
+    mock_site_context, django_assert_num_queries
+):
+    small = _course_with_reference()
+    large: Course = CourseFactory()
+    for order in range(3):
+        part = CoursePartFactory()
+        CourseReferencePartFactory(course=large, course_part=part, order=order)
+        for position in range(3):
+            ContentCollectionItemFactory(
+                collection_object=part, child_object=TopicFactory(), order=position
+            )
+    with CaptureQueriesContext(connection) as baseline:
+        TEMPLATE.render(Context({"course": small}))
 
-    with django_assert_max_num_queries(1):
-        TEMPLATE.render(Context({"course": course}))
+    with django_assert_num_queries(len(baseline)):
+        TEMPLATE.render(Context({"course": large}))
