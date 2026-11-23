@@ -32,3 +32,15 @@ def test_option_text_is_appended_to_the_correct_answer_mark():
     html = _render('option_text="Paris"')
 
     assert "Correct answer: Paris" in html
+
+
+def test_icon_only_keeps_the_correct_words_for_screen_readers_only():
+    html = _render('icon_only="true"')
+
+    assert '<span class="sr-only">Correct answer</span>' in html
+
+
+def test_icon_only_keeps_the_wrong_choice_words_for_screen_readers_only():
+    html = _render('wrong_choice="true" icon_only="true"')
+
+    assert '<span class="sr-only">Your answer</span>' in html

@@ -109,6 +109,10 @@ Where you do write utilities, keep to Tailwind's spacing scale and use `rounded-
 
 **A form error that belongs to no single field is an error callout.** A failed login, a rejected submission or any `form.non_field_errors` message shows in an error callout above the form: `<c-callout tone="error">` outside the panel framework, `<c-panel-callout tone="error">` in a panel-framework template. A field's own error stays as text beside that field.
 
+**A marked answer option is tinted with its result.** Once a question is marked, the correct option takes `border-success bg-success/10` and a wrong pick takes `border-error bg-error/10`, each with its icon at the end of the row. An option that is neither stays neutral. The tint carries the result together with the icon and its text, never the icon alone.
+
+**A result and its explanation sit in a callout.** Feedback on something the person just did ("Correct", "Not quite", why an answer is right) goes in `<c-callout>` with the tone of the result: the result as the title, the explanation as the text. It is never a bare heading with a paragraph under it.
+
 **A button label fits on one line, down to a 375px phone.** Keep it to a verb and a noun ("Download errors", "Upload a corrected file"). A count or a sentence goes in the heading or text beside the button, not in the label. A label wraps only when no shorter wording names the action.
 
 **A long list inside a block scrolls in its own region.** When a block can hold more than about ten rows (an import's error rows, say), cap its height (`max-h-96 overflow-y-auto`) so the page around it stays short. Make the region focusable (`tabindex="0"`, `role="region"`, an `aria-label`) and keep the table header sticky.
@@ -173,6 +177,8 @@ What QA checks in a screenshot of any FLS page.
 - A "Details" link on a row or card opens the record the row shows, not a related record.
 - Each row or card in a list ends in one control, in the same place on every row, with one arrow; no row has an extra button.
 - A page for one record lists its state, its dates and what is left to do in a definition list above its actions.
+- A marked answer option has a green border and tint when it is the correct one and a red border and tint when it is a wrong pick; no result is shown by an icon alone.
+- A result and its explanation sit inside a callout in the result's tone, not under a bare heading.
 
 ## Example page
 

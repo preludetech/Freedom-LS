@@ -48,6 +48,7 @@ The words FreedomLS uses about itself in UI copy, docs and marketing. For the na
 | fork it         | get started               | Culturally resonant, implies ownership from day one |
 | foundation      | platform / solution       | Something you build on, not SaaS-speak |
 | plain Markdown  | CMS / content management  | Explicit about the format |
+| due             | ready                     | A revision question waiting for the learner is "due" ("6 due"), the word spaced-repetition tools use |
 
 ## Dates and times
 
@@ -156,3 +157,4 @@ opens the add dialog.
   a softened one a reader could take for "not yet"; a reason is labelled "Reason".
 - A confirm dialog says "you" when the person acts on themselves, and every sentence in it holds
   after the action: nothing it describes differs from the result, nothing it promises is lost by it.
+- A count of revision questions waiting for the learner reads "N due", never "N ready".

@@ -1,19 +1,16 @@
-{% extends "_base.html" %}
+{% extends "learner_interface/_course_base.html" %}
 
-{% load static %}
+{% block item_head_title %}Revision{% endblock %}
 
-{% block extra_alpine_components %}
-    <script defer src="{% static 'learner_interface/js/alpine-components.js' %}"></script>
-{% endblock extra_alpine_components %}
+{% comment %}The breadcrumbs line up with the revision card below them.{% endcomment %}
+{% block header_width %}max-w-2xl{% endblock header_width %}
 
-{% block head_title %}
-    Revision: {{ course.title }}
-{% endblock head_title %}
+{% comment %}Each revision card carries its own heading, so the header shows the breadcrumbs only.{% endcomment %}
+{% block item_page_title %}{% endblock item_page_title %}
 
 {% block content %}
-    <c-page width="narrow">
-        <div class="space-y-6">
-            <c-back-link href="{% url 'learner_interface:course_detail' course_slug=course.slug %}">Back to course</c-back-link>
+    <c-page flush="true" class="pt-2 lg:pt-4">
+        <div class="mx-auto max-w-2xl">
             {% include card_template %}
         </div>
     </c-page>

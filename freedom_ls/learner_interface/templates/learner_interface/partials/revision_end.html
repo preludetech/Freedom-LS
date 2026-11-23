@@ -1,25 +1,28 @@
-<div id="revision-card" class="surface p-6 space-y-4">
-    <p class="text-lg" data-testid="revision-end">{{ answered_count }} answered, {{ right_count }} right.</p>
-    {% if missed %}
-        <ul class="list-none ml-0 divide-y divide-border" data-testid="revision-missed">
-            {% for item in missed %}
-                <li class="py-3 space-y-2">
-                    <div>{{ item.question.rendered_question }}</div>
-                    {% for link in item.section_links %}
-                        <c-button variant="link" class="px-0" href="{{ link.url }}">Revise: {{ link.title }}</c-button>
-                    {% endfor %}
-                </li>
-            {% endfor %}
-        </ul>
-    {% endif %}
-    {% if next_ready_at %}
-        <p class="text-muted" data-testid="revision-next-ready">Next question ready <c-date :value="next_ready_at" /></p>
-    {% endif %}
-    {% if has_more_ready %}
-        <form method="post" action="{% url 'learner_interface:course_revision_start' course.slug %}">
-            {% csrf_token %}
-            <c-button type="submit">Revise more</c-button>
-        </form>
-    {% endif %}
-    <c-button variant="link" class="px-0" href="{% url 'learner_interface:course_detail' course.slug %}">Back to course</c-button>
-</div>
+{% comment %}
+The end of a revision session: how many questions the learner answered and how they went.
+Knew it is a right answer, Hard a right answer marked "I guessed", Forgot a wrong one.
+{% endcomment %}
+<section id="revision-card" class="surface p-6 sm:p-8 space-y-6 text-center" data-testid="revision-end">
+    <div class="mx-auto flex size-14 items-center justify-center rounded-full bg-success/10">
+        <c-icon name="check" class="size-7 text-success" />
+    </div>
+    <div class="space-y-1">
+        <h1 class="mt-0">Revision done</h1>
+        <p class="text-muted" data-testid="revision-answered">You answered {{ summary.answered }} question{{ summary.answered|pluralize }}.</p>
+    </div>
+    <dl class="grid grid-cols-3 gap-3" data-testid="revision-counts">
+        <div class="flex flex-col-reverse rounded-md border border-border bg-surface-2 px-2 py-3">
+            <dt class="text-sm font-normal text-muted">Knew it</dt>
+            <dd class="m-0 text-2xl font-bold text-primary" data-testid="revision-knew">{{ summary.knew }}</dd>
+        </div>
+        <div class="flex flex-col-reverse rounded-md border border-border bg-surface-2 px-2 py-3">
+            <dt class="text-sm font-normal text-muted">Hard</dt>
+            <dd class="m-0 text-2xl font-bold text-on-surface" data-testid="revision-hard">{{ summary.hard }}</dd>
+        </div>
+        <div class="flex flex-col-reverse rounded-md border border-border bg-surface-2 px-2 py-3">
+            <dt class="text-sm font-normal text-muted">Forgot</dt>
+            <dd class="m-0 text-2xl font-bold text-on-surface" data-testid="revision-forgot">{{ summary.forgot }}</dd>
+        </div>
+    </dl>
+    <c-button href="{% url 'learner_interface:course_home' course.slug %}" class="w-full">Back to the course</c-button>
+</section>

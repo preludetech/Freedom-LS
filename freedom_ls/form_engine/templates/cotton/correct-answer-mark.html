@@ -1,6 +1,9 @@
-<c-vars option_text="" wrong_choice="" class="" />
+<c-vars option_text="" wrong_choice="" icon_only="" class="" />
 {% comment %}
 Marks the correct option, or the learner's wrong choice, for a reviewer. The
 words carry the meaning either way, so the mark reads without colour.
+
+icon_only="true" shows the icon alone and keeps the words for screen readers.
+Use it on a row that already shows the result with its own border and tint.
 {% endcomment %}
-{% if wrong_choice %}<span class="flex shrink-0 items-center gap-1 text-sm text-error {{ class }}"><c-icon name="error" class="size-4" />Your answer</span>{% else %}<span class="flex shrink-0 items-center gap-1 text-sm text-success {{ class }}"><c-icon name="check" class="size-4" />Correct answer{% if option_text %}: {{ option_text }}{% endif %}</span>{% endif %}
+{% if wrong_choice %}<span class="flex shrink-0 items-center gap-1 text-sm text-error {{ class }}"><c-icon name="{% if icon_only %}close{% else %}error{% endif %}" class="{% if icon_only %}size-5{% else %}size-4{% endif %}" /><span{% if icon_only %} class="sr-only"{% endif %}>Your answer</span></span>{% else %}<span class="flex shrink-0 items-center gap-1 text-sm text-success {{ class }}"><c-icon name="check" class="{% if icon_only %}size-5{% else %}size-4{% endif %}" /><span{% if icon_only %} class="sr-only"{% endif %}>Correct answer{% if option_text %}: {{ option_text }}{% endif %}</span></span>{% endif %}

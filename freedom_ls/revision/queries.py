@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from random import Random
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -309,6 +310,33 @@ def due_questions(
     return sorted(reviewed, key=retrievability) + sorted(
         never_reviewed, key=first_section
     )
+
+
+def practice_questions(
+    user: User, record: CourseProgress, rng: Random
+) -> list[FormQuestion]:
+    """Every bank question, the learner's weakest first, for a session when nothing is due.
+
+    Weakest is most lapses, then highest difficulty. Questions that tie, and
+    questions with no schedule, fall in random order.
+    """
+    questions = list(bank_questions(record).order_by("pk"))
+    rng.shuffle(questions)
+    schedules = {
+        schedule.question_id: schedule
+        for schedule in RevisionSchedule.objects.filter(
+            user=user, question__in=questions
+        )
+    }
+
+    def strength(question: FormQuestion) -> tuple[int, float]:
+        schedule = schedules.get(question.pk)
+        if schedule is None:
+            return (0, 0.0)
+        return (-schedule.lapses, -(schedule.difficulty or 0.0))
+
+    # A stable sort keeps the shuffle's order among equals.
+    return sorted(questions, key=strength)
 
 
 def question_sections(

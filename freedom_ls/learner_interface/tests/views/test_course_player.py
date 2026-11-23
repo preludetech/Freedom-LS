@@ -99,6 +99,7 @@ from freedom_ls.learner_progress.tests.quiz_fixtures import ScoredQuiz, SitQuiz
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.revision.factories import RevisionScheduleFactory
 from freedom_ls.revision.tests.helpers import (
     finish_topic,
     place_topic,
@@ -5301,25 +5302,69 @@ def test_outline_course_part_chevron_points_up_while_open(
         assert rotating
 
 
-@pytest.mark.django_db
-def test_outline_panel_shows_the_revision_line_for_a_learner_with_a_bank(
-    mock_site_context,
+def _outline_with_bank(
+    *, schedule_due_in: timedelta | None = None, finish: bool = True
 ):
+    """The outline panel of a topic page, for a learner whose course has one revision question."""
     course = CourseFactory()
     topic, _ = place_topic(course)
-    question_testing_topic(topic)
+    question = question_testing_topic(topic)
     user = UserFactory()
-    finish_topic(course_progress_record(course, user), topic)
+    record = course_progress_record(course, user)
+    if finish:
+        finish_topic(record, topic)
+    if schedule_due_in is not None:
+        RevisionScheduleFactory(
+            user=user, question=question, due=timezone.now() + schedule_due_in
+        )
     client = Client()
     client.force_login(user)
     url = reverse(
         "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
+    region = lxml.html.fromstring(client.get(url).content.decode()).cssselect(
+        "#course-toc-region"
+    )[0]
+    return course, region
 
-    response = client.get(url)
 
-    line = lxml.html.fromstring(response.content.decode()).cssselect(
-        '#course-toc-region [data-testid="revision-link"]'
+@pytest.mark.django_db
+def test_outline_panel_shows_the_revision_entry_with_the_due_count(mock_site_context):
+    course, region = _outline_with_bank()
+
+    entry = region.cssselect('[data-testid="revision-link"] a')[0]
+
+    assert entry.get("href") == reverse(
+        "learner_interface:course_revision", kwargs={"course_slug": course.slug}
     )
-    assert "1 ready" in line[0].text_content()
+    assert " ".join(entry.text_content().split()) == "Revision 1 due"
+
+
+@pytest.mark.django_db
+def test_outline_revision_entry_sits_under_the_table_of_contents(mock_site_context):
+    _, region = _outline_with_bank()
+
+    order = [
+        element.get("aria-label")
+        for element in region.cssselect("nav")
+        if element.get("aria-label") in {"Course outline", "Revision"}
+    ]
+
+    assert order == ["Course outline", "Revision"]
+
+
+@pytest.mark.django_db
+def test_outline_revision_entry_reads_zero_due_when_nothing_is_due(mock_site_context):
+    _, region = _outline_with_bank(schedule_due_in=timedelta(days=5))
+
+    entry = region.cssselect('[data-testid="revision-link"]')[0]
+
+    assert "0 due" in entry.text_content()
+
+
+@pytest.mark.django_db
+def test_outline_has_no_revision_entry_before_a_section_is_finished(mock_site_context):
+    _, region = _outline_with_bank(finish=False)
+
+    assert region.cssselect('[data-testid="revision-link"]') == []

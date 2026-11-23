@@ -114,6 +114,8 @@ breadcrumbs. The h1 keeps its own top margin when there is no line above it.{% e
         <nav aria-label="Reference">, apart from the "Course outline" nav.
         {% endcomment %}
         {% reference_link %}
+
+        {% include "learner_interface/partials/course_toc_revision.html" %}
     </div>
     {% endif %}
 {% endblock sidebar_content %}

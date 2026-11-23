@@ -10,6 +10,7 @@ from freedom_ls.form_engine.factories import FormQuestionFactory, QuestionOption
 from freedom_ls.form_engine.models import FormProgress, QuestionAnswer
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.revision import scheduler
+from freedom_ls.revision.factories import RevisionScheduleFactory
 from freedom_ls.revision.models import RevisionReview, RevisionSchedule
 from freedom_ls.revision.services import (
     GuessRefused,
@@ -17,6 +18,7 @@ from freedom_ls.revision.services import (
     build_session,
     mark_guessed,
     record_answer,
+    session_summary,
     shuffled_options,
 )
 from freedom_ls.revision.tests.helpers import (
@@ -323,3 +325,97 @@ def test_guessing_leaves_reps_and_lapses_unchanged(banked):
 
     schedule = RevisionSchedule.objects.get(user=user, question=question)
     assert (schedule.reps, schedule.lapses) == (1, 0)
+
+
+def _three_banked_questions():
+    course = CourseFactory()
+    topic, _ = place_topic(course)
+    questions = [question_testing_topic(topic) for _ in range(3)]
+    user = UserFactory()
+    record = course_progress_record(course, user)
+    finish_topic(record, topic)
+    return user, record, questions
+
+
+@pytest.mark.django_db
+def test_build_session_with_nothing_due_asks_the_weakest_question_first(
+    mock_site_context,
+):
+    user, record, (steady, lapsed, difficult) = _three_banked_questions()
+    later = NOW + timedelta(days=5)
+    RevisionScheduleFactory(
+        user=user, question=steady, due=later, lapses=0, difficulty=2.0
+    )
+    RevisionScheduleFactory(
+        user=user, question=lapsed, due=later, lapses=3, difficulty=2.0
+    )
+    RevisionScheduleFactory(
+        user=user, question=difficult, due=later, lapses=0, difficulty=9.0
+    )
+
+    state = build_session(user, record, NOW)
+
+    assert state.question_ids == (lapsed.pk, difficult.pk, steady.pk)
+
+
+@pytest.mark.django_db
+def test_build_session_with_a_question_due_holds_only_the_due_one(mock_site_context):
+    user, record, (due, later_one, later_two) = _three_banked_questions()
+    RevisionScheduleFactory(user=user, question=due, due=NOW - timedelta(days=1))
+    for question in (later_one, later_two):
+        RevisionScheduleFactory(
+            user=user, question=question, due=NOW + timedelta(days=5), lapses=4
+        )
+
+    state = build_session(user, record, NOW)
+
+    assert state.question_ids == (due.pk,)
+
+
+@pytest.mark.django_db
+def test_build_session_with_nothing_due_holds_at_most_the_configured_size(
+    mock_site_context, settings
+):
+    settings.REVISION_SESSION_SIZE = 2
+    user, record, questions = _three_banked_questions()
+    for question in questions:
+        RevisionScheduleFactory(
+            user=user, question=question, due=NOW + timedelta(days=5)
+        )
+
+    state = build_session(user, record, NOW)
+
+    assert len(state.question_ids) == 2
+
+
+@pytest.mark.django_db
+def test_session_summary_counts_knew_hard_and_forgot(mock_site_context):
+    user, record, (known, guessed, missed) = _three_banked_questions()
+    state = build_session(user, record, NOW)
+    record_answer(user, record, known, _correct_ids(known), NOW)
+    mark_guessed(record_answer(user, record, guessed, _correct_ids(guessed), NOW))
+    record_answer(user, record, missed, _wrong_ids(missed), NOW)
+
+    summary = session_summary(user, state)
+
+    assert (summary.answered, summary.knew, summary.hard, summary.forgot) == (
+        3,
+        1,
+        1,
+        1,
+    )
+
+
+@pytest.mark.django_db
+def test_session_summary_of_an_unanswered_session_is_all_zero(banked):
+    user, record, _ = banked
+    state = build_session(user, record, NOW)
+
+    summary = session_summary(user, state)
+
+    assert (summary.answered, summary.knew, summary.hard, summary.forgot) == (
+        0,
+        0,
+        0,
+        0,
+    )

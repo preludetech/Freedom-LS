@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, cast
 
@@ -33,7 +33,6 @@ from freedom_ls.content_engine.models import (
     ContentCollectionItem,
     Course,
     CourseCategory,
-    CoursePart,
     CourseVisibility,
     Topic,
 )
@@ -117,14 +116,9 @@ from freedom_ls.referral_tracking.models import ConversionKind
 from freedom_ls.revision.models import RevisionReview
 from freedom_ls.revision.queries import (
     bank_questions,
-    bank_sections,
-    course_has_revision_questions,
-    last_reviewed_at,
-    next_ready_at,
     question_sections,
     ready_count,
     section_first_placement,
-    weak_sections,
 )
 from freedom_ls.revision.services import (
     GuessRefused,
@@ -133,6 +127,7 @@ from freedom_ls.revision.services import (
     mark_guessed,
     record_answer,
     session_reviews,
+    session_summary,
     shuffled_options,
 )
 from freedom_ls.site_aware_models.models import get_cached_site
@@ -1044,9 +1039,6 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
                 else []
             ),
             "children": children,
-            "revision_ready_text": _revision_ready_text(
-                cast("User", request.user), course_progress, decision, timezone.now()
-            ),
             "is_registered": is_registered,
             "is_coming_soon": is_coming_soon,
             "start_url": start_url,
@@ -1764,7 +1756,7 @@ def _player_chrome_context(
     ``reference_linked`` is whether the learner can read the reference pages, so the
     sidebar's reference topics link only when following them would not bounce.
 
-    ``decision`` gates the outline's link to the revision page; without one the link is
+    ``decision`` gates the outline's Revision entry; without one the entry is
     left out.
     """
     user = request.user
@@ -1816,8 +1808,8 @@ def _player_chrome_context(
         "index": index,
         "paused": outline_mode is OutlineMode.PAUSED,
         "reference_linked": reference_linked,
-        "revision_ready_text": (
-            _revision_ready_text(
+        "revision_due_text": (
+            _revision_due_text(
                 cast("User", user), course_progress, decision, timezone.now()
             )
             if decision is not None
@@ -2627,39 +2619,11 @@ def _render_revision_card(
 
 
 def _revision_end_context(
-    request: HttpRequest,
-    course: Course,
-    record: CourseProgress,
-    state: RevisionSessionState,
+    request: HttpRequest, course: Course, state: RevisionSessionState
 ) -> dict[str, object]:
-    user = cast("User", request.user)
-    now = timezone.now()
-    reviews = session_reviews(user, state)
-    missed_reviews = list(
-        reviews.filter(was_correct=False)
-        .select_related("question")
-        .prefetch_related(
-            "question__formquestiontopic_set", "question__formquestioncoursepart_set"
-        )
-        .order_by("reviewed_at")
-    )
-    # Built once for every missed question, and only when there is one to link.
-    openable = (
-        _openable_positions(request.user, course, record) if missed_reviews else {}
-    )
     return {
         "course": course,
-        "answered_count": reviews.count(),
-        "right_count": reviews.filter(was_correct=True).count(),
-        "missed": [
-            {
-                "question": review.question,
-                "section_links": _section_links(record, review.question, openable),
-            }
-            for review in missed_reviews
-        ],
-        "next_ready_at": next_ready_at(user, record, now),
-        "has_more_ready": ready_count(user, record, now, limit=1) > 0,
+        "summary": session_summary(cast("User", request.user), state),
     }
 
 
@@ -2669,10 +2633,16 @@ def _revision_card_context(
     record: CourseProgress,
     state: RevisionSessionState,
 ) -> tuple[str, dict[str, object]]:
+    """The template and context for where the session is: a question, or the done card.
+
+    Reaching the done card ends the session, so the next visit to the
+    revision page starts from the dashboard.
+    """
     question, state = _current_revision_question(record, state)
     if question is None:
+        request.session.pop(_revision_session_key(course), None)
         return "learner_interface/partials/revision_end.html", _revision_end_context(
-            request, course, record, state
+            request, course, state
         )
     review = _revision_review_of(cast("User", request.user), state, question)
     section_links = (
@@ -2684,11 +2654,13 @@ def _revision_card_context(
         if review is not None
         else []
     )
+    options = shuffled_options(question, state.seeds[state.index])
     return "learner_interface/partials/revision_card.html", {
         "course": course,
         "question": question,
         "section_links": section_links,
-        "revision_options": shuffled_options(question, state.seeds[state.index]),
+        "revision_options": options,
+        "correct_options": [option for option in options if option.correct],
         "review": review,
         "position": state.index + 1,
         "total": len(state.question_ids),
@@ -2698,126 +2670,110 @@ def _revision_card_context(
     }
 
 
-COURSE_READY_CAP = 40
-WELCOME_BACK_AFTER = timedelta(days=14)
-SECTION_READY_CAP = 10
+COURSE_DUE_CAP = 40
 
 
-def _ready_text(
-    user: User,
-    record: CourseProgress,
-    now: datetime,
-    *,
-    cap: int,
-    section: Topic | CoursePart | None = None,
-) -> str:
-    # Counts one past the cap, so "40" and "more than 40" can be told apart.
-    count = ready_count(user, record, now, limit=cap + 1, section=section)
-    return f"{cap}+ ready" if count > cap else f"{count} ready"
+def _due_count(user: User, record: CourseProgress, now: datetime) -> int:
+    """The due questions, counted one past the cap so "40" and "more than 40" can be told apart."""
+    return ready_count(user, record, now, limit=COURSE_DUE_CAP + 1)
 
 
-def _revision_ready_text(
+def _due_number(count: int) -> str:
+    return f"{COURSE_DUE_CAP}+" if count > COURSE_DUE_CAP else str(count)
+
+
+def _revision_due_text(
     user: User,
     record: CourseProgress | None,
     decision: CourseAccessDecision,
     now: datetime,
 ) -> str | None:
-    """The words on the course's link to its revision page, or None when it shows no link."""
-    if (
-        record is None
-        or not decision.can_access_content
-        or not bank_questions(record).exists()
-    ):
+    """The badge on the outline's Revision entry, or None when the outline shows no entry."""
+    if record is None or not decision.can_access_content:
         return None
-    ready_text = _ready_text(user, record, now, cap=COURSE_READY_CAP)
-    return "You're all caught up." if ready_text == "0 ready" else ready_text
+    return _revision_due_badge(user, record, now)
 
 
-def _revision_section_rows(
-    user: User, record: CourseProgress
-) -> list[dict[str, object]]:
-    """One row per bank section: weak sections first, course order within each group."""
-    weak = weak_sections(user, record)
-    rows: list[dict[str, object]] = []
-    for section in bank_sections(record):
-        section_ready_text = _ready_text(
-            user, record, timezone.now(), cap=SECTION_READY_CAP, section=section
-        )
-        rows.append(
-            {
-                "section": section,
-                "ready_text": section_ready_text,
-                "has_ready": section_ready_text != "0 ready",
-                "is_weak": section.pk in weak,
-            }
-        )
-    # A stable sort keeps course order inside each group.
-    return sorted(rows, key=lambda row: not row["is_weak"])
+def _revision_due_badge(
+    user: User, record: CourseProgress, now: datetime
+) -> str | None:
+    """ "N due" for a learner with a bank, None for one without."""
+    if not bank_questions(record).exists():
+        return None
+    return f"{_due_number(_due_count(user, record, now))} due"
 
 
-def _revision_start_context(
+def _revision_dashboard_context(
     user: User, course: Course, record: CourseProgress
 ) -> dict[str, object]:
-    """The start screen's context, decided in order: no questions, empty bank, then the sections."""
-    if not course_has_revision_questions(course):
-        return {"course": course, "has_questions": False}
-    if not bank_questions(record).exists():
-        return {"course": course, "has_questions": True, "bank_is_empty": True}
-    now = timezone.now()
-    ready_text = _ready_text(user, record, now, cap=COURSE_READY_CAP)
-    last_review = last_reviewed_at(user, course)
+    has_bank = bank_questions(record).exists()
+    due_count = _due_count(user, record, timezone.now()) if has_bank else 0
     return {
         "course": course,
-        "has_questions": True,
-        "bank_is_empty": False,
-        "ready_text": ready_text,
-        "has_ready": ready_text != "0 ready",
-        "next_ready_at": next_ready_at(user, record, now),
-        "welcome_back": last_review is not None
-        and now - last_review >= WELCOME_BACK_AFTER,
-        "section_rows": _revision_section_rows(user, record),
+        "has_bank": has_bank,
+        "due_count": due_count,
+        "due_number": _due_number(due_count),
     }
+
+
+def _render_revision_page(
+    request: HttpRequest,
+    course: Course,
+    record: CourseProgress,
+    card_template: str,
+    context: dict[str, object],
+) -> HttpResponse:
+    """The revision page in the course player: the outline beside one revision card."""
+    user = cast("User", request.user)
+    return render(
+        request,
+        "learner_interface/course_revision.html",
+        {
+            **context,
+            "card_template": card_template,
+            "course_progress": record,
+            "course_organisation": record.learner.organisation,
+            # Index 0 marks no row as current: the Revision entry is the current place.
+            "course_index": _player_course_index(user, course, 0, record).rows,
+            "item_title": "Revision",
+            "revision_is_current": True,
+            # The access gate has already passed, so only the bank decides.
+            "revision_due_text": _revision_due_badge(user, record, timezone.now()),
+            **_time_zone_context(request),
+        },
+    )
 
 
 @login_required
 def course_revision(request: HttpRequest, course_slug: str) -> HttpResponse:
-    """The revision page: the start screen, or the session's current card or end line."""
+    """The revision page: the dashboard, or the session's current card or done card."""
     gate = _revision_record(request, course_slug)
     if isinstance(gate, HttpResponseRedirect):
         return gate
     course, record = gate
     state = _revision_state(request, course)
     if state is None:
-        context: dict[str, object] = {
-            "card_template": "learner_interface/partials/revision_start.html",
-            **_revision_start_context(cast("User", request.user), course, record),
-        }
-    else:
-        card_template, context = _revision_card_context(request, course, record, state)
-        context["card_template"] = card_template
-        context["error"] = ""
-    return render(request, "learner_interface/course_revision.html", context)
+        return _render_revision_page(
+            request,
+            course,
+            record,
+            "learner_interface/partials/revision_dashboard.html",
+            _revision_dashboard_context(cast("User", request.user), course, record),
+        )
+    card_template, context = _revision_card_context(request, course, record, state)
+    context["error"] = ""
+    return _render_revision_page(request, course, record, card_template, context)
 
 
 @login_required
 @require_POST
 def course_revision_start(request: HttpRequest, course_slug: str) -> HttpResponse:
-    """Start a revision session over the ready questions, when there are any."""
+    """Start a revision session: the due questions, or the weakest ones when none is due."""
     gate = _revision_record(request, course_slug)
     if isinstance(gate, HttpResponseRedirect):
         return gate
     course, record = gate
-    section = None
-    section_id = request.GET.get("section")
-    if section_id is not None:
-        # Only a section this learner's bank names may be chosen, so an id
-        # from another course or site, or one that is not an id, selects nothing.
-        section = next(
-            (s for s in bank_sections(record) if str(s.pk) == section_id), None
-        )
-        if section is None:
-            raise Http404
-    state = build_session(cast("User", request.user), record, timezone.now(), section)
+    state = build_session(cast("User", request.user), record, timezone.now())
     if state.question_ids:
         _store_revision_state(request, course, state)
     response = redirect("learner_interface:course_revision", course_slug=course.slug)

@@ -1,0 +1,28 @@
+{% comment %}
+The revision page before a session starts: what is due and one button to start.
+
+TODO: this is a placeholder dashboard. A later spec designs the real one (sections, weak areas,
+history). Until then it holds the due count and the start button only.
+{% endcomment %}
+<section id="revision-card" class="surface p-6 sm:p-8 space-y-6 text-center" data-testid="revision-dashboard">
+    <div class="mx-auto flex size-14 items-center justify-center rounded-full bg-primary/10">
+        <c-icon name="revision" class="size-7 text-primary" />
+    </div>
+    <h1 class="mt-0">Revision</h1>
+    {% if has_bank %}
+        <p class="text-lg text-muted" data-testid="revision-due">
+            {% if due_count %}
+                {{ due_number }} question{{ due_count|pluralize }} due.
+            {% else %}
+                Nothing is due. You can still practise your weakest questions.
+            {% endif %}
+        </p>
+        <form method="post" action="{% url 'learner_interface:course_revision_start' course.slug %}">
+            {% csrf_token %}
+            <c-button type="submit" class="w-full py-3 text-lg">Start revision</c-button>
+        </form>
+    {% else %}
+        <p class="text-lg text-muted">Questions appear here after you finish a section.</p>
+        <c-button href="{% url 'learner_interface:course_home' course.slug %}" class="w-full">Back to the course</c-button>
+    {% endif %}
+</section>

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from random import Random
 from typing import TYPE_CHECKING
@@ -8,7 +9,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from django.db import transaction
-from django.db.models import QuerySet
+from django.db.models import Count, Q, QuerySet
 
 from freedom_ls.form_engine.models import FormQuestion, QuestionOption
 from freedom_ls.form_engine.scoring import is_quiz_answer_correct
@@ -16,7 +17,7 @@ from freedom_ls.form_engine.served_paper import new_seed, shuffle_with_locks
 from freedom_ls.revision import scheduler
 from freedom_ls.revision.config import config
 from freedom_ls.revision.models import RevisionReview, RevisionSchedule
-from freedom_ls.revision.queries import due_questions
+from freedom_ls.revision.queries import due_questions, practice_questions
 
 if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
@@ -57,9 +58,19 @@ def build_session(
     now: datetime,
     section: Topic | CoursePart | None = None,
 ) -> RevisionSessionState:
-    questions = due_questions(user, record, now, section)[
-        : config.REVISION_SESSION_SIZE
-    ]
+    """A session over the due questions, or over the weakest ones when nothing is due.
+
+    A learner is never refused a session: with nothing due in the whole
+    course, the session practises the questions they find hardest.
+    """
+    questions = due_questions(user, record, now, section)
+    if not questions and section is None:
+        questions = practice_questions(
+            user,
+            record,
+            Random(),  # noqa: S311 - ordering, not security
+        )
+    questions = questions[: config.REVISION_SESSION_SIZE]
     return RevisionSessionState(
         question_ids=tuple(question.pk for question in questions),
         seeds=tuple(new_seed() for _ in questions),
@@ -185,3 +196,24 @@ def session_reviews(
         question_id__in=state.question_ids,
         reviewed_at__gte=state.started_at,
     )
+
+
+@dataclass(frozen=True)
+class SessionSummary:
+    """What the learner did in one session, in the words the done card uses."""
+
+    answered: int
+    knew: int
+    hard: int
+    forgot: int
+
+
+def session_summary(user: User, state: RevisionSessionState) -> SessionSummary:
+    """Knew is right, hard is right but guessed, forgot is wrong."""
+    counts = session_reviews(user, state).aggregate(
+        answered=Count("pk"),
+        knew=Count("pk", filter=Q(was_correct=True, guessed=False)),
+        hard=Count("pk", filter=Q(was_correct=True, guessed=True)),
+        forgot=Count("pk", filter=Q(was_correct=False)),
+    )
+    return SessionSummary(**counts)
