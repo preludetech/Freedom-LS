@@ -33,12 +33,17 @@ from freedom_ls.deadlines.factories import (
 )
 from freedom_ls.deadlines.models import AfterAccessEnded
 from freedom_ls.form_engine.factories import FormFactory
-from freedom_ls.learner_interface.tests.helpers import topic_completion
+from freedom_ls.learner_interface.tests.helpers import (
+    form_attempt,
+    set_due_date,
+    topic_completion,
+)
 from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 
 REFERENCE_QUERY_BOUND = 60
+PLAYER_ITEMS = {"topic_item": 1, "form_item": 2}
 
 REGISTERED_AT = datetime.datetime(2026, 3, 1, 10, 0, tzinfo=datetime.UTC)
 AFTER_END = datetime.datetime(2026, 9, 1, 10, 0, tzinfo=datetime.UTC)
@@ -497,3 +502,170 @@ def test_a_shared_topic_resolves_media_from_its_own_directory(mock_site_context)
     response = client.get(_reference_url(course, "topic"))
 
     assert stored.file.url in response.content.decode()
+
+
+def _toc_links(response: HttpResponse) -> list[lxml.html.HtmlElement]:
+    """The links to the reference listing inside the outline region."""
+    course = response.context["course"]
+    href = reverse(
+        "learner_interface:course_reference", kwargs={"course_slug": course.slug}
+    )
+    return [
+        link
+        for link in _page(response).cssselect("#course-toc-region a")
+        if link.get("href") == href
+    ]
+
+
+def _player_course_with_reference() -> Course:
+    """A course of a topic then a form, with one reference topic."""
+    course: Course = CourseFactory()
+    course.items.create(child=TopicFactory(), order=0)
+    course.items.create(child=FormFactory(), order=1)
+    _reference_part(course, TopicFactory(), order=0)
+    return course
+
+
+def _player_url(course: Course, name: str) -> str:
+    """A player page: "topic_item" and "form_item" open items 1 and 2."""
+    kwargs: dict[str, object] = {"course_slug": course.slug}
+    if name in PLAYER_ITEMS:
+        kwargs["index"] = PLAYER_ITEMS[name]
+        name = "view_course_item"
+    return reverse(f"learner_interface:{name}", kwargs=kwargs)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("route", ["topic_item", "form_item", "course_finish"])
+def test_the_reference_link_shows_on_player_pages(mock_site_context, route):
+    course = _player_course_with_reference()
+    client, user = _registered_client(course)
+    # A form item stays shut until the topic before it is complete.
+    topic_completion(
+        course, user, course.viewable_items()[0], complete_time=REGISTERED_AT
+    )
+
+    response = client.get(_player_url(course, route))
+
+    assert len(_toc_links(response)) == 1
+
+
+@pytest.mark.django_db
+def test_the_reference_link_shows_on_a_closed_item_page(mock_site_context):
+    course = _player_course_with_reference()
+    set_due_date(course, course.viewable_items()[0], due_date=datetime.date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, close_items="on")
+    client, _user = _registered_client(course)
+
+    response = client.get(_player_url(course, "topic_item"))
+
+    assert "learner_interface/course_item_closed.html" in [
+        template.name for template in response.templates
+    ]
+    assert len(_toc_links(response)) == 1
+
+
+@pytest.mark.django_db
+def test_the_reference_link_shows_on_a_paused_learners_completed_topic(
+    mock_site_context,
+):
+    course = _player_course_with_reference()
+    client = _paused(course)
+    user = CourseProgress.objects.get(course=course).learner.user
+    topic_completion(
+        course, user, course.viewable_items()[0], complete_time=REGISTERED_AT
+    )
+
+    response = client.get(_player_url(course, "topic_item"))
+
+    assert len(_toc_links(response)) == 1
+
+
+@pytest.mark.django_db
+def test_the_reference_link_shows_for_a_course_with_an_empty_learning_path(
+    mock_site_context,
+):
+    course = _course_with_reference_topic()
+    client, _user = _registered_client(course)
+
+    response = client.get(_reference_url(course, "listing"))
+
+    assert len(_toc_links(response)) == 1
+
+
+@pytest.mark.django_db
+def test_the_reference_link_survives_a_boosted_request(mock_site_context):
+    course = _player_course_with_reference()
+    client, _user = _registered_client(course)
+
+    response = client.get(_player_url(course, "topic_item"), HTTP_HX_REQUEST="true")
+
+    assert len(_toc_links(response)) == 1
+
+
+@pytest.mark.django_db
+def test_the_reference_link_is_absent_for_a_course_without_reference_parts(
+    mock_site_context,
+):
+    course = _player_course_with_reference()
+    course.reference_parts.all().delete()
+    client, _user = _registered_client(course)
+
+    response = client.get(_player_url(course, "topic_item"))
+
+    assert _toc_links(response) == []
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_the_reference_link_is_absent_where_an_ended_learner_keeps_no_outline(
+    mock_site_context,
+):
+    course = _ended_course()
+    form = FormFactory()
+    course.items.create(child=form, order=1)
+    _reference_part(course, TopicFactory(), order=0)
+    client = _ended(course)
+    user = CourseProgress.objects.get(course=course).learner.user
+    form_attempt(course, user, form, completed_time=REGISTERED_AT)
+
+    response = client.get(
+        reverse(
+            "learner_interface:course_form_complete",
+            kwargs={"course_slug": course.slug, "index": 2},
+        )
+    )
+
+    assert response.status_code == 200
+    assert 'id="course-toc-region"' not in response.content.decode()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("route", "current"),
+    [("listing", True), ("topic", True), ("player", False)],
+)
+def test_the_reference_link_is_current_only_on_reference_pages(
+    mock_site_context, route, current
+):
+    course = _player_course_with_reference()
+    client, _user = _registered_client(course)
+    url = (
+        _player_url(course, "topic_item")
+        if route == "player"
+        else _reference_url(course, route)
+    )
+
+    [link] = _toc_links(client.get(url))
+
+    assert (link.get("aria-current") == "page") is current
+
+
+@pytest.mark.django_db
+def test_the_outline_stays_the_only_nav_in_the_outline_region(mock_site_context):
+    course = _player_course_with_reference()
+    client, _user = _registered_client(course)
+
+    page = _page(client.get(_player_url(course, "topic_item")))
+
+    assert len(page.cssselect("#course-toc-region nav")) == 1

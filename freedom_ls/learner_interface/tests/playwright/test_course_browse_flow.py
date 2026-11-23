@@ -32,6 +32,7 @@ from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
     CoursePartFactory,
+    CourseReferencePartFactory,
     FileFactory,
     TopicFactory,
 )
@@ -831,6 +832,60 @@ def test_desktop_outline_stays_viewport_height_after_reloading_a_scrolled_page(
     expect(outline).to_be_visible()
     assert _box(outline)["height"] <= 1080
     assert _box(outline)["y"] >= 0
+
+
+def test_learner_reads_reference_topics_from_the_mobile_outline(
+    live_server: LiveServer,
+    logged_in_page: Page,
+    logged_in_user: User,
+    live_server_site: Site,
+) -> None:
+    """The outline's Reference link opens the listing, and Next swaps topics in place."""
+    page = logged_in_page
+    course = CourseFactory(title="Reference Course", slug="reference-course")
+    LearnerCourseRegistrationFactory(
+        learner__user=logged_in_user, course=course, is_active=True
+    )
+    ContentCollectionItemFactory(
+        collection_object=course,
+        child_object=TopicFactory(title="Path Topic", slug="path-topic"),
+        order=0,
+    )
+    part = CoursePartFactory(title="Formulas", slug="formulas")
+    CourseReferencePartFactory(course=course, course_part=part, order=0)
+    for order, title in enumerate(("First Sheet", "Second Sheet")):
+        ContentCollectionItemFactory(
+            collection_object=part,
+            child_object=TopicFactory(title=title, slug=f"sheet-{order}"),
+            order=order,
+        )
+
+    page.set_viewport_size({"width": 375, "height": 812})
+    page.goto(_item_url(live_server, course, 1))
+    page.get_by_role("button", name="Open course outline").click()
+    page.get_by_role("dialog", name="Course outline").get_by_role(
+        "link", name="Reference"
+    ).click()
+    expect(page.get_by_role("heading", name="Reference", level=1)).to_be_visible()
+
+    page.get_by_role("link", name="First Sheet").click()
+    expect(page.get_by_role("heading", name="First Sheet", level=1)).to_be_visible()
+
+    page.get_by_role("link", name="Next: Second Sheet").click()
+    expect(page.get_by_role("heading", name="Second Sheet", level=1)).to_be_visible()
+    expect(page).to_have_url(re.compile(r"/reference/formulas/sheet-1/$"))
+    page.get_by_role("button", name="Open course outline").click()
+    expect(
+        page.get_by_role("dialog", name="Course outline").get_by_role(
+            "link", name="Reference"
+        )
+    ).to_have_attribute("aria-current", "page")
+    page.keyboard.press("Escape")
+
+    page.get_by_role("navigation", name="Breadcrumb").get_by_role(
+        "link", name="Reference Course"
+    ).click()
+    expect(page).to_have_url(_item_url(live_server, course, 1))
 
 
 def test_mobile_outline_sheet_and_drawer_stay_within_the_viewport(
