@@ -15,7 +15,12 @@ from django.http import Http404, HttpRequest, HttpResponse
 from django.utils.html import strip_tags
 
 from freedom_ls.content_engine.course_details import course_details_context
-from freedom_ls.content_engine.models import ContentCollectionItem, Course, CoursePart
+from freedom_ls.content_engine.models import (
+    ContentCollectionItem,
+    Course,
+    CoursePart,
+    CourseReferencePart,
+)
 from freedom_ls.educator_interface.panels.common.ids import uuid_or_404
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
@@ -31,9 +36,11 @@ from freedom_ls.panel_framework.tables import Column, DataTable, TableQuery
 __all__ = [
     "CourseContentPanel",
     "CourseOutlineTable",
+    "CourseReferencePanel",
     "OutlineRow",
     "PreviewContentAction",
     "PreviewCourseDetailsAction",
+    "ReferenceOutlineTable",
     "_all_collection_items",
     "_condition_question_text",
     "_form_page_rows",
@@ -42,6 +49,7 @@ __all__ = [
     "_outline_item_rows",
     "_preview_available",
     "outline_rows",
+    "reference_rows",
 ]
 
 
@@ -79,6 +87,9 @@ class OutlineRow:
         )
 
 
+CourseList = Literal["learning_path", "reference"]
+
+
 def _form_page_rows(
     item: ContentCollectionItem, form: Form, number: str
 ) -> tuple[OutlineRow, ...]:
@@ -95,6 +106,24 @@ def _form_page_rows(
     )
 
 
+def _part_row(part: CoursePart, number: str, *, nested: bool) -> OutlineRow:
+    """A part's group row holding a row for each of its collection items,
+    or a note when it has none."""
+    children = tuple(
+        _outline_item_rows(item, f"{number}.{position}", nested=True)
+        for position, item in enumerate(part.collection_items(), start=1)
+    )
+    return OutlineRow(
+        number=number if nested else f"{number}.",
+        title=part.title,
+        kind="part",
+        children=children
+        or (
+            OutlineRow(number="", title="", kind="part", note="No items in this part."),
+        ),
+    )
+
+
 def _outline_item_rows(
     item: ContentCollectionItem, number: str, *, nested: bool
 ) -> OutlineRow:
@@ -105,24 +134,7 @@ def _outline_item_rows(
     child = item.child
     label = number if nested else f"{number}."
     if isinstance(child, CoursePart):
-        part_children = tuple(
-            _outline_item_rows(part_item, f"{number}.{position}", nested=True)
-            for position, part_item in enumerate(child.collection_items(), start=1)
-        )
-        return OutlineRow(
-            number=label,
-            title=child.title,
-            kind="part",
-            children=part_children
-            or (
-                OutlineRow(
-                    number="",
-                    title="",
-                    kind="part",
-                    note="No items in this part.",
-                ),
-            ),
-        )
+        return _part_row(child, number, nested=nested)
     if isinstance(child, Form):
         pages = _form_page_rows(item, child, number)
         if len(pages) > 1:
@@ -156,17 +168,22 @@ def _all_collection_items(
     return flattened
 
 
-def outline_rows(course: Course) -> list[OutlineRow]:
-    """The top-level rows of the course outline: the course details first,
-    then every collection item in order, numbered as the learner outline
-    numbers them, each holding its own child rows. One pages query covers
-    every form, so the count stays flat as forms grow."""
+def _prefetch_form_pages(items: list[ContentCollectionItem]) -> None:
+    """One pages query covers every form among the items at any depth, so
+    the count stays flat as forms grow."""
     forms = [
         item.child
-        for item in _all_collection_items(course.collection_items())
+        for item in _all_collection_items(items)
         if isinstance(item.child, Form)
     ]
     prefetch_related_objects(forms, "pages")
+
+
+def outline_rows(course: Course) -> list[OutlineRow]:
+    """The top-level rows of the course outline: the course details first,
+    then every collection item in order, numbered as the learner outline
+    numbers them, each holding its own child rows."""
+    _prefetch_form_pages(course.collection_items())
     rows = [OutlineRow(number="", title="Course details", kind="course")]
     items = course.collection_items()
     rows.extend(
@@ -183,6 +200,31 @@ def outline_rows(course: Course) -> list[OutlineRow]:
             )
         )
     return rows
+
+
+def _reference_parts(course: Course) -> list[CourseReferencePart]:
+    """The course's own reference parts in order, each with its part."""
+    return list(course.reference_parts.select_related("course_part"))
+
+
+def reference_rows(course: Course) -> list[OutlineRow]:
+    """One group row per reference part of the course, in order, numbered
+    within the reference list. There is no course details row: the course
+    content outline already carries it."""
+    parts = [reference_part.course_part for reference_part in _reference_parts(course)]
+    _prefetch_form_pages([item for part in parts for item in part.collection_items()])
+    rows = [
+        _part_row(part, str(position), nested=False)
+        for position, part in enumerate(parts, start=1)
+    ]
+    return rows or [
+        OutlineRow(
+            number="",
+            title="",
+            kind="course",
+            note="No reference material in this course yet.",
+        )
+    ]
 
 
 def _preview_available(request: HttpRequest, course: Course) -> bool:
@@ -275,7 +317,13 @@ class CourseContentPanel(DataTablePanel):
     def outline(self) -> list[OutlineRow]:
         if not self.preview_available:
             return []
-        return outline_rows(cast(Course, self.instance))
+        return self.build_rows(cast(Course, self.instance))
+
+    def build_rows(self, course: Course) -> list[OutlineRow]:
+        return outline_rows(course)
+
+    def preview_actions(self) -> list[PanelAction]:
+        return [PreviewContentAction(), PreviewCourseDetailsAction()]
 
     def get_row_sequence(self, request: HttpRequest) -> Sequence[object]:
         return self.outline
@@ -302,7 +350,25 @@ class CourseContentPanel(DataTablePanel):
         # makes a preview URL 404 for a course not available here.
         if not self.preview_available:
             return []
-        return [PreviewContentAction(), PreviewCourseDetailsAction()]
+        return self.preview_actions()
+
+
+class ReferenceOutlineTable(CourseOutlineTable):
+    noun = "reference outline items"
+    noun_singular = "reference outline item"
+
+
+class CourseReferencePanel(CourseContentPanel):
+    title = "Reference"
+    template_name = "educator_interface/panels/course_reference.html"
+    data_table = ReferenceOutlineTable
+    table_key = "reference"
+
+    def build_rows(self, course: Course) -> list[OutlineRow]:
+        return reference_rows(course)
+
+    def preview_actions(self) -> list[PanelAction]:
+        return []
 
 
 def _condition_question_text(page: FormPage) -> str:

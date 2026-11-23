@@ -21,6 +21,7 @@ from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
     CoursePartFactory,
+    CourseReferencePartFactory,
     FileFactory,
     TopicFactory,
 )
@@ -73,26 +74,154 @@ def test_course_page_buttons_are_only_preview_triggers(staff_client: Client) -> 
     assert document.cssselect("section[data-panel] footer button") == []
 
 
-def _course_content_panel(client: Client, course: CourseModel) -> lxml.html.HtmlElement:
+def _course_content_panel(
+    client: Client, course: CourseModel, *, panel: str = "content"
+) -> lxml.html.HtmlElement:
     organisation = OrganisationFactory()
     document = _get_document(
         client, _interface_url(organisation.slug, f"courses/{course.pk}")
     )
-    (panel,) = document.cssselect("section[data-panel='content']")
-    return panel
+    (found,) = document.cssselect(f"section[data-panel='{panel}']")
+    return found
 
 
-def _outline_rows(panel: lxml.html.HtmlElement) -> list[lxml.html.HtmlElement]:
-    return list(panel.cssselect("[aria-label='Course outline items'] tbody tr"))
+def _outline_rows(
+    panel: lxml.html.HtmlElement, label: str = "Course outline items"
+) -> list[lxml.html.HtmlElement]:
+    return list(panel.cssselect(f"[aria-label='{label}'] tbody tr"))
 
 
-def _outline_numbers(panel: lxml.html.HtmlElement) -> list[str]:
+def _outline_numbers(
+    panel: lxml.html.HtmlElement, label: str = "Course outline items"
+) -> list[str]:
     numbers = [
         cell.text_content().strip()
-        for row in _outline_rows(panel)
+        for row in _outline_rows(panel, label)
         for cell in row.cssselect("td.tabular-nums")[:1]
     ]
     return [number for number in numbers if number]
+
+
+REFERENCE_LABEL = "Reference outline items"
+
+
+def _reference_part(course: CourseModel, order: int, topic_count: int) -> Model:
+    """A reference part of the course holding `topic_count` topics."""
+    part = CoursePartFactory(title=f"Reference part {order}")
+    CourseReferencePartFactory(course=course, course_part=part, order=order)
+    for position in range(topic_count):
+        ContentCollectionItemFactory(
+            collection_object=part, child_object=TopicFactory(), order=position
+        )
+    return cast(Model, part)
+
+
+@pytest.mark.django_db
+def test_the_reference_panel_lists_parts_in_order_numbered_within_itself(
+    staff_client: Client,
+) -> None:
+    course = CourseFactory()
+    _reference_part(course, order=1, topic_count=1)
+    _reference_part(course, order=0, topic_count=2)
+
+    panel = _course_content_panel(staff_client, course, panel="reference")
+
+    assert _outline_numbers(panel, REFERENCE_LABEL) == ["1.", "1.1", "1.2", "2.", "2.1"]
+    first_row = _outline_rows(panel, REFERENCE_LABEL)[0]
+    assert "Reference part 0" in first_row.cssselect("td")[1].text_content()
+    assert "Course details" not in panel.text_content()
+    assert panel.cssselect("header button") == []
+
+
+@pytest.mark.django_db
+def test_the_reference_numbers_start_at_one_beside_a_learning_path_topic(
+    staff_client: Client,
+) -> None:
+    course = CourseFactory()
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=TopicFactory(), order=0
+    )
+    _reference_part(course, order=0, topic_count=0)
+
+    panel = _course_content_panel(staff_client, course, panel="reference")
+
+    assert _outline_numbers(panel, REFERENCE_LABEL) == ["1."]
+
+
+@pytest.mark.django_db
+def test_reference_parts_do_not_change_the_course_content_rows_or_count(
+    staff_client: Client,
+) -> None:
+    course = CourseFactory()
+    part = CoursePartFactory()
+    ContentCollectionItemFactory(collection_object=course, child_object=part, order=0)
+    ContentCollectionItemFactory(
+        collection_object=part, child_object=TopicFactory(), order=0
+    )
+    _reference_part(course, order=0, topic_count=2)
+
+    panel = _course_content_panel(staff_client, course)
+
+    assert _outline_numbers(panel) == ["1.", "1.1"]
+    (count,) = panel.cssselect("[data-entry-count]")
+    assert count.text_content().strip() == "2 course outline items"
+
+
+@pytest.mark.django_db
+def test_the_reference_footer_counts_parts_and_topics(staff_client: Client) -> None:
+    course = CourseFactory()
+    _reference_part(course, order=0, topic_count=2)
+
+    panel = _course_content_panel(staff_client, course, panel="reference")
+
+    (count,) = panel.cssselect("[data-entry-count]")
+    assert count.text_content().strip() == "3 reference outline items"
+
+
+@pytest.mark.django_db
+def test_a_course_without_reference_parts_shows_the_empty_note_and_no_count(
+    staff_client: Client,
+) -> None:
+    panel = _course_content_panel(staff_client, CourseFactory(), panel="reference")
+
+    assert "No reference material in this course yet." in panel.text_content()
+    assert _outline_numbers(panel, REFERENCE_LABEL) == []
+    assert panel.cssselect("[data-entry-count]") == []
+
+
+@pytest.mark.django_db
+def test_an_empty_reference_part_shows_its_note_and_counts_as_one_item(
+    staff_client: Client,
+) -> None:
+    course = CourseFactory()
+    _reference_part(course, order=0, topic_count=0)
+
+    panel = _course_content_panel(staff_client, course, panel="reference")
+
+    assert "No items in this part." in panel.text_content()
+    (count,) = panel.cssselect("[data-entry-count]")
+    assert count.text_content().strip() == "1 reference outline item"
+
+
+@pytest.mark.django_db
+def test_a_reference_part_holding_a_form_and_a_nested_part_renders(
+    staff_client: Client,
+) -> None:
+    course = CourseFactory()
+    part = CoursePartFactory()
+    CourseReferencePartFactory(course=course, course_part=part, order=0)
+    form = FormFactory()
+    FormPageFactory(form=form)
+    ContentCollectionItemFactory(collection_object=part, child_object=form, order=0)
+    nested = CoursePartFactory()
+    ContentCollectionItemFactory(collection_object=part, child_object=nested, order=1)
+    ContentCollectionItemFactory(
+        collection_object=nested, child_object=TopicFactory(), order=0
+    )
+
+    panel = _course_content_panel(staff_client, course, panel="reference")
+
+    assert _outline_numbers(panel, REFERENCE_LABEL) == ["1.", "1.1", "1.2", "1.2.1"]
 
 
 @pytest.mark.django_db

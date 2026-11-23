@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from freedom_ls.educator_interface.panels.course.content_preview import (
     CourseContentPanel,
+    CourseReferencePanel,
 )
 from freedom_ls.educator_interface.panels.course.data_table_panels import (
     CourseCohortRegistrationsPanel,
@@ -20,6 +21,7 @@ class CoursePanelStack(PanelStack):
     children = {
         "details": CourseDetailsPanel,
         "content": CourseContentPanel,
+        "reference": CourseReferencePanel,
         "cohorts": CourseCohortRegistrationsPanel,
         "learners": CourseLearnerRegistrationsPanel,
     }
