@@ -3,11 +3,14 @@
     {% if review %}
         {% include "learner_interface/partials/revision_feedback.html" %}
     {% else %}
-        <form hx-post="{% url 'learner_interface:course_revision_answer' course.slug %}"
+        <form method="post"
+              action="{% url 'learner_interface:course_revision_answer' course.slug %}"
+              hx-post="{% url 'learner_interface:course_revision_answer' course.slug %}"
               novalidate
               hx-target="#revision-card"
               hx-swap="outerHTML"
               class="space-y-4">
+            {% csrf_token %}
             {% include "form_engine/question.html" %}
             {% if error %}
                 <p class="text-sm text-error"><span class="sr-only">Error: </span>{{ error }}</p>

@@ -150,6 +150,23 @@ def _post_answer(client: Client, course, question, option_ids):
     )
 
 
+@pytest.mark.django_db
+def test_answer_posted_without_htmx_is_recorded_and_redirects_to_the_revision_page(
+    mock_site_context,
+):
+    """A form submitted natively before htmx loaded used to be sent as a GET and lost the answer."""
+    course, user, questions, client = _banked_session()
+    question = questions[0]
+
+    response = client.post(
+        _route_url("course_revision_answer", course),
+        {f"question_{question.id}": [str(_right_option(question).id)]},
+    )
+
+    assert (response.status_code, response.url) == (303, _revision_url(course))
+    assert RevisionReview.objects.filter(user=user, question=question).exists()
+
+
 def _right_option(question):
     return question.options.get(correct=True)
 

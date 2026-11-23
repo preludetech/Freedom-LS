@@ -2612,7 +2612,17 @@ def _render_revision_card(
     error: str = "",
     status: int = 200,
 ) -> HttpResponse:
-    """The `#revision-card` partial for wherever the session now is."""
+    """The `#revision-card` partial for wherever the session now is.
+
+    A form posted natively, because htmx had not loaded yet, is sent back to the
+    revision page, which renders the session's current state in full.
+    """
+    if request.headers.get("HX-Request") != "true":
+        response = redirect(
+            "learner_interface:course_revision", course_slug=course.slug
+        )
+        response.status_code = 303
+        return response
     template, context = _revision_card_context(request, course, record, state)
     context["error"] = error
     return render(request, template, context, status=status)
