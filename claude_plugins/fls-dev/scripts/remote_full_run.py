@@ -9,6 +9,7 @@ gives no test verdict, so the caller can run the tier locally instead.
 from __future__ import annotations
 
 import json
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -36,6 +37,7 @@ COVERAGE_CHECK_STEP = "Check combined coverage"
 STANDALONE_PREFIX = "standalone-"
 COVERAGE_JOB_PREFIX = "unit-"  # the jobs whose coverage data the coverage job combines
 STANDALONE_NODE_PREFIX = "freedom_ls/{app}/tests/"
+STANDALONE_CONFIG = "freedom_ls/{app}/tests/standalone_pytest.ini"
 DEFAULT_START_TIMEOUT_S = 900
 DEFAULT_RUN_TIMEOUT_S = 1800
 MAX_UNREACHABLE_VIEWS = 3
@@ -117,7 +119,19 @@ class Progress:
 class GroupReport:
     """One test job's group report: its run state, failure texts included."""
 
+    job: str
     state: RunStateView
+
+    def standalone_config(self) -> str | None:
+        """The pytest config a standalone job ran under, which a local re-run needs too."""
+        if not self.job.startswith(STANDALONE_PREFIX):
+            return None
+        return STANDALONE_CONFIG.format(app=self.job.removeprefix(STANDALONE_PREFIX))
+
+    def failed(self) -> list[str]:
+        return sorted(
+            node for node, outcome in self.state.outcomes.items() if outcome == "failed"
+        )
 
 
 def run_tool(argv: list[str]) -> subprocess.CompletedProcess[str]:
@@ -494,7 +508,7 @@ def prefixed(report: GroupReport, prefix: str) -> GroupReport:
         prefix + node: text for node, text in report.state.failures.items()
     }
     state.attempt = report.state.attempt
-    return GroupReport(state)
+    return GroupReport(report.job, state)
 
 
 def load_group_report(job: Job, directory: Path) -> GroupReport:
@@ -506,7 +520,7 @@ def load_group_report(job: Job, directory: Path) -> GroupReport:
         run_tests.read_attempt(path, state)
     except json.JSONDecodeError:
         raise Unavailable(f"{job.name} group report is malformed") from None
-    report = GroupReport(state)
+    report = GroupReport(job.name, state)
     if job.name.startswith(STANDALONE_PREFIX):
         app = job.name.removeprefix(STANDALONE_PREFIX)
         return prefixed(report, STANDALONE_NODE_PREFIX.format(app=app))
@@ -559,14 +573,41 @@ def write_failure_log(
     WORK_DIR.mkdir(exist_ok=True)
     path = WORK_DIR / f"remote_full_run_{branch.replace('/', '-')}.txt"
     texts: dict[str, str] = {}
+    notes: dict[str, str] = {}
     for report in reports:
         for node, text in report.state.failures.items():
             texts.setdefault(node, text)
+        config = report.standalone_config()
+        if config is not None:
+            for node in report.failed():
+                notes[node] = f"({report.job}: run with -c {config})\n"
     path.write_text(
-        "".join(f"{node}\n{texts.get(node, '')}\n\n" for node in sorted(failed)),
+        "".join(
+            f"{node}\n{notes.get(node, '')}{texts.get(node, '')}\n\n"
+            for node in sorted(failed)
+        ),
         encoding="utf-8",
     )
     return path
+
+
+def standalone_rerun_lines(reports: list[GroupReport]) -> list[str]:
+    """For each standalone job with a failed test, the command that re-runs its failures.
+
+    A standalone job runs without the FLS host, so the tier's own command can pass a test
+    that failed there.
+    """
+    lines = []
+    for report in reports:
+        config = report.standalone_config()
+        failed = report.failed()
+        if config is not None and failed:
+            ids = " ".join(shlex.quote(node) for node in failed)
+            lines.append(
+                f"remote: {report.job} failures re-run with: "
+                f"uv run pytest -c {config} {ids}"
+            )
+    return lines
 
 
 def print_verdict(
@@ -580,6 +621,8 @@ def print_verdict(
     state = merge_states([report.state for report in reports])
     if verdict.failed:
         for line in run_tests.failed_set_lines(state, include_unfinished=True):
+            print(line)
+        for line in standalone_rerun_lines(reports):
             print(line)
     for line in run_tests.count_lines(state, elapsed_seconds(view)):
         print(line)

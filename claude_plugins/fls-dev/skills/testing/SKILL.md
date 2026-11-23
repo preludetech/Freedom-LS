@@ -170,6 +170,7 @@ The `full` tier runs on GitHub Actions. `[tool.test_tiers.remote]` in `pyproject
 Reading a remote failure:
 
 - Each `run: failed <node id>` line is a failed test. Re-run those locally, as for a local failure.
+- A `remote: standalone-<app> failures re-run with: <command>` line marks failures from a standalone job. Re-run those IDs with that command, which uses the app's `standalone_pytest.ini`. The tier's own command runs them with FLS around them, where a standalone-only failure passes.
 - `.sdd-work/remote_full_run_<branch>.txt` (the `run: log` line, `/` in the branch name written as `-`) holds each failed node ID and its failure text. Read it before re-running.
 - A `RESULT FAIL` with no `run: failed` line is not a test failure. `run: coverage <n>% below <m>%` means the coverage gate failed. Otherwise open the `run: url` page and read the failing job.
 

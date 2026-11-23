@@ -717,9 +717,7 @@ def test_a_branch_with_a_slash_is_logged_under_a_dashed_name(tmp_path: Path) -> 
     assert (tmp_path / ".sdd-work" / "remote_full_run_feature-x.txt").is_file()
 
 
-def test_a_standalone_failure_prints_the_node_id_with_the_app_test_directory_prefix(
-    tmp_path: Path,
-) -> None:
+def failing_standalone_jobs() -> list[JobSpec]:
     jobs = passing_jobs()
     jobs[3] = JobSpec(
         "standalone-icons",
@@ -734,12 +732,46 @@ def test_a_standalone_failure_prints_the_node_id_with_the_app_test_directory_pre
         conclusion="failure",
         failed_step="Check every test job succeeded",
     )
+    return jobs
 
-    outcome = run_script(Scenario(jobs=jobs), tmp_path)
+
+STANDALONE_NODE = "freedom_ls/icons/tests/components/test_icon.py::t"
+STANDALONE_CONFIG = "freedom_ls/icons/tests/standalone_pytest.ini"
+
+
+def test_a_standalone_failure_prints_the_node_id_with_the_app_test_directory_prefix(
+    tmp_path: Path,
+) -> None:
+    outcome = run_script(Scenario(jobs=failing_standalone_jobs()), tmp_path)
+
+    assert f"run: failed {STANDALONE_NODE}" in outcome.lines
+
+
+def test_a_standalone_failure_prints_its_re_run_command_with_the_standalone_config(
+    tmp_path: Path,
+) -> None:
+    outcome = run_script(Scenario(jobs=failing_standalone_jobs()), tmp_path)
 
     assert (
-        "run: failed freedom_ls/icons/tests/components/test_icon.py::t" in outcome.lines
+        "remote: standalone-icons failures re-run with: "
+        f"uv run pytest -c {STANDALONE_CONFIG} {STANDALONE_NODE}"
+    ) in outcome.lines
+
+
+def test_a_standalone_failure_names_its_config_in_the_log(tmp_path: Path) -> None:
+    run_script(Scenario(jobs=failing_standalone_jobs()), tmp_path)
+
+    log = (tmp_path / ".sdd-work" / "remote_full_run_feature.txt").read_text()
+    assert (
+        f"{STANDALONE_NODE}\n(standalone-icons: run with -c {STANDALONE_CONFIG})\nboom"
+        in log
     )
+
+
+def test_a_unit_failure_prints_no_standalone_re_run_command(tmp_path: Path) -> None:
+    outcome = run_script(Scenario(jobs=failing_unit_jobs()), tmp_path)
+
+    assert not [line for line in outcome.lines if "re-run with" in line]
 
 
 def test_a_test_failing_in_two_reports_is_counted_once(tmp_path: Path) -> None:
