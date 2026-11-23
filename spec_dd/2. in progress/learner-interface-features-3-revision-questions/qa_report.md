@@ -1,177 +1,147 @@
 # Frontend QA report: revision questions
 
+Spec: `learner-interface-features-3-revision-questions`. Plan: `3. frontend_qa.md`.
+
 ## Methodology
 
-The dev server ran on port 8662. Tests followed `3. frontend_qa.md`. Screenshots were collected into `screenshots/` beside this report, and every image linked below exists there. Desktop was the main pass, with a mobile (375px) and a tablet (768px) pass. Results come from the scratch records in `.sdd-work/qa_scratch.jsonl`.
+Screenshots were collected into `screenshots/` beside this report, and every image linked below exists there. Tests ran against a QA server on port 8235 with the seeded learners A, B and C and the admin. Tests ran at desktop, mobile (375px) and tablet (768px) viewports. Two screenshots in that folder (`page-2026-11-23T04-27-13-821Z.png`, `page-2026-11-23T04-34-55-569Z.png`) were taken with the debug toolbar open. They are broken and no record references them, so they are not linked.
+
+Pre-step note (rebase): rebased 33 commits onto main. Conflicts were resolved in `pyproject.toml`/`uv.lock` (kept dulwich and fsrs), and in the content_engine `test_validate.py` and `test_content_save.py` (kept both sides' tests). The lost-change check passed. The full suite had one failure: the educator quiz preview test counted the correct-answer mark's new inner span twice. That was fixed in the test, committed and pushed. The front-end check was folded into this QA run (same pages and viewports). The upstream-change review found nothing changed.
 
 ## Diff scoping
 
-Class: **FULL**. The changed files were templates, static, views, the revision app, form_engine, content_engine and demo_content (64 files). Nothing was skipped, so every pass ran, including mobile and tablet.
+Class: **FULL**. Skipped: nothing. Everything ran (desktop, mobile and tablet passes included).
+
+Changed files that triggered the class (front-end subset, from the `scoping` record):
+- `freedom_ls/form_engine/templates/cotton/correct-answer-mark.html`
+- `freedom_ls/learner_interface/static/learner_interface/js/alpine-components.js`
+- `freedom_ls/learner_interface/templates/learner_interface/_course_base.html`
+- `.../course_revision.html`
+- `.../partials/course_toc_revision.html`
+- `.../partials/revision_card.html`
+- `.../partials/revision_dashboard.html`
+- `.../partials/revision_end.html`
+- `.../partials/revision_feedback.html`
+- and 109 non-front-end files
 
 ## Smoke gate
 
-Pass. These pages loaded: `/` and `/courses/qa-revision-course/revision/`. The run was not aborted.
-
-## Test results
-
-| Test | Viewport | Result | Notes |
-| --- | --- | --- | --- |
-| 1.2 | desktop | pass | Card shows "40+ ready" and Revise, with no "overdue" text. |
-| 1.3 | desktop | pass | Revise opens the revision page. |
-| 1.4 | desktop | pass | Outline panel link and ready text work. |
-| 1.4-visual | desktop | fail | See B2. |
-| 1.5 | desktop | pass | Logged out, no Revision card. |
-| 1.6 | desktop | pass | Learner B has no card. |
-| 1.7 | desktop | pass | Unregistered course renders normally. |
-| 2.1-2.6 | desktop | pass | Start screen content and order correct. |
-| 2.7 | desktop | pass | Revise buttons are named after their section. |
-| 2.visual | desktop | fail | See B1. |
-| 3.1-3.3 | desktop | pass | Session starts and option order is stable across reload. |
-| 3.4 | desktop | fail | See B3. |
-| 3.5-3.9 | desktop | pass | Wrong-answer feedback, focus and reload behave. |
-| 3.visual | desktop | fail | See B1 and B6. |
-| 3.10-3.11 | desktop | pass | Revise link opens the section, and the feedback persists. |
-| 4.1-4.4 | desktop | pass | Right-answer feedback correct. |
-| 4.5-4.6 | desktop | fail | See B4. |
-| 4.7 | desktop | pass | Admin reviews are read-only and show guessed=True. |
-| 5.1-5.6 | desktop | pass | End screen is correct and "Revise more" starts a new session. |
-| 5.visual | desktop | fail | See B1 and B2. |
-| 5.7 / 5.7-admin | desktop | pass | Session resumes and every answer is stored. |
-| 6.1 | desktop | fail | See B5. |
-| 6.2-6.5 | desktop | pass | Section session of 3, no dropped, future or Advanced questions. |
-| 6.6 | desktop | pass | Both URLs return 405. |
-| 6.7 | desktop | pass | Learner B is offered no question. |
-| 7.1 | desktop | pass | Learner B empty state. |
-| 7.2 | desktop | pass | Empty course shows its message with status 200. |
-| 7.3 | desktop | pass | "0 ready" row with a disabled Revise button. |
-| 7.4 | desktop | pass | "You're all caught up." and the next date. |
-| 8.1-8.3 | desktop | pass | Welcome-back line shows, then goes after one answer. |
-| 9.1-9.5 | desktop | pass | Login redirect, course detail redirects with paused and ended notices, and 404. |
-| 10.1-10.3 | desktop | pass | Quiz results page unchanged. A new sitting was not possible, because the course allows none. |
-| 10.4 | desktop | skip | QA Revision Course is not attached to the DemoDev organisation, so the educator preview could not be opened. |
-| 10.5 | desktop | pass | No FormProgress or QuestionAnswer rows were added. |
-| 11.1-11.3 | desktop | pass | Mixed sources and the locked option stays last. |
-| 11.4-11.6 | desktop | pass | The dropped question was removed with its review and schedule rows. |
-| 11.7 | desktop | pass | content_validate warns and exits 0. |
-| 11.8 | desktop | skip | The stored explanation was cleared, but the question was not due again in this run. The view test passes. |
-| 11.9 | desktop | pass | Real demo_content reloaded. |
-| mobile | mobile | pass | No horizontal scroll at 375px. |
-| mobile-visual | mobile | fail | See B1. |
-| tablet | tablet | pass | No horizontal scroll at 768px. |
+Status: **pass**. Pages loaded: `/` and `/courses/qa-revision-course/revision/`. The run was not aborted.
 
 ## Design check
 
-No design states tested. There were no `design` records.
+No design records exist: this plan has no design screenshots, so no design states tested.
+
+## Results summary
+
+| Test | Viewport | Result |
+| --- | --- | --- |
+| 1.2, 1.3 course detail untouched (Test 1) | desktop | pass |
+| 2.2, 2.3, 2.5, 2.6 outline entry (Test 2) | desktop | pass |
+| 2.4 outline entry on small screens | mobile, tablet | pass |
+| 3.2, 3.3, 3.4, 3.5 dashboard (Test 3) | desktop | pass |
+| 3.2 dashboard | mobile | pass |
+| 4.1 to 4.10 wrong answer (Test 4) | desktop | pass |
+| 4.5 wrong-answer feedback | mobile | pass |
+| 5.1, 5.3 to 5.7 right answer and I guessed (Test 5) | desktop | pass |
+| 5.3 right answer, toggle and Next on one row | tablet | pass |
+| 5.3 right answer, toggle and Next on one row | mobile | **fail** (B2) |
+| 6.2 done card (Test 6) | desktop | pass |
+| 6.2-brand done card brand checklist | desktop | **fail** (B1) |
+| 6.2 done card | tablet | pass |
+| 6.4 done card at 375px | mobile | pass |
+| 6.3, 6.5, 6.6, 6.7, 6.8 | desktop | pass |
+| 6.7-early-submit | desktop | **fail** (B3) |
+| 7.2, 7.3, 7.4 nothing due (Test 7) | desktop | pass |
+| 8.1, 8.2, 8.3, 8.4, 8.5 turned away (Test 8) | desktop | pass |
+| 9.1, 9.2, 9.4, 9.5 quiz pages (Test 9) | desktop | pass |
+| 9.3 results page incorrect-answers block | desktop | skip |
+| 10.1, 10.3, 10.6 to 10.9 dropped question and explanation (Test 10) | desktop | pass |
 
 ## Bugs
 
-### B1: Lists inside the revision card are inset from the card's other content
+### B1: Revision done count tiles are bordered boxes inside the bordered card
 
-Manifestations: 2.visual (desktop), 3.visual (desktop), 5.visual (desktop), mobile-visual (mobile).
+Manifestations:
+- `6.2-brand`, desktop
 
-![](screenshots/page-2026-11-22T11-25-33-145Z.png)
-![](screenshots/page-2026-11-22T11-28-22-446Z.png)
-![](screenshots/page-2026-11-22T11-29-47-340Z.png)
-![](screenshots/page-2026-11-22T11-34-59-392Z.png)
+Expected: brand visual checklist says items are separated by space, with no box inside a box. The three count tiles (Knew it, Hard, Forgot) should not each be a bordered box inside the bordered revision card.
 
-- Expected: the start screen's section list, the feedback's option list and the end screen's missed-question list share the left edge of the heading, ready text and buttons in the same `#revision-card`.
-- Actual: each list starts about 24px further right because of list padding, so the card's content has two left edges. On a 375px screen the inset also costs width.
+Actual: `revision_end.html` gives each tile `rounded-md border border-border bg-surface-2`, so three bordered tinted boxes sit inside the bordered card at every viewport. The spec says "count tiles" but does not describe borders.
 
-### B2: Link-variant revision buttons keep button padding and do not line up with the text around them
+![](screenshots/page-2026-11-23T04-32-54-459Z.png)
+![](screenshots/page-2026-11-23T04-46-50-941Z.png)
+![](screenshots/page-2026-11-23T04-47-38-393Z.png)
 
-Manifestations: 1.4-visual (desktop), 5.visual (desktop).
+### B2: I guessed and Next do not share a row at 375px
 
-![](screenshots/page-2026-11-22T11-26-54-919Z.png)
-![](screenshots/page-2026-11-22T11-29-47-340Z.png)
+Manifestations:
+- `5.3`, mobile
 
-- Expected: text-style links align with the left edge of the content around them. These are "Revision" in the player outline panel, and "Revise: ..." and "Back to course" on the end screen and feedback.
-- Actual: the `<c-button variant="link">` controls in `partials/revision_link.html`, `revision_feedback.html` and `revision_end.html` are inset about 24px by the button's horizontal padding.
+Expected: plan 5.3 says the "I guessed" toggle sits at the left with its help line, and "Next" at the right of the same row.
 
-### B3: Empty "Check answer" shows the browser's validation bubble, not the card's "Choose an answer." error
+Actual: at 375px the toggle's group (button plus the help line "We'll ask you this one again sooner.") is too wide, so Next wraps onto its own line below. At 768 and 1920 they share a row. The buttons themselves fit and keep one-line labels.
 
-Manifestation: 3.4 (desktop).
+![](screenshots/page-2026-11-23T04-46-28-973Z.png)
 
-![](screenshots/page-2026-11-22T11-28-21-040Z.png)
+### B3: Answer form submits as a native GET before the page finishes loading
 
-- Expected: clicking "Check answer" with nothing selected shows "Choose an answer." on the card (the 422 response), with the same question still shown.
-- Actual: the option inputs rendered through `form_engine/question.html` carry the HTML `required` attribute. The browser blocks the hx-post and shows its own native bubble, so the card's error never appears.
+Manifestations:
+- `6.7-early-submit`, desktop
 
-### B4: "I guessed" toggle has no visible pressed state
+Expected: "Check answer" always submits the answer to `course_revision_answer` (POST) and shows feedback.
 
-Manifestation: 4.5-4.6 (desktop).
-
-![](screenshots/page-2026-11-22T11-29-03-802Z.png)
-
-- Expected: after pressing "I guessed" the toggle visibly shows as pressed, and unpressed after a second press.
-- Actual: `aria-pressed` flips correctly and persists across reload, but the `c-button` variant=secondary renders identically in both states, so a sighted learner cannot see it is pressed.
-
-### B5: A finished session's end screen replaces the start screen for good
-
-Manifestation: 6.1 (desktop). There is no screenshot for this bug.
-
-- Expected: once a session is answered to the end, the learner can get back to the revision start screen and its section list. Test 6 starts a Foundations-only session from there.
-- Actual: every later visit to `/courses/<course>/revision/` renders the same end screen, because the stored session state is past its last question. Only "Revise more" (all sections) or logging out reaches anything else.
-
-### B6: "Why" heading on the feedback outranks the result line and question
-
-Manifestation: 3.visual (desktop).
-
-![](screenshots/page-2026-11-22T11-28-22-446Z.png)
-
-- Expected: the explanation block's "Why" label sits at or below the weight of the result line and question text in the card.
-- Actual: "Why" renders as a large page-level heading, bigger than "Incorrect." and the question it explains.
+Actual: the answer form in `partials/revision_card.html` has `hx-post` but no method or action fallback. Clicked after the page is parsed but before DOMContentLoaded (deferred scripts still loading), it submits natively as GET to the revision page. The answer goes into the URL query string (`?question_<uuid>=<option uuid>`), nothing is recorded, and the unanswered question re-renders. Minor: reproducible by automation, plausible on a slow network. No screenshot (the failure is in the URL and the network behaviour).
 
 ## Layout probe
 
 | Test | Viewport | URL | Screenshot | Result |
 | --- | --- | --- | --- | --- |
-| 1.2 | desktop | /courses/qa-revision-course/detail/ | ![](screenshots/page-2026-11-22T11-25-23-246Z.png) | clean |
-| 2.1 | desktop | /courses/qa-revision-course/revision/ | ![](screenshots/page-2026-11-22T11-25-33-145Z.png) | clean |
-| 1.4 | desktop | /courses/qa-revision-course/1/ | ![](screenshots/page-2026-11-22T11-26-54-919Z.png) | clean |
-| 1.7 | desktop | /courses/functionality-demo-course-parts/detail/ | ![](screenshots/page-2026-11-22T11-27-17-009Z.png) | clean |
-| 3.5 | desktop | /courses/qa-revision-course/revision/ | ![](screenshots/page-2026-11-22T11-28-22-446Z.png) | clean |
-| 4.6 | desktop | /courses/qa-revision-course/revision/ | ![](screenshots/page-2026-11-22T11-29-03-802Z.png) | clean |
-| 5.2 | desktop | /courses/qa-revision-course/revision/ | ![](screenshots/page-2026-11-22T11-29-47-340Z.png) | clean |
-| 7.3 | desktop | /courses/qa-revision-course/revision/ | ![](screenshots/page-2026-11-22T11-31-23-073Z.png) | clean |
-| 7.2 | desktop | /courses/qa-revision-empty-course/revision/ | ![](screenshots/page-2026-11-22T11-31-42-777Z.png) | clean |
-| 7.1 | desktop | /courses/qa-revision-course/revision/ | ![](screenshots/page-2026-11-22T11-31-44-906Z.png) | clean |
-| 8.2 | desktop | /courses/qa-revision-course/revision/ | ![](screenshots/page-2026-11-22T11-32-05-298Z.png) | clean |
-| 7.4 | desktop | /courses/qa-revision-course/revision/ | ![](screenshots/page-2026-11-22T11-33-04-480Z.png) | clean |
-| 10.1 | desktop | /courses/qa-revision-course/3/ | ![](screenshots/page-2026-11-22T11-32-54-374Z.png) | clean |
-| mobile-start | mobile | /courses/qa-revision-course/revision/ | ![](screenshots/page-2026-11-22T11-34-59-392Z.png) | clean |
-| mobile-feedback | mobile | /courses/qa-revision-course/revision/ | ![](screenshots/page-2026-11-22T11-35-01-600Z.png) | clean |
-| tablet-feedback | tablet | /courses/qa-revision-course/revision/ | ![](screenshots/page-2026-11-22T11-35-58-873Z.png) | clean |
-| tablet-player | tablet | /courses/qa-revision-course/1/ | ![](screenshots/page-2026-11-22T11-36-01-436Z.png) | clean. The probe's two "stacked" flags come from the course outline bottom sheet that the test opened on purpose, and the sheet is an overlay by design. |
-| 9.3 | desktop | /courses/qa-revision-course/detail/ | ![](screenshots/page-2026-11-22T11-37-13-901Z.png) | clean |
+| 1.2 | desktop | `/courses/qa-revision-course/detail/` | ![](screenshots/page-2026-11-23T04-27-21-014Z.png) | clean |
+| 2.2 | desktop | `/courses/qa-revision-course/1/` | ![](screenshots/page-2026-11-23T04-29-32-989Z.png) | clean |
+| 3.2 | desktop | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-29-44-642Z.png) | clean |
+| 3.3 | desktop | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-30-12-534Z.png) | clean |
+| 4.5 | desktop | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-30-46-289Z.png) | clean |
+| 5.3 | desktop | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-31-18-844Z.png) | clean |
+| 6.2 | desktop | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-32-54-459Z.png) | clean |
+| 7.3 | desktop | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-36-36-250Z.png) | clean |
+| 10.8 | desktop | `/courses/functionality-demo-course-parts/revision/` | ![](screenshots/page-2026-11-23T04-45-16-634Z.png) | clean |
+| 2.4 | mobile | `/courses/qa-revision-course/1/` | ![](screenshots/page-2026-11-23T04-45-51-528Z.png) | flags: "stacked: sidebar ink spans y=354..812, outside the content's y=264..313"; "stacked: sidebar ink spans x=0..375, more than half of the 375px viewport". Recorded note: the flags come from the outline sheet that the test opens deliberately; below 1024px the outline is a sheet behind the toggle, as the plan states. |
+| 3.2 | mobile | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-46-05-805Z.png) | clean |
+| 4.5 | mobile | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-46-19-981Z.png) | clean |
+| 5.3 | mobile | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-46-28-973Z.png) | clean (the probe found nothing; the Next wrap is B2) |
+| 6.4 | mobile | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-46-50-941Z.png) | clean |
+| 2.4 | tablet | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-47-10-851Z.png) | flags: "stacked: sidebar ink spans y=662..1024, outside the content's y=228..534"; "stacked: sidebar ink spans x=0..768, more than half of the 768px viewport". Recorded note: the flags come from the outline sheet the test opens deliberately. |
+| 5.3 | tablet | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-47-20-978Z.png) | clean |
+| 6.2 | tablet | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-47-38-393Z.png) | clean |
 
 ## Data changes
 
 | What changed | Made by | Files written |
 | --- | --- | --- |
-| DemoDev Site domain set to 127.0.0.1:8662 and superuser demodev@email.com created, so the QA server resolves its site and the admin login exists | QA setup | none |
-| qa-data-helper created superuser demodev@email.com (password = email) with site_admin, organisation_admin and StaffMember on DemoDev, because the dev database had no admin | qa-data-helper | none |
-| qa-data-helper set every RevisionSchedule of qa-revision-back@example.com due 10 days ahead and created 47 schedules for that learner's unscheduled bank questions, for the "nothing due" state | qa-data-helper | none |
-| Learner A's QA Revision Course access paused, resumed, ended and restored with a scratch script (pause_course/resume_course and a temporary deadline override). The learner was left active, and two append-only audit entries remain. | scratch script | none |
-| Learner A enrolled on Functionality Demo - Course Parts and completed Getting Started and Core Concepts (knowledge check passed on retry) in the player. demo_content was copied to the session scratchpad, one bank-form question and one knowledge-check explanation were removed there, and content_save was run on the copy for DemoDev. The dev DB now holds that edited copy. | browser session and content_save | none (the copy is in the scratchpad) |
+| DemoDev Site pk=2 domain `127.0.0.1:8662` changed to `127.0.0.1:8235` so the QA server on 8235 resolves its site (the login page returned a 500) | `sdd:qa-data-helper` | none |
+| Deleted RevisionSchedule (98) and RevisionReview (84) rows and `revision_session:*` session keys for the three QA revision learners (left by earlier QA runs), then re-ran `qa_create_revision_scenario`: Learner A back to 51 ready | `sdd:qa-data-helper` | none |
+| Learner C (`qa-revision-back`) nothing due: 7 RevisionSchedule.due moved 10 days ahead, 47 schedules created 10 days ahead for unscheduled bank questions | `sdd:qa-data-helper` | none |
+| Paused QA Revision Course for Learner A via `deadlines.actions.pause_course` (CoursePause 1b2132b1), then resumed via `resume_course` | `sdd:qa-data-helper` | none |
+| Ended Learner A's access to QA Revision Course with a LearnerCourseRegistrationDeadlineConfig (`end_course_access=on`) and a past whole-course LearnerDeadlineOverride (`deactivate_registration` would show not-registered, not access-ended), then deleted both rows to restore access | `sdd:qa-data-helper` | none |
 
 ## Bug status
 
-| Bug | Title | Status |
-| --- | --- | --- |
-| B1 | Lists inside the revision card are inset from the card's other content | **FIXED** (commit: a3f26c09f) |
-| B2 | Link-variant revision buttons keep button padding and do not line up with the text around them | **FIXED** (commit: ed501b894) |
-| B3 | Empty "Check answer" shows the browser's validation bubble, not the card's "Choose an answer." error | **FIXED** (commit: cee9f3b20) |
-| B4 | "I guessed" toggle has no visible pressed state | **FIXED** (commit: a21b8cded) |
-| B5 | A finished session's end screen replaces the start screen for good | **UNRESOLVED** (reason: how a learner gets back to the section list after a session ends — clear the finished state on the next visit, or add a "Back to revision" control — is a product decision the spec does not make) |
-| B6 | "Why" heading on the feedback outranks the result line and question | **FIXED** (commit: fc6f7a1a7) |
+- **UNRESOLVED**: B1, revision done count tiles are bordered boxes inside the bordered card (reason: the brand rule forbids a box inside a box, and the spec says only "count tiles". Choosing the tiles' new look, such as tint only or plain figures with no box, is a design decision.)
+- **FIXED** (commit: 2b846d5e0): B2, I guessed and Next do not share a row at 375px. Re-verified at 375px (same row, help line under it, ![](screenshots/page-2026-11-23T04-58-50-477Z.png)) and at 768px (unchanged).
+- **FIXED** (commit: 2ce55b3f8): B3, the answer form submits as a native GET before the page finishes loading. Re-verified with JavaScript off: Check answer now posts, records the answer and redirects to the feedback. With htmx on, the flow is unchanged: 422 "Choose an answer.", a 200 swap, focus on the feedback and no navigation. Remaining gap, which loses no data: "Next" and "I guessed" are `hx-post` buttons with no form, so before htmx loads they do nothing.
 
 ## General notes
 
-- The seeder does not attach QA Revision Course to the DemoDev organisation, so test 10.4 (educator outline preview) could not run.
-- Test 11.8 was skipped. The no-"Why" feedback was not seen in the browser, because the question was not due again in this run. The view test for a question with no explanation passes.
-- The dev database now holds the edited demo_content copy from Test 11, and the real demo_content was reloaded afterwards (11.9).
-- The course allows no new quiz sitting, so Test 10 checked the results page only.
-- B1 and B2 share a visual cause in how lists and link-variant buttons are padded. B5 blocks the Test 6 flow once a session has been finished.
-- Screenshots `page-2026-11-22T11-27-43-843Z.png`, `11-34-58-390Z`, `11-35-00-436Z`, `11-35-03-020Z`, `11-35-03-877Z`, `11-35-04-666Z`, `11-35-59-911Z`, `11-39-26-676Z` and `11-39-28-240Z` exist in `screenshots/` but have no scratch record. They are not linked.
+- **8.3 viewport caveat.** The paused-course screenshot (![](screenshots/page-2026-11-23T04-38-01-290Z.png)) was taken at 1280x720: the reopened tab lost the desktop viewport. The behaviour itself passed: `/revision/` redirects to the course detail page with the "Your educator paused this course..." notice. The 8.4 access-ended result is at ![](screenshots/page-2026-11-23T04-39-55-238Z.png).
+- **3.4 screenshot discarded** (debug toolbar open in the fresh context). Learner B's page passed on the text checks and a clean layout probe.
+- **9.3 skipped.** Results pages show the score (Knowledge Check 100% 3/3, QA Foundations 80% 4/5), see ![](screenshots/page-2026-11-23T04-41-38-636Z.png). The incorrect-answers block did not render: the QA quiz has `quiz_show_incorrect` off, and Learner A's latest Knowledge Check attempt is 100% with no retake allowed. That block (`course_form_complete.html`) has its own "Correct answer" markup, does not use the shared correct-answer-mark component and is not changed on this branch. The shared mark is covered by 9.4.
+- **9.1.** Learner A's Foundations quiz allows no new sitting, so the quiz was taken fresh as Learner B after walking items 1.1 and 1.2 to unlock it. Quiz page: ![](screenshots/page-2026-11-23T04-42-20-495Z.png). Educator preview (9.4): ![](screenshots/page-2026-11-23T04-43-12-285Z.png).
+- **Screenshots for passing tests** are linked in the layout probe table above, plus these not repeated there: 4.3 ![](screenshots/page-2026-11-23T04-30-26-595Z.png), 5.5 ![](screenshots/page-2026-11-23T04-31-31-432Z.png), 7.2 and 7.3 ![](screenshots/page-2026-11-23T04-36-36-250Z.png).
+- **Admin observation (5.7).** The Revision reviews changelist has no default ordering, so the latest review is not first until you sort by Reviewed at. No action attached.
+- **Test 10.1 observation.** `content_save` on main now refuses content outside a committed git repo, so the scratch copy was git-initialised and committed first.
+- **Test 10.7 observation.** The shipped `demo_content` already raises 21 explanation warnings from `content_validate` (shuffled quiz and others), unrelated to this branch.
+- **Test 10.9 cleanup.** The real `demo_content` was re-saved (dropped question restored, marker cleared). The scratch copy was left in the session scratchpad because recursive deletes are blocked by the security hook.
+- **Test 10.8** feedback: ![](screenshots/page-2026-11-23T04-45-16-634Z.png).
 
-status: ok · reason: 6 bugs — 5 fixed, 1 unresolved; report rendered, screenshots verified
+status: ok · reason: 3 bugs — 2 fixed, 1 unresolved; report rendered, screenshots verified
