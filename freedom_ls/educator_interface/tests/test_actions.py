@@ -24,13 +24,13 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseAudience
-from freedom_ls.educator_interface.actions import (
-    RequiresActiveCohortMixin,
-    cohort_not_empty_sentence,
-)
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     LEARNER_CHANGED,
+)
+from freedom_ls.educator_interface.panels.cohort.actions import (
+    RequiresActiveCohortMixin,
+    cohort_not_empty_sentence,
 )
 from freedom_ls.educator_interface.panels.cohort.bulk_actions import (
     RegisterCohortForCourseBulkAction,

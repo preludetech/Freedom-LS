@@ -20,16 +20,6 @@ from django.urls import reverse
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course
-from freedom_ls.educator_interface.actions import (
-    AddExistingLearnersAction,
-    AddLearnerToCohortAction,
-    DeactivateCohortRegistrationAction,
-    DeleteEmptyCohortAction,
-    EditCohortAction,
-    RegisterCohortForCourseAction,
-    cohort_not_empty_sentence,
-    cohort_state_actions,
-)
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     REGISTRATION_CHANGED,
@@ -47,6 +37,16 @@ from freedom_ls.educator_interface.panels.audit_log.data_tables import (
 
 # Importing the module registers the cohorts table's bulk actions.
 from freedom_ls.educator_interface.panels.cohort import bulk_actions  # noqa: F401
+from freedom_ls.educator_interface.panels.cohort.actions import (
+    AddExistingLearnersAction,
+    AddLearnerToCohortAction,
+    DeactivateCohortRegistrationAction,
+    DeleteEmptyCohortAction,
+    EditCohortAction,
+    RegisterCohortForCourseAction,
+    cohort_not_empty_sentence,
+    cohort_state_actions,
+)
 from freedom_ls.educator_interface.panels.cohort.data_tables import (
     CohortCourseRegistrationDataTable,
     CohortDataTable,

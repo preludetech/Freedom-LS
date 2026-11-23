@@ -32,7 +32,7 @@ from django.urls import reverse
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.content_engine.models import Course
-from freedom_ls.educator_interface.actions import (
+from freedom_ls.educator_interface.panels.cohort.actions import (
     DeleteEmptyCohortAction,
     cohort_not_empty_sentence,
 )
