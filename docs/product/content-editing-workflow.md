@@ -109,6 +109,8 @@ shared_with:
 
 **Shuffled quizzes.** A QUIZ form can serve its pages, its questions and its answer options in a random order for each sitting, through three independent form options, `shuffle_pages`, `shuffle_questions` and `shuffle_options`, all off by default. On an option, `locked: true` pins it in place while the others move, which suits "All of the above". On a content block or question, a shared `group` value keeps a stimulus and its questions together as one block on one page. Validation rejects these options on any other form type, and a `locked` option or a `group` that could not work as written. What learners see is in [learner experience](./learner-experience.md#quiz-feedback); guidance on wording a quiz that shuffles safely lives in the `fls-content` authoring plugin described below.
 
+**Question pools.** A page of a QUIZ form can set `draw: N` to serve each sitting N of that page's questions or groups, picked at random, so a quiz can be built from a larger question bank. A `group` counts as one item to draw. Validation rejects `draw` on any other form type, a `draw` larger than the page can supply, and a drawing page whose questions or groups differ in size. A page without `draw` serves everything. What learners see is in [learner experience](./learner-experience.md#quiz-feedback).
+
 Other course metadata — learning outcomes, difficulty (`beginner`, `intermediate`, `advanced`, `all_levels`), estimated duration, description, `price` — is authored the same way. A price can also be set in the admin, and a price set there survives a later content re-save unless the course file sets or clears it. See [course prices](./learner-experience.md#course-prices) for what a price can be and where it shows.
 
 ## Validation and Loading
