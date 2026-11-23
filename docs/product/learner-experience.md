@@ -1,6 +1,6 @@
 # Learner Experience
 
-_Last updated: 2026-11-21_
+_Last updated: 2026-11-23_
 
 ## Summary
 
@@ -12,6 +12,7 @@ _Last updated: 2026-11-21_
 - **"Apply now" needs no account.** An anonymous visitor gives their name and email and is emailed a link straight away; they complete and submit the application without a password, and finish their account from that link. The same link lets them pick up an unfinished application on another device. See [applying without an account](#applying-to-a-course).
 - Independently of access type, a course also has a visibility state — published, coming soon, or hidden — that governs whether it's discoverable and enrollable; see [Course Visibility](#course-visibility-coming-soon--hidden) below.
 - The course player unlocks items in sequence and resumes automatically where the learner left off.
+- A course can offer **reference material**, such as a glossary or regulations, outside its learning path. A learner who can open the course reads it from the course player at any time, without unlocking anything first, and reading it records no progress. Visitors see it listed on the course detail page. See [Reference Material](#reference-material).
 - Multi-page forms, quiz feedback (pass/fail, score, optional reveal of incorrect answers), and a course finish page are all built in. A quiz can be set to shuffle its pages, questions and answer options, with a different order for each learner and each re-sit.
 - A form, whether an application form or one in a course, can show a page, a question or a block of text only to learners whose earlier answers call for it. A learner sees and is counted against only what applies to them. See [Multi-Page Forms](#multi-page-forms).
 - A form question can ask for text, a number, a date, a time, an email address, a URL, a phone number, a file upload, or a choice made from radio buttons, checkboxes or a dropdown. An answer that does not fit its question's type is refused at submission, with the reason shown on the question itself, rather than stored as typed.
@@ -118,6 +119,7 @@ The course detail page is publicly accessible. Anonymous visitors and authentica
 - **Description** — full course markdown description.
 - **Access model** — whether the course is free or by application.
 - **Table of contents** — all items are shown locked for visitors who are not registered, whether anonymous or signed in.
+- **Reference** — the course's reference material, when it has any, listed alongside the table of contents. Only a learner who can open the course can read it.
 - **Organisation** — where the course has exactly one, the page shows its name and mark and, if the organisation has written one, its bio. Neither appears for a course with several organisations or only the site's default one.
 
 A single **Back** link returns the learner to the page they came from on this site, or to the dashboard when they did not arrive from another page on the site.
@@ -239,6 +241,10 @@ Access type is configured per course through the content-loading pipeline; see [
 ![Course player](screenshots/learner_course_player.png)
 
 The course player displays one content item at a time. The breadcrumb trail starts with the course title; clicking it takes the learner to the course's [detail page](#course-detail-page) rather than back to the first lesson, giving a one-click route out of the player to the overview at any point. Because that detail page's URL is itself the shareable link, this is also how a learner shares the course — FLS ships no separate share control.
+
+### Reference Material
+
+The course player gives a learner a route to the course's reference material from every page, with a page listing all of it. A reference topic is always open: it is not part of the sequential unlock, it does not count toward completion, and reading it starts nothing and records no progress. Courses mark reference material in their content; see [content editing workflow](./content-editing-workflow.md).
 
 ### Sequential Item Unlock
 
