@@ -34,7 +34,6 @@ freedom_ls/dev_tools/tests/test_danger_commands_with_applications.py
 freedom_ls/dev_tools/tests/test_danger_content_delete.py
 
 # educator_interface
-freedom_ls/educator_interface/tests/test_create_cohort_action.py
 freedom_ls/educator_interface/tests/test_document_title.py
 freedom_ls/educator_interface/tests/test_interface_urls.py
 freedom_ls/educator_interface/tests/test_organisation_switcher.py
