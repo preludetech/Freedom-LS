@@ -320,7 +320,6 @@ class CohortMembershipInline(TabularInline):
 class CohortCourseRegistrationInline(TabularInline):
     model = CohortCourseRegistration
     extra = 0
-    autocomplete_fields = ["course"]
     fields = ["course", "is_active", "registered_at"]
     readonly_fields = ["registered_at"]
 

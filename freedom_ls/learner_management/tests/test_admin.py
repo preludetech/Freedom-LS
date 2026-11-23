@@ -35,6 +35,7 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_management.models import (
     Cohort,
+    CohortCourseRegistration,
     CohortMembership,
     Learner,
     LearnerCourseRegistration,
@@ -685,3 +686,20 @@ def test_the_registration_add_form_picks_the_course_with_a_plain_select(
     assert isinstance(fields["course"].widget.widget, Select)
     assert not isinstance(fields["course"].widget.widget, AutocompleteSelect)
     assert isinstance(fields[autocompleted_field].widget.widget, AutocompleteSelect)
+
+
+@pytest.mark.django_db
+def test_the_cohort_course_registration_inline_picks_the_course_with_a_plain_select(
+    staff_client,
+) -> None:
+    cohort = CohortFactory(organisation=OrganisationFactory(), name="Cohort A")
+
+    response = staff_client.get(reverse(COHORT_CHANGE_URL_NAME, args=[cohort.pk]))
+
+    inline_formsets = {
+        formset.opts.model: formset
+        for formset in response.context["inline_admin_formsets"]
+    }
+    form = inline_formsets[CohortCourseRegistration].formset.empty_form
+    assert isinstance(form.fields["course"].widget.widget, Select)
+    assert not isinstance(form.fields["course"].widget.widget, AutocompleteSelect)
