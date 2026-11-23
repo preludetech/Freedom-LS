@@ -4,6 +4,7 @@ from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
+from django.contrib import admin
 from django.db import connection
 from django.test import Client
 from django.test.utils import CaptureQueriesContext
@@ -21,6 +22,8 @@ from freedom_ls.content_engine.models import (
 )
 from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.deadlines.admin import (
+    CoursePauseInline,
+    DeadlineExtensionInline,
     _policy_value_text,
 )
 from freedom_ls.deadlines.factories import (
@@ -192,18 +195,6 @@ def test_the_course_progress_page_shows_the_layer_that_set_each_value(
     content = response.content.decode()
     assert "<li>close_items: On (course)</li>" in content
     assert "<li>mark_overdue: On (settings)</li>" in content
-
-
-@pytest.mark.django_db
-def test_the_course_progress_add_page_renders_without_a_policy(
-    staff_client, mock_site_context
-) -> None:
-    response = staff_client.get(
-        reverse("admin:freedom_ls_learner_progress_courseprogress_add")
-    )
-
-    assert response.status_code == 200
-    assert "close_items:" not in response.content.decode()
 
 
 @pytest.mark.django_db
@@ -598,3 +589,55 @@ def test_the_course_progress_admin_has_no_pause_resume_or_extend_url(
             f"admin:freedom_ls_learner_progress_courseprogress_{action}",
             args=["00000000-0000-0000-0000-000000000000"],
         )
+
+
+DEADLINE_INLINES = [CoursePauseInline, DeadlineExtensionInline]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("inline_class", DEADLINE_INLINES)
+def test_the_deadline_inlines_deny_add(rf, inline_class, mock_site_context) -> None:
+    request = rf.get("/")
+    request.user = UserFactory(superuser=True)
+
+    inline = inline_class(CourseProgress, admin.site)
+
+    assert inline.has_add_permission(request) is False
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("inline_class", DEADLINE_INLINES)
+def test_the_deadline_inlines_deny_change(rf, inline_class, mock_site_context) -> None:
+    request = rf.get("/")
+    request.user = UserFactory(superuser=True)
+
+    inline = inline_class(CourseProgress, admin.site)
+
+    assert inline.has_change_permission(request) is False
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("inline_class", DEADLINE_INLINES)
+def test_the_deadline_inlines_deny_delete(rf, inline_class, mock_site_context) -> None:
+    request = rf.get("/")
+    request.user = UserFactory(superuser=True)
+
+    inline = inline_class(CourseProgress, admin.site)
+
+    assert inline.has_delete_permission(request) is False
+
+
+@pytest.mark.django_db
+def test_the_progress_page_lists_a_pause_and_an_extension_together(
+    staff_client, mock_site_context
+) -> None:
+    record: CourseProgress = CourseProgressFactory()
+    CoursePauseFactory(course_progress=record, reason="Medical leave")
+    DeadlineExtensionFactory(course_progress=record, reason="Was ill")
+
+    response = _progress_page(staff_client, record)
+
+    body = response.content.decode()
+    assert response.status_code == 200
+    assert "Medical leave" in body
+    assert "Was ill" in body

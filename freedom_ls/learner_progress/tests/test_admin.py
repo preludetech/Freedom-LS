@@ -10,14 +10,18 @@ from __future__ import annotations
 
 import pytest
 
+from django.contrib import admin
 from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.form_engine.factories import FormProgressFactory
-from freedom_ls.learner_management.factories import LearnerFactory
-from freedom_ls.learner_progress.admin import learner_progress_links, quiz_result
+from freedom_ls.learner_progress.admin import (
+    CourseProgressFormAttemptInline,
+    CourseProgressTopicInline,
+    quiz_result,
+)
 from freedom_ls.learner_progress.factories import (
     CourseFormAttemptFactory,
     CourseProgressFactory,
@@ -58,40 +62,6 @@ def test_changelist_search_resolves_its_field_paths(
 ):
     """A search_fields path that no longer exists raises rather than filtering."""
     response = superuser_client.get(reverse(url_name), {"q": "nobody@example.com"})
-
-    assert response.status_code == 200
-
-
-@pytest.mark.parametrize(
-    ("url_name", "lookup"),
-    [
-        (
-            "admin:freedom_ls_learner_progress_topicprogress_changelist",
-            "course_progress__learner__id__exact",
-        ),
-        (
-            "admin:freedom_ls_learner_progress_courseformattempt_changelist",
-            "course_progress__learner__id__exact",
-        ),
-        (
-            "admin:freedom_ls_learner_progress_courseprogress_changelist",
-            "learner__id__exact",
-        ),
-    ],
-)
-def test_changelist_accepts_the_learner_lookup_the_learner_page_links_with(
-    superuser_client, url_name, lookup
-):
-    """`learner_progress_links` hard-codes these lookups into its hrefs.
-
-    A changelist rejects any GET param it cannot account for, so a filter that
-    stopped naming the learner would turn those links into 500s rather than
-    quietly ignoring them.
-    """
-    record = CourseProgressFactory()
-    learner_id = str(record.learner_id)
-
-    response = superuser_client.get(reverse(url_name), {lookup: learner_id})
 
     assert response.status_code == 200
 
@@ -176,42 +146,203 @@ def test_form_progress_changelist_says_which_course_an_attempt_was_sat_in(
     assert admin_class.in_course(rows[standalone.pk]) is None
 
 
-# The course progress panel and the progress links are contributed to
-# `LearnerAdmin` from this app, and that wiring only runs at import time, so
-# opening the learner's page is what proves it ran.
-def test_learner_change_page_lists_the_learners_course_progress(
-    staff_client, mock_site_context
-) -> None:
-    learner = LearnerFactory()
-    record = CourseProgressFactory(learner=learner)
+PROGRESS_FACTORIES = {
+    "courseprogress": CourseProgressFactory,
+    "topicprogress": TopicProgressFactory,
+    "courseformattempt": CourseFormAttemptFactory,
+}
 
-    response = staff_client.get(
-        reverse("admin:freedom_ls_learner_management_learner_change", args=[learner.pk])
+
+def _progress_url(model_name: str, view: str, *args: object) -> str:
+    return reverse(f"admin:freedom_ls_learner_progress_{model_name}_{view}", args=args)
+
+
+@pytest.mark.parametrize("model_name", PROGRESS_FACTORIES)
+def test_the_progress_changelist_opens_for_a_superuser_and_lists_the_row(
+    superuser_client, model_name
+):
+    row = PROGRESS_FACTORIES[model_name]()
+
+    response = superuser_client.get(_progress_url(model_name, "changelist"))
+
+    assert response.status_code == 200
+    assert [r.pk for r in response.context["cl"].result_list] == [row.pk]
+
+
+@pytest.mark.parametrize("model_name", PROGRESS_FACTORIES)
+def test_the_progress_change_page_has_no_save_button(superuser_client, model_name):
+    row = PROGRESS_FACTORIES[model_name]()
+
+    response = superuser_client.get(_progress_url(model_name, "change", row.pk))
+
+    assert response.status_code == 200
+    assert 'name="_save"' not in response.content.decode()
+
+
+@pytest.mark.parametrize("model_name", PROGRESS_FACTORIES)
+def test_a_superuser_cannot_open_the_progress_add_page(superuser_client, model_name):
+    response = superuser_client.get(_progress_url(model_name, "add"))
+
+    assert response.status_code == 403
+
+
+@pytest.mark.parametrize("model_name", PROGRESS_FACTORIES)
+def test_a_superuser_cannot_change_a_progress_row(superuser_client, model_name):
+    row = PROGRESS_FACTORIES[model_name]()
+    before = type(row)._base_manager.values().get(pk=row.pk)
+
+    response = superuser_client.post(
+        _progress_url(model_name, "change", row.pk), {"progress_percentage": "50"}
     )
 
-    inline_models = {
-        formset.formset.model for formset in response.context["inline_admin_formsets"]
-    }
-    assert CourseProgress in inline_models
-    assert record.course.title in response.content.decode()
+    assert response.status_code == 403
+    assert type(row)._base_manager.values().get(pk=row.pk) == before
 
 
-def test_learner_summary_links_to_this_learners_topic_progress(
-    mock_site_context,
-) -> None:
-    learner = LearnerFactory()
-    TopicProgressFactory(course_progress=CourseProgressFactory(learner=learner))
+@pytest.mark.parametrize("model_name", PROGRESS_FACTORIES)
+def test_a_superuser_cannot_delete_a_progress_row(superuser_client, model_name):
+    row = PROGRESS_FACTORIES[model_name]()
 
-    summary = learner_progress_links(learner)
-
-    expected = (
-        reverse("admin:freedom_ls_learner_progress_topicprogress_changelist")
-        + "?course_progress__learner__id__exact="
-        + str(learner.pk)
+    response = superuser_client.post(
+        _progress_url(model_name, "delete", row.pk), {"post": "yes"}
     )
-    assert expected in summary
-    assert "1 topic progress record" in summary
+
+    assert response.status_code == 403
+    assert type(row)._base_manager.filter(pk=row.pk).exists()
 
 
-def test_learner_summary_says_so_when_there_is_no_progress(mock_site_context) -> None:
-    assert learner_progress_links(LearnerFactory()) == "No progress recorded yet"
+@pytest.mark.parametrize("model_name", PROGRESS_FACTORIES)
+def test_the_progress_admin_offers_no_delete_selected_action(
+    superuser_client, rf, model_name
+):
+    request = rf.get("/")
+    request.user = UserFactory(superuser=True)
+    model = PROGRESS_FACTORIES[model_name]._meta.model
+
+    actions = admin.site.get_model_admin(model).get_actions(request)
+
+    assert "delete_selected" not in actions
+
+
+@pytest.mark.parametrize("model_name", PROGRESS_FACTORIES)
+def test_posting_delete_selected_to_the_changelist_leaves_the_row(
+    superuser_client, model_name
+):
+    row = PROGRESS_FACTORIES[model_name]()
+
+    response = superuser_client.post(
+        _progress_url(model_name, "changelist"),
+        {"action": "delete_selected", "_selected_action": [row.pk], "index": 0},
+    )
+
+    assert response.status_code == 200
+    assert type(row)._base_manager.filter(pk=row.pk).exists()
+
+
+@pytest.fixture
+def course_progress_admin():
+    return admin.site.get_model_admin(CourseProgress)
+
+
+@pytest.mark.parametrize(
+    "inline_class", [CourseProgressTopicInline, CourseProgressFormAttemptInline]
+)
+def test_the_item_inlines_deny_add(
+    rf, mock_site_context, course_progress_admin, inline_class
+):
+    request = rf.get("/")
+    request.user = UserFactory(superuser=True)
+    inline = inline_class(course_progress_admin.model, admin.site)
+
+    assert inline.has_add_permission(request) is False
+
+
+@pytest.mark.parametrize(
+    "inline_class", [CourseProgressTopicInline, CourseProgressFormAttemptInline]
+)
+def test_the_item_inlines_deny_change(
+    rf, mock_site_context, course_progress_admin, inline_class
+):
+    request = rf.get("/")
+    request.user = UserFactory(superuser=True)
+    inline = inline_class(course_progress_admin.model, admin.site)
+
+    assert inline.has_change_permission(request) is False
+
+
+@pytest.mark.parametrize(
+    "inline_class", [CourseProgressTopicInline, CourseProgressFormAttemptInline]
+)
+def test_the_item_inlines_deny_delete(
+    rf, mock_site_context, course_progress_admin, inline_class
+):
+    request = rf.get("/")
+    request.user = UserFactory(superuser=True)
+    inline = inline_class(course_progress_admin.model, admin.site)
+
+    assert inline.has_delete_permission(request) is False
+
+
+@pytest.mark.parametrize(
+    ("model_name", "lookup", "chosen"),
+    [
+        ("topicprogress", "topic__id__exact", lambda row: row.topic_id),
+        ("courseprogress", "course__id__exact", lambda row: row.course_id),
+        (
+            "courseformattempt",
+            "form_progress__form__id__exact",
+            lambda row: row.form_progress.form_id,
+        ),
+    ],
+)
+def test_the_changelist_filters_to_the_chosen_topic_course_or_form(
+    superuser_client, model_name, lookup, chosen
+):
+    wanted = PROGRESS_FACTORIES[model_name]()
+    PROGRESS_FACTORIES[model_name]()
+
+    response = superuser_client.get(
+        _progress_url(model_name, "changelist"), {lookup: str(chosen(wanted))}
+    )
+
+    assert response.status_code == 200
+    assert [r.pk for r in response.context["cl"].result_list] == [wanted.pk]
+
+
+@pytest.mark.parametrize(
+    ("model_name", "learner_of"),
+    [
+        ("topicprogress", lambda row: row.course_progress.learner),
+        ("courseprogress", lambda row: row.learner),
+        ("courseformattempt", lambda row: row.course_progress.learner),
+    ],
+)
+def test_search_by_email_finds_only_that_learners_rows(
+    superuser_client, model_name, learner_of
+):
+    wanted = PROGRESS_FACTORIES[model_name]()
+    PROGRESS_FACTORIES[model_name]()
+
+    response = superuser_client.get(
+        _progress_url(model_name, "changelist"),
+        {"q": learner_of(wanted).user.email},
+    )
+
+    assert [r.pk for r in response.context["cl"].result_list] == [wanted.pk]
+
+
+@pytest.mark.parametrize(
+    ("model_name", "lookup"),
+    [
+        ("topicprogress", "course_progress__learner__id__exact"),
+        ("courseformattempt", "course_progress__learner__id__exact"),
+    ],
+)
+def test_the_changelist_refuses_a_learner_filter(
+    superuser_client, progress_rows, model_name, lookup
+):
+    response = superuser_client.get(
+        _progress_url(model_name, "changelist"), {lookup: "1"}
+    )
+
+    assert response.status_code == 400

@@ -152,18 +152,9 @@ def admin_change_link(
     )
 
 
-class ReadOnlyInline(TabularInline):
+class ReadOnlyInline(ReadOnlyAdminMixin, TabularInline):
     """A record's rows that only a service writes, so the inline offers no add, change or
     delete."""
 
     exclude = ["site"]
     extra = 0
-
-    def has_add_permission(self, request: HttpRequest, obj: object = None) -> bool:
-        return False
-
-    def has_change_permission(self, request: HttpRequest, obj: object = None) -> bool:
-        return False
-
-    def has_delete_permission(self, request: HttpRequest, obj: object = None) -> bool:
-        return False

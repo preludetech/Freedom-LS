@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 from zoneinfo import ZoneInfo
 
-from unfold.admin import ModelAdmin, TabularInline
+from unfold.admin import ModelAdmin
 from unfold.contrib.filters.admin import (
     AutocompleteSelectFilter,
     RelatedDropdownFilter,

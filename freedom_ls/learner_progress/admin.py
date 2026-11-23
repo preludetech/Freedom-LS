@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-from urllib.parse import urlencode
-
 from unfold.admin import TabularInline
 from unfold.contrib.filters.admin import (
-    AutocompleteSelectFilter,
     RelatedDropdownFilter,
     SliderNumericFilter,
 )
@@ -13,16 +10,12 @@ from unfold.decorators import display
 from django.contrib import admin
 from django.db import models
 from django.http import HttpRequest
-from django.urls import reverse
-from django.utils.html import format_html, format_html_join
-from django.utils.translation import gettext, ngettext
+from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.form_engine.enums import FormStrategy
 from freedom_ls.form_engine.models import FormProgress
-from freedom_ls.learner_management.admin import LEARNER_SUMMARIES, LearnerAdmin
-from freedom_ls.learner_management.models import Learner
-from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
+from freedom_ls.site_aware_models.admin import ReadOnlyAdminMixin, SiteAwareModelAdmin
 from freedom_ls.site_aware_models.admin_filters import (
     CompletionListFilter,
     InclusiveRangeDateTimeFilter,
@@ -86,27 +79,19 @@ def quiz_result(attempt: FormProgress) -> str | None:
     return f"{attempt.quiz_percentage()}% {verdict}"
 
 
-class CourseProgressItemInline(TabularInline):
+class CourseProgressItemInline(ReadOnlyAdminMixin, TabularInline):
     """One kind of item a learner worked through, listed on their record.
 
-    Read-only and paginated for the reason `OrganisationLearnerInline` is: a
-    course has more items than a change page should render at once, each row is
-    edited on its own page, and a completion timestamp drives the record's
-    percentage recalculation, so it must not be rewritten from a summary panel.
+    Read-only and paginated: a course has more items than a change page should
+    render at once, each row has its own page, and a completion timestamp drives
+    the record's percentage recalculation, so it must not be rewritten from here.
     """
 
     extra = 0
-    max_num = 0
-    can_delete = False
     per_page = 25
     show_count = True
     show_change_link = True
     tab = True
-
-    def has_add_permission(
-        self, request: HttpRequest, obj: CourseProgress | None = None
-    ) -> bool:
-        return False
 
 
 class CourseProgressTopicInline(CourseProgressItemInline):
@@ -159,7 +144,7 @@ class CourseProgressFormAttemptInline(CourseProgressItemInline):
 
 
 @admin.register(TopicProgress)
-class TopicProgressAdmin(SiteAwareModelAdmin):
+class TopicProgressAdmin(ReadOnlyAdminMixin, SiteAwareModelAdmin):
     list_display = [
         "learner",
         "course_progress",
@@ -172,9 +157,8 @@ class TopicProgressAdmin(SiteAwareModelAdmin):
     ]
     list_filter = [
         TopicCompletionFilter,
-        ("course_progress__learner", AutocompleteSelectFilter),
-        ("topic", AutocompleteSelectFilter),
-        ("course_progress__course", AutocompleteSelectFilter),
+        ("topic", RelatedDropdownFilter),
+        ("course_progress__course", RelatedDropdownFilter),
         ("course_progress__learner__organisation", RelatedDropdownFilter),
         ("course_progress__cohort_registration__cohort", RelatedDropdownFilter),
         ("complete_time", InclusiveRangeDateTimeFilter),
@@ -185,7 +169,6 @@ class TopicProgressAdmin(SiteAwareModelAdmin):
     search_fields = ("course_progress__learner__user__email", "topic__title")
     ordering = ("-last_accessed_time",)
     readonly_fields = ("start_time", "last_accessed_time")
-    autocomplete_fields = ["course_progress", "collection_item", "topic"]
     list_select_related = (
         "course_progress__learner__user",
         "course_progress__course",
@@ -213,7 +196,7 @@ class TopicProgressAdmin(SiteAwareModelAdmin):
 
 
 @admin.register(CourseProgress)
-class CourseProgressAdmin(SiteAwareModelAdmin):
+class CourseProgressAdmin(ReadOnlyAdminMixin, SiteAwareModelAdmin):
     list_display = [
         "learner",
         "course",
@@ -228,8 +211,7 @@ class CourseProgressAdmin(SiteAwareModelAdmin):
     ]
     list_filter = [
         CourseProgressStatusFilter,
-        ("learner", AutocompleteSelectFilter),
-        ("course", AutocompleteSelectFilter),
+        ("course", RelatedDropdownFilter),
         ("learner__organisation", RelatedDropdownFilter),
         ("cohort_registration__cohort", RelatedDropdownFilter),
         ("progress_percentage", SliderNumericFilter),
@@ -243,13 +225,6 @@ class CourseProgressAdmin(SiteAwareModelAdmin):
     # created_at is auto_now_add; last_accessed_time is written by the player,
     # so editing either by hand would only ever misreport what happened.
     readonly_fields = ("created_at", "last_accessed_time")
-    autocomplete_fields = [
-        "learner",
-        "course",
-        "learner_registration",
-        "cohort_registration",
-        "last_accessed_item",
-    ]
     list_select_related = (
         "learner__user",
         "course",
@@ -300,8 +275,8 @@ class CourseProgressAdmin(SiteAwareModelAdmin):
 
 
 @admin.register(CourseFormAttempt)
-class CourseFormAttemptAdmin(SiteAwareModelAdmin):
-    """The course side of an attempt. The attempt itself is edited in form_engine."""
+class CourseFormAttemptAdmin(ReadOnlyAdminMixin, SiteAwareModelAdmin):
+    """The course side of an attempt. The attempt itself is viewed in form_engine."""
 
     # `form` and `start_time` would shadow ModelAdmin.form and the attempt's own
     # field names, so the display callables carry their own names.
@@ -317,9 +292,8 @@ class CourseFormAttemptAdmin(SiteAwareModelAdmin):
     ]
     list_filter = [
         AttemptCompletionFilter,
-        ("course_progress__learner", AutocompleteSelectFilter),
-        ("form_progress__form", AutocompleteSelectFilter),
-        ("course_progress__course", AutocompleteSelectFilter),
+        ("form_progress__form", RelatedDropdownFilter),
+        ("course_progress__course", RelatedDropdownFilter),
         ("course_progress__learner__organisation", RelatedDropdownFilter),
         ("course_progress__cohort_registration__cohort", RelatedDropdownFilter),
         ("form_progress__completed_time", InclusiveRangeDateTimeFilter),
@@ -330,7 +304,6 @@ class CourseFormAttemptAdmin(SiteAwareModelAdmin):
         "form_progress__form__title",
     )
     ordering = ("-form_progress__start_time",)
-    autocomplete_fields = ["course_progress", "collection_item", "form_progress"]
     # Each row renders its record, its learner and the attempt's form, so the
     # changelist would otherwise issue three queries per row.
     list_select_related = (
@@ -365,102 +338,3 @@ class CourseFormAttemptAdmin(SiteAwareModelAdmin):
     @admin.display(boolean=True, description="Complete")
     def is_complete(self, obj: CourseFormAttempt) -> bool:
         return obj.form_progress.completed_time is not None
-
-
-class LearnerCourseProgressInline(TabularInline):
-    """A learner's pass through each of their courses, on their own page.
-
-    Contributed to LearnerAdmin at the bottom of this module. The topics and
-    forms behind each row stay on the record's own page, which `show_change_link`
-    reaches from every row.
-    """
-
-    model = CourseProgress
-    fields = [
-        "course",
-        "progress_percentage",
-        "started_at",
-        "last_accessed_time",
-        "completed_time",
-    ]
-    readonly_fields = fields
-    ordering = ["course__title"]
-    extra = 0
-    max_num = 0
-    can_delete = False
-    per_page = 25
-    show_count = True
-    show_change_link = True
-    tab = True
-
-    verbose_name = "Course Progress"
-    verbose_name_plural = "Course Progress"
-
-    def has_add_permission(
-        self, request: HttpRequest, obj: Learner | None = None
-    ) -> bool:
-        return False
-
-    def get_queryset(self, request: HttpRequest) -> models.QuerySet[CourseProgress]:
-        # Every row renders its course, and the row title renders it again.
-        records: models.QuerySet[CourseProgress] = super().get_queryset(request)
-        return records.select_related("course")
-
-
-#: The item-level changelists reachable from a learner, each with the phrasing
-#: for its own row count. `course_progress__learner` is in every one of their
-#: `list_filter` lists, which is what makes the lookup below one the changelist
-#: will accept rather than reject as a disallowed filter.
-_LEARNER_RECORD_LINKS = [
-    (
-        TopicProgress,
-        "admin:freedom_ls_learner_progress_topicprogress_changelist",
-        "1 topic progress record",
-        "%(count)d topic progress records",
-    ),
-    (
-        CourseFormAttempt,
-        "admin:freedom_ls_learner_progress_courseformattempt_changelist",
-        "1 form attempt",
-        "%(count)d form attempts",
-    ),
-]
-
-
-def learner_progress_links(learner: Learner) -> str:
-    """Links from a learner to the items they have worked through.
-
-    The course progress panel lists one row per course; these reach the topics
-    and form attempts underneath all of them at once, which is the view for
-    "what has this person actually finished, and when". The changelists also do
-    the searching, ordering and date filtering an inline cannot.
-    """
-    rows = []
-    for model, url_name, singular, plural in _LEARNER_RECORD_LINKS:
-        count = model.objects.filter(course_progress__learner=learner).count()
-        if not count:
-            continue
-        label = ngettext(singular, plural, count) % {"count": count}
-        query = urlencode({"course_progress__learner__id__exact": str(learner.pk)})
-        rows.append(
-            format_html(
-                '<a href="{}?{}" class="text-primary-600 dark:text-primary-500">{}</a>',
-                reverse(url_name),
-                query,
-                label,
-            )
-        )
-    if not rows:
-        return "No progress recorded yet"
-    return format_html_join("", "<div>{}</div>", ((row,) for row in rows))
-
-
-# A learner's course progress on their own change page, through the two seams
-# LearnerAdmin declares for it. The wiring runs from here rather than from
-# `learner_management`, which sits below this app in docs/app_structure.md and
-# cannot import CourseProgress without making the dependency a cycle.
-#
-# Both seams add rather than replace: another app contributing an inline keeps
-# this one, the way appending to LEARNER_SUMMARIES keeps the summary below.
-LearnerAdmin.inlines = [*LearnerAdmin.inlines, LearnerCourseProgressInline]
-LEARNER_SUMMARIES.append(learner_progress_links)
