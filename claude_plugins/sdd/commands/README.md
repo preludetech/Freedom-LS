@@ -8,7 +8,7 @@ A step-by-step workflow from a rough idea to a merged pull request. Each step pr
 2. **Plan** → turn the spec into an implementation plan and a QA plan, and review the plan.
 3. **Implementation and QA** → execute the plan, then run the QA plan.
 4. **Documentation and pull request** → run the documentation hooks, open the PR.
-5. **Cleanup** → finish the worktree, then remove the worktree and branch.
+5. **Cleanup** → finish the worktree: land it on main and remove the worktree and branch.
 
 These are the five sections of the `todo.md` checklist. Capturing the idea comes before them.
 
@@ -157,9 +157,9 @@ Run `/sdd:document`. It reads `## Documentation Hooks` in `.claude/sdd/config.md
 
 ## Step 7: Cleanup
 
-Run `/sdd:finish_worktree` when you want the branch on `main`. It never looks at the pull request, so it does not wait for an approval. It rebases, archives the spec and its roadmap row, lands the close-out on `main` by fast-forward push and brings the main worktree up to date. It stops, changing nothing on `main`, if the main worktree has uncommitted work or an operation in progress. Nobody runs `git merge` in the main worktree by hand. Then remove the worktree and delete the branch.
+Run `/sdd:finish_worktree` when you want the branch on `main`. It never looks at the pull request, so it does not wait for an approval. It rebases, archives the spec and its roadmap row, lands the close-out on `main` by fast-forward push and brings the main worktree up to date. It stops, changing nothing on `main`, if the main worktree has uncommitted work or an operation in progress. Nobody runs `git merge` in the main worktree by hand. Once the landing passes, it removes the worktree (with `--force`, so a worktree holding submodules goes too) and deletes the local branch.
 
-![The `/sdd:finish_worktree` flow as six flowcharts: the main flow of Steps 0 to 8 with its stopping states, then one chart each for the checkpoint run, flaky tests, landing on main, the main-moved loop and a dirty main worktree.](../docs/diagrams/finish_worktree.drawio.svg)
+![The `/sdd:finish_worktree` flow as six flowcharts: the main flow of Steps 0 to 9 with its stopping states, then one chart each for the checkpoint run, flaky tests, landing on main, the main-moved loop and a dirty main worktree.](../docs/diagrams/finish_worktree.drawio.svg)
 
 The command rebases the branch, runs the checkpoint tier and tears down per-worktree resources. It archives the spec, removes the roadmap row, commits the close-out and lands the branch on `main` by fast-forward. When `origin/main` moves in the meantime, the main-moved loop rebases and runs the checkpoint tier. The main flow is the chart at the top left, with each stopping state to its right; the checkpoint run, flaky tests, landing on main, the main-moved loop and a dirty main worktree each have their own chart. "How `finish_worktree` recovers" lists what the command fixes by itself and what stops it.
 

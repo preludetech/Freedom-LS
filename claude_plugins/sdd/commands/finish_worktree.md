@@ -1,12 +1,12 @@
 ---
-description: Close out the current worktree: rebase, archive the spec, land the close-out on main and sync the main worktree
+description: Close out the current worktree: rebase, archive the spec, land the close-out on main, sync the main worktree and remove the feature worktree
 allowed-tools: Bash, Read, Glob, Skill, Agent, AskUserQuestion
 ---
 
 This command finishes a spec's worktree. It runs on the feature branch: it rebases the branch,
 makes the close-out commits there (spec directory to done, roadmap row removed, project settings
-tidied), lands the branch on `main` by fast-forward and brings the main worktree up to date.
-It runs at **depth 0** and delegates mechanical steps to the `sdd:sdd-mechanic` agent.
+tidied), lands the branch on `main` by fast-forward, brings the main worktree up to date, then removes the
+feature worktree and its branch. It runs at **depth 0** and delegates mechanical steps to the `sdd:sdd-mechanic` agent.
 
 Two rules hold throughout:
 
@@ -175,6 +175,8 @@ Delegate to `sdd:sdd-mechanic`: invoke the helper at `claude_plugins/sdd/command
 
 - `<todo-path>`: the `todo.md` in the spec directory (still under `spec_dd/2. in progress/…/` here)
 - `tick:"Run `/sdd:finish_worktree`"` (a unique substring; the item's wording has changed over time)
+- `tick:"Remove the worktree and delete the branch"` (older todo lists carry this `(user)` item; Step 9
+  does it now; not found is fine)
 
 No new items to add.
 
@@ -318,13 +320,37 @@ Report:
 - each obvious-failure fix, with its commit
 - the `carried:` count, when the script printed one
 - the leftover batch worktrees removed, if any
-- that the worktree directory and the branch still exist; removing them is the `(user)` item that
-  follows in `todo.md`
+- Step 9's result: the worktree and branch removed, or why they were kept
+
+# Step 9: Remove the feature worktree
+
+Only after Step 8 passed with `status: ok` and `landed: yes` or `landed: nothing`. Any other status
+keeps the worktree, so a re-run can pick up where it stopped.
+
+`<main>` is the script's `main-worktree:` path, `<wt>` is `git rev-parse --show-toplevel` and
+`<branch>` is `git branch --show-current`, all read here before anything is removed. Run every
+command from `<main>` with `git -C`, because this session's directory is the worktree being removed:
+
+```
+git -C '<main>' worktree remove --force '<wt>'
+git -C '<main>' branch -d '<branch>'
+```
+
+`--force` is what lets git remove a worktree that holds initialised submodules; without it git
+refuses with "working trees containing submodules cannot be moved or removed". Step 8 already proved
+the worktree has no uncommitted or untracked work, so the force discards nothing. Step 2 already ran
+the Teardown script.
+
+`branch -d`, not `-D`: `main` holds the branch after a landing, so git deletes it; a refusal means
+`main` does not have it, so report git's message and keep the branch. A failed `worktree remove`
+is reported verbatim too; it does not change the status. The remote branch is left as it is.
+
+After the removal, run nothing more in this session's old directory.
 
 ## Return contract
 
 ```
-status: ok|failed|blocked|paused · landed: yes|nothing|no · main: <sha> · reason: <short>
+status: ok|failed|blocked|paused · landed: yes|nothing|no · main: <sha> · worktree: removed|kept · reason: <short>
 ```
 
 `landed: nothing` means the branch was already contained in `origin/main` (for example, a PR
