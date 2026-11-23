@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unfold.contrib.filters.admin import AutocompleteSelectFilter
+from unfold.contrib.filters.admin import RelatedDropdownFilter
 
 from django.contrib import admin
 from django.db.models import QuerySet
@@ -80,7 +80,7 @@ class CourseApplicationAdmin(SiteAwareExportModelAdmin):
     list_filter = [
         "state",
         EmailVerifiedFilter,
-        ("course", AutocompleteSelectFilter),
+        ("course", RelatedDropdownFilter),
         ("created_at", InclusiveRangeDateTimeFilter),
     ]
     # Filters apply on Submit, so a created-date range goes through as a pair of
@@ -215,7 +215,7 @@ class AnonymousApplicantAdmin(SiteAwareModelAdmin):
     ordering = ["-created_at"]
     search_fields = ["email", "first_name", "last_name"]
     list_filter = [
-        ("course", AutocompleteSelectFilter),
+        ("course", RelatedDropdownFilter),
         ("created_at", InclusiveRangeDateTimeFilter),
     ]
     list_filter_submit = True

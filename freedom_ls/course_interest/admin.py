@@ -20,5 +20,5 @@ class CourseInterestAdmin(SiteAwareModelAdmin):
         "user__last_name",
         "course__title",
     ]
-    autocomplete_fields = ["user", "course"]
+    autocomplete_fields = ["user"]
     readonly_fields = ["created_at"]

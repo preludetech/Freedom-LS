@@ -61,7 +61,6 @@ class CohortMessagingConfigAdmin(SiteAwareModelAdmin):
     list_display = ["__str__", *FLAG_NAMES]
     list_select_related = ["cohort"]
     list_filter = list(FLAG_NAMES)
-    autocomplete_fields = ["cohort"]
     search_fields = ["cohort__name"]
 
 
@@ -70,7 +69,7 @@ class LearnerMessagingConfigAdmin(SiteAwareModelAdmin):
     list_display = ["__str__", *FLAG_NAMES]
     list_select_related = ["learner__user", "learner__organisation"]
     list_filter = list(FLAG_NAMES)
-    autocomplete_fields = ["learner"]
+    raw_id_fields = ["learner"]
     search_fields = ["learner__user__email"]
 
 
@@ -83,7 +82,7 @@ class LearnerCourseRegistrationMessagingConfigAdmin(SiteAwareModelAdmin):
         "registration__course",
     ]
     list_filter = ["learner_to_course_peer"]
-    autocomplete_fields = ["registration"]
+    raw_id_fields = ["registration"]
     search_fields = ["registration__learner__user__email"]
 
 
@@ -92,5 +91,4 @@ class CohortCourseRegistrationMessagingConfigAdmin(SiteAwareModelAdmin):
     list_display = ["__str__", "learner_to_course_peer"]
     list_select_related = ["registration__cohort", "registration__course"]
     list_filter = ["learner_to_course_peer"]
-    autocomplete_fields = ["registration"]
     search_fields = ["registration__cohort__name"]

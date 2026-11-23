@@ -148,7 +148,7 @@ class RegistrationRuleAdmin(SiteAwareModelAdmin):
     ]
     list_filter = ["organisation", "outcome", "is_enabled", "course"]
     search_fields = ["name"]
-    autocomplete_fields = ["organisation", "course"]
+    autocomplete_fields = ["organisation"]
     radio_fields = {"outcome": admin.VERTICAL}
     readonly_fields = ["last_evaluated_at", "created_at", "updated_at"]
 

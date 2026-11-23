@@ -7,9 +7,11 @@ from typing import NamedTuple, cast
 import pytest
 from pytest_django.fixtures import SettingsWrapper
 
+from django.contrib.admin.widgets import AutocompleteSelect, ForeignKeyRawIdWidget
 from django.contrib.sites.models import Site
 from django.db import connection
 from django.db.models import Model
+from django.forms import Select
 from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
@@ -485,3 +487,52 @@ def test_a_second_registration_post_for_the_same_registration_is_a_form_error(
     assert response.status_code == 200
     assert response.context["adminform"].form.errors["registration"]
     assert registration_level.model.objects.count() == 1
+
+
+@pytest.mark.parametrize(
+    ("model_name", "field"),
+    [
+        ("cohortmessagingconfig", "cohort"),
+        ("cohortcourseregistrationmessagingconfig", "registration"),
+    ],
+)
+def test_the_add_form_picks_a_cohort_or_cohort_registration_with_a_plain_select(
+    staff_client: Client, model_name: str, field: str
+) -> None:
+    response = staff_client.get(
+        reverse(f"admin:freedom_ls_messaging_policy_{model_name}_add")
+    )
+
+    widget = response.context["adminform"].form.fields[field].widget.widget
+    assert isinstance(widget, Select)
+    assert not isinstance(widget, AutocompleteSelect)
+
+
+@pytest.mark.parametrize(
+    ("model_name", "field"),
+    [
+        ("learnermessagingconfig", "learner"),
+        ("learnercourseregistrationmessagingconfig", "registration"),
+    ],
+)
+def test_the_add_form_picks_a_learner_or_learner_registration_by_raw_id(
+    staff_client: Client, model_name: str, field: str
+) -> None:
+    response = staff_client.get(
+        reverse(f"admin:freedom_ls_messaging_policy_{model_name}_add")
+    )
+
+    widget = response.context["adminform"].form.fields[field].widget
+    assert isinstance(widget, ForeignKeyRawIdWidget)
+
+
+def test_a_post_saves_a_learner_config_for_the_posted_learner_pk(
+    staff_client: Client,
+) -> None:
+    learner = LearnerFactory()
+    url = reverse("admin:freedom_ls_messaging_policy_learnermessagingconfig_add")
+
+    response = staff_client.post(url, {**POST_DATA, "learner": str(learner.pk)})
+
+    assert response.status_code == 302
+    assert LearnerMessagingConfig.objects.get().learner == learner

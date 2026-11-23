@@ -9,8 +9,10 @@ from types import SimpleNamespace
 import pytest
 import time_machine
 
+from django.contrib.admin.widgets import AutocompleteSelect
 from django.contrib.auth.models import Permission
 from django.db import connection
+from django.forms import Select
 from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
@@ -1955,3 +1957,19 @@ def test_the_change_page_of_a_staff_made_recommendation_leaves_user_and_course_e
 
     # Assert
     assert _readonly_field_names(response).isdisjoint({"user", "course"})
+
+
+@pytest.mark.django_db
+def test_add_form_picks_the_course_with_a_plain_select_and_the_organisation_by_autocomplete(
+    staff_client,
+):
+    # Act
+    response = staff_client.get(
+        reverse("admin:freedom_ls_registration_rules_registrationrule_add")
+    )
+
+    # Assert
+    fields = response.context["adminform"].form.fields
+    assert isinstance(fields["course"].widget.widget, Select)
+    assert not isinstance(fields["course"].widget.widget, AutocompleteSelect)
+    assert isinstance(fields["organisation"].widget.widget, AutocompleteSelect)

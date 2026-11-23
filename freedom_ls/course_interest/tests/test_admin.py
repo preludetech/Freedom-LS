@@ -16,12 +16,16 @@ from __future__ import annotations
 import pytest
 import time_machine
 
+from django.contrib.admin.widgets import AutocompleteSelect
 from django.core.exceptions import NON_FIELD_ERRORS
+from django.forms import Select
 from django.urls import reverse
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.course_interest.factories import CourseInterestFactory
 from freedom_ls.course_interest.forms import CourseInterestAdminForm
+from freedom_ls.course_interest.models import CourseInterest
 from freedom_ls.tests.factories import SiteFactory
 
 CHANGELIST_URL_NAME = "admin:freedom_ls_course_interest_courseinterest_changelist"
@@ -92,3 +96,28 @@ def test_admin_form_rejects_duplicate_user_course_pair(
 
     assert form.is_valid() is False
     assert NON_FIELD_ERRORS in form.errors
+
+
+@pytest.mark.django_db
+def test_add_form_picks_the_course_with_a_plain_select(staff_client):
+    response = staff_client.get(
+        reverse("admin:freedom_ls_course_interest_courseinterest_add")
+    )
+
+    widget = response.context["adminform"].form.fields["course"].widget.widget
+    assert isinstance(widget, Select)
+    assert not isinstance(widget, AutocompleteSelect)
+
+
+@pytest.mark.django_db
+def test_add_post_saves_the_interest_for_the_posted_course_pk(staff_client):
+    course = CourseFactory()
+    user = UserFactory()
+
+    response = staff_client.post(
+        reverse("admin:freedom_ls_course_interest_courseinterest_add"),
+        {"user": user.pk, "course": course.pk},
+    )
+
+    assert response.status_code == 302
+    assert CourseInterest.objects.get().course == course

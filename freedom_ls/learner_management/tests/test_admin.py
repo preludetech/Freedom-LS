@@ -13,7 +13,7 @@ from django.contrib import admin
 from django.contrib.admin.widgets import AutocompleteSelect
 from django.core.paginator import UnorderedObjectListWarning
 from django.db.models import Model, QuerySet
-from django.forms import ModelChoiceField
+from django.forms import ModelChoiceField, Select
 from django.http import HttpRequest
 from django.test import Client, RequestFactory
 from django.urls import reverse
@@ -664,3 +664,24 @@ class TestCohortAdminActiveFlag:
         response = staff_client.get(reverse(COHORT_CHANGE_URL_NAME, args=[cohort.pk]))
 
         assert "is_active" in response.context["adminform"].form.fields
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("model_name", "autocompleted_field"),
+    [
+        ("learnercourseregistration", "learner"),
+        ("cohortcourseregistration", "cohort"),
+    ],
+)
+def test_the_registration_add_form_picks_the_course_with_a_plain_select(
+    staff_client, model_name: str, autocompleted_field: str
+) -> None:
+    response = staff_client.get(
+        reverse(f"admin:freedom_ls_learner_management_{model_name}_add")
+    )
+
+    fields = response.context["adminform"].form.fields
+    assert isinstance(fields["course"].widget.widget, Select)
+    assert not isinstance(fields["course"].widget.widget, AutocompleteSelect)
+    assert isinstance(fields[autocompleted_field].widget.widget, AutocompleteSelect)

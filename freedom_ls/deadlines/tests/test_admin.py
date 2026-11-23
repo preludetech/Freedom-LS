@@ -5,7 +5,9 @@ from datetime import UTC, date, datetime, timedelta
 import pytest
 
 from django.contrib import admin
+from django.contrib.admin.widgets import AutocompleteSelect, ForeignKeyRawIdWidget
 from django.db import connection
+from django.forms import Select
 from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.urls import NoReverseMatch, reverse
@@ -641,3 +643,76 @@ def test_the_progress_page_lists_a_pause_and_an_extension_together(
     assert response.status_code == 200
     assert "Medical leave" in body
     assert "Was ill" in body
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("model_name", "field"),
+    [
+        ("coursedeadlineconfig", "course"),
+        ("cohortdeadlineconfig", "cohort"),
+        ("cohortcourseregistrationdeadlineconfig", "cohort_registration"),
+    ],
+)
+def test_the_config_add_form_picks_a_course_cohort_or_registration_with_a_plain_select(
+    staff_client, mock_site_context, model_name: str, field: str
+) -> None:
+    response = staff_client.get(reverse(f"admin:freedom_ls_deadlines_{model_name}_add"))
+
+    widget = response.context["adminform"].form.fields[field].widget.widget
+    assert isinstance(widget, Select)
+    assert not isinstance(widget, AutocompleteSelect)
+
+
+@pytest.mark.django_db
+def test_the_learner_registration_config_add_form_picks_the_registration_by_raw_id(
+    staff_client, mock_site_context
+) -> None:
+    url = reverse(
+        "admin:freedom_ls_deadlines_learnercourseregistrationdeadlineconfig_add"
+    )
+
+    response = staff_client.get(url)
+
+    widget = response.context["adminform"].form.fields["learner_registration"].widget
+    assert isinstance(widget, ForeignKeyRawIdWidget)
+
+
+@pytest.mark.django_db
+def test_course_config_post_saves_a_row_for_the_posted_course_pk(
+    staff_client, mock_site_context
+) -> None:
+    course = CourseFactory()
+
+    response = staff_client.post(
+        reverse(COURSE_CONFIG_ADD), {**INHERIT_POST, "course": str(course.pk)}
+    )
+
+    assert response.status_code == 302
+    assert CourseDeadlineConfig.objects.get().course == course
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("factory", "admin_url_name"),
+    [
+        (CoursePauseFactory, "admin:freedom_ls_deadlines_coursepause_changelist"),
+        (
+            DeadlineExtensionFactory,
+            "admin:freedom_ls_deadlines_deadlineextension_changelist",
+        ),
+    ],
+)
+def test_the_changelist_filters_to_the_rows_of_one_course(
+    staff_client, mock_site_context, factory, admin_url_name: str
+) -> None:
+    wanted = factory()
+    factory()
+
+    response = staff_client.get(
+        reverse(admin_url_name),
+        {"course_progress__course__id__exact": wanted.course_progress.course_id},
+    )
+
+    assert response.status_code == 200
+    assert [row.pk for row in response.context["cl"].result_list] == [wanted.pk]

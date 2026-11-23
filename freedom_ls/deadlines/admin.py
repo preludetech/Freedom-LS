@@ -5,7 +5,6 @@ from zoneinfo import ZoneInfo
 
 from unfold.admin import ModelAdmin
 from unfold.contrib.filters.admin import (
-    AutocompleteSelectFilter,
     RelatedDropdownFilter,
 )
 
@@ -238,7 +237,7 @@ class CoursePauseAdmin(SiteAwareModelAdmin):
         "ended_by",
     ]
     list_filter = [
-        ("course_progress__course", AutocompleteSelectFilter),
+        ("course_progress__course", RelatedDropdownFilter),
         PauseStateFilter,
         ("started_by", RelatedDropdownFilter),
         ("started_at", InclusiveRangeDateTimeFilter),
@@ -305,7 +304,7 @@ class DeadlineExtensionAdmin(SiteAwareModelAdmin):
         "set_by",
     ]
     list_filter = [
-        ("course_progress__course", AutocompleteSelectFilter),
+        ("course_progress__course", RelatedDropdownFilter),
         "target_kind",
         ("set_by", RelatedDropdownFilter),
         ("created_at", InclusiveRangeDateTimeFilter),
@@ -416,21 +415,18 @@ class OrganisationDeadlineConfigAdmin(_DeadlineConfigAdmin):
 @admin.register(CourseDeadlineConfig)
 class CourseDeadlineConfigAdmin(_DeadlineConfigAdmin):
     list_select_related = ["course"]
-    autocomplete_fields = ["course"]
     search_fields = ["course__title"]
 
 
 @admin.register(CohortDeadlineConfig)
 class CohortDeadlineConfigAdmin(_DeadlineConfigAdmin):
     list_select_related = ["cohort"]
-    autocomplete_fields = ["cohort"]
     search_fields = ["cohort__name"]
 
 
 @admin.register(CohortCourseRegistrationDeadlineConfig)
 class CohortCourseRegistrationDeadlineConfigAdmin(_DeadlineConfigAdmin):
     list_select_related = ["cohort_registration__cohort", "cohort_registration__course"]
-    autocomplete_fields = ["cohort_registration"]
     search_fields = ["cohort_registration__cohort__name"]
 
 
@@ -440,5 +436,5 @@ class LearnerCourseRegistrationDeadlineConfigAdmin(_DeadlineConfigAdmin):
         "learner_registration__learner__user",
         "learner_registration__course",
     ]
-    autocomplete_fields = ["learner_registration"]
+    raw_id_fields = ["learner_registration"]
     search_fields = ["learner_registration__learner__user__email"]

@@ -853,3 +853,15 @@ def test_a_view_only_user_sees_on_the_change_page_the_answers_the_export_writes(
     response = client.get(reverse(CHANGE, args=[application.pk]))
 
     assert "Ada Lovelace" in response.content.decode()
+
+
+def test_applicant_course_filter_returns_only_that_courses_applicants(staff_client):
+    wanted = AnonymousApplicantFactory()
+    AnonymousApplicantFactory()
+
+    response = staff_client.get(
+        reverse(APPLICANT_CHANGELIST), {"course__id__exact": wanted.course.pk}
+    )
+
+    assert response.status_code == 200
+    assert [row.pk for row in response.context["cl"].result_list] == [wanted.pk]

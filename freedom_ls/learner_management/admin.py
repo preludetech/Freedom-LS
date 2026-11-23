@@ -356,7 +356,7 @@ class LearnerCourseRegistrationAdmin(SiteAwareModelAdmin):
         "learner__user__last_name",
         "course__title",
     ]
-    autocomplete_fields = ["learner", "course"]
+    autocomplete_fields = ["learner"]
     readonly_fields = ["self_registered", "registered_at"]
 
     fieldsets = (
@@ -380,7 +380,7 @@ class CohortCourseRegistrationAdmin(SiteAwareModelAdmin):
     list_select_related = ["cohort", "course"]
     list_filter = ["is_active", "registered_at"]
     search_fields = ["cohort__name", "course__title"]
-    autocomplete_fields = ["cohort", "course"]
+    autocomplete_fields = ["cohort"]
     readonly_fields = ["registered_at"]
 
     fieldsets = (
