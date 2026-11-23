@@ -27,10 +27,12 @@ from freedom_ls.comms.factories import NotificationFactory
 from freedom_ls.content_engine.factories import (
     CourseFactory,
 )
-from freedom_ls.educator_interface import views as educator_views
 from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
 from freedom_ls.educator_interface.panels.audit_log.data_tables import (
     OrganisationAuditLogTable,
+)
+from freedom_ls.educator_interface.panels.cohort.data_table_panels import (
+    CohortHistoryPanel,
 )
 from freedom_ls.educator_interface.panels.cohort.data_tables import (
     CohortCourseRegistrationDataTable,
@@ -1533,9 +1535,7 @@ def test_the_first_use_message_is_a_sentence(table: type[DataTable]) -> None:
     assert table.empty_message != DataTable.empty_message
 
 
-@pytest.mark.parametrize(
-    "panel", [LearnerHistoryPanel, educator_views.CohortHistoryPanel]
-)
+@pytest.mark.parametrize("panel", [LearnerHistoryPanel, CohortHistoryPanel])
 def test_a_history_panel_says_what_will_be_recorded(panel: type) -> None:
     assert panel.empty_message.endswith(".")
     assert panel.data_table.empty_no_results.endswith(".")

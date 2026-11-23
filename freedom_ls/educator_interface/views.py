@@ -6,7 +6,7 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.db.models import Model, QuerySet
+from django.db.models import Model
 from django.http import (
     FileResponse,
     Http404,
@@ -20,31 +20,23 @@ from django.urls import reverse
 from freedom_ls.accounts.models import User
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
-    REGISTRATION_CHANGED,
-    STAFF_CHANGED,
 )
 from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
 from freedom_ls.educator_interface.forms import CohortForm
 from freedom_ls.educator_interface.panels.audit_log.config import AuditLogConfig
-from freedom_ls.educator_interface.panels.audit_log.data_table_panels import (
-    HistoryPanel,
-)
-from freedom_ls.educator_interface.panels.audit_log.data_tables import (
-    TargetedAuditLogEntryTable,
-)
 
 # Importing the module registers the cohorts table's bulk actions.
 from freedom_ls.educator_interface.panels.cohort import bulk_actions  # noqa: F401
 from freedom_ls.educator_interface.panels.cohort.actions import (
-    AddExistingLearnersAction,
-    AddLearnerToCohortAction,
-    DeactivateCohortRegistrationAction,
     EditCohortAction,
-    RegisterCohortForCourseAction,
     cohort_state_actions,
 )
+from freedom_ls.educator_interface.panels.cohort.data_table_panels import (
+    CohortCoursesPanel,
+    CohortHistoryPanel,
+    CohortLearnersPanel,
+)
 from freedom_ls.educator_interface.panels.cohort.data_tables import (
-    CohortCourseRegistrationDataTable,
     CohortDataTable,
 )
 from freedom_ls.educator_interface.panels.cohort.panels import (
@@ -70,15 +62,7 @@ from freedom_ls.educator_interface.panels.common.request import (
 )
 from freedom_ls.educator_interface.panels.course.config import CourseConfig
 from freedom_ls.educator_interface.panels.dashboard.config import DashboardConfig
-from freedom_ls.educator_interface.panels.learner.actions import (
-    ImportLearnersAction,
-    MoveToCohortAction,
-    RemoveFromCohortAction,
-)
 from freedom_ls.educator_interface.panels.learner.config import LearnerConfig
-from freedom_ls.educator_interface.panels.learner.data_tables import (
-    CohortLearnerDataTable,
-)
 from freedom_ls.educator_interface.panels.staff.config import StaffConfig
 from freedom_ls.educator_interface.paths import interface_path
 from freedom_ls.learner_management.capabilities import can
@@ -98,7 +82,6 @@ from freedom_ls.panel_framework.actions import (
 from freedom_ls.panel_framework.bulk_actions import BulkAction, bulk_actions_for_table
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.panels import (
-    DataTablePanel,
     PanelStack,
     TabSet,
 )
@@ -126,62 +109,6 @@ from freedom_ls.reports.services import report_file_response
 # instance, other actions (eg: send_email)
 
 
-class CohortLearnersPanel(DataTablePanel):
-    title = "Learners"
-    data_table = CohortLearnerDataTable
-    table_key = "learners"
-    refresh_events = (COHORT_CHANGED,)
-
-    def get_actions(self) -> list[PanelAction]:
-        return [
-            AddExistingLearnersAction(),
-            AddLearnerToCohortAction(),
-            ImportLearnersAction(),
-            RemoveFromCohortAction(),
-            MoveToCohortAction(),
-        ]
-
-    def get_context_data(self) -> dict[str, object]:
-        context = super().get_context_data()
-        # None offers the actions on every learner row; an inactive cohort
-        # offers none.
-        context["membership_param"] = "learner"
-        context["membership_row_ids"] = (
-            None if cast(Cohort, self.instance).is_active else set()
-        )
-        return context
-
-    def get_queryset(self, request: HttpRequest) -> QuerySet:
-        return (
-            super().get_queryset(request).filter(cohortmembership__cohort=self.instance)
-        )
-
-    def get_export_scope_slug(self, request: HttpRequest) -> str:
-        return cast(Cohort, self.instance).name
-
-    def get_tab_count(self) -> int | None:
-        # The table lists inactive learners too; the tab counts current ones.
-        return self.get_queryset(self.request).filter(is_active=True).count()
-
-
-class CohortCoursesPanel(DataTablePanel):
-    title = "Courses"
-    data_table = CohortCourseRegistrationDataTable
-    table_key = "cohort_courses"
-    refresh_events = (COHORT_CHANGED, REGISTRATION_CHANGED)
-
-    def get_queryset(self, request: HttpRequest) -> QuerySet:
-        return super().get_queryset(request).filter(cohort=self.instance)
-
-    def get_actions(self) -> list[PanelAction]:
-        # Deactivate renders per row, not in the footer: the registration cell
-        # reads its URL from row_action_urls.
-        return [RegisterCohortForCourseAction(), DeactivateCohortRegistrationAction()]
-
-    def get_tab_count(self) -> int | None:
-        return self.get_queryset(self.request).filter(is_active=True).count()
-
-
 class CohortSettingsStack(PanelStack):
     """The cohort's Settings tab: one panel per job, so the name, the staff
     and the cohort's status each have their own card."""
@@ -203,19 +130,6 @@ class CohortOverviewStack(PanelStack):
         "completion": CohortCourseCompletionPanel,
         "attention": CohortNeedsAttentionPanel,
     }
-
-
-class CohortHistoryPanel(HistoryPanel):
-    model = Cohort
-    data_table = TargetedAuditLogEntryTable
-    # A role assigned from the Educators panel is a cohort entry too.
-    refresh_events = (COHORT_CHANGED, STAFF_CHANGED)
-    export_scope = "cohort"
-    empty_message = "No history for this cohort yet. Actions such as adding learners or registering it for a course are recorded here."
-
-    @property
-    def scope_label(self) -> str:
-        return cast(Cohort, self.instance).name
 
 
 class CohortTabSet(TabSet):
