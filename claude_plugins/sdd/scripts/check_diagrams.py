@@ -23,7 +23,6 @@ from typing import NoReturn
 
 PLUGIN = Path(__file__).resolve().parents[1]
 DIAGRAMS_DIR = PLUGIN / "docs" / "diagrams"
-CONFIG_FILES = (".claude/sdd/config.md", ".claude/sdd/config.local.md")
 EXIT_MISSES = 1
 EXIT_USAGE = 64
 
@@ -44,11 +43,6 @@ DIAGRAM_SOURCES: dict[str, tuple[str, ...]] = {
     "finish_worktree": ("commands/finish_worktree.md",),
     "hotfix": ("commands/hotfix.md",),
 }
-# Sources named by the project's config instead of living in this plugin:
-# diagram -> (section, key) pairs in .claude/sdd/config.md.
-CONFIG_SOURCES: dict[str, tuple[tuple[str, str], ...]] = {
-    "rebase": (("Rebase Hooks", "Rebase command"),),
-}
 EXEMPT = frozenset({"overview"})
 
 # A fence inside a list item is indented, so both fence lines may start with whitespace.
@@ -58,8 +52,6 @@ STEP_LABEL = re.compile(r"^Step (\d+(?:\.\d+)?)(?![\d.])")
 STEP_NUMBER = re.compile(r"^Step (\d+(?:\.\d+)?)")
 TAG = re.compile(r"<[^>]*>")
 BREAK = re.compile(r"<br\s*/?>|</(?:div|p|li)>", re.IGNORECASE)
-SECTION = re.compile(r"^##\s+(.*?)\s*$")
-CONFIG_BULLET = re.compile(r"^\s*-\s+([^:/]+):\s*(.*?)\s*$")
 
 
 class UsageParser(argparse.ArgumentParser):
@@ -125,42 +117,7 @@ def misses(svg: Path, sources: list[Path]) -> list[str]:
     return out
 
 
-def config_value(project_root: Path, section: str, key: str) -> str | None:
-    """The value of `- key: value` under `## section`; `config.local.md` wins."""
-    for name in reversed(CONFIG_FILES):
-        config = project_root / name
-        if not config.is_file():
-            continue
-        current = ""
-        for line in config.read_text(encoding="utf-8").splitlines():
-            if heading := SECTION.match(line):
-                current = heading.group(1)
-            elif (
-                current == section
-                and (bullet := CONFIG_BULLET.match(line))
-                and bullet.group(1) == key
-                and bullet.group(2)
-            ):
-                return bullet.group(2).split()[0]
-    return None
-
-
-def config_sources(project_root: Path, name: str) -> list[Path]:
-    """Config-named sources of a diagram. A blank or missing key, or a path that leaves the
-    project root, is dropped."""
-    root = project_root.resolve()
-    found: list[Path] = []
-    for section, key in CONFIG_SOURCES.get(name, ()):
-        value = config_value(project_root, section, key)
-        if value is None:
-            continue
-        path = (root / value).resolve()
-        if path.is_relative_to(root) and path.is_file():
-            found.append(path)
-    return found
-
-
-def check_all(project_root: Path) -> list[str]:
+def check_all() -> list[str]:
     out: list[str] = []
     present = {
         path.name.removesuffix(".drawio.svg")
@@ -175,16 +132,12 @@ def check_all(project_root: Path) -> list[str]:
         if not svg.is_file():
             out.append(f"{svg.name}: listed in DIAGRAM_SOURCES but the file is missing")
             continue
-        sources = [PLUGIN / path for path in relative] + config_sources(
-            project_root, name
-        )
-        out += misses(svg, sources)
+        out += misses(svg, [PLUGIN / path for path in relative])
     return out
 
 
 def main(argv: list[str]) -> int:
     parser = UsageParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--project-root", type=Path, default=Path.cwd())
     parser.add_argument("--diagram", type=Path)
     parser.add_argument("--source", type=Path, nargs="+")
     args = parser.parse_args(argv)
@@ -193,7 +146,7 @@ def main(argv: list[str]) -> int:
     if args.diagram is not None:
         problems = misses(args.diagram, args.source)
     else:
-        problems = check_all(args.project_root)
+        problems = check_all()
     for problem in problems:
         sys.stdout.write(f"{problem}\n")
     return EXIT_MISSES if problems else 0

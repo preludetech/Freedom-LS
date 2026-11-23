@@ -20,6 +20,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "claude_plugins" / "sdd" / "scripts" / "check_diagrams.py"
 FIXTURES = Path(__file__).parent / "fixtures" / "check_diagrams"
 SDD_DIR = REPO_ROOT / "claude_plugins" / "sdd"
+DS_DIR = REPO_ROOT / "claude_plugins" / "django-stack"
 GUIDE = SDD_DIR / "commands" / "README.md"
 DIAGRAMS_DIR = SDD_DIR / "docs" / "diagrams"
 EMBED = re.compile(r"\]\(\.\./docs/diagrams/([\w.-]+\.drawio\.svg)\)")
@@ -128,6 +129,19 @@ def test_label_on_a_shape_with_a_link_matches(tmp_path: Path) -> None:
 
 def test_committed_diagrams_match_their_commands() -> None:
     result = run_script(SCRIPT, REPO_ROOT)
+
+    assert (result.returncode, result.stdout) == (0, "")
+
+
+def test_rebase_command_diagram_matches_its_command() -> None:
+    result = run_script(
+        SCRIPT,
+        REPO_ROOT,
+        "--diagram",
+        str(DS_DIR / "docs" / "diagrams" / "rebase_main.drawio.svg"),
+        "--source",
+        str(DS_DIR / "commands" / "rebase_main.md"),
+    )
 
     assert (result.returncode, result.stdout) == (0, "")
 

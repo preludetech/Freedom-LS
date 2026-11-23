@@ -90,6 +90,9 @@ and `templates/wrapper_scripts/` (`claude.sh` launcher plus `find_available_port
 Rationale cut from the prompt files an agent reads at run time.
 
 - **Rebase command.**
+
+  ![The Rebase command: its twelve steps with each stop to the right, the test run of Step 9 and the push of Step 12.](docs/diagrams/rebase_main.drawio.svg)
+
   - The in-flight work is committed, never stashed, so the lost-change check covers it like every
     other commit on the branch.
   - A branch with a merge commit stops with `status: blocked`: a rebase replays only a merge
