@@ -30,6 +30,7 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.educator_interface.tests.helpers import (
+    _cohort_page,
     _org_admin,
     _pdf_url,
     _ready_report,
@@ -42,6 +43,7 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_management.models import Cohort, CohortMembership
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
+from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.reports.factories import GeneratedReportFactory
 from freedom_ls.reports.gather import gather_cohort_report_data
 from freedom_ls.reports.models import GeneratedReport
@@ -1318,3 +1320,17 @@ class TestCohortReportBodyPictures:
             sources = _report_body_pictures(client, cohort)
 
         assert len(sources) == 12
+
+
+@pytest.mark.django_db
+def test_needs_attention_card_renders_a_skeleton_that_fetches_its_body(
+    staff_client: Client,
+):
+    cohort = CohortFactory(organisation=OrganisationFactory())
+
+    document = _cohort_page(staff_client, cohort)
+
+    (card,) = document.cssselect("section[data-panel='attention']")
+    (region,) = card.cssselect("div[aria-busy='true']")
+    (fetch,) = region.cssselect("[hx-trigger='load']")
+    assert fetch.get("hx-get").endswith("/__panels/attention?loaded=1")

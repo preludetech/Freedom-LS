@@ -55,7 +55,6 @@ from freedom_ls.educator_interface.tests.helpers import (
     _audit_log_url,
     _cohort_history_tab,
     _cohort_history_url,
-    _cohort_page,
     _export_audit_csv,
     _get_document,
     _history_entry,
@@ -185,20 +184,6 @@ def test_organisation_root_page_still_offers_the_navigation_toggle(
         "#main-content button[aria-label='Open navigation panel']"
     )
     assert toggle.cssselect("svg[data-icon]")
-
-
-@pytest.mark.django_db
-def test_needs_attention_card_renders_a_skeleton_that_fetches_its_body(
-    staff_client: Client,
-):
-    cohort = CohortFactory(organisation=OrganisationFactory())
-
-    document = _cohort_page(staff_client, cohort)
-
-    (card,) = document.cssselect("section[data-panel='attention']")
-    (region,) = card.cssselect("div[aria-busy='true']")
-    (fetch,) = region.cssselect("[hx-trigger='load']")
-    assert fetch.get("hx-get").endswith("/__panels/attention?loaded=1")
 
 
 @pytest.mark.django_db
