@@ -25,6 +25,8 @@ from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
+    CoursePartFactory,
+    CourseReferencePartFactory,
     TopicFactory,
 )
 from freedom_ls.content_engine.management.commands.content_save import (
@@ -155,17 +157,33 @@ def test_revoking_a_share_removes_the_course_from_the_register_pickers(
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("action", ["preview_content", "preview_course_details"])
+@pytest.mark.parametrize(
+    ("panel", "action"),
+    [
+        ("content", "preview_content"),
+        ("content", "preview_course_details"),
+        ("reference", "preview_content"),
+    ],
+)
 def test_revoking_a_share_makes_the_content_previews_answer_404(
     revoked_share: RevokedShare,
     logged_in_client: Callable[[User], Client],
+    panel: str,
     action: str,
 ):
+    holder = revoked_share.course
+    if panel == "reference":
+        holder = CoursePartFactory()
+        CourseReferencePartFactory(
+            course=revoked_share.course, course_part=holder, order=0
+        )
     item = ContentCollectionItemFactory(
-        collection_object=revoked_share.course, child_object=TopicFactory(), order=0
+        collection_object=holder, child_object=TopicFactory(), order=0
     )
     client = logged_in_client(organisation_admin_viewer(revoked_share.organisation))
-    url = _content_action_url(revoked_share.organisation, revoked_share.course, action)
+    url = _content_action_url(
+        revoked_share.organisation, revoked_share.course, action, panel=panel
+    )
 
     response = client.get(f"{url}?item={item.pk}", HTTP_HX_REQUEST="true")
 

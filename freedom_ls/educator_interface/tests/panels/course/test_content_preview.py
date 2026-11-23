@@ -1282,9 +1282,51 @@ def _topic_item_of(course: CourseModel) -> uuid.UUID:
     return cast(uuid.UUID, item.pk)
 
 
+def _reference_topic_item_of(course: CourseModel) -> uuid.UUID:
+    """The collection item of a topic held by a reference part of `course`."""
+    part = CoursePartFactory()
+    CourseReferencePartFactory(course=course, course_part=part, order=0)
+    item = ContentCollectionItemFactory(
+        collection_object=part, child_object=TopicFactory(), order=0
+    )
+    return cast(uuid.UUID, item.pk)
+
+
 @pytest.mark.django_db
 @pytest.mark.parametrize(("row", "available"), PREVIEW_AVAILABLE)
-def test_the_content_panel_shows_its_outline_only_for_an_available_course(
+@pytest.mark.parametrize(
+    ("panel_key", "caption"),
+    [("content", "#outline-table-caption"), ("reference", "#reference-table-caption")],
+)
+def test_a_course_panel_shows_its_outline_only_for_an_available_course(
+    mock_site_context: Site,
+    logged_in_client: Callable[[User], Client],
+    panel_key: str,
+    caption: str,
+    row: str,
+    available: bool,
+) -> None:
+    organisation = OrganisationFactory()
+    course = course_per_reach_row(organisation)[row]
+    _topic_item_of(course)
+    _reference_topic_item_of(course)
+    client = logged_in_client(organisation_admin_viewer(organisation))
+
+    document = _get_document(
+        client, _interface_url(organisation.slug, f"courses/{course.pk}")
+    )
+
+    panel = document.cssselect(f"section[data-panel='{panel_key}']")[0]
+    assert (len(panel.cssselect(caption)) == 1) is available
+    assert (len(panel.cssselect("button[hx-get]")) > 0) is available
+    assert (len(panel.cssselect("[data-testid='preview-withheld']")) == 1) is (
+        not available
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(("row", "available"), PREVIEW_AVAILABLE)
+def test_the_reference_preview_answers_only_for_an_available_course(
     mock_site_context: Site,
     logged_in_client: Callable[[User], Client],
     row: str,
@@ -1292,19 +1334,15 @@ def test_the_content_panel_shows_its_outline_only_for_an_available_course(
 ) -> None:
     organisation = OrganisationFactory()
     course = course_per_reach_row(organisation)[row]
-    _topic_item_of(course)
+    item_pk = _reference_topic_item_of(course)
     client = logged_in_client(organisation_admin_viewer(organisation))
-
-    document = _get_document(
-        client, _interface_url(organisation.slug, f"courses/{course.pk}")
+    url = _content_action_url(
+        organisation, course, "preview_content", panel="reference"
     )
 
-    panel = document.cssselect("section[data-panel='content']")[0]
-    assert (len(panel.cssselect("#outline-table-caption")) == 1) is available
-    assert (len(panel.cssselect("button[hx-get]")) > 0) is available
-    assert (len(panel.cssselect("[data-testid='preview-withheld']")) == 1) is (
-        not available
-    )
+    response = client.get(f"{url}?item={item_pk}", HTTP_HX_REQUEST="true")
+
+    assert response.status_code == (200 if available else 404)
 
 
 @pytest.mark.django_db
