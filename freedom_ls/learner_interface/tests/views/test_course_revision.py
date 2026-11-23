@@ -913,6 +913,19 @@ def test_done_card_counts_knew_hard_and_forgot(mock_site_context):
 
 
 @pytest.mark.django_db
+def test_done_card_counts_are_plain_figures_without_border_or_fill(mock_site_context):
+    """Each count on the done card used to sit in its own bordered, filled tile."""
+    html, _, _ = _done_html(["knew", "hard", "forgot"])
+
+    counts = re.search(
+        r'<dl[^>]*data-testid="revision-counts"[^>]*>.*?</dl>', html, re.DOTALL
+    )
+    assert counts is not None
+    classes = " ".join(re.findall(r'class="([^"]*)"', counts.group(0))).split()
+    assert not [c for c in classes if c.startswith(("border", "bg-", "rounded"))]
+
+
+@pytest.mark.django_db
 def test_done_card_has_one_button_back_to_the_course(mock_site_context):
     html, _, course = _done_html(["forgot"])
     home = reverse("learner_interface:course_home", kwargs={"course_slug": course.slug})
