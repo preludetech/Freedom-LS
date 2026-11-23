@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import cast
 
 import pytest
 from pytest_mock import MockerFixture
@@ -42,14 +42,7 @@ from freedom_ls.panel_framework.bulk_actions import (
     run_apply,
 )
 
-if TYPE_CHECKING:
-    pass
 
-
-# rename clash
-
-
-@pytest.mark.django_db
 def _cohorts_bulk_post(
     client: Client,
     organisation: Organisation,
