@@ -11,6 +11,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### In progress
 
+- 🔴 High · `reference-material-content-2-learner-reference` (Reference material)
 - 🔴 High · `reference-material-content-3-educator-reference` (Reference material)
 - 🔴 High · `sacaa-compliance-3-question-pools` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-4-attempt-review` (SACAA compliance)
@@ -21,7 +22,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### Ready to start
 
-- 🔴 High · `reference-material-content-2-learner-reference` (Reference material)
 - 🔴 High · `sacaa-complianc-deletion-and-declaration-1-force-delete` (SACAA record retention and declarations)
 - 🔴 High · `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` (SACAA record retention and declarations)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-2-retire-removed-content` (SACAA content versions and access)
@@ -79,7 +79,7 @@ Priority: 🔴 High
 
 Reference parts, such as regulations, that learners consult at any time beside a course's learning path, and courses that are only libraries. Parent: `reference-material-content`.
 
-- `reference-material-content-2-learner-reference` — **ready** — Registered learners open a course's reference listing and read reference topics from any player page, with nothing tracked.
+- `reference-material-content-2-learner-reference` — **in progress** — Registered learners open a course's reference listing and read reference topics from any player page, with nothing tracked.
 - `reference-material-content-3-educator-reference` — **in progress** — Educators see a course's reference parts in the course outline and preview reference topics.
 - `reference-material-content-4-library-courses` — **blocked** by `reference-material-content-2-learner-reference`, `reference-material-content-3-educator-reference` — A course with only reference material opens its reference listing, shows no progress anywhere and can never be finished.
 
