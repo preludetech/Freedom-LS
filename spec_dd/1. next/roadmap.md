@@ -48,11 +48,13 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🟠 Medium · `server-side-conversion-tracking` (Referral tracking and marketing)
 - 🟠 Medium · `cookie-banner` (Referral tracking and marketing)
 - 🟡 Low · `reference-material-content-4-library-courses` (Reference material)
+- 🟡 Low · `admin-dashboard-signal-cards` (Educator interface)
 - 🟡 Low · `audit-log-coverage-gaps` (Educator interface)
 - 🟡 Low · `bulk-run-audit-summary` (Educator interface)
 - 🟡 Low · `educator-interface-data-table-filter-design` (Educator interface)
 - 🟡 Low · `educator-interface-misc-polish` (Educator interface)
 - 🟡 Low · `educator-interface-more polish` (Educator interface)
+- 🟡 Low · `staff-person-profile-by-email` (Educator interface)
 - 🟡 Low · `landing-page-component-kit` (Referral tracking and marketing)
 - 🟡 Low · `lead-capture-forms` (Referral tracking and marketing)
 - 🟡 Low · `dev-site-bootstrap-command` (Tooling and operations)
@@ -457,11 +459,14 @@ Org admins manage learners, cohorts, registrations and staff. Parent: `educator-
 - `bulk-run-audit-summary` — **ready** — Bulk actions write one run summary with folded per-object entries in the Audit log, and take an optional reason.
 - `educator-interface-more polish` — **ready** — Educators resend staff invitations and see who hasn't accepted, plus linked dashboard figures, learner-tab messaging and one new-message flow.
 - `remove-unnecessary-admin-panel-functionality` — **in progress** — Remove content engine, learner and cohort admin from the Django admin; content comes only from content_save.
+- `admin-dashboard-signal-cards` — **ready** — The admin index shows signup, registration, application and interest cards: last 7 days against the previous 7, newest entries.
+- `staff-person-profile-by-email` — **ready** — Staff look up one person by email and see account, attribution, applications, interests, recommendations and registrations with progress.
 
 ![Educator interface](roadmap_diagrams/educator-interface.svg)
 
 **Notes**
 - Decided: deactivate, never delete. Admins grant only their own level and below, inside their own scope. Only `site_admin` grants `site_admin`.
+- `admin-dashboard-signal-cards` and `staff-person-profile-by-email` are pull-ins from First-Class-LMS; `staff-person-profile-by-email` must settle its app and access first.
 - Collision: `audit-log-coverage-gaps` logs Django admin edits, which `remove-unnecessary-admin-panel-functionality` shrinks; whichever runs second checks the other's scope.
 - Access rules: anything outside the user's scope returns 404. An action the user has lost permission for returns 403 with a message. Controls the user can't use are hidden. No new dependencies.
 - References: the mockups in `educator-interface-full-polish/Educator LMS Interface Design/` (layout only, not scope), and `brand-guidelines` and `fls-dev:panel-framework`.
