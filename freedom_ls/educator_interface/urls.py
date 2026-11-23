@@ -1,5 +1,6 @@
 from django.urls import re_path
 
+from freedom_ls.educator_interface.panels.cohort import report_download
 from freedom_ls.educator_interface.panels.learner import import_views
 
 from . import views
@@ -12,7 +13,7 @@ urlpatterns = [
     re_path(r"^$", views.interface_root, name="root"),
     re_path(
         r"^organisations/(?P<organisation_slug>[-\w]+)/cohorts/(?P<cohort_pk>[0-9a-f-]{36})/reports/(?P<report_pk>[0-9a-f-]{36})/download/$",
-        views.cohort_report_download,
+        report_download.cohort_report_download,
         name="cohort_report_download",
     ),
     re_path(

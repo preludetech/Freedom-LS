@@ -6,7 +6,6 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Model
 from django.http import (
-    FileResponse,
     Http404,
     HttpRequest,
     HttpResponse,
@@ -19,9 +18,6 @@ from freedom_ls.accounts.models import User
 from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
 from freedom_ls.educator_interface.panels.audit_log.config import AuditLogConfig
 from freedom_ls.educator_interface.panels.cohort.config import CohortConfig
-from freedom_ls.educator_interface.panels.cohort.report_panels import (
-    DOWNLOAD_COHORT_REPORT,
-)
 from freedom_ls.educator_interface.panels.common.request import (
     LAST_ORGANISATION_SESSION_KEY,
     OrganisationScopedRequest,
@@ -30,10 +26,6 @@ from freedom_ls.educator_interface.panels.course.config import CourseConfig
 from freedom_ls.educator_interface.panels.dashboard.config import DashboardConfig
 from freedom_ls.educator_interface.panels.learner.config import LearnerConfig
 from freedom_ls.educator_interface.panels.staff.config import StaffConfig
-from freedom_ls.learner_management.capabilities import can
-from freedom_ls.learner_management.models import (
-    Cohort,
-)
 from freedom_ls.learner_management.queries import (
     organisations_accessible_to,
 )
@@ -45,8 +37,6 @@ from freedom_ls.panel_framework.views import (
     panel_framework_view,
     sections_by_url_name,
 )
-from freedom_ls.reports.models import GeneratedReport
-from freedom_ls.reports.services import report_file_response
 
 # TODO
 # Data Tables
@@ -120,29 +110,6 @@ def _attach_organisation(request: HttpRequest, organisation_slug: str) -> Organi
     scoped_request.panel_scope_name = organisation.name
     scoped_request.panel_url_kwargs = {"organisation_slug": organisation.slug}
     return organisation
-
-
-def _scoped_cohort(
-    request: HttpRequest, organisation_slug: str, cohort_pk: str
-) -> Cohort:
-    """The cohort named in a file URL, after the organisation and cohort checks a page runs."""
-    _attach_organisation(request, organisation_slug)
-    return cast(Cohort, CohortConfig.get_instance_view(request, cohort_pk).instance)
-
-
-@login_required
-def cohort_report_download(
-    request: HttpRequest, organisation_slug: str, cohort_pk: str, report_pk: str
-) -> FileResponse:
-    cohort = _scoped_cohort(request, organisation_slug, cohort_pk)
-    report = get_object_or_404(
-        GeneratedReport.objects.select_related("cohort__organisation"),
-        pk=report_pk,
-        cohort=cohort,
-    )
-    if not can(request.user, DOWNLOAD_COHORT_REPORT, cohort):
-        raise Http404
-    return report_file_response(report)
 
 
 def scope_request(
