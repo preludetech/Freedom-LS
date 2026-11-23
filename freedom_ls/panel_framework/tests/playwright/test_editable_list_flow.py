@@ -5,15 +5,17 @@ The stub views have no authentication, so the flow needs no login.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 import pytest_django.live_server_helper
-from playwright.sync_api import APIResponse, Page, Route, expect
+from playwright.sync_api import APIResponse, Locator, Page, Route, expect
 
 from django.contrib.sites.models import Site
 
 from ..helpers import make_stub, make_stub_entry
 from ..stub_models import StubEntry
-from .helpers import QA_VIEWPORTS, assert_no_horizontal_overflow
+from .helpers import QA_VIEWPORTS, assert_no_horizontal_overflow, resize_viewport
 
 pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
@@ -59,6 +61,12 @@ def _check_add_edit_remove_without_a_page_load(
 
     # Adding an entry shows it, puts focus on it and announces it.
     panel.get_by_role("button", name="Add stub entry").click()
+    # htmx focuses the form's autofocus field again when the swap settles, so
+    # typing into a second field before then lands in the first.
+    expect(modal.get_by_label("Title")).to_be_visible()
+    expect(page.locator("#app-modal-body")).not_to_have_class(
+        re.compile(r"\bhtmx-settling\b")
+    )
     modal.get_by_label("Title").fill("Alpha")
     modal.get_by_label("Detail").fill("first note")
     modal.get_by_role("button", name="Add", exact=True).click()
@@ -187,7 +195,7 @@ def _check_add_edit_remove_without_a_page_load(
     expect(modal).to_be_hidden()
 
     for viewport in QA_VIEWPORTS:
-        page.set_viewport_size(viewport)
+        resize_viewport(page, viewport)
         assert_no_horizontal_overflow(page)
         for trigger in (
             table.get_by_role("button", name="Add stub entry"),
@@ -342,7 +350,7 @@ def _check_footer_layout(
 
     for viewport in QA_VIEWPORTS:
         width = viewport["width"]
-        page.set_viewport_size(viewport)
+        resize_viewport(page, viewport)
         entries = page.locator("li[data-editable-list-entry]:visible")
         if tab == "entries_table" and entries.count() == 0:
             # A wide container shows the table: the pair stays on one line in the last cell.
@@ -394,11 +402,34 @@ def _check_footer_layout(
             assert remove_box["x"] > edit_box["x"] + edit_box["width"], (
                 f"Remove of {title} not beside Edit at {width}px on {tab}"
             )
-            for box in (edit_box, remove_box):
-                assert box["width"] < entry_box["width"] / 4, (
-                    f"Button of {title} wider than a quarter of its entry at {width}px on {tab}"
+            for name, box in (("Edit", edit_box), ("Remove", remove_box)):
+                label_width = _label_width(
+                    entry.get_by_role("button", name=f"{name} {title}")
+                )
+                assert box["width"] == pytest.approx(label_width, abs=1), (
+                    f"{name} of {title} wider than its label at {width}px on {tab}"
                 )
             offsets.add(round(edit_box["x"] - entry_box["x"]))
         assert len(offsets) == 1, (
             f"Button offsets differ between entries at {width}px on {tab}"
         )
+
+
+def _label_width(button: Locator) -> float:
+    """The width the button takes when sized to its own label and padding.
+
+    A button laid out at this width is not stretched by its row, whatever
+    the width of the font the browser picked for the label.
+    """
+    label_width: float = button.evaluate(
+        """(el) => {
+            const style = el.style.cssText;
+            el.style.cssText +=
+                ";flex:none!important;width:max-content!important"
+                + ";min-width:0!important;max-width:none!important";
+            const labelWidth = el.getBoundingClientRect().width;
+            el.style.cssText = style;
+            return labelWidth;
+        }"""
+    )
+    return label_width
