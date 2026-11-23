@@ -25,7 +25,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 4. Documentation and pull request
 
 - [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
-- [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 
 ## 5. Cleanup
 
