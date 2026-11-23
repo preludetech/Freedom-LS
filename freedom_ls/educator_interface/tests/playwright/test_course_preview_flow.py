@@ -156,14 +156,27 @@ def test_educator_previews_course_content(
             page.set_viewport_size(viewport)
             page.goto(course_url)
             outline = page.locator("[data-table-layout]")
+            reference_panel = page.locator("section[data-panel='reference']")
             if viewport["width"] >= 1920:
                 expect(
                     page.get_by_role("region", name="Course outline items")
+                ).to_be_visible()
+                expect(
+                    page.get_by_role("region", name="Reference outline items")
                 ).to_be_visible()
             else:
                 expect(
                     page.get_by_role("region", name="Course outline items")
                 ).to_be_hidden()
+                expect(
+                    page.get_by_role("region", name="Reference outline items")
+                ).to_be_hidden()
+            for title in ("Field guide", "Glossary"):
+                expect(
+                    reference_panel.get_by_text(title, exact=True).locator(
+                        "visible=true"
+                    )
+                ).to_be_visible()
             for title in (
                 "Course details",
                 "Cards",
@@ -177,10 +190,6 @@ def test_educator_previews_course_content(
                     outline.get_by_text(title, exact=True).locator("visible=true")
                 ).to_be_visible()
             assert_no_horizontal_overflow(page)
-            if viewport["width"] >= 1920:
-                expect(
-                    page.get_by_role("region", name="Reference outline items")
-                ).to_be_visible()
             if viewport["width"] >= 1920:
                 outline_rows = page.get_by_role(
                     "region", name="Course outline items"

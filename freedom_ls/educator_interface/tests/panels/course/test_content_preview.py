@@ -10,8 +10,10 @@ import lxml.html
 import pytest
 
 from django.contrib.sites.models import Site
+from django.db import connection
 from django.db.models import Model
 from django.test import Client
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -134,6 +136,23 @@ def test_the_reference_panel_lists_parts_in_order_numbered_within_itself(
     assert "Reference part 0" in first_row.cssselect("td")[1].text_content()
     assert "Course details" not in panel.text_content()
     assert panel.cssselect("header button") == []
+
+
+@pytest.mark.django_db
+def test_reference_parts_sharing_an_order_are_numbered_in_creation_order(
+    staff_client: Client,
+) -> None:
+    course = CourseFactory()
+    for title in ("Field guide", "Glossary"):
+        CourseReferencePartFactory(
+            course=course, course_part=CoursePartFactory(title=title), order=0
+        )
+
+    panel = _course_content_panel(staff_client, course, panel="reference")
+
+    text = panel.cssselect(f"[aria-label='{REFERENCE_LABEL}'] tbody")[0].text_content()
+    assert _outline_numbers(panel, REFERENCE_LABEL) == ["1.", "2."]
+    assert text.index("Field guide") < text.index("Glossary")
 
 
 @pytest.mark.django_db
@@ -490,16 +509,22 @@ def test_course_content_query_count_stays_bounded_as_children_grow(
 
 
 @pytest.mark.django_db
-def test_reference_panel_query_count_stays_bounded_as_topics_grow(
-    staff_client: Client, django_assert_max_num_queries
+def test_reference_panel_query_count_does_not_grow_with_topics(
+    staff_client: Client,
 ) -> None:
-    course = cast(CourseModel, CourseFactory())
-    _reference_part(course, order=0, topic_count=12)
     organisation = OrganisationFactory()
-    url = _interface_url(organisation.slug, f"courses/{course.pk}")
 
-    with django_assert_max_num_queries(35):
+    def page_query_count(topic_count: int) -> int:
+        course = cast(CourseModel, CourseFactory())
+        # The order also keeps the part titles, and so their slugs, apart.
+        _reference_part(course, order=topic_count, topic_count=topic_count)
+        url = _interface_url(organisation.slug, f"courses/{course.pk}")
         assert staff_client.get(url).status_code == 200
+        with CaptureQueriesContext(connection) as queries:
+            assert staff_client.get(url).status_code == 200
+        return len(queries.captured_queries)
+
+    assert page_query_count(1) == page_query_count(12)
 
 
 def _preview_url(

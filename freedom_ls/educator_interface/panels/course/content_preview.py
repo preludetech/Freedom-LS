@@ -204,7 +204,9 @@ def outline_rows(course: Course) -> list[OutlineRow]:
 
 def _reference_parts(course: Course) -> list[CourseReferencePart]:
     """The course's own reference parts in order, each with its part."""
-    return list(course.reference_parts.select_related("course_part"))
+    return list(
+        course.reference_parts.select_related("course_part").order_by("order", "pk")
+    )
 
 
 def reference_rows(course: Course) -> list[OutlineRow]:
@@ -274,8 +276,8 @@ class CourseOutlineTable(DataTable):
             Column(
                 header="#",
                 template_name="educator_interface/partials/course_outline_number.html",
-                header_class="w-16 min-w-16 max-w-16",
-                cell_class="w-16 min-w-16 max-w-16 text-muted tabular-nums",
+                header_class="w-24 min-w-24 max-w-24 whitespace-nowrap",
+                cell_class="w-24 min-w-24 max-w-24 whitespace-nowrap text-muted tabular-nums",
             ),
             Column(
                 header="Title",

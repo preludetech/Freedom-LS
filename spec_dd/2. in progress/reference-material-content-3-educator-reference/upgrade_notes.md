@@ -3,6 +3,7 @@ requires_migrations: false
 requires_template_review: true
 changed_template_paths:
   - freedom_ls/educator_interface/templates/educator_interface/partials/course_outline_actions.html
+  - freedom_ls/educator_interface/templates/educator_interface/partials/course_outline_card.html
 requires_settings_change: false
 changed_settings: []
 requires_package_upgrade: false
@@ -28,7 +29,7 @@ new panel until it adds `"reference": CourseReferencePanel` (from
 ## Manual steps
 
 - Rebuild Tailwind (`npm run tailwind_build`). The course outline table's columns now use fixed
-  width utilities (`w-16`, `w-36`, `w-28` with matching `min-w-*` and `max-w-*`) set in
+  width utilities (`w-24`, `w-36`, `w-28` with matching `min-w-*` and `max-w-*`, and `whitespace-nowrap` on the `#` column) set in
   `freedom_ls/educator_interface/panels/course/content_preview.py`. A stale bundle leaves the
   columns unsized.
 - If you override
@@ -36,6 +37,11 @@ new panel until it adds `"reference": CourseReferencePanel` (from
   re-apply your changes to the new version. The Preview trigger now shows only when the panel
   provides a `preview_content` action URL (`{% elif object.preview_query and row_action_urls.preview_content %}`).
   The partial is shared by the "Course content" and "Reference" panels.
+- The "Course content" outline now switches between table and cards by the width of its own
+  panel (cards under 58rem) instead of at the `md` viewport breakpoint. It shows cards on tablet
+  and narrow laptop layouts that used to show the table. If you override
+  `freedom_ls/educator_interface/templates/educator_interface/partials/course_outline_card.html`,
+  check that it reads right at those widths. The "Reference" outline switches the same way.
 - The new panel template `educator_interface/panels/course_reference.html` extends
   `educator_interface/panels/course_content.html`. An override of `course_content.html` now also
   styles the Reference panel. Check that it still reads right there.
