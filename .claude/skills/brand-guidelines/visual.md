@@ -63,7 +63,8 @@ Sizes and weights for headings, prose, tables and form inputs live in the `@laye
 3. **Whitespace is the structure**: build hierarchy from generous, consistent spacing on Tailwind's scale. Space separates things. Surfaces stay flat; a shadow, border or rule appears only where it does a job (the edge of a card or dialog, a sticky dialog header or footer, a table's header row) and where a component already carries it. Siblings that space can separate get space: no box around each item in a group, no box inside a box, and no rule between list items except in a component built as a ruled list of records.
 4. **Things line up**: content shares edges. Blocks start and stop on their container's padding, a button lines up with the text above it, and items of one kind sit in one column so they read down the page.
 5. **Progressive disclosure**: essentials by default, detail on demand.
-6. **Respect the content author**: content is authored in Markdown, and default rendering must look excellent with zero custom CSS. Honour the author's structure.
+6. **One kind of thing, one look**: a new section is drawn with the components its neighbours already use. A list of course content (parts and topics) uses the course outline rows (`learner_interface/partials/course_minimal_toc.html#course-children`) wherever it appears: the player sidebar, a full page, the public course page. A heading matches the size and style of its sibling headings, and content that belongs inside a section is a sub-section of it under an eyebrow heading, not a new peer heading. A feature brings no list, link or heading style of its own.
+7. **Respect the content author**: content is authored in Markdown, and default rendering must look excellent with zero custom CSS. Honour the author's structure.
 
 Icons are single-colour outline icons, placed through `<c-icon>`: see `Skill(fls-dev:icon-usage)`.
 
@@ -164,6 +165,7 @@ What QA checks in a screenshot of any FLS page.
 - Buttons of one size are one height, whatever their variant: an outlined button is no taller than a filled one beside it.
 - A button clicked with the mouse shows no focus ring; a toggle looks the same in both of its states. Tab to it and the ring shows.
 - The icon in an icon-only button sits at its centre, not low and not to one side.
+- A new section looks like its neighbours: headings the same size and style as their siblings, and the same row component for the same kind of list (course content always in course outline rows). Nothing on the page looks pasted in from another site.
 - Content lines up: blocks start and stop on their container's padding, buttons line up with the text above them, items of one kind share a column.
 - A page opened from another page starts with a back link at the top left, above the heading, in the back-link style; no button on the page goes back.
 - A button that starts an irreversible action (withdraw, delete, remove) is red, on the page and in its confirm dialog.
