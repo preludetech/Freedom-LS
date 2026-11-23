@@ -56,6 +56,11 @@ table, with a "Preview" button on every row.
 - A multi-page form previews one page at a time, each from its own outline row ("Page 2 of 3:
   Tell us more", with its "Shown only if…" line); the form's own row previews the learner's start
   page: title, intro and the question and page counts, with no button.
+- Every outline table on the course page shares one column layout: the `#`, Type and Actions
+  columns have fixed widths and Title takes the rest, so stacked outline panels line their
+  numbers, types and Preview buttons up in one column each.
+- The outline table declares `cards_when_narrow`: it shows as cards at 768, on a phone and beside
+  an open quick view, and as a table only where its columns fit.
 
 ## Course names
 
@@ -78,6 +83,8 @@ What QA checks in a screenshot of an educator page, on top of the panel framewor
 - A log or History table has sort headers and the Who, What and When filters.
 - The course outline has the course details as its first row and a multi-page form expanded into
   one row per page; a content preview sits in the reading column, not the dialog's width.
+- Stacked outline tables line up: the `#`, Type and Preview columns start at the same x in every
+  outline panel on the course page; at 768 and on a phone every outline shows as cards.
 - A course another organisation owns shows its owner: "(<organisation>)" after the title in a
   picker, filter or dialog title, a muted "Shared by <organisation>" line in a table cell; the
   viewing organisation's own courses show the title alone, and no label wraps out of its control.
