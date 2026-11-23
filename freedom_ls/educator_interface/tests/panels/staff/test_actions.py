@@ -19,6 +19,7 @@ from freedom_ls.audit_log.writer import subject_key
 from freedom_ls.educator_interface.events import (
     STAFF_CHANGED,
 )
+from freedom_ls.educator_interface.panels.cohort.config import CohortConfig
 from freedom_ls.educator_interface.panels.staff import actions as actions_module
 from freedom_ls.educator_interface.panels.staff.actions import (
     REFUSAL_MESSAGES,
@@ -37,7 +38,6 @@ from freedom_ls.educator_interface.tests.helpers import (
     _state_url,
     _text,
 )
-from freedom_ls.educator_interface.views import CohortConfig
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.factories import (
     CohortFactory,

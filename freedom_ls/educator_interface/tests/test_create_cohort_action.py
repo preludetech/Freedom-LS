@@ -31,7 +31,10 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.educator_interface.events import COHORT_CHANGED
 from freedom_ls.educator_interface.forms import CohortForm
-from freedom_ls.educator_interface.views import CohortConfig, CreateCohortAction
+from freedom_ls.educator_interface.panels.cohort.config import (
+    CohortConfig,
+    CreateCohortAction,
+)
 from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.learner_management.models import Cohort
 from freedom_ls.organisations.factories import OrganisationFactory

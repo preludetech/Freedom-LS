@@ -46,6 +46,7 @@ from freedom_ls.educator_interface.panels.cohort.actions import (
     RequiresActiveCohortMixin,
     cohort_not_empty_sentence,
 )
+from freedom_ls.educator_interface.panels.cohort.config import CohortConfig
 from freedom_ls.educator_interface.tests.helpers import (
     REGISTERABLE_ROWS,
     _assert_message_dialog,
@@ -66,7 +67,6 @@ from freedom_ls.educator_interface.tests.helpers import (
     _unregister_url,
     course_per_reach_row,
 )
-from freedom_ls.educator_interface.views import CohortConfig
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,

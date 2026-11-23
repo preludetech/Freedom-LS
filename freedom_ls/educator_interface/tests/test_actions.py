@@ -26,6 +26,7 @@ from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.panels.cohort.bulk_actions import (
     RegisterCohortForCourseBulkAction,
 )
+from freedom_ls.educator_interface.panels.cohort.config import CohortConfig
 from freedom_ls.educator_interface.panels.learner.actions import (
     AddLearnerAction,
     RemoveFromCohortAction,
@@ -68,7 +69,6 @@ from freedom_ls.educator_interface.tests.helpers import (
     _unregister_url,
     course_per_reach_row,
 )
-from freedom_ls.educator_interface.views import CohortConfig
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
