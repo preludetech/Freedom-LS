@@ -41,6 +41,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (user) Decide what happens to the "Step 9 of the Rebase command" chart in `claude_plugins/sdd/docs/diagrams/rebase.drawio.svg`: it draws django-stack's tier logic (`Tier is full?`, the test selector) inside an SDD diagram. Redrawing it needs draw.io
 - [x] (user) Look over the two redrawn diagrams: `claude_plugins/sdd/docs/diagrams/rebase.drawio.svg` (the pre-step rebase and the upstream-change review only) and `claude_plugins/django-stack/docs/diagrams/rebase_main.drawio.svg` (the Rebase command, its test run and its push)
 - [x] (user) Review the new plan-review brief `claude_plugins/fls-dev/resources/plan_review_plugin_portability.md`, wired under `## Plan Review Hooks`: it replaced the planned edit to `plan_review_structure.md`, which only checks app-graph edges
+- [x] (cmd) Fix the nine findings of the second PR 282 review (untracked files stop a remote run, a job failing with no failed test, an origin that is ahead, cancel in a `finally`, `!cancelled()` on `coverage` and `test-verdict`, `--cov-append` on a crash retry, origin updated before any full tier after a rebase, the `blocked:` message in `design_screenshots.sh`, the `run_tests` helper name in the testing skill)
 
 ## 5. Cleanup
 
