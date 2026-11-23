@@ -24,7 +24,11 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
 - [ ] (user) Decide whether the demo bank form `demo_content/functionality_demo_revision_bank/form.md` may stay `strategy: QUIZ` (the plan said `UNSCORED`, but the validator only allows a `locked` option on a shuffled QUIZ form); if UNSCORED matters more, drop the locked "All of the above" option and switch the strategy
-- [ ] (user) Decide how a learner gets back to the revision start screen and its section list once a session has ended (today every visit to /courses/<course>/revision/ re-shows the finished session's end screen): clear the finished state on the next visit, or add a 'Back to revision' control to the end screen; then fix QA bug B5 test first
+- [x] (user) Decide how a learner gets back to the revision start screen and its section list once a session has ended (today every visit to /courses/<course>/revision/ re-shows the finished session's end screen): clear the finished state on the next visit, or add a 'Back to revision' control to the end screen; then fix QA bug B5 test first
+- [ ] (cmd) Re-run `/sdd:do_qa`: the QA plan `3. frontend_qa.md` was rewritten for the UX revamp (revision inside the course player, outline entry, dashboard, tinted feedback, Revision done card) and has not been run in full
+- [ ] (user) Review the revamped revision screens in the course player and the rewritten QA plan
+- [ ] (user) Decide whether `revision.queries.bank_sections`, `weak_sections`, `last_reviewed_at`, `next_ready_at`, `course_has_revision_questions` and the `section` filter stay: no screen calls them since the section list was removed; they were kept for the later revision dashboard spec
+- [ ] (user) Write the idea for the revision dashboard spec (sections, weak areas); `partials/revision_dashboard.html` is a placeholder with a TODO
 
 ## 4. Documentation and pull request
 
@@ -32,6 +36,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (cmd) Add the `revisionFeedback` Alpine component (focuses the revision feedback when it is swapped in) to the inventory table in `claude_plugins/fls-dev/skills/alpine-js/SKILL.md`, from the spec's "Feedback" requirement (focus moves to the feedback after submit)
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
+- [ ] (cmd) Add the `revision` semantic icon to any icon inventory the docs keep, when `/sdd:document` runs
 
 ## 5. Cleanup
 
