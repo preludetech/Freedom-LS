@@ -936,3 +936,27 @@ def test_a_reference_parts_state_key_holds_when_an_earlier_part_gains_a_topic(
         )
     ]
     assert keys[1] == course_part_storage_key(course.slug, part.slug, "reference")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("route", ["listing", "topic"])
+def test_the_listing_header_and_outline_share_the_topic_pages_centred_column(
+    mock_site_context: Site, route: str
+) -> None:
+    """The listing's header and outline sat flush left of the centred reading column the topic page uses."""
+    course = _course_with_reference_topic()
+    client, _user = _registered_client(course)
+
+    page = _page(client.get(_reference_url(course, route)))
+
+    header = page.cssselect("#interface-main div.max-w-reading.mx-auto")
+    assert header, "header column is not the centred reading width"
+    if route == "listing":
+        outline = page.cssselect('#interface-main nav[aria-label="Reference topics"]')[
+            0
+        ]
+        classes = [
+            c for el in outline.iterancestors() for c in el.get("class", "").split()
+        ]
+        assert "max-w-reading" in classes
+        assert "mx-auto" in classes

@@ -1,5 +1,7 @@
 {% extends "learner_interface/_course_base.html" %}
 
+{% block header_width %}max-w-reading{% endblock header_width %}
+
 {% block item_head_title %}Reference{% endblock %}
 
 {% block breadcrumbs %}
@@ -14,13 +16,13 @@
         row carries its slug as an id, so the Part breadcrumb lands on it.{% endcomment %}
         {% if reference_outline %}
             {% comment %}Reading width keeps each part's chevron near its title.{% endcomment %}
-            <div class="max-w-reading">
+            <div class="mx-auto max-w-reading">
                 {% with children=reference_outline %}
                     {% include "learner_interface/partials/course_minimal_toc.html#course-children" with outline_label="Reference topics" unnumbered=True no_counter_column=True expand_all=True anchor_parts=True storage_scope="reference" %}
                 {% endwith %}
             </div>
         {% else %}
-            <div class="text-center py-12">
+            <div class="mx-auto max-w-reading text-center py-12">
                 <c-icon name="reference" class="size-12 text-muted" />
                 <p class="mt-4 text-muted">No reference material yet</p>
             </div>
