@@ -96,24 +96,6 @@ if TYPE_CHECKING:
     from django.test.client import _MonkeyPatchedWSGIResponse
 
 
-# rename clash
-
-
-# deactivate
-
-
-# reactivate
-
-
-# inactive cohorts are read-only
-
-
-# register
-
-
-# deactivate a cohort registration
-
-
 # remove from a cohort
 
 
@@ -158,12 +140,6 @@ def test_remove_post_from_the_cohort_page_deletes_the_membership(
 
     assert response.status_code == 204
     assert not CohortMembership.objects.filter(learner=learner, cohort=cohort).exists()
-
-
-# add to a cohort
-
-
-# add a learner
 
 
 # move between cohorts
