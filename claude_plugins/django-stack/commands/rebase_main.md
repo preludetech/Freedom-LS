@@ -196,8 +196,9 @@ Follow `${CLAUDE_PLUGIN_ROOT}/resources/test_tiers.md`.
 
 `<tier>` is `none` → report `tier: none` and go to Step 10. The caller runs its own tier.
 
-`<tier>` is `full` → run the full tier. A remote full tier tests what `origin` holds, and the
-rebase rewrote the branch, so first:
+**Before a full tier.** A remote full tier tests what `origin` holds, and the rebase rewrote the
+branch. Whenever the tier about to run is `full`, because the caller asked for it or a selector
+call below printed `tier: full`, first:
 
 - Upstream (from Step 1) →
 
@@ -207,6 +208,8 @@ rebase rewrote the branch, so first:
   `origin` too.
 - No upstream → nothing is pushed. Run the full tier with `DS_TEST_REMOTE=off` before the command,
   so it runs locally.
+
+`<tier>` is `full` → do "Before a full tier", then run the full tier.
 
 `<tier>` is `targeted` →
 
@@ -222,7 +225,8 @@ rebase rewrote the branch, so first:
    ```
 
    `tier: none` → main brought in nothing that meets the branch, and
-   Step 7 added nothing a test can see. Report `tier: none`. Otherwise run the printed command.
+   Step 7 added nothing a test can see. Report `tier: none`. `tier: full` → do "Before a full
+   tier", then run the printed command. Otherwise run the printed command.
 
 A failure is fixed on the branch, test first, following "When a targeted run or full run fails"
 in the tier definition, then committed:

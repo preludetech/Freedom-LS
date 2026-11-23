@@ -162,7 +162,7 @@ Nothing fails on slowness: no test or hook has a time limit. A run with failing 
 
 ## Remote full run
 
-The `full` tier runs on GitHub Actions. `[tool.test_tiers.remote]` in `pyproject.toml` sets the command, `uv run python claude_plugins/fls-dev/scripts/remote_full_run.py`. It pushes the branch if needed, dispatches the `Tests` workflow, waits for it and prints the runner's `run:` lines, ending in `run: RESULT PASS`, `FAIL` or `UNAVAILABLE <reason>`. Run it as any full tier, through the test runner in the background (`Skill(sdd:protected:run_test_tier)`).
+The `full` tier runs on GitHub Actions. `[tool.test_tiers.remote]` in `pyproject.toml` sets the command, `uv run python claude_plugins/fls-dev/scripts/remote_full_run.py`. It pushes the branch if needed, dispatches the `Tests` workflow, waits for it and prints the runner's `run:` lines, ending in `run: RESULT PASS`, `FAIL` or `UNAVAILABLE <reason>`. Run it as any full tier, through the test runner in the background (`Skill(sdd:protected:run_tests)`).
 
 - `RESULT UNAVAILABLE`: GitHub gave no verdict. Quote the reason and run the `fallback:` line, the local full command.
 - `- Remote full run: off` under `## Test Tiers` in `.claude/ds/config.md` turns the remote run off for everyone, for a GitHub outage or a move off GitHub; in `.claude/ds/config.local.md` it turns it off for one machine. The full tier then runs locally and never calls `gh`. `DS_TEST_REMOTE=on|off` overrides both for one run.

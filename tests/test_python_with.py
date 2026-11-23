@@ -73,6 +73,34 @@ def test_blank_or_missing_key_runs_plain_python(
     assert result.stdout == "plain\n"
 
 
+def test_design_screenshots_names_the_key_when_the_package_is_missing(
+    tmp_path: Path,
+) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    python3 = bin_dir / "python3"
+    python3.write_text("#!/bin/sh\necho 'No module named playwright' >&2\nexit 1\n")
+    python3.chmod(0o755)
+
+    result = subprocess.run(  # noqa: S603
+        [str(SCRIPT.parent / "design_screenshots.sh"), "spec"],
+        cwd=tmp_path,
+        env={
+            "PATH": f"{bin_dir}:/usr/bin:/bin",
+            "CLAUDE_PROJECT_DIR": str(tmp_path),
+        },
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert (result.returncode, result.stderr.splitlines()[-1]) == (
+        1,
+        "blocked: needs the playwright package; set `Python with packages` in "
+        ".claude/sdd/config.md",
+    )
+
+
 def test_missing_package_argument_is_a_usage_error(tmp_path: Path) -> None:
     result = run_helper(tmp_path)
 

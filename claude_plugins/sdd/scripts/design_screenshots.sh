@@ -16,6 +16,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
+if ! "${SCRIPT_DIR}/python_with.sh" playwright -c "import playwright" 2>/dev/null; then
+  # shellcheck disable=SC2016  # the backticks are literal
+  echo 'blocked: needs the playwright package; set `Python with packages` in .claude/sdd/config.md' >&2
+  exit 1
+fi
+
 # A no-op when Chromium is already installed.
 "${SCRIPT_DIR}/python_with.sh" playwright -m playwright install chromium
 exec "${SCRIPT_DIR}/python_with.sh" playwright "${SCRIPT_DIR}/design_screenshots.py" "$@"
