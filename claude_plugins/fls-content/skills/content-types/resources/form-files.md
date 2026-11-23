@@ -96,6 +96,7 @@ The **first** `---`-delimited YAML section is the FORM_PAGE.
 | `subtitle` | `str` | No | Optional subtitle |
 | `description` | `str` | No | Optional instruction text |
 | `when` | mapping | No | Show this page only when an earlier answer matches. See "Conditional pages, questions and content (`when`)" below |
+| `draw` | `int` (>= 1) | No | QUIZ only. Serve this many of the page's questions or groups to each sitting, drawn at random. Leave out to serve all. See "Drawing from a pool" below |
 | `uuid` | `str` | No | Written by `content_save --generate-uuids`, then you commit the result — **omit on new files** |
 
 ### Example FORM_PAGE section
@@ -132,7 +133,7 @@ The parser selects `FORM_QUESTION` when a subsequent section contains a `questio
 | `slug` | `str` | No | The name a later `when` uses to refer to this question. Lowercase letters, digits and underscores only (`^[a-z0-9_]+$`), at most 100 characters, unique within the form. Only needed on a question that a `when` points at |
 | `when` | mapping | No | Show this question only when an earlier answer matches. See "Conditional pages, questions and content (`when`)" below |
 | `sections` | `list[path]` | No | Paths to the topic markdown files or `part.yaml` files this question tests, relative to the page yaml's directory. Overrides the form's `sections:` for this question; `sections: []` means none. See the `sections` section below |
-| `group` | `str` | No | QUIZ forms only. Keep-together group: children of one page that share this name stay together, in authored order, when the page's questions shuffle. See "Shuffling a quiz" below |
+| `group` | `str` | No | QUIZ forms only. Keep-together group: children of one page that share this name stay together, in authored order, when the page's questions shuffle, and count as one unit when the page's `draw` is applied. See "Shuffling a quiz" and "Drawing from a pool" below |
 | `uuid` | `str` | No | Written by `content_save --generate-uuids`, then you commit the result — **omit on new files** |
 | `meta` | `dict` | No | Optional metadata |
 | `tags` | `list[str]` | No | Optional tags |
@@ -425,6 +426,39 @@ Writing a shuffled form:
 - Shuffling is not proctoring. It makes copying harder and nothing more.
 
 Example: `demo_content/functionality_demo_shuffled_quiz/` has a `QUIZ` with all three knobs on, a locked option, and a `sky-picture` group made of a picture block and its two questions, next to ungrouped questions.
+
+---
+
+## Drawing from a pool
+
+`draw` on a FORM_PAGE serves each sitting a random subset of that page's questions, so a learner who sits the quiz again can see a different set. It is a QUIZ-only page option and goes in the page's first section, not in `form.md`:
+
+```yaml
+---
+content_type: FORM_PAGE
+title: The planets
+draw: 3
+---
+question: Which planet is closest to the Sun?
+type: multiple_choice
+```
+
+What counts as one thing to draw: a **unit**. A run of consecutive children that share a `group` is one unit, and every other question or content block is its own unit. `draw: 2` on a page of three groups serves two whole groups. A drawn group keeps its content block with its questions.
+
+The validator checks:
+
+- `draw` is only allowed on `QUIZ` forms.
+- `draw` is a whole number of 1 or more. A bare `draw:`, `draw: 0`, `draw: true` and `draw: 2.0` all fail.
+- `draw` is no larger than the number of units on the page.
+- Every unit must hold the same number of questions, so every sitting is worth the same. Either give every question on the page its own unit, or give every group the same number of questions.
+- A content block must be in a `group` with the questions it introduces. A content block with no question to travel with fails on a drawing page.
+
+How it combines with shuffling:
+
+- The draw happens first and keeps the drawn units in authored order. `shuffle_questions: true` then reorders only the drawn units. `shuffle_options` and `shuffle_pages` work as before.
+- Each page draws on its own. Put the questions you want drawn from together on one page, and split pages when the unit sizes differ.
+
+Example: `demo_content/functionality_demo_question_pools/` has a `QUIZ` whose "The planets" page draws 3 questions, and whose "Short passages" page draws 2 of its groups (each a passage plus two questions).
 
 ---
 
