@@ -2,105 +2,97 @@
 
 ## Methodology
 
-Screenshots were collected into `screenshots/` beside this report, and every image referenced here exists there. The run followed `3. frontend_qa.md` at desktop, tablet (768) and mobile viewports. Tests 4 and 6 had no screenshots because they were request and console checks. The smoke gate passed, so no steps were skipped because of it.
+Screenshots were collected into `spec_dd/2. in progress/reference-material-content-3-educator-reference/screenshots/`. Every image referenced below exists beside this report. The run followed `3. frontend_qa.md` (Tests 1 to 6) at desktop (1920), tablet (768) and mobile (375) viewports. The smoke gate passed, so no steps were skipped.
 
 ## Diff scoping
 
-Class: FULL. Changed files that triggered it:
+Class: **FULL**. Changed files that triggered it:
 
-- `freedom_ls/educator_interface/panels/course/content_preview.py`
-- `freedom_ls/educator_interface/panels/course/instance_view.py`
 - `freedom_ls/educator_interface/templates/educator_interface/panels/course_reference.html`
 - `freedom_ls/educator_interface/templates/educator_interface/partials/course_outline_actions.html`
-- tests (5 files)
+- `freedom_ls/educator_interface/panels/course/content_preview.py`
+- `freedom_ls/educator_interface/panels/course/instance_view.py`
 
-Nothing was skipped. Everything ran.
+Nothing was skipped; everything ran.
 
 ## Smoke gate
 
-Pass. Pages loaded:
-
-- `/`
-- `/educator/organisations/demodev/courses/1144be70-d209-4fde-98f8-3fb2459fdccb`
+Passed. Pages loaded: `/` and `/educator/organisations/demodev/courses/1144be70-d209-4fde-98f8-3fb2459fdccb`.
 
 ## Design check
 
 No design states tested.
 
-## Bug B1: Course content and Reference outline tables do not share column positions
-
-Manifestations:
-
-- `1-columns`, desktop
-- `1-columns`, tablet
-
-![](screenshots/page-2026-11-23T04-30-51-872Z.png)
-![](screenshots/page-2026-11-23T04-32-37-288Z.png)
-
-Expected: two stacked outline tables on one course page line their TYPE and action columns up ("Content lines up ... items of one kind share a column").
-
-Actual: each table auto-sizes its columns. TYPE sits at 1411px in Course content and 1453px in Reference at 1920 (512px vs 529px at 768). On a course with an empty Reference panel it was at 1168px.
-
-## Bug B2: Outline tables stay tables at 768 instead of cards (pre-existing)
-
-Manifestations:
-
-- `1-cards-at-768`, tablet
-
-![](screenshots/page-2026-11-23T04-32-37-288Z.png)
-
-Expected: the panel-framework visual checklist says "A table with action columns is cards at 768".
-
-Actual: at 768 both the Course content and Reference outlines are tables with a Preview column. All columns fit, with no sideways scroll. The same is true of Course content on main.
-
-## Test results
+## Results summary
 
 | Test | Viewport | Result | Notes |
 |---|---|---|---|
-| 1 | desktop | pass | Panel order is details, content, reference, cohorts, learners. Reference lists 1. Airspace Rules (1.1 Airspace Classes, 1.2 No-fly Zones) and 2. Glossary (2.1 Terms). It has no Course details row, no callout and no header button. The footer reads "5 reference outline items". Course content is unchanged (footer "2 course outline items"). Chevron collapse and expand works. |
-| 1-columns | desktop | fail | See B1. |
-| 1 | mobile | pass | Five cards, numbering 1./1.1/1.2/2./2.1, footer count shown, no horizontal overflow. |
-| 1 | tablet | pass | Parts and topics in order, no overflow. |
-| 1-cards-at-768 | tablet | fail | See B2. |
-| 2 | desktop | pass | "Airspace Classes (Preview)" with Topic chip, no form and no Mark complete. Escape returns focus. The glossary topic and the learning-path topic also preview. The keyboard path works. |
-| 2 | mobile | pass | Bottom sheet, fits the viewport. |
-| 2 | tablet | pass | "Terms (Preview)" fits. |
-| 3 | desktop | pass | Empty-state row "No reference material in this course yet.", no numbers and no count. Course content unchanged. |
-| 4 | desktop | pass | Cross-panel URLs, a bad UUID and a request without HX-Request all return 404. The reference URL returns 200. The 4 console errors are these deliberate 404 fetches. |
-| 5 | desktop | pass | harbour-college shows "Content preview isn't shared with your organisation." in both panels, with no rows or Preview buttons. The preview URL returns 404. |
-| 6 | desktop | pass | No Reference panel on the cohort or learner pages. The cohorts and learners panels load on the course page. No console errors on the course page or while previewing. |
+| 1 | desktop | pass | Order: Details, Course content, Reference, Cohort registrations, Direct registrations. Reference has 1. Airspace Rules (1.1, 1.2) and 2. Glossary (2.1), both open, no details row, no callout, no header button, footer "5 reference outline items". Course content has Course details, 1. Flying Basics, 1.1 Pre-flight Checks, footer "2 course outline items". Column headers line up at x=289/385/1631/1774 in both panels. ![](screenshots/page-2026-11-23T09-51-12-795Z.png) |
+| 1.7 | desktop | pass | Chevron collapses and re-expands 1.1/1.2. ![](screenshots/page-2026-11-23T09-51-24-035Z.png) |
+| 1.8 | mobile | pass | Cards, footer "5 reference outline items", scrollWidth 375. ![](screenshots/page-2026-11-23T09-53-52-468Z.png) |
+| 1.8 | tablet | pass | Both panels as cards, scrollWidth 768. ![](screenshots/page-2026-11-23T09-54-20-876Z.png) |
+| 2 | desktop | pass | "Airspace Classes (Preview)" with Topic chip, read-only, no Mark complete. Escape returns focus to the Preview button. Glossary preview works ([screenshot](screenshots/page-2026-11-23T09-51-53-936Z.png)). Learning-path preview unaffected. Keyboard Enter lands focus on the dialog title. ![](screenshots/page-2026-11-23T09-51-40-666Z.png) |
+| 2 | mobile | pass | Bottom sheet, title and Topic chip, Close 44px. ![](screenshots/page-2026-11-23T09-54-00-930Z.png) |
+| 2 | tablet | pass | "Terms (Preview)" fits 768. ![](screenshots/page-2026-11-23T09-54-27-992Z.png) |
+| 3 | desktop | pass (functional) / fail (layout, see B1) | Empty state text shown, no numbers, no footer count, Course content unchanged (10 items). ![](screenshots/page-2026-11-23T09-52-29-223Z.png) |
+| 3 | mobile | pass | Empty card shows the empty state; scrollWidth 375. ![](screenshots/page-2026-11-23T09-54-10-518Z.png) |
+| 4 | desktop | pass | With HX-Request: reference preview 200; reference item under content panel 404; content item under reference panel 404; `item=not-a-uuid` 404; reference URL without HX-Request 404. No screenshot. |
+| 5 | desktop | pass (see caveat) | Under harbour-college both panels show "Content preview isn't shared with your organisation.", no rows, no Preview buttons; reference preview URL under that org returns 404. ![](screenshots/page-2026-11-23T09-55-06-599Z.png) |
+| 6.1 | desktop | pass | No Reference panel on cohort or learner pages. No screenshot. |
+| 6.2 | desktop | pass | Cohort registrations loads; Direct registrations "Showing 1–10 of 15", Next gives "Showing 11–15 of 15"; outlines unaffected. ![](screenshots/page-2026-11-23T09-56-43-239Z.png) |
+| 6.3 | desktop | pass | No console errors on the course page or during previews, apart from the deliberate Test 4 404 probes. No screenshot. |
+
+## Bug B1: Empty outline table: sr-only Actions header misaligns Type and overflows the page at desktop
+
+Manifestations:
+
+- `3-layout` (desktop)
+- `3` (desktop)
+
+![](screenshots/page-2026-11-23T09-52-29-223Z.png)
+
+**Expected:** On a course with no reference parts, the empty Reference table's #, Type and Actions columns start at the same x as Course content's (educator-interface visual checklist: stacked outline tables line up), and the page has no horizontal scroll at 1920px.
+
+**Actual:** The TYPE header sits at x≈1759 instead of 1631, and the document is 1998px wide in a 1920px viewport. The Actions column's `header_class` `w-28 min-w-28 max-w-28 sr-only` (`freedom_ls/educator_interface/panels/course/content_preview.py:299`) makes the `<th>` position:absolute. With no body rows nothing holds the column, so Type stretches to the right edge and the 112px absolute `<th>` spills past the viewport. Mobile and tablet card mode is unaffected (scrollWidth 375).
 
 ## Layout probe
 
 | Test id | Viewport | URL | Screenshot | Result |
 |---|---|---|---|---|
-| 1 | desktop | /educator/organisations/demodev/courses/1144be70-d209-4fde-98f8-3fb2459fdccb | [screenshot](screenshots/page-2026-11-23T04-30-51-872Z.png) | clean |
-| 2 | desktop | /educator/organisations/demodev/courses/1144be70-d209-4fde-98f8-3fb2459fdccb | [screenshot](screenshots/page-2026-11-23T04-31-22-321Z.png) | clean |
-| 3 | desktop | /educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22 | [screenshot](screenshots/page-2026-11-23T04-31-49-615Z.png) | clean |
-| 1 | mobile | /educator/organisations/demodev/courses/1144be70-d209-4fde-98f8-3fb2459fdccb | [screenshot](screenshots/page-2026-11-23T04-32-19-275Z.png) | clean |
-| 2 | mobile | /educator/organisations/demodev/courses/1144be70-d209-4fde-98f8-3fb2459fdccb | [screenshot](screenshots/page-2026-11-23T04-32-28-285Z.png) | clean |
-| 1 | tablet | /educator/organisations/demodev/courses/1144be70-d209-4fde-98f8-3fb2459fdccb | [screenshot](screenshots/page-2026-11-23T04-32-37-288Z.png) | clean |
-| 2 | tablet | /educator/organisations/demodev/courses/1144be70-d209-4fde-98f8-3fb2459fdccb | [screenshot](screenshots/page-2026-11-23T04-33-31-253Z.png) | clean |
-| 5 | desktop | /educator/organisations/harbour-college/courses/1144be70-d209-4fde-98f8-3fb2459fdccb | [screenshot](screenshots/page-2026-11-23T04-33-47-214Z.png) | clean |
+| 1 | desktop | /educator/organisations/demodev/courses/1144be70-d209-4fde-98f8-3fb2459fdccb | ![](screenshots/page-2026-11-23T09-51-12-795Z.png) | clean |
+| 1.7 | desktop | same | ![](screenshots/page-2026-11-23T09-51-24-035Z.png) | clean |
+| 2 | desktop | same | ![](screenshots/page-2026-11-23T09-51-40-666Z.png) | clean |
+| 2.4 | desktop | same | ![](screenshots/page-2026-11-23T09-51-53-936Z.png) | clean |
+| 3 | desktop | /educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22 | ![](screenshots/page-2026-11-23T09-52-29-223Z.png) | overflow: document is 1998px wide in a 1920px viewport (B1) |
+| 1.8 | mobile | /educator/organisations/demodev/courses/1144be70-d209-4fde-98f8-3fb2459fdccb | ![](screenshots/page-2026-11-23T09-53-52-468Z.png) | clean |
+| 2 | mobile | same | ![](screenshots/page-2026-11-23T09-54-00-930Z.png) | clean |
+| 3 | mobile | /educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22 | ![](screenshots/page-2026-11-23T09-54-10-518Z.png) | clean |
+| 1.8 | tablet | /educator/organisations/demodev/courses/1144be70-d209-4fde-98f8-3fb2459fdccb | ![](screenshots/page-2026-11-23T09-54-20-876Z.png) | clean |
+| 2 | tablet | same | ![](screenshots/page-2026-11-23T09-54-27-992Z.png) | clean |
+| 5 | desktop | /educator/organisations/harbour-college/courses/1144be70-d209-4fde-98f8-3fb2459fdccb | ![](screenshots/page-2026-11-23T09-55-06-599Z.png) | clean |
+| 6.2 | desktop | /educator/organisations/demodev/courses/1144be70-d209-4fde-98f8-3fb2459fdccb?learner_registrations-page=2 | ![](screenshots/page-2026-11-23T09-56-43-239Z.png) | clean |
 
 ## Data changes
 
 | What changed | Made by | Files written |
 |---|---|---|
-| Seeded the empty dev DB with `create_demo_data --yes` and `content_save ./demo_content DemoDev`. Added organisation demodev as owner of "Functionality Demo - Reference Material" (it had no owner, so every organisation could preview it). Created cohort "QA Reference Registration Cohort" in harbour-college (DemoDev) with an active cohort course registration on that course. Re-running content_save will likely drop the demodev ownership. | `sdd:qa-data-helper` | none |
+| Granted demodev@email.com an organisation_admin role on harbour-college (reused org with no ownership/share of the reference course and an existing cohort registration "QA Reference Registration Cohort" on it). | `sdd:qa-data-helper` | none |
+| Created 15 active direct LearnerCourseRegistrations on "Functionality Demo - Reference Material" for existing demodev learners (demodev_s1, demodev_s10 to s23) so the Direct registrations panel paginates (page size 10). | `sdd:qa-data-helper` | none |
 
 ## Bug status
 
-| Bug | Title | Lane | Verdict | Reason |
-|---|---|---|---|---|
-| B1 | Course content and Reference outline tables do not share column positions | red | **FIXED** (commit: 587ee9dd3, 6120d7c3a) — Course content and Reference outline tables do not share column positions — after the fix: ![](screenshots/fixed/page-2026-11-23T05-19-52-035Z.png) | Decision: fixed #/Type/Actions widths, Title takes the rest. The first attempt (w-16/w-36/w-28) still misaligned on screen ([shot](screenshots/fixed/page-2026-11-23T05-08-21-388Z.png)). After the retry, both tables put TYPE at x=1631 and every Preview at x=1791 at 1920. |
-| B2 | Outline tables stay tables at 768 instead of cards (pre-existing) | red | **FIXED** (commit: 1fe4b122e) — Outline tables stay tables at 768 instead of cards — after the fix: ![](screenshots/fixed/page-2026-11-23T05-08-33-336Z.png) ![](screenshots/fixed/page-2026-11-23T05-08-41-243Z.png) | Decision: the outline table declares cards_when_narrow, so both outlines are cards at 768, on a phone and beside a quick view. |
+| Bug | Title | Status |
+|---|---|---|
+| B1 | Empty outline table: sr-only Actions header misaligns Type and overflows the page at desktop | **FIXED** (commit: 69e0bfb5d) |
+
+Re-verified at 1920x1080 on the Course Parts course: the empty Reference table's #, Title, Type and Actions headers now sit at x=289/385/1631/1775, the same as Course content, and the document is 1920px wide with no probe flags. The fix adds `Column.header_hidden` to the shared panel framework, so I spot-checked the reference course page, a cohort page, a learner page and the courses list: no overflow, no absolutely positioned headers, no errors.
+
+![](screenshots/page-2026-11-23T10-03-53-675Z.png)
 
 ## General notes
 
-- Pagination of the cohorts and learners panels could not be exercised because both are empty on this course.
-- The header bar seen mid-page in the mobile full-page screenshot is the sticky header.
-- The demo DB had to be seeded, and the data helper changed ownership of the reference demo course (see Data changes).
-- B2 is pre-existing: Course content on main behaves the same way.
+- Test 5 caveat: demodev@email.com is a superuser. The test confirms the withheld-preview behaviour for an organisation with only a registration, but it does not confirm that a non-superuser organisation admin gets in through the role alone. That path is untested.
+- Test 4 and 6.1 and 6.3 have no screenshots by nature (HTTP probes, absence checks, console checks).
+- The second data change (15 extra direct registrations) remains in the dev database; the first (harbour-college organisation_admin role for demodev) also remains.
 
-status: ok · reason: report rendered, 2 bugs documented, 2 fixed by /sdd:qa_fix, 0 open
+status: ok · reason: 1 bug — 1 fixed, 0 unresolved; report rendered, screenshots verified
