@@ -1,1 +1,1 @@
-"""Emptied module: it holds no names and awaits deletion."""
+"""Emptied module: it holds no names."""

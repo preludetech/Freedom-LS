@@ -1,4 +1,4 @@
-"""The cohort and staff quick views: educator_interface/quick_views.py.
+"""Quick views of sections that declare none: a course has no quick view.
 
 An htmx GET of `<section>/<pk>/__quick-view` returns the drawer's frame with
 each consumer's own fields, scoped the same way the section's own list and
