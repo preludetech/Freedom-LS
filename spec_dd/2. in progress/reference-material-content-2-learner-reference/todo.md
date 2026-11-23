@@ -18,6 +18,8 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [x] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
+- [x] (cmd) Reference material drawn with the course outline rows (sidebar Reference heading with expandable parts, listing, public-page sub-section of Course content)
+- [ ] (user) Look over the reference outline on the public course page, sidebar and listing
 - [ ] (user) Review the code and the QA report
 
 ## 4. Documentation and pull request
