@@ -6,11 +6,13 @@ autoload off so the repository's `addopts` and plugins do not apply.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import subprocess
 import sys
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 
@@ -93,6 +95,16 @@ def run_pytest(project: Path, *args: str) -> tuple[list[dict[str, object]], str]
     )
     lines = record.read_text().splitlines() if record.exists() else []
     return [json.loads(line) for line in lines], completed.stderr
+
+
+def load_by_path(name: str, path: Path) -> ModuleType:
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def outcome_lines(events: list[dict[str, object]]) -> list[dict[str, object]]:
@@ -235,3 +247,25 @@ def test_teardown_failure_carries_the_teardown_text(tmp_path: Path) -> None:
 
     failed = outcome_for(events, "test_sample.py::test_teardown_error")
     assert "teardown boom" in str(failed["longrepr"])
+
+
+def test_a_project_run_tests_module_does_not_shadow_the_plugin(tmp_path: Path) -> None:
+    # `python -m pytest` puts the project directory first on `sys.path`, ahead of the
+    # plugin's own directory.
+    (tmp_path / "run_tests.py").write_text(
+        "raise SystemExit('project run_tests imported')\n"
+    )
+
+    events, stderr = run_pytest(tmp_path)
+
+    assert (len(outcome_lines(events)), "project run_tests imported" in stderr) == (
+        len(ALL_NODEIDS),
+        False,
+    )
+
+
+def test_the_plugin_ranks_outcomes_as_the_runner_does() -> None:
+    plugin = load_by_path("ds_run_record_under_test", PLUGIN_DIR / "ds_run_record.py")
+    runner = load_by_path("ds_run_tests_under_test", PLUGIN_DIR / "run_tests.py")
+
+    assert plugin.OUTCOME_SEVERITY == runner.OUTCOME_SEVERITY
