@@ -24,7 +24,7 @@ from django.forms import ModelForm, ModelMultipleChoiceField, all_valid
 from django.http import HttpRequest, HttpResponse
 from django.template.response import TemplateResponse
 from django.urls import reverse
-from django.utils.html import format_html, format_html_join
+from django.utils.html import format_html_join
 from django.utils.safestring import SafeString
 from django.utils.text import capfirst
 
@@ -33,10 +33,8 @@ from freedom_ls.course_recommendations.admin import RecommendedCourseAdmin
 from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.hr_attributes.admin import ListEntryAdmin
 from freedom_ls.hr_attributes.models import Department, JobTitle, Location
-from freedom_ls.learner_management.admin import LearnerCourseRegistrationAdmin
 from freedom_ls.learner_management.models import (
     Learner,
-    LearnerCourseRegistration,
 )
 from freedom_ls.registration_rules.evaluation import (
     classify_recommendation_changes,
@@ -567,49 +565,6 @@ def _delete_refusal(rule: RegistrationRule) -> str | None:
     ).exists():
         return f"Rule still retracting its registrations: {rule.name}"
     return None
-
-
-@admin.display(description="Registration rule")
-def registration_rule(
-    self: SiteAwareModelAdmin, obj: LearnerCourseRegistration
-) -> str | SafeString:
-    """The rule that made this registration; blank for a staff- or learner-made one."""
-    link = (
-        RuleRegistration.objects.filter(registration_id=obj.pk)
-        .select_related("rule")
-        .first()
-    )
-    if link is None:
-        return ""
-    if link.rule is None:
-        return f"{link.rule_name} (deleted)"
-    return format_html(
-        '<a href="{}" class="text-primary-600 dark:text-primary-500">{}</a>',
-        reverse(
-            "admin:freedom_ls_registration_rules_registrationrule_change",
-            args=[link.rule.pk],
-        ),
-        link.rule.name,
-    )
-
-
-# The rule's name on a registration's own change page, through the attributes
-# LearnerCourseRegistrationAdmin declares. The wiring runs from here rather
-# than from learner_management, which must stay installable without this app.
-# Appending keeps every field another app has already contributed.
-setattr(  # noqa: B010 - the function binds as a method of the admin class
-    LearnerCourseRegistrationAdmin, "registration_rule", registration_rule
-)
-LearnerCourseRegistrationAdmin.readonly_fields = [
-    *LearnerCourseRegistrationAdmin.readonly_fields,
-    "registration_rule",
-]
-_first, *_rest = LearnerCourseRegistrationAdmin.fieldsets
-_fieldsets = (
-    (_first[0], {**_first[1], "fields": (*_first[1]["fields"], "registration_rule")}),
-    *_rest,
-)
-setattr(LearnerCourseRegistrationAdmin, "fieldsets", _fieldsets)  # noqa: B010
 
 
 _list_entry_deleted_objects = ListEntryAdmin.get_deleted_objects

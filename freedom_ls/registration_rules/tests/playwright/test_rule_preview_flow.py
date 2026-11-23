@@ -111,14 +111,6 @@ def test_enabling_a_rule_previews_then_registers_the_matching_learner(
         f"{reverse('admin:freedom_ls_registration_rules_registrationrule_changelist')}"
     )
 
-    # Assert: the learner's registration names the rule.
-    page.goto(
-        f"{live_server.url}"
-        f"{reverse('admin:freedom_ls_learner_management_learnercourseregistration_changelist')}"
-    )
-    page.get_by_role("link", name="Maya", exact=True).click()
-    expect(page.get_by_role("link", name="Accounts team")).to_be_visible()
-
     # Assert: the preview fits every viewport.
     page.goto(
         f"{live_server.url}"

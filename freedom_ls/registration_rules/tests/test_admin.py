@@ -121,64 +121,10 @@ def test_organisation_and_course_are_read_only_on_the_change_page(staff_client):
     assert "is_enabled" in editable
 
 
-REGISTRATION_CHANGE = (
-    "admin:freedom_ls_learner_management_learnercourseregistration_change"
-)
 LINK_CLASS = 'class="text-primary-600 dark:text-primary-500"'
 RULE_CHANGE = "admin:freedom_ls_registration_rules_registrationrule_change"
 RULE_DELETE = "admin:freedom_ls_registration_rules_registrationrule_delete"
 RULE_CHANGELIST = "admin:freedom_ls_registration_rules_registrationrule_changelist"
-
-
-@pytest.mark.django_db
-def test_a_rule_made_registration_shows_its_rule_as_a_link(staff_client):
-    # Arrange
-    link = RuleRegistrationFactory()
-
-    # Act
-    response = staff_client.get(
-        reverse(REGISTRATION_CHANGE, args=[link.registration.pk])
-    )
-
-    # Assert
-    assert response.status_code == 200
-    assert "registration_rule" in response.context["adminform"].readonly_fields
-    assert (
-        f'<a href="{reverse(RULE_CHANGE, args=[link.rule.pk])}" {LINK_CLASS}>{link.rule.name}</a>'
-        in response.content.decode()
-    )
-
-
-@pytest.mark.django_db
-def test_a_staff_made_registration_shows_no_rule(staff_client):
-    # Arrange
-    registration = LearnerCourseRegistrationFactory()
-
-    # Act
-    response = staff_client.get(reverse(REGISTRATION_CHANGE, args=[registration.pk]))
-
-    # Assert
-    assert response.status_code == 200
-    assert "Registration rule" in response.content.decode()
-    assert not re.search(
-        r"registrationrule/[0-9a-f-]{36}/change", response.content.decode()
-    )
-
-
-@pytest.mark.django_db
-def test_a_registration_whose_rule_was_deleted_says_so(staff_client):
-    # Arrange
-    link = RuleRegistrationFactory(rule__is_enabled=False)
-    rule_name = link.rule.name
-    link.rule.delete()
-
-    # Act
-    response = staff_client.get(
-        reverse(REGISTRATION_CHANGE, args=[link.registration.pk])
-    )
-
-    # Assert
-    assert f"{rule_name} (deleted)" in response.content.decode()
 
 
 @pytest.mark.django_db
