@@ -128,6 +128,7 @@ from .utils import (
     OutlineMode,
     Unresolved,
     card_deadline_line,
+    course_reference_topics,
     current_entry,
     current_entry_status,
     derive_listing_status,
@@ -2299,6 +2300,75 @@ def course_form_complete(request, course_slug, index):
     return render(request, "learner_interface/course_form_complete.html", context)
 
 
+def _course_index_without_current_row(
+    request: HttpRequest, course: Course, course_progress: CourseProgress | None
+) -> list[dict]:
+    """The outline for a page that is not one of the course's items.
+
+    The caller has confirmed content access, so no row is rendered locked for
+    want of it.
+    """
+    return get_course_index(
+        user=request.user,
+        course=course,
+        can_access_content=True,
+        course_progress=course_progress,
+        course_deadlines=_deadlines_or_none(course_progress),
+        deadline_policy=_deadline_policy_or_none(course_progress),
+    )
+
+
+def _reference_access_redirect(
+    request: HttpRequest, course: Course
+) -> HttpResponseRedirect | None:
+    """Where to send a learner who may not read this course's reference pages, or None.
+
+    Reference pages follow the same gate as a closed item: whoever cannot see
+    the course's content goes to its detail page. There are no read-only
+    exceptions, because reading reference material records nothing.
+    """
+    decision = _course_access_decision(request.user, course)
+    if decision.can_access_content:
+        return None
+    return redirect("learner_interface:course_detail", course_slug=course.slug)
+
+
+def _reference_sidebar_context(
+    request: HttpRequest, course: Course
+) -> dict[str, object]:
+    """The outline panel with no current row, read without writing any progress.
+
+    course_progress_for only reads, so a learner who has never opened the
+    course still has no course progress record after reading its reference material.
+    """
+    course_progress = course_progress_for(cast("User", request.user), course)
+    return {
+        "course_progress": course_progress,
+        "course_index": _course_index_without_current_row(
+            request, course, course_progress
+        ),
+        "on_reference_page": True,
+        **_time_zone_context(request),
+    }
+
+
+@login_required
+def course_reference(request: HttpRequest, course_slug: str) -> HttpResponse:
+    course = get_object_or_404(Course, slug=course_slug)
+    no_access = _reference_access_redirect(request, course)
+    if no_access is not None:
+        return no_access
+    return render(
+        request,
+        "learner_interface/course_reference.html",
+        {
+            "course": course,
+            "reference_part_topics": course_reference_topics(course),
+            **_reference_sidebar_context(request, course),
+        },
+    )
+
+
 @login_required
 def course_finish(request, course_slug):
     """Mark the course progress as complete for this user and render a completion page."""
@@ -2361,13 +2431,8 @@ def course_finish(request, course_slug):
         # can_access_content=True: the learner reached the end of the course, so
         # they have had content access throughout, whether or not the completion
         # was withheld.
-        "course_index": get_course_index(
-            user=request.user,
-            course=course,
-            can_access_content=True,
-            course_progress=course_progress,
-            course_deadlines=_deadlines_or_none(course_progress),
-            deadline_policy=_deadline_policy_or_none(course_progress),
+        "course_index": _course_index_without_current_row(
+            request, course, course_progress
         ),
         **_time_zone_context(request),
     }

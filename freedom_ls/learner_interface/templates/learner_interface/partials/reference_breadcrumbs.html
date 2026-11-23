@@ -1,0 +1,22 @@
+{% comment %}
+Reference breadcrumb trail: course > Reference. The Reference crumb is the
+current page on the listing. The <li> m-0/p-0 neutralise the global
+`ol { space-y-2 }` / `li { py-1 }` base rules that would otherwise give the
+crumbs unequal box heights under `align-items: center`.
+{% endcomment %}
+
+<nav aria-label="Breadcrumb">
+    <ol class="list-none ml-0 flex items-center gap-2 text-sm text-muted min-w-0">
+        <li class="m-0 p-0 flex items-center min-w-0">
+            <a href="{% url 'learner_interface:course_home' course_slug=course.slug %}"
+               class="no-underline text-muted hover:text-primary truncate max-w-[16rem]"
+               title="{{ course.title }}">{{ course.title }}</a>
+        </li>
+        <li class="m-0 p-0 flex items-center gap-2 min-w-0">
+            <span aria-hidden="true" class="shrink-0">&gt;</span>
+            <span class="text-on-surface font-medium truncate max-w-[20rem]"
+                  aria-current="page"
+                  title="Reference">Reference</span>
+        </li>
+    </ol>
+</nav>

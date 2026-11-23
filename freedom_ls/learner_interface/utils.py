@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING, TypedDict, cast
 
-from django.db.models import QuerySet
+from django.db.models import Prefetch, QuerySet
 from django.http import Http404
 from django.urls import reverse
 from django.utils import timezone
@@ -1347,3 +1347,43 @@ def card_deadline_line(
     if access_ends_at is not None and access_ends_at <= now:
         access_ends_at = None
     return CardDeadlineLine(missed=missed, next=upcoming, access_ends_at=access_ends_at)
+
+
+@dataclass(frozen=True)
+class ReferencePartTopics:
+    """A course's reference part with the topics a learner can read in it."""
+
+    course_part: CoursePart
+    topics: list[Topic]
+
+
+def course_reference_topics(
+    course: Course, *, part_slug: str | None = None
+) -> list[ReferencePartTopics]:
+    """The course's reference parts in order, each with its topics in order.
+
+    Reference parts hold topics only, but anything else placed in one is dropped
+    rather than served, and a part left with no topics is dropped with it.
+    Children are prefetched per content type, so the query count does not grow
+    with the number of parts or topics.
+    """
+    rows = course.reference_parts.select_related("course_part").prefetch_related(
+        Prefetch(
+            "course_part__items",
+            queryset=ContentCollectionItem.objects.prefetch_related("child"),
+        )
+    )
+    if part_slug is not None:
+        rows = rows.filter(course_part__slug=part_slug)
+    parts = []
+    for row in rows:
+        topics = [
+            item.child
+            for item in row.course_part.items.all()
+            if isinstance(item.child, Topic)
+        ]
+        if topics:
+            parts.append(
+                ReferencePartTopics(course_part=row.course_part, topics=topics)
+            )
+    return parts

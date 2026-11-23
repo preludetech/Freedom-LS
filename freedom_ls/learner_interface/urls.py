@@ -19,6 +19,11 @@ urlpatterns = [
         name="initiate_course_access",
     ),
     path(
+        "courses/<slug:course_slug>/reference/",
+        views.course_reference,
+        name="course_reference",
+    ),
+    path(
         "courses/<slug:course_slug>/<int:index>/",
         views.view_course_item,
         name="view_course_item",

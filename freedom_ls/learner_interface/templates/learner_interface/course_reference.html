@@ -1,0 +1,30 @@
+{% extends "learner_interface/_course_base.html" %}
+
+{% block item_head_title %}Reference{% endblock %}
+
+{% block breadcrumbs %}
+    {% include "learner_interface/partials/reference_breadcrumbs.html" %}
+{% endblock breadcrumbs %}
+
+{% block item_page_title %}{% include "partials/page_title.html" with page_title="Reference" %}{% endblock item_page_title %}
+
+{% block content %}
+    <c-page flush="true" class="pt-0 lg:pt-0">
+        {% for part in reference_part_topics %}
+            {% comment %}The scroll margin keeps an anchor jump clear of the sticky header.{% endcomment %}
+            <section id="{{ part.course_part.slug }}" class="scroll-mt-24">
+                <h2>{{ part.course_part.title }}</h2>
+                <ul>
+                    {% for topic in part.topics %}
+                        <li>{{ topic.title }}</li>
+                    {% endfor %}
+                </ul>
+            </section>
+        {% empty %}
+            <div class="text-center py-12">
+                <c-icon name="reference" class="size-12 text-muted" />
+                <p class="mt-4 text-muted">No reference material yet</p>
+            </div>
+        {% endfor %}
+    </c-page>
+{% endblock content %}

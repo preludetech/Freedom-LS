@@ -42,6 +42,7 @@ SEMANTIC_ICON_NAMES: set[str] = {
     "topic",
     "form",
     "folder",
+    "reference",
     # User/system
     "user",
     "cohort",

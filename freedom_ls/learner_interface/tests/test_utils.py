@@ -12,8 +12,10 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
+    ContentCollectionItemFactory,
     CourseFactory,
     CoursePartFactory,
+    CourseReferencePartFactory,
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course
@@ -27,6 +29,7 @@ from freedom_ls.deadlines.resolver import (
     ResolvedDeadline,
     course_deadlines,
 )
+from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.learner_interface.tests.helpers import (
     learner_override,
     set_due_date,
@@ -44,6 +47,7 @@ from freedom_ls.learner_interface.utils import (
     DeadlineTier,
     OutlineMode,
     card_deadline_line,
+    course_reference_topics,
     current_entry,
     deadline_tier,
     derive_part_status,
@@ -1056,3 +1060,89 @@ def test_card_deadline_line_marks_a_past_time_limit_as_missed():
     assert line.missed is not None
     assert line.missed.deadline_tier == DeadlineTier.MISSED
     assert line.next is None
+
+
+REFERENCE_QUERY_BOUND = 3
+
+
+def _reference_part(course, *children, order: int = 0):
+    """Attach a new part holding `children` in order to `course` as reference material."""
+    part = CoursePartFactory()
+    CourseReferencePartFactory(course=course, course_part=part, order=order)
+    for position, child in enumerate(children):
+        ContentCollectionItemFactory(
+            collection_object=part, child_object=child, order=position
+        )
+    return part
+
+
+@pytest.mark.django_db
+def test_course_reference_topics_orders_parts_and_topics(mock_site_context):
+    course = CourseFactory()
+    second_topic, first_topic = TopicFactory(), TopicFactory()
+    later = _reference_part(course, second_topic, first_topic, order=1)
+    earlier = _reference_part(course, TopicFactory(), order=0)
+
+    result = course_reference_topics(course)
+
+    assert [part.course_part for part in result] == [earlier, later]
+    assert result[1].topics == [second_topic, first_topic]
+
+
+@pytest.mark.django_db
+def test_course_reference_topics_drops_a_non_topic_child(mock_site_context):
+    course = CourseFactory()
+    topic = TopicFactory()
+    _reference_part(course, FormFactory(), topic)
+
+    result = course_reference_topics(course)
+
+    assert result[0].topics == [topic]
+
+
+@pytest.mark.django_db
+def test_course_reference_topics_drops_a_part_with_only_a_form(mock_site_context):
+    course = CourseFactory()
+    _reference_part(course, FormFactory())
+
+    assert course_reference_topics(course) == []
+
+
+@pytest.mark.django_db
+def test_course_reference_topics_drops_a_part_with_no_items(mock_site_context):
+    course = CourseFactory()
+    _reference_part(course)
+
+    assert course_reference_topics(course) == []
+
+
+@pytest.mark.django_db
+def test_course_reference_topics_ignores_a_part_of_another_course(mock_site_context):
+    course = CourseFactory()
+    _reference_part(CourseFactory(), TopicFactory())
+
+    assert course_reference_topics(course) == []
+
+
+@pytest.mark.django_db
+def test_course_reference_topics_part_slug_narrows_to_that_part(mock_site_context):
+    course = CourseFactory()
+    _reference_part(course, TopicFactory(), order=0)
+    wanted = _reference_part(course, TopicFactory(), order=1)
+
+    result = course_reference_topics(course, part_slug=wanted.slug)
+
+    assert [part.course_part for part in result] == [wanted]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(("parts", "topics"), [(1, 1), (3, 3)])
+def test_course_reference_topics_query_count_does_not_grow_with_content(
+    mock_site_context, django_assert_max_num_queries, parts, topics
+):
+    course = CourseFactory()
+    for order in range(parts):
+        _reference_part(course, *[TopicFactory() for _ in range(topics)], order=order)
+
+    with django_assert_max_num_queries(REFERENCE_QUERY_BOUND):
+        course_reference_topics(course)
