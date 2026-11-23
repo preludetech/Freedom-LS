@@ -1603,3 +1603,28 @@ def test_a_topic_in_a_reference_part_is_a_404_through_a_course_that_does_not_lis
     response = _reference_preview(staff_client, organisation, other_course, item)
 
     assert response.status_code == 404
+
+
+def test_outline_tables_fix_the_width_of_every_column_but_title() -> None:
+    """The number, type and action columns of both outline tables carry fixed
+    widths on header and cell, so stacked tables line up. They used to size
+    themselves to their own content and drifted apart."""
+    from freedom_ls.educator_interface.panels.course.content_preview import (
+        CourseOutlineTable,
+        ReferenceOutlineTable,
+    )
+
+    for table in (CourseOutlineTable, ReferenceOutlineTable):
+        columns = {column.header: column for column in table.get_columns()}
+        for header in ("#", "Type", "Actions"):
+            column = columns[header]
+            header_widths = [
+                c for c in column.header_class.split() if c.startswith("w-")
+            ]
+            cell_widths = [c for c in column.cell_class.split() if c.startswith("w-")]
+            assert header_widths, (table, header)
+            assert header_widths != ["w-0"], (table, header)
+            assert cell_widths == header_widths, (table, header)
+        assert not [
+            c for c in columns["Title"].header_class.split() if c.startswith("w-")
+        ]

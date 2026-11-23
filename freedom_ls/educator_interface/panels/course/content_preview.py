@@ -273,8 +273,8 @@ class CourseOutlineTable(DataTable):
             Column(
                 header="#",
                 template_name="educator_interface/partials/course_outline_number.html",
-                header_class="w-0",
-                cell_class="w-0 text-muted tabular-nums",
+                header_class="w-16",
+                cell_class="w-16 text-muted tabular-nums",
             ),
             Column(
                 header="Title",
@@ -284,14 +284,15 @@ class CourseOutlineTable(DataTable):
             Column(
                 header="Type",
                 template_name="educator_interface/partials/course_outline_type.html",
-                cell_class="text-muted",
+                header_class="w-36",
+                cell_class="w-36 text-muted",
                 card="md_only",
             ),
             Column(
                 header="Actions",
                 template_name="educator_interface/partials/course_outline_actions.html",
-                header_class="w-0 sr-only",
-                cell_class="w-0",
+                header_class="w-28 sr-only",
+                cell_class="w-28",
             ),
         ]
 
