@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import cast
@@ -13,6 +13,8 @@ import pytest
 import time_machine
 from pytest_django.fixtures import DjangoAssertNumQueries, SettingsWrapper
 
+from django.contrib.auth.base_user import AbstractBaseUser
+from django.contrib.sites.models import Site
 from django.core.cache import cache
 from django.db import connection
 from django.http import HttpResponse
@@ -29,6 +31,7 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     TopicFactory,
 )
+from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.tests.helpers import (
     _cohort_page,
     _org_admin,
@@ -70,6 +73,9 @@ from freedom_ls.reports.tests.test_views import (
 )
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
+# Every test here builds site-aware objects and assigns roles.
+pytestmark = pytest.mark.usefixtures("mock_site_context")
+
 
 def _visible_text(element: lxml.html.HtmlElement) -> str:
     """An element's text as a reader sees it: no <style> or aria-hidden content, whitespace collapsed."""
@@ -80,11 +86,6 @@ def _visible_text(element: lxml.html.HtmlElement) -> str:
             )
         ).split()
     )
-
-
-@pytest.fixture(autouse=True)
-def _site_context(mock_site_context):
-    """Every test here builds site-aware objects and assigns roles."""
 
 
 def _downloads_url(organisation_slug: str, cohort_pk: object) -> str:
@@ -144,8 +145,8 @@ def _generate(client: Client, url: str) -> HttpResponse:
     )
 
 
-def _course_with_topic():
-    course = CourseFactory()
+def _course_with_topic() -> Course:
+    course = cast(Course, CourseFactory())
     ContentCollectionItemFactory(
         collection_object=course, child_object=TopicFactory(), order=0
     )
@@ -162,7 +163,9 @@ def test_the_over_limit_message_names_the_cohort_its_size_and_the_limit() -> Non
 
 @pytest.mark.django_db
 class TestReportTab:
-    def test_the_report_tab_sits_between_courses_and_settings(self, logged_in_client):
+    def test_the_report_tab_sits_between_courses_and_settings(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         client = logged_in_client(_org_admin(cohort.organisation))
 
@@ -188,8 +191,10 @@ class TestReportTab:
         ]
 
     def test_a_viewer_without_the_download_capability_gets_the_body_and_no_downloads_panel(
-        self, logged_in_client, mock_site_context
-    ):
+        self,
+        logged_in_client: Callable[[AbstractBaseUser], Client],
+        mock_site_context: Site,
+    ) -> None:
         cohort = CohortFactory()
         viewer = UserFactory(staff=True)
         with _role_config_granting_view_cohort_only(mock_site_context.name):
@@ -212,8 +217,8 @@ class TestReportTab:
         assert downloads.status_code == 404
 
     def test_the_generate_button_sits_in_the_card_header_and_shows_a_loading_label_while_posting(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         client = logged_in_client(_org_admin(cohort.organisation))
 
@@ -233,8 +238,8 @@ class TestReportTab:
         assert "No reports yet." in panel.text_content()
 
     def test_posting_the_action_creates_a_report_and_returns_the_in_flight_region(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         client = logged_in_client(_org_admin(cohort.organisation))
         url = _downloads_url(cohort.organisation.slug, cohort.pk)
@@ -246,7 +251,9 @@ class TestReportTab:
         assert GeneratedReport.objects.filter(cohort=cohort).count() == 1
         assert "Generating…" in region.text_content()
 
-    def test_a_get_of_the_action_is_not_allowed(self, logged_in_client):
+    def test_a_get_of_the_action_is_not_allowed(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         client = logged_in_client(_org_admin(cohort.organisation))
         url = _downloads_url(cohort.organisation.slug, cohort.pk)
@@ -257,8 +264,8 @@ class TestReportTab:
         assert GeneratedReport.objects.filter(cohort=cohort).count() == 0
 
     def test_posting_again_while_one_is_in_flight_returns_the_same_region_without_a_second_report(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         client = logged_in_client(_org_admin(cohort.organisation))
         url = _downloads_url(cohort.organisation.slug, cohort.pk)
@@ -270,7 +277,9 @@ class TestReportTab:
         assert "Generating…" in response.content.decode()
         assert GeneratedReport.objects.filter(cohort=cohort).count() == 1
 
-    def test_an_in_flight_region_polls_every_three_seconds(self, logged_in_client):
+    def test_an_in_flight_region_polls_every_three_seconds(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         GeneratedReportFactory(cohort=cohort, status=GeneratedReport.STATUS_RUNNING)
 
@@ -282,8 +291,8 @@ class TestReportTab:
         assert region.cssselect("[hx-trigger='every 3s']")
 
     def test_an_in_flight_region_older_than_ten_minutes_stops_polling_and_offers_a_recheck(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         report = GeneratedReportFactory(
             cohort=cohort, status=GeneratedReport.STATUS_PENDING
@@ -301,8 +310,8 @@ class TestReportTab:
         assert "Try again" not in region.text_content()
 
     def test_generating_after_a_stall_fails_the_stuck_report_and_starts_another(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         stalled = GeneratedReportFactory(
             cohort=cohort, status=GeneratedReport.STATUS_RUNNING
@@ -321,8 +330,8 @@ class TestReportTab:
         assert region.cssselect("[hx-trigger]")
 
     def test_a_ready_region_links_to_the_download_and_does_not_poll(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         report = _ready_report(cohort)
 
@@ -340,8 +349,8 @@ class TestReportTab:
         assert not region.cssselect("[hx-trigger]")
 
     def test_a_failed_region_shows_the_reason_as_a_row_and_the_header_keeps_generate(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         GeneratedReportFactory(
             cohort=cohort,
@@ -361,8 +370,8 @@ class TestReportTab:
         assert button.get("disabled") is None
 
     def test_the_downloads_table_lists_the_last_five_ready_reports_newest_first(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         reports = [
             _ready_report(cohort, finished_at=datetime(2026, 3, day, 9, 0, tzinfo=UTC))
@@ -388,7 +397,9 @@ class TestReportTab:
         hrefs = [a.get("href") for a in table.cssselect("tbody a")]
         assert f"/{reports[-1].pk}/" in hrefs[0]
 
-    def test_an_in_flight_row_sits_above_the_ready_rows(self, logged_in_client):
+    def test_an_in_flight_row_sits_above_the_ready_rows(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         _ready_report(cohort)
         GeneratedReportFactory(cohort=cohort, status=GeneratedReport.STATUS_RUNNING)
@@ -405,8 +416,8 @@ class TestReportTab:
 
     @override_settings(REPORTS_MAX_LEARNERS=1)
     def test_an_over_limit_cohort_is_told_why_and_offered_no_generate(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory(name="Big")
         CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
         CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
@@ -427,8 +438,8 @@ class TestReportTab:
 
     @override_settings(REPORTS_MAX_LEARNERS=1)
     def test_an_over_limit_cohorts_generate_button_is_disabled_and_described_by_the_reason(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory(name="Big")
         CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
         CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
@@ -446,8 +457,8 @@ class TestReportTab:
 
     @override_settings(REPORTS_MAX_LEARNERS=1)
     def test_an_over_limit_cohorts_failed_report_is_not_shown_as_an_error(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory(name="Big")
         CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
         CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
@@ -469,8 +480,8 @@ class TestReportTab:
 
     @override_settings(REPORTS_MAX_LEARNERS=1)
     def test_posting_generate_for_an_over_limit_cohort_is_refused_without_a_report(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory(name="Big")
         CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
         CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
@@ -517,8 +528,8 @@ def _attention_region(
 @pytest.mark.django_db
 class TestNeedsAttentionCard:
     def test_the_first_render_is_a_busy_skeleton_with_a_load_trigger(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         client = logged_in_client(_org_admin(cohort.organisation))
 
@@ -532,8 +543,8 @@ class TestNeedsAttentionCard:
         assert len(region.cssselect("[hx-trigger='load']")) == 1
 
     def test_the_loaded_region_lists_a_flagged_learner_with_badges_reason_and_link(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         CohortCourseRegistrationFactory(cohort=cohort, course=_course_with_topic())
         membership = CohortMembershipFactory(
@@ -559,7 +570,9 @@ class TestNeedsAttentionCard:
         assert "Has not started any course item." in text
         assert region.get("aria-busy") is None
 
-    def test_the_attention_list_shows_no_list_markers(self, logged_in_client):
+    def test_the_attention_list_shows_no_list_markers(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         """The theme bullets and indents bare lists, so the rows sat 24px in."""
         cohort = CohortFactory()
         CohortCourseRegistrationFactory(cohort=cohort, course=_course_with_topic())
@@ -573,7 +586,9 @@ class TestNeedsAttentionCard:
         (attention_list,) = region.cssselect("ul")
         assert "list-none" in attention_list.get("class").split()
 
-    def test_a_cohort_with_nobody_flagged_says_so(self, logged_in_client):
+    def test_a_cohort_with_nobody_flagged_says_so(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         client = logged_in_client(_org_admin(cohort.organisation))
 
@@ -584,8 +599,8 @@ class TestNeedsAttentionCard:
         assert "Nobody needs attention right now" in region.text_content()
 
     def test_members_of_a_cohort_registered_for_no_course_are_not_flagged(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
         client = logged_in_client(_org_admin(cohort.organisation))
@@ -597,7 +612,9 @@ class TestNeedsAttentionCard:
         assert region.cssselect("li") == []
         assert "Nobody needs attention right now" in region.text_content()
 
-    def test_a_removed_learner_is_not_listed(self, logged_in_client):
+    def test_a_removed_learner_is_not_listed(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         CohortMembershipFactory(
             cohort=cohort,
@@ -612,7 +629,9 @@ class TestNeedsAttentionCard:
         assert region.cssselect("li") == []
 
     @override_settings(REPORTS_MAX_LEARNERS=1)
-    def test_a_cohort_over_the_limit_shows_the_error_message(self, logged_in_client):
+    def test_a_cohort_over_the_limit_shows_the_error_message(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
         CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
@@ -902,14 +921,14 @@ def _confusion(**overrides: object) -> QuizConfusion:
 @pytest.mark.django_db
 class TestCohortReportBody:
     @pytest.fixture(autouse=True)
-    def _empty_cache(self):
+    def _empty_cache(self) -> Iterator[None]:
         cache.clear()
         yield
         cache.clear()
 
     def test_every_table_has_a_caption_and_scrolls_in_a_named_focusable_region(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         client = logged_in_client(_org_admin(cohort.organisation))
         quiz = QuizColumn(
@@ -959,8 +978,8 @@ class TestCohortReportBody:
         assert captions == ["Astronomy", "Astronomy (continued)", "Orbit Quiz"]
 
     def test_the_first_render_is_a_busy_skeleton_with_a_load_trigger(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         client = logged_in_client(_org_admin(cohort.organisation))
 
@@ -973,8 +992,8 @@ class TestCohortReportBody:
 
     @time_machine.travel(datetime(2026, 3, 15, 10, 30, tzinfo=UTC), tick=False)
     def test_the_at_a_glance_figures_equal_the_gather_and_the_seeded_literals(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = _seeded_report_cohort()
         client = logged_in_client(_org_admin(cohort.organisation))
 
@@ -996,8 +1015,8 @@ class TestCohortReportBody:
         assert "Figures as of 15 Mar 2026, 10:30" in region.text_content()
 
     def test_each_course_and_quiz_is_a_plain_section_not_a_card_inside_the_panel(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         """Course summaries and quiz confusions were bordered cards inside the panel."""
         cohort = CohortFactory()
         client = logged_in_client(_org_admin(cohort.organisation))
@@ -1013,8 +1032,8 @@ class TestCohortReportBody:
         assert "Orbit Quiz" in headings
 
     def test_a_learner_name_in_a_summary_row_links_to_the_learner_page(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = _seeded_report_cohort()
         membership = CohortMembership.objects.get(
             cohort=cohort, learner__user__first_name="Ada"
@@ -1031,8 +1050,8 @@ class TestCohortReportBody:
         assert link.get("href").endswith(f"/learners/{membership.learner_id}")
 
     def test_the_summary_rows_carry_status_completion_and_the_items_count(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = _seeded_report_cohort()
         client = logged_in_client(_org_admin(cohort.organisation))
 
@@ -1045,8 +1064,8 @@ class TestCohortReportBody:
         assert "1 of 1 items" not in first_row
 
     def test_refresh_replaces_a_stale_cache_entry_with_fresh_figures(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = _seeded_report_cohort()
         client = logged_in_client(_org_admin(cohort.organisation))
         url = _body_url(cohort.organisation.slug, cohort.pk)
@@ -1062,8 +1081,8 @@ class TestCohortReportBody:
         assert _at_a_glance(fresh)["Median completion"] == "50%"
 
     def test_the_refresh_control_asks_for_a_regather_into_the_same_region(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = _seeded_report_cohort()
         client = logged_in_client(_org_admin(cohort.organisation))
 
@@ -1074,7 +1093,9 @@ class TestCohortReportBody:
         assert button.get("hx-target") == f"#{region.get('id')}"
         assert button.get("hx-swap") == "outerHTML"
 
-    def test_a_quiz_with_enough_respondents_shows_a_percentage(self, logged_in_client):
+    def test_a_quiz_with_enough_respondents_shows_a_percentage(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         client = logged_in_client(_org_admin(cohort.organisation))
         _seed_report_cache(cohort, _confusion())
@@ -1087,8 +1108,8 @@ class TestCohortReportBody:
         assert "A closed path around a body" in text
 
     def test_a_quiz_with_few_respondents_shows_counts_not_a_percentage(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         client = logged_in_client(_org_admin(cohort.organisation))
         _seed_report_cache(
@@ -1108,8 +1129,8 @@ class TestCohortReportBody:
         assert "%" not in text.split("Got it wrong")[-1]
 
     def test_a_quiz_with_one_respondent_says_learner_not_learners(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         client = logged_in_client(_org_admin(cohort.organisation))
         _seed_report_cache(
@@ -1128,7 +1149,9 @@ class TestCohortReportBody:
         assert "1 of 1 learner" in text
         assert "1 of 1 learners" not in text
 
-    def test_a_cohort_without_incorrect_answers_says_so(self, logged_in_client):
+    def test_a_cohort_without_incorrect_answers_says_so(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = _seeded_report_cohort()
         client = logged_in_client(_org_admin(cohort.organisation))
 
@@ -1141,8 +1164,8 @@ class TestCohortReportBody:
 
     @override_settings(REPORTS_MAX_LEARNERS=1)
     def test_a_cohort_over_the_limit_shows_the_message_and_no_tables(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = _seeded_report_cohort()
         client = logged_in_client(_org_admin(cohort.organisation))
 
@@ -1155,8 +1178,8 @@ class TestCohortReportBody:
         assert region.cssselect("table") == []
 
     def test_quizzes_sharing_a_title_across_courses_are_headed_with_their_course(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         client = logged_in_client(_org_admin(cohort.organisation))
         _seed_quizzes_by_course(
@@ -1171,8 +1194,8 @@ class TestCohortReportBody:
         ]
 
     def test_a_quiz_with_a_unique_title_is_headed_by_the_title_alone(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         client = logged_in_client(_org_admin(cohort.organisation))
         _seed_quizzes_by_course(
@@ -1186,7 +1209,9 @@ class TestCohortReportBody:
             "Geometry Checkpoint",
         ]
 
-    def test_the_body_never_shows_wrong_answer_text(self, logged_in_client):
+    def test_the_body_never_shows_wrong_answer_text(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = _seeded_report_cohort()
         client = logged_in_client(_org_admin(cohort.organisation))
 
@@ -1225,7 +1250,9 @@ def test_reporting_surfaces_never_read_the_stored_progress_percentage(
 
 
 @pytest.mark.django_db
-def test_the_attention_card_names_a_nameless_learner_by_their_email(logged_in_client):
+def test_the_attention_card_names_a_nameless_learner_by_their_email(
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
     cohort = CohortFactory()
     CohortCourseRegistrationFactory(cohort=cohort, course=_course_with_topic())
     CohortMembershipFactory(
@@ -1325,7 +1352,7 @@ class TestCohortReportBodyPictures:
 @pytest.mark.django_db
 def test_needs_attention_card_renders_a_skeleton_that_fetches_its_body(
     staff_client: Client,
-):
+) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory())
 
     document = _cohort_page(staff_client, cohort)

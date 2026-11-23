@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import cast
 
 import lxml.html
 import pytest
 
+from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.sites.models import Site
 from django.test import Client
 
@@ -35,7 +37,7 @@ from freedom_ls.organisations.factories import OrganisationFactory
 @pytest.mark.django_db
 def test_cohort_detail_page_has_overview_learners_courses_report_settings_and_history_tabs(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation, name="Evening group")
     for _ in range(2):
@@ -71,7 +73,7 @@ def test_cohort_detail_page_has_overview_learners_courses_report_settings_and_hi
 
 
 @pytest.mark.django_db
-def test_the_learners_tab_count_excludes_a_removed_member(staff_client: Client):
+def test_the_learners_tab_count_excludes_a_removed_member(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation)
     CohortMembershipFactory(
@@ -93,7 +95,7 @@ def test_the_learners_tab_count_excludes_a_removed_member(staff_client: Client):
 @pytest.mark.django_db
 def test_cohort_page_actions_sit_in_the_page_header_not_the_details_card(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation, name="Evening group")
     page_url = _interface_url(organisation.slug, f"cohorts/{cohort.pk}")
@@ -130,8 +132,8 @@ def test_cohort_page_actions_sit_in_the_page_header_not_the_details_card(
 
 @pytest.mark.django_db
 def test_settings_tab_is_present_for_an_organisation_admin(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     grantor = LearnerFactory(user__superuser=True).user
@@ -149,8 +151,8 @@ def test_settings_tab_is_present_for_an_organisation_admin(
 
 @pytest.mark.django_db
 def test_settings_tab_answers_404_for_a_cohort_viewer(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     grantor = LearnerFactory(user__superuser=True).user
@@ -167,7 +169,7 @@ def test_settings_tab_answers_404_for_a_cohort_viewer(
 @pytest.mark.django_db
 def test_an_active_cohort_header_has_no_badge_no_stats_and_no_buttons(
     staff_client: Client,
-):
+) -> None:
     """Active is the default, the tabs already count learners and courses, and
     the actions live in Settings, so the header is the name and the tabs."""
     cohort = CohortFactory(organisation=OrganisationFactory())
@@ -181,7 +183,7 @@ def test_an_active_cohort_header_has_no_badge_no_stats_and_no_buttons(
 
 
 @pytest.mark.django_db
-def test_inactive_cohort_header_shows_the_inactive_badge(staff_client: Client):
+def test_inactive_cohort_header_shows_the_inactive_badge(staff_client: Client) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory(), is_active=False)
 
     document = _cohort_page(staff_client, cohort)
@@ -194,7 +196,7 @@ def test_inactive_cohort_header_shows_the_inactive_badge(staff_client: Client):
 @pytest.mark.django_db
 def test_cohort_header_refreshes_its_counts_when_the_cohort_changes(
     staff_client: Client,
-):
+) -> None:
     """The header stats and tab counts stayed stale after a membership change
     because nothing re-fetched them when the cohort-changed event fired."""
     cohort = CohortFactory(organisation=OrganisationFactory())
@@ -206,7 +208,7 @@ def test_cohort_header_refreshes_its_counts_when_the_cohort_changes(
 
 
 @pytest.mark.django_db
-def test_a_header_refresh_gets_the_header_alone(staff_client: Client):
+def test_a_header_refresh_gets_the_header_alone(staff_client: Client) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory())
     _add_member(cohort)
 
@@ -223,7 +225,7 @@ def test_a_header_refresh_gets_the_header_alone(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_the_cohort_page_opens_on_the_overview_tab(staff_client: Client):
+def test_the_cohort_page_opens_on_the_overview_tab(staff_client: Client) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory())
 
     document = _cohort_page(staff_client, cohort)
@@ -236,7 +238,7 @@ def test_the_cohort_page_opens_on_the_overview_tab(staff_client: Client):
 @pytest.mark.django_db
 def test_overview_lists_details_completion_and_attention_in_order(
     staff_client: Client,
-):
+) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory())
 
     document = _cohort_page(staff_client, cohort)
@@ -251,7 +253,7 @@ def test_overview_lists_details_completion_and_attention_in_order(
 @pytest.mark.django_db
 def test_every_panel_under_the_cohort_page_refreshes_on_cohort_changed(
     mock_site_context: Site,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort_paths = [
         item

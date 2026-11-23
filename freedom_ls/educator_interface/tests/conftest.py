@@ -11,6 +11,7 @@ from django.core.cache import cache
 from django.test import Client
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.educator_interface.tests.helpers import RoleHolderClient
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
@@ -56,7 +57,7 @@ def _site_context(mock_site_context: Site) -> None:
 @pytest.fixture
 def role_holder_client(
     mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
-) -> Callable[[Organisation | Cohort, str], Client]:
+) -> RoleHolderClient:
     """Factory: a logged-in staff user holding `role` on `target`."""
 
     def _make(

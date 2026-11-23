@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import pytest
+
+from django.contrib.auth.base_user import AbstractBaseUser
+from django.contrib.sites.models import Site
+from django.test import Client
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.educator_interface.tests.helpers import (
@@ -19,17 +25,15 @@ from freedom_ls.reports.tests.test_views import (
 )
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
-
-@pytest.fixture(autouse=True)
-def _site_context(mock_site_context):
-    """Every test here builds site-aware objects and assigns roles."""
+# Every test here builds site-aware objects and assigns roles.
+pytestmark = pytest.mark.usefixtures("mock_site_context")
 
 
 @pytest.mark.django_db
 class TestCohortReportDownload:
     def test_a_ready_report_downloads_as_a_private_attachment_named_for_the_cohort(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         organisation = OrganisationFactory(name="Acme School")
         cohort = CohortFactory(organisation=organisation, name="Year 9")
         report = _ready_report(cohort)
@@ -45,7 +49,9 @@ class TestCohortReportDownload:
         )
         assert b"".join(response.streaming_content) == b"%PDF-1.4 bytes"
 
-    def test_an_organisation_the_user_cannot_access_answers_404(self, logged_in_client):
+    def test_an_organisation_the_user_cannot_access_answers_404(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         cohort = CohortFactory()
         report = _ready_report(cohort)
         outsider = _org_admin(OrganisationFactory())
@@ -57,8 +63,8 @@ class TestCohortReportDownload:
         assert response.status_code == 404
 
     def test_a_cohort_outside_the_named_organisation_answers_404(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         organisation = OrganisationFactory()
         foreign = CohortFactory()
         report = _ready_report(foreign)
@@ -69,7 +75,9 @@ class TestCohortReportDownload:
 
         assert response.status_code == 404
 
-    def test_another_cohorts_report_answers_404(self, logged_in_client):
+    def test_another_cohorts_report_answers_404(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         organisation = OrganisationFactory()
         cohort = CohortFactory(organisation=organisation)
         other = CohortFactory(organisation=organisation)
@@ -84,7 +92,9 @@ class TestCohortReportDownload:
     @pytest.mark.parametrize(
         "status", [GeneratedReport.STATUS_PENDING, GeneratedReport.STATUS_FAILED]
     )
-    def test_a_report_that_is_not_ready_answers_404(self, logged_in_client, status):
+    def test_a_report_that_is_not_ready_answers_404(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client], status: str
+    ) -> None:
         cohort = CohortFactory()
         report = GeneratedReportFactory(cohort=cohort, status=status)
 
@@ -95,8 +105,10 @@ class TestCohortReportDownload:
         assert response.status_code == 404
 
     def test_a_viewer_without_the_download_capability_answers_404(
-        self, logged_in_client, mock_site_context
-    ):
+        self,
+        logged_in_client: Callable[[AbstractBaseUser], Client],
+        mock_site_context: Site,
+    ) -> None:
         cohort = CohortFactory()
         report = _ready_report(cohort)
         viewer = UserFactory(staff=True)

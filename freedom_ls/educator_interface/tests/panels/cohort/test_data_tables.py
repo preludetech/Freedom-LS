@@ -8,7 +8,7 @@ import lxml.html
 import pytest
 
 from django.db import connection
-from django.http import QueryDict
+from django.http import HttpRequest, QueryDict
 from django.template.loader import render_to_string
 from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
@@ -42,7 +42,7 @@ from freedom_ls.panel_framework.tables import TableQuery
 # the table hides inactive cohorts only while it offers the toggle
 
 
-def _cohort_rows(table: type[CohortDataTable], request) -> list[Cohort]:
+def _cohort_rows(table: type[CohortDataTable], request: HttpRequest) -> list[Cohort]:
     query = TableQuery(key="cohorts")
     return list(table.filter_queryset(request, table.get_queryset(request), query))
 
@@ -51,7 +51,7 @@ def _cohort_rows(table: type[CohortDataTable], request) -> list[Cohort]:
 @pytest.mark.django_db
 def test_the_cohort_table_hides_inactive_cohorts_while_its_toggle_is_unset(
     site_aware_request: RequestFactory,
-):
+) -> None:
     organisation = OrganisationFactory()
     request = _educator_request(site_aware_request, organisation)
     active = CohortFactory(organisation=organisation)
@@ -64,7 +64,7 @@ def test_the_cohort_table_hides_inactive_cohorts_while_its_toggle_is_unset(
 @pytest.mark.django_db
 def test_a_cohort_table_without_the_toggle_keeps_inactive_cohorts(
     site_aware_request: RequestFactory,
-):
+) -> None:
     """Only the toggle narrows the table: another filter list, with
     nothing on the page to widen it again, must not hide rows."""
     organisation = OrganisationFactory()
@@ -88,7 +88,7 @@ def test_a_cohort_table_without_the_toggle_keeps_inactive_cohorts(
 @pytest.mark.django_db
 def test_the_toggle_is_read_under_whatever_key_the_table_declares_it(
     site_aware_request: RequestFactory,
-):
+) -> None:
     organisation = OrganisationFactory()
     request = _educator_request(site_aware_request, organisation)
     active = CohortFactory(organisation=organisation, name="A")
@@ -120,7 +120,7 @@ def test_the_toggle_is_read_under_whatever_key_the_table_declares_it(
 @pytest.mark.django_db
 def test_another_toggle_listed_first_does_not_stand_in_for_show_inactive(
     site_aware_request: RequestFactory,
-):
+) -> None:
     organisation = OrganisationFactory()
     request = _educator_request(site_aware_request, organisation)
     active = CohortFactory(organisation=organisation, name="A")
@@ -143,7 +143,7 @@ def test_another_toggle_listed_first_does_not_stand_in_for_show_inactive(
 @pytest.mark.django_db
 def test_the_cohort_table_widens_to_inactive_cohorts_on_the_inactive_parameter(
     site_aware_request: RequestFactory,
-):
+) -> None:
     organisation = OrganisationFactory()
     request = _educator_request(site_aware_request, organisation)
     active = CohortFactory(organisation=organisation, name="A")
@@ -160,7 +160,7 @@ def test_the_cohort_table_widens_to_inactive_cohorts_on_the_inactive_parameter(
 
 def _cohort_table_request(
     site_aware_request: RequestFactory, organisation: Organisation, query_string: str
-):
+) -> HttpRequest:
     request = site_aware_request.get(f"/?{query_string}")
     request.user = LearnerFactory(user__superuser=True).user
     request.organisation = organisation
@@ -181,7 +181,7 @@ def _cohort_names(
 
 
 @pytest.mark.django_db
-def test_cohort_list_search_matches_on_name(site_aware_request):
+def test_cohort_list_search_matches_on_name(site_aware_request: RequestFactory) -> None:
     organisation = OrganisationFactory()
     CohortFactory(organisation=organisation, name="Morning group")
     CohortFactory(organisation=organisation, name="Evening group")
@@ -192,7 +192,9 @@ def test_cohort_list_search_matches_on_name(site_aware_request):
 
 
 @pytest.mark.django_db
-def test_cohort_list_default_order_is_name_then_pk(site_aware_request):
+def test_cohort_list_default_order_is_name_then_pk(
+    site_aware_request: RequestFactory,
+) -> None:
     organisation = OrganisationFactory()
     CohortFactory(organisation=organisation, name="Beta")
     CohortFactory(organisation=organisation, name="Alpha")
@@ -215,8 +217,8 @@ def test_cohort_list_default_order_is_name_then_pk(site_aware_request):
     ],
 )
 def test_cohort_list_sorts_on_name_learners_and_created(
-    site_aware_request, sort, expected
-):
+    site_aware_request: RequestFactory, sort: str, expected: list[str]
+) -> None:
     organisation = OrganisationFactory()
     charlie = CohortFactory(organisation=organisation, name="Charlie")
     alpha = CohortFactory(organisation=organisation, name="Alpha")
@@ -231,7 +233,9 @@ def test_cohort_list_sorts_on_name_learners_and_created(
 
 
 @pytest.mark.django_db
-def test_cohort_list_learner_count_excludes_a_removed_learner(site_aware_request):
+def test_cohort_list_learner_count_excludes_a_removed_learner(
+    site_aware_request: RequestFactory,
+) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation)
     CohortMembershipFactory(cohort=cohort)
@@ -247,7 +251,9 @@ def test_cohort_list_learner_count_excludes_a_removed_learner(site_aware_request
 
 
 @pytest.mark.django_db
-def test_cohort_list_courses_cell_omits_an_inactive_registration(staff_client):
+def test_cohort_list_courses_cell_omits_an_inactive_registration(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation)
     CohortCourseRegistrationFactory(
@@ -265,7 +271,7 @@ def test_cohort_list_courses_cell_omits_an_inactive_registration(staff_client):
 
 
 @pytest.mark.django_db
-def test_cohort_list_omits_an_inactive_cohort_by_default(staff_client):
+def test_cohort_list_omits_an_inactive_cohort_by_default(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     CohortFactory(organisation=organisation, name="Running group")
     CohortFactory(organisation=organisation, name="Retired group", is_active=False)
@@ -279,7 +285,9 @@ def test_cohort_list_omits_an_inactive_cohort_by_default(staff_client):
 
 
 @pytest.mark.django_db
-def test_cohort_list_show_inactive_chip_reads_the_label_once(staff_client):
+def test_cohort_list_show_inactive_chip_reads_the_label_once(
+    staff_client: Client,
+) -> None:
     """The applied toggle chip used to read "Show inactive: Show inactive"."""
     organisation = OrganisationFactory()
 
@@ -297,8 +305,8 @@ def test_cohort_list_show_inactive_chip_reads_the_label_once(staff_client):
 
 @pytest.mark.django_db
 def test_cohort_list_includes_an_inactive_cohort_with_a_badge_when_asked(
-    staff_client,
-):
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     CohortFactory(organisation=organisation, name="Retired group", is_active=False)
 
@@ -313,8 +321,8 @@ def test_cohort_list_includes_an_inactive_cohort_with_a_badge_when_asked(
 
 @pytest.mark.django_db
 def test_cohort_list_course_filter_keeps_cohorts_with_an_active_registration(
-    site_aware_request,
-):
+    site_aware_request: RequestFactory,
+) -> None:
     organisation = OrganisationFactory()
     course = CourseFactory()
     holding = CohortFactory(organisation=organisation, name="Holding")
@@ -332,7 +340,7 @@ def test_cohort_list_course_filter_keeps_cohorts_with_an_active_registration(
 
 class TestCohortListQueryCount:
     def _query_count(
-        self, site_aware_request, cohort_count: int, query_string: str
+        self, site_aware_request: RequestFactory, cohort_count: int, query_string: str
     ) -> int:
         organisation = OrganisationFactory()
         course = CourseFactory()
@@ -365,7 +373,9 @@ class TestCohortListQueryCount:
         return len(captured.captured_queries)
 
     @pytest.mark.django_db
-    def test_query_count_does_not_grow_with_cohort_count(self, site_aware_request):
+    def test_query_count_does_not_grow_with_cohort_count(
+        self, site_aware_request: RequestFactory
+    ) -> None:
         one = self._query_count(site_aware_request, 1, "")
         ten = self._query_count(site_aware_request, 10, "")
 
@@ -373,8 +383,8 @@ class TestCohortListQueryCount:
 
     @pytest.mark.django_db
     def test_query_count_with_the_course_filter_does_not_grow_with_cohort_count(
-        self, site_aware_request
-    ):
+        self, site_aware_request: RequestFactory
+    ) -> None:
         one = self._query_count(site_aware_request, 1, "cohorts-course={course}")
         ten = self._query_count(site_aware_request, 10, "cohorts-course={course}")
 
@@ -383,8 +393,8 @@ class TestCohortListQueryCount:
 
 @pytest.mark.django_db
 def test_cohort_list_learners_cell_reads_zero_for_a_cohort_with_no_active_learners(
-    staff_client,
-):
+    staff_client: Client,
+) -> None:
     """The Learners cell showed the empty-value dash instead of 0."""
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation, name="Empty group")
@@ -403,7 +413,7 @@ def test_cohort_list_learners_cell_reads_zero_for_a_cohort_with_no_active_learne
 @pytest.mark.django_db
 def test_the_cohorts_list_shows_created_as_day_month_year_and_24_hour_time(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation)
     Cohort.objects.filter(pk=cohort.pk).update(
@@ -417,7 +427,7 @@ def test_the_cohorts_list_shows_created_as_day_month_year_and_24_hour_time(
 
 
 @pytest.mark.django_db
-def test_the_courses_tab_lists_the_course_registrations(staff_client: Client):
+def test_the_courses_tab_lists_the_course_registrations(staff_client: Client) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory())
     CohortCourseRegistrationFactory(
         cohort=cohort, course=CourseFactory(title="Algebra")
@@ -433,7 +443,9 @@ def test_the_courses_tab_lists_the_course_registrations(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_the_courses_tab_shows_each_registrations_status_badge(staff_client: Client):
+def test_the_courses_tab_shows_each_registrations_status_badge(
+    staff_client: Client,
+) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory())
     CohortCourseRegistrationFactory(
         cohort=cohort, course=CourseFactory(title="Algebra"), is_active=True

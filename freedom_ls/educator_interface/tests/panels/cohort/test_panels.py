@@ -8,6 +8,7 @@ from typing import cast
 import lxml.html
 import pytest
 
+from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.sites.models import Site
 from django.test import Client
 from django.utils import timezone
@@ -43,7 +44,7 @@ from freedom_ls.organisations.models import Organisation
 
 
 @pytest.mark.django_db
-def test_settings_offers_deactivate_on_an_active_cohort(staff_client: Client):
+def test_settings_offers_deactivate_on_an_active_cohort(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation)
     page_url = _interface_url(organisation.slug, f"cohorts/{cohort.pk}")
@@ -61,7 +62,7 @@ def test_settings_offers_deactivate_on_an_active_cohort(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_settings_offers_reactivate_on_an_inactive_cohort(staff_client: Client):
+def test_settings_offers_reactivate_on_an_inactive_cohort(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation, is_active=False)
     page_url = _interface_url(organisation.slug, f"cohorts/{cohort.pk}")
@@ -116,7 +117,7 @@ def completion_scenario() -> tuple[Cohort, CohortCourseRegistration, Learner]:
 def test_course_completion_reads_one_of_two_completed(
     staff_client: Client,
     completion_scenario: tuple[Cohort, CohortCourseRegistration, Learner],
-):
+) -> None:
     cohort, _, _ = completion_scenario
 
     card = _completion_card(_cohort_page(staff_client, cohort))
@@ -130,7 +131,7 @@ def test_course_completion_reads_one_of_two_completed(
 def test_the_course_completion_list_shows_no_list_markers(
     staff_client: Client,
     completion_scenario: tuple[Cohort, CohortCourseRegistration, Learner],
-):
+) -> None:
     """The theme bullets and indents bare lists, so the card's rows had both."""
     cohort, _, _ = completion_scenario
 
@@ -144,7 +145,7 @@ def test_the_course_completion_list_shows_no_list_markers(
 def test_course_completion_progress_bar_is_at_fifty(
     staff_client: Client,
     completion_scenario: tuple[Cohort, CohortCourseRegistration, Learner],
-):
+) -> None:
     cohort, _, _ = completion_scenario
 
     card = _completion_card(_cohort_page(staff_client, cohort))
@@ -157,7 +158,7 @@ def test_course_completion_progress_bar_is_at_fifty(
 def test_course_completion_falls_when_the_completed_member_leaves(
     staff_client: Client,
     completion_scenario: tuple[Cohort, CohortCourseRegistration, Learner],
-):
+) -> None:
     cohort, _, done = completion_scenario
     CohortMembership.objects.get(cohort=cohort, learner=done).delete()
 
@@ -170,7 +171,7 @@ def test_course_completion_falls_when_the_completed_member_leaves(
 def test_an_inactive_cohort_still_shows_completion_for_active_registrations(
     staff_client: Client,
     completion_scenario: tuple[Cohort, CohortCourseRegistration, Learner],
-):
+) -> None:
     cohort, _, _ = completion_scenario
     cohort.is_active = False
     cohort.save()
@@ -183,7 +184,7 @@ def test_an_inactive_cohort_still_shows_completion_for_active_registrations(
 @pytest.mark.django_db
 def test_course_completion_leaves_out_an_inactive_registration(
     staff_client: Client,
-):
+) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory())
     CohortCourseRegistrationFactory(
         cohort=cohort, course=CourseFactory(title="Retired"), is_active=False
@@ -199,15 +200,15 @@ def _settings_url(organisation: Organisation, cohort: Cohort) -> str:
     return _interface_url(organisation.slug, f"cohorts/{cohort.pk}/__tabs/settings")
 
 
-def _staff_section(document):
+def _staff_section(document: lxml.html.HtmlElement) -> lxml.html.HtmlElement:
     (section,) = document.cssselect("section[data-panel='staff']")
     return section
 
 
 @pytest.mark.django_db
 def test_the_settings_tab_names_each_staff_member_and_their_role(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     grantor = LearnerFactory(user__superuser=True).user
@@ -230,8 +231,8 @@ def test_the_settings_tab_names_each_staff_member_and_their_role(
 
 @pytest.mark.django_db
 def test_the_settings_tab_staff_names_are_small_semibold_beside_a_small_avatar(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     """A staff member is the small person row. The name used to render at the
     base size and regular weight beside a medium avatar."""
     organisation = OrganisationFactory()
@@ -268,8 +269,8 @@ def test_the_settings_tab_staff_names_are_small_semibold_beside_a_small_avatar(
 
 @pytest.mark.django_db
 def test_the_settings_tab_shows_a_nameless_staff_members_email_as_stored(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     grantor = LearnerFactory(user__superuser=True).user
@@ -292,8 +293,8 @@ def test_the_settings_tab_shows_a_nameless_staff_members_email_as_stored(
 
 @pytest.mark.django_db
 def test_the_settings_tab_lists_a_person_added_from_the_cohort_page(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     admin = LearnerFactory(user__staff=True, organisation=organisation).user
@@ -326,7 +327,7 @@ def test_the_settings_tab_lists_a_person_added_from_the_cohort_page(
 @pytest.mark.django_db
 def test_the_settings_tab_offers_add_staff_member_beside_its_staff_heading(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     LearnerFactory(organisation=organisation)
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
@@ -359,14 +360,14 @@ def _staff_on(
     return holder
 
 
-def _staff_triggers(section) -> list[str]:
+def _staff_triggers(section: lxml.html.HtmlElement) -> list[str]:
     return [button.get("hx-get") for button in section.cssselect("button[hx-get]")]
 
 
 @pytest.mark.django_db
 def test_a_cohort_admin_sees_the_staff_section_alone_on_the_settings_tab(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     me = _staff_on(organisation, cohort)
@@ -386,8 +387,8 @@ def test_a_cohort_admin_sees_the_staff_section_alone_on_the_settings_tab(
 
 @pytest.mark.django_db
 def test_each_cohort_role_row_offers_change_role_and_remove_from_cohort_the_viewers_own_included(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     me = _staff_on(organisation, cohort)
@@ -407,8 +408,8 @@ def test_each_cohort_role_row_offers_change_role_and_remove_from_cohort_the_view
 
 @pytest.mark.django_db
 def test_an_organisation_role_row_shows_only_its_role_to_a_viewer_who_can_open_staff(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     admin = LearnerFactory(user__staff=True, organisation=organisation).user
@@ -443,8 +444,8 @@ def test_an_organisation_role_row_shows_only_its_role_to_a_viewer_who_can_open_s
 
 @pytest.mark.django_db
 def test_an_organisation_role_row_shows_only_its_role_to_a_cohort_admin(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     admin = LearnerFactory(user__staff=True, organisation=organisation).user
@@ -465,7 +466,9 @@ def test_an_organisation_role_row_shows_only_its_role_to_a_cohort_admin(
 
 
 @pytest.mark.django_db
-def test_the_cohort_settings_panel_refreshes_on_member_changes(staff_client: Client):
+def test_the_cohort_settings_panel_refreshes_on_member_changes(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
 
@@ -478,7 +481,7 @@ def test_the_cohort_settings_panel_refreshes_on_member_changes(staff_client: Cli
 @pytest.mark.django_db
 def test_cohort_course_completion_names_the_owner_of_a_shared_course_only(
     mock_site_context: Site, logged_in_client: Callable[[User], Client]
-):
+) -> None:
     """The cohort's course completion rows named a shared course by its bare
     title."""
     organisation, own, shared = _shared_and_own_course_world()

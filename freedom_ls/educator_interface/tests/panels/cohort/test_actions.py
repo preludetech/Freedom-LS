@@ -112,7 +112,7 @@ def cohort_with_granted_progress(
     return cohort
 
 
-def _panel_url(cohort) -> str:
+def _panel_url(cohort: Cohort) -> str:
     return reverse(
         "educator_interface:interface",
         kwargs={
@@ -176,8 +176,9 @@ def test_the_cohort_page_renders_the_delete_trigger(
 
 @pytest.mark.django_db
 def test_settings_tab_renders_for_a_viewer_who_can_delete_a_cohort_with_progress(
-    cohort_with_granted_progress, logged_in_client
-):
+    cohort_with_granted_progress: Cohort,
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
     client = logged_in_client(UserFactory(superuser=True))
 
     response = client.get(f"{_panel_url(cohort_with_granted_progress)}/__tabs/settings")
@@ -187,8 +188,9 @@ def test_settings_tab_renders_for_a_viewer_who_can_delete_a_cohort_with_progress
 
 @pytest.mark.django_db
 def test_the_settings_tab_says_why_delete_is_unavailable(
-    cohort_with_granted_progress, logged_in_client
-):
+    cohort_with_granted_progress: Cohort,
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
     client = logged_in_client(UserFactory(superuser=True))
     cohort = cohort_with_granted_progress
     url = _delete_url(client, cohort)
@@ -638,7 +640,7 @@ def test_a_posted_delete_of_a_non_empty_cohort_is_refused_as_before(
 @pytest.mark.django_db
 def test_renaming_a_cohort_onto_a_sibling_name_answers_422_and_keeps_the_name(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     CohortFactory(organisation=organisation, name="Year 10 Science")
     cohort = CohortFactory(organisation=organisation, name="Year 11 Science")
@@ -663,7 +665,7 @@ def test_renaming_a_cohort_onto_a_sibling_name_answers_422_and_keeps_the_name(
 @pytest.mark.django_db
 def test_the_rename_fragment_is_the_inline_form_holding_the_current_name(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation, name="Year 11 Science")
 
@@ -682,7 +684,7 @@ def test_the_rename_fragment_is_the_inline_form_holding_the_current_name(
 @pytest.mark.django_db
 def test_an_empty_cohort_name_shows_the_bare_message_as_an_announced_field_error(
     staff_client: Client,
-):
+) -> None:
     """A field error in the inline form used to repeat the field's label, carry
     no role and leave the input unlinked from it."""
     organisation = OrganisationFactory()
@@ -708,7 +710,7 @@ def test_an_empty_cohort_name_shows_the_bare_message_as_an_announced_field_error
 @pytest.mark.django_db
 def test_an_inline_form_field_without_an_error_is_neither_invalid_nor_described(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation, name="Year 11 Science")
 
@@ -724,7 +726,9 @@ def test_an_inline_form_field_without_an_error_is_neither_invalid_nor_described(
 
 
 @pytest.mark.django_db
-def test_a_rename_answers_204_with_the_new_title_for_the_page(staff_client: Client):
+def test_a_rename_answers_204_with_the_new_title_for_the_page(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation, name="Year 11 Science")
 
@@ -743,7 +747,7 @@ def test_a_rename_answers_204_with_the_new_title_for_the_page(staff_client: Clie
 @pytest.mark.django_db
 def test_deactivate_fragment_names_how_many_courses_stop_giving_access(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 2, name="Evening group")
 
@@ -758,7 +762,7 @@ def test_deactivate_fragment_names_how_many_courses_stop_giving_access(
 @pytest.mark.django_db
 def test_deactivate_fragment_says_why_a_non_empty_cohort_cannot_be_deleted(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 1, name="Evening group")
     CohortMembershipFactory(
@@ -778,7 +782,7 @@ def test_deactivate_fragment_says_why_a_non_empty_cohort_cannot_be_deleted(
 @pytest.mark.django_db
 def test_deactivate_fragment_of_an_empty_cohort_does_not_mention_deleting(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 0)
 
@@ -790,7 +794,7 @@ def test_deactivate_fragment_of_an_empty_cohort_does_not_mention_deleting(
 
 
 @pytest.mark.django_db
-def test_deactivate_post_sets_the_cohort_inactive(staff_client: Client):
+def test_deactivate_post_sets_the_cohort_inactive(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 1)
 
@@ -803,7 +807,7 @@ def test_deactivate_post_sets_the_cohort_inactive(staff_client: Client):
 @pytest.mark.django_db
 def test_deactivate_post_answers_204_with_a_location_to_the_cohort_page(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 1)
 
@@ -820,7 +824,7 @@ def test_deactivate_post_answers_204_with_a_location_to_the_cohort_page(
 @pytest.mark.django_db
 def test_stale_deactivate_on_an_inactive_cohort_answers_422_and_changes_nothing(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 1, is_active=False)
 
@@ -851,7 +855,7 @@ def _locks_the_cohort_row(captured: CaptureQueriesContext) -> bool:
 )
 def test_a_cohort_state_change_locks_the_cohort_row_before_writing_its_entry(
     staff_client: Client, is_active: bool, action_name: str
-):
+) -> None:
     """Two overlapping submits must not each see the old state and each write
     an entry for the one change, so the state is re-read under a row lock."""
     organisation = OrganisationFactory()
@@ -869,7 +873,7 @@ def test_a_cohort_state_change_locks_the_cohort_row_before_writing_its_entry(
 @pytest.mark.django_db
 def test_reactivate_fragment_names_how_many_courses_give_access_again(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 3, name="Old group", is_active=False)
 
@@ -882,7 +886,7 @@ def test_reactivate_fragment_names_how_many_courses_give_access_again(
 
 
 @pytest.mark.django_db
-def test_reactivate_post_sets_the_cohort_active(staff_client: Client):
+def test_reactivate_post_sets_the_cohort_active(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 1, is_active=False)
 
@@ -896,7 +900,9 @@ def test_reactivate_post_sets_the_cohort_active(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_reactivate_post_from_a_tab_navigates_back_to_that_tab(staff_client: Client):
+def test_reactivate_post_from_a_tab_navigates_back_to_that_tab(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 1, is_active=False)
     tab_path = _cohort_url(organisation, cohort, "/courses")
@@ -911,7 +917,7 @@ def test_reactivate_post_from_a_tab_navigates_back_to_that_tab(staff_client: Cli
 
 
 @pytest.mark.django_db
-def test_stale_reactivate_on_an_active_cohort_answers_422(staff_client: Client):
+def test_stale_reactivate_on_an_active_cohort_answers_422(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 1)
 
@@ -927,7 +933,7 @@ def test_stale_reactivate_on_an_active_cohort_answers_422(staff_client: Client):
 @pytest.mark.django_db
 def test_a_reason_posted_to_a_dialog_without_a_reason_field_is_ignored(
     staff_client: Client,
-):
+) -> None:
     """Reactivate takes no reason, so a hand-made POST carrying one, however
     long, neither fails nor reaches the entry."""
     organisation = OrganisationFactory()
@@ -945,8 +951,8 @@ def test_a_reason_posted_to_a_dialog_without_a_reason_field_is_ignored(
 
 @pytest.mark.django_db
 def test_cohort_not_empty_sentence_counts_inactive_learners_and_inactive_registrations(
-    mock_site_context,
-):
+    mock_site_context: Site,
+) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 0, name="Evening group")
     inactive_learner = LearnerFactory(organisation=organisation, is_active=False)
@@ -1000,7 +1006,9 @@ def test_not_empty_sentence_is_empty_for_an_empty_cohort(
 
 
 @pytest.mark.django_db
-def test_an_inactive_cohorts_settings_tab_renders_no_rename_form(staff_client: Client):
+def test_an_inactive_cohorts_settings_tab_renders_no_rename_form(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 0, is_active=False)
 
@@ -1013,7 +1021,7 @@ def test_an_inactive_cohorts_settings_tab_renders_no_rename_form(staff_client: C
 @pytest.mark.django_db
 def test_editing_an_inactive_cohort_answers_422_with_the_inactive_fragment(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 0, name="Old group", is_active=False)
 
@@ -1050,7 +1058,9 @@ def test_every_action_guarded_by_an_active_cohort_names_what_it_blocks() -> None
 
 
 @pytest.mark.django_db
-def test_editing_an_inactive_cohort_leaves_its_name_unchanged(staff_client: Client):
+def test_editing_an_inactive_cohort_leaves_its_name_unchanged(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 0, name="Old group", is_active=False)
 
@@ -1069,7 +1079,7 @@ def _register_url(organisation: Organisation, cohort: Cohort) -> str:
 
 
 @pytest.mark.django_db
-def test_register_fragment_title_names_the_cohort(staff_client: Client):
+def test_register_fragment_title_names_the_cohort(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 0, name="Evening group")
 
@@ -1079,7 +1089,9 @@ def test_register_fragment_title_names_the_cohort(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_the_cohort_register_dialog_names_the_chosen_course(staff_client: Client):
+def test_the_cohort_register_dialog_names_the_chosen_course(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 0, name="Evening group")
     course = CourseFactory(title="Algebra")
@@ -1093,8 +1105,8 @@ def test_the_cohort_register_dialog_names_the_chosen_course(staff_client: Client
 
 @pytest.mark.django_db
 def test_register_post_answers_204_with_a_location_to_the_courses_tab(
-    mock_site_context: Site, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 0)
     course = CourseFactory()
@@ -1115,7 +1127,7 @@ def test_register_post_answers_204_with_a_location_to_the_courses_tab(
 
 
 @pytest.mark.django_db
-def test_register_post_creates_the_registration(staff_client: Client):
+def test_register_post_creates_the_registration(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 0)
     course = CourseFactory()
@@ -1132,7 +1144,7 @@ def test_register_post_creates_the_registration(staff_client: Client):
 @pytest.mark.django_db
 def test_register_post_for_a_course_closed_to_the_organisation_answers_422(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 0)
     course = CourseFactory(audience=CourseAudience.ORGANISATION_LEARNERS)
@@ -1151,7 +1163,7 @@ def test_register_post_for_a_course_closed_to_the_organisation_answers_422(
 @pytest.mark.django_db
 def test_register_post_on_an_inactive_cohort_answers_422_and_creates_no_row(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 0, name="Old group", is_active=False)
     course = CourseFactory()
@@ -1168,16 +1180,25 @@ def test_register_post_on_an_inactive_cohort_answers_422_and_creates_no_row(
     assert not cohort.course_registrations.exists()
 
 
-def _member(organisation: Organisation, cohort: Cohort, first_name: str = "Ada"):
-    learner = LearnerFactory(
-        organisation=organisation, user__first_name=first_name, user__last_name="Lee"
+def _member(
+    organisation: Organisation, cohort: Cohort, first_name: str = "Ada"
+) -> Learner:
+    learner = cast(
+        Learner,
+        LearnerFactory(
+            organisation=organisation,
+            user__first_name=first_name,
+            user__last_name="Lee",
+        ),
     )
     CohortMembershipFactory(cohort=cohort, learner=learner)
     return learner
 
 
 @pytest.mark.django_db
-def test_unregister_fragment_title_names_the_cohort_and_course(staff_client: Client):
+def test_unregister_fragment_title_names_the_cohort_and_course(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     cohort, registration = _registered_cohort(organisation, name="Evening group")
 
@@ -1189,7 +1210,9 @@ def test_unregister_fragment_title_names_the_cohort_and_course(staff_client: Cli
 
 
 @pytest.mark.django_db
-def test_unregister_fragment_counts_members_who_lose_access(staff_client: Client):
+def test_unregister_fragment_counts_members_who_lose_access(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     cohort, registration = _registered_cohort(organisation)
     _member(organisation, cohort, "Ada")
@@ -1209,7 +1232,7 @@ def test_unregister_fragment_counts_members_who_lose_access(staff_client: Client
 @pytest.mark.django_db
 def test_unregister_fragment_names_a_member_kept_by_an_individual_registration(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort, registration = _registered_cohort(organisation)
     kept = _member(organisation, cohort, "Cy")
@@ -1227,7 +1250,7 @@ def test_unregister_fragment_names_a_member_kept_by_an_individual_registration(
 @pytest.mark.django_db
 def test_unregister_fragment_names_a_member_kept_by_another_cohort(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort, registration = _registered_cohort(organisation)
     kept = _member(organisation, cohort, "Dee")
@@ -1245,7 +1268,7 @@ def test_unregister_fragment_names_a_member_kept_by_another_cohort(
 @pytest.mark.django_db
 def test_unregister_fragment_names_the_first_ten_keepers_and_counts_the_rest(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort, registration = _registered_cohort(organisation)
     for index in range(12):
@@ -1265,7 +1288,7 @@ def test_unregister_fragment_names_the_first_ten_keepers_and_counts_the_rest(
 @pytest.mark.django_db
 def test_unregister_fragment_omits_the_keepers_sentence_when_nobody_keeps_access(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort, registration = _registered_cohort(organisation)
     _member(organisation, cohort)
@@ -1278,7 +1301,7 @@ def test_unregister_fragment_omits_the_keepers_sentence_when_nobody_keeps_access
 
 
 @pytest.mark.django_db
-def test_unregister_post_deactivates_the_registration(staff_client: Client):
+def test_unregister_post_deactivates_the_registration(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     cohort, registration = _registered_cohort(organisation)
 
@@ -1295,7 +1318,7 @@ def test_unregister_post_deactivates_the_registration(staff_client: Client):
 @pytest.mark.django_db
 def test_unregister_post_answers_204_with_a_location_to_the_courses_tab(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort, registration = _registered_cohort(organisation)
 
@@ -1313,8 +1336,8 @@ def test_unregister_post_answers_204_with_a_location_to_the_courses_tab(
 
 @pytest.mark.django_db
 def test_a_cohort_admin_can_unregister_on_their_own_cohort(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort, registration = _registered_cohort(organisation)
     grantor = LearnerFactory(user__superuser=True).user
@@ -1333,7 +1356,7 @@ def test_a_cohort_admin_can_unregister_on_their_own_cohort(
 @pytest.mark.django_db
 def test_unregister_with_a_registration_from_another_cohort_answers_404(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort, _ = _registered_cohort(organisation)
     _, foreign = _registered_cohort(organisation, "Geometry")
@@ -1348,7 +1371,7 @@ def test_unregister_with_a_registration_from_another_cohort_answers_404(
 @pytest.mark.django_db
 def test_unregister_with_a_registration_from_another_cohort_changes_nothing(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort, _ = _registered_cohort(organisation)
     _, foreign = _registered_cohort(organisation, "Geometry")
@@ -1364,7 +1387,9 @@ def test_unregister_with_a_registration_from_another_cohort_changes_nothing(
 
 
 @pytest.mark.django_db
-def test_unregister_with_an_inactive_registration_answers_404(staff_client: Client):
+def test_unregister_with_an_inactive_registration_answers_404(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation)
     registration = CohortCourseRegistrationFactory(cohort=cohort, is_active=False)
@@ -1377,7 +1402,9 @@ def test_unregister_with_an_inactive_registration_answers_404(staff_client: Clie
 
 
 @pytest.mark.django_db
-def test_unregister_with_a_malformed_registration_answers_404(staff_client: Client):
+def test_unregister_with_a_malformed_registration_answers_404(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     cohort, _ = _registered_cohort(organisation)
 
@@ -1391,7 +1418,7 @@ def test_unregister_with_a_malformed_registration_answers_404(staff_client: Clie
 @pytest.mark.django_db
 def test_the_courses_tab_footer_offers_register_but_no_unregister_button(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort, _ = _registered_cohort(organisation)
 
@@ -1417,7 +1444,7 @@ def test_the_courses_tab_footer_offers_register_but_no_unregister_button(
 @pytest.mark.django_db
 def test_unregister_post_on_an_inactive_cohort_answers_422_and_changes_nothing(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort, registration = _registered_cohort(
         organisation, name="Old group", is_active=False
@@ -1456,8 +1483,8 @@ def _learner_tab_triggers(client: Client, cohort: Cohort) -> list[str]:
 
 @pytest.mark.django_db
 def test_a_cohort_admin_without_add_learner_sees_the_learner_picker_on_the_cohort_tab(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     educator = _cohort_admin_on(organisation, cohort)
@@ -1469,8 +1496,8 @@ def test_a_cohort_admin_without_add_learner_sees_the_learner_picker_on_the_cohor
 
 @pytest.mark.django_db
 def test_an_organisation_admin_with_add_learner_sees_no_learner_picker(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     grantor = LearnerFactory(user__superuser=True).user
@@ -1484,8 +1511,8 @@ def test_an_organisation_admin_with_add_learner_sees_no_learner_picker(
 
 @pytest.mark.django_db
 def test_the_learner_picker_offers_learners_outside_the_cohort(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     member = cast(Learner, LearnerFactory(organisation=organisation))
@@ -1511,7 +1538,7 @@ def test_the_learner_picker_offers_learners_outside_the_cohort(
 
 
 @pytest.mark.django_db
-def test_the_learner_picker_post_adds_each_learner(staff_client: Client):
+def test_the_learner_picker_post_adds_each_learner(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     first = cast(Learner, LearnerFactory(organisation=organisation))
@@ -1534,7 +1561,7 @@ def test_the_learner_picker_post_adds_each_learner(staff_client: Client):
 @pytest.mark.django_db
 def test_the_learner_picker_post_sends_every_learner_id_and_the_cohort_id(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     first = cast(Learner, LearnerFactory(organisation=organisation))
@@ -1554,7 +1581,7 @@ def test_the_learner_picker_post_sends_every_learner_id_and_the_cohort_id(
 @pytest.mark.django_db
 def test_a_stale_learner_picker_post_on_an_inactive_cohort_answers_422(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation, is_active=False))
     learner = cast(Learner, LearnerFactory(organisation=organisation))
@@ -1575,7 +1602,9 @@ def _add_learners_tab_url(organisation: Organisation, cohort: Cohort) -> str:
 
 
 @pytest.mark.django_db
-def test_add_learner_post_on_a_cohort_tab_adds_to_that_cohort(staff_client: Client):
+def test_add_learner_post_on_a_cohort_tab_adds_to_that_cohort(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
 
@@ -1590,7 +1619,7 @@ def test_add_learner_post_on_a_cohort_tab_adds_to_that_cohort(staff_client: Clie
 
 
 @pytest.mark.django_db
-def test_the_cohort_tab_title_names_the_cohort(staff_client: Client):
+def test_the_cohort_tab_title_names_the_cohort(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation, name="Wave One"))
 
@@ -1601,8 +1630,8 @@ def test_the_cohort_tab_title_names_the_cohort(staff_client: Client):
 
 @pytest.mark.django_db
 def test_an_organisation_admins_cohort_tab_offers_add_learners_not_the_picker(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     client = logged_in_client(_organisation_admin_on(organisation))
@@ -1619,7 +1648,7 @@ def test_an_organisation_admins_cohort_tab_offers_add_learners_not_the_picker(
 
 
 @pytest.mark.django_db
-def test_an_inactive_cohorts_tab_offers_no_add_learners(staff_client: Client):
+def test_an_inactive_cohorts_tab_offers_no_add_learners(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation, is_active=False))
 
@@ -1633,7 +1662,7 @@ def test_an_inactive_cohorts_tab_offers_no_add_learners(staff_client: Client):
 @pytest.mark.django_db
 def test_a_stale_add_learners_post_on_an_inactive_cohort_answers_422_and_adds_nothing(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation, is_active=False))
 
@@ -1650,8 +1679,8 @@ def test_a_stale_add_learners_post_on_an_inactive_cohort_answers_422_and_adds_no
 
 @pytest.mark.django_db
 def test_an_empty_learner_picker_says_everyone_is_already_in_the_cohort(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     _, cohort = _membership(organisation, name="Cohort A")
     educator = _cohort_admin_on(organisation, cohort)
@@ -1668,8 +1697,8 @@ def test_an_empty_learner_picker_says_everyone_is_already_in_the_cohort(
 
 @pytest.mark.django_db
 def test_a_stale_learner_picker_post_naming_a_member_answers_422_and_adds_nothing(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     member, cohort = _membership(organisation)
     educator = _cohort_admin_on(organisation, cohort)
@@ -1686,8 +1715,8 @@ def test_a_stale_learner_picker_post_naming_a_member_answers_422_and_adds_nothin
 
 @pytest.mark.django_db
 def test_adding_existing_learners_writes_one_entry_per_learner(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     first = cast(Learner, LearnerFactory(organisation=organisation))
@@ -1709,8 +1738,8 @@ def test_adding_existing_learners_writes_one_entry_per_learner(
 
 @pytest.mark.django_db
 def test_registering_a_cohort_writes_an_entry_by_the_logged_in_user(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 0)
     actor = UserFactory(superuser=True)
@@ -1727,8 +1756,8 @@ def test_registering_a_cohort_writes_an_entry_by_the_logged_in_user(
 
 @pytest.mark.django_db
 def test_unregistering_a_cohort_writes_an_entry_by_the_logged_in_user(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort, registration = _registered_cohort(organisation)
     actor = UserFactory(superuser=True)
@@ -1745,8 +1774,8 @@ def test_unregistering_a_cohort_writes_an_entry_by_the_logged_in_user(
 
 @pytest.mark.django_db
 def test_renaming_a_cohort_writes_an_entry_with_the_old_and_new_name(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation, name="Old name"))
     actor = UserFactory(superuser=True)
@@ -1768,7 +1797,9 @@ def test_renaming_a_cohort_writes_an_entry_with_the_old_and_new_name(
 
 
 @pytest.mark.django_db
-def test_saving_a_cohort_under_its_own_name_writes_nothing(staff_client: Client):
+def test_saving_a_cohort_under_its_own_name_writes_nothing(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation, name="Same"))
 
@@ -1791,8 +1822,12 @@ def test_saving_a_cohort_under_its_own_name_writes_nothing(staff_client: Client)
     ],
 )
 def test_changing_a_cohorts_state_writes_an_entry(
-    mock_site_context, logged_in_client, action_name: str, code: str, start_active: bool
-):
+    mock_site_context: Site,
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+    action_name: str,
+    code: str,
+    start_active: bool,
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(
         Cohort,
@@ -1819,7 +1854,7 @@ def test_changing_a_cohorts_state_writes_an_entry(
 @pytest.mark.django_db
 def test_a_stale_state_change_on_an_inactive_cohort_writes_nothing(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation, is_active=False))
 
@@ -1834,7 +1869,7 @@ def test_a_stale_state_change_on_an_inactive_cohort_writes_nothing(
 @pytest.mark.django_db
 def test_a_stale_learner_in_the_learner_picker_answers_422_without_the_id(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     stale = str(uuid.uuid4())
@@ -1851,7 +1886,7 @@ def test_a_stale_learner_in_the_learner_picker_answers_422_without_the_id(
 
 
 @pytest.mark.django_db
-def test_an_inactive_cohort_refusal_is_a_message_dialog(staff_client: Client):
+def test_an_inactive_cohort_refusal_is_a_message_dialog(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 1, is_active=False)
 
@@ -1867,7 +1902,9 @@ def test_an_inactive_cohort_refusal_is_a_message_dialog(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_an_already_active_cohort_refusal_is_a_message_dialog(staff_client: Client):
+def test_an_already_active_cohort_refusal_is_a_message_dialog(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 1)
 
@@ -1886,7 +1923,7 @@ def test_an_already_active_cohort_refusal_is_a_message_dialog(staff_client: Clie
 @pytest.mark.parametrize(("row", "registered"), REGISTERABLE_ROWS)
 def test_registering_a_cohort_for_a_course_works_only_when_it_is_registerable(
     staff_client: Client, row: str, registered: bool
-):
+) -> None:
     organisation = OrganisationFactory()
     courses = course_per_reach_row(organisation)
     cohort = cast(Cohort, CohortFactory(organisation=organisation))

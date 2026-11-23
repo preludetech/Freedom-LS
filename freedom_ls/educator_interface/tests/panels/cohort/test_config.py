@@ -21,6 +21,7 @@ from collections.abc import Callable
 import lxml.html
 import pytest
 
+from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.sites.models import Site
 from django.core.exceptions import NON_FIELD_ERRORS
 from django.http import HttpRequest
@@ -172,7 +173,9 @@ def test_creating_a_cohort_named_after_one_in_another_organisation_succeeds(
 
 
 @pytest.mark.django_db
-def test_resaving_a_cohort_under_its_own_name_is_accepted(mock_site_context):
+def test_resaving_a_cohort_under_its_own_name_is_accepted(
+    mock_site_context: Site,
+) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory(), name="Year 10 Science")
 
     form = CohortForm({"name": "Year 10 Science"}, instance=cohort)
@@ -181,7 +184,9 @@ def test_resaving_a_cohort_under_its_own_name_is_accepted(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_renaming_a_cohort_onto_a_sibling_name_is_rejected(mock_site_context):
+def test_renaming_a_cohort_onto_a_sibling_name_is_rejected(
+    mock_site_context: Site,
+) -> None:
     organisation = OrganisationFactory()
     CohortFactory(organisation=organisation, name="Year 10 Science")
     cohort = CohortFactory(organisation=organisation, name="Year 11 Science")
@@ -195,7 +200,7 @@ def test_renaming_a_cohort_onto_a_sibling_name_is_rejected(mock_site_context):
 
 @pytest.mark.django_db
 def test_an_organisation_admin_with_no_superuser_flag_creates_a_cohort(
-    mock_site_context: Site, logged_in_client
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
 ) -> None:
     """Creating a cohort needs organisation admin rights, not the superuser flag."""
     organisation = OrganisationFactory()

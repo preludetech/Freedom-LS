@@ -7,7 +7,11 @@ import pytest
 from django.urls import reverse
 
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.educator_interface.tests.helpers import _get_quick_view, _quick_view_url
+from freedom_ls.educator_interface.tests.helpers import (
+    RoleHolderClient,
+    _get_quick_view,
+    _quick_view_url,
+)
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -16,15 +20,13 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 
-
-@pytest.fixture(autouse=True)
-def _site_context(mock_site_context):
-    """Every test here builds site-aware objects and assigns roles."""
+# Every test here builds site-aware objects and assigns roles.
+pytestmark = pytest.mark.usefixtures("mock_site_context")
 
 
 @pytest.mark.django_db
 class TestCohortQuickView:
-    def test_shows_the_cohorts_name(self, role_holder_client):
+    def test_shows_the_cohorts_name(self, role_holder_client: RoleHolderClient) -> None:
         organisation = OrganisationFactory()
         cohort = CohortFactory(organisation=organisation, name="Year 9 Maths")
 
@@ -35,7 +37,9 @@ class TestCohortQuickView:
         assert response.status_code == 200
         assert "Year 9 Maths" in response.content.decode()
 
-    def test_shows_the_learner_count(self, role_holder_client):
+    def test_shows_the_learner_count(
+        self, role_holder_client: RoleHolderClient
+    ) -> None:
         organisation = OrganisationFactory()
         cohort = CohortFactory(organisation=organisation)
         CohortMembershipFactory(
@@ -51,7 +55,9 @@ class TestCohortQuickView:
 
         assert "2" in response.content.decode()
 
-    def test_reads_active_from_an_active_cohort(self, role_holder_client):
+    def test_reads_active_from_an_active_cohort(
+        self, role_holder_client: RoleHolderClient
+    ) -> None:
         organisation = OrganisationFactory()
         cohort = CohortFactory(organisation=organisation)
 
@@ -62,7 +68,9 @@ class TestCohortQuickView:
         assert "Inactive" not in response.content.decode()
         assert "Active" in response.content.decode()
 
-    def test_reads_inactive_from_an_inactive_cohort(self, role_holder_client):
+    def test_reads_inactive_from_an_inactive_cohort(
+        self, role_holder_client: RoleHolderClient
+    ) -> None:
         organisation = OrganisationFactory()
         cohort = CohortFactory(organisation=organisation, is_active=False)
 
@@ -72,7 +80,9 @@ class TestCohortQuickView:
 
         assert "Inactive" in response.content.decode()
 
-    def test_lists_its_registered_courses(self, role_holder_client):
+    def test_lists_its_registered_courses(
+        self, role_holder_client: RoleHolderClient
+    ) -> None:
         organisation = OrganisationFactory()
         cohort = CohortFactory(organisation=organisation)
         CohortCourseRegistrationFactory(
@@ -85,7 +95,9 @@ class TestCohortQuickView:
 
         assert "Intro to Freedom" in response.content.decode()
 
-    def test_a_cohort_in_another_organisation_404s(self, role_holder_client):
+    def test_a_cohort_in_another_organisation_404s(
+        self, role_holder_client: RoleHolderClient
+    ) -> None:
         organisation = OrganisationFactory()
         outside_cohort = CohortFactory(organisation=OrganisationFactory())
 
@@ -97,7 +109,9 @@ class TestCohortQuickView:
 
         assert response.status_code == 404
 
-    def test_a_non_htmx_get_redirects_to_the_instance_page(self, role_holder_client):
+    def test_a_non_htmx_get_redirects_to_the_instance_page(
+        self, role_holder_client: RoleHolderClient
+    ) -> None:
         organisation = OrganisationFactory()
         cohort = CohortFactory(organisation=organisation)
 
@@ -114,7 +128,9 @@ class TestCohortQuickView:
             },
         )
 
-    def test_response_varies_on_hx_request(self, role_holder_client):
+    def test_response_varies_on_hx_request(
+        self, role_holder_client: RoleHolderClient
+    ) -> None:
         organisation = OrganisationFactory()
         cohort = CohortFactory(organisation=organisation)
 
@@ -127,8 +143,8 @@ class TestCohortQuickView:
 
 @pytest.mark.django_db
 def test_the_cohorts_list_renders_the_quick_view_trigger_attributes(
-    role_holder_client,
-):
+    role_holder_client: RoleHolderClient,
+) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation, name="Year 9 Maths")
 

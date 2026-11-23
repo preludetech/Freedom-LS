@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
+from pytest_django.fixtures import DjangoCaptureOnCommitCallbacks
 from pytest_mock import MockerFixture
 
 from django.contrib.sites.models import Site
@@ -42,6 +43,9 @@ from freedom_ls.panel_framework.bulk_actions import (
     run_apply,
 )
 
+if TYPE_CHECKING:
+    from django.test.client import _MonkeyPatchedWSGIResponse
+
 
 def _cohorts_bulk_post(
     client: Client,
@@ -49,7 +53,7 @@ def _cohorts_bulk_post(
     action_name: str,
     cohorts: list[Cohort],
     **extra: str,
-):
+) -> _MonkeyPatchedWSGIResponse:
     return client.post(
         _interface_url(organisation.slug, f"cohorts/__actions/{action_name}"),
         {"keys": [str(cohort.pk) for cohort in cohorts], **extra},
@@ -63,7 +67,7 @@ def _cohorts_bulk_confirm(
     action_name: str,
     cohorts: list[Cohort],
     **extra: str,
-):
+) -> _MonkeyPatchedWSGIResponse:
     return _cohorts_bulk_post(
         client,
         organisation,
@@ -80,7 +84,9 @@ def _bulk_cohort(organisation: Organisation, **fields: object) -> Cohort:
 
 
 @pytest.mark.django_db
-def test_cohort_state_action_deactivates_through_the_service(staff_client: Client):
+def test_cohort_state_action_deactivates_through_the_service(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     cohort = _bulk_cohort(organisation)
 
@@ -91,7 +97,9 @@ def test_cohort_state_action_deactivates_through_the_service(staff_client: Clien
 
 
 @pytest.mark.django_db
-def test_cohort_state_action_reactivates_through_the_service(staff_client: Client):
+def test_cohort_state_action_reactivates_through_the_service(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     cohort = _bulk_cohort(organisation, is_active=False)
 
@@ -104,7 +112,7 @@ def test_cohort_state_action_reactivates_through_the_service(staff_client: Clien
 @pytest.mark.django_db
 def test_bulk_cohort_deactivate_confirmation_counts_changes_and_skips(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     active = [_bulk_cohort(organisation) for _ in range(2)]
     inactive = _bulk_cohort(organisation, is_active=False)
@@ -119,7 +127,9 @@ def test_bulk_cohort_deactivate_confirmation_counts_changes_and_skips(
 
 
 @pytest.mark.django_db
-def test_bulk_cohort_deactivate_changes_only_active_cohorts(staff_client: Client):
+def test_bulk_cohort_deactivate_changes_only_active_cohorts(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     active = [_bulk_cohort(organisation) for _ in range(2)]
     inactive = _bulk_cohort(organisation, is_active=False)
@@ -137,7 +147,7 @@ def test_bulk_cohort_deactivate_changes_only_active_cohorts(staff_client: Client
 @pytest.mark.django_db
 def test_bulk_cohort_reactivate_confirmation_counts_changes_and_skips(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     inactive = _bulk_cohort(organisation, is_active=False)
     active = _bulk_cohort(organisation)
@@ -153,7 +163,9 @@ def test_bulk_cohort_reactivate_confirmation_counts_changes_and_skips(
 
 
 @pytest.mark.django_db
-def test_bulk_cohort_reactivate_activates_inactive_cohorts(staff_client: Client):
+def test_bulk_cohort_reactivate_activates_inactive_cohorts(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     inactive = _bulk_cohort(organisation, is_active=False)
 
@@ -166,7 +178,7 @@ def test_bulk_cohort_reactivate_activates_inactive_cohorts(staff_client: Client)
 @pytest.mark.django_db
 def test_the_cohort_register_picker_offers_only_registerable_courses(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     published = CourseFactory(visibility=CourseVisibility.PUBLISHED)
     CourseFactory(visibility=CourseVisibility.COMING_SOON)
@@ -181,7 +193,7 @@ def test_the_cohort_register_picker_offers_only_registerable_courses(
 @pytest.mark.django_db
 def test_bulk_cohort_register_confirmation_counts_changes_and_skips(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     course = CourseFactory(title="Algebra")
     registered = _bulk_cohort(organisation)
@@ -207,7 +219,7 @@ def test_bulk_cohort_register_confirmation_counts_changes_and_skips(
 @pytest.mark.django_db
 def test_bulk_cohort_register_registers_only_unregistered_active_cohorts(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     course = CourseFactory()
     registered = _bulk_cohort(organisation)
@@ -233,7 +245,7 @@ def test_bulk_cohort_register_registers_only_unregistered_active_cohorts(
 @pytest.mark.django_db
 def test_bulk_cohort_register_refreshed_without_a_course_answers_200(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = _bulk_cohort(organisation)
 
@@ -247,9 +259,9 @@ def test_bulk_cohort_register_refreshed_without_a_course_answers_200(
 @pytest.mark.django_db
 def test_bulk_cohort_register_fires_one_course_registered_event_per_changed_cohort(
     staff_client: Client,
-    django_capture_on_commit_callbacks,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
     mocker: MockerFixture,
-):
+) -> None:
     fire = mocker.patch("freedom_ls.webhooks.events.fire_webhook_event_for_site")
     organisation = OrganisationFactory()
     course = CourseFactory()
@@ -273,7 +285,9 @@ def test_bulk_cohort_register_fires_one_course_registered_event_per_changed_coho
 
 
 @pytest.mark.django_db
-def test_a_cohort_admin_registers_only_their_own_cohorts(mock_site_context: Site):
+def test_a_cohort_admin_registers_only_their_own_cohorts(
+    mock_site_context: Site,
+) -> None:
     organisation = OrganisationFactory()
     mine = _bulk_cohort(organisation)
     theirs = _bulk_cohort(organisation)
@@ -297,7 +311,7 @@ def test_a_cohort_admin_registers_only_their_own_cohorts(mock_site_context: Site
 @pytest.mark.django_db
 def test_an_inactive_cohort_the_educator_cannot_change_is_skipped_for_permission_first(
     mock_site_context: Site,
-):
+) -> None:
     """The preview checks permission before state; the run must agree."""
     organisation = OrganisationFactory()
     mine = _bulk_cohort(organisation)
@@ -324,7 +338,7 @@ def test_an_inactive_cohort_the_educator_cannot_change_is_skipped_for_permission
 )
 def test_run_skips_a_cohort_that_was_already_inactive_rather_than_failing_it(
     mock_site_context: Site, action_class: type[CohortCourseBulkAction]
-):
+) -> None:
     """An inactive cohort was reported as "could not be changed" at the end of
     the run, though the confirmation had promised to skip it."""
     organisation = OrganisationFactory()
@@ -346,7 +360,7 @@ def test_run_skips_a_cohort_that_was_already_inactive_rather_than_failing_it(
 @pytest.mark.django_db
 def test_bulk_cohort_unregister_confirmation_counts_changes_and_skips(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     course = CourseFactory(title="Algebra")
     registered = _bulk_cohort(organisation)
@@ -371,8 +385,10 @@ def test_bulk_cohort_unregister_confirmation_counts_changes_and_skips(
 
 @pytest.mark.django_db
 def test_bulk_cohort_unregister_deactivates_the_active_registration(
-    staff_client: Client, django_capture_on_commit_callbacks, mocker: MockerFixture
-):
+    staff_client: Client,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+    mocker: MockerFixture,
+) -> None:
     fire = mocker.patch("freedom_ls.webhooks.events.fire_webhook_event_for_site")
     organisation = OrganisationFactory()
     course = CourseFactory()

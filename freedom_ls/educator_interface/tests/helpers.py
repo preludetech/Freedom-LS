@@ -7,7 +7,7 @@ import csv
 import io
 import uuid
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Protocol, cast
 from urllib.parse import quote
 
 import lxml.html
@@ -56,6 +56,15 @@ from freedom_ls.role_based_permissions.utils import assign_object_role
 
 if TYPE_CHECKING:
     from django.test.client import _MonkeyPatchedWSGIResponse
+
+
+class RoleHolderClient(Protocol):
+    """The `role_holder_client` fixture: a client for a staff user holding
+    `role` on `target`."""
+
+    def __call__(
+        self, target: Organisation | Cohort, role: str = "organisation_admin"
+    ) -> Client: ...
 
 
 def organisation_admin_viewer(organisation: Organisation) -> User:
@@ -886,10 +895,7 @@ def _export_csv(
 
 
 def _cohort_history_tab(client: Client, cohort: Cohort) -> lxml.html.HtmlElement:
-    return _get_document(
-        client,
-        _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/history"),
-    )
+    return _get_document(client, _cohort_history_url(cohort))
 
 
 def _cohort_history_url(cohort: Cohort) -> str:

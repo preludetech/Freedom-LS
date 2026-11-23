@@ -53,7 +53,9 @@ from freedom_ls.tests.site_context import drop_ambient_request
 
 
 @pytest.mark.django_db
-def test_the_learners_tab_url_renders_the_cohorts_learners(staff_client: Client):
+def test_the_learners_tab_url_renders_the_cohorts_learners(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation, name="Evening group")
     learner = LearnerFactory(
@@ -142,8 +144,8 @@ def _register_triggers(document: lxml.html.HtmlElement, cohort: Cohort) -> list[
 
 @pytest.mark.django_db
 def test_the_courses_tab_offers_register_to_a_cohort_admin(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     cohort = cast(Cohort, CohortFactory(organisation=OrganisationFactory()))
     grantor = LearnerFactory(user__superuser=True).user
     educator = LearnerFactory(user__staff=True, organisation=cohort.organisation).user
@@ -165,8 +167,8 @@ def test_the_courses_tab_offers_register_to_a_cohort_admin(
 
 @pytest.mark.django_db
 def test_the_courses_tab_shows_a_cohort_viewer_no_register_trigger(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     cohort = cast(Cohort, CohortFactory(organisation=OrganisationFactory()))
     grantor = LearnerFactory(user__superuser=True).user
     viewer = LearnerFactory(user__staff=True, organisation=cohort.organisation).user
@@ -183,7 +185,7 @@ def test_the_courses_tab_shows_a_cohort_viewer_no_register_trigger(
 @pytest.mark.django_db
 def test_an_inactive_cohorts_courses_tab_shows_no_register_trigger(
     staff_client: Client,
-):
+) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory(), is_active=False)
 
     document = _get_document(
@@ -209,7 +211,7 @@ def _deactivate_triggers(document: lxml.html.HtmlElement, cohort: Cohort) -> lis
 @pytest.mark.django_db
 def test_the_courses_tab_offers_deactivate_only_on_active_registrations(
     staff_client: Client,
-):
+) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory())
     active = CohortCourseRegistrationFactory(
         cohort=cohort, course=CourseFactory(title="Algebra"), is_active=True
@@ -231,7 +233,7 @@ def test_the_courses_tab_offers_deactivate_only_on_active_registrations(
 @pytest.mark.django_db
 def test_an_inactive_cohorts_courses_tab_shows_no_deactivate_trigger(
     staff_client: Client,
-):
+) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory(), is_active=False)
     CohortCourseRegistrationFactory(cohort=cohort, is_active=True)
 
@@ -245,8 +247,8 @@ def test_an_inactive_cohorts_courses_tab_shows_no_deactivate_trigger(
 
 @pytest.mark.django_db
 def test_a_cohort_viewers_courses_tab_renders_no_action_buttons(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     cohort = cast(Cohort, CohortFactory(organisation=OrganisationFactory()))
     CohortCourseRegistrationFactory(cohort=cohort, is_active=True)
     grantor = LearnerFactory(user__superuser=True).user
@@ -281,8 +283,8 @@ def _cohort_history_access(
 
 @pytest.mark.django_db
 def test_a_cohort_admin_reads_the_history_of_a_cohort_they_administer(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     grantor = LearnerFactory(user__superuser=True).user
@@ -303,8 +305,8 @@ def test_a_cohort_admin_reads_the_history_of_a_cohort_they_administer(
 
 @pytest.mark.django_db
 def test_a_cohort_admin_gets_no_history_on_a_cohort_they_do_not_administer(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     own = cast(Cohort, CohortFactory(organisation=organisation))
     other = cast(Cohort, CohortFactory(organisation=organisation))
@@ -322,7 +324,7 @@ def test_a_cohort_admin_gets_no_history_on_a_cohort_they_do_not_administer(
 @pytest.mark.django_db
 def test_an_active_cohorts_learners_tab_offers_remove_for_each_member(
     staff_client: Client,
-):
+) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory())
     member = _add_member(cohort)
 
@@ -342,7 +344,9 @@ def test_an_active_cohorts_learners_tab_offers_remove_for_each_member(
 
 
 @pytest.mark.django_db
-def test_a_learner_rows_remove_trigger_uses_the_error_variant(staff_client: Client):
+def test_a_learner_rows_remove_trigger_uses_the_error_variant(
+    staff_client: Client,
+) -> None:
     """The per-row Remove trigger is styled as a destructive action, not secondary."""
     cohort = CohortFactory(organisation=OrganisationFactory())
     _add_member(cohort)
@@ -366,7 +370,7 @@ def test_a_learner_rows_remove_trigger_uses_the_error_variant(staff_client: Clie
 @pytest.mark.django_db
 def test_a_learner_rows_remove_and_move_triggers_name_the_learner(
     staff_client: Client,
-):
+) -> None:
     """Ten rows of bare 'Remove' and 'Move' are indistinguishable to a screen reader."""
     cohort = CohortFactory(organisation=OrganisationFactory(), name="Cohort Alpha")
     learner = _add_member(cohort)
@@ -392,7 +396,7 @@ def test_a_learner_rows_remove_and_move_triggers_name_the_learner(
 @pytest.mark.django_db
 def test_a_registration_rows_deactivate_trigger_names_the_course(
     staff_client: Client,
-):
+) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory())
     CohortCourseRegistrationFactory(
         cohort=cohort, course=CourseFactory(title="Algebra"), is_active=True
@@ -414,7 +418,7 @@ def test_a_registration_rows_deactivate_trigger_names_the_course(
 @pytest.mark.django_db
 def test_a_cohorts_learners_tab_exports_its_members_as_a_csv_named_for_the_cohort(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation, name="Night class")
     course = CourseFactory(title="Hydrology")
@@ -450,7 +454,7 @@ def test_a_cohorts_learners_tab_exports_its_members_as_a_csv_named_for_the_cohor
 @pytest.mark.django_db
 def test_the_learners_export_neutralises_a_formula_looking_name_and_leaves_never_active_blank(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     CohortMembershipFactory(
         cohort=CohortFactory(organisation=organisation),
@@ -470,7 +474,7 @@ def test_the_learners_export_neutralises_a_formula_looking_name_and_leaves_never
 @pytest.mark.django_db
 def test_the_learners_export_stays_scoped_when_the_site_thread_local_is_cleared(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     for name in ("Ada", "Bo"):
         CohortMembershipFactory(
@@ -490,7 +494,7 @@ def test_the_learners_export_stays_scoped_when_the_site_thread_local_is_cleared(
 
 
 @pytest.mark.django_db
-def test_the_learners_tab_toolbar_offers_the_csv_export(staff_client: Client):
+def test_the_learners_tab_toolbar_offers_the_csv_export(staff_client: Client) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory())
     _add_member(cohort)
 
@@ -511,7 +515,7 @@ def test_the_learners_tab_toolbar_offers_the_csv_export(staff_client: Client):
 @pytest.mark.django_db
 def test_an_inactive_cohorts_learners_tab_renders_no_remove_control(
     staff_client: Client,
-):
+) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory(), is_active=False)
     _add_member(cohort)
 
@@ -528,7 +532,7 @@ def test_an_inactive_cohorts_learners_tab_renders_no_remove_control(
 @pytest.mark.django_db
 def test_an_inactive_cohorts_learners_tab_renders_no_add_learners_control(
     staff_client: Client,
-):
+) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory(), is_active=False)
 
     document = _get_document(
@@ -544,7 +548,7 @@ def test_an_inactive_cohorts_learners_tab_renders_no_add_learners_control(
 @pytest.mark.django_db
 def test_an_inactive_cohorts_learners_tab_renders_no_move_control(
     staff_client: Client,
-):
+) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory(), is_active=False)
     _add_member(cohort)
 
@@ -561,7 +565,7 @@ def test_an_inactive_cohorts_learners_tab_renders_no_move_control(
 @pytest.mark.django_db
 def test_an_active_cohorts_learners_tab_offers_move_for_each_member(
     staff_client: Client,
-):
+) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory())
     member = _add_member(cohort)
 
@@ -581,7 +585,9 @@ def test_an_active_cohorts_learners_tab_offers_move_for_each_member(
 
 
 @pytest.mark.django_db
-def test_the_cohort_history_panel_refreshes_on_member_changes(staff_client: Client):
+def test_the_cohort_history_panel_refreshes_on_member_changes(
+    staff_client: Client,
+) -> None:
     """Adding a staff member from the Settings tab writes a role.assigned
     entry with the cohort as subject and answers with staffChanged alone."""
     organisation = OrganisationFactory()
@@ -599,7 +605,7 @@ def test_the_cohort_history_panel_refreshes_on_member_changes(staff_client: Clie
 @pytest.mark.django_db
 def test_an_add_shows_on_the_cohort_history_tab_and_not_on_another_cohort(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     learner = LearnerFactory(organisation=organisation)
     cohort = CohortFactory(organisation=organisation, name="Alpha")
@@ -619,7 +625,7 @@ def test_an_add_shows_on_the_cohort_history_tab_and_not_on_another_cohort(
 
 
 @pytest.mark.django_db
-def test_the_cohort_history_tab_renders_its_empty_state(staff_client: Client):
+def test_the_cohort_history_tab_renders_its_empty_state(staff_client: Client) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory())
 
     response = staff_client.get(
@@ -632,8 +638,8 @@ def test_the_cohort_history_tab_renders_its_empty_state(staff_client: Client):
 
 @pytest.mark.django_db
 def test_a_cohort_viewer_gets_no_cohort_history_tab_and_a_404_on_its_url(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     grantor = LearnerFactory(user__superuser=True).user
@@ -651,7 +657,9 @@ def test_a_cohort_viewer_gets_no_cohort_history_tab_and_a_404_on_its_url(
 
 
 @pytest.mark.django_db
-def test_a_cohort_registration_shows_on_the_cohort_history_tab(staff_client: Client):
+def test_a_cohort_registration_shows_on_the_cohort_history_tab(
+    staff_client: Client,
+) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory())
     register_cohort_for_course(cohort, CourseFactory(title="Algebra"))
 
@@ -665,7 +673,9 @@ def test_a_cohort_registration_shows_on_the_cohort_history_tab(staff_client: Cli
 
 
 @pytest.mark.django_db
-def test_the_cohort_history_tab_names_who_each_row_is_about(staff_client: Client):
+def test_the_cohort_history_tab_names_who_each_row_is_about(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation, name="Alpha")
     actor = UserFactory()
@@ -690,7 +700,9 @@ def test_the_cohort_history_tab_names_who_each_row_is_about(staff_client: Client
 
 
 @pytest.mark.django_db
-def test_the_cohort_history_card_names_who_the_row_is_about(staff_client: Client):
+def test_the_cohort_history_card_names_who_the_row_is_about(
+    staff_client: Client,
+) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory())
     AuditLogEntryFactory(
         target=cohort,
@@ -708,7 +720,7 @@ def test_the_cohort_history_card_names_who_the_row_is_about(staff_client: Client
 @pytest.mark.django_db
 def test_the_cohort_history_card_shows_the_label_then_labelled_when_who_and_target(
     staff_client: Client,
-):
+) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory())
     AuditLogEntryFactory(
         target=cohort,
@@ -745,7 +757,7 @@ def _cohort_entry(cohort: Cohort, **overrides: object) -> AuditLogEntry:
 @pytest.mark.django_db
 def test_the_cohort_history_export_holds_only_entries_naming_the_cohort(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation)
     other = CohortFactory(organisation=organisation)
@@ -761,7 +773,9 @@ def test_the_cohort_history_export_holds_only_entries_naming_the_cohort(
 
 
 @pytest.mark.django_db
-def test_the_cohort_history_export_is_named_for_the_cohort(staff_client: Client):
+def test_the_cohort_history_export_is_named_for_the_cohort(
+    staff_client: Client,
+) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory(), name="Spring Intake")
     _cohort_entry(cohort)
 
@@ -777,7 +791,7 @@ def test_the_cohort_history_export_is_named_for_the_cohort(staff_client: Client)
 @pytest.mark.django_db
 def test_the_cohort_history_export_records_an_entry_for_the_audit_log_only(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation, name="Spring Intake")
     _cohort_entry(cohort)
@@ -806,7 +820,7 @@ def test_the_cohort_history_export_records_an_entry_for_the_audit_log_only(
 
 
 @pytest.mark.django_db
-def test_the_cohort_history_toolbar_offers_the_csv_export(staff_client: Client):
+def test_the_cohort_history_toolbar_offers_the_csv_export(staff_client: Client) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory())
     _cohort_entry(cohort)
 
@@ -821,8 +835,8 @@ def test_the_cohort_history_toolbar_offers_the_csv_export(staff_client: Client):
 
 @pytest.mark.django_db
 def test_a_cohort_admin_exports_the_history_of_a_cohort_they_administer(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     grantor = LearnerFactory(user__superuser=True).user

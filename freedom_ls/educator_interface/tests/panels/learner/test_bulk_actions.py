@@ -499,6 +499,8 @@ def test_a_run_reads_who_is_permitted_once_rather_than_per_learner(
     learners = [_bulk_learner(organisation=organisation) for _ in range(3)]
     _bulk_confirm(staff_client, organisation, "deactivate", learners)
     calls_for_three = can.call_count
+    # The spy is on the path the run takes.
+    assert calls_for_three > 0
     can.reset_mock()
     larger_organisation = OrganisationFactory()
     more_learners = [_bulk_learner(organisation=larger_organisation) for _ in range(8)]
