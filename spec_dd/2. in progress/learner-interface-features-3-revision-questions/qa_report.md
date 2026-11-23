@@ -127,7 +127,7 @@ Actual: the answer form in `partials/revision_card.html` has `hx-post` but no me
 
 ## Bug status
 
-- **UNRESOLVED**: B1, revision done count tiles are bordered boxes inside the bordered card (reason: the brand rule forbids a box inside a box, and the spec says only "count tiles". Choosing the tiles' new look, such as tint only or plain figures with no box, is a design decision.)
+- **FIXED** (commit: eacdd1ccf) — B1, revision done count tiles are bordered boxes inside the bordered card. Decided: plain figures, no border and no fill on each. — after the fix: ![](screenshots/fixed/page-2026-11-23T14-49-47-893Z.png) ![](screenshots/fixed/page-2026-11-23T14-49-57-765Z.png) ![](screenshots/fixed/page-2026-11-23T14-50-05-184Z.png)
 - **FIXED** (commit: 2b846d5e0): B2, I guessed and Next do not share a row at 375px. Re-verified at 375px (same row, help line under it, ![](screenshots/page-2026-11-23T04-58-50-477Z.png)) and at 768px (unchanged).
 - **FIXED** (commit: 2ce55b3f8): B3, the answer form submits as a native GET before the page finishes loading. Re-verified with JavaScript off: Check answer now posts, records the answer and redirects to the feedback. With htmx on, the flow is unchanged: 422 "Choose an answer.", a 200 swap, focus on the feedback and no navigation. Remaining gap, which loses no data: "Next" and "I guessed" are `hx-post` buttons with no form, so before htmx loads they do nothing.
 
@@ -144,4 +144,4 @@ Actual: the answer form in `partials/revision_card.html` has `hx-post` but no me
 - **Test 10.9 cleanup.** The real `demo_content` was re-saved (dropped question restored, marker cleared). The scratch copy was left in the session scratchpad because recursive deletes are blocked by the security hook.
 - **Test 10.8** feedback: ![](screenshots/page-2026-11-23T04-45-16-634Z.png).
 
-status: ok · reason: 3 bugs — 2 fixed, 1 unresolved; report rendered, screenshots verified
+status: ok · reason: 3 bugs — 3 fixed, 0 unresolved; report rendered, screenshots verified
