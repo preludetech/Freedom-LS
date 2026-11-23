@@ -1246,6 +1246,7 @@ def _marks(document: lxml.html.HtmlElement) -> list[lxml.html.HtmlElement]:
         mark
         for mark in document.cssselect("span")
         if mark.text_content().strip().startswith("Correct answer")
+        and mark.getparent().tag != "span"
     ]
 
 
