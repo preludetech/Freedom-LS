@@ -414,3 +414,40 @@ def test_the_cohorts_list_shows_created_as_day_month_year_and_24_hour_time(
 
     (region,) = document.cssselect("[data-table-region]")
     assert "3 Nov 2026, 07:37" in " ".join(region.text_content().split())
+
+
+@pytest.mark.django_db
+def test_the_courses_tab_lists_the_course_registrations(staff_client: Client):
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=CourseFactory(title="Algebra")
+    )
+
+    document = _get_document(
+        staff_client,
+        _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/courses"),
+    )
+
+    (region,) = document.cssselect("[data-tab-set]")
+    assert "Algebra" in region.text_content()
+
+
+@pytest.mark.django_db
+def test_the_courses_tab_shows_each_registrations_status_badge(staff_client: Client):
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=CourseFactory(title="Algebra"), is_active=True
+    )
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=CourseFactory(title="Geometry"), is_active=False
+    )
+
+    document = _get_document(
+        staff_client,
+        _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/courses"),
+    )
+
+    (region,) = document.cssselect("[data-tab-set]")
+    text = " ".join(region.text_content().split())
+    assert "Active" in text
+    assert "Inactive" in text

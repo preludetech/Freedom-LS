@@ -555,22 +555,6 @@ def test_the_cohort_page_opens_on_the_overview_tab(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_the_courses_tab_lists_the_course_registrations(staff_client: Client):
-    cohort = CohortFactory(organisation=OrganisationFactory())
-    CohortCourseRegistrationFactory(
-        cohort=cohort, course=CourseFactory(title="Algebra")
-    )
-
-    document = _get_document(
-        staff_client,
-        _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/courses"),
-    )
-
-    (region,) = document.cssselect("[data-tab-set]")
-    assert "Algebra" in region.text_content()
-
-
-@pytest.mark.django_db
 def test_course_completion_reads_one_of_two_completed(
     staff_client: Client,
     completion_scenario: tuple[Cohort, CohortCourseRegistration, Learner],
@@ -985,27 +969,6 @@ def test_an_organisation_role_row_shows_only_its_role_to_a_cohort_admin(
     assert "Organisation admin" in section.text_content()
     assert "Set for the whole organisation." not in section.text_content()
     assert not section.cssselect("a[href$='/staff']")
-
-
-@pytest.mark.django_db
-def test_the_courses_tab_shows_each_registrations_status_badge(staff_client: Client):
-    cohort = CohortFactory(organisation=OrganisationFactory())
-    CohortCourseRegistrationFactory(
-        cohort=cohort, course=CourseFactory(title="Algebra"), is_active=True
-    )
-    CohortCourseRegistrationFactory(
-        cohort=cohort, course=CourseFactory(title="Geometry"), is_active=False
-    )
-
-    document = _get_document(
-        staff_client,
-        _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/courses"),
-    )
-
-    (region,) = document.cssselect("[data-tab-set]")
-    text = " ".join(region.text_content().split())
-    assert "Active" in text
-    assert "Inactive" in text
 
 
 @pytest.mark.django_db
