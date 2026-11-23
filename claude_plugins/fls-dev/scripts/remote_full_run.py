@@ -500,8 +500,8 @@ def classify(
     if failed_steps(coverage_job) == {COVERAGE_CHECK_STEP}:
         if coverage_total is None:
             raise Unavailable("coverage failed and uploaded no coverage-total")
-        # A retry runs without coverage and a crashed worker's data is lost, so after one
-        # the total is too low by an unknown amount. A pass still stands.
+        # A crashed worker's coverage data is lost, so after a retry the total is too low
+        # by an unknown amount. A pass still stands.
         retried = sorted(
             name
             for name, state in states.items()

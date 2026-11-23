@@ -284,7 +284,8 @@ jobs:
 
   coverage:
     needs: unit-tests
-    if: always()
+    # Runs after a failed test job, and stops when the run is cancelled.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     env:
       COVERAGE_FAIL_UNDER: 92
@@ -332,7 +333,7 @@ jobs:
 
   test-verdict:
     needs: [unit-tests, playwright-tests, standalone-tests, coverage]
-    if: always()
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
 

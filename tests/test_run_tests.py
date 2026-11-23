@@ -1169,6 +1169,31 @@ def test_retry_carries_no_cov_so_a_subset_run_cannot_fail_a_coverage_threshold(
     assert "--no-cov" in retry.split()
 
 
+def test_retry_of_a_coverage_run_appends_to_its_coverage_data(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    pytest.importorskip("pytest_cov")
+    meminfo = write_meminfo(tmp_path, 4096)
+
+    # Act
+    run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest", "--cov"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        STUB_PYTEST_CRASH_FIRST="collected",
+    )
+
+    # Assert
+    first, retry = stub_tools.log_lines()
+    assert "--cov-append" not in first.split()
+    assert ("--cov-append" in retry.split(), "--no-cov" in retry.split()) == (
+        True,
+        False,
+    )
+
+
 def test_retry_halves_the_worker_count_of_the_previous_attempt(
     stub_tools: StubTools, tmp_path: Path
 ) -> None:

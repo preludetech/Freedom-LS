@@ -492,10 +492,14 @@ def attempt_command(
     command += record_options(record)
     if only_file is not None:
         command.append(f"--ds-only-nodeids={only_file}")
+        if any(arg == "--cov" or arg.startswith("--cov=") for arg in argv):
+            # The caller measures coverage, so the retried tests add to the data the
+            # earlier attempt wrote.
+            command.append("--cov-append")
         # The runner and the pytest it starts share one environment when both go through
         # `uv run`, so this answers for the child too. A subset run must not fail a
         # coverage threshold.
-        if importlib.util.find_spec("pytest_cov") is not None:
+        elif importlib.util.find_spec("pytest_cov") is not None:
             command.append("--no-cov")
     return command
 
