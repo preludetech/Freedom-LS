@@ -6,6 +6,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 1. Spec
 
 - [x] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
+- [ ] (user) Fix `test_reference_parts_sharing_an_order_are_numbered_in_creation_order` (fails 3/3: `content_preview.py` breaks order ties by UUID4 `pk`, not creation order), then re-run `/sdd:finish_worktree`
 - [ ] (user) Review the spec and edit where needed; after substantial hand edits, run `/sdd:spec_review`
 
 ## 2. Plan
