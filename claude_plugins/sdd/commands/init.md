@@ -258,7 +258,8 @@ anything in this step or before it completes.
    hand.
 
    **Playwright MCP** is the tool-name prefix of the browser server the QA command drives. Blank
-   means the QA command stops `blocked`. **Screenshot directory** is where that server writes
+   means the QA command stops `blocked`. The commands pre-approve only `mcp__playwright__*`, so a
+   project with another prefix allows it in its own settings. **Screenshot directory** is where that server writes
    screenshots, relative to the project root. Blank means screenshots are collected from the spec
    directory only. **Port finder** is a command that prints a free port. **Dev server start** and
    **Dev server stop** are shell commands with `<PORT>` and `<PROJECT_ROOT>` placeholders that the

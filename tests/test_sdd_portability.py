@@ -36,6 +36,7 @@ BANNED = {
     "full-run record": re.compile(r"full_run_record|full-run record", re.IGNORECASE),
     "another plugin's path": re.compile(r"claude_plugins/(?!sdd\b)[\w-]+"),
     "another plugin's skill": re.compile(r"\b(?:ds|fls-dev):[a-z]"),
+    "another plugin's tool": re.compile(r"mcp__plugin_(?!sdd_)\w+"),
 }
 
 # A file that still names a tool, and why. An entry whose file is clean fails the test.
@@ -88,6 +89,7 @@ def test_every_exception_still_names_a_tool() -> None:
         "the `targeted` test tier",
         "use the ds:testing skill",
         "`<diff>`: `--working-tree`",
+        "allowed-tools: Read, mcp__plugin_ds_playwright__*",
     ],
 )
 def test_banned_names_catches_a_tool_name(text: str) -> None:

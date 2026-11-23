@@ -1,7 +1,7 @@
 ---
 name: implement_plan
 description: Execute the implementation plan in resilient batches.
-allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Skill, Agent, ToolSearch, AskUserQuestion, mcp__playwright__*, mcp__plugin_ds_playwright__*
+allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Skill, Agent, ToolSearch, AskUserQuestion, mcp__playwright__*
 argument-hint: [suffix, e.g. 2b]
 ---
 

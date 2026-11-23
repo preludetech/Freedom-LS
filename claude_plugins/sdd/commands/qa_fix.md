@@ -1,7 +1,7 @@
 ---
 description: Walk the items a QA run left open, take the user's decision on each, then make the fixes
 argument-hint: [spec dir]
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Skill, Agent, AskUserQuestion, mcp__playwright__*, mcp__plugin_ds_playwright__*
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Skill, Agent, AskUserQuestion, mcp__playwright__*
 ---
 
 A QA run fixes what needs no human and files the rest in `todo.md` as **open items**: a bug that
