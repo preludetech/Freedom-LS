@@ -16,7 +16,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `sacaa-compliance-3-question-pools` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-4-attempt-review` (SACAA compliance)
 - 🟠 Medium · `faster-test-runs-5-full-suite-on-github-actions` (Faster test runs)
-- 🟠 Medium · `faster-test-runs-6-prune-slow-tests` (Faster test runs)
 - 🟠 Medium · `educator-interface-refactor-6-cohort` (Educator interface code layout)
 - 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
 
@@ -257,8 +256,7 @@ Cut the time and machine load of test runs so several worktrees can work at once
 
 - `faster-test-runs-2-reuse-test-database` — **ready** — A pytest run reuses the test database and rebuilds it only when migrations change.
 - `faster-test-runs-5-full-suite-on-github-actions` — **in progress** — The full suite runs on free GitHub runners in parallel jobs, started on demand by an SDD run.
-- `faster-test-runs-6-prune-slow-tests` — **in progress** — Remaining slow and redundant tests are merged or removed from a measured per-test ranking.
-- `faster-test-runs-7-claude-cloud-test-runs` — **blocked** by `faster-test-runs-2-reuse-test-database`, `faster-test-runs-5-full-suite-on-github-actions`, `faster-test-runs-6-prune-slow-tests`, `faster-test-runs-9-machine-wide-test-run-limit`, `faster-test-runs-11-record-failed-full-runs`, `faster-test-runs-12-reliable-full-run-record`, `faster-test-runs-13-checkpoint-shared-paths` — Fallback: a test run or SDD batch is handed to a Claude Code cloud session.
+- `faster-test-runs-7-claude-cloud-test-runs` — **blocked** by `faster-test-runs-2-reuse-test-database`, `faster-test-runs-5-full-suite-on-github-actions`, `faster-test-runs-9-machine-wide-test-run-limit`, `faster-test-runs-11-record-failed-full-runs`, `faster-test-runs-12-reliable-full-run-record`, `faster-test-runs-13-checkpoint-shared-paths` — Fallback: a test run or SDD batch is handed to a Claude Code cloud session.
 - `faster-test-runs-9-machine-wide-test-run-limit` — **ready** — Test runs from every worktree share one CPU and memory limit, and a waiting run says so.
 - `faster-test-runs-11-record-failed-full-runs` — **blocked** by `faster-test-runs-12-reliable-full-run-record` — A failed full run records its failed tests, so the next checkpoint re-runs those, not the whole suite.
 - `faster-test-runs-12-reliable-full-run-record` — **ready** — Every full run writes its own record, or prints why it recorded nothing.
