@@ -19,7 +19,6 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
-from freedom_ls.educator_interface import actions as actions_module
 from freedom_ls.educator_interface.events import (
     LEARNER_CHANGED,
 )
@@ -45,6 +44,7 @@ from freedom_ls.educator_interface.tests.helpers import (
     _learners_bulk_url,
     _scoped_request,
 )
+from freedom_ls.learner_management import queries as queries_module
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -494,14 +494,19 @@ def test_a_run_reads_who_is_permitted_once_rather_than_per_learner(
 ):
     """`apply` asked `can` about every learner, four or five queries each, so
     an inline run over 250 learners cost over a thousand queries."""
-    can = mocker.spy(actions_module, "can")
+    can = mocker.spy(queries_module, "can")
     organisation = OrganisationFactory()
     learners = [_bulk_learner(organisation=organisation) for _ in range(3)]
-
     _bulk_confirm(staff_client, organisation, "deactivate", learners)
+    calls_for_three = can.call_count
+    can.reset_mock()
+    larger_organisation = OrganisationFactory()
+    more_learners = [_bulk_learner(organisation=larger_organisation) for _ in range(8)]
 
-    # Once for the preview and once for the run, never per learner.
-    assert can.call_count <= 2
+    _bulk_confirm(staff_client, larger_organisation, "deactivate", more_learners)
+
+    # The count is the same however many learners the run covers.
+    assert can.call_count == calls_for_three
 
 
 @pytest.mark.django_db

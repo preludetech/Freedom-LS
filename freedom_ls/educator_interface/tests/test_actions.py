@@ -26,15 +26,17 @@ from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseAudience, CourseVisibility
 from freedom_ls.educator_interface.actions import (
-    CohortCourseBulkAction,
-    DeactivateCohortRegistrationBulkAction,
-    RegisterCohortForCourseBulkAction,
     RequiresActiveCohortMixin,
     cohort_not_empty_sentence,
 )
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     LEARNER_CHANGED,
+)
+from freedom_ls.educator_interface.panels.cohort.bulk_actions import (
+    CohortCourseBulkAction,
+    DeactivateCohortRegistrationBulkAction,
+    RegisterCohortForCourseBulkAction,
 )
 from freedom_ls.educator_interface.panels.learner.actions import (
     AddLearnerAction,

@@ -44,6 +44,9 @@ from freedom_ls.educator_interface.panels.audit_log.data_table_panels import (
 from freedom_ls.educator_interface.panels.audit_log.data_tables import (
     TargetedAuditLogEntryTable,
 )
+
+# Importing the module registers the cohorts table's bulk actions.
+from freedom_ls.educator_interface.panels.cohort import bulk_actions  # noqa: F401
 from freedom_ls.educator_interface.panels.cohort.data_tables import (
     CohortCourseRegistrationDataTable,
     CohortDataTable,
