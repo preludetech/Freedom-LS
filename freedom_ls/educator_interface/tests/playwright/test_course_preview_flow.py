@@ -19,6 +19,7 @@ from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
     CoursePartFactory,
+    CourseReferencePartFactory,
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course
@@ -56,7 +57,8 @@ FLASHCARD = (
 
 def _seed_course(user: AbstractBaseUser) -> tuple[Organisation, Course]:
     """An organisation `user` administers, holding a course with a flashcard
-    topic, a part with a second topic, a quiz and a two-page survey."""
+    topic, a part with a second topic, a quiz and a two-page survey, and a
+    reference part holding one topic."""
     organisation = cast(Organisation, OrganisationFactory(name="Org A"))
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, user, "organisation_admin", organisation)
@@ -90,6 +92,13 @@ def _seed_course(user: AbstractBaseUser) -> tuple[Organisation, Course]:
     )
     ContentCollectionItemFactory(collection_object=course, child_object=quiz, order=2)
     ContentCollectionItemFactory(collection_object=course, child_object=survey, order=3)
+
+    field_guide = CoursePartFactory(title="Field guide")
+    glossary = TopicFactory(title="Glossary", content="Glossary body.")
+    ContentCollectionItemFactory(
+        collection_object=field_guide, child_object=glossary, order=0
+    )
+    CourseReferencePartFactory(course=course, course_part=field_guide, order=0)
     return organisation, course
 
 
@@ -158,6 +167,10 @@ def test_educator_previews_course_content(
                     outline.get_by_text(title, exact=True).locator("visible=true")
                 ).to_be_visible()
             assert_no_horizontal_overflow(page)
+            if viewport["width"] >= 768:
+                expect(
+                    page.get_by_role("region", name="Reference outline items")
+                ).to_be_visible()
             if viewport["width"] >= 768:
                 outline_rows = page.get_by_role(
                     "region", name="Course outline items"
@@ -237,3 +250,13 @@ def test_educator_previews_course_content(
             expect(modal.get_by_role("heading", name="Cards (Preview)")).to_be_visible()
             expect(modal.get_by_role("button", name="Flip card")).to_be_visible()
             _press_escape_and_expect_closed(page)
+
+            # A reference topic's preview opens and closes like the outline's.
+            glossary_preview = page.get_by_role("button", name="Preview Glossary")
+            glossary_preview.click()
+            expect(
+                modal.get_by_role("heading", name="Glossary (Preview)")
+            ).to_be_visible()
+            assert_no_horizontal_overflow(page)
+            _press_escape_and_expect_closed(page)
+            expect(glossary_preview).to_be_focused()
