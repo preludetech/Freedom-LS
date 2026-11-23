@@ -15,7 +15,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `sacaa-compliance-3-question-pools` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-4-attempt-review` (SACAA compliance)
 - 🟠 Medium · `faster-test-runs-5-full-suite-on-github-actions` (Faster test runs)
-- 🟠 Medium · `educator-interface-refactor-6-cohort` (Educator interface code layout)
 - 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
 
 ### Ready to start
@@ -32,6 +31,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🟠 Medium · `faster-test-runs-13-checkpoint-shared-paths` (Faster test runs)
 - 🟠 Medium · `faster-test-runs-2-reuse-test-database` (Faster test runs)
 - 🟠 Medium · `faster-test-runs-9-machine-wide-test-run-limit` (Faster test runs)
+- 🟠 Medium · `educator-interface-refactor-7-cleanup` (Educator interface code layout)
 - 🟠 Medium · `content-widget-sayit-reveal-4-audio-access-control` (Audio content widgets)
 - 🟠 Medium · `deadlines-4-learner-self-pause` (Deadlines)
 - 🟠 Medium · `deadlines-5-reminders` (Deadlines)
@@ -283,8 +283,7 @@ Priority: 🟠 Medium
 
 The educator interface's `views.py` and `actions.py` split into one `panels/<area>/` package per area, with tests mirrored. Parent: `educator-interface-refactor`.
 
-- `educator-interface-refactor-6-cohort` — **in progress** — Moves the cohort area, including reports and report download, into `panels/cohort/`, and migrates stored bulk-action paths.
-- `educator-interface-refactor-7-cleanup` — **blocked** by `educator-interface-refactor-6-cohort` — Deletes the emptied flat modules, trims `views.py` to the shell, and sweeps up old paths, docs and baselines.
+- `educator-interface-refactor-7-cleanup` — **ready** — Deletes the emptied flat modules, trims `views.py` to the shell, and sweeps up old paths, docs and baselines.
 
 ![Educator interface code layout](roadmap_diagrams/educator-interface-code-layout.svg)
 
