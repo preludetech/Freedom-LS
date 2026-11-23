@@ -1,9 +1,6 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from functools import partial
-from typing import cast
-from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from unfold.admin import ModelAdmin, TabularInline
@@ -11,31 +8,19 @@ from unfold.contrib.filters.admin import (
     AutocompleteSelectFilter,
     RelatedDropdownFilter,
 )
-from unfold.dataclasses import UnfoldAction
-from unfold.decorators import action as unfold_action
 
 from django import forms
 from django.contrib import admin
-from django.contrib.admin.utils import unquote
 from django.contrib.sites.models import Site
-from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
+from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import BaseConstraint, Model
-from django.forms import BaseInlineFormSet
-from django.forms.formsets import DELETION_FIELD_NAME
-from django.http import HttpRequest, HttpResponseRedirect
-from django.shortcuts import redirect
-from django.urls import URLPattern, path, reverse
+from django.http import HttpRequest
 from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 from django.utils.safestring import SafeString
 
-from freedom_ls.accounts.models import User
 from freedom_ls.base.date_display import days_text, display_date
-from freedom_ls.content_engine.models import ContentCollectionItem, Course
-from freedom_ls.deadlines.admin_views import extend_view, pause_view, resume_view
 from freedom_ls.deadlines.consequences import access_end_instant
-from freedom_ls.deadlines.forms import CollectionItemChoiceField
 from freedom_ls.deadlines.loader import get_deadline_policy
 from freedom_ls.deadlines.models import (
     CONFIG_FIELDS,
@@ -43,343 +28,31 @@ from freedom_ls.deadlines.models import (
     SWITCH_FIELDS,
     CohortCourseRegistrationDeadlineConfig,
     CohortDeadlineConfig,
-    CohortDeadlineOverride,
     CourseDeadlineConfig,
     CoursePause,
     DeadlineExtension,
-    DeadlineKind,
     LearnerCourseRegistrationDeadlineConfig,
-    LearnerDeadlineOverride,
     OrganisationDeadlineConfig,
     SiteDeadlineConfig,
-)
-from freedom_ls.deadlines.queries import (
-    ContentDefaults,
-    canonical_beneath,
-    content_default_for,
 )
 from freedom_ls.deadlines.resolver import (
     CourseDeadlines,
     DeadlineSource,
-    DeadlineValue,
-    LayerRows,
     ResolvedDeadline,
-    content_defaults_for_course,
     course_deadlines,
-    due_instant,
 )
-from freedom_ls.learner_management.admin import CohortCourseRegistrationAdmin
 from freedom_ls.learner_progress.admin import CourseProgressAdmin
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.site_aware_models.admin import ReadOnlyInline, SiteAwareModelAdmin
 from freedom_ls.site_aware_models.admin_filters import InclusiveRangeDateTimeFilter
 from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
-from freedom_ls.site_aware_models.models import get_cached_site
 from freedom_ls.site_aware_models.time_zones import site_time_zone, site_zone_text
-
-DeadlineOverride = CohortDeadlineOverride | LearnerDeadlineOverride
-
-VALUE_FIELDS = frozenset(
-    {"collection_item", "kind", "due_date", "due_time", "due_days_after_registration"}
-)
-TIME_LIMIT_DUPLICATE = "The course time limit already has an override here."
-TIME_LIMIT_HELP = (
-    "A fixed date or a number of days on the course time limit restores ended access."
-)
-ITEM_DUPLICATE = "This item already has an override here."
-
-
-def duplicate_error(collection_item_id: UUID | None) -> ValidationError:
-    """The clash for one target, worded for an admin rather than as a constraint name."""
-    if collection_item_id is None:
-        return ValidationError(TIME_LIMIT_DUPLICATE, code="unique")
-    return ValidationError(ITEM_DUPLICATE, code="unique")
-
-
-class DeadlineOverrideForm(ConstraintValidationFormMixin):
-    """Checks the one-override-per-target constraints while cleaning and words a clash for
-    an admin, not as a constraint name. The clash belongs to the row, not to one field."""
-
-    def _error_key(self, constraint: BaseConstraint) -> str:
-        return NON_FIELD_ERRORS
-
-    def _reworded(
-        self,
-        model_class: type[Model],
-        constraint: BaseConstraint,
-        error: ValidationError,
-    ) -> ValidationError:
-        return duplicate_error(self.instance.collection_item_id)
-
-
-class DeadlineOverrideFormSet(BaseInlineFormSet):
-    """Stamps who saved a row and what it replaced. The parent admin belongs to another app,
-    so the stamping lives on the formset the inline hands it rather than in save_formset."""
-
-    set_by: User
-    # What the inline fetched once for the page, so stamping N rows reads nothing per row.
-    cohort_rows: LayerRows | None = None
-    content_defaults: ContentDefaults | None = None
-
-    def clean(self) -> None:
-        # Both unique constraints are conditional, which Django's formset uniqueness check
-        # skips, and the form-level check only sees saved rows. Two rows for one target in
-        # the same submit would otherwise reach the database.
-        super().clean()
-        seen: set[UUID | None] = set()
-        for form in self.forms:
-            if not form.is_valid() or form.cleaned_data.get(DELETION_FIELD_NAME):
-                continue
-            target = form.cleaned_data.get("collection_item")
-            target_id = target.pk if target is not None else None
-            if target_id in seen:
-                raise duplicate_error(target_id)
-            seen.add(target_id)
-
-    def save_new(self, form: forms.ModelForm, commit: bool = True) -> DeadlineOverride:
-        instance = cast(DeadlineOverride, super().save_new(form, commit=False))
-        return self._stamped(instance, commit, restamp=True)
-
-    def save_existing(
-        self,
-        form: forms.ModelForm,
-        obj: DeadlineOverride,
-        commit: bool = True,
-    ) -> DeadlineOverride:
-        instance = cast(
-            DeadlineOverride, super().save_existing(form, obj, commit=False)
-        )
-        # What the row replaced is read again only when the row's value moved; editing
-        # the reason alone must not clear a "Default has changed" note.
-        restamp = not VALUE_FIELDS.isdisjoint(form.changed_data)
-        return self._stamped(instance, commit, restamp=restamp)
-
-    def _stamped(
-        self, instance: DeadlineOverride, commit: bool, *, restamp: bool
-    ) -> DeadlineOverride:
-        instance.set_by = self.set_by
-        if restamp:
-            instance.replaced_value = canonical_beneath(
-                instance, self.cohort_rows, self.content_defaults
-            )
-        if commit:
-            instance.save()
-        return instance
-
-
-def _value_text(value: DeadlineValue | None, obj: DeadlineOverride) -> str:
-    """A value as the admin shows it: a fixed date in the site zone, a relative one as its
-    offset, since no learner's registration date applies to a cohort-wide row."""
-    if value is None:
-        return "None"
-    if value.kind == DeadlineKind.NONE:
-        return "No deadline"
-    at = f" at {value.due_time:%H:%M}" if value.due_time is not None else ""
-    if value.kind == DeadlineKind.FIXED and value.due_date is not None:
-        instant = due_instant(value, value.due_date, site_time_zone(obj.site))
-        return f"Fixed {site_zone_text(instant)}" if instant is not None else "None"
-    days = value.due_days_after_registration
-    return f"{days} day{'' if days == 1 else 's'} after registration{at}"
-
-
-class DeadlineOverrideInline(TabularInline):
-    """Shared shape of the override inlines; the subclass names the model. Both parent
-    models carry a course, so the parent's course needs no subclass hook."""
-
-    extra = 0
-    form = DeadlineOverrideForm
-    formset = DeadlineOverrideFormSet
-    fields = [
-        "collection_item",
-        "kind",
-        "due_date",
-        "due_time",
-        "due_days_after_registration",
-        "reason",
-        "content_default",
-        "effective_value",
-        "default_changed_note",
-        "set_by",
-    ]
-    readonly_fields = [
-        "content_default",
-        "effective_value",
-        "default_changed_note",
-        "set_by",
-    ]
-    verbose_name = "deadline override"
-    # The path from a row to its course, which the read-only columns read for every row.
-    parent_select_related: tuple[str, ...] = ()
-    # The cohort rows beneath this page's rows, fetched once per request by the inline whose
-    # rows have any; None means each row reads its own.
-    cohort_rows_beneath: LayerRows | None = None
-    # The content default of every row in the parent's course, fetched once per request
-    # on first use through `placement_defaults`.
-    content_defaults: ContentDefaults | None = None
-    # The parent's course, read once per request: the admin makes one inline per request,
-    # and both the picker and the formset ask for it.
-    _course_read: bool = False
-    _course: Course | None = None
-
-    def get_queryset(self, request: HttpRequest) -> models.QuerySet[DeadlineOverride]:
-        rows: models.QuerySet[DeadlineOverride] = super().get_queryset(request)
-        return rows.select_related(
-            "site", "collection_item", "set_by", *self.parent_select_related
-        )
-
-    def parent_course(self, request: HttpRequest) -> Course | None:
-        """The course of the object being edited, or None on the add page or for a malformed id.
-        Read through the site-aware manager, so another site's parent is never reached."""
-        if not self._course_read:
-            self._course = self._read_parent_course(request)
-            self._course_read = True
-        return self._course
-
-    def _read_parent_course(self, request: HttpRequest) -> Course | None:
-        object_id = (
-            request.resolver_match.kwargs.get("object_id")
-            if request.resolver_match
-            else None
-        )
-        if object_id is None:
-            return None
-        try:
-            parent = (
-                self.parent_model.objects.select_related("course")
-                .filter(pk=unquote(object_id))
-                .first()
-            )
-        except (ValidationError, ValueError):
-            return None
-        return parent.course if parent is not None else None
-
-    def get_formset(
-        self, request: HttpRequest, obj: object | None = None, **kwargs: object
-    ) -> type[BaseInlineFormSet]:
-        formset = cast(
-            type[DeadlineOverrideFormSet], super().get_formset(request, obj, **kwargs)
-        )
-        formset.set_by = cast(User, request.user)
-        formset.cohort_rows = self.cohort_rows_beneath
-        formset.content_defaults = self.placement_defaults(self.parent_course(request))
-        return formset
-
-    def placement_defaults(self, course: Course | None) -> ContentDefaults | None:
-        """The course's content defaults, read on first use by whichever caller comes
-        first, so a column rendered before the formset is built still reads them once
-        rather than once per row. Every row on the page is in the parent's course, so the
-        first caller's course is the page's. None with no course, as on the add page, so
-        each row reads its own course rather than finding no defaults."""
-        if course is None:
-            return None
-        if self.content_defaults is None:
-            self.content_defaults = content_defaults_for_course(course.pk)
-        return self.content_defaults
-
-    def formfield_for_foreignkey(
-        self,
-        db_field: models.ForeignKey,
-        request: HttpRequest,
-        **kwargs: object,
-    ) -> forms.ModelChoiceField | None:
-        # The picker offers only the parent course's own rows. On the add page there is no
-        # course yet, so it offers nothing; clean() refuses a row from another course regardless.
-        if db_field.name != "collection_item":
-            return cast(
-                "forms.ModelChoiceField | None",
-                super().formfield_for_foreignkey(db_field, request, **kwargs),
-            )
-        course = self.parent_course(request)
-        items = (
-            ContentCollectionItem.objects.filter(
-                pk__in=[i.pk for i in course.viewable_collection_items()]
-            ).prefetch_related("child", "collection")
-            if course is not None
-            else ContentCollectionItem.objects.none()
-        )
-        field = cast(
-            "forms.ModelChoiceField | None",
-            super().formfield_for_foreignkey(
-                db_field,
-                request,
-                form_class=CollectionItemChoiceField,
-                queryset=items,
-                **kwargs,
-            ),
-        )
-        if field is not None:
-            # Set after the call: unfold replaces the empty label with its own. The choices
-            # are listed once here; left to the field, every row's widget would run the
-            # picker query again.
-            field.empty_label = "Course time limit"
-            field.help_text = TIME_LIMIT_HELP
-            field.choices = [
-                ("", field.empty_label),
-                *((item.pk, field.label_from_instance(item)) for item in items),
-            ]
-        return field
-
-    @admin.display(description="Content default")
-    def content_default(self, obj: DeadlineOverride) -> str:
-        if obj._state.adding:
-            return ""
-        return _value_text(
-            content_default_for(obj, self.placement_defaults(obj.course)), obj
-        )
-
-    @admin.display(description="Effective")
-    def effective_value(self, obj: DeadlineOverride) -> str:
-        # An override row always holds a value, so it is the effective one for its layer;
-        # the column shows it as a date in the site zone or as an offset.
-        if obj._state.adding:
-            return ""
-        return _value_text(obj.value(), obj)
-
-    @admin.display(description="Default changed")
-    def default_changed_note(self, obj: DeadlineOverride) -> str:
-        if obj._state.adding:
-            return ""
-        beneath = canonical_beneath(
-            obj, self.cohort_rows_beneath, self.placement_defaults(obj.course)
-        )
-        if obj.replaced_value == beneath:
-            return ""
-        return (
-            "Default has changed since this override was set "
-            f"(was {obj.replaced_value or 'nothing'}, now {beneath or 'nothing'})"
-        )
-
 
 SOURCE_LABELS: dict[DeadlineSource, str] = {
     DeadlineSource.CONTENT: "Content default",
     DeadlineSource.COHORT_REGISTRATION: "Cohort override",
     DeadlineSource.LEARNER: "Learner override",
 }
-
-
-class CohortDeadlineOverrideInline(DeadlineOverrideInline):
-    model = CohortDeadlineOverride
-    parent_select_related = ("cohort_registration__course",)
-
-
-class LearnerDeadlineOverrideInline(DeadlineOverrideInline):
-    model = LearnerDeadlineOverride
-    parent_select_related = ("course_progress__course",)
-
-    def get_formset(
-        self, request: HttpRequest, obj: object | None = None, **kwargs: object
-    ) -> type[BaseInlineFormSet]:
-        # One read of the record's cohort rows for every learner row's "Default changed"
-        # column, as the resolver reads them; the admin makes one inline per request.
-        self.cohort_rows_beneath = {}
-        if isinstance(obj, CourseProgress) and obj.cohort_registration_id is not None:
-            self.cohort_rows_beneath = {
-                (row.cohort_registration_id, row.collection_item_id): row
-                for row in CohortDeadlineOverride.objects.filter(
-                    cohort_registration_id=obj.cohort_registration_id
-                )
-            }
-        return super().get_formset(request, obj, **kwargs)
 
 
 def _deadline_line(label: str, resolved: ResolvedDeadline) -> tuple[str, str, str]:
@@ -482,8 +155,8 @@ def effective_deadline_policy(
 
 
 class CoursePauseInline(ReadOnlyInline):
-    """A record's pauses, newest first. Read-only: a pause is started and ended through the
-    pause and resume pages, which write the audit entry and the webhook with it."""
+    """A record's pauses, newest first. Read-only: a pause is started and ended by the pause
+    and resume services, which write the audit entry and the webhook with it."""
 
     model = CoursePause
     fields = [
@@ -594,8 +267,8 @@ class CoursePauseAdmin(SiteAwareModelAdmin):
 
 
 class DeadlineExtensionInline(ReadOnlyInline):
-    """A record's extensions, newest first. Read-only: an extension is added through the
-    extend page, which writes the audit entry, the webhook and the notification with it."""
+    """A record's extensions, newest first. Read-only: an extension is added by the extend
+    service, which writes the audit entry, the webhook and the notification with it."""
 
     model = DeadlineExtension
     fields = [
@@ -664,19 +337,11 @@ class DeadlineExtensionAdmin(SiteAwareModelAdmin):
         return False
 
 
-# This change page belongs to an app below this one in docs/app_structure.md, so the override
-# inline is added from here rather than imported there. The seam adds rather than replaces.
-CohortCourseRegistrationAdmin.inlines = [
-    *CohortCourseRegistrationAdmin.inlines,
-    CohortDeadlineOverrideInline,
-]
-
-
-# CourseProgressAdmin's change page likewise belongs to a lower app; the inline, the read-only
-# field and its fieldset are added from here. Each seam adds rather than replaces.
+# CourseProgressAdmin's change page belongs to a lower app in docs/app_structure.md, so the
+# inlines, the read-only fields and their fieldset are added from here. Each seam adds rather
+# than replaces.
 CourseProgressAdmin.inlines = [
     *CourseProgressAdmin.inlines,
-    LearnerDeadlineOverrideInline,
     CoursePauseInline,
     DeadlineExtensionInline,
 ]
@@ -703,105 +368,6 @@ setattr(  # noqa: B010
             {"fields": ("effective_deadlines", "effective_deadline_policy")},
         ),
     ),
-)
-
-
-PAUSE_URL_NAME = "freedom_ls_learner_progress_courseprogress_pause"
-RESUME_URL_NAME = "freedom_ls_learner_progress_courseprogress_resume"
-EXTEND_URL_NAME = "freedom_ls_learner_progress_courseprogress_extend"
-
-
-@unfold_action(
-    description="Pause course", url_path="pause-course-action", permissions=["change"]
-)
-def pause_course_action(
-    model_admin: ModelAdmin, request: HttpRequest, object_id: str
-) -> HttpResponseRedirect:
-    return redirect(reverse(f"admin:{PAUSE_URL_NAME}", args=[object_id]))
-
-
-@unfold_action(
-    description="Resume course", url_path="resume-course-action", permissions=["change"]
-)
-def resume_course_action(
-    model_admin: ModelAdmin, request: HttpRequest, object_id: str
-) -> HttpResponseRedirect:
-    return redirect(reverse(f"admin:{RESUME_URL_NAME}", args=[object_id]))
-
-
-@unfold_action(
-    description="Extend deadline",
-    url_path="extend-deadline-action",
-    permissions=["change"],
-)
-def extend_deadline_action(
-    model_admin: ModelAdmin, request: HttpRequest, object_id: str
-) -> HttpResponseRedirect:
-    return redirect(reverse(f"admin:{EXTEND_URL_NAME}", args=[object_id]))
-
-
-# The wrappers call the implementation they replace by name: zero-argument super() has no
-# class cell in a function defined outside the class body.
-_courseprogress_get_urls = CourseProgressAdmin.get_urls
-_courseprogress_get_actions_detail = CourseProgressAdmin.get_actions_detail
-
-
-def _get_urls(self: CourseProgressAdmin) -> list[URLPattern]:
-    return [
-        path(
-            "<path:object_id>/pause/",
-            self.admin_site.admin_view(partial(pause_view, model_admin=self)),
-            name=PAUSE_URL_NAME,
-        ),
-        path(
-            "<path:object_id>/resume/",
-            self.admin_site.admin_view(partial(resume_view, model_admin=self)),
-            name=RESUME_URL_NAME,
-        ),
-        path(
-            "<path:object_id>/extend/",
-            self.admin_site.admin_view(partial(extend_view, model_admin=self)),
-            name=EXTEND_URL_NAME,
-        ),
-        *list(_courseprogress_get_urls(self)),
-    ]
-
-
-def _get_actions_detail(
-    self: CourseProgressAdmin, request: HttpRequest, object_id: str
-) -> list[UnfoldAction]:
-    actions: list[UnfoldAction] = _courseprogress_get_actions_detail(
-        self, request, object_id
-    )
-    try:
-        record_id = UUID(unquote(object_id))
-    except ValueError:
-        return actions
-    # Read by id: the change view has loaded the record already, so it is not fetched again.
-    now = timezone.now()
-    tz = site_time_zone(cast("Site", get_cached_site(request)))
-    paused = any(
-        pause.is_open(now, tz)
-        for pause in CoursePause.objects.filter(course_progress_id=record_id)
-    )
-    hidden = "resume_course_action" if not paused else "pause_course_action"
-    return [a for a in actions if not a.action_name.endswith(hidden)]
-
-
-setattr(CourseProgressAdmin, "pause_course_action", pause_course_action)  # noqa: B010
-setattr(CourseProgressAdmin, "resume_course_action", resume_course_action)  # noqa: B010
-setattr(CourseProgressAdmin, "extend_deadline_action", extend_deadline_action)  # noqa: B010
-setattr(CourseProgressAdmin, "get_urls", _get_urls)  # noqa: B010
-setattr(CourseProgressAdmin, "get_actions_detail", _get_actions_detail)  # noqa: B010
-setattr(  # noqa: B010
-    CourseProgressAdmin,
-    "actions_detail",
-    [
-        *getattr(CourseProgressAdmin, "actions_detail", []),
-        "pause_course_action",
-        "resume_course_action",
-        "extend_deadline_action",
-    ],
 )
 
 
