@@ -764,33 +764,6 @@ class TestCourseRegisteredNotification:
 
         assert fire.call_args.args[0] == "registration.added"
 
-    def test_a_registration_created_through_the_admin_notifies_once(
-        self, mock_site_context, staff_client, django_capture_on_commit_callbacks
-    ) -> None:
-        learner = LearnerFactory()
-        course = CourseFactory()
-        url = reverse(
-            "admin:freedom_ls_learner_management_learnercourseregistration_add"
-        )
-
-        with django_capture_on_commit_callbacks(execute=True):
-            response = staff_client.post(
-                url,
-                {
-                    "learner": str(learner.pk),
-                    "course": str(course.pk),
-                    "is_active": "on",
-                },
-            )
-
-        assert response.status_code == 302
-        assert (
-            Notification._base_manager.filter(
-                user=learner.user, category="course.registered"
-            ).count()
-            == 1
-        )
-
     def test_reactivating_a_registration_notifies_nothing(
         self, mock_site_context, django_capture_on_commit_callbacks
     ) -> None:

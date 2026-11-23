@@ -12,11 +12,6 @@ ConstraintValidationFormMixin form error) fire:
    parked purely so its NAME already exists
    (``unique_webhook_secret_name_per_site``).
 3. One ``CourseInterest`` row (``unique_course_interest``).
-4. A second ``Learner`` row for an existing user on a NON-default
-   Organisation (``unique_learner_per_organisation``), plus one Cohort in each
-   of two non-default Organisations so that the per-organisation scope of
-   ``unique_cohort_name_per_organisation`` can be shown to permit the same
-   name twice.
 
 No ``WebhookDelivery`` rows are created: those are meant to come from the
 admin's "Send Test" action.
@@ -39,9 +34,6 @@ from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course
 from freedom_ls.course_interest.factories import CourseInterestFactory
 from freedom_ls.course_interest.models import CourseInterest
-from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
-from freedom_ls.learner_management.models import Cohort, Learner
-from freedom_ls.organisations.models import Organisation
 from freedom_ls.webhooks.factories import WebhookEndpointFactory, WebhookSecretFactory
 from freedom_ls.webhooks.models import WebhookEndpoint, WebhookSecret
 
@@ -70,11 +62,6 @@ ENDPOINT_ONE_HEADERS_TEMPLATE = '{"X-Api-Key": "{{ secrets.qa_hook_api_key }}"}'
 
 INTEREST_USER_EMAIL = "demodev_s2@email.com"
 INTEREST_COURSE_SLUG = "standard-markdown-demo-finance"
-
-SECOND_ORGANISATION_SLUG = "rpas-training"
-THIRD_ORGANISATION_SLUG = "northside"
-SECOND_ORGANISATION_COHORT_NAME = "QA Org Scope Cohort"
-THIRD_ORGANISATION_COHORT_NAME = "QA Northside Cohort"
 
 
 def _ensure_secret(site: Site, name: str, value: str, description: str) -> str:
@@ -115,36 +102,6 @@ def _ensure_endpoint(site: Site, url: str, **fields: object) -> WebhookEndpoint:
         fg="green",
     )
     return endpoint
-
-
-def _ensure_cohort(site: Site, organisation: Organisation, name: str) -> Cohort:
-    """Get-or-create a Cohort by (site, organisation, name)."""
-    existing = Cohort._base_manager.filter(
-        site=site, organisation=organisation, name=name
-    ).first()
-    if existing is not None:
-        click.secho(
-            f"  kept    Cohort {name!r} in {organisation.name!r} pk={existing.pk}",
-            fg="yellow",
-        )
-        return existing
-    cohort = cast(
-        Cohort, CohortFactory(site=site, organisation=organisation, name=name)
-    )
-    click.secho(
-        f"  created Cohort {name!r} in {organisation.name!r} pk={cohort.pk}", fg="green"
-    )
-    return cohort
-
-
-def _get_organisation(site: Site, slug: str) -> Organisation:
-    try:
-        return Organisation._base_manager.get(site=site, slug=slug)
-    except Organisation.DoesNotExist as exc:
-        raise click.ClickException(
-            f"No Organisation with slug {slug!r} on site {site.name!r}. "
-            "Run qa_create_organisations first."
-        ) from exc
 
 
 @click.command()
@@ -214,22 +171,5 @@ def command(site_name: str) -> None:
         )
     else:
         click.secho(f"  kept    CourseInterest pk={interest.pk}", fg="yellow")
-
-    click.secho("\nOrganisations, learners and cohorts", fg="cyan", bold=True)
-    second_org = _get_organisation(site, SECOND_ORGANISATION_SLUG)
-    third_org = _get_organisation(site, THIRD_ORGANISATION_SLUG)
-
-    already = Learner._base_manager.filter(user=user, organisation=second_org).exists()
-    learner = cast(
-        Learner, LearnerFactory(site=site, user=user, organisation=second_org)
-    )
-    click.secho(
-        f"  {'kept   ' if already else 'created'} Learner pk={learner.pk} "
-        f"{user.email} -> {second_org.name!r}",
-        fg="yellow" if already else "green",
-    )
-
-    _ensure_cohort(site, second_org, SECOND_ORGANISATION_COHORT_NAME)
-    _ensure_cohort(site, third_org, THIRD_ORGANISATION_COHORT_NAME)
 
     click.secho("\nDone.", fg="cyan", bold=True)

@@ -16,7 +16,6 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.organisations.admin import (
-    ORGANISATION_SUMMARIES,
     SUMMARIES_FIELD,
     OrganisationAdmin,
 )
@@ -316,11 +315,16 @@ class TestContributedExtras:
         organisation = OrganisationFactory()
 
         assert admin_instance.get_inlines(request=None, obj=organisation)
-        assert ORGANISATION_SUMMARIES
 
     def test_the_change_page_keeps_the_summaries_row(
-        self, admin_instance: OrganisationAdmin, mock_site_context
+        self, admin_instance: OrganisationAdmin, mock_site_context, monkeypatch
     ) -> None:
+        def summary(organisation: Organisation) -> str:
+            return organisation.name
+
+        monkeypatch.setattr(
+            "freedom_ls.organisations.admin.ORGANISATION_SUMMARIES", [summary]
+        )
         organisation = OrganisationFactory()
 
         assert SUMMARIES_FIELD in admin_instance.get_fields(

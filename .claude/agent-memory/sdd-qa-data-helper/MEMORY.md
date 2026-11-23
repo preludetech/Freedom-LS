@@ -41,16 +41,13 @@
 - [reference_dual_grant_course_progress_fixture.md](reference_dual_grant_course_progress_fixture.md) — Two grants (cohort + individual) on one course for grant fall-through QA; SiteAwareFactory needs explicit site= outside a request; cohort registration fans out to the WHOLE cohort
 - [reference_seeding_form_attempts_around_the_site_bug.md](reference_seeding_form_attempts_around_the_site_bug.md) — `form_progress__site=site` workaround for the CourseFormAttemptFactory NULL-site bug; how to build a real answered/scored cohort-granted sitting; recalculate surfaces unrelated denominator drift
 - [reference_organisation_educator_access.md](reference_organisation_educator_access.md) — Getting a persona into the organisation-scoped educator interface: the two independent access paths, why a missing ObjectRoleAssignment does NOT prove a blocked step, and where cohort reports live
-- [reference_detaching_a_cohort_membership.md](reference_detaching_a_cohort_membership.md) — Deleting ONE CohortMembership to make grant resolution fall through to the individual registration; nothing FKs to CohortMembership (no cascade, no ProtectedError); there is deliberately no post_delete, so the cohort-granted CourseProgress SURVIVES
 - [reference_admin_constraint_fixtures_command.md](reference_admin_constraint_fixtures_command.md) — qa_create_admin_constraint_fixtures: webhook endpoint/secret + CourseInterest + second-org Learner + per-org cohorts for uniqueness-constraint admin QA; WebhookSecret names forbid hyphens
 - [reference_qa_run_residue_cleanup.md](reference_qa_run_residue_cleanup.md) — Tearing down a manual QA run's residue (signup user + LegalConsent x2 + EmailAddress, CourseInterest, a self-service enrolment); Collector.fast_deletes hides half the cascade; CourseProgress PROTECTs LearnerCourseRegistration; also secondary EmailAddress rows on a KEPT user (no cascade, EmailConfirmation always 0); the security-guard hook fails with an EMPTY error and matches its denylist anywhere in the command
 - [reference_revision_scenario_reset.md](reference_revision_scenario_reset.md) — Resetting the qa_create_revision_scenario learners: delete RevisionSchedule/Review, strip `revision_session:*` keys from db sessions, re-seed; expected 7 schedules / 4 due / 54 bank / 47 unscheduled; "nothing due" variant via qa_revision_nothing_due_script.py
-- [reference_organisation_admin_summary_counts.md](reference_organisation_admin_summary_counts.md) — Organisation change-page learner-count summary (ngettext 0/1/N): it lives in learner_management/admin.py via ORGANISATION_SUMMARIES, counts inactive learners too, and how to seed an exact-1 org + render the wording headlessly
 - [reference_form_first_course_command.md](reference_form_first_course_command.md) — qa_create_form_first_course: course whose item 1 is a Form (no-Previous-button branch of the form start page); FormProgress has a direct `user` FK; last_accessed_item is a plain FK; sequential unlock IS enforced by URL now
 - [reference_shell_savepoint_does_not_roll_back.md](reference_shell_savepoint_does_not_roll_back.md) — `transaction.savepoint()` is a NO-OP in `manage.py shell` (autocommit): the "rolled-back probe" pattern silently COMMITS; use `transaction.atomic()` + raise, and re-read the field to prove the restore
 - [reference_standalone_form_sitting.md](reference_standalone_form_sitting.md) — qa_create_standalone_form_sitting: the dev DB's only FormProgress with NO CourseFormAttempt, so FormProgressAdmin's "In course" dash (= "sat standalone") is browser-reachable
 - [reference_legend_edge_cases_command.md](reference_legend_edge_cases_command.md) — qa_create_legend_edge_cases: one-form course stressing the question <legend> (wrapping asterisk, inline markdown, 2-paragraph question, optional-no-asterisk); render the `#form-question` partial via render_to_string to check markup WITHOUT starting a FormProgress
-- [reference_org_cohort_inline_pagination.md](reference_org_cohort_inline_pagination.md) — qa_create_org_cohort_pagination: padding one Organisation to 46 cohorts so the admin Cohorts tab spans 3 pages; the admin-inline paginator family (Cohort@20 / Learner@25) and zero-padded names straddling a boundary
 - [reference_form_count_edge_cases_command.md](reference_form_count_edge_cases_command.md) — qa_create_form_count_edge_cases: the 1-question/1-page and 0-question/0-page forms that make the start page's pluralised fact pills reachable; a Form with ZERO FormPages is legal; ALLOWED_HOSTS trap for rolled-back Client() probes
 - [reference_form_attempt_history_command.md](reference_form_attempt_history_command.md) — qa_create_form_attempt_history: N genuinely scored completed sittings on consecutive days for the start page's Previous-attempts list + its 5-row slice; the latest attempt alone decides the placement, so ending on a FAIL leaves the progression-block fixture intact
 - [reference_dashboard_paging_fixture_teardown.md](reference_dashboard_paging_fixture_teardown.md) — Tearing down the whole qa_create_dashboard_paging_fixtures seed; delete order forced by 3 PROTECTs (Course.delete() takes its ContentCollectionItems but NOT the child Topics); CourseCategory has `title` not `name`
@@ -243,7 +240,7 @@ grant of a different kind". Never hand-create the progress rows; create the regi
 the signal mint it. See [[reference_dual_grant_course_progress_fixture]]. The follow-on ask is now
 also on record: **"take one of the two grants away again"**. Do it by deleting the
 `CohortMembership`, not the progress row — the resolver joins through membership, and the
-progress row is meant to survive. See [[reference_detaching_a_cohort_membership]].
+progress row is meant to survive.
 
 The `CourseFormAttemptFactory` **NULL-site sub-factory bug is FIXED** by commit 2c2b5e35
 (`site=factory.SelfAttribute("..site")` on `form_progress` / `collection_item` in both
@@ -346,8 +343,7 @@ because under an alphabetical `ordering` an unpadded `10` sorts before `2` and l
 the skipped row under test; and aim the padded block to STRADDLE a page boundary so both sides of
 it are individually identifiable. Verify by rebuilding the `Paginator` under a thread-local
 request and asserting the concatenated pages equal the flat queryset — never by eyeballing the
-tab. `qa_create_org_cohort_pagination` wraps it and generalises to any organisation/prefix/count;
-see [[reference_org_cohort_inline_pagination]].
+tab.
 
 **"A previous QA run's fixtures block this run's baseline, delete them"** arrived once
 (better-learner-dashboard-course-display, Sep 2026: the whole

@@ -2,7 +2,6 @@
 
 import pytest
 
-from django.apps import apps
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
@@ -52,26 +51,18 @@ class TestGuardedSiteAwareModelAdmin:
         assert "freedom_ls_learner_management_cohort_permissions" in url_names
 
 
-def _cohort(name: str = "Cohort") -> Cohort:
-    # Looked up by label so this app's tests take no import edge on organisations.
-    organisation_model = apps.get_model("freedom_ls_organisations", "Organisation")
-    cohort: Cohort = Cohort.objects.create(
-        name=name, organisation=organisation_model.objects.create(name="Org")
-    )
-    return cohort
-
-
 @pytest.mark.django_db
 class TestAdminChangeLink:
     def test_links_to_the_change_page_for_a_superuser(self, mock_site_context) -> None:
-        cohort = _cohort(name="Alpha")
+        config = SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
         request = RequestFactory().get("/")
         request.user = UserFactory(is_staff=True, is_superuser=True)
 
-        link = admin_change_link(request, cohort)
+        link = admin_change_link(request, config, label="Alpha")
 
         url = reverse(
-            "admin:freedom_ls_learner_management_cohort_change", args=[cohort.pk]
+            "admin:freedom_ls_site_aware_models_sitetimezoneconfig_change",
+            args=[config.pk],
         )
         assert f'href="{url}"' in link
         assert "Alpha" in link
@@ -79,11 +70,11 @@ class TestAdminChangeLink:
     def test_is_escaped_text_for_a_reader_without_view_permission(
         self, mock_site_context
     ) -> None:
-        cohort = _cohort()
+        config = SiteTimeZoneConfigFactory()
         request = RequestFactory().get("/")
         request.user = UserFactory(is_staff=True, is_superuser=False)
 
-        link = admin_change_link(request, cohort, label="<b>Alpha</b>")
+        link = admin_change_link(request, config, label="<b>Alpha</b>")
 
         assert "<a " not in link
         assert link == "&lt;b&gt;Alpha&lt;/b&gt;"

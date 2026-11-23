@@ -6,7 +6,6 @@ import pytest
 
 from django.urls import reverse
 
-from freedom_ls.learner_management.factories import LearnerFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.tests.app_guards import app_not_installed
 
@@ -20,7 +19,6 @@ from freedom_ls.hr_attributes.factories import (
     LocationFactory,
 )
 from freedom_ls.hr_attributes.models import (
-    LearnerHRAttributes,
     OrganisationHRSettings,
 )
 
@@ -235,9 +233,6 @@ def test_change_page_refuses_renaming_to_a_case_variant_duplicate(
     assert "An entry with this name already exists" in response.content.decode()
 
 
-LEARNER_CHANGE_URL_NAME = "admin:freedom_ls_learner_management_learner_change"
-
-
 def _change_payload(response, **overrides: str) -> dict[str, str]:
     """The admin change form's own values, ready to post straight back."""
     form = response.context["adminform"].form
@@ -259,20 +254,6 @@ def _inline_models(response) -> set[type]:
     return {
         inline.formset.model for inline in response.context["inline_admin_formsets"]
     }
-
-
-@pytest.mark.django_db
-def test_learner_change_page_carries_no_hr_attributes_inline(staff_client):
-    # Arrange
-    learner = LearnerFactory()
-
-    # Act
-    response = staff_client.get(reverse(LEARNER_CHANGE_URL_NAME, args=[learner.pk]))
-
-    # Assert
-    assert response.status_code == 200
-    assert learner.user.email in response.content.decode()
-    assert LearnerHRAttributes not in _inline_models(response)
 
 
 ORGANISATION_CHANGE_URL_NAME = "admin:freedom_ls_organisations_organisation_change"

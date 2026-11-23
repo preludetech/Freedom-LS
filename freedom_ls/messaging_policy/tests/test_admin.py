@@ -355,22 +355,6 @@ def test_the_organisation_admin_page_carries_no_messaging_inline(
     )
 
 
-def test_the_cohort_admin_page_carries_no_messaging_inline(
-    staff_client: Client,
-) -> None:
-    cohort = CohortFactory()
-
-    response = staff_client.get(
-        reverse("admin:freedom_ls_learner_management_cohort_change", args=[cohort.pk])
-    )
-
-    assert response.status_code == 200
-    assert not any(
-        "messagingconfig" in inline.opts.model._meta.model_name
-        for inline in response.context["inline_admin_formsets"]
-    )
-
-
 class RegistrationLevel(NamedTuple):
     model_name: str
     make_registration: Callable[[], Model]

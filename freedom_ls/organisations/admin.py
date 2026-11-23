@@ -48,6 +48,12 @@ class OrganisationAdmin(GuardedSiteAwareModelAdmin):
     # on this class rather than inherited so nothing reaches the list shared
     # with every other ModelAdmin.
     inlines = []
+    # @claude: GuardedSiteAwareModelAdmin combines Unfold's ModelAdmin with
+    # guardian's GuardedModelAdmin. The admin_guardian resource warns this pairing
+    # isn't guaranteed by either package (overlapping templates/hooks) — someone
+    # needs to manually load this model's guardian object-permissions page in the
+    # browser and confirm it renders correctly under the unfold theme before this
+    # comment can be removed.
 
     @admin.display(description="Related")
     def contributed_summaries(self, obj: Organisation) -> str:

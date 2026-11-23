@@ -20,7 +20,18 @@ FORM_DEFINITION_MODELS = [
     ("freedom_ls_form_engine", "QuestionOption"),
 ]
 
-REMOVED_ADMIN_MODELS = [*CONTENT_MODELS, *FORM_DEFINITION_MODELS]
+LEARNER_MANAGEMENT_MODELS = [
+    ("freedom_ls_learner_management", "Learner"),
+    ("freedom_ls_learner_management", "Cohort"),
+    ("freedom_ls_learner_management", "LearnerCourseRegistration"),
+    ("freedom_ls_learner_management", "CohortCourseRegistration"),
+]
+
+REMOVED_ADMIN_MODELS = [
+    *CONTENT_MODELS,
+    *FORM_DEFINITION_MODELS,
+    *LEARNER_MANAGEMENT_MODELS,
+]
 
 
 @pytest.mark.parametrize(("app_label", "model_name"), REMOVED_ADMIN_MODELS)
