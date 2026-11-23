@@ -266,6 +266,7 @@ class CourseOutlineTable(DataTable):
     noun = "course outline items"
     noun_singular = "course outline item"
     card_template_name = "educator_interface/partials/course_outline_card.html"
+    cards_when_narrow = True
 
     @staticmethod
     def get_columns() -> list[Column]:

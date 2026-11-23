@@ -393,6 +393,25 @@ def test_course_content_cards_mirror_the_rows_without_repeating_ids(
 
 
 @pytest.mark.django_db
+def test_outline_tables_switch_to_cards_by_their_own_containers_width(
+    staff_client: Client,
+) -> None:
+    """Both outline tables stayed tables at a 768 viewport because they
+    switched on the viewport instead of on the width of their container."""
+    course = CourseFactory()
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=TopicFactory(), order=0
+    )
+
+    panel = _course_content_panel(staff_client, course)
+
+    (wrapper,) = panel.cssselect("[data-table-layout]")
+    assert "@container" in wrapper.get("class", "").split()
+    (region,) = wrapper.cssselect("[role='region']")
+    assert "@min-[58rem]:block" in region.get("class", "").split()
+
+
+@pytest.mark.django_db
 def test_course_content_empty_course_shows_empty_state(staff_client: Client) -> None:
     panel = _course_content_panel(staff_client, CourseFactory())
 
