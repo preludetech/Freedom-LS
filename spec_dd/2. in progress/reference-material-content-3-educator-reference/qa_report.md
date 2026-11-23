@@ -93,8 +93,8 @@ Actual: at 768 both the Course content and Reference outlines are tables with a 
 
 | Bug | Title | Lane | Verdict | Reason |
 |---|---|---|---|---|
-| B1 | Course content and Reference outline tables do not share column positions | red | UNRESOLVED | Needs a design decision: whether separate outline panels must share fixed column widths (a change to the shared outline table that the spec and rule files do not describe). |
-| B2 | Outline tables stay tables at 768 instead of cards (pre-existing) | red | UNRESOLVED | The rule files disagree: the panel-framework rule says a table switches to cards only when its columns do not fit its container (cards_when_narrow), while the visual checklist line says cards at 768. Choosing between them is a product decision. |
+| B1 | Course content and Reference outline tables do not share column positions | red | **FIXED** (commit: 587ee9dd3, 6120d7c3a) — Course content and Reference outline tables do not share column positions — after the fix: ![](screenshots/fixed/page-2026-11-23T05-19-52-035Z.png) | Decision: fixed #/Type/Actions widths, Title takes the rest. The first attempt (w-16/w-36/w-28) still misaligned on screen ([shot](screenshots/fixed/page-2026-11-23T05-08-21-388Z.png)). After the retry, both tables put TYPE at x=1631 and every Preview at x=1791 at 1920. |
+| B2 | Outline tables stay tables at 768 instead of cards (pre-existing) | red | **FIXED** (commit: 1fe4b122e) — Outline tables stay tables at 768 instead of cards — after the fix: ![](screenshots/fixed/page-2026-11-23T05-08-33-336Z.png) ![](screenshots/fixed/page-2026-11-23T05-08-41-243Z.png) | Decision: the outline table declares cards_when_narrow, so both outlines are cards at 768, on a phone and beside a quick view. |
 
 ## General notes
 
@@ -103,4 +103,4 @@ Actual: at 768 both the Course content and Reference outlines are tables with a 
 - The demo DB had to be seeded, and the data helper changed ownership of the reference demo course (see Data changes).
 - B2 is pre-existing: Course content on main behaves the same way.
 
-status: ok · reason: report rendered, 2 bugs documented
+status: ok · reason: report rendered, 2 bugs documented, 2 fixed by /sdd:qa_fix, 0 open
