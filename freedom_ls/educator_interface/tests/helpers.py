@@ -286,9 +286,11 @@ def _audit_log_document(
     return _get_document(staff_client, _audit_log_url(organisation))
 
 
-def _content_action_url(organisation: Organisation, course: Course, action: str) -> str:
+def _content_action_url(
+    organisation: Organisation, course: Course, action: str, *, panel: str = "content"
+) -> str:
     return _interface_url(
-        organisation.slug, f"courses/{course.pk}/__panels/content/__actions/{action}"
+        organisation.slug, f"courses/{course.pk}/__panels/{panel}/__actions/{action}"
     )
 
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import lxml.html
 import pytest
@@ -49,6 +49,9 @@ from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.site_context import site_context
+
+if TYPE_CHECKING:
+    from django.test.client import _MonkeyPatchedWSGIResponse
 
 
 @pytest.mark.django_db
@@ -468,7 +471,11 @@ def test_course_content_query_count_stays_bounded_as_children_grow(
 
 
 def _preview_url(
-    client: Client, organisation: Organisation, course: CourseModel
+    client: Client,
+    organisation: Organisation,
+    course: CourseModel,
+    *,
+    panel: str = "content",
 ) -> str:
     """The Preview action's URL as the course page publishes it, without
     the item parameter."""
@@ -476,7 +483,7 @@ def _preview_url(
         client, _interface_url(organisation.slug, f"courses/{course.pk}")
     )
     trigger = document.cssselect(
-        "section[data-panel='content'] table button[hx-get*='preview_content']"
+        f"section[data-panel='{panel}'] table button[hx-get*='preview_content']"
     )[0]
     return str(trigger.get("hx-get")).split("?")[0]
 
@@ -1339,5 +1346,209 @@ def test_a_form_page_of_a_course_held_only_through_a_registration_cannot_be_prev
     response = client.get(
         f"{url}?item={item.pk}&page={page.pk}", HTTP_HX_REQUEST="true"
     )
+
+    assert response.status_code == 404
+
+
+def _reference_topic_item(course: CourseModel, title: str = "Cheat sheet") -> Model:
+    """The collection item placing a topic in a reference part of `course`."""
+    part = CoursePartFactory()
+    CourseReferencePartFactory(course=course, course_part=part, order=0)
+    return cast(
+        Model,
+        ContentCollectionItemFactory(
+            collection_object=part, child_object=TopicFactory(title=title), order=0
+        ),
+    )
+
+
+def _reference_preview(
+    client: Client, organisation: Organisation, course: CourseModel, item: Model
+) -> _MonkeyPatchedWSGIResponse:
+    url = _content_action_url(
+        organisation, course, "preview_content", panel="reference"
+    )
+    return client.get(f"{url}?item={item.pk}", HTTP_HX_REQUEST="true")
+
+
+@pytest.mark.django_db
+def test_a_reference_topic_row_carries_a_preview_trigger_on_the_reference_url(
+    staff_client: Client,
+) -> None:
+    course = CourseFactory()
+    item = _reference_topic_item(course)
+
+    panel = _course_content_panel(staff_client, course, panel="reference")
+
+    (trigger,) = panel.cssselect("table button[aria-label='Preview Cheat sheet']")
+    assert trigger.get("hx-get").endswith(
+        f"/__panels/reference/__actions/preview_content?item={item.pk}"
+    )
+
+
+@pytest.mark.django_db
+def test_opening_a_reference_topic_preview_renders_it_read_only(
+    staff_client: Client,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    item = _reference_topic_item(course)
+
+    response = _reference_preview(staff_client, organisation, course, item)
+
+    html = response.content.decode()
+    assert response.status_code == 200
+    assert "Cheat sheet (Preview)" in html
+    assert "Topic" in html
+    assert "max-w-reading" in html
+
+
+@pytest.mark.django_db
+def test_a_reference_item_is_a_404_on_the_course_content_url(
+    staff_client: Client,
+) -> None:
+    organisation = OrganisationFactory()
+    course, _item = _course_with_topic()
+    item = _reference_topic_item(course)
+    url = _content_action_url(organisation, course, "preview_content")
+
+    response = staff_client.get(f"{url}?item={item.pk}", HTTP_HX_REQUEST="true")
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_learning_path_item_is_a_404_on_the_reference_url(
+    staff_client: Client,
+) -> None:
+    organisation = OrganisationFactory()
+    course, item = _course_with_topic()
+    _reference_topic_item(course)
+
+    response = _reference_preview(staff_client, organisation, course, item)
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_reference_item_listed_only_by_another_course_is_a_404(
+    staff_client: Client,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    _reference_topic_item(course)
+    other_item = _reference_topic_item(CourseFactory(), title="Other")
+
+    response = _reference_preview(staff_client, organisation, course, other_item)
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_reference_item_on_another_site_is_a_404(staff_client: Client) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    _reference_topic_item(course)
+    with site_context(SiteFactory()):
+        other_item = _reference_topic_item(CourseFactory(), title="Other")
+
+    response = _reference_preview(staff_client, organisation, course, other_item)
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_part_nested_in_a_reference_part_is_a_404(staff_client: Client) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    part = CoursePartFactory()
+    CourseReferencePartFactory(course=course, course_part=part, order=0)
+    nested_item = ContentCollectionItemFactory(
+        collection_object=part, child_object=CoursePartFactory(), order=0
+    )
+
+    response = _reference_preview(staff_client, organisation, course, nested_item)
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_reference_part_pk_is_a_404(staff_client: Client) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    part = CoursePartFactory()
+    reference_part = CourseReferencePartFactory(course=course, course_part=part)
+
+    response = _reference_preview(
+        staff_client, organisation, course, cast(Model, reference_part)
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "item", ["", "not-a-uuid", "6f1c2f0e-3c1b-4a5e-9a57-0d1f6d3a9b11"]
+)
+def test_a_reference_preview_with_a_missing_or_malformed_item_is_a_404(
+    staff_client: Client, item: str
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    _reference_topic_item(course)
+    url = _content_action_url(
+        organisation, course, "preview_content", panel="reference"
+    )
+
+    response = staff_client.get(f"{url}?item={item}", HTTP_HX_REQUEST="true")
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_reference_preview_without_the_htmx_header_or_by_post_is_a_404(
+    staff_client: Client,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    item = _reference_topic_item(course)
+    url = _content_action_url(
+        organisation, course, "preview_content", panel="reference"
+    )
+
+    plain_get = staff_client.get(f"{url}?item={item.pk}")
+    post = staff_client.post(f"{url}?item={item.pk}", HTTP_HX_REQUEST="true")
+
+    assert (plain_get.status_code, post.status_code) == (404, 404)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("listing_course", [0, 1])
+def test_a_topic_in_a_shared_reference_part_previews_through_each_listing_course(
+    staff_client: Client, listing_course: int
+) -> None:
+    organisation = OrganisationFactory()
+    courses = [CourseFactory(), CourseFactory()]
+    item = _reference_topic_item(courses[0])
+    CourseReferencePartFactory(course=courses[1], course_part=item.collection, order=0)
+
+    response = _reference_preview(
+        staff_client, organisation, courses[listing_course], item
+    )
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_a_topic_in_a_reference_part_is_a_404_through_a_course_that_does_not_list_it(
+    staff_client: Client,
+) -> None:
+    organisation = OrganisationFactory()
+    listing_course = CourseFactory()
+    other_course = CourseFactory()
+    item = _reference_topic_item(listing_course)
+    _reference_topic_item(other_course, title="Own")
+
+    response = _reference_preview(staff_client, organisation, other_course, item)
 
     assert response.status_code == 404

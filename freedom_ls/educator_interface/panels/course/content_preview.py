@@ -227,6 +227,21 @@ def reference_rows(course: Course) -> list[OutlineRow]:
     ]
 
 
+def _course_list_items(
+    course: Course, course_list: CourseList
+) -> list[ContentCollectionItem]:
+    """The collection items one list of the course places, at any depth.
+    Reference parts are reached through the course's own reference parts,
+    so a part the course does not list is never searched."""
+    if course_list == "learning_path":
+        return _all_collection_items(course.collection_items())
+    return [
+        item
+        for reference_part in _reference_parts(course)
+        for item in _all_collection_items(reference_part.course_part.collection_items())
+    ]
+
+
 def _preview_available(request: HttpRequest, course: Course) -> bool:
     """Content previews are for courses available to the organisation in
     view; a course listed only because the organisation holds a
@@ -368,7 +383,7 @@ class CourseReferencePanel(CourseContentPanel):
         return reference_rows(course)
 
     def preview_actions(self) -> list[PanelAction]:
-        return []
+        return [PreviewContentAction(course_list="reference")]
 
 
 def _condition_question_text(page: FormPage) -> str:
@@ -433,6 +448,9 @@ class PreviewContentAction(PanelAction):
     renders_in_footer = False
     template_name = "educator_interface/modal/content_preview.html"
 
+    def __init__(self, course_list: CourseList = "learning_path") -> None:
+        self.course_list = course_list
+
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         if ctx.request.headers.get("HX-Request") != "true":
             raise Http404
@@ -441,7 +459,7 @@ class PreviewContentAction(PanelAction):
         collection_item = next(
             (
                 item
-                for item in _all_collection_items(course.collection_items())
+                for item in _course_list_items(course, self.course_list)
                 if item.pk == pk
             ),
             None,
