@@ -19,9 +19,11 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
+- [ ] (user) Decide what to do about QA bug: admin changelist cards at 375px break field labels mid-word ('Learn er', 'Cours e'); unfold's mobile card layout, shared by every admin changelist, predates this branch (TDD: failing test first, then fix)
+- [ ] (user) Look at the guardian object-permissions page screenshot in qa_report.md (it rendered correctly under unfold) and, if satisfied, resolve the @claude comment on OrganisationAdmin in freedom_ls/organisations/admin.py
 
 ## 4. Documentation and pull request
 
