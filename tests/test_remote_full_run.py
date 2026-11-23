@@ -207,6 +207,7 @@ class Scenario:
                 "rev-parse HEAD": [{"stdout": f"{HEAD}\n"}],
                 "rev-parse --abbrev-ref": [{}],
                 "ls-remote": [{"stdout": f"{HEAD}\trefs/heads/{self.branch}\n"}],
+                "cat-file -e": [{}],
                 "merge-base --is-ancestor": [{}],
                 "push": [{}],
             },
@@ -318,7 +319,8 @@ def test_a_pass_prints_the_runner_count_lines_with_the_run_duration(
 @pytest.mark.parametrize(
     ("scenario_edit", "reason"),
     [
-        ("dirty", "tracked files have uncommitted changes"),
+        ("dirty", "the working tree has uncommitted or untracked files"),
+        ("untracked", "the working tree has uncommitted or untracked files"),
         ("detached", "HEAD is detached"),
         ("no_auth", "gh is not logged in"),
     ],
@@ -329,6 +331,9 @@ def test_a_failed_precondition_is_unavailable_and_dispatches_nothing(
     scenario = Scenario()
     edits = {
         "dirty": lambda: scenario.answer("git", "status", {"stdout": " M a.py\n"}),
+        "untracked": lambda: scenario.answer(
+            "git", "status", {"stdout": "?? new_migration.py\n"}
+        ),
         "detached": lambda: scenario.answer("git", "symbolic-ref", {"status": 1}),
         "no_auth": lambda: scenario.answer("gh", "auth status", {"status": 1}),
     }
@@ -361,14 +366,10 @@ def test_a_missing_gh_is_unavailable_and_dispatches_nothing(tmp_path: Path) -> N
     )
 
 
-def test_an_untracked_file_alone_does_not_stop_the_run(tmp_path: Path) -> None:
-    scenario = Scenario()
-    scenario.answer("git", "status --porcelain --untracked-files=no", {"stdout": ""})
+def test_the_tree_check_counts_untracked_files(tmp_path: Path) -> None:
+    outcome = run_script(Scenario(), tmp_path)
 
-    outcome = run_script(scenario, tmp_path)
-
-    assert "git status --porcelain --untracked-files=no" in outcome.calls
-    assert outcome.lines[-1] == "run: RESULT PASS"
+    assert "git status --porcelain" in outcome.calls
 
 
 def test_main_missing_from_origin_is_unavailable_and_never_pushed(
@@ -424,6 +425,44 @@ def test_an_origin_branch_that_head_does_not_contain_is_unavailable_and_not_push
     ) == (
         "run: RESULT UNAVAILABLE origin/feature has diverged from HEAD; "
         "push it with --force-with-lease first",
+        [],
+    )
+
+
+def test_an_origin_branch_ahead_of_head_is_unavailable_and_says_to_pull(
+    tmp_path: Path,
+) -> None:
+    remote_tip = "f" * 40
+    scenario = Scenario()
+    scenario.answer(
+        "git", "ls-remote", {"stdout": f"{remote_tip}\trefs/heads/feature\n"}
+    )
+    scenario.answer("git", f"merge-base --is-ancestor {remote_tip} HEAD", {"status": 1})
+    scenario.answer("git", f"merge-base --is-ancestor HEAD {remote_tip}", {})
+
+    outcome = run_script(scenario, tmp_path)
+
+    assert (
+        unavailable_line(outcome),
+        [call for call in outcome.calls if call.startswith("git push")],
+    ) == ("run: RESULT UNAVAILABLE origin/feature is ahead of HEAD; pull first", [])
+
+
+def test_an_origin_tip_this_clone_lacks_is_unavailable_and_says_to_fetch(
+    tmp_path: Path,
+) -> None:
+    scenario = Scenario()
+    scenario.answer("git", "ls-remote", {"stdout": "f" * 40 + "\trefs/heads/feature\n"})
+    scenario.answer("git", "cat-file -e", {"status": 1})
+
+    outcome = run_script(scenario, tmp_path)
+
+    assert (
+        unavailable_line(outcome),
+        [call for call in outcome.calls if call.startswith("git push")],
+    ) == (
+        "run: RESULT UNAVAILABLE origin/feature has commits this clone lacks; "
+        "fetch first",
         [],
     )
 
@@ -920,6 +959,29 @@ def test_a_run_without_a_test_verdict_is_unavailable(
     )
 
 
+def test_a_job_failing_with_no_failed_test_is_not_hidden_by_another_jobs_failure(
+    tmp_path: Path,
+) -> None:
+    jobs = [
+        replace(
+            job,
+            conclusion="failure",
+            failed_step="Run tests",
+            report=report_text([job.node()], passed=False),
+        )
+        if job.name == "unit-2"
+        else job
+        for job in failing_unit_jobs()
+    ]
+
+    outcome = run_script(Scenario(jobs=jobs), tmp_path)
+
+    assert (outcome.process.returncode, unavailable_line(outcome)) == (
+        UNAVAILABLE_EXIT,
+        "run: RESULT UNAVAILABLE unit-2 failed with no failed test",
+    )
+
+
 def test_a_malformed_group_report_is_unavailable(tmp_path: Path) -> None:
     jobs = with_job("unit-1", report="not json\n" + report_text(["a::b"]))
 
@@ -986,15 +1048,24 @@ def test_a_verdict_job_failing_at_a_setup_step_has_no_verdict() -> None:
         remote.require_verdict_job(jobs)
 
 
-def test_a_bug_is_raised_not_reported_unavailable_and_the_run_is_cancelled(
-    monkeypatch: pytest.MonkeyPatch,
+def test_an_unavailable_run_in_progress_is_cancelled_once(tmp_path: Path) -> None:
+    outcome = run_script(Scenario(run_view_head="b" * 40), tmp_path)
+
+    assert [call for call in outcome.calls if call.startswith("gh run cancel")] == [
+        "gh run cancel 777"
+    ]
+
+
+@pytest.mark.parametrize("error", [KeyError("a bug"), KeyboardInterrupt()])
+def test_a_bug_or_an_interrupt_is_raised_and_the_run_is_cancelled(
+    monkeypatch: pytest.MonkeyPatch, error: BaseException
 ) -> None:
     calls: list[list[str]] = []
 
     progress = remote.Progress(url=RUN_URL, run_id="777", cancellable=True)
 
     def execute(_progress: object) -> int:
-        raise KeyError("a bug")
+        raise error
 
     def run_tool(argv: list[str]) -> subprocess.CompletedProcess[str]:
         calls.append(argv)
@@ -1004,6 +1075,6 @@ def test_a_bug_is_raised_not_reported_unavailable_and_the_run_is_cancelled(
     monkeypatch.setattr(remote, "execute", execute)
     monkeypatch.setattr(remote, "run_tool", run_tool)
 
-    with pytest.raises(KeyError):
+    with pytest.raises(type(error)):
         remote.main()
     assert calls == [["gh", "run", "cancel", "777"]]

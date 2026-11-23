@@ -187,12 +187,33 @@ def check_gh() -> None:
 
 def check_preconditions() -> str:
     """The branch to test, once the tree is clean, HEAD is on a branch and `gh` can dispatch."""
-    status = run_tool(["git", "status", "--porcelain", "--untracked-files=no"])
+    # GitHub tests the pushed commit, so anything the commit lacks goes untested: an
+    # untracked file counts, since the test selector reads it too.
+    status = run_tool(["git", "status", "--porcelain"])
     if status.stdout.strip():
-        raise Unavailable("tracked files have uncommitted changes")
+        raise Unavailable("the working tree has uncommitted or untracked files")
     branch = current_branch()
     check_gh()
     return branch
+
+
+def is_ancestor(ancestor: str, descendant: str) -> bool:
+    command = ["git", "merge-base", "--is-ancestor", ancestor, descendant]
+    return run_tool(command).returncode == 0
+
+
+def require_pushable(branch: str, remote_tip: str) -> None:
+    """Raise Unavailable for an `origin` tip HEAD does not contain: the plain push would be
+    rejected. Only a branch rewritten here is one to force-push."""
+    if run_tool(["git", "cat-file", "-e", f"{remote_tip}^{{commit}}"]).returncode != 0:
+        raise Unavailable(f"origin/{branch} has commits this clone lacks; fetch first")
+    if is_ancestor(remote_tip, "HEAD"):
+        return
+    if is_ancestor("HEAD", remote_tip):
+        raise Unavailable(f"origin/{branch} is ahead of HEAD; pull first")
+    raise Unavailable(
+        f"origin/{branch} has diverged from HEAD; push it with --force-with-lease first"
+    )
 
 
 def push_if_needed(branch: str) -> str:
@@ -211,18 +232,8 @@ def push_if_needed(branch: str) -> str:
         raise Unavailable(
             f"origin/{branch} lacks HEAD and {branch} is never pushed from here"
         )
-    # A tip HEAD does not contain (a rebased branch, or one the local clone lacks) would be
-    # rejected by the plain push below.
-    if (
-        remote_tip
-        and run_tool(
-            ["git", "merge-base", "--is-ancestor", remote_tip, "HEAD"]
-        ).returncode
-        != 0
-    ):
-        raise Unavailable(
-            f"origin/{branch} has diverged from HEAD; push it with --force-with-lease first"
-        )
+    if remote_tip:
+        require_pushable(branch, remote_tip)
     upstream = run_tool(
         ["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]
     )
@@ -478,9 +489,10 @@ def classify(
     failing_jobs = [
         job for job in jobs if is_test_job(job) and job.conclusion == "failure"
     ]
+    for job in failing_jobs:
+        if "failed" not in states[job.name].outcomes.values():
+            raise Unavailable(f"{job.name} failed with no failed test")
     if failing_jobs:
-        if not failed:
-            raise Unavailable(f"{failing_jobs[0].name} failed with no failed test")
         return Verdict("FAIL", failed=failed)
     coverage_job = find_job(jobs, "coverage")
     if coverage_job.conclusion == "success":
@@ -646,6 +658,7 @@ def report_unavailable(reason: str, progress: Progress) -> int:
     """Cancel a run still in progress, then print why there is no verdict."""
     if progress.cancellable:
         cancel = run_tool(["gh", "run", "cancel", progress.run_id])
+        progress.cancellable = False
         if cancel.returncode != 0:
             reason += f" (gh run cancel failed: {first_line(cancel.stderr)})"
     if progress.url:
@@ -694,11 +707,11 @@ def main() -> int:
     # ValueErrors.
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         return report_unavailable(f"{type(error).__name__}: {error}", progress)
-    except BaseException:
-        # A bug in this script raises with its traceback, but a run still going is cancelled.
+    finally:
+        # A bug in this script, or an interrupt, raises with its traceback, but a run still
+        # going is cancelled.
         if progress.cancellable:
             run_tool(["gh", "run", "cancel", progress.run_id])
-        raise
 
 
 if __name__ == "__main__":
