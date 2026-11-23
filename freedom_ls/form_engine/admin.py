@@ -8,7 +8,6 @@ from django.urls import URLPattern, path, reverse
 from django.utils.html import format_html
 from django.utils.safestring import SafeString
 
-from freedom_ls.content_base.admin_filters import ContentTagListFilter
 from freedom_ls.site_aware_models.admin import (
     ReadOnlyAdminMixin,
     ReadOnlyInline,
@@ -246,7 +245,7 @@ class FormPageAdmin(SiteAwareModelAdmin):
 @admin.register(Form)
 class FormAdmin(SiteAwareModelAdmin):
     list_display = ["title", "subtitle", "strategy"]
-    list_filter = ("strategy", ContentTagListFilter)
+    list_filter = ("strategy",)
     search_fields = ("title", "subtitle", "description")
     readonly_fields = ("slug",)
     inlines = [FormPageInline]

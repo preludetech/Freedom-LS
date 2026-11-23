@@ -176,7 +176,9 @@ def test_change_page_shows_the_answers_document(staff_client):
     assert "id-scan.png" in content
 
 
-def test_change_page_summary_links_to_user_course_and_sitting(staff_client):
+def test_change_page_summary_links_to_user_and_sitting_and_shows_course_as_text(
+    staff_client,
+):
     application, _ = _answered_application()
     assert application.form_progress is not None
     assert application.user is not None
@@ -185,10 +187,11 @@ def test_change_page_summary_links_to_user_course_and_sitting(staff_client):
 
     for name, obj in [
         ("freedom_ls_accounts_user_change", application.user),
-        ("freedom_ls_content_engine_course_change", application.course),
         ("freedom_ls_form_engine_formprogress_change", application.form_progress),
     ]:
         assert f'href="{reverse(f"admin:{name}", args=[obj.pk])}"' in content
+    assert application.course.title in content
+    assert "freedom_ls_content_engine/course" not in content
 
 
 def test_change_page_summary_is_plain_text_for_a_reader_who_cannot_open_the_links(
@@ -211,7 +214,6 @@ def test_change_page_summary_is_plain_text_for_a_reader_who_cannot_open_the_link
     assert str(application.form_progress) in content
     for name, obj in [
         ("freedom_ls_accounts_user_change", application.user),
-        ("freedom_ls_content_engine_course_change", application.course),
         ("freedom_ls_form_engine_formprogress_change", application.form_progress),
     ]:
         assert reverse(f"admin:{name}", args=[obj.pk]) not in content
