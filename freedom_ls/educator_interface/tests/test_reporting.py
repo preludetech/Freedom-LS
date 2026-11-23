@@ -21,6 +21,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
+import freedom_ls.educator_interface
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import (
@@ -784,7 +785,7 @@ class TestNeedsAttentionPictures:
         )
         client = logged_in_client(_org_admin(cohort.organisation))
         monkeypatch.setattr(
-            "freedom_ls.educator_interface.reporting.learner_avatars",
+            "freedom_ls.educator_interface.panels.cohort.report_panels.learner_avatars",
             lambda learner_ids: {},
         )
 
@@ -1279,7 +1280,7 @@ class TestCohortReportBody:
 
 
 _NEW_REPORTING_FILES = [
-    "reporting.py",
+    "panels/cohort/report_panels.py",
     "panels/dashboard/panels.py",
     "panels/learner/panels.py",
     "templates/educator_interface/panels/dashboard.html",
@@ -1299,7 +1300,9 @@ def test_reporting_surfaces_never_read_the_stored_progress_percentage(
     relative_path: str,
 ) -> None:
     """Figures are recomputed from progress rows, never read from the stored column."""
-    source = (Path(__file__).parent.parent / relative_path).read_text()
+    source = (
+        Path(freedom_ls.educator_interface.__file__).parent / relative_path
+    ).read_text()
 
     assert "progress_percentage" not in source
 
@@ -1368,7 +1371,7 @@ class TestCohortReportBodyPictures:
         )
         client = logged_in_client(_org_admin(cohort.organisation))
         monkeypatch.setattr(
-            "freedom_ls.educator_interface.reporting.learner_avatars",
+            "freedom_ls.educator_interface.panels.cohort.report_panels.learner_avatars",
             lambda learner_ids: {},
         )
 

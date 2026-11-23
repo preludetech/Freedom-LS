@@ -52,6 +52,11 @@ from freedom_ls.educator_interface.panels.cohort.data_tables import (
     CohortDataTable,
 )
 from freedom_ls.educator_interface.panels.cohort.quick_view import CohortQuickView
+from freedom_ls.educator_interface.panels.cohort.report_panels import (
+    DOWNLOAD_COHORT_REPORT,
+    CohortNeedsAttentionPanel,
+    CohortReportStack,
+)
 from freedom_ls.educator_interface.panels.common.badges import (
     active_status_badge,
     inactive_badge,
@@ -80,11 +85,6 @@ from freedom_ls.educator_interface.panels.staff.actions import (
 )
 from freedom_ls.educator_interface.panels.staff.config import StaffConfig
 from freedom_ls.educator_interface.paths import interface_path
-from freedom_ls.educator_interface.reporting import (
-    DOWNLOAD_COHORT_REPORT,
-    CohortNeedsAttentionPanel,
-    CohortReportStack,
-)
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.models import (
     Cohort,
