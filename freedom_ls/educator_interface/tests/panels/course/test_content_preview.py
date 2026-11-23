@@ -139,20 +139,23 @@ def test_the_reference_panel_lists_parts_in_order_numbered_within_itself(
 
 
 @pytest.mark.django_db
-def test_reference_parts_sharing_an_order_are_numbered_in_creation_order(
+def test_reference_parts_sharing_an_order_are_numbered_by_primary_key(
     staff_client: Client,
 ) -> None:
     course = CourseFactory()
-    for title in ("Field guide", "Glossary"):
+    for title, pk in (("Field guide", 2), ("Glossary", 1)):
         CourseReferencePartFactory(
-            course=course, course_part=CoursePartFactory(title=title), order=0
+            id=uuid.UUID(int=pk),
+            course=course,
+            course_part=CoursePartFactory(title=title),
+            order=0,
         )
 
     panel = _course_content_panel(staff_client, course, panel="reference")
 
     text = panel.cssselect(f"[aria-label='{REFERENCE_LABEL}'] tbody")[0].text_content()
     assert _outline_numbers(panel, REFERENCE_LABEL) == ["1.", "2."]
-    assert text.index("Field guide") < text.index("Glossary")
+    assert text.index("Glossary") < text.index("Field guide")
 
 
 @pytest.mark.django_db
