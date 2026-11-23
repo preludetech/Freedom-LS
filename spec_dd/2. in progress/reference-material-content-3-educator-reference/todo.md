@@ -15,10 +15,12 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 3. Implementation and QA
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
+- [ ] (user) Decide what to do about QA bug: Course content and Reference outline tables do not share column positions — whether stacked outline panels must share fixed column widths (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: outline tables stay tables at 768 instead of cards (pre-existing; the panel-framework rule switches to cards only when columns do not fit, the visual checklist says cards at 768) — pick which rule wins, then fix the code or the checklist line (TDD: failing test first, then fix)
 
 ## 4. Documentation and pull request
 
