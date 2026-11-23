@@ -46,8 +46,8 @@ tab alike.
 The educator course page lists the course outline as the panel framework's ordered-list data
 table, with a "Preview" button on every row.
 
-- The course details are the table's first row, with the same small "Preview" button as every
-  other row, never a button in the panel header.
+- In "Course content", the course details are the table's first row, with the same small
+  "Preview" button as every other row, never a button in the panel header.
 - A course part, and a form with more than one page, is a group row with its children under it.
   A form with one page is one row, not a group.
 - A content preview's type chip reads "Topic", "Form", "Form page" or "Course details". The
@@ -59,6 +59,11 @@ table, with a "Preview" button on every row.
 - Every outline table on the course page shares one column layout: the `#`, Type and Actions
   columns have fixed widths and Title takes the rest, so stacked outline panels line their
   numbers, types and Preview buttons up in one column each.
+- A "Reference" panel follows "Course content" and lists the course's reference parts the same
+  way: each part is a group row with its topic rows under it, numbered `1.`, `1.1`, … within the
+  panel. It has no details row and its own footer count. A course with no reference parts shows
+  "No reference material in this course yet." and no count. It shows the same withheld note and
+  opens the same preview as "Course content".
 - The outline table declares `cards_when_narrow`: it shows as cards at 768, on a phone and beside
   an open quick view, and as a table only where its columns fit.
 
@@ -81,8 +86,11 @@ What QA checks in a screenshot of an educator page, on top of the panel framewor
 - Each instance-page action sits where the Placement table puts it; a Settings tab holds only
   actions that have no home beside the thing they change.
 - A log or History table has sort headers and the Who, What and When filters.
-- The course outline has the course details as its first row and a multi-page form expanded into
-  one row per page; a content preview sits in the reading column, not the dialog's width.
+- The "Course content" outline has the course details as its first row and a multi-page form
+  expanded into one row per page; a content preview sits in the reading column, not the dialog's
+  width.
+- The "Reference" panel after it numbers its parts and topics from `1.`, has no details row and
+  shows its own footer count, or "No reference material in this course yet." when empty.
 - Stacked outline tables line up: the `#`, Type and Preview columns start at the same x in every
   outline panel on the course page; at 768 and on a phone every outline shows as cards.
 - A course another organisation owns shows its owner: "(<organisation>)" after the title in a
