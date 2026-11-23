@@ -1281,6 +1281,7 @@ class TestCohortReportBody:
 
 _NEW_REPORTING_FILES = [
     "panels/cohort/report_panels.py",
+    "panels/cohort/panels.py",
     "panels/dashboard/panels.py",
     "panels/learner/panels.py",
     "templates/educator_interface/panels/dashboard.html",
