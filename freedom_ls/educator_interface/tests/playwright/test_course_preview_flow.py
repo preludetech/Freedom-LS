@@ -102,6 +102,12 @@ def _seed_course(user: AbstractBaseUser) -> tuple[Organisation, Course]:
     return organisation, course
 
 
+def _left_edge(locator: Locator) -> float:
+    box = locator.bounding_box()
+    assert box is not None
+    return box["x"]
+
+
 def _visible_text(page: Page, text: str) -> Locator:
     """The outline's visible copy of `text`: the table and the cards both
     hold every row, and only the one for the viewport shows."""
@@ -185,6 +191,24 @@ def test_educator_previews_course_content(
                 ]
                 row_heights = [box["height"] for box in boxes if box is not None]
                 assert max(row_heights) - min(row_heights) <= 1
+
+                # Stacked outline tables share their column positions: each
+                # table used to size its own columns from its content.
+                content_region = page.get_by_role("region", name="Course outline items")
+                reference_region = page.get_by_role(
+                    "region", name="Reference outline items"
+                )
+                for header in ("#", "Type"):
+                    assert _left_edge(
+                        content_region.get_by_role("columnheader", name=header)
+                    ) == _left_edge(
+                        reference_region.get_by_role("columnheader", name=header)
+                    )
+                assert _left_edge(
+                    content_region.get_by_role("button", name="Preview").first
+                ) == _left_edge(
+                    reference_region.get_by_role("button", name="Preview").first
+                )
 
             # Enter on the keyboard-focused button opens the dialog and puts
             # focus on its title.

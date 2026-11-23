@@ -1644,6 +1644,5 @@ def test_outline_tables_fix_the_width_of_every_column_but_title() -> None:
             assert header_widths, (table, header)
             assert header_widths != ["w-0"], (table, header)
             assert cell_widths == header_widths, (table, header)
-        assert not [
-            c for c in columns["Title"].header_class.split() if c.startswith("w-")
-        ]
+        assert columns["Title"].header_class == "w-full"
+        assert columns["Title"].cell_class == "w-full"
