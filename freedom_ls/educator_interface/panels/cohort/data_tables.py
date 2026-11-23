@@ -13,7 +13,9 @@ from freedom_ls.educator_interface.panels.common.request import (
 )
 from freedom_ls.educator_interface.panels.common.tables import (
     _active_status_column,
+    _course_title_column,
     _interface_link,
+    _registration_columns,
 )
 from freedom_ls.learner_management.models import Cohort, CohortCourseRegistration
 from freedom_ls.learner_management.queries import cohorts_visible_to
@@ -21,6 +23,7 @@ from freedom_ls.panel_framework.filters import TableFilter, ToggleFilter
 from freedom_ls.panel_framework.tables import Column, DataTable, TableQuery
 
 __all__ = [
+    "CohortCourseRegistrationDataTable",
     "CohortDataTable",
     "LearnerCohortDataTable",
 ]
@@ -154,3 +157,33 @@ class LearnerCohortDataTable(CohortDataTable):
     @classmethod
     def get_filters(cls) -> list[TableFilter]:
         return []
+
+
+class CohortCourseRegistrationDataTable(DataTable):
+    empty_message = "This cohort is not registered for any courses yet. Its course registrations will appear here."
+    empty_no_results = "No course registrations match these filters."
+
+    @staticmethod
+    def get_queryset(request: HttpRequest) -> QuerySet:
+        request = cast(OrganisationScopedRequest, request)
+        visible_cohorts = cohorts_visible_to(request.user, request.organisation)
+        return (
+            CohortCourseRegistration.objects.select_related("course", "cohort")
+            .prefetch_related("course__organisations")
+            .filter(cohort__in=visible_cohorts)
+            .order_by("course__title")
+        )
+
+    @staticmethod
+    def get_columns() -> list[Column]:
+        return [
+            _course_title_column(
+                "Course", "course.title", "courses/{course.pk}", attr="course"
+            ),
+            *_registration_columns(),
+            Column(
+                header="",
+                template_name="educator_interface/data-table-cells/deactivate_registration.html",
+                card="secondary",
+            ),
+        ]

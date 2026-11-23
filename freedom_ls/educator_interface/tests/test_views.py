@@ -33,6 +33,7 @@ from freedom_ls.educator_interface.panels.audit_log.data_tables import (
     OrganisationAuditLogTable,
 )
 from freedom_ls.educator_interface.panels.cohort.data_tables import (
+    CohortCourseRegistrationDataTable,
     CohortDataTable,
     LearnerCohortDataTable,
 )
@@ -1992,7 +1993,7 @@ EDUCATOR_TABLES: list[type[DataTable]] = [
     CohortDataTable,
     LearnerCohortDataTable,
     CourseDataTable,
-    educator_views.CohortCourseRegistrationDataTable,
+    CohortCourseRegistrationDataTable,
     CourseCohortRegistrationDataTable,
     CourseLearnerRegistrationDataTable,
     StaffDataTable,
