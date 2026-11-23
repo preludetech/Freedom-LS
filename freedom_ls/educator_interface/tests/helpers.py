@@ -174,6 +174,14 @@ COURSE_REACH_ROWS = [
     ("unreached", False),
 ]
 
+REGISTERABLE_ROWS = [
+    ("no_owner", True),
+    ("owned", True),
+    ("shared", True),
+    ("held", False),
+    ("unreached", False),
+]
+
 
 def _interface_url(organisation_slug: str, path_string: str) -> str:
     return reverse(
