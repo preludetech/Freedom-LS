@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+from collections.abc import Callable
 from functools import partial
 from typing import cast
 
@@ -120,8 +121,8 @@ def test_small_screenshot_png_comes_back_lossless():
     ids=["photograph", "camera_exif_flat_fill"],
 )
 def test_comparison_winner_on_each_side_of_the_lossy_wins_divisor(
-    builder, expected_lossless
-):
+    builder: Callable[[], bytes], expected_lossless: bool
+) -> None:
     decision = optimise_image(builder(), ".png")
 
     assert decision.lossless is expected_lossless

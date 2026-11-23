@@ -1474,6 +1474,12 @@ def test_a_recipient_no_group_claims_still_appears_under_others(
 
 REPLY_FLAG_SETTINGS = {
     "all_closed": ALL_CLOSED,
+    # One route open and the other closed: the forward refusal differs by route,
+    # which decides the recipients can_reply_many asks the backward query for.
+    "educators_open_cohort_peers_closed": {
+        **ALL_CLOSED,
+        "learner_to_educator": "open",
+    },
     "educators_and_cohort_peers_open": {
         **ALL_CLOSED,
         "learner_to_educator": "open",

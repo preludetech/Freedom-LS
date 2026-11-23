@@ -27,6 +27,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
 - [x] (cmd) Run `/sdd:document`: in `claude_plugins/fls-dev/skills/testing/SKILL.md`, add a section "The test-cost ranking" with the command (`uv run python scripts/rank_test_costs.py`), when to run it (after pruning, or when the suite feels slower), its run time from the last ranking run in `timings.md`, what `test_organisation/test_cost_ranking.md` holds, and that nothing fails on slowness (spec: Documentation and downstream)
 - [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [ ] (user + cmd) Regenerate `test_organisation/test_cost_ranking.md` with `uv run python scripts/rank_test_costs.py` on a quiet machine (the post-review run at load 9-13 was discarded); the new header adds a Database teardown line, and the SKILL.md run time may need updating
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
 ## 5. Cleanup

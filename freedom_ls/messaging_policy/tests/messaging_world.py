@@ -35,8 +35,9 @@ def recipients_pairs(
     """(sender, recipient) for every recipient in recipients_for(sender), over
     `senders` (every user in the world when omitted)."""
     users = world_users(world)
+    chosen_senders = users if senders is None else senders
     reached_by: dict[int, set[int]] = {}
-    for sender in (senders or users).values():
+    for sender in chosen_senders.values():
         reached_by[sender.pk] = set(
             policy.recipients_for(sender=sender, site=world.site).values_list(
                 "pk", flat=True
@@ -44,7 +45,7 @@ def recipients_pairs(
         )
     return {
         (sender_name, recipient_name)
-        for sender_name, sender in (senders or users).items()
+        for sender_name, sender in chosen_senders.items()
         for recipient_name, recipient in users.items()
         if recipient.pk in reached_by[sender.pk]
     }
@@ -70,8 +71,9 @@ def allowed_pairs(
     (every user in the world when omitted). Two names for one user share an
     answer, so the policy is asked once per pair of users."""
     users = world_users(world)
+    chosen_senders = users if senders is None else senders
     answers: dict[tuple[int, int], bool] = {}
-    for sender in (senders or users).values():
+    for sender in chosen_senders.values():
         for recipient in users.values():
             if (sender.pk, recipient.pk) not in answers:
                 answers[(sender.pk, recipient.pk)] = policy.can_start(
@@ -79,7 +81,7 @@ def allowed_pairs(
                 ).allowed
     return {
         (sender_name, recipient_name)
-        for sender_name, sender in (senders or users).items()
+        for sender_name, sender in chosen_senders.items()
         for recipient_name, recipient in users.items()
         if answers[(sender.pk, recipient.pk)]
     }

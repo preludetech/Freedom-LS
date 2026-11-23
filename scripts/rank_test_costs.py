@@ -12,6 +12,7 @@ import json
 import os
 import platform
 import resource
+import shlex
 import subprocess
 import sys
 from collections import defaultdict
@@ -163,6 +164,7 @@ def render_ranking(
     areas = group_costs(costs, area_of)
     total = sum(area.seconds for area in areas)
     db_setup = costs["django_db_setup"]
+    db_teardown = costs["django_db_teardown"]
     lines = [
         FIRST_LINE,
         "",
@@ -175,6 +177,8 @@ def render_ranking(
         f"- Wall seconds: {run.wall_seconds:.1f}",
         f"- Summed test cost: {total:.1f} seconds",
         f"- Database setup: {sum(db_setup.values()):.1f} seconds across {len(db_setup)} workers",
+        f"- Database teardown: {sum(db_teardown.values()):.1f} seconds "
+        f"across {len(db_teardown)} workers",
         "- Run conditions:",
         *(f"  - {condition}" for condition in run.conditions),
         "",
@@ -208,14 +212,19 @@ def render_ranking(
 
 
 def run_pytest(command: list[str]) -> PytestRun:
-    """Run the command from the repo root, with the root on PYTHONPATH so `-p` can import the
-    recorder, and measure the CPU its whole process tree used."""
+    """Run the command from the repo root, with the root first on PYTHONPATH so `-p` can import
+    the recorder, and measure the CPU its whole process tree used."""
     before = resource.getrusage(resource.RUSAGE_CHILDREN)
     start = monotonic()
     completed = subprocess.run(
         command,
         cwd=REPO_ROOT,
-        env={**os.environ, "PYTHONPATH": str(REPO_ROOT)},
+        env={
+            **os.environ,
+            "PYTHONPATH": os.pathsep.join(
+                filter(None, [str(REPO_ROOT), os.environ.get("PYTHONPATH")])
+            ),
+        },
     )
     wall = monotonic() - start
     after = resource.getrusage(resource.RUSAGE_CHILDREN)
@@ -235,9 +244,13 @@ def git_output(*args: str) -> str:
 
 
 def commit_label() -> str:
-    """The HEAD SHA, with `-dirty` when tracked files differ from it."""
-    dirty = git_output("status", "--porcelain", "--untracked-files=no")
-    return git_output("rev-parse", "HEAD") + ("-dirty" if dirty else "")
+    """The HEAD SHA, with `-dirty` when tracked files differ from it, or `unknown` where git
+    or the repository is missing."""
+    try:
+        dirty = git_output("status", "--porcelain", "--untracked-files=no")
+        return git_output("rev-parse", "HEAD") + ("-dirty" if dirty else "")
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return "unknown"
 
 
 def cpu_pressure() -> str:
@@ -263,6 +276,7 @@ def load_condition(moment: str) -> str:
 def main(command: list[str] | None = None, output: Path | None = None) -> int:
     COSTS_PATH.unlink(missing_ok=True)  # a stale file must never be ranked
     command = command if command is not None else PYTEST_COMMAND
+    commit = commit_label()  # before the run, which takes minutes
     start_load = load_condition("start")
     run = run_pytest(command)
     end_load = load_condition("end")
@@ -278,11 +292,11 @@ def main(command: list[str] | None = None, output: Path | None = None) -> int:
     costs: CostsFile = json.loads(COSTS_PATH.read_text())
     info = RunInfo(
         date=datetime.now(UTC).date().isoformat(),
-        commit=commit_label(),
+        commit=commit,
         cpu_seconds=run.cpu_seconds,
         wall_seconds=run.wall_seconds,
         conditions=(
-            f"pytest arguments: {' '.join(command[3:])}",
+            f"pytest arguments: {shlex.join(command[3:])}",
             f"Python: {platform.python_version()}",
             f"CPUs: {os.cpu_count()}",
             start_load,

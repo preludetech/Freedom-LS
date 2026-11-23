@@ -9,6 +9,7 @@ input, and run `main` against a throwaway inner pytest run.
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -26,6 +27,7 @@ pytest_plugins = ["pytester"]
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "rank_test_costs"
 DB_SETUP_SECONDS = 0.5
+DB_TEARDOWN_SECONDS = 0.3
 DISTRIBUTED = ["-n", "2", "--dist", "loadfile"]
 PLUGIN_ARGS = [
     "-p",
@@ -46,8 +48,9 @@ TEST_FILE_BODY = (
 def inner_suite(
     pytester: pytest.Pytester, monkeypatch: pytest.MonkeyPatch
 ) -> pytest.Pytester:
-    """Two test files, each with one test that asks for a slow `django_db_setup` and one that
-    does not, so `--dist loadfile` puts one file on each worker."""
+    """Two test files, each with one test that asks for a `django_db_setup` that is slow to set
+    up and to tear down, and one that does not, so `--dist loadfile` puts one file on each
+    worker."""
     monkeypatch.setenv("PYTHONPATH", str(REPO_ROOT))
     pytester.makeconftest(
         "import time\n"
@@ -56,6 +59,8 @@ def inner_suite(
         '@pytest.fixture(scope="session")\n'
         "def django_db_setup():\n"
         f"    time.sleep({DB_SETUP_SECONDS})\n"
+        "    yield\n"
+        f"    time.sleep({DB_TEARDOWN_SECONDS})\n"
     )
     pytester.makepyfile(test_one=TEST_FILE_BODY, test_two=TEST_FILE_BODY)
     return pytester
@@ -121,6 +126,38 @@ def test_plugin_reports_database_setup_once_per_worker(
     )
 
 
+@pytest.mark.parametrize("extra_args", [[], DISTRIBUTED], ids=["serial", "distributed"])
+def test_plugin_excludes_database_teardown_from_every_test(
+    inner_suite: pytest.Pytester, extra_args: list[str]
+) -> None:
+    # Act
+    costs = run_inner(inner_suite, extra_args)
+
+    # Assert
+    assert all(
+        phases["teardown"] < DB_TEARDOWN_SECONDS for phases in costs["tests"].values()
+    )
+
+
+@pytest.mark.parametrize(
+    ("extra_args", "worker_count"),
+    [([], 1), (DISTRIBUTED, 2)],
+    ids=["serial", "distributed"],
+)
+def test_plugin_reports_database_teardown_once_per_worker(
+    inner_suite: pytest.Pytester, extra_args: list[str], worker_count: int
+) -> None:
+    # Act
+    costs = run_inner(inner_suite, extra_args)
+
+    # Assert
+    assert len(costs["django_db_teardown"]) == worker_count
+    assert all(
+        seconds >= DB_TEARDOWN_SECONDS
+        for seconds in costs["django_db_teardown"].values()
+    )
+
+
 def test_recorder_on_a_worker_writes_nothing(tmp_path: Path) -> None:
     # Arrange
     config = cast(
@@ -151,6 +188,27 @@ def test_function_key_groups_parametrized_cases(nodeid: str, expected: str) -> N
 
     # Assert
     assert key == expected
+
+
+@pytest.mark.parametrize(
+    "error",
+    [subprocess.CalledProcessError(128, ["git"]), FileNotFoundError("git")],
+    ids=["not_a_repository", "no_git"],
+)
+def test_commit_label_is_unknown_without_git(
+    monkeypatch: pytest.MonkeyPatch, error: Exception
+) -> None:
+    # Arrange
+    def fail(*args: str) -> str:
+        raise error
+
+    monkeypatch.setattr(rank_test_costs, "git_output", fail)
+
+    # Act
+    label = rank_test_costs.commit_label()
+
+    # Assert
+    assert label == "unknown"
 
 
 def test_render_ranking_matches_the_expected_file() -> None:

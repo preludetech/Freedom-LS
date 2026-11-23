@@ -9,6 +9,7 @@
     "tests/test_d.py::test_u": {"setup": 0.0, "call": 0.24, "teardown": 0.0}
   },
   "django_db_setup": {"gw0": 1.5, "gw1": 2.0},
+  "django_db_teardown": {"gw0": 0.25, "gw1": 0.5},
   "test_count": 7,
   "outcomes": {"passed": 7}
 }

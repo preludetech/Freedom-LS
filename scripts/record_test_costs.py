@@ -2,7 +2,7 @@
 
 Load it with `-p scripts.record_test_costs` (with `PYTHONPATH` at the repo root). It writes
 `.sdd-work/test_costs.json`: per node ID the setup, call and teardown seconds, plus the time
-spent building the test database per worker. Under xdist only the controller writes the file.
+spent building and destroying the test database per worker, taken out of the phases it ran in. Under xdist only the controller writes the file.
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ import pytest
 
 DB_SETUP_FIXTURE = "django_db_setup"
 DB_SETUP_PROPERTY = "django_db_setup_seconds"
+DB_TEARDOWN_PROPERTY = "django_db_teardown_seconds"
 
 
 class PhaseSeconds(TypedDict):
@@ -30,6 +31,7 @@ class PhaseSeconds(TypedDict):
 class CostsFile(TypedDict):
     tests: dict[str, PhaseSeconds]
     django_db_setup: dict[str, float]  # worker id -> seconds
+    django_db_teardown: dict[str, float]  # worker id -> seconds
     test_count: int
     outcomes: dict[str, int]
 
@@ -55,9 +57,12 @@ class CostRecorder:
     def __init__(self, config: pytest.Config) -> None:
         self.config = config
         self.pending_db_setup = 0.0
+        self.pending_db_teardown = 0.0
+        self.db_teardown_start: float | None = None
         self.phases: dict[str, dict[str, float]] = defaultdict(dict)
         self.outcomes: dict[str, str] = {}
         self.db_setup: dict[str, float] = defaultdict(float)
+        self.db_teardown: dict[str, float] = defaultdict(float)
 
     @pytest.hookimpl(wrapper=True)
     def pytest_fixture_setup(
@@ -72,6 +77,22 @@ class CostRecorder:
             # The session-scoped database is built inside the setup phase of the first test
             # that asks for it; hold the time until that phase's report exists.
             self.pending_db_setup += perf_counter() - start
+            # Finalizers run last-registered first, so this one runs before the fixture's
+            # own teardown, which destroys the database.
+            fixturedef.addfinalizer(self._start_db_teardown)
+
+    def _start_db_teardown(self) -> None:
+        self.db_teardown_start = perf_counter()
+
+    def pytest_fixture_post_finalizer(
+        self, fixturedef: pytest.FixtureDef[object], request: pytest.FixtureRequest
+    ) -> None:
+        if fixturedef.argname != DB_SETUP_FIXTURE or self.db_teardown_start is None:
+            return
+        # The database is destroyed inside the teardown phase of the last test on the
+        # worker that holds it; hold the time until that phase's report exists.
+        self.pending_db_teardown += perf_counter() - self.db_teardown_start
+        self.db_teardown_start = None
 
     @pytest.hookimpl(wrapper=True)
     def pytest_runtest_makereport(
@@ -79,26 +100,31 @@ class CostRecorder:
     ) -> Generator[None, pytest.TestReport, pytest.TestReport]:
         report = yield
         if call.when == "setup" and self.pending_db_setup:
-            report.duration = max(0.0, report.duration - self.pending_db_setup)
-            # user_properties travel with the report from an xdist worker to the controller.
-            report.user_properties.append(
-                (
-                    DB_SETUP_PROPERTY,
-                    {
-                        "worker": worker_name(self.config),
-                        "seconds": self.pending_db_setup,
-                    },
-                )
-            )
+            self._move_out(report, DB_SETUP_PROPERTY, self.pending_db_setup)
             self.pending_db_setup = 0.0
+        if call.when == "teardown" and self.pending_db_teardown:
+            self._move_out(report, DB_TEARDOWN_PROPERTY, self.pending_db_teardown)
+            self.pending_db_teardown = 0.0
         return report
+
+    def _move_out(self, report: pytest.TestReport, name: str, seconds: float) -> None:
+        """Take database time out of the phase it ran in and attach it to the report."""
+        report.duration = max(0.0, report.duration - seconds)
+        # user_properties travel with the report from an xdist worker to the controller.
+        report.user_properties.append(
+            (name, {"worker": worker_name(self.config), "seconds": seconds})
+        )
 
     def pytest_runtest_logreport(self, report: pytest.TestReport) -> None:
         # Runs in workers too; only the controller's copy is written.
         self.phases[report.nodeid][report.when] = report.duration
+        totals = {
+            DB_SETUP_PROPERTY: self.db_setup,
+            DB_TEARDOWN_PROPERTY: self.db_teardown,
+        }
         for name, value in report.user_properties:
-            if name == DB_SETUP_PROPERTY and isinstance(value, dict):
-                self.db_setup[str(value["worker"])] += float(value["seconds"])
+            if name in totals and isinstance(value, dict):
+                totals[name][str(value["worker"])] += float(value["seconds"])
         self.outcomes[report.nodeid] = self._outcome(
             report, self.outcomes.get(report.nodeid)
         )
@@ -128,6 +154,7 @@ class CostRecorder:
                 for nodeid, phases in sorted(self.phases.items())
             },
             "django_db_setup": dict(sorted(self.db_setup.items())),
+            "django_db_teardown": dict(sorted(self.db_teardown.items())),
             "test_count": len(self.phases),
             "outcomes": dict(sorted(Counter(self.outcomes.values()).items())),
         }
