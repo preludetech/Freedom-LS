@@ -1396,8 +1396,8 @@ def _form_error(
     field: str = "when",
     header: str = "Invalid condition",
 ) -> str:
-    """Build the error block for an invalid `when`, a duplicated `slug` or a
-    bad shuffle setting.
+    """Build the error block for an invalid `when`, a duplicated `slug`, a
+    bad shuffle setting or a bad draw.
 
     Same header/field/problem/fix layout as `_reference_error`.
     """
