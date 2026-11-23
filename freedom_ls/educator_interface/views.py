@@ -27,33 +27,15 @@ from freedom_ls.educator_interface.panels.audit_log.config import AuditLogConfig
 
 # Importing the module registers the cohorts table's bulk actions.
 from freedom_ls.educator_interface.panels.cohort import bulk_actions  # noqa: F401
-from freedom_ls.educator_interface.panels.cohort.actions import (
-    EditCohortAction,
-    cohort_state_actions,
-)
-from freedom_ls.educator_interface.panels.cohort.data_table_panels import (
-    CohortCoursesPanel,
-    CohortHistoryPanel,
-    CohortLearnersPanel,
-)
 from freedom_ls.educator_interface.panels.cohort.data_tables import (
     CohortDataTable,
 )
-from freedom_ls.educator_interface.panels.cohort.panels import (
-    CohortCourseCompletionPanel,
-    CohortDetailsPanel,
-    CohortNamePanel,
-    CohortStaffPanel,
-    CohortStatusPanel,
+from freedom_ls.educator_interface.panels.cohort.instance_view import (
+    CohortInstanceView,
 )
 from freedom_ls.educator_interface.panels.cohort.quick_view import CohortQuickView
 from freedom_ls.educator_interface.panels.cohort.report_panels import (
     DOWNLOAD_COHORT_REPORT,
-    CohortNeedsAttentionPanel,
-    CohortReportStack,
-)
-from freedom_ls.educator_interface.panels.common.badges import (
-    inactive_badge,
 )
 from freedom_ls.educator_interface.panels.common.request import (
     LAST_ORGANISATION_SESSION_KEY,
@@ -81,15 +63,9 @@ from freedom_ls.panel_framework.actions import (
 )
 from freedom_ls.panel_framework.bulk_actions import BulkAction, bulk_actions_for_table
 from freedom_ls.panel_framework.context import PanelContext
-from freedom_ls.panel_framework.panels import (
-    PanelStack,
-    TabSet,
-)
 from freedom_ls.panel_framework.views import (
-    InstanceView,
     ListViewConfig,
     NavGroup,
-    StatusBadge,
     build_menu_items,
     first_visible_section,
     panel_framework_view,
@@ -107,68 +83,6 @@ from freedom_ls.reports.services import report_file_response
 #
 # instance edit
 # instance, other actions (eg: send_email)
-
-
-class CohortSettingsStack(PanelStack):
-    """The cohort's Settings tab: one panel per job, so the name, the staff
-    and the cohort's status each have their own card."""
-
-    title = "Settings"
-    refresh_events = (COHORT_CHANGED,)
-    children = {
-        "name": CohortNamePanel,
-        "staff": CohortStaffPanel,
-        "status": CohortStatusPanel,
-    }
-
-
-class CohortOverviewStack(PanelStack):
-    title = "Overview"
-    refresh_events = (COHORT_CHANGED,)
-    children = {
-        "details": CohortDetailsPanel,
-        "completion": CohortCourseCompletionPanel,
-        "attention": CohortNeedsAttentionPanel,
-    }
-
-
-class CohortTabSet(TabSet):
-    title = "Cohort sections"
-    children = {
-        "overview": CohortOverviewStack,
-        "learners": CohortLearnersPanel,
-        "courses": CohortCoursesPanel,
-        "report": CohortReportStack,
-        "settings": CohortSettingsStack,
-        "history": CohortHistoryPanel,
-    }
-
-
-class CohortInstanceView(InstanceView):
-    panel = CohortTabSet
-    header_refresh_events = (COHORT_CHANGED,)
-
-    def get_status_badge(self) -> StatusBadge | None:
-        return inactive_badge(cast(Cohort, self.instance).is_active)
-
-    def get_actions(self) -> list[PanelAction]:
-        # The actions keep their instance-level URLs; the Settings tab draws
-        # their triggers, so the header draws none. The instance already
-        # carries its own organisation, so the success URL needs nothing
-        # from the request.
-        cohort = cast(Cohort, self.instance)
-        return [
-            EditCohortAction(
-                form_class=CohortForm,
-                form_title=f"Edit {cohort}",
-                instance=cohort,
-                success_events=(COHORT_CHANGED,),
-            ),
-            *cohort_state_actions(),
-        ]
-
-    def get_header_actions(self) -> list[PanelAction]:
-        return []
 
 
 class CreateCohortAction(CreateInstanceAction):
