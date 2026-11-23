@@ -2024,7 +2024,7 @@ def test_detail_shows_reference_parts_as_outline_rows_without_links(
     assert _part_titles(section) == ["Glossary", "Cheat sheets"]
     assert section.cssselect('nav[aria-label="Reference"]')
     assert section.cssselect("a") == []
-    assert "Available to registered learners." in section.text_content()
+    assert "registered learners" not in section.text_content()
 
 
 @pytest.mark.django_db
@@ -2053,7 +2053,6 @@ def test_detail_links_reference_topics_for_a_registered_learner(
 
     [link] = section.cssselect("a")
     assert "/reference/" in link.get("href")
-    assert "Available to registered learners." not in section.text_content()
 
 
 @pytest.mark.django_db

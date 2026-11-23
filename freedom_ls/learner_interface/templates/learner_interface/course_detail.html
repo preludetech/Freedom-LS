@@ -165,12 +165,9 @@
                             {% if reference_outline %}
                                 {% comment %}A sub-section of Course content, drawn in the same outline rows
                                 under an eyebrow heading. Topic titles link only for a learner who can open
-                                the content; the line under the heading is for visitors not registered.{% endcomment %}
+                                the content.{% endcomment %}
                                 <div class="mt-6" data-testid="course-reference-outline">
                                     <h3 class="text-xs font-semibold uppercase tracking-wide text-muted">Reference</h3>
-                                    {% if not is_registered %}
-                                        <p class="mt-1 text-sm text-muted">Available to registered learners.</p>
-                                    {% endif %}
                                     <div class="mt-2">
                                         {% with children=reference_outline %}
                                             {% include "learner_interface/partials/course_minimal_toc.html#course-children" with outline_label="Reference" unnumbered=True storage_scope="reference" hide_deadlines=True %}
