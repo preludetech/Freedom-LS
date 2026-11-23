@@ -470,6 +470,19 @@ def test_course_content_query_count_stays_bounded_as_children_grow(
         assert staff_client.get(url).status_code == 200
 
 
+@pytest.mark.django_db
+def test_reference_panel_query_count_stays_bounded_as_topics_grow(
+    staff_client: Client, django_assert_max_num_queries
+) -> None:
+    course = cast(CourseModel, CourseFactory())
+    _reference_part(course, order=0, topic_count=12)
+    organisation = OrganisationFactory()
+    url = _interface_url(organisation.slug, f"courses/{course.pk}")
+
+    with django_assert_max_num_queries(35):
+        assert staff_client.get(url).status_code == 200
+
+
 def _preview_url(
     client: Client,
     organisation: Organisation,
