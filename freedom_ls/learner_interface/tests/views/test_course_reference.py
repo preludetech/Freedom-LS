@@ -1,4 +1,4 @@
-"""The reference listing page of a course."""
+"""The reference listing and reference topic pages of a course."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     CoursePartFactory,
     CourseReferencePartFactory,
+    FileFactory,
     TopicFactory,
 )
 from freedom_ls.content_engine.models import (
@@ -37,7 +38,7 @@ from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 
-REFERENCE_QUERY_BOUND = 50
+REFERENCE_QUERY_BOUND = 60
 
 REGISTERED_AT = datetime.datetime(2026, 3, 1, 10, 0, tzinfo=datetime.UTC)
 AFTER_END = datetime.datetime(2026, 9, 1, 10, 0, tzinfo=datetime.UTC)
@@ -46,11 +47,38 @@ ANALYTICS_RECORDER = "freedom_ls.course_access.analytics_events.record_analytics
 
 
 def _reference_url(course: Course, route: str) -> str:
-    routes: dict[str, tuple[str, dict[str, str]]] = {
-        "listing": ("learner_interface:course_reference", {}),
-    }
-    name, extra = routes[route]
-    return reverse(name, kwargs={"course_slug": course.slug, **extra})
+    """The listing URL, or for "topic" the URL of the first topic of the first reference part."""
+    if route == "topic":
+        part = course.reference_parts.all()[0].course_part
+        topic = part.items.all()[0].child
+        return reverse(
+            "learner_interface:course_reference_topic",
+            kwargs={
+                "course_slug": course.slug,
+                "part_slug": part.slug,
+                "topic_slug": topic.slug,
+            },
+        )
+    return reverse(
+        "learner_interface:course_reference", kwargs={"course_slug": course.slug}
+    )
+
+
+def _topic_url(course: Course, part: CoursePart, topic_slug: str) -> str:
+    return reverse(
+        "learner_interface:course_reference_topic",
+        kwargs={
+            "course_slug": course.slug,
+            "part_slug": part.slug,
+            "topic_slug": topic_slug,
+        },
+    )
+
+
+def _course_with_reference_topic() -> Course:
+    course: Course = CourseFactory()
+    _reference_part(course, TopicFactory(), order=0)
+    return course
 
 
 def _reference_part(
@@ -111,9 +139,9 @@ def _paused(course: Course) -> Client:
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("route", ["listing"])
+@pytest.mark.parametrize("route", ["listing", "topic"])
 def test_an_anonymous_visitor_is_sent_to_login(mock_site_context, route):
-    course = CourseFactory()
+    course = _course_with_reference_topic()
 
     response = Client().get(_reference_url(course, route))
 
@@ -122,13 +150,14 @@ def test_an_anonymous_visitor_is_sent_to_login(mock_site_context, route):
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("route", ["listing"])
+@pytest.mark.parametrize("route", ["listing", "topic"])
 @pytest.mark.parametrize("state", ["unregistered", "paused", "ended"])
 @time_machine.travel(AFTER_END, tick=False)
 def test_a_learner_without_content_access_is_sent_to_the_detail_page(
     mock_site_context, route, state
 ):
     course = _ended_course()
+    _reference_part(course, TopicFactory(), order=0)
     if state == "ended":
         client = _ended(course)
     elif state == "paused":
@@ -145,12 +174,12 @@ def test_a_learner_without_content_access_is_sent_to_the_detail_page(
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("route", ["listing"])
+@pytest.mark.parametrize("route", ["listing", "topic"])
 @pytest.mark.parametrize("hidden_or_outside", ["hidden", "outside_audience"])
 def test_a_course_the_learner_cannot_see_is_a_404(
     mock_site_context, route, hidden_or_outside
 ):
-    course = CourseFactory()
+    course = _course_with_reference_topic()
     if hidden_or_outside == "hidden":
         course.visibility = CourseVisibility.HIDDEN
         course.save()
@@ -167,9 +196,9 @@ def test_a_course_the_learner_cannot_see_is_a_404(
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("route", ["listing"])
+@pytest.mark.parametrize("route", ["listing", "topic"])
 def test_a_registered_learner_reads_the_page(mock_site_context, route):
-    course = CourseFactory()
+    course = _course_with_reference_topic()
     client, _user = _registered_client(course)
 
     response = client.get(_reference_url(course, route))
@@ -195,6 +224,19 @@ def test_parts_and_topics_render_in_order_under_their_part_anchor(mock_site_cont
         "Zeta",
         "Alpha",
     ]
+
+
+@pytest.mark.django_db
+def test_listing_topic_titles_link_to_their_reference_topic_page(mock_site_context):
+    course = CourseFactory()
+    topic = TopicFactory(title="Cheat sheet")
+    part = _reference_part(course, topic, order=0)
+    client, _user = _registered_client(course)
+
+    page = _page(client.get(_reference_url(course, "listing")))
+
+    link = page.cssselect(f'section[id="{part.slug}"] li a')[0]
+    assert link.get("href") == _topic_url(course, part, topic.slug)
 
 
 @pytest.mark.django_db
@@ -249,7 +291,8 @@ def test_the_title_starts_with_reference_and_the_course(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_reading_the_listing_changes_no_progress(mock_site_context, mocker):
+@pytest.mark.parametrize("route", ["listing", "topic"])
+def test_reading_a_reference_page_changes_no_progress(mock_site_context, mocker, route):
     course = CourseFactory()
     topic = TopicFactory()
     course.items.create(child=topic, order=0)
@@ -265,7 +308,7 @@ def test_reading_the_listing_changes_no_progress(mock_site_context, mocker):
     )
     recorder = mocker.patch(ANALYTICS_RECORDER)
 
-    client.get(_reference_url(course, "listing"))
+    client.get(_reference_url(course, route))
 
     record.refresh_from_db()
     assert (
@@ -278,22 +321,26 @@ def test_reading_the_listing_changes_no_progress(mock_site_context, mocker):
 
 
 @pytest.mark.django_db
-def test_reading_the_listing_creates_no_course_progress_record(mock_site_context):
+@pytest.mark.parametrize("route", ["listing", "topic"])
+def test_reading_a_reference_page_creates_no_course_progress_record(
+    mock_site_context, route
+):
     course = CourseFactory(access_config={"access_type": "free"})
     _reference_part(course, TopicFactory(), order=0)
     client = Client()
     client.force_login(UserFactory())
     CourseProgress.objects.all().delete()
 
-    client.get(_reference_url(course, "listing"))
+    client.get(_reference_url(course, route))
 
     assert not CourseProgress.objects.filter(course=course).exists()
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(("parts", "topics"), [(1, 1), (3, 3)])
-def test_the_listing_query_count_does_not_grow_with_content(
-    mock_site_context, django_assert_max_num_queries, parts, topics
+@pytest.mark.parametrize("route", ["listing", "topic"])
+def test_the_query_count_does_not_grow_with_content(
+    mock_site_context, django_assert_max_num_queries, parts, topics, route
 ):
     course = CourseFactory()
     for order in range(parts):
@@ -301,4 +348,152 @@ def test_the_listing_query_count_does_not_grow_with_content(
     client, _user = _registered_client(course)
 
     with django_assert_max_num_queries(REFERENCE_QUERY_BOUND):
-        client.get(_reference_url(course, "listing"))
+        client.get(_reference_url(course, route))
+
+
+def _topic_course() -> tuple[Course, CoursePart, list[TopicFactory]]:
+    """A course with a first part of three topics and a later part of one."""
+    course: Course = CourseFactory(title="Algebra")
+    topics = [TopicFactory(title=name) for name in ("One", "Two", "Three")]
+    part = _reference_part(course, *topics, order=0, title="Formulas")
+    _reference_part(course, TopicFactory(title="Elsewhere"), order=1)
+    return course, part, topics
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "missing",
+    ["other_course_part", "topic_outside_part", "form_child", "form_only_part"],
+)
+def test_anything_outside_the_courses_reference_parts_is_a_404(
+    mock_site_context, missing
+):
+    course, part, _topics = _topic_course()
+    other_course = CourseFactory()
+    foreign = _reference_part(other_course, TopicFactory(), order=0)
+    form = FormFactory()
+    ContentCollectionItemFactory(collection_object=part, child_object=form, order=9)
+    form_only = _reference_part(course, FormFactory(), order=5)
+    outside = TopicFactory()
+    urls = {
+        "other_course_part": _topic_url(
+            course, foreign, foreign.items.get().child.slug
+        ),
+        "topic_outside_part": _topic_url(course, part, outside.slug),
+        "form_child": _topic_url(course, part, form.slug),
+        "form_only_part": _topic_url(
+            course, form_only, form_only.items.get().child.slug
+        ),
+    }
+    client, _user = _registered_client(course)
+
+    response = client.get(urls[missing])
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_middle_topic_links_to_its_neighbours_in_the_part(mock_site_context):
+    course, part, topics = _topic_course()
+    client, _user = _registered_client(course)
+
+    page = _page(client.get(_topic_url(course, part, topics[1].slug)))
+
+    footer = page.cssselect('nav[aria-label="Reference topics"]')[0]
+    previous, following = footer.cssselect("a")
+    assert previous.get("href") == _topic_url(course, part, topics[0].slug)
+    assert previous.get("aria-label") == "Previous: One"
+    assert following.get("href") == _topic_url(course, part, topics[2].slug)
+    assert following.get("aria-label") == "Next: Three"
+
+
+@pytest.mark.django_db
+def test_the_first_topic_has_no_previous(mock_site_context):
+    course, part, topics = _topic_course()
+    client, _user = _registered_client(course)
+
+    page = _page(client.get(_topic_url(course, part, topics[0].slug)))
+
+    labels = [
+        a.get("aria-label")
+        for a in page.cssselect('nav[aria-label="Reference topics"] a')
+    ]
+    assert labels == ["Next: Two"]
+
+
+@pytest.mark.django_db
+def test_the_last_topic_has_no_next_even_when_a_later_part_has_topics(
+    mock_site_context,
+):
+    course, part, topics = _topic_course()
+    client, _user = _registered_client(course)
+
+    page = _page(client.get(_topic_url(course, part, topics[2].slug)))
+
+    labels = [
+        a.get("aria-label")
+        for a in page.cssselect('nav[aria-label="Reference topics"] a')
+    ]
+    assert labels == ["Previous: Two"]
+
+
+@pytest.mark.django_db
+def test_the_breadcrumb_and_back_link_point_at_the_reference_pages(mock_site_context):
+    course, part, topics = _topic_course()
+    client, _user = _registered_client(course)
+    listing = reverse(
+        "learner_interface:course_reference", kwargs={"course_slug": course.slug}
+    )
+
+    page = _page(client.get(_topic_url(course, part, topics[0].slug)))
+
+    crumbs = page.cssselect('nav[aria-label="Breadcrumb"] a')
+    assert [crumb.get("href") for crumb in crumbs] == [
+        reverse("learner_interface:course_home", kwargs={"course_slug": course.slug}),
+        listing,
+        f"{listing}#{part.slug}",
+    ]
+    back = [a for a in page.cssselect("#interface-main a") if a.get("href") == listing]
+    assert back
+
+
+@pytest.mark.django_db
+def test_a_reference_topic_has_no_progress_controls(mock_site_context):
+    course, part, topics = _topic_course()
+    client, _user = _registered_client(course)
+
+    response = client.get(_topic_url(course, part, topics[1].slug))
+    page = _page(response)
+
+    assert page.cssselect('[name="mark_complete"]') == []
+    assert "Finish Course" not in response.content.decode()
+    assert page.cssselect('#interface-main form[method="post"]') == []
+
+
+@pytest.mark.django_db
+def test_the_topic_title_is_topic_part_course_site(mock_site_context):
+    course, part, topics = _topic_course()
+    client, _user = _registered_client(course)
+
+    page = _page(client.get(_topic_url(course, part, topics[0].slug)))
+
+    title = page.findtext(".//title").strip()
+    assert title.startswith("One — Formulas — Algebra — ")
+
+
+@pytest.mark.django_db
+def test_a_shared_topic_resolves_media_from_its_own_directory(mock_site_context):
+    course = CourseFactory()
+    topic = TopicFactory(
+        file_path="shared/formulas/topic.md",
+        content='<c-picture src="images/x.svg" alt="A diagram"></c-picture>',
+    )
+    _reference_part(course, topic, order=0)
+    stored = FileFactory(
+        file_path="shared/formulas/images/x.svg", mime_type="image/svg+xml"
+    )
+    client, _user = _registered_client(course)
+
+    response = client.get(_reference_url(course, "topic"))
+
+    assert stored.file.url in response.content.decode()

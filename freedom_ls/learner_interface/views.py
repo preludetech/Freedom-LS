@@ -31,6 +31,7 @@ from freedom_ls.content_engine.models import (
     ContentCollectionItem,
     Course,
     CourseCategory,
+    CoursePart,
     CourseVisibility,
     Topic,
 )
@@ -2364,6 +2365,64 @@ def course_reference(request: HttpRequest, course_slug: str) -> HttpResponse:
         {
             "course": course,
             "reference_part_topics": course_reference_topics(course),
+            **_reference_sidebar_context(request, course),
+        },
+    )
+
+
+def _reference_topic_url(course: Course, course_part: CoursePart, topic: Topic) -> str:
+    """The reference topic page for one topic of one of the course's reference parts."""
+    return reverse(
+        "learner_interface:course_reference_topic",
+        kwargs={
+            "course_slug": course.slug,
+            "part_slug": course_part.slug,
+            "topic_slug": topic.slug,
+        },
+    )
+
+
+@login_required
+def course_reference_topic(
+    request: HttpRequest, course_slug: str, part_slug: str, topic_slug: str
+) -> HttpResponse:
+    course = get_object_or_404(Course, slug=course_slug)
+    no_access = _reference_access_redirect(request, course)
+    if no_access is not None:
+        return no_access
+    parts = course_reference_topics(course, part_slug=part_slug)
+    if not parts:
+        raise Http404("No such reference part in this course.")
+    part = parts[0]
+    position = next(
+        (n for n, topic in enumerate(part.topics) if topic.slug == topic_slug), None
+    )
+    if position is None:
+        raise Http404("No such topic in this reference part.")
+    topic = part.topics[position]
+    # Previous and Next stay inside the part: reference parts are read
+    # separately, not as one sequence.
+    previous_topic = part.topics[position - 1] if position > 0 else None
+    next_topic = part.topics[position + 1] if position + 1 < len(part.topics) else None
+    return render(
+        request,
+        "learner_interface/course_reference_topic.html",
+        {
+            "course": course,
+            "topic": topic,
+            "current_part": part.course_part,
+            "previous_topic": previous_topic,
+            "next_topic": next_topic,
+            "previous_url": (
+                _reference_topic_url(course, part.course_part, previous_topic)
+                if previous_topic
+                else None
+            ),
+            "next_url": (
+                _reference_topic_url(course, part.course_part, next_topic)
+                if next_topic
+                else None
+            ),
             **_reference_sidebar_context(request, course),
         },
     )

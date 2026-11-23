@@ -1,6 +1,6 @@
 {% comment %}
-Reference breadcrumb trail: course > Reference. The Reference crumb is the
-current page on the listing. The <li> m-0/p-0 neutralise the global
+Reference breadcrumb trail: course > Reference, plus the part on a topic page. The Reference crumb
+is the current page on the listing. The <li> m-0/p-0 neutralise the global
 `ol { space-y-2 }` / `li { py-1 }` base rules that would otherwise give the
 crumbs unequal box heights under `align-items: center`.
 {% endcomment %}
@@ -12,11 +12,26 @@ crumbs unequal box heights under `align-items: center`.
                class="no-underline text-muted hover:text-primary truncate max-w-[16rem]"
                title="{{ course.title }}">{{ course.title }}</a>
         </li>
-        <li class="m-0 p-0 flex items-center gap-2 min-w-0">
-            <span aria-hidden="true" class="shrink-0">&gt;</span>
-            <span class="text-on-surface font-medium truncate max-w-[20rem]"
-                  aria-current="page"
-                  title="Reference">Reference</span>
-        </li>
+        {% if current_part %}
+            <li class="m-0 p-0 flex items-center gap-2 min-w-0">
+                <span aria-hidden="true" class="shrink-0">&gt;</span>
+                <a href="{% url 'learner_interface:course_reference' course_slug=course.slug %}"
+                   class="no-underline text-muted hover:text-primary truncate max-w-[16rem]"
+                   title="Reference">Reference</a>
+            </li>
+            <li class="m-0 p-0 flex items-center gap-2 min-w-0">
+                <span aria-hidden="true" class="shrink-0">&gt;</span>
+                <a href="{% url 'learner_interface:course_reference' course_slug=course.slug %}#{{ current_part.slug }}"
+                   class="no-underline text-muted hover:text-primary truncate max-w-[16rem]"
+                   title="{{ current_part.title }}">{{ current_part.title }}</a>
+            </li>
+        {% else %}
+            <li class="m-0 p-0 flex items-center gap-2 min-w-0">
+                <span aria-hidden="true" class="shrink-0">&gt;</span>
+                <span class="text-on-surface font-medium truncate max-w-[20rem]"
+                      aria-current="page"
+                      title="Reference">Reference</span>
+            </li>
+        {% endif %}
     </ol>
 </nav>

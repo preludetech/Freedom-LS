@@ -16,7 +16,10 @@
                 <h2>{{ part.course_part.title }}</h2>
                 <ul>
                     {% for topic in part.topics %}
-                        <li>{{ topic.title }}</li>
+                        <li>
+                            <a href="{% url 'learner_interface:course_reference_topic' course_slug=course.slug part_slug=part.course_part.slug topic_slug=topic.slug %}"
+                               class="font-semibold text-primary no-underline hover:text-primary-hover">{{ topic.title }}</a>
+                        </li>
                     {% endfor %}
                 </ul>
             </section>

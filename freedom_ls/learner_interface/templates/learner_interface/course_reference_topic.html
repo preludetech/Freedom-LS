@@ -1,0 +1,42 @@
+{% extends "learner_interface/_course_base.html" %}
+
+{% block item_head_title %}{{ topic.title }}{% endblock %}
+
+{% comment %}The title lines up with the topic's markdown and footer, not the full player column.{% endcomment %}
+{% block header_width %}max-w-reading{% endblock header_width %}
+
+{% block breadcrumbs %}
+    {% include "learner_interface/partials/reference_breadcrumbs.html" %}
+{% endblock breadcrumbs %}
+
+{% block item_page_title %}
+    <c-back-link href="{% url 'learner_interface:course_reference' course_slug=course.slug %}">Back to reference</c-back-link>
+    {% include "partials/page_title.html" with page_title=topic.title page_subtitle=topic.subtitle %}
+{% endblock item_page_title %}
+
+{% block content %}
+    <c-page flush="true" class="pt-0 lg:pt-0">
+        <div class="space-y-8">
+            <c-markdown-container>
+                {{ topic.rendered_content }}
+            </c-markdown-container>
+
+            <c-player-nav class="mx-auto max-w-reading">
+                <nav aria-label="Reference topics"
+                     class="flex items-center justify-between pt-4 border-t border-border gap-3">
+                    {% comment %}The empty left cell keeps a lone Next flush right under justify-between.{% endcomment %}
+                    <div>
+                        {% if previous_url %}
+                            <c-button href="{{ previous_url }}" variant="secondary" icon_left="previous"
+                                      size="small" aria_label="Previous: {{ previous_topic.title }}">Previous</c-button>
+                        {% endif %}
+                    </div>
+                    {% if next_url %}
+                        <c-button href="{{ next_url }}" icon_right="next" size="small"
+                                  aria_label="Next: {{ next_topic.title }}">Next</c-button>
+                    {% endif %}
+                </nav>
+            </c-player-nav>
+        </div>
+    </c-page>
+{% endblock content %}

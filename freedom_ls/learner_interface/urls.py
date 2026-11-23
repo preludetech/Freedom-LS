@@ -24,6 +24,11 @@ urlpatterns = [
         name="course_reference",
     ),
     path(
+        "courses/<slug:course_slug>/reference/<slug:part_slug>/<slug:topic_slug>/",
+        views.course_reference_topic,
+        name="course_reference_topic",
+    ),
+    path(
         "courses/<slug:course_slug>/<int:index>/",
         views.view_course_item,
         name="view_course_item",
