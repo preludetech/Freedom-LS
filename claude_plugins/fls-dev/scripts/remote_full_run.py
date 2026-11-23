@@ -359,8 +359,11 @@ def poll(run_id: str, head: str, settings: Settings) -> RunView:
                     last_printed = time.monotonic()
             if view.status == "completed":
                 return view
+            # A job its `if:` skips (lint, type-check on a dispatch) completes at once with
+            # no runner, so only test jobs show that a runner picked the run up.
+            test_jobs = [job for job in view.jobs if is_test_job(job)]
             ever_started = ever_started or any(
-                job.status in {"in_progress", "completed"} for job in view.jobs
+                job.status in {"in_progress", "completed"} for job in test_jobs
             )
             elapsed = time.monotonic() - started
             if not ever_started and elapsed >= settings.start_timeout_s:
@@ -368,9 +371,9 @@ def poll(run_id: str, head: str, settings: Settings) -> RunView:
             if elapsed >= settings.run_timeout_s:
                 raise Unavailable(f"run exceeded {settings.run_timeout_s} s")
             if time.monotonic() - last_printed >= QUIET_HEARTBEAT_S:
-                done = sum(job.status == "completed" for job in view.jobs)
+                done = sum(job.status == "completed" for job in test_jobs)
                 print(
-                    f"remote: waiting, {done} of {len(view.jobs)} jobs done, "
+                    f"remote: waiting, {done} of {len(test_jobs)} test jobs done, "
                     f"{elapsed:.0f} s"
                 )
                 last_printed = time.monotonic()

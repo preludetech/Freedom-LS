@@ -559,7 +559,9 @@ def test_a_run_that_tests_another_commit_is_unavailable_and_cancelled(
     assert "gh run cancel 777" in outcome.calls
 
 
-def queued_view(status: str, job_status: str) -> dict[str, object]:
+def queued_view(
+    status: str, job_status: str, *other_jobs: dict[str, object]
+) -> dict[str, object]:
     return {
         "stdout": json.dumps(
             {
@@ -568,10 +570,36 @@ def queued_view(status: str, job_status: str) -> dict[str, object]:
                 "headSha": HEAD,
                 "createdAt": CREATED_AT,
                 "updatedAt": UPDATED_AT,
-                "jobs": [{"name": "unit-1", "status": job_status, "steps": []}],
+                "jobs": [
+                    *other_jobs,
+                    {"name": "unit-1", "status": job_status, "steps": []},
+                ],
             }
         )
     }
+
+
+def skipped_job(name: str) -> dict[str, object]:
+    """A job its `if:` skips on a dispatch: completed at once, with no runner."""
+    return {"name": name, "status": "completed", "conclusion": "skipped", "steps": []}
+
+
+def test_skipped_non_test_jobs_do_not_count_as_a_started_run(tmp_path: Path) -> None:
+    scenario = Scenario()
+    scenario.answer(
+        "gh",
+        "run view",
+        queued_view("queued", "queued", skipped_job("lint"), skipped_job("type-check")),
+    )
+
+    outcome = run_script(
+        scenario, tmp_path, pyproject="[tool.test_tiers.remote]\nstart_timeout_s = 1\n"
+    )
+
+    assert unavailable_line(outcome) == (
+        "run: RESULT UNAVAILABLE no job started within 1 s"
+    )
+    assert "gh run cancel 777" in outcome.calls
 
 
 def test_a_run_whose_jobs_never_start_is_cancelled_when_the_start_budget_ends(
