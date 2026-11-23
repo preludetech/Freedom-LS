@@ -124,6 +124,8 @@
                                             <span aria-hidden="true"><c-panel-icon name="sort_neutral" class="size-4 shrink-0 text-muted" /></span>
                                         {% endif %}
                                     </a>
+                                {% elif header.column.header_hidden %}
+                                    <span class="sr-only">{{ header.column.header }}</span>
                                 {% else %}
                                     {{ header.column.header }}
                                 {% endif %}

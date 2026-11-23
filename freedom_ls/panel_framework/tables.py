@@ -200,6 +200,9 @@ class Column:
     #: Open the row in the quick-view drawer instead of navigating to it.
     quick_view: bool = False
     header_class: str = ""
+    #: Hide the header label visually but keep it for screen readers. The header
+    #: cell itself stays in the table layout, so the column keeps its width.
+    header_hidden: bool = False
     cell_class: str = ""
     card: Literal["primary", "secondary", "md_only"] = "secondary"
     #: What the date and related-list cells show when the row has no value

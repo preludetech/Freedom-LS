@@ -1671,3 +1671,22 @@ def test_outline_tables_fix_the_width_of_every_column_but_title() -> None:
             assert cell_widths == header_widths, (table, header)
         assert columns["Title"].header_class == "w-full"
         assert columns["Title"].cell_class == "w-full"
+
+
+@pytest.mark.django_db
+def test_outline_actions_header_stays_in_table_layout_with_a_hidden_label(
+    staff_client: Client,
+) -> None:
+    """The Actions header cell stays a table cell and only its label is hidden
+    visually. It used to be taken out of the layout (sr-only on the th itself),
+    so an outline table with no rows misaligned its Type column and overflowed
+    the page."""
+    panel = _course_content_panel(staff_client, CourseFactory(), panel="reference")
+
+    (actions,) = [
+        th
+        for th in panel.cssselect("thead th")
+        if th.text_content().strip() == "Actions"
+    ]
+    assert "sr-only" not in actions.get("class", "").split()
+    assert actions.cssselect("span.sr-only")
