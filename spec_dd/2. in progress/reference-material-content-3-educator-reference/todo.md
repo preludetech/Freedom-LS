@@ -10,7 +10,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 2. Plan
 
-- [ ] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
+- [x] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
 - [ ] (user) Review both plans and edit where needed
 
 ## 3. Implementation and QA
@@ -23,6 +23,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 4. Documentation and pull request
 
 - [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [ ] (cmd) In `claude_plugins/fls-dev/skills/educator-interface/SKILL.md`, "Course outline and content previews": add the Reference panel after "Course content" (reference parts as group rows with topic rows, numbered within the panel, no details row, its own footer count, "No reference material in this course yet." when empty, the same withheld note and preview), narrow the "course details are the first row" rule to "Course content", and add the matching "Visual checklist" line (spec "Documentation and downstream")
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 
 ## 5. Cleanup
