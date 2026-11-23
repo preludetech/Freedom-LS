@@ -14,7 +14,6 @@ import time_machine
 from pytest_django.fixtures import DjangoAssertNumQueries, SettingsWrapper
 
 from django.core.cache import cache
-from django.core.files.base import ContentFile
 from django.db import connection
 from django.http import HttpResponse
 from django.test import Client, override_settings
@@ -29,7 +28,11 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     TopicFactory,
 )
-from freedom_ls.educator_interface.tests.helpers import _org_admin
+from freedom_ls.educator_interface.tests.helpers import (
+    _org_admin,
+    _pdf_url,
+    _ready_report,
+)
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -92,17 +95,6 @@ def _downloads_url(organisation_slug: str, cohort_pk: object) -> str:
     )
 
 
-def _pdf_url(organisation_slug: str, cohort_pk: object, report_pk: object) -> str:
-    return reverse(
-        "educator_interface:cohort_report_download",
-        kwargs={
-            "organisation_slug": organisation_slug,
-            "cohort_pk": cohort_pk,
-            "report_pk": report_pk,
-        },
-    )
-
-
 def _region_id(client: Client, url: str) -> str:
     """The id of the downloads region, read from the panel's own page."""
     document = lxml.html.fromstring(client.get(url).content.decode())
@@ -156,17 +148,6 @@ def _course_with_topic():
         collection_object=course, child_object=TopicFactory(), order=0
     )
     return course
-
-
-def _ready_report(cohort, **fields) -> GeneratedReport:
-    report = cast(
-        GeneratedReport,
-        GeneratedReportFactory(
-            cohort=cohort, status=GeneratedReport.STATUS_READY, **fields
-        ),
-    )
-    report.file.save("r.pdf", ContentFile(b"%PDF-1.4 bytes"), save=True)
-    return report
 
 
 @pytest.mark.django_db

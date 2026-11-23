@@ -57,7 +57,11 @@ from freedom_ls.educator_interface.tests.helpers import (
     _audit_log_rows,
     _audit_log_url,
     _card_summary,
+    _cohort_history_tab,
+    _cohort_history_url,
+    _cohort_page,
     _export_audit_csv,
+    _export_csv,
     _get_document,
     _header_of,
     _history_entry,
@@ -460,12 +464,6 @@ def test_an_active_cohort_header_has_no_badge_no_stats_and_no_buttons(
     assert "Active" not in header.text_content()
     assert "Learners" not in header.text_content()
     assert not header.cssselect(".btn")
-
-
-def _cohort_page(client: Client, cohort: Cohort) -> lxml.html.HtmlElement:
-    return _get_document(
-        client, _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}")
-    )
 
 
 def _add_cohort_progress(
@@ -1325,17 +1323,6 @@ def test_a_registration_rows_deactivate_trigger_names_the_course(
     assert labels == {"Deactivate the Algebra registration"}
 
 
-def _export_csv(client: Client, path_string: str, organisation: Organisation):
-    """The learners table's CSV export for ``path_string``: (header, rows, filename)."""
-    response = client.get(
-        _interface_url(organisation.slug, path_string), {"learners-export": "csv"}
-    )
-    assert response.status_code == 200
-    body = b"".join(response.streaming_content).decode("utf-8-sig")
-    header, *rows = list(csv.reader(io.StringIO(body, newline="")))
-    return header, rows, response["Content-Disposition"]
-
-
 @pytest.mark.django_db
 def test_a_cohorts_learners_tab_exports_its_members_as_a_csv_named_for_the_cohort(
     staff_client: Client,
@@ -1625,13 +1612,6 @@ def test_the_cohort_history_panel_refreshes_on_member_changes(staff_client: Clie
 
     (card,) = document.cssselect("section[data-panel='history']")
     assert "staffChanged from:body" in card.get("hx-trigger")
-
-
-def _cohort_history_tab(client: Client, cohort: Cohort) -> lxml.html.HtmlElement:
-    return _get_document(
-        client,
-        _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/history"),
-    )
 
 
 @pytest.mark.django_db
@@ -2073,12 +2053,6 @@ def _cohort_entry(cohort: Cohort, **overrides: object) -> AuditLogEntry:
             action="cohort.updated",
             **overrides,
         ),
-    )
-
-
-def _cohort_history_url(cohort: Cohort) -> str:
-    return _interface_url(
-        cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/history"
     )
 
 

@@ -15,6 +15,7 @@ import pytest
 from pytest_django.fixtures import DjangoAssertNumQueries
 
 from django.contrib.sites.models import Site
+from django.core.files.base import ContentFile
 from django.db import connection
 from django.db.models import Model
 from django.http import HttpRequest
@@ -41,10 +42,16 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import Cohort, Learner
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    Learner,
+)
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
+from freedom_ls.reports.factories import GeneratedReportFactory
+from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
 if TYPE_CHECKING:
@@ -849,3 +856,85 @@ def _older_url(
         },
     )
     return f"{base}?before={quote(cursor)}" if cursor else base
+
+
+def _cohort_page(client: Client, cohort: Cohort) -> lxml.html.HtmlElement:
+    return _get_document(
+        client, _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}")
+    )
+
+
+def _export_csv(
+    client: Client, path_string: str, organisation: Organisation
+) -> tuple[list[str], list[list[str]], str]:
+    """The learners table's CSV export for ``path_string``: (header, rows, filename)."""
+    response = client.get(
+        _interface_url(organisation.slug, path_string), {"learners-export": "csv"}
+    )
+    assert response.status_code == 200
+    body = b"".join(response.streaming_content).decode("utf-8-sig")
+    header, *rows = list(csv.reader(io.StringIO(body, newline="")))
+    return header, rows, response["Content-Disposition"]
+
+
+def _cohort_history_tab(client: Client, cohort: Cohort) -> lxml.html.HtmlElement:
+    return _get_document(
+        client,
+        _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/history"),
+    )
+
+
+def _cohort_history_url(cohort: Cohort) -> str:
+    return _interface_url(
+        cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/history"
+    )
+
+
+def _unregister_post_url(organisation: Organisation, cohort: Cohort) -> str:
+    return _cohort_url(
+        organisation, cohort, "/__tabs/courses/__actions/deactivate_cohort_registration"
+    )
+
+
+def _unregister_url(
+    organisation: Organisation,
+    cohort: Cohort,
+    registration: CohortCourseRegistration | str,
+) -> str:
+    pk = registration if isinstance(registration, str) else registration.pk
+    return f"{_unregister_post_url(organisation, cohort)}?registration={pk}"
+
+
+def _registered_cohort(
+    organisation: Organisation, course_title: str = "Algebra", **cohort_fields: object
+) -> tuple[Cohort, CohortCourseRegistration]:
+    cohort = cast(Cohort, CohortFactory(organisation=organisation, **cohort_fields))
+    registration = cast(
+        CohortCourseRegistration,
+        CohortCourseRegistrationFactory(
+            cohort=cohort, course=CourseFactory(title=course_title)
+        ),
+    )
+    return cohort, registration
+
+
+def _pdf_url(organisation_slug: str, cohort_pk: object, report_pk: object) -> str:
+    return reverse(
+        "educator_interface:cohort_report_download",
+        kwargs={
+            "organisation_slug": organisation_slug,
+            "cohort_pk": cohort_pk,
+            "report_pk": report_pk,
+        },
+    )
+
+
+def _ready_report(cohort: Cohort, **fields: object) -> GeneratedReport:
+    report = cast(
+        GeneratedReport,
+        GeneratedReportFactory(
+            cohort=cohort, status=GeneratedReport.STATUS_READY, **fields
+        ),
+    )
+    report.file.save("r.pdf", ContentFile(b"%PDF-1.4 bytes"), save=True)
+    return report

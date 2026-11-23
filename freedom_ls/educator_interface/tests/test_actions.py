@@ -74,12 +74,15 @@ from freedom_ls.educator_interface.tests.helpers import (
     _pending_learner,
     _picker_dialog,
     _post,
+    _registered_cohort,
     _remove_role_url,
     _remove_url_from_learner,
     _resend_url,
     _scoped_request,
     _staff_member_holding,
     _state_url,
+    _unregister_post_url,
+    _unregister_url,
     course_per_reach_row,
 )
 from freedom_ls.educator_interface.views import CohortConfig
@@ -668,37 +671,12 @@ def test_register_post_on_an_inactive_cohort_answers_422_and_creates_no_row(
 # deactivate a cohort registration
 
 
-def _unregister_post_url(organisation: Organisation, cohort: Cohort) -> str:
-    return _cohort_url(
-        organisation, cohort, "/__tabs/courses/__actions/deactivate_cohort_registration"
-    )
-
-
-def _unregister_url(
-    organisation: Organisation,
-    cohort: Cohort,
-    registration: CohortCourseRegistration | str,
-) -> str:
-    pk = registration if isinstance(registration, str) else registration.pk
-    return f"{_unregister_post_url(organisation, cohort)}?registration={pk}"
-
-
 def _member(organisation: Organisation, cohort: Cohort, first_name: str = "Ada"):
     learner = LearnerFactory(
         organisation=organisation, user__first_name=first_name, user__last_name="Lee"
     )
     CohortMembershipFactory(cohort=cohort, learner=learner)
     return learner
-
-
-def _registered_cohort(
-    organisation: Organisation, course_title: str = "Algebra", **cohort_fields: object
-):
-    cohort = cast(Cohort, CohortFactory(organisation=organisation, **cohort_fields))
-    registration = CohortCourseRegistrationFactory(
-        cohort=cohort, course=CourseFactory(title=course_title)
-    )
-    return cohort, registration
 
 
 @pytest.mark.django_db
