@@ -26,6 +26,8 @@ None. No action needed.
 A downstream project that uses the `django-stack` plugin's test tiers can, if it wants, add an
 optional `[tool.test_tiers.remote]` table to its `pyproject.toml` (`command`, `start_timeout_s`,
 `run_timeout_s`) so the full tier runs a remote command and falls back to the local command when
-the remote one is unavailable. `DS_TEST_REMOTE=off` skips the remote command. Without the table,
+the remote one is unavailable. `/ds:init` adds `- Remote full run: on` under `## Test Tiers` to
+`.claude/ds/config.md`; `off` there (or in `config.local.md`) skips the remote command, and
+`DS_TEST_REMOTE=on|off` overrides it for one run. Without the table,
 the full tier runs locally as before. The contract a remote command must meet is in
 `claude_plugins/django-stack/resources/test_tiers.md`.

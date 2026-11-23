@@ -3028,6 +3028,111 @@ def test_remote_off_prints_only_the_local_full_command(tmp_path: Path) -> None:
     assert lines(result.stdout, "fallback") == []
 
 
+def ds_config(switch: str) -> str:
+    """A ds config file that sets the remote switch to `switch`."""
+    return f"# ds\n\n## Other\n\n- Remote full run: on\n\n## Test Tiers\n\n- Remote full run: {switch}\n"
+
+
+@pytest.mark.parametrize(
+    ("files", "variables", "expect_remote"),
+    [
+        ({}, {}, True),
+        ({".claude/ds/config.md": ds_config("off")}, {}, False),
+        ({".claude/ds/config.md": ds_config("on")}, {}, True),
+        ({".claude/ds/config.md": ds_config("")}, {}, True),
+        (
+            {
+                ".claude/ds/config.md": ds_config("off"),
+                ".claude/ds/config.local.md": ds_config("on"),
+            },
+            {},
+            True,
+        ),
+        (
+            {
+                ".claude/ds/config.md": ds_config("on"),
+                ".claude/ds/config.local.md": ds_config("off"),
+            },
+            {},
+            False,
+        ),
+        (
+            {
+                ".claude/ds/config.md": ds_config("off"),
+                ".claude/ds/config.local.md": ds_config(""),
+            },
+            {},
+            False,
+        ),
+        ({".claude/ds/config.md": ds_config("off")}, {"DS_TEST_REMOTE": "on"}, True),
+        ({".claude/ds/config.md": ds_config("on")}, {"DS_TEST_REMOTE": "off"}, False),
+    ],
+    ids=[
+        "no-config",
+        "config-off",
+        "config-on",
+        "config-blank",
+        "local-on-wins",
+        "local-off-wins",
+        "local-blank-defers",
+        "env-on-wins",
+        "env-off-wins",
+    ],
+)
+def test_remote_switch_chooses_between_remote_and_local_full_command(
+    tmp_path: Path,
+    files: dict[str, str],
+    variables: dict[str, str],
+    expect_remote: bool,
+) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app() | {"pyproject.toml": REMOTE_TABLE} | files)
+
+    # Act
+    result = run_script(
+        SCRIPT,
+        tmp_path,
+        MIGRATION_PATH,
+        environment=remote_environment(**variables),
+    )
+
+    # Assert
+    assert result.returncode == 0, result.stderr
+    if expect_remote:
+        assert lines(result.stdout, "command") == ["command: remote-runner --flag"]
+        assert lines(result.stdout, "fallback") == ["fallback: uv run pytest -n auto"]
+    else:
+        assert lines(result.stdout, "command") == [FULL_COMMAND]
+        assert lines(result.stdout, "fallback") == []
+
+
+@pytest.mark.parametrize(
+    ("files", "variables", "message"),
+    [
+        (
+            {".claude/ds/config.md": ds_config("maybe")},
+            {},
+            "'Remote full run' under '## Test Tiers' in .claude/ds must be 'on' or 'off'",
+        ),
+        ({}, {"DS_TEST_REMOTE": "yes"}, "DS_TEST_REMOTE must be 'on' or 'off'"),
+    ],
+)
+def test_unknown_remote_switch_value_exits_2_naming_the_setting(
+    tmp_path: Path, files: dict[str, str], variables: dict[str, str], message: str
+) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app() | {"pyproject.toml": REMOTE_TABLE} | files)
+
+    # Act
+    result = run_script(
+        SCRIPT, tmp_path, "docs/a.md", environment=remote_environment(**variables)
+    )
+
+    # Assert
+    assert result.returncode == 2
+    assert message in result.stderr
+
+
 def test_targeted_tier_with_a_remote_command_prints_no_fallback(
     tmp_path: Path,
 ) -> None:

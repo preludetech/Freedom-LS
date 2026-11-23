@@ -134,7 +134,9 @@ Rationale cut from the prompt files an agent reads at run time.
   The command prints the runner's `run:` lines, `run: tested <sha>` and
   `run: RESULT PASS|FAIL|UNAVAILABLE`, and exits 0 only on `PASS`. Its failed tests are its
   `run: failed` lines. Any other key in the table belongs to the command, not to `ds`.
-  `DS_TEST_REMOTE=off` skips it and runs the local full command. `DS_TEST_RECORD_PATH` names a
+  `- Remote full run: off` under `## Test Tiers` in `.claude/ds/config.md` (or
+  `config.local.md`, for one machine) skips it and runs the local full command;
+  `DS_TEST_REMOTE=on|off` overrides that for one run. `DS_TEST_RECORD_PATH` names a
   file for `run_tests.sh` to keep its run record at, on every result, instead of a temporary file
   that a passing run deletes. The full contract is in `resources/test_tiers.md`.
 - **QA diff scoping.** A misclassification must over-test, never under-test, which is why anything

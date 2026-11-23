@@ -8,8 +8,9 @@ Usage:
 
 Prints `tier:`, one `why:` line per changed path and, for a targeted or full
 run, the `command:` to run. A full tier with `[tool.test_tiers.remote] command` set prints
-that command on `command:` and the local full command on `fallback:`; `DS_TEST_REMOTE=off`
-prints the local command alone. Project-specific globs come from `[tool.test_tiers]`
+that command on `command:` and the local full command on `fallback:`. `- Remote full run: off`
+under `## Test Tiers` in `.claude/ds/config.md` (or `config.local.md`, which wins) prints the
+local command alone; `DS_TEST_REMOTE=on|off` overrides both. Project-specific globs come from `[tool.test_tiers]`
 in `pyproject.toml`. Stdlib only, like its siblings.
 
 `--upstream-range` names the paths another line of history brought in (main, after a
@@ -103,7 +104,14 @@ NARROW_TAIL = "(narrow; the rest is left to a full run)"
 
 RUNNER_WRAPPER = ".claude/ds/scripts/run_tests.sh"
 
-REMOTE_OFF_ENV = "DS_TEST_REMOTE"
+REMOTE_SWITCH_ENV = "DS_TEST_REMOTE"
+# `- Remote full run: on|off` under `## Test Tiers`; the local file wins over the committed one.
+DS_CONFIG_FILES = (".claude/ds/config.local.md", ".claude/ds/config.md")
+REMOTE_SWITCH_SECTION = "Test Tiers"
+REMOTE_SWITCH_KEY = "Remote full run"
+SWITCH_VALUES = {"on": True, "off": False}
+CONFIG_SECTION = re.compile(r"^##\s+(.*?)\s*$")
+CONFIG_BULLET = re.compile(r"^\s*-\s+([^:]+?):\s*(.*?)\s*$")
 
 FULL_COMMAND = "uv run pytest -n auto"
 TARGETED_PREFIX = "uv run pytest -n auto --no-cov"
@@ -203,6 +211,54 @@ def remote_command(table: dict[str, object]) -> str | None:
     return value
 
 
+def ds_config_value(project_root: Path, section: str, key: str) -> str | None:
+    """The value of `- key: value` under `## section` in the ds config, the local file first.
+
+    A file that leaves the value blank or lacks it defers to the next one.
+    """
+    for name in DS_CONFIG_FILES:
+        config = project_root / name
+        if not config.is_file():
+            continue
+        current = ""
+        for line in config.read_text(encoding="utf-8").splitlines():
+            if heading := CONFIG_SECTION.match(line):
+                current = heading.group(1)
+            elif (
+                current == section
+                and (bullet := CONFIG_BULLET.match(line))
+                and bullet.group(1) == key
+                and bullet.group(2)
+            ):
+                return bullet.group(2)
+    return None
+
+
+def switch_value(value: str, source: str) -> bool:
+    """`on` or `off` as a bool; anything else is a configuration error naming `source`."""
+    switch = SWITCH_VALUES.get(value.strip().lower())
+    if switch is None:
+        raise ConfigError(f"{source} must be 'on' or 'off', not {value!r}")
+    return switch
+
+
+def remote_enabled(project_root: Path, variables: dict[str, str]) -> bool:
+    """Whether a full tier may use the remote command.
+
+    `DS_TEST_REMOTE` wins, then the ds config files; with neither set the remote command runs.
+    """
+    from_variable = variables.get(REMOTE_SWITCH_ENV)
+    if from_variable:
+        return switch_value(from_variable, REMOTE_SWITCH_ENV)
+    configured = ds_config_value(project_root, REMOTE_SWITCH_SECTION, REMOTE_SWITCH_KEY)
+    if configured is None:
+        return True
+    return switch_value(
+        configured,
+        f"'{REMOTE_SWITCH_KEY}' under '## {REMOTE_SWITCH_SECTION}' in .claude/ds",
+    )
+
+
 def pytest_testpaths(data: dict[str, object]) -> tuple[str, ...]:
     """`[tool.pytest.ini_options].testpaths`, empty when the project sets none. pytest owns
     the key, so a value this script cannot read is treated as unset rather than an error."""
@@ -238,7 +294,9 @@ def load_tier_config(project_root: Path) -> TierConfig:
         markers=marker_expression(table),
         narrow=narrow_setting(table),
         test_roots=pytest_testpaths(data),
-        remote_command=remote_command(table),
+        remote_command=remote_command(table)
+        if remote_enabled(project_root, dict(os.environ))
+        else None,
     )
 
 
@@ -1065,8 +1123,7 @@ def main() -> int:
         print(f"why: {d.path} -> {outcome} ({d.reason}){tail}")
     if tier == "full":
         local = full_command(config, project_root)
-        remote_off = os.environ.get(REMOTE_OFF_ENV) == "off"
-        if config.remote_command is not None and not remote_off:
+        if config.remote_command is not None:
             print(f"command: {config.remote_command}")
             print(f"fallback: {local}")
         else:

@@ -30,6 +30,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) In `.claude/settings.json`, add allow rules for `uv run python claude_plugins/fls-dev/scripts/remote_full_run.py`, `gh workflow run`, `gh run view`, `gh run download` and `gh run cancel` (spec "Documentation and downstream")
 - [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [x] (cmd) Fix the five PR 282 review findings (start timeout ignores skipped jobs, standalone re-run command, local outcome ranking in the record plugin, name an unlisted dispatched run, specific exceptions in main)
+- [x] (cmd) Add a `.claude/ds/config.md` switch (`## Test Tiers` → `- Remote full run: on|off`, `config.local.md` wins, `DS_TEST_REMOTE=on|off` overrides) to turn the remote full run off without removing `[tool.test_tiers.remote]`
 
 ## 5. Cleanup
 

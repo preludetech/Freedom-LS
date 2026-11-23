@@ -28,3 +28,12 @@ Run by `/ds:rebase_main` after a rebase and before the tests. Leave a value blan
 project has no such step.
 
 - Rebuild script: .claude/fls-dev/scripts/rebuild_after_rebase.sh
+
+## Test Tiers
+
+Whether a full tier runs `[tool.test_tiers.remote] command` from `pyproject.toml`, when the project
+sets one, or the local full command. `off` runs every full tier locally, without touching the
+remote table. Set it in `.claude/ds/config.local.md` to switch it for one machine only.
+`DS_TEST_REMOTE=on|off` in the environment overrides both files for one run.
+
+- Remote full run: on

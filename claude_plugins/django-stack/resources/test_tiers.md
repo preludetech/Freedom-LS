@@ -62,8 +62,11 @@ live here and nowhere else.
   as any full tier, with the local full command as its fallback. A `tier: full` result prints them
   on `command:` and `fallback:`. A full tier asked for directly, with no selector run, reads
   `command` from `pyproject.toml` itself and uses the local full command above as the fallback.
-  `DS_TEST_REMOTE=off` skips the remote command: the wrapper prints the local command alone, and a
-  direct request runs the local command.
+
+  The remote switch turns the remote command off without removing the table: `- Remote full run:
+  off` under `## Test Tiers` in `.claude/ds/config.md`, or in `.claude/ds/config.local.md`, which
+  wins. `DS_TEST_REMOTE=on|off` in the environment overrides both for one run. With the switch off,
+  the wrapper prints the local command alone, and a direct request runs the local command.
 
   A remote command meets this contract: it prints the runner's `run:` lines, `run: tested <sha>`
   and `run: RESULT PASS|FAIL|UNAVAILABLE`; it exits 0 only on `PASS`; its failed set is its
