@@ -1,4 +1,4 @@
-from unfold.contrib.filters.admin import AutocompleteSelectFilter
+from unfold.contrib.filters.admin import RelatedDropdownFilter
 
 from django.apps import apps
 from django.contrib import admin
@@ -10,6 +10,7 @@ from django.utils.safestring import SafeString
 
 from freedom_ls.content_base.admin_filters import ContentTagListFilter
 from freedom_ls.site_aware_models.admin import (
+    ReadOnlyAdminMixin,
     ReadOnlyInline,
     SiteAwareModelAdmin,
     admin_change_link,
@@ -335,7 +336,7 @@ class FormDeclarationInline(ReadOnlyInline):
 
 
 @admin.register(FormProgress)
-class FormProgressAdmin(SiteAwareModelAdmin):
+class FormProgressAdmin(ReadOnlyAdminMixin, SiteAwareModelAdmin):
     inlines = [FormDeclarationInline]
     list_display = [
         "applicant",
@@ -348,7 +349,7 @@ class FormProgressAdmin(SiteAwareModelAdmin):
     ]
     list_filter = [
         FormProgressCompletionFilter,
-        ("form", AutocompleteSelectFilter),
+        ("form", RelatedDropdownFilter),
         ("completed_time", InclusiveRangeDateTimeFilter),
         ("start_time", InclusiveRangeDateTimeFilter),
     ]
@@ -400,16 +401,6 @@ class FormProgressAdmin(SiteAwareModelAdmin):
             },
         ),
     )
-
-    def get_readonly_fields(
-        self, request: HttpRequest, obj: FormProgress | None = None
-    ) -> list[str]:
-        # The sitting is the record of what one person was asked; its owner and
-        # form never change after the fact. The add page still needs both.
-        readonly = list(super().get_readonly_fields(request, obj))
-        if obj is not None:
-            readonly += ["user", "form"]
-        return readonly
 
     def render_change_form(
         self,
@@ -470,7 +461,7 @@ class FormProgressAdmin(SiteAwareModelAdmin):
 
 
 @admin.register(QuestionAnswer)
-class QuestionAnswerAdmin(SiteAwareModelAdmin):
+class QuestionAnswerAdmin(ReadOnlyAdminMixin, SiteAwareModelAdmin):
     list_display = [
         "form_progress",
         "question",
@@ -504,7 +495,7 @@ class QuestionAnswerAdmin(SiteAwareModelAdmin):
 
 
 @admin.register(QuestionAnswerFile)
-class QuestionAnswerFileAdmin(SiteAwareModelAdmin):
+class QuestionAnswerFileAdmin(ReadOnlyAdminMixin, SiteAwareModelAdmin):
     """The documents applicants attached.
 
     The file itself is reachable only through the permission-checked download
@@ -536,9 +527,6 @@ class QuestionAnswerFileAdmin(SiteAwareModelAdmin):
     # storage URL on the page, reachable without passing the download route's
     # permission check.
     exclude = ["site", "file"]
-
-    def has_add_permission(self, request: HttpRequest) -> bool:
-        return False
 
     @admin.display(description="Applicant", ordering="answer__form_progress__user")
     def applicant(self, obj: QuestionAnswerFile) -> str:

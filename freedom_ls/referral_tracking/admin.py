@@ -40,7 +40,10 @@ from freedom_ls.referral_tracking.resources import (
     ReferralCodeResource,
     SignupAttributionResource,
 )
-from freedom_ls.site_aware_models.admin import SiteAwareExportModelAdmin
+from freedom_ls.site_aware_models.admin import (
+    ReadOnlyAdminMixin,
+    SiteAwareExportModelAdmin,
+)
 
 UNSAVED_MESSAGE = "Shown once the code is saved."
 UNREVERSABLE_CODE_MESSAGE = (
@@ -50,23 +53,6 @@ UNREVERSABLE_CODE_MESSAGE = (
 
 def _readonly_field_names(model: type[Model]) -> list[str]:
     return [f.name for f in model._meta.fields if f.name not in ("id", "site")]
-
-
-class ReadOnlyAdminMixin:
-    """No add, change or delete: the rows are written by the app, never by hand."""
-
-    def has_add_permission(self, request: HttpRequest) -> bool:
-        return False
-
-    def has_change_permission(
-        self, request: HttpRequest, obj: Model | None = None
-    ) -> bool:
-        return False
-
-    def has_delete_permission(
-        self, request: HttpRequest, obj: Model | None = None
-    ) -> bool:
-        return False
 
 
 @admin.register(SignupAttribution)

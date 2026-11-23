@@ -31,6 +31,26 @@ class SiteAwareModelAdmin(ModelAdmin):
         css = {"all": ["site_aware_models/css/admin.css"]}
 
 
+class ReadOnlyAdminMixin:
+    """No add, change or delete for anyone, superusers included: the rows are written by
+    the app, never by hand. Delete being denied also drops the delete_selected action."""
+
+    def has_add_permission(
+        self, request: HttpRequest, obj: Model | None = None
+    ) -> bool:
+        return False
+
+    def has_change_permission(
+        self, request: HttpRequest, obj: Model | None = None
+    ) -> bool:
+        return False
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: Model | None = None
+    ) -> bool:
+        return False
+
+
 class SiteAwareExportModelAdmin(ExportActionMixin, SiteAwareModelAdmin):
     """Site-aware admin with a CSV export action and an "Export" changelist button.
 

@@ -53,31 +53,6 @@ from freedom_ls.form_engine.queries import FINAL_GROUP_TITLE
 CHANGE_URL_NAME = "admin:freedom_ls_form_engine_formprogress_change"
 
 
-@pytest.mark.django_db
-def test_completed_time_is_not_editable(staff_client):
-    """Only FormProgress.complete() may finish an attempt.
-
-    It scores the attempt and sends form_attempt_completed, which is what keeps
-    CourseProgress.progress_percentage current. An admin stamping completed_time
-    by hand would leave both stale, so the field must not reach the form.
-    """
-    progress = FormProgressFactory()
-
-    response = staff_client.get(reverse(CHANGE_URL_NAME, args=[progress.pk]))
-
-    assert "completed_time" not in response.context["adminform"].form.fields
-
-
-@pytest.mark.django_db
-def test_served_paper_is_read_only_on_the_form_progress_admin(staff_client):
-    progress = FormProgressFactory()
-
-    response = staff_client.get(reverse(CHANGE_URL_NAME, args=[progress.pk]))
-
-    assert "served_paper" not in response.context["adminform"].form.fields
-    assert "served_paper" in response.context["adminform"].readonly_fields
-
-
 FORM_ADMINS = [
     (FormAdmin, Form),
     (FormPageAdmin, FormPage),
@@ -231,32 +206,152 @@ ANSWER_FACTORIES = {
 }
 
 
+def _answer_url(model_name: str, view: str, *args: object) -> str:
+    return reverse(f"admin:freedom_ls_form_engine_{model_name}_{view}", args=args)
+
+
 @pytest.mark.django_db
 @pytest.mark.parametrize("model_name", ANSWER_MODELS)
-def test_a_viewer_cannot_add_answer_data(viewer_client, model_name):
-    """Django's add view consults only has_add_permission, so a view permission
-    must not be enough to fabricate an answer."""
-    response = viewer_client.get(
-        reverse(f"admin:freedom_ls_form_engine_{model_name}_add")
-    )
+def test_the_answer_changelist_opens_for_a_superuser_and_lists_the_row(
+    staff_client, model_name
+):
+    row = ANSWER_FACTORIES[model_name]()
+
+    response = staff_client.get(_answer_url(model_name, "changelist"))
+
+    assert response.status_code == 200
+    assert [r.pk for r in response.context["cl"].result_list] == [row.pk]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("model_name", ANSWER_MODELS)
+def test_the_answer_change_page_has_no_save_button(staff_client, model_name):
+    row = ANSWER_FACTORIES[model_name]()
+
+    response = staff_client.get(_answer_url(model_name, "change", row.pk))
+
+    assert response.status_code == 200
+    assert 'name="_save"' not in response.content.decode()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("model_name", ANSWER_MODELS)
+def test_a_superuser_cannot_open_the_answer_add_page(staff_client, model_name):
+    response = staff_client.get(_answer_url(model_name, "add"))
 
     assert response.status_code == 403
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("model_name", ANSWER_MODELS)
-def test_a_viewer_cannot_delete_answer_data(viewer_client, model_name):
-    """Django's delete view consults only has_delete_permission, so a view
-    permission must not be enough to destroy an applicant's ID scan."""
+def test_a_superuser_cannot_change_an_answer_row(staff_client, model_name):
+    row = ANSWER_FACTORIES[model_name]()
+    before = type(row)._base_manager.values().get(pk=row.pk)
+
+    response = staff_client.post(
+        _answer_url(model_name, "change", row.pk), {"text_answer": "changed"}
+    )
+
+    assert response.status_code == 403
+    assert type(row)._base_manager.values().get(pk=row.pk) == before
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("model_name", ANSWER_MODELS)
+def test_a_superuser_cannot_delete_an_answer_row(staff_client, model_name):
+    """Django's delete view consults only has_delete_permission, so not even a
+    superuser may destroy an applicant's ID scan."""
     row = ANSWER_FACTORIES[model_name]()
 
-    response = viewer_client.post(
-        reverse(f"admin:freedom_ls_form_engine_{model_name}_delete", args=[row.pk]),
-        {"post": "yes"},
+    response = staff_client.post(
+        _answer_url(model_name, "delete", row.pk), {"post": "yes"}
     )
 
     assert response.status_code == 403
     assert type(row)._base_manager.filter(pk=row.pk).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("model_name", ANSWER_MODELS)
+def test_the_answer_admin_offers_no_delete_selected_action(
+    staff_client, rf, model_name
+):
+    request = rf.get("/")
+    request.user = UserFactory(superuser=True)
+    model = ANSWER_FACTORIES[model_name]._meta.model
+
+    actions = admin.site.get_model_admin(model).get_actions(request)
+
+    assert "delete_selected" not in actions
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("model_name", ANSWER_MODELS)
+def test_posting_delete_selected_to_the_changelist_leaves_the_row(
+    staff_client, model_name
+):
+    row = ANSWER_FACTORIES[model_name]()
+
+    response = staff_client.post(
+        _answer_url(model_name, "changelist"),
+        {"action": "delete_selected", "_selected_action": [row.pk], "index": 0},
+    )
+
+    assert response.status_code == 200
+    assert type(row)._base_manager.filter(pk=row.pk).exists()
+
+
+@pytest.mark.django_db
+def test_the_form_progress_changelist_filters_to_one_forms_sittings(
+    staff_client,
+) -> None:
+    wanted = FormProgressFactory()
+    FormProgressFactory()
+
+    response = staff_client.get(
+        _answer_url("formprogress", "changelist"), {"form__id__exact": wanted.form.pk}
+    )
+
+    assert response.status_code == 200
+    assert [r.pk for r in response.context["cl"].result_list] == [wanted.pk]
+
+
+@pytest.mark.django_db
+def test_the_form_progress_change_page_renders_each_questions_text(
+    staff_client,
+) -> None:
+    form = FormFactory()
+    page = FormPageFactory(form=form)
+    FormQuestionFactory(form_page=page, question="Alpha question text", order=0)
+    FormQuestionFactory(form_page=page, question="Beta question text", order=1)
+    progress = FormProgressFactory(form=form)
+
+    body = _change_page(staff_client, progress)
+
+    assert "Alpha question text" in body
+    assert "Beta question text" in body
+
+
+@pytest.mark.django_db
+def test_erasing_a_user_with_a_form_progress_lists_the_missing_permission(
+    staff_client,
+) -> None:
+    progress = FormProgressFactory()
+    url = reverse("admin:freedom_ls_accounts_user_delete", args=[progress.user.pk])
+
+    response = staff_client.get(url)
+
+    assert response.context["perms_lacking"]
+
+
+@pytest.mark.django_db
+def test_erasing_a_user_with_a_form_progress_leaves_the_user(staff_client) -> None:
+    progress = FormProgressFactory()
+    url = reverse("admin:freedom_ls_accounts_user_delete", args=[progress.user.pk])
+
+    staff_client.post(url, {"post": "yes"})
+
+    assert type(progress.user).objects.filter(pk=progress.user.pk).exists()
 
 
 @pytest.mark.django_db
@@ -560,40 +655,6 @@ def test_the_final_group_heading_appears_only_with_an_off_page_answer(
     QuestionAnswerFactory(form_progress=progress, question=moved)
 
     assert FINAL_GROUP_TITLE in _change_page(staff_client, progress)
-
-
-@pytest.mark.django_db
-def test_the_change_page_is_read_only(staff_client) -> None:
-    form = FormFactory()
-    question = FormQuestionFactory(
-        form_page=FormPageFactory(form=form), type=QuestionType.SHORT_TEXT
-    )
-    progress = FormProgressFactory(form=form)
-    answer = QuestionAnswerFactory(
-        form_progress=progress, question=question, text_answer="original"
-    )
-    url = reverse(CHANGE_URL_NAME, args=[progress.pk])
-
-    response = staff_client.get(url)
-    staff_client.post(url, {"text_answer": "changed"})
-
-    answer.refresh_from_db()
-    assert not response.context["adminform"].form.fields
-    assert not any(
-        formset.formset.can_delete or formset.has_change_permission
-        for formset in response.context["inline_admin_formsets"]
-    )
-    assert answer.text_answer == "original"
-
-
-@pytest.mark.django_db
-def test_the_add_page_offers_user_and_form(staff_client) -> None:
-    response = staff_client.get(
-        reverse("admin:freedom_ls_form_engine_formprogress_add")
-    )
-
-    fields = response.context["adminform"].form.fields
-    assert {"user", "form"} <= set(fields)
 
 
 @pytest.mark.django_db

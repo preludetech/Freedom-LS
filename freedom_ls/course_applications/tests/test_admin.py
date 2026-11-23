@@ -117,23 +117,6 @@ def test_change_page_is_view_only(staff_client):
     assert staff_client.post(url, {}).status_code == 403
 
 
-def test_deleting_applicant_removes_application_and_sitting(staff_client):
-    user = UserFactory()
-    application = CourseApplicationFactory(
-        user=user,
-        form_progress=FormProgressFactory(user=user, completed_time=timezone.now()),
-    )
-    progress_pk = application.form_progress.pk
-    url = reverse("admin:freedom_ls_accounts_user_delete", args=[user.pk])
-
-    response = staff_client.post(url, {"post": "yes"})
-
-    assert response.status_code == 302
-    assert not User.objects.filter(pk=user.pk).exists()
-    assert not CourseApplication.objects.filter(pk=application.pk).exists()
-    assert not FormProgress.objects.filter(pk=progress_pk).exists()
-
-
 def test_staff_with_view_permission_can_open_changelist(mock_site_context):
     staff = UserFactory(is_staff=True)
     staff.user_permissions.add(
@@ -748,37 +731,6 @@ def test_answer_file_changelist_of_ten_unverified_files_stays_under_a_query_boun
         response = staff_client.get(reverse(ANSWER_FILE_CHANGELIST))
 
     assert response.status_code == 200
-
-
-def test_erasing_a_claimed_applicants_user_removes_the_applicant_and_its_records(
-    staff_client, django_capture_on_commit_callbacks
-):
-    user = UserFactory()
-    unverified = unverified_application_with_file()
-    applicant = unverified.applicant
-    progress = unverified.sitting
-    answer_file = QuestionAnswerFile.objects.get(answer__form_progress=progress)
-    storage, name = answer_file.file.storage, answer_file.file.name
-    application = unverified.application
-    application.user = user
-    application.save()
-    applicant.user = user
-    applicant.claimed_at = timezone.now()
-    applicant.save()
-    progress.user = user
-    progress.save()
-
-    with django_capture_on_commit_callbacks(execute=True):
-        response = staff_client.post(
-            reverse("admin:freedom_ls_accounts_user_delete", args=[user.pk]),
-            {"post": "yes"},
-        )
-
-    assert response.status_code == 302
-    assert not AnonymousApplicant.objects.filter(pk=applicant.pk).exists()
-    assert not CourseApplication.objects.filter(pk=unverified.application.pk).exists()
-    assert not FormProgress.objects.filter(pk=progress.pk).exists()
-    assert not storage.exists(name)
 
 
 def test_changelist_shows_a_changed_address_as_unverified(staff_client):
