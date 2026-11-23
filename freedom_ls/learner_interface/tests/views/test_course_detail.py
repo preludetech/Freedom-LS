@@ -22,9 +22,11 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
+    ContentCollectionItemFactory,
     CourseCategoryFactory,
     CourseFactory,
     CoursePartFactory,
+    CourseReferencePartFactory,
     TopicFactory,
 )
 from freedom_ls.content_engine.models import (
@@ -1978,3 +1980,103 @@ def test_detail_outline_shows_no_deadline_label_on_a_closed_row(due_topic_course
     assert outline.cssselect('[data-testid="outline-row-date"]') == []
     assert outline.cssselect('[data-testid="deadline-label"]') == []
     assert row.cssselect("span.truncate")[0].getnext() is None
+
+
+# ---------------------------------------------------------------------------
+# The reference material section
+# ---------------------------------------------------------------------------
+
+
+def _reference_course(
+    part_titles: list[str], *, course: Course | None = None
+) -> Course:
+    """A course with one reference part per title, each holding one topic."""
+    course = course or cast(Course, CourseFactory())
+    for order, title in enumerate(part_titles):
+        part = CoursePartFactory(title=title)
+        ContentCollectionItemFactory(
+            collection_object=part, child_object=TopicFactory(), order=0
+        )
+        CourseReferencePartFactory(course=course, course_part=part, order=order)
+    return course
+
+
+def _reference_section(client: Client, course: Course) -> list[lxml.html.HtmlElement]:
+    page = lxml.html.fromstring(_detail_response_as(client, course).content.decode())
+    return [
+        section
+        for section in page.cssselect("section")
+        if section.cssselect("h2")
+        and section.cssselect("h2")[0].text_content().strip() == "Reference material"
+    ]
+
+
+@pytest.mark.django_db
+def test_detail_lists_reference_part_titles_in_order_without_links(
+    mock_site_context, client
+):
+    course = _reference_course(["Glossary", "Cheat sheets"])
+
+    (section,) = _reference_section(client, course)
+
+    assert [li.text_content() for li in section.cssselect("li")] == [
+        "Glossary",
+        "Cheat sheets",
+    ]
+    assert section.cssselect("a") == []
+
+
+@pytest.mark.django_db
+@time_machine.travel(ACCESS_ENDED_AT, tick=False)
+def test_detail_lists_reference_part_titles_for_an_ended_learner_with_no_outline(
+    mock_site_context, client
+):
+    course = _ended_learner_detail(client)
+    _reference_course(["Glossary"], course=course)
+
+    (section,) = _reference_section(client, course)
+
+    assert [li.text_content() for li in section.cssselect("li")] == ["Glossary"]
+
+
+@pytest.mark.django_db
+def test_detail_shows_no_reference_section_without_reference_parts(
+    mock_site_context, client
+):
+    course = CourseFactory()
+
+    assert _reference_section(client, course) == []
+
+
+@pytest.mark.django_db
+def test_detail_shows_no_reference_section_for_empty_parts(mock_site_context, client):
+    course = CourseFactory()
+    CourseReferencePartFactory(course=course, course_part=CoursePartFactory())
+
+    assert _reference_section(client, course) == []
+
+
+@pytest.mark.django_db
+def test_detail_shows_no_reference_section_for_parts_holding_no_topics(
+    mock_site_context, client
+):
+    course = CourseFactory()
+    part = CoursePartFactory()
+    ContentCollectionItemFactory(
+        collection_object=part, child_object=FormFactory(), order=0
+    )
+    CourseReferencePartFactory(course=course, course_part=part)
+
+    assert _reference_section(client, course) == []
+
+
+@pytest.mark.django_db
+def test_detail_shows_no_reference_section_while_the_outline_is_in_development(
+    mock_site_context, client
+):
+    course = _reference_course(
+        ["Glossary"],
+        course=cast(Course, CourseFactory(table_of_contents_in_development=True)),
+    )
+
+    assert _reference_section(client, course) == []

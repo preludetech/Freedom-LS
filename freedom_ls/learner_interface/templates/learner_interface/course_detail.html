@@ -162,6 +162,18 @@
                         </section>
                     {% endif %}{% endif %}
 
+                    {% comment %}Shown whatever the visitor's access, so an ended learner still sees what the
+                    course offered; only titles, because the material itself is for registered learners.{% endcomment %}
+                    {% if reference_part_titles and not course.table_of_contents_in_development %}
+                        <section>
+                            <h2>Reference material</h2>
+                            <p class="mt-2 text-sm text-muted">Available to registered learners.</p>
+                            <div class="mt-4">
+                                <ul>{% for title in reference_part_titles %}<li>{{ title }}</li>{% endfor %}</ul>
+                            </div>
+                        </section>
+                    {% endif %}
+
                 </div>
 
             </div>

@@ -998,6 +998,9 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
         {
             "course": course,
             **course_details_context(course),
+            "reference_part_titles": [
+                part.course_part.title for part in course_reference_topics(course)
+            ],
             "extra_stats": (
                 [
                     {
