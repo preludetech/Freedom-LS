@@ -984,3 +984,26 @@ def test_a_verdict_job_failing_at_a_setup_step_has_no_verdict() -> None:
 
     with pytest.raises(remote.Unavailable, match="test-verdict failure at Install uv"):
         remote.require_verdict_job(jobs)
+
+
+def test_a_bug_is_raised_not_reported_unavailable_and_the_run_is_cancelled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[list[str]] = []
+
+    progress = remote.Progress(url=RUN_URL, run_id="777", cancellable=True)
+
+    def execute(_progress: object) -> int:
+        raise KeyError("a bug")
+
+    def run_tool(argv: list[str]) -> subprocess.CompletedProcess[str]:
+        calls.append(argv)
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(remote, "Progress", lambda: progress)
+    monkeypatch.setattr(remote, "execute", execute)
+    monkeypatch.setattr(remote, "run_tool", run_tool)
+
+    with pytest.raises(KeyError):
+        remote.main()
+    assert calls == [["gh", "run", "cancel", "777"]]

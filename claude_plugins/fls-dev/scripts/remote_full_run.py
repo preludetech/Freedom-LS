@@ -689,9 +689,16 @@ def main() -> int:
         return execute(progress)
     except Unavailable as error:
         return report_unavailable(str(error), progress)
-    # The caller needs a RESULT line whatever broke, and a run still going is cancelled.
-    except Exception as error:
+    # What the environment can throw (a file, the pyproject, a tool's output) means GitHub
+    # gave no verdict, so the tier runs locally. TOMLDecodeError and JSONDecodeError are
+    # ValueErrors.
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
         return report_unavailable(f"{type(error).__name__}: {error}", progress)
+    except BaseException:
+        # A bug in this script raises with its traceback, but a run still going is cancelled.
+        if progress.cancellable:
+            run_tool(["gh", "run", "cancel", progress.run_id])
+        raise
 
 
 if __name__ == "__main__":
