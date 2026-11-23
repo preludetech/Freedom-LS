@@ -36,9 +36,10 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Replace `run_test_tier.md` with `commands/protected/run_tests.md`: the `Test runner` hook, the five requests (`change`, `everything`, `before landing`, `one test`, `failed`), `status: blocked` on a blank hook; rewrite every SDD caller to it
 - [x] (cmd) Remove the remaining tool names from `claude_plugins/sdd` (pytest, node IDs, `uv run`, `manage.py`) and rewrite its README, command README and diagrams in request words
 - [x] (cmd) Add the SDD portability rule to `CLAUDE.md` and `claude_plugins/fls-dev/resources/plan_review_structure.md`; update this spec, its plan and the `faster-test-runs-11`, `-12`, `-13` ideas to the new paths
-- [ ] (user) Decide how SDD's screenshot scripts (`compress_screenshots.sh`, `design_screenshots.sh`) get pillow and playwright without `uv run --with`: they are the portability guard's only exceptions
-- [ ] (user) Decide whether `/sdd:do_qa`'s dependence on the Playwright MCP becomes a hook too
-- [ ] (user) Decide what happens to the "Step 9 of the Rebase command" chart in `claude_plugins/sdd/docs/diagrams/rebase.drawio.svg`: it draws django-stack's tier logic (`Tier is full?`, the test selector) inside an SDD diagram. Redrawing it needs draw.io
+- [x] (user) Decide how SDD's screenshot scripts (`compress_screenshots.sh`, `design_screenshots.sh`) get pillow and playwright without `uv run --with`: they are the portability guard's only exceptions
+- [x] (user) Decide whether `/sdd:do_qa`'s dependence on the Playwright MCP becomes a hook too
+- [x] (user) Decide what happens to the "Step 9 of the Rebase command" chart in `claude_plugins/sdd/docs/diagrams/rebase.drawio.svg`: it draws django-stack's tier logic (`Tier is full?`, the test selector) inside an SDD diagram. Redrawing it needs draw.io
+- [ ] (user) Look over the two redrawn diagrams: `claude_plugins/sdd/docs/diagrams/rebase.drawio.svg` (the pre-step rebase and the upstream-change review only) and `claude_plugins/django-stack/docs/diagrams/rebase_main.drawio.svg` (the Rebase command, its test run and its push)
 - [ ] (user) Review the new plan-review brief `claude_plugins/fls-dev/resources/plan_review_plugin_portability.md`, wired under `## Plan Review Hooks`: it replaced the planned edit to `plan_review_structure.md`, which only checks app-graph edges
 
 ## 5. Cleanup
