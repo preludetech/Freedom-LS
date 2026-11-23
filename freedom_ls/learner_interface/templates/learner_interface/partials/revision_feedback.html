@@ -45,9 +45,9 @@ result's tone, with the link back to the section the question tests.
             </div>
         {% endfor %}
     </c-callout>
-    <div class="flex flex-wrap items-start justify-between gap-3">
-        {% if review.was_correct %}
-            <div>
+    <div>
+        <div class="flex items-center justify-between gap-3">
+            {% if review.was_correct %}
                 <c-button variant="{% if review.guessed %}primary{% else %}secondary{% endif %}"
                           icon_left="{% if review.guessed %}check{% endif %}"
                           aria-pressed="{% if review.guessed %}true{% else %}false{% endif %}"
@@ -55,14 +55,16 @@ result's tone, with the link back to the section the question tests.
                           hx-target="#revision-card"
                           hx-swap="outerHTML"
                           data-testid="revision-guessed">I guessed</c-button>
-                <p class="text-sm text-muted mt-1">We'll ask you this one again sooner.</p>
-            </div>
+            {% endif %}
+            <c-button icon_right="next"
+                      class="ms-auto"
+                      hx-post="{% url 'learner_interface:course_revision_next' course.slug %}"
+                      hx-target="#revision-card"
+                      hx-swap="outerHTML"
+                      data-testid="revision-next">Next</c-button>
+        </div>
+        {% if review.was_correct %}
+            <p class="text-sm text-muted mt-1">We'll ask you this one again sooner.</p>
         {% endif %}
-        <c-button icon_right="next"
-                  class="ms-auto"
-                  hx-post="{% url 'learner_interface:course_revision_next' course.slug %}"
-                  hx-target="#revision-card"
-                  hx-swap="outerHTML"
-                  data-testid="revision-next">Next</c-button>
     </div>
 </div>

@@ -197,6 +197,18 @@ def test_learner_works_through_a_revision_session(
     expect(feedback.get_by_role("button", name="I guessed")).to_have_attribute(
         "aria-pressed", "true"
     )
+    # The guessed toggle and Next share one row at every width. At 375px the
+    # toggle and its help line used to push Next onto a line of its own.
+    help_line = feedback.get_by_text("We'll ask you this one again sooner.")
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        toggle_box = _box(feedback.get_by_test_id("revision-guessed"))
+        next_box = _box(feedback.get_by_test_id("revision-next"))
+        assert next_box["y"] < toggle_box["y"] + toggle_box["height"], viewport
+        assert toggle_box["y"] < next_box["y"] + next_box["height"], viewport
+        assert next_box["x"] > toggle_box["x"], viewport
+        assert _box(help_line)["y"] >= toggle_box["y"] + toggle_box["height"]
+    page.set_viewport_size(QA_VIEWPORTS[-1])
 
     click_next(page)
     expect(page.get_by_text("Question number 3?")).to_be_visible()
