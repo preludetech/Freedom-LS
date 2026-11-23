@@ -85,7 +85,7 @@ def test_enabling_a_rule_previews_then_registers_the_matching_learner(
     )
     page.get_by_label("Name").fill("Accounts team")
     _pick_autocomplete(page, "organisation", "Acme Finance")
-    _pick_autocomplete(page, "course", "Budgeting basics")
+    page.locator("#id_course").select_option(label="Budgeting basics")
     page.get_by_role("button", name="Save", exact=True).first.click()
 
     departments.select_option(label="Accounts")
@@ -161,7 +161,7 @@ def test_a_recommend_rule_shows_the_course_as_recommended_until_the_learner_regi
     )
     page.get_by_label("Name").fill("Accounts team")
     _pick_autocomplete(page, "organisation", "Acme Finance")
-    _pick_autocomplete(page, "course", "Budgeting basics")
+    page.locator("#id_course").select_option(label="Budgeting basics")
     page.get_by_label("Recommend", exact=True).check()
     page.get_by_role("button", name="Save", exact=True).first.click()
 
