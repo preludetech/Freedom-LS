@@ -11,7 +11,16 @@ CONTENT_MODELS = [
     for model in apps.get_app_config("freedom_ls_content_engine").get_models()
 ]
 
-REMOVED_ADMIN_MODELS = [*CONTENT_MODELS]
+# Form definitions come from content_save only. The answer models keep their admins.
+FORM_DEFINITION_MODELS = [
+    ("freedom_ls_form_engine", "Form"),
+    ("freedom_ls_form_engine", "FormPage"),
+    ("freedom_ls_form_engine", "FormQuestion"),
+    ("freedom_ls_form_engine", "FormContent"),
+    ("freedom_ls_form_engine", "QuestionOption"),
+]
+
+REMOVED_ADMIN_MODELS = [*CONTENT_MODELS, *FORM_DEFINITION_MODELS]
 
 
 @pytest.mark.parametrize(("app_label", "model_name"), REMOVED_ADMIN_MODELS)

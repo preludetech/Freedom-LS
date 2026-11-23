@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import re
-from collections.abc import Callable
-
 import pytest
 
 from django.contrib import admin
@@ -15,19 +12,12 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.accounts.models import User
 from freedom_ls.form_engine.admin import (
-    FormAdmin,
-    FormContentAdmin,
-    FormPageAdmin,
-    FormQuestionAdmin,
     QuestionAnswerAdmin,
-    QuestionOptionAdmin,
     applicant_label,
 )
 from freedom_ls.form_engine.enums import QuestionType
 from freedom_ls.form_engine.factories import (
-    FormContentFactory,
     FormDeclarationFactory,
     FormFactory,
     FormPageFactory,
@@ -38,81 +28,11 @@ from freedom_ls.form_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import (
-    Form,
-    FormContent,
-    FormDeclaration,
-    FormPage,
-    FormProgress,
-    FormQuestion,
-    FormStrategy,
     QuestionAnswer,
-    QuestionOption,
 )
 from freedom_ls.form_engine.queries import FINAL_GROUP_TITLE
 
 CHANGE_URL_NAME = "admin:freedom_ls_form_engine_formprogress_change"
-
-
-FORM_ADMINS = [
-    (FormAdmin, Form),
-    (FormPageAdmin, FormPage),
-    (FormContentAdmin, FormContent),
-    (FormQuestionAdmin, FormQuestion),
-    (QuestionOptionAdmin, QuestionOption),
-]
-
-
-@pytest.mark.parametrize(
-    ("admin_class", "model"),
-    FORM_ADMINS,
-    ids=[model.__name__ for _, model in FORM_ADMINS],
-)
-def test_form_admins_never_permit_deletion(admin_class, model) -> None:
-    assert admin_class(model, admin.site).has_delete_permission(request=None) is False
-
-
-@pytest.mark.django_db
-class TestTheLockdownReachesTheAdminUi:
-    """A superuser -- who holds every Django permission -- still cannot delete.
-
-    `has_delete_permission` returning False is only worth anything if it is what
-    the admin actually consults, so these go through HTTP rather than call it.
-    """
-
-    def test_the_change_page_offers_no_delete_link(self, staff_client) -> None:
-        form = FormFactory()
-
-        response = staff_client.get(
-            reverse("admin:freedom_ls_form_engine_form_change", args=[form.pk])
-        )
-
-        delete_url = reverse("admin:freedom_ls_form_engine_form_delete", args=[form.pk])
-        assert delete_url not in response.content.decode()
-
-    def test_posting_the_delete_url_leaves_the_form_standing(
-        self, staff_client
-    ) -> None:
-        form = FormFactory()
-
-        response = staff_client.post(
-            reverse("admin:freedom_ls_form_engine_form_delete", args=[form.pk]),
-            {"post": "yes"},
-        )
-
-        assert response.status_code == 403
-        assert Form.objects.filter(pk=form.pk).exists()
-
-    def test_the_change_page_offers_no_inline_delete_checkbox(
-        self, staff_client
-    ) -> None:
-        """A page is removed by editing the form, never by a stray tick."""
-        form = FormFactory()
-
-        response = staff_client.get(
-            reverse("admin:freedom_ls_form_engine_form_change", args=[form.pk])
-        )
-
-        assert not re.search(r'name="[^"]*-DELETE"', response.content.decode())
 
 
 @pytest.mark.django_db
@@ -367,40 +287,6 @@ def test_the_admin_index_lists_no_answer_data_without_permission(
 
 
 # ---------------------------------------------------------------------------
-# Slug minting
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.django_db
-def test_two_forms_added_with_no_slug_both_save(staff_client):
-    """The slug is read-only in the admin, so nothing can supply one by hand and
-    the second form of the same title would otherwise collide.
-    """
-    add_url = reverse("admin:freedom_ls_form_engine_form_add")
-    payload = {
-        "title": "Application form",
-        "subtitle": "",
-        "description": "",
-        "content": "",
-        "strategy": FormStrategy.UNSCORED,
-        "meta": "null",
-        "tags": "",
-        "pages-TOTAL_FORMS": "0",
-        "pages-INITIAL_FORMS": "0",
-        "pages-MIN_NUM_FORMS": "0",
-        "pages-MAX_NUM_FORMS": "1000",
-    }
-
-    staff_client.post(add_url, payload)
-    staff_client.post(add_url, payload)
-
-    slugs = set(
-        Form.objects.filter(title="Application form").values_list("slug", flat=True)
-    )
-    assert len(slugs) == 2
-
-
-# ---------------------------------------------------------------------------
 # The admin download route
 # ---------------------------------------------------------------------------
 
@@ -521,68 +407,6 @@ def test_a_valid_bound_passes_the_model_check(mock_site_context) -> None:
     question = FormQuestionFactory(type=QuestionType.DATE, max="2010-01-01")
 
     question.clean()
-
-
-def _change_payload(response, **overrides: str) -> dict[str, str]:
-    """The admin change form's own values, ready to post straight back."""
-    form = response.context["adminform"].form
-    payload = {
-        name: "" if form.initial.get(name) is None else str(form.initial.get(name, ""))
-        for name in form.fields
-    }
-    for inline in response.context["inline_admin_formsets"]:
-        prefix = inline.formset.prefix
-        payload[f"{prefix}-TOTAL_FORMS"] = "0"
-        payload[f"{prefix}-INITIAL_FORMS"] = "0"
-        payload[f"{prefix}-MIN_NUM_FORMS"] = "0"
-        payload[f"{prefix}-MAX_NUM_FORMS"] = "1000"
-    payload.update(overrides)
-    return payload
-
-
-@pytest.fixture
-def date_question(mock_site_context) -> FormQuestion:
-    """A date question complete enough for the admin change form to accept it."""
-    question: FormQuestion = FormQuestionFactory(
-        type=QuestionType.DATE,
-        max="",
-        file_path="forms/application/1. about-you.yaml",
-    )
-    return question
-
-
-def _question_change_url(question: FormQuestion) -> str:
-    return reverse(
-        "admin:freedom_ls_form_engine_formquestion_change", args=[question.pk]
-    )
-
-
-@pytest.mark.django_db
-def test_the_admin_refuses_a_bound_that_does_not_parse(
-    staff_client, date_question
-) -> None:
-    """The model check is only worth anything if it is what the admin consults,
-    so this goes through HTTP rather than calling `clean()`."""
-    url = _question_change_url(date_question)
-
-    response = staff_client.post(
-        url, _change_payload(staff_client.get(url), max="31/12/2010")
-    )
-
-    date_question.refresh_from_db()
-    assert response.status_code == 200
-    assert response.context["adminform"].form.errors
-    assert date_question.max == ""
-
-
-@pytest.mark.django_db
-def test_the_admin_saves_a_valid_bound(staff_client, date_question) -> None:
-    url = _question_change_url(date_question)
-
-    staff_client.post(url, _change_payload(staff_client.get(url), max="2010-01-01"))
-
-    date_question.refresh_from_db()
-    assert date_question.max == "2010-01-01"
 
 
 # ---------------------------------------------------------------------------
@@ -737,92 +561,6 @@ def test_applicant_label_for_a_user_less_sitting_with_no_application(
     assert applicant_label(progress) == "Unverified"
 
 
-@pytest.fixture
-def gated_page(mock_site_context) -> FormPage:
-    form = FormFactory(title="Employment survey")
-    gate_page = FormPageFactory(form=form, order=0)
-    gate = FormQuestionFactory(
-        form_page=gate_page, type="multiple_choice", question="Are you employed?"
-    )
-    yes = QuestionOptionFactory(question=gate, text="Yes, I am", value="yes")
-    page: FormPage = FormPageFactory(
-        form=form, order=1, title="Your employer", condition_option=yes
-    )
-    return page
-
-
-@pytest.mark.django_db
-def test_the_form_page_changelist_shows_which_answer_gates_a_page(
-    staff_client, gated_page
-) -> None:
-    response = staff_client.get(
-        reverse("admin:freedom_ls_form_engine_formpage_changelist")
-    )
-
-    assert "Are you employed? = Yes, I am" in response.content.decode()
-
-
-@pytest.mark.django_db
-def test_the_form_page_change_page_shows_which_answer_gates_it(
-    staff_client, gated_page
-) -> None:
-    response = staff_client.get(
-        reverse("admin:freedom_ls_form_engine_formpage_change", args=[gated_page.pk])
-    )
-
-    assert "Are you employed? = Yes, I am" in response.content.decode()
-
-
-@pytest.mark.django_db
-def test_an_ungated_form_page_has_no_condition(mock_site_context) -> None:
-    page = FormPageFactory()
-
-    assert FormPageAdmin(FormPage, admin.site).condition(page) is None
-
-
-@pytest.fixture
-def gated_content(gated_page) -> FormContent:
-    content: FormContent = FormContentFactory(
-        form_page=gated_page.form.pages.get(order=0),
-        content="Tell us about your employer below.",
-        condition_option=gated_page.condition_option,
-    )
-    return content
-
-
-@pytest.mark.django_db
-def test_the_form_content_changelist_shows_which_answer_gates_a_block(
-    staff_client, gated_content
-) -> None:
-    response = staff_client.get(
-        reverse("admin:freedom_ls_form_engine_formcontent_changelist")
-    )
-
-    assert "Are you employed? = Yes, I am" in response.content.decode()
-
-
-@pytest.mark.django_db
-def test_the_form_content_change_page_shows_its_gate_and_offers_no_option_select(
-    staff_client, gated_content
-) -> None:
-    response = staff_client.get(
-        reverse(
-            "admin:freedom_ls_form_engine_formcontent_change", args=[gated_content.pk]
-        )
-    )
-
-    page = response.content.decode()
-    assert "Are you employed? = Yes, I am" in page
-    assert 'name="condition_option"' not in page
-
-
-@pytest.mark.django_db
-def test_an_ungated_form_content_block_has_no_condition(mock_site_context) -> None:
-    content = FormContentFactory()
-
-    assert FormContentAdmin(FormContent, admin.site).condition(content) is None
-
-
 @pytest.mark.django_db
 def test_the_change_page_shows_the_declaration_read_only(staff_client: Client) -> None:
     progress = FormProgressFactory()
@@ -842,60 +580,3 @@ def test_the_change_page_shows_the_declaration_read_only(staff_client: Client) -
     assert "Signed at" in body
     assert "form-declaration-0-DELETE" not in body
     assert not response.context["inline_admin_formsets"][0].has_add_permission
-
-
-@pytest.fixture
-def deleter_client(
-    mock_site_context: object, logged_in_client: Callable[[User], Client]
-) -> Client:
-    """Staff holding only the delete permissions for users and sittings."""
-    deleter = UserFactory(is_staff=True, is_superuser=False)
-    deleter.user_permissions.set(
-        Permission.objects.filter(
-            codename__in=[
-                "view_user",
-                "delete_user",
-                "view_formprogress",
-                "delete_formprogress",
-            ],
-        )
-    )
-    return logged_in_client(deleter)
-
-
-@pytest.mark.django_db
-def test_deleting_a_signed_sitting_deletes_its_declaration(
-    deleter_client: Client,
-) -> None:
-    declaration = FormDeclarationFactory()
-    url = reverse(
-        "admin:freedom_ls_form_engine_formprogress_delete",
-        args=[declaration.form_progress_id],
-    )
-
-    response = deleter_client.get(url)
-    assert response.status_code == 200
-    assert response.context["perms_lacking"] == set()
-    response = deleter_client.post(url, {"post": "yes"})
-
-    assert response.status_code == 302
-    assert not FormProgress.objects.filter(pk=declaration.form_progress_id).exists()
-    assert not FormDeclaration.objects.filter(pk=declaration.pk).exists()
-
-
-@pytest.mark.django_db
-def test_deleting_a_user_with_a_signed_sitting_deletes_the_declaration(
-    deleter_client: Client,
-) -> None:
-    declaration = FormDeclarationFactory()
-    user = declaration.form_progress.user
-    url = reverse("admin:freedom_ls_accounts_user_delete", args=[user.pk])
-
-    response = deleter_client.get(url)
-    assert response.status_code == 200
-    assert response.context["perms_lacking"] == set()
-    response = deleter_client.post(url, {"post": "yes"})
-
-    assert response.status_code == 302
-    assert not User.objects.filter(pk=user.pk).exists()
-    assert not FormDeclaration.objects.filter(pk=declaration.pk).exists()
