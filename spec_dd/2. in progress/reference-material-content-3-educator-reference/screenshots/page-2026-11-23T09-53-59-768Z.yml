@@ -1,0 +1,159 @@
+- generic [ref=f10e1]:
+  - banner [ref=f10e2]:
+    - link [ref=f10e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f10e4]
+    - navigation [ref=f10e5]:
+      - generic [ref=f10e6]:
+        - generic [ref=f10e7]:
+          - button "Notifications, none new" [ref=f10e8]
+          - status:
+            - generic [ref=f10e12]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f10e14] [cursor=pointer]:
+          - generic [ref=f10e15]:
+            - generic [ref=f10e16]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f10e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f10e18]:
+    - generic [ref=f10e19]:
+      - generic [ref=f10e21]:
+        - navigation "Back" [ref=f10e23]:
+          - link "Courses" [ref=f10e24] [cursor=pointer]:
+            - /url: /educator/organisations/demodev/courses
+        - generic [ref=f10e28]:
+          - generic [ref=f10e33]:
+            - button "Open navigation panel" [ref=f10e34] [cursor=pointer]
+            - heading "Functionality Demo - Reference Material" [level=1] [ref=f10e38]
+          - generic [ref=f10e40]:
+            - generic [ref=f10e42]:
+              - heading "Details" [level=2] [ref=f10e45]
+              - generic [ref=f10e47]:
+                - generic [ref=f10e48]:
+                  - term [ref=f10e49]: Title
+                  - definition [ref=f10e50]: Functionality Demo - Reference Material
+                - generic [ref=f10e51]:
+                  - term [ref=f10e52]: Subtitle
+                  - definition [ref=f10e53]: A short course with reference parts beside its learning path
+                - generic [ref=f10e54]:
+                  - term [ref=f10e55]: Category
+                  - definition [ref=f10e56]: Reference
+                - generic [ref=f10e57]:
+                  - term [ref=f10e58]: Visibility
+                  - definition [ref=f10e59]: Published
+                - generic [ref=f10e60]:
+                  - term [ref=f10e61]: Lessons
+                  - definition [ref=f10e62]: "1"
+            - generic [ref=f10e64]:
+              - heading "Course content" [level=2] [ref=f10e67]
+              - generic [ref=f10e69]:
+                - list [ref=f10e71]:
+                  - listitem [ref=f10e72]:
+                    - generic [ref=f10e74]:
+                      - generic [ref=f10e75]: Course details
+                      - generic [ref=f10e78]: Course
+                      - button "Preview course details page" [ref=f10e80] [cursor=pointer]: Preview
+                  - listitem [ref=f10e81]:
+                    - button "Flying Basics" [expanded] [ref=f10e83]
+                    - generic [ref=f10e87]:
+                      - generic [ref=f10e88]:
+                        - generic [ref=f10e89]: "1."
+                        - generic [ref=f10e90]:
+                          - generic [ref=f10e91]: Part
+                          - generic [ref=f10e95]: Flying Basics
+                      - generic [ref=f10e96]: Part
+                  - listitem [ref=f10e97]:
+                    - generic [ref=f10e99]:
+                      - generic [ref=f10e100]:
+                        - generic [ref=f10e101]: "1.1"
+                        - generic [ref=f10e102]:
+                          - generic [ref=f10e103]: Topic
+                          - generic [ref=f10e107]: Pre-flight Checks
+                      - generic [ref=f10e108]: Topic
+                      - button "Preview Pre-flight Checks" [ref=f10e110] [cursor=pointer]: Preview
+                - paragraph [ref=f10e112]: 2 course outline items
+            - generic [ref=f10e114]:
+              - heading "Reference" [level=2] [ref=f10e117]
+              - generic [ref=f10e119]:
+                - list [ref=f10e121]:
+                  - listitem [ref=f10e122]:
+                    - button "Airspace Rules" [expanded] [ref=f10e124]
+                    - generic [ref=f10e128]:
+                      - generic [ref=f10e129]:
+                        - generic [ref=f10e130]: "1."
+                        - generic [ref=f10e131]:
+                          - generic [ref=f10e132]: Part
+                          - generic [ref=f10e136]: Airspace Rules
+                      - generic [ref=f10e137]: Part
+                  - listitem [ref=f10e138]:
+                    - generic [ref=f10e140]:
+                      - generic [ref=f10e141]:
+                        - generic [ref=f10e142]: "1.1"
+                        - generic [ref=f10e143]:
+                          - generic [ref=f10e144]: Topic
+                          - generic [ref=f10e148]: Airspace Classes
+                      - generic [ref=f10e149]: Topic
+                      - button "Preview Airspace Classes" [ref=f10e151] [cursor=pointer]: Preview
+                  - listitem [ref=f10e152]:
+                    - generic [ref=f10e154]:
+                      - generic [ref=f10e155]:
+                        - generic [ref=f10e156]: "1.2"
+                        - generic [ref=f10e157]:
+                          - generic [ref=f10e158]: Topic
+                          - generic [ref=f10e162]: No-fly Zones
+                      - generic [ref=f10e163]: Topic
+                      - button "Preview No-fly Zones" [ref=f10e165] [cursor=pointer]: Preview
+                  - listitem [ref=f10e166]:
+                    - button "Glossary" [expanded] [ref=f10e168]
+                    - generic [ref=f10e172]:
+                      - generic [ref=f10e173]:
+                        - generic [ref=f10e174]: "2."
+                        - generic [ref=f10e175]:
+                          - generic [ref=f10e176]: Part
+                          - generic [ref=f10e180]: Glossary
+                      - generic [ref=f10e181]: Part
+                  - listitem [ref=f10e182]:
+                    - generic [ref=f10e184]:
+                      - generic [ref=f10e185]:
+                        - generic [ref=f10e186]: "2.1"
+                        - generic [ref=f10e187]:
+                          - generic [ref=f10e188]: Topic
+                          - generic [ref=f10e192]: Terms
+                      - generic [ref=f10e193]: Topic
+                      - button "Preview Terms" [ref=f10e195] [cursor=pointer]: Preview
+                - paragraph [ref=f10e197]: 5 reference outline items
+            - generic [ref=f10e199]:
+              - heading "Cohort registrations" [level=2] [ref=f10e202]
+              - list [ref=f10e206]:
+                - listitem [ref=f10e207]:
+                  - paragraph [ref=f10e209]: No cohorts are registered for this course yet. Cohort registrations will appear here.
+            - generic [ref=f10e211]:
+              - heading "Direct registrations" [level=2] [ref=f10e214]
+              - generic [ref=f10e216]:
+                - button "Sort" [ref=f10e221] [cursor=pointer]
+                - list [ref=f10e226]:
+                  - listitem [ref=f10e227]:
+                    - paragraph [ref=f10e229]: No learners are registered for this course yet. Learner registrations will appear here.
+      - dialog [ref=f10e241]:
+        - status [ref=f10e242]
+        - generic [ref=f10e244]:
+          - generic [ref=f10e245]:
+            - heading "Airspace Classes (Preview) Topic" [active] [level=2] [ref=f10e246]:
+              - text: Airspace Classes (Preview)
+              - generic [ref=f10e247]: Topic
+            - button "Close" [ref=f10e248] [cursor=pointer]
+          - generic [ref=f10e253]:
+            - paragraph [ref=f10e254]: Airspace is divided into classes, from A to G. The class says who may fly there and what contact they must keep with air traffic control.
+            - paragraph [ref=f10e255]: In the most controlled classes, every aircraft needs a clearance and must follow instructions. In the least controlled class, pilots may fly without contact, and they must watch for other traffic themselves.
+          - button "Close" [ref=f10e258] [cursor=pointer]
+  - contentinfo [ref=f10e232]:
+    - generic [ref=f10e233]:
+      - paragraph [ref=f10e234]: © 2026 FirstClass
+      - navigation "Legal" [ref=f10e235]:
+        - link "Terms and Conditions" [ref=f10e236] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f10e237] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f10e238] [cursor=pointer]: reference-material-content-3-educator-reference
+  - generic "Show toolbar" [ref=f10e240]: DJDT

@@ -1,0 +1,236 @@
+- generic [ref=f7e1]:
+  - banner [ref=f7e2]:
+    - link [ref=f7e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f7e4]
+      - heading "FirstClass" [level=1] [ref=f7e5]
+    - navigation [ref=f7e6]:
+      - generic [ref=f7e7]:
+        - generic [ref=f7e8]:
+          - button "Notifications, none new" [ref=f7e9]
+          - status:
+            - generic [ref=f7e359]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f7e15] [cursor=pointer]:
+          - generic [ref=f7e16]:
+            - generic [ref=f7e17]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f7e18]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f7e19]:
+    - generic [ref=f7e20]:
+      - generic [ref=f7e21]:
+        - dialog "Navigation" [ref=f7e22]:
+          - generic [ref=f7e24]:
+            - generic [ref=f7e25]:
+              - paragraph [ref=f7e26]: Organisation
+              - button "Switch organisation" [ref=f7e28] [cursor=pointer]:
+                - generic [aria-hidden] [ref=f7e29]: D
+                - generic "DemoDev" [ref=f7e30]
+            - navigation "Sections" [ref=f7e33]:
+              - heading "Teaching" [level=2] [ref=f7e34]
+              - list [ref=f7e35]:
+                - listitem [ref=f7e36]:
+                  - link "Dashboard" [ref=f7e37] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/dashboard
+                - listitem [ref=f7e42]:
+                  - link "Cohorts" [ref=f7e43] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts
+                - listitem [ref=f7e48]:
+                  - link "Learners" [ref=f7e49] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/learners
+                - listitem [ref=f7e54]:
+                  - link "Courses" [ref=f7e55] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/courses
+              - heading "Administration" [level=2] [ref=f7e60]
+              - list [ref=f7e61]:
+                - listitem [ref=f7e62]:
+                  - link "Staff" [ref=f7e63] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/staff
+                - listitem [ref=f7e68]:
+                  - link "Audit log" [ref=f7e69] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/audit-log
+            - generic [ref=f7e74]:
+              - generic [ref=f7e76]:
+                - generic [aria-hidden] [ref=f7e77]: DE
+                - generic [ref=f7e78]: demodev@email.com
+              - link "Account settings" [ref=f7e80] [cursor=pointer]:
+                - /url: /accounts/profile/
+        - generic [ref=f7e85]:
+          - navigation "Back" [ref=f7e87]:
+            - link "Courses" [ref=f7e88] [cursor=pointer]:
+              - /url: /educator/organisations/demodev/courses
+          - generic [ref=f7e92]:
+            - heading "Functionality Demo - Reference Material" [level=1] [ref=f7e99]
+            - generic [ref=f7e101]:
+              - generic [ref=f7e103]:
+                - heading "Details" [level=2] [ref=f7e106]
+                - generic [ref=f7e108]:
+                  - generic [ref=f7e109]:
+                    - term [ref=f7e110]: Title
+                    - definition [ref=f7e111]: Functionality Demo - Reference Material
+                  - generic [ref=f7e112]:
+                    - term [ref=f7e113]: Subtitle
+                    - definition [ref=f7e114]: A short course with reference parts beside its learning path
+                  - generic [ref=f7e115]:
+                    - term [ref=f7e116]: Category
+                    - definition [ref=f7e117]: Reference
+                  - generic [ref=f7e118]:
+                    - term [ref=f7e119]: Visibility
+                    - definition [ref=f7e120]: Published
+                  - generic [ref=f7e121]:
+                    - term [ref=f7e122]: Lessons
+                    - definition [ref=f7e123]: "1"
+              - generic [ref=f7e125]:
+                - heading "Course content" [level=2] [ref=f7e128]
+                - generic [ref=f7e130]:
+                  - region "Course outline items" [ref=f7e132]:
+                    - table [ref=f7e133]:
+                      - caption [ref=f7e134]: Course outline items
+                      - rowgroup [ref=f7e135]:
+                        - row [ref=f7e136]:
+                          - columnheader "#" [ref=f7e137]
+                          - columnheader "Title" [ref=f7e138]
+                          - columnheader "Type" [ref=f7e139]
+                          - columnheader "Actions" [ref=f7e140]
+                      - rowgroup [ref=f7e141]:
+                        - row [ref=f7e142]:
+                          - cell [ref=f7e143]
+                          - cell "Course details" [ref=f7e144]
+                          - cell "Course" [ref=f7e149]
+                          - cell [ref=f7e150]:
+                            - button "Preview course details page" [ref=f7e152] [cursor=pointer]: Preview
+                        - row [ref=f7e153]:
+                          - cell "1." [ref=f7e154]
+                          - cell "Flying Basics Part Flying Basics" [ref=f7e155]:
+                            - generic [ref=f7e156]:
+                              - button "Flying Basics" [expanded] [ref=f7e157]
+                              - generic [ref=f7e161]:
+                                - generic [ref=f7e162]: Part
+                                - generic [ref=f7e166]: Flying Basics
+                          - cell "Part" [ref=f7e167]
+                          - cell [ref=f7e168]
+                        - row [ref=f7e169]:
+                          - cell "1.1" [ref=f7e170]
+                          - cell "Topic Pre-flight Checks" [ref=f7e171]:
+                            - generic [ref=f7e174]:
+                              - generic [ref=f7e175]: Topic
+                              - generic [ref=f7e179]: Pre-flight Checks
+                          - cell "Topic" [ref=f7e180]
+                          - cell [ref=f7e181]:
+                            - button "Preview Pre-flight Checks" [ref=f7e183] [cursor=pointer]: Preview
+                  - paragraph [ref=f7e185]: 2 course outline items
+              - generic [ref=f7e187]:
+                - heading "Reference" [level=2] [ref=f7e190]
+                - generic [ref=f7e192]:
+                  - region "Reference outline items" [ref=f7e194]:
+                    - table [ref=f7e195]:
+                      - caption [ref=f7e196]: Reference outline items
+                      - rowgroup [ref=f7e197]:
+                        - row [ref=f7e198]:
+                          - columnheader "#" [ref=f7e199]
+                          - columnheader "Title" [ref=f7e200]
+                          - columnheader "Type" [ref=f7e201]
+                          - columnheader "Actions" [ref=f7e202]
+                      - rowgroup [ref=f7e203]:
+                        - row [ref=f7e204]:
+                          - cell "1." [ref=f7e205]
+                          - cell "Airspace Rules Part Airspace Rules" [ref=f7e206]:
+                            - generic [ref=f7e207]:
+                              - button "Airspace Rules" [expanded] [ref=f7e208]
+                              - generic [ref=f7e212]:
+                                - generic [ref=f7e213]: Part
+                                - generic [ref=f7e217]: Airspace Rules
+                          - cell "Part" [ref=f7e218]
+                          - cell [ref=f7e219]
+                        - row [ref=f7e220]:
+                          - cell "1.1" [ref=f7e221]
+                          - cell "Topic Airspace Classes" [ref=f7e222]:
+                            - generic [ref=f7e225]:
+                              - generic [ref=f7e226]: Topic
+                              - generic [ref=f7e230]: Airspace Classes
+                          - cell "Topic" [ref=f7e231]
+                          - cell [ref=f7e232]:
+                            - button "Preview Airspace Classes" [ref=f7e234] [cursor=pointer]: Preview
+                        - row [ref=f7e235]:
+                          - cell "1.2" [ref=f7e236]
+                          - cell "Topic No-fly Zones" [ref=f7e237]:
+                            - generic [ref=f7e240]:
+                              - generic [ref=f7e241]: Topic
+                              - generic [ref=f7e245]: No-fly Zones
+                          - cell "Topic" [ref=f7e246]
+                          - cell [ref=f7e247]:
+                            - button "Preview No-fly Zones" [ref=f7e249] [cursor=pointer]: Preview
+                        - row [ref=f7e250]:
+                          - cell "2." [ref=f7e251]
+                          - cell "Glossary Part Glossary" [ref=f7e252]:
+                            - generic [ref=f7e253]:
+                              - button "Glossary" [expanded] [ref=f7e254]
+                              - generic [ref=f7e258]:
+                                - generic [ref=f7e259]: Part
+                                - generic [ref=f7e263]: Glossary
+                          - cell "Part" [ref=f7e264]
+                          - cell [ref=f7e265]
+                        - row [ref=f7e266]:
+                          - cell "2.1" [ref=f7e267]
+                          - cell "Topic Terms" [ref=f7e268]:
+                            - generic [ref=f7e271]:
+                              - generic [ref=f7e272]: Topic
+                              - generic [ref=f7e276]: Terms
+                          - cell "Topic" [ref=f7e277]
+                          - cell [ref=f7e278]:
+                            - button "Preview Terms" [ref=f7e280] [cursor=pointer]: Preview
+                  - paragraph [ref=f7e282]: 5 reference outline items
+              - generic [ref=f7e284]:
+                - heading "Cohort registrations" [level=2] [ref=f7e287]
+                - region "Cohort course registrations" [ref=f7e291]:
+                  - table [ref=f7e292]:
+                    - caption [ref=f7e293]: Cohort course registrations
+                    - rowgroup [ref=f7e294]:
+                      - row [ref=f7e295]:
+                        - columnheader "Cohort" [ref=f7e296]
+                        - columnheader "Cohort status" [ref=f7e297]
+                        - columnheader "Status" [ref=f7e298]
+                        - columnheader "Registered" [ref=f7e299]
+                    - rowgroup [ref=f7e300]:
+                      - row [ref=f7e301]:
+                        - cell [ref=f7e302]:
+                          - paragraph [ref=f7e304]: No cohorts are registered for this course yet. Cohort registrations will appear here.
+              - generic [ref=f7e306]:
+                - heading "Direct registrations" [level=2] [ref=f7e309]
+                - region "Learner course registrations" [ref=f7e313]:
+                  - table [ref=f7e314]:
+                    - caption [ref=f7e315]: Learner course registrations
+                    - rowgroup [ref=f7e316]:
+                      - row [ref=f7e317]:
+                        - columnheader [ref=f7e318]:
+                          - link "Learner" [ref=f7e319] [cursor=pointer]:
+                            - /url: /educator/organisations/demodev/courses/1144be70-d209-4fde-98f8-3fb2459fdccb?learner_registrations-sort=-learner__user__first_name
+                        - columnheader "Status" [ref=f7e323]
+                        - columnheader "Registered" [ref=f7e324]
+                    - rowgroup [ref=f7e325]:
+                      - row [ref=f7e326]:
+                        - cell [ref=f7e327]:
+                          - paragraph [ref=f7e329]: No learners are registered for this course yet. Learner registrations will appear here.
+      - dialog [ref=f7e379]:
+        - status [ref=f7e342]
+        - generic [ref=f7e380]:
+          - generic [ref=f7e381]:
+            - heading "Pre-flight Checks (Preview) Topic" [active] [level=2] [ref=f7e382]:
+              - text: Pre-flight Checks (Preview)
+              - generic [ref=f7e383]: Topic
+            - button "Close" [ref=f7e384] [cursor=pointer]
+          - generic [ref=f7e389]:
+            - paragraph [ref=f7e390]: Before every flight, a pilot walks around the aircraft and checks it with their own eyes. Look at the control surfaces, the tyres, the fuel level and the fuel quality. Confirm that the weather and the route suit the flight, and that the paperwork is on board.
+            - paragraph [ref=f7e391]: A checklist keeps this routine reliable. Work through it in the same order every time, so a missed step stands out.
+          - button "Close" [ref=f7e394] [cursor=pointer]
+  - contentinfo [ref=f7e332]:
+    - generic [ref=f7e333]:
+      - paragraph [ref=f7e334]: © 2026 FirstClass
+      - navigation "Legal" [ref=f7e335]:
+        - link "Terms and Conditions" [ref=f7e336] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f7e337] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f7e338] [cursor=pointer]: reference-material-content-3-educator-reference
+  - generic "Show toolbar" [ref=f7e340]: DJDT

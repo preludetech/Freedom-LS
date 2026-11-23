@@ -1,0 +1,210 @@
+- generic [active] [ref=f4e1]:
+  - banner [ref=f4e2]:
+    - link [ref=f4e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f4e4]
+    - navigation [ref=f4e5]:
+      - generic [ref=f4e6]:
+        - generic [ref=f4e7]:
+          - button "Notifications, none new" [ref=f4e8]
+          - status:
+            - generic [ref=f4e12]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f4e14] [cursor=pointer]:
+          - generic [ref=f4e15]:
+            - generic [ref=f4e16]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f4e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f4e18]:
+    - generic [ref=f4e21]:
+      - navigation "Back" [ref=f4e23]:
+        - link "Courses" [ref=f4e24] [cursor=pointer]:
+          - /url: /educator/organisations/demodev/courses
+      - generic [ref=f4e28]:
+        - generic [ref=f4e33]:
+          - button "Open navigation panel" [ref=f4e34] [cursor=pointer]
+          - heading "Functionality Demo - Reference Material" [level=1] [ref=f4e38]
+        - generic [ref=f4e40]:
+          - generic [ref=f4e42]:
+            - heading "Details" [level=2] [ref=f4e45]
+            - generic [ref=f4e47]:
+              - generic [ref=f4e48]:
+                - term [ref=f4e49]: Title
+                - definition [ref=f4e50]: Functionality Demo - Reference Material
+              - generic [ref=f4e51]:
+                - term [ref=f4e52]: Subtitle
+                - definition [ref=f4e53]: A short course with reference parts beside its learning path
+              - generic [ref=f4e54]:
+                - term [ref=f4e55]: Category
+                - definition [ref=f4e56]: Reference
+              - generic [ref=f4e57]:
+                - term [ref=f4e58]: Visibility
+                - definition [ref=f4e59]: Published
+              - generic [ref=f4e60]:
+                - term [ref=f4e61]: Lessons
+                - definition [ref=f4e62]: "1"
+          - generic [ref=f4e64]:
+            - heading "Course content" [level=2] [ref=f4e67]
+            - generic [ref=f4e69]:
+              - list [ref=f4e71]:
+                - listitem [ref=f4e72]:
+                  - generic [ref=f4e74]:
+                    - generic [ref=f4e75]: Course details
+                    - generic [ref=f4e78]: Course
+                    - button "Preview course details page" [ref=f4e80] [cursor=pointer]: Preview
+                - listitem [ref=f4e81]:
+                  - button "Flying Basics" [expanded] [ref=f4e83]
+                  - generic [ref=f4e87]:
+                    - generic [ref=f4e88]:
+                      - generic [ref=f4e89]: "1."
+                      - generic [ref=f4e90]:
+                        - generic [ref=f4e91]: Part
+                        - generic [ref=f4e95]: Flying Basics
+                    - generic [ref=f4e96]: Part
+                - listitem [ref=f4e97]:
+                  - generic [ref=f4e99]:
+                    - generic [ref=f4e100]:
+                      - generic [ref=f4e101]: "1.1"
+                      - generic [ref=f4e102]:
+                        - generic [ref=f4e103]: Topic
+                        - generic [ref=f4e107]: Pre-flight Checks
+                    - generic [ref=f4e108]: Topic
+                    - button "Preview Pre-flight Checks" [ref=f4e110] [cursor=pointer]: Preview
+              - paragraph [ref=f4e112]: 2 course outline items
+          - generic [ref=f4e114]:
+            - heading "Reference" [level=2] [ref=f4e117]
+            - generic [ref=f4e119]:
+              - list [ref=f4e121]:
+                - listitem [ref=f4e122]:
+                  - button "Airspace Rules" [expanded] [ref=f4e124]
+                  - generic [ref=f4e128]:
+                    - generic [ref=f4e129]:
+                      - generic [ref=f4e130]: "1."
+                      - generic [ref=f4e131]:
+                        - generic [ref=f4e132]: Part
+                        - generic [ref=f4e136]: Airspace Rules
+                    - generic [ref=f4e137]: Part
+                - listitem [ref=f4e138]:
+                  - generic [ref=f4e140]:
+                    - generic [ref=f4e141]:
+                      - generic [ref=f4e142]: "1.1"
+                      - generic [ref=f4e143]:
+                        - generic [ref=f4e144]: Topic
+                        - generic [ref=f4e148]: Airspace Classes
+                    - generic [ref=f4e149]: Topic
+                    - button "Preview Airspace Classes" [ref=f4e151] [cursor=pointer]: Preview
+                - listitem [ref=f4e152]:
+                  - generic [ref=f4e154]:
+                    - generic [ref=f4e155]:
+                      - generic [ref=f4e156]: "1.2"
+                      - generic [ref=f4e157]:
+                        - generic [ref=f4e158]: Topic
+                        - generic [ref=f4e162]: No-fly Zones
+                    - generic [ref=f4e163]: Topic
+                    - button "Preview No-fly Zones" [ref=f4e165] [cursor=pointer]: Preview
+                - listitem [ref=f4e166]:
+                  - button "Glossary" [expanded] [ref=f4e168]
+                  - generic [ref=f4e172]:
+                    - generic [ref=f4e173]:
+                      - generic [ref=f4e174]: "2."
+                      - generic [ref=f4e175]:
+                        - generic [ref=f4e176]: Part
+                        - generic [ref=f4e180]: Glossary
+                    - generic [ref=f4e181]: Part
+                - listitem [ref=f4e182]:
+                  - generic [ref=f4e184]:
+                    - generic [ref=f4e185]:
+                      - generic [ref=f4e186]: "2.1"
+                      - generic [ref=f4e187]:
+                        - generic [ref=f4e188]: Topic
+                        - generic [ref=f4e192]: Terms
+                    - generic [ref=f4e193]: Topic
+                    - button "Preview Terms" [ref=f4e195] [cursor=pointer]: Preview
+              - paragraph [ref=f4e197]: 5 reference outline items
+          - generic [ref=f4e199]:
+            - heading "Cohort registrations" [level=2] [ref=f4e202]
+            - list [ref=f4e206]:
+              - listitem [ref=f4e207]:
+                - paragraph [ref=f4e209]: No cohorts are registered for this course yet. Cohort registrations will appear here.
+          - generic [ref=f4e211]:
+            - heading "Direct registrations" [level=2] [ref=f4e214]
+            - generic [ref=f4e216]:
+              - button "Sort" [ref=f4e221] [cursor=pointer]
+              - list [ref=f4e226]:
+                - listitem [ref=f4e227]:
+                  - paragraph [ref=f4e229]: No learners are registered for this course yet. Learner registrations will appear here.
+  - contentinfo [ref=f4e232]:
+    - generic [ref=f4e233]:
+      - paragraph [ref=f4e234]: © 2026 FirstClass
+      - navigation "Legal" [ref=f4e235]:
+        - link "Terms and Conditions" [ref=f4e236] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f4e237] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f4e238] [cursor=pointer]: reference-material-content-3-educator-reference
+  - list [ref=f4e240]:
+    - listitem [ref=f4e241]:
+      - link "Hide »" [ref=f4e242] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e243]:
+      - link "Toggle Theme" [ref=f4e244] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e247]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e248] [cursor=pointer]
+      - link "History /educator/organisations/demodev/courses/1144be70-d209-4fde-98f8-3fb2459fdccb" [ref=f4e249] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e250]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e251] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f4e252] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e253]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e254] [cursor=pointer]
+      - 'link "Time CPU: 197.00ms (217.72ms)" [ref=f4e255] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f4e256]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e257] [cursor=pointer]
+      - link "Settings" [ref=f4e258] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e259]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e260] [cursor=pointer]
+      - link "Headers" [ref=f4e261] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e262]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e263] [cursor=pointer]
+      - link "Request interface" [ref=f4e264] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e265]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e266] [cursor=pointer]
+      - link "SQL 30 queries in 20.94ms" [ref=f4e267] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e268]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e269] [cursor=pointer]
+      - link "Static files 14 files used" [ref=f4e270] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e271]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e272] [cursor=pointer]
+      - link "Templates educator_interface/interface.html" [ref=f4e273] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e274]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e275] [cursor=pointer]
+      - link "Alerts" [ref=f4e276] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e277]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e278] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f4e279] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e280]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e281] [cursor=pointer]
+      - link "Signals 130 receivers of 15 signals" [ref=f4e282] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e283]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e284] [cursor=pointer]
+      - link "Community" [ref=f4e285] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e286]:
+      - checkbox "Enable for next and successive requests" [ref=f4e287] [cursor=pointer]
+      - generic [ref=f4e288]: Intercept redirects
+    - listitem [ref=f4e289]:
+      - checkbox "Enable for next and successive requests" [ref=f4e290] [cursor=pointer]
+      - generic [ref=f4e291]: Profiling

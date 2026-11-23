@@ -1,0 +1,176 @@
+- generic [active] [ref=f11e1]:
+  - banner [ref=f11e2]:
+    - link [ref=f11e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f11e4]
+    - navigation [ref=f11e5]:
+      - generic [ref=f11e6]:
+        - generic [ref=f11e7]:
+          - button "Notifications, none new" [ref=f11e8]
+          - status:
+            - generic [ref=f11e12]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f11e14] [cursor=pointer]:
+          - generic [ref=f11e15]:
+            - generic [ref=f11e16]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f11e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f11e18]:
+    - generic [ref=f11e21]:
+      - navigation "Back" [ref=f11e23]:
+        - link "Courses" [ref=f11e24] [cursor=pointer]:
+          - /url: /educator/organisations/demodev/courses
+      - generic [ref=f11e28]:
+        - generic [ref=f11e33]:
+          - button "Open navigation panel" [ref=f11e34] [cursor=pointer]
+          - heading "Functionality Demo - Course Parts" [level=1] [ref=f11e38]
+        - generic [ref=f11e40]:
+          - generic [ref=f11e42]:
+            - heading "Details" [level=2] [ref=f11e45]
+            - generic [ref=f11e47]:
+              - generic [ref=f11e48]:
+                - term [ref=f11e49]: Title
+                - definition [ref=f11e50]: Functionality Demo - Course Parts
+              - generic [ref=f11e51]:
+                - term [ref=f11e52]: Subtitle
+                - definition [ref=f11e53]: Demonstrating course organisation with parts
+              - generic [ref=f11e54]:
+                - term [ref=f11e55]: Category
+                - definition [ref=f11e56]: Reference
+              - generic [ref=f11e57]:
+                - term [ref=f11e58]: Visibility
+                - definition [ref=f11e59]: Published
+              - generic [ref=f11e60]:
+                - term [ref=f11e61]: Time limit
+                - definition [ref=f11e62]: 90 days
+              - generic [ref=f11e63]:
+                - term [ref=f11e64]: Lessons
+                - definition [ref=f11e65]: "5"
+          - generic [ref=f11e67]:
+            - heading "Course content" [level=2] [ref=f11e70]
+            - generic [ref=f11e72]:
+              - list [ref=f11e74]:
+                - listitem [ref=f11e75]:
+                  - generic [ref=f11e77]:
+                    - generic [ref=f11e78]: Course details
+                    - generic [ref=f11e81]: Course
+                    - button "Preview course details page" [ref=f11e83] [cursor=pointer]: Preview
+                - listitem [ref=f11e84]:
+                  - button "Getting Started" [expanded] [ref=f11e86]
+                  - generic [ref=f11e90]:
+                    - generic [ref=f11e91]:
+                      - generic [ref=f11e92]: "1."
+                      - generic [ref=f11e93]:
+                        - generic [ref=f11e94]: Part
+                        - generic [ref=f11e98]: Getting Started
+                    - generic [ref=f11e99]: Part
+                - listitem [ref=f11e100]:
+                  - generic [ref=f11e102]:
+                    - generic [ref=f11e103]:
+                      - generic [ref=f11e104]: "1.1"
+                      - generic [ref=f11e105]:
+                        - generic [ref=f11e106]: Topic
+                        - generic [ref=f11e110]: Welcome
+                    - generic [ref=f11e111]: Topic
+                    - button "Preview Welcome" [ref=f11e113] [cursor=pointer]: Preview
+                - listitem [ref=f11e114]:
+                  - generic [ref=f11e116]:
+                    - generic [ref=f11e117]:
+                      - generic [ref=f11e118]: "1.2"
+                      - generic [ref=f11e119]:
+                        - generic [ref=f11e120]: Topic
+                        - generic [ref=f11e124]: What to Expect
+                    - generic [ref=f11e125]: Topic
+                    - button "Preview What to Expect" [ref=f11e127] [cursor=pointer]: Preview
+                - listitem [ref=f11e128]:
+                  - button "Core Concepts" [expanded] [ref=f11e130]
+                  - generic [ref=f11e134]:
+                    - generic [ref=f11e135]:
+                      - generic [ref=f11e136]: "2."
+                      - generic [ref=f11e137]:
+                        - generic [ref=f11e138]: Part
+                        - generic [ref=f11e142]: Core Concepts
+                    - generic [ref=f11e143]: Part
+                - listitem [ref=f11e144]:
+                  - generic [ref=f11e146]:
+                    - generic [ref=f11e147]:
+                      - generic [ref=f11e148]: "2.1"
+                      - generic [ref=f11e149]:
+                        - generic [ref=f11e150]: Topic
+                        - generic [ref=f11e154]: Key Ideas
+                    - generic [ref=f11e155]: Topic
+                    - button "Preview Key Ideas" [ref=f11e157] [cursor=pointer]: Preview
+                - listitem [ref=f11e158]:
+                  - generic [ref=f11e160]:
+                    - generic [ref=f11e161]:
+                      - generic [ref=f11e162]: "2.2"
+                      - generic [ref=f11e163]:
+                        - generic [ref=f11e164]: Topic
+                        - generic [ref=f11e168]: Going Deeper
+                    - generic [ref=f11e169]: Topic
+                    - button "Preview Going Deeper" [ref=f11e171] [cursor=pointer]: Preview
+                - listitem [ref=f11e172]:
+                  - generic [ref=f11e174]:
+                    - generic [ref=f11e175]:
+                      - generic [ref=f11e176]: "2.3"
+                      - generic [ref=f11e177]:
+                        - generic [ref=f11e178]: Form
+                        - generic [ref=f11e182]: Knowledge Check
+                    - generic [ref=f11e183]: Form
+                    - button "Preview Knowledge Check" [ref=f11e185] [cursor=pointer]: Preview
+                - listitem [ref=f11e186]:
+                  - button "Wrapping Up" [expanded] [ref=f11e188]
+                  - generic [ref=f11e192]:
+                    - generic [ref=f11e193]:
+                      - generic [ref=f11e194]: "3."
+                      - generic [ref=f11e195]:
+                        - generic [ref=f11e196]: Part
+                        - generic [ref=f11e200]: Wrapping Up
+                    - generic [ref=f11e201]: Part
+                - listitem [ref=f11e202]:
+                  - generic [ref=f11e204]:
+                    - generic [ref=f11e205]:
+                      - generic [ref=f11e206]: "3.1"
+                      - generic [ref=f11e207]:
+                        - generic [ref=f11e208]: Topic
+                        - generic [ref=f11e212]: Summary
+                    - generic [ref=f11e213]: Topic
+                    - button "Preview Summary" [ref=f11e215] [cursor=pointer]: Preview
+                - listitem [ref=f11e216]:
+                  - generic [ref=f11e218]:
+                    - generic [ref=f11e219]:
+                      - generic [ref=f11e220]: "3.2"
+                      - generic [ref=f11e221]:
+                        - generic [ref=f11e222]: Form
+                        - generic [ref=f11e226]: Course Feedback
+                    - generic [ref=f11e227]: Form
+                    - button "Preview Course Feedback" [ref=f11e229] [cursor=pointer]: Preview
+              - paragraph [ref=f11e231]: 10 course outline items
+          - generic [ref=f11e233]:
+            - heading "Reference" [level=2] [ref=f11e236]
+            - list [ref=f11e240]:
+              - listitem [ref=f11e241]:
+                - paragraph [ref=f11e245]: No reference material in this course yet.
+          - generic [ref=f11e247]:
+            - heading "Cohort registrations" [level=2] [ref=f11e250]
+            - list [ref=f11e254]:
+              - listitem [ref=f11e255]:
+                - paragraph [ref=f11e257]: No cohorts are registered for this course yet. Cohort registrations will appear here.
+          - generic [ref=f11e259]:
+            - heading "Direct registrations" [level=2] [ref=f11e262]
+            - generic [ref=f11e264]:
+              - button "Sort" [ref=f11e269] [cursor=pointer]
+              - list [ref=f11e274]:
+                - listitem [ref=f11e275]:
+                  - paragraph [ref=f11e277]: No learners are registered for this course yet. Learner registrations will appear here.
+  - contentinfo [ref=f11e280]:
+    - generic [ref=f11e281]:
+      - paragraph [ref=f11e282]: © 2026 FirstClass
+      - navigation "Legal" [ref=f11e283]:
+        - link "Terms and Conditions" [ref=f11e284] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f11e285] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f11e286] [cursor=pointer]: reference-material-content-3-educator-reference
+  - generic "Show toolbar" [ref=f11e288]: DJDT

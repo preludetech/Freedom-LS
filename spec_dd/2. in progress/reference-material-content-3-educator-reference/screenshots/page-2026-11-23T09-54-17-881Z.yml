@@ -1,0 +1,166 @@
+- generic [active] [ref=f12e1]:
+  - banner [ref=f12e2]:
+    - link [ref=f12e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f12e4]
+      - heading "FirstClass" [level=1] [ref=f12e5]
+    - navigation [ref=f12e6]:
+      - generic [ref=f12e7]:
+        - generic [ref=f12e8]:
+          - button "Notifications, none new" [ref=f12e9]
+          - status:
+            - generic [ref=f12e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f12e15] [cursor=pointer]:
+          - generic [ref=f12e16]:
+            - generic [ref=f12e17]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f12e18]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f12e19]:
+    - generic [ref=f12e22]:
+      - navigation "Back" [ref=f12e24]:
+        - link "Courses" [ref=f12e25] [cursor=pointer]:
+          - /url: /educator/organisations/demodev/courses
+      - generic [ref=f12e29]:
+        - generic [ref=f12e34]:
+          - button "Open navigation panel" [ref=f12e35] [cursor=pointer]
+          - heading "Functionality Demo - Reference Material" [level=1] [ref=f12e39]
+        - generic [ref=f12e41]:
+          - generic [ref=f12e43]:
+            - heading "Details" [level=2] [ref=f12e46]
+            - generic [ref=f12e48]:
+              - generic [ref=f12e49]:
+                - term [ref=f12e50]: Title
+                - definition [ref=f12e51]: Functionality Demo - Reference Material
+              - generic [ref=f12e52]:
+                - term [ref=f12e53]: Subtitle
+                - definition [ref=f12e54]: A short course with reference parts beside its learning path
+              - generic [ref=f12e55]:
+                - term [ref=f12e56]: Category
+                - definition [ref=f12e57]: Reference
+              - generic [ref=f12e58]:
+                - term [ref=f12e59]: Visibility
+                - definition [ref=f12e60]: Published
+              - generic [ref=f12e61]:
+                - term [ref=f12e62]: Lessons
+                - definition [ref=f12e63]: "1"
+          - generic [ref=f12e65]:
+            - heading "Course content" [level=2] [ref=f12e68]
+            - generic [ref=f12e70]:
+              - list [ref=f12e72]:
+                - listitem [ref=f12e73]:
+                  - generic [ref=f12e75]:
+                    - generic [ref=f12e76]: Course details
+                    - generic [ref=f12e79]: Course
+                    - button "Preview course details page" [ref=f12e81] [cursor=pointer]: Preview
+                - listitem [ref=f12e82]:
+                  - button "Flying Basics" [expanded] [ref=f12e84]
+                  - generic [ref=f12e88]:
+                    - generic [ref=f12e89]:
+                      - generic [ref=f12e90]: "1."
+                      - generic [ref=f12e91]:
+                        - generic [ref=f12e92]: Part
+                        - generic [ref=f12e96]: Flying Basics
+                    - generic [ref=f12e97]: Part
+                - listitem [ref=f12e98]:
+                  - generic [ref=f12e100]:
+                    - generic [ref=f12e101]:
+                      - generic [ref=f12e102]: "1.1"
+                      - generic [ref=f12e103]:
+                        - generic [ref=f12e104]: Topic
+                        - generic [ref=f12e108]: Pre-flight Checks
+                    - generic [ref=f12e109]: Topic
+                    - button "Preview Pre-flight Checks" [ref=f12e111] [cursor=pointer]: Preview
+              - paragraph [ref=f12e113]: 2 course outline items
+          - generic [ref=f12e115]:
+            - heading "Reference" [level=2] [ref=f12e118]
+            - generic [ref=f12e120]:
+              - list [ref=f12e122]:
+                - listitem [ref=f12e123]:
+                  - button "Airspace Rules" [expanded] [ref=f12e125]
+                  - generic [ref=f12e129]:
+                    - generic [ref=f12e130]:
+                      - generic [ref=f12e131]: "1."
+                      - generic [ref=f12e132]:
+                        - generic [ref=f12e133]: Part
+                        - generic [ref=f12e137]: Airspace Rules
+                    - generic [ref=f12e138]: Part
+                - listitem [ref=f12e139]:
+                  - generic [ref=f12e141]:
+                    - generic [ref=f12e142]:
+                      - generic [ref=f12e143]: "1.1"
+                      - generic [ref=f12e144]:
+                        - generic [ref=f12e145]: Topic
+                        - generic [ref=f12e149]: Airspace Classes
+                    - generic [ref=f12e150]: Topic
+                    - button "Preview Airspace Classes" [ref=f12e152] [cursor=pointer]: Preview
+                - listitem [ref=f12e153]:
+                  - generic [ref=f12e155]:
+                    - generic [ref=f12e156]:
+                      - generic [ref=f12e157]: "1.2"
+                      - generic [ref=f12e158]:
+                        - generic [ref=f12e159]: Topic
+                        - generic [ref=f12e163]: No-fly Zones
+                    - generic [ref=f12e164]: Topic
+                    - button "Preview No-fly Zones" [ref=f12e166] [cursor=pointer]: Preview
+                - listitem [ref=f12e167]:
+                  - button "Glossary" [expanded] [ref=f12e169]
+                  - generic [ref=f12e173]:
+                    - generic [ref=f12e174]:
+                      - generic [ref=f12e175]: "2."
+                      - generic [ref=f12e176]:
+                        - generic [ref=f12e177]: Part
+                        - generic [ref=f12e181]: Glossary
+                    - generic [ref=f12e182]: Part
+                - listitem [ref=f12e183]:
+                  - generic [ref=f12e185]:
+                    - generic [ref=f12e186]:
+                      - generic [ref=f12e187]: "2.1"
+                      - generic [ref=f12e188]:
+                        - generic [ref=f12e189]: Topic
+                        - generic [ref=f12e193]: Terms
+                    - generic [ref=f12e194]: Topic
+                    - button "Preview Terms" [ref=f12e196] [cursor=pointer]: Preview
+              - paragraph [ref=f12e198]: 5 reference outline items
+          - generic [ref=f12e200]:
+            - heading "Cohort registrations" [level=2] [ref=f12e203]
+            - region "Cohort course registrations" [ref=f12e207]:
+              - table [ref=f12e208]:
+                - caption [ref=f12e209]: Cohort course registrations
+                - rowgroup [ref=f12e210]:
+                  - row [ref=f12e211]:
+                    - columnheader "Cohort" [ref=f12e212]
+                    - columnheader "Cohort status" [ref=f12e213]
+                    - columnheader "Status" [ref=f12e214]
+                    - columnheader "Registered" [ref=f12e215]
+                - rowgroup [ref=f12e216]:
+                  - row [ref=f12e217]:
+                    - cell [ref=f12e218]:
+                      - paragraph [ref=f12e220]: No cohorts are registered for this course yet. Cohort registrations will appear here.
+          - generic [ref=f12e222]:
+            - heading "Direct registrations" [level=2] [ref=f12e225]
+            - region "Learner course registrations" [ref=f12e229]:
+              - table [ref=f12e230]:
+                - caption [ref=f12e231]: Learner course registrations
+                - rowgroup [ref=f12e232]:
+                  - row [ref=f12e233]:
+                    - columnheader [ref=f12e234]:
+                      - link "Learner" [ref=f12e235] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/courses/1144be70-d209-4fde-98f8-3fb2459fdccb?learner_registrations-sort=-learner__user__first_name
+                    - columnheader "Status" [ref=f12e239]
+                    - columnheader "Registered" [ref=f12e240]
+                - rowgroup [ref=f12e241]:
+                  - row [ref=f12e242]:
+                    - cell [ref=f12e243]:
+                      - paragraph [ref=f12e245]: No learners are registered for this course yet. Learner registrations will appear here.
+  - contentinfo [ref=f12e248]:
+    - generic [ref=f12e249]:
+      - paragraph [ref=f12e250]: © 2026 FirstClass
+      - navigation "Legal" [ref=f12e251]:
+        - link "Terms and Conditions" [ref=f12e252] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f12e253] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f12e254] [cursor=pointer]: reference-material-content-3-educator-reference
+  - generic "Show toolbar" [ref=f12e256]: DJDT
