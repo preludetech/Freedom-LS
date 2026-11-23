@@ -17,6 +17,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `sacaa-compliance-4-attempt-review` (SACAA compliance)
 - 🟠 Medium · `faster-test-runs-5-full-suite-on-github-actions` (Faster test runs)
 - 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
+- 🟡 Low · `remove-unnecessary-admin-panel-functionality` (Educator interface)
 
 ### Ready to start
 
@@ -67,7 +68,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### Needs work on main first
 
-- ⚪ Priority not set · `panel-framework-tech-debt-polish` (Panel framework): cut it with `/sdd:roadmap panel-framework-tech-debt-polish` (the directory is empty).
+None.
 
 ![Up next](roadmap_diagrams/up-next.svg)
 
@@ -456,11 +457,13 @@ Org admins manage learners, cohorts, registrations and staff. Parent: `educator-
 - `audit-log-coverage-gaps` — **ready** — The audit log also records Django admin edits, system admin role changes and report downloads, and marks where history starts.
 - `bulk-run-audit-summary` — **ready** — Bulk actions write one run summary with folded per-object entries in the Audit log, and take an optional reason.
 - `educator-interface-more polish` — **ready** — Educators resend staff invitations and see who hasn't accepted, plus linked dashboard figures, learner-tab messaging and one new-message flow.
+- `remove-unnecessary-admin-panel-functionality` — **in progress** — Remove content engine, learner and cohort admin from the Django admin; content comes only from content_save.
 
 ![Educator interface](roadmap_diagrams/educator-interface.svg)
 
 **Notes**
 - Decided: deactivate, never delete. Admins grant only their own level and below, inside their own scope. Only `site_admin` grants `site_admin`.
+- Collision: `audit-log-coverage-gaps` logs Django admin edits, which `remove-unnecessary-admin-panel-functionality` shrinks; whichever runs second checks the other's scope.
 - Access rules: anything outside the user's scope returns 404. An action the user has lost permission for returns 403 with a message. Controls the user can't use are hidden. No new dependencies.
 - References: the mockups in `educator-interface-full-polish/Educator LMS Interface Design/` (layout only, not scope), and `brand-guidelines` and `fls-dev:panel-framework`.
 
@@ -512,6 +515,5 @@ Gaps in the panel framework's dialogs and responses.
 
 - `panel-framework-close-and-toast-response` — **ready** — Panel actions get a built-in response that closes the dialog and shows a toast without swapping content.
 - `panel-framework-dialogs-without-javascript` — **ready** — Single-record dialog triggers work with JavaScript off, opening the dialog server-side over its page.
-- `panel-framework-tech-debt-polish` — **ready** — Tech debt and polish work on the panel framework; no idea written yet. Before starting: cut it with `/sdd:roadmap panel-framework-tech-debt-polish` (the directory is empty).
 
 ![Panel framework](roadmap_diagrams/panel-framework.svg)

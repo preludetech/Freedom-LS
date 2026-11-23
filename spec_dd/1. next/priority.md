@@ -48,4 +48,3 @@ adds anything missing under "Priority not set"; move it from there to the level 
 - `extract-semantic-icons-app`
 - `panel-framework-close-and-toast-response`
 - `panel-framework-dialogs-without-javascript`
-- `panel-framework-tech-debt-polish`
