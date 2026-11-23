@@ -13,7 +13,7 @@ A library is a `Course` with an empty learning path and only reference parts. It
 Learner side:
 - No progress bar or percentage on dashboard or catalogue cards.
 - The library stays in the dashboard's course list. There is no separate section.
-- The card, `course_home` and the `course_detail` call to action for a registered learner open the reference listing built by `reference-material-content-2-learner-reference`. They no longer 404.
+- The card and the `course_detail` call to action for a registered learner open the reference listing built by `reference-material-content-2-learner-reference`. `course_home`, for a course with no first topic, renders the course description (the markdown body of the course file). None of them 404 any more.
 - `course_finish` refuses on a library: it never stamps `completed_time` and never fires `course.completed`.
 - `course_detail` drops "0 lessons" and the empty "Course content" section.
 
@@ -30,7 +30,7 @@ Today an empty `Course` has no player entry. `course_home`, `initiate_course_acc
 - Assumption: a library is a course with no learning-path children and at least one reference part. It is derived from the data, with no new field. A course with an empty path and no reference parts stays an ordinary empty course.
 - A library reuses the registration, visibility, audience, hidden and coming-soon rules, owning organisations, course shares, catalogue and pricing unchanged.
 - It shows no progress or completion anywhere: no bar or percentage on dashboard or catalogue cards, and no "Start course" or "In progress" wording that implies progress. It remains in the dashboard course list.
-- Entry points go to the reference listing: the dashboard and catalogue card link, `course_home`, the registered `course_detail` call to action and the end of `initiate_course_access`. Unregistered and anonymous visitors see the catalogue and `course_detail` as for any course.
+- Entry points go to the reference listing: the dashboard and catalogue card link, the registered `course_detail` call to action and the end of `initiate_course_access`. `course_home` with no first topic renders the course description instead; it is also the Course crumb target on reference pages. Unregistered and anonymous visitors see the catalogue and `course_detail` as for any course.
 - `course_finish` on a library refuses. It never stamps `completed_time` and never fires `course.completed` or the completion analytics event. A library therefore never reaches Learning history.
 - The detail page drops the lesson count, the hero "0 lessons" stat and the empty "Course content" section for a library. It names the reference material so a visitor can see what the library holds.
 - Educator course, learner and cohort pages show a library as a library: no "0%", "0 of N completed", "Lessons 0" or "No content in this course yet". The course content outline shows the library's reference parts (built by `reference-material-content-3-educator-reference`). Cohort completion and learner course tables carry no completion figure for a library, and the at-risk and report guards already return nothing for an empty path (`research_educator_content.md`, section 3).
