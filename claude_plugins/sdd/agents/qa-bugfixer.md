@@ -2,7 +2,7 @@
 name: qa-bugfixer
 description: |-
   One bug, TDD: write a failing test → confirm RED → make the minimal fix →
-  confirm GREEN → run the targeted tier → commit. Non-interactive; never spawns
+  confirm GREEN → test the change → commit. Non-interactive; never spawns
   subagents. Returns a structured status line and writes a bugfix report file.
 tools: Bash, Read, Edit, Write, Glob, Grep, Skill
 skills:
@@ -59,21 +59,20 @@ report and must be exact; draft the report file early and edit it as you go.
 
 ### Step 1 — Write a failing test
 
-Write a **single focused pytest test** that reproduces the bug described in `<bug-description>`.
-Place it in the correct test file for the affected app.
+Write a **single focused test** that reproduces the bug described in `<bug-description>`, the way
+the preloaded testing skills say to write and place one.
 
-Prefer a test that runs without a browser. When the defect only shows up in a real browser (JS,
-Alpine components, htmx swaps, `<dialog>` state, session history, a full page reload where an htmx
-swap was expected), extend the existing flow test for that page in the app's `tests/playwright/`, adding a step and its
-assertion. Write a new file only when no flow covers the page. A design miss is proven by an
-ordinary pytest test of the rendered markup where one can, never by a bounding-box or pixel
-assertion.
+Prefer a test that runs without a browser. When the defect only shows up in a real browser
+(script, client-side components, partial page updates, `<dialog>` state, session history, a full
+page reload where a partial update was expected), extend the existing browser flow test for that
+page, adding a step and its assertion. Write a new file only when no flow covers the page. A
+design miss is proven by an ordinary test of the rendered markup where one can, never by a
+bounding-box or pixel assertion.
 
 ### Step 2 — Confirm RED
 
-Run the single test run, as the `Test tiers` file under `## Test Hooks` in `.claude/sdd/config.md`
-defines it, for `<path-to-test-file>::<test-name>`. A blank `Test tiers` runs the project's plain
-test command for that one test.
+Read `protected/run_tests.md` and follow it with the request `one test` for the test you wrote.
+`status: blocked` from the helper is your own return.
 
 The test **must fail**. If it passes, you have not reproduced the bug: stop and return
 `status: failed · reason: could not reproduce: test passed before any fix`.
@@ -86,23 +85,21 @@ count as production code.
 
 ### Step 4 — Confirm GREEN
 
-Run the single test run as in Step 2, for the same test.
+Request `one test` as in Step 2, for the same test.
 
 The test **must now pass**. If it still fails, return
 `status: failed · reason: fix did not make test pass`.
 
-### Step 5 — Run the targeted tier
+### Step 5 — Test the change
 
-Run the `targeted` tier as `protected/run_test_tier.md` defines it (it reads the `Test tiers` file
-and falls back to the project's plain test command), with the explicit paths from the two lists you
-track (files created, files modified) as `<diff>`.
-
-No `-x` here: it has to be the whole tier.
+Follow `protected/run_tests.md` with the request `change` and `<change>`: `paths` with the files
+from the two lists you track (files created, files modified).
 
 All tests must pass. If any test outside your new test fails, either your fix broke something
 (revert or widen the fix) or the test was already broken before you started (note it but do not
-fix it — that is a separate bug). A failure follows "When a targeted run or full run fails" in the
-tier definition the helper names. Return `status: failed · reason: <description>` if the tier does not pass.
+fix it — that is a separate bug). A failure follows "When a run fails" in the helper. Return
+`status: failed · reason: <description>` if the run does not end at `tests: passed` or
+`tests: nothing to run`.
 
 ### Step 6 — Commit
 
@@ -158,8 +155,8 @@ identifier given in your spawn prompt (slug `order-list-404` gives
 ## Commit hash
 <hash from the commit, or "none" if the commit did not happen>
 
-## Tier result
-<the tier that ran, and "all passing" or a short description of any failures>
+## Test result
+<the line the helper returned, and "all passing" or a short description of any failures>
 ```
 
 **The file MUST end with this footer as its last line:**

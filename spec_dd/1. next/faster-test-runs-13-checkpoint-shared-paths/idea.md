@@ -46,4 +46,4 @@ escalate are the ones many branches share, so this repeats on each pass of the m
 - `spec_dd/1. next/faster-test-runs/research_finish_worktree_reruns.md`, "A path both sides
   changed".
 - `claude_plugins/django-stack/scripts/select_tests.py`, `split_upstream` and `decide_upstream`.
-- `claude_plugins/sdd/scripts/full_run_record.py`, `record_diff`.
+- `claude_plugins/django-stack/scripts/full_run_record.py`, `record_diff`.

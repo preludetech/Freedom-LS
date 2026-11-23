@@ -29,8 +29,8 @@ with "fix it" belongs in the green lane.
    bug predates this branch: a bug that is also on `main` still gets fixed. A design miss meets
    this condition when the plan's design checklist names the expected treatment and no other spec
    document or rule file describes the page differently.
-2. A pytest test can prove the fix. That includes a `@pytest.mark.playwright` browser test, so a defect in JS, htmx
-   swaps, `<dialog>` or history behaviour qualifies.
+2. An automated test can prove the fix. That includes a browser test, so a defect in script,
+   partial page updates, `<dialog>` or history behaviour qualifies.
 3. No product or UX decision is required. When the spec documents, the rule files and the code
    disagree about the intended behaviour, choosing which one is right is a product decision, even
    when the code seems to work. A fix that would take the page away from what any spec document
@@ -75,8 +75,8 @@ It returns:
 
 If the fixer returns `status=ok`:
 
-- **Trust the fixer's targeted run for the regression layer.** It ran the targeted tier for the files
-  it changed and it passed; do not re-drive what pytest already covers.
+- **Trust the fixer's test run for the regression layer.** It ran the tests that cover the files
+  it changed and they passed; do not re-drive what those tests already cover.
 - **Re-drive only the Playwright flow that originally failed.** The dev server is still running and reloads on
   change. Navigate fresh rather than reusing a stale tab. If the response still looks like the pre-fix code, the reloader has not
   finished: take a fresh snapshot to burn a round-trip, then navigate once more. If it still looks
@@ -123,15 +123,15 @@ Then update the file's trailing `status:` footer so its `reason:` reflects the f
 Use `Edit` for both; do not re-render the whole report. If the Step 12 worker failed and there is no
 `qa_report.md`, skip this sub-step; the verdicts still reach Step 15.
 
-### Targeted tests after the last fix
+### Tests after the last fix
 
 When at least one bug is `FIXED` this run, spawn a **solo `sdd:sdd-mechanic`**. Brief it to read
-`claude_plugins/sdd/commands/protected/run_test_tier.md` and follow it with `<tier>` `targeted` and
-`<diff>` `--range <sha before the first fix>..HEAD`, and to return the `tier:` line the helper reports and the names of any failing tests inline. It changes nothing and
+`claude_plugins/sdd/commands/protected/run_tests.md` and follow it with the request `change` and
+`<change>`: `commits <sha before the first fix>..HEAD`, and to return the helper's line inline. It changes nothing and
 writes no file, so Step 16's cleanup list stays as it is.
 
 When tests fail, add this row to `## Bug status` (skip the edit if there is no `qa_report.md`):
 
-`**UNRESOLVED** — targeted run after the fixes left tests failing (reason: <test names>)`
+`**UNRESOLVED** — test run after the fixes left tests failing (reason: <test names>)`
 
 Step 15 files the matching todo item. The fixes stay committed.

@@ -48,6 +48,6 @@ next run throws that result away.
 ## Resources
 
 - `spec_dd/1. next/faster-test-runs/research_finish_worktree_reruns.md`.
-- `claude_plugins/sdd/scripts/full_run_record.py`,
-  `claude_plugins/sdd/commands/protected/run_test_tier.md`.
+- `claude_plugins/django-stack/scripts/full_run_record.py`,
+  `claude_plugins/django-stack/resources/test_runner.md`.
 - `claude_plugins/sdd/commands/finish_worktree.md`, "Flaky tests" and "Obvious failures".

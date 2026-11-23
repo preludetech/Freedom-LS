@@ -92,7 +92,7 @@ anything in this step or before it completes.
    - `Bash(./<path>:*)`
 
    "Absent" means no byte-identical string is already in the list. Never remove or rewrite an
-   entry here. For each Python script the commands call by name (`measure_prompt_size.py`, `full_run_record.py`, `check_diagrams.py`), add
+   entry here. For each Python script the commands call by name (`measure_prompt_size.py`, `check_diagrams.py`), add
    `Bash(python3 <PLUGINS_ROOT>/claude_plugins/sdd/scripts/<name>.py:*)` if absent, with no `./`
    prefix on the path when `PLUGINS_ROOT` is `.`. Same absent rule; same reason.
 3. Merge `"worktree": {"baseRef": "head"}` at the top level of `.claude/settings.json` when the
@@ -134,7 +134,7 @@ anything in this step or before it completes.
 
    ## Test Hooks
 
-   - Test tiers:
+   - Test runner:
    - Pre-test rebuild:
    - Flaky test guide:
 
@@ -204,7 +204,7 @@ anything in this step or before it completes.
 
    **Memory capacity** is a command that takes a unit size in MB and prints how many units of that
    size fit in free memory now. **Batch memory (MB)** is the size of one batch: its subagent, Setup
-   script and targeted test run. **Worker memory (MB)** is the size of one fan-out worker.
+   script and test run. **Worker memory (MB)** is the size of one fan-out worker.
    `/sdd:implement_plan` starts no more batches than `Memory capacity` prints for `Batch memory (MB)`,
    and fan-out commands start no more workers than it prints for `Worker memory (MB)`. A blank
    `Memory capacity` or a blank size means no check.
@@ -218,13 +218,15 @@ anything in this step or before it completes.
    it is given and returns their paths; `/sdd:implement_plan` then compares those screenshots with
    the design's. Blank means "this project has no such step", and the check is skipped.
 
-   A **Test tiers** value points at a file that defines the test tiers a step can name and how each
-   one runs. Blank means "this project has no tier definition", and `protected/run_test_tier.md`
-   falls back to the project's plain pytest command. If another plugin owns that file, the user points this key at it.
+   A **Test runner** value points at a file that runs the project's tests. It takes the requests
+   `protected/run_tests.md` lists (`change`, `everything`, `before landing`, `one test`, `failed`)
+   and returns the `tests:` line that file defines. Another plugin or the project owns the file,
+   and the user points this key at it. Blank means every step that needs tests returns
+   `status: blocked`.
 
    A **Pre-test rebuild** value points at a script that rebuilds generated assets (dependencies,
-   compiled CSS) the tests read. `/sdd:finish_worktree` runs it before its own checkpoint run, when
-   no rebase already rebuilt and tested the branch. Blank means "this project has no such step".
+   compiled CSS) the tests read. `/sdd:finish_worktree` hands it to the test runner, which runs it
+   before the landing run's tests. Blank means "this project has no such step".
 
    A **Flaky test guide** value points at the file `/sdd:finish_worktree` hands the sub-agent that
    fixes a flaky test. Blank means the sub-agent works without a guide.
@@ -279,7 +281,10 @@ anything in this step or before it completes.
    authoritative first. Do not guess the sources by
    scanning the repo; naming them is the user's job. With the list empty the commands fall back to the code, where
    model class names and field names are the vocabulary of last resort.
-3. If it already exists, add every section and every key of the template above that is missing
+3. If it already exists and `## Test Hooks` holds a key the template above does not list, tell the
+   user in the summary that the test hook is now `Test runner` and takes a file that follows the
+   request contract in `protected/run_tests.md`. Leave the old line as it is. Then add every
+   section and every key of the template above that is missing
    (for instance `Flaky test guide` under `## Test Hooks`, and `Parallel batches`, `Memory capacity`,
    `Batch memory (MB)` and `Worker memory (MB)` under `## Worktree Scripts`), using the blank
    default. Preserve every existing value, comment, and ordering.
@@ -312,7 +317,7 @@ in-place edits.
    `Front-end check` keys (blank values are valid).
 5. `.claude/sdd/config.md` has a `## Design Hooks` section with a `Design check` key (a blank value
    is valid).
-6. `.claude/sdd/config.md` has a `## Test Hooks` section with `Test tiers`, `Pre-test rebuild`
+6. `.claude/sdd/config.md` has a `## Test Hooks` section with `Test runner`, `Pre-test rebuild`
    and `Flaky test guide` keys (blank values are valid).
 7. `.claude/sdd/config.md` has a `## Plan Review Hooks` section (an empty list is valid).
 8. `.claude/sdd/config.md` has a `## Review Hooks` section with both `Comment standard` and

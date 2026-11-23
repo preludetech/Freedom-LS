@@ -9,6 +9,8 @@ for confirmation. It stops only to report `status: ok`, `failed` or `blocked`.
 Input from the caller:
 
 - `<tier>`: `none`, `targeted` or `full`. Run by hand or without a value, it is `targeted`.
+- `<tests>` (optional, in place of `<tier>`): `none`, `change` or `everything`. They mean
+  `<tier>` `none`, `targeted` and `full`.
 - `<auto-resolve>` (optional): an ordered list of `<path prefix> → theirs | ours | <instruction>`
   entries. The first entry whose prefix matches a conflicted path decides it.
 

@@ -12,9 +12,9 @@ A step-by-step workflow from a rough idea to a merged pull request. Each step pr
 
 These are the five sections of the `todo.md` checklist. Capturing the idea comes before them.
 
-![The cycle from `/sdd:start` to `/sdd:finish_worktree` in `todo.md` order, with the full-run point, the side commands and the test-tier legend.](../docs/diagrams/overview.drawio.svg)
+![The cycle from `/sdd:start` to `/sdd:finish_worktree` in `todo.md` order, with the full-run point, the side commands and the test-run legend.](../docs/diagrams/overview.drawio.svg)
 
-The overview has one box per command, in the order of the `todo.md` sections. A box with a diagram links to it. The red box is the full test run (see "When the full suite runs"). The plain grey boxes are commands you run when you need them. In the other diagrams, every `Step N` box carries its heading's text, and a legend gives the fill for each test tier. A diagram holds one or more flowcharts, each in its own titled frame: one main flow of the steps, and one chart per sub-flow. A box with double sides in one chart has a chart of its own, titled with the same name. The fill also says who does the work: white for the orchestrator, orange for a sub-agent, purple for a hook, green for you.
+The overview has one box per command, in the order of the `todo.md` sections. A box with a diagram links to it. The red box is the full test run (see "When the full suite runs"). The plain grey boxes are commands you run when you need them. In the other diagrams, every `Step N` box carries its heading's text, and a legend gives the fill for each kind of test run. A diagram holds one or more flowcharts, each in its own titled frame: one main flow of the steps, and one chart per sub-flow. A box with double sides in one chart has a chart of its own, titled with the same name. The fill also says who does the work: white for the orchestrator, orange for a sub-agent, purple for a hook, green for you.
 
 > `/sdd:start` is the entry point: it creates the `todo.md` checklist next to the spec/idea **and** an isolated worktree, moves the session into the worktree, registers a design when `design_prompt.md` is present and writes the spec. When it ends, the session is already inside the worktree, so everything after it runs there.
 
@@ -94,7 +94,7 @@ An optional suffix argument (`/sdd:plan_from_spec <spec> 2b`) selects a second p
 
 ![The `/sdd:implement_plan` flow as six flowcharts: the main flow of Steps 0 to 7, then one chart each for a batch wave, the batch sub-agent, the Design check, the Batch review and the final verification with its full run.](../docs/diagrams/implement_plan.drawio.svg)
 
-The orchestrator reads the plan and forms batch waves from the batches whose predecessors are done. Each batch sub-agent implements its steps, runs a targeted test run and commits. When that run fails, the sub-agent fixes it and re-runs only the failed tests, plus the tests the fix's own diff selects, instead of the whole tier. The integration run after a wave and each fix batch take the same failed-only re-run. After a batch, the Design check compares screenshots with the design, and the Batch review applies the `Comment standard` and `Test standard` hooks to the added lines. Step 3 runs the full test tier once, at the end. The main flow is the chart at the top left; the batch wave, the batch sub-agent, the Design check, the Batch review and the final verification each have their own chart.
+The orchestrator reads the plan and forms batch waves from the batches whose predecessors are done. Each batch sub-agent implements its steps, requests the tests for its change and commits. When that run fails, the sub-agent fixes it and requests only the failed tests again, with the fix's own change. The integration run after a wave and each fix batch take the same failed-only re-run. After a batch, the Design check compares screenshots with the design, and the Batch review applies the `Comment standard` and `Test standard` hooks to the added lines. Step 3 requests the whole suite once, at the end. The main flow is the chart at the top left; the batch wave, the batch sub-agent, the Design check, the Batch review and the final verification each have their own chart.
 
 Run `/implement_plan` to execute the implementation plan. It runs batch waves: up to `Parallel batches` (the key in `.claude/sdd/config.md`) independent batches at a time, each in its own batch worktree. When the batches are done it continues into the QA command. An optional suffix argument (`/implement_plan 2b`) selects the plan `2b. plan.md`, commits its batches as `[batch 2b.N]` and resumes only from those commits. Without a suffix, it runs `2. plan.md` with `[batch N]` commits. After each slice that builds a designed screen, it runs the design check through the `Design check` hook in `.claude/sdd/config.md`, and sends any design misses (unmet lines of the plan's design checklist) to fix batches.
 
@@ -112,9 +112,9 @@ Run the project's QA command: the `QA command` key under `## QA Hooks` in `.clau
 `/sdd:start` writes it into `todo.md` as the QA step. A project with no QA command runs the QA plan
 by hand.
 
-![The `/sdd:do_qa` flow: diff scoping, dev server, smoke gate, desktop, mobile and tablet runs, the report, bug triage with fixer sub-agents, a targeted run and cleanup.](../docs/diagrams/do_qa.drawio.svg)
+![The `/sdd:do_qa` flow: diff scoping, dev server, smoke gate, desktop, mobile and tablet runs, the report, bug triage with fixer sub-agents, a test run and cleanup.](../docs/diagrams/do_qa.drawio.svg)
 
-`/sdd:do_qa` scopes the run from the diff, starts a dev server and drives Playwright at three viewports. A worker writes the report from the run's records. Each bug a test proves gets one fixer attempt and a targeted run. When at least one bug is fixed, a targeted run over the fix commits follows.
+`/sdd:do_qa` scopes the run from the diff, starts a dev server and drives Playwright at three viewports. A worker writes the report from the run's records. Each bug a test proves gets one fixer attempt and a test run. When at least one bug is fixed, a test run over the fix commits follows.
 
 How the QA command handles skipped tests, missing test data or the bugs it finds is its own
 business: read its documentation and check `qa_report.md` for the outcome.
@@ -129,7 +129,7 @@ The orchestrator collects the open items and researches each, with one worker pe
 
 Run `/sdd:qa_fix` when QA leaves `(user)` items in `todo.md`: a bug that turns on a decision, a fix
 that failed, a file to keep or delete. It researches each item, asks you for one decision at a
-time with a recommendation, then makes the fixes test-first, runs the targeted tier, ticks what it
+time with a recommendation, then makes the fixes test-first, tests the fixes, ticks what it
 closed and commits. An item you answer "Leave for later" stays unticked. A decision about how a
 page looks, behaves or reads goes through `sdd:capture-feedback` on the way. A fix that changes
 what a page shows counts as fixed only once a screenshot shows it; the screenshots land in
@@ -159,17 +159,17 @@ Run `/sdd:document`. It reads `## Documentation Hooks` in `.claude/sdd/config.md
 
 Run `/sdd:finish_worktree` when you want the branch on `main`. It never looks at the pull request, so it does not wait for an approval. It rebases, archives the spec and its roadmap row, lands the close-out on `main` by fast-forward push and brings the main worktree up to date. It stops, changing nothing on `main`, if the main worktree has uncommitted work or an operation in progress. Nobody runs `git merge` in the main worktree by hand. Once the landing passes, it removes the worktree (with `--force`, so a worktree holding submodules goes too) and deletes the local branch.
 
-![The `/sdd:finish_worktree` flow as six flowcharts: the main flow of Steps 0 to 9 with its stopping states, then one chart each for the checkpoint run, flaky tests, landing on main, the main-moved loop and a dirty main worktree.](../docs/diagrams/finish_worktree.drawio.svg)
+![The `/sdd:finish_worktree` flow as six flowcharts: the main flow of Steps 0 to 9 with its stopping states, then one chart each for the landing run, flaky tests, landing on main, the main-moved loop and a dirty main worktree.](../docs/diagrams/finish_worktree.drawio.svg)
 
-The command rebases the branch, runs the checkpoint tier and tears down per-worktree resources. It archives the spec, removes the roadmap row, commits the close-out and lands the branch on `main` by fast-forward. When `origin/main` moves in the meantime, the main-moved loop rebases and runs the checkpoint tier. The main flow is the chart at the top left, with each stopping state to its right; the checkpoint run, flaky tests, landing on main, the main-moved loop and a dirty main worktree each have their own chart. "How `finish_worktree` recovers" lists what the command fixes by itself and what stops it.
+The command rebases the branch, requests the landing run and tears down per-worktree resources. It archives the spec, removes the roadmap row, commits the close-out and lands the branch on `main` by fast-forward. When `origin/main` moves in the meantime, the main-moved loop rebases and requests the landing run. The main flow is the chart at the top left, with each stopping state to its right; the landing run, flaky tests, landing on main, the main-moved loop and a dirty main worktree each have their own chart. "How `finish_worktree` recovers" lists what the command fixes by itself and what stops it.
 
 Two choices behind the order. Step 0.5 runs the main-worktree sync before anything is committed, so a parked operation on `main` is found before the branch is touched, and Step 7 does not need a second rebase when local `main` was ahead of `origin`. The pre-test rebuild runs even when the branch needed no rebase, because built assets such as compiled CSS are often gitignored: a branch can hold output older than its templates.
 
-`/sdd:commit_quickly` is the fast commit path for use during implementation: it stages the already-staged index if there is one, otherwise the files Claude touched this conversation (`mine`; `all` stages everything), and commits without running the test suite. Use it mid-implementation, when you already know the state of the work and want it recorded. When the commit is a checkpoint you have not verified, use a commit command that runs the targeted test tier first, if the project has one.
+`/sdd:commit_quickly` is the fast commit path for use during implementation: it stages the already-staged index if there is one, otherwise the files Claude touched this conversation (`mine`; `all` stages everything), and commits without running the test suite. Use it mid-implementation, when you already know the state of the work and want it recorded. When the commit is a checkpoint you have not verified, use a commit command that tests the change first, if the project has one.
 
-`/sdd:hotfix <what is broken>` fixes one small bug in the main worktree, with no spec, plan or worktree. It adds a test only when the fix changes behaviour that no test covers, and prefers adding a case to an existing test; a wording or documentation fix gets none. It makes the fix, runs the targeted test tier on the files it touched, commits to `main` as `hotfix: <what was broken>` and pushes. It never runs the full suite unasked: when the test selector wants one, it asks first. It stops and recommends `/sdd:start` when the fix needs a migration, a new dependency, a product decision or more than a handful of files. After the push it corrects any doc the fix made wrong, as a second commit. It does not run the documentation hooks, which need a spec directory.
+`/sdd:hotfix <what is broken>` fixes one small bug in the main worktree, with no spec, plan or worktree. It adds a test only when the fix changes behaviour that no test covers, and prefers adding a case to an existing test; a wording or documentation fix gets none. It makes the fix, requests the tests for the files it touched, commits to `main` as `hotfix: <what was broken>` and pushes. It never runs the whole suite unasked: when the project's test runner needs it, the command asks first. It stops and recommends `/sdd:start` when the fix needs a migration, a new dependency, a product decision or more than a handful of files. After the push it corrects any doc the fix made wrong, as a second commit. It does not run the documentation hooks, which need a spec directory.
 
-![The `/sdd:hotfix` flow: the branch check, finding the cause, the test decision, the fix, the targeted tier, the commit, the push, the documentation commit and the report, with each stopping state to the right.](../docs/diagrams/hotfix.drawio.svg)
+![The `/sdd:hotfix` flow: the branch check, finding the cause, the test decision, the fix, the test run, the commit, the push, the documentation commit and the report, with each stopping state to the right.](../docs/diagrams/hotfix.drawio.svg)
 
 ## The pre-step rebase
 
@@ -177,7 +177,7 @@ Two choices behind the order. Step 0.5 runs the main-worktree sync before anythi
 
 Every feature-branch command starts by following `commands/protected/pre_step_rebase.md`. It does nothing on `main`, when no spec directory matches the branch, or when the project has no `Rebase command`. Otherwise it follows the project's Rebase command, then the Front-end check hook, then reads what main brought in.
 
-- **Tier.** The caller passes `<tier>` (`none`, `targeted` or `full`) to the Rebase command. `/sdd:finish_worktree` passes `none` because its own test run follows.
+- **Tests.** The caller passes `<tests>` (`none`, `change` or `everything`) to the Rebase command. `/sdd:finish_worktree` passes `none` because its own test run follows.
 - **Conflicts.** The helper passes the Rebase command the list in `resources/rebase_auto_resolve.md`. A conflict under the spec root resolves without asking: the branch's side for the branch's own spec directory, main's side for any other spec path. `spec_dd/1. next/roadmap.md` and its companions keep both sides' removals and are regenerated with `scripts/roadmap.py`. A conflict anywhere else stops the rebase with `blocked`.
 - **Upstream changes.** When the rebase replayed commits, `scripts/upstream_change_scan.sh` lists the paths main brought in. When all of them sit under the spec root, nothing pauses and no review worker starts. Otherwise one worker decides whether the change alters the direction the spec builds on (`resources/upstream_change_review.md`). A `changed` verdict pauses the spec and adds a `todo.md` item, and re-running the command after you decide continues.
 - **Up to date.** A branch that needs no rebase never reads the scan and review text.
@@ -185,25 +185,15 @@ Every feature-branch command starts by following `commands/protected/pre_step_re
 
 ## When the full suite runs
 
-One step asks for the `full` tier outright, and the overview diagram marks it in red.
+SDD never names a test command. Every step that needs tests follows `commands/protected/run_tests.md`, which hands one request to the file the `Test runner` key under `## Test Hooks` names and returns that file's `tests:` line. The project's runner decides which tests a request takes and how they run. A blank `Test runner` stops the step with `status: blocked`.
 
-**`/sdd:implement_plan` Step 3** asks for the `full` tier outright, once, after the last batch. When it fails, the fix sub-agent re-runs the failing tests by node ID until they pass, then takes the failed-only re-run: the failed and unfinished node IDs from the full run, plus the `targeted` selection over the fix's commit range. It does not repeat the full run. The checkpoint in `finish_worktree` covers the fixes.
+One step asks for the whole suite outright, and the overview diagram marks it in red.
 
-`do_qa` (after the last fix) and `qa_fix` Step 7 run the `targeted` tier over their fix commits.
+**`/sdd:implement_plan` Step 3** requests `everything`, once, after the last batch. When it fails, the fix sub-agent requests `one test` for each failing test until it passes, then requests `failed` with the failed set and the fix's commits. It does not request `everything` again. The landing run in `finish_worktree` covers the fixes.
 
-**The checkpoint tier** is what `finish_worktree` Step 1 runs before the close-out commits, and what its main-moved loop runs after each rebase. It is the last proof before the branch lands. A checkpoint is a request to run whatever the branch needs, and `full_run_record.py resolve` picks the tier in this order:
+A batch requests `change` for its uncommitted work. `do_qa` (after the last fix) and `qa_fix` Step 7 request `change` for their fix commits. `/sdd:hotfix` requests `change` with `<widen>: no`, so a change that takes the whole suite asks you first.
 
-1. The branch diff `origin/main..HEAD` selects `none` (a spec-only branch): run nothing.
-2. No full-run record, or the recorded commit no longer resolves: run `full`.
-3. Otherwise: whatever the project's test selector picks for `<record>..HEAD`. A diff tool treats that range as a tree diff, so it works after a rebase moved the record off the branch. A path main brought in counts only where it meets the branch: the apps the branch changed, the apps those import, the apps that import them, and the tests the branch's own paths select. An upstream escalation glob (migrations and the rest) selects the tests of the related apps and of the app that owns it, or nothing when that app meets none of the branch's. Dependency files still force `full` from either side.
-
-The last passing full run, usually `implement_plan` Step 3, wrote the record, so a pass usually runs the tests main's new commits touch, or nothing. A project whose `Test tiers` value is blank has no selector, so a checkpoint is a full run.
-
-The report line names the tier that ran and why, for example `tier: none · summary: no test-visible change since full green at abc1234`. A skipped run never reads as a pass.
-
-**The full-run record** is one file per branch, `.sdd-work/full_run_record_<branch>.txt`, holding a commit SHA. It is gitignored and lives in the worktree. `commands/protected/run_test_tier.md` writes it through `scripts/full_run_record.py write` after any full run, whoever asked for it. Only a passing full run on a clean working tree writes it, and it names the commit the run started on. A failed run, an incomplete run, a skip or a run on a dirty tree writes nothing. Neither does a run during which another process committed to the branch, because that commit was never tested.
-
-CI runs the full suite on the pull request as well.
+**The landing run** is what `finish_worktree` Step 1 requests before the close-out commits, and what its main-moved loop requests after each rebase. It is the request `before landing`: the last proof before the branch lands. The runner decides how much that takes, and may run nothing when an earlier run already covers the branch. A `tests: nothing to run` line says why and never reads as a pass.
 
 ## How `finish_worktree` recovers
 
@@ -211,12 +201,12 @@ CI runs the full suite on the pull request as well.
 
 **What it fixes by itself**
 
-- **Main moved.** When `origin/main` moves after the preflight, `land` exits 7 and the main-moved loop starts. Each pass rebases, runs the checkpoint tier and tries `land` again. A pass that starts before Step 7 (a stale lease in Step 0, a main-worktree commit in Step 0.5) only rebases, then continues from the main-worktree preflight, so nothing lands before the close-out commits. The loop calls the Rebase command directly, because the pre-step rebase skips a spec already under `3. done/`. No upstream-change review runs for a finished spec.
+- **Main moved.** When `origin/main` moves after the preflight, `land` exits 7 and the main-moved loop starts. Each pass rebases, requests the landing run and tries `land` again. A pass that starts before Step 7 (a stale lease in Step 0, a main-worktree commit in Step 0.5) only rebases, then continues from the main-worktree preflight, so nothing lands before the close-out commits. The loop calls the Rebase command directly, because the pre-step rebase skips a spec already under `3. done/`. No upstream-change review runs for a finished spec.
 - **An unpushed main.** When local `main` is ahead of `origin` and no worktree has `main` checked out, the script pushes it with `git push origin main:main`. If `origin/main` moves during that push, origin rejects it, `main` has diverged and the command stops with `blocked` (reason 6 below).
 - **A dirty main worktree.** When uncommitted changes overlap the incoming files, the command never stashes, resets or edits them, because another process may be working on them. It asks you, naming the paths. If you choose "Commit and push them to main for me", it commits exactly those paths as their own commit in the main worktree, rebases that commit onto `origin/main` with `git pull --rebase`, pushes `main` and enters the main-moved loop.
 - **Spec-only upstream changes and conflicts.** A change that touches only the spec root does not pause the rebase. A conflict whose paths all sit under the spec root resolves by the auto-resolve list.
 - **A stale lease.** A force-push rejected for a stale lease re-fetches and runs a loop pass.
-- **Flaky tests.** When the full run or a checkpoint run fails, each failing test is re-run on its own, by node ID, three times. A test that passes at least once is flaky. One `general-purpose` sub-agent per flaky test finds the root cause on the current branch, using the project's `Flaky test guide`. It never skips, deletes or marks the test. It proves the fix with 10 consecutive passes and commits it as `fix flaky test <test id>`. The run that failed then runs again.
+- **Flaky tests.** When a landing run fails, each failing test is requested on its own, three times. A test that passes at least once is flaky. One `general-purpose` sub-agent per flaky test finds the root cause on the current branch, using the project's `Flaky test guide`. It never skips, deletes or marks the test. It proves the fix with 10 consecutive passes and commits it as `fix flaky test <test id>`. The run that failed then runs again.
 
 **What still stops it**, starting with the one you meet most:
 

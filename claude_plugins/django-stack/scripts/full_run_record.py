@@ -12,7 +12,7 @@ A full run takes minutes and other processes commit to the same worktree meanwhi
 names the commit the run started on. `write` records nothing when HEAD moved or the tree changed
 during the run.
 
-The record is one file per branch under `.sdd-work/`. A checkpoint compares HEAD with the
+The record is one file per branch under `.ds-work/`. A checkpoint compares HEAD with the
 recorded commit through the project's tier selector, so a branch that has not changed anything a
 test can see since its last green full run runs nothing, and a small change runs a targeted tier.
 When main moved under the branch since the record, the part main brought in goes to the selector
@@ -34,7 +34,7 @@ from pathlib import Path
 from typing import Literal, NoReturn
 from urllib.parse import quote
 
-RECORD_DIR = ".sdd-work"
+RECORD_DIR = ".ds-work"
 FULL_SHA = re.compile(r"[0-9a-f]{40}")
 EXIT_USAGE = 64
 

@@ -52,7 +52,7 @@ primitive. A session that has entered a worktree switches again only to one unde
 `.claude/worktrees/`.
 
 In both kinds of isolated worktree, Claude Code refuses a `git` command it cannot see the target
-of, and a launcher in front of it counts: `uv run git commit` is refused, so is a compound command
+of, and a launcher in front of it counts: `<launcher> git commit` is refused, so is a compound command
 naming `git` in several places. Commit there with a plain `git commit`, which means the project's
 pre-commit hook has to work without the launcher.
 Source: https://code.claude.com/docs/en/sub-agents · https://code.claude.com/docs/en/worktrees;

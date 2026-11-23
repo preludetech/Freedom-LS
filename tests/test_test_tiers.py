@@ -27,8 +27,6 @@ ALLOWED = frozenset(
         "claude_plugins/fls-dev/skills/testing/SKILL.md",
         "claude_plugins/fls-dev/resources/playwright-testing.md",
         "claude_plugins/fls-dev/resources/concrete_spec_integration.md",
-        # The fallback for a project with no tier definition.
-        "claude_plugins/sdd/commands/protected/run_test_tier.md",
     }
 )
 

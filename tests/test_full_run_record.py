@@ -1,7 +1,7 @@
 """Tests for the full-run record the checkpoint tier reads and writes.
 
 This test assumes `claude_plugins/` sits at the project root, so the script it exercises is
-`claude_plugins/sdd/scripts/full_run_record.py`. Every case builds a throwaway project with a
+`claude_plugins/django-stack/scripts/full_run_record.py`. Every case builds a throwaway project with a
 bare origin under `tmp_path`, holding a copy of the repository's own tier selector, and runs the
 script as a subprocess from inside it.
 """
@@ -22,14 +22,16 @@ from tests.test_select_tests import alpha_app, app_map, apps_py
 pytestmark = pytest.mark.dev_tooling
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = REPO_ROOT / "claude_plugins" / "sdd" / "scripts" / "full_run_record.py"
+SCRIPT = (
+    REPO_ROOT / "claude_plugins" / "django-stack" / "scripts" / "full_run_record.py"
+)
 SELECTOR_SOURCES = tuple(
     (REPO_ROOT / "claude_plugins" / "django-stack" / "scripts" / name)
     for name in (
         "select_tests.py",
-        "module_graph.py",
         "check_test_mirroring.py",
         "generate_app_map.py",
+        "module_graph.py",
     )
 )
 SELECTOR = ".claude/ds/scripts/select_tests.sh"
@@ -64,7 +66,7 @@ class Project:
         return self.git("rev-parse", "HEAD")
 
     def record_file(self, branch: str) -> Path:
-        return self.path / ".sdd-work" / f"full_run_record_{quote(branch, safe='')}.txt"
+        return self.path / ".ds-work" / f"full_run_record_{quote(branch, safe='')}.txt"
 
     def script(self, *args: str) -> str:
         result = run_script(SCRIPT, self.path, *args, environment=self.git_env)
@@ -109,7 +111,7 @@ def project(tmp_path: Path) -> Project:
     created.git("remote", "add", "origin", str(origin))
     write_tree(
         path,
-        alpha_app() | {"pyproject.toml": TIER_CONFIG, ".gitignore": ".sdd-work/\n"},
+        alpha_app() | {"pyproject.toml": TIER_CONFIG, ".gitignore": ".ds-work/\n"},
     )
     for source in SELECTOR_SOURCES:
         created.write(f".claude/ds/scripts/{source.name}", source.read_text())
@@ -466,7 +468,7 @@ def test_write_leaves_no_record_unless_the_run_passed_on_a_clean_branch(
 
     # Assert
     assert output.startswith("not recorded")
-    assert not (project.path / ".sdd-work").exists()
+    assert not (project.path / ".ds-work").exists()
 
 
 def test_start_prints_head_on_a_clean_tracked_tree(project: Project) -> None:
@@ -505,7 +507,7 @@ def test_write_leaves_no_record_when_a_commit_landed_during_the_run(
 
     # Assert
     assert output == "not recorded: HEAD moved during the run\n"
-    assert not (project.path / ".sdd-work").exists()
+    assert not (project.path / ".ds-work").exists()
 
 
 def test_write_leaves_no_record_when_the_run_started_on_a_dirty_tree(
@@ -522,7 +524,7 @@ def test_write_leaves_no_record_when_the_run_started_on_a_dirty_tree(
 
     # Assert
     assert output == "not recorded: the run started on a dirty tree\n"
-    assert not (project.path / ".sdd-work").exists()
+    assert not (project.path / ".ds-work").exists()
 
 
 @pytest.mark.parametrize("stray_untracked_file", [False, True])

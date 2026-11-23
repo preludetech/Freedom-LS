@@ -104,7 +104,8 @@ Rationale cut from the prompt files an agent reads at run time.
     entries, the first match deciding. Those paths are exempt from the rule against a wholesale
     `--ours` or `--theirs` on a non-generated file, and the summary lists each path with the side
     taken, so the caller can check them.
-  - `<tier>` may be `none`: the rebase runs no tests and the caller runs its own tier. A targeted
+  - `<tier>` may be `none`: the rebase runs no tests and the caller runs its own tier. A caller
+    may pass `<tests>` `none`, `change` or `everything` in its place. A targeted
     run that selects nothing reports `none` too.
   - Pre-commit runs with `--from-ref origin/main --to-ref HEAD`, so it checks only the files the
     branch changed, not the whole tree.
@@ -139,6 +140,21 @@ Rationale cut from the prompt files an agent reads at run time.
   `DS_TEST_REMOTE=on|off` overrides that for one run. `DS_TEST_RECORD_PATH` names a
   file for `run_tests.sh` to keep its run record at, on every result, instead of a temporary file
   that a passing run deletes. The full contract is in `resources/test_tiers.md`.
+- **Test runner.** `resources/test_runner.md` is the one file a workflow plugin points its test
+  hook at. It takes a request in the caller's words (`change`, `everything`, `before landing`,
+  `one test`, `failed`), maps it onto a tier, and returns one `tests:` line, so the caller never
+  learns a tier name, a selector flag or a pytest command.
+  `before landing` is the checkpoint. `scripts/full_run_record.py resolve` picks its tier in this
+  order: a branch diff `origin/main..HEAD` that selects `none` runs nothing; no record, or a
+  recorded commit that no longer resolves, runs `full`; otherwise the selector decides for
+  `<record>..HEAD`, where a path main brought in counts only where it meets the branch.
+  The full-run record is one file per branch, `.ds-work/full_run_record_<branch>.txt`, holding a
+  commit SHA. It is gitignored and lives in the worktree. `test_runner.md` writes it after every
+  full run, whoever asked. Only a passing full run on a clean tree writes it, and it names the
+  commit the run started on. A failed, incomplete or skipped run writes nothing, and neither does
+  a run during which another process committed to the branch, because that commit was never
+  tested. A remote full run is recorded only when its `run: tested <sha>` line matches the commit
+  noted before the run.
 - **QA diff scoping.** A misclassification must over-test, never under-test, which is why anything
   unmatched is `FULL`.
 - **Code comments.** A comment is a promise to the future reader that the code can't keep on its

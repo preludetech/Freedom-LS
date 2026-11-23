@@ -81,6 +81,14 @@ reaches them only through their per-project configuration: `.claude/ds/config.md
 spec or plan that asks a generic plugin to carry project knowledge is wrong, and the spec review,
 plan review and structure review reject it.
 
+`sdd` is copied into projects that share none of our tools. It names no test runner, test command,
+language tool, framework, CI service or other plugin's path. It reaches each of those through a
+hook key in `.claude/sdd/config.md` that points at a file another plugin or the project owns.
+Running tests is the `Test runner` hook: `sdd` passes a request (`change`, `everything`,
+`before landing`, `one test`, `failed`) and reads back one line. How tests are selected, run,
+recorded or sent to CI belongs in `ds`. `tests/test_sdd_portability.py` fails on a tool name in
+`claude_plugins/sdd`; fix the file, never add an exception to get a pass.
+
 ## Conventions
 
 - We use a custom site-aware user model `AUTH_USER_MODEL = "accounts.User"`

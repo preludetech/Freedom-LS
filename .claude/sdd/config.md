@@ -20,7 +20,7 @@
 
 ## Test Hooks
 
-- Test tiers: claude_plugins/django-stack/resources/test_tiers.md
+- Test runner: claude_plugins/django-stack/resources/test_runner.md
 - Pre-test rebuild: .claude/fls-dev/scripts/rebuild_after_rebase.sh
 - Flaky test guide: claude_plugins/fls-dev/resources/flaky_tests.md
 
@@ -28,6 +28,7 @@
 
 - Structure: claude_plugins/fls-dev/resources/plan_review_structure.md
 - FLS threats: claude_plugins/fls-dev/resources/plan_review_fls_threats.md
+- Plugin portability: claude_plugins/fls-dev/resources/plan_review_plugin_portability.md
 
 ## Review Hooks
 

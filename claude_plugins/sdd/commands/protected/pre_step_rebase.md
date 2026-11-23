@@ -9,8 +9,8 @@ inline, on the caller's model and tool grants.
 
 Inputs from the caller: `<spec-dir>` and `<todo-path>` when already known; otherwise `<spec-dir>` is
 the directory under `spec_dd/2. in progress/` named after the current branch (none or several is
-`status: failed` with the reason), and `<todo-path>` is its `todo.md`. Optionally `<tier>`, `none`, `targeted` or `full`:
-the test tier the rebase runs.
+`status: failed` with the reason), and `<todo-path>` is its `todo.md`. Optionally `<tests>`, `none`, `change` or `everything`:
+the tests the rebase command runs after it rebases.
 
 ## Step 0: Skip conditions
 
@@ -42,15 +42,15 @@ Read `.claude/sdd/config.md` (and `.claude/sdd/config.local.md` if it exists —
 precedence). Under `## Rebase Hooks`, look at the `Rebase command` value:
 
 - blank, or the file or section absent → `status: ok · reason: no rebase command`. Stop.
-- a non-blank path → read that file and follow its steps here with `<tier>`: the value the caller
-  passed, or `targeted` when it passed none, and `<auto-resolve>`: the list in
+- a non-blank path → read that file and follow its steps here with `<tests>`: the value the caller
+  passed, or `change` when it passed none, and `<auto-resolve>`: the list in
   `claude_plugins/sdd/resources/rebase_auto_resolve.md`, with `<own-spec-dir>` set to `<spec-dir>`.
 
 Once it returns:
 
 - `rebased: no` → `status: ok · reason: up to date`. Stop.
 - `failed` or `blocked` → return that status and its reason as this helper's own. The caller stops.
-- otherwise, keep `old-base`, `old-tip` and `tier` from its return contract for the steps below.
+- otherwise, keep `old-base` and `old-tip` from its return contract for the steps below.
 
 ## Step 2: Front-end check
 
@@ -88,8 +88,7 @@ no rebase command, a `failed` or `blocked` rebase and a `failed` Step 2 stop fir
 ## Return contract
 
 ```
-status: ok|paused|failed|blocked · rebased: yes|no · tier: none|targeted|full · reason: <short>
+status: ok|paused|failed|blocked · rebased: yes|no · reason: <short>
 ```
 
-`tier` is the tier the rebase command reported, or `none` when the rebase stopped early. A caller
-continues only on `ok`. On any other status it relays the reason and stops.
+A caller continues only on `ok`. On any other status it relays the reason and stops.

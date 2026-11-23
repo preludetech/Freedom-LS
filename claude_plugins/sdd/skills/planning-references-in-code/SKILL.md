@@ -50,7 +50,7 @@ every action fires events from one fixed list instead of inventing names.
 # No-op for auto-saving forms.
 ```
 
-```django
+```html
 {% comment %}Breadcrumbs (spec §6.1){% endcomment %}                          ← BAD
 {% comment %}Copy does NOT promise an email (spec §7.2, §10){% endcomment %}  ← BAD
 {% comment %}Copy does not promise an email: nothing sends one when the item publishes.{% endcomment %}  ← GOOD

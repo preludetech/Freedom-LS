@@ -29,7 +29,7 @@ Walk every entry in `.claude/settings.json` for:
 
 Walk `permissions.allow` in `.claude/settings.local.json` and classify each entry:
 
-- **Promote** — generally useful for anyone working on the project (e.g. `Bash(uv run:*)`, `Bash(gh pr:*)`, project-relevant WebFetch domains, project commands). Suggest adding to project settings.
+- **Promote** — generally useful for anyone working on the project (e.g. `Bash(make test:*)`, `Bash(gh pr:*)`, project-relevant WebFetch domains, project commands). Suggest adding to project settings.
 - **Already covered** — a broader rule in project settings already grants this. No action needed; mention if the local pattern suggests project settings should be broadened.
 - **Keep local** — personal/exploratory/one-off (e.g. ad-hoc `curl` of a specific URL, exploratory WebFetch domains). Ignore.
 
@@ -41,7 +41,7 @@ For each candidate (cleanup or promotion), ask a clear yes/no:
 
 > Remove `Bash(npm run tailwind_build)` from project settings? (Subsumed by `Bash(npm run tailwind_build:*)`.) [y/n]
 
-> Add `Bash(uv run:*)` to project settings? (Currently only in local settings.) [y/n]
+> Add `Bash(make test:*)` to project settings? (Currently only in local settings.) [y/n]
 
 Batch related entries where sensible (e.g. "Add these 8 documentation WebFetch domains?"), but never silently bundle anything ambiguous.
 

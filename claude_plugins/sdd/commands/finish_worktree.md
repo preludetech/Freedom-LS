@@ -31,7 +31,7 @@ call, and no todo item about the PR, stops or delays this command.
 
 # Step 0: Pre-step rebase
 
-Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps with `<tier>`:
+Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps with `<tests>`:
 `none`. The tests run once, in Step 1. Any status other than `ok` is this command's own status;
 relay its reason and stop.
 
@@ -80,47 +80,46 @@ mention until Step 8.
   worktree" below.
 - any other exit → `status: blocked · reason: <the script's output, verbatim>`. Stop.
 
-# Step 1: Checkpoint tier
+# Step 1: Landing run
 
-The checkpoint run: with a passing full run on record, it tests only what changed since that run;
-with none, it runs `full`.
+The landing run is the last proof before the branch lands. The project's test runner decides how
+much it takes.
 
-1. Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/commands/protected/run_test_tier.md` and
-   follow it with `<tier>`: `checkpoint` as far as its "Resolve the checkpoint tier" step, and
-   return the `tier:`, `diff:` and `why:` lines. `none` → the report line is
-   `tier: none · summary: <why>`; nothing else runs.
-2. `targeted` or the full tier → rebuild generated assets ("Pre-test rebuild" below), then
-   delegate to `sdd:sdd-mechanic`: follow `run_test_tier.md` with the tier and `<diff>` as
-   resolved, returning the report line and any failing test names. Failing tests follow the
-   failure rule below and "Flaky tests".
-3. Keep every report line for Step 8.
+1. Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/commands/protected/run_tests.md` and
+   follow it with the request `before landing` and `<prepare>`: the "Pre-test rebuild" value
+   below, returning the helper's line with its `failed:` set.
+2. `tests: passed` or `tests: nothing to run` → continue. `status: blocked` is this command's own
+   status. `tests: failed` follows the failure rule below and "Flaky tests". `tests: incomplete`
+   is `status: failed · reason: landing run did not finish: <summary>`.
+3. Keep every returned line for Step 8.
 
-A failure is `status: failed · reason: checkpoint run failed before landing: <tests>`. Nothing is
+A failure is `status: failed · reason: landing run failed before landing: <tests>`. Nothing is
 moved or landed until a human fixes it, except for a flaky test and an obvious failure, both
 handled below. A rebased branch has also passed pre-commit; there is nothing to re-run for that.
 
 ## Pre-test rebuild
 
 Read `Pre-test rebuild` under `## Test Hooks` in `.claude/sdd/config.md` (`config.local.md` wins).
-A non-blank path: run it from the project root. A non-zero exit is
-`status: failed · reason: pre-test rebuild failed: <its output>`. Blank, or the key absent: skip
-the rebuild.
+A non-blank path is the `<prepare>` script: the runner runs it before the tests and reports its
+failure as `tests: failed · summary: prepare failed: <its output>`, which is
+`status: failed · reason: pre-test rebuild failed: <its output>` here. Blank, or the key absent:
+pass no `<prepare>`.
 
 ## Flaky tests
 
-When a checkpoint run, in Step 1 or in Step 7's loop, reports failing tests:
+When a landing run, in Step 1 or in Step 7's loop, reports failing tests:
 
-1. Delegate to `sdd:sdd-mechanic`: run each failing test on its own, by node ID, three times, as the
-   tier definition's single test run, and return the pass count per test. A test with 0 passes goes
-   to "Obvious failures" below.
+1. Delegate to `sdd:sdd-mechanic`: follow `run_tests.md` with the request `one test` for each id
+   in the `failed:` set, three times each, and return the pass count per test. A test with 0
+   passes goes to "Obvious failures" below.
 2. A test with at least one pass is flaky. Handle the flaky tests one at a time, because they share
    the worktree and its database. For each, spawn a `general-purpose` sub-agent with this brief,
-   every input written into the prompt: the test's node ID, its failure output, and, when
+   every input written into the prompt: the test's id, its failure output, and, when
    `Flaky test guide` under `## Test Hooks` (read the way "Pre-test rebuild" reads its key) is a
    non-blank path, that path to read first. Its rules:
    - Find and fix the root cause on the current branch.
    - Never skip, delete, mark or retry-wrap the test to get a pass.
-   - Prove the fix with 10 consecutive passing runs of the tier definition's single test run.
+   - Prove the fix with 10 consecutive passing `one test` requests through `run_tests.md`.
    - Commit as `fix flaky test <test id>`.
    - Return `status: ok · commit: <sha>` or `status: failed · diagnosis: <one line>`.
 3. A `failed` return gets one more sub-agent, briefed the same way plus the first diagnosis. A second
@@ -148,7 +147,7 @@ about which side's behaviour is right.
 For an obvious failure:
 
 1. Make the fix. Never skip, delete, mark or loosen the test to get a pass.
-2. Run the test on its own, by node ID, as the tier definition's single test run. A failure means
+2. Follow `run_tests.md` with the request `one test` for that test. A failure means
    the diagnosis was wrong: undo the edit and report it as a real failure.
 3. Commit as `fix <test id> after rebase`, with a body naming the change on each side, then
    `git push`.
@@ -243,14 +242,14 @@ on each pass, entered with its <blocker>:
     in_a_row = in_a_row + 1 if <blocker> == blocker else 1; blocker = <blocker>
     # the fifth occurrence of one blocker is not retried
     if in_a_row == 5: status: blocked · reason: <blocker> moved 5 times in a row
-    follow the Rebase command (## Rebase Hooks) with <tier>: none and <auto-resolve>:
+    follow the Rebase command (## Rebase Hooks) with <tests>: none and <auto-resolve>:
         the list from rebase_auto_resolve.md, <own-spec-dir> = the spec's directory under
         spec_dd/3. done/ once Step 4 moved it, else its directory under spec_dd/2. in progress/
     map its result as Step 0's "Rebase results" does
     # nothing lands before the close-out commits
     entered before Step 7 (from Step 0, or from Step 0.5's exit 4): leave the loop and continue
         at Step 0.5
-    follow the checkpoint run (below)
+    follow the landing run (below)
     <script-path> land        → exit 0 leaves the loop; exit 7 is the next pass
 ```
 
@@ -261,10 +260,9 @@ Do not use the pre-step rebase here: it skips a spec already under `3. done/`, a
 upstream-change review runs for a finished spec. After the loop's exit 0, any exit other than 7 is
 handled as items 3 and 4 above.
 
-### The checkpoint run
+### The landing run
 
-Follow Step 1's checkpoint run. The last passing full run, usually `implement_plan` Step 3, wrote
-the full-run record, so a pass tests only what the rebase brought in.
+Follow Step 1's landing run.
 
 ## A dirty main worktree
 
@@ -297,7 +295,7 @@ lines and `<main>` is its `main-worktree:` line.
      commit stays on local `main`.
 4. Otherwise `git -C '<main>' push origin main`, record "main-worktree commit <sha>: <paths>" for
    Step 8, and enter the main-moved loop with blocker `main worktree commit`. A pass entered before
-   Step 7 rebases and continues at Step 0.5; a pass entered from Step 7 follows the checkpoint run
+   Step 7 rebases and continues at Step 0.5; a pass entered from Step 7 follows the landing run
    and lands.
 
 # Step 8: Verify and report
@@ -314,7 +312,7 @@ Report:
 - the number of passes of the main-moved loop, and each auto-resolved conflict path with its side
 - the main-worktree commit, when one was made: "main-worktree commit <sha>: <paths>"
 - the script's `synced: pushed` and `pushed:` lines, as "main pushed"
-- every test report line, from Step 1's checkpoint run and from each checkpoint run of the
+- every test report line, from Step 1's landing run and from each landing run of the
   main-moved loop
 - each flaky test fix, with its commit
 - each obvious-failure fix, with its commit

@@ -57,7 +57,7 @@ Structure the plan as a sequence of vertical slices, not horizontal layers. A sl
 
 - Make the first slice the thinnest one that runs end to end. Later slices widen it: more fields, more cases, permissions, error branches, edge cases.
 - Order slices by value and dependency. Each slice builds only on slices before it.
-- Each slice names the behaviour it delivers and the tests that prove it, so it can be implemented and committed alone with its targeted tests passing.
+- Each slice names the behaviour it delivers and the tests that prove it, so it can be implemented and committed alone with its own tests passing.
 - Number slices consecutively from 1 (`### Slice 1`, `### Slice 2`, ...). A batch id in
   `implement_plan` is the slice number.
 - Every slice carries two lines after its behaviour line and before any `**Design states:**` line:
@@ -109,8 +109,8 @@ When scoping QA, don't only walk the golden path. For each area of functionality
 
 A QA test that maps to a design state names that state's design screenshot path and copies the state's design checklist from the plan's transcription. The checklist, not the screenshot, is what QA judges against.
 
-IMPORTANT: The QA command picks a free webserver port at run time. Never name a port in the test, and never port 8000 (the default django runserver port).
-- We run the runserver command like this: `uv run python manage.py runserver $PORT`
+IMPORTANT: The QA command picks a free webserver port at run time. Never name a port in the test, and never the dev server's default port.
+- The dev server starts with the `Dev server start` command under `## QA Hooks` in `.claude/sdd/config.md`, on `$PORT`
 - Base url is `http://127.0.0.1:$PORT`
 
 IMPORTANT: The QA file never touches the `main` branch or the `main` worktree. No step checks out,

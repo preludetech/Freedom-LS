@@ -194,6 +194,7 @@ re-derive them.
 1. If `.gitignore` does not exist at the project root, create it.
 2. If `.claude/ds/config.local.md` is not listed, add it.
 3. If `.claude/settings.local.json` is not listed, add it.
+4. If `.ds-work/` is not listed, add it. The full-run record lives there.
 
 Place each new entry next to its siblings if a `# Claude` block already exists; otherwise append.
 

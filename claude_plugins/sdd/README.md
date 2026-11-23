@@ -34,7 +34,7 @@ in the report.
 `/sdd:qa_fix` works through the `(user)` items a QA run left in `todo.md`. It researches each one,
 asks for one decision at a time, has `sdd:qa-bugfixer` make each code fix test-first, screenshots
 each fix that changes what a page shows into `screenshots/fixed/` and looks at it before calling it
-fixed, runs the targeted tier, and ticks what it closed. `/sdd:start` writes it into the checklist after the QA step.
+fixed, tests the change, and ticks what it closed. `/sdd:start` writes it into the checklist after the QA step.
 
 `/sdd:roadmap` owns the spec roadmap, `spec_dd/1. next/roadmap.md`: what is up next, then one
 section per feature listing its specs (in progress, ready or blocked), an SVG dependency diagram
@@ -52,17 +52,12 @@ the consuming specs at it. `spec_from_idea` and `plan_from_spec` read any `desig
 
 `commands/protected/` (7 read-and-followed helper files, not advertised as slash commands): `setup_todo_list`,
 `move_spec_to_in_progress`, `start_worktree`, `update_todo`, `update_roadmap`, `pre_step_rebase`,
-`run_test_tier`. `run_test_tier` reaches the project's test tier definition through the `Test tiers`
-key under `## Test Hooks` in `.claude/sdd/config.md`; a blank key falls back to the project's plain pytest command.
-The `Pre-test rebuild` key in the same section names a script `/sdd:finish_worktree` runs before its checkpoint run.
-
-A `full` tier is recorded: `claude_plugins/sdd/scripts/full_run_record.py` notes the commit before the run and writes
-the verdict after it, so a later `checkpoint` can tell whether a full run already covers the code. When the tier
-definition prints a remote command (the optional `[tool.test_tiers.remote]` table, see
-`claude_plugins/django-stack/README.md`), `run_test_tier` runs that command for the full tier. Its run is recorded only when
-the `run: tested <sha>` line matches the commit noted before the run; otherwise it is recorded as a fail. When the
-command reports `UNAVAILABLE`, the helper runs the local full command and records that run as any local run. The
-returned summary ends `(remote: <url>)` or `(local: <reason>)`.
+`run_tests`. `run_tests` is the only way this plugin runs tests. It hands one request (`change`, `everything`,
+`before landing`, `one test` or `failed`) to the file the `Test runner` key under `## Test Hooks` in
+`.claude/sdd/config.md` names, and returns that file's `tests:` line. The plugin names no test command, test
+tool or CI service: the project's runner file owns all of it. A blank key returns `status: blocked`.
+The `Pre-test rebuild` key in the same section names a script the runner runs before the tests of
+`/sdd:finish_worktree`'s landing run.
 
 `/sdd:init` wires this plugin into a project (its own `enabledPlugins` key + `Skill(sdd:*)` permission +
 `.claude/sdd/` config). It expects the shared launcher artifacts (`claude.sh`, the `SessionStart` hook,
@@ -74,7 +69,7 @@ scan); `sdd-mechanic` (Haiku) — mechanical chores (test runs, commits, file mo
 one per unit from a depth-0 SDD command. Each agent's `model:` frontmatter sets its tier. `qa-data-helper` (Opus) — creates, resets or
 deletes development-database records a QA run needs, following the project's `Data helper guide`; its
 memory lives at `.claude/agent-memory/sdd-qa-data-helper/`. `qa-bugfixer` (Sonnet) — fixes one
-QA-reported bug TDD-style (failing test, fix, targeted tier, commit), using the skills under
+QA-reported bug TDD-style (failing test, fix, test the change, commit), using the skills under
 `## Testing Skills` in `.claude/sdd/config.md`.
 
 ### Skills (5)

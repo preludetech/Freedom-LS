@@ -1,5 +1,5 @@
 ---
-description: Fix one small bug on main, run the targeted tests, then commit and push
+description: Fix one small bug on main, test the change, then commit and push
 allowed-tools: Bash, Read, Edit, Write, Glob, Grep, Skill, AskUserQuestion
 argument-hint: "<what is broken>"
 ---
@@ -44,27 +44,28 @@ A test is for a behaviour bug that nothing covers yet. Take the first line that 
    what used to break.
 
 On lines 2 and 3, load each skill under `## Testing Skills` in `.claude/sdd/config.md`
-(`config.local.md` wins) with the `Skill` tool, then get to RED: run the test as the single test
-run in the `Test tiers` file under `## Test Hooks` defines. A blank `Test tiers` runs the project's
-plain test command for that one test. It must fail. If it passes, you have not reproduced the bug:
-go back to Step 2.
+(`config.local.md` wins) with the `Skill` tool, then get to RED: read
+`${CLAUDE_PLUGIN_ROOT}/commands/protected/run_tests.md` and follow it with the request `one test`
+for that test. It must fail. If it passes, you have not reproduced the bug: go back to Step 2.
+`status: blocked` from the helper is this command's own status.
 
 ## Step 4: Fix
 
-Make the smallest change that fixes the bug. With a test from Step 3, run that single test again.
-It must pass.
+Make the smallest change that fixes the bug. With a test from Step 3, request `one test` for it
+again. It must pass.
 
-## Step 5: Targeted tier
+## Step 5: Test the change
 
-Read `${CLAUDE_PLUGIN_ROOT}/commands/protected/run_test_tier.md` and follow it with `<tier>`:
-`targeted` and `<diff>`: the explicit paths you created or changed.
+Follow `run_tests.md` with the request `change`, `<change>`: `paths` with the files you created or
+changed, and `<widen>`: `no`.
 
-- `tier: none` → nothing to run, continue.
-- `tier: targeted` → done at a passing verdict. A failure follows "When a targeted run or full run
-  fails" in the tier definition.
-- `tier: full` → run nothing. The change reaches further than a hotfix should. Ask with
-  `AskUserQuestion`: "The test selector wants the full suite for `<paths>`: `<why lines>`." Options:
-  "Run the full suite", "Stop, I'll take this through `/sdd:start`".
+- `tests: nothing to run` → continue.
+- `tests: passed` → done. `tests: failed` follows "When a run fails" in `run_tests.md`.
+- `tests: needs everything` → nothing ran. The change reaches further than a hotfix should. Ask
+  with `AskUserQuestion`: "Covering `<paths>` takes the whole test suite: `<summary>`." Options:
+  "Run the whole suite", "Stop, I'll take this through `/sdd:start`". "Run the whole suite"
+  follows `run_tests.md` with the same request and no `<widen>`.
+- `status: blocked` or `tests: incomplete` → this command's own `status: blocked`, with the reason.
 
 ## Step 6: Commit
 
@@ -110,5 +111,5 @@ commit them as in Step 6, with the doc paths after `--` and the message
 
 - the commit sha, and `pushed` or `local only` with git's message
 - the test changed or added, or `no test: <reason>`
-- the tier that ran and its verdict line
+- the line `run_tests.md` returned
 - the doc changed, or `no doc needed`

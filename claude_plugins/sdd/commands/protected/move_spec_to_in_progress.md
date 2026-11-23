@@ -51,7 +51,7 @@ directory name, as every SDD commit does — e.g. `interested_login: start the s
 Do not push. This runs on the current branch before any worktree exists, and that branch is usually
 `main`.
 
-Do **not** run pytest: the moved files are not under test.
+Do **not** run tests: the moved files are not under test.
 
 Do not finish until the working tree is clean (no uncommitted changes). If the working tree cannot be
 made clean, **stop** and return `status: blocked`.

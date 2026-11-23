@@ -31,7 +31,7 @@ The subject names the spec first, so `git log` reads as a per-spec history:
 
 `<spec name>` is the spec directory's folder name, e.g. `interested_login: write the spec`.
 
-Commit with plain `git commit`, never through a launcher such as `uv run`: Claude Code refuses a
+Commit with plain `git commit`, never through a launcher in front of `git`: Claude Code refuses a
 wrapped `git` in a session that entered a worktree and in an `isolation: "worktree"` sub-agent.
 The project's pre-commit hook fires on a plain `git commit`.
 

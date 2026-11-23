@@ -1,4 +1,4 @@
-"""The sdd command files ask for the full tier once, after the last batch."""
+"""The sdd command files request the whole suite once, after the last batch."""
 
 from __future__ import annotations
 
@@ -15,15 +15,17 @@ ROOT = Path(__file__).resolve().parents[1]
 COMMANDS = ROOT / "claude_plugins/sdd/commands"
 RESOURCES = ROOT / "claude_plugins/sdd/resources"
 TEST_TIERS = ROOT / "claude_plugins/django-stack/resources/test_tiers.md"
-TIER_FULL = re.compile(r"<tier>`?:? *`full`")
-TIER_CHECKPOINT = re.compile(r"<tier>`?:? *`checkpoint`")
+TEST_RUNNER = ROOT / "claude_plugins/django-stack/resources/test_runner.md"
+RUN_TESTS = COMMANDS / "protected/run_tests.md"
+REQUEST_EVERYTHING = re.compile(r"request `everything`")
+REQUEST_BEFORE_LANDING = re.compile(r"request `before landing`")
 
 
 @pytest.mark.parametrize("name", ["do_qa.md", "qa_fix.md"])
-def test_qa_commands_never_ask_for_the_full_tier(name: str) -> None:
+def test_qa_commands_never_request_the_whole_suite(name: str) -> None:
     lines = (COMMANDS / name).read_text().splitlines()
 
-    assert [line for line in lines if TIER_FULL.search(line)] == []
+    assert [line for line in lines if REQUEST_EVERYTHING.search(line)] == []
 
 
 @pytest.mark.parametrize(
@@ -35,48 +37,50 @@ def test_qa_commands_never_ask_for_the_full_tier(name: str) -> None:
     ],
     ids=lambda path: path.name,
 )
-def test_qa_files_never_ask_for_the_checkpoint_tier(path: Path) -> None:
+def test_qa_files_never_request_the_landing_run(path: Path) -> None:
     lines = path.read_text().splitlines()
 
-    assert [line for line in lines if TIER_CHECKPOINT.search(line)] == []
+    assert [line for line in lines if REQUEST_BEFORE_LANDING.search(line)] == []
 
 
-def test_implement_plan_asks_for_the_full_tier_once() -> None:
+def test_implement_plan_requests_the_whole_suite_once() -> None:
     text = (COMMANDS / "implement_plan.md").read_text()
 
-    assert len(TIER_FULL.findall(text)) == 1
+    assert len(REQUEST_EVERYTHING.findall(text)) == 1
 
 
 def test_plan_from_spec_does_not_promise_the_full_suite() -> None:
     assert "full test suite passing" not in (COMMANDS / "plan_from_spec.md").read_text()
 
 
-def test_finish_worktree_never_asks_for_the_full_tier() -> None:
+def test_finish_worktree_never_requests_the_whole_suite() -> None:
     text = (COMMANDS / "finish_worktree.md").read_text()
 
-    assert TIER_FULL.findall(text) == []
+    assert REQUEST_EVERYTHING.findall(text) == []
 
 
-def test_finish_worktree_asks_for_the_checkpoint_tier() -> None:
+def test_finish_worktree_requests_the_landing_run() -> None:
     text = (COMMANDS / "finish_worktree.md").read_text()
 
-    assert TIER_CHECKPOINT.search(text) is not None
+    assert REQUEST_BEFORE_LANDING.search(text) is not None
 
 
-def test_finish_worktree_step_one_is_the_checkpoint_tier() -> None:
+def test_finish_worktree_step_one_is_the_landing_run() -> None:
     lines = (COMMANDS / "finish_worktree.md").read_text().splitlines()
 
-    assert "# Step 1: Checkpoint tier" in lines
+    assert "# Step 1: Landing run" in lines
 
 
-def test_implement_plan_is_the_only_command_that_asks_for_the_full_tier() -> None:
-    asking = {
+def test_implement_plan_is_the_only_command_that_requests_the_whole_suite() -> None:
+    requesting = {
         str(path.relative_to(COMMANDS))
         for path in COMMANDS.rglob("*.md")
-        if TIER_FULL.search(path.read_text())
+        if path.name != "README.md"
+        and path != RUN_TESTS
+        and REQUEST_EVERYTHING.search(path.read_text())
     }
 
-    assert asking == {"implement_plan.md"}
+    assert requesting == {"implement_plan.md"}
 
 
 @pytest.mark.parametrize("wording", ["gh pr view", "changes requested"])
@@ -150,10 +154,48 @@ def test_configured_flaky_test_guide_exists() -> None:
     assert (ROOT / match.group(1)).is_file()
 
 
-def test_run_test_tier_prefixes_its_script_paths_with_the_plugins_root() -> None:
-    text = (COMMANDS / "protected/run_test_tier.md").read_text()
+def test_run_tests_blocks_when_the_project_names_no_test_runner() -> None:
+    assert (
+        "status: blocked · reason: no Test runner hook in .claude/sdd/config.md"
+        in RUN_TESTS.read_text()
+    )
 
-    assert "`<PLUGINS_ROOT>/`" in text
+
+def test_run_tests_spells_out_no_command() -> None:
+    fragments = code_fragments(RUN_TESTS.read_text())
+
+    assert [f for f in fragments if re.match(r"\S+\.(sh|py)\b|\w+ run\b", f)] == []
+
+
+def test_configured_test_runner_exists() -> None:
+    config = (ROOT / ".claude/sdd/config.md").read_text()
+    match = re.search(r"^- Test runner: *(\S+)$", config, re.MULTILINE)
+
+    assert match is not None
+    assert (ROOT / match.group(1)).is_file()
+
+
+@pytest.mark.parametrize(
+    "request_name", ["change", "everything", "before landing", "one test", "failed"]
+)
+def test_test_runner_handles_every_request_run_tests_lists(request_name: str) -> None:
+    row = f"| `{request_name}` |"
+
+    assert row in RUN_TESTS.read_text()
+    assert row in TEST_RUNNER.read_text()
+
+
+def test_test_runner_calls_the_record_script_through_its_wrapper() -> None:
+    fragments = code_fragments(TEST_RUNNER.read_text())
+
+    assert [
+        f
+        for f in fragments
+        if "full_run_record" in f and ".claude/ds/scripts/full_run_record.sh" not in f
+    ] == []
+    assert any(
+        f.startswith(".claude/ds/scripts/full_run_record.sh write") for f in fragments
+    )
 
 
 def test_tier_definition_tells_a_checkpoint_to_select_wide() -> None:

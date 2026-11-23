@@ -15,14 +15,14 @@ commit.
 
 **Do not**:
 
-- run pytest, ruff, mypy, or any other check **proactively** — the hooks are the gate, don't
+- run tests, a linter, a type checker or any other check **proactively** — the hooks are the gate, don't
   pre-empt them
 - read the contents of a changed file **before** a hook has complained about it
 - run `git diff` in patch mode — `--stat` and `--name-only` only
 - invoke another slash command
 
 **Once a hook fails**, exactly two things open up: you may read the files the hook named, and you
-may re-run that one check to verify your fix. Still no pytest, no full-repo sweeps, no patch-mode
+may re-run that one check to verify your fix. Still no test run, no full-repo sweeps, no patch-mode
 diff.
 
 The commit message comes from the file list and the spec directory name, not from reading the diff.
@@ -106,17 +106,18 @@ On each failure, classify what you got:
 
 | Failure | Action |
 | --- | --- |
-| A formatter rewrote files (`ruff-format`, `trailing-whitespace`, `end-of-file-fixer`) | `git add -u` the files it touched and retry. No thinking required. |
-| A check reported fixable errors (`mypy`, `ruff check`, `bandit`, `shellcheck`) | **Fix them.** Read only the files named in the output, make the minimal correct change, `git add -u`, retry. |
+| A formatter rewrote files (a code formatter, `trailing-whitespace`, `end-of-file-fixer`) | `git add -u` the files it touched and retry. No thinking required. |
+| A check reported fixable errors (a type checker, a linter, a security scanner) | **Fix them.** Read only the files named in the output, make the minimal correct change, `git add -u`, retry. |
 | `detect-secrets` / `detect-private-key` flagged a line | Read the line. If it is a **real** credential, stop immediately and tell the user — never work around it. If it is plainly a false positive (a fixture name, a doc example, a reserved-domain URL), prefer removing the literal; where the wording cannot avoid it, append the tool's own `pragma: allowlist secret` marker. |
-| The failure is in a file you neither created nor modified in this conversation, and unrelated to this commit | Pre-existing breakage. Stop and report it — do not fix unrelated code. Note that the `mypy` hook is whole-repo (`pass_filenames: false`), so this can happen. |
+| The failure is in a file you neither created nor modified in this conversation, and unrelated to this commit | Pre-existing breakage. Stop and report it — do not fix unrelated code. A whole-repo hook (`pass_filenames: false`) makes this possible. |
 
 **Hard rules for the loop:**
 
 - Never pass `--no-verify`.
-- Never `# type: ignore`, never a blanket `noqa`, never a new `[[tool.mypy.overrides]]` block, never
-  any config relaxation to dodge an error. Fix the code. A *targeted* `noqa: <CODE>` with a comment
-  justifying it is acceptable where the rule is genuinely wrong about the line.
+- Never an ignore comment for a type error, never a blanket lint suppression, never a new override
+  block in a checker's config, never any config relaxation to dodge an error. Fix the code. A
+  suppression of one named rule on one line, with a comment justifying it, is acceptable where the
+  rule is genuinely wrong about the line.
 - Never use `AskUserQuestion` about a hook failure. Fixing it **is** the job.
 - Only once the budget is spent, or an attempt repeats identically: stop, print the last hook
   output, leave the work staged, and say in one line what still fails.
