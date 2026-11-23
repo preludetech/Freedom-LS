@@ -10,6 +10,7 @@
 
 {% block content %}
     <c-page flush="true" class="pt-0 lg:pt-0">
+        <div class="space-y-8">
         {% for part in reference_part_topics %}
             {% comment %}The scroll margin keeps an anchor jump clear of the sticky header.{% endcomment %}
             <section id="{{ part.course_part.slug }}" class="scroll-mt-24">
@@ -29,5 +30,6 @@
                 <p class="mt-4 text-muted">No reference material yet</p>
             </div>
         {% endfor %}
+        </div>
     </c-page>
 {% endblock content %}

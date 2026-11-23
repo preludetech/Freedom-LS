@@ -888,6 +888,50 @@ def test_learner_reads_reference_topics_from_the_mobile_outline(
     expect(page).to_have_url(_item_url(live_server, course, 1))
 
 
+def test_reference_listing_separates_parts_more_than_topics(
+    live_server: LiveServer,
+    logged_in_page: Page,
+    logged_in_user: User,
+    live_server_site: Site,
+) -> None:
+    """The gap between one part's last topic and the next part's heading
+    exceeds the gap between topics inside a part. It used to be smaller, so
+    topics did not read as grouped under their part heading."""
+    page = logged_in_page
+    course = CourseFactory(title="Spacing Course", slug="spacing-course")
+    LearnerCourseRegistrationFactory(
+        learner__user=logged_in_user, course=course, is_active=True
+    )
+    for part_order, part_title in enumerate(("Formulas", "Glossary")):
+        part = CoursePartFactory(title=part_title, slug=f"part-{part_order}")
+        CourseReferencePartFactory(course=course, course_part=part, order=part_order)
+        for order in range(2):
+            ContentCollectionItemFactory(
+                collection_object=part,
+                child_object=TopicFactory(
+                    title=f"{part_title} Sheet {order}",
+                    slug=f"sheet-{part_order}-{order}",
+                ),
+                order=order,
+            )
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto(
+            reverse_url(
+                live_server,
+                "learner_interface:course_reference",
+                kwargs={"course_slug": course.slug},
+            )
+        )
+        first = _box(page.get_by_role("link", name="Formulas Sheet 0"))
+        second = _box(page.get_by_role("link", name="Formulas Sheet 1"))
+        next_heading = _box(page.get_by_role("heading", name="Glossary", level=2))
+        topic_gap = second["y"] - (first["y"] + first["height"])
+        part_gap = next_heading["y"] - (second["y"] + second["height"])
+        assert part_gap > topic_gap, (viewport, part_gap, topic_gap)
+
+
 def test_mobile_outline_sheet_and_drawer_stay_within_the_viewport(
     live_server: LiveServer,
     logged_in_page: Page,
