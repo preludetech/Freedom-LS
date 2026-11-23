@@ -537,14 +537,18 @@ def test_the_run_titled_with_this_dispatchs_token_is_the_one_followed(
     )
 
 
-def test_a_dispatched_run_that_never_appears_is_unavailable(tmp_path: Path) -> None:
+def test_a_dispatched_run_that_never_appears_is_unavailable_and_named_by_its_title(
+    tmp_path: Path,
+) -> None:
     scenario = Scenario()
     scenario.answer("gh", "run list", {"stdout": run_list()})
 
     outcome = run_script(scenario, tmp_path)
 
+    token = re.findall(r"run_token=(\S+)", "\n".join(runs_started(outcome)))[-1]
     assert unavailable_line(outcome) == (
-        "run: RESULT UNAVAILABLE the dispatched run did not appear in gh run list"
+        "run: RESULT UNAVAILABLE the dispatched run did not appear in gh run list; "
+        f"it may still be running on GitHub, titled {token}"
     )
 
 

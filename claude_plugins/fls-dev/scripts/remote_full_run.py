@@ -262,7 +262,11 @@ def dispatch(branch: str) -> tuple[str, str]:
         found = find_run(branch, token)
         if found is not None:
             return found
-    raise Unavailable("the dispatched run did not appear in gh run list")
+    # Without the run's id there is nothing to cancel, so name the run for whoever reads this.
+    raise Unavailable(
+        "the dispatched run did not appear in gh run list; "
+        f"it may still be running on GitHub, titled {token}"
+    )
 
 
 def find_run(branch: str, token: str) -> tuple[str, str] | None:
