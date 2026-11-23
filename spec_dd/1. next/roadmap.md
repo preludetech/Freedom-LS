@@ -11,7 +11,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### In progress
 
-- 🔴 High · `reference-material-content-2-learner-reference` (Reference material)
 - 🔴 High · `sacaa-complianc-deletion-and-declaration-1-force-delete` (SACAA record retention and declarations)
 - 🔴 High · `sacaa-compliance-3-question-pools` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-4-attempt-review` (SACAA compliance)
@@ -48,6 +47,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🟠 Medium · `referral-tracking-external-referer-first-touch` (Referral tracking and marketing)
 - 🟠 Medium · `server-side-conversion-tracking` (Referral tracking and marketing)
 - 🟠 Medium · `cookie-banner` (Referral tracking and marketing)
+- 🟡 Low · `reference-material-content-4-library-courses` (Reference material)
 - 🟡 Low · `audit-log-coverage-gaps` (Educator interface)
 - 🟡 Low · `bulk-run-audit-summary` (Educator interface)
 - 🟡 Low · `educator-interface-data-table-filter-design` (Educator interface)
@@ -71,28 +71,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 None.
 
 ![Up next](roadmap_diagrams/up-next.svg)
-
-## Reference material
-
-Priority: 🔴 High
-
-Reference parts, such as regulations, that learners consult at any time beside a course's learning path, and courses that are only libraries. Parent: `reference-material-content`.
-
-- `reference-material-content-2-learner-reference` — **in progress** — Registered learners open a course's reference listing and read reference topics from any player page, with nothing tracked.
-- `reference-material-content-4-library-courses` — **blocked** by `reference-material-content-2-learner-reference` — A course with only reference material opens its reference listing, shows no progress anywhere and can never be finished.
-
-![Reference material](roadmap_diagrams/reference-material.svg)
-
-**Notes**
-- Build order: `reference-material-content-1-authoring` first; then `reference-material-content-2-learner-reference` and `reference-material-content-3-educator-reference` in parallel; `reference-material-content-4-library-courses` last, at low priority.
-- Collisions: `reference-material-content-1-authoring` changes `content_save`, the schema and the validator, like `sacaa-compliance-content-versions-and-access-1-content-save-safety` and `sacaa-compliance-content-versions-and-access-2-retire-removed-content`; whichever lands second rebases. `reference-material-content-4-library-courses` touches the learner and cohort progress panels that `educator-interface-refactor-5-learner` and `educator-interface-refactor-6-cohort` move.
-- Decided: reference parts are `CoursePart` rows attached by a new `CourseReferencePart(course, course_part, order)`; `Course.items` stays the learning path. Reference parts hold topics only, one level deep.
-- Decided: a part listed under `reference:` makes `content_save` delete that course's old collection item placing it, with its overrides and due dates, and report what it removed.
-- Decided: reading reference material records nothing (no progress, resume pointer or `started_at`) and follows lesson access, so it is closed while paused and after the time limit ends.
-- Decided: a library-only course shows no progress or completion anywhere and cannot be finished.
-- Assumed: a topic may sit in both a learning-path part and a reference part; only a whole part is barred from both lists of one course.
-- Out of scope: nesting deeper than part, then topics (planned later), PDFs and files, search, forms in reference.
-- References: `research_learner_player.md` and `research_educator_content.md` in the parent.
 
 ## SACAA record retention and declarations
 
@@ -445,6 +423,27 @@ Where signups come from, and what visitors are told about tracking.
 **Notes**
 - `referral-tracking-external-referer-first-touch` must agree with the existing attribution touch list.
 - The `referral-tracking-*` specs and `landing-page-component-kit` are pull-ins from First-Class-LMS. `landing-page-component-kit` first needs a decision on whether FLS owns marketing pages.
+
+## Reference material
+
+Priority: 🟡 Low
+
+Reference parts, such as regulations, that learners consult at any time beside a course's learning path, and courses that are only libraries. Parent: `reference-material-content`.
+
+- `reference-material-content-4-library-courses` — **ready** — A course with only reference material opens its reference listing, shows no progress anywhere and can never be finished.
+
+![Reference material](roadmap_diagrams/reference-material.svg)
+
+**Notes**
+- Build order: `reference-material-content-1-authoring` first; then `reference-material-content-2-learner-reference` and `reference-material-content-3-educator-reference` in parallel; `reference-material-content-4-library-courses` last, at low priority.
+- Collisions: `reference-material-content-1-authoring` changes `content_save`, the schema and the validator, like `sacaa-compliance-content-versions-and-access-1-content-save-safety` and `sacaa-compliance-content-versions-and-access-2-retire-removed-content`; whichever lands second rebases. `reference-material-content-4-library-courses` touches the learner and cohort progress panels that `educator-interface-refactor-5-learner` and `educator-interface-refactor-6-cohort` move.
+- Decided: reference parts are `CoursePart` rows attached by a new `CourseReferencePart(course, course_part, order)`; `Course.items` stays the learning path. Reference parts hold topics only, one level deep.
+- Decided: a part listed under `reference:` makes `content_save` delete that course's old collection item placing it, with its overrides and due dates, and report what it removed.
+- Decided: reading reference material records nothing (no progress, resume pointer or `started_at`) and follows lesson access, so it is closed while paused and after the time limit ends.
+- Decided: a library-only course shows no progress or completion anywhere and cannot be finished.
+- Assumed: a topic may sit in both a learning-path part and a reference part; only a whole part is barred from both lists of one course.
+- Out of scope: nesting deeper than part, then topics (planned later), PDFs and files, search, forms in reference.
+- References: `research_learner_player.md` and `research_educator_content.md` in the parent.
 
 ## Educator interface
 
