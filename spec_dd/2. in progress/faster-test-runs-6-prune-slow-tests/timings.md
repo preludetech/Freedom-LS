@@ -151,3 +151,10 @@ Same commands and method as the "before" samples (serial, `-n 0 -p no:randomly -
 - Reading: the run as measured is under the target. Brought to the first run's load, one view puts it just under the adjusted target and the other puts the saving 4% short of what the target needs. The pruning cut the costliest area from 294.6 s to about 111 s of test cost, about 13% of the first run's total CPU. Pruning stopped where the remaining candidates above the 7.28 s threshold have no cheaper form (see `pruned_tests.md`).
 - Coverage: no whole-suite coverage run was made after the second pass, and the "before" report was no longer there to compare with. Each changed test file was compared against itself instead (see `pruned_tests.md`): no file under `freedom_ls/` lost a line or a branch.
 - Tests run for the second pass: the targeted tier on its commit (312 passed, 0 failed), and this ranking run over the whole suite without the Playwright tests (19071 passed). The full tier was not run again after the rebase onto main.
+
+## Discarded ranking run after the PR review fixes (second attempt)
+
+- Commit tested: `8bbda3818b0d1eaccc38dfbdf2a7d79140e9e734`. Run on 2026-11-23.
+- Result: 19183 tests recorded. Total CPU: 1320.1 s. Wall: 394.6 s. Summed test cost: 1378.0 s. Database setup: 61.6 s, teardown 1.6 s, across 4 workers.
+- Load average (1, 5, 15 min) and CPU pressure `some avg60`: start 4.09 7.33 7.77, 0.34; end 12.01 10.27 8.99, 3.95.
+- Discarded: the load rose to 12 during the run, and wall time was 24% above the committed ranking (317.8 s) with 109 more tests. The committed ranking and the SKILL.md run time stay as they were until a run on a quiet machine.
