@@ -24,6 +24,10 @@
 - Pre-test rebuild: .claude/fls-dev/scripts/rebuild_after_rebase.sh
 - Flaky test guide: claude_plugins/fls-dev/resources/flaky_tests.md
 
+## Script Hooks
+
+- Python with packages: uv run --with {packages} python
+
 ## Plan Review Hooks
 
 - Structure: claude_plugins/fls-dev/resources/plan_review_structure.md

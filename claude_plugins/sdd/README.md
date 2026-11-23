@@ -81,13 +81,15 @@ bare-repo/worktree mechanics;
 `spec_dd/` references out of code comments, docstrings and test names; `outstanding-items` — puts
 everything outstanding from the user into the spec's `todo.md`, so the chat never holds the only copy.
 
-### Scripts (9 files)
+### Scripts (10 files)
 `upstream_change_scan.sh`, `land_on_main.sh`, `design_screenshots.sh` (+ `design_screenshots.py`) — the
 rebase upstream scan, the close-out landing and design screenshots. The QA scripts, allow-listed at
 `claude_plugins/sdd/scripts/`: `qa_cleanup.sh`, `qa_collect_screenshots.sh`, `compress_screenshots.sh`
 (+ `compress_screenshots.py`) and `delete_sdd_work_files.sh`. `qa_collect_screenshots.sh` takes the
 spec directory, the screenshot source directory and an optional subfolder name (`fixed` for
 `qa_fix`), and refuses a directory outside the project or a subfolder that is not a plain name.
+`python_with.sh` runs Python with one extra package for the two screenshot scripts, using the
+`Python with packages` command in `.claude/sdd/config.md` (`## Script Hooks`).
 
 ### Resources (9)
 `agent_memory_guidelines` — how agents treat memory; `launcher_editing` — how to edit `claude.sh`

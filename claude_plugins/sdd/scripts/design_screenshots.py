@@ -48,7 +48,12 @@ from tempfile import TemporaryDirectory
 from typing import TypedDict
 from urllib.parse import quote, urlsplit
 
-from playwright.sync_api import Page, Response, sync_playwright
+try:
+    from playwright.sync_api import Page, Response, sync_playwright
+except ModuleNotFoundError:
+    sys.exit(
+        "blocked: needs the playwright package; set `Python with packages` in .claude/sdd/config.md"
+    )
 
 # Replaces the design's own design-canvas.jsx in the served copy. Claude Design's canvas pans and
 # zooms, which leaves artboards scaled and offscreen; this one lays them out at 1:1.

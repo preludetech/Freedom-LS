@@ -28,5 +28,4 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 PROJECT_ROOT="$(realpath "$CLAUDE_PROJECT_DIR")"
 
 cd "$PROJECT_ROOT"
-# uv run is the one project tool this script assumes: it gives pillow an isolated runner.
-exec uv run --with pillow python "${SCRIPT_DIR}/compress_screenshots.py" "$@"
+exec "${SCRIPT_DIR}/python_with.sh" pillow "${SCRIPT_DIR}/compress_screenshots.py" "$@"

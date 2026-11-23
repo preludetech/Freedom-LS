@@ -39,11 +39,7 @@ BANNED = {
 }
 
 # A file that still names a tool, and why. An entry whose file is clean fails the test.
-EXCEPTIONS = {
-    "scripts/compress_screenshots.py": "runs under `uv run --with pillow`",
-    "scripts/compress_screenshots.sh": "runs under `uv run --with pillow`",
-    "scripts/design_screenshots.sh": "runs under `uv run --with playwright`",
-}
+EXCEPTIONS: dict[str, str] = {}
 
 
 def banned_names(text: str) -> list[str]:

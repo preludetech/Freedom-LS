@@ -9,7 +9,7 @@
 # draws neither. design_screenshots.py says how each is found and named.
 #
 # Thin wrapper around design_screenshots.py. It exists so callers have a stable path to invoke
-# and so the playwright package and Chromium are present without a project-level install.
+# and so the playwright package and Chromium are present: python_with.sh supplies the package.
 # <spec-dir> is relative to the caller's working directory.
 
 set -euo pipefail
@@ -17,5 +17,5 @@ set -euo pipefail
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 # A no-op when Chromium is already installed.
-uv run --with playwright playwright install chromium
-exec uv run --with playwright python "${SCRIPT_DIR}/design_screenshots.py" "$@"
+"${SCRIPT_DIR}/python_with.sh" playwright -m playwright install chromium
+exec "${SCRIPT_DIR}/python_with.sh" playwright "${SCRIPT_DIR}/design_screenshots.py" "$@"

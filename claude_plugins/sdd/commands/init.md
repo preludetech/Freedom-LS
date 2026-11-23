@@ -138,6 +138,10 @@ anything in this step or before it completes.
    - Pre-test rebuild:
    - Flaky test guide:
 
+   ## Script Hooks
+
+   - Python with packages:
+
    ## Plan Review Hooks
 
    -
@@ -231,6 +235,12 @@ anything in this step or before it completes.
    A **Flaky test guide** value points at the file `/sdd:finish_worktree` hands the sub-agent that
    fixes a flaky test. Blank means the sub-agent works without a guide.
 
+   A **Python with packages** value is a command that runs Python with an extra package installed.
+   `{packages}` in it is replaced by the package name and the Python arguments are appended.
+   `scripts/python_with.sh` reads it for the screenshot scripts, which need an image library and a
+   browser driver. Blank means plain `python3`, and a script whose package is missing stops
+   `blocked` and names this key.
+
    **Plan Review Hooks** is an ordered list of `<label>: <path>` bullets, and **Documentation
    Hooks** an ordered list of `<label>: <skill>` bullets, where `<skill>` is a plugin skill name
    such as `<plugin>:<command>`. `/sdd:document` invokes each with the `Skill` tool, so the hook
@@ -318,7 +328,8 @@ in-place edits.
 5. `.claude/sdd/config.md` has a `## Design Hooks` section with a `Design check` key (a blank value
    is valid).
 6. `.claude/sdd/config.md` has a `## Test Hooks` section with `Test runner`, `Pre-test rebuild`
-   and `Flaky test guide` keys (blank values are valid).
+   and `Flaky test guide` keys, and a `## Script Hooks` section with a `Python with packages` key
+   (blank values are valid).
 7. `.claude/sdd/config.md` has a `## Plan Review Hooks` section (an empty list is valid).
 8. `.claude/sdd/config.md` has a `## Review Hooks` section with both `Comment standard` and
    `Test standard` keys (blank values are valid).

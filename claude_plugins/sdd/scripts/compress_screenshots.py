@@ -2,14 +2,21 @@
 """Compress PNG screenshots in a directory (default spec_dd) to stay under the pre-commit 1024KB limit.
 
 Usage:
-    uv run --with pillow python compress_screenshots.py [--max-kb 1024] [--quality 85] [DIR]
+    compress_screenshots.sh [--max-kb 1024] [--quality 85] [DIR]
+
+Needs the pillow package; compress_screenshots.sh supplies it through python_with.sh.
 """
 
 import argparse
 import sys
 from pathlib import Path
 
-from PIL import Image
+try:
+    from PIL import Image
+except ModuleNotFoundError:
+    sys.exit(
+        "blocked: needs the pillow package; set `Python with packages` in .claude/sdd/config.md"
+    )
 
 MAX_KB = 1024
 MAX_DIMENSION = 3000  # Max width/height for screenshots
