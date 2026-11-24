@@ -1,7 +1,7 @@
 """Seed one learner whose Overview > Registrations panel shows every row kind.
 
 The educator learner Overview tab's Registrations panel
-(``LearnerRegistrationsPanel``, ``freedom_ls/educator_interface/views.py``)
+(``LearnerRegistrationsPanel``, ``freedom_ls/educator_interface/panels/learner/data_table_panels.py``)
 renders three kinds of row, and this command gives one learner one of each:
 
 1. an active individual ``LearnerCourseRegistration`` -- shows Deactivate;
