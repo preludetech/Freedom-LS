@@ -83,7 +83,10 @@ from freedom_ls.form_engine.paging import (
     unanswered_required_in_form,
     unanswered_required_message,
 )
-from freedom_ls.form_engine.queries import count_sitting_questions
+from freedom_ls.form_engine.queries import (
+    count_sitting_questions,
+    stored_score_outdated,
+)
 from freedom_ls.form_engine.served_paper import ensure_served_paper
 from freedom_ls.learner_management.learner_actions import self_register
 from freedom_ls.learner_management.queries import (
@@ -2215,24 +2218,7 @@ def course_form_complete(request, course_slug, index):
         with contextlib.suppress(ValueError):
             percentage = form_progress.quiz_percentage()
 
-    # Scores are frozen at submission and never rescored, so an attempt sat before
-    # the marking rules changed can carry a score the review list below it
-    # contradicts. The page has to own that rather than let the learner spot it.
-    stored_score_outdated = False
-    # A served item missing from the form shrinks the recomputed score although
-    # marking is unchanged, so the stored mark is left unchallenged.
-    if (
-        form.strategy == FormStrategy.QUIZ
-        and form_progress.scores
-        and (path is None or not path.has_missing_served_items)
-    ):
-        current_scores = form_progress.compute_quiz_scores(path)
-        # max_score too, not just score: a quiz that gained or lost a question
-        # since the attempt shows a stale percentage the score alone cannot catch.
-        stored_score_outdated = any(
-            form_progress.scores.get(key) != current_scores[key]
-            for key in ("score", "max_score")
-        )
+    score_outdated = stored_score_outdated(form_progress, path)
 
     # Three-state: "passed", "failed", or None for a quiz with no pass mark —
     # there is no bar to clear, so the results page must claim neither outcome.
@@ -2311,7 +2297,7 @@ def course_form_complete(request, course_slug, index):
         "show_scores": True,
         "scores": form_progress.scores,
         "incorrect_answers": incorrect_answers,
-        "stored_score_outdated": stored_score_outdated,
+        "stored_score_outdated": score_outdated,
         "quiz_verdict": quiz_verdict,
         "next_url": next_url,
         "previous_url": previous_url,

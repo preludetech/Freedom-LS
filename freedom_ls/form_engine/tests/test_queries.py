@@ -12,6 +12,7 @@ from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.form_engine.conditions import answers_by_question, sitting_path
 from freedom_ls.form_engine.factories import (
     FormContentFactory,
     FormFactory,
@@ -24,6 +25,7 @@ from freedom_ls.form_engine.factories import (
 )
 from freedom_ls.form_engine.models import (
     Form,
+    FormPage,
     FormProgress,
     FormQuestion,
     FormStrategy,
@@ -38,6 +40,7 @@ from freedom_ls.form_engine.queries import (
     drawing_page_counts,
     form_questions,
     quiz_verdict,
+    stored_score_outdated,
 )
 
 # A scores dict written under another strategy: populated, but with no quiz
@@ -489,3 +492,117 @@ def test_a_drawing_page_summary_pluralises_questions_and_groups(
     counts: DrawingPageCounts, expected: str
 ) -> None:
     assert counts.summary == expected
+
+
+def _sat_quiz(scores: dict[str, int]) -> tuple[FormProgress, QuestionOption]:
+    """A served single-question quiz sitting answered with the right option, stored with `scores`."""
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
+    page: FormPage = FormPageFactory(form=form, order=0)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=page, type="multiple_choice", order=0
+    )
+    right: QuestionOption = QuestionOptionFactory(
+        question=question, correct=True, order=0
+    )
+    other: QuestionOption = QuestionOptionFactory(
+        question=question, correct=False, order=1
+    )
+    progress: FormProgress = FormProgressFactory(
+        form=form,
+        scores=scores,
+        completed_time=timezone.now(),
+        served_paper=served_paper_of([(page, [question])], {question: [right, other]}),
+    )
+    QuestionAnswerFactory(
+        form_progress=progress, question=question
+    ).selected_options.add(right)
+    reloaded: FormProgress = FormProgress.objects.get(pk=progress.pk)
+    return reloaded, right
+
+
+@pytest.mark.django_db
+def test_stored_score_outdated_is_false_when_the_marking_is_unchanged(
+    mock_site_context,
+):
+    progress, _right = _sat_quiz({"score": 1, "max_score": 1})
+
+    outdated = stored_score_outdated(progress, sitting_path(progress))
+
+    assert outdated is False
+
+
+@pytest.mark.django_db
+def test_stored_score_outdated_is_true_when_a_correct_option_changed_after_submission(
+    mock_site_context,
+):
+    progress, right = _sat_quiz({"score": 1, "max_score": 1})
+    right.correct = False
+    right.save()
+
+    outdated = stored_score_outdated(progress, sitting_path(progress))
+
+    assert outdated is True
+
+
+@pytest.mark.django_db
+def test_stored_score_outdated_is_true_when_the_changed_option_is_read_from_given_answers(
+    mock_site_context,
+):
+    progress, right = _sat_quiz({"score": 1, "max_score": 1})
+    right.correct = False
+    right.save()
+    path = sitting_path(progress)
+
+    outdated = stored_score_outdated(progress, path, answers_by_question(progress))
+
+    assert outdated is True
+
+
+@pytest.mark.django_db
+def test_stored_score_outdated_is_true_when_a_question_was_added(mock_site_context):
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
+    page = FormPageFactory(form=form, order=0)
+    question = FormQuestionFactory(form_page=page, type="multiple_choice", order=0)
+    right = QuestionOptionFactory(question=question, correct=True, order=0)
+    progress: FormProgress = FormProgressFactory(
+        form=form, scores={"score": 1, "max_score": 1}, completed_time=timezone.now()
+    )
+    QuestionAnswerFactory(
+        form_progress=progress, question=question
+    ).selected_options.add(right)
+    added = FormQuestionFactory(form_page=page, type="multiple_choice", order=1)
+    QuestionOptionFactory(question=added, correct=True, order=0)
+
+    outdated = stored_score_outdated(progress, None)
+
+    assert outdated is True
+
+
+@pytest.mark.django_db
+def test_stored_score_outdated_is_false_when_a_served_item_is_missing_from_the_form(
+    mock_site_context,
+):
+    progress, _right = _sat_quiz({"score": 1, "max_score": 2})
+    page = progress.form.pages.get()
+    unanswered = FormQuestionFactory(form_page=page, type="multiple_choice", order=1)
+    served = [*page.children()]
+    progress.served_paper = served_paper_of([(page, served)])
+    progress.save()
+    unanswered.delete()
+    progress = FormProgress.objects.get(pk=progress.pk)
+
+    outdated = stored_score_outdated(progress, sitting_path(progress))
+
+    assert outdated is False
+
+
+@pytest.mark.django_db
+def test_stored_score_outdated_is_false_for_a_non_quiz_form(mock_site_context):
+    form = FormFactory(strategy=FormStrategy.CATEGORY_VALUE_SUM)
+    progress: FormProgress = FormProgressFactory(
+        form=form, scores={"Satisfaction": 5}, completed_time=timezone.now()
+    )
+
+    outdated = stored_score_outdated(progress, None)
+
+    assert outdated is False

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 from uuid import UUID
@@ -741,7 +741,11 @@ class FormProgress(SiteAwareModel):
             ]
         return served.questions()
 
-    def compute_quiz_scores(self, path: SittingPath | None = None) -> dict[str, int]:
+    def compute_quiz_scores(
+        self,
+        path: SittingPath | None = None,
+        answers: Mapping[UUID, QuestionAnswer] | None = None,
+    ) -> dict[str, int]:
         """Score this attempt against the current marking rules, storing nothing.
 
         Scores are frozen at submission and never rescored, so a stored score can
@@ -749,23 +753,29 @@ class FormProgress(SiteAwareModel):
         re-derives a score to detect that, which it can only do without writing.
 
         `path` is read only when the sitting has a served paper; pass one the
-        caller already built to save rebuilding it.
+        caller already built to save rebuilding it. `answers` maps question id to
+        the sitting's answer with selected options loaded; it is read once when
+        not given.
         """
+        if answers is None:
+            # Local import: conditions imports this module.
+            from .conditions import answers_by_question
+
+            answers = answers_by_question(self)
+
         score = 0
         max_score = 0
 
         for question in self._quiz_questions(path):
             max_score += 1
 
-            try:
-                answer = self.answers.get(question=question)
-                selected_option_ids = {o.id for o in answer.selected_options.all()}
-                if is_quiz_answer_correct(selected_option_ids, question.options.all()):
-                    score += 1
-
-            except QuestionAnswer.DoesNotExist:
-                # Question not answered, contributes 0 to score
-                pass
+            # A question with no answer contributes 0 to the score.
+            answer = answers.get(question.id)
+            if answer is None:
+                continue
+            selected_option_ids = {o.id for o in answer.selected_options.all()}
+            if is_quiz_answer_correct(selected_option_ids, question.options.all()):
+                score += 1
 
         return {"score": score, "max_score": max_score}
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -231,3 +232,27 @@ def answer_groups(form_progress: FormProgress) -> list[AnswerGroup]:
     if off_page_rows:
         groups.append(AnswerGroup(title=FINAL_GROUP_TITLE, rows=off_page_rows))
     return groups
+
+
+def stored_score_outdated(
+    form_progress: FormProgress,
+    path: SittingPath | None,
+    answers: Mapping[UUID, QuestionAnswer] | None = None,
+) -> bool:
+    """Whether the score stored at submission disagrees with what the same
+    answers earn under the current marking.
+
+    Scores are frozen at submission and never rescored. max_score is
+    compared too: a quiz that gained or lost a question shows a stale
+    percentage the score alone cannot catch. A served item missing from
+    the form shrinks the recomputed score although marking is unchanged,
+    so such a sitting is never reported as outdated.
+    """
+    if form_progress.form.strategy != FormStrategy.QUIZ or not form_progress.scores:
+        return False
+    if path is not None and path.has_missing_served_items:
+        return False
+    current = form_progress.compute_quiz_scores(path, answers)
+    return any(
+        form_progress.scores.get(key) != current[key] for key in ("score", "max_score")
+    )

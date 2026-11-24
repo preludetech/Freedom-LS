@@ -10,7 +10,7 @@ from django.db import transaction
 from django.db.models import ProtectedError, RestrictedError
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.form_engine.conditions import current_path
+from freedom_ls.form_engine.conditions import answers_by_question, current_path
 from freedom_ls.form_engine.factories import (
     FormContentFactory,
     FormFactory,
@@ -24,6 +24,7 @@ from freedom_ls.form_engine.factories import (
 )
 from freedom_ls.form_engine.models import (
     Form,
+    FormContent,
     FormPage,
     FormProgress,
     FormQuestion,
@@ -901,3 +902,66 @@ def test_uneven_units_are_allowed_on_a_page_with_no_draw(
     loose = FormQuestionFactory.build(form_page=page, order=6)
 
     loose.clean()
+
+
+def _quiz_with_questions(question_count: int, answered_rightly: int) -> FormProgress:
+    """A served quiz sitting whose first `answered_rightly` questions are answered rightly."""
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
+    page: FormPage = FormPageFactory(form=form, order=0)
+    progress: FormProgress = FormProgressFactory(form=form)
+    questions: list[FormQuestion] = []
+    for order in range(question_count):
+        question: FormQuestion = FormQuestionFactory(
+            form_page=page, type="multiple_choice", order=order
+        )
+        right: QuestionOption = QuestionOptionFactory(
+            question=question, correct=True, order=0
+        )
+        QuestionOptionFactory(question=question, correct=False, order=1)
+        questions.append(question)
+        if order < answered_rightly:
+            QuestionAnswerFactory(
+                form_progress=progress, question=question
+            ).selected_options.add(right)
+    content: list[FormContent | FormQuestion] = [*questions]
+    progress.served_paper = served_paper_of(
+        [(page, content)],
+        {question: list(question.options.order_by("order")) for question in questions},
+    )
+    progress.save()
+    reloaded: FormProgress = FormProgress.objects.get(pk=progress.pk)
+    return reloaded
+
+
+@pytest.mark.django_db
+def test_compute_quiz_scores_counts_the_rightly_answered_questions(
+    mock_site_context,
+):
+    progress = _quiz_with_questions(question_count=3, answered_rightly=2)
+
+    scores = progress.compute_quiz_scores()
+
+    assert scores == {"score": 2, "max_score": 3}
+
+
+@pytest.mark.django_db
+def test_compute_quiz_scores_reads_the_answers_it_is_given(mock_site_context):
+    progress = _quiz_with_questions(question_count=3, answered_rightly=2)
+    answers = answers_by_question(progress)
+
+    scores = progress.compute_quiz_scores(answers=answers)
+
+    assert scores == {"score": 2, "max_score": 3}
+
+
+@pytest.mark.django_db
+def test_compute_quiz_scores_with_answers_stays_within_a_query_bound_as_questions_grow(
+    mock_site_context, django_assert_max_num_queries
+):
+    progress = _quiz_with_questions(question_count=12, answered_rightly=12)
+    answers = answers_by_question(progress)
+
+    with django_assert_max_num_queries(6):
+        scores = progress.compute_quiz_scores(answers=answers)
+
+    assert scores == {"score": 12, "max_score": 12}
