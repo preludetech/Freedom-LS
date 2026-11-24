@@ -152,8 +152,50 @@ class _RunLedger:
         default_factory=lambda: defaultdict(set)
     )
 
+    retired_before: dict[type[Model], set[Hashable]] = field(
+        default_factory=lambda: defaultdict(set)
+    )
+
     def saw(self, row: Model) -> None:
         self.seen[type(row)].add(_row_key(row))
+
+    def unretired(self, model: type[Model]) -> set[Hashable]:
+        """Rows that were retired before the run and are in the source again."""
+        return self.seen[model] & self.retired_before[model]
+
+
+@dataclass(frozen=True)
+class _SaveResult:
+    """What a save transaction hands back for the command to report."""
+
+    image_statuses: list[ImageEncodeStatus]
+    removal_lines: list[str]
+    ledger: _RunLedger
+
+
+def _retire_count_line(ledger: _RunLedger) -> str:
+    """`Retired: 3 (Topic 1, FormQuestion 2). Un-retired: 0.` Both totals are always
+    printed. A model with a zero count is left out of the brackets, and a zero total
+    has no brackets."""
+
+    def describe(label: str, counts: dict[str, int]) -> str:
+        total = sum(counts.values())
+        if not total:
+            return f"{label}: 0."
+        detail = ", ".join(f"{name} {count}" for name, count in counts.items())
+        return f"{label}: {total} ({detail})."
+
+    retired = {
+        model.__name__: len(ledger.retired[model])
+        for model in RETIRABLE_MODELS
+        if ledger.retired[model]
+    }
+    unretired = {
+        model.__name__: len(ledger.unretired(model))
+        for model in RETIRABLE_MODELS
+        if ledger.unretired(model)
+    }
+    return f"{describe('Retired', retired)} {describe('Un-retired', unretired)}"
 
 
 def represent_str(dumper, data):
@@ -489,6 +531,12 @@ def save_activity(item, site, base_path):
     return save_with_uuid(Activity, item, site, base_path)
 
 
+def _retired_prefix(owner: Article | CourseCategory) -> str:
+    """`retired ` for a retired row, so a collision message says the slug is held by
+    a row that is no longer in the source."""
+    return "retired " if owner.is_retired else ""
+
+
 def _refuse_category_slug_collisions(item, site, relative_path):
     """Refuse any entry whose slug already belongs to a different row on this site.
 
@@ -500,19 +548,20 @@ def _refuse_category_slug_collisions(item, site, relative_path):
     just the first.
     """
     owners = {
-        category.slug: category.id
+        category.slug: category
         for category in CourseCategory._base_manager.filter(
             site=site, slug__in=[entry.slug for entry in item.categories]
         )
     }
     errors = []
     for entry in item.categories:
-        owner_id = owners.get(entry.slug)
-        if owner_id is not None and str(owner_id) != entry.uuid:
+        owner = owners.get(entry.slug)
+        if owner is not None and str(owner.id) != entry.uuid:
+            owner_id = owner.id
             errors.append(
                 f"\n❌ Category slug '{entry.slug}' in {relative_path} already "
-                f"belongs to another CourseCategory on site '{site.name}' "
-                f"(uuid {owner_id}). A category is identified by its uuid, so "
+                f"belongs to another {_retired_prefix(owner)}CourseCategory "
+                f"on site '{site.name}' (uuid {owner_id}). A category is identified by its uuid, so "
                 "this entry would be a second row with the same slug. To edit "
                 f"that category, give this entry `uuid: {owner_id}`; to add a "
                 "new one, choose a different slug."
@@ -530,7 +579,7 @@ def _refuse_article_slug_collisions(item, site, relative_path):
     if owner is not None and str(owner.id) != item.uuid:
         raise ValueError(
             f"\n❌ Article slug '{item.slug}' in {relative_path} already belongs "
-            f"to another Article on site '{site.name}' (uuid {owner.id}). To edit "
+            f"to another {_retired_prefix(owner)}Article on site '{site.name}' (uuid {owner.id}). To edit "
             f"that article, give this file `uuid: {owner.id}`; to add a new one, "
             "choose a different slug."
         )
@@ -1773,7 +1822,7 @@ def save_content_to_db(
     """
     # Printed only once the load's transaction is over, so a load that rolls back,
     # at its commit included, has reported no removal and no success.
-    image_statuses, removal_lines = _write_sources(
+    result = _write_sources(
         paths,
         site_name,
         generate_uuids=generate_uuids,
@@ -1781,10 +1830,13 @@ def save_content_to_db(
         retire_missing=retire_missing,
         allow_course_retire=allow_course_retire,
     )
-    for line in removal_lines:
+    for line in result.removal_lines:
         click.echo(line)
+    if retire_missing:
+        click.echo(_retire_count_line(result.ledger))
     click.echo(f"✓ Successfully saved all content for site: {site_name}")
 
+    image_statuses = result.image_statuses
     counts = Counter(image_statuses)
     per_status = ", ".join(
         f"{counts[status]} {status}" for status in ImageEncodeStatus if status in counts
@@ -1817,9 +1869,9 @@ def _write_sources(
     source_commits: Sequence[SourceCommit] | None,
     retire_missing: bool,
     allow_course_retire: bool = False,
-) -> tuple[list[ImageEncodeStatus], list[str]]:
-    """Write every source path in one transaction. Returns the image statuses and the
-    lines that report what was removed."""
+) -> _SaveResult:
+    """Write every source path in one transaction. Returns the image statuses, the
+    lines that report what was removed and the ledger of what was retired."""
     site = Site.objects.get(
         name=site_name,
     )
@@ -1860,6 +1912,16 @@ def _write_sources(
 
     run_time = timezone.now()
     ledger = _RunLedger()
+    if retire_missing:
+        # The upsert clears retired_at, so rows that come back must be read first.
+        ledger.retired_before = {
+            model: set(
+                model._base_manager.filter(
+                    site=site, retired_at__isnull=False
+                ).values_list("file_path" if model is File else "pk", flat=True)
+            )
+            for model in RETIRABLE_MODELS
+        }
     image_statuses: list[ImageEncodeStatus] = []
     removal_lines: list[str] = []
     for source in sources:
@@ -1888,7 +1950,7 @@ def _write_sources(
             for order, source_commit in enumerate(source_commits)
         )
 
-    return image_statuses, removal_lines
+    return _SaveResult(image_statuses, removal_lines, ledger)
 
 
 def _refusal(

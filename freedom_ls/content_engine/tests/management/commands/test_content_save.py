@@ -95,6 +95,7 @@ from freedom_ls.tests.images import (
     photographic_jpeg_bytes,
     png_bytes,
 )
+from freedom_ls.tests.retire import retire
 from freedom_ls.tests.site_context import drop_ambient_request
 
 # Loading ARTICLE markdown files from a content repo.
@@ -6740,3 +6741,132 @@ def test_run_that_sweeps_a_course_the_guard_missed_is_refused_and_rolled_back(
         save_content_to_db(tmp_path, site.name, retire_missing=True)
 
     assert Course._base_manager.get(pk=SOLO_COURSE_UUID).retired_at is None
+
+
+def _count_line(output: str) -> str:
+    return next(line for line in output.splitlines() if line.startswith("Retired:"))
+
+
+@pytest.mark.django_db
+def test_run_reports_each_retired_and_un_retired_model_with_its_count(
+    site, mock_site_context, tmp_path, capsys
+):
+    _write_source_with_one_of_each(tmp_path)
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+    _remove_path("loose_topic.md")(tmp_path)
+    capsys.readouterr()
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+    first_line = _count_line(capsys.readouterr().out)
+    _write_topic(tmp_path, "loose_topic.md", "Loose topic", LOOSE_TOPIC_UUID)
+    _remove_path("loose_activity.md")(tmp_path)
+
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+
+    assert (first_line, _count_line(capsys.readouterr().out)) == (
+        "Retired: 1 (Topic 1). Un-retired: 0.",
+        "Retired: 1 (Activity 1). Un-retired: 1 (Topic 1).",
+    )
+
+
+@pytest.mark.django_db
+def test_run_names_models_in_retirable_order_when_several_are_retired(
+    site, mock_site_context, tmp_path, capsys
+):
+    _write_source_with_one_of_each(tmp_path)
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+    capsys.readouterr()
+    _remove_path("loose_activity.md")(tmp_path)
+    _remove_path("loose_topic.md")(tmp_path)
+
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+
+    assert _count_line(capsys.readouterr().out) == (
+        "Retired: 2 (Topic 1, Activity 1). Un-retired: 0."
+    )
+
+
+@pytest.mark.django_db
+def test_identical_second_run_reports_nothing_retired_or_un_retired(
+    site, mock_site_context, tmp_path, capsys
+):
+    _write_source_with_one_of_each(tmp_path)
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+    capsys.readouterr()
+
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+
+    assert _count_line(capsys.readouterr().out) == "Retired: 0. Un-retired: 0."
+
+
+@pytest.mark.django_db
+def test_run_that_rolls_back_prints_no_retire_count_line(
+    site, mock_site_context, tmp_path, capsys
+):
+    _save_one_of_each_then_drop_the_solo_course(site, tmp_path)
+    capsys.readouterr()
+
+    with pytest.raises(CommandError):
+        save_content_to_db(tmp_path, site.name, retire_missing=True)
+
+    assert "Retired:" not in capsys.readouterr().out
+
+
+@pytest.mark.django_db
+def test_run_without_retire_missing_prints_no_retire_count_line(
+    site, mock_site_context, tmp_path, capsys
+):
+    _write_source_with_one_of_each(tmp_path)
+
+    save_content_to_db(tmp_path, site.name)
+
+    assert "Retired:" not in capsys.readouterr().out
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("owner_is_retired", "expected_in_message"),
+    [(True, "another retired Article"), (False, "another Article")],
+)
+def test_article_slug_refusal_says_retired_only_for_a_retired_owner(
+    site, mock_site_context, tmp_path, owner_is_retired, expected_in_message
+):
+    _write_article(
+        tmp_path,
+        "writing/launch.md",
+        "content_type: ARTICLE\ntitle: Launch\npublished_on: 2026-03-04\n",
+    )
+    save_content_to_db(tmp_path, site.name)
+    if owner_is_retired:
+        retire(Article._base_manager.get(site=site))
+    _write_article(
+        tmp_path,
+        "other/launch.md",
+        "content_type: ARTICLE\ntitle: Imposter\npublished_on: 2026-03-05\n",
+    )
+
+    with pytest.raises(ValueError, match="slug") as exc_info:
+        save_content_to_db(tmp_path, site.name)
+
+    assert expected_in_message in str(exc_info.value)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("owner_is_retired", "expected_in_message"),
+    [(True, "another retired CourseCategory"), (False, "another CourseCategory")],
+)
+def test_category_slug_refusal_says_retired_only_for_a_retired_owner(
+    site, mock_site_context, tmp_path, owner_is_retired, expected_in_message
+):
+    owner = CourseCategoryFactory(site=site, slug="start-here", title="Start here")
+    if owner_is_retired:
+        retire(CourseCategory._base_manager.get(pk=owner.pk))
+    (tmp_path / "course_categories.yaml").write_text(
+        "---\ncontent_type: COURSE_CATEGORIES\ncategories:\n"
+        "  - slug: start-here\n    title: Start here, again\n"
+    )
+
+    with pytest.raises(ValueError, match="slug") as exc_info:
+        save_content_to_db(tmp_path, site.name)
+
+    assert expected_in_message in str(exc_info.value)
