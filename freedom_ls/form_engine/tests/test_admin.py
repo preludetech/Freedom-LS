@@ -13,6 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.form_engine.admin import (
     FormAdmin,
     FormContentAdmin,
@@ -25,6 +26,7 @@ from freedom_ls.form_engine.admin import (
 from freedom_ls.form_engine.enums import QuestionType
 from freedom_ls.form_engine.factories import (
     FormContentFactory,
+    FormDeclarationFactory,
     FormFactory,
     FormPageFactory,
     FormProgressFactory,
@@ -36,7 +38,9 @@ from freedom_ls.form_engine.factories import (
 from freedom_ls.form_engine.models import (
     Form,
     FormContent,
+    FormDeclaration,
     FormPage,
+    FormProgress,
     FormQuestion,
     FormStrategy,
     QuestionAnswer,
@@ -573,7 +577,10 @@ def test_the_change_page_is_read_only(staff_client) -> None:
 
     answer.refresh_from_db()
     assert not response.context["adminform"].form.fields
-    assert not response.context["inline_admin_formsets"]
+    assert not any(
+        formset.formset.can_delete or formset.has_change_permission
+        for formset in response.context["inline_admin_formsets"]
+    )
     assert answer.text_answer == "original"
 
 
@@ -751,3 +758,77 @@ def test_an_ungated_form_content_block_has_no_condition(mock_site_context) -> No
     content = FormContentFactory()
 
     assert FormContentAdmin(FormContent, admin.site).condition(content) is None
+
+
+@pytest.mark.django_db
+def test_the_change_page_shows_the_declaration_read_only(staff_client) -> None:
+    progress = FormProgressFactory()
+    FormDeclarationFactory(
+        form_progress=progress,
+        declaration_text="I sat this quiz alone.",
+        typed_name="Ada Lovelace",
+        ip_address="203.0.113.7",
+    )
+
+    response = staff_client.get(reverse(CHANGE_URL_NAME, args=[progress.pk]))
+
+    body = response.content.decode()
+    assert "I sat this quiz alone." in body
+    assert "Ada Lovelace" in body
+    assert "203.0.113.7" in body
+    assert "Signed at" in body
+    assert "form-declaration-0-DELETE" not in body
+    assert not response.context["inline_admin_formsets"][0].has_add_permission
+
+
+@pytest.fixture
+def deleter_client(mock_site_context, logged_in_client):
+    """Staff holding only the delete permissions for users and sittings."""
+    deleter = UserFactory(is_staff=True, is_superuser=False)
+    deleter.user_permissions.set(
+        Permission.objects.filter(
+            codename__in=[
+                "view_user",
+                "delete_user",
+                "view_formprogress",
+                "delete_formprogress",
+            ],
+        )
+    )
+    return logged_in_client(deleter)
+
+
+@pytest.mark.django_db
+def test_deleting_a_signed_sitting_deletes_its_declaration(deleter_client) -> None:
+    declaration = FormDeclarationFactory()
+    url = reverse(
+        "admin:freedom_ls_form_engine_formprogress_delete",
+        args=[declaration.form_progress_id],
+    )
+
+    response = deleter_client.get(url)
+    assert response.status_code == 200
+    assert response.context["perms_lacking"] == set()
+    response = deleter_client.post(url, {"post": "yes"})
+
+    assert response.status_code == 302
+    assert not FormProgress.objects.filter(pk=declaration.form_progress_id).exists()
+    assert not FormDeclaration.objects.filter(pk=declaration.pk).exists()
+
+
+@pytest.mark.django_db
+def test_deleting_a_user_with_a_signed_sitting_deletes_the_declaration(
+    deleter_client,
+) -> None:
+    declaration = FormDeclarationFactory()
+    user = declaration.form_progress.user
+    url = reverse("admin:freedom_ls_accounts_user_delete", args=[user.pk])
+
+    response = deleter_client.get(url)
+    assert response.status_code == 200
+    assert response.context["perms_lacking"] == set()
+    response = deleter_client.post(url, {"post": "yes"})
+
+    assert response.status_code == 302
+    assert not User.objects.filter(pk=user.pk).exists()
+    assert not FormDeclaration.objects.filter(pk=declaration.pk).exists()

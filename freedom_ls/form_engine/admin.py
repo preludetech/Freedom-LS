@@ -1,3 +1,4 @@
+from unfold.admin import TabularInline
 from unfold.contrib.filters.admin import AutocompleteSelectFilter
 
 from django.apps import apps
@@ -20,6 +21,7 @@ from freedom_ls.site_aware_models.slugs import get_unique_slug, slug_base_for
 from .models import (
     Form,
     FormContent,
+    FormDeclaration,
     FormPage,
     FormProgress,
     FormQuestion,
@@ -316,8 +318,39 @@ class FormProgressCompletionFilter(CompletionListFilter):
     completion_field = "completed_time"
 
 
+class FormDeclarationInline(TabularInline):
+    """Read-only display of the declaration signed for a sitting.
+
+    The declaration has no admin of its own, so deleting a sitting or its user
+    cascades to it without Django's permission check listing it.
+    """
+
+    model = FormDeclaration
+    extra = 0
+    can_delete = False
+    _DECLARATION_FIELDS = ("declaration_text", "typed_name", "signed_at", "ip_address")
+    fields = _DECLARATION_FIELDS
+    readonly_fields = _DECLARATION_FIELDS
+
+    def has_add_permission(
+        self, request: HttpRequest, obj: FormProgress | None = None
+    ) -> bool:
+        return False
+
+    def has_change_permission(
+        self, request: HttpRequest, obj: FormProgress | None = None
+    ) -> bool:
+        return False
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: FormProgress | None = None
+    ) -> bool:
+        return False
+
+
 @admin.register(FormProgress)
 class FormProgressAdmin(SiteAwareModelAdmin):
+    inlines = [FormDeclarationInline]
     list_display = [
         "applicant",
         "form",
