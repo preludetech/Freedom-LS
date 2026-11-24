@@ -16,7 +16,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `sacaa-compliance-content-versions-and-access-2-retire-removed-content` (SACAA content versions and access)
 - 🟠 Medium · `educator-interface-refactor-7-cleanup` (Educator interface code layout)
 - 🟠 Medium · `referral-tracking-marketing-channels` (Referral tracking and marketing)
-- 🟡 Low · `educator-intercface-small-ui-polish` (Educator interface)
 - 🟡 Low · `remove-unnecessary-admin-panel-functionality` (Educator interface)
 
 ### Ready to start
@@ -428,7 +427,6 @@ Org admins manage learners, cohorts, registrations and staff. Parent: `educator-
 - `educator-interface-more polish` — **ready** — Educators resend staff invitations and see who hasn't accepted, plus linked dashboard figures, learner-tab messaging and one new-message flow.
 - `remove-unnecessary-admin-panel-functionality` — **in progress** — Remove content engine, learner and cohort admin from the Django admin; content comes only from content_save.
 - `admin-dashboard-signal-cards` — **ready** — The admin index shows signup, registration, application and interest cards: last 7 days against the previous 7, newest entries.
-- `educator-intercface-small-ui-polish` — **in progress** — Course detail tabs, collapsed content parts, add or remove registrations, preview next/previous, quiz stats, button text alignment.
 - `staff-person-profile-by-email` — **ready** — Staff look up one person by email and see account, attribution, applications, interests, recommendations and registrations with progress.
 
 ![Educator interface](roadmap_diagrams/educator-interface.svg)
