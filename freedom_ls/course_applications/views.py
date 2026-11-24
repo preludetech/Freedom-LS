@@ -124,6 +124,17 @@ def _active_or_new_application(
         return active.get(), False
 
 
+def _application_form(course: Course) -> Form | None:
+    """The form applicants fill in, or None when the course has none to offer.
+
+    A retired form is no form: a new application is not given a sitting of it.
+    """
+    form = course.application_form
+    if form is None or form.is_retired:
+        return None
+    return form
+
+
 def _start_application(
     course: Course,
     *,
@@ -158,12 +169,13 @@ def _start_application(
         # both see no sitting, each creates one, and the loser's sitting is
         # left with no user and no application to reach it by.
         app = CourseApplication.objects.select_for_update().get(pk=app.pk)
-        if course.application_form is None:
+        application_form = _application_form(course)
+        if application_form is None:
             if app.state == CourseApplication.State.DRAFT:
                 submit_application(app)
         elif app.form_progress is None and app.state == CourseApplication.State.DRAFT:
             app.form_progress = FormProgress.objects.create(
-                user=user, form=course.application_form
+                user=user, form=application_form
             )
             app.save(update_fields=["form_progress"])
     return app, created
@@ -216,7 +228,7 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
     if coming_soon is not None:
         return coming_soon
 
-    if course.application_form is not None or request.method == "POST":
+    if _application_form(course) is not None or request.method == "POST":
         app, created = _start_application(course, user=user)
         if created:
             record_conversion(
@@ -553,7 +565,7 @@ def _anonymous_apply(request: HttpRequest, course: Course) -> HttpResponse:
         return redirect(
             "course_applications:applicant_details", course_slug=course.slug
         )
-    if course.application_form is not None or request.method == "POST":
+    if _application_form(course) is not None or request.method == "POST":
         app, _ = _start_application(course, anonymous_applicant=applicant)
         if app.form_progress is not None:
             # The course gained a form after the details step, so there is a
@@ -722,7 +734,7 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
                 address_changed = update_applicant_email(applicant, email)
             applicant = form.save()
             remember_anonymous_applicant(request, applicant)
-            if course.application_form is None:
+            if _application_form(course) is None:
                 return redirect("course_applications:apply", course_slug=course.slug)
             app, _ = _start_application(course, anonymous_applicant=applicant)
             if app.form_progress is not None:

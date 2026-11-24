@@ -7,12 +7,14 @@ from collections.abc import MutableSequence
 from datetime import timedelta
 from itertools import permutations
 from random import Random
+from typing import cast
 
 import pytest
 
 from django.utils import timezone
 
 from freedom_ls.form_engine import served_paper as served_paper_module
+from freedom_ls.form_engine.conditions import ServedPaper
 from freedom_ls.form_engine.factories import (
     FormContentFactory,
     FormFactory,
@@ -25,10 +27,12 @@ from freedom_ls.form_engine.factories import (
 )
 from freedom_ls.form_engine.models import (
     Form,
+    FormContent,
     FormPage,
     FormProgress,
     FormQuestion,
     FormStrategy,
+    QuestionOption,
 )
 from freedom_ls.form_engine.served_paper import (
     build_served_paper,
@@ -36,6 +40,7 @@ from freedom_ls.form_engine.served_paper import (
     served_child_ids,
     shuffle_with_locks,
 )
+from freedom_ls.tests.retire import retire
 
 
 @pytest.fixture
@@ -518,6 +523,87 @@ def _paper_children(form: Form, seed: int) -> list[str]:
     return paper["pages"][0]["children"]
 
 
+@pytest.fixture
+def retiring_quiz(mock_site_context: object) -> Form:
+    """A quiz of two pages: the second page is retired, and so are one content
+    block, one question and one option of the first."""
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ)
+    page = FormPageFactory(form=form, order=0)
+    FormContentFactory(form_page=page, order=0)
+    retire(cast("FormContent", FormContentFactory(form_page=page, order=1)))
+    live_question = FormQuestionFactory(form_page=page, order=2)
+    QuestionOptionFactory(question=live_question, order=0)
+    retire(
+        cast("QuestionOption", QuestionOptionFactory(question=live_question, order=1))
+    )
+    retire(cast("FormQuestion", FormQuestionFactory(form_page=page, order=3)))
+    retire(cast("FormPage", FormPageFactory(form=form, order=1)))
+    return form
+
+
+def _served_child_and_option_ids(paper: ServedPaper) -> tuple[set[str], set[str]]:
+    child_ids = {c for page in paper["pages"] for c in page["children"]}
+    option_ids = {o for ids in paper["options"].values() for o in ids}
+    return child_ids, option_ids
+
+
+@pytest.mark.django_db
+def test_build_served_paper_omits_a_retired_page_child_and_option(
+    retiring_quiz: Form,
+) -> None:
+    retired_page = FormPage.objects.get(retired_at__isnull=False)
+    retired_children = {
+        str(row.id)
+        for model in (FormContent, FormQuestion)
+        for row in model.objects.filter(retired_at__isnull=False)
+    }
+    retired_option = QuestionOption.objects.get(retired_at__isnull=False)
+
+    paper = build_served_paper(retiring_quiz)
+
+    child_ids, option_ids = _served_child_and_option_ids(paper)
+    assert str(retired_page.id) not in {p["id"] for p in paper["pages"]}
+    assert not child_ids & retired_children
+    assert str(retired_option.id) not in option_ids
+    assert (len(paper["pages"]), len(child_ids), len(option_ids)) == (1, 2, 1)
+
+
+@pytest.mark.django_db
+def test_build_served_paper_serves_a_group_without_its_retired_member(
+    mock_site_context: object,
+) -> None:
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ, shuffle_questions=True)
+    page = FormPageFactory(form=form, order=0)
+    first = FormQuestionFactory(form_page=page, order=0, group="pair")
+    retire(
+        cast("FormQuestion", FormQuestionFactory(form_page=page, order=1, group="pair"))
+    )
+    third = FormQuestionFactory(form_page=page, order=2, group="pair")
+
+    paper = build_served_paper(form)
+
+    assert paper["pages"][0]["children"] == [str(first.id), str(third.id)]
+
+
+@pytest.mark.django_db
+def test_build_served_paper_drops_a_group_with_no_live_member(
+    mock_site_context: object,
+) -> None:
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ, shuffle_questions=True)
+    page = FormPageFactory(form=form, order=0)
+    retire(
+        cast("FormQuestion", FormQuestionFactory(form_page=page, order=0, group="pair"))
+    )
+    retire(
+        cast("FormQuestion", FormQuestionFactory(form_page=page, order=1, group="pair"))
+    )
+    kept = FormQuestionFactory(form_page=page, order=2)
+
+    paper = build_served_paper(form)
+
+    assert paper["pages"][0]["children"] == [str(kept.id)]
+
+
 @pytest.mark.django_db
 @pytest.mark.parametrize("seed", range(20))
 def test_a_drawing_page_serves_exactly_draw_questions_in_authored_order(
@@ -621,3 +707,46 @@ def test_a_page_with_no_draw_serves_every_child(mock_site_context: object) -> No
     form, page = _drawing_page_form(units=4, draw=None)
 
     assert _paper_children(form, 1) == [str(c.id) for c in page.children()]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("seed", range(20))
+def test_build_served_paper_with_every_shuffle_on_serves_no_retired_id(
+    mock_site_context: object, monkeypatch: pytest.MonkeyPatch, seed: int
+) -> None:
+    monkeypatch.setattr(served_paper_module, "new_seed", lambda: seed)
+    form: Form = FormFactory(
+        strategy=FormStrategy.QUIZ,
+        shuffle_pages=True,
+        shuffle_questions=True,
+        shuffle_options=True,
+    )
+    for p in range(3):
+        page = FormPageFactory(form=form, order=p)
+        for q in range(4):
+            question = FormQuestionFactory(form_page=page, order=q)
+            for o in range(4):
+                QuestionOptionFactory(question=question, order=o)
+    retire(FormPage.objects.get(form=form, order=1))
+    retire(FormQuestion.objects.get(form_page__form=form, form_page__order=0, order=2))
+    retire(
+        QuestionOption.objects.get(
+            question__form_page__form=form,
+            question__form_page__order=0,
+            question__order=0,
+            order=1,
+        )
+    )
+    retired_ids = {
+        str(row.id)
+        for model in (FormPage, FormQuestion, QuestionOption)
+        for row in model.objects.filter(retired_at__isnull=False)
+    }
+    form = Form.objects.get(pk=form.pk)
+
+    paper = build_served_paper(form)
+
+    child_ids, option_ids = _served_child_and_option_ids(paper)
+    page_ids = {p["id"] for p in paper["pages"]}
+    assert not retired_ids & (child_ids | option_ids | page_ids)
+    assert len(page_ids) == 2

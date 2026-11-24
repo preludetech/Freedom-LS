@@ -15,6 +15,7 @@ from uuid import UUID
 from django.db.models import prefetch_related_objects
 
 from .conditions import SERVED_TREE_LOOKUPS, FormChild, ServedPage, ServedPaper
+from .live_tree import live_children, live_options, live_pages
 from .models import (
     Form,
     FormPage,
@@ -57,7 +58,7 @@ def shuffle_with_locks[T](
 def _served_options(
     question: FormQuestion, form: Form, seed: int
 ) -> list[QuestionOption]:
-    options = list(question.options.all())
+    options = live_options(question)
     if not form.shuffle_options:
         return options
     return shuffle_with_locks(
@@ -82,7 +83,7 @@ def _drawn_units[T](units: list[T], page: FormPage, seed: int) -> list[T]:
 
 
 def _served_children(page: FormPage, form: Form, seed: int) -> list[FormChild]:
-    units = _drawn_units(shuffle_units(page.children()), page, seed)
+    units = _drawn_units(shuffle_units(live_children(page)), page, seed)
     if form.shuffle_questions:
         _scope_rng(seed, f"page:{page.id}").shuffle(units)
     return [child for unit in units for child in unit]
@@ -92,7 +93,7 @@ def build_served_paper(form: Form) -> ServedPaper:
     """The paper a sitting starting now is served, shuffled as the form's knobs say."""
     prefetch_related_objects([form], *SERVED_TREE_LOOKUPS)
     seed = new_seed()
-    page_rows = list(form.pages.all())
+    page_rows = live_pages(form)
     if form.shuffle_pages:
         _scope_rng(seed, "pages").shuffle(page_rows)
     pages: list[ServedPage] = []

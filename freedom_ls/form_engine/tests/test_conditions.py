@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import cast
 from uuid import UUID
 
 import pytest
@@ -14,6 +15,8 @@ from freedom_ls.form_engine.conditions import (
     answers_by_question,
     compute_path,
     current_path,
+    frozen_path,
+    full_path,
     served_path,
     sitting_path,
 )
@@ -36,6 +39,7 @@ from freedom_ls.form_engine.models import (
     QuestionOption,
 )
 from freedom_ls.form_engine.served_paper import build_served_paper
+from freedom_ls.tests.retire import retire
 
 pytestmark = pytest.mark.django_db
 
@@ -847,3 +851,133 @@ def test_current_path_and_sitting_path_without_a_served_paper_are_the_computed_p
     assert current.options_of(branching_form.choice) == list(
         branching_form.choice.options.all()
     )
+
+
+def test_compute_path_leaves_a_retired_question_off_a_later_page(
+    mock_site_context: object,
+) -> None:
+    form: Form = FormFactory()
+    FormPageFactory(form=form, order=0)
+    page = FormPageFactory(form=form, order=1)
+    kept = FormQuestionFactory(form_page=page, order=0)
+    retired = retire(cast("FormQuestion", FormQuestionFactory(form_page=page, order=1)))
+
+    path = compute_path(_fresh(form), {})
+
+    assert [q.id for q in path.questions()] == [kept.id]
+    assert not path.has_question(retired.id)
+
+
+def test_compute_path_keeps_a_page_whose_only_children_are_retired_as_an_empty_page(
+    mock_site_context: object,
+) -> None:
+    form: Form = FormFactory()
+    page = FormPageFactory(form=form, order=0)
+    retire(cast("FormQuestion", FormQuestionFactory(form_page=page, order=0)))
+
+    path = compute_path(_fresh(form), {})
+
+    assert (path.pages, path.children_of(page)) == ([page], [])
+
+
+def test_compute_path_leaves_out_a_retired_page(mock_site_context: object) -> None:
+    form: Form = FormFactory()
+    retire(cast("FormPage", FormPageFactory(form=form, order=0)))
+    kept_page = FormPageFactory(form=form, order=1)
+
+    path = compute_path(_fresh(form), {})
+
+    assert [p.id for p in path.all_pages] == [kept_page.id]
+
+
+def test_compute_path_hands_out_live_options_only(mock_site_context: object) -> None:
+    form: Form = FormFactory()
+    page = FormPageFactory(form=form, order=0)
+    question = FormQuestionFactory(form_page=page, order=0)
+    kept = QuestionOptionFactory(question=question, order=0)
+    retire(cast("QuestionOption", QuestionOptionFactory(question=question, order=1)))
+
+    path = compute_path(_fresh(form), {})
+
+    assert path.options_of(path.questions()[0]) == [kept]
+
+
+def test_a_gate_on_a_retired_questions_option_never_opens(
+    mock_site_context: object,
+) -> None:
+    form: Form = FormFactory()
+    first_page = FormPageFactory(form=form, order=0)
+    gate_question: FormQuestion = FormQuestionFactory(form_page=first_page, order=0)
+    gate_option = QuestionOptionFactory(question=gate_question, order=0)
+    gated_page = FormPageFactory(form=form, order=1, condition_option=gate_option)
+    FormQuestionFactory(form_page=gated_page, order=0)
+    progress = FormProgressFactory(form=form)
+    _select(progress, gate_question, gate_option)
+    retire(gate_question)
+
+    path = current_path(progress)
+
+    assert [page.id for page in path.pages] == [first_page.id]
+
+
+def test_served_path_keeps_a_retired_question_and_option(
+    served_form: ServedForm,
+) -> None:
+    paper = build_served_paper(_fresh(served_form.form))
+    retire(served_form.q_one)
+    retire(served_form.one_b)
+
+    path = served_path(_fresh(served_form.form), paper)
+
+    assert path.has_question(served_form.q_one.id)
+    assert [o.id for o in path.options_of(path.questions()[0])] == [
+        served_form.one_a.id,
+        served_form.one_b.id,
+        served_form.one_c.id,
+    ]
+
+
+def test_served_path_falls_back_to_the_questions_current_options_when_no_served_option_survives(
+    served_form: ServedForm,
+) -> None:
+    paper = build_served_paper(_fresh(served_form.form))
+    served_form.one_a.delete()
+    served_form.one_b.delete()
+    served_form.one_c.delete()
+    survivor: QuestionOption = QuestionOptionFactory(
+        question=served_form.q_one, value="d", order=3
+    )
+    retire(survivor)
+
+    path = served_path(_fresh(served_form.form), paper)
+
+    assert [o.id for o in path.options_of(path.questions()[0])] == [survivor.id]
+
+
+def test_frozen_path_keeps_a_retired_question_and_option(
+    served_form: ServedForm,
+) -> None:
+    asked = {
+        "pages": [str(served_form.page_one.id)],
+        "questions": [str(served_form.q_one.id)],
+        "content": [],
+    }
+    retire(served_form.q_one)
+    retire(served_form.one_a)
+
+    path = frozen_path(_fresh(served_form.form), asked)
+
+    assert path.has_question(served_form.q_one.id)
+    assert served_form.one_a.id in [o.id for o in path.options_of(path.questions()[0])]
+
+
+def test_full_path_keeps_a_retired_question_and_option(
+    served_form: ServedForm,
+) -> None:
+    retire(served_form.q_one)
+    retire(served_form.one_a)
+
+    path = full_path(_fresh(served_form.form))
+
+    assert path.has_question(served_form.q_one.id)
+    assert served_form.one_a.id in [o.id for o in path.options_of(path.questions()[0])]

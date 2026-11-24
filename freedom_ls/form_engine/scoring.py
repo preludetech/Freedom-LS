@@ -27,12 +27,14 @@ def is_quiz_answer_correct(
 
 def evaluate_quiz_answers(
     answer_rows: Iterable[tuple[UUID, UUID, set[UUID]]],
-    options_by_question: Mapping[UUID, list[QuestionOption]],
+    options_by_pair: Mapping[tuple[UUID, UUID], list[QuestionOption]],
 ) -> dict[tuple[UUID, UUID], bool]:
-    """Correctness for many (attempt, question) pairs from pre-fetched data. Issues no queries."""
+    """Correctness for many (attempt, question) pairs. `options_by_pair` holds the
+    options each pair was offered. Issues no queries."""
     return {
         (form_progress_id, question_id): is_quiz_answer_correct(
-            selected_option_ids, options_by_question.get(question_id, [])
+            selected_option_ids,
+            options_by_pair.get((form_progress_id, question_id), []),
         )
         for form_progress_id, question_id, selected_option_ids in answer_rows
     }

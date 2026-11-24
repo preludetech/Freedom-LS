@@ -13,19 +13,28 @@ from unittest.mock import patch
 import pytest
 
 from django.db import DatabaseError
+from django.db.models import Model
 from django.utils import timezone
 
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
+    TopicFactory,
 )
 from freedom_ls.content_engine.models import ContentCollectionItem
+from freedom_ls.form_engine.conditions import current_path
 from freedom_ls.form_engine.factories import (
     FormDeclarationFactory,
     FormFactory,
     QuestionAnswerFactory,
 )
-from freedom_ls.form_engine.models import FormDeclaration, FormProgress, FormStrategy
+from freedom_ls.form_engine.models import (
+    FormDeclaration,
+    FormProgress,
+    FormStrategy,
+    QuestionAnswer,
+)
+from freedom_ls.form_engine.served_paper import ensure_served_paper, served_child_ids
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -41,8 +50,14 @@ from freedom_ls.learner_progress.attempts import (
 from freedom_ls.learner_progress.factories import (
     CourseFormAttemptFactory,
     CourseProgressFactory,
+    TopicProgressFactory,
 )
-from freedom_ls.learner_progress.models import CourseFormAttempt, CourseProgress
+from freedom_ls.learner_progress.models import (
+    CourseFormAttempt,
+    CourseProgress,
+    TopicProgress,
+)
+from freedom_ls.tests.retire import retire
 
 
 @pytest.fixture
@@ -490,3 +505,87 @@ class TestSittingsAtPlacement:
         sittings = sittings_at_placement(record, collection_item)
 
         assert (sittings.has_open, sittings.has_completed) == (False, False)
+
+
+@pytest.fixture
+def scored_placement(course_with_scored_quiz):
+    """A scored quiz in a course, with a learner's course progress record."""
+    course, form, question, right, _wrong = course_with_scored_quiz()
+    record: CourseProgress = CourseProgressFactory(course=course)
+    collection_item = ContentCollectionItem.objects.get(
+        collection_id=course.id, child_id=form.id
+    )
+    return record, collection_item, form, question, right
+
+
+def _started_with_a_paper(record, collection_item) -> FormProgress:
+    attempt = get_or_create_incomplete(record, collection_item)
+    ensure_served_paper(attempt)
+    return attempt
+
+
+@pytest.mark.django_db
+def test_a_sitting_started_before_a_question_retires_still_serves_and_scores_it(
+    scored_placement,
+):
+    record, collection_item, _form, question, right = scored_placement
+    attempt = _started_with_a_paper(record, collection_item)
+    retire(question)
+
+    path = current_path(attempt)
+    QuestionAnswerFactory(
+        form_progress=attempt, question=question
+    ).selected_options.add(right)
+    attempt.complete()
+
+    attempt.refresh_from_db()
+    assert path.has_question(question.id)
+    assert attempt.scores == {"score": 1, "max_score": 1}
+
+
+@pytest.mark.django_db
+def test_a_sitting_started_after_a_question_retires_is_not_served_it(
+    scored_placement,
+):
+    record, collection_item, _form, question, _right = scored_placement
+    retire(question)
+
+    attempt = _started_with_a_paper(record, collection_item)
+
+    assert question.id not in served_child_ids(attempt.served_paper)
+
+
+def _progress_snapshot() -> dict[str, list[dict[str, object]]]:
+    snapshot: dict[str, list[dict[str, object]]] = {
+        model.__name__: list(model._base_manager.order_by("pk").values())
+        for model in (FormProgress, QuestionAnswer, CourseFormAttempt, TopicProgress)
+    }
+    snapshot["selected_options"] = [
+        {
+            "answer": answer.pk,
+            "options": sorted(o.pk for o in answer.selected_options.all()),
+        }
+        for answer in QuestionAnswer.objects.order_by("pk")
+    ]
+    return snapshot
+
+
+def _retire_all(*rows: Model) -> None:
+    for row in rows:
+        retire(row)
+
+
+@pytest.mark.django_db
+def test_retiring_a_topic_form_question_and_option_leaves_progress_rows_unchanged(
+    scored_placement, sit_quiz
+):
+    record, _collection_item, form, question, right = scored_placement
+    sit_quiz(record, form, question, right)
+    topic = TopicFactory()
+    record.course.items.create(child=topic, order=5)
+    TopicProgressFactory(course_progress=record, topic=topic)
+    before = _progress_snapshot()
+
+    _retire_all(topic, form, question, right)
+
+    assert _progress_snapshot() == before

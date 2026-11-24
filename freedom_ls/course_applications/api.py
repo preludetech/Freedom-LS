@@ -115,8 +115,9 @@ def answers_prefetch() -> Prefetch:
 
 
 def form_tree_prefetches() -> list[Prefetch]:
-    """The pages and children of each sitting's form, with their gates, complete
-    whatever host the request is on (see answers_prefetch).
+    """The pages and children of each sitting's form, with their gates and each
+    question's options, complete whatever host the request is on (see
+    answers_prefetch).
 
     Each level selects its condition_option, so the path code's own tree load
     finds every lookup fetched and runs no query.
@@ -129,6 +130,10 @@ def form_tree_prefetches() -> list[Prefetch]:
         Prefetch(
             "form_progress__form__pages__questions",
             queryset=FormQuestion._base_manager.select_related("condition_option"),
+        ),
+        Prefetch(
+            "form_progress__form__pages__questions__options",
+            queryset=QuestionOption._base_manager.all(),
         ),
         Prefetch(
             "form_progress__form__pages__text_items",

@@ -80,9 +80,14 @@ def test_evaluate_quiz_answers_agrees_with_score_quiz_per_question(mock_site_con
     form_progress.refresh_from_db()
     assert form_progress.scores == {"score": 1, "max_score": 2}
 
-    options_by_question = {
-        question_1.id: [q1_correct_1, q1_correct_2, q1_wrong_1, q1_wrong_2],
-        question_2.id: [q2_correct, q2_wrong],
+    options_by_pair = {
+        (form_progress.id, question_1.id): [
+            q1_correct_1,
+            q1_correct_2,
+            q1_wrong_1,
+            q1_wrong_2,
+        ],
+        (form_progress.id, question_2.id): [q2_correct, q2_wrong],
     }
     answer_rows = [
         (
@@ -93,7 +98,7 @@ def test_evaluate_quiz_answers_agrees_with_score_quiz_per_question(mock_site_con
         (form_progress.id, question_2.id, {q2_correct.id}),
     ]
 
-    result = evaluate_quiz_answers(answer_rows, options_by_question)
+    result = evaluate_quiz_answers(answer_rows, options_by_pair)
 
     assert result == {
         (form_progress.id, question_1.id): False,
@@ -109,12 +114,12 @@ def test_evaluate_quiz_answers_issues_no_queries(
     question = FormQuestionFactory(type="checkboxes")
     correct_option = QuestionOptionFactory(question=question, correct=True)
     wrong_option = QuestionOptionFactory(question=question, correct=False)
-    options_by_question = {question.id: [correct_option, wrong_option]}
     attempt_id = uuid4()
+    options_by_pair = {(attempt_id, question.id): [correct_option, wrong_option]}
     answer_rows = [(attempt_id, question.id, {correct_option.id})]
 
     with django_assert_num_queries(0):
-        result = evaluate_quiz_answers(answer_rows, options_by_question)
+        result = evaluate_quiz_answers(answer_rows, options_by_pair)
 
     assert result == {(attempt_id, question.id): True}
 
@@ -971,3 +976,28 @@ def test_score_category_value_sum_on_a_form_without_conditions_counts_every_ques
     assert progress.scores is not None
     assert progress.scores["Wellbeing"]["max_score"] == 15
     assert set(progress.scores["Wellbeing"]["sub_categories"]) == {"A", "B"}
+
+
+@pytest.mark.django_db
+def test_evaluate_quiz_answers_scores_each_pair_on_the_options_it_was_offered(
+    mock_site_context,
+):
+    question = FormQuestionFactory(type="checkboxes")
+    kept = QuestionOptionFactory(question=question, correct=True)
+    retired = QuestionOptionFactory(question=question, correct=True)
+    served_attempt, unserved_attempt = uuid4(), uuid4()
+    answer_rows = [
+        (served_attempt, question.id, {kept.id}),
+        (unserved_attempt, question.id, {kept.id}),
+    ]
+    options_by_pair = {
+        (served_attempt, question.id): [kept],
+        (unserved_attempt, question.id): [kept, retired],
+    }
+
+    result = evaluate_quiz_answers(answer_rows, options_by_pair)
+
+    assert result == {
+        (served_attempt, question.id): True,
+        (unserved_attempt, question.id): False,
+    }

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import cast
 
 import pytest
 from pytest_django.fixtures import DjangoAssertNumQueries
@@ -1104,3 +1105,169 @@ def test_is_retired_on_a_question_option_follows_retired_at(mock_site_context):
     option: QuestionOption = QuestionOptionFactory()
 
     assert (option.is_retired, retire(option).is_retired) == (False, True)
+
+
+@dataclass
+class RetiredCorrectOption:
+    form: Form
+    page: FormPage
+    question: FormQuestion
+    kept_correct: QuestionOption
+    retired_correct: QuestionOption
+    progress: FormProgress
+
+
+@pytest.fixture
+def retired_correct_option(mock_site_context: object) -> RetiredCorrectOption:
+    """A one-question quiz whose second correct option has retired; the learner
+    ticked only the first."""
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ)
+    page: FormPage = FormPageFactory(form=form, order=0)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=page, type="checkboxes", order=0
+    )
+    kept_correct = QuestionOptionFactory(question=question, order=0, correct=True)
+    retired_correct = retire(
+        cast(
+            "QuestionOption",
+            QuestionOptionFactory(question=question, order=1, correct=True),
+        )
+    )
+    progress: FormProgress = FormProgressFactory(form=form)
+    QuestionAnswerFactory(
+        form_progress=progress, question=question
+    ).selected_options.add(kept_correct)
+    return RetiredCorrectOption(
+        form, page, question, kept_correct, retired_correct, progress
+    )
+
+
+@pytest.mark.django_db
+def test_a_retired_correct_option_left_off_the_paper_does_not_make_the_answer_wrong(
+    retired_correct_option: RetiredCorrectOption,
+) -> None:
+    sitting = retired_correct_option
+    sitting.progress.served_paper = served_paper_of(
+        [(sitting.page, [sitting.question])],
+        {sitting.question: [sitting.kept_correct]},
+    )
+    sitting.progress.save()
+
+    scores = sitting.progress.compute_quiz_scores()
+
+    assert scores == {"score": 1, "max_score": 1}
+
+
+@pytest.mark.django_db
+def test_a_retired_correct_option_left_off_the_paper_is_not_listed_as_missed(
+    retired_correct_option: RetiredCorrectOption,
+) -> None:
+    sitting = retired_correct_option
+    sitting.progress.served_paper = served_paper_of(
+        [(sitting.page, [sitting.question])],
+        {sitting.question: [sitting.kept_correct]},
+    )
+    sitting.progress.save()
+
+    assert sitting.progress.get_incorrect_quiz_answers() == []
+
+
+@pytest.mark.django_db
+def test_a_missed_question_lists_only_the_correct_options_the_paper_offered(
+    retired_correct_option: RetiredCorrectOption,
+) -> None:
+    sitting = retired_correct_option
+    sitting.progress.served_paper = served_paper_of(
+        [(sitting.page, [sitting.question])],
+        {sitting.question: [sitting.kept_correct]},
+    )
+    sitting.progress.save()
+    sitting.progress.answers.get().selected_options.clear()
+
+    (item,) = sitting.progress.get_incorrect_quiz_answers()
+
+    assert item["correct_options"] == [sitting.kept_correct]
+
+
+@pytest.mark.django_db
+def test_a_sitting_with_no_paper_is_scored_on_the_live_options(
+    retired_correct_option: RetiredCorrectOption,
+) -> None:
+    scores = retired_correct_option.progress.compute_quiz_scores()
+
+    assert scores == {"score": 1, "max_score": 1}
+
+
+@pytest.mark.django_db
+def test_a_sitting_with_no_paper_is_not_marked_on_a_retired_question_or_page(
+    retired_correct_option: RetiredCorrectOption,
+) -> None:
+    sitting = retired_correct_option
+    retire(cast("FormQuestion", FormQuestionFactory(form_page=sitting.page, order=1)))
+    retired_page = retire(cast("FormPage", FormPageFactory(form=sitting.form, order=1)))
+    FormQuestionFactory(form_page=retired_page, order=0)
+
+    scores = sitting.progress.compute_quiz_scores()
+
+    assert scores["max_score"] == 1
+
+
+@pytest.mark.django_db
+def test_a_sitting_with_a_paper_is_still_marked_on_a_question_retired_after_it_started(
+    two_question_quiz: TwoQuestionQuiz,
+) -> None:
+    page = two_question_quiz.first.form_page
+    two_question_quiz.progress.served_paper = served_paper_of(
+        [(page, [two_question_quiz.first, two_question_quiz.second])],
+        {
+            two_question_quiz.first: [two_question_quiz.first_right],
+            two_question_quiz.second: [two_question_quiz.second_right],
+        },
+    )
+    two_question_quiz.progress.save()
+    retire(two_question_quiz.second)
+
+    scores = two_question_quiz.progress.compute_quiz_scores()
+
+    assert scores == {"score": 1, "max_score": 2}
+
+
+@pytest.mark.django_db
+def test_category_value_sum_sums_only_the_options_the_path_offers(
+    mock_site_context: object,
+) -> None:
+    form: Form = FormFactory(strategy=FormStrategy.CATEGORY_VALUE_SUM)
+    page = FormPageFactory(form=form, order=0, category="theme")
+    question = FormQuestionFactory(
+        form_page=page, type="multiple_choice", order=0, category="topic"
+    )
+    chosen = QuestionOptionFactory(question=question, order=0, value="2")
+    retire(
+        cast(
+            "QuestionOption",
+            QuestionOptionFactory(question=question, order=1, value="9"),
+        )
+    )
+    progress: FormProgress = FormProgressFactory(form=form)
+    QuestionAnswerFactory(
+        form_progress=progress, question=question
+    ).selected_options.add(chosen)
+
+    progress.complete()
+
+    progress.refresh_from_db()
+    assert (progress.scores or {})["theme"]["max_score"] == 2
+
+
+@pytest.mark.django_db
+def test_question_number_skips_a_retired_question_and_a_retired_page(
+    mock_site_context: object,
+) -> None:
+    form: Form = FormFactory()
+    retired_page = retire(cast("FormPage", FormPageFactory(form=form, order=0)))
+    FormQuestionFactory(form_page=retired_page, order=0)
+    page = FormPageFactory(form=form, order=1)
+    retire(cast("FormQuestion", FormQuestionFactory(form_page=page, order=0)))
+    wanted = FormQuestionFactory(form_page=page, order=1)
+
+    assert FormQuestion.objects.get(pk=wanted.pk).question_number() == 1

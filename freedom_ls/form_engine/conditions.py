@@ -17,6 +17,7 @@ from uuid import UUID
 
 from django.db.models import prefetch_related_objects
 
+from .live_tree import live_children, live_options, live_pages
 from .models import (
     Form,
     FormContent,
@@ -35,7 +36,8 @@ FORM_TREE_LOOKUPS = (
     "pages__text_items__condition_option",
 )
 
-# The tree plus each question's options: what a served paper orders.
+# The tree plus each question's options: what a served paper orders, and what
+# a computed path hands out.
 SERVED_TREE_LOOKUPS = (*FORM_TREE_LOOKUPS, "pages__questions__options")
 
 
@@ -66,7 +68,8 @@ class SittingPath:
     children_by_page: Mapping[UUID, tuple[FormChild, ...]]
     question_ids: frozenset[UUID]
     content_ids: frozenset[UUID]
-    # Served option order per question; None when the sitting has no served paper.
+    # Option order per question; None when every option the question has is shown,
+    # as for a path built over the whole form.
     served_options_by_question: Mapping[UUID, tuple[QuestionOption, ...]] | None = None
     # True when the served paper names a page, child or option the form lacks.
     has_missing_served_items: bool = False
@@ -258,14 +261,18 @@ def _on_path_children(
 ) -> list[FormChild]:
     return [
         child
-        for child in page.children()
+        for child in live_children(page)
         if _condition_holds(child.condition_option, selected)
     ]
 
 
 def compute_path(form: Form, answers: Mapping[UUID, QuestionAnswer]) -> SittingPath:
-    """The path the given answers produce over the form's current tree."""
-    load_form_tree(form)
+    """The path the given answers produce over the form's live tree.
+
+    Its options are the live ones, so a sitting not yet served a paper is offered
+    no retired option.
+    """
+    prefetch_related_objects([form], *SERVED_TREE_LOOKUPS)
     option_ids = {
         question_id: frozenset(option.id for option in answer.selected_options.all())
         for question_id, answer in answers.items()
@@ -274,18 +281,20 @@ def compute_path(form: Form, answers: Mapping[UUID, QuestionAnswer]) -> SittingP
     # answer to a question the sitting was not asked.
     selected: dict[UUID, frozenset[UUID]] = {}
     children_by_page: dict[UUID, tuple[FormChild, ...]] = {}
-    all_pages = tuple(form.pages.all())
+    options_by_question: dict[UUID, tuple[QuestionOption, ...]] = {}
+    all_pages = tuple(live_pages(form))
     for page in all_pages:
         if not _condition_holds(page.condition_option, selected):
             continue
         children = _on_path_children(page, selected)
-        if page.children() and not children:
+        if live_children(page) and not children:
             continue
         children_by_page[page.id] = tuple(children)
         for child in children:
             if isinstance(child, FormQuestion):
                 selected[child.id] = option_ids.get(child.id, frozenset())
-    return _path(all_pages, children_by_page)
+                options_by_question[child.id] = tuple(live_options(child))
+    return _path(all_pages, children_by_page, options_by_question)
 
 
 def _path(
@@ -312,7 +321,8 @@ def served_path(form: Form, served_paper: ServedPaper) -> SittingPath:
     An item missing from the form is skipped, whether it was deleted or
     moved to another form. A question moved to another page of this form is
     still shown under the page it was served on. A question none of whose
-    served options remain, or that was served with none, shows its live options.
+    served options remain, or that was served with none, shows the options it
+    currently has.
     """
     prefetch_related_objects([form], *SERVED_TREE_LOOKUPS)
     all_pages = tuple(form.pages.all())
@@ -339,13 +349,13 @@ def served_path(form: Form, served_paper: ServedPaper) -> SittingPath:
         for child in children:
             if not isinstance(child, FormQuestion):
                 continue
-            live = {str(option.id): option for option in child.options.all()}
+            current = {str(option.id): option for option in child.options.all()}
             served_ids = served_option_ids.get(str(child.id), [])
-            options = tuple(live[i] for i in served_ids if i in live)
+            options = tuple(current[i] for i in served_ids if i in current)
             missing = missing or len(options) != len(served_ids)
             # With none of its served options left, the question would offer
-            # nothing to choose, so it falls back to its live options.
-            served_options_by_question[child.id] = options or tuple(live.values())
+            # nothing to choose, so it falls back to the options it has.
+            served_options_by_question[child.id] = options or tuple(current.values())
     return _path(all_pages, children_by_page, served_options_by_question, missing)
 
 

@@ -20,6 +20,7 @@ from freedom_ls.form_engine.factories import (
     QuestionAnswerFactory,
     QuestionAnswerFileFactory,
     QuestionOptionFactory,
+    served_paper_of,
 )
 from freedom_ls.form_engine.models import (
     FormPage,
@@ -32,6 +33,7 @@ from freedom_ls.form_engine.served_paper import ensure_served_paper, served_chil
 from freedom_ls.form_engine.session_access import ANONYMOUS_FORM_PROGRESS_SESSION_KEY
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.images import png_bytes
+from freedom_ls.tests.retire import retire
 from freedom_ls.tests.site_context import site_context
 
 # The three file endpoints an applicant reaches: attach, remove, download.
@@ -1001,3 +1003,22 @@ def test_attaching_to_a_file_question_the_draw_left_out_is_not_found(
 
     assert response.status_code == 404
     assert QuestionAnswerFile.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_a_retired_question_on_a_pinned_paper_still_accepts_a_file(
+    mock_site_context, client, sitting
+):
+    form_progress, question = sitting
+    form_progress.served_paper = served_paper_of([(question.form_page, [question])], {})
+    form_progress.save()
+    retire(question)
+    client.force_login(form_progress.user)
+
+    response = client.post(
+        _upload_url(form_progress, question),
+        {"file": _png_upload()},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 200

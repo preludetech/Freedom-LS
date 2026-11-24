@@ -130,6 +130,11 @@ class FormProgressIndex:
     # served paper. A completed sitting absent from this map is paired with every
     # question of its form.
     served_child_ids_by_attempt_id: dict[UUID, frozenset[UUID]]
+    # The options each served question was offered, for the same sittings. A
+    # question the paper has no entry for was served with no options.
+    served_option_ids_by_attempt_id: dict[UUID, dict[UUID, frozenset[UUID]]] = (
+        dataclasses.field(default_factory=dict)
+    )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -435,6 +440,7 @@ def fold_form_progress_rows(
     completed_attempt_ids: list[UUID] = []
     learner_form_by_attempt_id: dict[UUID, tuple[UUID, UUID]] = {}
     served_child_ids_by_attempt_id: dict[UUID, frozenset[UUID]] = {}
+    served_option_ids_by_attempt_id: dict[UUID, dict[UUID, frozenset[UUID]]] = {}
     for fp in form_progress_rows:
         learner_id = (
             fp.course_attempt.course_progress.learner_id
@@ -461,6 +467,10 @@ def fold_form_progress_rows(
                 served_child_ids_by_attempt_id[fp.id] = served_child_ids(
                     fp.served_paper
                 )
+                served_option_ids_by_attempt_id[fp.id] = {
+                    UUID(question_id): frozenset(UUID(i) for i in option_ids)
+                    for question_id, option_ids in fp.served_paper["options"].items()
+                }
 
     # The rows arrive newest-completed first; a reader of a learner's section
     # wants their sittings in the order they sat them. completed_attempt_ids is
@@ -476,6 +486,7 @@ def fold_form_progress_rows(
         completed_attempt_ids=completed_attempt_ids,
         learner_form_by_attempt_id=learner_form_by_attempt_id,
         served_child_ids_by_attempt_id=served_child_ids_by_attempt_id,
+        served_option_ids_by_attempt_id=served_option_ids_by_attempt_id,
     )
 
 
@@ -639,6 +650,35 @@ def load_selected_options_by_pair(
     }
 
 
+def _offered_options_by_pair(
+    pairs: list[tuple[UUID, FormQuestion]],
+    questions: QuestionIndex,
+    forms: FormProgressIndex,
+) -> dict[tuple[UUID, UUID], list[QuestionOption]]:
+    """The options each (sitting, question) pair was offered.
+
+    A sitting with a served paper was offered the options the paper names that
+    the question still has; one without was offered the question's live options. Reads the options already
+    loaded for the question index, so it issues no queries.
+    """
+    offered: dict[tuple[UUID, UUID], list[QuestionOption]] = {}
+    for attempt_id, question in pairs:
+        loaded = questions.options_by_question[question.id]
+        served = forms.served_option_ids_by_attempt_id.get(attempt_id)
+        if served is None:
+            offered[(attempt_id, question.id)] = [
+                option for option in loaded if not option.is_retired
+            ]
+        else:
+            served_ids = served.get(question.id, frozenset())
+            # With none of its served options left the question shows what it has,
+            # exactly as the sitting's own path does.
+            offered[(attempt_id, question.id)] = [
+                option for option in loaded if option.id in served_ids
+            ] or loaded
+    return offered
+
+
 def build_sat_questions(
     questions: QuestionIndex,
     forms: FormProgressIndex,
@@ -681,7 +721,9 @@ def build_sat_questions(
     return SatQuestions(
         pairs=pairs,
         selected_options_by_pair=selected_options_by_pair,
-        correctness=evaluate_quiz_answers(answer_rows, questions.options_by_question),
+        correctness=evaluate_quiz_answers(
+            answer_rows, _offered_options_by_pair(pairs, questions, forms)
+        ),
     )
 
 

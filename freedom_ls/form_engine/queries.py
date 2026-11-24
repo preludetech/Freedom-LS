@@ -13,6 +13,7 @@ from .conditions import (
     load_form_tree,
     sitting_path,
 )
+from .live_tree import live_children, live_pages
 from .models import (
     Form,
     FormPage,
@@ -68,12 +69,17 @@ def attempt_completes_form(attempt: FormProgress) -> bool:
 
 
 def count_form_questions(form: Form) -> int:
-    """Return the total number of questions across all pages of a form.
+    """Return the number of live questions across the live pages of a form.
 
     Uses a single COUNT query traversing the FK chain FormQuestion.form_page → FormPage.form.
-    Avoids loading all child objects into memory.
+    Avoids loading all child objects into memory. A retired question, and every
+    question on a retired page, is left out: a new sitting is not served them.
     """
-    return FormQuestion.objects.filter(form_page__form=form).count()
+    return (
+        FormQuestion.objects.not_retired()
+        .filter(form_page__form=form, form_page__retired_at__isnull=True)
+        .count()
+    )
 
 
 @dataclass(frozen=True)
@@ -118,7 +124,7 @@ def drawing_page_counts(page: FormPage) -> DrawingPageCounts | None:
     """
     if page.draw is None:
         return None
-    units = shuffle_units(page.children())
+    units = shuffle_units(live_children(page))
     counts = unit_question_counts(units, lambda c: isinstance(c, FormQuestion))
     return DrawingPageCounts(
         drawn_unit_count=min(page.draw, len(units)),
@@ -132,14 +138,17 @@ def count_sitting_questions(form: Form) -> int:
     """How many questions one sitting of the form is served.
 
     A drawing page counts only what it draws, so the number never reveals
-    how many questions the page draws from.
+    how many questions the page draws from. A retired page or question is
+    left out: a new sitting is not served it.
     """
     load_form_tree(form)
     total = 0
-    for page in form.pages.all():
+    for page in live_pages(form):
         counts = drawing_page_counts(page)
         total += (
-            len(page_questions(page)) if counts is None else counts.drawn_question_count
+            sum(isinstance(child, FormQuestion) for child in live_children(page))
+            if counts is None
+            else counts.drawn_question_count
         )
     return total
 

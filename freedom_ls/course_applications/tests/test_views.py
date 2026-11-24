@@ -901,6 +901,32 @@ class TestApplyStartsTheForm:
             "course_applications:status", kwargs={"pk": app.pk}
         )
 
+    def test_a_retired_application_form_is_treated_as_no_form(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        retire(cast("Form", form))
+
+        app = _applied(client, course)
+
+        assert app.form_progress is None
+        assert app.state == CourseApplication.State.SUBMITTED
+
+    def test_retiring_the_form_leaves_an_in_progress_sitting_unchanged(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _applied(client, course)
+        before = FormProgress.objects.filter(pk=app.form_progress_id).values().get()
+        retire(cast("Form", form))
+
+        client.post(
+            reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+        )
+
+        after = FormProgress.objects.filter(pk=app.form_progress_id).values().get()
+        assert after == before
+
 
 @pytest.mark.django_db
 class TestApplicationStatusResumes:

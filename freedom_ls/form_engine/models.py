@@ -34,6 +34,7 @@ from freedom_ls.site_aware_models.models import (
 )
 
 from .enums import FREE_TEXT_QUESTION_TYPES, FormStrategy, QuestionType
+from .live_tree import live_children, live_options, live_pages
 from .phone_numbers import e164_phone_answer
 from .scoring import is_quiz_answer_correct
 from .signals import form_attempt_completed
@@ -340,15 +341,18 @@ class FormQuestion(BaseContent):
 
     def question_number(self):
         """
-        Return 1 for the first question in the Form, 2 for the second etc. Note that this might not be the same as the order attribute because form pages contain more than just questions
+        Return 1 for the first question in the Form, 2 for the second etc. Note that this might not be the same as the order attribute because form pages contain more than just questions.
+        Retired questions and pages are not counted, matching what a new sitting is served.
         """
         form = self.form_page.form
         question_count = 0
 
         # Iterate through all pages in order
-        for page in form.pages.all():
+        for page in live_pages(form):
             # Get all questions on this page in order
             for question in page.questions.all():
+                if question.is_retired:
+                    continue
                 question_count += 1
                 if question.pk == self.pk:
                     return question_count
@@ -432,6 +436,16 @@ class QuestionOption(SiteAwareModel, TimestampedModel):
 
 
 User = get_user_model()
+
+
+def _offered_options(
+    question: FormQuestion, served: SittingPath | None
+) -> list[QuestionOption]:
+    """The options a sitting was offered for the question: the served paper's when it
+    has one, the live ones when it does not."""
+    if served is not None:
+        return served.options_of(question)
+    return live_options(question)
 
 
 class FormProgress(SiteAwareModel):
@@ -676,7 +690,7 @@ class FormProgress(SiteAwareModel):
 
                 # Get the maximum value among all options for this question
                 max_value = 0
-                for option in question.options.all():
+                for option in path.options_of(question):
                     try:
                         opt_value = int(option.value)
                         if opt_value > max_value:
@@ -790,15 +804,15 @@ class FormProgress(SiteAwareModel):
         """The questions this quiz sitting is marked on.
 
         A sitting with a served paper is marked on the questions it was served.
-        One without is marked on every question the form currently has.
+        One without is marked on every live question the form currently has.
         """
         served = self._served_path(path)
         if served is None:
             return [
                 child
-                for page in self.form.pages.all()
-                for child in page.children()
-                if child.content_type == "FORM_QUESTION"
+                for page in live_pages(self.form)
+                for child in live_children(page)
+                if isinstance(child, FormQuestion)
             ]
         return served.questions()
 
@@ -827,7 +841,8 @@ class FormProgress(SiteAwareModel):
         score = 0
         max_score = 0
 
-        for question in self._quiz_questions(path):
+        served = self._served_path(path)
+        for question in self._quiz_questions(served):
             max_score += 1
 
             # A question with no answer contributes 0 to the score.
@@ -835,7 +850,9 @@ class FormProgress(SiteAwareModel):
             if answer is None:
                 continue
             selected_option_ids = {o.id for o in answer.selected_options.all()}
-            if is_quiz_answer_correct(selected_option_ids, question.options.all()):
+            if is_quiz_answer_correct(
+                selected_option_ids, _offered_options(question, served)
+            ):
                 score += 1
 
         return {"score": score, "max_score": max_score}
@@ -910,12 +927,11 @@ class FormProgress(SiteAwareModel):
                 selected_options = list(answer.selected_options.all())
             selected_option_ids = {o.id for o in selected_options}
 
-            is_correct = is_quiz_answer_correct(
-                selected_option_ids, question.options.all()
-            )
+            offered = _offered_options(question, served)
+            is_correct = is_quiz_answer_correct(selected_option_ids, offered)
 
             if not is_correct:
-                correct_options = list(question.options.filter(correct=True))
+                correct_options = [option for option in offered if option.correct]
                 if served is not None:
                     # Listed in the order this learner was shown them, which on
                     # a shuffled paper is not the authored one.

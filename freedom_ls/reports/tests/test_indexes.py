@@ -9,6 +9,7 @@ did.
 
 from __future__ import annotations
 
+from typing import cast
 from uuid import UUID
 
 import pytest
@@ -42,6 +43,7 @@ from freedom_ls.form_engine.models import (
     FormPage,
     FormQuestion,
     FormStrategy,
+    QuestionOption,
     QuestionType,
 )
 from freedom_ls.learner_management.factories import (
@@ -98,6 +100,7 @@ from freedom_ls.tests.images import (
     jpeg_bytes,
     png_bytes,
 )
+from freedom_ls.tests.retire import retire
 
 pytestmark = pytest.mark.django_db
 
@@ -1409,3 +1412,63 @@ class TestADrawnSittingIsPairedOnlyWithTheQuestionsItDrew:
             UUID(child_id) for child_id in second_paper["pages"][0]["children"]
         }
         assert paired[first.id] != paired[second.id]
+
+
+class TestASittingIsScoredOnTheOptionsItWasOffered:
+    @pytest.fixture
+    def question_with_a_retired_correct_option(
+        self, mock_site_context: object
+    ) -> tuple[Form, FormPage, FormQuestion, QuestionOption, CourseProgress]:
+        course: Course = CourseFactory()
+        quiz: Form = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
+        _attach(course, quiz, order=0)
+        page: FormPage = FormPageFactory(form=quiz, order=0)
+        question: FormQuestion = FormQuestionFactory(
+            form_page=page, type=QuestionType.CHECKBOXES, order=0
+        )
+        kept: QuestionOption = QuestionOptionFactory(
+            question=question, text="Kept", correct=True, order=0
+        )
+        retire(
+            cast(
+                "QuestionOption",
+                QuestionOptionFactory(
+                    question=question, text="Retired", correct=True, order=1
+                ),
+            )
+        )
+        _, records = _cohort_registered_for(course, learner_count=1)
+        return quiz, page, question, kept, records[0]
+
+    def _verdicts(self, quiz: Form, record: CourseProgress) -> list[bool]:
+        registration = record.cohort_registration
+        assert registration is not None
+        sat = _load_everything(registration.cohort, quiz.site_id)["sat"]
+        return list(sat.correctness.values())
+
+    def test_a_sitting_whose_paper_lacks_a_retired_correct_option_is_scored_correct(
+        self, question_with_a_retired_correct_option
+    ):
+        quiz, page, question, kept, record = question_with_a_retired_correct_option
+        sitting = form_progress(
+            record,
+            quiz,
+            completed_time=timezone.now(),
+            served_paper=served_paper_of([(page, [question])], {question: [kept]}),
+        )
+        QuestionAnswerFactory(
+            form_progress=sitting, question=question
+        ).selected_options.add(kept)
+
+        assert self._verdicts(quiz, record) == [True]
+
+    def test_a_sitting_with_no_paper_is_scored_on_the_live_options(
+        self, question_with_a_retired_correct_option
+    ):
+        quiz, _page, question, kept, record = question_with_a_retired_correct_option
+        sitting = form_progress(record, quiz, completed_time=timezone.now())
+        QuestionAnswerFactory(
+            form_progress=sitting, question=question
+        ).selected_options.add(kept)
+
+        assert self._verdicts(quiz, record) == [True]
