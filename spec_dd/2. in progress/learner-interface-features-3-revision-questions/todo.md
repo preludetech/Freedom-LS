@@ -36,11 +36,12 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 4. Documentation and pull request
 
-- [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
-- [ ] (cmd) Add the `revisionFeedback` Alpine component (focuses the revision feedback when it is swapped in) to the inventory table in `claude_plugins/fls-dev/skills/alpine-js/SKILL.md`, from the spec's "Feedback" requirement (focus moves to the feedback after submit)
+- [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [x] (cmd) Add the `revisionFeedback` Alpine component (focuses the revision feedback when it is swapped in) to the inventory table in `claude_plugins/fls-dev/skills/alpine-js/SKILL.md`, from the spec's "Feedback" requirement (focus moves to the feedback after submit)
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
-- [ ] (cmd) Add the `revision` semantic icon to any icon inventory the docs keep, when `/sdd:document` runs
+- [x] (cmd) Add the `revision` semantic icon to any icon inventory the docs keep, when `/sdd:document` runs
+- [ ] (cmd) Re-sync the bundled `claude_plugins/fls-content/validate/validate.py` (and `schema.py` if needed) with `freedom_ls/content_engine/validate.py`: older drift not from this branch (`was_read_from_disk`, the `no_due_date` check in `_reference_part_errors`, `_unlisted_reference_part_errors`, `validate_reference_lists`'s `loaded_root`), then re-apply the `# Patches applied:` list
 
 ## 5. Cleanup
 
