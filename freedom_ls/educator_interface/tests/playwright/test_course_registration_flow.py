@@ -132,3 +132,33 @@ def test_deactivating_and_reactivating_a_direct_registration_from_the_course_ove
     expect(modal).to_be_hidden()
     expect(row.get_by_role("button", name=f"Deactivate {name}")).to_be_visible()
     assert page.evaluate("window.__noReload") is True
+
+
+def test_registering_a_learner_from_the_course_overview(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    course = CourseFactory(title="Algebra")
+    learner = LearnerFactory(
+        organisation=organisation, user__first_name="Ada", user__last_name="Test"
+    )
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    page.goto(interface_url(live_server, organisation.slug, f"courses/{course.pk}"))
+    modal = page.locator("#app-modal")
+    panel = page.locator("section[data-panel='learners']")
+    row = panel.get_by_role("row").filter(has_text=learner.user.display_name)
+    page.evaluate("window.__noReload = true")
+
+    panel.get_by_role("button", name="Register", exact=True).click()
+    modal.get_by_label("Learner").select_option(label=learner.user.display_name)
+    modal.get_by_role("button", name="Register", exact=True).click()
+
+    expect(modal).to_be_hidden()
+    expect(
+        row.get_by_role("button", name=f"Deactivate {learner.user.display_name}")
+    ).to_be_visible()
+    assert page.evaluate("window.__noReload") is True

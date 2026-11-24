@@ -44,6 +44,7 @@ from freedom_ls.educator_interface.panels.course.actions import (
     DeactivateCourseLearnerRegistrationAction,
     ReactivateCourseLearnerRegistrationAction,
     RegisterCohortOnCourseAction,
+    RegisterLearnerOnCourseAction,
 )
 from freedom_ls.educator_interface.panels.course.config import CourseConfig
 from freedom_ls.educator_interface.tests.interface_walk import (
@@ -1237,6 +1238,46 @@ def test_the_course_page_direct_registration_actions_follow_the_learners_grant(
                 role=role,
                 relation=relation,
             )
+
+    walk.report()
+
+
+def _course_register_learners(world: World, user: User, course: Course) -> set[str]:
+    """The relations (own, other_cohort) of the world's learners that the
+    course page's learner Register picker offers `user`; empty when the
+    action is not permitted."""
+    action = RegisterLearnerOnCourseAction()
+    ctx = _course_register_context(world, user, course)
+    if not action.has_permission(ctx):
+        return set()
+    offered = set(action._learners(ctx).values_list("pk", flat=True))
+    return {
+        relation
+        for relation in (OWN, OTHER_COHORT)
+        if world.scopes[("learner", relation)].pk in offered
+    }
+
+
+@pytest.mark.django_db
+def test_the_course_page_learner_register_picker_offers_the_learners_the_role_may_register(
+    mock_site_context: Site,
+) -> None:
+    world = _build_world(mock_site_context)
+    course = CourseFactory()
+    walk = _Walk("the course page's learner Register action")
+    for role in ROLES:
+        walk.check(
+            lambda role=role: {
+                relation
+                for (kind, relation) in MATRIX[ADD_LEARNERCOURSEREGISTRATION][role]
+                if kind == "learner" and relation in (OWN, OTHER_COHORT)
+            },
+            partial(
+                _course_register_learners, world, cast(User, world.users[role]), course
+            ),
+            same=operator.eq,
+            role=role,
+        )
 
     walk.report()
 

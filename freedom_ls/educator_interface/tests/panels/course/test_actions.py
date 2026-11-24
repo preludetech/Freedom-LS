@@ -27,6 +27,7 @@ from freedom_ls.educator_interface.panels.common.request import (
 )
 from freedom_ls.educator_interface.panels.course.actions import (
     RegisterCohortOnCourseAction,
+    RegisterLearnerOnCourseAction,
 )
 from freedom_ls.educator_interface.panels.course.config import CourseConfig
 from freedom_ls.educator_interface.tests.helpers import (
@@ -863,3 +864,270 @@ def test_the_overview_render_does_not_query_per_direct_row(
     three_more = queries_with(2)
 
     assert three_more <= one_more + 1
+
+
+def _register_learner_url(organisation: Organisation, course: Course) -> str:
+    return _learner_action_url(organisation, course, "register_learner")
+
+
+def _learner_options(response_content: bytes) -> list[str]:
+    document = lxml.html.fromstring(response_content.decode())
+    return sorted(
+        option.text_content().strip()
+        for option in document.cssselect("select[name='learner'] option")
+        if option.get("value")
+    )
+
+
+def _learner_footer_buttons(document: lxml.html.HtmlElement) -> list[str]:
+    """The text of the Register trigger in the Direct registrations panel."""
+    (panel,) = document.cssselect("section[data-panel='learners']")
+    return [
+        button.text_content().strip()
+        for button in panel.cssselect("button")
+        if button.text_content().strip() == "Register"
+    ]
+
+
+def _named_learner(organisation: Organisation, first_name: str, **fields: object):
+    return LearnerFactory(
+        organisation=organisation,
+        user__first_name=first_name,
+        user__last_name="Test",
+        **fields,
+    )
+
+
+@pytest.mark.django_db
+def test_the_direct_registrations_footer_shows_register_to_an_organisation_admin(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    client = role_holder_client(organisation)
+
+    document = _get_document(client, _page_url(organisation, course))
+
+    assert _learner_footer_buttons(document) == ["Register"]
+
+
+@pytest.mark.django_db
+def test_the_direct_registrations_footer_shows_register_to_a_cohort_only_role(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    cohort = CohortFactory(organisation=organisation)
+    client = role_holder_client(cohort, "cohort_admin")
+
+    document = _get_document(client, _page_url(organisation, course))
+
+    assert _learner_footer_buttons(document) == ["Register"]
+
+
+@pytest.mark.django_db
+def test_the_direct_registrations_footer_hides_register_from_a_cohort_viewer(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    cohort = CohortFactory(organisation=organisation)
+    client = role_holder_client(cohort, "cohort_viewer")
+
+    document = _get_document(client, _page_url(organisation, course))
+
+    assert _learner_footer_buttons(document) == []
+
+
+@pytest.mark.django_db
+def test_register_learner_is_not_offered_for_a_course_not_available_to_the_organisation(
+    mock_site_context: Site,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    request = cast(OrganisationScopedRequest, RequestFactory().get("/x"))
+    request.organisation = organisation
+    ctx = PanelContext(
+        request=request,
+        instance=course,
+        base_url="/x",
+        name="learners",
+        config=CourseConfig,
+    )
+    offered_before = RegisterLearnerOnCourseAction().is_offered(ctx)
+    course.organisations.add(OrganisationFactory())
+
+    assert offered_before is True
+    assert RegisterLearnerOnCourseAction().is_offered(ctx) is False
+
+
+@pytest.mark.django_db
+def test_the_learner_picker_lists_unregistered_and_inactively_registered_learners_only(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    _named_learner(organisation, "Free")
+    lapsed = _named_learner(organisation, "Lapsed")
+    LearnerCourseRegistrationFactory(learner=lapsed, course=course, is_active=False)
+    _direct(organisation, course, first_name="Registered")
+    _named_learner(organisation, "Closed", is_active=False)
+    _named_learner(OrganisationFactory(), "Elsewhere")
+    client = role_holder_client(organisation)
+
+    response = client.get(
+        _register_learner_url(organisation, course), HTTP_HX_REQUEST="true"
+    )
+
+    assert response.status_code == 200
+    assert _learner_options(response.content) == ["Free Test", "Lapsed Test"]
+
+
+@pytest.mark.django_db
+def test_a_cohort_only_role_is_offered_only_the_learners_it_covers(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    own = _named_learner(organisation, "Own")
+    _named_learner(organisation, "Other")
+    cohort = CohortFactory(organisation=organisation)
+    CohortMembershipFactory(cohort=cohort, learner=own)
+    client = role_holder_client(cohort, "cohort_admin")
+
+    response = client.get(
+        _register_learner_url(organisation, course), HTTP_HX_REQUEST="true"
+    )
+
+    assert _learner_options(response.content) == ["Own Test"]
+
+
+@pytest.mark.django_db
+def test_the_learner_title_asks_about_a_learner_until_one_is_chosen(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory(title="Algebra")
+    learner = _named_learner(organisation, "Ada")
+    client = role_holder_client(organisation)
+    label = course.label_for(organisation)
+
+    unchosen = client.get(
+        _register_learner_url(organisation, course), HTTP_HX_REQUEST="true"
+    )
+    chosen = client.get(
+        f"{_register_learner_url(organisation, course)}?learner={learner.pk}",
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert _title(unchosen.content) == f"Register a learner for {label}?"
+    assert _title(chosen.content) == f"Register Ada Test for {label}?"
+
+
+@pytest.mark.django_db
+def test_an_empty_learner_picker_shows_the_empty_message(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    client = role_holder_client(organisation)
+
+    response = client.get(
+        _register_learner_url(organisation, course), HTTP_HX_REQUEST="true"
+    )
+
+    text = " ".join(
+        lxml.html.fromstring(response.content.decode()).text_content().split()
+    )
+    assert "Every learner you can register already has this course." in text
+
+
+@pytest.mark.django_db
+def test_registering_a_listed_learner_registers_them_and_fires_both_events(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    learner = _named_learner(organisation, "Ada")
+    client = role_holder_client(organisation)
+
+    response = _post(
+        client,
+        _register_learner_url(organisation, course),
+        {"learner": str(learner.pk)},
+    )
+
+    registration = LearnerCourseRegistration.objects.get(learner=learner, course=course)
+    assert response.status_code == 204
+    assert registration.is_active is True
+    trigger = json.loads(response["HX-Trigger"])
+    assert trigger[REGISTRATION_CHANGED] == {"ids": [str(learner.pk)]}
+    assert trigger[LEARNER_CHANGED] == {"ids": [str(learner.pk)]}
+
+
+@pytest.mark.django_db
+def test_registering_a_learner_with_an_inactive_registration_reactivates_that_row(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    registration = _direct(organisation, course, is_active=False)
+    client = role_holder_client(organisation)
+
+    response = _post(
+        client,
+        _register_learner_url(organisation, course),
+        {"learner": str(registration.learner_id)},
+    )
+
+    registration.refresh_from_db()
+    assert response.status_code == 204
+    assert registration.is_active is True
+    assert (
+        LearnerCourseRegistration.objects.filter(learner=registration.learner).count()
+        == 1
+    )
+
+
+@pytest.mark.django_db
+def test_registering_a_learner_not_in_the_list_is_422(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    elsewhere = _named_learner(OrganisationFactory(), "Elsewhere")
+    client = role_holder_client(organisation)
+
+    response = _post(
+        client,
+        _register_learner_url(organisation, course),
+        {"learner": str(elsewhere.pk)},
+    )
+
+    assert response.status_code == 422
+    assert "Choose a learner from the list." in response.content.decode()
+    assert not LearnerCourseRegistration.objects.filter(learner=elsewhere).exists()
+
+
+@pytest.mark.django_db
+def test_a_learner_registration_the_service_finds_closed_is_a_422_form_error(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    learner = _named_learner(organisation, "Ada")
+    client = role_holder_client(organisation)
+
+    with mock.patch(
+        "freedom_ls.educator_interface.panels.course.actions.register_for_course",
+        side_effect=CourseNotOpenError("This course is not open to the organisation."),
+    ):
+        response = _post(
+            client,
+            _register_learner_url(organisation, course),
+            {"learner": str(learner.pk)},
+        )
+
+    assert response.status_code == 422
+    assert "This course is not open to the organisation." in response.content.decode()
+    assert not LearnerCourseRegistration.objects.filter(learner=learner).exists()

@@ -17,6 +17,7 @@ from freedom_ls.educator_interface.forms import (
     CohortSetForm,
     EducatorReasonForm,
     LearnerPickerForm,
+    SingleLearnerPickerForm,
     choice_error,
 )
 from freedom_ls.learner_management.factories import (
@@ -138,6 +139,41 @@ def test_learner_picker_labels_each_learner_by_display_name(mock_site_context):
 
     labels = {label for _, label in form.fields["learners"].choices}
     assert labels == {"Ada Lovelace", "pick@example.com"}
+
+
+@pytest.mark.django_db
+def test_single_learner_picker_labels_each_learner_by_display_name(mock_site_context):
+    named = LearnerFactory(
+        user__first_name="Ada",
+        user__last_name="Lovelace",
+        user__email="ada@example.com",
+    )
+    unnamed = LearnerFactory(
+        user__first_name="", user__last_name="", user__email="solo@example.com"
+    )
+
+    form = SingleLearnerPickerForm(
+        queryset=Learner.objects.filter(pk__in=[named.pk, unnamed.pk])
+    )
+
+    labels = {label for value, label in form.fields["learner"].choices if value}
+    assert labels == {"Ada Lovelace", "solo@example.com"}
+
+
+@pytest.mark.django_db
+def test_single_learner_picker_rejects_a_learner_outside_its_queryset(
+    mock_site_context,
+):
+    listed = LearnerFactory()
+    unlisted = LearnerFactory()
+
+    form = SingleLearnerPickerForm(
+        QueryDict(f"learner={unlisted.pk}"),
+        queryset=Learner.objects.filter(pk=listed.pk),
+    )
+
+    assert form.is_valid() is False
+    assert form.errors["learner"] == ["Choose a learner from the list."]
 
 
 def _staff_member_form(

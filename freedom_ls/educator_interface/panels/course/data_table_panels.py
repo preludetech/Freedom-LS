@@ -24,6 +24,7 @@ from freedom_ls.educator_interface.panels.course.actions import (
     DeactivateCourseLearnerRegistrationAction,
     ReactivateCourseLearnerRegistrationAction,
     RegisterCohortOnCourseAction,
+    RegisterLearnerOnCourseAction,
 )
 from freedom_ls.educator_interface.panels.course.data_tables import (
     CourseCohortRegistrationDataTable,
@@ -80,9 +81,10 @@ class CourseLearnerRegistrationsPanel(DataTablePanel):
     refresh_events = (REGISTRATION_CHANGED, LEARNER_CHANGED)
 
     def get_actions(self) -> list[PanelAction]:
-        # Both render per row, not in the footer: the actions cell reads
-        # their URLs from row_action_urls.
+        # Deactivate and Reactivate render per row, not in the footer: the
+        # actions cell reads their URLs from row_action_urls.
         return [
+            RegisterLearnerOnCourseAction(),
             DeactivateCourseLearnerRegistrationAction(),
             ReactivateCourseLearnerRegistrationAction(),
         ]

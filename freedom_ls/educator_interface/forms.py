@@ -204,12 +204,43 @@ class CohortPickerForm(forms.Form):
         cast(forms.ModelChoiceField, self.fields[field_name]).queryset = queryset
 
 
+def _learner_label(learner: Learner) -> str:
+    """A learner's display name, which falls back to their email."""
+    return learner.user.display_name
+
+
+class LearnerChoiceField(forms.ModelChoiceField):
+    """Labels each learner by their display name, which falls back to their
+    email."""
+
+    def label_from_instance(self, obj: Learner) -> str:
+        return _learner_label(obj)
+
+
 class LearnerMultipleChoiceField(forms.ModelMultipleChoiceField):
     """Labels each learner by their display name, which falls back to their
     email."""
 
     def label_from_instance(self, obj: Learner) -> str:
-        return obj.user.display_name
+        return _learner_label(obj)
+
+
+class SingleLearnerPickerForm(forms.Form):
+    """Picks one learner from the queryset the action offers."""
+
+    learner = LearnerChoiceField(
+        queryset=Learner.objects.none(), error_messages=choice_error("learner")
+    )
+
+    def __init__(
+        self,
+        data: QueryDict | None = None,
+        files: MultiValueDict[str, UploadedFile] | None = None,
+        *,
+        queryset: QuerySet[Learner],
+    ) -> None:
+        super().__init__(data, files)
+        cast(LearnerChoiceField, self.fields["learner"]).queryset = queryset
 
 
 class LearnerPickerForm(forms.Form):

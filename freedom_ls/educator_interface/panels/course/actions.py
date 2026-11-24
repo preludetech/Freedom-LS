@@ -12,7 +12,10 @@ from django.http import HttpResponse
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.events import COHORT_CHANGED, REGISTRATION_CHANGED
-from freedom_ls.educator_interface.forms import CohortPickerForm
+from freedom_ls.educator_interface.forms import (
+    CohortPickerForm,
+    SingleLearnerPickerForm,
+)
 from freedom_ls.educator_interface.panels.common.actions import (
     EducatorReasonMixin,
     _empty_message,
@@ -24,12 +27,15 @@ from freedom_ls.educator_interface.panels.common.course_page import (
 )
 from freedom_ls.educator_interface.panels.common.registration_actions import (
     ADD_COHORT_REGISTRATION,
+    ADD_LEARNER_REGISTRATION,
     CHANGE_COHORT_REGISTRATION,
     CHANGE_LEARNER_REGISTRATION,
     CohortRegistrationDeactivation,
     LearnerRegistrationDeactivation,
     LearnerRegistrationReactivation,
+    registration_changed_response,
 )
+from freedom_ls.learner_management.learner_actions import register_for_course
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
@@ -51,6 +57,7 @@ __all__ = [
     "DeactivateCourseLearnerRegistrationAction",
     "ReactivateCourseLearnerRegistrationAction",
     "RegisterCohortOnCourseAction",
+    "RegisterLearnerOnCourseAction",
 ]
 
 
@@ -225,4 +232,62 @@ class RegisterCohortOnCourseAction(CourseRegisterAction):
                     COHORT_CHANGED: [str(cohort.pk)],
                 }
             ),
+        )
+
+
+class RegisterLearnerOnCourseAction(CourseRegisterAction):
+    """Registers one learner directly for the course on the page. Registering
+    a learner whose registration is inactive reactivates it."""
+
+    label = "Register"
+    action_name = "register_learner"
+    capability = ADD_LEARNER_REGISTRATION
+    form_class = SingleLearnerPickerForm
+    refresh_on_change = ("learner",)
+    submit_buttons = [
+        {"label": "Register", "variant": "primary", "loading_text": "Registering…"}
+    ]
+
+    def _learners(self, ctx: PanelContext) -> QuerySet[Learner]:
+        request = scoped(ctx)
+        registered = LearnerCourseRegistration.objects.filter(
+            course=cast(Course, ctx.instance), is_active=True
+        ).values("learner_id")
+        return (
+            learners_permitted_for(
+                request.user, request.organisation, ADD_LEARNER_REGISTRATION
+            )
+            .filter(is_active=True)
+            .exclude(pk__in=registered)
+            .select_related("user")
+        )
+
+    def get_form_kwargs(self, ctx: PanelContext) -> dict[str, object]:
+        return {**super().get_form_kwargs(ctx), "queryset": self._learners(ctx)}
+
+    def get_form_title(self, ctx: PanelContext, form: forms.BaseForm) -> str:
+        label = cast(Course, ctx.instance).label_for(scoped(ctx).organisation)
+
+        def chosen(learner: Learner) -> str:
+            return f"Register {learner.user.display_name} for {label}"
+
+        return _picker_title(
+            form, "learner", unchosen=f"Register a learner for {label}", chosen=chosen
+        )
+
+    def get_empty_message(self, ctx: PanelContext, form: forms.BaseForm) -> str | None:
+        return _empty_message(
+            form, "learner", "Every learner you can register already has this course."
+        )
+
+    def form_valid(self, ctx: PanelContext, form: forms.BaseForm) -> HttpResponse:
+        learner = cast(Learner, form.cleaned_data["learner"])
+        course = cast(Course, ctx.instance)
+        return self.register_or_refuse(
+            ctx,
+            form,
+            lambda: register_for_course(
+                learner, course, actor=cast(User, ctx.request.user)
+            ),
+            lambda: registration_changed_response(learner),
         )
