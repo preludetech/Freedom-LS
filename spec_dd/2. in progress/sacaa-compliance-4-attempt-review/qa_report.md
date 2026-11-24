@@ -105,7 +105,7 @@ The layout probe raised no flags. B2 and B3 were found by the per-test checks, n
 - **FIXED** (commit: 16d7b6b27) — B1: Open full review nests the page inside #main-content
 - **FIXED** (commit: 4dcd1ebb8) — B2: Attempt-number quick-view trigger is below the touch target size
 - **FIXED** (commit: adcb6a00b) — B3: Quick view's Open full review link is indented from the drawer content
-- **UNRESOLVED** — B4: Quick view offers two links to the attempt review page (reason: product decision; the quick-view chrome's standard "Open full page" icon link and the spec's "Open full review" body link both point at the attempt review page, and the spec says one link: keep both, drop the body link, or hide the chrome link for this section)
+- **FIXED** (commit: ed9ba1d7b) — B4: Quick view offers two links to the attempt review page (decision: drop the body link; the header's "Open full page" icon is the one link) — after the fix: ![](screenshots/fixed/quiz-attempt-quick-view-one-link-1920.png)
 - **FIXED** (commit: bfd6f96d4) — B5: Opening the full review from the quick view lands the page scrolled under the header (found while re-verifying B1: with one #main-content the page still landed at scrollY 40 because the dialog's focus restore scrolled the page; re-verified at scrollY 0 with the back link visible, and focus still returns to the trigger on the Courses tab and the learners list)
 
 ## General notes
@@ -138,4 +138,4 @@ Notes:
 - A capture check confirmed that screenshots with default names land in `qa-screenshots` and that no image bytes are returned.
 - Nothing was left untested.
 
-status: ok · reason: 5 bugs — 4 fixed, 1 unresolved; report rendered, screenshots verified
+status: ok · reason: 5 bugs — 5 fixed, 0 unresolved; report rendered, screenshots verified
