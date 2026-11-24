@@ -701,6 +701,23 @@ def test_the_quick_view_shows_the_title_the_subtitle_six_rows_and_the_review_lin
     assert link.get("hx-push-url") == "true"
 
 
+def test_the_quick_views_open_full_review_link_replaces_main_content(logged_in_client):
+    """The link swaps the whole #main-content element. It used to nest the page inside it."""
+    organisation = OrganisationFactory()
+    sitting = _sitting(LearnerFactory(organisation=organisation))
+
+    response = _get_quick_view(
+        _admin_client(organisation, logged_in_client),
+        organisation,
+        f"quiz-attempts/{sitting.pk}",
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    (link,) = document.cssselect(f"a[href$='/quiz-attempts/{sitting.pk}']")
+    assert link.get("hx-target") == "#main-content"
+    assert link.get("hx-swap") == "outerHTML"
+
+
 def test_the_quick_view_of_a_quiz_with_no_pass_mark_says_so(logged_in_client):
     organisation = OrganisationFactory()
     sitting = _sitting(LearnerFactory(organisation=organisation), pass_percentage=None)
