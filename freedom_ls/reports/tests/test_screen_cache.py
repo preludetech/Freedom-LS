@@ -25,6 +25,7 @@ from freedom_ls.learner_management.models import Cohort, Learner
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.reports.report_data import ReportTooLargeError
 from freedom_ls.reports.screen_cache import (
+    SCHEMA_VERSION,
     _cache_key,
     cached_cohort_progress,
     cached_cohort_progress_many,
@@ -197,7 +198,7 @@ def test_an_entry_written_under_the_previous_schema_version_is_not_read_back(
     cohort: Cohort,
 ) -> None:
     old_key = _cache_key(cohort.site_id, cohort.pk, "progress").replace(
-        ":screen:3:", ":screen:2:"
+        f":screen:{SCHEMA_VERSION}:", f":screen:{SCHEMA_VERSION - 1}:"
     )
     cache.set(old_key, "stale shape")
 

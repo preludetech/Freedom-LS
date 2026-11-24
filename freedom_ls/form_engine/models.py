@@ -458,6 +458,22 @@ def _offered_options(
     return list(question.options.all())
 
 
+def _marking_options(
+    question: FormQuestion, served: SittingPath | None
+) -> list[QuestionOption]:
+    """The options a stored score is checked against: those the sitting was
+    offered, plus any live option added since, so a correct option added after
+    submission shows the stored score as outdated."""
+    offered = _offered_options(question, served)
+    offered_ids = {option.id for option in offered}
+    added = [
+        option
+        for option in question.options.all()
+        if option.id not in offered_ids and not option.is_retired
+    ]
+    return [*offered, *added]
+
+
 class FormProgress(SiteAwareModel):
     """Tracks a learner's progress through a form.
 
@@ -862,7 +878,7 @@ class FormProgress(SiteAwareModel):
                 continue
             selected_option_ids = {o.id for o in answer.selected_options.all()}
             if is_quiz_answer_correct(
-                selected_option_ids, _offered_options(question, served)
+                selected_option_ids, _marking_options(question, served)
             ):
                 score += 1
 
