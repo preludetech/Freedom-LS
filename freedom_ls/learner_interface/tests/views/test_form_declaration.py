@@ -264,6 +264,18 @@ def test_the_back_link_sits_at_the_left_not_centred(declaration_course, client):
 
 
 @pytest.mark.django_db
+def test_the_declaration_footer_has_no_previous_button(declaration_course, client):
+    """The footer repeated the back link as a Previous button; the back link is the only way back."""
+    course, _form, _user = declaration_course
+
+    response = client.get(_declaration_url(course))
+
+    document = lxml.html.fromstring(response.content)
+    assert not document.xpath("//*[@data-testid='previous-button']")
+    assert document.xpath("//*[@data-testid='sign-declaration-button']")
+
+
+@pytest.mark.django_db
 def test_the_page_escapes_the_authors_declaration_text(mock_site_context, client):
     user = UserFactory()
     form = _declaration_quiz(declaration_text="Honest <script>alert(1)</script> work.")
