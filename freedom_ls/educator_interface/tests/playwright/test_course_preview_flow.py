@@ -40,6 +40,7 @@ from freedom_ls.tests.playwright_helpers import (
     QA_VIEWPORTS,
     assert_no_horizontal_overflow,
 )
+from freedom_ls.tests.retire import retire
 
 from .helpers import interface_url, no_console_errors
 
@@ -359,3 +360,23 @@ def test_educator_previews_course_content(
             assert_no_horizontal_overflow(page)
             _press_escape_and_expect_closed(page)
             expect(glossary_preview).to_be_focused()
+
+
+def test_course_list_shows_a_retired_badge_on_a_retired_course_at_every_viewport(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    page = educator_logged_in_page
+    organisation, course = _seed_course(educator_user)
+    retire(course)
+    courses_url = interface_url(live_server, organisation.slug, "courses")
+
+    for viewport in QA_VIEWPORTS:
+        with no_console_errors(page):
+            page.set_viewport_size(viewport)
+            page.goto(courses_url)
+            expect(
+                page.get_by_text("Retired", exact=True).locator("visible=true").first
+            ).to_be_visible()
+            assert_no_horizontal_overflow(page)

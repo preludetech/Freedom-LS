@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from freedom_ls.learner_management.models import Learner
 from freedom_ls.learner_management.queries import LearnerStatus, learner_status
 from freedom_ls.panel_framework.views import StatusBadge
@@ -11,6 +13,7 @@ __all__ = [
     "active_status_badge",
     "inactive_badge",
     "learner_status_badge",
+    "retired_badge",
 ]
 
 
@@ -27,6 +30,13 @@ def inactive_badge(is_active: bool) -> StatusBadge | None:
     if is_active:
         return None
     return StatusBadge("muted", "Inactive")
+
+
+def retired_badge(retired_at: datetime | None) -> StatusBadge | None:
+    """The badge for a retired content row. A live row shows nothing."""
+    if retired_at is None:
+        return None
+    return StatusBadge("muted", "Retired")
 
 
 _LEARNER_STATUS_TONES: dict[LearnerStatus, str] = {

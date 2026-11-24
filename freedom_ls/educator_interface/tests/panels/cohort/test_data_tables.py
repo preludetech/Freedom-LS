@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import cast
 
 import lxml.html
 import pytest
@@ -19,6 +20,7 @@ from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import (
     CourseFactory,
 )
+from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.panels.cohort.data_tables import (
     CohortDataTable,
 )
@@ -47,6 +49,7 @@ from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.filters import TableFilter, ToggleFilter
 from freedom_ls.panel_framework.tables import TableQuery
+from freedom_ls.tests.retire import retire
 
 # the table hides inactive cohorts only while it offers the toggle
 
@@ -522,3 +525,38 @@ def test_cohorts_list_names_the_owner_under_the_shared_course_only(
     rows = _shared_by_notes_by_row(document)
     assert _notes_for(rows, "Shared cohort") == ["Shared by Northwind Logistics"]
     assert _notes_for(rows, "Own cohort") == []
+
+
+@pytest.mark.django_db
+def test_the_courses_tab_marks_a_retired_course_beside_its_title(
+    staff_client: Client,
+) -> None:
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=retire(cast(Course, CourseFactory(title="Algebra")))
+    )
+
+    document = _get_document(
+        staff_client,
+        _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/courses"),
+    )
+
+    badges = document.cssselect("[data-tab-set] [data-testid='retired-badge']")
+    assert {badge.text_content().strip() for badge in badges} == {"Retired"}
+
+
+@pytest.mark.django_db
+def test_the_courses_tab_marks_a_live_course_with_no_retired_badge(
+    staff_client: Client,
+) -> None:
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=CourseFactory(title="Algebra")
+    )
+
+    document = _get_document(
+        staff_client,
+        _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/courses"),
+    )
+
+    assert document.cssselect("[data-testid='retired-badge']") == []

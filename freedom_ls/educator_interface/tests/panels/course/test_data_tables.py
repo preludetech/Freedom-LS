@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
+from typing import cast
 
 import lxml.html
 import pytest
@@ -33,6 +34,7 @@ from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.retire import retire
 
 # -- Task 5.1: visibility column + interest count -----------------------
 
@@ -293,3 +295,39 @@ def test_courses_list_names_the_owner_under_a_shared_course_only(
         for element in document.cssselect("[data-testid='shared-by']")
     }
     assert notes == {"Shared by Northwind Logistics"}
+
+
+def _badge_labels(page, course: Course) -> list[str]:
+    column = next(c for c in CourseDataTable.get_columns() if c.header == "Status")
+    badge = column.badge(_find_row(page, course))
+    return [badge.label] if badge else []
+
+
+@pytest.mark.django_db
+def test_course_table_lists_a_retired_course_with_a_retired_badge(
+    mock_site_context: Site, site_aware_request: RequestFactory
+) -> None:
+    course = retire(cast(Course, CourseFactory()))
+
+    request = _organisation_request(site_aware_request)
+    query = CourseDataTable.parse_query(request, "courses")
+    page = CourseDataTable.get_rows(
+        request, CourseDataTable.get_queryset(request), query
+    )
+
+    assert _badge_labels(page, course) == ["Retired"]
+
+
+@pytest.mark.django_db
+def test_course_table_shows_no_badge_for_a_live_course(
+    mock_site_context: Site, site_aware_request: RequestFactory
+) -> None:
+    course = CourseFactory()
+
+    request = _organisation_request(site_aware_request)
+    query = CourseDataTable.parse_query(request, "courses")
+    page = CourseDataTable.get_rows(
+        request, CourseDataTable.get_queryset(request), query
+    )
+
+    assert _badge_labels(page, course) == []

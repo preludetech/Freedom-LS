@@ -20,7 +20,10 @@ from freedom_ls.educator_interface.panels.audit_log.data_table_panels import (
 from freedom_ls.educator_interface.panels.cohort.data_tables import (
     LearnerCohortDataTable,
 )
-from freedom_ls.educator_interface.panels.common.badges import active_status_badge
+from freedom_ls.educator_interface.panels.common.badges import (
+    active_status_badge,
+    retired_badge,
+)
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
@@ -121,6 +124,10 @@ class RegistrationRow:
     @property
     def badge(self) -> StatusBadge:
         return active_status_badge(self.is_active)
+
+    @property
+    def course_retired_badge(self) -> StatusBadge | None:
+        return retired_badge(self.course.retired_at)
 
     @property
     def is_individual(self) -> bool:

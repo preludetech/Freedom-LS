@@ -11,6 +11,7 @@ from django import template
 
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.avatars import PersonAvatar
+from freedom_ls.educator_interface.panels.common.badges import retired_badge
 from freedom_ls.educator_interface.panels.common.report import (
     flag_badge,
     progress_status_badge,
@@ -61,6 +62,12 @@ def course_shared_by_tag(context: template.Context, course: Course) -> str | Non
     sees it, for `{% course_shared_by course as sharers %}`."""
     organisation = cast(OrganisationScopedRequest, context["request"]).organisation
     return course.shared_by(organisation)
+
+
+@register.simple_tag(name="course_retired_badge")
+def course_retired_badge_tag(course: Course) -> StatusBadge | None:
+    """The Retired badge for a retired course, for `{% course_retired_badge course as badge %}`."""
+    return retired_badge(course.retired_at)
 
 
 @register.simple_tag(takes_context=True, name="course_label")

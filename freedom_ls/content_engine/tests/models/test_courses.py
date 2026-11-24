@@ -7,7 +7,7 @@ import uuid
 from datetime import date, timedelta
 from decimal import Decimal
 from pathlib import Path
-from typing import NamedTuple
+from typing import NamedTuple, cast
 
 import pytest
 import time_machine
@@ -1432,3 +1432,38 @@ def test_not_retired_returns_the_live_rows_and_leaves_out_a_retired_one(
 
     assert list(model.objects.not_retired()) == [live]
     assert set(model.objects.all()) == {live, retired}
+
+
+@pytest.mark.django_db
+def test_label_for_marks_a_retired_course_when_asked(mock_site_context):
+    course = retire(cast(Course, CourseFactory(title="Safety")))
+
+    assert course.label_for(OrganisationFactory(), mark_retired=True) == (
+        "Safety (Retired)"
+    )
+
+
+@pytest.mark.django_db
+def test_label_for_leaves_a_retired_course_unmarked_by_default(mock_site_context):
+    course = retire(cast(Course, CourseFactory(title="Safety")))
+
+    assert course.label_for(OrganisationFactory()) == "Safety"
+
+
+@pytest.mark.django_db
+def test_label_for_leaves_a_live_course_unmarked_when_asked(mock_site_context):
+    course = CourseFactory(title="Safety")
+
+    assert course.label_for(OrganisationFactory(), mark_retired=True) == "Safety"
+
+
+@pytest.mark.django_db
+def test_label_for_puts_the_retired_mark_after_the_owners(mock_site_context):
+    course = cast(Course, CourseFactory(title="Safety"))
+    course.organisations.add(OrganisationFactory(name="Northwind Logistics"))
+    retire(course)
+
+    assert (
+        course.label_for(OrganisationFactory(), mark_retired=True)
+        == "Safety (Northwind Logistics) (Retired)"
+    )

@@ -18,6 +18,7 @@
                             </c-data-table-actions>
                         </c-slot>
                     {% endif %}
+                    {% if row.course_retired_badge %}<c-panel-status-badge :badge="row.course_retired_badge" data-testid="retired-badge" />{% endif %}
                     <c-panel-status-badge :badge="row.badge" />
                 </c-panel-list-row>
             {% endfor %}

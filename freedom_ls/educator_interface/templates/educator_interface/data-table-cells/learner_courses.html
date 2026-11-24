@@ -9,6 +9,7 @@ the furthest progress percentage once a course progress record exists.
         {% for summary in summaries %}
             <li class="py-0">
                 {{ summary.course.title }}
+                {% course_retired_badge summary.course as retired %}{% if retired %}<c-panel-status-badge :badge="retired" data-testid="retired-badge" />{% endif %}
                 {% if summary.progress_percentage is not None %}<span class="text-muted">{{ summary.progress_percentage }}%</span>{% endif %}
                 {% course_shared_by summary.course as sharers %}
                 {% include "educator_interface/partials/course_shared_by.html" %}

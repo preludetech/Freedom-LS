@@ -34,7 +34,7 @@ class VisibleCourseFilter(RelatedChoiceFilter):
     def get_choices(self, request: HttpRequest) -> list[tuple[str, str]]:
         organisation = cast("OrganisationScopedRequest", request).organisation
         return [
-            (str(course.pk), course.label_for(organisation))
+            (str(course.pk), course.label_for(organisation, mark_retired=True))
             for course in self.get_queryset(request)
         ]
 

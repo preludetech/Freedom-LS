@@ -26,6 +26,7 @@ from freedom_ls.audit_log.writer import (
 from freedom_ls.content_engine.factories import (
     CourseFactory,
 )
+from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.tests.helpers import (
     QUERY_BUDGET,
     _card_summary,
@@ -56,6 +57,7 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.tests.retire import retire
 
 if TYPE_CHECKING:
     pass
@@ -715,3 +717,33 @@ def test_a_learners_history_tab_shows_the_actors_picture(
         image.get("src") for image in document.cssselect("img[data-profile-picture]")
     ]
     assert actor.profile_picture_url in sources
+
+
+@pytest.mark.django_db
+def test_the_registrations_card_marks_a_retired_course_with_a_retired_badge(
+    staff_client: Client,
+):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    LearnerCourseRegistrationFactory(
+        learner=learner, course=retire(cast(Course, CourseFactory(title="Algebra")))
+    )
+
+    document = _learner_page(staff_client, learner, "overview")
+
+    (row,) = document.cssselect("[data-testid='registration-row']")
+    (badge,) = row.cssselect("[data-testid='retired-badge']")
+    assert badge.text_content().strip() == "Retired"
+
+
+@pytest.mark.django_db
+def test_the_registrations_card_marks_a_live_course_with_no_retired_badge(
+    staff_client: Client,
+):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    LearnerCourseRegistrationFactory(
+        learner=learner, course=CourseFactory(title="Algebra")
+    )
+
+    document = _learner_page(staff_client, learner, "overview")
+
+    assert document.cssselect("[data-testid='retired-badge']") == []

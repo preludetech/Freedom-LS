@@ -447,11 +447,17 @@ class Course(MarkdownContent, TitledContent):
         names = sorted(owner.name for owner in owners if not owner.is_default)
         return ", ".join(names) or None
 
-    def label_for(self, organisation: Organisation) -> str:
+    def label_for(
+        self, organisation: Organisation, *, mark_retired: bool = False
+    ) -> str:
         """The title, followed by "(<owners>)" when ``shared_by`` names any:
-        how a picker option, a filter choice or a dialog title reads."""
+        how a picker option, a filter choice or a dialog title reads. With
+        ``mark_retired``, a retired course also ends in "(Retired)"."""
         owners = self.shared_by(organisation)
-        return f"{self.title} ({owners})" if owners else self.title
+        label = f"{self.title} ({owners})" if owners else self.title
+        if mark_retired and self.is_retired:
+            return f"{label} (Retired)"
+        return label
 
     def current_price(self) -> CoursePrice | None:
         """The price this course shows today, with an expired sale turned fixed.

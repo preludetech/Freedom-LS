@@ -54,4 +54,6 @@ class CourseDetailsPanel(InstanceDetailsPanel):
                     ),
                 )
             rows.append({**row, "label": self.labels.get(name, row["label"])})
+        if course.is_retired:
+            rows.append(self.detail_row("Retired on", course.retired_at, "date"))
         return rows

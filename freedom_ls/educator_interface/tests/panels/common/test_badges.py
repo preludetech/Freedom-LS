@@ -2,10 +2,13 @@ from typing import cast
 
 import pytest
 
+from django.utils import timezone
+
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.educator_interface.panels.common.badges import (
     active_status_badge,
     learner_status_badge,
+    retired_badge,
 )
 from freedom_ls.learner_management.factories import LearnerFactory
 from freedom_ls.learner_management.models import Learner
@@ -53,3 +56,14 @@ def test_learner_status_badge_has_one_label_and_tone_per_state(
     badge = learner_status_badge(_learner_in_state(state))
 
     assert (badge.label, badge.tone) == (label, tone)
+
+
+def test_retired_badge_for_a_retired_row_reads_retired_in_the_muted_tone() -> None:
+    badge = retired_badge(timezone.now())
+
+    assert badge is not None
+    assert (badge.label, badge.tone) == ("Retired", "muted")
+
+
+def test_retired_badge_for_a_live_row_is_none() -> None:
+    assert retired_badge(None) is None

@@ -7,6 +7,7 @@ row's course; empty means the row is the course.
 {% endcomment %}
 {% include "cotton/data-table-cells/link.html" %}
 {% with course=object|getattr_str:column.attr %}
+    {% if column.attr %}{% course_retired_badge course as retired %}{% if retired %}<c-panel-status-badge :badge="retired" data-testid="retired-badge" />{% endif %}{% endif %}
     {% course_shared_by course as sharers %}
     {% include "educator_interface/partials/course_shared_by.html" %}
 {% endwith %}

@@ -10,6 +10,8 @@ from django.core.paginator import Page
 from django.db.models import Count, Prefetch, Q, QuerySet
 from django.http import HttpRequest
 
+from freedom_ls.content_engine.models import Course
+from freedom_ls.educator_interface.panels.common.badges import retired_badge
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
@@ -30,7 +32,12 @@ from freedom_ls.learner_management.queries import (
     courses_visible_to,
     learners_visible_to,
 )
-from freedom_ls.panel_framework.tables import Column, DataTable, TableQuery
+from freedom_ls.panel_framework.tables import (
+    BadgeColumn,
+    Column,
+    DataTable,
+    TableQuery,
+)
 
 __all__ = [
     "CourseCohortRegistrationDataTable",
@@ -127,6 +134,11 @@ class CourseDataTable(DataTable):
     def get_columns() -> list[Column]:
         return [
             _course_title_column("Title", "title", "courses/{pk}"),
+            BadgeColumn(
+                header="Status",
+                template_name="cotton/data-table-cells/badge.html",
+                badge=lambda row: retired_badge(cast(Course, row).retired_at),
+            ),
             Column(
                 header="Visibility",
                 template_name="cotton/data-table-cells/text.html",
