@@ -91,29 +91,6 @@ def test_the_primary_value_leads_and_secondary_values_are_labelled() -> None:
     assert [dd.text_content().strip() for dd in card.cssselect("dl dd")] == ["Letter"]
 
 
-def test_a_column_with_no_header_is_a_footer_under_the_values_not_a_labelled_value() -> (
-    None
-):
-    """A row's buttons used to sit in the value column of the card's grid, indented
-    under the labels. They belong in a footer under the values, at the title's
-    left edge, outside the label and value grid."""
-    actions = Column(header="", template_name=_TEXT_CELL, attr="kind")
-    card = _card(
-        "<c-data-table-card :row='row' :primary_column='primary' "
-        ":secondary_columns='secondary' :action_columns='actions' />",
-        row=_row(),
-        primary=_name_column(),
-        secondary=[_kind_column()],
-        actions=[actions],
-    )
-
-    assert [dt.text_content() for dt in card.cssselect("dl dt")] == ["Kind"]
-    assert card.cssselect("dl [data-item-footer]") == []
-    footer = card.cssselect("[data-item-footer]")
-    assert len(footer) == 1
-    assert footer[0].text_content().strip() == "Letter"
-
-
 def test_a_card_without_secondary_columns_has_no_definition_list() -> None:
     card = _card(
         "<c-data-table-card :row='row' :primary_column='primary' />",

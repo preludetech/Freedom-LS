@@ -1,4 +1,4 @@
-<c-vars row="" primary_column="" secondary_columns="" action_columns="" selectable="" card_template_name="" row_detail_template_name="" detail_id="" has_child_rows="" />
+<c-vars row="" primary_column="" secondary_columns="" selectable="" card_template_name="" row_detail_template_name="" detail_id="" has_child_rows="" />
 
 {% comment %}
 One row of a table rendered as a card below md. `card_template_name`, when set on
@@ -9,8 +9,6 @@ open-page icon ends the primary line, in line with the name and its
 quick-view trigger. Every other value is labelled with its
 column header, since the table headings aren't on screen to explain it; a
 long header wraps at 7rem so the value beside it keeps the room it needs.
-A column with no header holds the row's buttons; it renders as a footer under
-the values, left-aligned with the title, never inside the label and value grid.
 Cards only exist below md; a button in one keeps its small look, and the shared
 `.panel-btn` rule gives it a 44px hit area.
 
@@ -86,11 +84,6 @@ checkbox's slot but not the checkbox.
                         <c-panel-definition-row :label="column.header">{% include column.template_name with object=row.object column=column in_secondary_line=True %}</c-panel-definition-row>
                     {% endfor %}
                 </c-panel-definition-list>
-            {% endif %}
-            {% if action_columns %}
-                <div data-item-footer class="mt-3">
-                    {% for column in action_columns %}{% include column.template_name with object=row.object column=column %}{% endfor %}
-                </div>
             {% endif %}
         {% endif %}
         {% if row_detail_template_name and row.has_row_detail %}
