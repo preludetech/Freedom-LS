@@ -148,7 +148,7 @@ def full_report_data() -> CohortReportData:
         wrong_count=8,
         show_percentage=True,
         wrong_percentage=67,
-        distractors=[("A straight line", 5)],
+        distractors=[("A straight line", 5, False)],
         correct_option_texts=["A closed path around a body"],
     )
     block = ConfusionBlock(questions=[confusion], shown=1, total=1)

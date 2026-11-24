@@ -228,6 +228,12 @@ class LearnerDetail:
         return bool(self.completed_items or self.quiz_results or self.wrong_answers)
 
 
+# One wrong option's tally in a confusion row: its text, how many first attempts
+# chose it, and whether a content save has retired it. The flag rides on the row
+# because a live option and a retired one can share a text.
+type Distractor = tuple[str, int, bool]
+
+
 @dataclasses.dataclass(frozen=True)
 class QuizConfusion:
     question_number: int
@@ -239,11 +245,9 @@ class QuizConfusion:
     # the threshold invariant in one place (the confusion block builder) rather
     # than leaving templates to compute a percentage themselves.
     wrong_percentage: int | None
-    distractors: list[tuple[str, int]]
+    distractors: list[Distractor]
     correct_option_texts: list[str]
     question_retired: bool = False
-    # The distractors above whose option a content save retired.
-    retired_distractor_texts: frozenset[str] = frozenset()
 
 
 @dataclasses.dataclass(frozen=True)

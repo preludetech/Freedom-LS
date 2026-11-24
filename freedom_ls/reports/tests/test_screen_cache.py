@@ -188,7 +188,7 @@ def test_the_cache_key_carries_the_site_id_and_cohort() -> None:
     cohort_id = UUID("11111111-1111-1111-1111-111111111111")
 
     assert _cache_key(7, cohort_id, "progress") == (
-        "reports:screen:3:7:11111111-1111-1111-1111-111111111111:progress"
+        "reports:screen:4:7:11111111-1111-1111-1111-111111111111:progress"
     )
 
 

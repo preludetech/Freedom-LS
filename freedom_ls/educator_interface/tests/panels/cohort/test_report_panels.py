@@ -911,7 +911,7 @@ def _confusion(**overrides: object) -> QuizConfusion:
         "wrong_count": 8,
         "show_percentage": True,
         "wrong_percentage": 67,
-        "distractors": [("A straight line", 5)],
+        "distractors": [("A straight line", 5, False)],
         "correct_option_texts": ["A closed path around a body"],
     }
     defaults.update(overrides)
@@ -1093,8 +1093,7 @@ class TestCohortReportBody:
         _seed_report_cache(
             cohort,
             _confusion(
-                distractors=[("A straight line", 5), ("A circle", 2)],
-                retired_distractor_texts=frozenset({"A straight line"}),
+                distractors=[("A straight line", 5, True), ("A circle", 2, False)],
             ),
         )
 

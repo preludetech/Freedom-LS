@@ -1543,7 +1543,7 @@ class TestQuizConfusion:
             wrong_count=4,
             show_percentage=False,
             wrong_percentage=None,
-            distractors=[("Option B", 3)],
+            distractors=[("Option B", 3, False)],
             correct_option_texts=["Option A"],
         )
         block = ConfusionBlock(questions=[question], shown=1, total=1)
@@ -1569,7 +1569,7 @@ class TestQuizConfusion:
             wrong_count=1,
             show_percentage=False,
             wrong_percentage=None,
-            distractors=[("Option B", 1)],
+            distractors=[("Option B", 1, False)],
             correct_option_texts=["Option A"],
         )
         block = ConfusionBlock(questions=[question], shown=1, total=1)
@@ -1591,7 +1591,7 @@ class TestQuizConfusion:
             wrong_count=15,
             show_percentage=True,
             wrong_percentage=75,
-            distractors=[("Option B", 12)],
+            distractors=[("Option B", 12, False)],
             correct_option_texts=["Option A"],
         )
         block = ConfusionBlock(questions=[question], shown=1, total=1)
@@ -1640,7 +1640,7 @@ class TestConfusions:
             wrong_count=3,
             show_percentage=False,
             wrong_percentage=None,
-            distractors=[("Wrong option", 2)],
+            distractors=[("Wrong option", 2, False)],
             correct_option_texts=["Right option"],
         )
         block_with_confusion = ConfusionBlock(questions=[confusion], shown=1, total=1)
@@ -2500,9 +2500,8 @@ class TestRetiredOptionInTheConfusionsPartial:
             wrong_count=3,
             show_percentage=False,
             wrong_percentage=None,
-            distractors=[("Jupiter", 2), ("Mars", 1)],
+            distractors=[("Jupiter", 2, True), ("Mars", 1, False)],
             correct_option_texts=["Earth"],
-            retired_distractor_texts=frozenset({"Jupiter"}),
         )
 
         html = render_to_string(

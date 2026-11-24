@@ -718,7 +718,7 @@ def test_correct_none_option_selected_counts_as_distractor(mock_site_context):
     distractor_texts = [
         text
         for confusion in confusion_block.questions
-        for text, _ in confusion.distractors
+        for text, _count, _retired in confusion.distractors
     ]
     assert "Undecided" in distractor_texts
 
@@ -1466,7 +1466,7 @@ class TestScopedToOneCourseProgressRecord:
 
         confusion = data.courses[0].confusions_by_quiz[quiz.id].questions[0]
         assert confusion.respondent_count == 1
-        assert confusion.distractors == [("Chosen with the cohort", 1)]
+        assert confusion.distractors == [("Chosen with the cohort", 1, False)]
 
     def test_completions_are_not_unioned_across_two_records(self, mock_site_context):
         course = CourseFactory()
@@ -2193,6 +2193,7 @@ class TestIndexDistractors:
                 "question_id": a_question(quiz).id,
                 "id": known.id,
                 "text": "Stray",
+                "retired_at": None,
                 "times_selected": 3,
             }
         ]
@@ -2208,6 +2209,7 @@ class TestIndexDistractors:
                 "question_id": question.id,
                 "id": question.id,
                 "text": "Anything",
+                "retired_at": None,
                 "times_selected": 2,
             }
         ]
@@ -2223,19 +2225,21 @@ class TestIndexDistractors:
                 "question_id": question.id,
                 "id": question.id,
                 "text": "Popular",
+                "retired_at": None,
                 "times_selected": 5,
             },
             {
                 "question_id": question.id,
                 "id": question.id,
                 "text": "Rare",
+                "retired_at": None,
                 "times_selected": 1,
             },
         ]
 
         assert index_distractors(rows, index)[question.id] == [
-            ("Popular", 5),
-            ("Rare", 1),
+            ("Popular", 5, False),
+            ("Rare", 1, False),
         ]
 
 
@@ -2545,10 +2549,10 @@ class TestBuildConfusionBlock:
         tallies = self._tallies(wrong={question.id: 4}, respondents={question.id: 10})
 
         block = build_confusion_block(
-            quiz.id, index, tallies, {question.id: [("Sun", 4)]}
+            quiz.id, index, tallies, {question.id: [("Sun", 4, False)]}
         )
 
-        assert block.questions[0].distractors == [("Sun", 4)]
+        assert block.questions[0].distractors == [("Sun", 4, False)]
 
 
 class TestBuildQuizColumns:
@@ -3356,7 +3360,41 @@ class TestRetiredContentInTheReport:
             for c in data.courses[0].confusions_by_quiz[quiz.id].questions
             if c.question_text == "Question 1?"
         ]
-        assert confusion.retired_distractor_texts == {"Old distractor"}
+        assert sorted(confusion.distractors) == [
+            ("Old distractor", 1, True),
+            ("Wrong", 1, False),
+        ]
+
+    def test_a_live_option_sharing_a_retired_options_text_is_not_flagged(
+        self, mock_site_context
+    ) -> None:
+        cohort, record, quiz, questions = _cohort_with_two_question_quiz()
+        (question, _), _ = questions
+        live = question.options.get(text="Wrong")
+        old = QuestionOptionFactory(
+            question=question, text="Wrong", correct=False, order=2
+        )
+        retired(old)
+        attempt = form_progress(
+            record,
+            quiz,
+            completed_time=timezone.now(),
+            scores={"score": 0, "max_score": 2},
+        )
+        answer = QuestionAnswerFactory(form_progress=attempt, question=question)
+        answer.selected_options.add(old, live)
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        (confusion,) = [
+            c
+            for c in data.courses[0].confusions_by_quiz[quiz.id].questions
+            if c.question_text == "Question 1?"
+        ]
+        assert sorted(confusion.distractors) == [
+            ("Wrong", 1, False),
+            ("Wrong", 1, True),
+        ]
 
 
 class TestCompletionFiguresSkipRetiredItems:

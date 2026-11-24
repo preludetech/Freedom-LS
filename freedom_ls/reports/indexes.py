@@ -52,7 +52,7 @@ from freedom_ls.learner_progress.models import CourseFormAttempt, TopicProgress
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.validators import MAX_BYTES, check_logo_safety
 from freedom_ls.reports.config import config
-from freedom_ls.reports.report_data import ReportTooLargeError
+from freedom_ls.reports.report_data import Distractor, ReportTooLargeError
 from freedom_ls.site_aware_models.models import site_display_name
 
 
@@ -762,6 +762,7 @@ class DistractorRow(TypedDict):
     question_id: UUID
     id: UUID
     text: str
+    retired_at: datetime | None
     times_selected: int
 
 
@@ -778,7 +779,7 @@ def load_distractor_rows(
             question_id__in=question_ids,
             questionanswer__form_progress_id__in=first_attempt_ids,
         )
-        .values("question_id", "id", "text")
+        .values("question_id", "id", "text", "retired_at")
         .annotate(times_selected=Count("questionanswer"))
         .order_by("question_id", "-times_selected")
     )
@@ -789,15 +790,15 @@ def load_distractor_rows(
 
 def index_distractors(
     distractor_rows: list[DistractorRow], questions: QuestionIndex
-) -> dict[UUID, list[tuple[str, int]]]:
+) -> dict[UUID, list[Distractor]]:
     """Group the loaded distractor rows by question, dropping the ones with no verdict."""
-    distractors_by_question: dict[UUID, list[tuple[str, int]]] = defaultdict(list)
+    distractors_by_question: dict[UUID, list[Distractor]] = defaultdict(list)
     for row in distractor_rows:
         question = questions.by_id.get(row["question_id"])
         if question is None or question.type in FREE_TEXT_QUESTION_TYPES:
             continue
         distractors_by_question[row["question_id"]].append(
-            (row["text"], row["times_selected"])
+            (row["text"], row["times_selected"], row["retired_at"] is not None)
         )
     return distractors_by_question
 
