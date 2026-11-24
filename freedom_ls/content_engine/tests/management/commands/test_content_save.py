@@ -7049,3 +7049,22 @@ def test_command_run_missing_a_course_with_the_flag_retires_the_course(
     )
 
     assert Course._base_manager.get(pk=SOLO_COURSE_UUID).is_retired
+
+
+@pytest.mark.django_db
+def test_save_run_keeps_both_options_of_a_question_live_when_they_share_a_value(
+    site, mock_site_context, tmp_path
+):
+    _write_source_with_one_of_each(tmp_path)
+    page = tmp_path / "form" / "1. page.yaml"
+    page.write_text(page.read_text().replace("value: 2", "value: 1"))
+
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+
+    assert [
+        option.is_retired
+        for option in QuestionOption._base_manager.filter(
+            pk__in=[OPTION_A_UUID, OPTION_B_UUID]
+        )
+    ] == [False, False]

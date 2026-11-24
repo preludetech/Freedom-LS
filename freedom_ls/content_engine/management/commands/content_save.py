@@ -959,10 +959,11 @@ def save_form_question(
     base_path: Path,
     order: int = 0,
     condition_option: QuestionOption | None = None,
-) -> tuple[FormQuestion, dict[str, QuestionOption]]:
+) -> tuple[FormQuestion, list[QuestionOption]]:
     """Save FormQuestion and its options to the database.
 
-    Returns the question and the options this call saved, keyed by value.
+    Returns the question and every option this call saved, in order. Two options
+    may share a value, so the list is not keyed by it.
     """
     # Exclude 'options' since they're handled separately below. slug, group and
     # explanation are written even when the file has none: the dump drops None, so
@@ -981,7 +982,7 @@ def save_form_question(
         explanation=item.explanation or "",
     )
 
-    saved_options: dict[str, QuestionOption] = {}
+    saved_options: list[QuestionOption] = []
     if item.options:
         option_uuids = []
         for idx, option in enumerate(item.options):
@@ -997,7 +998,7 @@ def save_form_question(
                 value=str(option.value),  # Convert to string for CharField
             )
             option_uuids.append((idx, option_obj.id))
-            saved_options[option_obj.value] = option_obj
+            saved_options.append(option_obj)
 
         # Update file with option UUIDs if any options didn't have UUIDs
         if any(opt.uuid is None for opt in item.options):
@@ -1653,7 +1654,7 @@ def _write_source(
                         )
                         seen_question_ids.add(question.pk)
                         ledger.saw(question)
-                        for saved_option in saved_options.values():
+                        for saved_option in saved_options:
                             ledger.saw(saved_option)
                         declarer, section_paths = effective_sections(item, form_item)
                         sections_by_question.append(
@@ -1668,7 +1669,9 @@ def _write_source(
                             )
                         )
                         if item.slug:
-                            options_by_slug[item.slug] = saved_options
+                            options_by_slug[item.slug] = {
+                                option.value: option for option in saved_options
+                            }
                         logger.info(
                             f"Saved FormQuestion in {form_page.title} (order={content_order})"
                         )

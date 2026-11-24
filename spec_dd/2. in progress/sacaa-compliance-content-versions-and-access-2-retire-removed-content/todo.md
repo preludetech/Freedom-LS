@@ -22,6 +22,13 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (user) Confirm two calls made during implementation that the spec left open: a survey page whose children are all retired is now left off a new sitting's path (an authored empty page still shows), and the cohort report counts content under a retired course part as retired (out of the completion denominator, column marked Retired). Revert either in form_engine/conditions.py compute_path or reports/indexes.py build_course_catalogue if you disagree
 - [x] (user) Running content_save on a single demo_content/<course> folder against DemoDev is now refused because it would retire the other courses; update the one-folder content_save workflow in the .claude/agent-memory QA notes (load the whole demo_content tree, or pass --allow-course-retire)
 - [x] (user) Keep or delete the stray migration a batch worker restored from an old educator-interface-8-bulk-operations stash and moved aside: /tmp/claude-1000/-home-sheena-workspace-lms-freedom-ls-worktrees-sacaa-compliance-content-versions-and-access-2-retire-removed-content/409ee67b-82ee-4260-badb-4e67ed131647/scratchpad/0008_learnerimport_learnerimportrow.py (the stash itself is untouched in git stash list)
+- [ ] (claude) PR 293 review: content_save records every saved option in the ledger, so options sharing a value are not retired
+- [ ] (claude) PR 293 review: a completed quiz sitting with no served paper is marked against the full tree, retired rows included
+- [ ] (claude) PR 293 review: the cohort report treats items as retired per course
+- [ ] (claude) PR 293 review: a new served paper skips a page whose children are all retired
+- [ ] (claude) PR 293 review: confusion tables badge retired distractors by option, not by text
+- [ ] (claude) PR 293 review: question_number never returns None for a retired question
+- [ ] (claude) PR 293 review: deadline extend targets list live items only; deadline validators accept a stored retired item
 
 ## 4. Documentation and pull request
 
