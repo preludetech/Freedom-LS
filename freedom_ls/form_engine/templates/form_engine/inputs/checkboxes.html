@@ -26,6 +26,7 @@
                     class="size-3.5 text-on-primary opacity-0 group-has-[:checked]:opacity-100" />
         </span>
         <span class="text-on-surface">{{ option.text }}</span>
+        {% if show_retired and option.is_retired %}<c-panel-status-badge label="Retired" data-testid="retired-badge" />{% endif %}
         {% if show_answer_key and option.correct %}<c-correct-answer-mark class="ms-auto" />{% endif %}
     </label>
 {% endfor %}

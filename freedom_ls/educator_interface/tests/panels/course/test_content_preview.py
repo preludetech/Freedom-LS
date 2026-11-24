@@ -30,6 +30,7 @@ from freedom_ls.content_engine.factories import (
 from freedom_ls.content_engine.models import Course as CourseModel
 from freedom_ls.content_engine.models import File
 from freedom_ls.educator_interface.panels.course.content_preview import (
+    OutlineRow,
     outline_rows,
     preview_sequence,
     reference_rows,
@@ -59,6 +60,7 @@ from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.retire import retired
 from freedom_ls.tests.site_context import site_context
 
 if TYPE_CHECKING:
@@ -2165,3 +2167,185 @@ def test_a_quiz_page_row_shows_no_facts(staff_client: Client) -> None:
 
     assert document.cssselect("dl") == []
     assert "Quiz page 1" in document.text_content()
+
+
+def _flagged_titles(rows: list[OutlineRow]) -> list[str]:
+    """The titles of every row at any depth that is flagged retired."""
+    return [
+        title
+        for row in rows
+        for title in ([row.title] if row.retired else [])
+        + _flagged_titles(list(row.children))
+    ]
+
+
+@pytest.mark.django_db
+def test_outline_rows_flag_a_retired_topic_and_nothing_else(
+    mock_site_context: Site,
+) -> None:
+    course = CourseFactory()
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=TopicFactory(title="Live"), order=0
+    )
+    ContentCollectionItemFactory(
+        collection_object=course,
+        child_object=retired(TopicFactory(title="Gone")),
+        order=1,
+    )
+
+    assert _flagged_titles(outline_rows(course)) == ["Gone"]
+
+
+@pytest.mark.django_db
+def test_outline_rows_flag_a_retired_part_but_not_its_live_children(
+    mock_site_context: Site,
+) -> None:
+    course = CourseFactory()
+    part = retired(CoursePartFactory(title="Old part"))
+    ContentCollectionItemFactory(collection_object=course, child_object=part, order=0)
+    ContentCollectionItemFactory(
+        collection_object=part, child_object=TopicFactory(title="Kept"), order=0
+    )
+
+    assert _flagged_titles(outline_rows(course)) == ["Old part"]
+
+
+@pytest.mark.django_db
+def test_outline_rows_flag_a_retired_form(mock_site_context: Site) -> None:
+    course = CourseFactory()
+    form = retired(FormFactory(title="Old quiz"))
+    FormPageFactory(form=form, order=0)
+    ContentCollectionItemFactory(collection_object=course, child_object=form, order=0)
+
+    assert _flagged_titles(outline_rows(course)) == ["Old quiz"]
+
+
+@pytest.mark.django_db
+def test_outline_rows_flag_a_retired_form_page_but_not_its_form(
+    mock_site_context: Site,
+) -> None:
+    course = CourseFactory()
+    form = FormFactory(title="Survey")
+    FormPageFactory(form=form, title="Kept page", order=0)
+    retired(FormPageFactory(form=form, title="Old page", order=1))
+    ContentCollectionItemFactory(collection_object=course, child_object=form, order=0)
+
+    assert _flagged_titles(outline_rows(course)) == ["Old page"]
+
+
+@pytest.mark.django_db
+def test_reference_rows_flag_a_retired_part_and_a_retired_topic(
+    mock_site_context: Site,
+) -> None:
+    course = CourseFactory()
+    retired_part = retired(CoursePartFactory(title="Old reference"))
+    CourseReferencePartFactory(course=course, course_part=retired_part, order=0)
+    live_part = CoursePartFactory(title="Live reference")
+    CourseReferencePartFactory(course=course, course_part=live_part, order=1)
+    ContentCollectionItemFactory(
+        collection_object=live_part,
+        child_object=retired(TopicFactory(title="Old glossary")),
+        order=0,
+    )
+
+    assert _flagged_titles(reference_rows(course)) == ["Old reference", "Old glossary"]
+
+
+@pytest.mark.django_db
+def test_the_rendered_outline_shows_a_retired_badge_for_exactly_the_retired_rows(
+    staff_client: Client,
+) -> None:
+    course = CourseFactory()
+    for order, topic in enumerate(
+        [
+            TopicFactory(title="Live one"),
+            retired(TopicFactory(title="Gone one")),
+            TopicFactory(title="Live two"),
+        ]
+    ):
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=topic, order=order
+        )
+
+    panel = _course_content_panel(staff_client, course)
+
+    badged = [
+        " ".join(row.text_content().split())
+        for row in _outline_rows(panel)
+        if "Retired" in row.text_content()
+    ]
+    assert len(badged) == 1
+    assert "Gone one" in badged[0]
+
+
+@pytest.mark.django_db
+def test_the_rendered_outline_cards_show_the_retired_badge(
+    staff_client: Client,
+) -> None:
+    course = CourseFactory()
+    ContentCollectionItemFactory(
+        collection_object=course,
+        child_object=retired(TopicFactory(title="Gone one")),
+        order=0,
+    )
+
+    panel = _course_content_panel(staff_client, course)
+
+    details_card, topic_card = panel.cssselect("li.panel-data-table-card")
+    assert "Retired" not in details_card.text_content()
+    assert "Retired" in topic_card.text_content()
+
+
+@pytest.mark.django_db
+def test_a_form_preview_badges_exactly_the_retired_question_and_option(
+    staff_client: Client,
+) -> None:
+    organisation = OrganisationFactory()
+    form = FormFactory(title="Intake")
+    page = FormPageFactory(form=form, order=0)
+    live = FormQuestionFactory(form_page=page, type="multiple_choice", order=0)
+    QuestionOptionFactory(question=live, text="Live option", order=0)
+    retired(QuestionOptionFactory(question=live, text="Gone option", order=1))
+    retired(FormQuestionFactory(form_page=page, type="short_text", order=1))
+    course, item = _course_with_form(form)
+    url = _preview_url(staff_client, organisation, course)
+
+    response = staff_client.get(f"{url}?item={item.pk}", HTTP_HX_REQUEST="true")
+
+    document = lxml.html.fromstring(response.content)
+    assert response.content.decode().count("Retired") == 2
+    (option_label,) = [
+        label
+        for label in document.cssselect("label")
+        if "Gone option" in label.text_content()
+    ]
+    assert "Retired" in option_label.text_content()
+    (live_label,) = [
+        label
+        for label in document.cssselect("label")
+        if "Live option" in label.text_content()
+    ]
+    assert "Retired" not in live_label.text_content()
+
+
+@pytest.mark.django_db
+def test_a_dropdown_preview_badges_a_retired_option(staff_client: Client) -> None:
+    organisation = OrganisationFactory()
+    form = FormFactory(title="Intake")
+    page = FormPageFactory(form=form, order=0)
+    question = FormQuestionFactory(form_page=page, type="dropdown", order=0)
+    QuestionOptionFactory(question=question, text="Live option", order=0)
+    retired(QuestionOptionFactory(question=question, text="Gone option", order=1))
+    course, item = _course_with_form(form)
+    url = _preview_url(staff_client, organisation, course)
+
+    response = staff_client.get(f"{url}?item={item.pk}", HTTP_HX_REQUEST="true")
+
+    document = lxml.html.fromstring(response.content)
+    (gone,) = [
+        option
+        for option in document.cssselect("select option")
+        if "Gone option" in option.text_content()
+    ]
+    assert gone.text_content().strip() == "Gone option (Retired)"
+    assert response.content.decode().count("Retired") == 1

@@ -6,4 +6,5 @@
         </span>
     {% endif %}
     <span class="min-w-0 font-medium break-words">{{ object.title }}</span>
+    {% if object.retired %}<c-panel-status-badge label="Retired" class="shrink-0" data-testid="retired-badge" />{% endif %}
 </div>

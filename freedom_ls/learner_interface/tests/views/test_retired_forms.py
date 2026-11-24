@@ -22,7 +22,7 @@ from freedom_ls.form_engine.models import (
 )
 from freedom_ls.learner_interface.tests.helpers import course_with_form
 from freedom_ls.learner_management.tests.helpers import register_user_for_course
-from freedom_ls.tests.retire import retire
+from freedom_ls.tests.retire import retire, retired
 
 
 @pytest.fixture
@@ -100,3 +100,27 @@ def test_survey_fill_page_numbers_the_live_questions_without_a_gap(
         )
     ]
     assert numbers == ["1.", "2.", "3."]
+
+
+@pytest.mark.django_db
+def test_quiz_fill_page_of_a_pinned_sitting_serves_a_retired_question_without_a_badge(
+    mock_site_context, client
+):
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ)
+    page = FormPageFactory(form=form, order=0)
+    question = FormQuestionFactory(form_page=page, type="multiple_choice", order=0)
+    QuestionOptionFactory(question=question, order=0)
+    course = course_with_form(form)
+    user = UserFactory()
+    register_user_for_course(course, user)
+    client.force_login(user)
+    _fill_page(client, course)
+    retired(question)
+
+    content = _fill_page(client, course)
+
+    document = lxml.html.fromstring(content)
+    assert f"question_{question.id}" in {
+        node.get("name") for node in document.xpath("//*[@name]")
+    }
+    assert "Retired" not in document.text_content()

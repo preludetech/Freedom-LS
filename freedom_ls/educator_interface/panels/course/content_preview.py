@@ -75,6 +75,7 @@ class OutlineRow:
     # its preview sequence. None for a part, a note and the course row.
     item_pk: UUID | None = None
     page_pk: UUID | None = None
+    retired: bool = False
 
     @property
     def has_preview(self) -> bool:
@@ -113,6 +114,7 @@ def _form_page_rows(
             form_title=form.title,
             item_pk=item.pk,
             page_pk=page.pk,
+            retired=page.is_retired,
         )
         for position, page in enumerate(form.pages.all(), start=1)
     )
@@ -129,6 +131,7 @@ def _part_row(part: CoursePart, number: str, *, nested: bool) -> OutlineRow:
         number=number if nested else f"{number}.",
         title=part.title,
         kind="part",
+        retired=part.is_retired,
         children=children
         or (
             OutlineRow(number="", title="", kind="part", note="No items in this part."),
@@ -157,6 +160,7 @@ def _outline_item_rows(
                 preview_query=f"item={item.pk}",
                 item_pk=item.pk,
                 children=pages,
+                retired=child.is_retired,
             )
         kind: Literal["form", "topic"] = "form"
     else:
@@ -167,6 +171,7 @@ def _outline_item_rows(
         kind=kind,
         preview_query=f"item={item.pk}",
         item_pk=item.pk,
+        retired=child is not None and child.is_retired,
     )
 
 
@@ -492,6 +497,7 @@ def _form_preview_context(form: Form, page_pk: UUID | None) -> dict[str, object]
         "rejected_answers": {},
         "read_only": True,
         "show_answer_key": True,
+        "show_retired": True,
     }
 
 
