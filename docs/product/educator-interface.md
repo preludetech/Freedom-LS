@@ -1,6 +1,6 @@
 # Educator Interface
 
-_Last updated: 2026-11-23_
+_Last updated: 2026-11-24_
 
 ## Summary
 
@@ -41,7 +41,7 @@ Each learner is **Active**, **Pending** (staff created their account and they ha
 The header shows the name and email, and a badge only while the learner is Pending or Inactive. The tabs are:
 
 - **Overview**: details, cohorts and course registrations. The Cohorts panel is where the learner's cohorts are changed.
-- **Courses**: for each registered course, completion, a progress status and any at-risk flags, the items completed and the last one, and every quiz attempt with its score and the quiz's pass mark. This tab is where the learner is registered for a course.
+- **Courses**: for each registered course, completion, a progress status and any at-risk flags, the items completed and the last one, and every quiz attempt with its score and the quiz's pass mark. A completed attempt opens, in a quick view or on its own page, to show the paper the learner was served, in their order, with their answers and how each question was marked. Questions and options use the quiz's current wording, and an attempt sat before FLS recorded the served order says so. This tab is where the learner is registered for a course.
 - **Messages**: when direct messaging is turned on. See [Messaging from a learner](#messaging-from-a-learner).
 - **Settings**: the actions with no home elsewhere: the name, the setup email, and deactivating or reactivating. Shown to anyone who may take at least one of them.
 - **History**: see [History](#history).
