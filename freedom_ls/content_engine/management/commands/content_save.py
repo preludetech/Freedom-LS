@@ -2341,7 +2341,18 @@ def check_has_content(paths: Sequence[str], ignores: Sequence[frozenset[Path]]) 
     default=False,
     help="Write a new uuid into every content file that lacks one.",
 )
-def command(paths: tuple[str, ...], site_name: str, generate_uuids: bool) -> None:
+@click.option(
+    "--allow-course-retire",
+    is_flag=True,
+    default=False,
+    help="Let this save retire a course that is missing from the source paths.",
+)
+def command(
+    paths: tuple[str, ...],
+    site_name: str,
+    generate_uuids: bool,
+    allow_course_retire: bool,
+) -> None:
     """Validate and save committed content to the database.
 
     Several source paths load as one save:
@@ -2351,6 +2362,10 @@ def command(paths: tuple[str, ...], site_name: str, generate_uuids: bool) -> Non
     Every source path must be inside a git repository with no uncommitted,
     staged, deleted or untracked files. No path may be, or sit inside,
     another. A file without a uuid is refused unless --generate-uuids is given.
+
+    Content the site holds that no source path names is retired, not deleted, and
+    the run prints how many rows it retired and un-retired. A run that would retire
+    a course is refused unless --allow-course-retire is given.
     """
     ignores = check_source_paths(paths)
     source_commits = check_committed(paths, ignores)
@@ -2372,4 +2387,6 @@ def command(paths: tuple[str, ...], site_name: str, generate_uuids: bool) -> Non
         site_name,
         generate_uuids=generate_uuids,
         source_commits=source_commits,
+        retire_missing=True,
+        allow_course_retire=allow_course_retire,
     )

@@ -6986,3 +6986,66 @@ def test_run_sends_no_retirement_signal_when_nothing_changes(
     save_content_to_db(tmp_path, site.name, retire_missing=True)
 
     assert retirement_signal_courses == []
+
+
+def _committed_repo_with_course_and_topic(directory: Path) -> Path:
+    directory.mkdir()
+    (directory / "solo").mkdir()
+    (directory / "solo" / "course.md").write_text(
+        f"---\ncontent_type: COURSE\ntitle: Solo course\nuuid: {SOLO_COURSE_UUID}\n---\n"
+    )
+    (directory / "loose_topic.md").write_text(
+        _topic_text("Loose topic", LOOSE_TOPIC_UUID)
+    )
+    init_repo(directory)
+    commit_all(directory)
+    return directory
+
+
+@pytest.mark.django_db
+def test_command_retires_a_deleted_committed_file_and_prints_the_count_line(
+    site, mock_site_context, tmp_path: Path, capsys
+):
+    repo = _committed_repo_with_course_and_topic(tmp_path / "repo")
+    _save_from_repos(site, repo)
+    (repo / "loose_topic.md").unlink()
+    commit_all(repo)
+
+    _save_from_repos(site, repo)
+
+    assert Topic._base_manager.get(pk=LOOSE_TOPIC_UUID).is_retired
+    assert "Retired: 1 (Topic 1). Un-retired: 0." in capsys.readouterr().out
+
+
+@pytest.mark.django_db
+def test_command_run_missing_a_course_is_refused_without_a_count_line(
+    site, mock_site_context, tmp_path: Path, capsys
+):
+    repo = _committed_repo_with_course_and_topic(tmp_path / "repo")
+    _save_from_repos(site, repo)
+    shutil.rmtree(repo / "solo")
+    commit_all(repo)
+    capsys.readouterr()
+
+    with pytest.raises(CommandError, match="--allow-course-retire"):
+        _save_from_repos(site, repo)
+
+    assert "Retired:" not in capsys.readouterr().out
+    assert not Course._base_manager.get(pk=SOLO_COURSE_UUID).is_retired
+
+
+@pytest.mark.django_db
+def test_command_run_missing_a_course_with_the_flag_retires_the_course(
+    site, mock_site_context, tmp_path: Path
+):
+    repo = _committed_repo_with_course_and_topic(tmp_path / "repo")
+    _save_from_repos(site, repo)
+    shutil.rmtree(repo / "solo")
+    commit_all(repo)
+    drop_ambient_request()
+
+    call_command(
+        "content_save", str(repo), site.name, "--allow-course-retire", "--traceback"
+    )
+
+    assert Course._base_manager.get(pk=SOLO_COURSE_UUID).is_retired
