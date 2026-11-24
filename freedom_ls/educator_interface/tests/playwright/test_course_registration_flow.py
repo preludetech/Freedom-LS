@@ -17,6 +17,7 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
+    LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
 from freedom_ls.learner_management.role_assignment import assign_role
@@ -93,4 +94,41 @@ def test_registering_a_cohort_from_the_course_overview_and_again_after_deactivat
     expect(modal).to_be_hidden()
     expect(row).to_have_count(1)
     expect(row.get_by_role("button", name="Deactivate Cohort A")).to_be_visible()
+    assert page.evaluate("window.__noReload") is True
+
+
+def test_deactivating_and_reactivating_a_direct_registration_from_the_course_overview(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    course = CourseFactory(title="Algebra")
+    learner = LearnerFactory(
+        organisation=organisation, user__first_name="Ada", user__last_name="Lovelace"
+    )
+    LearnerCourseRegistrationFactory(learner=learner, course=course)
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    page.goto(interface_url(live_server, organisation.slug, f"courses/{course.pk}"))
+    modal = page.locator("#app-modal")
+    panel = page.locator("section[data-panel='learners']")
+    row = panel.get_by_role("row").filter(has_text="Ada Lovelace")
+    name = learner.user.display_name
+    page.evaluate("window.__noReload = true")
+
+    row.get_by_role("button", name=f"Deactivate {name}").click()
+    modal.get_by_label("Reason").fill("Left the programme")
+    modal.get_by_role("button", name="Deactivate", exact=True).click()
+
+    expect(modal).to_be_hidden()
+    expect(row.get_by_role("button", name=f"Reactivate {name}")).to_be_visible()
+    expect(row.get_by_role("button", name=f"Deactivate {name}")).to_have_count(0)
+
+    row.get_by_role("button", name=f"Reactivate {name}").click()
+    modal.get_by_role("button", name="Reactivate", exact=True).click()
+
+    expect(modal).to_be_hidden()
+    expect(row.get_by_role("button", name=f"Deactivate {name}")).to_be_visible()
     assert page.evaluate("window.__noReload") is True

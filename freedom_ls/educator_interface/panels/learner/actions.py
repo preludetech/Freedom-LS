@@ -28,7 +28,6 @@ from freedom_ls.accounts.models import User, display_name_for
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     LEARNER_CHANGED,
-    REGISTRATION_CHANGED,
 )
 from freedom_ls.educator_interface.forms import (
     AddLearnerForm,
@@ -47,6 +46,11 @@ from freedom_ls.educator_interface.panels.common.actions import (
     _uuid_from,
     inactive_cohort_response,
 )
+from freedom_ls.educator_interface.panels.common.registration_actions import (
+    LearnerRegistrationDeactivation,
+    LearnerRegistrationReactivation,
+    registration_changed_response,
+)
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
@@ -58,7 +62,6 @@ from freedom_ls.learner_management.learner_actions import (
     add_learner,
     add_to_cohort,
     deactivate_learner,
-    deactivate_registration,
     move_between_cohorts,
     reactivate_learner,
     record_learner_entry,
@@ -74,14 +77,10 @@ from freedom_ls.learner_management.models import (
 from freedom_ls.learner_management.queries import (
     ADD_COHORTMEMBERSHIP,
     ADD_LEARNER,
-    COURSE_NOT_OPEN_MESSAGE,
-    CourseNotOpenError,
     cohorts_visible_to,
     courses_gaining_access,
     courses_losing_access,
-    is_course_available_to_organisation,
     learners_visible_to,
-    other_grants_for,
 )
 from freedom_ls.learner_progress.utils import move_progress_preview
 from freedom_ls.organisations.utils import get_default_organisation
@@ -120,7 +119,6 @@ __all__ = [
     "_joinable_cohorts",
     "_membership_changed_response",
     "_picker_cohorts",
-    "_registration_changed_response",
     "learner_state_actions",
     "record_and_resend_setup_email",
 ]
@@ -290,11 +288,6 @@ class ResendSetupEmailAction(ConfirmAction):
         return changed_response({LEARNER_CHANGED: [str(learner.pk)]})
 
 
-def _registration_changed_response(learner: Learner) -> HttpResponse:
-    ids = [str(learner.pk)]
-    return changed_response({REGISTRATION_CHANGED: ids, LEARNER_CHANGED: ids})
-
-
 class RegisterLearnerForCourseAction(FormPanelAction):
     """Registers the learner on the page for a course they hold no active
     individual registration for."""
@@ -330,120 +323,34 @@ class RegisterLearnerForCourseAction(FormPanelAction):
             form.cleaned_data["course"],
             actor=cast("User", ctx.request.user),
         )
-        return _registration_changed_response(learner)
+        return registration_changed_response(learner)
 
 
-class DeactivateRegistrationAction(EducatorReasonMixin, ConfirmAction):
-    """Deactivates one of the learner's active individual registrations, after
-    confirmation. The registration travels as a `registration` parameter, so
-    the action resolves on the registrations card and renders per row there,
-    never as a footer button."""
+class DeactivateRegistrationAction(
+    EducatorReasonMixin, LearnerRegistrationDeactivation
+):
+    """Deactivates one of the learner's active individual registrations, from
+    the registrations card, where it renders per row and never as a footer
+    button."""
 
-    label = "Deactivate"
-    action_name = "deactivate_registration"
-    renders_in_footer = False
-    capability = "freedom_ls_learner_management.change_learnercourseregistration"
-    loading_text = "Deactivating…"
-    template_name = "educator_interface/modal/deactivate_registration_confirmation.html"
-
-    row_param = "registration"
-
-    def get_row_queryset(
+    def registration_scope(
         self, ctx: PanelContext
     ) -> QuerySet[LearnerCourseRegistration]:
         return LearnerCourseRegistration.objects.filter(
-            learner=cast(Learner, ctx.instance), is_active=True
-        ).select_related("course")
-
-    def _registration(self, ctx: PanelContext) -> LearnerCourseRegistration:
-        return cast(LearnerCourseRegistration, self.get_row_object(ctx))
-
-    def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
-        learner = cast(Learner, ctx.instance)
-        registration = self._registration(ctx)
-        scoped = cast("OrganisationScopedRequest", ctx.request)
-        granting = other_grants_for(learner, registration.course)
-        # A cohort the educator cannot see is never named.
-        visible_ids = set(
-            cohorts_visible_to(scoped.user, scoped.organisation).values_list(
-                "pk", flat=True
-            )
+            learner=cast(Learner, ctx.instance)
         )
-        return {
-            "learner": learner,
-            "registration": registration,
-            "course": registration.course,
-            "keeping_cohorts": join_prose(
-                [cohort.name for cohort in granting if cohort.pk in visible_ids]
-            ),
-            "keeps_access": bool(granting),
-            "on_default_organisation": (
-                learner.organisation_id == get_default_organisation(learner.site).pk
-            ),
-        }
-
-    def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
-        learner = cast(Learner, ctx.instance)
-        deactivate_registration(
-            learner,
-            self._registration(ctx).course,
-            actor=cast("User", ctx.request.user),
-            reason=ctx.reason,
-        )
-        return _registration_changed_response(learner)
 
 
-class ReactivateRegistrationAction(ConfirmAction):
-    """Reactivates one of the learner's inactive individual registrations,
-    after confirmation. Like deactivating, the registration travels as a
-    `registration` parameter and the action renders per row."""
+class ReactivateRegistrationAction(LearnerRegistrationReactivation):
+    """Reactivates one of the learner's inactive individual registrations, from
+    the registrations card, where it renders per row."""
 
-    label = "Reactivate"
-    action_name = "reactivate_registration"
-    renders_in_footer = False
-    capability = "freedom_ls_learner_management.change_learnercourseregistration"
-    loading_text = "Reactivating…"
-    template_name = "educator_interface/modal/reactivate_registration_confirmation.html"
-
-    row_param = "registration"
-
-    def get_row_queryset(
+    def registration_scope(
         self, ctx: PanelContext
     ) -> QuerySet[LearnerCourseRegistration]:
         return LearnerCourseRegistration.objects.filter(
-            learner=cast(Learner, ctx.instance), is_active=False
-        ).select_related("course")
-
-    def _registration(self, ctx: PanelContext) -> LearnerCourseRegistration:
-        return cast(LearnerCourseRegistration, self.get_row_object(ctx))
-
-    def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
-        registration = self._registration(ctx)
-        return {
-            "learner": cast(Learner, ctx.instance),
-            "registration": registration,
-            "course": registration.course,
-        }
-
-    def _refused(self, ctx: PanelContext, message: str) -> HttpResponse:
-        context = self.get_context_data(ctx)
-        context["refusal"] = message
-        return render(ctx.request, self.template_name, context, status=422)
-
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        learner = cast(Learner, ctx.instance)
-        course = self._registration(ctx).course
-        # The write gate accepts every public course, but an educator registers
-        # only for courses available to the organisation.
-        if not is_course_available_to_organisation(course, learner.organisation):
-            return self._refused(ctx, COURSE_NOT_OPEN_MESSAGE)
-        try:
-            register_for_course(learner, course, actor=cast("User", ctx.request.user))
-        except CourseNotOpenError as error:
-            # The course may have gained organisations since the registration
-            # was made, leaving it closed to this learner's organisation.
-            return self._refused(ctx, str(error))
-        return _registration_changed_response(learner)
+            learner=cast(Learner, ctx.instance)
+        )
 
 
 def _membership_changed_response(

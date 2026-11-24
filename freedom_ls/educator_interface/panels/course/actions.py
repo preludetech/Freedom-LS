@@ -25,12 +25,21 @@ from freedom_ls.educator_interface.panels.common.course_page import (
 from freedom_ls.educator_interface.panels.common.registration_actions import (
     ADD_COHORT_REGISTRATION,
     CHANGE_COHORT_REGISTRATION,
+    CHANGE_LEARNER_REGISTRATION,
     CohortRegistrationDeactivation,
+    LearnerRegistrationDeactivation,
+    LearnerRegistrationReactivation,
 )
-from freedom_ls.learner_management.models import Cohort, CohortCourseRegistration
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    Learner,
+    LearnerCourseRegistration,
+)
 from freedom_ls.learner_management.queries import (
     CourseNotOpenError,
     cohorts_visible_to,
+    learners_permitted_for,
 )
 from freedom_ls.learner_management.utils import register_cohort_for_course
 from freedom_ls.panel_framework.actions import FormPanelAction, changed_response
@@ -39,6 +48,8 @@ from freedom_ls.panel_framework.context import PanelContext
 __all__ = [
     "CourseRegisterAction",
     "DeactivateCourseCohortRegistrationAction",
+    "DeactivateCourseLearnerRegistrationAction",
+    "ReactivateCourseLearnerRegistrationAction",
     "RegisterCohortOnCourseAction",
 ]
 
@@ -74,6 +85,51 @@ class DeactivateCourseCohortRegistrationAction(
                 COHORT_CHANGED: [str(registration.cohort_id)],
             }
         )
+
+
+def _course_learner_registrations(
+    ctx: PanelContext,
+) -> QuerySet[LearnerCourseRegistration]:
+    """The course's direct registrations for learners the user may change
+    registrations of."""
+    request = scoped(ctx)
+    return LearnerCourseRegistration.objects.filter(
+        course=cast(Course, ctx.instance),
+        learner__in=learners_permitted_for(
+            request.user, request.organisation, CHANGE_LEARNER_REGISTRATION
+        ),
+    )
+
+
+class DeactivateCourseLearnerRegistrationAction(
+    EducatorReasonMixin, CoursePageActionMixin, LearnerRegistrationDeactivation
+):
+    """Deactivates one of the course's active direct registrations from its
+    Overview tab, where the action renders per row, never as a footer
+    button."""
+
+    def registration_scope(
+        self, ctx: PanelContext
+    ) -> QuerySet[LearnerCourseRegistration]:
+        return _course_learner_registrations(ctx)
+
+    def subject_of(self, row: Model) -> Learner:
+        return cast(LearnerCourseRegistration, row).learner
+
+
+class ReactivateCourseLearnerRegistrationAction(
+    CoursePageActionMixin, LearnerRegistrationReactivation
+):
+    """Reactivates one of the course's inactive direct registrations from its
+    Overview tab, where the action renders per row."""
+
+    def registration_scope(
+        self, ctx: PanelContext
+    ) -> QuerySet[LearnerCourseRegistration]:
+        return _course_learner_registrations(ctx)
+
+    def subject_of(self, row: Model) -> Learner:
+        return cast(LearnerCourseRegistration, row).learner
 
 
 class CourseRegisterAction(CoursePageActionMixin, FormPanelAction):

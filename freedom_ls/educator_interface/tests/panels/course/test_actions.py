@@ -17,7 +17,11 @@ from django.test.utils import CaptureQueriesContext
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course
-from freedom_ls.educator_interface.events import COHORT_CHANGED, REGISTRATION_CHANGED
+from freedom_ls.educator_interface.events import (
+    COHORT_CHANGED,
+    LEARNER_CHANGED,
+    REGISTRATION_CHANGED,
+)
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
@@ -35,9 +39,18 @@ from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
+    LearnerCourseRegistrationFactory,
+    LearnerFactory,
 )
-from freedom_ls.learner_management.models import Cohort, CohortCourseRegistration
-from freedom_ls.learner_management.queries import CourseNotOpenError
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    LearnerCourseRegistration,
+)
+from freedom_ls.learner_management.queries import (
+    COURSE_NOT_OPEN_MESSAGE,
+    CourseNotOpenError,
+)
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.context import PanelContext
@@ -538,3 +551,315 @@ def test_a_course_the_service_finds_closed_is_a_422_form_error_and_writes_nothin
     assert response.status_code == 422
     assert "This course is not open to the organisation." in response.content.decode()
     assert not CohortCourseRegistration.objects.filter(cohort=cohort).exists()
+
+
+LEARNERS = "__tabs/overview/__panels/learners"
+
+
+def _learner_action_url(
+    organisation: Organisation,
+    course: Course,
+    action: str,
+    registration_pk: object = None,
+) -> str:
+    url = _interface_url(
+        organisation.slug, f"courses/{course.pk}/{LEARNERS}/__actions/{action}"
+    )
+    return url if registration_pk is None else f"{url}?registration={registration_pk}"
+
+
+def _direct_buttons(document: lxml.html.HtmlElement, verb: str) -> list[str]:
+    """The distinct aria-labels of the `verb` triggers in the Direct
+    registrations panel. The table renders each row for wide and narrow
+    screens, so a row's trigger appears more than once."""
+    (panel,) = document.cssselect("section[data-panel='learners']")
+    return sorted(
+        {
+            button.get("aria-label")
+            for button in panel.cssselect("button")
+            if button.text_content().strip() == verb
+        }
+    )
+
+
+def _direct(
+    organisation: Organisation,
+    course: Course,
+    *,
+    is_active: bool = True,
+    first_name: str = "Ada",
+) -> LearnerCourseRegistration:
+    learner = LearnerFactory(
+        organisation=organisation, user__first_name=first_name, user__last_name="Test"
+    )
+    return cast(
+        LearnerCourseRegistration,
+        LearnerCourseRegistrationFactory(
+            learner=learner, course=course, is_active=is_active
+        ),
+    )
+
+
+@pytest.mark.django_db
+def test_an_active_direct_row_offers_deactivate_and_an_inactive_one_reactivate(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    active = _direct(organisation, course, first_name="Ada")
+    inactive = _direct(organisation, course, is_active=False, first_name="Bea")
+    client = role_holder_client(organisation)
+
+    document = _get_document(client, _page_url(organisation, course))
+
+    assert _direct_buttons(document, "Deactivate") == [
+        f"Deactivate {active.learner.user.display_name}"
+    ]
+    assert _direct_buttons(document, "Reactivate") == [
+        f"Reactivate {inactive.learner.user.display_name}"
+    ]
+
+
+@pytest.mark.django_db
+def test_a_learner_the_role_may_not_change_has_no_row_actions(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    own = _direct(organisation, course, first_name="Ada")
+    other = _direct(organisation, course, first_name="Bea")
+    cohort = CohortFactory(organisation=organisation)
+    CohortMembershipFactory(cohort=cohort, learner=own.learner)
+    client = role_holder_client(cohort, "cohort_admin")
+
+    document = _get_document(client, _page_url(organisation, course))
+
+    assert _direct_buttons(document, "Deactivate") == [
+        f"Deactivate {own.learner.user.display_name}"
+    ]
+    response = _post(
+        client,
+        _learner_action_url(organisation, course, "deactivate_registration"),
+        {"registration": str(other.pk), "reason": "Left"},
+    )
+    assert response.status_code == 404
+    other.refresh_from_db()
+    assert other.is_active is True
+
+
+@pytest.mark.django_db
+def test_the_deactivation_names_a_cohort_keeping_access_that_the_educator_sees(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory(title="Algebra")
+    registration = _direct(organisation, course)
+    seen = CohortFactory(organisation=organisation, name="Cohort A")
+    hidden = CohortFactory(organisation=organisation, name="Staff Room")
+    for cohort in (seen, hidden):
+        CohortMembershipFactory(cohort=cohort, learner=registration.learner)
+        CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    client = role_holder_client(seen, "cohort_admin")
+
+    response = client.get(
+        _learner_action_url(
+            organisation, course, "deactivate_registration", registration.pk
+        ),
+        HTTP_HX_REQUEST="true",
+    )
+
+    text = " ".join(
+        lxml.html.fromstring(response.content.decode()).text_content().split()
+    )
+    assert response.status_code == 200
+    assert "They keep access through Cohort A." in text
+    assert "Staff Room" not in text
+
+
+@pytest.mark.django_db
+def test_a_post_deactivates_the_direct_registration_and_fires_both_events(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    registration = _direct(organisation, course)
+    client = role_holder_client(organisation)
+
+    with mock.patch(
+        "freedom_ls.educator_interface.panels.common.registration_actions.deactivate_registration"
+    ) as deactivate:
+        response = _post(
+            client,
+            _learner_action_url(organisation, course, "deactivate_registration"),
+            {"registration": str(registration.pk), "reason": "Left"},
+        )
+
+    assert response.status_code == 204
+    deactivate.assert_called_once()
+    assert deactivate.call_args.args == (registration.learner, course)
+    assert deactivate.call_args.kwargs["reason"] == "Left"
+    trigger = json.loads(response["HX-Trigger"])
+    assert trigger[REGISTRATION_CHANGED] == {"ids": [str(registration.learner_id)]}
+    assert trigger[LEARNER_CHANGED] == {"ids": [str(registration.learner_id)]}
+
+
+@pytest.mark.django_db
+def test_a_post_reactivates_the_direct_registration_and_fires_both_events(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    registration = _direct(organisation, course, is_active=False)
+    client = role_holder_client(organisation)
+
+    with mock.patch(
+        "freedom_ls.educator_interface.panels.common.registration_actions.register_for_course"
+    ) as register:
+        response = _post(
+            client,
+            _learner_action_url(organisation, course, "reactivate_registration"),
+            {"registration": str(registration.pk)},
+        )
+
+    assert response.status_code == 204
+    register.assert_called_once()
+    assert register.call_args.args == (registration.learner, course)
+    trigger = json.loads(response["HX-Trigger"])
+    assert trigger[REGISTRATION_CHANGED] == {"ids": [str(registration.learner_id)]}
+    assert trigger[LEARNER_CHANGED] == {"ids": [str(registration.learner_id)]}
+
+
+@pytest.mark.django_db
+def test_a_real_post_reactivates_the_row(role_holder_client: RoleHolderClient) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    registration = _direct(organisation, course, is_active=False)
+    client = role_holder_client(organisation)
+
+    _post(
+        client,
+        _learner_action_url(organisation, course, "reactivate_registration"),
+        {"registration": str(registration.pk)},
+    )
+
+    registration.refresh_from_db()
+    assert registration.is_active is True
+
+
+@pytest.mark.django_db
+def test_reactivating_for_a_course_closed_to_the_organisation_is_422(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    registration = _direct(organisation, course, is_active=False)
+    course.organisations.add(OrganisationFactory())
+    client = role_holder_client(organisation)
+
+    response = _post(
+        client,
+        _learner_action_url(organisation, course, "reactivate_registration"),
+        {"registration": str(registration.pk)},
+    )
+
+    registration.refresh_from_db()
+    assert response.status_code == 422
+    assert COURSE_NOT_OPEN_MESSAGE in response.content.decode()
+    assert registration.is_active is False
+
+
+@pytest.mark.django_db
+def test_reactivating_a_course_the_service_finds_closed_is_422_with_its_text(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    registration = _direct(organisation, course, is_active=False)
+    client = role_holder_client(organisation)
+
+    with mock.patch(
+        "freedom_ls.educator_interface.panels.common.registration_actions.register_for_course",
+        side_effect=CourseNotOpenError("Not open to this organisation."),
+    ):
+        response = _post(
+            client,
+            _learner_action_url(organisation, course, "reactivate_registration"),
+            {"registration": str(registration.pk)},
+        )
+
+    assert response.status_code == 422
+    assert "Not open to this organisation." in response.content.decode()
+    registration.refresh_from_db()
+    assert registration.is_active is False
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "action", ["deactivate_registration", "reactivate_registration"]
+)
+@pytest.mark.parametrize("case", ["wrong state", "other course", "other organisation"])
+def test_a_direct_registration_outside_the_actions_scope_is_a_404(
+    role_holder_client: RoleHolderClient, action: str, case: str
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    client = role_holder_client(organisation)
+    # Deactivate reaches active rows and Reactivate inactive ones, so the
+    # other cases use the state the action does reach.
+    reachable_state = action == "deactivate_registration"
+    if case == "wrong state":
+        registration = _direct(organisation, course, is_active=not reachable_state)
+    elif case == "other course":
+        registration = _direct(organisation, CourseFactory(), is_active=reachable_state)
+    else:
+        registration = _direct(OrganisationFactory(), course, is_active=reachable_state)
+
+    response = _post(
+        client,
+        _learner_action_url(organisation, course, action),
+        {"registration": str(registration.pk), "reason": "Left"},
+    )
+
+    assert response.status_code == 404
+    was_active = registration.is_active
+    registration.refresh_from_db()
+    assert registration.is_active is was_active
+
+
+@pytest.mark.django_db
+def test_the_direct_panel_refreshes_on_registration_and_learner_changes(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    _direct(organisation, course)
+    client = role_holder_client(organisation)
+
+    document = _get_document(client, _page_url(organisation, course))
+
+    (panel,) = document.cssselect("section[data-panel='learners']")
+    trigger = panel.get("hx-trigger")
+    assert f"{REGISTRATION_CHANGED} from:body" in trigger
+    assert f"{LEARNER_CHANGED} from:body" in trigger
+
+
+@pytest.mark.django_db
+def test_the_overview_render_does_not_query_per_direct_row(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    client = role_holder_client(organisation)
+    _get_document(client, _page_url(organisation, course))
+
+    def queries_with(rows: int) -> int:
+        for _ in range(rows):
+            _direct(organisation, course)
+        with CaptureQueriesContext(connection) as captured:
+            _get_document(client, _page_url(organisation, course))
+        return len(captured)
+
+    one_more = queries_with(1)
+    three_more = queries_with(2)
+
+    assert three_more <= one_more + 1

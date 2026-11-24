@@ -41,6 +41,8 @@ from freedom_ls.educator_interface.panels.common.request import (
 )
 from freedom_ls.educator_interface.panels.course.actions import (
     DeactivateCourseCohortRegistrationAction,
+    DeactivateCourseLearnerRegistrationAction,
+    ReactivateCourseLearnerRegistrationAction,
     RegisterCohortOnCourseAction,
 )
 from freedom_ls.educator_interface.panels.course.config import CourseConfig
@@ -54,12 +56,14 @@ from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
+    LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     Learner,
+    LearnerCourseRegistration,
     StaffMember,
 )
 from freedom_ls.learner_management.queries import (
@@ -1160,6 +1164,79 @@ def test_the_course_page_register_picker_offers_the_cohorts_the_role_may_registe
             same=operator.eq,
             role=role,
         )
+
+    walk.report()
+
+
+def _course_learner_registration_offered(
+    world: World,
+    user: User,
+    registration: LearnerCourseRegistration,
+    action: DeactivateCourseLearnerRegistrationAction
+    | ReactivateCourseLearnerRegistrationAction,
+) -> bool:
+    """Whether the course page's Deactivate or Reactivate action reaches
+    `registration` for `user`: the permission check passes and the row
+    resolves in its scope."""
+    request = cast(
+        OrganisationScopedRequest,
+        RequestFactory().get("/x", {"registration": str(registration.pk)}),
+    )
+    request.user = user
+    request.organisation = cast(Organisation, world.scopes[("organisation", OWN)])
+    ctx = PanelContext(
+        request=request,
+        instance=registration.course,
+        base_url="/x",
+        name="learners",
+        config=CourseConfig,
+    )
+    try:
+        return action.has_permission(ctx)
+    except Http404:
+        return False
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("action_class", "is_active"),
+    [
+        (DeactivateCourseLearnerRegistrationAction, True),
+        (ReactivateCourseLearnerRegistrationAction, False),
+    ],
+)
+def test_the_course_page_direct_registration_actions_follow_the_learners_grant(
+    mock_site_context: Site,
+    action_class: type[
+        DeactivateCourseLearnerRegistrationAction
+        | ReactivateCourseLearnerRegistrationAction
+    ],
+    is_active: bool,
+) -> None:
+    world = _build_world(mock_site_context)
+    course = CourseFactory()
+    walk = _Walk(f"the course page's {action_class.__name__}")
+    for relation in (OWN, OTHER_COHORT):
+        learner = cast(Learner, world.scopes[("learner", relation)])
+        registration = LearnerCourseRegistrationFactory(
+            learner=learner, course=course, is_active=is_active
+        )
+        for role in ROLES:
+            allowed = ("learner", relation) in MATRIX[CHANGE_LEARNERCOURSEREGISTRATION][
+                role
+            ]
+            walk.check(
+                lambda allowed=allowed: allowed,
+                partial(
+                    _course_learner_registration_offered,
+                    world,
+                    cast(User, world.users[role]),
+                    registration,
+                    action_class(),
+                ),
+                role=role,
+                relation=relation,
+            )
 
     walk.report()
 

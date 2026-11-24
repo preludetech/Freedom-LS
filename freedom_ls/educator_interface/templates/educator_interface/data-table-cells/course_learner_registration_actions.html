@@ -1,0 +1,15 @@
+{% comment %}
+Row actions on a course's Direct registrations panel. row_action_urls lists an
+action only while the educator may use it somewhere in the organisation;
+registration_row_ids narrows that to the learners they may change
+registrations for. A row they may not act on leaves the cell empty.
+{% endcomment %}
+<c-data-table-actions>
+    {% if object.learner_id in registration_row_ids %}
+        {% if object.is_active and row_action_urls.deactivate_registration %}
+            <c-modal-trigger url="{{ row_action_urls.deactivate_registration }}?registration={{ object.pk }}" label="Deactivate" aria_label="Deactivate {{ object.learner.user.display_name }}" variant="secondary" size="small" />
+        {% elif not object.is_active and row_action_urls.reactivate_registration %}
+            <c-modal-trigger url="{{ row_action_urls.reactivate_registration }}?registration={{ object.pk }}" label="Reactivate" aria_label="Reactivate {{ object.learner.user.display_name }}" variant="secondary" size="small" />
+        {% endif %}
+    {% endif %}
+</c-data-table-actions>

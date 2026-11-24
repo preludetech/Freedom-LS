@@ -202,4 +202,9 @@ class CourseLearnerRegistrationDataTable(DataTable):
         return [
             _learner_column("learner"),
             *_registration_columns(),
+            Column(
+                header="",
+                template_name="educator_interface/data-table-cells/course_learner_registration_actions.html",
+                card="secondary",
+            ),
         ]
