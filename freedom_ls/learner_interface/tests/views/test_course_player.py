@@ -5355,6 +5355,24 @@ def test_outline_revision_entry_sits_under_the_table_of_contents(mock_site_conte
 
 
 @pytest.mark.django_db
+def test_outline_revision_entry_uses_the_sidebar_eyebrow_style(mock_site_context):
+    # The sidebar's sections share one look: an eyebrow link like "Reference",
+    # set apart by space alone, with no row style, divider or icon of its own.
+    _, region = _outline_with_bank()
+
+    nav = region.cssselect('[data-testid="revision-link"]')[0]
+    link = nav.cssselect("a")[0]
+    [label] = link.xpath('.//span[normalize-space(text())="Revision"]')
+
+    assert "border-t" not in nav.get("class", "").split()
+    assert link.cssselect("svg") == []
+    assert {"text-xs", "font-semibold", "uppercase", "tracking-wide"} <= set(
+        label.get("class", "").split()
+    )
+    assert link.cssselect('[data-testid="revision-due-badge"]')
+
+
+@pytest.mark.django_db
 def test_outline_revision_entry_reads_zero_due_when_nothing_is_due(mock_site_context):
     _, region = _outline_with_bank(schedule_due_in=timedelta(days=5))
 

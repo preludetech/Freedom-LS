@@ -1,16 +1,17 @@
 {% comment %}
-The outline panel's Revision entry: one row under the table of contents that opens the course's
-revision page in the player. The badge counts the questions due now and reads "0 due" when none
-is, because a learner may revise at any time. The outline leaves the entry out
-(revision_due_text is None) until the learner has finished a section with revision questions.
+The sidebar's Revision section: a "Revision" eyebrow link in the style of the Reference link, set
+apart from the sections above by space alone, opening the course's revision page in the player.
+The chip counts the questions due now and reads "0 due" when none is, because a learner may revise
+at any time. It sits inside the link so the whole line is the target; the eyebrow classes stay on
+the label so the chip keeps its own case. The outline leaves the entry out (revision_due_text is
+None) until the learner has finished a section with revision questions.
 {% endcomment %}
 {% if revision_due_text %}
-    <nav aria-label="Revision" class="mt-4 pt-4 border-t border-border" data-testid="revision-link">
+    <nav aria-label="Revision" class="mt-6" data-testid="revision-link">
         <a href="{% url 'learner_interface:course_revision' course.slug %}"
-           class="-mx-2 flex items-center gap-3 rounded-md px-2 py-2 no-underline text-on-surface hover:text-primary {% if revision_is_current %}bg-primary/5{% endif %}"
-           {% if revision_is_current %}aria-current="page"{% endif %}>
-            <c-icon name="revision" class="size-5 shrink-0 text-primary" />
-            <span class="flex-1 min-w-0 font-semibold">Revision</span>
+           {% if revision_is_current %}aria-current="page"{% endif %}
+           class="flex items-center justify-between gap-2 no-underline {% if revision_is_current %}bg-primary/10 -mx-1 px-1 rounded text-on-surface{% else %}text-muted hover:text-primary{% endif %}">
+            <span class="text-xs font-semibold uppercase tracking-wide">Revision</span>
             <c-chip variant="primary" size="xs" class="shrink-0" data-testid="revision-due-badge">{{ revision_due_text }}</c-chip>
         </a>
     </nav>

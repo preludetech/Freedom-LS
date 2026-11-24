@@ -6,6 +6,7 @@ import re
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
+import lxml.html
 import pytest
 import time_machine
 
@@ -768,6 +769,22 @@ def test_revision_page_marks_the_outline_entry_as_the_current_page(mock_site_con
     assert entry is not None
     assert 'aria-current="page"' in entry.group(0)
     assert "1 due" in entry.group(0)
+
+
+@pytest.mark.django_db
+def test_revision_page_highlights_the_outline_entry_like_the_reference_link(
+    mock_site_context,
+):
+    course, user, _, _ = _banked_session()
+
+    content = _client_for(user).get(_revision_url(course)).content.decode()
+
+    [link] = lxml.html.fromstring(content).cssselect(
+        '[data-testid="revision-link"] a[aria-current="page"]'
+    )
+    classes = set(link.get("class", "").split())
+    assert {"bg-primary/10", "rounded", "text-on-surface"} <= classes
+    assert "bg-primary/5" not in classes
 
 
 @pytest.mark.django_db
