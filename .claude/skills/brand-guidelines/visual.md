@@ -115,6 +115,8 @@ Where you do write utilities, keep to Tailwind's spacing scale and use `rounded-
 
 **A button label fits on one line, down to a 375px phone.** Keep it to a verb and a noun ("Download errors", "Upload a corrected file"). A count or a sentence goes in the heading or text beside the button, not in the label. A label wraps only when no shorter wording names the action.
 
+**A field label breaks only between words.** Where a narrow screen stacks a record as label-and-value rows (a Django admin changelist card, a definition list), a label like "Learner" or "Course" stays whole and wraps only at a space. The value beside it may wrap anywhere, so a long email, hash or URL never widens the page. A rule that lets values break mid-word (`overflow-wrap: anywhere`) must not reach the label, a `::before` label included.
+
 **A long list inside a block scrolls in its own region.** When a block can hold more than about ten rows (an import's error rows, say), cap its height (`max-h-96 overflow-y-auto`) so the page around it stays short. Make the region focusable (`tabindex="0"`, `role="region"`, an `aria-label`) and keep the table header sticky.
 
 **An expand chevron shows whether its control is open.** A menu button, a `<details>` disclosure, a filter chip and an accordion end in `<c-icon name="dropdown">`, which points down while closed and turns up (`rotate-180`) while open: `group-open:rotate-180` under a `<details class="group">`, `group-aria-expanded:rotate-180` under a trigger with `aria-expanded`, and `group-aria-expanded/menu:rotate-180` in a `<c-dropdown-menu>` trigger, which is a `group/menu`.
@@ -157,6 +159,7 @@ What QA checks in a screenshot of any FLS page.
   actions with no home of their own.
 - Status badges carry one of the five status tones; a label that is not a status is a chip.
 - Every button label sits on one line at 375px, 768px and 1280px.
+- At 375px no field label in a label-and-value row (admin changelist cards included) is split mid-word: "Learner", never "Learn / er".
 - A block with a long list (more than about ten rows) scrolls inside a capped region; the page does not grow with the list.
 - What succeeded and what failed sit in separate panels, not one card.
 - A page a person cannot use shows a large centred icon with text under it, not a callout.

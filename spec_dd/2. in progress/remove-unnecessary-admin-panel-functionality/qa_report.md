@@ -91,16 +91,16 @@ Actual: the label column is too narrow. 'Learner' renders as 'Learn / er' and 'C
 
 | Bug | Title | Status | Reason |
 |---|---|---|---|
-| B1 | Admin changelist cards at 375px break field labels mid-word | UNRESOLVED | The card layout belongs to the unfold theme and is shared by every admin changelist. Fixing it means overriding the theme's mobile changelist styling project-wide, a design decision for a human. The branch does not cause it. (Triage lane: red.) |
+| B1 | Admin changelist cards at 375px break field labels mid-word | **FIXED** (commits: 44492eb9a, b48bca910) — Admin changelist cards at 375px break field labels mid-word — after the fix: ![](screenshots/fixed/page-2026-11-24T06-27-30-726Z.png) | The cause was the project's own `#result_list td, #result_list th { overflow-wrap: anywhere }` in `site_aware_models/css/admin.css`, inherited by the `::before` card label. Labels now reset to `overflow-wrap: normal` on both `td` and `th` cells (the first fix missed the `th` link column), so they break only between words. |
 
 ## General notes
 
 Observations, not bugs:
 
 - **Test 5 expectation is wrong.** The plan expects a 404 for `/admin/freedom_ls_learner_progress/courseprogress/<pk>/pause/`. Django's admin catch-all instead redirects an unknown object sub-path to the admin index with a "course progress record with ID .../pause doesn't exist" message. The pause view is gone, which is the intended outcome. The plan's expectation should be corrected to "redirects to the admin index with a doesn't-exist message".
-- **`@claude` comment on `OrganisationAdmin`.** It asks a human to confirm the guardian object-permissions page under unfold. This run saw it render correctly: header, breadcrumbs, and User and Group permission panels with Manage buttons, aligned with the shell (![](screenshots/page-2026-11-23T15-23-19-257Z.png)). The comment stays in place for a human to confirm.
+- **`@claude` comment on `OrganisationAdmin`.** It asks a human to confirm the guardian object-permissions page under unfold. This run saw it render correctly: header, breadcrumbs, and User and Group permission panels with Manage buttons, aligned with the shell (![](screenshots/page-2026-11-23T15-23-19-257Z.png)). A human confirmed it, and the comment was removed (commit: c9d385778).
 - Test 3's full-page shot shows the sticky Close bar mid-page. This is an artefact of full-page capture, since the bar is fixed to the viewport bottom.
 - Test 2: the add URLs for formprogress, questionanswer, questionanswerfile, courseprogress, topicprogress and courseformattempt return 403, as the plan expects for add pages.
 - Mobile and tablet were run on Tests 3, 5 and 11 only. The other tests were checked on desktop only.
 
-status: ok · reason: 1 bug — 0 fixed, 1 unresolved; report rendered, screenshots verified
+status: ok · reason: 1 bug — 1 fixed, 0 unresolved; report rendered, screenshots verified
