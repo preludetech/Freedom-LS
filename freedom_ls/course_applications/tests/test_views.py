@@ -475,7 +475,6 @@ class TestApplyViewVisibilityGate:
     def test_retired_course_returns_404_and_creates_nothing(
         self, client, mock_site_context, method
     ):
-        """A retired course 404s on apply, so no application is created."""
         user = UserFactory()
         course = retire(cast("Course", CourseFactory()))
         client.force_login(user)

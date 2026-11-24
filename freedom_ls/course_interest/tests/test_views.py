@@ -136,7 +136,6 @@ class TestExpressInterestOnHiddenCourse:
     def test_post_retired_course_returns_404_and_records_no_interest(
         self, client, mock_site_context
     ):
-        """POST express_interest on a retired course returns 404."""
         user = UserFactory()
         course = retire(
             cast("Course", CourseFactory(visibility=CourseVisibility.COMING_SOON))
