@@ -89,7 +89,7 @@ Keeping learner records for SACAA's five-year rule, and signed quiz declarations
 - Collisions: `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` changes the form schema, `Form`, `FormProgress`, `content_save` and `form_start`, like `sacaa-compliance-3-question-pools`; whichever lands second rebases.
 - Decided: only superusers force delete, at any time, with a required reason written to the audit log; no retention-window gate and no automatic cleanup.
 - Decided: force delete replaces the User admin's delete button and "delete selected" action as the one erasure path.
-- Decided: each quiz sets whether its declaration is signed on every attempt or once per learner; the typed name must be non-empty and is stored as typed.
+- Decided: every attempt signs; the typed name must be non-empty and is stored as typed.
 - Assumption: force deleting a user removes every record today's user deletion removes, plus their course progress, which today blocks deletion (`PROTECT`).
 - Assumption: force deleting a learner removes that `Learner` and its registrations, cohort memberships and course progress in that organisation; the `User` stays.
 - Assumption: of `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` and `sacaa-compliance-4-attempt-review`, whichever lands second shows the declaration on the educator attempt view.
