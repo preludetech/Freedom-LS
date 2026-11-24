@@ -74,14 +74,13 @@
             attempt would earn today — otherwise there is nothing to explain.
             {% endcomment %}
             {% if stored_score_outdated %}
-                <div class="rounded-lg border-l-4 border-secondary bg-surface-2 px-5 py-4 mb-8"
-                     data-testid="stored-score-note">
-                    <p class="text-sm text-muted">
+                <c-callout tone="info" class="mb-8" data-testid="stored-score-note">
+                    <p class="text-sm">
                         This quiz has changed since you sat it.
                         Your attempt has not been re-marked, so the score above is the
                         one you were given at the time.
                     </p>
-                </div>
+                </c-callout>
             {% endif %}
 
             {% comment %}Incorrect answers review (only when quiz_show_incorrect is enabled){% endcomment %}

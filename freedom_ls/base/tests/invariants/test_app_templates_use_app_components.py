@@ -84,8 +84,6 @@ THICK_START_BORDER = re.compile(r"(?<![\w-])border-[sl]-(?:[4-8]|\[)")
 ADMONITION_LOOK_EXEMPT = {
     # The toast's severity stripe is the toast's own design.
     Path("base/templates/partials/_toast.html"),
-    # Predates the rule; whether it keeps the bar is an open decision.
-    Path("learner_interface/templates/learner_interface/course_form_complete.html"),
 }
 ADMONITION_LOOK_FIX = (
     "an app template never hand-builds the admonition look; put content in a box with "
