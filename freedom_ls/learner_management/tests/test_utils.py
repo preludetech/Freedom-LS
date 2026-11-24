@@ -41,6 +41,7 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.learner_management.queries import (
     CourseNotOpenError,
+    CourseRetiredError,
     is_registered_for_course_expression,
 )
 from freedom_ls.learner_management.utils import (
@@ -54,6 +55,7 @@ from freedom_ls.learner_management.utils import (
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.tests.audit_assertions import assert_entry
 from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.retire import retire
 from freedom_ls.webhooks.models import WebhookEvent
 
 
@@ -589,6 +591,44 @@ class TestRegisterCohortForCourseOrganisationCheck:
             register_cohort_for_course(cohort, course)
 
         assert not cohort.course_registrations.exists()
+
+    def test_a_retired_course_is_refused(self, mock_site_context):
+        cohort = CohortFactory()
+        course = retire(cast(Course, CourseFactory()))
+
+        with pytest.raises(CourseRetiredError):
+            register_cohort_for_course(cohort, course)
+
+        assert not cohort.course_registrations.exists()
+
+    def test_a_retired_course_is_refused_before_a_registration_is_reactivated(
+        self, mock_site_context
+    ):
+        registration = CohortCourseRegistrationFactory(is_active=False)
+        retire(cast(Course, registration.course))
+
+        with pytest.raises(CourseRetiredError):
+            register_cohort_for_course(registration.cohort, registration.course)
+
+        registration.refresh_from_db()
+        assert registration.is_active is False
+
+    def test_retiring_a_course_leaves_every_registration_active(
+        self, mock_site_context
+    ):
+        cohort_registration = CohortCourseRegistrationFactory(is_active=True)
+        learner_registration = LearnerCourseRegistrationFactory(
+            course=cohort_registration.course, is_active=True
+        )
+
+        retire(cast(Course, cohort_registration.course))
+
+        cohort_registration.refresh_from_db()
+        learner_registration.refresh_from_db()
+        assert (cohort_registration.is_active, learner_registration.is_active) == (
+            True,
+            True,
+        )
 
     def test_a_course_shared_with_the_cohorts_organisation_is_registered(
         self, mock_site_context

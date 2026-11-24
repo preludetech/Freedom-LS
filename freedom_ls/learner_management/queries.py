@@ -82,6 +82,7 @@ def role_target(role: str) -> RoleTarget:
 
 
 COURSE_NOT_OPEN_MESSAGE = "This course is not open to the organisation."
+COURSE_RETIRED_MESSAGE = "This course is retired and takes no new registrations."
 
 VIEW_ORGANISATION = "freedom_ls_organisations.view_organisation"
 VIEW_COHORT = "freedom_ls_learner_management.view_cohort"
@@ -344,15 +345,23 @@ class CourseNotOpenError(ValueError):
     paths' callers that catch that still do."""
 
 
+class CourseRetiredError(CourseNotOpenError):
+    """Raised when a registration is asked for on a retired course."""
+
+
 def require_course_open_to(course: Course, organisation: Organisation) -> None:
     """The service-function form of the refusal, for every path that creates
-    or reactivates a registration."""
+    or reactivates a registration. A retired course is refused first."""
+    if course.is_retired:
+        raise CourseRetiredError(COURSE_RETIRED_MESSAGE)
     if not is_course_open_to_organisation(course, organisation):
         raise CourseNotOpenError(COURSE_NOT_OPEN_MESSAGE)
 
 
 def validate_course_open_to(course: Course, organisation: Organisation) -> None:
     """The clean() form of the refusal: a ValidationError on `course`."""
+    if course.is_retired:
+        raise ValidationError({"course": COURSE_RETIRED_MESSAGE})
     if not is_course_open_to_organisation(course, organisation):
         raise ValidationError({"course": COURSE_NOT_OPEN_MESSAGE})
 
@@ -589,10 +598,11 @@ def courses_visible_to(
 
 
 def registerable_courses(organisation: Organisation) -> QuerySet[Course]:
-    """Published and hidden courses available to the organisation, by title;
-    coming-soon courses cannot be registered for."""
+    """Live published and hidden courses available to the organisation, by
+    title; coming-soon and retired courses cannot be registered for."""
     return (
-        Course.objects.filter(available_to_organisation_expression(organisation))
+        Course.objects.not_retired()
+        .filter(available_to_organisation_expression(organisation))
         .exclude(visibility=CourseVisibility.COMING_SOON)
         .order_by("title")
     )

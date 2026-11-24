@@ -64,6 +64,7 @@ from freedom_ls.registration_rules.models import (
     RuleRecommendation,
     RuleRegistration,
 )
+from freedom_ls.tests.retire import retire
 from freedom_ls.tests.site_context import drop_ambient_request
 
 
@@ -100,6 +101,21 @@ def test_registers_a_matching_learner(rule_run_for_one_learner):
     # Assert
     assert registration.is_active is True
     assert registration.self_registered is False
+
+
+@pytest.mark.django_db
+def test_registers_nobody_for_a_retired_course(
+    mock_site_context, django_capture_on_commit_callbacks
+):
+    rule = _enabled_rule()
+    retire(rule.course)
+    learner = LearnerFactory(organisation=rule.organisation)
+    drop_ambient_request()
+
+    with django_capture_on_commit_callbacks(execute=True):
+        evaluate_rule(rule.pk, rule.site_id)
+
+    assert not _registrations_for(rule).filter(learner=learner).exists()
 
 
 @pytest.mark.django_db

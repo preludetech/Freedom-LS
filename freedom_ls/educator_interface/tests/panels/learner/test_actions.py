@@ -18,7 +18,11 @@ from freedom_ls.accounts.config import config
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import CourseAudience, CourseVisibility
+from freedom_ls.content_engine.models import (
+    Course,
+    CourseAudience,
+    CourseVisibility,
+)
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     LEARNER_CHANGED,
@@ -79,6 +83,7 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.learner_management.queries import (
     COURSE_NOT_OPEN_MESSAGE,
+    COURSE_RETIRED_MESSAGE,
 )
 from freedom_ls.learner_management.role_assignment import (
     assign_role,
@@ -89,6 +94,7 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.tests.audit_assertions import assert_entry
+from freedom_ls.tests.retire import retire
 
 if TYPE_CHECKING:
     pass
@@ -1731,6 +1737,26 @@ def test_reregister_post_on_a_course_that_gained_another_organisation_answers_42
     registration.refresh_from_db()
     assert (response.status_code, registration.is_active) == (422, False)
     assert COURSE_NOT_OPEN_MESSAGE in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_reregister_post_on_a_retired_course_answers_422_with_the_retired_message(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    registration = LearnerCourseRegistrationFactory(learner=learner, is_active=False)
+    retire(cast(Course, registration.course))
+
+    response = _post(
+        staff_client,
+        _learner_reregister_url(organisation, learner),
+        {"registration": str(registration.pk)},
+    )
+
+    registration.refresh_from_db()
+    assert (response.status_code, registration.is_active) == (422, False)
+    assert COURSE_RETIRED_MESSAGE in response.content.decode()
 
 
 @pytest.mark.django_db

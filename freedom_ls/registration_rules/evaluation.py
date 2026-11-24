@@ -239,7 +239,9 @@ def apply_rule_changes(
     """Write the changes, in learner-pk order, with explicit site ids throughout."""
     # A course's organisations can change after the rule was saved; a learner the
     # course is no longer open to is skipped, not registered or reactivated.
-    if not is_course_open_to_organisation(rule.course, rule.organisation):
+    if rule.course.is_retired or not is_course_open_to_organisation(
+        rule.course, rule.organisation
+    ):
         changes = replace(changes, register=(), reactivate=())
     registered: list[UUID] = []
     for learner_id in changes.register:

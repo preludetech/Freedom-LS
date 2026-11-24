@@ -85,6 +85,7 @@ from freedom_ls.learner_management.queries import (
     peers_of,
     peers_through,
     pickable_staff,
+    registerable_courses,
     registerable_courses_for,
     registerable_courses_for_learner,
     registered_course_pairs,
@@ -118,6 +119,7 @@ from freedom_ls.role_based_permissions.utils import (
     deactivate_object_role,
 )
 from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.retire import retire
 from freedom_ls.tests.site_context import drop_ambient_request, site_context
 
 
@@ -1571,6 +1573,43 @@ class TestInactiveCohortAccess:
         resolved = learner_for_course(user, course)
 
         assert resolved == ResolvedRegistration(individual.learner, individual)
+
+
+@pytest.mark.django_db
+class TestRegisterableCoursesOmitRetired:
+    def test_registerable_courses_omits_a_retired_course(self, mock_site_context):
+        organisation = OrganisationFactory()
+        live = CourseFactory()
+        retire(cast(Course, CourseFactory()))
+
+        assert list(registerable_courses(organisation)) == [live]
+
+    def test_registerable_courses_for_a_cohort_omits_a_retired_course(
+        self, mock_site_context
+    ):
+        cohort = _make_cohort(organisation=OrganisationFactory())
+        retire(cast(Course, CourseFactory()))
+
+        assert list(registerable_courses_for(cohort)) == []
+
+    def test_registerable_courses_for_a_learner_omits_a_retired_course(
+        self, mock_site_context
+    ):
+        learner = LearnerFactory()
+        retire(cast(Course, CourseFactory()))
+
+        assert list(registerable_courses_for_learner(learner)) == []
+
+    def test_a_retired_course_a_cohort_holds_stays_visible(self, mock_site_context):
+        organisation = OrganisationFactory()
+        educator = UserFactory()
+        assign_object_role(educator, organisation, "organisation_admin")
+        registration = CohortCourseRegistrationFactory(
+            cohort=_make_cohort(organisation=organisation)
+        )
+        retire(cast(Course, registration.course))
+
+        assert registration.course in courses_visible_to(educator, organisation)
 
 
 @pytest.mark.django_db

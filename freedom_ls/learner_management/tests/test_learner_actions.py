@@ -13,7 +13,7 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import CourseAudience
+from freedom_ls.content_engine.models import Course, CourseAudience
 from freedom_ls.learner_management import learner_actions
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -51,11 +51,15 @@ from freedom_ls.learner_management.models import (
     Learner,
     LearnerCourseRegistration,
 )
-from freedom_ls.learner_management.queries import CourseNotOpenError
+from freedom_ls.learner_management.queries import (
+    CourseNotOpenError,
+    CourseRetiredError,
+)
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.tests.audit_assertions import assert_entry
 from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.retire import retire
 from freedom_ls.webhooks.models import WebhookEvent
 
 
@@ -536,6 +540,17 @@ class TestSelfRegisterAudit:
         user = UserFactory()
 
         with pytest.raises(CourseNotOpenError):
+            self_register(user, organisation, course)
+
+        assert not Learner.objects.filter(user=user).exists()
+        assert AuditLogEntry.unscoped.count() == 0
+
+    def test_a_retired_course_is_refused_and_changes_nothing(self, mock_site_context):
+        organisation = OrganisationFactory()
+        course = retire(cast(Course, CourseFactory()))
+        user = UserFactory()
+
+        with pytest.raises(CourseRetiredError):
             self_register(user, organisation, course)
 
         assert not Learner.objects.filter(user=user).exists()
@@ -1243,6 +1258,27 @@ class TestRegisterForCourseOrganisationCheck:
             register_for_course(learner, course)
 
         assert not LearnerCourseRegistration.objects.filter(learner=learner).exists()
+
+    def test_a_retired_course_is_refused(self, mock_site_context):
+        learner = LearnerFactory()
+        course = retire(cast(Course, CourseFactory()))
+
+        with pytest.raises(CourseRetiredError):
+            register_for_course(learner, course)
+
+        assert not LearnerCourseRegistration.objects.filter(learner=learner).exists()
+
+    def test_a_retired_course_is_refused_before_a_registration_is_reactivated(
+        self, mock_site_context
+    ):
+        registration = LearnerCourseRegistrationFactory(is_active=False)
+        retire(cast(Course, registration.course))
+
+        with pytest.raises(CourseRetiredError):
+            register_for_course(registration.learner, registration.course)
+
+        registration.refresh_from_db()
+        assert registration.is_active is False
 
     def test_a_course_shared_with_the_learners_organisation_is_registered(
         self, mock_site_context
