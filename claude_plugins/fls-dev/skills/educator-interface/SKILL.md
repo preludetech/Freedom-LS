@@ -73,8 +73,11 @@ A page that shows a learner's submitted answers draws them through the answer te
 `form_engine/templates/form_engine/answers/`, never through the form's input templates with
 `read_only`. A disabled field looks editable.
 
+- Each question's heading reads "n. question text", with the question id on its own line under
+  the text, small, muted and `font-mono`.
 - A text answer (short or long text, number, date, time, email, URL, phone) reads as plain text
-  under a "Learner's answer" label, with its line breaks kept.
+  under a "Learner's answer" label, with its line breaks kept. It sits in the same box as a chosen
+  option row: `rounded-md border border-primary bg-primary/5`. Never a callout or admonition look.
 - A choice answer (multiple choice, checkboxes, dropdown) lists every option as a row, with a
   round indicator for single-select and a square one for multi-select. The chosen rows carry
   "Learner's answer" and the correct rows carry "Correct answer".
@@ -110,4 +113,6 @@ What QA checks in a screenshot of an educator page, on top of the panel framewor
   picker, filter or dialog title, a muted "Shared by <organisation>" line in a table cell; the
   viewing organisation's own courses show the title alone, and no label wraps out of its control.
 - A page showing submitted answers has no form fields: text answers read as text under "Learner's
-  answer", and every choice question, a dropdown included, lists its options as rows.
+  answer" in a thin-bordered box like a chosen option row (no thick start bar), and every choice
+  question, a dropdown included, lists its options as rows. Each question heading is "n. text"
+  with the id under it in small muted monospace.

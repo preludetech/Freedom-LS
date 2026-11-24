@@ -84,7 +84,7 @@ FLS already builds each of these, and the brand decisions above are encoded in t
 | A label that isn't a status | `<c-chip variant="primary\|secondary\|success\|warning\|error\|info\|muted" size="xs">` for tags, levels and categories. `primary` and `secondary` live here because they carry no status meaning. The `.chip-success`, `.chip-warning`, `.chip-error` and `.chip-info` tints are the `-light` pairs. |
 | A callout on a page outside the panel framework | `<c-callout tone="info\|warning\|error\|success" title="…">`. On a panel-framework page (a panel, dialog, sheet or quick view) it is `<c-panel-callout>`, as `Skill(fls-dev:panel-framework)` says |
 | A page a person cannot use (closed or blocked) | A large centred `<c-icon>` (`size-12`) with the explanation as plain text under it, never a callout box |
-| A callout in course content (`c-admonition` is for course content only; everywhere else use `c-callout`) | `<c-admonition type="note\|tip\|important\|warning\|danger\|key_takeaways\|checklist">` |
+| A callout in course content (`c-admonition` is for course content only; everywhere else use `c-callout`) | `<c-admonition type="note\|tip\|important\|warning\|danger\|key_takeaways\|checklist">`. The admonition look belongs to course content too: an app template never hand-builds a box with a thick coloured start border (`border-s-4`, `border-l-4`) and a tint. Content that is not a notice, such as a learner's answer, sits in a plain box with a 1px border |
 | A page wrapper | `<c-page width="wide\|narrow">` |
 | A date or a date-time | `<c-date :value="…" />` / `<c-datetime :value="…" />`; a deadline in the learner's own zone is `{% local_time %}`. `voice.md` says how dates read |
 | A learner deadline, time limit, close date or access date ("Deadline", "Missed deadline", "Closes", "Closed", "Access ends", "Access ended") | `<c-deadline-label tier="…" layout="inline\|stacked\|minimal">`, the one style for any deadline a learner sees: coloured icon, bold tier word, date in `text-muted font-mono`. Each date is its own label, a separate element under the one before it, never text inside another label's slot. Lines in the same block share one layout; none is plain text |
@@ -156,6 +156,7 @@ What QA checks in a screenshot of any FLS page.
 - A block with a long list (more than about ten rows) scrolls inside a capped region; the page does not grow with the list.
 - What succeeded and what failed sit in separate panels, not one card.
 - A page a person cannot use shows a large centred icon with text under it, not a callout.
+- Outside course content, no box has a thick coloured bar down its start edge: nothing looks like an admonition.
 - Every deadline, close-date, time-limit or access-date line a learner sees ("Closes" included) has its own coloured icon and bold tier word, with the date in muted mono; none is plain text, and none sits inside another deadline's block.
 - Every expand chevron (menu button, disclosure, filter chip, accordion) points down while closed and up while open.
 - Items are separated by space: no box around each option, no box inside a box; a rule appears only at a card or dialog edge, a dialog header or footer, a table header, or between the rows of a ruled list of records.
