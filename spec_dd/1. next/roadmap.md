@@ -15,6 +15,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` (SACAA record retention and declarations)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-2-retire-removed-content` (SACAA content versions and access)
 - 🟠 Medium · `educator-interface-refactor-7-cleanup` (Educator interface code layout)
+- 🟠 Medium · `referral-tracking-marketing-channels` (Referral tracking and marketing)
 - 🟡 Low · `educator-intercface-small-ui-polish` (Educator interface)
 - 🟡 Low · `remove-unnecessary-admin-panel-functionality` (Educator interface)
 
@@ -35,7 +36,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🟠 Medium · `user-communication-2-notification-email` (User communication)
 - 🟠 Medium · `user-communication-6-moderation` (User communication)
 - 🟠 Medium · `user-communication-help-desk` (User communication)
-- 🟠 Medium · `referral-tracking-marketing-channels` (Referral tracking and marketing)
 - 🟠 Medium · `referral-tracking-external-referer-first-touch` (Referral tracking and marketing)
 - 🟠 Medium · `server-side-conversion-tracking` (Referral tracking and marketing)
 - 🟠 Medium · `cookie-banner` (Referral tracking and marketing)
@@ -339,7 +339,7 @@ Priority: 🟠 Medium
 
 Where signups come from, and what visitors are told about tracking.
 
-- `referral-tracking-marketing-channels` — **ready** — Classify a signup's first touch into a marketing channel (search, social, email, referral, direct; paid or organic).
+- `referral-tracking-marketing-channels` — **in progress** — Classify a signup's first touch into a marketing channel (search, social, email, referral, direct; paid or organic).
 - `referral-tracking-external-referer-first-touch` — **ready** — An opt-in first touch for visitors who arrive untagged from another site.
 - `server-side-conversion-tracking` — **ready** — Send conversions from the server to the Meta, TikTok and Google APIs, deduplicated against the browser tags.
 - `cookie-banner` — **ready** — A cookie banner explains tracking. Once dismissed, it stays dismissed.
