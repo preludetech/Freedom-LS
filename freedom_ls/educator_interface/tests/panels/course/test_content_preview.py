@@ -1148,6 +1148,22 @@ def test_the_start_page_counts_only_what_a_sitting_draws(
 
 
 @pytest.mark.django_db
+def test_a_drawing_quiz_row_states_the_per_sitting_question_count(
+    staff_client: Client,
+) -> None:
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    pool = FormPageFactory(form=form, order=0, draw=2)
+    for order in range(5):
+        FormQuestionFactory(form_page=pool, order=order)
+    plain = FormPageFactory(form=form, order=1)
+    FormQuestionFactory(form_page=plain, order=0)
+
+    document = _drawing_page_preview(staff_client, form, None)
+
+    assert _quiz_facts_block(document)["Questions"] == "3"
+
+
+@pytest.mark.django_db
 def test_a_page_of_another_form_is_not_found(staff_client: Client) -> None:
     organisation = OrganisationFactory()
     form, _second = _three_page_form()
