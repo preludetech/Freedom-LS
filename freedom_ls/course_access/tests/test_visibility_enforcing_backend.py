@@ -6,6 +6,8 @@ to prove enforcement is structural (the wrapper, not the inner backend).
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 
 from django.contrib.auth.models import AnonymousUser
@@ -17,6 +19,7 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.tests.app_guards import app_not_installed
+from freedom_ls.tests.retire import retire
 
 if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
@@ -577,3 +580,44 @@ class TestVisibilityEnforcingBackendAudience:
         )
 
         assert result.filter(pk=course.pk).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("backend_path", BACKEND_PATHS)
+@pytest.mark.parametrize("override_visible", [False, True])
+class TestRetiredCourseIsClosed:
+    """A retired course is closed to a registered learner, with or without the override."""
+
+    def test_get_access_is_fully_closed_for_a_registered_learner(
+        self, mock_site_context, backend_path, override_visible
+    ):
+        course = retire(cast("Course", CourseFactory()))
+        user = UserFactory()
+        LearnerCourseRegistrationFactory(
+            learner__user=user, course=course, is_active=True
+        )
+
+        with override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=override_visible):
+            decision = _decision_for(backend_path, user=user, course=course)
+
+        assert decision.can_access_content is False
+        assert decision.can_self_register is False
+        assert decision.cta_url is None
+
+    def test_filter_visible_drops_a_retired_course_a_learner_is_registered_for(
+        self, mock_site_context, backend_path, override_visible
+    ):
+        live = CourseFactory()
+        retired = retire(cast("Course", CourseFactory()))
+        user = UserFactory()
+        for course in (live, retired):
+            LearnerCourseRegistrationFactory(
+                learner__user=user, course=course, is_active=True
+            )
+
+        with override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=override_visible):
+            visible = _filter_visible_for(
+                backend_path, user=user, courses=Course.objects.all()
+            )
+
+        assert list(visible) == [live]

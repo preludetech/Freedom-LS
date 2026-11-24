@@ -1,6 +1,7 @@
 """Tests for course helper functions in learner_interface.utils."""
 
 from datetime import UTC, date, datetime, timedelta
+from typing import cast
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -57,6 +58,7 @@ from freedom_ls.learner_interface.utils import (
     get_all_courses,
     get_completed_courses,
     get_course_index,
+    get_course_registrations,
     get_current_courses,
     next_deadline_card,
     next_entry,
@@ -66,6 +68,7 @@ from freedom_ls.learner_management.factories import LearnerCourseRegistrationFac
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
+from freedom_ls.tests.retire import retire
 
 GET_CURRENT_COURSES_MAX_QUERIES = 5
 UTC_ZONE = ZoneInfo("UTC")
@@ -88,6 +91,25 @@ def test_get_all_courses_returns_empty_when_none_exist(mock_site_context):
     """get_all_courses returns empty queryset when no courses exist."""
     result = get_all_courses()
     assert list(result) == []
+
+
+@pytest.mark.django_db
+def test_get_all_courses_omits_a_retired_course(mock_site_context):
+    live = CourseFactory()
+    retire(cast("Course", CourseFactory()))
+
+    assert list(get_all_courses()) == [live]
+
+
+@pytest.mark.django_db
+def test_get_course_registrations_omits_a_retired_course(mock_site_context):
+    user = UserFactory()
+    live = CourseFactory()
+    retired = retire(cast("Course", CourseFactory()))
+    for course in (live, retired):
+        LearnerCourseRegistrationFactory(learner__user=user, course=course)
+
+    assert get_course_registrations(user) == [live]
 
 
 # --- get_completed_courses ---

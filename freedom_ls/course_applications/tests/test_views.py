@@ -95,6 +95,7 @@ from freedom_ls.form_engine.session_access import ANONYMOUS_FORM_PROGRESS_SESSIO
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_management.models import LearnerCourseRegistration
 from freedom_ls.learner_progress.models import CourseFormAttempt, CourseProgress
+from freedom_ls.tests.retire import retire
 
 from .helpers import gated_course_with_form
 
@@ -466,6 +467,20 @@ class TestApplyViewVisibilityGate:
         client.force_login(user)
 
         response = client.post(self._apply_url(course))
+
+        assert response.status_code == 404
+        assert not CourseApplication.objects.filter(user=user, course=course).exists()
+
+    @pytest.mark.parametrize("method", ["get", "post"])
+    def test_retired_course_returns_404_and_creates_nothing(
+        self, client, mock_site_context, method
+    ):
+        """A retired course 404s on apply, so no application is created."""
+        user = UserFactory()
+        course = retire(cast("Course", CourseFactory()))
+        client.force_login(user)
+
+        response = getattr(client, method)(self._apply_url(course))
 
         assert response.status_code == 404
         assert not CourseApplication.objects.filter(user=user, course=course).exists()

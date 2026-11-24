@@ -6,6 +6,7 @@ TDD: these tests are written before the implementation.
 from __future__ import annotations
 
 import datetime
+from typing import cast
 from urllib.parse import urlparse
 
 import pytest
@@ -20,11 +21,12 @@ from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.accounts.tests._auth_page_helpers import _next_param
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import CourseVisibility
+from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_interest.factories import CourseInterestFactory
 from freedom_ls.course_interest.models import CourseInterest
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.referral_tracking.models import Conversion, ConversionKind
+from freedom_ls.tests.retire import retire
 
 # ---------------------------------------------------------------------------
 # express_interest view
@@ -121,6 +123,24 @@ class TestExpressInterestOnHiddenCourse:
         """POST express_interest on a hidden course by an unregistered user returns 404."""
         user = UserFactory()
         course = CourseFactory(visibility=CourseVisibility.HIDDEN)
+        client.force_login(user)
+
+        url = reverse(
+            "course_interest:express_interest", kwargs={"course_slug": course.slug}
+        )
+        response = client.post(url, HTTP_HX_REQUEST="true")
+
+        assert response.status_code == 404
+        assert CourseInterest.objects.filter(user=user, course=course).count() == 0
+
+    def test_post_retired_course_returns_404_and_records_no_interest(
+        self, client, mock_site_context
+    ):
+        """POST express_interest on a retired course returns 404."""
+        user = UserFactory()
+        course = retire(
+            cast("Course", CourseFactory(visibility=CourseVisibility.COMING_SOON))
+        )
         client.force_login(user)
 
         url = reverse(

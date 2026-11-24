@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 
 from django.contrib.sites.models import Site
@@ -10,10 +12,11 @@ from django.test import override_settings
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import CourseVisibility
+from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_access.visibility import raise_404_if_unavailable
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_management.tests.helpers import AUDIENCE_CASES
+from freedom_ls.tests.retire import retire
 
 IN_AUDIENCE_CASES = [name for name, (_, inside) in AUDIENCE_CASES.items() if inside]
 OUTSIDE_AUDIENCE_CASES = [
@@ -66,3 +69,35 @@ class TestRaise404IfUnavailable:
 
         with override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True):
             raise_404_if_unavailable(user, course)
+
+
+@pytest.mark.django_db
+class TestRaise404IfUnavailableForRetiredCourse:
+    def test_raises_for_a_retired_course_an_unregistered_user_could_otherwise_see(
+        self, mock_site_context: Site
+    ) -> None:
+        course = retire(cast("Course", CourseFactory()))
+
+        with pytest.raises(Http404):
+            raise_404_if_unavailable(UserFactory(), course)
+
+    def test_raises_for_a_retired_course_a_registered_user_holds(
+        self, mock_site_context: Site
+    ) -> None:
+        course = retire(cast("Course", CourseFactory()))
+        user = UserFactory()
+        LearnerCourseRegistrationFactory(
+            learner__user=user, course=course, is_active=True
+        )
+
+        with pytest.raises(Http404):
+            raise_404_if_unavailable(user, course)
+
+    @override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True)
+    def test_raises_for_a_retired_course_when_the_visibility_override_is_on(
+        self, mock_site_context: Site
+    ) -> None:
+        course = retire(cast("Course", CourseFactory()))
+
+        with pytest.raises(Http404):
+            raise_404_if_unavailable(UserFactory(), course)

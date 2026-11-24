@@ -455,7 +455,10 @@ def _discovery_pools(
     if override_visibility_to_visible():
         return courses.none(), courses
     is_coming_soon = Q(visibility=CourseVisibility.COMING_SOON)
-    has_shown_category = Q(dashboard_category__show_on_dashboard=True)
+    has_shown_category = Q(
+        dashboard_category__show_on_dashboard=True,
+        dashboard_category__retired_at__isnull=True,
+    )
     return (
         courses.filter(is_coming_soon),
         courses.filter(~is_coming_soon | has_shown_category),
@@ -554,7 +557,7 @@ def _available_section(
     """The catch-all: uncategorised courses, plus those in a hidden category.
 
     Only ``dashboard_category`` decides this — a course whose dashboard
-    category is hidden lands here rather than in whichever of its other
+    category is hidden or retired lands here rather than in whichever of its other
     categories happens to have a section on screen. A coming-soon course can
     never reach this catch-all: ``rest`` only ever holds one with a shown
     category, so the filter below has nothing coming-soon left to exclude.
@@ -565,6 +568,7 @@ def _available_section(
         rest.filter(
             Q(dashboard_category__isnull=True)
             | Q(dashboard_category__show_on_dashboard=False)
+            | Q(dashboard_category__retired_at__isnull=False)
         ),
     )
     courses = list(page_obj.object_list)
@@ -668,7 +672,9 @@ def _dashboard_sections(
     """
     category_sections = [
         section
-        for category in CourseCategory.objects.filter(show_on_dashboard=True)
+        for category in CourseCategory.objects.not_retired().filter(
+            show_on_dashboard=True
+        )
         if not (
             section := _category_section(request, category, inputs.rest, inputs.backend)
         ).is_empty
@@ -724,7 +730,9 @@ def _requested_section(
         return _available_section(request, inputs.rest, inputs.backend)
     if slug == BuiltInSection.COMING_SOON:
         return _coming_soon_section(request, inputs.coming_soon, inputs.backend)
-    category = get_object_or_404(CourseCategory, slug=slug, show_on_dashboard=True)
+    category = get_object_or_404(
+        CourseCategory.objects.not_retired(), slug=slug, show_on_dashboard=True
+    )
     return _category_section(request, category, inputs.rest, inputs.backend)
 
 
@@ -1195,7 +1203,7 @@ class PlayerRoute(StrEnum):
 
 
 def _course_access_decision(user: RequestUser, course: Course) -> CourseAccessDecision:
-    """A hidden course 404s before the backend is asked, so a redirect never confirms it exists."""
+    """A retired or hidden course 404s before the backend is asked, so a redirect never confirms it exists."""
     raise_404_if_unavailable(user, course)
     return get_course_access_backend().get_access(user=user, course=course)
 

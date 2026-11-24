@@ -406,9 +406,9 @@ def get_is_registered(user: RequestUser, course: Course) -> bool:
 def get_course_registrations(user: RequestUser) -> list[Course]:
     """Get all courses a user is registered for (directly or via cohort)."""
     return list(
-        Course.objects.annotate(
-            _is_registered=is_registered_for_course_expression(user)
-        ).filter(_is_registered=True)
+        Course.objects.not_retired()
+        .annotate(_is_registered=is_registered_for_course_expression(user))
+        .filter(_is_registered=True)
     )
 
 
@@ -975,12 +975,12 @@ def form_start_page_buttons(
 
 
 def get_all_courses() -> QuerySet[Course]:
-    """Get all courses, with their organisations prefetched.
+    """Get all live courses, with their organisations prefetched.
 
     Every listing names a course's organisation, so the prefetch lives on the
     shared base.
     """
-    return Course.objects.prefetch_related("organisations")
+    return Course.objects.not_retired().prefetch_related("organisations")
 
 
 def get_completed_courses(user: RequestUser) -> list[Course]:
