@@ -1,4 +1,4 @@
-{% load form_engine_tags %}
+{% load form_engine_tags fls_base_filters %}
 {% question_options as options %}
 {% comment %}
 Every option of a choice question, as rows drawn like the quiz's option rows
@@ -7,7 +7,9 @@ but with no input. `indicator` is "radio" (round, single-select) or
 indicator and the tint only echo them.
 
 Reads: question, answer (or None, with selected_options prefetched),
-indicator, show_answer_key.
+indicator, show_answer_key, and optionally options_added_since: question id to
+the current options the sitting was not served, listed after the served ones
+and labelled, since a review marks against them too.
 {% endcomment %}
 {% partialdef option-row %}
     <li class="flex items-start gap-3 rounded-md border p-3 {% if chosen %}border-primary bg-primary/5{% else %}border-border{% endif %}"
@@ -27,6 +29,7 @@ indicator, show_answer_key.
         {% endif %}
         <span class="text-on-surface">{{ option.text }}</span>
         <span class="ms-auto flex flex-wrap justify-end gap-x-3 gap-y-1">
+            {% if added %}<c-added-option-mark />{% endif %}
             {% if chosen %}<c-learner-answer-mark />{% endif %}
             {% if show_answer_key and option.correct %}<c-correct-answer-mark />{% endif %}
         </span>
@@ -41,4 +44,9 @@ indicator, show_answer_key.
             {% partial option-row %}
         {% endif %}
     {% endfor %}
+    {% with added_options=options_added_since|get_dict_item:question.id %}
+        {% for option in added_options %}
+            {% with added=True %}{% partial option-row %}{% endwith %}
+        {% endfor %}
+    {% endwith %}
 </ul>

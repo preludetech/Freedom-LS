@@ -189,6 +189,17 @@ class SittingPath:
             return list(question.options.all())
         return list(self.served_options_by_question.get(question.id, ()))
 
+    def options_added_since(self, question: FormQuestion) -> list[QuestionOption]:
+        """The question's current options this sitting was not served, in
+        authored order: options added after it was served. Empty for a path
+        with no served paper, where every current option is already served.
+
+        A reviewer needs them because marking reads the current options; a
+        sitting being answered must never be offered them.
+        """
+        served = {option.id for option in self.options_of(question)}
+        return [option for option in question.options.all() if option.id not in served]
+
     def last_page_number(self) -> int | None:
         """The last on-path page; None only for a form with no pages."""
         return next(reversed(self._page_positions), None)

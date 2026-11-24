@@ -263,6 +263,13 @@ def quiz_attempt_paper_context(sitting: FormProgress) -> dict[str, object]:
         "existing_answers": answers,
         "show_answer_key": True,
         "question_marks": {q.id: _mark(q, answers) for q in path.questions()},
+        # Marks read every current option, so an option added since the
+        # sitting is listed too, or a changed mark would have no visible cause.
+        "options_added_since": {
+            q.id: added
+            for q in path.questions()
+            if (added := path.options_added_since(q))
+        },
         "score_outdated": stored_score_outdated(sitting, path, answers),
         "has_missing_served_items": path.has_missing_served_items,
         "predates_served_order": sitting.served_paper is None,

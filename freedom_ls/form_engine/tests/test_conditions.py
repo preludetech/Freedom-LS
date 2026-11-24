@@ -749,6 +749,35 @@ def test_options_of_a_path_with_no_served_paper_is_the_option_order(
     ]
 
 
+def test_an_option_added_after_serving_is_listed_as_added_and_never_served(
+    served_form: ServedForm,
+) -> None:
+    sf = served_form
+    paper = _reordered_paper(sf)
+    added: QuestionOption = QuestionOptionFactory(question=sf.q_one, order=3)
+
+    path = served_path(_fresh(sf.form), paper)
+
+    assert [o.id for o in path.options_added_since(sf.q_one)] == [added.id]
+    assert added.id not in {o.id for o in path.options_of(sf.q_one)}
+
+
+def test_a_question_whose_options_are_all_served_has_none_added_since(
+    served_form: ServedForm,
+) -> None:
+    path = served_path(_fresh(served_form.form), _reordered_paper(served_form))
+
+    assert path.options_added_since(served_form.q_one) == []
+
+
+def test_a_path_with_no_served_paper_has_no_options_added_since(
+    served_form: ServedForm,
+) -> None:
+    path = compute_path(_fresh(served_form.form), {})
+
+    assert path.options_added_since(path.questions()[0]) == []
+
+
 def _served_form_of_size(question_count: int) -> tuple[Form, ServedPaper]:
     form: Form = FormFactory()
     page = FormPageFactory(form=form, order=0)

@@ -756,6 +756,38 @@ def test_a_correct_option_added_after_submission_marks_the_question_incorrect(
     assert "Marked correct" not in text
 
 
+def test_an_option_added_after_submission_is_listed_last_and_labelled(
+    logged_in_client: Callable[[User], Client],
+) -> None:
+    organisation = OrganisationFactory()
+    form = _quiz()
+    page = _form_page(form=form, order=1)
+    question, (one, two) = _question(
+        page, "Question A", 1, [("A one", True), ("A two", False)]
+    )
+    sitting = _paper_sitting(
+        organisation,
+        form,
+        served_paper=served_paper_of([(page, [question])], {question: [two, one]}),
+    )
+    _answer(sitting, question, one)
+    QuestionOptionFactory(question=question, text="A three", correct=True, order=2)
+
+    document = _page(
+        _admin_client(organisation, logged_in_client), organisation, sitting
+    )
+
+    (paper,) = document.cssselect("section[data-panel='paper']")
+    assert [
+        " ".join(row.text_content().split())
+        for row in paper.cssselect("[data-testid='answer-option']")
+    ] == [
+        "A two",
+        "A one Learner's answer Correct answer",
+        "A three Added after this attempt Correct answer",
+    ]
+
+
 def _sized_sitting(
     organisation: Organisation, page_count: int, questions_per_page: int
 ) -> FormProgress:
