@@ -33,7 +33,7 @@ viewable items that are NOT `Form`; `includes_assessments` = any viewable child 
 Full DemoDev fixture for this feature also needs (run these first):
 - `create_demo_data` — DemoDev site + verified superuser `demodev@email.com`
   (password == email), enrolled in nothing. Does NOT load any course content.
-- `content_save "demo_content/functionality_demo_content_widgets" DemoDev` — creates
+- `content_save demo_content DemoDev` (whole tree; one course dir would retire the others) — creates, among the rest,
   `content-widgets-demo-reference` (coming_soon, free, 5 viewable, no forms).
 - `qa_create_course_access_types DemoDev` — free + application_gated access-type courses.
 

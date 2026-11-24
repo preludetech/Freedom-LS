@@ -7,9 +7,10 @@ metadata:
 
 The canonical content loader is the `content_save` management command (`freedom_ls/content_engine/management/commands/content_save.py`):
 
-`uv run python manage.py content_save "demo_content/<course_dir>" <SITE_NAME>`
+`uv run python manage.py content_save demo_content <SITE_NAME>`
 
-e.g. `content_save "demo_content/functionality_demo_content_widgets" DemoDev`.
+e.g. `content_save demo_content DemoDev`. Always load the whole `demo_content` tree, never one
+course folder: see "One-folder `content_save` retires every other course" below.
 
 - It runs `validate(path)` then `save_content_to_db(path, site_name)` inside a single `@transaction.atomic`.
 - Idempotent: `save_with_uuid` does `update_or_create` keyed on the `uuid` in each file's frontmatter (Topic/Course/Form all carry a `uuid`). Re-running after editing the markdown updates the stored content in place — this is the correct way to refresh content after a markdown edit. Do NOT hand-edit DB HTML.
@@ -53,3 +54,12 @@ because the category registry lives at `demo_content/course_categories.yaml` (th
 whole tree instead: `content_save demo_content DemoDev` (additive; 13 courses on DemoDev, one of
 them `coming_soon`). This worktree's DB had ZERO courses on every site before that — check
 `Course._base_manager.count()` before assuming "an existing course" exists.
+
+## One-folder `content_save` retires every other course (Nov 2026, sacaa-compliance-content-versions-and-access-2-retire-removed-content)
+
+A save now **retires** every content row on the site that the run's paths do not hold (it sets
+`retired_at`; nothing is deleted). Loading one `demo_content/<course>` folder would retire every
+other demo course, so the command refuses a run that would retire a course unless it is passed
+`--allow-course-retire`. Load the whole tree (`content_save demo_content DemoDev`) and the refusal
+never fires. Pass `--allow-course-retire` only when a scenario really needs courses retired.
+Content that comes back into the source on a later save is un-retired.

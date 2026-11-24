@@ -12,8 +12,8 @@ To make the learner course catalogue at `/courses/` show cards on a site (e.g. D
 
 GOTCHA: `learner_management/management/commands/create_demo_data.py` does NOT create any courses or content. It only creates Sites, superusers, learner users (demodev_s1..N), cohorts, and memberships. Running it on an empty DB leaves `/courses/` empty. To get courses you MUST load demo content separately.
 
-Load courses with `content_save` (see [[reference-demo-content-loader]]), one dir per course:
-`uv run python manage.py content_save "demo_content/<dir>" DemoDev`
+Load courses with `content_save` (see [[reference-demo-content-loader]]), always the whole tree (one dir would retire every other course):
+`uv run python manage.py content_save demo_content DemoDev`
 Demo course dirs (each = one Course): functionality_demo_content_widgets, functionality_demo_standard_markdown, functionality_demo_end_with_topic, functionality_demo_end_with_quiz, functionality_demo_course_parts.
 
 To enroll demodev_s1 in courses WITH progress for free, run the existing command

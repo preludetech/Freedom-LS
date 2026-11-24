@@ -10,8 +10,7 @@ Set up twice now (Aug 2026). Everything below is on site **DemoDev**.
 ## The recipe
 
 ```
-uv run python manage.py content_save demo_content/functionality_demo_content_widgets DemoDev
-uv run python manage.py content_save demo_content/functionality_demo_end_with_topic DemoDev
+uv run python manage.py content_save demo_content DemoDev   # whole tree; one course dir would retire the others
 uv run python manage.py qa_create_organisations DemoDev          # RPAS Training (logo) + Northside (no logo)
 uv run python manage.py qa_register_org_course --learner-email demodev@email.com \
     --organisation "RPAS Training" --course-slug content-widgets-demo-reference

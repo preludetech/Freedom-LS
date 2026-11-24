@@ -18,10 +18,7 @@ browser QA pass. Two protagonists, both password == email:
 
 ```
 create_demo_data                                       # idempotent, does NOT rotate existing passwords
-content_save "demo_content/functionality_demo_end_with_quiz" DemoDev
-content_save "demo_content/functionality_demo_end_with_topic" DemoDev
-content_save "demo_content/functionality_demo_content_widgets" DemoDev   # -> content-widgets-demo-reference
-content_save "demo_content/functionality_demo_course_parts" DemoDev
+content_save demo_content DemoDev   # whole tree; one course dir would retire the others
 qa_create_form_question_types            # positional SITE_NAME, default DemoDev
 qa_create_quiz_progression_block         # --site-name
 qa_create_free_text_survey               # --site-name
