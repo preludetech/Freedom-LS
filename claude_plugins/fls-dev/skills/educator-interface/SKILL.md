@@ -67,6 +67,19 @@ table, with a "Preview" button on every row.
 - The outline table declares `cards_when_narrow`: it shows as cards at 768, on a phone and beside
   an open quick view, and as a table only where its columns fit.
 
+## Submitted answers
+
+A page that shows a learner's submitted answers draws them through the answer templates in
+`form_engine/templates/form_engine/answers/`, never through the form's input templates with
+`read_only`. A disabled field looks editable.
+
+- A text answer (short or long text, number, date, time, email, URL, phone) reads as plain text
+  under a "Learner's answer" label, with its line breaks kept.
+- A choice answer (multiple choice, checkboxes, dropdown) lists every option as a row, with a
+  round indicator for single-select and a square one for multi-select. The chosen rows carry
+  "Learner's answer" and the correct rows carry "Correct answer".
+- A file answer names the file and its size, and has no upload controls.
+
 ## Course names
 
 A course another organisation owns names its owner wherever an educator reads or picks it, so two
@@ -96,3 +109,5 @@ What QA checks in a screenshot of an educator page, on top of the panel framewor
 - A course another organisation owns shows its owner: "(<organisation>)" after the title in a
   picker, filter or dialog title, a muted "Shared by <organisation>" line in a table cell; the
   viewing organisation's own courses show the title alone, and no label wraps out of its control.
+- A page showing submitted answers has no form fields: text answers read as text under "Learner's
+  answer", and every choice question, a dropdown included, lists its options as rows.
