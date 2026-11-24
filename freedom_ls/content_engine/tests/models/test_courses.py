@@ -1294,9 +1294,6 @@ def test_shared_by_reads_prefetched_organisations_without_a_query(
         assert prefetched.shared_by(viewing) == "Northwind Logistics"
 
 
-# A child a content save retired drops out of the learner outline.
-
-
 class _Outline(NamedTuple):
     course: Course
     part: CoursePart
@@ -1407,8 +1404,6 @@ def test_children_flat_keeps_a_collection_item_whose_child_is_gone(mock_site_con
 
     assert [item.child for item in course.collection_items_flat()] == [None]
 
-
-# Every retirable model answers is_retired and not_retired() the same way.
 
 RETIRABLE_FACTORIES = [
     CourseFactory,
