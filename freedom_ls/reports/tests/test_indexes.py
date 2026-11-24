@@ -15,6 +15,7 @@ import pytest
 import time_machine
 from PIL import Image
 
+from django.contrib.sites.models import Site
 from django.core.files.base import ContentFile
 from django.test import override_settings
 from django.utils import timezone
@@ -73,6 +74,7 @@ from freedom_ls.reports.indexes import (
     build_course_catalogue,
     build_question_index,
     build_sat_questions,
+    completed_sitting_ids_of,
     index_distractors,
     learner_sort_key,
     load_active_memberships,
@@ -516,6 +518,27 @@ class TestLoadFormProgressRows:
         )
 
         assert [row.id for row in rows] == [newer.id, older.id]
+
+    def test_sittings_with_equal_times_fall_back_to_pk_mirroring_the_numbering_order(
+        self, mock_site_context: Site
+    ) -> None:
+        course = CourseFactory()
+        quiz = FormFactory(strategy=FormStrategy.QUIZ)
+        _attach(course, quiz)
+        registration, (record,) = _cohort_registered_for(course)
+        with time_machine.travel("2026-01-01T00:00:00Z", tick=False):
+            sittings = [
+                form_progress(record, quiz, completed_time=timezone.now(), scores={})
+                for _ in range(4)
+            ]
+        by_pk = sorted(sitting.pk for sitting in sittings)
+
+        rows = load_form_progress_rows(
+            mock_site_context.pk, [registration], [record.learner_id], {quiz.id}
+        )
+
+        assert [row.id for row in rows] == by_pk[::-1]
+        assert completed_sitting_ids_of(sittings[0]) == by_pk
 
     def test_an_incomplete_sitting_sorts_after_every_completed_one(
         self, mock_site_context

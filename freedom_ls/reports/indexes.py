@@ -392,7 +392,7 @@ def load_form_progress_rows(
             form_id__in=form_ids,
         )
         .select_related("form", "course_attempt__course_progress")
-        .order_by(F("completed_time").desc(nulls_last=True), "-start_time")
+        .order_by(F("completed_time").desc(nulls_last=True), "-start_time", "-pk")
     )
 
 
@@ -416,7 +416,7 @@ def completed_sitting_ids_of(sitting: FormProgress) -> list[UUID]:
             form_id=sitting.form_id,
             completed_time__isnull=False,
         )
-        .order_by("completed_time", "start_time")
+        .order_by("completed_time", "start_time", "pk")
         .values_list("pk", flat=True)
     )
 
