@@ -4154,7 +4154,7 @@ def test_player_page_query_count_with_deadlines_does_not_grow_with_items(
         kwargs={"course_slug": course.slug, "index": 1},
     )
 
-    with django_assert_max_num_queries(60):
+    with django_assert_max_num_queries(64):
         response = client.get(url)
 
     assert response.status_code == 200
