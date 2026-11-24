@@ -107,6 +107,27 @@ def test_an_organisation_admin_sees_deactivate_on_an_active_row_of_an_active_coh
 
 
 @pytest.mark.django_db
+def test_a_cards_deactivate_button_sits_in_the_item_footer_not_the_value_grid(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    """A card's Deactivate button used to render inside the label and value grid,
+    indented under the labels. It belongs in the card's item footer, at the
+    title's left edge."""
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    _register(organisation, course, name="Cohort A")
+    client = role_holder_client(organisation)
+
+    document = _get_document(client, _page_url(organisation, course))
+
+    (panel,) = document.cssselect("section[data-panel='cohorts']")
+    (card,) = panel.cssselect("li.panel-data-table-card")
+    footer_buttons = card.cssselect("[data-item-footer] button")
+    assert [b.get("aria-label") for b in footer_buttons] == ["Deactivate Cohort A"]
+    assert card.cssselect("dl button") == []
+
+
+@pytest.mark.django_db
 def test_no_deactivate_on_an_inactive_registration(
     role_holder_client: RoleHolderClient,
 ) -> None:
