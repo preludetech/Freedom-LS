@@ -12,6 +12,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 ### In progress
 
 - 🔴 High · `sacaa-complianc-deletion-and-declaration-1-force-delete` (SACAA record retention and declarations)
+- 🔴 High · `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` (SACAA record retention and declarations)
 - 🔴 High · `sacaa-compliance-4-attempt-review` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-2-retire-removed-content` (SACAA content versions and access)
 - 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
@@ -20,7 +21,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### Ready to start
 
-- 🔴 High · `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` (SACAA record retention and declarations)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-4-question-access` (SACAA content versions and access)
 - 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
 - 🔴 High · `learner-public-profile-2-profile-and-page` (Learner public profiles)
@@ -80,7 +80,7 @@ Priority: 🔴 High
 Keeping learner records for SACAA's five-year rule, and signed quiz declarations, for training organisations audited by SACAA. Parent: `sacaa-complianc-deletion-and-declaration`.
 
 - `sacaa-complianc-deletion-and-declaration-1-force-delete` — **in progress** — Admins can no longer delete users; superusers force delete a user or learner with a logged reason; users get a last-active time.
-- `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` — **ready** — A quiz can make learners tick a declaration and type their name before the first page; FLS stores it immutably.
+- `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` — **in progress** — A quiz can make learners tick a declaration and type their name before the first page; FLS stores it immutably.
 
 ![SACAA record retention and declarations](roadmap_diagrams/sacaa-record-retention-and-declarations.svg)
 
