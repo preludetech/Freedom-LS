@@ -30,19 +30,21 @@
                      class="text-left space-y-4"
                      data-testid="declaration-text">{{ declaration_text|linebreaks }}</div>
 
-                <label class="flex items-start gap-2 text-left">
-                    <input type="checkbox"
-                           name="agreed"
-                           id="id_agreed"
-                           data-testid="declaration-agreed"
-                           {% if declaration_form.agreed.value and not declaration_form.agreed.errors %}checked{% endif %}
-                           {% if declaration_form.agreed.errors %}aria-invalid="true" autofocus{% endif %}
-                           aria-describedby="declaration-text{% if declaration_form.agreed.errors %} agreed-error{% endif %}">
-                    <span>I make this declaration.</span>
-                </label>
-                {% if declaration_form.agreed.errors %}
-                    <p id="agreed-error" class="text-error text-sm text-left">{{ declaration_form.agreed.errors.0 }}</p>
-                {% endif %}
+                <div class="space-y-2">
+                    <label class="flex items-start gap-2 text-left">
+                        <input type="checkbox"
+                               name="agreed"
+                               id="id_agreed"
+                               data-testid="declaration-agreed"
+                               {% if declaration_form.agreed.value and not declaration_form.agreed.errors %}checked{% endif %}
+                               {% if declaration_form.agreed.errors %}aria-invalid="true" autofocus{% endif %}
+                               aria-describedby="declaration-text{% if declaration_form.agreed.errors %} agreed-error{% endif %}">
+                        <span>I make this declaration.</span>
+                    </label>
+                    {% if declaration_form.agreed.errors %}
+                        <p id="agreed-error" class="text-error text-sm text-left">{{ declaration_form.agreed.errors.0 }}</p>
+                    {% endif %}
+                </div>
 
                 <div class="space-y-2 text-left">
                     <label for="id_typed_name">Full name</label>

@@ -568,6 +568,21 @@ def test_a_field_error_is_linked_to_its_input_and_takes_focus(
 
 
 @pytest.mark.django_db
+def test_the_unticked_box_error_shares_a_group_with_its_tick_box(
+    declaration_course, client
+):
+    """The error used to be a separate form child, so a full section gap opened
+    between the tick box and its error."""
+    _response, document = _rejected_page(declaration_course, client, agreed="")
+
+    [box] = document.xpath('//*[@id="id_agreed"]')
+    [error] = document.xpath('//*[@id="agreed-error"]')
+    group = error.getparent()
+    assert group in box.iterancestors()
+    assert group.tag != "form"
+
+
+@pytest.mark.django_db
 def test_the_first_field_in_error_alone_takes_focus(declaration_course, client):
     _response, document = _rejected_page(
         declaration_course, client, agreed="", typed_name=""
