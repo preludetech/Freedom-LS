@@ -35,11 +35,14 @@ from freedom_ls.educator_interface.tests.helpers import (
     _add_to_cohort_url,
     _cohort,
     _cohort_admin_on,
+    _cohort_history_tab,
     _dialog_title,
     _edit_name_url,
     _empty_picker_text,
     _get_fragment,
+    _history_rows,
     _interface_url,
+    _learner_page,
     _learner_register_url,
     _learner_reregister_url,
     _learner_state_url,
@@ -67,6 +70,7 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
+from freedom_ls.learner_management.learner_actions import move_between_cohorts
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortMembership,
@@ -2314,3 +2318,65 @@ def test_registering_a_learner_for_a_course_works_only_when_it_is_registerable(
             learner=learner, course=courses[row]
         ).exists(),
     ) == ((204 if registered else 422), registered)
+
+
+@pytest.mark.django_db
+def test_the_add_to_cohort_picker_on_a_learners_page_offers_no_inactive_cohort(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    inactive = CohortFactory(organisation=organisation, is_active=False)
+    learner = LearnerFactory(organisation=organisation)
+
+    response = staff_client.get(
+        _interface_url(
+            organisation.slug, f"learners/{learner.pk}/__actions/add_to_cohort"
+        ),
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert str(inactive.pk) not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_the_add_to_cohort_picker_offers_no_inactive_cohort_after_a_submit_with_no_choice(
+    staff_client: Client,
+):
+    """A submit with no cohort chosen used to re-render the select with the
+    organisation's inactive cohorts, which the first render never offered."""
+    organisation = OrganisationFactory()
+    inactive = CohortFactory(organisation=organisation, is_active=False)
+    learner = LearnerFactory(organisation=organisation)
+
+    response = staff_client.post(
+        _interface_url(
+            organisation.slug, f"learners/{learner.pk}/__actions/add_to_cohort"
+        ),
+        {"cohort": ""},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 422
+    assert str(inactive.pk) not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_a_move_shows_on_both_cohorts_and_the_learner_history_tabs(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    source = CohortFactory(organisation=organisation, name="Alpha")
+    destination = CohortFactory(organisation=organisation, name="Beta")
+    CohortMembershipFactory(learner=learner, cohort=source)
+    move_between_cohorts(learner, source, destination, actor=UserFactory())
+
+    shown = [
+        _history_rows(_cohort_history_tab(staff_client, source)),
+        _history_rows(_cohort_history_tab(staff_client, destination)),
+        _history_rows(_learner_page(staff_client, learner, "history")),
+    ]
+
+    assert [[row[2] for row in rows] for rows in shown] == [
+        ["Learner moved between cohorts From Alpha to Beta"]
+    ] * 3

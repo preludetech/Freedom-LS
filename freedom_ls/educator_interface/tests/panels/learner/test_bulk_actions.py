@@ -40,6 +40,7 @@ from freedom_ls.educator_interface.tests.helpers import (
     _cohort_admin_on,
     _cohort_with_courses,
     _course_option_values,
+    _get_document,
     _interface_url,
     _learners_bulk_url,
     _scoped_request,
@@ -50,6 +51,7 @@ from freedom_ls.learner_management.factories import (
     CohortFactory,
     CohortMembershipFactory,
     LearnerCourseRegistrationFactory,
+    LearnerFactory,
 )
 from freedom_ls.learner_management.models import (
     Cohort,
@@ -1344,3 +1346,33 @@ def test_a_retired_bulk_action_slug_answers_404_for_a_plain_request(
     )
 
     assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_the_learners_bar_promotes_four_actions_and_lists_the_rest_with_the_destructive_one_last_under_more(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    LearnerFactory(organisation=organisation)
+
+    document = _get_document(
+        staff_client, _interface_url(organisation.slug, "learners")
+    )
+
+    def labels(selector: str) -> list[str]:
+        return [
+            " ".join(element.text_content().split())
+            for element in document.cssselect(selector)
+        ]
+
+    assert labels("div[data-total-count] > div > fieldset > button[formaction]") == [
+        "Add to cohort",
+        "Deactivate",
+        "Reactivate",
+        "Register for a course",
+    ]
+    assert labels("fieldset > span [role='menu'] button[formaction]") == [
+        "Deactivate a course registration",
+        "Resend setup email",
+        "Remove from cohort",
+    ]

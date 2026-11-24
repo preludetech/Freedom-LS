@@ -5,8 +5,11 @@ from __future__ import annotations
 import contextlib
 import json
 import uuid
-from typing import cast
+from collections.abc import Callable
+from types import SimpleNamespace
+from typing import TYPE_CHECKING, cast
 
+import lxml.html
 import pytest
 
 from django.contrib.sites.models import Site
@@ -15,8 +18,11 @@ from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
+from freedom_ls.comms.factories import NotificationFactory
 from freedom_ls.comms.models import Notification
 from freedom_ls.content_engine.models import Course
+from freedom_ls.educator_interface.events import LEARNER_CHANGED
 from freedom_ls.educator_interface.panels.cohort.bulk_actions import (
     RegisterCohortForCourseBulkAction,
 )
@@ -40,6 +46,7 @@ from freedom_ls.learner_management.models import (
     Learner,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.bulk_actions import (
     BULK_ACTIONS,
     BulkCount,
@@ -52,6 +59,9 @@ from freedom_ls.panel_framework.bulk_runs import (
     run_summary,
 )
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
+
+if TYPE_CHECKING:
+    from django.test.client import _MonkeyPatchedWSGIResponse
 
 GONE = "00000000-0000-0000-0000-000000000001"
 DEACTIVATE = (
@@ -421,3 +431,133 @@ def test_a_bulk_register_picker_resolves_a_course_only_when_it_is_registerable(
 
     with outcome:
         action().resolve_target(organisation, {"course": str(courses[row].pk)})
+
+
+# bulk run status, polled by the table a background run was started from.
+# The route is the framework's; these cover its wiring into this interface
+# (the organisation scope, the refresh event and the notification hooks).
+
+
+def _run_for(user: User, organisation: Organisation, **fields: object):
+    return BulkActionRun.objects.create(
+        site=organisation.site,
+        scope=organisation,
+        requested_by=user,
+        action_path=(
+            f"{DeactivateLearnersBulkAction.__module__}."
+            f"{DeactivateLearnersBulkAction.__name__}"
+        ),
+        table_key="learners",
+        action_name="deactivate",
+        keys=[str(LearnerFactory(organisation=organisation).pk) for _ in range(2)],
+        **fields,
+    )
+
+
+def _run_status_url(organisation: Organisation, run: BulkActionRun) -> str:
+    return reverse(
+        "educator_interface:interface",
+        kwargs={
+            "organisation_slug": organisation.slug,
+            "path_string": f"learners/__runs/{run.pk}",
+        },
+    )
+
+
+@pytest.fixture
+def run_world(logged_in_client: Callable[[User], Client], mock_site_context: Site):
+    organisation = OrganisationFactory()
+    requester = cast(User, UserFactory(superuser=True))
+    return SimpleNamespace(
+        organisation=organisation,
+        requester=requester,
+        client=logged_in_client(requester),
+        run=_run_for(requester, organisation),
+    )
+
+
+def _poll(world: SimpleNamespace) -> _MonkeyPatchedWSGIResponse:
+    client: Client = world.client
+    return client.get(
+        _run_status_url(world.organisation, world.run), HTTP_HX_REQUEST="true"
+    )
+
+
+@pytest.mark.django_db
+def test_an_unfinished_run_answers_204(run_world: SimpleNamespace):
+    response = _poll(run_world)
+
+    assert (response.status_code, response.content) == (204, b"")
+
+
+@pytest.mark.django_db
+def test_a_finished_run_answers_the_result_modal_and_refreshes_the_table(
+    run_world: SimpleNamespace, mock_site_context: Site
+):
+    run_bulk_action(str(run_world.run.pk), mock_site_context.pk)
+
+    response = _poll(run_world)
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert response.status_code == 200
+    assert "2 learners changed." in document.text_content()
+    assert json.loads(response["HX-Trigger"]) == {LEARNER_CHANGED: {"ids": []}}
+
+
+@pytest.mark.django_db
+def test_a_finished_run_marks_its_notification_read(
+    run_world: SimpleNamespace, mock_site_context: Site
+):
+    run_bulk_action(str(run_world.run.pk), mock_site_context.pk)
+    notification = NotificationFactory(
+        user=run_world.requester,
+        category="bulk_action.finished",
+        target=run_world.run,
+        data={"summary": "Deactivate finished: 2 learners changed."},
+    )
+
+    _poll(run_world)
+
+    notification.refresh_from_db()
+    assert notification.read_at is not None
+
+
+@pytest.mark.django_db
+def test_an_unfinished_run_leaves_its_notification_unread(
+    run_world: SimpleNamespace,
+):
+    notification = NotificationFactory(
+        user=run_world.requester,
+        category="bulk_action.finished",
+        target=run_world.run,
+        data={"summary": "s"},
+    )
+
+    _poll(run_world)
+
+    notification.refresh_from_db()
+    assert notification.read_at is None
+
+
+@pytest.mark.django_db
+def test_a_run_is_a_404_for_another_user_of_the_organisation(
+    run_world: SimpleNamespace, logged_in_client
+):
+    other = cast(User, UserFactory(superuser=True))
+
+    response = logged_in_client(other).get(
+        _run_status_url(run_world.organisation, run_world.run)
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_run_is_a_404_through_another_organisations_slug(
+    run_world: SimpleNamespace,
+):
+    elsewhere = OrganisationFactory()
+
+    response = run_world.client.get(_run_status_url(elsewhere, run_world.run))
+
+    assert response.status_code == 404

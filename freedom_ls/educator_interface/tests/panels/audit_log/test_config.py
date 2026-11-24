@@ -19,6 +19,7 @@ from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.educator_interface.tests.helpers import (
     _audit_log_document,
     _audit_log_url,
+    _cohort_history_url,
     _get_document,
     _interface_url,
     _record_run,
@@ -256,3 +257,48 @@ def test_the_audit_log_export_omits_its_own_entry_and_a_second_export_holds_it(
         [row[4] for row in first_rows if "exported" in row[4]],
         len([row for row in second_rows if "exported" in row[4]]),
     ) == ([], 1)
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_gets_no_organisation_audit_log(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, educator, "cohort_admin", cohort)
+
+    response = logged_in_client(educator).get(
+        _interface_url(organisation.slug, "audit-log")
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("role", "target"),
+    [
+        ("cohort_admin", "audit_log"),
+        ("cohort_viewer", "cohort_history"),
+        ("cohort_viewer", "audit_log"),
+    ],
+)
+def test_a_cohort_role_gets_a_404_on_the_exports_it_may_not_read(
+    mock_site_context, logged_in_client, role: str, target: str
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, educator, role, cohort)
+    url, key = (
+        (_cohort_history_url(cohort), "history-export")
+        if target == "cohort_history"
+        else (_audit_log_url(organisation), "audit_log-export")
+    )
+
+    response = logged_in_client(educator).get(url, {key: "csv"})
+
+    assert response.status_code == 404

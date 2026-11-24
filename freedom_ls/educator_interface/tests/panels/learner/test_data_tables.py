@@ -8,20 +8,33 @@ Registered Courses column resolves through its renamed cell template.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from typing import cast
 
 import lxml.html
 import pytest
 
+from django.contrib.sites.models import Site
 from django.db import connection
 from django.template.loader import render_to_string
-from django.test import RequestFactory
+from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.educator_interface.panels.learner.data_tables import LearnerDataTable
+from freedom_ls.educator_interface.tests.helpers import (
+    _get_document,
+    _interface_url,
+    _notes_for,
+    _shared_and_own_course_world,
+    _shared_by_notes_by_row,
+    organisation_admin_viewer,
+    page_after_adding_rows,
+    profile_picture_sources,
+)
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -899,3 +912,51 @@ def test_learners_list_empty_cohorts_and_courses_cells_read_the_same_em_dash(
     assert {dash.text_content().strip() for dash in dashes} == {"—"}
     for cell in document.xpath("//tbody//td"):
         assert cell.text_content().strip() != "-"
+
+
+def _add_learner_rows(organisation: Organisation, count: int) -> None:
+    for _ in range(count):
+        LearnerFactory(
+            organisation=organisation, user=UserFactory(with_profile_picture=True)
+        )
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("mock_site_context")
+def test_more_learner_rows_with_pictures_cost_no_more_queries(
+    django_assert_max_num_queries,
+) -> None:
+    content = page_after_adding_rows(
+        OrganisationFactory(),
+        "learners",
+        _add_learner_rows,
+        django_assert_max_num_queries,
+    )
+
+    assert len(profile_picture_sources(content)) >= 5
+
+
+@pytest.mark.django_db
+def test_learners_list_names_the_owner_under_the_shared_course_entry_only(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+):
+    """Two learners on same-titled courses showed one bare title each, with
+    nothing to tell the shared course from the organisation's own."""
+    organisation, own, shared = _shared_and_own_course_world()
+    on_shared = LearnerFactory(
+        user=UserFactory(first_name="Shared", last_name="Learner"),
+        organisation=organisation,
+    )
+    on_own = LearnerFactory(
+        user=UserFactory(first_name="Own", last_name="Learner"),
+        organisation=organisation,
+    )
+    LearnerCourseRegistrationFactory(learner=on_shared, course=shared)
+    LearnerCourseRegistrationFactory(learner=on_own, course=own)
+    client = logged_in_client(organisation_admin_viewer(organisation))
+
+    document = _get_document(client, _interface_url(organisation.slug, "learners"))
+
+    rows = _shared_by_notes_by_row(document)
+    assert _notes_for(rows, "Shared Learner") == ["Shared by Northwind Logistics"]
+    assert _notes_for(rows, "Own Learner") == []

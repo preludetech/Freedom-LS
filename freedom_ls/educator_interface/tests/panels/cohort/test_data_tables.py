@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 
 import lxml.html
 import pytest
 
+from django.contrib.sites.models import Site
 from django.db import connection
 from django.http import HttpRequest, QueryDict
 from django.template.loader import render_to_string
 from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
 
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import (
     CourseFactory,
 )
@@ -21,9 +24,15 @@ from freedom_ls.educator_interface.panels.cohort.data_tables import (
 )
 from freedom_ls.educator_interface.panels.common.filters import VisibleCourseFilter
 from freedom_ls.educator_interface.tests.helpers import (
+    _add_member,
     _educator_request,
     _get_document,
     _interface_url,
+    _learner_page,
+    _notes_for,
+    _shared_and_own_course_world,
+    _shared_by_notes_by_row,
+    organisation_admin_viewer,
 )
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -463,3 +472,53 @@ def test_the_courses_tab_shows_each_registrations_status_badge(
     text = " ".join(region.text_content().split())
     assert "Active" in text
     assert "Inactive" in text
+
+
+@pytest.mark.django_db
+def test_a_members_page_renders_an_inactive_cohorts_row_without_any_action(
+    staff_client: Client,
+):
+    cohort = CohortFactory(
+        organisation=OrganisationFactory(), is_active=False, name="Dormant group"
+    )
+    learner = _add_member(cohort)
+
+    document = _learner_page(staff_client, learner)
+
+    (row,) = document.xpath("//tr[contains(., 'Dormant group')]")
+    assert row.cssselect("button") == []
+
+
+@pytest.mark.django_db
+def test_a_members_page_renders_an_inactive_cohorts_row_with_no_move(
+    staff_client: Client,
+):
+    cohort = CohortFactory(
+        organisation=OrganisationFactory(), is_active=False, name="Dormant group"
+    )
+    learner = _add_member(cohort)
+
+    document = _learner_page(staff_client, learner)
+
+    (row,) = document.xpath("//tr[contains(., 'Dormant group')]")
+    assert "__actions/move" not in lxml.html.tostring(row).decode()
+
+
+@pytest.mark.django_db
+def test_cohorts_list_names_the_owner_under_the_shared_course_only(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+):
+    """The Courses column of the cohorts list gave a shared course and an own
+    course of one title the same bare text."""
+    organisation, own, shared = _shared_and_own_course_world()
+    on_shared = CohortFactory(organisation=organisation, name="Shared cohort")
+    on_own = CohortFactory(organisation=organisation, name="Own cohort")
+    CohortCourseRegistrationFactory(cohort=on_shared, course=shared)
+    CohortCourseRegistrationFactory(cohort=on_own, course=own)
+    client = logged_in_client(organisation_admin_viewer(organisation))
+
+    document = _get_document(client, _interface_url(organisation.slug, "cohorts"))
+
+    rows = _shared_by_notes_by_row(document)
+    assert _notes_for(rows, "Shared cohort") == ["Shared by Northwind Logistics"]
+    assert _notes_for(rows, "Own cohort") == []

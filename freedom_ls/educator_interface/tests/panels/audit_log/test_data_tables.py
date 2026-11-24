@@ -30,8 +30,13 @@ from freedom_ls.educator_interface.tests.helpers import (
     _audit_log_document,
     _audit_log_rows,
     _audit_log_url,
+    _export_audit_csv,
     _get_document,
+    _history_entry,
+    _history_export_url,
+    _history_rows,
     _interface_url,
+    _learner_page,
     _record_run,
     _row_details,
     _visible_text,
@@ -746,3 +751,31 @@ def test_more_audit_entries_with_pictures_cost_no_more_queries(
     )
 
     assert len(profile_picture_sources(content)) >= 10
+
+
+@pytest.mark.django_db
+def test_an_export_entry_shows_on_the_audit_log_and_not_on_the_learner_history(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(
+        organisation=organisation, user__first_name="Ada", user__last_name="Able"
+    )
+    _history_entry(learner)
+    _export_audit_csv(staff_client, _history_export_url(learner))
+
+    audit_rows = _audit_log_rows(
+        _get_document(staff_client, _audit_log_url(organisation))
+    )
+    history_rows = _history_rows(_learner_page(staff_client, learner, "history"))
+
+    exported = [row for row in audit_rows if "Audit log exported" in row[2]]
+    assert (
+        len(exported),
+        "Ada Able: 1 entry" in exported[0][2],
+        len(history_rows),
+    ) == (
+        1,
+        True,
+        1,
+    )

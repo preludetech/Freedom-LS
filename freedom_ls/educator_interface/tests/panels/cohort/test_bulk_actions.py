@@ -23,6 +23,7 @@ from freedom_ls.educator_interface.tests.helpers import (
     _cohort_admin_on,
     _cohort_url,
     _course_option_values,
+    _get_document,
     _interface_url,
     _post,
     _scoped_request,
@@ -411,3 +412,27 @@ def test_bulk_cohort_unregister_deactivates_the_active_registration(
     assert [call.args[0] for call in fire.call_args_list] == [
         "cohort_registration.deactivated"
     ]
+
+
+@pytest.mark.django_db
+def test_the_cohorts_bar_promotes_all_four_actions_and_has_no_more_menu(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    CohortFactory(organisation=organisation)
+
+    document = _get_document(staff_client, _interface_url(organisation.slug, "cohorts"))
+
+    def labels(selector: str) -> list[str]:
+        return [
+            " ".join(element.text_content().split())
+            for element in document.cssselect(selector)
+        ]
+
+    assert labels("div[data-total-count] > div > fieldset > button[formaction]") == [
+        "Register for a course",
+        "Deactivate a course registration",
+        "Deactivate",
+        "Reactivate",
+    ]
+    assert labels("[role='menu'] button[formaction]") == []
