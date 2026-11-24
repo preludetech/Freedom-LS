@@ -21,7 +21,12 @@ from freedom_ls.content_engine.factories import (
     CourseReferencePartFactory,
     TopicFactory,
 )
-from freedom_ls.content_engine.models import Course, CoursePart, Topic
+from freedom_ls.content_engine.models import (
+    ContentCollectionItem,
+    Course,
+    CoursePart,
+    Topic,
+)
 from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.deadlines.models import AfterAccessEnded, DeadlineKind
 from freedom_ls.deadlines.policy import ResolvedDeadlinePolicy
@@ -57,11 +62,15 @@ from freedom_ls.learner_interface.utils import (
     derive_part_status,
     get_all_courses,
     get_completed_courses,
+    get_content_status,
     get_course_index,
     get_course_registrations,
     get_current_courses,
+    get_item_part,
+    get_resume_index,
     next_deadline_card,
     next_entry,
+    outstanding_items,
     previous_entry,
 )
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
@@ -1188,3 +1197,114 @@ def test_course_reference_topics_query_count_does_not_grow_with_content(
 
     with django_assert_max_num_queries(REFERENCE_QUERY_BOUND):
         course_reference_topics(course)
+
+
+@pytest.fixture
+def part_and_topic_course(mock_site_context):
+    course = CourseFactory()
+    part = CoursePartFactory()
+    first, second, loose = TopicFactory(), TopicFactory(), TopicFactory()
+    course.items.create(child=part, order=0)
+    course.items.create(child=loose, order=1)
+    part.items.create(child=first, order=0)
+    part.items.create(child=second, order=1)
+    return course, part, first, second, loose
+
+
+@pytest.mark.django_db
+def test_get_course_index_omits_a_retired_child_of_a_part(part_and_topic_course):
+    course, _, first, second, _ = part_and_topic_course
+    retire(first)
+
+    (part_row, _) = get_course_index(UserFactory(), course, can_access_content=False)
+
+    assert [child["title"] for child in part_row["children"]] == [second.title]
+
+
+@pytest.mark.django_db
+def test_get_course_index_omits_a_retired_part_and_numbers_the_rest_from_one(
+    part_and_topic_course,
+):
+    course, part, _, _, loose = part_and_topic_course
+    user = UserFactory()
+    record = course_progress_record(course, user)
+    retire(part)
+
+    (row,) = get_course_index(
+        user, course, can_access_content=True, course_progress=record
+    )
+
+    assert row["title"] == loose.title
+    assert row["url"].endswith("/1/")
+
+
+@pytest.mark.django_db
+def test_get_content_status_reads_a_part_as_complete_when_its_live_children_are(
+    part_and_topic_course,
+):
+    course, part, first, second, _ = part_and_topic_course
+    user = UserFactory()
+    retire(first)
+    done = topic_completion(course, user, second, complete_time=timezone.now())
+    part_item = ContentCollectionItem.objects.get(child_id=part.pk)
+    second_item = ContentCollectionItem.objects.get(child_id=second.pk)
+
+    status, _ = get_content_status(part_item, READY, {second_item.pk: done}, {})
+
+    assert status == COMPLETE
+
+
+@pytest.mark.django_db
+def test_get_item_part_is_none_for_a_topic_in_a_retired_part(part_and_topic_course):
+    course, part, first, _, _ = part_and_topic_course
+    retire(part)
+
+    assert get_item_part(Course.objects.get(pk=course.pk), first) is None
+
+
+@pytest.mark.django_db
+def test_get_resume_index_counts_only_live_items(part_and_topic_course):
+    course, _, first, second, _ = part_and_topic_course
+    user = UserFactory()
+    record = course_progress_record(course, user)
+    record.last_accessed_item = ContentCollectionItem.objects.get(child_id=second.pk)
+    record.save()
+    retire(first)
+
+    assert get_resume_index(user, Course.objects.get(pk=course.pk)) == 1
+
+
+@pytest.mark.django_db
+def test_outstanding_items_is_empty_once_every_live_child_is_done(
+    part_and_topic_course,
+):
+    course, _, first, second, loose = part_and_topic_course
+    user = UserFactory()
+    retire(first)
+    topic_completion(course, user, second, complete_time=timezone.now())
+    topic_completion(course, user, loose, complete_time=timezone.now())
+    record = course_progress_record(course, user)
+
+    assert outstanding_items(record, Course.objects.get(pk=course.pk)) == []
+
+
+@pytest.mark.django_db
+def test_course_reference_topics_drops_a_retired_topic(mock_site_context):
+    course = CourseFactory()
+    live: Topic = TopicFactory()
+    gone: Topic = TopicFactory()
+    _reference_part(course, gone, live)
+    retire(gone)
+
+    (part,) = course_reference_topics(course)
+
+    assert part.topics == [live]
+
+
+@pytest.mark.django_db
+def test_course_reference_topics_drops_a_retired_part(mock_site_context):
+    course = CourseFactory()
+    part = _reference_part(course, TopicFactory())
+    retire(part)
+
+    assert course_reference_topics(course) == []

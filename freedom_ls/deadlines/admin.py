@@ -97,7 +97,7 @@ def _record_deadlines(record: CourseProgress) -> CourseDeadlines:
     cached = record.__dict__.get(_DEADLINES_ATTR)
     if isinstance(cached, CourseDeadlines):
         return cached
-    deadlines = course_deadlines(record)
+    deadlines = course_deadlines(record, include_retired=True)
     record.__dict__[_DEADLINES_ATTR] = deadlines
     return deadlines
 
@@ -111,7 +111,7 @@ def effective_deadlines(model_admin: ModelAdmin, record: CourseProgress) -> Safe
         return format_html("{}", "")
     deadlines = _record_deadlines(record)
     lines: list[tuple[str, str, str]] = []
-    for item in record.course.viewable_collection_items():
+    for item in record.course.viewable_collection_items(include_retired=True):
         resolved = deadlines.items.get(item.pk)
         if resolved is None or resolved.due_at is None:
             continue

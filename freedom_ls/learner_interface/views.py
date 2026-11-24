@@ -37,6 +37,7 @@ from freedom_ls.content_engine.models import (
     CourseVisibility,
     Topic,
 )
+from freedom_ls.content_engine.models.courses import live_collection_items
 from freedom_ls.course_access.analytics_events import (
     record_course_completed,
     record_course_self_registered,
@@ -1794,7 +1795,11 @@ def _player_chrome_context(
     # its 1-based index in the already-computed viewable_items, in memory.
     current_part_index: int | None = None
     if current_part is not None:
-        part_children = current_part.children()
+        part_children = [
+            item.child
+            for item in live_collection_items(current_part)
+            if item.child is not None
+        ]
         if part_children:
             first_child = part_children[0]
             for n, item in enumerate(viewable_items, start=1):

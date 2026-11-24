@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-from freedom_ls.content_engine.factories import CourseFactory
+from django.utils import timezone
+
+from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.content_engine.models import ContentCollectionItem, Course, Topic
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -18,6 +21,8 @@ from freedom_ls.learner_progress.tests.helpers import (
     make_move_world,
 )
 from freedom_ls.learner_progress.utils import (
+    calculate_course_progress_percentage,
+    completable_items,
     ensure_course_progress_record,
     ensure_course_progress_records_for_cohort_registration,
     move_progress_preview,
@@ -25,6 +30,7 @@ from freedom_ls.learner_progress.utils import (
 )
 from freedom_ls.site_aware_models.models import _thread_locals
 from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.retire import retire
 
 # Tests for ensure_course_progress_record and the cohort fan-out.
 #
@@ -331,3 +337,52 @@ class TestMoveProgressPreview:
         assert sorted(records.values_list("learner_id", flat=True)) == sorted(
             [racing_learner.id, other_learner.id]
         )
+
+
+@pytest.fixture
+def two_topic_course(mock_site_context) -> tuple[Course, Topic, Topic]:
+    course: Course = CourseFactory()
+    first: Topic = TopicFactory()
+    second: Topic = TopicFactory()
+    course.items.create(child=first, order=0)
+    course.items.create(child=second, order=1)
+    return course, first, second
+
+
+@pytest.mark.django_db
+def test_calculate_course_progress_percentage_leaves_a_retired_child_out_of_the_denominator(
+    two_topic_course,
+):
+    course, first, second = two_topic_course
+    done = {ContentCollectionItem.objects.get(child_id=first.pk).pk}
+    retire(second)
+
+    percentage = calculate_course_progress_percentage(
+        Course.objects.get(pk=course.pk), done
+    )
+
+    assert percentage == 100
+
+
+@pytest.mark.django_db
+def test_completable_items_omits_a_retired_child(two_topic_course):
+    course, first, second = two_topic_course
+    retire(first)
+
+    items = completable_items(Course.objects.get(pk=course.pk))
+
+    assert [item.child for item in items] == [second]
+
+
+@pytest.mark.django_db
+def test_retiring_a_child_leaves_a_completed_course_progress_completed(
+    two_topic_course,
+):
+    course, first, _ = two_topic_course
+    completed_at = timezone.now()
+    record = CourseProgressFactory(course=course, completed_time=completed_at)
+    retire(first)
+
+    record.refresh_from_db()
+
+    assert record.completed_time == completed_at

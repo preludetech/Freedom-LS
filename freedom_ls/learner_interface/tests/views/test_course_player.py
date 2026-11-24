@@ -1519,10 +1519,11 @@ def test_player_page_query_count_is_bounded(
     ``test_player_page_query_count_does_not_grow_with_items``, which runs the
     same budget over a course three times the size.
 
-    59 is the cold number. Some of these queries are served from caches that
+    59 is the cold number, which includes one retired-child check per content type the
+    deadline resolver meets. Some of these queries are served from caches that
     outlive a single test -- the header asks whether this user may enter the
     educator interface, and Django caches content types for the process -- so
-    the same page costs two fewer once an earlier test has warmed them. The ceiling is
+    the same page costs fewer once an earlier test has warmed them. The ceiling is
     the cold number rather than the warm one: a max that only holds on a warm cache
     fails whenever this test runs early. Both numbers are far enough below a
     per-item regression for either to catch one.

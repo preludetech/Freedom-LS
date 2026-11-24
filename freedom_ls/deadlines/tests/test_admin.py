@@ -22,6 +22,7 @@ from freedom_ls.content_engine.factories import (
 from freedom_ls.content_engine.models import (
     ContentCollectionItem,
     Course,
+    Topic,
 )
 from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.deadlines.admin import (
@@ -57,6 +58,7 @@ from freedom_ls.site_aware_models.factories import (
     SiteTimeZoneConfigFactory,
 )
 from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.retire import retire
 from freedom_ls.tests.site_context import site_context
 
 
@@ -101,6 +103,26 @@ def test_effective_deadlines_lists_items_sources_and_the_time_limit_end(
     assert "Reading: 14 Mar 2026, 17:00 SAST (Learner override)" in body
     assert "Course time limit end: " in body
     assert "(Content default)" in body
+
+
+@pytest.mark.django_db
+def test_effective_deadlines_still_lists_a_deadline_on_a_retired_collection_item(
+    staff_client, mock_site_context
+) -> None:
+    record, item = _record_with_item()
+    LearnerDeadlineOverrideFactory(
+        course_progress=record,
+        collection_item=item,
+        kind=DeadlineKind.FIXED,
+        due_date="2026-03-14",
+        due_time="17:00",
+        due_days_after_registration=None,
+    )
+    retire(Topic.objects.get(pk=item.child_id))
+
+    body = _progress_page(staff_client, record).content.decode()
+
+    assert "Reading: 14 Mar 2026, 17:00" in body
 
 
 @pytest.mark.django_db

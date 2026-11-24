@@ -16,6 +16,7 @@ from freedom_ls.content_engine.models import (
     CoursePart,
     Topic,
 )
+from freedom_ls.content_engine.models.courses import live_collection_items
 from freedom_ls.deadlines.consequences import (
     access_end_instant,
     close_instant,
@@ -361,10 +362,11 @@ def get_content_status(
 
     elif isinstance(content_item, CoursePart):
         # For course parts, recursively check children's completion status.
-        # collection_items(), not children(): the recursion reads the same
+        # Collection items, not children(): the recursion reads the same
         # placement-keyed maps, so discarding the rows one level down would
-        # silently read every nested item as "not started".
-        part_items = content_item.collection_items()
+        # silently read every nested item as "not started". Retired children
+        # are left out so they never hold a part short of complete.
+        part_items = live_collection_items(content_item)
         if not part_items:
             # Empty course part - treat as complete
             return COMPLETE, READY
@@ -437,13 +439,15 @@ def get_resume_index(user: RequestUser, course: Course) -> int:
 def get_item_part(course: Course, current_item: Topic | Form) -> CoursePart | None:
     """Return the ``CoursePart`` that directly contains ``current_item``, or None.
 
-    Walks ``course.children()`` once (the same traversal the index build uses)
-    and checks each ``CoursePart``'s direct children in memory — no extra
-    queries per item. Top-level items (not inside any part) return None.
+    Walks the course's live collection items (the same traversal the index build
+    uses) and checks each live ``CoursePart``'s direct live children in memory —
+    no extra queries per item. Top-level items (not inside any part) return None.
     """
-    for child in course.children():
+    for course_item in live_collection_items(course):
+        child = course_item.child
         if isinstance(child, CoursePart):
-            for part_child in child.children():
+            for part_item in live_collection_items(child):
+                part_child = part_item.child
                 if (
                     type(part_child) is type(current_item)
                     and part_child.pk == current_item.pk
@@ -571,7 +575,7 @@ def get_course_index(
         0  # Running count of viewable items consumed (CourseParts are skipped)
     )
 
-    for collection_item in course.collection_items():
+    for collection_item in live_collection_items(course):
         child_dict, next_status, items_added = create_child_dict_with_flattened_index(
             collection_item,
             course,
@@ -800,7 +804,7 @@ def create_child_dict_with_flattened_index(
     if isinstance(content_item, CoursePart):
         # CourseParts do not consume a URL slot in the viewable-only index space.
         items_added = 0
-        part_items = content_item.collection_items()
+        part_items = live_collection_items(content_item)
         part_children_dicts = []
         part_next_status = next_status  # Use the incoming next_status for children
 
@@ -1363,7 +1367,7 @@ def course_reference_topics(
     """The course's reference parts in order, each with its topics in order.
 
     Reference parts hold topics only, but anything else placed in one is dropped
-    rather than served, and a part left with no topics is dropped with it.
+    rather than served, as is a retired part or topic, and a part left with no topics is dropped with it.
     Children are prefetched per content type, so the query count does not grow
     with the number of parts or topics.
     """
@@ -1377,10 +1381,12 @@ def course_reference_topics(
         rows = rows.filter(course_part__slug=part_slug)
     parts = []
     for row in rows:
+        if row.course_part.is_retired:
+            continue
         topics = [
             item.child
             for item in row.course_part.items.all()
-            if isinstance(item.child, Topic)
+            if isinstance(item.child, Topic) and not item.child.is_retired
         ]
         if topics:
             parts.append(

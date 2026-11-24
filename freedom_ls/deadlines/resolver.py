@@ -5,13 +5,14 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from enum import StrEnum
-from typing import TYPE_CHECKING, NamedTuple, Protocol
+from typing import TYPE_CHECKING, NamedTuple, Protocol, cast
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 
+from freedom_ls.content_base.models import BaseContent
 from freedom_ls.content_engine.models import (
     ContentCollectionItem,
     Course,
@@ -196,15 +197,38 @@ def content_layer_value(
     )
 
 
+def _retired_child_ids(rows: Iterable[ContentCollectionItem]) -> set[UUID]:
+    """The ids of the rows' children that a content save has retired: one query per child
+    content type, whatever the number of rows."""
+    ids_by_type: dict[int, set[UUID]] = defaultdict(set)
+    for row in rows:
+        ids_by_type[row.child_type_id].add(row.child_id)
+    retired: set[UUID] = set()
+    for type_id, child_ids in ids_by_type.items():
+        model = cast(
+            "type[BaseContent] | None",
+            ContentType.objects.get_for_id(type_id).model_class(),
+        )
+        if model is None:
+            continue
+        retired.update(
+            model.objects.filter(pk__in=child_ids)
+            .exclude(pk__in=model.objects.not_retired())
+            .values_list("pk", flat=True)
+        )
+    return retired
+
+
 def _item_defaults_by_course(
-    course_ids: set[UUID],
+    course_ids: set[UUID], include_retired: bool = False
 ) -> dict[UUID, dict[UUID, DeadlineValue | None]]:
     """A value per viewable row of each course, keyed by row id. Three queries whatever the
     number of courses or rows: the course-level rows, the part-level rows beneath them, and
     the values the courses' part placements give those rows. Rows whose child is a part are
     containers, not items, so they carry no value. A part placed in several of the courses
     has its rows in each of them, each with that course's placement value when it sets
-    one."""
+    one. A row whose child a content save retired is left out, and so is every row under a
+    retired part, unless `include_retired` is true."""
     course_type = ContentType.objects.get_for_model(Course)
     part_type = ContentType.objects.get_for_model(CoursePart)
     top_rows = list(
@@ -212,6 +236,23 @@ def _item_defaults_by_course(
             collection_type=course_type, collection_id__in=course_ids
         )
     )
+    part_rows = list(
+        ContentCollectionItem.objects.filter(
+            collection_type=part_type,
+            collection_id__in={
+                row.child_id for row in top_rows if row.child_type_id == part_type.pk
+            },
+        )
+    )
+    if not include_retired:
+        # One check over both levels, so a course costs one query per child content type.
+        retired = _retired_child_ids(top_rows + part_rows)
+        top_rows = [row for row in top_rows if row.child_id not in retired]
+        part_rows = [
+            row
+            for row in part_rows
+            if row.child_id not in retired and row.collection_id not in retired
+        ]
     courses_of_part: dict[UUID, list[UUID]] = defaultdict(list)
     # The course each part placement belongs to, so a value keyed by the placement is
     # credited to that course alone.
@@ -220,11 +261,6 @@ def _item_defaults_by_course(
         if row.child_type_id == part_type.pk:
             courses_of_part[row.child_id].append(row.collection_id)
             course_of_part_placement[row.pk] = row.collection_id
-    part_rows = list(
-        ContentCollectionItem.objects.filter(
-            collection_type=part_type, collection_id__in=courses_of_part
-        )
-    )
     placement_values: dict[tuple[UUID, UUID], DeadlineValue | None] = {}
     for placement_value in CoursePartChildDueDate.objects.filter(
         part_collection_item_id__in=course_of_part_placement.keys()
@@ -251,9 +287,12 @@ def _item_defaults_by_course(
     return items
 
 
-def _defaults_by_course(course_ids: set[UUID]) -> dict[UUID, _CourseDefaults]:
-    """Each course's item values and its time limit, in four queries."""
-    items = _item_defaults_by_course(course_ids)
+def _defaults_by_course(
+    course_ids: set[UUID], include_retired: bool = False
+) -> dict[UUID, _CourseDefaults]:
+    """Each course's item values and its time limit, in four queries plus one per child
+    content type."""
+    items = _item_defaults_by_course(course_ids, include_retired)
     time_limit_days = dict(
         Course.objects.filter(pk__in=course_ids).values_list("pk", "time_limit_days")
     )
@@ -303,10 +342,15 @@ def course_deadlines(
     now: datetime | None = None,
     items: bool = True,
     pauses: Mapping[UUID, list[CoursePause]] | None = None,
+    include_retired: bool = False,
 ) -> CourseDeadlines:
-    return course_deadlines_for([course_progress], now=now, items=items, pauses=pauses)[
-        course_progress.pk
-    ]
+    return course_deadlines_for(
+        [course_progress],
+        now=now,
+        items=items,
+        pauses=pauses,
+        include_retired=include_retired,
+    )[course_progress.pk]
 
 
 def course_deadlines_for(
@@ -315,6 +359,7 @@ def course_deadlines_for(
     now: datetime | None = None,
     items: bool = True,
     pauses: Mapping[UUID, list[CoursePause]] | None = None,
+    include_retired: bool = False,
 ) -> dict[UUID, CourseDeadlines]:
     """Every record's resolved deadlines, keyed by record id.
 
@@ -323,7 +368,9 @@ def course_deadlines_for(
 
     `now` is resolved once and decides which pauses are open. `pauses` is what a caller
     already read with `pauses_for`. With `items=False` the per-item deadlines and the reads
-    that only they need are skipped, and `items` comes back empty."""
+    that only they need are skipped, and `items` comes back empty. Items on retired content are
+    left out unless `include_retired` is true, which an admin page listing the deadlines a
+    record already holds sets."""
     from freedom_ls.deadlines.queries import open_pauses_for, pauses_for
     from freedom_ls.learner_progress.queries import completion_instants
 
@@ -332,7 +379,9 @@ def course_deadlines_for(
         return {}
     now = now if now is not None else timezone.now()
     tz = site_time_zone(records[0].site)
-    defaults = _defaults_by_course({record.course_id for record in records})
+    defaults = _defaults_by_course(
+        {record.course_id for record in records}, include_retired
+    )
     cohort_rows: LayerRows = {
         (row.cohort_registration_id, row.collection_item_id): row
         for row in CohortDeadlineOverride.objects.filter(

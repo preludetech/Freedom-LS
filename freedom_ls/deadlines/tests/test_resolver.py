@@ -57,14 +57,15 @@ from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
 from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.retire import retire
 
 JOHANNESBURG = ZoneInfo("Africa/Johannesburg")
 AMSTERDAM = ZoneInfo("Europe/Amsterdam")
 
-# The worst case reads the layers, the pauses and the two completion reads; neither bound
-# grows with the number of records or items.
-MOST_QUERIES_WITH_ITEMS = 11
-MOST_QUERIES_WITHOUT_ITEMS = 9
+# The worst case reads the layers, the pauses, the two completion reads and a retired-child
+# check per child content type; neither bound grows with the number of records or items.
+MOST_QUERIES_WITH_ITEMS = 13
+MOST_QUERIES_WITHOUT_ITEMS = 11
 
 FIXED = DeadlineValue(DeadlineKind.FIXED, due_date=date(2026, 3, 20))
 RELATIVE = DeadlineValue(DeadlineKind.RELATIVE, due_days_after_registration=14)
@@ -1359,11 +1360,12 @@ def test_extensions_cost_the_same_on_a_small_and_a_large_course(
 
 
 @pytest.mark.django_db
-def test_the_content_defaults_read_three_queries_and_skip_the_time_limit(
+def test_the_content_defaults_read_five_queries_and_skip_the_time_limit(
     mock_site_context, django_assert_num_queries
 ) -> None:
-    """The rows beneath the course, the part rows and the placement values: the course's
-    time limit is no content default, so it is not read."""
+    """The rows beneath the course, the part rows, the placement values and one retired-child
+    check for each of the part and topic child types: the course's time limit is no content
+    default, so it is not read."""
     course: Course = CourseFactory(time_limit_days=30)
     part = CoursePartFactory()
     placement = course.items.create(child=part, order=0)
@@ -1375,9 +1377,57 @@ def test_the_content_defaults_read_three_queries_and_skip_the_time_limit(
     )
     content_defaults_for_course(course.pk)
 
-    with django_assert_num_queries(3):
+    with django_assert_num_queries(5):
         defaults = content_defaults_for_course(course.pk)
 
     assert defaults[row.pk] == DeadlineValue(
         DeadlineKind.RELATIVE, due_days_after_registration=3
     )
+
+
+@pytest.fixture
+def part_course(mock_site_context):
+    course = CourseFactory()
+    part = CoursePartFactory()
+    inside, outside = TopicFactory(), TopicFactory()
+    course.items.create(child=part, order=0)
+    course.items.create(child=outside, order=1)
+    part.items.create(child=inside, order=0)
+    return course, part, inside, outside
+
+
+@pytest.mark.django_db
+def test_course_deadlines_omit_a_collection_item_whose_child_is_retired(part_course):
+    course, _, inside, outside = part_course
+    outside_item = ContentCollectionItem.objects.get(child_id=outside.pk)
+    inside_item = ContentCollectionItem.objects.get(child_id=inside.pk)
+    retire(outside)
+
+    deadlines = course_deadlines(course_progress_record(course, UserFactory()))
+
+    assert set(deadlines.items) == {inside_item.pk}
+    assert ContentCollectionItem.objects.filter(pk=outside_item.pk).exists()
+
+
+@pytest.mark.django_db
+def test_course_deadlines_omit_every_item_inside_a_retired_part(part_course):
+    course, part, _, outside = part_course
+    outside_item = ContentCollectionItem.objects.get(child_id=outside.pk)
+    retire(part)
+
+    deadlines = course_deadlines(course_progress_record(course, UserFactory()))
+
+    assert set(deadlines.items) == {outside_item.pk}
+
+
+@pytest.mark.django_db
+def test_course_deadlines_keep_a_retired_collection_item_when_asked(part_course):
+    course, _, _, outside = part_course
+    outside_item = ContentCollectionItem.objects.get(child_id=outside.pk)
+    retire(outside)
+
+    deadlines = course_deadlines(
+        course_progress_record(course, UserFactory()), include_retired=True
+    )
+
+    assert outside_item.pk in deadlines.items
