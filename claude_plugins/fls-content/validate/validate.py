@@ -1250,7 +1250,7 @@ def validate_due_date_placements(
     return errors
 
 
-_CONDITION_SOURCE_TYPES = {
+_CHOICE_QUESTION_TYPES = {
     QuestionType.MULTIPLE_CHOICE,
     QuestionType.DROPDOWN,
     QuestionType.CHECKBOXES,
@@ -1476,6 +1476,34 @@ def _form_pages(all_parsed: Sequence[BaseBaseContentModel]) -> list[_FormPages]:
     return result
 
 
+def explanation_warnings(all_parsed: Sequence[BaseBaseContentModel]) -> list[str]:
+    """One line per scored choice question that names sections and explains nothing.
+
+    A warning, not an error: the question still works in revision, the
+    learner just gets no reason with the answer.
+    """
+    warnings: list[str] = []
+    for form_pages in _form_pages(all_parsed):
+        for page in form_pages.pages:
+            for item, label in page.sections:
+                if not isinstance(item, FormQuestion):
+                    continue
+                if item.type not in _CHOICE_QUESTION_TYPES:
+                    continue
+                if not any(option.correct for option in item.options or []):
+                    continue
+                if not effective_sections(item, form_pages.form)[1]:
+                    continue
+                if item.explanation:
+                    continue
+                warnings.append(
+                    f"{item.file_path}: {label} names sections and has a correct "
+                    "option but no explanation, so a learner revising it sees no "
+                    "reason with the answer."
+                )
+    return warnings
+
+
 def _slug_owners(
     pages: list[_PageSections],
 ) -> tuple[dict[str, tuple[int, FormQuestion]], list[str]]:
@@ -1525,7 +1553,7 @@ def _condition_problem(
             "later one.",
             "A condition's source has to be on an earlier page.",
         )
-    if source.type not in _CONDITION_SOURCE_TYPES:
+    if source.type not in _CHOICE_QUESTION_TYPES:
         return (
             f'when.question names "{source_slug}", a {source.type} question.',
             "A source has to be a multiple_choice, dropdown or checkboxes question.",
@@ -2013,6 +2041,9 @@ def validate(path):
     if path.is_dir():
         for message in validate_article_images(all_parsed, all_file_paths):
             failed_files.append((path, message))
+
+    for message in explanation_warnings(all_parsed):
+        logger.warning(message)
 
     # Report all failures at the end
     if failed_files:

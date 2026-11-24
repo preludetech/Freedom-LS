@@ -127,6 +127,7 @@ The parser selects `FORM_QUESTION` when a subsequent section contains a `questio
 | `required` | `bool` | No (default `true`) | Whether the question must be answered |
 | `category` | `str` | No | Used by `CATEGORY_VALUE_SUM` scoring strategy |
 | `options` | `list` | Conditional | Required for `multiple_choice`, `checkboxes`, and `dropdown` |
+| `explanation` | `str` (markdown) | No | Shown to a learner after they answer this question in revision: why the correct answer is correct. Never refer to an option by its letter or position, because options are shuffled. See "Explaining answers in revision" below |
 | `min` | `str` | No | Inclusive lower bound for `date`, `time` or `number` — `YYYY-MM-DD`, `HH:MM`, or a plain number |
 | `max` | `str` | No | Inclusive upper bound — same formats as `min` |
 | `decimal_places` | `int` | No (default `0`) | Decimal places a `number` answer may use. Only valid on `number` |
@@ -465,8 +466,9 @@ Example: `demo_content/functionality_demo_question_pools/` has a `QUIZ` whose "T
 ## Sections a question tests (`sections`)
 
 `sections` names the topics or course parts a question tests. `content_save` stores the link, and
-the admin shows it on the question. Nothing shows the sections to learners yet. It works on every
-form `strategy`, so a bank form need not be a `QUIZ`.
+the admin shows it on the question. Revision uses it: a question joins a learner's revision once
+they finish a section it tests. It works on every form `strategy`, so a bank form need not be a
+`QUIZ`.
 
 ```yaml
 sections:
@@ -519,6 +521,35 @@ type: multiple_choice
 sections:
   - ../01. key-ideas/content.md
 ```
+
+### Explaining answers in revision (`explanation`)
+
+A question that names `sections` (its own or the form's) comes back to a learner in revision, and
+`explanation` is the text shown after they answer it.
+
+```yaml
+question: Which of these best describes a course part?
+type: multiple_choice
+explanation: A course part groups related topics and forms under one title. It organises
+  a course without adding any content of its own.
+options:
+  - text: A named group of related topics and forms
+    value: v1
+    correct: true
+  - text: A single page of a topic
+    value: v2
+```
+
+- Write why the correct answer is correct. Never write "the answer is B" or "the first option":
+  options are shuffled, so letters and positions are wrong for the learner.
+- It is optional. The validator warns, without failing, on a `multiple_choice`, `dropdown` or
+  `checkboxes` question that has a correct option, names sections and has no `explanation`. Write
+  the explanation, or set `sections: []` on a question that tests no section.
+- A question deleted from its file stops coming up in revision at the next load. Keep a question's
+  `uuid` when you move or reword it.
+
+Example: `demo_content/functionality_demo_revision_bank/` is a bank form that sits in no course and
+gives every question an `explanation`.
 
 ---
 
