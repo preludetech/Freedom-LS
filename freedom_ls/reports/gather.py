@@ -155,6 +155,9 @@ class QuizTallies:
     # Cohort-wide confusion tally, first attempts only.
     respondent_counts: dict[UUID, int]
     wrong_counts_first: dict[UUID, int]
+    # Per question, the text of each retired option a learner chose in a wrong
+    # attempt, so the confusion table can mark it.
+    retired_option_texts: dict[UUID, set[str]] = dataclasses.field(default_factory=dict)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -487,6 +490,7 @@ def tally_quiz_answers(
     ] = defaultdict(lambda: defaultdict(int))
     respondent_counts: dict[UUID, int] = defaultdict(int)
     wrong_counts_first: dict[UUID, int] = defaultdict(int)
+    retired_option_texts: dict[UUID, set[str]] = defaultdict(set)
     for attempt_id, question in sat.pairs:
         is_correct = sat.correctness[(attempt_id, question.id)]
         learner_id, form_id = forms.learner_form_by_attempt_id[attempt_id]
@@ -499,6 +503,8 @@ def tally_quiz_answers(
                 wrong_selected_counts[wrong_key][
                     (option.text, option.correct, option.is_retired)
                 ] += 1
+                if option.is_retired:
+                    retired_option_texts[question.id].add(option.text)
         if attempt_id in first_attempt_ids:
             respondent_counts[question.id] += 1
             if not is_correct:
@@ -509,6 +515,7 @@ def tally_quiz_answers(
         wrong_selected_counts=wrong_selected_counts,
         respondent_counts=respondent_counts,
         wrong_counts_first=wrong_counts_first,
+        retired_option_texts=retired_option_texts,
     )
 
 
@@ -589,6 +596,9 @@ def build_confusion_block(
                 distractors=distractors_by_question.get(question.id, []),
                 correct_option_texts=questions.correct_option_texts[question.id],
                 question_retired=question.is_retired,
+                retired_distractor_texts=frozenset(
+                    tallies.retired_option_texts.get(question.id, ())
+                ),
             )
         )
     return ConfusionBlock(

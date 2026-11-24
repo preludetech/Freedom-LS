@@ -242,6 +242,8 @@ class QuizConfusion:
     distractors: list[tuple[str, int]]
     correct_option_texts: list[str]
     question_retired: bool = False
+    # The distractors above whose option a content save retired.
+    retired_distractor_texts: frozenset[str] = frozenset()
 
 
 @dataclasses.dataclass(frozen=True)

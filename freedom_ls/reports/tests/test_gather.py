@@ -3301,6 +3301,34 @@ class TestRetiredContentInTheReport:
             ("Old distractor", True)
         ]
 
+    def test_a_chosen_retired_option_is_flagged_in_the_cohort_confusions(
+        self, mock_site_context
+    ) -> None:
+        """The confusions table used to list a retired option like a live one."""
+        cohort, record, quiz, questions = _cohort_with_two_question_quiz()
+        (question, _), _ = questions
+        old = QuestionOptionFactory(
+            question=question, text="Old distractor", correct=False, order=2
+        )
+        retired(old)
+        attempt = form_progress(
+            record,
+            quiz,
+            completed_time=timezone.now(),
+            scores={"score": 0, "max_score": 2},
+        )
+        answer = QuestionAnswerFactory(form_progress=attempt, question=question)
+        answer.selected_options.add(old, question.options.get(text="Wrong"))
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        (confusion,) = [
+            c
+            for c in data.courses[0].confusions_by_quiz[quiz.id].questions
+            if c.question_text == "Question 1?"
+        ]
+        assert confusion.retired_distractor_texts == {"Old distractor"}
+
 
 class TestCompletionFiguresSkipRetiredItems:
     def test_a_retired_item_is_in_neither_completed_nor_total(self) -> None:

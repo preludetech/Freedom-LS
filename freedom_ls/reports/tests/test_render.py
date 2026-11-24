@@ -2487,6 +2487,36 @@ def _with_a_retired_quiz_and_question() -> CohortReportData:
     )
 
 
+class TestRetiredOptionInTheConfusionsPartial:
+    def test_only_the_retired_incorrect_answer_is_marked(self) -> None:
+        """A retired incorrect answer used to print like a live one."""
+        quiz = QuizColumn(
+            form_id=uuid4(), title="Quiz", abbreviation="Q1", pass_percentage=50
+        )
+        confusion = QuizConfusion(
+            question_number=1,
+            question_text="Tricky?",
+            respondent_count=5,
+            wrong_count=3,
+            show_percentage=False,
+            wrong_percentage=None,
+            distractors=[("Jupiter", 2), ("Mars", 1)],
+            correct_option_texts=["Earth"],
+            retired_distractor_texts=frozenset({"Jupiter"}),
+        )
+
+        html = render_to_string(
+            "reports/partials/quiz_confusion.html",
+            {
+                "quiz": quiz,
+                "block": ConfusionBlock(questions=[confusion], shown=1, total=1),
+            },
+        )
+
+        assert html.count("Retired") == 1
+        assert html.index("Jupiter") < html.index("Retired") < html.index("Mars")
+
+
 @pytest.mark.weasyprint
 @requires_tailwind_bundle
 class TestRetiredContentInThePdf:

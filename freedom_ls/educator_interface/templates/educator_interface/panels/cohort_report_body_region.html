@@ -138,7 +138,7 @@ refresh_url.
                                     <div class="mt-1 flex flex-wrap gap-1">{% for text in question.correct_option_texts %}<c-chip variant="success" size="xs">{{ text }}</c-chip>{% endfor %}</div>
                                 </td>
                                 <td>
-                                    <div class="flex flex-wrap gap-1">{% for text, count in question.distractors %}<c-chip variant="error" size="xs">{{ text }} ×{{ count }}</c-chip>{% endfor %}</div>
+                                    <div class="flex flex-wrap gap-1">{% for text, count in question.distractors %}<c-chip variant="error" size="xs">{{ text }}{% if text in question.retired_distractor_texts %} <c-panel-status-badge label="Retired" data-testid="retired-badge" />{% endif %} ×{{ count }}</c-chip>{% endfor %}</div>
                                 </td>
                                 <td>
                                     {% if question.show_percentage %}{{ question.wrong_percentage }}% of {{ question.respondent_count }} learner{{ question.respondent_count|pluralize }}{% else %}{{ question.wrong_count }} of {{ question.respondent_count }} learner{{ question.respondent_count|pluralize }}{% endif %}

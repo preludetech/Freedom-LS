@@ -1084,6 +1084,32 @@ class TestCohortReportBody:
         )
         assert question_badge.text_content().strip() == "Retired"
 
+    def test_a_retired_option_in_the_confusions_carries_a_retired_badge(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
+        """A retired incorrect answer used to be listed in the confusions like a live one."""
+        cohort = CohortFactory()
+        client = logged_in_client(_org_admin(cohort.organisation))
+        _seed_report_cache(
+            cohort,
+            _confusion(
+                distractors=[("A straight line", 5), ("A circle", 2)],
+                retired_distractor_texts=frozenset({"A straight line"}),
+            ),
+        )
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        chips = region.cssselect(
+            "section[aria-labelledby='report-confusions-title'] tbody td:nth-child(3) .flex > *"
+        )
+        assert [
+            bool(chip.cssselect("[data-testid='retired-badge']")) for chip in chips
+        ] == [
+            True,
+            False,
+        ]
+
     def test_a_live_quiz_column_carries_no_retired_badge(
         self, logged_in_client: Callable[[AbstractBaseUser], Client]
     ) -> None:
