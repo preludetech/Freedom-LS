@@ -27,6 +27,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (user) Review the code and the QA report
 - [x] (user) Decide what to do about QA bug: admin changelist cards at 375px break field labels mid-word ('Learn er', 'Cours e'); unfold's mobile card layout, shared by every admin changelist, predates this branch (TDD: failing test first, then fix)
 - [x] (user) Look at the guardian object-permissions page screenshot in qa_report.md (it rendered correctly under unfold) and, if satisfied, resolve the @claude comment on OrganisationAdmin in freedom_ls/organisations/admin.py
+- [ ] (user) Update claude_plugins/fls-content/skills/content-types/resources/form-files.md line 468: "the admin shows it on the question" is stale now that the FormQuestion admin is gone; say where the value is visible instead, or drop the clause
 
 ## 4. Documentation and pull request
 

@@ -1,0 +1,131 @@
+- generic [active] [ref=f116e1]:
+  - banner [ref=f116e2]:
+    - link [ref=f116e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f116e4]
+      - heading "FirstClass" [level=1] [ref=f116e5]
+    - navigation [ref=f116e6]:
+      - generic [ref=f116e7]:
+        - generic [ref=f116e8]:
+          - button "Notifications, 1 new" [ref=f116e9]
+          - status:
+            - generic [ref=f116e13]: Notifications, 1 new
+            - generic [aria-hidden] [ref=f116e14]: "1"
+        - button "Open user menu for demodev@email.com" [ref=f116e16] [cursor=pointer]:
+          - generic [ref=f116e17]:
+            - generic [ref=f116e18]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f116e19]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f116e20]:
+    - generic [ref=f116e22]:
+      - dialog "Navigation" [ref=f116e23]:
+        - generic [ref=f116e25]:
+          - generic [ref=f116e26]:
+            - paragraph [ref=f116e27]: Organisation
+            - button "Switch organisation" [ref=f116e29] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f116e30]: QO
+              - generic "QA Deadlines Org" [ref=f116e31]
+          - navigation "Sections" [ref=f116e34]:
+            - heading "Teaching" [level=2] [ref=f116e35]
+            - list [ref=f116e36]:
+              - listitem [ref=f116e37]:
+                - link "Dashboard" [ref=f116e38] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-deadlines-org/dashboard
+              - listitem [ref=f116e43]:
+                - link "Cohorts" [ref=f116e44] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-deadlines-org/cohorts
+              - listitem [ref=f116e49]:
+                - link "Learners" [ref=f116e50] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-deadlines-org/learners
+              - listitem [ref=f116e55]:
+                - link "Courses" [ref=f116e56] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-deadlines-org/courses
+            - heading "Administration" [level=2] [ref=f116e61]
+            - list [ref=f116e62]:
+              - listitem [ref=f116e63]:
+                - link "Staff" [ref=f116e64] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-deadlines-org/staff
+              - listitem [ref=f116e69]:
+                - link "Audit log" [ref=f116e70] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-deadlines-org/audit-log
+          - generic [ref=f116e75]:
+            - generic [ref=f116e77]:
+              - generic [aria-hidden] [ref=f116e78]: DE
+              - generic [ref=f116e79]: demodev@email.com
+            - link "Account settings" [ref=f116e81] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f116e86]:
+        - navigation "Back" [ref=f116e88]:
+          - link "Cohorts" [ref=f116e89] [cursor=pointer]:
+            - /url: /educator/organisations/qa-deadlines-org/cohorts
+        - generic [ref=f116e93]:
+          - generic [ref=f116e95]:
+            - heading "QA Deadlines Cohort" [level=1] [ref=f116e100]
+            - navigation "Cohort sections" [ref=f116e101]:
+              - list [ref=f116e102]:
+                - listitem [ref=f116e103]:
+                  - link "Overview" [ref=f116e104] [cursor=pointer]:
+                    - /url: /educator/organisations/qa-deadlines-org/cohorts/573d380f-9895-4e0c-8a59-2c508e1b4e63/__tabs/overview
+                - listitem [ref=f116e105]:
+                  - link "Learners 1" [ref=f116e106] [cursor=pointer]:
+                    - /url: /educator/organisations/qa-deadlines-org/cohorts/573d380f-9895-4e0c-8a59-2c508e1b4e63/__tabs/learners
+                    - text: Learners
+                    - generic [ref=f116e107]: "1"
+                - listitem [ref=f116e108]:
+                  - link "Courses 1" [ref=f116e109] [cursor=pointer]:
+                    - /url: /educator/organisations/qa-deadlines-org/cohorts/573d380f-9895-4e0c-8a59-2c508e1b4e63/__tabs/courses
+                    - text: Courses
+                    - generic [ref=f116e110]: "1"
+                - listitem [ref=f116e111]:
+                  - link "Report" [ref=f116e112] [cursor=pointer]:
+                    - /url: /educator/organisations/qa-deadlines-org/cohorts/573d380f-9895-4e0c-8a59-2c508e1b4e63/__tabs/report
+                - listitem [ref=f116e113]:
+                  - link "Settings" [ref=f116e114] [cursor=pointer]:
+                    - /url: /educator/organisations/qa-deadlines-org/cohorts/573d380f-9895-4e0c-8a59-2c508e1b4e63/__tabs/settings
+                - listitem [ref=f116e115]:
+                  - link "History" [ref=f116e116] [cursor=pointer]:
+                    - /url: /educator/organisations/qa-deadlines-org/cohorts/573d380f-9895-4e0c-8a59-2c508e1b4e63/__tabs/history
+          - generic [ref=f116e120]:
+            - generic [ref=f116e122]:
+              - heading "Details" [level=2] [ref=f116e125]
+              - generic [ref=f116e127]:
+                - generic [ref=f116e128]:
+                  - term [ref=f116e129]: Name
+                  - definition [ref=f116e130]: QA Deadlines Cohort
+                - generic [ref=f116e131]:
+                  - term [ref=f116e132]: Status
+                  - definition [ref=f116e133]:
+                    - generic [ref=f116e134]: Active
+                - generic [ref=f116e135]:
+                  - term [ref=f116e136]: Created
+                  - definition [ref=f116e137]:
+                    - time [ref=f116e138]: 23 Nov 2026
+                - generic [ref=f116e139]:
+                  - term [ref=f116e140]: Learners
+                  - definition [ref=f116e141]: "1"
+                - generic [ref=f116e142]:
+                  - term [ref=f116e143]: Courses
+                  - definition [ref=f116e144]: "1"
+            - generic [ref=f116e146]:
+              - heading "Course completion" [level=2] [ref=f116e149]
+              - list [ref=f116e151]:
+                - listitem [ref=f116e152]:
+                  - generic [ref=f116e153]:
+                    - text: Functionality Demo - Course Parts
+                    - paragraph [ref=f116e154]: 0 of 1 completed
+                  - generic [ref=f116e157]:
+                    - progressbar "Functionality Demo - Course Parts completion" [ref=f116e158]: 0%
+                    - generic [ref=f116e159]: 0%
+            - heading "Needs attention" [level=2] [ref=f116e164]
+  - contentinfo [ref=f116e176]:
+    - generic [ref=f116e177]:
+      - paragraph [ref=f116e178]: © 2026 FirstClass
+      - navigation "Legal" [ref=f116e179]:
+        - link "Terms and Conditions" [ref=f116e180] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f116e181] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f116e182] [cursor=pointer]: remove-unnecessary-admin-panel-functionality
+  - generic "Show toolbar" [ref=f116e184]: DJDT

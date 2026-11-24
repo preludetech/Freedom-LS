@@ -316,203 +316,218 @@
             - listitem [ref=f12e280]:
               - link "November 23" [ref=f12e281] [cursor=pointer]:
                 - /url: "?completed_time__day=23&completed_time__month=11&completed_time__year=2026"
-          - generic [ref=f12e282]:
-            - search [ref=f12e284]:
-              - generic [ref=f12e285]:
-                - button "search" [ref=f12e286]
-                - textbox "Type to search" [ref=f12e288]
-                - generic [ref=f12e289]: /
-            - generic [ref=f12e290] [cursor=pointer]:
+            - listitem [ref=f12e282]:
+              - link "November 24" [ref=f12e283] [cursor=pointer]:
+                - /url: "?completed_time__day=24&completed_time__month=11&completed_time__year=2026"
+          - generic [ref=f12e284]:
+            - search [ref=f12e286]:
+              - generic [ref=f12e287]:
+                - button "search" [ref=f12e288]
+                - textbox "Type to search" [ref=f12e290]
+                - generic [ref=f12e291]: /
+            - generic [ref=f12e292] [cursor=pointer]:
               - text: Filters
-              - generic [ref=f12e291]: filter_list
-          - region "scrollable content" [ref=f12e297]:
-            - table [ref=f12e299]:
-              - rowgroup [ref=f12e300]:
-                - row [ref=f12e301]:
-                  - columnheader [ref=f12e302]:
-                    - link "Applicant" [ref=f12e305] [cursor=pointer]:
+              - generic [ref=f12e293]: filter_list
+          - region "scrollable content" [ref=f12e299]:
+            - table [ref=f12e301]:
+              - rowgroup [ref=f12e302]:
+                - row [ref=f12e303]:
+                  - columnheader [ref=f12e304]:
+                    - link "Applicant" [ref=f12e307] [cursor=pointer]:
                       - /url: "?o=0.-3"
-                  - columnheader [ref=f12e306]:
-                    - link "Form" [ref=f12e309] [cursor=pointer]:
+                  - columnheader [ref=f12e308]:
+                    - link "Form" [ref=f12e311] [cursor=pointer]:
                       - /url: "?o=1.-3"
-                  - columnheader "In course" [ref=f12e310]
-                  - columnheader [ref=f12e313]:
-                    - generic [ref=f12e314]:
-                      - link "Start time" [ref=f12e316] [cursor=pointer]:
+                  - columnheader "In course" [ref=f12e312]
+                  - columnheader [ref=f12e315]:
+                    - generic [ref=f12e316]:
+                      - link "Start time" [ref=f12e318] [cursor=pointer]:
                         - /url: "?o=3"
-                      - generic [ref=f12e317]:
-                        - link "arrow_circle_up" [ref=f12e318] [cursor=pointer]:
+                      - generic [ref=f12e319]:
+                        - link "arrow_circle_up" [ref=f12e320] [cursor=pointer]:
                           - /url: "?o=3"
-                        - link "cancel" [ref=f12e320] [cursor=pointer]:
+                        - link "cancel" [ref=f12e322] [cursor=pointer]:
                           - /url: "?o="
-                  - columnheader [ref=f12e322]:
-                    - link "Last updated time" [ref=f12e325] [cursor=pointer]:
+                  - columnheader [ref=f12e324]:
+                    - link "Last updated time" [ref=f12e327] [cursor=pointer]:
                       - /url: "?o=4.-3"
-                  - columnheader [ref=f12e326]:
-                    - link "Completed time" [ref=f12e329] [cursor=pointer]:
+                  - columnheader [ref=f12e328]:
+                    - link "Completed time" [ref=f12e331] [cursor=pointer]:
                       - /url: "?o=5.-3"
-                  - columnheader "Complete" [ref=f12e330]
-              - rowgroup [ref=f12e333]:
-                - row [ref=f12e334]:
-                  - rowheader [ref=f12e335]:
-                    - link "qa_deadline_paused@email.com" [ref=f12e336] [cursor=pointer]:
-                      - /url: /admin/freedom_ls_form_engine/formprogress/6f91b22b-f9c9-48f4-913c-dea6c702596a/change/
-                  - cell "Knowledge Check" [ref=f12e337]
-                  - cell "Functionality Demo - Course Parts" [ref=f12e338]
-                  - cell "Nov. 24, 2026, 8:35 a.m." [ref=f12e339]
-                  - cell "Nov. 24, 2026, 8:35 a.m." [ref=f12e340]
-                  - cell "-" [ref=f12e341]
-                  - cell "close_small" [ref=f12e342]:
-                    - generic "False" [ref=f12e343]: close_small
-              - rowgroup [ref=f12e345]:
-                - row [ref=f12e346]:
-                  - rowheader [ref=f12e347]:
-                    - link "qa_deadline_solo@email.com" [ref=f12e348] [cursor=pointer]:
-                      - /url: /admin/freedom_ls_form_engine/formprogress/88378a84-e58b-47ed-a3f9-067fda5a6163/change/
-                  - cell "Knowledge Check" [ref=f12e349]
-                  - cell "Functionality Demo - Course Parts" [ref=f12e350]
-                  - cell "Nov. 24, 2026, 8:35 a.m." [ref=f12e351]
-                  - cell "Nov. 24, 2026, 8:35 a.m." [ref=f12e352]
-                  - cell "-" [ref=f12e353]
-                  - cell "close_small" [ref=f12e354]:
-                    - generic "False" [ref=f12e355]: close_small
-              - rowgroup [ref=f12e357]:
-                - row [ref=f12e358]:
-                  - rowheader [ref=f12e359]:
-                    - link "qa_erase_with_sitting@email.com" [ref=f12e360] [cursor=pointer]:
+                  - columnheader "Complete" [ref=f12e332]
+              - rowgroup [ref=f12e335]:
+                - row [ref=f12e336]:
+                  - rowheader [ref=f12e337]:
+                    - link "qa_deadline_paused@email.com" [ref=f12e338] [cursor=pointer]:
+                      - /url: /admin/freedom_ls_form_engine/formprogress/0a0086cd-1831-4867-afa6-256e0158eb51/change/
+                  - cell "Knowledge Check" [ref=f12e339]
+                  - cell "Functionality Demo - Course Parts" [ref=f12e340]
+                  - cell "Nov. 24, 2026, 4:08 p.m." [ref=f12e341]
+                  - cell "Nov. 24, 2026, 4:08 p.m." [ref=f12e342]
+                  - cell "-" [ref=f12e343]
+                  - cell "close_small" [ref=f12e344]:
+                    - generic "False" [ref=f12e345]: close_small
+              - rowgroup [ref=f12e347]:
+                - row [ref=f12e348]:
+                  - rowheader [ref=f12e349]:
+                    - link "qa_deadline_solo@email.com" [ref=f12e350] [cursor=pointer]:
+                      - /url: /admin/freedom_ls_form_engine/formprogress/a10cb901-aa48-41bd-897d-4ebd7ec3244d/change/
+                  - cell "Knowledge Check" [ref=f12e351]
+                  - cell "Functionality Demo - Course Parts" [ref=f12e352]
+                  - cell "Nov. 24, 2026, 4:08 p.m." [ref=f12e353]
+                  - cell "Nov. 24, 2026, 4:08 p.m." [ref=f12e354]
+                  - cell "-" [ref=f12e355]
+                  - cell "close_small" [ref=f12e356]:
+                    - generic "False" [ref=f12e357]: close_small
+              - rowgroup [ref=f12e359]:
+                - row [ref=f12e360]:
+                  - rowheader [ref=f12e361]:
+                    - link "qa-standalone-form@example.com" [ref=f12e362] [cursor=pointer]:
+                      - /url: /admin/freedom_ls_form_engine/formprogress/4ea2e410-100a-4551-a17d-f9c9cfe3563f/change/
+                  - cell "QA Form First Form" [ref=f12e363]
+                  - cell "-" [ref=f12e364]
+                  - cell "Nov. 24, 2026, 1:09 p.m." [ref=f12e365]
+                  - cell "Nov. 24, 2026, 4:09 p.m." [ref=f12e366]
+                  - cell "Nov. 24, 2026, 2:09 p.m." [ref=f12e367]
+                  - cell "check_small" [ref=f12e368]:
+                    - generic "True" [ref=f12e369]: check_small
+              - rowgroup [ref=f12e371]:
+                - row [ref=f12e372]:
+                  - rowheader [ref=f12e373]:
+                    - link "qa_erase_with_sitting@email.com" [ref=f12e374] [cursor=pointer]:
                       - /url: /admin/freedom_ls_form_engine/formprogress/b54e2e6f-4d57-479a-94cf-66f668efa020/change/
-                  - cell "Course Feedback" [ref=f12e361]
-                  - cell "-" [ref=f12e362]
-                  - cell "Nov. 23, 2026, 3:18 p.m." [ref=f12e363]
-                  - cell "Nov. 23, 2026, 3:18 p.m." [ref=f12e364]
-                  - cell "Nov. 23, 2026, 3:18 p.m." [ref=f12e365]
-                  - cell "check_small" [ref=f12e366]:
-                    - generic "True" [ref=f12e367]: check_small
-              - rowgroup [ref=f12e369]:
-                - row [ref=f12e370]:
-                  - rowheader [ref=f12e371]:
-                    - link "qa_file_applicant@email.com" [ref=f12e372] [cursor=pointer]:
-                      - /url: /admin/freedom_ls_form_engine/formprogress/25f82be8-70c2-4924-bc2d-16e5e8523b28/change/
-                  - cell "Application form" [ref=f12e373]
-                  - cell "-" [ref=f12e374]
-                  - cell "Nov. 23, 2026, 3:18 p.m." [ref=f12e375]
-                  - cell "Nov. 23, 2026, 3:18 p.m." [ref=f12e376]
+                  - cell "Course Feedback" [ref=f12e375]
+                  - cell "-" [ref=f12e376]
                   - cell "Nov. 23, 2026, 3:18 p.m." [ref=f12e377]
-                  - cell "check_small" [ref=f12e378]:
-                    - generic "True" [ref=f12e379]: check_small
-              - rowgroup [ref=f12e381]:
-                - row [ref=f12e382]:
-                  - rowheader [ref=f12e383]:
-                    - link "qa-standalone-form@example.com" [ref=f12e384] [cursor=pointer]:
+                  - cell "Nov. 23, 2026, 3:18 p.m." [ref=f12e378]
+                  - cell "Nov. 23, 2026, 3:18 p.m." [ref=f12e379]
+                  - cell "check_small" [ref=f12e380]:
+                    - generic "True" [ref=f12e381]: check_small
+              - rowgroup [ref=f12e383]:
+                - row [ref=f12e384]:
+                  - rowheader [ref=f12e385]:
+                    - link "qa_file_applicant@email.com" [ref=f12e386] [cursor=pointer]:
+                      - /url: /admin/freedom_ls_form_engine/formprogress/25f82be8-70c2-4924-bc2d-16e5e8523b28/change/
+                  - cell "Application form" [ref=f12e387]
+                  - cell "-" [ref=f12e388]
+                  - cell "Nov. 23, 2026, 3:18 p.m." [ref=f12e389]
+                  - cell "Nov. 23, 2026, 3:18 p.m." [ref=f12e390]
+                  - cell "Nov. 23, 2026, 3:18 p.m." [ref=f12e391]
+                  - cell "check_small" [ref=f12e392]:
+                    - generic "True" [ref=f12e393]: check_small
+              - rowgroup [ref=f12e395]:
+                - row [ref=f12e396]:
+                  - rowheader [ref=f12e397]:
+                    - link "qa-standalone-form@example.com" [ref=f12e398] [cursor=pointer]:
                       - /url: /admin/freedom_ls_form_engine/formprogress/70eb89eb-7b1d-4c21-bea6-c328ec7ebaee/change/
-                  - cell "Knowledge Check" [ref=f12e385]
-                  - cell "-" [ref=f12e386]
-                  - cell "Nov. 23, 2026, 12:17 p.m." [ref=f12e387]
-                  - cell "Nov. 23, 2026, 3:17 p.m." [ref=f12e388]
-                  - cell "Nov. 23, 2026, 1:17 p.m." [ref=f12e389]
-                  - cell "check_small" [ref=f12e390]:
-                    - generic "True" [ref=f12e391]: check_small
-        - generic [ref=f12e402]:
-          - region "scrollable content" [ref=f12e407]:
-            - generic [ref=f12e409]:
-              - generic [ref=f12e410]:
-                - heading "By completion" [level=3] [ref=f12e411]
-                - list [ref=f12e412]:
-                  - listitem [ref=f12e413]:
-                    - link "All" [ref=f12e414] [cursor=pointer]:
+                  - cell "Knowledge Check" [ref=f12e399]
+                  - cell "-" [ref=f12e400]
+                  - cell "Nov. 23, 2026, 12:17 p.m." [ref=f12e401]
+                  - cell "Nov. 23, 2026, 3:17 p.m." [ref=f12e402]
+                  - cell "Nov. 23, 2026, 1:17 p.m." [ref=f12e403]
+                  - cell "check_small" [ref=f12e404]:
+                    - generic "True" [ref=f12e405]: check_small
+        - generic [ref=f12e416]:
+          - region "scrollable content" [ref=f12e421]:
+            - generic [ref=f12e423]:
+              - generic [ref=f12e424]:
+                - heading "By completion" [level=3] [ref=f12e425]
+                - list [ref=f12e426]:
+                  - listitem [ref=f12e427]:
+                    - link "All" [ref=f12e428] [cursor=pointer]:
                       - /url: "?"
-                  - listitem [ref=f12e415]:
-                    - link "Complete" [ref=f12e416] [cursor=pointer]:
+                  - listitem [ref=f12e429]:
+                    - link "Complete" [ref=f12e430] [cursor=pointer]:
                       - /url: "?completion=complete"
-                  - listitem [ref=f12e417]:
-                    - link "Not complete" [ref=f12e418] [cursor=pointer]:
+                  - listitem [ref=f12e431]:
+                    - link "Not complete" [ref=f12e432] [cursor=pointer]:
                       - /url: "?completion=incomplete"
-              - generic [ref=f12e420]:
-                - generic [ref=f12e421]: By form
-                - generic [ref=f12e422]:
-                  - combobox [aria-hidden] [ref=f12e423]
-                  - combobox [ref=f12e426] [cursor=pointer]:
-                    - textbox "All" [ref=f12e427]
+              - generic [ref=f12e434]:
+                - generic [ref=f12e435]: By form
+                - generic [ref=f12e436]:
+                  - combobox [aria-hidden] [ref=f12e437]
+                  - combobox [ref=f12e440] [cursor=pointer]:
+                    - textbox "All" [ref=f12e441]
                     - text: expand_more
                   - generic: expand_more
-              - generic [ref=f12e428]:
-                - heading "By completed time" [level=3] [ref=f12e429]
-                - generic [ref=f12e430]:
-                  - generic [ref=f12e432]:
-                    - generic [ref=f12e435]:
-                      - textbox "Date from" [ref=f12e436]
-                      - generic [ref=f12e437]:
+              - generic [ref=f12e442]:
+                - heading "By completed time" [level=3] [ref=f12e443]
+                - generic [ref=f12e444]:
+                  - generic [ref=f12e446]:
+                    - generic [ref=f12e449]:
+                      - textbox "Date from" [ref=f12e450]
+                      - generic [ref=f12e451]:
                         - text: update |
-                        - link "calendar_today" [ref=f12e438] [cursor=pointer]:
+                        - link "calendar_today" [ref=f12e452] [cursor=pointer]:
                           - /url: "#"
-                          - generic "Choose a Date" [ref=f12e439]: calendar_today
-                      - generic [ref=f12e440]: "warning Note: You are 2 hours ahead of server time."
-                    - generic [ref=f12e443]:
-                      - textbox "Time" [ref=f12e444]
-                      - generic [ref=f12e445]:
+                          - generic "Choose a Date" [ref=f12e453]: calendar_today
+                      - generic [ref=f12e454]: "warning Note: You are 2 hours ahead of server time."
+                    - generic [ref=f12e457]:
+                      - textbox "Time" [ref=f12e458]
+                      - generic [ref=f12e459]:
                         - text: update |
-                        - link "schedule" [ref=f12e446] [cursor=pointer]:
+                        - link "schedule" [ref=f12e460] [cursor=pointer]:
                           - /url: "#"
-                          - generic "Choose a Time" [ref=f12e447]: schedule
-                      - generic [ref=f12e448]: "warning Note: You are 2 hours ahead of server time."
-                  - generic [ref=f12e450]:
-                    - generic [ref=f12e453]:
-                      - textbox "Date to" [ref=f12e454]
-                      - generic [ref=f12e455]:
+                          - generic "Choose a Time" [ref=f12e461]: schedule
+                      - generic [ref=f12e462]: "warning Note: You are 2 hours ahead of server time."
+                  - generic [ref=f12e464]:
+                    - generic [ref=f12e467]:
+                      - textbox "Date to" [ref=f12e468]
+                      - generic [ref=f12e469]:
                         - text: update |
-                        - link "calendar_today" [ref=f12e456] [cursor=pointer]:
+                        - link "calendar_today" [ref=f12e470] [cursor=pointer]:
                           - /url: "#"
-                          - generic "Choose a Date" [ref=f12e457]: calendar_today
-                      - generic [ref=f12e458]: "warning Note: You are 2 hours ahead of server time."
-                    - generic [ref=f12e461]:
-                      - textbox "Time" [ref=f12e462]
-                      - generic [ref=f12e463]:
+                          - generic "Choose a Date" [ref=f12e471]: calendar_today
+                      - generic [ref=f12e472]: "warning Note: You are 2 hours ahead of server time."
+                    - generic [ref=f12e475]:
+                      - textbox "Time" [ref=f12e476]
+                      - generic [ref=f12e477]:
                         - text: update |
-                        - link "schedule" [ref=f12e464] [cursor=pointer]:
+                        - link "schedule" [ref=f12e478] [cursor=pointer]:
                           - /url: "#"
-                          - generic "Choose a Time" [ref=f12e465]: schedule
-                      - generic [ref=f12e466]: "warning Note: You are 2 hours ahead of server time."
-              - generic [ref=f12e467]:
-                - heading "By start time" [level=3] [ref=f12e468]
-                - generic [ref=f12e469]:
-                  - generic [ref=f12e471]:
-                    - generic [ref=f12e474]:
-                      - textbox "Date from" [ref=f12e475]
-                      - generic [ref=f12e476]:
+                          - generic "Choose a Time" [ref=f12e479]: schedule
+                      - generic [ref=f12e480]: "warning Note: You are 2 hours ahead of server time."
+              - generic [ref=f12e481]:
+                - heading "By start time" [level=3] [ref=f12e482]
+                - generic [ref=f12e483]:
+                  - generic [ref=f12e485]:
+                    - generic [ref=f12e488]:
+                      - textbox "Date from" [ref=f12e489]
+                      - generic [ref=f12e490]:
                         - text: update |
-                        - link "calendar_today" [ref=f12e477] [cursor=pointer]:
+                        - link "calendar_today" [ref=f12e491] [cursor=pointer]:
                           - /url: "#"
-                          - generic "Choose a Date" [ref=f12e478]: calendar_today
-                      - generic [ref=f12e479]: "warning Note: You are 2 hours ahead of server time."
-                    - generic [ref=f12e482]:
-                      - textbox "Time" [ref=f12e483]
-                      - generic [ref=f12e484]:
+                          - generic "Choose a Date" [ref=f12e492]: calendar_today
+                      - generic [ref=f12e493]: "warning Note: You are 2 hours ahead of server time."
+                    - generic [ref=f12e496]:
+                      - textbox "Time" [ref=f12e497]
+                      - generic [ref=f12e498]:
                         - text: update |
-                        - link "schedule" [ref=f12e485] [cursor=pointer]:
+                        - link "schedule" [ref=f12e499] [cursor=pointer]:
                           - /url: "#"
-                          - generic "Choose a Time" [ref=f12e486]: schedule
-                      - generic [ref=f12e487]: "warning Note: You are 2 hours ahead of server time."
-                  - generic [ref=f12e489]:
-                    - generic [ref=f12e492]:
-                      - textbox "Date to" [ref=f12e493]
-                      - generic [ref=f12e494]:
+                          - generic "Choose a Time" [ref=f12e500]: schedule
+                      - generic [ref=f12e501]: "warning Note: You are 2 hours ahead of server time."
+                  - generic [ref=f12e503]:
+                    - generic [ref=f12e506]:
+                      - textbox "Date to" [ref=f12e507]
+                      - generic [ref=f12e508]:
                         - text: update |
-                        - link "calendar_today" [ref=f12e495] [cursor=pointer]:
+                        - link "calendar_today" [ref=f12e509] [cursor=pointer]:
                           - /url: "#"
-                          - generic "Choose a Date" [ref=f12e496]: calendar_today
-                      - generic [ref=f12e497]: "warning Note: You are 2 hours ahead of server time."
-                    - generic [ref=f12e500]:
-                      - textbox "Time" [ref=f12e501]
-                      - generic [ref=f12e502]:
+                          - generic "Choose a Date" [ref=f12e510]: calendar_today
+                      - generic [ref=f12e511]: "warning Note: You are 2 hours ahead of server time."
+                    - generic [ref=f12e514]:
+                      - textbox "Time" [ref=f12e515]
+                      - generic [ref=f12e516]:
                         - text: update |
-                        - link "schedule" [ref=f12e503] [cursor=pointer]:
+                        - link "schedule" [ref=f12e517] [cursor=pointer]:
                           - /url: "#"
-                          - generic "Choose a Time" [ref=f12e504]: schedule
-                      - generic [ref=f12e505]: "warning Note: You are 2 hours ahead of server time."
-          - generic [ref=f12e506]:
-            - button "Apply Filters" [ref=f12e507] [cursor=pointer]
-            - link "Show counts" [ref=f12e509] [cursor=pointer]:
+                          - generic "Choose a Time" [ref=f12e518]: schedule
+                      - generic [ref=f12e519]: "warning Note: You are 2 hours ahead of server time."
+          - generic [ref=f12e520]:
+            - button "Apply Filters" [ref=f12e521] [cursor=pointer]
+            - link "Show counts" [ref=f12e523] [cursor=pointer]:
               - /url: "?_facets=True"
-      - generic [ref=f12e393]: 5 Form progress records
-  - generic "Show toolbar" [ref=f12e397]: DJDT
+      - generic [ref=f12e407]: 6 Form progress records
+  - generic "Show toolbar" [ref=f12e411]: DJDT
   - text: navigate_before navigate_next navigate_before navigate_next navigate_before navigate_next navigate_before navigate_next
