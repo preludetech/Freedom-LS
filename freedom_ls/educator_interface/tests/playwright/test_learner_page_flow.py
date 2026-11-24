@@ -264,11 +264,16 @@ def test_an_attempt_opens_from_the_courses_tab_to_its_paper_and_back(
 
     review_link.click()
     expect(page.get_by_role("heading", name="Unit quiz, attempt 1")).to_be_visible()
+    # Closing the drawer used to focus the attempt number, which scrolled the
+    # page so the back link sat under the sticky header.
+    back_link = page.get_by_role("link", name="Back to Ada Lovelace")
+    expect(back_link).to_be_in_viewport()
+    assert page.evaluate("window.scrollY") == 0
     expect(page.get_by_text("What is two plus two?")).to_be_visible()
     expect(page.get_by_text("Learner's answer").first).to_be_visible()
     expect(page.get_by_text("Correct answer").first).to_be_visible()
 
-    page.get_by_role("link", name="Back to Ada Lovelace").click()
+    back_link.click()
     expect(page.get_by_text("Algebra")).to_be_visible()
     expect(page.get_by_text("1 of 1 items")).to_be_visible()
 

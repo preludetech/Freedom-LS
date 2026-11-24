@@ -150,14 +150,16 @@ function trackListener(handlers, target, type, handler, options) {
 
 // Returns focus to whichever element opened a dialog, or to #main-content
 // when that element is no longer in the DOM (an htmx navigation that
-// followed the same close can remove it). Shared by appModal and quickView.
+// followed the same close can remove it). Focus never scrolls the page: a
+// close that precedes a navigation would otherwise leave the new page
+// scrolled by the focused element's offset. Shared by appModal and quickView.
 function focusTriggerOrMain(trigger) {
     if (trigger && document.body.contains(trigger)) {
-        trigger.focus();
+        trigger.focus({ preventScroll: true });
         return;
     }
     const main = document.getElementById("main-content");
-    if (main) main.focus();
+    if (main) main.focus({ preventScroll: true });
 }
 
 // Writes the dirty form's own discard wording into a host's discard prompt,
