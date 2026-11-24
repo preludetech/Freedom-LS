@@ -13,6 +13,7 @@ import lxml.html
 import pytest
 
 from django.contrib.sites.models import Site
+from django.db.models import QuerySet
 from django.http import Http404
 from django.test import Client
 from django.urls import reverse
@@ -61,6 +62,9 @@ from freedom_ls.panel_framework.bulk_runs import (
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 
 if TYPE_CHECKING:
+    from django_tasks_db.models import DBTaskResult
+    from pytest_django.fixtures import SettingsWrapper
+
     from django.test.client import _MonkeyPatchedWSGIResponse
 
 GONE = "00000000-0000-0000-0000-000000000001"
@@ -242,7 +246,7 @@ def test_a_bulk_action_on_rows_that_left_the_scope_answers_the_unavailable_dialo
     assert gone.content == never.content
 
 
-def _task_rows():
+def _task_rows() -> QuerySet[DBTaskResult]:
     from django_tasks_db.models import DBTaskResult
 
     return DBTaskResult.objects.filter(task_path__endswith="_run_bulk_action_task")
@@ -250,8 +254,8 @@ def _task_rows():
 
 @pytest.mark.django_db(transaction=True)
 def test_bulk_confirmation_above_the_threshold_shows_only_the_total_and_runs_in_background(
-    staff_client: Client, settings
-):
+    staff_client: Client, settings: SettingsWrapper
+) -> None:
     settings.BULK_BACKGROUND_THRESHOLD = 2
     organisation = OrganisationFactory()
     learners = [_bulk_learner(organisation=organisation) for _ in range(2)]
@@ -269,8 +273,8 @@ def test_bulk_confirmation_above_the_threshold_shows_only_the_total_and_runs_in_
 
 @pytest.mark.django_db(transaction=True)
 def test_bulk_confirm_above_the_threshold_enqueues_one_task_and_keeps_the_reader_on_the_table(
-    staff_client: Client, settings, database_task_backend: None
-):
+    staff_client: Client, settings: SettingsWrapper, database_task_backend: None
+) -> None:
     settings.BULK_BACKGROUND_THRESHOLD = 2
     organisation = OrganisationFactory()
     learners = [_bulk_learner(organisation=organisation) for _ in range(3)]
@@ -297,8 +301,8 @@ def test_bulk_confirm_above_the_threshold_enqueues_one_task_and_keeps_the_reader
 
 @pytest.mark.django_db(transaction=True)
 def test_bulk_confirm_above_the_threshold_without_javascript_returns_to_the_list(
-    staff_client: Client, settings, database_task_backend: None
-):
+    staff_client: Client, settings: SettingsWrapper, database_task_backend: None
+) -> None:
     settings.BULK_BACKGROUND_THRESHOLD = 2
     organisation = OrganisationFactory()
     learners = [_bulk_learner(organisation=organisation) for _ in range(3)]
@@ -330,8 +334,8 @@ def test_bulk_confirm_above_the_threshold_without_javascript_returns_to_the_list
 
 @pytest.mark.django_db(transaction=True)
 def test_bulk_confirm_at_the_threshold_still_runs_inline(
-    staff_client: Client, settings, database_task_backend: None
-):
+    staff_client: Client, settings: SettingsWrapper, database_task_backend: None
+) -> None:
     settings.BULK_BACKGROUND_THRESHOLD = 3
     organisation = OrganisationFactory()
     learners = [_bulk_learner(organisation=organisation) for _ in range(3)]
@@ -366,14 +370,14 @@ _BULK_ACTION_WEIGHTS: dict[str, tuple[str, str, str]] = {
 }
 
 
-def test_every_bulk_action_has_an_expected_weight_and_loading_text():
+def test_every_bulk_action_has_an_expected_weight_and_loading_text() -> None:
     registered = {cls.__name__ for cls in BULK_ACTIONS.values()}
 
     assert registered == set(_BULK_ACTION_WEIGHTS)
 
 
 @pytest.mark.parametrize("class_name", sorted(_BULK_ACTION_WEIGHTS))
-def test_bulk_action_trigger_confirm_variant_and_loading_text(class_name: str):
+def test_bulk_action_trigger_confirm_variant_and_loading_text(class_name: str) -> None:
     (action_class,) = [
         cls for cls in BULK_ACTIONS.values() if cls.__name__ == class_name
     ]
@@ -389,7 +393,7 @@ def test_bulk_action_trigger_confirm_variant_and_loading_text(class_name: str):
 @pytest.mark.parametrize("class_name", sorted(_BULK_ACTION_WEIGHTS))
 def test_bulk_action_confirmation_title_is_a_question_naming_the_count(
     class_name: str, count: int
-):
+) -> None:
     (action_class,) = [
         cls for cls in BULK_ACTIONS.values() if cls.__name__ == class_name
     ]
@@ -425,7 +429,7 @@ def test_a_bulk_register_picker_resolves_a_course_only_when_it_is_registerable(
     action: type[RegisterForCourseBulkAction | RegisterCohortForCourseBulkAction],
     row: str,
     outcome: contextlib.AbstractContextManager[object],
-):
+) -> None:
     organisation = OrganisationFactory()
     courses = course_per_reach_row(organisation)
 
@@ -438,7 +442,7 @@ def test_a_bulk_register_picker_resolves_a_course_only_when_it_is_registerable(
 # (the organisation scope, the refresh event and the notification hooks).
 
 
-def _run_for(user: User, organisation: Organisation, **fields: object):
+def _run_for(user: User, organisation: Organisation, **fields: object) -> BulkActionRun:
     return BulkActionRun.objects.create(
         site=organisation.site,
         scope=organisation,
@@ -465,7 +469,9 @@ def _run_status_url(organisation: Organisation, run: BulkActionRun) -> str:
 
 
 @pytest.fixture
-def run_world(logged_in_client: Callable[[User], Client], mock_site_context: Site):
+def run_world(
+    logged_in_client: Callable[[User], Client], mock_site_context: Site
+) -> SimpleNamespace:
     organisation = OrganisationFactory()
     requester = cast(User, UserFactory(superuser=True))
     return SimpleNamespace(
@@ -484,7 +490,7 @@ def _poll(world: SimpleNamespace) -> _MonkeyPatchedWSGIResponse:
 
 
 @pytest.mark.django_db
-def test_an_unfinished_run_answers_204(run_world: SimpleNamespace):
+def test_an_unfinished_run_answers_204(run_world: SimpleNamespace) -> None:
     response = _poll(run_world)
 
     assert (response.status_code, response.content) == (204, b"")
@@ -493,7 +499,7 @@ def test_an_unfinished_run_answers_204(run_world: SimpleNamespace):
 @pytest.mark.django_db
 def test_a_finished_run_answers_the_result_modal_and_refreshes_the_table(
     run_world: SimpleNamespace, mock_site_context: Site
-):
+) -> None:
     run_bulk_action(str(run_world.run.pk), mock_site_context.pk)
 
     response = _poll(run_world)
@@ -507,7 +513,7 @@ def test_a_finished_run_answers_the_result_modal_and_refreshes_the_table(
 @pytest.mark.django_db
 def test_a_finished_run_marks_its_notification_read(
     run_world: SimpleNamespace, mock_site_context: Site
-):
+) -> None:
     run_bulk_action(str(run_world.run.pk), mock_site_context.pk)
     notification = NotificationFactory(
         user=run_world.requester,
@@ -525,7 +531,7 @@ def test_a_finished_run_marks_its_notification_read(
 @pytest.mark.django_db
 def test_an_unfinished_run_leaves_its_notification_unread(
     run_world: SimpleNamespace,
-):
+) -> None:
     notification = NotificationFactory(
         user=run_world.requester,
         category="bulk_action.finished",
@@ -541,8 +547,8 @@ def test_an_unfinished_run_leaves_its_notification_unread(
 
 @pytest.mark.django_db
 def test_a_run_is_a_404_for_another_user_of_the_organisation(
-    run_world: SimpleNamespace, logged_in_client
-):
+    run_world: SimpleNamespace, logged_in_client: Callable[[User], Client]
+) -> None:
     other = cast(User, UserFactory(superuser=True))
 
     response = logged_in_client(other).get(
@@ -555,7 +561,7 @@ def test_a_run_is_a_404_for_another_user_of_the_organisation(
 @pytest.mark.django_db
 def test_a_run_is_a_404_through_another_organisations_slug(
     run_world: SimpleNamespace,
-):
+) -> None:
     elsewhere = OrganisationFactory()
 
     response = run_world.client.get(_run_status_url(elsewhere, run_world.run))

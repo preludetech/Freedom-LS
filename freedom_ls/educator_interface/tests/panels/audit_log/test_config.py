@@ -4,16 +4,19 @@ from __future__ import annotations
 
 import csv
 import io
+from collections.abc import Callable
 from datetime import timedelta
 from typing import cast
 from uuid import uuid4
 
 import pytest
 
+from django.contrib.sites.models import Site
 from django.test import Client
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.factories import AuditLogEntryFactory
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.educator_interface.tests.helpers import (
@@ -261,8 +264,8 @@ def test_the_audit_log_export_omits_its_own_entry_and_a_second_export_holds_it(
 
 @pytest.mark.django_db
 def test_a_cohort_admin_gets_no_organisation_audit_log(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     grantor = LearnerFactory(user__superuser=True).user
@@ -286,8 +289,11 @@ def test_a_cohort_admin_gets_no_organisation_audit_log(
     ],
 )
 def test_a_cohort_role_gets_a_404_on_the_exports_it_may_not_read(
-    mock_site_context, logged_in_client, role: str, target: str
-):
+    mock_site_context: Site,
+    logged_in_client: Callable[[User], Client],
+    role: str,
+    target: str,
+) -> None:
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     grantor = LearnerFactory(user__superuser=True).user

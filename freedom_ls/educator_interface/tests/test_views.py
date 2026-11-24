@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import cast
+from typing import TYPE_CHECKING, cast
 from uuid import uuid4
 
 import lxml.html
@@ -39,10 +39,14 @@ from freedom_ls.learner_management.factories import (
     CohortFactory,
     LearnerFactory,
 )
+from freedom_ls.learner_management.models import Cohort
 from freedom_ls.learner_progress.factories import CourseFormAttemptFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.utils import assign_object_role
+
+if TYPE_CHECKING:
+    from django.test.client import _MonkeyPatchedWSGIResponse
 
 
 @pytest.mark.django_db
@@ -190,7 +194,9 @@ def test_the_unread_count_route_no_longer_exists():
 
 
 @pytest.fixture
-def cohorts_page(logged_in_client) -> tuple[Client, str, Organisation]:
+def cohorts_page(
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> tuple[Client, str, Organisation]:
     """An educator logged in against one organisation, plus its cohorts URL."""
     organisation = cast(Organisation, OrganisationFactory(name="Northside Academy"))
     educator = UserFactory(staff=True)
@@ -210,8 +216,8 @@ def _title_text(html: str) -> str:
 @pytest.mark.django_db
 @pytest.mark.usefixtures("_site_context")
 def test_full_page_load_titles_the_tab_with_page_organisation_and_site(
-    cohorts_page, mock_site_context
-):
+    cohorts_page: tuple[Client, str, Organisation], mock_site_context: Site
+) -> None:
     client, url, organisation = cohorts_page
 
     response = client.get(url)
@@ -223,7 +229,9 @@ def test_full_page_load_titles_the_tab_with_page_organisation_and_site(
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures("_site_context")
-def test_htmx_navigation_title_matches_the_full_page_title(cohorts_page):
+def test_htmx_navigation_title_matches_the_full_page_title(
+    cohorts_page: tuple[Client, str, Organisation],
+) -> None:
     """The base template's head block and the out-of-band navigation fragment
     are two separate code paths that must agree. What the shared title should
     actually say is pinned by the full-page test above."""
@@ -239,7 +247,9 @@ def test_htmx_navigation_title_matches_the_full_page_title(cohorts_page):
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures("_site_context")
-def test_instance_page_title_names_the_cohort(cohorts_page, mock_site_context):
+def test_instance_page_title_names_the_cohort(
+    cohorts_page: tuple[Client, str, Organisation], mock_site_context: Site
+) -> None:
     """A cohort's page used to title the tab with only the organisation and
     site, because the instance label never reached the document title."""
     client, _url, organisation = cohorts_page
@@ -260,7 +270,7 @@ def test_instance_page_title_names_the_cohort(cohorts_page, mock_site_context):
     assert _title_text(navigation.content.decode()) == expected
 
 
-def _remember(client, organisation_slug: str) -> None:
+def _remember(client: Client, organisation_slug: str) -> None:
     session = client.session
     session[LAST_ORGANISATION_SESSION_KEY] = organisation_slug
     session.save()
@@ -269,7 +279,9 @@ def _remember(client, organisation_slug: str) -> None:
 @pytest.mark.django_db
 @pytest.mark.usefixtures("_site_context")
 class TestInterfaceRoot:
-    def test_no_accessible_organisations_404s(self, logged_in_client):
+    def test_no_accessible_organisations_404s(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         client = logged_in_client(UserFactory(staff=True))
 
         response = client.get(reverse("educator_interface:root"))
@@ -280,8 +292,8 @@ class TestInterfaceRoot:
         "role", ["organisation_staff_viewer", "organisation_staff_roles_viewer"]
     )
     def test_someone_who_sees_staff_alone_is_sent_to_the_staff_section(
-        self, logged_in_client, role
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client], role: str
+    ) -> None:
         user = UserFactory(staff=True)
         organisation = OrganisationFactory()
         assign_object_role(user, organisation, role)
@@ -350,8 +362,11 @@ class TestBareOrganisationUrl:
         [("organisation_staff_viewer", "staff"), ("organisation_admin", "dashboard")],
     )
     def test_sends_the_visitor_to_the_first_section_they_can_see(
-        self, logged_in_client, role, section
-    ):
+        self,
+        logged_in_client: Callable[[AbstractBaseUser], Client],
+        role: str,
+        section: str,
+    ) -> None:
         user = UserFactory(staff=True)
         organisation = OrganisationFactory()
         assign_object_role(user, organisation, role)
@@ -366,7 +381,9 @@ class TestBareOrganisationUrl:
 @pytest.mark.django_db
 @pytest.mark.usefixtures("_site_context")
 class TestInterfaceResolvesAndAuthorisesOnce:
-    def test_unknown_slug_404s(self, logged_in_client):
+    def test_unknown_slug_404s(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         client = logged_in_client(UserFactory(staff=True))
 
         response = client.get(_interface_url("no-such-slug", "cohorts"))
@@ -381,7 +398,7 @@ class TestSessionWrite:
     because they assert on request.session.modified, which the client does
     not expose."""
 
-    def _request(self, user, organisation_slug: str) -> WSGIRequest:
+    def _request(self, user: AbstractBaseUser, organisation_slug: str) -> WSGIRequest:
         request = RequestFactory().get(
             _interface_url(organisation_slug, "cohorts"),
         )
@@ -389,7 +406,7 @@ class TestSessionWrite:
         request.session = SessionStore()
         return request
 
-    def test_session_write_is_skipped_when_the_value_is_unchanged(self):
+    def test_session_write_is_skipped_when_the_value_is_unchanged(self) -> None:
         """An unconditional session write would mark the store dirty on
         every educator page load; the guard must only fire on a real change."""
         organisation = OrganisationFactory()
@@ -404,7 +421,7 @@ class TestSessionWrite:
 
         assert request.session.modified is False
 
-    def test_session_is_updated_when_the_organisation_changes(self):
+    def test_session_is_updated_when_the_organisation_changes(self) -> None:
         organisation = OrganisationFactory()
         user = UserFactory(staff=True)
         assign_object_role(user, organisation, "organisation_admin")
@@ -423,28 +440,36 @@ class TestDetailSegmentThatIsNotAUuid:
     plain 404 rather than an error page."""
 
     @pytest.fixture
-    def organisation_and_client(self, logged_in_client):
-        organisation = OrganisationFactory()
+    def organisation_and_client(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> tuple[Organisation, Client]:
+        organisation = cast(Organisation, OrganisationFactory())
         user = UserFactory(staff=True)
         assign_object_role(user, organisation, "organisation_admin")
         return organisation, logged_in_client(user)
 
     @pytest.mark.parametrize("segment", ["create", "new", "__create"])
-    def test_non_uuid_segment_404s(self, organisation_and_client, segment):
+    def test_non_uuid_segment_404s(
+        self, organisation_and_client: tuple[Organisation, Client], segment: str
+    ) -> None:
         organisation, client = organisation_and_client
 
         response = client.get(_interface_url(organisation.slug, f"cohorts/{segment}"))
 
         assert response.status_code == 404
 
-    def test_well_formed_uuid_for_a_missing_cohort_404s(self, organisation_and_client):
+    def test_well_formed_uuid_for_a_missing_cohort_404s(
+        self, organisation_and_client: tuple[Organisation, Client]
+    ) -> None:
         organisation, client = organisation_and_client
 
         response = client.get(_interface_url(organisation.slug, f"cohorts/{uuid4()}"))
 
         assert response.status_code == 404
 
-    def test_real_cohort_id_still_resolves(self, organisation_and_client):
+    def test_real_cohort_id_still_resolves(
+        self, organisation_and_client: tuple[Organisation, Client]
+    ) -> None:
         organisation, client = organisation_and_client
         cohort = CohortFactory(organisation=organisation, name="Resolvable Cohort")
 
@@ -454,7 +479,7 @@ class TestDetailSegmentThatIsNotAUuid:
         assert "Resolvable Cohort" in response.content.decode()
 
 
-def _switch(client, url: str):
+def _switch(client: Client, url: str) -> _MonkeyPatchedWSGIResponse:
     return client.get(
         url,
         HTTP_HX_REQUEST="true",
@@ -463,7 +488,7 @@ def _switch(client, url: str):
     )
 
 
-def _switcher(response) -> str:
+def _switcher(response: _MonkeyPatchedWSGIResponse) -> str:
     """The rendered #organisation-switcher element.
 
     Selected from the parsed document rather than sliced out of the raw
@@ -476,13 +501,15 @@ def _switcher(response) -> str:
     return str(lxml.html.tostring(elements[0], encoding="unicode"))
 
 
-def _two_organisation_educator():
+def _two_organisation_educator() -> tuple[Organisation, Organisation, Cohort, User]:
     """An educator with organisation_admin on two organisations, plus a
     cohort that lives only in the first."""
-    organisation_a = OrganisationFactory(name="Org A")
-    organisation_b = OrganisationFactory(name="Org B")
-    cohort_a = CohortFactory(organisation=organisation_a, name="Cohort A Only")
-    educator = UserFactory(staff=True)
+    organisation_a = cast(Organisation, OrganisationFactory(name="Org A"))
+    organisation_b = cast(Organisation, OrganisationFactory(name="Org B"))
+    cohort_a = cast(
+        Cohort, CohortFactory(organisation=organisation_a, name="Cohort A Only")
+    )
+    educator = cast(User, UserFactory(staff=True))
     assign_object_role(educator, organisation_a, "organisation_admin")
     assign_object_role(educator, organisation_b, "organisation_admin")
     return organisation_a, organisation_b, cohort_a, educator
@@ -492,8 +519,8 @@ def _two_organisation_educator():
 @pytest.mark.usefixtures("_site_context")
 class TestSwitchOnAListPage:
     def test_switching_to_another_organisations_list_shows_its_content(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         _organisation_a, organisation_b, _cohort_a, educator = (
             _two_organisation_educator()
         )
@@ -506,8 +533,8 @@ class TestSwitchOnAListPage:
         assert b"Cohort B Only" in response.content
 
     def test_switch_response_carries_the_live_region_announcement(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         _organisation_a, organisation_b, _cohort_a, educator = (
             _two_organisation_educator()
         )
@@ -520,7 +547,9 @@ class TestSwitchOnAListPage:
         # test_htmx_navigation. What is host-specific is the wording.
         assert "Now viewing Org B" in response.content.decode()
 
-    def test_switch_response_carries_the_updated_switcher_label(self, logged_in_client):
+    def test_switch_response_carries_the_updated_switcher_label(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         _organisation_a, organisation_b, _cohort_a, educator = (
             _two_organisation_educator()
         )
@@ -531,8 +560,8 @@ class TestSwitchOnAListPage:
         assert "Org B" in _switcher(response)
 
     def test_switching_to_an_organisation_without_the_section_lands_on_one_it_shows(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         organisation_a = OrganisationFactory(name="Org A")
         organisation_b = OrganisationFactory(name="Org B")
         educator = UserFactory(staff=True)
@@ -545,7 +574,9 @@ class TestSwitchOnAListPage:
         assert response.status_code == 200
         assert response["HX-Push-Url"] == _interface_url(organisation_b.slug, "staff")
 
-    def test_a_hidden_section_is_still_a_404_without_a_switch(self, logged_in_client):
+    def test_a_hidden_section_is_still_a_404_without_a_switch(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         organisation = OrganisationFactory()
         educator = UserFactory(staff=True)
         assign_object_role(educator, organisation, "organisation_staff_viewer")
@@ -556,8 +587,8 @@ class TestSwitchOnAListPage:
         assert response.status_code == 404
 
     def test_switcher_links_keep_the_visitor_on_the_same_section(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         """Switching from the learners list must land on the other organisation's
         learners list, not bounce the visitor back to cohorts."""
         organisation_a, organisation_b, _cohort_a, educator = (
@@ -578,7 +609,9 @@ class TestSwitchOnAForeignDetailPage:
     switch softens to that organisation's list rather than 404ing."""
 
     @pytest.fixture
-    def switch_response(self, logged_in_client):
+    def switch_response(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> _MonkeyPatchedWSGIResponse:
         _organisation_a, organisation_b, cohort_a, educator = (
             _two_organisation_educator()
         )
@@ -592,23 +625,31 @@ class TestSwitchOnAForeignDetailPage:
         response.cohort_a = cohort_a
         return response
 
-    def test_returns_the_new_organisations_list_instead_of_a_404(self, switch_response):
+    def test_returns_the_new_organisations_list_instead_of_a_404(
+        self, switch_response: _MonkeyPatchedWSGIResponse
+    ) -> None:
         assert switch_response.status_code == 200
         content = switch_response.content.decode()
         assert "Cohort B Only" in content
         assert "Cohort A Only" not in content
 
-    def test_list_urls_hang_off_the_list_not_the_foreign_detail(self, switch_response):
+    def test_list_urls_hang_off_the_list_not_the_foreign_detail(
+        self, switch_response: _MonkeyPatchedWSGIResponse
+    ) -> None:
         content = switch_response.content.decode()
 
         assert f"cohorts/{switch_response.cohort_a.pk}/cohorts" not in content
 
-    def test_sets_hx_push_url_to_the_list(self, switch_response):
+    def test_sets_hx_push_url_to_the_list(
+        self, switch_response: _MonkeyPatchedWSGIResponse
+    ) -> None:
         assert switch_response["HX-Push-Url"] == _interface_url(
             switch_response.organisation_b.slug, "cohorts"
         )
 
-    def test_queues_an_info_message_naming_the_new_organisation(self, switch_response):
+    def test_queues_an_info_message_naming_the_new_organisation(
+        self, switch_response: _MonkeyPatchedWSGIResponse
+    ) -> None:
         messages = [str(m) for m in get_messages(switch_response.wsgi_request)]
 
         assert messages == [
@@ -616,8 +657,8 @@ class TestSwitchOnAForeignDetailPage:
         ]
 
     def test_foreign_detail_without_the_switch_header_still_404s(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         _organisation_a, organisation_b, cohort_a, educator = (
             _two_organisation_educator()
         )
@@ -632,8 +673,8 @@ class TestSwitchOnAForeignDetailPage:
         assert response.status_code == 404
 
     def test_switch_to_a_genuinely_nonexistent_path_segment_still_404s(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         """Pins the narrow OrganisationScopeDenied catch: an unknown path
         segment is a different failure than "wrong organisation" and must
         not be relabelled into the softened redirect, switch header or not.
@@ -654,8 +695,8 @@ class TestSwitchOnAForeignDetailPage:
 @pytest.mark.usefixtures("_site_context")
 class TestSwitcherRendering:
     def test_single_accessible_organisation_renders_static_text_not_a_dropdown(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         organisation = OrganisationFactory(name="Solo Org")
         educator = UserFactory(staff=True)
         assign_object_role(educator, organisation, "organisation_admin")
@@ -672,8 +713,8 @@ class TestSwitcherRendering:
         )
 
     def test_two_accessible_organisations_renders_current_one_as_checked(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         organisation_a, _organisation_b, _cohort_a, educator = (
             _two_organisation_educator()
         )
@@ -691,8 +732,8 @@ class TestSwitcherRendering:
         )
 
     def test_the_trigger_opens_a_menu_of_radio_options_with_only_the_current_checked(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         organisation_a, _organisation_b, _cohort_a, educator = (
             _two_organisation_educator()
         )
@@ -712,8 +753,8 @@ class TestSwitcherRendering:
         ] == [("OA Org A", "true"), ("OB Org B", "false")]
 
     def test_the_trigger_and_every_option_carry_an_initials_tile(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         organisation_a, _organisation_b, _cohort_a, educator = (
             _two_organisation_educator()
         )
@@ -733,8 +774,8 @@ class TestSwitcherRendering:
         ] == ["OA", "OB"]
 
     def test_the_single_organisation_shell_carries_the_tile_but_no_caret(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
         organisation = OrganisationFactory(name="Solo Org")
         educator = UserFactory(staff=True)
         assign_object_role(educator, organisation, "organisation_admin")
@@ -818,7 +859,7 @@ def test_sidebar_groups_its_sections_under_a_teaching_heading(
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures("_messaging_on")
-def test_sidebar_lists_the_seven_sections_each_with_an_icon(
+def test_sidebar_lists_the_six_sections_each_with_an_icon(
     sidebar: tuple[lxml.html.HtmlElement, str],
 ) -> None:
     nav, _page = sidebar
@@ -984,7 +1025,7 @@ def test_a_user_with_no_name_shows_their_email_once(
 def test_sidebar_has_no_messages_item(
     mock_site_context: Site,
     logged_in_client: Callable[[AbstractBaseUser], Client],
-    settings,
+    settings: pytest_django.fixtures.SettingsWrapper,
     messaging_enabled: bool,
 ) -> None:
     settings.MESSAGING_ENABLED = messaging_enabled
