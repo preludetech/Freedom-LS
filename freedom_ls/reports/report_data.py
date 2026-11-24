@@ -50,6 +50,7 @@ class ReportTooLargeError(PanelBodyTooLargeError):
 class QuizAttempt:
     """One completed sitting of a quiz."""
 
+    form_progress_id: UUID
     attempt_number: int
     completed_at: datetime
     score: int | None

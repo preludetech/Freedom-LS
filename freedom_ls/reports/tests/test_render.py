@@ -15,7 +15,7 @@ import dataclasses
 import io
 import re
 from html import unescape
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fontTools.ttLib import TTFont
@@ -1172,6 +1172,7 @@ class TestLearnerDetail:
                     pass_percentage=None,
                     attempts=[
                         QuizAttempt(
+                            form_progress_id=UUID(int=1),
                             attempt_number=1,
                             completed_at=GENERATED_AT,
                             score=9,
@@ -1804,6 +1805,7 @@ class TestQuizAttemptsTable:
     def test_renders_one_row_per_completed_attempt(self) -> None:
         attempts = [
             QuizAttempt(
+                form_progress_id=UUID(int=2),
                 attempt_number=1,
                 completed_at=GENERATED_AT,
                 score=3,
@@ -1812,6 +1814,7 @@ class TestQuizAttemptsTable:
                 passed=False,
             ),
             QuizAttempt(
+                form_progress_id=UUID(int=3),
                 attempt_number=2,
                 completed_at=GENERATED_AT,
                 score=9,
@@ -1865,6 +1868,7 @@ class TestQuizAttemptsTable:
                     pass_percentage=None,
                     attempts=[
                         QuizAttempt(
+                            form_progress_id=UUID(int=4),
                             attempt_number=1,
                             completed_at=GENERATED_AT,
                             score=5,
@@ -2091,6 +2095,7 @@ def _busy_report_data() -> CohortReportData:
                 pass_percentage=None,
                 attempts=[
                     QuizAttempt(
+                        form_progress_id=UUID(int=5),
                         attempt_number=1,
                         completed_at=data.generated_at,
                         score=3,

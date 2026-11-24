@@ -188,8 +188,22 @@ def test_the_cache_key_carries_the_site_id_and_cohort() -> None:
     cohort_id = UUID("11111111-1111-1111-1111-111111111111")
 
     assert _cache_key(7, cohort_id, "progress") == (
-        "reports:screen:2:7:11111111-1111-1111-1111-111111111111:progress"
+        "reports:screen:3:7:11111111-1111-1111-1111-111111111111:progress"
     )
+
+
+@pytest.mark.django_db
+def test_an_entry_written_under_the_previous_schema_version_is_not_read_back(
+    cohort,
+) -> None:
+    old_key = _cache_key(cohort.site_id, cohort.pk, "progress").replace(
+        ":screen:3:", ":screen:2:"
+    )
+    cache.set(old_key, "stale shape")
+
+    data = cached_cohort_progress(cohort)
+
+    assert data.cohort_size == 2
 
 
 def test_two_sites_with_the_same_cohort_pk_never_share_a_key() -> None:

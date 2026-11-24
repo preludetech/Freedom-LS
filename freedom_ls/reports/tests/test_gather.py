@@ -23,6 +23,7 @@ from freedom_ls.content_engine.models import Course, Topic
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
+    FormProgressFactory,
     FormQuestionFactory,
     QuestionAnswerFactory,
     QuestionOptionFactory,
@@ -68,10 +69,10 @@ from freedom_ls.reports.gather import (
     _evaluate_at_risk_flags,
     _latest_completion,
     _quiz_result_for,
-    _score_attempt,
     _truncate_to_budget,
     _unique_abbreviations,
     _wordmark_size_class,
+    attempt_number_of,
     build_confusion_block,
     build_progress_data,
     build_wrong_answers_by_learner_quiz,
@@ -79,6 +80,7 @@ from freedom_ls.reports.gather import (
     gather_cohort_progress,
     gather_cohort_report_data,
     gather_learner_course_details,
+    score_attempt,
     tally_quiz_answers,
 )
 from freedom_ls.reports.indexes import (
@@ -1906,7 +1908,7 @@ class TestScoreAttempt:
     def test_an_incomplete_sitting_scores_nothing(self) -> None:
         quiz = a_quiz()
 
-        assert _score_attempt(an_attempt(quiz, completed_time=None), quiz) == (
+        assert score_attempt(an_attempt(quiz, completed_time=None), quiz) == (
             None,
             None,
             None,
@@ -1919,7 +1921,7 @@ class TestScoreAttempt:
             quiz, completed_time=JAN_1, scores={"score": 3, "max_score": 4}
         )
 
-        assert _score_attempt(attempt, quiz) == (3, 4, 75, True)
+        assert score_attempt(attempt, quiz) == (3, 4, 75, True)
 
     def test_a_failing_sitting_reports_a_false_verdict(self) -> None:
         quiz = a_quiz(pass_percentage=80)
@@ -1927,7 +1929,7 @@ class TestScoreAttempt:
             quiz, completed_time=JAN_1, scores={"score": 1, "max_score": 4}
         )
 
-        assert _score_attempt(attempt, quiz) == (1, 4, 25, False)
+        assert score_attempt(attempt, quiz) == (1, 4, 25, False)
 
     def test_a_quiz_with_no_pass_mark_has_no_verdict(self) -> None:
         quiz = a_quiz(pass_percentage=None)
@@ -1935,7 +1937,7 @@ class TestScoreAttempt:
             quiz, completed_time=JAN_1, scores={"score": 2, "max_score": 4}
         )
 
-        assert _score_attempt(attempt, quiz) == (2, 4, 50, None)
+        assert score_attempt(attempt, quiz) == (2, 4, 50, None)
 
     def test_a_quiz_with_no_questions_reports_no_percentage(self) -> None:
         quiz = a_quiz(pass_percentage=50)
@@ -1943,7 +1945,7 @@ class TestScoreAttempt:
             quiz, completed_time=JAN_1, scores={"score": 0, "max_score": 0}
         )
 
-        assert _score_attempt(attempt, quiz) == (0, 0, None, None)
+        assert score_attempt(attempt, quiz) == (0, 0, None, None)
 
 
 class TestQuizResultFor:
@@ -3009,6 +3011,23 @@ class TestGatherLearnerCourseDetails:
             (2, 100, True),
         ]
 
+    def test_each_attempt_carries_its_sittings_pk(self, mock_site_context) -> None:
+        course, _topic, quiz = _quiz_course()
+        registration, record = _cohort_member(course)
+        sitting = form_progress(
+            record,
+            quiz,
+            completed_time=timezone.now(),
+            scores={"score": 2, "max_score": 2},
+        )
+
+        (detail,) = gather_learner_course_details(
+            record.learner, [registration], mock_site_context.pk
+        )
+
+        (result,) = detail.quiz_results
+        assert [a.form_progress_id for a in result.attempts] == [sitting.pk]
+
     def test_the_query_count_does_not_grow_with_attempts_or_registrations(
         self, mock_site_context, django_assert_max_num_queries
     ) -> None:
@@ -3036,3 +3055,51 @@ class TestGatherLearnerCourseDetails:
             gather_learner_course_details(
                 learner, [cohort_registration, own_registration], mock_site_context.pk
             )
+
+
+@pytest.mark.django_db
+class TestAttemptNumberOf:
+    @pytest.mark.parametrize(
+        ("sitting_index", "expected"),
+        [(0, 1), (1, 2), (2, 3), (3, None)],
+        ids=["first", "second", "third", "in-progress"],
+    )
+    def test_a_sitting_is_numbered_by_its_place_among_the_completed_ones(
+        self, mock_site_context, sitting_index: int, expected: int | None
+    ) -> None:
+        course, _topic, quiz = _quiz_course()
+        _registration, record = _cohort_member(course)
+        now = timezone.now()
+        sittings = [
+            form_progress(record, quiz, completed_time=now - timedelta(days=3)),
+            form_progress(record, quiz, completed_time=now - timedelta(days=2)),
+            form_progress(record, quiz, completed_time=now - timedelta(days=1)),
+            form_progress(record, quiz, completed_time=None),
+        ]
+
+        assert attempt_number_of(sittings[sitting_index]) == expected
+
+    def test_the_courses_tab_rows_are_numbered_one_two_three(
+        self, mock_site_context
+    ) -> None:
+        course, _topic, quiz = _quiz_course()
+        registration, record = _cohort_member(course)
+        now = timezone.now()
+        for days in (3, 2, 1):
+            form_progress(record, quiz, completed_time=now - timedelta(days=days))
+        form_progress(record, quiz, completed_time=None)
+
+        (detail,) = gather_learner_course_details(
+            record.learner, [registration], mock_site_context.pk
+        )
+
+        (result,) = detail.quiz_results
+        assert [a.attempt_number for a in result.attempts] == [1, 2, 3]
+
+    def test_a_sitting_with_no_course_form_attempt_has_no_number(
+        self, mock_site_context
+    ) -> None:
+        quiz = FormFactory(strategy=FormStrategy.QUIZ)
+        sitting = FormProgressFactory(form=quiz, completed_time=timezone.now())
+
+        assert attempt_number_of(sitting) is None

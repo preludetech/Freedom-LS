@@ -49,6 +49,7 @@ from freedom_ls.reports.indexes import (
     build_course_catalogue,
     build_question_index,
     build_sat_questions,
+    completed_sitting_ids_of,
     index_distractors,
     load_cohort,
     load_distractor_rows,
@@ -363,7 +364,7 @@ def _completed_items(
     return completed
 
 
-def _score_attempt(
+def score_attempt(
     fp: FormProgress, form: Form
 ) -> tuple[int | None, int | None, int | None, bool | None]:
     """One sitting's score, max score, percentage and verdict.
@@ -389,6 +390,19 @@ def _score_attempt(
     return score, max_score, percentage, passed
 
 
+def attempt_numbers(chronological_ids: Sequence[UUID]) -> dict[UUID, int]:
+    """Each sitting's attempt number: its 1-based place among the completed
+    sittings of one form under one course progress record, given oldest
+    first."""
+    return {pk: number for number, pk in enumerate(chronological_ids, start=1)}
+
+
+def attempt_number_of(sitting: FormProgress) -> int | None:
+    """The number the Courses tab shows for this sitting, or None when it
+    has no course form attempt or is not completed."""
+    return attempt_numbers(completed_sitting_ids_of(sitting)).get(sitting.pk)
+
+
 def _quiz_result_for(
     learner_id: UUID, form: Form, forms: FormProgressIndex
 ) -> QuizResult | None:
@@ -398,17 +412,20 @@ def _quiz_result_for(
     if not attempt_rows:
         return None
 
+    # Only rows with completed_time set are collected into this list; the
+    # filter is what narrows the Optional for the type checker.
+    completed_rows = [row for row in attempt_rows if row.completed_time is not None]
+    numbers = attempt_numbers([row.pk for row in completed_rows])
     attempts: list[QuizAttempt] = []
-    for attempt_row in attempt_rows:
+    for attempt_row in completed_rows:
         completed_at = attempt_row.completed_time
-        # Only rows with completed_time set are collected into this list; the
-        # check is what narrows the Optional for the type checker.
         if completed_at is None:
             continue
-        score, max_score, percentage, passed = _score_attempt(attempt_row, form)
+        score, max_score, percentage, passed = score_attempt(attempt_row, form)
         attempts.append(
             QuizAttempt(
-                attempt_number=len(attempts) + 1,
+                form_progress_id=attempt_row.pk,
+                attempt_number=numbers[attempt_row.pk],
                 completed_at=completed_at,
                 score=score,
                 max_score=max_score,
@@ -420,7 +437,7 @@ def _quiz_result_for(
     # Safe to index rather than .get(): the attempt list above was non-empty,
     # and every completed sitting also set a latest row for the same key.
     fp = forms.latest_by_learner_form[key]
-    latest_score, latest_max_score, percentage, passed = _score_attempt(fp, form)
+    latest_score, latest_max_score, percentage, passed = score_attempt(fp, form)
     return QuizResult(
         form_id=form.id,
         title=form.title,

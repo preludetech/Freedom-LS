@@ -48,7 +48,7 @@ from freedom_ls.learner_management.models import (
     CohortMembership,
     LearnerCourseRegistration,
 )
-from freedom_ls.learner_progress.models import TopicProgress
+from freedom_ls.learner_progress.models import CourseFormAttempt, TopicProgress
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.validators import MAX_BYTES, check_logo_safety
 from freedom_ls.reports.config import config
@@ -393,6 +393,31 @@ def load_form_progress_rows(
         )
         .select_related("form", "course_attempt__course_progress")
         .order_by(F("completed_time").desc(nulls_last=True), "-start_time")
+    )
+
+
+def completed_sitting_ids_of(sitting: FormProgress) -> list[UUID]:
+    """The pks of the completed sittings of `sitting`'s form under its course
+    progress record, oldest first, or [] when it has no course form attempt.
+
+    The order is the one `fold_form_progress_rows` leaves each learner's
+    completed attempts in, so every caller numbers sittings alike.
+    """
+    course_progress_id = (
+        CourseFormAttempt.objects.filter(form_progress=sitting)
+        .values_list("course_progress_id", flat=True)
+        .first()
+    )
+    if course_progress_id is None:
+        return []
+    return list(
+        FormProgress.objects.filter(
+            course_attempt__course_progress_id=course_progress_id,
+            form_id=sitting.form_id,
+            completed_time__isnull=False,
+        )
+        .order_by("completed_time", "start_time")
+        .values_list("pk", flat=True)
     )
 
 
