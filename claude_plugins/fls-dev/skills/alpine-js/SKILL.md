@@ -40,6 +40,7 @@ Reuse these registered components before writing a new one. Each app registers i
 | `dateEyebrow` | `learner_interface` | `learner_interface/dashboard.html` | Today's date in the browser's locale and zone, refreshed when the tab is shown again |
 | `courseSectionPagination` | `learner_interface` | `learner_interface/partials/course_list.html`, `course_applications/partials/dashboard_applications.html` | Returns focus to the matching pager control after a swap, or to the section heading |
 | `historyBackLink` | `learner_interface` | `learner_interface/course_detail.html` | Back link steps back through history, falling back to its `href` when there is no sending page or it would bounce |
+| `revisionFeedback` | `learner_interface` | `learner_interface/partials/revision_feedback.html` | Focuses the feedback's root element (`tabindex="-1"`) when it is swapped in, so a screen reader reads the result |
 | `memberRoleChooser` | `educator_interface` | `educator_interface/modal/add_staff_member.html` | Shows the cohorts block only for a role given on cohorts and tells `cohortChecklist` which role is chosen |
 | `cohortChecklist` | `educator_interface` | `educator_interface/modal/add_staff_member.html`, `educator_interface/modal/change_cohorts.html` | Filters cohort rows by search text and by the chosen role; rows not offered are hidden and disabled |
 | `appModal` | `panel_framework` | `panel_framework/partials/modal_host.html` | Native `<dialog>` host: trigger tracking, open on swap, focus after 422/re-render, close on `closeModal` |
