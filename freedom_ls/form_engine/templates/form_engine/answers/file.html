@@ -11,7 +11,9 @@ Reads: answer (or None), with answer_file prefetched.
         <p class="flex items-center gap-2 text-on-surface">
             <c-icon name="notes" class="size-4 flex-none" />
             <span class="break-all">{{ answer.answer_file.original_filename }}</span>
-            <span class="text-sm text-muted">({{ answer.answer_file.file.size|filesizeformat }})</span>
+            {% with size=answer.answer_file.size_or_none %}{% if size is not None %}
+                <span class="text-sm text-muted">({{ size|filesizeformat }})</span>
+            {% endif %}{% endwith %}
         </p>
     </div>
 {% endif %}

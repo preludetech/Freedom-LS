@@ -57,7 +57,9 @@ the question names its type instead of claiming nothing was attached.
         <p class="flex items-center gap-2 text-on-surface">
             <c-icon name="notes" class="size-4" />
             <span>{{ answer_file.original_filename }}</span>
-            <span class="text-sm text-muted">({{ answer_file.file.size|filesizeformat }})</span>
+            {% with size=answer_file.size_or_none %}{% if size is not None %}
+                <span class="text-sm text-muted">({{ size|filesizeformat }})</span>
+            {% endif %}{% endwith %}
         </p>
 
         <div class="flex flex-wrap items-center gap-3">

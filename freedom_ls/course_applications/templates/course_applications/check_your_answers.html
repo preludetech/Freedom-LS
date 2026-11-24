@@ -56,7 +56,9 @@
                                     {% if row.answer.answer_file %}
                                         <span class="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
                                             <span>{{ row.answer.answer_file.original_filename }}</span>
-                                            <span class="text-sm text-muted">({{ row.answer.answer_file.file.size|filesizeformat }})</span>
+                                            {% with size=row.answer.answer_file.size_or_none %}{% if size is not None %}
+                                                <span class="text-sm text-muted">({{ size|filesizeformat }})</span>
+                                            {% endif %}{% endwith %}
                                             <c-button href="{% url 'form_engine:own_question_answer_file' file_pk=row.answer.answer_file.pk %}"
                                                       variant="ghost" size="small" icon_left="download">
                                                 Download<span class="sr-only"> {{ row.answer.answer_file.original_filename }}</span>

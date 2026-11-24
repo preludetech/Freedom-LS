@@ -122,6 +122,28 @@ def test_an_answer_box_is_outlined_like_a_chosen_option_not_an_admonition(
     assert "border-s-4" not in classes
 
 
+def test_a_file_answer_shows_its_name_and_size() -> None:
+    question = _question("file_upload")
+    answer = cast(QuestionAnswer, QuestionAnswerFactory(question=question))
+    QuestionAnswerFileFactory(answer=answer, original_filename="licence.pdf")
+
+    text = " ".join(_render(question, answer).text_content().split())
+
+    assert "licence.pdf (12 bytes)" in text
+
+
+def test_a_file_answer_missing_from_storage_shows_its_name_without_a_size() -> None:
+    question = _question("file_upload")
+    answer = cast(QuestionAnswer, QuestionAnswerFactory(question=question))
+    stored = QuestionAnswerFileFactory(answer=answer, original_filename="licence.pdf")
+    stored.file.storage.delete(stored.file.name)
+
+    text = " ".join(_render(question, answer).text_content().split())
+
+    assert "licence.pdf" in text
+    assert "bytes" not in text
+
+
 def test_a_long_text_answer_keeps_its_line_breaks():
     question = _question("long_text")
     answer = cast(

@@ -965,3 +965,19 @@ def test_compute_quiz_scores_with_answers_stays_within_a_query_bound_as_question
         scores = progress.compute_quiz_scores(answers=answers)
 
     assert scores == {"score": 12, "max_score": 12}
+
+
+@pytest.mark.django_db
+def test_the_size_of_a_stored_file_is_its_byte_count(
+    answer_file: QuestionAnswerFile,
+) -> None:
+    assert answer_file.size_or_none == len(b"stored bytes")
+
+
+@pytest.mark.django_db
+def test_the_size_of_a_file_missing_from_storage_is_none(
+    answer_file: QuestionAnswerFile,
+) -> None:
+    answer_file.file.storage.delete(answer_file.file.name)
+
+    assert answer_file.size_or_none is None

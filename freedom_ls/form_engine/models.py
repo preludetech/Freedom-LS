@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from uuid import UUID
 
+from botocore.exceptions import ClientError
+
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.files.storage import Storage
@@ -956,6 +958,19 @@ class QuestionAnswerFile(SiteAwareModel, TimestampedModel):
 
     def __str__(self) -> str:
         return self.original_filename
+
+    @property
+    def size_or_none(self) -> int | None:
+        """The stored file's size in bytes, or None when storage cannot say.
+
+        A page that lists answers must still render when an object has gone
+        from the bucket or storage is unreachable, so it shows the file name
+        without a size instead of failing.
+        """
+        try:
+            return self.file.size
+        except (OSError, ClientError):
+            return None
 
     def save(self, *args: object, **kwargs: object) -> None:
         """Save, then remove the object this save superseded.
