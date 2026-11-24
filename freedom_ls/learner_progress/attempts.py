@@ -24,7 +24,7 @@ from django.db.models import QuerySet
 from django.utils import timezone
 
 from freedom_ls.content_engine.models import ContentCollectionItem
-from freedom_ls.form_engine.models import Form, FormProgress
+from freedom_ls.form_engine.models import Form, FormDeclaration, FormProgress
 from freedom_ls.learner_progress.models import CourseFormAttempt, CourseProgress
 
 # A sitting opened this recently is reused by a second start rather than finalised:
@@ -142,6 +142,7 @@ def start_attempt(
     collection_item: ContentCollectionItem,
     *,
     kept_if_untouched_since: datetime | None = None,
+    declaration: FormDeclaration | None = None,
 ) -> FormProgress:
     """Begin, or resume, the learner's sitting at this placement.
 
@@ -150,6 +151,11 @@ def start_attempt(
     sitting started within `START_REUSE_WINDOW` and not yet answered is reused
     untouched, since that is a double start; any other is finalised first for
     submit-on-exit forms (see `finalise_stale_incomplete`).
+
+    `declaration` is an unsaved `FormDeclaration` with its text, typed name and
+    IP address set. It is saved against the sitting returned, in the same
+    transaction that creates or resumes it, unless that sitting is already
+    signed. The lock is what stops two posts of one signature writing two rows.
     """
     with transaction.atomic():
         CourseProgress.objects.select_for_update().get(pk=course_progress.pk)
@@ -165,7 +171,18 @@ def start_attempt(
                 collection_item,
                 kept_if_untouched_since=kept_if_untouched_since,
             )
-        return get_or_create_incomplete(course_progress, collection_item)
+        sitting = get_or_create_incomplete(course_progress, collection_item)
+        if (
+            declaration is not None
+            and not FormDeclaration.objects.filter(form_progress=sitting).exists()
+        ):
+            declaration.form_progress = sitting
+            # Set from the record, as get_or_create_incomplete does for the
+            # sitting, so the declaration shares its sitting's site with no
+            # request in scope.
+            declaration.site_id = course_progress.site_id
+            declaration.save()
+        return sitting
 
 
 @dataclass(frozen=True)

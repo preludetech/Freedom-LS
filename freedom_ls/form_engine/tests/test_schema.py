@@ -714,3 +714,38 @@ def test_a_page_without_a_draw_key_has_no_draw() -> None:
     )
 
     assert page.draw is None
+
+
+def test_a_quiz_accepts_the_declaration_keys() -> None:
+    form = Form.model_validate(
+        {
+            "content_type": "FORM",
+            "file_path": "forms/quiz/form.md",
+            "title": "Quiz",
+            "strategy": "QUIZ",
+            "quiz_show_incorrect": True,
+            "quiz_pass_percentage": 70,
+            "requires_declaration": True,
+            "declaration_text": "I did this myself.",
+        }
+    )
+
+    assert (form.requires_declaration, form.declaration_text) == (
+        True,
+        "I did this myself.",
+    )
+
+
+def test_a_form_without_the_declaration_keys_defaults_them_off_and_empty() -> None:
+    form = Form.model_validate(
+        {
+            "content_type": "FORM",
+            "file_path": "forms/quiz/form.md",
+            "title": "Quiz",
+            "strategy": "QUIZ",
+            "quiz_show_incorrect": True,
+            "quiz_pass_percentage": 70,
+        }
+    )
+
+    assert (form.requires_declaration, form.declaration_text) == (False, "")

@@ -20,8 +20,12 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
 )
 from freedom_ls.content_engine.models import ContentCollectionItem
-from freedom_ls.form_engine.factories import FormFactory, QuestionAnswerFactory
-from freedom_ls.form_engine.models import FormProgress, FormStrategy
+from freedom_ls.form_engine.factories import (
+    FormDeclarationFactory,
+    FormFactory,
+    QuestionAnswerFactory,
+)
+from freedom_ls.form_engine.models import FormDeclaration, FormProgress, FormStrategy
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -314,6 +318,80 @@ class TestStartAttempt:
         assert first.completed_time is not None
         assert second.pk != first.pk
         assert second.completed_time is None
+
+
+def _unsaved_declaration(typed_name: str = "Thandi Nkosi") -> FormDeclaration:
+    return FormDeclaration(
+        declaration_text="I did this myself.",
+        typed_name=typed_name,
+        ip_address="203.0.113.7",
+    )
+
+
+@pytest.mark.django_db
+class TestStartAttemptDeclaration:
+    def test_a_declaration_on_a_new_record_creates_one_sitting_and_one_declaration(
+        self, form_placement: tuple[CourseProgress, ContentCollectionItem]
+    ) -> None:
+        record, collection_item = form_placement
+
+        sitting = start_attempt(
+            record, collection_item, declaration=_unsaved_declaration()
+        )
+
+        assert FormProgress.objects.count() == 1
+        declaration = FormDeclaration.objects.get()
+        assert declaration.form_progress == sitting
+        assert declaration.typed_name == "Thandi Nkosi"
+
+    def test_the_declaration_shares_its_sittings_site(
+        self, form_placement: tuple[CourseProgress, ContentCollectionItem]
+    ) -> None:
+        record, collection_item = form_placement
+
+        sitting = start_attempt(
+            record, collection_item, declaration=_unsaved_declaration()
+        )
+
+        assert FormDeclaration.objects.get().site_id == sitting.site_id
+
+    def test_a_second_start_inside_the_window_adds_no_second_declaration(
+        self, form_placement: tuple[CourseProgress, ContentCollectionItem]
+    ) -> None:
+        record, collection_item = form_placement
+        first = start_attempt(
+            record, collection_item, declaration=_unsaved_declaration("First")
+        )
+
+        second = start_attempt(
+            record, collection_item, declaration=_unsaved_declaration("Second")
+        )
+
+        assert second.pk == first.pk
+        assert FormDeclaration.objects.get().typed_name == "First"
+
+    def test_a_signed_open_sitting_gets_no_second_declaration(
+        self, form_placement: tuple[CourseProgress, ContentCollectionItem]
+    ) -> None:
+        record, collection_item = form_placement
+        sitting = get_or_create_incomplete(record, collection_item)
+        FormDeclarationFactory(form_progress=sitting, typed_name="Signed")
+        FormProgress.objects.filter(pk=sitting.pk).update(
+            start_time=timezone.now() - START_REUSE_WINDOW - timedelta(seconds=1)
+        )
+
+        start_attempt(record, collection_item, declaration=_unsaved_declaration("New"))
+
+        assert FormDeclaration.objects.get().typed_name == "Signed"
+
+    def test_a_start_without_a_declaration_writes_none(
+        self, form_placement: tuple[CourseProgress, ContentCollectionItem]
+    ) -> None:
+        record, collection_item = form_placement
+
+        start_attempt(record, collection_item)
+
+        assert FormDeclaration.objects.exists() is False
 
 
 @pytest.mark.django_db

@@ -28,6 +28,7 @@ from django.views.decorators.http import require_POST
 from django.views.decorators.vary import vary_on_headers
 
 from freedom_ls.accounts.decorators import acquisition_login_required
+from freedom_ls.accounts.utils import get_client_ip
 from freedom_ls.content_engine.course_details import course_details_context
 from freedom_ls.content_engine.models import (
     ContentCollectionItem,
@@ -67,7 +68,17 @@ from freedom_ls.form_engine.conditions import (
     current_path,
     sitting_path,
 )
-from freedom_ls.form_engine.models import Form, FormProgress, FormQuestion, FormStrategy
+from freedom_ls.form_engine.declarations import (
+    form_requires_declaration,
+    sitting_needs_declaration,
+)
+from freedom_ls.form_engine.models import (
+    Form,
+    FormDeclaration,
+    FormProgress,
+    FormQuestion,
+    FormStrategy,
+)
 from freedom_ls.form_engine.page_flow import (
     CurrentPage,
     PageSubmission,
@@ -140,6 +151,7 @@ from .dashboard_sections import (
     page_for,
     requested_section_slug,
 )
+from .forms import FormDeclarationForm
 from .utils import (
     BLOCKED,
     CLOSED,
@@ -1951,18 +1963,31 @@ def view_form(
     return render(request, "learner_interface/course_form.html", context)
 
 
-@login_required
-def form_start(request, course_slug, index):
-    """Start or resume a form for the current user."""
+@dataclass(frozen=True)
+class FormStartGate:
+    """What the checks before starting a sitting found: a redirect, or what to start in."""
 
-    course = get_object_or_404(Course, slug=course_slug)
+    redirect: HttpResponseRedirect | None
+    collection_item: ContentCollectionItem
+    course_progress: CourseProgress | None
+    decision: CourseAccessDecision
+    course_index: PlayerCourseIndex | None
+
+
+def _form_start_gate(request: HttpRequest, course: Course, index: int) -> FormStartGate:
+    """The access, blocked and closed checks every route that starts a sitting runs first.
+    It writes nothing except the player's course progress record."""
     decision = _course_access_decision(request.user, course)
     collection_item = get_form_collection_item_for_index(course, index)
+
+    def refused(response: HttpResponseRedirect) -> FormStartGate:
+        return FormStartGate(response, collection_item, None, decision, None)
+
     no_access = _course_access_redirect(
         decision, course, route=PlayerRoute.ITEM, collection_item=collection_item
     )
     if no_access is not None:
-        return no_access
+        return refused(no_access)
     course_progress = _ensure_player_course_progress(request.user, course)
 
     # Minting the attempt is what would flip a locked quiz to IN_PROGRESS, so the
@@ -1970,47 +1995,142 @@ def form_start(request, course_slug, index):
     # writes too. Minting the course progress record above changes no status.
     # A closed form is refused here as well: starting it would open an attempt
     # the learner can no longer fill in.
+    course_index = _player_course_index(request.user, course, index, course_progress)
     blocked = _blocked_item_redirect(
         request.user,
         course,
         index,
-        course_index=_player_course_index(
-            request.user, course, index, course_progress
-        ).rows,
+        course_index=course_index.rows,
         refuse_closed=True,
     )
     if blocked is not None:
-        return blocked
+        return refused(blocked)
 
     if course_progress is None:
         # Nothing grants this learner the course, so there is no record to
         # attempt the form in. Send them back to the read-only start screen
         # rather than mint an attempt with no record behind it.
-        return redirect(
-            "learner_interface:view_course_item",
-            course_slug=course_slug,
-            index=index,
+        return refused(
+            redirect(
+                "learner_interface:view_course_item",
+                course_slug=course.slug,
+                index=index,
+            )
         )
+    return FormStartGate(None, collection_item, course_progress, decision, course_index)
 
-    # Finalise a stale incomplete attempt (submit-on-exit forms only), then resume
-    # or create the sitting, serialised per record so concurrent starts share one.
-    form_progress = start_attempt(
-        course_progress,
-        collection_item,
-        kept_if_untouched_since=_latest_pause_start(course_progress),
+
+def _declaration_redirect(course_slug: str, index: int) -> HttpResponseRedirect:
+    return redirect(
+        "learner_interface:form_declaration", course_slug=course_slug, index=index
     )
-    ensure_served_paper(form_progress)
 
-    # Figure out what page of the form the user is on
+
+def _form_page_redirect(
+    course_slug: str, index: int, form_progress: FormProgress
+) -> HttpResponseRedirect:
+    """Send the learner to the page of this sitting they should be on."""
     page_number = resume_page_number(form_progress, current_path(form_progress))
-
-    # Redirect the user to form_fill_page
     return redirect(
         "learner_interface:form_fill_page",
         course_slug=course_slug,
         index=index,
         page_number=page_number,
     )
+
+
+@login_required
+def form_start(request, course_slug, index):
+    """Start or resume a form for the current user."""
+
+    course = get_object_or_404(Course, slug=course_slug)
+    gate = _form_start_gate(request, course, index)
+    if gate.redirect is not None:
+        return gate.redirect
+    collection_item = gate.collection_item
+    # The gate redirects when there is no record, so none is left here.
+    course_progress = cast("CourseProgress", gate.course_progress)
+    form = cast("Form", collection_item.child)
+
+    if form_requires_declaration(form, request.user):
+        open_sitting = get_latest_incomplete(course_progress, collection_item)
+        if open_sitting is None or sitting_needs_declaration(open_sitting):
+            return _declaration_redirect(course_slug, index)
+        # A signed open sitting is resumed as it stands. Calling start_attempt here
+        # could finalise it and mint a new sitting that nobody signed.
+        form_progress = open_sitting
+    else:
+        # Finalise a stale incomplete attempt (submit-on-exit forms only), then resume
+        # or create the sitting, serialised per record so concurrent starts share one.
+        form_progress = start_attempt(
+            course_progress,
+            collection_item,
+            kept_if_untouched_since=_latest_pause_start(course_progress),
+        )
+    ensure_served_paper(form_progress)
+    return _form_page_redirect(course_slug, index, form_progress)
+
+
+@login_required
+def form_declaration(
+    request: HttpRequest, course_slug: str, index: int
+) -> HttpResponse:
+    """The declaration a learner signs before each attempt at a declaration quiz."""
+    course = get_object_or_404(Course, slug=course_slug)
+    gate = _form_start_gate(request, course, index)
+    if gate.redirect is not None:
+        return gate.redirect
+    collection_item = gate.collection_item
+    # The gate redirects when there is no record, so none is left here.
+    course_progress = cast("CourseProgress", gate.course_progress)
+    form = cast("Form", collection_item.child)
+    if not form_requires_declaration(form, request.user):
+        return redirect(
+            "learner_interface:form_start", course_slug=course_slug, index=index
+        )
+
+    text = form.effective_declaration_text()
+    declaration_form = FormDeclarationForm(
+        request.POST if request.method == "POST" else None, declaration_text=text
+    )
+    if request.method == "POST" and declaration_form.is_valid():
+        # A PermissionDenied from the client IP lookup propagates as a 403.
+        ip = get_client_ip(request)
+        form_progress = start_attempt(
+            course_progress,
+            collection_item,
+            kept_if_untouched_since=_latest_pause_start(course_progress),
+            declaration=FormDeclaration(
+                declaration_text=text,
+                typed_name=declaration_form.cleaned_data["typed_name"],
+                ip_address=ip or None,
+            ),
+        )
+        ensure_served_paper(form_progress)
+        return _form_page_redirect(course_slug, index, form_progress)
+
+    start_url = reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course_slug, "index": index},
+    )
+    context = {
+        **_player_chrome_context(
+            request,
+            course,
+            form,
+            index,
+            course_index=gate.course_index,
+            course_progress=course_progress,
+            reference_linked=gate.decision.can_access_content,
+        ),
+        "course": course,
+        "form": form,
+        "index": index,
+        "declaration_text": text,
+        "declaration_form": declaration_form,
+        "previous_url": start_url,
+    }
+    return render(request, "learner_interface/form_declaration.html", context)
 
 
 def _form_page_url(course_slug: str, index: int, page_number: int) -> str:

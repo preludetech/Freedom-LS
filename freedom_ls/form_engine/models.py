@@ -20,6 +20,7 @@ from django.utils.translation import gettext_lazy as _
 from freedom_ls.base.storage import storage_for_alias
 from freedom_ls.content_base.models import BaseContent, MarkdownContent, TitledContent
 from freedom_ls.content_base.schema import ContentType as SchemaContentTypes
+from freedom_ls.form_engine.config import config as form_engine_config
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
 from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
 
@@ -105,6 +106,21 @@ class Form(TitledContent, MarkdownContent):
             "If False (default), options are served in authored order."
         ),
     )
+    requires_declaration = models.BooleanField(
+        default=False,
+        help_text=_(
+            "If True, the learner signs a declaration before every attempt of a quiz. "
+            "If False (default), the quiz starts without one."
+        ),
+    )
+    declaration_text = models.TextField(
+        blank=True,
+        default="",
+        help_text=_(
+            "The declaration the learner signs. "
+            "If empty (default), the site's default declaration text is used."
+        ),
+    )
 
     class Meta:
         constraints = [
@@ -115,6 +131,10 @@ class Form(TitledContent, MarkdownContent):
 
     def __str__(self):
         return self.title
+
+    def effective_declaration_text(self) -> str:
+        """The author's own declaration when set, else the site-wide default."""
+        return self.declaration_text or form_engine_config.FORM_DECLARATION_DEFAULT_TEXT
 
 
 class FormPage(TitledContent):
@@ -904,6 +924,28 @@ class FormProgress(SiteAwareModel):
                 )
 
         return incorrect_answers
+
+
+class FormDeclaration(SiteAwareModel):
+    """The declaration a learner signed before one sitting of a quiz.
+
+    It is attestation evidence, not identity verification: the typed name and IP
+    address corroborate who sat the quiz without proving it.
+    """
+
+    form_progress = models.OneToOneField(
+        FormProgress, on_delete=models.CASCADE, related_name="declaration"
+    )
+    # The effective declaration text exactly as rendered, so the record holds
+    # what the learner read even after the form's text changes.
+    declaration_text = models.TextField()
+    # As typed, spaces kept: the signature is what the learner entered.
+    typed_name = models.CharField(max_length=200)
+    signed_at = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    def __str__(self) -> str:
+        return f"{self.typed_name} - {self.form_progress}"
 
 
 class QuestionAnswer(SiteAwareModel, TimestampedModel):

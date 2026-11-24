@@ -6306,3 +6306,30 @@ def test_the_dropped_signal_carries_the_dropped_question_ids(
     save_content_to_db(tmp_path, site.name)
 
     assert dropped_signal_ids == [[uuid.UUID(_BANK_QUESTION_UUIDS["two"])]]
+
+
+@pytest.mark.django_db
+def test_a_saved_quiz_stores_the_declaration_keys(
+    site: Site, mock_site_context: object, tmp_path: Path
+) -> None:
+    quiz_dir = tmp_path / "declared quiz"
+    quiz_dir.mkdir()
+    (quiz_dir / "form.md").write_text(f"""---
+content_type: FORM
+strategy: QUIZ
+title: Declared quiz
+uuid: {_SHUFFLE_FORM_UUID}
+quiz_show_incorrect: true
+quiz_pass_percentage: 70
+requires_declaration: true
+declaration_text: I did this myself.
+---
+""")
+
+    save_content_to_db(tmp_path, site.name)
+
+    form = Form.objects.get(id=_SHUFFLE_FORM_UUID)
+    assert (form.requires_declaration, form.declaration_text) == (
+        True,
+        "I did this myself.",
+    )

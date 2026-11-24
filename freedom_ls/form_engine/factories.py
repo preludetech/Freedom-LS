@@ -14,6 +14,7 @@ from freedom_ls.form_engine.conditions import ServedPage, ServedPaper
 from freedom_ls.form_engine.models import (
     Form,
     FormContent,
+    FormDeclaration,
     FormPage,
     FormProgress,
     FormQuestion,
@@ -97,6 +98,17 @@ class FormProgressFactory(SiteAwareFactory):
 
     user = factory.SubFactory(UserFactory)
     form = factory.SubFactory(FormFactory)
+
+
+class FormDeclarationFactory(SiteAwareFactory):
+    """Factory for creating FormDeclaration instances."""
+
+    class Meta:
+        model = FormDeclaration
+
+    form_progress = factory.SubFactory(FormProgressFactory)
+    declaration_text = "I declare that I am completing this quiz myself."
+    typed_name = factory.Sequence(lambda n: f"Learner Name {n}")
 
 
 class QuestionAnswerFactory(SiteAwareFactory):

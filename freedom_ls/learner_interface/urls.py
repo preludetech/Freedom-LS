@@ -64,6 +64,11 @@ urlpatterns = [
         name="form_start",
     ),
     path(
+        "courses/<slug:course_slug>/<int:index>/declaration",
+        views.form_declaration,
+        name="form_declaration",
+    ),
+    path(
         "courses/<slug:course_slug>/<int:index>/fill_form/<int:page_number>",
         views.form_fill_page,
         name="form_fill_page",

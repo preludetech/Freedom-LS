@@ -106,6 +106,17 @@ class Form(
         False,
         description="If True, leaving the test mid-attempt finalises and scores it. Default False.",
     )
+    requires_declaration: bool = Field(
+        False,
+        description="QUIZ only. If True, the learner signs a declaration before every attempt. Default False.",
+    )
+    declaration_text: str = Field(
+        "",
+        description=(
+            "QUIZ only, with requires_declaration. The declaration the learner signs. "
+            "Leave out to use the site's default text."
+        ),
+    )
     shuffle_pages: bool = Field(
         False,
         description="QUIZ only. If True, each sitting serves the pages in a random order. Default False.",

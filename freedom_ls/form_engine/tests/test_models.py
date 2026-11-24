@@ -10,6 +10,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import ProtectedError, RestrictedError
+from django.test import override_settings
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.form_engine.conditions import answers_by_question, current_path
@@ -992,3 +993,20 @@ def test_rendered_explanation_renders_markdown(mock_site_context) -> None:
     question = FormQuestionFactory(explanation="It is **bold** because.")
 
     assert "<strong>bold</strong>" in question.rendered_explanation()
+
+
+@pytest.mark.django_db
+def test_effective_declaration_text_is_the_authors_text_when_set(mock_site_context):
+    form = FormFactory(declaration_text="Author wording.")
+
+    assert form.effective_declaration_text() == "Author wording."
+
+
+@pytest.mark.django_db
+def test_effective_declaration_text_is_the_site_default_when_the_author_left_it_empty(
+    mock_site_context,
+):
+    form = FormFactory(declaration_text="")
+
+    with override_settings(FORM_DECLARATION_DEFAULT_TEXT="Project wording."):
+        assert form.effective_declaration_text() == "Project wording."
