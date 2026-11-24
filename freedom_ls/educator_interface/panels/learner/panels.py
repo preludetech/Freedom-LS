@@ -23,6 +23,9 @@ from freedom_ls.educator_interface.panels.learner.actions import (
 from freedom_ls.educator_interface.panels.learner.quick_view import (
     visible_registrations_with_progress,
 )
+from freedom_ls.educator_interface.panels.learner.quiz_attempt import (
+    openable_sitting_ids,
+)
 from freedom_ls.learner_management.models import Learner
 from freedom_ls.learner_management.queries import learner_status
 from freedom_ls.panel_framework.actions import PanelAction
@@ -116,12 +119,10 @@ class LearnerCoursesPanel(Panel):
     def get_context_data(self) -> dict[str, object]:
         learner = cast(Learner, self.instance)
         request = cast("OrganisationScopedRequest", self.request)
+        visible = visible_registrations_with_progress(learner, request)
         registrations = [
             entry.registration
-            for entry in sorted(
-                visible_registrations_with_progress(learner, request),
-                key=lambda entry: entry.course.title,
-            )
+            for entry in sorted(visible, key=lambda entry: entry.course.title)
         ]
         details = gather_learner_course_details(learner, registrations, learner.site_id)
         # The registrations' courses arrive with their organisations prefetched.
@@ -136,4 +137,16 @@ class LearnerCoursesPanel(Panel):
             (detail, courses[detail.course_id].shared_by(request.organisation))
             for detail in details
         ]
+        # One check for every attempt on the tab, reusing the registrations
+        # already loaded above.
+        context["openable_sitting_ids"] = openable_sitting_ids(
+            request,
+            [
+                attempt.form_progress_id
+                for detail in details
+                for quiz in detail.quiz_results
+                for attempt in quiz.attempts
+            ],
+            shown_registrations={learner.pk: visible},
+        )
         return context

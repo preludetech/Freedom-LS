@@ -1,5 +1,5 @@
 {% extends "panel_framework/panels/panel.html" %}
-{% load educator_tags %}
+{% load panel_tags educator_tags %}
 
 {% block panel_body %}
     {% if details %}
@@ -34,7 +34,15 @@
                             {% for quiz in detail.quiz_results %}
                                 <div class="flex flex-col gap-1">
                                     <c-panel-heading tag="h4">{{ quiz.title }}</c-panel-heading>
-                                    <c-panel-table caption="{{ quiz.title }} attempts">
+                                    {% partialdef attempt_number %}
+                                        {% if attempt.form_progress_id in openable_sitting_ids %}
+                                            {% resolve_url_path_template attempt 'educator_interface:interface' 'quiz-attempts/{form_progress_id}' as attempt_url %}
+                                            <c-quick-view-trigger href="{{ attempt_url }}" url="{{ attempt_url }}/__quick-view" class="font-semibold text-primary no-underline hover:text-primary-hover" aria-label="Attempt {{ attempt.attempt_number }} of {{ quiz.title }}">{{ attempt.attempt_number }}</c-quick-view-trigger>
+                                        {% else %}
+                                            {{ attempt.attempt_number }}
+                                        {% endif %}
+                                    {% endpartialdef %}
+                                    <c-panel-table caption="{{ quiz.title }} attempts" cards="true" cards_when_narrow="true">
                                         <c-slot name="head">
                                             <tr>
                                                 <th scope="col">Attempt</th>
@@ -47,7 +55,7 @@
                                         </c-slot>
                                         {% for attempt in quiz.attempts %}
                                             <tr>
-                                                <td>{{ attempt.attempt_number }}</td>
+                                                <td>{% partial attempt_number %}</td>
                                                 <td class="whitespace-nowrap"><c-date :value="attempt.completed_at" /></td>
                                                 <td>{% if attempt.score is not None and attempt.max_score is not None %}{{ attempt.score }}/{{ attempt.max_score }}{% endif %}</td>
                                                 <td>{% if attempt.percentage is not None %}{{ attempt.percentage }}%{% endif %}</td>
@@ -58,6 +66,21 @@
                                                 </td>
                                             </tr>
                                         {% endfor %}
+                                        <c-slot name="card_rows">
+                                            {% for attempt in quiz.attempts %}
+                                                <c-panel-table-card>
+                                                    <c-slot name="content">Attempt {% partial attempt_number %}</c-slot>
+                                                    <c-panel-definition-row label="Completed"><c-date :value="attempt.completed_at" /></c-panel-definition-row>
+                                                    <c-panel-definition-row label="Score">{% if attempt.score is not None and attempt.max_score is not None %}{{ attempt.score }}/{{ attempt.max_score }}{% endif %}</c-panel-definition-row>
+                                                    <c-panel-definition-row label="Percentage">{% if attempt.percentage is not None %}{{ attempt.percentage }}%{% endif %}</c-panel-definition-row>
+                                                    <c-panel-definition-row label="Pass mark">{% if quiz.pass_percentage is not None %}{{ quiz.pass_percentage }}%{% else %}No pass mark{% endif %}</c-panel-definition-row>
+                                                    <c-panel-definition-row label="Result">
+                                                        {% if attempt.passed is not None %}{% passed_badge attempt.passed as verdict %}<c-panel-status-badge :badge="verdict" />{% endif %}
+                                                        {% if forloop.last %}<span class="text-muted">Latest</span>{% endif %}
+                                                    </c-panel-definition-row>
+                                                </c-panel-table-card>
+                                            {% endfor %}
+                                        </c-slot>
                                     </c-panel-table>
                                 </div>
                             {% endfor %}

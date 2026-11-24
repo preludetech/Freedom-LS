@@ -13,7 +13,9 @@ import lxml.html
 import pytest
 
 from django.contrib.sites.models import Site
+from django.db import connection
 from django.test import Client
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
@@ -56,7 +58,7 @@ def _site_context(mock_site_context):
     """Every test here builds site-aware objects and assigns roles."""
 
 
-def _courses_panel(client: Client, organisation_slug: str, learner: object) -> str:
+def _courses_panel_html(client: Client, organisation_slug: str, learner: object) -> str:
     response = client.get(
         reverse(
             "educator_interface:interface",
@@ -67,8 +69,14 @@ def _courses_panel(client: Client, organisation_slug: str, learner: object) -> s
         )
     )
     assert response.status_code == 200
+    return str(response.content.decode())
+
+
+def _courses_panel(client: Client, organisation_slug: str, learner: object) -> str:
     return " ".join(
-        lxml.html.fromstring(response.content.decode()).text_content().split()
+        lxml.html.fromstring(_courses_panel_html(client, organisation_slug, learner))
+        .text_content()
+        .split()
     )
 
 
@@ -212,6 +220,136 @@ class TestLearnerCoursesPanel:
         assert "1/2 50% No pass mark Latest" in text
         assert "Passed" not in text
         assert "Failed" not in text
+
+    def test_only_an_openable_sitting_has_its_attempt_number_as_a_quick_view_trigger(
+        self, logged_in_client, monkeypatch
+    ):
+        course = CourseFactory(title="Algebra")
+        quiz = quiz_form("Unit quiz", 50)
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=quiz, order=0
+        )
+        record = course_progress_record(course, UserFactory())
+        first = form_progress(
+            record,
+            quiz,
+            completed_time=timezone.now() - timedelta(days=1),
+            scores={"score": 0, "max_score": 2},
+        )
+        form_progress(
+            record,
+            quiz,
+            completed_time=timezone.now(),
+            scores={"score": 2, "max_score": 2},
+        )
+        monkeypatch.setattr(
+            "freedom_ls.educator_interface.panels.learner.panels.openable_sitting_ids",
+            lambda request, ids, shown_registrations=None: {first.pk},
+        )
+        learner = record.learner
+        client = logged_in_client(_org_admin(learner.organisation))
+
+        document = lxml.html.fromstring(
+            _courses_panel_html(client, learner.organisation.slug, learner)
+        )
+
+        triggers = document.cssselect("tbody a[aria-controls='quick-view']")
+        review_url = _interface_url(
+            learner.organisation.slug, f"quiz-attempts/{first.pk}"
+        )
+        assert len(triggers) == 1
+        assert triggers[0].get("href") == review_url
+        assert triggers[0].get("hx-get") == f"{review_url}/__quick-view"
+        assert triggers[0].text_content().strip() == "1"
+        assert triggers[0].get("aria-label") == "Attempt 1 of Unit quiz"
+
+    @pytest.mark.parametrize("number", [1, 2, 3])
+    def test_each_attempt_number_opens_the_page_for_that_sitting(
+        self, logged_in_client, number
+    ):
+        course = CourseFactory(title="Algebra")
+        quiz = quiz_form("Unit quiz", 50)
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=quiz, order=0
+        )
+        record = course_progress_record(course, UserFactory())
+        now = timezone.now()
+        for days in (3, 2, 1):
+            form_progress(
+                record,
+                quiz,
+                completed_time=now - timedelta(days=days),
+                scores={"score": 1, "max_score": 2},
+            )
+        form_progress(record, quiz, scores={"score": 0, "max_score": 2})
+        learner = record.learner
+        client = logged_in_client(_org_admin(learner.organisation))
+        document = lxml.html.fromstring(
+            _courses_panel_html(client, learner.organisation.slug, learner)
+        )
+        row_link = document.cssselect("tbody tr")[number - 1].cssselect("a")[0]
+
+        response = client.get(row_link.get("href"))
+
+        assert response.status_code == 200
+        heading = lxml.html.fromstring(response.content.decode()).cssselect(
+            "#instance-title"
+        )[0]
+        assert heading.text_content().strip().endswith(f"attempt {number}")
+
+    def test_the_attempts_table_also_renders_as_cards_with_the_same_trigger(
+        self, logged_in_client
+    ):
+        course = CourseFactory(title="Algebra")
+        quiz = quiz_form("Unit quiz", 50)
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=quiz, order=0
+        )
+        record = course_progress_record(course, UserFactory())
+        form_progress(
+            record,
+            quiz,
+            completed_time=timezone.now(),
+            scores={"score": 2, "max_score": 2},
+        )
+        learner = record.learner
+        client = logged_in_client(_org_admin(learner.organisation))
+
+        document = lxml.html.fromstring(
+            _courses_panel_html(client, learner.organisation.slug, learner)
+        )
+
+        (card,) = document.cssselect("ul[data-row-cards] > li")
+        assert card.cssselect("a[aria-controls='quick-view']")
+        card_text = " ".join(card.text_content().split())
+        for label in ("Completed", "Score", "Percentage", "Pass mark", "Result"):
+            assert label in card_text
+
+    def test_the_tab_costs_no_more_queries_for_twenty_attempts_than_for_two(
+        self, logged_in_client
+    ):
+        def tab_queries(count: int) -> int:
+            course = CourseFactory()
+            quiz = quiz_form(f"Quiz of {count}", 50)
+            ContentCollectionItemFactory(
+                collection_object=course, child_object=quiz, order=0
+            )
+            record = course_progress_record(course, UserFactory())
+            now = timezone.now()
+            for index in range(count):
+                form_progress(
+                    record,
+                    quiz,
+                    completed_time=now - timedelta(minutes=count - index),
+                    scores={"score": 1, "max_score": 2},
+                )
+            learner = record.learner
+            client = logged_in_client(_org_admin(learner.organisation))
+            with CaptureQueriesContext(connection) as queries:
+                _courses_panel_html(client, learner.organisation.slug, learner)
+            return len(queries)
+
+        assert tab_queries(20) <= tab_queries(2)
 
     def test_a_course_with_nothing_completed_says_so_and_flags_no_activity(
         self, logged_in_client

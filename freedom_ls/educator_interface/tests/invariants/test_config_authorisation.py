@@ -30,8 +30,11 @@ from freedom_ls.educator_interface.panels.staff.data_tables import StaffDataTabl
 from freedom_ls.educator_interface.tests import interface_walk
 from freedom_ls.educator_interface.tests.interface_walk import (
     SECTIONS,
+    WalkedQuickView,
     config_path_strings,
+    walk_interface,
 )
+from freedom_ls.form_engine.models import FormProgress
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -190,6 +193,18 @@ def test_walk_interface_skips_detail_paths_for_a_list_with_no_instance_view(
 
     assert paths == ["no-instance-pages"]
     assert Cohort.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_walk_interface_reaches_the_quick_view_of_the_seeded_quiz_attempt(
+    mock_site_context,
+):
+    organisation = OrganisationFactory()
+
+    walked = walk_interface(organisation)
+
+    (sitting,) = FormProgress.objects.all()
+    assert WalkedQuickView(f"quiz-attempts/{sitting.pk}/__quick-view") in walked
 
 
 @pytest.mark.django_db

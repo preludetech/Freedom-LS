@@ -155,7 +155,10 @@ def test_the_courses_tab_card_with_an_attempts_table_fits_every_viewport(
             )
         )
         expect(page.get_by_text("1 of 1 items")).to_be_visible()
-        expect(page.get_by_text("Passed", exact=True)).to_be_visible()
+        # The table and the card list both hold the verdict; one is hidden.
+        expect(
+            page.get_by_text("Passed", exact=True).locator("visible=true")
+        ).to_be_visible()
         assert_no_horizontal_overflow(page)
 
 
