@@ -2,140 +2,92 @@
 
 ## Methodology
 
-Screenshots were collected into `spec_dd/2. in progress/sacaa-compliance-4-attempt-review/screenshots/`. Every image linked in this report exists beside the report. Tests followed `3. frontend_qa.md` at desktop, tablet and mobile (375px) widths where the plan asks for it. Some screenshots in that folder are not linked because no record refers to them.
+Screenshots were collected into `spec_dd/2. in progress/sacaa-compliance-4-attempt-review/screenshots/` and every image referenced below exists beside this report. The collector also swept the run's accessibility-snapshot `.yml` and console `.log` files into `screenshots/`. They were deleted, leaving only PNGs. Compression found nothing over 1MB.
+
+The smoke gate passed, so no steps were skipped. Tests ran at desktop, mobile (375px) and tablet (768px). Tests 3, 6, 10, 12, 14.1 and 14.2 have no screenshot (behaviour or accessibility-tree checks).
 
 ## Diff scoping
 
-Class: **FULL**. Changed files that triggered it:
+Class: **FULL**. Triggered by changed templates and static files, and Python in the same apps, in `educator_interface`, `form_engine`, `panel_framework` and `learner_interface`. Nothing was skipped: all viewports and all tests were in scope.
 
-- `educator_interface/templates/educator_interface/panels/learner_courses.html`
-- `educator_interface/templates/educator_interface/panels/quiz_attempt_paper.html`
-- `educator_interface/templates/educator_interface/partials/quiz_attempt_verdict.html`
-- `educator_interface/templates/educator_interface/quick_views/quiz_attempt.html`
-- `form_engine/templates/cotton/learner-answer-mark.html`
-- `form_engine/templates/form_engine/inputs/*.html`
-- `form_engine/templates/form_engine/partials/page_children.html`
-- `form_engine/templates/form_engine/question.html`
-- `panel_framework/templates/panel_framework/panels/_details_value.html`
-- Python in educator_interface, form_engine, learner_interface, panel_framework and reports
-
-Nothing was skipped. Everything ran, including the mobile and tablet passes.
+Tests 2 and 4 ran at all three viewports. Test 1 ran at desktop and mobile. Test 5 ran at desktop and mobile. The remaining tests ran at desktop only. Those tests are server-side or state checks (404s, access, org switch, shared pages, keyboard), and the tablet pass was limited to the review page and the quick view.
 
 ## Smoke gate
 
-**Pass.** Pages loaded: `/` and `/educator/organisations/demodev/learners/<L1>/__tabs/courses`.
+**Pass.** Pages loaded: `/` and `/educator/organisations/demodev/learners/<L1>/__tabs/courses`. No failure.
 
 ## Design check
 
 No design states tested.
 
-## Bug B1: Open full review nests the page inside #main-content
+## Test results
 
-Manifestations:
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 1 | desktop | pass | ![](screenshots/page-2026-11-24T14-47-38-969Z.png) Quiz A table: 3 rows numbered 1-3, each number a link with an aria-label, and "Latest" on the last row. |
+| 1 | mobile | pass | ![](screenshots/page-2026-11-24T14-52-11-821Z.png) Cards, 44x44px links, no sideways scroll. |
+| 2 | desktop | pass | ![](screenshots/page-2026-11-24T14-47-49-866Z.png) Six rows, one link ("Open full page"), swaps to attempt 1, focus returns on close. |
+| 2 | mobile | pass | ![](screenshots/page-2026-11-24T14-52-19-848Z.png) Bottom sheet, readable. |
+| 2 | tablet | pass | ![](screenshots/page-2026-11-24T14-53-02-842Z.png) |
+| 3 | desktop | pass | Ctrl-click opened a new tab, no drawer in the original. |
+| 4 | desktop | pass | ![](screenshots/page-2026-11-24T14-46-59-520Z.png) Header, back link, stats and Summary all match. |
+| 4 | mobile | pass | ![](screenshots/page-2026-11-24T14-52-29-513Z.png) No sideways scroll on attempts 2, 3, legacy, Quiz C and Quiz D. |
+| 4 | tablet | pass | ![](screenshots/page-2026-11-24T14-52-53-280Z.png) |
+| 5 | desktop | pass | ![](screenshots/page-2026-11-24T14-47-32-173Z.png) Served order matches `served_paper`, no form controls, marks carry words. Unanswered dropdown reads "Did not answer" and "Marked incorrect". |
+| 5 | mobile | **fail** | See bug B1. |
+| 6 | desktop | pass | Back link opens the Courses tab and browser Back returns. |
+| 7 | desktop | pass | ![](screenshots/page-2026-11-24T14-47-11-509Z.png) Quick view: ![](screenshots/page-2026-11-24T14-48-53-682Z.png) |
+| 8 | desktop | pass | ![](screenshots/page-2026-11-24T14-47-19-869Z.png) |
+| 9 | desktop | pass | ![](screenshots/page-2026-11-24T14-47-25-976Z.png) Remaining questions renumbered 1 and 2 with no gap. |
+| 10 | desktop | pass | All 12 URLs return 404, with no traceback and no title or name leaked. |
+| 11 | desktop | pass | ![](screenshots/page-2026-11-24T14-50-45-555Z.png) |
+| 12 | desktop | pass | Switching to Harbour College lands on its dashboard. |
+| 13.1 | desktop | pass | ![](screenshots/page-2026-11-24T14-51-11-728Z.png) |
+| 13.2 | desktop | pass | ![](screenshots/page-2026-11-24T14-49-45-072Z.png) |
+| 13.3 | desktop | pass | ![](screenshots/page-2026-11-24T14-51-43-583Z.png) |
+| 13.4 | desktop | pass | ![](screenshots/page-2026-11-24T14-49-57-087Z.png) The new PDF is 200 `application/pdf` and shows 75% and x1. |
+| 14.1 | desktop | pass | Focus moves into the quick view, Escape returns it, accessible name "Attempt 2 of QA Attempt Review Quiz A". |
+| 14.2 | desktop | pass | Only the back link is focusable, and the mark words are in the accessibility tree. |
 
-- `4.open-full-review`, desktop
+## B1: Attempt review option rows squeeze option text beside the marks at 375px
 
-![](screenshots/page-2026-11-24T06-58-21-802Z.png)
+Manifestations: test 5, mobile (375px).
 
-- Expected: clicking "Open full review" in the quiz attempt quick view replaces `#main-content` with the attempt review page, as the sidebar links and back links do. The back link shows at the top and only one `#main-content` exists.
-- Actual: the link carries `hx-get`, `hx-target=#main-content` and `hx-push-url` but no `hx-swap=outerHTML`. The response is swapped inside `#main-content`, which leaves two `#main-content` elements. The page lands scrolled 40px with a white band above the top bar, and the back link is hidden.
+![](screenshots/page-2026-11-24T14-52-29-513Z.png)
 
-## Bug B2: Attempt-number quick-view trigger is below the touch target size
-
-Manifestations:
-
-- `1.touch-target`, mobile
-
-![](screenshots/page-2026-11-24T07-01-09-373Z.png)
-
-- Expected: the attempt-number link on the Courses tab (table cell and card) meets the 44px touch target at 375px, like the other quick-view triggers in the educator interface (44x44).
-- Actual: the link is an inline text link around the digit, 9x22px at 375px. `test_touch_targets.py` does not reach it.
-
-## Bug B3: Quick view's Open full review link is indented from the drawer content
-
-Manifestations:
-
-- `2.link-alignment`, desktop
-- `1-2`, tablet
-
-![](screenshots/page-2026-11-24T06-57-48-277Z.png)
-![](screenshots/page-2026-11-24T07-01-49-560Z.png)
-
-- Expected: the "Open full review" link's text shares the left edge of the definition list above it in the quiz attempt quick view.
-- Actual: the link is `<c-button variant=link>` (`btn btn-link`). Its horizontal padding draws the text about 24px right of the rows' left edge.
-
-## Bug B4: Quick view offers two links to the attempt review page
-
-Manifestations:
-
-- `2.duplicate-link`, desktop
-
-![](screenshots/page-2026-11-24T06-57-48-277Z.png)
-
-- Expected: the spec and QA plan say the quick view has one link, "Open full review".
-- Actual: the quick-view chrome's standard "Open full page" icon link also points at the attempt review page, so there are two links to one page. This needs a decision.
+- **Expected:** At phone width, an option row that carries "Learner's answer" and "Correct answer" keeps its option text readable across the row's width. The marks wrap under the text, so a short option reads on one line.
+- **Actual:** The marks keep a fixed right column and the option text wraps into about 110px. "Visual Flight Rules" and "Inspect the control surfaces" each take three lines, while the mark column has spare height.
 
 ## Layout probe
 
-| Test id | Viewport | URL | Screenshot | Result |
+| Test | Viewport | URL | Screenshot | Result |
 |---|---|---|---|---|
-| 1 | desktop | /educator/organisations/demodev/learners/<L1>/__tabs/courses | [shot](screenshots/page-2026-11-24T06-57-28-182Z.png) | clean |
-| 2 | desktop | .../learners/<L1>/__tabs/courses (quick view open) | [shot](screenshots/page-2026-11-24T06-57-48-277Z.png) | clean |
-| 4 | desktop | /educator/organisations/demodev/quiz-attempts/<attempt 2> | [shot](screenshots/page-2026-11-24T06-58-43-955Z.png) | clean |
-| 5 | desktop | .../quiz-attempts/<attempt 3> | [shot](screenshots/page-2026-11-24T06-59-16-165Z.png) | clean |
-| 7 | desktop | .../quiz-attempts/<Quiz B legacy> | [shot](screenshots/page-2026-11-24T06-59-30-387Z.png) | clean |
-| 8 | desktop | .../quiz-attempts/<Quiz C> | [shot](screenshots/page-2026-11-24T06-59-38-678Z.png) | clean |
-| 9 | desktop | .../quiz-attempts/<Quiz D> | [shot](screenshots/page-2026-11-24T06-59-45-139Z.png) | clean |
-| 1 | mobile | .../learners/<L1>/__tabs/courses | [shot](screenshots/page-2026-11-24T07-01-09-373Z.png) | clean |
-| 2 | mobile | .../learners/<L1>/__tabs/courses (quick view open) | [shot](screenshots/page-2026-11-24T07-01-32-630Z.png) | clean |
-| 4 | mobile | .../quiz-attempts/<attempt 2> | [shot](screenshots/page-2026-11-24T07-01-40-647Z.png) | clean |
-| 2 | tablet | .../learners/<L1>/__tabs/courses (quick view open) | [shot](screenshots/page-2026-11-24T07-01-49-560Z.png) | clean |
-| 4 | tablet | .../quiz-attempts/<attempt 2> | [shot](screenshots/page-2026-11-24T07-01-57-404Z.png) | clean |
-
-The layout probe raised no flags. B2 and B3 were found by the per-test checks, not the probe.
+| smoke | desktop | `/` | [page-2026-11-24T14-46-46-878Z.png](screenshots/page-2026-11-24T14-46-46-878Z.png) | clean |
+| 1 | desktop | `/educator/organisations/demodev/learners/<L1>/__tabs/courses` | [page-2026-11-24T14-47-38-969Z.png](screenshots/page-2026-11-24T14-47-38-969Z.png) | clean |
+| 4 | desktop | `/educator/organisations/demodev/quiz-attempts/7373004a-...` | [page-2026-11-24T14-46-59-520Z.png](screenshots/page-2026-11-24T14-46-59-520Z.png) | clean |
+| 1 | mobile | `/educator/organisations/demodev/learners/<L1>/__tabs/courses` | [page-2026-11-24T14-52-11-821Z.png](screenshots/page-2026-11-24T14-52-11-821Z.png) | clean |
+| 2 | mobile | `/educator/organisations/demodev/learners/<L1>/__tabs/courses` (quick view open) | [page-2026-11-24T14-52-19-848Z.png](screenshots/page-2026-11-24T14-52-19-848Z.png) | clean |
+| 5 | mobile | `/educator/organisations/demodev/quiz-attempts/7373004a-...` | [page-2026-11-24T14-52-29-513Z.png](screenshots/page-2026-11-24T14-52-29-513Z.png) | clean (the probe raised no flags; the squeezed option text is recorded as B1) |
+| 4 | tablet | `/educator/organisations/demodev/quiz-attempts/7373004a-...` | [page-2026-11-24T14-52-53-280Z.png](screenshots/page-2026-11-24T14-52-53-280Z.png) | clean |
+| 2 | tablet | `/educator/organisations/demodev/learners/<L1>/__tabs/courses` (quick view open) | [page-2026-11-24T14-53-02-842Z.png](screenshots/page-2026-11-24T14-53-02-842Z.png) | clean |
 
 ## Data changes
 
-| What changed | Made by | Files written |
+| What changed | Made by | Files |
 |---|---|---|
-| Seeded base dev data (`create_demo_data --yes`) and built the attempt-review scenario: Quizzes A-D, survey, L1/L2/L3/C1 learner/E, cohorts C1 and C2, 11 sittings | `sdd:qa-data-helper` | `freedom_ls/qa_helpers/management/commands/qa_create_attempt_review_scenario.py` |
+| Reset L1 Quiz A sitting ef5d90a3 (completed by an earlier QA run) back to in progress: completed_time, scores and asked cleared, served_paper kept | `sdd:qa-data-helper` | none |
+| L1's in-progress Quiz A sitting ef5d90a3 now also holds a dropdown answer "Visual Flight Rules" and is still in progress. A new C1 cohort report was generated. | course player (Test 13.1), cohort report PDF (Test 13.4) | none |
 
 ## Bug status
 
-- **FIXED** (commit: 16d7b6b27) — B1: Open full review nests the page inside #main-content
-- **FIXED** (commit: 4dcd1ebb8) — B2: Attempt-number quick-view trigger is below the touch target size
-- **FIXED** (commit: adcb6a00b) — B3: Quick view's Open full review link is indented from the drawer content
-- **FIXED** (commit: ed9ba1d7b) — B4: Quick view offers two links to the attempt review page (decision: drop the body link; the header's "Open full page" icon is the one link) — after the fix: ![](screenshots/fixed/quiz-attempt-quick-view-one-link-1920.png)
-- **FIXED** (commit: bfd6f96d4) — B5: Opening the full review from the quick view lands the page scrolled under the header (found while re-verifying B1: with one #main-content the page still landed at scrollY 40 because the dialog's focus restore scrolled the page; re-verified at scrollY 0 with the back link visible, and focus still returns to the trigger on the Courses tab and the learners list)
+- **FIXED** (commit: b12e19b85) — Attempt review option rows squeeze option text beside the marks at 375px (B1)
+
+  Re-verified at 375: option text spans the row and the marks wrap under it (![](screenshots/page-2026-11-24T15-01-32-448Z.png)). The course-content quiz preview uses a different partial and is unchanged (![](screenshots/page-2026-11-24T15-01-41-494Z.png)).
 
 ## General notes
 
-Passing tests (desktop unless noted):
+- Screenshots `page-2026-11-24T14-46-38-368Z.png`, `page-2026-11-24T14-50-55-960Z.png` and `page-2026-11-24T14-51-21-340Z.png` are in the folder but no record names them, so they are not linked.
+- B1 is a mobile-only layout issue. At tablet width the marks sit on one line beside the option text.
+- The Test 9 renumbering (remaining questions 1 and 2, no gap) is as the plan allows and was recorded as shown.
 
-- **Test 1** (mobile as well): the Quiz A table has rows 1-3 with no row for the in-progress sitting. Each attempt number is a link, and the other columns are unchanged. At 375px the tables become cards with no sideways scroll.
-- **Test 2** (mobile and tablet as well): the drawer opens with the URL unchanged, and the title, subtitle and six rows are right. Close returns focus to the attempt link. Clicking attempt 1 with the drawer open shows attempt 1's values. On mobile it is a bottom sheet and the page behind does not scroll sideways.
-- **Test 3:** Ctrl-click opens the attempt in a new tab and leaves the drawer closed.
-- **Test 4** (mobile and tablet as well): loaded directly, the page has the right URL, browser title, back link, heading, subtitle and stats. Summary shows no repeated values, and the sidebar has no Quiz attempts entry. It has no sideways scroll.
-- **Test 5:** the paper matches the served order. Learner's answer and Correct answer marks are readable, and the dropdown lists both. Verdicts are correct, and words carry every mark. The unanswered dropdown on attempt 3 reads "Did not answer" and "Marked incorrect".
-- **Test 6:** the back link opens the Courses tab, and browser Back returns to the review.
-- **Test 7:** the predates note, authored order and "No pass mark" wording are all right.
-- **Test 8:** the stale-score note shows, with the stored score 2/2. Question 7700 is the Correct answer and 7600 the Learner's answer, marked incorrect.
-- **Test 9:** the missing-items note shows and the stale-score note does not. The two remaining questions are numbered 1 and 2.
-- **Test 10:** every URL that must not open returns 404. They are: in-progress, survey, not-a-uuid, random uuid, another organisation's sitting, the bare section and `__actions`. Both the page and `__quick-view` were checked, and no quiz title or learner name leaked.
-- **Test 11:** as cohort educator E, L3's page and quick view are 404 and L3 is not in the list. The C1 learner's page and quick view return 200.
-- **Test 12:** switching organisation lands on Harbour College's dashboard.
-- **Test 13:** the shared-partial pages still look right.
-  - 13.1, the learner's course player: [screenshot](screenshots/page-2026-11-24T07-02-55-281Z.png).
-  - 13.2, the course content preview: [screenshot](screenshots/page-2026-11-24T07-00-23-881Z.png).
-  - 13.3, the results pages: [screenshot](screenshots/page-2026-11-24T07-03-41-498Z.png). The Quiz C results page shows the changed note.
-  - 13.4: the C1 cohort report renders, and the PDF download is a valid `application/pdf` (200, 202855 bytes).
-- **Test 14:** keyboard flow works. Tab reaches "Attempt 1 of QA Attempt Review Quiz A", and Enter opens the quick view with focus on its heading. Escape returns focus to the link. On the review page the back link is the only focusable element, and option accessible names include "Learner's answer" and "Correct answer".
-
-Notes:
-
-- B2 holds because the learners table's own quick-view triggers are 44x44, while the new attempt link is a bare inline digit.
-- B4 needs a product decision, not only a code fix. Either the body link or the chrome icon link would have to go.
-- A capture check confirmed that screenshots with default names land in `qa-screenshots` and that no image bytes are returned.
-- Nothing was left untested.
-
-status: ok · reason: 5 bugs — 5 fixed, 0 unresolved; report rendered, screenshots verified
+status: ok · reason: 1 bug — 1 fixed, 0 unresolved; report rendered, screenshots verified
