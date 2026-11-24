@@ -93,7 +93,11 @@ def build_served_paper(form: Form) -> ServedPaper:
     """The paper a sitting starting now is served, shuffled as the form's knobs say."""
     prefetch_related_objects([form], *SERVED_TREE_LOOKUPS)
     seed = new_seed()
-    page_rows = live_pages(form)
+    # A page authored with children is left off once all of them are retired,
+    # as compute_path leaves it off; a page authored empty is still served.
+    page_rows = [
+        page for page in live_pages(form) if not page.children() or live_children(page)
+    ]
     if form.shuffle_pages:
         _scope_rng(seed, "pages").shuffle(page_rows)
     pages: list[ServedPage] = []

@@ -750,3 +750,22 @@ def test_build_served_paper_with_every_shuffle_on_serves_no_retired_id(
     page_ids = {p["id"] for p in paper["pages"]}
     assert not retired_ids & (child_ids | option_ids | page_ids)
     assert len(page_ids) == 2
+
+
+@pytest.mark.django_db
+def test_build_served_paper_leaves_out_a_live_page_whose_children_are_all_retired(
+    mock_site_context: object,
+) -> None:
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ)
+    kept_page = FormPageFactory(form=form, order=0)
+    FormQuestionFactory(form_page=kept_page, order=0)
+    emptied_page = FormPageFactory(form=form, order=1)
+    retire(cast("FormQuestion", FormQuestionFactory(form_page=emptied_page, order=0)))
+    authored_empty = FormPageFactory(form=form, order=2)
+
+    paper = build_served_paper(form)
+
+    assert [page["id"] for page in paper["pages"]] == [
+        str(kept_page.id),
+        str(authored_empty.id),
+    ]
