@@ -10,7 +10,10 @@ from django.contrib.sites.models import Site
 from django.test import Client
 
 from freedom_ls.accounts.models import User
+from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.tests.helpers import (
+    _get_quick_view,
     _interface_url,
     course_per_reach_row,
     organisation_admin_viewer,
@@ -61,3 +64,16 @@ def test_the_course_detail_url_answers_only_for_a_course_that_reaches_the_organi
     )
 
     assert response.status_code == (200 if reached else 404)
+
+
+@pytest.mark.usefixtures("_site_context")
+@pytest.mark.django_db
+def test_a_course_quick_view_404s_since_courses_declare_none(role_holder_client):
+    organisation = OrganisationFactory()
+    course: Course = CourseFactory()
+
+    response = _get_quick_view(
+        role_holder_client(organisation), organisation, f"courses/{course.pk}"
+    )
+
+    assert response.status_code == 404
