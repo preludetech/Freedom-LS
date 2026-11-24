@@ -79,6 +79,12 @@ Load the tool (`ToolSearch` with `select:EnterWorktree`), then call `EnterWorktr
 set to the worktree path the mechanic reported. Confirm `git branch --show-current` prints the
 spec directory's folder name. Anything else is `status: failed` with the reason; stop.
 
+From here on the session is isolated in the worktree, and every command runs there. The worktree
+branched from Step 2's commit, so its spec directory holds the same files Step 3 read: use them as
+they are, without comparing them to the main checkout. Never point git at the main checkout
+(`git -C <main>`, `--git-dir`, `--work-tree`); the session refuses it. Main's copy of a file, when
+one is needed, is `git show main:<path>` run in the worktree.
+
 ## Step 5: Write `answers.md`
 
 A single `Write` of `<spec-dir>/answers.md`:
