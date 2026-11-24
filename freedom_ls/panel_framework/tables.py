@@ -540,11 +540,15 @@ class DataTable:
             (column for column in columns if column.card == "primary"),
             columns[0] if columns else None,
         )
-        secondary_columns = [
+        card_columns = [
             column
             for column in columns
             if column is not primary_column and column.card != "md_only"
         ]
+        # A column with no header holds the row's buttons: a card draws it as a
+        # footer under the values, not as a labelled value.
+        action_columns = [column for column in card_columns if not column.header]
+        secondary_columns = [column for column in card_columns if column.header]
         sortable_columns = [column for column in columns if column.sortable]
         # A row template starts at the primary column, so the columns before
         # it keep an empty cell each.
@@ -592,6 +596,7 @@ class DataTable:
             "clear_search_changes": {query.param("q"): None, query.param("page"): None},
             "primary_column": primary_column,
             "secondary_columns": secondary_columns,
+            "action_columns": action_columns,
             "sortable_columns": sortable_columns,
             "card_template_name": cls.card_template_name,
             "cards_when_narrow": cls.cards_when_narrow,
