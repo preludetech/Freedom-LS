@@ -295,8 +295,10 @@ class QuizAttemptInstanceView(InstanceView):
             stats.append(HeaderStat("Score", f"{result.score}/{result.max_score}"))
         if result.percentage is not None:
             stats.append(HeaderStat("Percentage", f"{result.percentage}%"))
-        if result.passed is None:
+        if result.pass_percentage is None:
             verdict = "No pass mark"
+        elif result.passed is None:
+            verdict = "Not scored"
         else:
             verdict = "Passed" if result.passed else "Failed"
         stats.append(HeaderStat("Result", verdict))

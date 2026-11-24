@@ -2,8 +2,10 @@
 
 <c-panel-definition-list columns="2">
     <c-panel-definition-row label="Result">
-        {% if result.passed is None %}
+        {% if result.pass_percentage is None %}
             No pass mark
+        {% elif result.passed is None %}
+            Not scored
         {% else %}
             {% passed_badge result.passed as badge %}<c-panel-status-badge :badge="badge" />
         {% endif %}

@@ -167,6 +167,46 @@ def test_a_quiz_with_no_pass_mark_reads_no_pass_mark_in_the_header_and_the_summa
     assert "Pass mark (current setting) No pass mark" in _text(panel)
 
 
+def test_an_unreadable_score_reads_not_scored_in_the_header_not_no_pass_mark(
+    logged_in_client: Callable[[User], Client],
+) -> None:
+    organisation = OrganisationFactory()
+    sitting = _sitting(
+        LearnerFactory(organisation=organisation),
+        pass_percentage=60,
+        scores={"score": 0, "max_score": 0},
+    )
+
+    document = _page(
+        _admin_client(organisation, logged_in_client), organisation, sitting
+    )
+
+    header = _text(_header_of(document))
+    assert "Result Not scored" in header
+    assert "No pass mark" not in header
+
+
+def test_the_quick_view_of_an_unreadable_score_reads_not_scored(
+    logged_in_client: Callable[[User], Client],
+) -> None:
+    organisation = OrganisationFactory()
+    sitting = _sitting(
+        LearnerFactory(organisation=organisation),
+        pass_percentage=60,
+        scores={"score": 0, "max_score": 0},
+    )
+
+    response = _get_quick_view(
+        _admin_client(organisation, logged_in_client),
+        organisation,
+        f"quiz-attempts/{sitting.pk}",
+    )
+
+    text = _text(lxml.html.fromstring(response.content.decode()))
+    assert "Result Not scored" in text
+    assert "No pass mark" not in text
+
+
 def test_the_back_link_returns_to_the_learners_courses_tab(logged_in_client):
     organisation = OrganisationFactory()
     learner = LearnerFactory(
