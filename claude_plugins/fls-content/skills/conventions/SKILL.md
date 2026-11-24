@@ -96,7 +96,7 @@ skill's `resources/file-layout.md#child-auto-discovery` for the exact rule.
 ## UUID rules (load-bearing — read before creating any file)
 
 1. **Omit `uuid` on new content.** Do not write a `uuid:` field. The author runs `content_save --generate-uuids <path> <site>`, which writes a UUID into each file that lacks one, then commits the changed files. A plain `content_save` refuses content that is missing a uuid, and refuses unless every file it reads is committed to git.
-2. **Never edit an existing `uuid:`.** The UUID is the stable identity for the DB row; editing it breaks the upsert and may silently create a duplicate.
+2. **Never edit an existing `uuid:`.** The UUID is the stable identity for the DB row; editing it creates a new row and retires the old one, splitting learners' progress and answers across the two.
 3. **Never duplicate a UUID across files.** Two files with the same UUID cause one to silently overwrite the other on `content_save`.
 4. **Never hand-create a UUID.** Not even with a UUID4 generator: omit the field, run `content_save --generate-uuids`, let it write the UUID back, then commit the changed files.
 5. **This applies to `course_categories.yaml` too.** Each entry in its `categories:` list gets its own `uuid` written back by `content_save --generate-uuids`, exactly like any other file's `uuid:` field. Omit it on a new entry; never hand-edit an existing one.
@@ -114,6 +114,14 @@ Body content here...
 ```
 
 After `content_save --generate-uuids`, the file gains a `uuid:` field; commit it.
+
+## Removing content (retire, never delete)
+
+`content_save` treats the paths it is given as the site's whole source. Any content row it does not find there (a course, part, topic, activity, article, form, page, question, option, category or file) is **retired**: learners no longer see it, but learners' progress and answers on it are kept and educators still see it, marked as retired.
+
+- **To remove content, delete it from the source and commit.** Do not leave it in place with a note.
+- **Pass every source path in one run.** Running `content_save` on one course folder retires every other course of the site. A run that would retire a course is refused unless the author adds `--allow-course-retire`, so add that flag only when retiring a course is intended.
+- **To bring content back, restore it with its original `uuid:`** (for example with `git revert`). The next run makes it live again. An image or other asset comes back by its path. A copy with a new UUID is a different item and learners' earlier work does not carry over.
 
 ## Quoting price amounts (load-bearing)
 
