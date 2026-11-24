@@ -9,13 +9,17 @@ navigation.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import lxml.html
 import pytest
 
 from django.contrib.messages import get_messages
+from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import FormStrategy
 from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
@@ -334,8 +338,8 @@ class TestSwitchFromAnAttemptReview:
     list, so a switch lands on the other organisation's first visible section."""
 
     def test_lands_on_the_new_organisations_first_visible_section(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[User], Client]
+    ) -> None:
         organisation_a, organisation_b, _cohort_a, educator = (
             _two_organisation_educator()
         )

@@ -222,8 +222,10 @@ class TestLearnerCoursesPanel:
         assert "Failed" not in text
 
     def test_only_an_openable_sitting_has_its_attempt_number_as_a_quick_view_trigger(
-        self, logged_in_client, monkeypatch
-    ):
+        self,
+        logged_in_client: Callable[[User], Client],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         course = CourseFactory(title="Algebra")
         quiz = quiz_form("Unit quiz", 50)
         ContentCollectionItemFactory(
@@ -265,8 +267,8 @@ class TestLearnerCoursesPanel:
 
     @pytest.mark.parametrize("number", [1, 2, 3])
     def test_each_attempt_number_opens_the_page_for_that_sitting(
-        self, logged_in_client, number
-    ):
+        self, logged_in_client: Callable[[User], Client], number: int
+    ) -> None:
         course = CourseFactory(title="Algebra")
         quiz = quiz_form("Unit quiz", 50)
         ContentCollectionItemFactory(
@@ -298,8 +300,8 @@ class TestLearnerCoursesPanel:
         assert heading.text_content().strip().endswith(f"attempt {number}")
 
     def test_the_attempts_table_also_renders_as_cards_with_the_same_trigger(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[User], Client]
+    ) -> None:
         course = CourseFactory(title="Algebra")
         quiz = quiz_form("Unit quiz", 50)
         ContentCollectionItemFactory(
@@ -326,8 +328,8 @@ class TestLearnerCoursesPanel:
             assert label in card_text
 
     def test_the_tab_costs_no_more_queries_for_twenty_attempts_than_for_two(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[User], Client]
+    ) -> None:
         def tab_queries(count: int) -> int:
             course = CourseFactory()
             quiz = quiz_form(f"Quiz of {count}", 50)

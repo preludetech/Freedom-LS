@@ -65,7 +65,7 @@ def _rows(document: lxml.html.HtmlElement) -> list[str]:
     ]
 
 
-def test_the_question_shows_its_number_id_and_text():
+def test_the_question_shows_its_number_id_and_text() -> None:
     question = _question("long_text")
 
     text = _render(question, None).text_content()
@@ -75,7 +75,7 @@ def test_the_question_shows_its_number_id_and_text():
     assert "Which one?" in text
 
 
-def test_the_question_id_sits_under_the_question_text_as_code():
+def test_the_question_id_sits_under_the_question_text_as_code() -> None:
     question = _question("long_text")
 
     document = _render(question, None)
@@ -88,7 +88,9 @@ def test_the_question_id_sits_under_the_question_text_as_code():
 
 
 @pytest.mark.parametrize("question_type", ["long_text", "short_text", "number", "date"])
-def test_a_text_answer_reads_as_text_under_the_learner_answer_label(question_type):
+def test_a_text_answer_reads_as_text_under_the_learner_answer_label(
+    question_type: str,
+) -> None:
     question = _question(question_type)
     answer = cast(
         QuestionAnswer,
@@ -105,8 +107,8 @@ def test_a_text_answer_reads_as_text_under_the_learner_answer_label(question_typ
 
 @pytest.mark.parametrize("question_type", ["long_text", "file_upload"])
 def test_an_answer_box_is_outlined_like_a_chosen_option_not_an_admonition(
-    question_type,
-):
+    question_type: str,
+) -> None:
     question = _question(question_type)
     answer = cast(
         QuestionAnswer, QuestionAnswerFactory(question=question, text_answer="Yes")
@@ -144,7 +146,7 @@ def test_a_file_answer_missing_from_storage_shows_its_name_without_a_size() -> N
     assert "bytes" not in text
 
 
-def test_a_long_text_answer_keeps_its_line_breaks():
+def test_a_long_text_answer_keeps_its_line_breaks() -> None:
     question = _question("long_text")
     answer = cast(
         QuestionAnswer,
@@ -158,7 +160,7 @@ def test_a_long_text_answer_keeps_its_line_breaks():
     assert text.text_content() == "One\nTwo"
 
 
-def test_an_unanswered_text_question_shows_no_answer_block():
+def test_an_unanswered_text_question_shows_no_answer_block() -> None:
     question = _question("long_text")
 
     document = _render(question, None)
@@ -176,8 +178,8 @@ def test_an_unanswered_text_question_shows_no_answer_block():
     ],
 )
 def test_a_choice_question_lists_every_option_and_marks_the_chosen_one(
-    question_type, indicator
-):
+    question_type: str, indicator: str
+) -> None:
     question, answer = _choice(question_type)
 
     document = _render(question, answer, show_answer_key=True)
@@ -191,7 +193,7 @@ def test_a_choice_question_lists_every_option_and_marks_the_chosen_one(
     assert len(document.cssselect(f"[data-testid='{indicator}-indicator']")) == 3
 
 
-def test_every_chosen_checkbox_option_carries_the_learner_mark():
+def test_every_chosen_checkbox_option_carries_the_learner_mark() -> None:
     question, answer = _choice("checkboxes")
     answer.selected_options.add(question.options.get(text="Alpha"))
 
@@ -204,7 +206,7 @@ def test_every_chosen_checkbox_option_carries_the_learner_mark():
     ]
 
 
-def test_the_correct_mark_needs_the_answer_key():
+def test_the_correct_mark_needs_the_answer_key() -> None:
     question, answer = _choice("multiple_choice")
 
     document = _render(question, answer)
@@ -212,7 +214,7 @@ def test_the_correct_mark_needs_the_answer_key():
     assert "Correct answer" not in document.text_content()
 
 
-def test_a_file_answer_names_the_file_and_offers_no_upload():
+def test_a_file_answer_names_the_file_and_offers_no_upload() -> None:
     question = _question("file_upload")
     answer = cast(QuestionAnswer, QuestionAnswerFactory(question=question))
     QuestionAnswerFileFactory(answer=answer, original_filename="licence.pdf")

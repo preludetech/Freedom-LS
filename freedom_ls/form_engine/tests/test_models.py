@@ -3,7 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import pytest
+from pytest_django.fixtures import DjangoAssertNumQueries
 
+from django.contrib.sites.models import Site
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.db import transaction
@@ -935,8 +937,8 @@ def _quiz_with_questions(question_count: int, answered_rightly: int) -> FormProg
 
 @pytest.mark.django_db
 def test_compute_quiz_scores_counts_the_rightly_answered_questions(
-    mock_site_context,
-):
+    mock_site_context: Site,
+) -> None:
     progress = _quiz_with_questions(question_count=3, answered_rightly=2)
 
     scores = progress.compute_quiz_scores()
@@ -945,7 +947,9 @@ def test_compute_quiz_scores_counts_the_rightly_answered_questions(
 
 
 @pytest.mark.django_db
-def test_compute_quiz_scores_reads_the_answers_it_is_given(mock_site_context):
+def test_compute_quiz_scores_reads_the_answers_it_is_given(
+    mock_site_context: Site,
+) -> None:
     progress = _quiz_with_questions(question_count=3, answered_rightly=2)
     answers = answers_by_question(progress)
 
@@ -956,8 +960,8 @@ def test_compute_quiz_scores_reads_the_answers_it_is_given(mock_site_context):
 
 @pytest.mark.django_db
 def test_compute_quiz_scores_with_answers_stays_within_a_query_bound_as_questions_grow(
-    mock_site_context, django_assert_max_num_queries
-):
+    mock_site_context: Site, django_assert_max_num_queries: DjangoAssertNumQueries
+) -> None:
     progress = _quiz_with_questions(question_count=12, answered_rightly=12)
     answers = answers_by_question(progress)
 

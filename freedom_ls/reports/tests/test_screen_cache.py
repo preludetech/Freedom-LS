@@ -194,7 +194,7 @@ def test_the_cache_key_carries_the_site_id_and_cohort() -> None:
 
 @pytest.mark.django_db
 def test_an_entry_written_under_the_previous_schema_version_is_not_read_back(
-    cohort,
+    cohort: Cohort,
 ) -> None:
     old_key = _cache_key(cohort.site_id, cohort.pk, "progress").replace(
         ":screen:3:", ":screen:2:"

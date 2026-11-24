@@ -111,8 +111,8 @@ def _text(element: lxml.html.HtmlElement) -> str:
 
 
 def test_an_organisation_admin_sees_the_label_the_subtitle_and_the_summary_rows(
-    logged_in_client,
-):
+    logged_in_client: Callable[[User], Client],
+) -> None:
     organisation = OrganisationFactory()
     learner = LearnerFactory(
         organisation=organisation, user__first_name="Ada", user__last_name="Lovelace"
@@ -134,7 +134,9 @@ def test_an_organisation_admin_sees_the_label_the_subtitle_and_the_summary_rows(
     ]
 
 
-def test_the_header_stats_read_the_stored_score_and_the_verdict(logged_in_client):
+def test_the_header_stats_read_the_stored_score_and_the_verdict(
+    logged_in_client: Callable[[User], Client],
+) -> None:
     organisation = OrganisationFactory()
     sitting = _sitting(
         LearnerFactory(organisation=organisation),
@@ -153,8 +155,8 @@ def test_the_header_stats_read_the_stored_score_and_the_verdict(logged_in_client
 
 
 def test_a_quiz_with_no_pass_mark_reads_no_pass_mark_in_the_header_and_the_summary(
-    logged_in_client,
-):
+    logged_in_client: Callable[[User], Client],
+) -> None:
     organisation = OrganisationFactory()
     sitting = _sitting(LearnerFactory(organisation=organisation), pass_percentage=None)
 
@@ -207,7 +209,9 @@ def test_the_quick_view_of_an_unreadable_score_reads_not_scored(
     assert "No pass mark" not in text
 
 
-def test_the_back_link_returns_to_the_learners_courses_tab(logged_in_client):
+def test_the_back_link_returns_to_the_learners_courses_tab(
+    logged_in_client: Callable[[User], Client],
+) -> None:
     organisation = OrganisationFactory()
     learner = LearnerFactory(
         organisation=organisation, user__first_name="Ada", user__last_name="Lovelace"
@@ -226,8 +230,8 @@ def test_the_back_link_returns_to_the_learners_courses_tab(logged_in_client):
 
 
 def test_a_course_another_organisation_owns_names_its_owner_in_the_subtitle(
-    logged_in_client,
-):
+    logged_in_client: Callable[[User], Client],
+) -> None:
     organisation = OrganisationFactory()
     owner = OrganisationFactory(name="Acme Training")
     learner = LearnerFactory(
@@ -339,7 +343,11 @@ def _sat_by_someone_else(organisation: Organisation) -> tuple[User, FormProgress
     ],
 )
 @pytest.mark.parametrize("suffix", ["", "/__quick-view"])
-def test_a_sitting_the_educator_may_not_open_is_a_404(build, suffix, logged_in_client):
+def test_a_sitting_the_educator_may_not_open_is_a_404(
+    build: Callable[[Organisation], tuple[User, FormProgress]],
+    suffix: str,
+    logged_in_client: Callable[[User], Client],
+) -> None:
     organisation = OrganisationFactory()
     educator, sitting = build(organisation)
 
@@ -351,7 +359,9 @@ def test_a_sitting_the_educator_may_not_open_is_a_404(build, suffix, logged_in_c
     assert response.status_code == 404
 
 
-def test_the_bare_section_path_is_a_404(logged_in_client):
+def test_the_bare_section_path_is_a_404(
+    logged_in_client: Callable[[User], Client],
+) -> None:
     organisation = OrganisationFactory()
 
     response = _admin_client(organisation, logged_in_client).get(
@@ -370,7 +380,7 @@ def _scoped_request(organisation: Organisation, viewer: User) -> HttpRequest:
 
 def test_openable_sitting_ids_costs_no_more_queries_for_twenty_sittings_than_for_two(
     django_assert_max_num_queries: DjangoAssertNumQueries,
-):
+) -> None:
     organisation = OrganisationFactory()
     viewer = organisation_admin_viewer(organisation)
     learner = LearnerFactory(organisation=organisation)
@@ -405,8 +415,9 @@ def test_openable_sitting_ids_costs_no_more_queries_for_twenty_sittings_than_for
 
 
 def test_the_page_stays_under_its_query_bound(
-    logged_in_client, django_assert_max_num_queries: DjangoAssertNumQueries
-):
+    logged_in_client: Callable[[User], Client],
+    django_assert_max_num_queries: DjangoAssertNumQueries,
+) -> None:
     organisation = OrganisationFactory()
     sitting = _sitting(LearnerFactory(organisation=organisation))
     client = _admin_client(organisation, logged_in_client)
@@ -502,8 +513,8 @@ def _paper_text(
 
 
 def test_the_paper_follows_the_served_order_and_leaves_out_what_was_not_served(
-    logged_in_client,
-):
+    logged_in_client: Callable[[User], Client],
+) -> None:
     organisation = OrganisationFactory()
     form = _quiz()
     first = _form_page(form=form, title="Alpha page", order=1)
@@ -543,8 +554,8 @@ def test_the_paper_follows_the_served_order_and_leaves_out_what_was_not_served(
     ids=["asked-only", "neither"],
 )
 def test_a_sitting_without_a_served_paper_says_it_predates_the_record(
-    logged_in_client, asked_only, left_out_shown
-):
+    logged_in_client: Callable[[User], Client], asked_only: bool, left_out_shown: bool
+) -> None:
     organisation = OrganisationFactory()
     form = _quiz()
     page = _form_page(form=form, title="Only page", order=1)
@@ -568,8 +579,8 @@ def test_a_sitting_without_a_served_paper_says_it_predates_the_record(
 
 
 def test_a_served_item_deleted_since_shows_the_missing_note_and_no_stale_score_note(
-    logged_in_client,
-):
+    logged_in_client: Callable[[User], Client],
+) -> None:
     organisation = OrganisationFactory()
     form = _quiz()
     page = _form_page(form=form, title="Only page", order=1)
@@ -600,8 +611,12 @@ def test_a_served_item_deleted_since_shows_the_missing_note_and_no_stale_score_n
     ids=["correct", "incorrect", "unanswered"],
 )
 def test_each_question_shows_its_verdict(
-    logged_in_client, chosen, shown, hidden, learner_marks
-):
+    logged_in_client: Callable[[User], Client],
+    chosen: list[int],
+    shown: str,
+    hidden: str,
+    learner_marks: int,
+) -> None:
     organisation = OrganisationFactory()
     form = _quiz()
     page = _form_page(form=form, order=1)
@@ -624,7 +639,9 @@ def test_each_question_shows_its_verdict(
     assert text.count("Learner's answer") == learner_marks
 
 
-def test_a_free_text_question_shows_the_answer_and_not_marked(logged_in_client):
+def test_a_free_text_question_shows_the_answer_and_not_marked(
+    logged_in_client: Callable[[User], Client],
+) -> None:
     organisation = OrganisationFactory()
     form = _quiz()
     page = _form_page(form=form, order=1)
@@ -648,7 +665,9 @@ def test_a_free_text_question_shows_the_answer_and_not_marked(logged_in_client):
     assert "Did not answer" not in text
 
 
-def test_the_paper_has_no_form_fields(logged_in_client):
+def test_the_paper_has_no_form_fields(
+    logged_in_client: Callable[[User], Client],
+) -> None:
     organisation = OrganisationFactory()
     form = _quiz()
     page = _form_page(form=form, order=1)
@@ -683,8 +702,8 @@ def test_the_paper_has_no_form_fields(logged_in_client):
 
 
 def test_a_correct_option_changed_after_submission_shows_the_stale_score_note(
-    logged_in_client,
-):
+    logged_in_client: Callable[[User], Client],
+) -> None:
     organisation = OrganisationFactory()
     form = _quiz()
     page = _form_page(form=form, order=1)
@@ -765,8 +784,9 @@ def _sized_sitting(
 
 
 def test_a_thirty_question_paper_costs_no_more_queries_than_a_three_question_one(
-    logged_in_client, django_assert_max_num_queries: DjangoAssertNumQueries
-):
+    logged_in_client: Callable[[User], Client],
+    django_assert_max_num_queries: DjangoAssertNumQueries,
+) -> None:
     organisation = OrganisationFactory()
     client = _admin_client(organisation, logged_in_client)
     small = _sized_sitting(organisation, 1, 3)
@@ -783,8 +803,8 @@ def test_a_thirty_question_paper_costs_no_more_queries_than_a_three_question_one
 
 
 def test_the_quick_view_shows_the_title_the_subtitle_six_rows_and_no_link_in_its_body(
-    logged_in_client,
-):
+    logged_in_client: Callable[[User], Client],
+) -> None:
     organisation = OrganisationFactory()
     learner = LearnerFactory(
         organisation=organisation, user__first_name="Ada", user__last_name="Lovelace"
@@ -815,7 +835,9 @@ def test_the_quick_view_shows_the_title_the_subtitle_six_rows_and_no_link_in_its
     assert document.cssselect("a") == []
 
 
-def test_the_quick_view_of_a_quiz_with_no_pass_mark_says_so(logged_in_client):
+def test_the_quick_view_of_a_quiz_with_no_pass_mark_says_so(
+    logged_in_client: Callable[[User], Client],
+) -> None:
     organisation = OrganisationFactory()
     sitting = _sitting(LearnerFactory(organisation=organisation), pass_percentage=None)
 
@@ -829,7 +851,9 @@ def test_the_quick_view_of_a_quiz_with_no_pass_mark_says_so(logged_in_client):
     assert text.count("No pass mark") == 2
 
 
-def test_a_quick_view_request_that_is_not_htmx_redirects_to_the_page(logged_in_client):
+def test_a_quick_view_request_that_is_not_htmx_redirects_to_the_page(
+    logged_in_client: Callable[[User], Client],
+) -> None:
     organisation = OrganisationFactory()
     sitting = _sitting(LearnerFactory(organisation=organisation))
     page = _interface_url(organisation.slug, f"quiz-attempts/{sitting.pk}")

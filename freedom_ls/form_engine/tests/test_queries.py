@@ -7,6 +7,7 @@ from typing import cast
 import pytest
 from pytest_django.fixtures import DjangoAssertNumQueries
 
+from django.contrib.sites.models import Site
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
@@ -522,8 +523,8 @@ def _sat_quiz(scores: dict[str, int]) -> tuple[FormProgress, QuestionOption]:
 
 @pytest.mark.django_db
 def test_stored_score_outdated_is_false_when_the_marking_is_unchanged(
-    mock_site_context,
-):
+    mock_site_context: Site,
+) -> None:
     progress, _right = _sat_quiz({"score": 1, "max_score": 1})
 
     outdated = stored_score_outdated(progress, sitting_path(progress))
@@ -533,8 +534,8 @@ def test_stored_score_outdated_is_false_when_the_marking_is_unchanged(
 
 @pytest.mark.django_db
 def test_stored_score_outdated_is_true_when_a_correct_option_changed_after_submission(
-    mock_site_context,
-):
+    mock_site_context: Site,
+) -> None:
     progress, right = _sat_quiz({"score": 1, "max_score": 1})
     right.correct = False
     right.save()
@@ -546,8 +547,8 @@ def test_stored_score_outdated_is_true_when_a_correct_option_changed_after_submi
 
 @pytest.mark.django_db
 def test_stored_score_outdated_is_true_when_the_changed_option_is_read_from_given_answers(
-    mock_site_context,
-):
+    mock_site_context: Site,
+) -> None:
     progress, right = _sat_quiz({"score": 1, "max_score": 1})
     right.correct = False
     right.save()
@@ -559,7 +560,9 @@ def test_stored_score_outdated_is_true_when_the_changed_option_is_read_from_give
 
 
 @pytest.mark.django_db
-def test_stored_score_outdated_is_true_when_a_question_was_added(mock_site_context):
+def test_stored_score_outdated_is_true_when_a_question_was_added(
+    mock_site_context: Site,
+) -> None:
     form: Form = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
     page = FormPageFactory(form=form, order=0)
     question = FormQuestionFactory(form_page=page, type="multiple_choice", order=0)
@@ -580,8 +583,8 @@ def test_stored_score_outdated_is_true_when_a_question_was_added(mock_site_conte
 
 @pytest.mark.django_db
 def test_stored_score_outdated_is_false_when_a_served_item_is_missing_from_the_form(
-    mock_site_context,
-):
+    mock_site_context: Site,
+) -> None:
     progress, _right = _sat_quiz({"score": 1, "max_score": 2})
     page = progress.form.pages.get()
     unanswered = FormQuestionFactory(form_page=page, type="multiple_choice", order=1)
@@ -597,7 +600,9 @@ def test_stored_score_outdated_is_false_when_a_served_item_is_missing_from_the_f
 
 
 @pytest.mark.django_db
-def test_stored_score_outdated_is_false_for_a_non_quiz_form(mock_site_context):
+def test_stored_score_outdated_is_false_for_a_non_quiz_form(
+    mock_site_context: Site,
+) -> None:
     form = FormFactory(strategy=FormStrategy.CATEGORY_VALUE_SUM)
     progress: FormProgress = FormProgressFactory(
         form=form, scores={"Satisfaction": 5}, completed_time=timezone.now()

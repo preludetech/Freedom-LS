@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import pytest
 
+from django.contrib.sites.models import Site
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -197,8 +198,8 @@ def test_walk_interface_skips_detail_paths_for_a_list_with_no_instance_view(
 
 @pytest.mark.django_db
 def test_walk_interface_reaches_the_quick_view_of_the_seeded_quiz_attempt(
-    mock_site_context,
-):
+    mock_site_context: Site,
+) -> None:
     organisation = OrganisationFactory()
 
     walked = walk_interface(organisation)

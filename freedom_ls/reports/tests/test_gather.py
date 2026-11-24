@@ -9,6 +9,7 @@ from uuid import UUID
 import pytest
 import time_machine
 
+from django.contrib.sites.models import Site
 from django.test import override_settings
 from django.utils import timezone
 
@@ -3011,7 +3012,9 @@ class TestGatherLearnerCourseDetails:
             (2, 100, True),
         ]
 
-    def test_each_attempt_carries_its_sittings_pk(self, mock_site_context) -> None:
+    def test_each_attempt_carries_its_sittings_pk(
+        self, mock_site_context: Site
+    ) -> None:
         course, _topic, quiz = _quiz_course()
         registration, record = _cohort_member(course)
         sitting = form_progress(
@@ -3065,7 +3068,7 @@ class TestAttemptNumberOf:
         ids=["first", "second", "third", "in-progress"],
     )
     def test_a_sitting_is_numbered_by_its_place_among_the_completed_ones(
-        self, mock_site_context, sitting_index: int, expected: int | None
+        self, mock_site_context: Site, sitting_index: int, expected: int | None
     ) -> None:
         course, _topic, quiz = _quiz_course()
         _registration, record = _cohort_member(course)
@@ -3080,7 +3083,7 @@ class TestAttemptNumberOf:
         assert attempt_number_of(sittings[sitting_index]) == expected
 
     def test_the_courses_tab_rows_are_numbered_one_two_three(
-        self, mock_site_context
+        self, mock_site_context: Site
     ) -> None:
         course, _topic, quiz = _quiz_course()
         registration, record = _cohort_member(course)
@@ -3097,7 +3100,7 @@ class TestAttemptNumberOf:
         assert [a.attempt_number for a in result.attempts] == [1, 2, 3]
 
     def test_a_sitting_with_no_course_form_attempt_has_no_number(
-        self, mock_site_context
+        self, mock_site_context: Site
     ) -> None:
         quiz = FormFactory(strategy=FormStrategy.QUIZ)
         sitting = FormProgressFactory(form=quiz, completed_time=timezone.now())
