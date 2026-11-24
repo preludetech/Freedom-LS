@@ -2271,6 +2271,10 @@ def form_fill_page(
             index=index,
         )
 
+    # An unsigned sitting is served nothing and saved nothing until it is signed.
+    if sitting_needs_declaration(form_progress):
+        return _declaration_redirect(course_slug, index)
+
     ensure_served_paper(form_progress)
     path = current_path(form_progress)
     landing = off_path_landing(path, page_number)
@@ -3188,6 +3192,12 @@ def form_submit_and_exit(
         if course_progress is not None
         else None
     )
+    if (
+        form_progress is not None
+        and not closed
+        and sitting_needs_declaration(form_progress)
+    ):
+        return _declaration_redirect(course_slug, index)
     if form_progress is not None:
         ensure_served_paper(form_progress)
         # Nothing posted is saved once closed: the item has no later to resume in.

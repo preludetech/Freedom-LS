@@ -37,6 +37,7 @@ from freedom_ls.form_engine.models import (
     Form,
     FormDeclaration,
     FormProgress,
+    FormQuestion,
     FormStrategy,
 )
 from freedom_ls.learner_interface.tests.helpers import (
@@ -574,3 +575,147 @@ def test_a_field_error_shows_no_changed_callout(declaration_course, client):
     _response, document = _rejected_page(declaration_course, client, agreed="")
 
     assert not document.xpath('//*[@data-testid="declaration-changed"]')
+
+
+def _exit_url(course: Course, index: int = 1) -> str:
+    return reverse(
+        "learner_interface:form_submit_and_exit", kwargs=_kwargs(course, index)
+    )
+
+
+def _answer_post(form: Form) -> dict[str, str]:
+    question = FormQuestion.objects.get(form_page__form=form)
+    option = question.options.get(correct=True)
+    return {f"question_{question.id}": str(option.pk)}
+
+
+@pytest.mark.django_db
+def test_form_fill_page_get_sends_an_unsigned_sitting_to_the_declaration_and_writes_nothing(
+    declaration_course, client
+):
+    course, form, user = declaration_course
+    sitting = form_attempt(course, user, form)
+
+    response = client.get(_page_one_url(course))
+
+    assert _location(response) == _declaration_url(course)
+    sitting.refresh_from_db()
+    assert sitting.served_paper is None
+    assert sitting.completed_time is None
+
+
+@pytest.mark.django_db
+def test_form_fill_page_post_on_an_unsigned_sitting_saves_no_answers(
+    declaration_course, client
+):
+    course, form, user = declaration_course
+    sitting = form_attempt(course, user, form)
+
+    response = client.post(_page_one_url(course), _answer_post(form))
+
+    assert _location(response) == _declaration_url(course)
+    sitting.refresh_from_db()
+    assert sitting.served_paper is None
+    assert sitting.completed_time is None
+    assert not sitting.answers.exists()
+
+
+@pytest.mark.django_db
+def test_form_submit_and_exit_sends_an_unsigned_sitting_to_the_declaration(
+    mock_site_context, client
+):
+    user = UserFactory()
+    form = _declaration_quiz(submit_on_exit=True)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    sitting = form_attempt(course, user, form)
+
+    response = client.post(_exit_url(course))
+
+    assert _location(response) == _declaration_url(course)
+    sitting.refresh_from_db()
+    assert sitting.completed_time is None
+    assert sitting.served_paper is None
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_form_submit_and_exit_finalises_an_unsigned_sitting_of_a_closed_quiz(
+    mock_site_context, client
+):
+    user = UserFactory()
+    form = _declaration_quiz(submit_on_exit=True)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    set_due_date(course, form, due_date=date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, close_items="on")
+    client.force_login(user)
+    sitting = form_attempt(course, user, form)
+
+    client.post(_exit_url(course))
+
+    sitting.refresh_from_db()
+    assert sitting.completed_time is not None
+    assert FormDeclaration.objects.count() == 0
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_form_submit_and_exit_finalises_an_unsigned_sitting_after_access_ended(
+    mock_site_context,
+):
+    user = UserFactory()
+    course = CourseFactory(time_limit_days=30)
+    form = _declaration_quiz(submit_on_exit=True)
+    course.items.create(child=form, order=0)
+    CourseDeadlineConfigFactory(course=course, end_course_access="on")
+    course_progress_record(
+        course, user, created_at=datetime(2026, 3, 1, 10, 0, tzinfo=UTC)
+    )
+    sitting = form_attempt(course, user, form)
+    client = Client()
+    client.force_login(user)
+
+    client.post(_exit_url(course))
+
+    sitting.refresh_from_db()
+    assert sitting.completed_time is not None
+    assert FormDeclaration.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_signing_from_continue_form_keeps_the_unsigned_sitting(
+    declaration_course, client
+):
+    course, form, user = declaration_course
+    sitting = form_attempt(course, user, form)
+    start_time = sitting.start_time
+
+    client.post(_declaration_url(course), _signature(form))
+
+    kept = FormProgress.objects.get()
+    assert kept.pk == sitting.pk
+    assert kept.start_time == start_time
+    assert FormDeclaration.objects.get().form_progress == kept
+
+
+@pytest.mark.django_db
+def test_a_signed_sitting_goes_through_both_routes(mock_site_context, client):
+    user = UserFactory()
+    form = _declaration_quiz(submit_on_exit=True)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    sitting = form_attempt(course, user, form)
+    FormDeclarationFactory(form_progress=sitting)
+
+    page = client.get(_page_one_url(course))
+    exit_response = client.post(_exit_url(course))
+
+    assert page.status_code == 200
+    assert _location(exit_response) == reverse(
+        "learner_interface:course_form_complete", kwargs=_kwargs(course)
+    )
+    sitting.refresh_from_db()
+    assert sitting.completed_time is not None

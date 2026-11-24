@@ -160,12 +160,23 @@ def start_attempt(
     with transaction.atomic():
         CourseProgress.objects.select_for_update().get(pk=course_progress.pk)
         open_sitting = get_latest_incomplete(course_progress, collection_item)
-        double_start = (
+        reusable = (
             open_sitting is not None
-            and open_sitting.start_time >= timezone.now() - START_REUSE_WINDOW
             and not open_sitting.answers.exists()
+            and (
+                open_sitting.start_time >= timezone.now() - START_REUSE_WINDOW
+                # Nothing is served for an unsigned sitting until it is signed,
+                # so the learner never left it; finalising it would leave an
+                # attempt with no declaration.
+                or (
+                    declaration is not None
+                    and not FormDeclaration.objects.filter(
+                        form_progress=open_sitting
+                    ).exists()
+                )
+            )
         )
-        if not double_start:
+        if not reusable:
             finalise_stale_incomplete(
                 course_progress,
                 collection_item,

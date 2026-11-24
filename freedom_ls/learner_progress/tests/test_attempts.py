@@ -384,6 +384,40 @@ class TestStartAttemptDeclaration:
 
         assert FormDeclaration.objects.get().typed_name == "Signed"
 
+    def test_a_declaration_signs_an_unanswered_open_sitting_instead_of_finalising_it(
+        self, submit_on_exit_placement: tuple[CourseProgress, ContentCollectionItem]
+    ) -> None:
+        record, collection_item = submit_on_exit_placement
+        sitting = get_or_create_incomplete(record, collection_item)
+        FormProgress.objects.filter(pk=sitting.pk).update(
+            start_time=timezone.now() - START_REUSE_WINDOW - timedelta(seconds=1)
+        )
+
+        signed = start_attempt(
+            record, collection_item, declaration=_unsaved_declaration()
+        )
+
+        assert signed.pk == sitting.pk
+        assert signed.completed_time is None
+        assert FormDeclaration.objects.get().form_progress == signed
+
+    def test_a_declaration_finalises_an_unsigned_answered_sitting_and_starts_a_signed_one(
+        self, submit_on_exit_placement: tuple[CourseProgress, ContentCollectionItem]
+    ) -> None:
+        record, collection_item = submit_on_exit_placement
+        old = get_or_create_incomplete(record, collection_item)
+        QuestionAnswerFactory(form_progress=old)
+        FormProgress.objects.filter(pk=old.pk).update(
+            start_time=timezone.now() - START_REUSE_WINDOW - timedelta(seconds=1)
+        )
+
+        new = start_attempt(record, collection_item, declaration=_unsaved_declaration())
+
+        old.refresh_from_db()
+        assert old.completed_time is not None
+        assert new.pk != old.pk
+        assert FormDeclaration.objects.get().form_progress == new
+
     def test_a_start_without_a_declaration_writes_none(
         self, form_placement: tuple[CourseProgress, ContentCollectionItem]
     ) -> None:
