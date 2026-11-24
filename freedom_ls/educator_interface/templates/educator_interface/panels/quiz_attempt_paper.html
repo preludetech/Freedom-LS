@@ -19,7 +19,18 @@ order. Context: quiz_attempt_paper_context().
             <section class="flex flex-col gap-4">
                 <c-panel-heading>Page {{ entry.position }} of {{ total_pages }}{% if entry.page.title %}: {{ entry.page.title }}{% endif %}</c-panel-heading>
                 <div class="flex max-w-reading flex-col gap-6">
-                    {% include "form_engine/partials/page_children.html" with page_children=entry.page_children %}
+                    {% for child in entry.page_children %}
+                        {% if child.content_type == "FORM_QUESTION" %}
+                            {% with question=child %}
+                                {% include "form_engine/answers/question.html" %}
+                                {% include "educator_interface/partials/quiz_attempt_verdict.html" %}
+                            {% endwith %}
+                        {% elif child.content_type == "FORM_CONTENT" %}
+                            <c-markdown-container width="full">
+                                {{ child.rendered_content }}
+                            </c-markdown-container>
+                        {% endif %}
+                    {% endfor %}
                 </div>
             </section>
         {% endfor %}

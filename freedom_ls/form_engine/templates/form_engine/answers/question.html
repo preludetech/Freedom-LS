@@ -1,0 +1,31 @@
+{% load fls_base_filters %}
+{% comment %}
+One question as a reader sees it once it is answered: its number, id and text,
+then the answer. Never a form field: a disabled field looks editable.
+
+Reads: question, question_positions, existing_answers, sitting_path (for
+{% question_options %}), plus the answer-key flag options.html reads.
+
+The number and id float so the question's first paragraph runs on beside
+them; flow-root keeps the floats inside the heading.
+{% endcomment %}
+<div class="flex flex-col gap-3" data-testid="answered-question">
+    <div class="flow-root font-semibold text-on-surface [&>p:last-of-type]:inline">
+        {% with position=question_positions|get_dict_item:question.id %}<span class="float-left mr-1">{{ position }}.</span>{% endwith %}
+        <span class="float-left mr-1 text-sm font-normal leading-6 text-muted">{{ question.id }}</span>
+        {{ question.rendered_question }}
+    </div>
+    {% with answer=existing_answers|get_dict_item:question.id %}
+        {% if question.type == "multiple_choice" or question.type == "dropdown" %}
+            {% include "form_engine/answers/options.html" with indicator="radio" %}
+        {% elif question.type == "checkboxes" %}
+            {% include "form_engine/answers/options.html" with indicator="checkbox" %}
+        {% elif question.type == "file_upload" %}
+            {% include "form_engine/answers/file.html" %}
+        {% elif question.type == "short_text" or question.type == "long_text" or question.type == "number" or question.type == "date" or question.type == "time" or question.type == "email" or question.type == "url" or question.type == "phone" %}
+            {% include "form_engine/answers/text.html" %}
+        {% else %}
+            <c-callout tone="error">ERROR! UNHANDLED FORM TYPE {{ question.type }}</c-callout>
+        {% endif %}
+    {% endwith %}
+</div>

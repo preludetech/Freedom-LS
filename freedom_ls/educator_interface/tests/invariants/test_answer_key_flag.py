@@ -9,7 +9,9 @@ def test_show_answer_key_is_set_only_by_the_educator_pages() -> None:
         "form_engine/templates/form_engine/inputs/multiple_choice.html",
         "form_engine/templates/form_engine/inputs/checkboxes.html",
         "form_engine/templates/form_engine/inputs/dropdown.html",
+        "form_engine/templates/form_engine/answers/options.html",
     }
+    template_tests = {"form_engine/tests/test_answer_templates.py"}
     guard = Path(__file__).resolve()
     mentions = {
         path.relative_to(root).as_posix()
@@ -19,7 +21,7 @@ def test_show_answer_key_is_set_only_by_the_educator_pages() -> None:
         and "show_answer_key" in path.read_text()
     }
 
-    assert mentions == allowed_templates | {
+    assert mentions == allowed_templates | template_tests | {
         "educator_interface/panels/course/content_preview.py",
         "educator_interface/panels/learner/quiz_attempt.py",
     }

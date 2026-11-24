@@ -19,6 +19,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [x] (cmd) Attempt review draws answers through form_engine/answers/ templates (text answers as text, choice answers as option rows), not disabled quiz inputs
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
 - [ ] (user) Decide whether educators need their own route to download a learner's file-upload answer on the attempt review: the Paper panel reuses form_engine/inputs/file_upload.html, whose Download button points at own_question_answer_file, which appears to serve the file owner only, so the link may fail for an educator (no test covers it); if so, add an educator-side file route and a test

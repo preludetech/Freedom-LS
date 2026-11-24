@@ -592,6 +592,40 @@ def test_a_free_text_question_shows_the_answer_and_not_marked(logged_in_client):
     assert "Did not answer" not in text
 
 
+def test_the_paper_has_no_form_fields(logged_in_client):
+    organisation = OrganisationFactory()
+    form = _quiz()
+    page = _form_page(form=form, order=1)
+    choice, options = _question(page, "Question A", 1, [("A one", True)])
+    dropdown = cast(
+        FormQuestion,
+        FormQuestionFactory(form_page=page, question="Pick", type="dropdown", order=2),
+    )
+    free_text = cast(
+        FormQuestion,
+        FormQuestionFactory(
+            form_page=page, question="Explain", type="long_text", order=3
+        ),
+    )
+    sitting = _paper_sitting(
+        organisation,
+        form,
+        served_paper=served_paper_of(
+            [(page, [choice, dropdown, free_text])], {choice: options, dropdown: []}
+        ),
+    )
+    _answer(sitting, choice, *options)
+    QuestionAnswerFactory(
+        form_progress=sitting, question=free_text, text_answer="Because lift"
+    )
+
+    (paper,) = _page(
+        _admin_client(organisation, logged_in_client), organisation, sitting
+    ).cssselect("section[data-panel='paper']")
+
+    assert paper.cssselect("input, select, textarea") == []
+
+
 def test_a_correct_option_changed_after_submission_shows_the_stale_score_note(
     logged_in_client,
 ):

@@ -1,0 +1,17 @@
+{% comment %}
+A file answer: the file's name and size, in the same labelled block as a
+typed answer. No upload, replace or remove controls.
+
+Reads: answer (or None), with answer_file prefetched.
+{% endcomment %}
+{% if answer.answer_file %}
+    <div class="flex flex-col gap-2 rounded-md border-s-4 border-primary bg-primary/5 px-4 py-3"
+         data-testid="text-answer">
+        <c-learner-answer-mark />
+        <p class="flex items-center gap-2 text-on-surface">
+            <c-icon name="notes" class="size-4 flex-none" />
+            <span class="break-all">{{ answer.answer_file.original_filename }}</span>
+            <span class="text-sm text-muted">({{ answer.answer_file.file.size|filesizeformat }})</span>
+        </p>
+    </div>
+{% endif %}

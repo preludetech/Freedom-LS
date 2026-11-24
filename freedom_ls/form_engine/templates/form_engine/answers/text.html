@@ -1,0 +1,14 @@
+{% comment %}
+A typed answer (text, number, date, time, email, URL or phone) as text, in a
+block labelled as the learner's answer and tinted like a chosen option. An
+unanswered question draws nothing: the reader's verdict line says so.
+
+Reads: answer (or None).
+{% endcomment %}
+{% if answer.text_answer %}
+    <div class="flex flex-col gap-2 rounded-md border-s-4 border-primary bg-primary/5 px-4 py-3"
+         data-testid="text-answer">
+        <c-learner-answer-mark />
+        <p class="whitespace-pre-line break-words text-on-surface">{{ answer.text_answer }}</p>
+    </div>
+{% endif %}

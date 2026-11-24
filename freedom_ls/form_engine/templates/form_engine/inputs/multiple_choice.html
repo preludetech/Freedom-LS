@@ -32,11 +32,6 @@ source of truth and keyboard/AT behaviour is untouched.
                          group-has-[:checked]:opacity-100"></span>
         </span>
         <span class="text-on-surface">{{ option.text }}</span>
-        {% if show_learner_answer %}
-        <span class="ms-auto flex flex-wrap justify-end gap-x-3 gap-y-1">
-            {% with answer=existing_answers|get_dict_item:question.id %}{% if answer and option in answer.selected_options.all %}<c-learner-answer-mark />{% endif %}{% endwith %}
-            {% if show_answer_key and option.correct %}<c-correct-answer-mark />{% endif %}
-        </span>
-        {% elif show_answer_key and option.correct %}<c-correct-answer-mark class="ms-auto" />{% endif %}
+        {% if show_answer_key and option.correct %}<c-correct-answer-mark class="ms-auto" />{% endif %}
     </label>
 {% endfor %}

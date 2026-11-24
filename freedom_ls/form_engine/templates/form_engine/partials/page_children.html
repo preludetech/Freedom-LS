@@ -5,13 +5,11 @@ different chrome around this, and nothing at all inside it.
 
 Reads: page_children, question_positions, plus everything form_engine/question.html reads --
 existing_answers, rejected_answers, read_only.
-Optional: per_question_template, a template drawn after each question with `question` in scope.
 {% endcomment %}
 {% for child in page_children %}
     {% if child.content_type == "FORM_QUESTION" %}
         {% with question=child %}
             {% include "form_engine/question.html" %}
-            {% if per_question_template %}{% include per_question_template %}{% endif %}
         {% endwith %}
     {% elif child.content_type == "FORM_CONTENT" %}
         <c-markdown-container width="full">

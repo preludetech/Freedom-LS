@@ -13,7 +13,6 @@
         <span class="float-left mr-1"
               data-testid="question-number-{{ question.question_number }}">{{ position }}.</span>
         {% endwith %}
-        {% if show_question_id %}<span class="text-sm font-normal text-muted">{{ question.id }}</span>{% endif %}
         {% comment %}
         The `&nbsp;` keeps the asterisk attached to the last word of the
         question so it can never wrap onto a line of its own.
