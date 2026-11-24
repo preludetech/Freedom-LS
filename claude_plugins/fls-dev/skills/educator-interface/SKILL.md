@@ -21,6 +21,8 @@ instance pages that puts each action here:
 | A learner's Courses tab | Register for a course |
 | A learner's Courses tab quiz attempts table | The attempt number opens the attempt (quick view; full attempt review page) |
 | A learner's Course registrations list (Overview tab) | Deactivate / Reactivate a registration |
+| A course's Cohort registrations panel (Overview tab) | Register (footer), Deactivate (row) |
+| A course's Direct registrations panel (Overview tab) | Register (footer), Deactivate and Reactivate (row) |
 | A cohort's Settings tab | Three panels: Name (the name field, Save in the card footer), Staff (Add staff member; Change role and Remove from cohort on each person's row), Status (Deactivate / Reactivate, Delete) |
 | A cohort's Learners tab | Add learners, Remove, Move |
 | A learner's Settings tab | Two panels: Name (first and last name fields, Save in the card footer), Account (Resend setup email, Deactivate / Reactivate): the actions with no home of their own |
@@ -44,8 +46,12 @@ tab alike.
 
 ## Course outline and content previews
 
+The course page has two tabs. Overview holds Course details, Cohort registrations and Direct
+registrations. Content holds Course content, then Reference.
+
 The educator course page lists the course outline as the panel framework's ordered-list data
-table, with a "Preview" button on every row.
+table, with a "Preview" button on every row. The table sets `child_rows_collapsed`, so every group
+starts collapsed.
 
 - In "Course content", the course details are the table's first row, with the same small
   "Preview" button as every other row, never a button in the panel header.
@@ -57,6 +63,11 @@ table, with a "Preview" button on every row.
 - A multi-page form previews one page at a time, each from its own outline row ("Page 2 of 3:
   Tell us more", with its "Shown only if…" line); the form's own row previews the learner's start
   page: title, intro and the question and page counts, with no button.
+- A preview dialog ends in the stepping footer (Previous at the left, Next at the right, no Close;
+  `partials/preview_stepping_footer.html`). Each list steps through its own preview sequence
+  (`preview_sequence` in `panels/course/content_preview.py`): Course content runs from Course
+  details to the last item or page, Reference stays within itself.
+- A quiz's own preview row shows a facts block (`_quiz_facts`).
 - Every outline table on the course page shares one column layout: the `#`, Type and Actions
   columns have fixed widths and Title takes the rest, so stacked outline panels line their
   numbers, types and Preview buttons up in one column each.
@@ -103,6 +114,7 @@ What QA checks in a screenshot of an educator page, on top of the panel framewor
 - Each instance-page action sits where the Placement table puts it; a Settings tab holds only
   actions that have no home beside the thing they change.
 - A log or History table has sort headers and the Who, What and When filters.
+- The Content tab's outline groups start collapsed, and a preview has Previous and Next, not Close.
 - The "Course content" outline has the course details as its first row and a multi-page form
   expanded into one row per page; a content preview sits in the reading column, not the dialog's
   width.

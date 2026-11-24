@@ -45,7 +45,8 @@ components; `Skill(fls-dev:frontend-styling)` owns the theme tokens.
   shortens rows from `md` up, for a dense table (an outline); cards keep their padding.
   `row_detail_template_name` renders a template under each row, behind a toggle (a disclosure
   below `md`); `has_row_detail(row)` hides it for a row with nothing to show. `has_child_rows`
-  with `get_child_rows(row)` nests full rows under a group row (see Tables). A per-row template
+  with `get_child_rows(row)` nests full rows under a group row, and `child_rows_collapsed` starts
+  every group closed (see Tables). A per-row template
   `get_row_template_name(row)` replaces a row's cells from the primary column to the last with
   that template (for a note, not a record: it has no checkbox and no row detail); it renders with
   `object` and `row`. A panel whose rows are computed returns them from
@@ -82,7 +83,9 @@ components; `Skill(fls-dev:frontend-styling)` owns the theme tokens.
   `EditableListPanel.get_actions()` returns `EditableListAddAction`, `EditableListEditAction`
   and `EditableListRemoveAction`. Each derives its capability from the entry model
   (`add_`, `change_`, `delete_<model>`) and asks it of the parent instance; a subclass sets
-  `derive_capability = False` to state its own `capability` (or `None`).
+  `derive_capability = False` to state its own `capability` (or `None`). On a page whose instance
+  `can()` has no rule for (a course), an action overrides `permission_object` and `has_permission`
+  as `CoursePageActionMixin` (`educator_interface/panels/common/course_page.py`) does.
 - `context.py`: `PanelContext`. `ctx.once(key, load)` reads a value once per request; the key
   names everything the value depends on, because every context of the request shares the store.
 - `filters.py`: declared table filters, applied on top of search and sort, in `PanelAction`'s shape.
@@ -314,7 +317,8 @@ panel with framework actions that call the other app's forms and flows.
   <title>."). A dialog closed without a change returns focus to its trigger.
 - A group row carries the row-detail chevron (`size-8`, `aria-expanded`, `aria-controls` naming
   its child rows) beside its title, and its children are the indented rows under it, open by
-  default. An empty group shows its note as a child row.
+  default, unless the table sets `child_rows_collapsed`: then every group starts collapsed once
+  Alpine starts, and every row shows without JavaScript. An empty group shows its note as a child row.
 - Child rows (`has_child_rows`, `get_child_rows(row)`) are for a hierarchy shown in one table
   (a course outline). They cannot be combined with `row_detail_template_name`, and a table with
   child rows cannot have bulk actions: the framework raises `ImproperlyConfigured` for both.
@@ -347,7 +351,8 @@ panel with framework actions that call the other app's forms and flows.
 - Every dialog is three sibling components and nothing else at the top level:
   `<c-modal-header>`, `<c-modal-body>`, `<c-modal-footer>`. The body owns the padding and the gap
   between its blocks; the footer is never inside the body or another padded element. A message
-  dialog (`panel_framework/modal/message.html`) ends in a Close footer like every other. The
+  dialog (`panel_framework/modal/message.html`) ends in a Close footer; a dialog that steps
+  through a list ends in the stepping footer. The
   discard prompt (`panel_framework/partials/discard_prompt.html`) puts its body in `<c-modal-body>`
   and ends in the same footer.
 - A dialog takes one of three shapes. `modal/confirm.html` is one `<form>` holding the body, the
@@ -359,7 +364,9 @@ panel with framework actions that call the other app's forms and flows.
 - A dialog ends in `<c-modal-footer>`: it renders its own Cancel at the left (`cancel`,
   `cancel_href`, `cancel_click`, `focus_cancel`), the actions in the default slot at the right, the
   primary last; three or more group at the right. No template writes a Cancel button or a `cancel`
-  slot. `<c-button-group>` is for buttons outside a dialog.
+  slot. `<c-modal-footer stepping="true">` is the exception, for a dialog that steps through a list:
+  Previous at the left (`previous` slot), Next at the right (`next` slot), no Cancel, no Close; the
+  header X, Esc and the backdrop close it. `<c-button-group>` is for buttons outside a dialog.
 - A footer's Cancel or Close calls `cancel()`: it drops the input and never asks to discard. Only
   the header close control and Esc call `requestClose()`, which goes through the dirty-form
   guard.
@@ -523,8 +530,9 @@ and `auto_id`.
 ### Placement
 
 A control sits beside the thing it changes, as the brand's visual system says; a Settings panel
-holds only the actions with no home of their own. Which page of an app holds which action is that
-app's skill.
+holds only the actions with no home of their own. A panel that lists a thing the person is meant
+to act on offers those actions on that panel, and each row links to the thing's own page. Which
+page of an app holds which action is that app's skill.
 
 ### Padding, gaps and phones
 
@@ -643,8 +651,10 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
   phone viewport a button is as wide as its label.
 - In a card, the fields have clear space between them, more than between the items of one value,
   and the title block stands apart from the fields.
-- A dialog's Cancel sits at the left and its actions at the right; two buttons in one row never
-  share a bare verb.
+- A dialog's Cancel sits at the left and its actions at the right (a stepping dialog has Previous
+  at the left and Next at the right, and no Close); two buttons in one row never share a bare verb.
+- A panel that lists things to act on has those actions on the panel, and each row links to its own
+  page.
 - The table footer states the entry count at the left, in line with the pager, on a single-page
   table and a paged static table too; hovering an empty table's message tints nothing.
 - A list of records in a panel has the same fields in the same places on every row, never
