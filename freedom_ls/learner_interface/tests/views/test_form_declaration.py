@@ -234,6 +234,23 @@ def test_the_page_shows_the_effective_declaration_text(declaration_course, clien
 
 
 @pytest.mark.django_db
+def test_the_declaration_paragraphs_are_spaced_apart(mock_site_context, client):
+    """Paragraphs of the declaration text had no gap between them and read as one block."""
+    user = UserFactory()
+    form = _declaration_quiz(declaration_text="First paragraph.\n\nSecond paragraph.")
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+
+    response = client.get(_declaration_url(course))
+
+    document = lxml.html.fromstring(response.content)
+    [shown] = document.xpath('//*[@data-testid="declaration-text"]')
+    assert len(shown.xpath("./p")) == 2
+    assert "space-y-4" in shown.get("class").split()
+
+
+@pytest.mark.django_db
 def test_the_page_escapes_the_authors_declaration_text(mock_site_context, client):
     user = UserFactory()
     form = _declaration_quiz(declaration_text="Honest <script>alert(1)</script> work.")
