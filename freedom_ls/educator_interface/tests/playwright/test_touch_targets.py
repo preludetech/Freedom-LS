@@ -91,8 +91,8 @@ def test_touch_targets_flow(
     assert page.evaluate(_SMALLEST_CONTROL) == [], "filter dialog has a small control"
 
 
-# Heights of the First Class theme's buttons before the label alignment rule,
-# in px. The alignment rule moves the label, never the button's box.
+# Heights of the First Class theme's buttons in px. Centring a label must never
+# change the button's box, so these stay fixed.
 DEFAULT_BUTTON_HEIGHT = 44
 SMALL_BUTTON_HEIGHT = 32
 TABLE_BUTTON_HEIGHT = 32
