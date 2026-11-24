@@ -82,7 +82,7 @@ def _course_panel_region_id(
         "educator_interface:interface",
         kwargs={"organisation_slug": organisation_slug, "path_string": "courses"},
     )
-    base_url = f"{section_url}/{course_pk}/__panels/{panel_name}"
+    base_url = f"{section_url}/{course_pk}/__tabs/overview/__panels/{panel_name}"
     return "panel-" + re.sub(r"[^\w-]+", "-", base_url).strip("-")
 
 
@@ -752,7 +752,8 @@ class TestCourseDetailPanelsAreScopedWithinAnOrganisation:
     ) -> str:
         response = client.get(
             _interface_url(
-                organisation_slug, f"courses/{course_pk}/__panels/{panel_name}"
+                organisation_slug,
+                f"courses/{course_pk}/__tabs/overview/__panels/{panel_name}",
             ),
             HTTP_HX_REQUEST="true",
             HTTP_HX_TARGET=_course_panel_region_id(
