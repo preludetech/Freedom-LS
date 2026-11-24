@@ -66,7 +66,9 @@ def _validate_deadline_override(
     if collection_item is None:
         if due_time is not None:
             errors["due_time"] = "The course time limit ends at the end of its day."
-    elif collection_item not in course.viewable_collection_items():
+    # Retired items count: a row stored on one is kept, and must still save.
+    # The pickers offer only live items, so none is newly chosen.
+    elif collection_item not in course.viewable_collection_items(include_retired=True):
         errors["collection_item"] = "Pick an item of this course."
     if errors:
         raise ValidationError(errors)
@@ -575,7 +577,8 @@ class DeadlineExtension(SiteAwareModel, TimestampedModel):
     def clean(self) -> None:
         if not self.course_progress_id or self.collection_item is None:
             return
+        # Retired items count, as in validate_deadline_fields.
         if self.collection_item not in (
-            self.course_progress.course.viewable_collection_items()
+            self.course_progress.course.viewable_collection_items(include_retired=True)
         ):
             raise ValidationError({"collection_item": "Pick an item of this course."})

@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
-from freedom_ls.content_engine.models import ContentCollectionItem, Course
+from freedom_ls.content_engine.models import ContentCollectionItem, Course, Topic
 from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.deadlines.factories import (
     CohortCourseRegistrationDeadlineConfigFactory,
@@ -40,6 +40,7 @@ from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
 from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.retire import retire
 
 JOHANNESBURG = ZoneInfo("Africa/Johannesburg")
 
@@ -752,3 +753,33 @@ def test_an_extension_reads_as_the_learner_the_course_the_days_and_the_target(
     assert str(extension.course_progress.course) in text
     assert "+7 days" in text
     assert ExtensionTarget.TIME_LIMIT in text
+
+
+@pytest.mark.django_db
+def test_learner_clean_accepts_a_stored_override_on_a_retired_item(
+    mock_site_context,
+) -> None:
+    record, item = _record_item()
+    retire(Topic.objects.get(pk=item.child_id))
+
+    LearnerDeadlineOverride(
+        course_progress=record,
+        collection_item=item,
+        kind=DeadlineKind.RELATIVE,
+        due_days_after_registration=3,
+    ).clean()
+
+
+@pytest.mark.django_db
+def test_extension_clean_accepts_a_stored_extension_on_a_retired_item(
+    mock_site_context,
+) -> None:
+    record, item = _record_item()
+    retire(Topic.objects.get(pk=item.child_id))
+
+    DeadlineExtension(
+        course_progress=record,
+        target_kind=ExtensionTarget.COLLECTION_ITEM,
+        collection_item=item,
+        days=3,
+    ).clean()
