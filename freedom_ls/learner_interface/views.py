@@ -2093,7 +2093,16 @@ def form_declaration(
     declaration_form = FormDeclarationForm(
         request.POST if request.method == "POST" else None, declaration_text=text
     )
-    if request.method == "POST" and declaration_form.is_valid():
+    status = 200
+    text_changed = False
+    if request.method == "POST" and not declaration_form.is_valid():
+        status = 422
+        if declaration_form.declaration_changed():
+            # The learner signed text they never saw: show the current text
+            # with both fields cleared so they read it again.
+            text_changed = True
+            declaration_form = FormDeclarationForm(declaration_text=text)
+    elif request.method == "POST":
         # A PermissionDenied from the client IP lookup propagates as a 403.
         ip = get_client_ip(request)
         form_progress = start_attempt(
@@ -2128,9 +2137,12 @@ def form_declaration(
         "index": index,
         "declaration_text": text,
         "declaration_form": declaration_form,
+        "text_changed": text_changed,
         "previous_url": start_url,
     }
-    return render(request, "learner_interface/form_declaration.html", context)
+    return render(
+        request, "learner_interface/form_declaration.html", context, status=status
+    )
 
 
 def _form_page_url(course_slug: str, index: int, page_number: int) -> str:

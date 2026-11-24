@@ -464,3 +464,113 @@ def test_a_survey_redirects_to_form_start(mock_site_context, client):
     response = client.get(_declaration_url(course))
 
     assert _location(response) == _start_url(course)
+
+
+def _rejected_page(
+    declaration_course: tuple[Course, Form, User],
+    client: Client,
+    **overrides: str,
+) -> tuple[int, lxml.html.HtmlElement]:
+    course, form, _user = declaration_course
+    response = client.post(_declaration_url(course), _signature(form, **overrides))
+    return response.status_code, lxml.html.fromstring(response.content)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        pytest.param({"agreed": ""}, id="unticked_box"),
+        pytest.param({"typed_name": ""}, id="blank_name"),
+        pytest.param({"typed_name": "   "}, id="whitespace_name"),
+        pytest.param({"text_hash": "stale"}, id="stale_hash"),
+    ],
+)
+def test_a_rejected_signature_returns_422_and_stores_nothing(
+    declaration_course, client, overrides
+):
+    status, _document = _rejected_page(declaration_course, client, **overrides)
+
+    assert status == 422
+    assert _sittings() == (0, 0, 0)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("overrides", "field_id", "error_id"),
+    [
+        pytest.param({"agreed": ""}, "id_agreed", "agreed-error", id="unticked_box"),
+        pytest.param(
+            {"typed_name": ""}, "id_typed_name", "typed_name-error", id="blank_name"
+        ),
+        pytest.param(
+            {"typed_name": "   "},
+            "id_typed_name",
+            "typed_name-error",
+            id="whitespace_name",
+        ),
+    ],
+)
+def test_a_field_error_is_linked_to_its_input_and_takes_focus(
+    declaration_course, client, overrides, field_id, error_id
+):
+    _response, document = _rejected_page(declaration_course, client, **overrides)
+
+    [error] = document.xpath(f'//*[@id="{error_id}"]')
+    assert error.text_content().strip()
+    [field] = document.xpath(f'//*[@id="{field_id}"]')
+    assert field.get("aria-invalid") == "true"
+    assert error_id in field.get("aria-describedby").split()
+    assert field.get("autofocus") is not None
+
+
+@pytest.mark.django_db
+def test_the_first_field_in_error_alone_takes_focus(declaration_course, client):
+    _response, document = _rejected_page(
+        declaration_course, client, agreed="", typed_name=""
+    )
+
+    [focused] = document.xpath("//*[@autofocus]")
+    assert focused.get("id") == "id_agreed"
+
+
+@pytest.mark.django_db
+def test_a_rejected_box_keeps_the_typed_name(declaration_course, client):
+    _response, document = _rejected_page(declaration_course, client, agreed="")
+
+    [name] = document.xpath('//*[@id="id_typed_name"]')
+    assert name.get("value") == "Thandi Nkosi"
+
+
+@pytest.mark.django_db
+def test_a_rejected_name_keeps_the_box_ticked(declaration_course, client):
+    _response, document = _rejected_page(declaration_course, client, typed_name=" ")
+
+    [box] = document.xpath('//*[@id="id_agreed"]')
+    assert box.get("checked") is not None
+
+
+@pytest.mark.django_db
+def test_a_stale_text_hash_explains_the_change_and_clears_both_fields(
+    declaration_course, client
+):
+    _course, form, _user = declaration_course
+
+    _response, document = _rejected_page(declaration_course, client, text_hash="stale")
+
+    assert document.xpath('//*[@data-testid="declaration-changed"]')
+    [box] = document.xpath('//*[@id="id_agreed"]')
+    [name] = document.xpath('//*[@id="id_typed_name"]')
+    [hidden] = document.xpath('//input[@name="text_hash"]')
+    assert box.get("checked") is None
+    assert name.get("value") is None
+    assert hidden.get("value") == declaration_text_hash(
+        form.effective_declaration_text()
+    )
+
+
+@pytest.mark.django_db
+def test_a_field_error_shows_no_changed_callout(declaration_course, client):
+    _response, document = _rejected_page(declaration_course, client, agreed="")
+
+    assert not document.xpath('//*[@data-testid="declaration-changed"]')

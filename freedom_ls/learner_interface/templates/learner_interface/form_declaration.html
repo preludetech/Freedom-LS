@@ -20,6 +20,10 @@
                 {% csrf_token %}
                 {{ declaration_form.text_hash }}
 
+                {% if text_changed %}
+                    <c-callout tone="error" data-testid="declaration-changed">The declaration has changed. Read it again and sign.</c-callout>
+                {% endif %}
+
                 <div id="declaration-text"
                      class="text-left"
                      data-testid="declaration-text">{{ declaration_text|linebreaks }}</div>
@@ -29,9 +33,14 @@
                            name="agreed"
                            id="id_agreed"
                            data-testid="declaration-agreed"
-                           aria-describedby="declaration-text">
+                           {% if declaration_form.agreed.value and not declaration_form.agreed.errors %}checked{% endif %}
+                           {% if declaration_form.agreed.errors %}aria-invalid="true" autofocus{% endif %}
+                           aria-describedby="declaration-text{% if declaration_form.agreed.errors %} agreed-error{% endif %}">
                     <span>I make this declaration.</span>
                 </label>
+                {% if declaration_form.agreed.errors %}
+                    <p id="agreed-error" class="text-error text-sm text-left">{{ declaration_form.agreed.errors.0 }}</p>
+                {% endif %}
 
                 <div class="space-y-2 text-left">
                     <label for="id_typed_name">Full name</label>
@@ -41,8 +50,14 @@
                            data-testid="declaration-typed-name"
                            autocomplete="name"
                            maxlength="200"
-                           aria-describedby="typed-name-help">
+                           {% if declaration_form.typed_name.value and not declaration_form.typed_name.errors %}value="{{ declaration_form.typed_name.value }}"{% endif %}
+                           {% if declaration_form.typed_name.errors %}aria-invalid="true"{% endif %}
+                           {% if declaration_form.typed_name.errors and not declaration_form.agreed.errors %}autofocus{% endif %}
+                           aria-describedby="typed-name-help{% if declaration_form.typed_name.errors %} typed_name-error{% endif %}">
                     <p id="typed-name-help" class="text-sm text-muted">Your name is stored with this declaration, the time and your IP address.</p>
+                    {% if declaration_form.typed_name.errors %}
+                        <p id="typed_name-error" class="text-error text-sm">{{ declaration_form.typed_name.errors.0 }}</p>
+                    {% endif %}
                 </div>
 
                 <c-player-footer :previous_url="previous_url">
