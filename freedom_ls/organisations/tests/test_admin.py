@@ -8,6 +8,7 @@ from urllib.parse import unquote
 
 import pytest
 from PIL import Image
+from unfold.widgets import UnfoldAdminTextareaWidget
 
 from django.contrib import admin
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -281,6 +282,15 @@ class TestOrganisationAdminBio:
 
         assert response.status_code == 302
         assert len(Organisation.objects.get(name="Westbrook").bio) == 500
+
+    def test_bio_uses_the_admin_theme_textarea_widget(self, staff_client):
+        """The bio textarea bypassed the admin theme's widget, so it rendered unstyled and overflowed narrow viewports."""
+        url = reverse(ADD_URL_NAME)
+
+        response = staff_client.get(url)
+
+        bio_widget = response.context["adminform"].form.fields["bio"].widget
+        assert isinstance(bio_widget, UnfoldAdminTextareaWidget)
 
 
 @pytest.mark.django_db

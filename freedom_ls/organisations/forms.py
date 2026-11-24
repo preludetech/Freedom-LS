@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from django import forms
+from unfold.widgets import UnfoldAdminTextareaWidget
+
 from django.core.files.uploadedfile import UploadedFile
 from django.utils.datastructures import MultiValueDict
 
@@ -15,11 +16,12 @@ from .models import LOGO_FIELD_NAMES, Organisation
 INVALID_IMAGE_MESSAGE = "File is not a readable image. Use PNG, JPEG or WebP."
 
 
-class LineBreakNormalisingTextarea(forms.Textarea):
+class LineBreakNormalisingTextarea(UnfoldAdminTextareaWidget):
     """A textarea whose submitted value uses ``\\n`` for every line break.
 
     Browsers submit each break as ``\\r\\n``, which would count as two characters
-    against a field's ``max_length`` while the browser counts one.
+    against a field's ``max_length`` while the browser counts one. It builds on
+    the admin theme's textarea so it keeps the theme's styling.
     """
 
     def value_from_datadict(
