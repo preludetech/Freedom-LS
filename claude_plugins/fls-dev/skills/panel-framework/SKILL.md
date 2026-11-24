@@ -175,7 +175,7 @@ which site a request belongs to. The host says so through a setting.
   | --- | --- | --- |
   | Dialog footer (`<c-modal-footer>`) | default | Cancel `secondary`; the one confirm `primary`, or `error` when it deletes |
   | Panel footer, page header, empty state | small | `primary` for the panel's one main create action; `secondary` for the rest |
-  | Table row, card | small | `secondary`; never `primary` or `error` |
+  | Table row, card | small | `secondary`, a destructive action's trigger included; never `primary` or `error`: the red goes on its dialog's confirm |
   | Toolbar (Filter, Sort, Export), pager | small | `secondary` |
   | Selection bar | small | `ghost`, text only |
   | Text action in content ("Edit", "Change", "Clear all") | small | `link` |
@@ -642,8 +642,8 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
   has the look of that control, with the prose underline absent.
 - Row, card, toolbar and pager buttons are the small size at every width, with no taller look on a
   phone; only a dialog footer's buttons are full size, and 44px tall on a phone. Each button's
-  variant matches its place (outline in rows, cards, toolbar and pager; text-only in the selection
-  bar). Buttons that sit together have a gap between them.
+  variant matches its place (outline in rows, cards, toolbar and pager, a Remove or Delete trigger
+  included, never red; text-only in the selection bar). Buttons that sit together have a gap between them.
 - A list row's or card's Edit, Remove and other entry buttons sit in a footer under the entry's
   title and detail: every entry's buttons start at the title's left edge, the same distance under
   its text, side by side, each as wide as its label.
