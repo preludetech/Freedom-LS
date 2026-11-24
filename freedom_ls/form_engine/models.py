@@ -22,7 +22,11 @@ from freedom_ls.content_base.models import BaseContent, MarkdownContent, TitledC
 from freedom_ls.content_base.schema import ContentType as SchemaContentTypes
 from freedom_ls.form_engine.config import config as form_engine_config
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
-from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
+from freedom_ls.site_aware_models.models import (
+    SiteAwareManager,
+    SiteAwareModel,
+    TimestampedModel,
+)
 
 from .enums import FREE_TEXT_QUESTION_TYPES, FormStrategy, QuestionType
 from .phone_numbers import e164_phone_answer
@@ -926,6 +930,22 @@ class FormProgress(SiteAwareModel):
         return incorrect_answers
 
 
+class FormDeclarationQuerySet(models.QuerySet["FormDeclaration"]):
+    """`delete()` stays so the cascades from the form progress and the user
+    work; every call that would change a stored row raises."""
+
+    def update(self, **kwargs: object) -> int:
+        raise ValueError(_APPEND_ONLY_MESSAGE)
+
+    def bulk_update(self, *args: object, **kwargs: object) -> int:
+        raise ValueError(_APPEND_ONLY_MESSAGE)
+
+
+_APPEND_ONLY_MESSAGE = (
+    "FormDeclaration is append-only: a signed declaration cannot be changed"
+)
+
+
 class FormDeclaration(SiteAwareModel):
     """The declaration a learner signed before one sitting of a quiz.
 
@@ -943,6 +963,15 @@ class FormDeclaration(SiteAwareModel):
     typed_name = models.CharField(max_length=200)
     signed_at = models.DateTimeField(auto_now_add=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    objects = SiteAwareManager.from_queryset(FormDeclarationQuerySet)()
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        # The UUID pk is set before the first save, so `_state.adding` is what
+        # tells a first save from a second.
+        if self.pk is not None and self._state.adding is False:
+            raise ValueError(_APPEND_ONLY_MESSAGE)
+        super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"{self.typed_name} - {self.form_progress}"

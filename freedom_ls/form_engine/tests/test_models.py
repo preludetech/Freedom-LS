@@ -16,6 +16,7 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.form_engine.conditions import answers_by_question, current_path
 from freedom_ls.form_engine.factories import (
     FormContentFactory,
+    FormDeclarationFactory,
     FormFactory,
     FormPageFactory,
     FormProgressFactory,
@@ -28,6 +29,7 @@ from freedom_ls.form_engine.factories import (
 from freedom_ls.form_engine.models import (
     Form,
     FormContent,
+    FormDeclaration,
     FormPage,
     FormProgress,
     FormQuestion,
@@ -37,6 +39,8 @@ from freedom_ls.form_engine.models import (
     question_answer_file_upload_to,
 )
 from freedom_ls.form_engine.signals import form_attempt_completed
+from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.site_context import site_context
 
 # QuestionAnswer.question is PROTECTed against FormQuestion deletion.
 
@@ -1010,3 +1014,56 @@ def test_effective_declaration_text_is_the_site_default_when_the_author_left_it_
 
     with override_settings(FORM_DECLARATION_DEFAULT_TEXT="Project wording."):
         assert form.effective_declaration_text() == "Project wording."
+
+
+@pytest.mark.django_db
+def test_saving_a_stored_declaration_again_raises(mock_site_context):
+    declaration = FormDeclarationFactory()
+    declaration.typed_name = "Changed Name"
+
+    with pytest.raises(ValueError, match="append-only"):
+        declaration.save()
+
+
+@pytest.mark.django_db
+def test_queryset_update_of_declarations_raises(mock_site_context):
+    FormDeclarationFactory()
+
+    with pytest.raises(ValueError, match="append-only"):
+        FormDeclaration.objects.update(typed_name="Changed Name")
+
+
+@pytest.mark.django_db
+def test_bulk_update_of_declarations_raises(mock_site_context):
+    declaration = FormDeclarationFactory()
+    declaration.typed_name = "Changed Name"
+
+    with pytest.raises(ValueError, match="append-only"):
+        FormDeclaration.objects.bulk_update([declaration], ["typed_name"])
+
+
+@pytest.mark.django_db
+def test_declarations_of_another_site_are_not_listed(mock_site_context):
+    FormDeclarationFactory()
+    with site_context(SiteFactory(domain="other.example.com", name="Other")):
+        FormDeclarationFactory()
+
+    assert FormDeclaration.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_deleting_the_form_progress_deletes_its_declaration(mock_site_context):
+    declaration = FormDeclarationFactory()
+
+    declaration.form_progress.delete()
+
+    assert FormDeclaration.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_deleting_the_user_deletes_the_declaration(mock_site_context):
+    declaration = FormDeclarationFactory()
+
+    declaration.form_progress.user.delete()
+
+    assert FormDeclaration.objects.count() == 0
