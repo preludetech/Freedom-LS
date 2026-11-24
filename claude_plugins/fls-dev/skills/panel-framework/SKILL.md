@@ -33,7 +33,8 @@ components; `Skill(fls-dev:frontend-styling)` owns the theme tokens.
   for a record reached from another section's page rather than from a list. Ask
   `section.is_in_menu(request)`, which also applies `is_visible` and `is_available`; the menu and
   `first_visible_section` both use it. The default is `True`. A section with `list_view = None`
-  has no list page, so its bare list path is a 404.
+  has no list page. Its bare list path is a 404 when `in_menu = False`, and raises
+  `ImproperlyConfigured` when the section is still in the menu.
   `ListViewConfig.get_back_link(request, instance)` returns the `(label, url)` an instance page's
   back link goes to, or `None` for the section's own list (the default). Override it when the
   record is reached from another page's row, so going back returns the reader to that page.

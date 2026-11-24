@@ -576,6 +576,14 @@ def _bind_root(
     if issubclass(section, ListViewConfig):
         if len(parts) == 1 or parts[1].startswith("__"):
             if section.list_view is None:
+                # A section outside the menu is reached only from other
+                # pages, so a guessed list URL is a missing page. One the
+                # menu links to is misconfigured and must fail loudly.
+                if section.in_menu:
+                    raise ImproperlyConfigured(
+                        f"{section.__name__} is in the menu but defines no "
+                        "list_view; set list_view, or in_menu = False"
+                    )
                 raise Http404(f"{section.__name__} has no list page")
             # No check_request here, as today: the list root binds (and the
             # unauthenticated stub playwright tests browse it) before any

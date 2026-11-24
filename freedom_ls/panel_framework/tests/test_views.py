@@ -996,6 +996,20 @@ class TestSectionOutsideTheMenu:
         with pytest.raises(Http404):
             call_view(make_request(path), path, config=MENULESS_CONFIG)
 
+    def test_a_section_in_the_menu_with_no_list_fails_loudly_not_with_a_404(
+        self, mock_site_context: Site
+    ) -> None:
+        class InMenuNoListConfig(StubMenulessConfig):
+            url_name = "in-menu-no-list"
+            in_menu = True
+
+        with pytest.raises(ImproperlyConfigured, match="InMenuNoListConfig"):
+            call_view(
+                make_request("in-menu-no-list"),
+                "in-menu-no-list",
+                config=[NavGroup("Stubs", [InMenuNoListConfig])],
+            )
+
     def test_it_is_found_by_url_name(self) -> None:
         sections = sections_by_url_name(MENULESS_CONFIG)
 
