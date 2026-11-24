@@ -287,7 +287,10 @@ def compute_path(form: Form, answers: Mapping[UUID, QuestionAnswer]) -> SittingP
         if not _condition_holds(page.condition_option, selected):
             continue
         children = _on_path_children(page, selected)
-        if live_children(page) and not children:
+        # A page authored with children is left off the path once none of them
+        # remain on it, whether gated out or retired. Only a page authored with
+        # no children at all is kept as an empty page.
+        if page.children() and not children:
             continue
         children_by_page[page.id] = tuple(children)
         for child in children:

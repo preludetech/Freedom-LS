@@ -868,12 +868,23 @@ def test_compute_path_leaves_a_retired_question_off_a_later_page(
     assert not path.has_question(retired.id)
 
 
-def test_compute_path_keeps_a_page_whose_only_children_are_retired_as_an_empty_page(
+def test_compute_path_skips_a_page_whose_children_are_all_retired(
     mock_site_context: object,
 ) -> None:
     form: Form = FormFactory()
     page = FormPageFactory(form=form, order=0)
     retire(cast("FormQuestion", FormQuestionFactory(form_page=page, order=0)))
+
+    path = compute_path(_fresh(form), {})
+
+    assert path.pages == []
+
+
+def test_compute_path_keeps_a_page_authored_with_no_children(
+    mock_site_context: object,
+) -> None:
+    form: Form = FormFactory()
+    page = FormPageFactory(form=form, order=0)
 
     path = compute_path(_fresh(form), {})
 
@@ -908,6 +919,7 @@ def test_a_gate_on_a_retired_questions_option_never_opens(
     form: Form = FormFactory()
     first_page = FormPageFactory(form=form, order=0)
     gate_question: FormQuestion = FormQuestionFactory(form_page=first_page, order=0)
+    FormQuestionFactory(form_page=first_page, order=1)
     gate_option = QuestionOptionFactory(question=gate_question, order=0)
     gated_page = FormPageFactory(form=form, order=1, condition_option=gate_option)
     FormQuestionFactory(form_page=gated_page, order=0)
