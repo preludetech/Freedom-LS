@@ -204,7 +204,7 @@ call below printed `tier: full`, first:
 
       git push origin HEAD --force-with-lease --force-if-includes
 
-  A refusal is handled as in Step 12. Step 12 still pushes, so commits made after this one reach
+  Run it yourself, as Step 12 says. A refusal is handled as in Step 12. Step 12 still pushes, so commits made after this one reach
   `origin` too.
 - No upstream → nothing is pushed. Run the full tier with `DS_TEST_REMOTE=off` before the command,
   so it runs locally.
@@ -270,7 +270,9 @@ No upstream (from Step 1) → say so and skip this step.
 git push origin HEAD --force-with-lease --force-if-includes
 ```
 
-Push without asking, once tests and pre-commit are clean. Keep both flags after the refspec. Write
+Run this push yourself, once tests and pre-commit are clean. The user has authorised force-pushing
+a rebased feature branch in advance, for the main session and every subagent, so the push needs no
+confirmation and is never handed to the user to run. Keep both flags after the refspec. Write
 `<branch>` out as the name Step 1 printed. If the push is refused, read the refusal:
 
 - `stale info` (the lease is stale): the remote moved since Step 3's fetch. Stop with

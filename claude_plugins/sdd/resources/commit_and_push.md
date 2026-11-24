@@ -46,8 +46,9 @@ git push
 
 If the branch has no upstream, use `git push -u origin HEAD`.
 
-If the push is rejected because a rebase rewrote the branch, force-push it: a worktree branch may
-be force-pushed, and Step 1 already ruled out `main` and `master`.
+If the push is rejected because a rebase rewrote the branch, force-push it yourself and carry on.
+The user has authorised force-pushing a worktree branch in advance, for every command and agent,
+and Step 1 already ruled out `main` and `master`.
 
 ```bash
 git push origin HEAD --force-with-lease --force-if-includes

@@ -25,7 +25,15 @@ The shared pre-commit hook runs the project's hooks from the committing worktree
 environment (`claude_plugins/django-stack/scripts/install_pre_commit_hook.sh`, run by the Setup
 script). Claude Code refuses `uv run git …` inside an isolated worktree.
 
-Several processes often work in the same worktree at once, so commits you didn't make, and files changing under you, are normal. Every commit is intentional unless the user says otherwise. Commit your work on top of whatever is there and push the branch as it stands, commits from other processes included. History stays as it is: rewrite, drop, squash or reset a commit only when the user asks for that specific commit.
+Several processes often work in the same worktree at once, so commits you didn't make, and files changing under you, are normal. Every commit is intentional unless the user says otherwise. Commit your work on top of whatever is there and push the branch as it stands, commits from other processes included. History stays as it is: rewrite, drop, squash or reset a commit only when the user asks for that specific commit. Rebasing a feature branch onto `main` is the one standing exception.
+
+Force-push every branch except `main` and `master` yourself, the moment a rebase has rewritten it:
+
+```
+git push origin <branch> --force-with-lease --force-if-includes
+```
+
+The user has authorised this in advance for every command, agent and subagent, so run it and carry on; handing the command to the user is for a push the permission system or the remote actually refused. `main` and `master` take plain pushes only.
 
 ## Todo list
 
