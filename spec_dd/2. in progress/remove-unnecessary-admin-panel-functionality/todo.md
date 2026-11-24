@@ -33,7 +33,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:document`: in `claude_plugins/fls-dev/resources/admin_interface.md`, replace the `TopicAdmin` and `CohortAdmin` examples with surviving admins and name `ReadOnlyAdminMixin` (`freedom_ls/site_aware_models/admin.py`) as the view-only pattern (spec "Documentation and downstream")
 - [x] (cmd) Run `/sdd:document`: in `claude_plugins/fls-dev/skills/admin-interface/SKILL.md`, replace the `CourseReferencePartInline` (`content_engine/admin.py`) inline example with `CoursePauseInline` in `freedom_ls/deadlines/admin.py` (spec "Documentation and downstream")
 - [x] (cmd) Run `/sdd:document`: in `docs/app_conventions.md`, drop `freedom_ls/learner_management/forms.py` from the `ConstraintValidationFormMixin` worked examples, leaving `freedom_ls/organisations/forms.py` (the file is deleted with the learner_management admin)
-- [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 
 ## 5. Cleanup
 
