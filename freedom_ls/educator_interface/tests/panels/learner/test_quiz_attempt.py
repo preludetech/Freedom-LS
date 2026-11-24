@@ -699,7 +699,7 @@ def test_a_thirty_question_paper_costs_no_more_queries_than_a_three_question_one
     assert response.status_code == 200
 
 
-def test_the_quick_view_shows_the_title_the_subtitle_six_rows_and_the_review_link(
+def test_the_quick_view_shows_the_title_the_subtitle_six_rows_and_no_link_in_its_body(
     logged_in_client,
 ):
     organisation = OrganisationFactory()
@@ -727,29 +727,9 @@ def test_the_quick_view_shows_the_title_the_subtitle_six_rows_and_the_review_lin
         "Started",
         "Completed",
     ]
-    (link,) = document.cssselect(f"a[href$='/quiz-attempts/{sitting.pk}']")
-    assert link.get("href") == _interface_url(
-        organisation.slug, f"quiz-attempts/{sitting.pk}"
-    )
-    assert link.get("hx-target") == "#main-content"
-    assert link.get("hx-push-url") == "true"
-
-
-def test_the_quick_views_open_full_review_link_replaces_main_content(logged_in_client):
-    """The link swaps the whole #main-content element. It used to nest the page inside it."""
-    organisation = OrganisationFactory()
-    sitting = _sitting(LearnerFactory(organisation=organisation))
-
-    response = _get_quick_view(
-        _admin_client(organisation, logged_in_client),
-        organisation,
-        f"quiz-attempts/{sitting.pk}",
-    )
-
-    document = lxml.html.fromstring(response.content.decode())
-    (link,) = document.cssselect(f"a[href$='/quiz-attempts/{sitting.pk}']")
-    assert link.get("hx-target") == "#main-content"
-    assert link.get("hx-swap") == "outerHTML"
+    # The quick view header's "Open full page" icon is the one link to the
+    # review page. The body used to add a second one.
+    assert document.cssselect("a") == []
 
 
 def test_the_quick_view_of_a_quiz_with_no_pass_mark_says_so(logged_in_client):

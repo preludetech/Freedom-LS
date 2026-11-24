@@ -302,7 +302,7 @@ class QuizAttemptInstanceView(InstanceView):
 
 
 class QuizAttemptQuickView(QuickView):
-    """The attempt's result at a glance, with a link to the full review."""
+    """The attempt's result at a glance. The header's "Open full page" icon is its one link to the review."""
 
     template_name = "educator_interface/quick_views/quiz_attempt.html"
 
@@ -316,12 +316,7 @@ class QuizAttemptQuickView(QuickView):
 
     def get_context_data(self) -> dict[str, object]:
         sitting = cast(FormProgress, self.instance)
-        organisation = cast(OrganisationScopedRequest, self.request).organisation
-        return {
-            "sitting": sitting,
-            "result": quiz_attempt_result(sitting),
-            "review_url": interface_path(organisation, f"quiz-attempts/{sitting.pk}"),
-        }
+        return {"sitting": sitting, "result": quiz_attempt_result(sitting)}
 
 
 class QuizAttemptConfig(OrganisationSectionConfig, ListViewConfig):
