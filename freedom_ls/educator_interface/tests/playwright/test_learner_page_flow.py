@@ -4,6 +4,7 @@ Courses tab, with a layout check at every QA viewport."""
 from __future__ import annotations
 
 import re
+from typing import cast
 
 import pytest
 from playwright.sync_api import Page, expect
@@ -19,6 +20,14 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     TopicFactory,
 )
+from freedom_ls.form_engine.factories import (
+    FormPageFactory,
+    FormQuestionFactory,
+    QuestionAnswerFactory,
+    QuestionOptionFactory,
+    served_paper_of,
+)
+from freedom_ls.form_engine.models import FormPage, FormQuestion, QuestionOption
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -160,6 +169,87 @@ def test_the_courses_tab_card_with_an_attempts_table_fits_every_viewport(
             page.get_by_text("Passed", exact=True).locator("visible=true")
         ).to_be_visible()
         assert_no_horizontal_overflow(page)
+
+
+def test_an_attempt_opens_from_the_courses_tab_to_its_paper_and_back(
+    live_server: LiveServer,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """The attempt number opens the quick view with the score; its link opens
+    the full review with the paper; the back link returns to the Courses tab;
+    and a phone does not overflow with the quick view open."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    learner = LearnerFactory(
+        organisation=organisation,
+        user__first_name="Ada",
+        user__last_name="Lovelace",
+    )
+    course = CourseFactory(title="Algebra")
+    quiz = quiz_form("Unit quiz", 50)
+    ContentCollectionItemFactory(collection_object=course, child_object=quiz, order=0)
+    quiz_page = cast(FormPage, FormPageFactory(form=quiz, order=1))
+    question = cast(
+        FormQuestion,
+        FormQuestionFactory(
+            form_page=quiz_page,
+            question="What is two plus two?",
+            order=1,
+            type="multiple_choice",
+        ),
+    )
+    right = cast(
+        QuestionOption,
+        QuestionOptionFactory(question=question, text="Four", correct=True, order=0),
+    )
+    wrong = cast(
+        QuestionOption,
+        QuestionOptionFactory(question=question, text="Five", correct=False, order=1),
+    )
+    LearnerCourseRegistrationFactory(learner=learner, course=course)
+    # The commit hooks of a transaction=True test have already minted the record.
+    record = CourseProgress.objects.get(learner=learner, course=course)
+    sitting = form_progress(
+        record,
+        quiz,
+        completed_time=timezone.now(),
+        scores={"score": 1, "max_score": 2},
+        served_paper=served_paper_of(
+            [(quiz_page, [question])], {question: [right, wrong]}
+        ),
+    )
+    answer = QuestionAnswerFactory(form_progress=sitting, question=question)
+    answer.selected_options.add(wrong)
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+
+    courses_url = interface_url(
+        live_server, organisation.slug, f"learners/{learner.pk}/__tabs/courses"
+    )
+    page.goto(courses_url)
+    quick_view = page.locator("#quick-view")
+    attempt_link = (
+        page.get_by_role("link", name="Attempt 1 of Unit quiz")
+        .locator("visible=true")
+        .first
+    )
+    attempt_link.click()
+    expect(quick_view.get_by_text("1/2").first).to_be_visible()
+
+    page.set_viewport_size(QA_VIEWPORTS[0])
+    assert_no_horizontal_overflow(page)
+    page.set_viewport_size({"width": 1280, "height": 800})
+
+    quick_view.get_by_role("link", name="Open full review").click()
+    expect(page.get_by_role("heading", name="Unit quiz, attempt 1")).to_be_visible()
+    expect(page.get_by_text("What is two plus two?")).to_be_visible()
+    expect(page.get_by_text("Learner's answer").first).to_be_visible()
+    expect(page.get_by_text("Correct answer").first).to_be_visible()
+
+    page.get_by_role("link", name="Back to Ada Lovelace").click()
+    expect(page.get_by_text("Algebra")).to_be_visible()
+    expect(page.get_by_text("1 of 1 items")).to_be_visible()
 
 
 def test_moving_a_learner_between_cohorts_carries_their_progress(
