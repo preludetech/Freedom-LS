@@ -44,6 +44,7 @@ from freedom_ls.learner_management.queries import learners_visible_to
 from freedom_ls.learner_progress.models import CourseFormAttempt
 from freedom_ls.learner_progress.queries import LearnerRegistrationProgress
 from freedom_ls.panel_framework.panels import InstanceDetailsPanel, Panel, PanelStack
+from freedom_ls.panel_framework.quick_view import QuickView
 from freedom_ls.panel_framework.views import HeaderStat, InstanceView, ListViewConfig
 from freedom_ls.reports.gather import attempt_number_of, score_attempt
 
@@ -54,6 +55,7 @@ __all__ = [
     "QuizAttemptFacts",
     "QuizAttemptInstanceView",
     "QuizAttemptPaperPanel",
+    "QuizAttemptQuickView",
     "QuizAttemptResult",
     "QuizAttemptStack",
     "QuizAttemptSummaryPanel",
@@ -305,6 +307,29 @@ class QuizAttemptInstanceView(InstanceView):
         return stats
 
 
+class QuizAttemptQuickView(QuickView):
+    """The attempt's result at a glance, with a link to the full review."""
+
+    template_name = "educator_interface/quick_views/quiz_attempt.html"
+
+    def get_title(self) -> str:
+        return QuizAttemptConfig.get_instance_label(self.instance)
+
+    def get_subtitle(self) -> str:
+        return quiz_attempt_facts(
+            cast(FormProgress, self.instance)
+        ).learner.user.display_name
+
+    def get_context_data(self) -> dict[str, object]:
+        sitting = cast(FormProgress, self.instance)
+        organisation = cast(OrganisationScopedRequest, self.request).organisation
+        return {
+            "sitting": sitting,
+            "result": quiz_attempt_result(sitting),
+            "review_url": interface_path(organisation, f"quiz-attempts/{sitting.pk}"),
+        }
+
+
 class QuizAttemptConfig(OrganisationSectionConfig, ListViewConfig):
     url_name = "quiz-attempts"
     menu_label = "Quiz attempts"
@@ -312,6 +337,7 @@ class QuizAttemptConfig(OrganisationSectionConfig, ListViewConfig):
     list_view = None
     in_menu = False
     instance_view = QuizAttemptInstanceView
+    quick_view = QuizAttemptQuickView
 
     @classmethod
     def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:

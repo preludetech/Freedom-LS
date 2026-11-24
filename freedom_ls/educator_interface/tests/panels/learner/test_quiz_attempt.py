@@ -26,6 +26,7 @@ from freedom_ls.educator_interface.panels.learner.quiz_attempt import (
 )
 from freedom_ls.educator_interface.tests.helpers import (
     _get_document,
+    _get_quick_view,
     _header_of,
     _interface_url,
     organisation_admin_viewer,
@@ -297,12 +298,14 @@ def _sat_by_someone_else(organisation: Organisation) -> tuple[User, FormProgress
         _sat_by_someone_else,
     ],
 )
-def test_a_sitting_the_educator_may_not_open_is_a_404(build, logged_in_client):
+@pytest.mark.parametrize("suffix", ["", "/__quick-view"])
+def test_a_sitting_the_educator_may_not_open_is_a_404(build, suffix, logged_in_client):
     organisation = OrganisationFactory()
     educator, sitting = build(organisation)
 
     response = logged_in_client(educator).get(
-        _interface_url(organisation.slug, f"quiz-attempts/{sitting.pk}")
+        _interface_url(organisation.slug, f"quiz-attempts/{sitting.pk}{suffix}"),
+        HTTP_HX_REQUEST="true",
     )
 
     assert response.status_code == 404
@@ -660,3 +663,64 @@ def test_a_thirty_question_paper_costs_no_more_queries_than_a_three_question_one
         )
 
     assert response.status_code == 200
+
+
+def test_the_quick_view_shows_the_title_the_subtitle_six_rows_and_the_review_link(
+    logged_in_client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(
+        organisation=organisation, user__first_name="Ada", user__last_name="Lovelace"
+    )
+    sitting = _sitting(learner)
+
+    response = _get_quick_view(
+        _admin_client(organisation, logged_in_client),
+        organisation,
+        f"quiz-attempts/{sitting.pk}",
+    )
+
+    assert response.status_code == 200
+    document = lxml.html.fromstring(response.content.decode())
+    (frame,) = document.cssselect("[data-quick-view-title]")
+    assert frame.get("data-quick-view-title") == "Safety quiz, attempt 1"
+    assert frame.get("data-quick-view-subtitle") == "Ada Lovelace"
+    assert [_text(label) for label in document.cssselect("dt")] == [
+        "Result",
+        "Score",
+        "Percentage",
+        "Pass mark (current setting)",
+        "Started",
+        "Completed",
+    ]
+    (link,) = document.cssselect(f"a[href$='/quiz-attempts/{sitting.pk}']")
+    assert link.get("href") == _interface_url(
+        organisation.slug, f"quiz-attempts/{sitting.pk}"
+    )
+    assert link.get("hx-target") == "#main-content"
+    assert link.get("hx-push-url") == "true"
+
+
+def test_the_quick_view_of_a_quiz_with_no_pass_mark_says_so(logged_in_client):
+    organisation = OrganisationFactory()
+    sitting = _sitting(LearnerFactory(organisation=organisation), pass_percentage=None)
+
+    response = _get_quick_view(
+        _admin_client(organisation, logged_in_client),
+        organisation,
+        f"quiz-attempts/{sitting.pk}",
+    )
+
+    text = _text(lxml.html.fromstring(response.content.decode()))
+    assert text.count("No pass mark") == 2
+
+
+def test_a_quick_view_request_that_is_not_htmx_redirects_to_the_page(logged_in_client):
+    organisation = OrganisationFactory()
+    sitting = _sitting(LearnerFactory(organisation=organisation))
+    page = _interface_url(organisation.slug, f"quiz-attempts/{sitting.pk}")
+
+    response = _admin_client(organisation, logged_in_client).get(f"{page}/__quick-view")
+
+    assert response.status_code == 302
+    assert response["Location"] == page

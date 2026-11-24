@@ -1,0 +1,30 @@
+{% load educator_tags %}
+
+<c-panel-definition-list columns="2">
+    <c-panel-definition-row label="Result">
+        {% if result.passed is None %}
+            No pass mark
+        {% else %}
+            {% passed_badge result.passed as badge %}<c-panel-status-badge :badge="badge" />
+        {% endif %}
+    </c-panel-definition-row>
+    <c-panel-definition-row label="Score">
+        {% if result.score is not None and result.max_score is not None %}{{ result.score }}/{{ result.max_score }}{% else %}&mdash;{% endif %}
+    </c-panel-definition-row>
+    <c-panel-definition-row label="Percentage">
+        {% if result.percentage is not None %}{{ result.percentage }}%{% else %}&mdash;{% endif %}
+    </c-panel-definition-row>
+    <c-panel-definition-row label="Pass mark (current setting)">
+        {% if result.pass_percentage is not None %}{{ result.pass_percentage }}%{% else %}No pass mark{% endif %}
+    </c-panel-definition-row>
+    <c-panel-definition-row label="Started">
+        <c-datetime :value="sitting.start_time" />
+    </c-panel-definition-row>
+    <c-panel-definition-row label="Completed">
+        <c-datetime :value="sitting.completed_time" />
+    </c-panel-definition-row>
+</c-panel-definition-list>
+
+<p class="mt-6">
+    <c-button variant="link" href="{{ review_url }}" hx-get="{{ review_url }}" hx-target="#main-content" hx-push-url="true">Open full review</c-button>
+</p>
