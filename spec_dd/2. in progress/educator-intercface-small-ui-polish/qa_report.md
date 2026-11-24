@@ -1,114 +1,71 @@
 # Frontend QA report: educator interface small UI polish
 
+Result: all tests (1 to 9) passed at desktop, mobile and tablet. No bugs found.
+
 ## Methodology
 
-Screenshots were collected into `screenshots/` beside this report, and every image referenced here exists in that folder. The run covered desktop (1920x1080), mobile (375x812) and tablet (768x1024) passes against the Test plan in `3. frontend_qa.md`. The smoke gate passed, so no step was skipped because of an abort.
-
-Results by test (from the scratch records):
-
-| Test | Title | Viewport | Result | Screenshot |
-|---|---|---|---|---|
-| 1 | Overview and Content tabs | desktop | pass | ![](screenshots/page-2026-11-24T10-24-40-274Z.png) |
-| 1 | Overview and Content tabs (layout) | mobile | pass | ![](screenshots/page-2026-11-24T10-35-52-747Z.png) |
-| 1/3/4 | Tabs and registration panels at 768 | tablet | pass | ![](screenshots/page-2026-11-24T10-40-00-000Z.png) |
-| 2 | Outline groups start collapsed | desktop | pass | ![](screenshots/page-2026-11-24T10-24-55-308Z.png) |
-| 2 | Outline groups start collapsed | mobile | pass | ![](screenshots/page-2026-11-24T10-37-00-000Z.png) |
-| 3 | Register and deactivate a cohort | desktop | pass | ![](screenshots/page-2026-11-24T10-28-09-508Z.png) |
-| 3-dialog | Register cohort dialog | desktop | pass | ![](screenshots/page-2026-11-24T10-27-57-419Z.png) |
-| 3-confirm | Deactivate confirmation from course page | desktop | pass | ![](screenshots/page-2026-11-24T10-28-16-343Z.png) |
-| 3-dialog | Register cohort dialog footer | mobile | pass | ![](screenshots/page-2026-11-24T10-39-00-000Z.png) |
-| 3/4-cards | Registration card row buttons start at the title's left edge | mobile | FAIL (B1) | ![](screenshots/page-2026-11-24T10-35-52-747Z.png) |
-| 4 | Register, deactivate and reactivate a learner | desktop | pass | ![](screenshots/page-2026-11-24T10-29-49-329Z.png) |
-| 4-confirm | Learner Deactivate dialog names the cohort keeping access | desktop | pass | ![](screenshots/page-2026-11-24T10-29-47-154Z.png) |
-| 5.1 | Stale tab, deactivated cohort registration | desktop | pass | no screenshot |
-| 5.2 | Inactive cohort refusal | desktop | pass | ![](screenshots/page-2026-11-24T10-33-00-000Z.png) |
-| 5.3 | Course not available to the organisation | desktop | pass | ![](screenshots/page-2026-11-24T10-31-13-591Z.png) |
-| 5.4 | Hand-edited action URL | desktop | pass | no screenshot |
-| 6 | Cohort admin sees only own cohort's rows | desktop | pass | ![](screenshots/page-2026-11-24T10-34-00-000Z.png) |
-| 7 | Previous and Next in the preview | desktop | pass | ![](screenshots/page-2026-11-24T10-32-56-158Z.png) |
-| 7 | Previous and Next in the preview | mobile | pass | ![](screenshots/page-2026-11-24T10-38-00-000Z.png) |
-| 7 | Previous and Next in the preview | tablet | pass | ![](screenshots/page-2026-11-24T10-41-00-000Z.png) |
-| 8 | Quiz facts | desktop | pass | ![](screenshots/page-2026-11-24T10-35-00-000Z.png) |
-| 8.4 | Multi-page survey shows count chips, no facts list | tablet | pass | ![](screenshots/page-2026-11-24T10-42-00-000Z.png) |
-| 9 | Button labels centred, First Class theme | desktop | pass | ![](screenshots/element-2026-11-24T10-44-00-000Z.png) |
-| 9 | Button labels centred, First Class theme | mobile | pass | ![](screenshots/page-2026-11-24T10-45-00-000Z.png) |
-
-Notes on the key passes:
-
-- Test 1: Overview and Content tabs present. Overview shows Details, Cohort registrations and Direct registrations with no outline. Content click goes to `/__tabs/content` with Course content then Reference. A direct reload keeps Content current. The cohort page's tabs are unchanged.
-- Test 2: parts start with `aria-expanded=false`, Core Concepts opens and closes, the Shuffled quiz's multi-page row starts collapsed, and the Reference Material parts start collapsed.
-- Test 3: dialog lists active unregistered cohorts and not QA Cohort Inactive. The row appears in place, the Deactivate dialog matches the cohort page's, and re-registering gives one active row. A double-click gives one row. Cohort Courses tab and History behave as before.
-- Test 4: the row appears in place, Deactivate and Reactivate work, and the dialog says "They keep access through QA Cohort A." for a cohort member. The learner page's Registrations card still works.
-- Test 5: stale actions answer 404 "This is no longer available" or 422 "QA Cohort B is inactive. The change was not made." Nothing changed, no 500. Footer Register buttons are absent for a course not available to the organisation. A hand-edited registration UUID gives 404.
-- Test 6: a cohort admin sees only QA Cohort A, Register says "Every cohort you can register already has this course.", Direct registrations shows only QA Member A1, and the learner picker lists only QA Member A2.
-- Test 7: Previous disabled at the start, Next disabled at the end, buttons keep their x positions, focus lands on the new title, Tab stays inside the dialog. Esc, header X and backdrop close with no prompt. Multi-page forms step through Page 1 of 3, 2 of 3, 3 of 3. The Reference panel never reaches Course content. On mobile Previous and Next are 44px tall.
-- Test 8: quiz facts shown on the one-page and multi-page quiz own rows, absent on page previews and surveys. A quiz with no pass mark reads "None set". A multi-page survey keeps its count chips.
-- Test 9: with FLS_THEME=first_class, cap-height centre of each label measured 0px from its button centre. Heights are consistent per size. Mobile dialog footer buttons are 44px and row buttons stay 32px.
+Screenshots were collected into `screenshots/` beside this report, and every image referenced below exists there. The run followed `3. frontend_qa.md`: the QA scenario management command was run directly at the start of the run to seed data, then Tests 1 to 9 ran at desktop (1920x1080), with mobile (375x812) and tablet (768x1024) passes for the visual tests. Test 6 ran as QA Cohort Admin in a separate browser context, so the admin session was untouched. Test 9 rebuilt Tailwind with `FLS_THEME=first_class`, then restored the default theme afterwards.
 
 ## Diff scoping
 
-Class: FULL. Changed files that triggered it (about 50) include:
-
-- Skill docs: `claude_plugins/fls-dev/skills/alpine-js/SKILL.md`, `educator-interface/SKILL.md`, `panel-framework/SKILL.md`
-- Educator panels, forms and templates: `freedom_ls/educator_interface/forms.py`, `panels/cohort/actions.py`, `panels/common/course_page.py`, `panels/common/registration_actions.py`, `panels/course/{actions,content_preview,data_table_panels,data_tables,instance_view}.py`, `panels/learner/actions.py`, the two registration action data-table cell templates, `modal/content_preview.html`, `modal/course_details_preview.html`, `partials/preview_stepping_footer.html`
-- Panel framework: `alpine-components.js`, `tables.py`, `cotton/data-table.html`, `cotton/modal-footer.html`, `_data_table_region_base.html`, `reference/_examples.html`
-- Test files, test helpers and the DM Sans SemiBold test font and its licence
-
-Nothing was skipped. Desktop, mobile and tablet passes all ran.
+Class: FULL. Changed files that triggered it: educator_interface templates, panel_framework templates, panel_framework `alpine-components.js`, plus Python, tests, docs and spec files (65 paths). Nothing was skipped: desktop, mobile and tablet all ran.
 
 ## Smoke gate
 
-Outcome: pass. Pages loaded: `/` and `/educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22`. No failure URL or reason.
+Pass. Pages loaded: `/` and `/educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22`.
+
+## Test results
+
+| Test | Viewport | Result | Screenshot | Notes |
+|---|---|---|---|---|
+| 1 Overview and Content tabs | desktop | pass | ![](screenshots/page-2026-11-24T15-12-11-800Z.png) | Overview is selected by default with Details, Cohort registrations and Direct registrations, and no outline. The Content tab URL ends `/__tabs/content`. A direct reload keeps Content selected. The cohort page tabs are unchanged. |
+| 2 Outline groups collapsed | desktop | pass | none | Course Parts parts start `aria-expanded=false`. Core Concepts opens and closes. Reference Material parts start collapsed. The nested multi-page form "QA Two-page Survey" stays collapsed when Wrapping Up opens. The non-outline child-row check is N/A: `/panel-framework/reference/` is not routed (404). |
+| 3 Register and deactivate a cohort | desktop | pass | ![](screenshots/page-2026-11-24T15-13-47-678Z.png) ![](screenshots/page-2026-11-24T15-14-50-116Z.png) | The picker lists QA Cohort A and B, never Inactive. Register swaps the panel in place. The Deactivate confirmation shows. Re-registering reactivates the same single row. The cohort page Courses and History tabs are correct. A double-click on Register gave one row. |
+| 4 Register, deactivate and reactivate a learner | desktop | pass | none | The learner picker is single-select. Registering QA Learner One swaps the panel in place. The dialog says "They keep access through QA Cohort A." for QA Member A1. Reactivate works. The learner page Registrations card still works. See the observation in General notes. |
+| 5 Refusals and stale pages | desktop | pass | ![](screenshots/page-2026-11-24T15-22-00-000Z.png) | A stale Deactivate shows "This is no longer available" (404, in the dialog). QA Cohort B inactive: the row has no actions and a stale confirm returns 422. A course listed only via a cohort registration has no footer Register. A hand-edited `registration=` UUID returns 404. No 500s in the server log. |
+| 6 Cohort admin sees only own rows | desktop | pass | ![](screenshots/page-2026-11-24T15-25-00-000Z.png) | Only QA Cohort A and QA Member A1 are shown, with Deactivate. The cohort Register says "Every cohort you can register already has this course." The learner Register lists only QA Member A2. |
+| 7 Previous and Next in the preview | desktop | pass | ![](screenshots/page-2026-11-24T15-18-15-318Z.png) | Footer has Previous (left, disabled) and Next (right), with no Close. Stepping crosses the part boundary and reaches the multi-page form pages, where Next is disabled. Focus lands on the title. Esc, X and backdrop each close with no discard prompt. The Reference panel never steps into Course content. |
+| 8 Quiz facts | desktop | pass | ![](screenshots/page-2026-11-24T15-19-10-838Z.png) ![](screenshots/page-2026-11-24T15-19-34-363Z.png) | Knowledge Check shows the facts list. Multi-page quiz own rows show the same list and no count chips. Page previews show no list. A quiz with no pass mark reads "None set". Surveys show no list, and a multi-page survey shows count chips. |
+| 1, 3, 4 | mobile | pass | ![](screenshots/page-2026-11-24T15-20-26-262Z.png) | No horizontal scroll (scrollWidth 375). Row and footer buttons are 32px with the documented 44px hit area. Register dialog controls are 44px. |
+| 2 | mobile | pass | none | Card list parts start collapsed and open on tap. |
+| 7 | mobile | pass | ![](screenshots/page-2026-11-24T15-20-47-120Z.png) | Bottom sheet. Previous (112x44) and Next (83x44) sit side by side. |
+| 8 | mobile | pass | ![](screenshots/page-2026-11-24T15-21-07-939Z.png) | Facts reflow to two columns. |
+| 1, 3, 4 | tablet | pass | ![](screenshots/page-2026-11-24T15-21-22-685Z.png) | Hamburger nav. Tables keep their columns. |
+| 2, 7, 8 | tablet | pass | ![](screenshots/page-2026-11-24T15-21-35-725Z.png) | Centred dialog with the facts in three columns. |
+| 9 First Class centring | desktop | pass | ![](screenshots/page-2026-11-24T15-34-00-000Z.png) ![](screenshots/page-2026-11-24T15-31-00-000Z.png) ![](screenshots/page-2026-11-24T15-32-00-000Z.png) | The label-to-button centre offset is 0.00px for every checked button. Icon-only buttons centre their icons. |
+| 9 First Class | mobile | pass | ![](screenshots/page-2026-11-24T15-35-00-000Z.png) | Row and footer buttons are 32px. Dialog buttons are 44px with centred labels. Cleanup restored the default theme, with no changed tracked build file. |
 
 ## Design check
 
-No design states exist for this spec, so no design check ran: no design states tested. Test 7 explicitly states "Design reference: none" and was judged against its expectation list.
-
-## Bug B1: Card row buttons sit in the value column instead of at the card title's left edge
-
-Manifestations:
-
-- `3/4-cards`, mobile
-
-Screenshots:
-
-![](screenshots/page-2026-11-24T10-35-52-747Z.png)
-
-![](screenshots/page-2026-11-24T10-36-07-561Z.png)
-
-Expected: per the panel-framework visual checklist, a list row's or card's entry buttons sit in a footer under the entry's title and detail, starting at the title's left edge (x=33 at 375px).
-
-Actual: on narrow widths, the course page's Cohort registrations card (Deactivate at x=140) and Direct registrations card (Deactivate at x=89), and the cohort page's Courses tab card, render the Deactivate button indented under the field values (the value column), not at the title's left edge. The pattern is pre-existing on the cohort Courses tab, and the new course-page cards reuse the same card actions cell. No horizontal scroll and the row buttons stay small (32px).
+No design states tested.
 
 ## Layout probe
 
 | Test id | Viewport | URL | Screenshot | Result |
 |---|---|---|---|---|
-| 1 | desktop | `/educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22` | ![](screenshots/page-2026-11-24T10-24-40-274Z.png) | clean |
-| 2 | desktop | `/educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22/__tabs/content` | ![](screenshots/page-2026-11-24T10-24-55-308Z.png) | clean |
-| 1 | mobile | `/educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22` | ![](screenshots/page-2026-11-24T10-35-52-747Z.png) | clean |
-| 1 | tablet | `/educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22` | ![](screenshots/page-2026-11-24T10-40-00-000Z.png) | clean |
+| 1 | desktop | /educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22 | [shot](screenshots/page-2026-11-24T15-12-11-800Z.png) | clean |
+| 3 | desktop | /educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22/__tabs/overview | [shot](screenshots/page-2026-11-24T15-14-50-116Z.png) | clean |
+| 1 | mobile | /educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22 | [shot](screenshots/page-2026-11-24T15-20-26-262Z.png) | clean |
+| 1 | tablet | /educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22 | [shot](screenshots/page-2026-11-24T15-21-22-685Z.png) | clean |
 
 ## Data changes
 
-| What changed | Made by | Files written |
+| What changed | Made by | Files |
 |---|---|---|
-| QA Cohort A (2 members), QA Cohort B (registered for Forklift Safety Basics, a course not available to demodev), QA Cohort Inactive, QA Learner One, QA Cohort Admin (cohort_admin on QA Cohort A); Question pool quiz pass mark set to None. Rebuild: `uv run python manage.py qa_create_educator_small_polish_scenario` | `sdd:qa-data-helper` | `freedom_ls/qa_helpers/management/commands/qa_create_educator_small_polish_scenario.py` |
-| QA Two-page Survey (CATEGORY_VALUE_SUM, 2 pages) appended to Course Parts' Wrapping Up part; scenario command re-run (QA Cohort B active again) | `sdd:qa-data-helper` | `freedom_ls/qa_helpers/management/commands/qa_create_educator_small_polish_scenario.py` |
+| Seeded or confirmed QA cohorts A, B and Inactive, QA Learner One, QA Cohort Admin, the Forklift registration for Cohort B, a no-pass-mark quiz, and QA Two-page Survey in Wrapping Up | `qa_create_educator_small_polish_scenario` management command, run directly at the start of the run (not via the data helper) | none |
+| The `sdd:qa-data-helper` was asked to delete three leftover Course Parts registrations from an earlier run (Cohort A, Cohort B, QA Learner One direct), plus three empty CourseProgress rows blocking them. The permission system refused the delete, so nothing changed. The run worked around it by deactivating those rows through the educator UI. | `sdd:qa-data-helper` (refused); educator UI (workaround) | none |
+| QA Cohort B deactivated then reactivated from its Settings tab. Course Parts registrations for QA Cohort A, QA Cohort B and QA Learner One cycled through deactivate and reactivate, and left active. | educator UI (the feature under test) | none |
 
 ## Bug status
 
-| Bug | Title | Status |
-|---|---|---|
-| B1 | Card row buttons sit in the value column instead of at the card title's left edge | **FIXED** (commit: a7be7fda7) — Card row buttons sit in the value column instead of at the card title's left edge — after the fix: ![](screenshots/fixed/page-2026-11-24T12-32-19-511Z.png) ![](screenshots/fixed/page-2026-11-24T12-32-35-609Z.png) ![](screenshots/fixed/page-2026-11-24T12-32-47-605Z.png) |
+No bugs recorded. None.
 
 ## General notes
 
-- Tests 5.1 and 5.4 have no screenshot: the result is a 404 dialog or response, recorded in text.
-- The two console errors on the page used for Test 5.4 are the deliberate 404 fetches of the hand-edited URLs, not defects.
-- B1 is pre-existing on the cohort page's Courses tab; the new course-page cards inherit it from the shared card actions cell. Whether it is in scope for this spec is a triage decision.
-- Test 9 steps 1 and 4 (build with `FLS_THEME=first_class`, then restore the default theme build) are not separately recorded in the scratch file. The cleanup is not evidenced here.
-- The scratch file records the mobile layout probe for test 1 as clean even though B1 was found on the same screenshot. B1 is a visual-checklist finding, not a layout flag.
-- The QA scenario command `qa_create_educator_small_polish_scenario.py` and the `screenshots/` folder are currently untracked in git.
+- Observation (not a failure): the learner Register picker lists learners in a non-alphabetical order (QA Member A2 after demodev_s9, QA Learner One after demodev_s10). The spec sets no order, so no action is attached.
+- Test 2's non-outline child-row check is N/A: `/panel-framework/reference/` is not routed (404).
+- The leftover registrations from an earlier run could not be deleted, because the permission system refused the data helper's delete. They were deactivated through the UI instead, so the earlier run's rows still exist in the database as inactive.
+- Screenshot compression ran and found nothing over the size limit.
+- No 500s in either server log. No console or horizontal-scroll problems at any viewport.
 
-status: ok · reason: 1 bug — 1 fixed, 0 unresolved; report rendered, screenshots verified
+status: ok · reason: report rendered, 0 bugs documented

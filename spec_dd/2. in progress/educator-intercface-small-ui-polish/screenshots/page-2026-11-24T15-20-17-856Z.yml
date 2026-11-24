@@ -1,0 +1,143 @@
+- generic [active] [ref=f28e1]:
+  - banner [ref=f28e2]:
+    - link [ref=f28e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f28e4]
+    - navigation [ref=f28e5]:
+      - generic [ref=f28e6]:
+        - generic [ref=f28e7]:
+          - button "Notifications, none new" [ref=f28e8]
+          - status:
+            - generic [ref=f28e12]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f28e14] [cursor=pointer]:
+          - generic [ref=f28e15]:
+            - generic [ref=f28e16]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f28e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f28e18]:
+    - generic [ref=f28e21]:
+      - navigation "Back" [ref=f28e23]:
+        - link "Courses" [ref=f28e24] [cursor=pointer]:
+          - /url: /educator/organisations/demodev/courses
+      - generic [ref=f28e28]:
+        - generic [ref=f28e30]:
+          - generic [ref=f28e33]:
+            - button "Open navigation panel" [ref=f28e34] [cursor=pointer]
+            - heading "Functionality Demo - Course Parts" [level=1] [ref=f28e38]
+          - navigation "Course sections" [ref=f28e39]:
+            - list [ref=f28e40]:
+              - listitem [ref=f28e41]:
+                - link "Overview" [ref=f28e42] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22/__tabs/overview
+              - listitem [ref=f28e43]:
+                - link "Content" [ref=f28e44] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22/__tabs/content
+        - generic [ref=f28e48]:
+          - generic [ref=f28e50]:
+            - heading "Details" [level=2] [ref=f28e53]
+            - generic [ref=f28e55]:
+              - generic [ref=f28e56]:
+                - term [ref=f28e57]: Title
+                - definition [ref=f28e58]: Functionality Demo - Course Parts
+              - generic [ref=f28e59]:
+                - term [ref=f28e60]: Subtitle
+                - definition [ref=f28e61]: Demonstrating course organisation with parts
+              - generic [ref=f28e62]:
+                - term [ref=f28e63]: Category
+                - definition [ref=f28e64]: Reference
+              - generic [ref=f28e65]:
+                - term [ref=f28e66]: Visibility
+                - definition [ref=f28e67]: Published
+              - generic [ref=f28e68]:
+                - term [ref=f28e69]: Time limit
+                - definition [ref=f28e70]: 90 days
+              - generic [ref=f28e71]:
+                - term [ref=f28e72]: Lessons
+                - definition [ref=f28e73]: "5"
+          - generic [ref=f28e75]:
+            - heading "Cohort registrations" [level=2] [ref=f28e78]
+            - generic [ref=f28e80]:
+              - list [ref=f28e82]:
+                - listitem [ref=f28e83]:
+                  - generic [ref=f28e84]:
+                    - link "QA Cohort A" [ref=f28e87] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/67f99298-e866-40d7-8970-25bddeea0402
+                    - generic [ref=f28e91]:
+                      - generic [ref=f28e92]:
+                        - term [ref=f28e93]: Cohort status
+                        - definition [ref=f28e94]:
+                          - generic [ref=f28e95]: Active
+                      - generic [ref=f28e96]:
+                        - term [ref=f28e97]: Status
+                        - definition [ref=f28e98]:
+                          - generic [ref=f28e99]: Active
+                    - button "Deactivate QA Cohort A" [ref=f28e102] [cursor=pointer]: Deactivate
+                - listitem [ref=f28e103]:
+                  - generic [ref=f28e104]:
+                    - link "QA Cohort B" [ref=f28e107] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/07531511-b362-4614-b205-25f50a30cb82
+                    - generic [ref=f28e111]:
+                      - generic [ref=f28e112]:
+                        - term [ref=f28e113]: Cohort status
+                        - definition [ref=f28e114]:
+                          - generic [ref=f28e115]: Active
+                      - generic [ref=f28e116]:
+                        - term [ref=f28e117]: Status
+                        - definition [ref=f28e118]:
+                          - generic [ref=f28e119]: Active
+                    - button "Deactivate QA Cohort B" [ref=f28e122] [cursor=pointer]: Deactivate
+              - paragraph [ref=f28e124]: 2 cohort course registrations
+            - button "Register" [ref=f28e127] [cursor=pointer]
+          - generic [ref=f28e129]:
+            - heading "Direct registrations" [level=2] [ref=f28e132]
+            - generic [ref=f28e134]:
+              - button "Sort" [ref=f28e139] [cursor=pointer]
+              - list [ref=f28e144]:
+                - listitem [ref=f28e145]:
+                  - generic [ref=f28e146]:
+                    - generic [ref=f28e149]:
+                      - link "QA Learner One qa-learner-one@qa.test" [ref=f28e151] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners/1258bbbc-711f-4e15-a4a5-d3a365c1e3b5
+                        - generic [ref=f28e152]:
+                          - generic [aria-hidden] [ref=f28e153]: QO
+                          - generic [ref=f28e154]:
+                            - generic [ref=f28e155]: QA Learner One
+                            - generic [ref=f28e156]: qa-learner-one@qa.test
+                      - 'link "Quick view: QA Learner One" [ref=f28e157] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/learners/1258bbbc-711f-4e15-a4a5-d3a365c1e3b5
+                    - generic [ref=f28e163]:
+                      - term [ref=f28e164]: Status
+                      - definition [ref=f28e165]:
+                        - generic [ref=f28e166]: Active
+                    - button "Deactivate QA Learner One" [ref=f28e169] [cursor=pointer]: Deactivate
+                - listitem [ref=f28e170]:
+                  - generic [ref=f28e171]:
+                    - generic [ref=f28e174]:
+                      - link "QA Member A1 qa-cohort-a-member-1@qa.test" [ref=f28e176] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners/dcd04dee-c225-405c-91fe-45991b0de22d
+                        - generic [ref=f28e177]:
+                          - generic [aria-hidden] [ref=f28e178]: QA
+                          - generic [ref=f28e179]:
+                            - generic [ref=f28e180]: QA Member A1
+                            - generic [ref=f28e181]: qa-cohort-a-member-1@qa.test
+                      - 'link "Quick view: QA Member A1" [ref=f28e182] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/learners/dcd04dee-c225-405c-91fe-45991b0de22d
+                    - generic [ref=f28e188]:
+                      - term [ref=f28e189]: Status
+                      - definition [ref=f28e190]:
+                        - generic [ref=f28e191]: Active
+                    - button "Deactivate QA Member A1" [ref=f28e194] [cursor=pointer]: Deactivate
+              - paragraph [ref=f28e196]: 2 learner course registrations
+            - button "Register" [ref=f28e199] [cursor=pointer]
+  - contentinfo [ref=f28e202]:
+    - generic [ref=f28e203]:
+      - paragraph [ref=f28e204]: © 2026 FirstClass
+      - navigation "Legal" [ref=f28e205]:
+        - link "Terms and Conditions" [ref=f28e206] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f28e207] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f28e208] [cursor=pointer]: educator-intercface-small-ui-polish
+  - generic "Show toolbar" [ref=f28e210]: DJDT

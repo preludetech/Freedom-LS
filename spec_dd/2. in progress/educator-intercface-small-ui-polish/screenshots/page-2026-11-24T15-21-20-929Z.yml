@@ -1,0 +1,164 @@
+- generic [active] [ref=f32e1]:
+  - banner [ref=f32e2]:
+    - link [ref=f32e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f32e4]
+      - heading "FirstClass" [level=1] [ref=f32e5]
+    - navigation [ref=f32e6]:
+      - generic [ref=f32e7]:
+        - generic [ref=f32e8]:
+          - button "Notifications, none new" [ref=f32e9]
+          - status:
+            - generic [ref=f32e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f32e15] [cursor=pointer]:
+          - generic [ref=f32e16]:
+            - generic [ref=f32e17]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f32e18]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f32e19]:
+    - generic [ref=f32e22]:
+      - navigation "Back" [ref=f32e24]:
+        - link "Courses" [ref=f32e25] [cursor=pointer]:
+          - /url: /educator/organisations/demodev/courses
+      - generic [ref=f32e29]:
+        - generic [ref=f32e31]:
+          - generic [ref=f32e34]:
+            - button "Open navigation panel" [ref=f32e35] [cursor=pointer]
+            - heading "Functionality Demo - Course Parts" [level=1] [ref=f32e39]
+          - navigation "Course sections" [ref=f32e40]:
+            - list [ref=f32e41]:
+              - listitem [ref=f32e42]:
+                - link "Overview" [ref=f32e43] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22/__tabs/overview
+              - listitem [ref=f32e44]:
+                - link "Content" [ref=f32e45] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22/__tabs/content
+        - generic [ref=f32e49]:
+          - generic [ref=f32e51]:
+            - heading "Details" [level=2] [ref=f32e54]
+            - generic [ref=f32e56]:
+              - generic [ref=f32e57]:
+                - term [ref=f32e58]: Title
+                - definition [ref=f32e59]: Functionality Demo - Course Parts
+              - generic [ref=f32e60]:
+                - term [ref=f32e61]: Subtitle
+                - definition [ref=f32e62]: Demonstrating course organisation with parts
+              - generic [ref=f32e63]:
+                - term [ref=f32e64]: Category
+                - definition [ref=f32e65]: Reference
+              - generic [ref=f32e66]:
+                - term [ref=f32e67]: Visibility
+                - definition [ref=f32e68]: Published
+              - generic [ref=f32e69]:
+                - term [ref=f32e70]: Time limit
+                - definition [ref=f32e71]: 90 days
+              - generic [ref=f32e72]:
+                - term [ref=f32e73]: Lessons
+                - definition [ref=f32e74]: "5"
+          - generic [ref=f32e76]:
+            - heading "Cohort registrations" [level=2] [ref=f32e79]
+            - generic [ref=f32e81]:
+              - region "Cohort course registrations" [ref=f32e83]:
+                - table [ref=f32e84]:
+                  - caption [ref=f32e85]: Cohort course registrations
+                  - rowgroup [ref=f32e86]:
+                    - row [ref=f32e87]:
+                      - columnheader "Cohort" [ref=f32e88]
+                      - columnheader "Cohort status" [ref=f32e89]
+                      - columnheader "Status" [ref=f32e90]
+                      - columnheader "Registered" [ref=f32e91]
+                      - columnheader [ref=f32e92]
+                  - rowgroup [ref=f32e93]:
+                    - row [ref=f32e94]:
+                      - cell [ref=f32e95]:
+                        - link "QA Cohort A" [ref=f32e96] [cursor=pointer]:
+                          - /url: /educator/organisations/demodev/cohorts/67f99298-e866-40d7-8970-25bddeea0402
+                      - cell "Active" [ref=f32e97]
+                      - cell "Active" [ref=f32e99]
+                      - cell "24 Nov 2026, 10:28" [ref=f32e101]:
+                        - time [ref=f32e102]:
+                          - generic [ref=f32e103]: 24 Nov 2026,
+                          - generic [ref=f32e104]: 10:28
+                      - cell [ref=f32e105]:
+                        - button "Deactivate QA Cohort A" [ref=f32e107] [cursor=pointer]: Deactivate
+                    - row [ref=f32e108]:
+                      - cell [ref=f32e109]:
+                        - link "QA Cohort B" [ref=f32e110] [cursor=pointer]:
+                          - /url: /educator/organisations/demodev/cohorts/07531511-b362-4614-b205-25f50a30cb82
+                      - cell "Active" [ref=f32e111]
+                      - cell "Active" [ref=f32e113]
+                      - cell "24 Nov 2026, 10:30" [ref=f32e115]:
+                        - time [ref=f32e116]:
+                          - generic [ref=f32e117]: 24 Nov 2026,
+                          - generic [ref=f32e118]: 10:30
+                      - cell [ref=f32e119]:
+                        - button "Deactivate QA Cohort B" [ref=f32e121] [cursor=pointer]: Deactivate
+              - paragraph [ref=f32e123]: 2 cohort course registrations
+            - button "Register" [ref=f32e126] [cursor=pointer]
+          - generic [ref=f32e128]:
+            - heading "Direct registrations" [level=2] [ref=f32e131]
+            - generic [ref=f32e133]:
+              - region "Learner course registrations" [ref=f32e135]:
+                - table [ref=f32e136]:
+                  - caption [ref=f32e137]: Learner course registrations
+                  - rowgroup [ref=f32e138]:
+                    - row [ref=f32e139]:
+                      - columnheader [ref=f32e140]:
+                        - link "Learner" [ref=f32e141] [cursor=pointer]:
+                          - /url: /educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22/__tabs/overview?learner_registrations-sort=-learner__user__first_name
+                      - columnheader "Status" [ref=f32e145]
+                      - columnheader "Registered" [ref=f32e146]
+                      - columnheader [ref=f32e147]
+                  - rowgroup [ref=f32e148]:
+                    - row [ref=f32e149]:
+                      - cell [ref=f32e150]:
+                        - generic [ref=f32e151]:
+                          - link "QA Learner One qa-learner-one@qa.test" [ref=f32e153] [cursor=pointer]:
+                            - /url: /educator/organisations/demodev/learners/1258bbbc-711f-4e15-a4a5-d3a365c1e3b5
+                            - generic [ref=f32e154]:
+                              - generic [aria-hidden] [ref=f32e155]: QO
+                              - generic [ref=f32e156]:
+                                - generic [ref=f32e157]: QA Learner One
+                                - generic [ref=f32e158]: qa-learner-one@qa.test
+                          - 'link "Quick view: QA Learner One" [ref=f32e159] [cursor=pointer]':
+                            - /url: /educator/organisations/demodev/learners/1258bbbc-711f-4e15-a4a5-d3a365c1e3b5
+                      - cell "Active" [ref=f32e164]
+                      - cell "24 Nov 2026, 10:28" [ref=f32e166]:
+                        - time [ref=f32e167]:
+                          - generic [ref=f32e168]: 24 Nov 2026,
+                          - generic [ref=f32e169]: 10:28
+                      - cell [ref=f32e170]:
+                        - button "Deactivate QA Learner One" [ref=f32e172] [cursor=pointer]: Deactivate
+                    - row [ref=f32e173]:
+                      - cell [ref=f32e174]:
+                        - generic [ref=f32e175]:
+                          - link "QA Member A1 qa-cohort-a-member-1@qa.test" [ref=f32e177] [cursor=pointer]:
+                            - /url: /educator/organisations/demodev/learners/dcd04dee-c225-405c-91fe-45991b0de22d
+                            - generic [ref=f32e178]:
+                              - generic [aria-hidden] [ref=f32e179]: QA
+                              - generic [ref=f32e180]:
+                                - generic [ref=f32e181]: QA Member A1
+                                - generic [ref=f32e182]: qa-cohort-a-member-1@qa.test
+                          - 'link "Quick view: QA Member A1" [ref=f32e183] [cursor=pointer]':
+                            - /url: /educator/organisations/demodev/learners/dcd04dee-c225-405c-91fe-45991b0de22d
+                      - cell "Active" [ref=f32e188]
+                      - cell "24 Nov 2026, 10:29" [ref=f32e190]:
+                        - time [ref=f32e191]:
+                          - generic [ref=f32e192]: 24 Nov 2026,
+                          - generic [ref=f32e193]: 10:29
+                      - cell [ref=f32e194]:
+                        - button "Deactivate QA Member A1" [ref=f32e196] [cursor=pointer]: Deactivate
+              - paragraph [ref=f32e198]: 2 learner course registrations
+            - button "Register" [ref=f32e201] [cursor=pointer]
+  - contentinfo [ref=f32e204]:
+    - generic [ref=f32e205]:
+      - paragraph [ref=f32e206]: © 2026 FirstClass
+      - navigation "Legal" [ref=f32e207]:
+        - link "Terms and Conditions" [ref=f32e208] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f32e209] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f32e210] [cursor=pointer]: educator-intercface-small-ui-polish
+  - generic "Show toolbar" [ref=f32e212]: DJDT
