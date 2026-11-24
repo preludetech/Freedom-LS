@@ -651,9 +651,10 @@ def _build_learner_row(
     roster: CohortRoster,
     catalogue: CourseCatalogue,
     progress: ProgressIndex,
+    retired_item_ids: frozenset[UUID],
 ) -> LearnerRow:
     completed_count, total_count = _completion_counts(
-        items, learner_id, progress, catalogue.retired_item_ids
+        items, learner_id, progress, retired_item_ids
     )
     last_title, last_at = _latest_completion(items, learner_id, progress)
     quiz_cells: dict[UUID, QuizResult | None] = {
@@ -710,16 +711,25 @@ def _build_course_section(
 ) -> CourseSection:
     course = reg.course
     items = catalogue.course_items[reg.course_id]
-    quiz_columns = _build_quiz_columns(items, catalogue.retired_item_ids)
+    retired_item_ids = catalogue.retired_item_ids_by_course[reg.course_id]
+    quiz_columns = _build_quiz_columns(items, retired_item_ids)
     learner_rows = [
-        _build_learner_row(learner_id, items, quiz_columns, roster, catalogue, progress)
+        _build_learner_row(
+            learner_id,
+            items,
+            quiz_columns,
+            roster,
+            catalogue,
+            progress,
+            retired_item_ids,
+        )
         for learner_id in roster.learner_ids
     ]
     return CourseSection(
         course_id=course.id,
         title=course.title,
         is_active=reg.is_active,
-        item_count=len(_live_items(items, catalogue.retired_item_ids)),
+        item_count=len(_live_items(items, retired_item_ids)),
         quizzes=quiz_columns,
         learner_rows=learner_rows,
         summary_tables=_build_summary_tables(
@@ -1081,6 +1091,7 @@ def _build_course_detail(
     now: datetime,
 ) -> LearnerCourseDetail:
     items = catalogue.course_items[registration.course_id]
+    retired_item_ids = catalogue.retired_item_ids_by_course[registration.course_id]
     quiz_forms = [
         item
         for item in items
@@ -1090,18 +1101,16 @@ def _build_course_detail(
         # No course progress record yet: nothing to look up, so the entry is
         # built as not started rather than searching the indexes for nothing.
         completed_count, last_title, last_at = 0, None, None
-        total_count = len(_live_items(items, catalogue.retired_item_ids))
+        total_count = len(_live_items(items, retired_item_ids))
         completed_items: list[CompletedItem] = []
         quiz_results: list[QuizResult] = []
         has_any_progress = False
     else:
         completed_count, total_count = _completion_counts(
-            items, record_id, progress, catalogue.retired_item_ids
+            items, record_id, progress, retired_item_ids
         )
         last_title, last_at = _latest_completion(items, record_id, progress)
-        completed_items = _completed_items(
-            items, record_id, progress, catalogue.retired_item_ids
-        )
+        completed_items = _completed_items(items, record_id, progress, retired_item_ids)
         quiz_results = [
             result
             for result in (

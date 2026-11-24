@@ -431,6 +431,29 @@ class TestBuildCourseCatalogue:
         assert catalogue.all_items == [live, topic_in_part, form_in_part]
         assert catalogue.retired_item_ids == {topic_in_part.id, form_in_part.id}
 
+    def test_an_item_retired_in_one_course_and_live_in_another_is_retired_only_there(
+        self, mock_site_context
+    ):
+        cohort = CohortFactory()
+        gone_in, live_in = CourseFactory(), CourseFactory()
+        CohortCourseRegistrationFactory(cohort=cohort, course=gone_in)
+        CohortCourseRegistrationFactory(cohort=cohort, course=live_in)
+        shared = TopicFactory()
+        part = retired(CoursePartFactory())
+        _attach(gone_in, part, order=0)
+        _attach(part, shared, order=0)
+        _attach(live_in, shared, order=0)
+
+        catalogue = build_course_catalogue(
+            load_registrations(cohort, mock_site_context.pk)
+        )
+
+        assert catalogue.retired_item_ids_by_course == {
+            gone_in.id: {shared.id},
+            live_in.id: frozenset(),
+        }
+        assert catalogue.retired_item_ids == frozenset()
+
 
 class TestRegistrationIds:
     def test_each_kind_is_split_into_its_own_column(self, mock_site_context):

@@ -2590,6 +2590,7 @@ class TestBuildLearnerRow:
             a_roster((LEARNER_ID, learner)),
             a_catalogue(course_items={a_quiz().id: [topic, quiz]}),
             progress,
+            frozenset(),
         )
 
         assert row.full_name == "Ada Lovelace"
@@ -2611,6 +2612,7 @@ class TestBuildLearnerRow:
             a_roster((LEARNER_ID, learner)),
             a_catalogue(course_items={a_quiz().id: [quiz]}),
             a_progress_index(),
+            frozenset(),
         )
 
         assert row.quiz_cells == {quiz.id: None}
@@ -3223,6 +3225,33 @@ class TestRetiredContentInTheReport:
         assert [(q.title, q.retired) for q in data.courses[0].quizzes] == [
             ("Part Quiz", True)
         ]
+
+    def test_an_item_under_a_retired_part_in_one_course_still_counts_where_it_is_live(
+        self, mock_site_context
+    ) -> None:
+        shared_topic: Topic = TopicFactory(title="Shared Topic")
+        shared_quiz: Form = FormFactory(title="Shared Quiz", strategy=FormStrategy.QUIZ)
+        gone_in: Course = CourseFactory(title="A")
+        part = retired(CoursePartFactory())
+        _attach(gone_in, part, order=0)
+        _attach(part, shared_topic, order=0)
+        _attach(part, shared_quiz, order=1)
+        live_in: Course = CourseFactory(title="B")
+        _attach(live_in, shared_topic, order=0)
+        _attach(live_in, shared_quiz, order=1)
+        cohort, record = _one_learner_cohort(live_in)
+        CohortCourseRegistrationFactory(cohort=cohort, course=gone_in)
+        topic_progress(record, shared_topic, complete_time=timezone.now())
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        sections = {section.title: section for section in data.courses}
+        live_row = sections["B"].learner_rows[0]
+        assert sections["B"].item_count == 2
+        assert (live_row.completed_item_count, live_row.total_item_count) == (1, 2)
+        assert [q.retired for q in sections["B"].quizzes] == [False]
+        assert sections["A"].item_count == 0
+        assert [q.retired for q in sections["A"].quizzes] == [True]
 
     def test_a_wrong_answer_to_a_retired_question_is_listed_and_flagged(
         self, mock_site_context

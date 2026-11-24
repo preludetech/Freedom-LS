@@ -84,12 +84,17 @@ class CourseCatalogue:
     # table columns and a learner's wrong-answer blocks both follow.
     # Deduplicated across courses, unlike all_items.
     ordered_quiz_form_ids: list[UUID]
-    # The topics and forms a learner can no longer reach: those a content save
-    # retired, and those under a retired CoursePart (which are not stamped
-    # themselves). That is every item `viewable_items(include_retired=True)`
+    # Per course, the topics and forms a learner can no longer reach there: those
+    # a content save retired, and those under a retired CoursePart (which are not
+    # stamped themselves). That is every item `viewable_items(include_retired=True)`
     # lists that `viewable_items()` leaves out. They stay in the catalogue so
-    # their recorded progress still shows, but they are out of every completion
-    # figure: a learner is never marked down for content nobody can reach.
+    # their recorded progress still shows, but they are out of that course's
+    # completion figures: a learner is never marked down for content nobody can
+    # reach. Kept per course because one item can be unreachable in one course
+    # and live in another.
+    retired_item_ids_by_course: dict[UUID, frozenset[UUID]]
+    # The items retired in every course of the catalogue that holds them: the
+    # set for figures taken over `all_items`, which spans courses.
     retired_item_ids: frozenset[UUID]
 
 
@@ -264,7 +269,8 @@ def build_course_catalogue(
     form_ids: set[UUID] = set()
     quiz_form_ids: set[UUID] = set()
     ordered_quiz_form_ids: list[UUID] = []
-    retired_item_ids: set[UUID] = set()
+    retired_item_ids_by_course: dict[UUID, frozenset[UUID]] = {}
+    live_anywhere: set[UUID] = set()
     for reg in registrations:
         items = [
             item
@@ -273,9 +279,11 @@ def build_course_catalogue(
         ]
         live_ids = {item.id for item in reg.course.viewable_items()}
         course_items[reg.course_id] = items
+        retired_item_ids_by_course[reg.course_id] = frozenset(
+            item.id for item in items if item.id not in live_ids
+        )
+        live_anywhere.update(item.id for item in items if item.id in live_ids)
         for item in items:
-            if item.id not in live_ids:
-                retired_item_ids.add(item.id)
             if isinstance(item, Topic):
                 topic_ids.add(item.id)
             else:
@@ -293,7 +301,13 @@ def build_course_catalogue(
         form_ids=form_ids,
         quiz_form_ids=quiz_form_ids,
         ordered_quiz_form_ids=ordered_quiz_form_ids,
-        retired_item_ids=frozenset(retired_item_ids),
+        retired_item_ids_by_course=retired_item_ids_by_course,
+        retired_item_ids=frozenset(
+            item_id
+            for retired_ids in retired_item_ids_by_course.values()
+            for item_id in retired_ids
+            if item_id not in live_anywhere
+        ),
     )
 
 

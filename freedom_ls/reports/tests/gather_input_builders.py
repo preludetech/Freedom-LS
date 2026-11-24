@@ -152,6 +152,7 @@ def a_catalogue(
     ordered_quiz_form_ids: list[UUID] | None = None,
     retired_item_ids: frozenset[UUID] = frozenset(),
 ) -> CourseCatalogue:
+    """`retired_item_ids` are retired in every course that holds them."""
     items = course_items if course_items is not None else {}
     all_items = [item for course in items.values() for item in course]
     forms = (
@@ -176,6 +177,12 @@ def a_catalogue(
             if ordered_quiz_form_ids is not None
             else [form_id for form_id in forms if form_id in quiz_ids]
         ),
+        retired_item_ids_by_course={
+            course_id: frozenset(
+                item.id for item in course if item.id in retired_item_ids
+            )
+            for course_id, course in items.items()
+        },
         retired_item_ids=retired_item_ids,
     )
 
