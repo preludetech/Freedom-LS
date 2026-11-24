@@ -6,7 +6,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 1. Spec
 
 - [x] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
-- [ ] (user) Fix the query-count regression in freedom_ls/educator_interface/tests/panels/learner/test_panels.py::TestLearnerCoursesPanel::test_the_tab_costs_no_more_queries_for_twenty_attempts_than_for_two (63 queries for 20 attempts vs 62 for 2; fails every run), then re-run `/sdd:finish_worktree`
+- [x] (user) Fix the query-count regression in freedom_ls/educator_interface/tests/panels/learner/test_panels.py::TestLearnerCoursesPanel::test_the_tab_costs_no_more_queries_for_twenty_attempts_than_for_two (63 queries for 20 attempts vs 62 for 2; fails every run), then re-run `/sdd:finish_worktree`
 - [ ] (user) Review the spec and edit where needed; after substantial hand edits, run `/sdd:spec_review`
 - [ ] (user) Confirm or overrule the three assumed defaults under `## Open questions` in `1. spec.md` (audit entry, admin `answer_groups`, time taken)
 - [ ] (user) Write the follow-up idea for the deferred quiz-attempt export (served order and seed for inspectors) in `spec_dd/1. next/`
@@ -38,5 +38,5 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 5. Cleanup
 
-- [ ] (cmd) Run `/sdd:finish_worktree` to close out the worktree and land it on main
-- [ ] (user) Remove the worktree and delete the branch once main has it
+- [x] (cmd) Run `/sdd:finish_worktree` to close out the worktree and land it on main
+- [x] (user) Remove the worktree and delete the branch once main has it

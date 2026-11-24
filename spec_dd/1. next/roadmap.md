@@ -13,7 +13,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 - 🔴 High · `sacaa-complianc-deletion-and-declaration-1-force-delete` (SACAA record retention and declarations)
 - 🔴 High · `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` (SACAA record retention and declarations)
-- 🔴 High · `sacaa-compliance-4-attempt-review` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-2-retire-removed-content` (SACAA content versions and access)
 - 🟠 Medium · `educator-interface-refactor-7-cleanup` (Educator interface code layout)
 - 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
@@ -96,26 +95,6 @@ Keeping learner records for SACAA's five-year rule, and signed quiz declarations
 - Out of scope: locking progress, attempt and answer records in the admin; self-service account deletion; declarations on non-quiz forms.
 - References: CAR 141.01.17 five-year retention in `sacaa-compliance/research_sacaa_requirements.md`.
 
-## SACAA compliance
-
-Priority: 🔴 High
-
-Quiz randomisation and a per-attempt record of the paper served, for training organisations audited by SACAA. Parent: `sacaa-compliance`.
-
-- `sacaa-compliance-4-attempt-review` — **in progress** — Educators see one learner's quiz attempt: paper served, answers and score. The form export carries the served order.
-
-![SACAA compliance](roadmap_diagrams/sacaa-compliance.svg)
-
-**Notes**
-- Build order: `sacaa-compliance-3-question-pools` and `sacaa-compliance-4-attempt-review` run in parallel.
-- Decided: randomisation is opt-in per quiz form and off by default; existing quizzes behave exactly as today.
-- Decided: one seed per attempt and the served paper saved at attempt start; a retake is a new attempt with a fresh draw and order.
-- Decided: scoring, results, export and review read the served paper, never a re-derived shuffle or the whole form, and a draw keeps `max_score` the same for every attempt.
-- Assumption: randomisation applies to quiz forms only, which already ban `when` conditions, so shuffles and draws cannot break a condition.
-- Assumption: no SACAA text found mandates a randomisation mechanic; the client's ATO manual is the audit reference, so the effort ships common practice.
-- Out of scope: exam time limits, retake waiting periods, frozen copies of question text (`content_snapshots`, paused), difficulty-weighted draws, banks shared across forms, draws by course section.
-- References: `sacaa-compliance/research_sacaa_requirements.md` and `sacaa-compliance/research_form_engine_seams.md`.
-
 ## SACAA content versions and access
 
 Priority: 🔴 High
@@ -125,7 +104,7 @@ Question versions, retired content, safer content saves and logged access to que
 - `sacaa-compliance-content-versions-and-access-2-retire-removed-content` — **in progress** — One `content_save` covers a site's whole source; content gone from it is retired, served to no one, kept for audit.
 - `sacaa-compliance-content-versions-and-access-3-question-versions` — **blocked** by `sacaa-compliance-content-versions-and-access-2-retire-removed-content` — Every question change saves an immutable version; attempts keep the version served; results, export and admin answers read it.
 - `sacaa-compliance-content-versions-and-access-4-question-access` — **ready** — A new role may view course questions and answers in the educator interface; each view is audited; admin question pages go.
-- `sacaa-compliance-content-versions-and-access-5-answered-version-review` — **blocked** by `sacaa-compliance-4-attempt-review`, `sacaa-compliance-content-versions-and-access-3-question-versions`, `sacaa-compliance-content-versions-and-access-4-question-access` — Educators reviewing an attempt see the question version answered, when it changed, and whether it is still served.
+- `sacaa-compliance-content-versions-and-access-5-answered-version-review` — **blocked** by `sacaa-compliance-content-versions-and-access-3-question-versions`, `sacaa-compliance-content-versions-and-access-4-question-access` — Educators reviewing an attempt see the question version answered, when it changed, and whether it is still served.
 
 ![SACAA content versions and access](roadmap_diagrams/sacaa-content-versions-and-access.svg)
 
