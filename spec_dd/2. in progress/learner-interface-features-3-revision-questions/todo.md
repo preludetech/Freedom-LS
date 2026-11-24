@@ -7,7 +7,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 - [x] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
 - [x] (user) Decide what to change after reading upstream_change_review.md, then edit the idea, spec or plan it names
-- [ ] (cmd) Apply the upstream-change decision (see "Decision" in `upstream_change_review.md`): the sidebar Revision entry becomes a "Revision" eyebrow link with the "N due" chip inside the `<a>`, `mt-6` spacing, no divider and no icon. Update the "Outline entry" bullets in `1. spec.md`, the batch step and QA checklist (rule 6 line) in `2. plan.md`, and `partials/course_toc_revision.html` (TDD), then re-take the sidebar screenshots for `3. frontend_qa.md`
+- [x] (cmd) Apply the upstream-change decision (see "Decision" in `upstream_change_review.md`): the sidebar Revision entry becomes a "Revision" eyebrow link with the "N due" chip inside the `<a>`, `mt-6` spacing, no divider and no icon. Update the "Outline entry" bullets in `1. spec.md`, the batch step and QA checklist (rule 6 line) in `2. plan.md`, and `partials/course_toc_revision.html` (TDD), then re-take the sidebar screenshots for `3. frontend_qa.md`
 - [ ] (user) Review the spec and edit where needed; after substantial hand edits, run `/sdd:spec_review`
 - [x] (user) This branch was cut from `sacaa-compliance-2-shuffle`, not main, and carries 9 of its commits; decide whether to rebase onto main (dropping them) before the spec is written
 - [ ] (user) Run `/sdd:roadmap` on main to add a bullet for the new idea `educator-revision-analytics`
