@@ -557,10 +557,11 @@ class InstanceDetailsPanel(Panel):
     def detail_row(
         label: str,
         value: object,
-        kind: Literal["text", "boolean", "date", "badge"] = "text",
+        kind: Literal["text", "boolean", "date", "datetime", "badge"] = "text",
     ) -> dict[str, object]:
         """One label/value row. `kind` picks how the template draws `value`:
-        "badge" takes a `StatusBadge`, "date" a date or datetime, "boolean" a
+        "badge" takes a `StatusBadge`, "date" a date or datetime, "datetime" a
+        datetime and shows the time of day as well as the date, "boolean" a
         bool, and "text" anything already formatted for display."""
         return {"label": label, "value": value, "kind": kind}
 

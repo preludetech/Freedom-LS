@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import datetime
 import json
-from typing import cast
+from typing import Literal, cast
 
 import lxml.html
 import pytest
@@ -629,6 +629,43 @@ def test_a_boolean_field_renders_the_boolean_icon_named_yes(
 
     assert 'data-icon="boolean_true"' in html
     assert 'aria-label="Yes"' in html
+
+
+_SITTING_START = datetime.datetime(2026, 11, 3, 7, 37, tzinfo=datetime.UTC)
+
+
+class _DatetimeRowDetails(InstanceDetailsPanel):
+    model = StubModel
+    row_kind: Literal["date", "datetime"] = "datetime"
+
+    def get_rows(self) -> list[dict[str, object]]:
+        return [self.detail_row("Started", _SITTING_START, self.row_kind)]
+
+
+class _DateRowDetails(_DatetimeRowDetails):
+    row_kind = "date"
+
+
+@pytest.mark.django_db
+def test_a_datetime_row_renders_the_time_of_day(mock_site_context: Site) -> None:
+    panel = _bind_details(_DatetimeRowDetails, make_stub(name="Detailed"))
+
+    html = render_to_string(panel.template_name, panel.get_context_data())
+
+    assert "3 Nov 2026" in html
+    assert "07:37" in html
+
+
+@pytest.mark.django_db
+def test_a_date_row_for_the_same_value_omits_the_time_of_day(
+    mock_site_context: Site,
+) -> None:
+    panel = _bind_details(_DateRowDetails, make_stub(name="Detailed"))
+
+    html = render_to_string(panel.template_name, panel.get_context_data())
+
+    assert "3 Nov 2026" in html
+    assert "07:37" not in html
 
 
 # Tab dispatch: every tab has a URL that renders the full page, and a tab
