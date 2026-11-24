@@ -1,0 +1,17 @@
+# Answers: sacaa-compliance-content-versions-and-access-2-retire-removed-content
+
+Asked by `/sdd:start` before the spec was written.
+
+- Q: Which educator surfaces show a retired mark on retired content? → A: Broad, as the idea recommends: every educator-interface page that lists or opens content or a question shows a retired badge; the cohort report and attempt views mark answers given to retired questions; the admin changelists gain a retired filter and column. Retired content stays visible to educators, marked. (asked up front)
+- Q: What happens when a retired question sits inside a keep-together group or a drawing page? → A: Serve the rest of the group minus the retired question; for a draw, remove the retired question (or its whole group, if it was in one) from the pool before the draw; when fewer than the page's N items remain, fail the save with a validation error naming the page. (asked up front)
+- Q: What shape does the retired state take on each content model? → A: A nullable timestamp (`retired_at`), retired when set, so the audit can say when the source dropped it. (asked up front)
+- Q: Does each retire or un-retire write an audit entry? → A: No per-row entry; `content_save` reports retired and un-retired counts in its output. (asked up front)
+- Q: How are `ContentCollectionItem` rows whose child is retired handled? → A: Skipped when outlines are read; the row gets no retired state and reappears automatically when the child returns. Rows left behind by a move keep today's behaviour. (asked up front)
+- Q: How do `File` and `CourseCategory` retire? → A: A `File` is retired when its path is absent from the run and un-retired when it returns; a retired `CourseCategory` leaves the catalogue filters. (asked up front)
+- Q: How does a retired course child count toward a learner's course progress and completion? → A: Excluded from completion: retired children drop out of progress totals and completion checks, so a learner who has finished every non-retired item is complete. Their recorded progress on the retired item is kept but does not count. (asked up front)
+- Q: Should the save guard against mass retirement from a wrong path or partial checkout? → A: Yes: the save fails before writing when the run would retire a whole `Course`; rerun with an explicit flag to proceed. Per-model counts are always printed. (asked while research ran)
+- Q: What does a learner see opening a link to retired content? → A: A plain 404, the same as a missing page; no new learner copy. (asked while research ran)
+- Q: Which rows does the retire sweep cover? → A: Every row of the twelve models for the site not seen in the run. Callers of `save_content_to_db` that load part of a site pass `retire_missing=False`; the CLI always retires. (asked while research ran)
+- Q: What does the save do when a live item gates (`when`) on an option of a retired question? → A: Fail the save with a validation error naming the gated item and the retired question. (asked while research ran)
+- Q: Do non-quiz forms (no served paper) pin at start? → A: No. Pinning applies to quiz papers only; an unpinned sitting reads the live tree, so a retired question drops out of it. Past answers are kept. (asked while research ran)
+- Q: How does a retired Topic or Form appear in the cohort report? → A: As a column with the Retired badge and its recorded progress and answers shown, excluded from completion denominators. (asked while research ran)
