@@ -870,4 +870,24 @@ class StubBaseConfig(RecordingCapabilityConfig, BaseViewConfig):
     panel = StubDataTablePanel
 
 
+class StubMenulessConfig(RecordingCapabilityConfig, ListViewConfig):
+    """A section with no list and no menu entry, reached only through its
+    instance paths."""
+
+    url_name = "menuless"
+    menu_label = "Menuless"
+    in_menu = False
+    list_view = None
+    instance_view = StubInstanceView
+    quick_view = StubQuickView
+
+    @classmethod
+    def get_instance_view(cls, request: HttpRequest, pk: str) -> InstanceView:
+        instance: Model = get_object_or_404(_stub_model(), pk=pk)
+        assert cls.instance_view is not None
+        return cls.instance_view(instance)
+
+
 STUB_CONFIG = [NavGroup("Stubs", [StubListConfig, StubBaseConfig])]
+
+MENULESS_CONFIG = [NavGroup("Menuless", [StubMenulessConfig, StubListConfig])]

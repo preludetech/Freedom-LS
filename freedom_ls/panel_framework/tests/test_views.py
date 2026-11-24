@@ -33,16 +33,20 @@ from freedom_ls.panel_framework.views import (
     build_menu_items,
     first_visible_section,
     panel_framework_view,
+    sections_by_url_name,
 )
 
 from .helpers import make_site, make_staff_user, make_stub
 from .stub_models import StubModel
 from .stub_panels import (
+    MENULESS_CONFIG,
     RecordingCapabilityConfig,
     StubBaseConfig,
     StubDataTable,
     StubDataTablePanel,
     StubDetailsPanel,
+    StubListConfig,
+    StubMenulessConfig,
 )
 from .view_helpers import call_view, fetch, make_request
 
@@ -900,6 +904,56 @@ class TestListWithoutInstancePages:
 
         with pytest.raises(Http404):
             call_view(make_request(path), path, config=GATED_CONFIG)
+
+
+class TestSectionOutsideTheMenu:
+    def test_the_menu_omits_it_and_keeps_the_other_section(
+        self, mock_site_context: Site
+    ) -> None:
+        groups = build_menu_items(
+            MENULESS_CONFIG, INTERFACE_URL_NAME, make_request("stubs")
+        )
+
+        items = cast(list[dict[str, object]], groups[0]["items"])
+        assert [item["label"] for item in items] == ["Stubs"]
+
+    def test_the_first_visible_section_skips_it_when_listed_first(
+        self, mock_site_context: Site
+    ) -> None:
+        section = first_visible_section(MENULESS_CONFIG, make_request("stubs"))
+
+        assert section is StubListConfig
+
+    def test_its_instance_path_renders(self, mock_site_context: Site) -> None:
+        path = f"menuless/{make_stub().pk}"
+
+        response = call_view(make_request(path), path, config=MENULESS_CONFIG)
+
+        assert response.status_code == 200
+
+    def test_its_quick_view_path_returns_the_drawer_frame(
+        self, mock_site_context: Site
+    ) -> None:
+        stub = make_stub(name="Ada")
+        path = f"menuless/{stub.pk}/__quick-view"
+
+        response = call_view(
+            make_request(path, htmx=True), path, config=MENULESS_CONFIG
+        )
+
+        assert f'data-entity-id="{stub.pk}"' in response.content.decode()
+
+    @pytest.mark.parametrize("path", ["menuless", "menuless/__actions/x"])
+    def test_a_path_that_needs_a_list_is_a_404(
+        self, mock_site_context: Site, path: str
+    ) -> None:
+        with pytest.raises(Http404):
+            call_view(make_request(path), path, config=MENULESS_CONFIG)
+
+    def test_it_is_found_by_url_name(self) -> None:
+        sections = sections_by_url_name(MENULESS_CONFIG)
+
+        assert sections["menuless"] is StubMenulessConfig
 
 
 # ListViewConfig.get_cell_context reaches every cell template of the list.

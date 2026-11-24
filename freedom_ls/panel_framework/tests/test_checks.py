@@ -169,6 +169,20 @@ def test_list_view_config_without_list_view_raises_no_error() -> None:
     assert errors == []
 
 
+def test_a_section_outside_the_menu_with_no_list_raises_no_error() -> None:
+    # Arrange
+    class OutsideMenuConfig(ListViewConfig):
+        url_name = "outside-menu"
+        menu_label = "Outside menu"
+        in_menu = False
+
+    # Act
+    errors = table_key_errors(OutsideMenuConfig)
+
+    # Assert
+    assert errors == []
+
+
 def test_bad_table_key_format_raises_e005() -> None:
     # Arrange
     class BadKeyTablePanel(DataTablePanel):

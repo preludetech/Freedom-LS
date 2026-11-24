@@ -172,6 +172,15 @@ class SectionConfigBase:
     #: existence is never confirmed to someone outside its audience.
     view_capability: str | None = None
 
+    #: False keeps the section out of the menu while its paths still resolve,
+    #: for a record reached from another section's page rather than a list.
+    in_menu: bool = True
+
+    @classmethod
+    def is_in_menu(cls, request: HttpRequest) -> bool:
+        """Whether the menu lists this section for `request`."""
+        return cls.in_menu and cls.is_visible(request) and cls.is_available(request)
+
     @classmethod
     def is_visible(cls, request: HttpRequest) -> bool:
         """Whether `request` may see this section in the menu and reach its paths."""
@@ -479,7 +488,7 @@ def first_visible_section(
     """The first section the menu shows `request`, or None when it shows none."""
     for group in config:
         for section in group.sections:
-            if section.is_visible(request) and section.is_available(request):
+            if section.is_in_menu(request):
                 return section
     return None
 
@@ -558,7 +567,7 @@ def _bind_root(
     if issubclass(section, ListViewConfig):
         if len(parts) == 1 or parts[1].startswith("__"):
             if section.list_view is None:
-                raise ValueError(f"{section.__name__} must define list_view")
+                raise Http404(f"{section.__name__} has no list page")
             # No check_request here, as today: the list root binds (and the
             # unauthenticated stub playwright tests browse it) before any
             # access check runs.
@@ -1492,7 +1501,7 @@ def build_menu_items(
     for group in config:
         items: list[dict[str, object]] = []
         for section in group.sections:
-            if not (section.is_visible(request) and section.is_available(request)):
+            if not section.is_in_menu(request):
                 continue
             is_active = section.url_name == active_section
             # The section stays marked on its own instance pages, but only
