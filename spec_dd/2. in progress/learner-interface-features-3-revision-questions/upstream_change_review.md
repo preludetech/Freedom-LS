@@ -31,4 +31,20 @@ The dashboard (`partials/revision_dashboard.html`: `revision` icon in a tinted c
 - `3. frontend_qa.md`: re-check the sidebar screenshot against the new QA line "A new section looks like its neighbours" and re-take the sidebar screenshot.
 - `idea.md`: no change.
 
+## Decision
+
+Accepted, with two changes to how the entry is built. The sidebar Revision entry becomes an eyebrow link in the Reference style. It has no divider, no icon and no semibold row.
+
+Options considered:
+- **Eyebrow link with the "N due" chip (chosen).** It meets rules 3 and 6. The quiet eyebrow costs prominence, and the primary-coloured chip makes up for it. The word stays quiet, and the count stands out when something is due.
+- **Keep the row and drop only the divider.** Rejected: the row still has a link style of its own, which rule 6 forbids.
+- **A "Revision" eyebrow with one outline row under it ("3 questions due").** Rejected: a section heading over a single row makes the sidebar longer without telling the learner anything more.
+- **No change.** Rejected: it breaks rules 3 and 6, and the next QA pass would flag it.
+
+Build details, in addition to "What to change" above:
+- **The chip goes inside the `<a>`, not beside it.** The whole line becomes the click target (a bare `text-xs` eyebrow is about 16px tall), and screen readers announce the link as "Revision N due". `test_outline_panel_shows_the_revision_entry_with_the_due_count` already expects the link text "Revision 1 due", so it keeps passing.
+- **The eyebrow classes (`text-xs font-semibold uppercase tracking-wide`) go on a `<span>` around "Revision", not on the `<a>`.** On the `<a>` the chip would inherit them and read "1 DUE". The `<a>` is a flex row (`flex items-center justify-between gap-2 no-underline`). It carries the colour and current-state classes: `text-muted hover:text-primary`, or `bg-primary/10 -mx-1 px-1 rounded text-on-surface` with `aria-current="page"` on the revision page.
+
+The revision outline tests check the link target, test ids, `aria-current`, the order of the outline and Revision sections, "0 due" and the hidden state. None checks the icon or the divider, so none needs changing. Re-take the sidebar screenshots in three states: with reference material, without it, and on the revision page.
+
 status: ok
