@@ -33,7 +33,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) In `claude_plugins/fls-dev/skills/educator-interface/SKILL.md`, add the Placement table row "A learner's Courses tab quiz attempts table | The attempt number opens the attempt (quick view; full attempt review page)" (spec section "Documentation and downstream")
 - [x] (cmd) In `claude_plugins/fls-dev/skills/panel-framework/SKILL.md`, add one short paragraph each on `in_menu` (with `is_in_menu`), `get_back_link` and the `"datetime"` kind of `detail_row` (spec sections "Panel framework" and "Documentation and downstream")
 - [x] (cmd) In `claude_plugins/fls-dev/skills/domain-glossary/SKILL.md`, add **attempt review** as a page term, pointing at the existing `FormProgress` / `CourseFormAttempt` entry for "attempt" (spec sections "Terminology" and "Documentation and downstream")
-- [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 
 ## 5. Cleanup
 
