@@ -10,7 +10,9 @@
 {% block content %}
     <c-page flush="true" class="pt-2 lg:pt-4">
         <div class="mx-auto max-w-xl text-center space-y-6">
-            <c-back-link href="{{ previous_url }}">{{ form.title }}</c-back-link>
+            <div class="text-left">
+                <c-back-link href="{{ previous_url }}">{{ form.title }}</c-back-link>
+            </div>
 
             <h1>{{ form.title }}</h1>
 

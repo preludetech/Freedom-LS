@@ -251,6 +251,19 @@ def test_the_declaration_paragraphs_are_spaced_apart(mock_site_context, client):
 
 
 @pytest.mark.django_db
+def test_the_back_link_sits_at_the_left_not_centred(declaration_course, client):
+    """The back link inherited the column's text-centre and rendered centred above the heading."""
+    course, _form, _user = declaration_course
+
+    response = client.get(_declaration_url(course))
+
+    document = lxml.html.fromstring(response.content)
+    [heading] = document.xpath("//h1[ancestor::div[contains(@class, 'text-center')]]")
+    link = heading.xpath("preceding::a[.//*[@aria-hidden]][1]")[0]
+    assert "text-left" in link.getparent().get("class", "").split()
+
+
+@pytest.mark.django_db
 def test_the_page_escapes_the_authors_declaration_text(mock_site_context, client):
     user = UserFactory()
     form = _declaration_quiz(declaration_text="Honest <script>alert(1)</script> work.")
