@@ -6,9 +6,10 @@ import pytest
 
 from django.contrib import admin
 from django.contrib.admin.widgets import AutocompleteSelect, ForeignKeyRawIdWidget
+from django.contrib.sites.models import Site
 from django.db import connection
 from django.forms import Select
-from django.test import Client
+from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
 from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
@@ -26,6 +27,7 @@ from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.deadlines.admin import (
     CoursePauseInline,
     DeadlineExtensionInline,
+    ReadOnlyInline,
     _policy_value_text,
 )
 from freedom_ls.deadlines.factories import (
@@ -43,9 +45,13 @@ from freedom_ls.deadlines.models import (
     LearnerDeadlineOverride,
     SiteDeadlineConfig,
 )
+from freedom_ls.learner_management.factories import CohortCourseRegistrationFactory
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.learner_progress.models import CourseProgress
-from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
+from freedom_ls.site_aware_models.factories import (
+    SiteAwareFactory,
+    SiteTimeZoneConfigFactory,
+)
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.site_context import site_context
 
@@ -564,7 +570,7 @@ def test_a_progress_page_for_a_malformed_id_redirects_rather_than_failing(
 
 @pytest.mark.django_db
 def test_the_course_progress_page_shows_deadlines_and_pauses_without_actions_or_override_inline(
-    staff_client, mock_site_context
+    staff_client: Client, mock_site_context: Site
 ) -> None:
     record, _ = _record_with_item()
     CoursePauseFactory(course_progress=record, reason="Illness")
@@ -598,7 +604,9 @@ DEADLINE_INLINES = [CoursePauseInline, DeadlineExtensionInline]
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("inline_class", DEADLINE_INLINES)
-def test_the_deadline_inlines_deny_add(rf, inline_class, mock_site_context) -> None:
+def test_the_deadline_inlines_deny_add(
+    rf: RequestFactory, inline_class: type[ReadOnlyInline], mock_site_context: Site
+) -> None:
     request = rf.get("/")
     request.user = UserFactory(superuser=True)
 
@@ -609,7 +617,9 @@ def test_the_deadline_inlines_deny_add(rf, inline_class, mock_site_context) -> N
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("inline_class", DEADLINE_INLINES)
-def test_the_deadline_inlines_deny_change(rf, inline_class, mock_site_context) -> None:
+def test_the_deadline_inlines_deny_change(
+    rf: RequestFactory, inline_class: type[ReadOnlyInline], mock_site_context: Site
+) -> None:
     request = rf.get("/")
     request.user = UserFactory(superuser=True)
 
@@ -620,7 +630,9 @@ def test_the_deadline_inlines_deny_change(rf, inline_class, mock_site_context) -
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("inline_class", DEADLINE_INLINES)
-def test_the_deadline_inlines_deny_delete(rf, inline_class, mock_site_context) -> None:
+def test_the_deadline_inlines_deny_delete(
+    rf: RequestFactory, inline_class: type[ReadOnlyInline], mock_site_context: Site
+) -> None:
     request = rf.get("/")
     request.user = UserFactory(superuser=True)
 
@@ -631,7 +643,7 @@ def test_the_deadline_inlines_deny_delete(rf, inline_class, mock_site_context) -
 
 @pytest.mark.django_db
 def test_the_progress_page_lists_a_pause_and_an_extension_together(
-    staff_client, mock_site_context
+    staff_client: Client, mock_site_context: Site
 ) -> None:
     record: CourseProgress = CourseProgressFactory()
     CoursePauseFactory(course_progress=record, reason="Medical leave")
@@ -655,7 +667,7 @@ def test_the_progress_page_lists_a_pause_and_an_extension_together(
     ],
 )
 def test_the_config_add_form_picks_a_course_cohort_or_registration_with_a_plain_select(
-    staff_client, mock_site_context, model_name: str, field: str
+    staff_client: Client, mock_site_context: Site, model_name: str, field: str
 ) -> None:
     response = staff_client.get(reverse(f"admin:freedom_ls_deadlines_{model_name}_add"))
 
@@ -664,9 +676,34 @@ def test_the_config_add_form_picks_a_course_cohort_or_registration_with_a_plain_
     assert not isinstance(widget, AutocompleteSelect)
 
 
+def _page_query_count(client: Client, url: str) -> int:
+    """Queries one GET of the page runs, after a warm-up request has filled the
+    per-process caches the admin reads."""
+    client.get(url)
+    with CaptureQueriesContext(connection) as queries:
+        client.get(url)
+    return len(queries.captured_queries)
+
+
+@pytest.mark.django_db
+def test_the_cohort_registration_picker_query_count_does_not_grow_with_registrations(
+    staff_client: Client, mock_site_context: Site
+) -> None:
+    url = reverse(
+        "admin:freedom_ls_deadlines_cohortcourseregistrationdeadlineconfig_add"
+    )
+    CohortCourseRegistrationFactory.create_batch(2)
+    few = _page_query_count(staff_client, url)
+    CohortCourseRegistrationFactory.create_batch(10)
+
+    many = _page_query_count(staff_client, url)
+
+    assert many == few
+
+
 @pytest.mark.django_db
 def test_the_learner_registration_config_add_form_picks_the_registration_by_raw_id(
-    staff_client, mock_site_context
+    staff_client: Client, mock_site_context: Site
 ) -> None:
     url = reverse(
         "admin:freedom_ls_deadlines_learnercourseregistrationdeadlineconfig_add"
@@ -680,7 +717,7 @@ def test_the_learner_registration_config_add_form_picks_the_registration_by_raw_
 
 @pytest.mark.django_db
 def test_course_config_post_saves_a_row_for_the_posted_course_pk(
-    staff_client, mock_site_context
+    staff_client: Client, mock_site_context: Site
 ) -> None:
     course = CourseFactory()
 
@@ -704,7 +741,10 @@ def test_course_config_post_saves_a_row_for_the_posted_course_pk(
     ],
 )
 def test_the_changelist_filters_to_the_rows_of_one_course(
-    staff_client, mock_site_context, factory, admin_url_name: str
+    staff_client: Client,
+    mock_site_context: Site,
+    factory: type[SiteAwareFactory],
+    admin_url_name: str,
 ) -> None:
     wanted = factory()
     factory()

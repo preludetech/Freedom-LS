@@ -19,6 +19,7 @@ import time_machine
 from django.contrib.admin.widgets import AutocompleteSelect
 from django.core.exceptions import NON_FIELD_ERRORS
 from django.forms import Select
+from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -99,7 +100,7 @@ def test_admin_form_rejects_duplicate_user_course_pair(
 
 
 @pytest.mark.django_db
-def test_add_form_picks_the_course_with_a_plain_select(staff_client):
+def test_add_form_picks_the_course_with_a_plain_select(staff_client: Client) -> None:
     response = staff_client.get(
         reverse("admin:freedom_ls_course_interest_courseinterest_add")
     )
@@ -110,7 +111,9 @@ def test_add_form_picks_the_course_with_a_plain_select(staff_client):
 
 
 @pytest.mark.django_db
-def test_add_post_saves_the_interest_for_the_posted_course_pk(staff_client):
+def test_add_post_saves_the_interest_for_the_posted_course_pk(
+    staff_client: Client,
+) -> None:
     course = CourseFactory()
     user = UserFactory()
 

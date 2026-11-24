@@ -8,6 +8,7 @@ from datetime import UTC, date, datetime
 import pytest
 import time_machine
 
+from django.contrib.sites.models import Site
 from django.core import serializers
 from django.db import connection, transaction
 from django.db.models import ProtectedError
@@ -253,7 +254,9 @@ def rule_made_registration(mock_site_context):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("is_active", [False, True])
-def test_changing_is_active_detaches_the_rule(rule_made_registration, is_active):
+def test_changing_is_active_detaches_the_rule(
+    rule_made_registration: RuleRegistration, is_active: bool
+) -> None:
     # Arrange
     registration_id = rule_made_registration.registration_id
     LearnerCourseRegistration._base_manager.filter(pk=registration_id).update(
@@ -801,8 +804,8 @@ def test_saving_a_learner_in_an_organisation_without_rules_queues_an_evaluation_
 
 @pytest.mark.django_db
 def test_deactivating_a_learner_removes_the_rules_recommendation_once_the_task_runs(
-    mock_site_context, database_task_backend
-):
+    mock_site_context: Site, database_task_backend: None
+) -> None:
     # Arrange
     rule = RegistrationRuleFactory(
         is_enabled=True, outcome=RegistrationRule.Outcome.RECOMMEND

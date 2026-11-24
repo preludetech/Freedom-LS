@@ -1907,8 +1907,8 @@ def test_the_change_page_of_a_staff_made_recommendation_leaves_user_and_course_e
 
 @pytest.mark.django_db
 def test_add_form_picks_the_course_with_a_plain_select_and_the_organisation_by_autocomplete(
-    staff_client,
-):
+    staff_client: Client,
+) -> None:
     # Act
     response = staff_client.get(
         reverse("admin:freedom_ls_registration_rules_registrationrule_add")

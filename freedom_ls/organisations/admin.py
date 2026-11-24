@@ -43,6 +43,12 @@ class OrganisationAdmin(GuardedSiteAwareModelAdmin):
         "bio",
         SUMMARIES_FIELD,
     ]
+    # @claude: GuardedSiteAwareModelAdmin combines Unfold's ModelAdmin with
+    # guardian's GuardedModelAdmin. The admin_guardian resource warns this pairing
+    # isn't guaranteed by either package (overlapping templates/hooks) — someone
+    # needs to manually load this model's guardian object-permissions page in the
+    # browser and confirm it renders correctly under the unfold theme before this
+    # comment can be removed.
     # Added to by other apps, for the reason given on ORGANISATION_SUMMARIES: a
     # contributor keeps what is already here rather than replacing it. Declared
     # on this class rather than inherited so nothing reaches the list shared

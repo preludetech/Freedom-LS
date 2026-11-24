@@ -492,6 +492,21 @@ def test_the_add_form_picks_a_cohort_or_cohort_registration_with_a_plain_select(
     assert not isinstance(widget, AutocompleteSelect)
 
 
+def test_the_cohort_registration_picker_query_count_does_not_grow_with_registrations(
+    staff_client: Client,
+) -> None:
+    url = reverse(
+        "admin:freedom_ls_messaging_policy_cohortcourseregistrationmessagingconfig_add"
+    )
+    CohortCourseRegistrationFactory.create_batch(2)
+    few = _changelist_queries(staff_client, url)
+    CohortCourseRegistrationFactory.create_batch(10)
+
+    many = _changelist_queries(staff_client, url)
+
+    assert many == few
+
+
 @pytest.mark.parametrize(
     ("model_name", "field"),
     [

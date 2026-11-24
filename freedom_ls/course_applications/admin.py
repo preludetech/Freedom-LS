@@ -199,8 +199,8 @@ class AnonymousApplicantAdmin(SiteAwareModelAdmin):
     Deleting an applicant takes their application, sitting, answers and stored
     files with it, which is how a right-to-erasure request for an address that
     never became an account is carried out. A claimed applicant is protected:
-    its application belongs to a user now, and deleting the user is the one
-    path that takes a user's application away.
+    its application, answers and files belong to a user account now, and the
+    admin can't erase that account while it holds form progress.
     """
 
     list_display = [
@@ -269,7 +269,8 @@ class AnonymousApplicantAdmin(SiteAwareModelAdmin):
         # page lists the application the erasure takes along.
         perms_needed.discard(str(CourseApplication._meta.verbose_name))
         claimed = [
-            f"{applicant} (claimed): delete the user instead"
+            f"{applicant} (claimed): the records belong to a user account,"
+            " which the admin can't erase"
             for applicant in applicants
             if applicant.claimed_at is not None
         ]

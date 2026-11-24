@@ -7,7 +7,7 @@ import pytest
 from django.contrib import admin
 from django.contrib.auth.models import Permission
 from django.core.exceptions import ValidationError
-from django.test import Client
+from django.test import Client, RequestFactory
 from django.urls import reverse
 from django.utils import timezone
 
@@ -133,8 +133,8 @@ def _answer_url(model_name: str, view: str, *args: object) -> str:
 @pytest.mark.django_db
 @pytest.mark.parametrize("model_name", ANSWER_MODELS)
 def test_the_answer_changelist_opens_for_a_superuser_and_lists_the_row(
-    staff_client, model_name
-):
+    staff_client: Client, model_name: str
+) -> None:
     row = ANSWER_FACTORIES[model_name]()
 
     response = staff_client.get(_answer_url(model_name, "changelist"))
@@ -145,7 +145,9 @@ def test_the_answer_changelist_opens_for_a_superuser_and_lists_the_row(
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("model_name", ANSWER_MODELS)
-def test_the_answer_change_page_has_no_save_button(staff_client, model_name):
+def test_the_answer_change_page_has_no_save_button(
+    staff_client: Client, model_name: str
+) -> None:
     row = ANSWER_FACTORIES[model_name]()
 
     response = staff_client.get(_answer_url(model_name, "change", row.pk))
@@ -156,7 +158,9 @@ def test_the_answer_change_page_has_no_save_button(staff_client, model_name):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("model_name", ANSWER_MODELS)
-def test_a_superuser_cannot_open_the_answer_add_page(staff_client, model_name):
+def test_a_superuser_cannot_open_the_answer_add_page(
+    staff_client: Client, model_name: str
+) -> None:
     response = staff_client.get(_answer_url(model_name, "add"))
 
     assert response.status_code == 403
@@ -164,7 +168,9 @@ def test_a_superuser_cannot_open_the_answer_add_page(staff_client, model_name):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("model_name", ANSWER_MODELS)
-def test_a_superuser_cannot_change_an_answer_row(staff_client, model_name):
+def test_a_superuser_cannot_change_an_answer_row(
+    staff_client: Client, model_name: str
+) -> None:
     row = ANSWER_FACTORIES[model_name]()
     before = type(row)._base_manager.values().get(pk=row.pk)
 
@@ -178,7 +184,9 @@ def test_a_superuser_cannot_change_an_answer_row(staff_client, model_name):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("model_name", ANSWER_MODELS)
-def test_a_superuser_cannot_delete_an_answer_row(staff_client, model_name):
+def test_a_superuser_cannot_delete_an_answer_row(
+    staff_client: Client, model_name: str
+) -> None:
     """Django's delete view consults only has_delete_permission, so not even a
     superuser may destroy an applicant's ID scan."""
     row = ANSWER_FACTORIES[model_name]()
@@ -194,8 +202,8 @@ def test_a_superuser_cannot_delete_an_answer_row(staff_client, model_name):
 @pytest.mark.django_db
 @pytest.mark.parametrize("model_name", ANSWER_MODELS)
 def test_the_answer_admin_offers_no_delete_selected_action(
-    staff_client, rf, model_name
-):
+    staff_client: Client, rf: RequestFactory, model_name: str
+) -> None:
     request = rf.get("/")
     request.user = UserFactory(superuser=True)
     model = ANSWER_FACTORIES[model_name]._meta.model
@@ -208,8 +216,8 @@ def test_the_answer_admin_offers_no_delete_selected_action(
 @pytest.mark.django_db
 @pytest.mark.parametrize("model_name", ANSWER_MODELS)
 def test_posting_delete_selected_to_the_changelist_leaves_the_row(
-    staff_client, model_name
-):
+    staff_client: Client, model_name: str
+) -> None:
     row = ANSWER_FACTORIES[model_name]()
 
     response = staff_client.post(
@@ -223,7 +231,7 @@ def test_posting_delete_selected_to_the_changelist_leaves_the_row(
 
 @pytest.mark.django_db
 def test_the_form_progress_changelist_filters_to_one_forms_sittings(
-    staff_client,
+    staff_client: Client,
 ) -> None:
     wanted = FormProgressFactory()
     FormProgressFactory()
@@ -238,7 +246,7 @@ def test_the_form_progress_changelist_filters_to_one_forms_sittings(
 
 @pytest.mark.django_db
 def test_the_form_progress_change_page_renders_each_questions_text(
-    staff_client,
+    staff_client: Client,
 ) -> None:
     form = FormFactory()
     page = FormPageFactory(form=form)
@@ -254,7 +262,7 @@ def test_the_form_progress_change_page_renders_each_questions_text(
 
 @pytest.mark.django_db
 def test_erasing_a_user_with_a_form_progress_lists_the_missing_permission(
-    staff_client,
+    staff_client: Client,
 ) -> None:
     progress = FormProgressFactory()
     url = reverse("admin:freedom_ls_accounts_user_delete", args=[progress.user.pk])
@@ -265,7 +273,9 @@ def test_erasing_a_user_with_a_form_progress_lists_the_missing_permission(
 
 
 @pytest.mark.django_db
-def test_erasing_a_user_with_a_form_progress_leaves_the_user(staff_client) -> None:
+def test_erasing_a_user_with_a_form_progress_leaves_the_user(
+    staff_client: Client,
+) -> None:
     progress = FormProgressFactory()
     url = reverse("admin:freedom_ls_accounts_user_delete", args=[progress.user.pk])
 

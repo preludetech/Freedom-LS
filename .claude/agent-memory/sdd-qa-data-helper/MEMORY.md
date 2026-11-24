@@ -41,7 +41,7 @@
 - [reference_dual_grant_course_progress_fixture.md](reference_dual_grant_course_progress_fixture.md) — Two grants (cohort + individual) on one course for grant fall-through QA; SiteAwareFactory needs explicit site= outside a request; cohort registration fans out to the WHOLE cohort
 - [reference_seeding_form_attempts_around_the_site_bug.md](reference_seeding_form_attempts_around_the_site_bug.md) — `form_progress__site=site` workaround for the CourseFormAttemptFactory NULL-site bug; how to build a real answered/scored cohort-granted sitting; recalculate surfaces unrelated denominator drift
 - [reference_organisation_educator_access.md](reference_organisation_educator_access.md) — Getting a persona into the organisation-scoped educator interface: the two independent access paths, why a missing ObjectRoleAssignment does NOT prove a blocked step, and where cohort reports live
-- [reference_admin_constraint_fixtures_command.md](reference_admin_constraint_fixtures_command.md) — qa_create_admin_constraint_fixtures: webhook endpoint/secret + CourseInterest + second-org Learner + per-org cohorts for uniqueness-constraint admin QA; WebhookSecret names forbid hyphens
+- [reference_admin_constraint_fixtures_command.md](reference_admin_constraint_fixtures_command.md) — qa_create_admin_constraint_fixtures: webhook endpoint/secret + CourseInterest for uniqueness-constraint admin QA; WebhookSecret names forbid hyphens
 - [reference_qa_run_residue_cleanup.md](reference_qa_run_residue_cleanup.md) — Tearing down a manual QA run's residue (signup user + LegalConsent x2 + EmailAddress, CourseInterest, a self-service enrolment); Collector.fast_deletes hides half the cascade; CourseProgress PROTECTs LearnerCourseRegistration; also secondary EmailAddress rows on a KEPT user (no cascade, EmailConfirmation always 0); the security-guard hook fails with an EMPTY error and matches its denylist anywhere in the command
 - [reference_revision_scenario_reset.md](reference_revision_scenario_reset.md) — Resetting the qa_create_revision_scenario learners: delete RevisionSchedule/Review, strip `revision_session:*` keys from db sessions, re-seed; expected 7 schedules / 4 due / 54 bank / 47 unscheduled; "nothing due" variant via qa_revision_nothing_due_script.py
 - [reference_form_first_course_command.md](reference_form_first_course_command.md) — qa_create_form_first_course: course whose item 1 is a Form (no-Previous-button branch of the form start page); FormProgress has a direct `user` FK; last_accessed_item is a plain FK; sequential unlock IS enforced by URL now
@@ -269,7 +269,7 @@ has been deleted; grant inline if a persona genuinely needs it. See
 The **"seed me a row so I can try to DUPLICATE it in the admin" pass** arrived once
 (final_pre_deploy_db_structure_cleanup, Aug 2026): `WebhookEndpoint`/`WebhookSecret`,
 `CourseInterest`, a second-organisation `Learner` and per-organisation `Cohort`s, all at zero
-rows on a freshly rebuilt DB. Wrapped in `qa_create_admin_constraint_fixtures`; see
+rows on a freshly rebuilt DB. The learner and cohort rows were dropped later, with their admins. Wrapped in `qa_create_admin_constraint_fixtures`; see
 [[reference_admin_constraint_fixtures_command]]. Two things to carry forward:
 **(a)** always run the rolled-back *form* probe (`SomeAdminForm(data=...).errors`) to show the
 tester the exact message the constraint produces — twice it revealed the requested fixture
@@ -335,7 +335,8 @@ I cannot see the empty case", check whether the seeding factory is a *join-row* 
 the absent case unreachable by construction.
 
 The **"an admin paginator has too few rows to page"** ask arrived once (misc-small-fixes-manual,
-Sep 2026: `OrganisationCohortInline` at `per_page = 20` with 16 cohorts). It is the
+Sep 2026: an organisation-admin cohort inline, since removed, at `per_page = 20` with 16
+cohorts). It is the
 [[reference_form_first_course_command]] shape one more layer out — read the paginator's own
 `per_page`/`ordering` off the class instead of hardcoding it, then seed the SMALLEST, emptiest
 rows that satisfy the ordering. Two things carry forward: **zero-pad** the scaffolding numbers,

@@ -177,8 +177,8 @@ def test_change_page_shows_the_answers_document(staff_client):
 
 
 def test_change_page_summary_links_to_user_and_sitting_and_shows_course_as_text(
-    staff_client,
-):
+    staff_client: Client,
+) -> None:
     application, _ = _answered_application()
     assert application.form_progress is not None
     assert application.user is not None
@@ -857,7 +857,9 @@ def test_a_view_only_user_sees_on_the_change_page_the_answers_the_export_writes(
     assert "Ada Lovelace" in response.content.decode()
 
 
-def test_applicant_course_filter_returns_only_that_courses_applicants(staff_client):
+def test_applicant_course_filter_returns_only_that_courses_applicants(
+    staff_client: Client,
+) -> None:
     wanted = AnonymousApplicantFactory()
     AnonymousApplicantFactory()
 

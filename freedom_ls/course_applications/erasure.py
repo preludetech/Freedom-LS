@@ -15,10 +15,11 @@ def erase_anonymous_applicant(applicant: AnonymousApplicant) -> None:
 
     A claimed applicant is refused: its application belongs to a user now, and
     erasing it here would take a verified person's application away while
-    leaving their account standing.
+    leaving their account standing. Erasing those records means erasing the
+    account.
     """
     if applicant.claimed_at is not None:
         raise ValueError(
-            f"{applicant} has been claimed; delete the user to erase their records."
+            f"{applicant} has been claimed; its records belong to a user account now."
         )
     applicant.delete()

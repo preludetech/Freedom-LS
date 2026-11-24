@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from django import forms
 from django.contrib import admin
 from django.contrib.sites.models import Site
+from django.db import models
 from django.forms import ModelForm
 from django.http import HttpRequest
 
+from freedom_ls.learner_management.models import CohortCourseRegistration
 from freedom_ls.messaging_policy.forms import SiteMessagingConfigForm
 from freedom_ls.messaging_policy.models import (
     FLAG_NAMES,
@@ -92,3 +95,19 @@ class CohortCourseRegistrationMessagingConfigAdmin(SiteAwareModelAdmin):
     list_select_related = ["registration__cohort", "registration__course"]
     list_filter = ["learner_to_course_peer"]
     search_fields = ["registration__cohort__name"]
+
+    def formfield_for_foreignkey(
+        self,
+        db_field: models.ForeignKey,
+        request: HttpRequest,
+        **kwargs: object,
+    ) -> forms.ModelChoiceField | None:
+        # Each option's label names the cohort and the course.
+        if db_field.name == "registration":
+            kwargs["queryset"] = CohortCourseRegistration.objects.select_related(
+                "cohort", "course"
+            )
+        field: forms.ModelChoiceField | None = super().formfield_for_foreignkey(
+            db_field, request, **kwargs
+        )
+        return field

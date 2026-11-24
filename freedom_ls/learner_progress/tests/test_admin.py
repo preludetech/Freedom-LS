@@ -8,17 +8,23 @@ particularly easy to break from the form_engine side without noticing.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import pytest
 
 from django.contrib import admin
-from django.test import Client
+from django.contrib.sites.models import Site
+from django.db.models import Model
+from django.test import Client, RequestFactory
 from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.form_engine.factories import FormProgressFactory
+from freedom_ls.learner_management.models import Learner
 from freedom_ls.learner_progress.admin import (
     CourseProgressFormAttemptInline,
+    CourseProgressItemInline,
     CourseProgressTopicInline,
     quiz_result,
 )
@@ -159,8 +165,8 @@ def _progress_url(model_name: str, view: str, *args: object) -> str:
 
 @pytest.mark.parametrize("model_name", PROGRESS_FACTORIES)
 def test_the_progress_changelist_opens_for_a_superuser_and_lists_the_row(
-    superuser_client, model_name
-):
+    superuser_client: Client, model_name: str
+) -> None:
     row = PROGRESS_FACTORIES[model_name]()
 
     response = superuser_client.get(_progress_url(model_name, "changelist"))
@@ -170,7 +176,9 @@ def test_the_progress_changelist_opens_for_a_superuser_and_lists_the_row(
 
 
 @pytest.mark.parametrize("model_name", PROGRESS_FACTORIES)
-def test_the_progress_change_page_has_no_save_button(superuser_client, model_name):
+def test_the_progress_change_page_has_no_save_button(
+    superuser_client: Client, model_name: str
+) -> None:
     row = PROGRESS_FACTORIES[model_name]()
 
     response = superuser_client.get(_progress_url(model_name, "change", row.pk))
@@ -180,14 +188,18 @@ def test_the_progress_change_page_has_no_save_button(superuser_client, model_nam
 
 
 @pytest.mark.parametrize("model_name", PROGRESS_FACTORIES)
-def test_a_superuser_cannot_open_the_progress_add_page(superuser_client, model_name):
+def test_a_superuser_cannot_open_the_progress_add_page(
+    superuser_client: Client, model_name: str
+) -> None:
     response = superuser_client.get(_progress_url(model_name, "add"))
 
     assert response.status_code == 403
 
 
 @pytest.mark.parametrize("model_name", PROGRESS_FACTORIES)
-def test_a_superuser_cannot_change_a_progress_row(superuser_client, model_name):
+def test_a_superuser_cannot_change_a_progress_row(
+    superuser_client: Client, model_name: str
+) -> None:
     row = PROGRESS_FACTORIES[model_name]()
     before = type(row)._base_manager.values().get(pk=row.pk)
 
@@ -200,7 +212,9 @@ def test_a_superuser_cannot_change_a_progress_row(superuser_client, model_name):
 
 
 @pytest.mark.parametrize("model_name", PROGRESS_FACTORIES)
-def test_a_superuser_cannot_delete_a_progress_row(superuser_client, model_name):
+def test_a_superuser_cannot_delete_a_progress_row(
+    superuser_client: Client, model_name: str
+) -> None:
     row = PROGRESS_FACTORIES[model_name]()
 
     response = superuser_client.post(
@@ -213,8 +227,8 @@ def test_a_superuser_cannot_delete_a_progress_row(superuser_client, model_name):
 
 @pytest.mark.parametrize("model_name", PROGRESS_FACTORIES)
 def test_the_progress_admin_offers_no_delete_selected_action(
-    superuser_client, rf, model_name
-):
+    superuser_client: Client, rf: RequestFactory, model_name: str
+) -> None:
     request = rf.get("/")
     request.user = UserFactory(superuser=True)
     model = PROGRESS_FACTORIES[model_name]._meta.model
@@ -226,8 +240,8 @@ def test_the_progress_admin_offers_no_delete_selected_action(
 
 @pytest.mark.parametrize("model_name", PROGRESS_FACTORIES)
 def test_posting_delete_selected_to_the_changelist_leaves_the_row(
-    superuser_client, model_name
-):
+    superuser_client: Client, model_name: str
+) -> None:
     row = PROGRESS_FACTORIES[model_name]()
 
     response = superuser_client.post(
@@ -240,7 +254,7 @@ def test_posting_delete_selected_to_the_changelist_leaves_the_row(
 
 
 @pytest.fixture
-def course_progress_admin():
+def course_progress_admin() -> admin.ModelAdmin:
     return admin.site.get_model_admin(CourseProgress)
 
 
@@ -248,8 +262,11 @@ def course_progress_admin():
     "inline_class", [CourseProgressTopicInline, CourseProgressFormAttemptInline]
 )
 def test_the_item_inlines_deny_add(
-    rf, mock_site_context, course_progress_admin, inline_class
-):
+    rf: RequestFactory,
+    mock_site_context: Site,
+    course_progress_admin: admin.ModelAdmin,
+    inline_class: type[CourseProgressItemInline],
+) -> None:
     request = rf.get("/")
     request.user = UserFactory(superuser=True)
     inline = inline_class(course_progress_admin.model, admin.site)
@@ -261,8 +278,11 @@ def test_the_item_inlines_deny_add(
     "inline_class", [CourseProgressTopicInline, CourseProgressFormAttemptInline]
 )
 def test_the_item_inlines_deny_change(
-    rf, mock_site_context, course_progress_admin, inline_class
-):
+    rf: RequestFactory,
+    mock_site_context: Site,
+    course_progress_admin: admin.ModelAdmin,
+    inline_class: type[CourseProgressItemInline],
+) -> None:
     request = rf.get("/")
     request.user = UserFactory(superuser=True)
     inline = inline_class(course_progress_admin.model, admin.site)
@@ -274,8 +294,11 @@ def test_the_item_inlines_deny_change(
     "inline_class", [CourseProgressTopicInline, CourseProgressFormAttemptInline]
 )
 def test_the_item_inlines_deny_delete(
-    rf, mock_site_context, course_progress_admin, inline_class
-):
+    rf: RequestFactory,
+    mock_site_context: Site,
+    course_progress_admin: admin.ModelAdmin,
+    inline_class: type[CourseProgressItemInline],
+) -> None:
     request = rf.get("/")
     request.user = UserFactory(superuser=True)
     inline = inline_class(course_progress_admin.model, admin.site)
@@ -296,8 +319,11 @@ def test_the_item_inlines_deny_delete(
     ],
 )
 def test_the_changelist_filters_to_the_chosen_topic_course_or_form(
-    superuser_client, model_name, lookup, chosen
-):
+    superuser_client: Client,
+    model_name: str,
+    lookup: str,
+    chosen: Callable[[Model], object],
+) -> None:
     wanted = PROGRESS_FACTORIES[model_name]()
     PROGRESS_FACTORIES[model_name]()
 
@@ -318,8 +344,8 @@ def test_the_changelist_filters_to_the_chosen_topic_course_or_form(
     ],
 )
 def test_search_by_email_finds_only_that_learners_rows(
-    superuser_client, model_name, learner_of
-):
+    superuser_client: Client, model_name: str, learner_of: Callable[[Model], Learner]
+) -> None:
     wanted = PROGRESS_FACTORIES[model_name]()
     PROGRESS_FACTORIES[model_name]()
 
@@ -339,8 +365,8 @@ def test_search_by_email_finds_only_that_learners_rows(
     ],
 )
 def test_the_changelist_refuses_a_learner_filter(
-    superuser_client, progress_rows, model_name, lookup
-):
+    superuser_client: Client, progress_rows: None, model_name: str, lookup: str
+) -> None:
     response = superuser_client.get(
         _progress_url(model_name, "changelist"), {lookup: "1"}
     )

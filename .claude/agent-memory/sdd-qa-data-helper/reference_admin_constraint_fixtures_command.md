@@ -1,6 +1,6 @@
 ---
 name: reference-admin-constraint-fixtures-command
-description: qa_create_admin_constraint_fixtures — webhook endpoints/secrets, CourseInterest, second-org Learner and per-org cohorts for the uniqueness-constraint admin QA pass; the WebhookSecret name regex trap
+description: qa_create_admin_constraint_fixtures — webhook endpoints/secrets and CourseInterest for the uniqueness-constraint admin QA pass; the WebhookSecret name regex trap
 metadata:
   type: reference
 ---
@@ -23,9 +23,9 @@ admin and watch the constraint fire".
 | `WebhookEndpoint https://example.invalid/hooks/one` | templated (POST/json, `auth_type="none"`) |
 | `WebhookEndpoint https://example.invalid/hooks/two` | plain, `auth_type="signing"` |
 | `CourseInterest demodev_s2 -> standard-markdown-demo-finance` | `unique_course_interest` |
-| `Learner demodev_s2 @ RPAS Training` | `unique_learner_per_organisation` |
-| `Cohort "QA Org Scope Cohort"` in RPAS Training | `unique_cohort_name_per_organisation` |
-| `Cohort "QA Northside Cohort"` in Northside | gives a 2nd non-default org a cohort |
+
+It no longer seeds a second-organisation `Learner` or per-organisation cohorts: their admins
+were removed, so there is no admin add form to duplicate them in.
 
 Deliberately creates **no** `WebhookDelivery` — those come from the admin "Send Test" action.
 

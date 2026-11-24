@@ -40,6 +40,7 @@ from freedom_ls.deadlines.resolver import (
     ResolvedDeadline,
     course_deadlines,
 )
+from freedom_ls.learner_management.models import CohortCourseRegistration
 from freedom_ls.learner_progress.admin import CourseProgressAdmin
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.site_aware_models.admin import ReadOnlyInline, SiteAwareModelAdmin
@@ -428,6 +429,22 @@ class CohortDeadlineConfigAdmin(_DeadlineConfigAdmin):
 class CohortCourseRegistrationDeadlineConfigAdmin(_DeadlineConfigAdmin):
     list_select_related = ["cohort_registration__cohort", "cohort_registration__course"]
     search_fields = ["cohort_registration__cohort__name"]
+
+    def formfield_for_foreignkey(
+        self,
+        db_field: models.ForeignKey,
+        request: HttpRequest,
+        **kwargs: object,
+    ) -> forms.ModelChoiceField | None:
+        # Each option's label names the cohort and the course.
+        if db_field.name == "cohort_registration":
+            kwargs["queryset"] = CohortCourseRegistration.objects.select_related(
+                "cohort", "course"
+            )
+        field: forms.ModelChoiceField | None = super().formfield_for_foreignkey(
+            db_field, request, **kwargs
+        )
+        return field
 
 
 @admin.register(LearnerCourseRegistrationDeadlineConfig)
