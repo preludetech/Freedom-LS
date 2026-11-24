@@ -7,14 +7,19 @@ import pytest
 from django.test import override_settings
 from django.utils.safestring import SafeString
 
-from freedom_ls.content_engine.factories import ArticleFactory, TopicFactory
-from freedom_ls.content_engine.models import ArticleVisibility
+from freedom_ls.content_engine.factories import (
+    ArticleFactory,
+    FileFactory,
+    TopicFactory,
+)
+from freedom_ls.content_engine.models import Article, ArticleVisibility, File, Topic
 from freedom_ls.content_engine.templatetags.content_tags import (
     admonition_config,
     admonition_icon,
     clip_time,
     clip_value_text,
     get_content_by_path,
+    get_file_by_path,
     get_published_article_by_path,
     respelling_parts,
     spoken_duration,
@@ -23,6 +28,7 @@ from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import Form
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
 from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.retire import retire
 
 # Tests for template tags in content_tags.py.
 #
@@ -294,10 +300,81 @@ class TestGetContentByPath:
 
         assert get_content_by_path("../3. quiz/form.md", source) == expected
 
+    def test_retired_topic_is_not_found(self, mock_site_context) -> None:
+        source = TopicFactory(file_path="2. topic/content.md")
+        retired_topic: Topic = TopicFactory(file_path="4. topic/content.md")
+        retire(retired_topic)
+
+        assert get_content_by_path("../4. topic/content.md", source) is None
+
+    def test_retired_form_is_not_found(self, mock_site_context) -> None:
+        source = TopicFactory(file_path="2. topic/content.md")
+        retired_form: Form = FormFactory(file_path="3. quiz/form.md")
+        retire(retired_form)
+
+        assert get_content_by_path("../3. quiz/form.md", source) is None
+
+    def test_live_topic_is_found_beside_a_retired_form_at_another_path(
+        self, mock_site_context
+    ) -> None:
+        source = TopicFactory(file_path="2. topic/content.md")
+        target = TopicFactory(file_path="4. topic/content.md")
+        retired_form: Form = FormFactory(file_path="3. quiz/form.md")
+        retire(retired_form)
+
+        assert get_content_by_path("../4. topic/content.md", source) == target
+
+
+@pytest.mark.django_db
+class TestGetFileByPath:
+    def test_live_file_is_returned(self, mock_site_context) -> None:
+        source = TopicFactory(file_path="2. topic/content.md")
+        target = FileFactory(file_path="images/cat.png")
+
+        assert get_file_by_path("../images/cat.png", source) == target
+
+    def test_retired_file_is_not_found(self, mock_site_context) -> None:
+        source = TopicFactory(file_path="2. topic/content.md")
+        retired_file: File = FileFactory(file_path="images/cat.png")
+        retire(retired_file)
+
+        assert get_file_by_path("../images/cat.png", source) is None
+
+    def test_image_embed_of_a_retired_file_renders_as_a_missing_file(
+        self, mock_site_context
+    ) -> None:
+        retired_file: File = FileFactory(file_path="2. topic/cat.png")
+        retire(retired_file)
+        source = TopicFactory(
+            file_path="2. topic/content.md",
+            content='<c-picture src="cat.png" alt="A cat" />',
+        )
+
+        html = source.rendered_content()
+
+        assert "Image not found" in html
+
 
 @pytest.mark.django_db
 class TestContentLinkComponent:
     """c-content-link, rendered through a topic's markdown."""
+
+    @pytest.mark.parametrize("target_factory", [TopicFactory, FormFactory])
+    def test_a_link_to_a_retired_target_renders_as_unresolved(
+        self, mock_site_context, target_factory
+    ) -> None:
+        retire(target_factory(file_path="1. welcome/content.md"))
+        source = TopicFactory(
+            file_path="2. reading/content.md",
+            content=(
+                '<c-content-link path="../1. welcome/content.md">'
+                "the Welcome topic</c-content-link>"
+            ),
+        )
+
+        html = source.rendered_content()
+
+        assert "text-error" in html
 
     def test_a_link_to_an_existing_topic_renders_its_text(
         self, mock_site_context
@@ -340,6 +417,13 @@ class TestGetPublishedArticleByPath:
         ArticleFactory(
             file_path="articles/target.md", visibility=ArticleVisibility.HIDDEN
         )
+
+        assert get_published_article_by_path("../articles/target.md", source) is None
+
+    def test_retired_target_returns_none(self, mock_site_context) -> None:
+        source = TopicFactory(file_path="2. topic/content.md")
+        retired_article: Article = ArticleFactory(file_path="articles/target.md")
+        retire(retired_article)
 
         assert get_published_article_by_path("../articles/target.md", source) is None
 

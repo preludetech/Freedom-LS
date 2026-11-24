@@ -12,6 +12,7 @@ from django.urls import reverse
 from freedom_ls.content_engine.factories import FileFactory
 from freedom_ls.content_engine.models import File
 from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.retire import retire
 from freedom_ls.tests.site_context import site_context
 
 pytestmark = pytest.mark.django_db
@@ -102,3 +103,12 @@ class TestAudioFile:
         response = client.post(_audio_url(file_obj))
 
         assert response.status_code == 405
+
+    def test_retired_audio_file_is_not_found(
+        self, mock_site_context: object, client: Client
+    ) -> None:
+        file_obj = retire(_audio_file())
+
+        response = client.get(_audio_url(file_obj))
+
+        assert response.status_code == 404

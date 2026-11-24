@@ -14,6 +14,7 @@ from django.urls import reverse
 from freedom_ls.content_engine.factories import ArticleFactory
 from freedom_ls.content_engine.models import Article, ArticleVisibility
 from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.retire import retire
 
 
 def _without_csrf_token(content: bytes) -> str:
@@ -647,3 +648,32 @@ def test_changed_prefix_moves_index_sitemap_and_robots_together(
     assert "/news/moved-one/</loc>" in body
     assert article.get_absolute_url().startswith("/news/")
     assert "Allow: /news/" in robots
+
+
+@pytest.mark.django_db
+def test_index_omits_a_retired_published_article(client, mock_site_context):
+    # Arrange
+    ArticleFactory(title="Still here")
+    gone: Article = ArticleFactory(title="Gone from source")
+    retire(gone)
+
+    # Act
+    response = client.get(reverse("blog:index"))
+
+    # Assert
+    body = response.content.decode()
+    assert "Still here" in body
+    assert "Gone from source" not in body
+
+
+@pytest.mark.django_db
+def test_detail_of_a_retired_published_article_is_not_found(client, mock_site_context):
+    # Arrange
+    article: Article = ArticleFactory()
+    retire(article)
+
+    # Act
+    response = client.get(reverse("blog:article_detail", kwargs={"slug": article.slug}))
+
+    # Assert
+    assert response.status_code == 404

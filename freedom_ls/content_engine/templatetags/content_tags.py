@@ -150,12 +150,12 @@ def get_file_by_path(file_path, content_instance):
     final_path = content_instance.calculate_path_from_root(file_path)
 
     try:
-        return File.objects.get(file_path=final_path)
+        return File.objects.not_retired().get(file_path=final_path)
     except File.DoesNotExist:
         return None
     except File.MultipleObjectsReturned:
         # In case of duplicates, return the first one
-        return File.objects.filter(file_path=final_path).first()
+        return File.objects.not_retired().filter(file_path=final_path).first()
 
 
 @register.simple_tag(takes_context=True)
@@ -202,19 +202,19 @@ def get_content_by_path(file_path, content_instance):
 
     # Try to find as Topic first
     try:
-        return Topic.objects.get(file_path=final_path)
+        return Topic.objects.not_retired().get(file_path=final_path)
     except Topic.DoesNotExist:
         pass
     except Topic.MultipleObjectsReturned:
-        return Topic.objects.filter(file_path=final_path).first()
+        return Topic.objects.not_retired().filter(file_path=final_path).first()
 
     # Try to find as Form
     try:
-        return Form.objects.get(file_path=final_path)
+        return Form.objects.not_retired().get(file_path=final_path)
     except Form.DoesNotExist:
         pass
     except Form.MultipleObjectsReturned:
-        return Form.objects.filter(file_path=final_path).first()
+        return Form.objects.not_retired().filter(file_path=final_path).first()
 
     return None
 
@@ -239,6 +239,7 @@ def get_published_article_by_path(
         ArticleQuerySet(model=Article)
         .filter(site_id=content_instance.site_id, file_path=final_path)
         .published()
+        .not_retired()
         .first()
     )
 

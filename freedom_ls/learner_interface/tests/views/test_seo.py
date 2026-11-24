@@ -13,8 +13,9 @@ from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import CourseVisibility
+from freedom_ls.content_engine.factories import ArticleFactory, CourseFactory
+from freedom_ls.content_engine.models import Article, CourseVisibility
+from freedom_ls.tests.retire import retire
 
 # Tests for basic SEO / discoverability.
 #
@@ -424,6 +425,29 @@ def test_sitemap_contains_course_detail_url(mock_site_context, course_with_topic
     course_with_topic(slug="sitemap-test-course")
     response = Client().get("/sitemap.xml")
     assert "sitemap-test-course" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_sitemap_excludes_a_retired_course(mock_site_context, course_with_topic):
+    course_with_topic(slug="live-course")
+    retire(course_with_topic(slug="retired-course"))
+
+    content = Client().get("/sitemap.xml").content.decode()
+
+    assert "live-course" in content
+    assert "retired-course" not in content
+
+
+@pytest.mark.django_db
+def test_sitemap_excludes_a_retired_article(mock_site_context):
+    ArticleFactory(slug="live-article")
+    retired_article: Article = ArticleFactory(slug="retired-article")
+    retire(retired_article)
+
+    content = Client().get("/sitemap.xml").content.decode()
+
+    assert "live-article" in content
+    assert "retired-article" not in content
 
 
 @pytest.mark.django_db

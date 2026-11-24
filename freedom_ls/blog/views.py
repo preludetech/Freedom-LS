@@ -6,7 +6,7 @@ from freedom_ls.content_engine.models import Article
 
 
 def article_detail(request: HttpRequest, slug: str) -> HttpResponse:
-    article = get_object_or_404(Article.objects.published(), slug=slug)
+    article = get_object_or_404(Article.objects.published().not_retired(), slug=slug)
     meta_description = article.description or article.subtitle or article.title
     image_file = article.image_file
     # Crawlers fetch og:image with no page to resolve a relative path against.
@@ -25,7 +25,7 @@ def article_detail(request: HttpRequest, slug: str) -> HttpResponse:
 
 
 def article_list(request: HttpRequest) -> HttpResponse:
-    articles = Article.objects.published().with_image_files()
+    articles = Article.objects.published().not_retired().with_image_files()
     return render(
         request,
         "blog/article_list.html",

@@ -46,7 +46,7 @@ class CourseSitemap(Sitemap):
     def items(self) -> QuerySet[Course]:
         return get_course_access_backend().filter_visible(
             user=AnonymousUser(),
-            courses=Course.objects.all().order_by("slug"),
+            courses=Course.objects.not_retired().order_by("slug"),
         )
 
     def location(self, obj: Course) -> str:
@@ -70,7 +70,7 @@ class ArticleSitemap(Sitemap):
     """Sitemap entries for published articles of the current site."""
 
     def items(self) -> QuerySet[Article]:
-        return Article.objects.published()
+        return Article.objects.published().not_retired()
 
     def location(self, obj: Article) -> str:
         return obj.get_absolute_url()
