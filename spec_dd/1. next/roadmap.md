@@ -15,7 +15,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` (SACAA record retention and declarations)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-2-retire-removed-content` (SACAA content versions and access)
 - 🟠 Medium · `educator-interface-refactor-7-cleanup` (Educator interface code layout)
-- 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
 - 🟡 Low · `educator-intercface-small-ui-polish` (Educator interface)
 - 🟡 Low · `remove-unnecessary-admin-panel-functionality` (Educator interface)
 
@@ -27,6 +26,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `multi-step-course-applications-2-reviewers-and-inbox` (Multi-step course applications)
 - 🔴 High · `multi-step-course-applications-4-reopen-form` (Multi-step course applications)
 - 🟠 Medium · `content-widget-sayit-reveal-4-audio-access-control` (Audio content widgets)
+- 🟠 Medium · `learner-interface-features-4-flashcards` (Learner interface features, via `content-widget-sayit-reveal`)
 - 🟠 Medium · `deadlines-4-learner-self-pause` (Deadlines)
 - 🟠 Medium · `deadlines-5-reminders` (Deadlines)
 - 🟠 Medium · `deadlines-6-educator-management` (Deadlines)
@@ -58,6 +58,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🟡 Low · `dev-site-bootstrap-command` (Tooling and operations)
 - 🟡 Low · `forced-site-name-for-host-based-site-lookup` (Tooling and operations)
 - 🟡 Low · `from-address-system-check` (Tooling and operations)
+- ⚪ Priority not set · `educator-revision-analytics` (Learner interface features)
 - ⚪ Priority not set · `learner-interface-features-2-test-out` (Learner interface features)
 - ⚪ Priority not set · `learner-interface-features-5-protected-video` (Learner interface features)
 - ⚪ Priority not set · `housekeeping-sentry-cron-checkin` (Tooling and operations)
@@ -230,10 +231,9 @@ Priority: 🟠 Medium
 Test out of sections, revise with spaced repetition and flashcards, and watch access-controlled video. Parent: `learner-interface-features`.
 
 - `learner-interface-features-2-test-out` — **ready** — Learners take a pretest and skip sections they already know; the skip is recorded as its own kind of completion.
-- `learner-interface-features-3-revision-questions` — **in progress** — Learners revise questions from finished sections, scheduled by spaced repetition, with explanations and weak sections highlighted.
-- `learner-interface-features-4-flashcards` — **blocked** by `learner-interface-features-3-revision-questions` — Authors add flashcards to sections; learners rate their confidence and the revision schedule brings them back.
+- `learner-interface-features-4-flashcards` — **ready** — Authors add flashcards to sections; learners rate their confidence and the revision schedule brings them back.
 - `learner-interface-features-5-protected-video` — **ready** — Course content embeds video that only learners with access to the course can play; shared links stop working.
-- `educator-revision-analytics` — **blocked** by `learner-interface-features-3-revision-questions` — Educators see the revision questions learners miss most, per-option answer counts and each learner's weak sections.
+- `educator-revision-analytics` — **ready** — Educators see the revision questions learners miss most, per-option answer counts and each learner's weak sections.
 
 ![Learner interface features](roadmap_diagrams/learner-interface-features.svg)
 

@@ -9,7 +9,6 @@ adds anything missing under "Priority not set"; move it from there to the level 
 
 - `reference-material-content`
 - `sacaa-complianc-deletion-and-declaration`
-- `sacaa-compliance`
 - `sacaa-compliance-content-versions-and-access`
 - `extract_panels_framework`
 - `learner-public-profile`
