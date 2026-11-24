@@ -37,7 +37,7 @@
                                     {% partialdef attempt_number %}
                                         {% if attempt.form_progress_id in openable_sitting_ids %}
                                             {% resolve_url_path_template attempt 'educator_interface:interface' 'quiz-attempts/{form_progress_id}' as attempt_url %}
-                                            <c-quick-view-trigger href="{{ attempt_url }}" url="{{ attempt_url }}/__quick-view" class="font-semibold text-primary no-underline hover:text-primary-hover" aria-label="Attempt {{ attempt.attempt_number }} of {{ quiz.title }}">{{ attempt.attempt_number }}</c-quick-view-trigger>
+                                            <c-quick-view-trigger href="{{ attempt_url }}" url="{{ attempt_url }}/__quick-view" class="font-semibold text-primary no-underline hover:text-primary-hover max-md:inline-flex max-md:min-h-11 max-md:min-w-11 max-md:items-center max-md:justify-center" aria-label="Attempt {{ attempt.attempt_number }} of {{ quiz.title }}">{{ attempt.attempt_number }}</c-quick-view-trigger>
                                         {% else %}
                                             {{ attempt.attempt_number }}
                                         {% endif %}

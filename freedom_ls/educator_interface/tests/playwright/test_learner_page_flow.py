@@ -239,6 +239,12 @@ def test_an_attempt_opens_from_the_courses_tab_to_its_paper_and_back(
 
     page.set_viewport_size(QA_VIEWPORTS[0])
     assert_no_horizontal_overflow(page)
+    # The attempt number was an inline digit about 9x22px: too small to tap.
+    box = attempt_link.bounding_box()
+    assert box is not None
+    size = f"{box['width']}x{box['height']}"
+    assert box["width"] >= 44, f"attempt number trigger is {size} on a phone"
+    assert box["height"] >= 44, f"attempt number trigger is {size} on a phone"
     page.set_viewport_size({"width": 1280, "height": 800})
 
     quick_view.get_by_role("link", name="Open full review").click()
