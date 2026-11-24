@@ -389,6 +389,9 @@ panel with framework actions that call the other app's forms and flows.
   device-back.
 - `#quick-view` opens with `show()` at every width, never `showModal()`: no scrim, no inert page,
   the list behind it stays tappable. `#app-modal` is the modal; it dims and blocks the page.
+- The quick view header's "Open full page" icon (`#quick-view-open`, its href taken from the
+  trigger) is the quick view's one link to the record's full page. A `QuickView` template's body
+  carries no link of its own to that page.
 - A preview opens in `#app-modal` at the wide size, titled "<title> (Preview)" with its type
   chip. The title says it is a preview, so no callout does.
 - `#app-modal` has one wide size, for previews only; no other dialog widens. A fragment opts
@@ -657,7 +660,8 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
   below.
 - A sheet on a phone has rounded top corners and a header with a close control. The shell side
   panel has no header and no close control, and closes by a backdrop tap or Esc. A quick view
-  leaves the page behind it undimmed and tappable, a modal dims it.
+  leaves the page behind it undimmed and tappable, a modal dims it. A quick view has one link to
+  the record's full page, the header's "Open full page" icon, and none in its body.
 - A dialog, sheet, table or selection bar (More menu included) stays inside the viewport at every
   width, title and every button included. A table with action columns is cards at 768 and beside
   an open quick view, with no button cut off or behind a sideways scroll. In a table that scrolls
