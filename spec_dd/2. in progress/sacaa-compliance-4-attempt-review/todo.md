@@ -18,10 +18,11 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
 - [ ] (user) Decide whether educators need their own route to download a learner's file-upload answer on the attempt review: the Paper panel reuses form_engine/inputs/file_upload.html, whose Download button points at own_question_answer_file, which appears to serve the file owner only, so the link may fail for an educator (no test covers it); if so, add an educator-side file route and a test
+- [ ] (user) Decide whether the quiz attempt quick view keeps both links to the attempt review page (the quick-view chrome's standard 'Open full page' icon and the body's 'Open full review' link), drops the body link, or hides the chrome link for this section, then make that change test first (QA bug B4 in qa_report.md)
 
 ## 4. Documentation and pull request
 
