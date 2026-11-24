@@ -1271,3 +1271,17 @@ def test_question_number_skips_a_retired_question_and_a_retired_page(
     wanted = FormQuestionFactory(form_page=page, order=1)
 
     assert FormQuestion.objects.get(pk=wanted.pk).question_number() == 1
+
+
+@pytest.mark.django_db
+def test_question_number_of_a_retired_question_counts_every_question_before_it(
+    mock_site_context: object,
+) -> None:
+    form: Form = FormFactory()
+    retired_page = retire(cast("FormPage", FormPageFactory(form=form, order=0)))
+    FormQuestionFactory(form_page=retired_page, order=0)
+    page = FormPageFactory(form=form, order=1)
+    FormQuestionFactory(form_page=page, order=0)
+    gone = retire(cast("FormQuestion", FormQuestionFactory(form_page=page, order=1)))
+
+    assert FormQuestion.objects.get(pk=gone.pk).question_number() == 3

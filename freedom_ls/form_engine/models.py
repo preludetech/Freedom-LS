@@ -339,19 +339,25 @@ class FormQuestion(BaseContent):
         # No request, for the reason rendered_question gives.
         return render_markdown(self.explanation, None)
 
-    def question_number(self):
+    def question_number(self) -> int | None:
         """
         Return 1 for the first question in the Form, 2 for the second etc. Note that this might not be the same as the order attribute because form pages contain more than just questions.
-        Retired questions and pages are not counted, matching what a new sitting is served.
+        A live question is numbered among the live ones, retired questions and pages
+        not counted, matching what a new sitting is served. A retired question,
+        still shown to a sitting served it and in the educator preview, is
+        numbered among every question the form holds, so it always has a number.
         """
         form = self.form_page.form
+        # A question on a retired page is no more served than a retired one.
+        whole_tree = self.is_retired or self.form_page.is_retired
+        pages = list(form.pages.all()) if whole_tree else live_pages(form)
         question_count = 0
 
         # Iterate through all pages in order
-        for page in live_pages(form):
+        for page in pages:
             # Get all questions on this page in order
             for question in page.questions.all():
-                if question.is_retired:
+                if question.is_retired and not whole_tree:
                     continue
                 question_count += 1
                 if question.pk == self.pk:
