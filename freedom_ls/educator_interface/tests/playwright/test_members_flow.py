@@ -111,7 +111,12 @@ def test_add_change_and_remove_a_cohort_admin_refreshes_the_list(
     expect(row.get_by_text("Cohort admin")).to_have_count(0)
 
     main.get_by_role("button", name="Add staff member", exact=True).first.click()
-    modal.get_by_role("combobox", name="Email address").fill("second@example.com")
+    combobox = modal.get_by_role("combobox", name="Email address")
+    # Alpine copies the typed address into the submitted email field, so wait
+    # until it has bound the combobox before typing.
+    expect(combobox).to_have_attribute("aria-expanded", "false")
+    combobox.fill("second@example.com")
+    expect(modal.locator("input[name='email']")).to_have_value("second@example.com")
     modal.get_by_role("button", name="Next", exact=True).click()
     modal.get_by_text("No roles yet", exact=True).click()
     modal.get_by_role("button", name="Next", exact=True).click()

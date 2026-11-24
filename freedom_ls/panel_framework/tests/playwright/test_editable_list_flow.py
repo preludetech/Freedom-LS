@@ -6,6 +6,7 @@ The stub views have no authentication, so the flow needs no login.
 from __future__ import annotations
 
 import re
+import time
 
 import pytest
 import pytest_django.live_server_helper
@@ -255,12 +256,15 @@ def _check_slow_refresh_from_add_another(
     modal = page.locator("#app-modal")
     panel = page.locator("[data-panel='entries_add_another']")
     announcer = page.locator("#scope-announcer")
+    claimed: list[Route] = []
     held: list[tuple[Route, APIResponse]] = []
 
     def hold_first_panel_refresh(route: Route) -> None:
-        if route.request.headers.get("hx-request") != "true" or held:
+        if route.request.headers.get("hx-request") != "true" or claimed:
             route.continue_()
             return
+        # Claimed before the fetch, so a request arriving mid-fetch is not held too.
+        claimed.append(route)
         # Answered now, so it holds the list as it was, and handed back later.
         held.append((route, route.fetch()))
 
@@ -276,6 +280,11 @@ def _check_slow_refresh_from_add_another(
     modal.get_by_label("Title").fill("Beta")
     modal.get_by_role("button", name="Add", exact=True).click()
     expect(modal).to_be_hidden()
+    # The route handler runs between Playwright calls, and its fetch can still
+    # be in flight once the dialog has closed, so give it time to finish.
+    deadline = time.monotonic() + 5
+    while not held and time.monotonic() < deadline:
+        page.wait_for_timeout(50)
     assert len(held) == 1, "the first list refresh was not held"
 
     # htmx queues the plain Add's refresh behind the held one, so it runs
