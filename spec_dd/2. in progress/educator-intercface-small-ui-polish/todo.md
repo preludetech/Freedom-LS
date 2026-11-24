@@ -17,11 +17,12 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
-- [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
+- [x] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
+- [ ] (user) Decide whether the cohort Learners tab's Remove button should change from the red `error` variant to `secondary`: the panel-framework rule says a table row's or card's buttons are `secondary`, never `error`, but `freedom_ls/educator_interface/templates/educator_interface/data-table-cells/membership_actions.html` draws Remove red (pre-existing on main, seen at 375px in `screenshots/fixed/page-2026-11-24T12-32-47-605Z.png`)
 - [ ] (user) Review the code and the QA report
-- [ ] (user) Decide whether the First Class button labels still need a fix: the measured test (`freedom_ls/educator_interface/tests/playwright/test_touch_targets.py`) found every label within 0.5px of centre in Chromium on Linux with DM Sans 4.004 and the fallback font, so no CSS changed. If you still see off-centre labels, note the browser and OS and run `/sdd:qa_fix` to apply the plan's `text-box: trim-both cap alphabetic` fix against that test; otherwise close this item
-- [ ] (user) Check the DM Sans test fixture licence: `freedom_ls/base/tests/fonts/OFL.txt` was assembled from the copyright and OFL 1.1 declaration in the font's own name table plus the standard OFL 1.1 text; keep it, or replace it with the upstream DM Sans OFL.txt
-- [ ] (user) Decide what to do about QA bug: card row buttons sit in the value column instead of at the card title's left edge on narrow-width data-table cards (course page registration panels and cohort Courses tab; see qa_report.md B1; one fix attempt was reverted because the moved footer rendered no buttons) (TDD: failing test first, then fix)
+- [x] (user) Decide whether the First Class button labels still need a fix: the measured test (`freedom_ls/educator_interface/tests/playwright/test_touch_targets.py`) found every label within 0.5px of centre in Chromium on Linux with DM Sans 4.004 and the fallback font, so no CSS changed. If you still see off-centre labels, note the browser and OS and run `/sdd:qa_fix` to apply the plan's `text-box: trim-both cap alphabetic` fix against that test; otherwise close this item
+- [x] (user) Check the DM Sans test fixture licence: `freedom_ls/base/tests/fonts/OFL.txt` was assembled from the copyright and OFL 1.1 declaration in the font's own name table plus the standard OFL 1.1 text; keep it, or replace it with the upstream DM Sans OFL.txt
+- [x] (user) Decide what to do about QA bug: card row buttons sit in the value column instead of at the card title's left edge on narrow-width data-table cards (course page registration panels and cohort Courses tab; see qa_report.md B1; one fix attempt was reverted because the moved footer rendered no buttons) (TDD: failing test first, then fix)
 
 ## 4. Documentation and pull request
 

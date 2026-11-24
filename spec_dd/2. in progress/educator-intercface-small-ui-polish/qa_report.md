@@ -100,7 +100,7 @@ Actual: on narrow widths, the course page's Cohort registrations card (Deactivat
 
 | Bug | Title | Status |
 |---|---|---|
-| B1 | Card row buttons sit in the value column instead of at the card title's left edge | **UNRESOLVED** (reason: the one fix attempt, 3a19e5fee, moved header-less columns into a card footer but the footer rendered no buttons at 375px, so every card lost its Deactivate; reverted in 964c0d9bc) |
+| B1 | Card row buttons sit in the value column instead of at the card title's left edge | **FIXED** (commit: a7be7fda7) — Card row buttons sit in the value column instead of at the card title's left edge — after the fix: ![](screenshots/fixed/page-2026-11-24T12-32-19-511Z.png) ![](screenshots/fixed/page-2026-11-24T12-32-35-609Z.png) ![](screenshots/fixed/page-2026-11-24T12-32-47-605Z.png) |
 
 ## General notes
 
@@ -111,4 +111,4 @@ Actual: on narrow widths, the course page's Cohort registrations card (Deactivat
 - The scratch file records the mobile layout probe for test 1 as clean even though B1 was found on the same screenshot. B1 is a visual-checklist finding, not a layout flag.
 - The QA scenario command `qa_create_educator_small_polish_scenario.py` and the `screenshots/` folder are currently untracked in git.
 
-status: ok · reason: 1 bug — 0 fixed, 1 unresolved; report rendered, screenshots verified
+status: ok · reason: 1 bug — 1 fixed, 0 unresolved; report rendered, screenshots verified
