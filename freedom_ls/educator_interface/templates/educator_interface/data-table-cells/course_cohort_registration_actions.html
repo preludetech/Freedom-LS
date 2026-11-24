@@ -1,0 +1,10 @@
+{% comment %}
+Row actions on a course's Cohort registrations panel. row_action_urls lists an
+action only while the educator may use it somewhere in the organisation;
+registration_row_ids narrows that to the active cohorts they may act on.
+{% endcomment %}
+<c-data-table-actions>
+    {% if object.is_active and object.cohort_id in registration_row_ids and row_action_urls.deactivate_cohort_registration %}
+        <c-modal-trigger url="{{ row_action_urls.deactivate_cohort_registration }}?registration={{ object.pk }}" label="Deactivate" aria_label="Deactivate {{ object.cohort.name }}" variant="secondary" size="small" />
+    {% endif %}
+</c-data-table-actions>

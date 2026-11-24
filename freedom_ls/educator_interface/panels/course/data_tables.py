@@ -174,6 +174,11 @@ class CourseCohortRegistrationDataTable(DataTable):
             ),
             _active_status_column("Cohort status", "cohort.is_active"),
             *_registration_columns(),
+            Column(
+                header="",
+                template_name="educator_interface/data-table-cells/course_cohort_registration_actions.html",
+                card="secondary",
+            ),
         ]
 
 

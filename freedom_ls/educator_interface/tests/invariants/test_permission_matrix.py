@@ -28,10 +28,20 @@ from guardian.shortcuts import get_perms
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
 from django.db.models import Model
+from django.http import Http404
+from django.test import RequestFactory
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
+from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.educator_interface.learner_import import check_import_gate
+from freedom_ls.educator_interface.panels.common.request import (
+    OrganisationScopedRequest,
+)
+from freedom_ls.educator_interface.panels.course.actions import (
+    DeactivateCourseCohortRegistrationAction,
+)
+from freedom_ls.educator_interface.panels.course.config import CourseConfig
 from freedom_ls.educator_interface.tests.interface_walk import (
     WalkedAction,
     WalkedBulkAction,
@@ -39,17 +49,24 @@ from freedom_ls.educator_interface.tests.interface_walk import (
 )
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import Cohort, Learner, StaffMember
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    Learner,
+    StaffMember,
+)
 from freedom_ls.learner_management.queries import (
     cohorts_visible_to,
     learners_visible_to,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
+from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
 from freedom_ls.role_based_permissions.roles import BASE_ROLES
 from freedom_ls.role_based_permissions.utils import assign_object_role, assign_site_role
@@ -1035,6 +1052,61 @@ def test_cohort_admin_holds_add_cohortmembership_on_another_cohort_only_with_a_g
     assign_object_role(user, other_cohort, "cohort_admin")
 
     assert can(user, ADD_COHORTMEMBERSHIP, other_cohort) is True
+
+
+def _course_deactivation_offered(
+    world: World, user: User, registration: CohortCourseRegistration
+) -> bool:
+    """Whether the course page's Deactivate action reaches `registration` for
+    `user`: the permission check passes and the row resolves in its scope."""
+    organisation = cast(Organisation, world.scopes[("organisation", OWN)])
+    request = cast(
+        OrganisationScopedRequest,
+        RequestFactory().get("/x", {"registration": str(registration.pk)}),
+    )
+    request.user = user
+    request.organisation = organisation
+    ctx = PanelContext(
+        request=request,
+        instance=registration.course,
+        base_url="/x",
+        name="cohorts",
+        config=CourseConfig,
+    )
+    action = DeactivateCourseCohortRegistrationAction()
+    try:
+        return action.has_permission(ctx)
+    except Http404:
+        return False
+
+
+@pytest.mark.django_db
+def test_the_course_page_deactivation_follows_the_registrations_own_cohort(
+    mock_site_context: Site,
+) -> None:
+    world = _build_world(mock_site_context)
+    course = CourseFactory()
+    walk = _Walk("the course page's Deactivate action")
+    for relation in (OWN, OTHER_COHORT):
+        cohort = cast(Cohort, world.scopes[("cohort", relation)])
+        registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
+        for role in ROLES:
+            allowed = ("cohort", relation) in MATRIX[CHANGE_COHORTCOURSEREGISTRATION][
+                role
+            ]
+            walk.check(
+                lambda allowed=allowed: allowed,
+                partial(
+                    _course_deactivation_offered,
+                    world,
+                    cast(User, world.users[role]),
+                    registration,
+                ),
+                role=role,
+                relation=relation,
+            )
+
+    walk.report()
 
 
 def _organisation_gate_expected(role: str) -> bool:
