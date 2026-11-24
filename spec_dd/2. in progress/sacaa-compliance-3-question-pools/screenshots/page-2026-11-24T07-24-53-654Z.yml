@@ -1,0 +1,285 @@
+- generic [active] [ref=f5e1]:
+  - banner [ref=f5e2]:
+    - link [ref=f5e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f5e4]
+      - heading "FirstClass" [level=1] [ref=f5e5]
+    - navigation [ref=f5e6]:
+      - generic [ref=f5e7]:
+        - generic [ref=f5e8]:
+          - button "Notifications, none new" [ref=f5e9]
+          - status:
+            - generic [ref=f5e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f5e15] [cursor=pointer]:
+          - generic [ref=f5e16]:
+            - generic [ref=f5e17]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f5e18]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f5e19]:
+    - generic [ref=f5e21]:
+      - dialog "Navigation" [ref=f5e22]:
+        - generic [ref=f5e24]:
+          - generic [ref=f5e25]:
+            - paragraph [ref=f5e26]: Organisation
+            - button "Switch organisation" [ref=f5e28] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f5e29]: D
+              - generic "DemoDev" [ref=f5e30]
+          - navigation "Sections" [ref=f5e33]:
+            - heading "Teaching" [level=2] [ref=f5e34]
+            - list [ref=f5e35]:
+              - listitem [ref=f5e36]:
+                - link "Dashboard" [ref=f5e37] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/dashboard
+              - listitem [ref=f5e42]:
+                - link "Cohorts" [ref=f5e43] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+              - listitem [ref=f5e48]:
+                - link "Learners" [ref=f5e49] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+              - listitem [ref=f5e54]:
+                - link "Courses" [ref=f5e55] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+            - heading "Administration" [level=2] [ref=f5e60]
+            - list [ref=f5e61]:
+              - listitem [ref=f5e62]:
+                - link "Staff" [ref=f5e63] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/staff
+              - listitem [ref=f5e68]:
+                - link "Audit log" [ref=f5e69] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/audit-log
+          - generic [ref=f5e74]:
+            - generic [ref=f5e76]:
+              - generic [aria-hidden] [ref=f5e77]: DE
+              - generic [ref=f5e78]: demodev@email.com
+            - link "Account settings" [ref=f5e80] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f5e85]:
+        - navigation "Back" [ref=f5e87]:
+          - link "Courses" [ref=f5e88] [cursor=pointer]:
+            - /url: /educator/organisations/demodev/courses
+        - generic [ref=f5e92]:
+          - heading "Functionality Demo - question pools" [level=1] [ref=f5e99]
+          - generic [ref=f5e101]:
+            - generic [ref=f5e103]:
+              - heading "Details" [level=2] [ref=f5e106]
+              - generic [ref=f5e108]:
+                - generic [ref=f5e109]:
+                  - term [ref=f5e110]: Title
+                  - definition [ref=f5e111]: Functionality Demo - question pools
+                - generic [ref=f5e112]:
+                  - term [ref=f5e113]: Subtitle
+                  - definition [ref=f5e114]: Questions drawn from a larger pool
+                - generic [ref=f5e115]:
+                  - term [ref=f5e116]: Category
+                  - definition [ref=f5e117]: Assessment
+                - generic [ref=f5e118]:
+                  - term [ref=f5e119]: Visibility
+                  - definition [ref=f5e120]: Published
+                - generic [ref=f5e121]:
+                  - term [ref=f5e122]: Lessons
+                  - definition [ref=f5e123]: "0"
+            - generic [ref=f5e125]:
+              - heading "Course content" [level=2] [ref=f5e128]
+              - generic [ref=f5e130]:
+                - region "Course outline items" [ref=f5e132]:
+                  - table [ref=f5e133]:
+                    - caption [ref=f5e134]: Course outline items
+                    - rowgroup [ref=f5e135]:
+                      - row [ref=f5e136]:
+                        - columnheader "#" [ref=f5e137]
+                        - columnheader "Title" [ref=f5e138]
+                        - columnheader "Type" [ref=f5e139]
+                        - columnheader "Actions" [ref=f5e140]
+                    - rowgroup [ref=f5e142]:
+                      - row [ref=f5e143]:
+                        - cell [ref=f5e144]
+                        - cell "Course details" [ref=f5e145]
+                        - cell "Course" [ref=f5e150]
+                        - cell [ref=f5e151]:
+                          - button "Preview course details page" [ref=f5e153] [cursor=pointer]: Preview
+                      - row [ref=f5e154]:
+                        - cell "1." [ref=f5e155]
+                        - cell "Question pool quiz Form Question pool quiz" [ref=f5e156]:
+                          - generic [ref=f5e157]:
+                            - button "Question pool quiz" [expanded] [ref=f5e158]
+                            - generic [ref=f5e162]:
+                              - generic [ref=f5e163]: Form
+                              - generic [ref=f5e167]: Question pool quiz
+                        - cell "Form" [ref=f5e168]
+                        - cell [ref=f5e169]:
+                          - button "Preview Question pool quiz" [ref=f5e171] [cursor=pointer]: Preview
+                      - row [ref=f5e172]:
+                        - cell "1.1" [ref=f5e173]
+                        - cell "Page The planets" [ref=f5e174]:
+                          - generic [ref=f5e177]:
+                            - generic [ref=f5e178]: Page
+                            - generic [ref=f5e182]: The planets
+                        - cell "Page" [ref=f5e183]
+                        - cell [ref=f5e184]:
+                          - 'button "Preview Question pool quiz: The planets" [ref=f5e186] [cursor=pointer]': Preview
+                      - row [ref=f5e187]:
+                        - cell "1.2" [ref=f5e188]
+                        - cell "Page Short passages" [ref=f5e189]:
+                          - generic [ref=f5e192]:
+                            - generic [ref=f5e193]: Page
+                            - generic [ref=f5e197]: Short passages
+                        - cell "Page" [ref=f5e198]
+                        - cell [ref=f5e199]:
+                          - 'button "Preview Question pool quiz: Short passages" [ref=f5e201] [cursor=pointer]': Preview
+                - paragraph [ref=f5e203]: 3 course outline items
+            - generic [ref=f5e205]:
+              - heading "Reference" [level=2] [ref=f5e208]
+              - region "Reference outline items" [ref=f5e212]:
+                - table [ref=f5e213]:
+                  - caption [ref=f5e214]: Reference outline items
+                  - rowgroup [ref=f5e215]:
+                    - row [ref=f5e216]:
+                      - columnheader "#" [ref=f5e217]
+                      - columnheader "Title" [ref=f5e218]
+                      - columnheader "Type" [ref=f5e219]
+                      - columnheader "Actions" [ref=f5e220]
+                  - rowgroup [ref=f5e222]:
+                    - row [ref=f5e223]:
+                      - cell [ref=f5e224]
+                      - cell [ref=f5e225]:
+                        - paragraph [ref=f5e228]: No reference material in this course yet.
+            - generic [ref=f5e230]:
+              - heading "Cohort registrations" [level=2] [ref=f5e233]
+              - region "Cohort course registrations" [ref=f5e237]:
+                - table [ref=f5e238]:
+                  - caption [ref=f5e239]: Cohort course registrations
+                  - rowgroup [ref=f5e240]:
+                    - row [ref=f5e241]:
+                      - columnheader "Cohort" [ref=f5e242]
+                      - columnheader "Cohort status" [ref=f5e243]
+                      - columnheader "Status" [ref=f5e244]
+                      - columnheader "Registered" [ref=f5e245]
+                  - rowgroup [ref=f5e246]:
+                    - row [ref=f5e247]:
+                      - cell [ref=f5e248]:
+                        - paragraph [ref=f5e250]: No cohorts are registered for this course yet. Cohort registrations will appear here.
+            - generic [ref=f5e252]:
+              - heading "Direct registrations" [level=2] [ref=f5e255]
+              - generic [ref=f5e257]:
+                - region "Learner course registrations" [ref=f5e259]:
+                  - table [ref=f5e260]:
+                    - caption [ref=f5e261]: Learner course registrations
+                    - rowgroup [ref=f5e262]:
+                      - row [ref=f5e263]:
+                        - columnheader [ref=f5e264]:
+                          - link "Learner" [ref=f5e265] [cursor=pointer]:
+                            - /url: /educator/organisations/demodev/courses/befa506c-dc1a-4333-9e55-fabb5cebd1fc?learner_registrations-sort=-learner__user__first_name
+                        - columnheader "Status" [ref=f5e269]
+                        - columnheader "Registered" [ref=f5e270]
+                    - rowgroup [ref=f5e271]:
+                      - row [ref=f5e272]:
+                        - cell [ref=f5e273]:
+                          - generic [ref=f5e274]:
+                            - link "QA qa-learner-a qa-learner-a@example.com" [ref=f5e276] [cursor=pointer]:
+                              - /url: /educator/organisations/demodev/learners/45b5eded-fda3-4b59-9078-fa06f8904f2f
+                              - generic [ref=f5e277]:
+                                - generic [aria-hidden] [ref=f5e278]: QQ
+                                - generic [ref=f5e279]:
+                                  - generic [ref=f5e280]: QA qa-learner-a
+                                  - generic [ref=f5e281]: qa-learner-a@example.com
+                            - 'link "Quick view: QA qa-learner-a" [ref=f5e282] [cursor=pointer]':
+                              - /url: /educator/organisations/demodev/learners/45b5eded-fda3-4b59-9078-fa06f8904f2f
+                        - cell "Active" [ref=f5e287]
+                        - cell "22 Nov 2026, 09:42" [ref=f5e289]:
+                          - time [ref=f5e290]:
+                            - generic [ref=f5e291]: 22 Nov 2026,
+                            - generic [ref=f5e292]: 09:42
+                      - row [ref=f5e293]:
+                        - cell [ref=f5e294]:
+                          - generic [ref=f5e295]:
+                            - link "QA qa-learner-b qa-learner-b@example.com" [ref=f5e297] [cursor=pointer]:
+                              - /url: /educator/organisations/demodev/learners/ed8371f4-b3c8-46dd-aaf3-6ba76724cdea
+                              - generic [ref=f5e298]:
+                                - generic [aria-hidden] [ref=f5e299]: QQ
+                                - generic [ref=f5e300]:
+                                  - generic [ref=f5e301]: QA qa-learner-b
+                                  - generic [ref=f5e302]: qa-learner-b@example.com
+                            - 'link "Quick view: QA qa-learner-b" [ref=f5e303] [cursor=pointer]':
+                              - /url: /educator/organisations/demodev/learners/ed8371f4-b3c8-46dd-aaf3-6ba76724cdea
+                        - cell "Active" [ref=f5e308]
+                        - cell "22 Nov 2026, 09:42" [ref=f5e310]:
+                          - time [ref=f5e311]:
+                            - generic [ref=f5e312]: 22 Nov 2026,
+                            - generic [ref=f5e313]: 09:42
+                - paragraph [ref=f5e315]: 2 learner course registrations
+  - contentinfo [ref=f5e318]:
+    - generic [ref=f5e319]:
+      - paragraph [ref=f5e320]: © 2026 FirstClass
+      - navigation "Legal" [ref=f5e321]:
+        - link "Terms and Conditions" [ref=f5e322] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f5e323] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f5e324] [cursor=pointer]: sacaa-compliance-3-question-pools
+  - list [ref=f5e326]:
+    - listitem [ref=f5e327]:
+      - link "Hide »" [ref=f5e328] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e329]:
+      - link "Toggle Theme" [ref=f5e330] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e333]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e334] [cursor=pointer]
+      - link "History /educator/organisations/demodev/courses/befa506c-dc1a-4333-9e55-fabb5cebd1fc" [ref=f5e335] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e336]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e337] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f5e338] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e339]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e340] [cursor=pointer]
+      - 'link "Time CPU: 426.06ms (469.83ms)" [ref=f5e341] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f5e342]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e343] [cursor=pointer]
+      - link "Settings" [ref=f5e344] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e345]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e346] [cursor=pointer]
+      - link "Headers" [ref=f5e347] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e348]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e349] [cursor=pointer]
+      - link "Request interface" [ref=f5e350] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e351]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e352] [cursor=pointer]
+      - link "SQL 28 queries in 39.03ms" [ref=f5e353] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e354]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e355] [cursor=pointer]
+      - link "Static files 14 files used" [ref=f5e356] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e357]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e358] [cursor=pointer]
+      - link "Templates educator_interface/interface.html" [ref=f5e359] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e360]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e361] [cursor=pointer]
+      - link "Alerts" [ref=f5e362] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e363]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e364] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f5e365] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e366]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e367] [cursor=pointer]
+      - link "Signals 130 receivers of 15 signals" [ref=f5e368] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e369]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e370] [cursor=pointer]
+      - link "Community" [ref=f5e371] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e372]:
+      - checkbox "Enable for next and successive requests" [ref=f5e373] [cursor=pointer]
+      - generic [ref=f5e374]: Intercept redirects
+    - listitem [ref=f5e375]:
+      - checkbox "Enable for next and successive requests" [ref=f5e376] [cursor=pointer]
+      - generic [ref=f5e377]: Profiling

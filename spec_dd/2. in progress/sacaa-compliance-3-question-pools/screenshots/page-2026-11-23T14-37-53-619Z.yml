@@ -1,0 +1,73 @@
+- generic [active] [ref=f14e1]:
+  - banner [ref=f14e2]:
+    - link [ref=f14e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f14e4]
+      - heading "FirstClass" [level=1] [ref=f14e5]
+    - navigation [ref=f14e6]:
+      - generic [ref=f14e7]:
+        - generic [ref=f14e8]:
+          - button "Notifications, none new" [ref=f14e9]
+          - status:
+            - generic [ref=f14e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f14e15] [cursor=pointer]:
+          - generic [ref=f14e16]:
+            - generic [ref=f14e17]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f14e18]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f14e19]:
+    - generic [ref=f14e21]:
+      - generic [ref=f14e22]:
+        - paragraph [ref=f14e23]: Monday, November 23, 2026
+        - heading "Welcome back, demodev@email.com" [level=1] [ref=f14e24]
+      - status [ref=f14e25]
+      - generic [ref=f14e27]:
+        - generic [ref=f14e28]:
+          - generic [ref=f14e29]:
+            - heading "Assessment" [level=2] [ref=f14e30]
+            - paragraph [ref=f14e31]: Courses that end in a graded quiz.
+          - generic [ref=f14e32]:
+            - generic [ref=f14e33]:
+              - generic [ref=f14e34]: 1 to 2 of 2
+              - navigation "Assessment pages" [ref=f14e36]:
+                - link "Previous page" [disabled] [ref=f14e37] [cursor=pointer]
+                - link "Next page" [disabled] [ref=f14e40] [cursor=pointer]
+            - generic [ref=f14e43]:
+              - list [ref=f14e44]:
+                - listitem [ref=f14e45]:
+                  - article [ref=f14e46]:
+                    - generic [ref=f14e50]:
+                      - heading [level=3] [ref=f14e51]:
+                        - link "Functionality Demo - question pools" [ref=f14e52] [cursor=pointer]:
+                          - /url: /courses/functionality-demo-question-pools/detail/
+                      - link "Details for Functionality Demo - question pools" [ref=f14e56] [cursor=pointer]:
+                        - /url: /courses/functionality-demo-question-pools/detail/
+                        - text: Details
+                        - generic [ref=f14e57]: for Functionality Demo - question pools
+                - listitem [ref=f14e61]:
+                  - article [ref=f14e62]:
+                    - generic [ref=f14e66]:
+                      - heading [level=3] [ref=f14e67]:
+                        - link "Functionality Demo - shuffled quiz" [ref=f14e68] [cursor=pointer]:
+                          - /url: /courses/functionality-demo-shuffled-quiz/detail/
+                      - link "Details for Functionality Demo - shuffled quiz" [ref=f14e72] [cursor=pointer]:
+                        - /url: /courses/functionality-demo-shuffled-quiz/detail/
+                        - text: Details
+                        - generic [ref=f14e73]: for Functionality Demo - shuffled quiz
+              - link "Browse all courses" [ref=f14e78] [cursor=pointer]:
+                - /url: /courses/
+        - generic [ref=f14e82]:
+          - heading "In progress" [level=2] [ref=f14e83]
+          - paragraph [ref=f14e85]: You haven't signed up for any courses yet.
+  - contentinfo [ref=f14e86]:
+    - generic [ref=f14e87]:
+      - paragraph [ref=f14e88]: © 2026 FirstClass
+      - navigation "Legal" [ref=f14e89]:
+        - link "Terms and Conditions" [ref=f14e90] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f14e91] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f14e92] [cursor=pointer]: sacaa-compliance-3-question-pools
+  - generic "Show toolbar" [ref=f14e94]: DJDT

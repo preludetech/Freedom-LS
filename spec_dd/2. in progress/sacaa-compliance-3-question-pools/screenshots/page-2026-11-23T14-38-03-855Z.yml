@@ -1,0 +1,317 @@
+- generic [ref=f17e1]:
+  - banner [ref=f17e2]:
+    - link [ref=f17e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f17e4]
+      - heading "FirstClass" [level=1] [ref=f17e5]
+    - navigation [ref=f17e6]:
+      - generic [ref=f17e7]:
+        - generic [ref=f17e8]:
+          - button "Notifications, none new" [ref=f17e9]
+          - status:
+            - generic [ref=f17e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f17e15] [cursor=pointer]:
+          - generic [ref=f17e16]:
+            - generic [ref=f17e17]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f17e18]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f17e19]:
+    - generic [ref=f17e20]:
+      - generic [ref=f17e22]:
+        - navigation "Back" [ref=f17e24]:
+          - link "Courses" [ref=f17e25] [cursor=pointer]:
+            - /url: /educator/organisations/demodev/courses
+        - generic [ref=f17e29]:
+          - generic [ref=f17e34]:
+            - button "Open navigation panel" [ref=f17e35] [cursor=pointer]
+            - heading "Functionality Demo - question pools" [level=1] [ref=f17e39]
+          - generic [ref=f17e41]:
+            - generic [ref=f17e43]:
+              - heading "Details" [level=2] [ref=f17e46]
+              - generic [ref=f17e48]:
+                - generic [ref=f17e49]:
+                  - term [ref=f17e50]: Title
+                  - definition [ref=f17e51]: Functionality Demo - question pools
+                - generic [ref=f17e52]:
+                  - term [ref=f17e53]: Subtitle
+                  - definition [ref=f17e54]: Questions drawn from a larger pool
+                - generic [ref=f17e55]:
+                  - term [ref=f17e56]: Category
+                  - definition [ref=f17e57]: Assessment
+                - generic [ref=f17e58]:
+                  - term [ref=f17e59]: Visibility
+                  - definition [ref=f17e60]: Published
+                - generic [ref=f17e61]:
+                  - term [ref=f17e62]: Lessons
+                  - definition [ref=f17e63]: "0"
+            - generic [ref=f17e65]:
+              - heading "Course content" [level=2] [ref=f17e68]
+              - generic [ref=f17e70]:
+                - list [ref=f17e72]:
+                  - listitem [ref=f17e73]:
+                    - generic [ref=f17e75]:
+                      - generic [ref=f17e76]: Course details
+                      - generic [ref=f17e79]: Course
+                      - button "Preview course details page" [ref=f17e81] [cursor=pointer]: Preview
+                  - listitem [ref=f17e82]:
+                    - button "Question pool quiz" [expanded] [ref=f17e84]
+                    - generic [ref=f17e88]:
+                      - generic [ref=f17e89]:
+                        - generic [ref=f17e90]: "1."
+                        - generic [ref=f17e91]:
+                          - generic [ref=f17e92]: Form
+                          - generic [ref=f17e96]: Question pool quiz
+                      - generic [ref=f17e97]: Form
+                      - button "Preview Question pool quiz" [ref=f17e99] [cursor=pointer]: Preview
+                  - listitem [ref=f17e100]:
+                    - generic [ref=f17e102]:
+                      - generic [ref=f17e103]:
+                        - generic [ref=f17e104]: "1.1"
+                        - generic [ref=f17e105]:
+                          - generic [ref=f17e106]: Page
+                          - generic [ref=f17e110]: The planets
+                      - generic [ref=f17e111]: Page
+                      - 'button "Preview Question pool quiz: The planets" [ref=f17e113] [cursor=pointer]': Preview
+                  - listitem [ref=f17e114]:
+                    - generic [ref=f17e116]:
+                      - generic [ref=f17e117]:
+                        - generic [ref=f17e118]: "1.2"
+                        - generic [ref=f17e119]:
+                          - generic [ref=f17e120]: Page
+                          - generic [ref=f17e124]: Short passages
+                      - generic [ref=f17e125]: Page
+                      - 'button "Preview Question pool quiz: Short passages" [ref=f17e127] [cursor=pointer]': Preview
+                - paragraph [ref=f17e129]: 3 course outline items
+            - generic [ref=f17e131]:
+              - heading "Reference" [level=2] [ref=f17e134]
+              - list [ref=f17e138]:
+                - listitem [ref=f17e139]:
+                  - paragraph [ref=f17e143]: No reference material in this course yet.
+            - generic [ref=f17e145]:
+              - heading "Cohort registrations" [level=2] [ref=f17e148]
+              - region "Cohort course registrations" [ref=f17e152]:
+                - table [ref=f17e153]:
+                  - caption [ref=f17e154]: Cohort course registrations
+                  - rowgroup [ref=f17e155]:
+                    - row [ref=f17e156]:
+                      - columnheader "Cohort" [ref=f17e157]
+                      - columnheader "Cohort status" [ref=f17e158]
+                      - columnheader "Status" [ref=f17e159]
+                      - columnheader "Registered" [ref=f17e160]
+                  - rowgroup [ref=f17e161]:
+                    - row [ref=f17e162]:
+                      - cell [ref=f17e163]:
+                        - paragraph [ref=f17e165]: No cohorts are registered for this course yet. Cohort registrations will appear here.
+            - generic [ref=f17e167]:
+              - heading "Direct registrations" [level=2] [ref=f17e170]
+              - generic [ref=f17e172]:
+                - region "Learner course registrations" [ref=f17e174]:
+                  - table [ref=f17e175]:
+                    - caption [ref=f17e176]: Learner course registrations
+                    - rowgroup [ref=f17e177]:
+                      - row [ref=f17e178]:
+                        - columnheader [ref=f17e179]:
+                          - link "Learner" [ref=f17e180] [cursor=pointer]:
+                            - /url: /educator/organisations/demodev/courses/befa506c-dc1a-4333-9e55-fabb5cebd1fc?learner_registrations-sort=-learner__user__first_name
+                        - columnheader "Status" [ref=f17e184]
+                        - columnheader "Registered" [ref=f17e185]
+                    - rowgroup [ref=f17e186]:
+                      - row [ref=f17e187]:
+                        - cell [ref=f17e188]:
+                          - generic [ref=f17e189]:
+                            - link "QA qa-learner-a qa-learner-a@example.com" [ref=f17e191] [cursor=pointer]:
+                              - /url: /educator/organisations/demodev/learners/45b5eded-fda3-4b59-9078-fa06f8904f2f
+                              - generic [ref=f17e192]:
+                                - generic [aria-hidden] [ref=f17e193]: QQ
+                                - generic [ref=f17e194]:
+                                  - generic [ref=f17e195]: QA qa-learner-a
+                                  - generic [ref=f17e196]: qa-learner-a@example.com
+                            - 'link "Quick view: QA qa-learner-a" [ref=f17e197] [cursor=pointer]':
+                              - /url: /educator/organisations/demodev/learners/45b5eded-fda3-4b59-9078-fa06f8904f2f
+                        - cell "Active" [ref=f17e202]
+                        - cell "22 Nov 2026, 09:42" [ref=f17e204]:
+                          - time [ref=f17e205]:
+                            - generic [ref=f17e206]: 22 Nov 2026,
+                            - generic [ref=f17e207]: 09:42
+                      - row [ref=f17e208]:
+                        - cell [ref=f17e209]:
+                          - generic [ref=f17e210]:
+                            - link "QA qa-learner-b qa-learner-b@example.com" [ref=f17e212] [cursor=pointer]:
+                              - /url: /educator/organisations/demodev/learners/ed8371f4-b3c8-46dd-aaf3-6ba76724cdea
+                              - generic [ref=f17e213]:
+                                - generic [aria-hidden] [ref=f17e214]: QQ
+                                - generic [ref=f17e215]:
+                                  - generic [ref=f17e216]: QA qa-learner-b
+                                  - generic [ref=f17e217]: qa-learner-b@example.com
+                            - 'link "Quick view: QA qa-learner-b" [ref=f17e218] [cursor=pointer]':
+                              - /url: /educator/organisations/demodev/learners/ed8371f4-b3c8-46dd-aaf3-6ba76724cdea
+                        - cell "Active" [ref=f17e223]
+                        - cell "22 Nov 2026, 09:42" [ref=f17e225]:
+                          - time [ref=f17e226]:
+                            - generic [ref=f17e227]: 22 Nov 2026,
+                            - generic [ref=f17e228]: 09:42
+                - paragraph [ref=f17e230]: 2 learner course registrations
+      - dialog [ref=f17e242]:
+        - status [ref=f17e243]
+        - generic [ref=f17e245]:
+          - generic [ref=f17e246]:
+            - heading "Short passages (Preview) Form page" [active] [level=2] [ref=f17e247]:
+              - text: Short passages (Preview)
+              - generic [ref=f17e248]: Form page
+            - button "Close" [ref=f17e249] [cursor=pointer]
+          - generic [ref=f17e254]:
+            - 'heading "Page 2 of 2: Short passages" [level=3] [ref=f17e255]'
+            - paragraph [ref=f17e256]: Draws 2 of 4 groups (4 questions) per attempt
+            - paragraph [ref=f17e258]: The Moon's pull on the oceans raises the water twice a day on most coasts. The high points are called high tides and the low points are called low tides.
+            - group "7. What causes the tides? (required)" [ref=f17e259]:
+              - generic [ref=f17e260]:
+                - generic [ref=f17e261]: "7."
+                - paragraph [ref=f17e262]: What causes the tides?
+                - text: "*"
+                - generic [ref=f17e263]: (required)
+              - generic [ref=f17e264]:
+                - generic [ref=f17e265] [cursor=pointer]:
+                  - radio "The Moon's pull Correct answer" [disabled] [ref=f17e266]
+                  - generic [ref=f17e269]: The Moon's pull
+                  - generic [ref=f17e270]: Correct answer
+                - generic [ref=f17e273] [cursor=pointer]:
+                  - radio "The wind" [disabled] [ref=f17e274]
+                  - generic [ref=f17e277]: The wind
+                - generic [ref=f17e278] [cursor=pointer]:
+                  - radio "Ocean fish" [disabled] [ref=f17e279]
+                  - generic [ref=f17e282]: Ocean fish
+            - group "8. How many high tides do most coasts have each day? (required)" [ref=f17e283]:
+              - generic [ref=f17e284]:
+                - generic [ref=f17e285]: "8."
+                - paragraph [ref=f17e286]: How many high tides do most coasts have each day?
+                - text: "*"
+                - generic [ref=f17e287]: (required)
+              - generic [ref=f17e288]:
+                - generic [ref=f17e289] [cursor=pointer]:
+                  - radio "Two Correct answer" [disabled] [ref=f17e290]
+                  - generic [ref=f17e293]: Two
+                  - generic [ref=f17e294]: Correct answer
+                - generic [ref=f17e297] [cursor=pointer]:
+                  - radio "One" [disabled] [ref=f17e298]
+                  - generic [ref=f17e301]: One
+                - generic [ref=f17e302] [cursor=pointer]:
+                  - radio "Six" [disabled] [ref=f17e303]
+                  - generic [ref=f17e306]: Six
+            - paragraph [ref=f17e308]: Earth's axis is tilted. When the northern half leans towards the Sun it has summer, and the southern half has winter at the same time.
+            - group "9. What gives Earth its seasons? (required)" [ref=f17e309]:
+              - generic [ref=f17e310]:
+                - generic [ref=f17e311]: "9."
+                - paragraph [ref=f17e312]: What gives Earth its seasons?
+                - text: "*"
+                - generic [ref=f17e313]: (required)
+              - generic [ref=f17e314]:
+                - generic [ref=f17e315] [cursor=pointer]:
+                  - radio "The tilt of its axis Correct answer" [disabled] [ref=f17e316]
+                  - generic [ref=f17e319]: The tilt of its axis
+                  - generic [ref=f17e320]: Correct answer
+                - generic [ref=f17e323] [cursor=pointer]:
+                  - radio "Its distance from Mars" [disabled] [ref=f17e324]
+                  - generic [ref=f17e327]: Its distance from Mars
+                - generic [ref=f17e328] [cursor=pointer]:
+                  - radio "The phases of the Moon" [disabled] [ref=f17e329]
+                  - generic [ref=f17e332]: The phases of the Moon
+            - group "10. When the northern half has summer, what does the southern half have? (required)" [ref=f17e333]:
+              - generic [ref=f17e334]:
+                - generic [ref=f17e335]: "10."
+                - paragraph [ref=f17e336]: When the northern half has summer, what does the southern half have?
+                - text: "*"
+                - generic [ref=f17e337]: (required)
+              - generic [ref=f17e338]:
+                - generic [ref=f17e339] [cursor=pointer]:
+                  - radio "Winter Correct answer" [disabled] [ref=f17e340]
+                  - generic [ref=f17e343]: Winter
+                  - generic [ref=f17e344]: Correct answer
+                - generic [ref=f17e347] [cursor=pointer]:
+                  - radio "Summer" [disabled] [ref=f17e348]
+                  - generic [ref=f17e351]: Summer
+                - generic [ref=f17e352] [cursor=pointer]:
+                  - radio "Spring only" [disabled] [ref=f17e353]
+                  - generic [ref=f17e356]: Spring only
+            - paragraph [ref=f17e358]: A solar eclipse happens when the Moon passes between the Earth and the Sun. For a short time the Moon blocks the Sun's light from part of the Earth.
+            - group "11. What does a solar eclipse need? (required)" [ref=f17e359]:
+              - generic [ref=f17e360]:
+                - generic [ref=f17e361]: "11."
+                - paragraph [ref=f17e362]: What does a solar eclipse need?
+                - text: "*"
+                - generic [ref=f17e363]: (required)
+              - generic [ref=f17e364]:
+                - generic [ref=f17e365] [cursor=pointer]:
+                  - radio "The Moon between Earth and the Sun Correct answer" [disabled] [ref=f17e366]
+                  - generic [ref=f17e369]: The Moon between Earth and the Sun
+                  - generic [ref=f17e370]: Correct answer
+                - generic [ref=f17e373] [cursor=pointer]:
+                  - radio "The Earth between the Moon and the Sun" [disabled] [ref=f17e374]
+                  - generic [ref=f17e377]: The Earth between the Moon and the Sun
+                - generic [ref=f17e378] [cursor=pointer]:
+                  - radio "The Sun between Earth and the Moon" [disabled] [ref=f17e379]
+                  - generic [ref=f17e382]: The Sun between Earth and the Moon
+            - group "12. What does the Moon block during a solar eclipse? (required)" [ref=f17e383]:
+              - generic [ref=f17e384]:
+                - generic [ref=f17e385]: "12."
+                - paragraph [ref=f17e386]: What does the Moon block during a solar eclipse?
+                - text: "*"
+                - generic [ref=f17e387]: (required)
+              - generic [ref=f17e388]:
+                - generic [ref=f17e389] [cursor=pointer]:
+                  - radio "Sunlight Correct answer" [disabled] [ref=f17e390]
+                  - generic [ref=f17e393]: Sunlight
+                  - generic [ref=f17e394]: Correct answer
+                - generic [ref=f17e397] [cursor=pointer]:
+                  - radio "Starlight" [disabled] [ref=f17e398]
+                  - generic [ref=f17e401]: Starlight
+                - generic [ref=f17e402] [cursor=pointer]:
+                  - radio "Radio signals" [disabled] [ref=f17e403]
+                  - generic [ref=f17e406]: Radio signals
+            - paragraph [ref=f17e408]: A comet is a ball of ice and dust that orbits the Sun. As it nears the Sun, the ice warms and streams away as a glowing tail.
+            - group "13. What is a comet mostly made of? (required)" [ref=f17e409]:
+              - generic [ref=f17e410]:
+                - generic [ref=f17e411]: "13."
+                - paragraph [ref=f17e412]: What is a comet mostly made of?
+                - text: "*"
+                - generic [ref=f17e413]: (required)
+              - generic [ref=f17e414]:
+                - generic [ref=f17e415] [cursor=pointer]:
+                  - radio "Ice and dust Correct answer" [disabled] [ref=f17e416]
+                  - generic [ref=f17e419]: Ice and dust
+                  - generic [ref=f17e420]: Correct answer
+                - generic [ref=f17e423] [cursor=pointer]:
+                  - radio "Solid iron" [disabled] [ref=f17e424]
+                  - generic [ref=f17e427]: Solid iron
+                - generic [ref=f17e428] [cursor=pointer]:
+                  - radio "Liquid water" [disabled] [ref=f17e429]
+                  - generic [ref=f17e432]: Liquid water
+            - group "14. What makes a comet's tail? (required)" [ref=f17e433]:
+              - generic [ref=f17e434]:
+                - generic [ref=f17e435]: "14."
+                - paragraph [ref=f17e436]: What makes a comet's tail?
+                - text: "*"
+                - generic [ref=f17e437]: (required)
+              - generic [ref=f17e438]:
+                - generic [ref=f17e439] [cursor=pointer]:
+                  - radio "Warming ice streaming away Correct answer" [disabled] [ref=f17e440]
+                  - generic [ref=f17e443]: Warming ice streaming away
+                  - generic [ref=f17e444]: Correct answer
+                - generic [ref=f17e447] [cursor=pointer]:
+                  - radio "Wind from Earth" [disabled] [ref=f17e448]
+                  - generic [ref=f17e451]: Wind from Earth
+                - generic [ref=f17e452] [cursor=pointer]:
+                  - radio "Burning rock" [disabled] [ref=f17e453]
+                  - generic [ref=f17e456]: Burning rock
+          - button "Close" [ref=f17e459] [cursor=pointer]
+  - contentinfo [ref=f17e233]:
+    - generic [ref=f17e234]:
+      - paragraph [ref=f17e235]: © 2026 FirstClass
+      - navigation "Legal" [ref=f17e236]:
+        - link "Terms and Conditions" [ref=f17e237] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f17e238] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f17e239] [cursor=pointer]: sacaa-compliance-3-question-pools
+  - generic "Show toolbar" [ref=f17e241]: DJDT

@@ -1,0 +1,100 @@
+- generic [active] [ref=f26e1]:
+  - banner [ref=f26e2]:
+    - link [ref=f26e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f26e4]
+      - heading "FirstClass" [level=1] [ref=f26e5]
+    - navigation [ref=f26e6]:
+      - generic [ref=f26e7]:
+        - generic [ref=f26e8]:
+          - button "Notifications, 2 new" [ref=f26e9]
+          - status:
+            - generic [ref=f26e13]: Notifications, 2 new
+            - generic [aria-hidden] [ref=f26e14]: "2"
+        - button "Open user menu for QA qa-pools-a" [ref=f26e16] [cursor=pointer]:
+          - generic [ref=f26e17]:
+            - generic [ref=f26e18]: Open user menu for QA qa-pools-a
+            - generic [aria-hidden] [ref=f26e19]: QQ
+  - generic:
+    - status
+    - alert
+  - main [ref=f26e20]:
+    - generic [ref=f26e22]:
+      - dialog "Course outline" [ref=f26e23]:
+        - generic [ref=f26e26]:
+          - generic [ref=f26e27]:
+            - paragraph [ref=f26e28]: Course outline
+            - paragraph [ref=f26e29]: Functionality Demo - question pools
+            - generic [ref=f26e31]:
+              - progressbar "Progress for Functionality Demo - question pools" [ref=f26e32]: 100%
+              - generic [ref=f26e33]: 100% complete
+          - navigation "Course outline" [ref=f26e34]:
+            - list [ref=f26e35]:
+              - listitem [ref=f26e36]:
+                - generic [ref=f26e37]:
+                  - generic [ref=f26e38]: "1."
+                  - generic [ref=f26e39]: Completed
+                  - generic [ref=f26e43]: Question pool quiz
+      - generic [ref=f26e44]:
+        - navigation "Breadcrumb" [ref=f26e49]:
+          - list [ref=f26e50]:
+            - listitem [ref=f26e51]:
+              - link "Functionality Demo - question pools" [ref=f26e52] [cursor=pointer]:
+                - /url: /courses/functionality-demo-question-pools/detail/
+            - listitem [ref=f26e53]:
+              - generic [aria-hidden] [ref=f26e54]: ">"
+              - generic "Question pool quiz" [ref=f26e55]
+        - generic [ref=f26e56]:
+          - generic [ref=f26e59]:
+            - heading "Quiz passed!" [level=1] [ref=f26e62]
+            - paragraph [ref=f26e63]:
+              - text: Well done for completing
+              - strong [ref=f26e64]: Question pool quiz
+              - text: .
+          - generic [ref=f26e66]:
+            - generic [ref=f26e67]: 71%
+            - generic [ref=f26e73]:
+              - generic [ref=f26e74]: 5 / 7
+              - generic [ref=f26e75]: correct
+          - generic [ref=f26e76]:
+            - heading "Review incorrect answers" [level=2] [ref=f26e77]
+            - generic [ref=f26e78]:
+              - generic [ref=f26e80]:
+                - generic [ref=f26e81]:
+                  - generic [ref=f26e82]:
+                    - paragraph [ref=f26e83]: Question 1
+                    - paragraph [ref=f26e84]: Marked wrong
+                  - paragraph [ref=f26e87]: Which planet has the most visible rings?
+                - generic [ref=f26e88]:
+                  - paragraph [ref=f26e89]: Your answer
+                  - generic [ref=f26e91]:
+                    - img "Not marked" [ref=f26e92]
+                    - generic [ref=f26e94]: Mars
+                - generic [ref=f26e95]:
+                  - paragraph [ref=f26e96]: Correct answer
+                  - generic [ref=f26e97]: Saturn
+              - generic [ref=f26e103]:
+                - generic [ref=f26e104]:
+                  - generic [ref=f26e105]:
+                    - paragraph [ref=f26e106]: Question 4
+                    - paragraph [ref=f26e107]: Marked wrong
+                  - paragraph [ref=f26e110]: What does a solar eclipse need?
+                - generic [ref=f26e111]:
+                  - paragraph [ref=f26e112]: Your answer
+                  - generic [ref=f26e114]:
+                    - img "Not marked" [ref=f26e115]
+                    - generic [ref=f26e117]: The Earth between the Moon and the Sun
+                - generic [ref=f26e118]:
+                  - paragraph [ref=f26e119]: Correct answer
+                  - generic [ref=f26e120]: The Moon between Earth and the Sun
+          - link "Continue" [ref=f26e126] [cursor=pointer]:
+            - /url: /courses/functionality-demo-question-pools/finish/
+  - contentinfo [ref=f26e130]:
+    - generic [ref=f26e131]:
+      - paragraph [ref=f26e132]: © 2026 FirstClass
+      - navigation "Legal" [ref=f26e133]:
+        - link "Terms and Conditions" [ref=f26e134] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f26e135] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic "Show toolbar" [ref=f26e137]: DJDT

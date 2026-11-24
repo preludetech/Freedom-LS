@@ -1,91 +1,109 @@
-# Frontend QA report: question pools (draw N per attempt)
+# Frontend QA report: question pools (sacaa-compliance-3-question-pools)
 
-Dev server: this branch's, port 8593, site DemoDev. Result: all 9 tests passed, no bugs, no design states.
+Result: 8 test groups passed; 1 test (1-copy) failed, documented as bug B1 (UNRESOLVED, product decision).
 
 ## Methodology
 
-Screenshots were collected into `spec_dd/2. in progress/sacaa-compliance-3-question-pools/screenshots/`, beside this report. Every image linked below is referenced by the `screenshot_path` in the scratch records. Tests 3, 6 and 8 recorded no screenshot (state checks, a forged-form submit and admin lookups). Learners qa-learner-a@example.com and qa-learner-b@example.com played the two sittings, and the admin checked the educator preview and `/admin/`.
+Screenshots were collected into `screenshots/` beside this report, and every image referenced below was checked to exist there. The server ran on port 8265 and the branch badge matched this branch. Tests followed `3. frontend_qa.md`. Learners A and B drove the learner flows, and the admin drove the educator preview.
+
+Before QA, the branch was rebased onto main. There was 1 conflict, in `docs/product/learner-experience.md`, resolved by keeping both sides. The lost-change check passed, pre-commit was clean, and the branch was force-pushed. The upstream-change review found nothing that changes the spec. The post-rebase full test tier the selector chose has finished: PASS, 19895 collected, 19887 passed, 0 failed, 8 skipped (tested commit fd93fab95).
 
 ## Diff scoping
 
-Class: **FULL**. Changed files that triggered it:
+Class: **FULL**. The changed files that triggered it:
 
 - `freedom_ls/educator_interface/templates/educator_interface/modal/content_preview.html`
 - `freedom_ls/learner_interface/views.py`
 - `freedom_ls/form_engine/*`
+- `freedom_ls/educator_interface/panels/course/content_preview.py`
 - `freedom_ls/content_engine/*`
 - `demo_content/functionality_demo_question_pools/*`
-- `claude_plugins/fls-content/validate/*`
+- docs, spec and plugin files
 
-Nothing was skipped: the desktop, tablet and mobile passes all ran.
+Nothing was skipped; everything ran, including the tablet and mobile passes. The pre-step rebase's front-end check was folded into this run. Every page in the plan loaded without a 500, 404, traceback or console error at the viewports exercised.
 
 ## Smoke gate
 
-Outcome: **pass**. Pages loaded: `/` and `/courses/functionality-demo-question-pools/1/`.
+Outcome: **pass**. Pages loaded:
+
+- `/`
+- `/educator/organisations/demodev/courses/befa506c-dc1a-4333-9e55-fabb5cebd1fc`
+
+## Design check
+
+No design states tested (no `design` records this run).
 
 ## Test results
 
 | Test | Viewport | Result | Notes |
 |---|---|---|---|
-| 1 Start screen count | desktop | pass | Chips read "7 questions" and "2 pages" (pool is 14). No count reveals the pool. |
-| 2 Sitting serves drawn questions | desktop | pass | Page 1 had 3 questions. Page 2 had 2 whole groups, passage first. Numbered 1-7, "N of 7 answered", "Page 1 of 2" and "Page 2 of 2". No console errors. |
-| 3 Survives reload/back/jumps/resume | desktop | pass | Reload, Previous/Next, browser Back/Forward, page jumps and leaving then Continue Form all showed the same questions, passages and numbers. Saved answers stayed selected. |
-| 4 Results show drawn only | desktop | pass | Score 5 / 7 (71%) matched the 2 deliberate wrong answers. Cards for Question 2 and Question 4 used the sitting's numbers. No outdated-score notice, no pool size. |
-| 5 Retake / other learner draws afresh | desktop | pass | A passed quiz offers no retake, so that half did not apply. Learner B's sitting differed from A's on both pages. Start screen, submit dialog and results all showed 7. In `/admin/` the two `served_paper` lists differ on both pages with equal lengths (3 and 6). |
-| 6 Forged answer not stored | desktop | pass | A hidden input for the undrawn Red Planet question was submitted as learner B. The header stayed "3 of 7 answered". No `QuestionAnswer` was stored for learner B, and the results did not list the question. |
-| 7 Educator preview | desktop | pass | Start page showed "7 questions" and "2 pages". The page of single questions showed "Draws 3 of 6 questions per attempt" with all 6 questions and the answer key. The page of groups showed "Draws 2 of 4 groups (4 questions) per attempt" with all 4 passages and 8 questions numbered 7-14. Opens and closes with Escape. No console errors. |
-| 8 No-draw quiz unchanged | desktop | pass | Shuffled quiz preview showed "9 questions" and "3 pages", with no "Draws" line. Learner B's start screen showed 9 questions and the sitting showed "0 of 9 answered". |
-| 9 Layout | desktop | pass | No horizontal scroll. The Draws line sits under the page heading above the first passage. |
-| 9 Layout | tablet | pass | 768x1024: scrollWidth 768 on all three pages. The Draws line sits inside the dialog, 16px above the first passage, with no overlap. |
-| 9 Layout | mobile | pass | 375x812: scrollWidth 375 on all three pages. The preview is a full-width sheet and the Draws line wraps cleanly, 16px above the first passage. |
+| 1 | desktop | pass | Start screen shows the question chip 7 (per-sitting count, not the pool total of 14) and page chip 2. No pool size appears. ![](screenshots/page-2026-11-24T07-30-33-472Z.png) |
+| 1-copy | desktop | **fail** | The authored demo intro mentions the pool and the draw. See B1. |
+| 2 | desktop | pass | Page 1 served exactly 3 questions, all from the file. Page 2 served exactly 2 whole groups (passage, then both questions). Numbering ran 1-3 then 4-7. Header read "0/3 of 7 answered". Indicator read "Page 1 of 2" and "Page 2 of 2". No console errors. ![](screenshots/page-2026-11-24T07-30-55-172Z.png) ![](screenshots/page-2026-11-24T07-31-45-477Z.png) |
+| 3 | desktop | pass | Reload, Previous/Next, browser Back/Forward, jump links and leave-and-resume all kept the same questions, passages and numbers. Saved answers stayed selected. An unsubmitted answer was not kept, and the browser warned about unsaved changes, matching the page's own note. |
+| 4 | desktop | pass | Score 5 / 7 (71%), matching the 2 deliberate wrong answers. The wrong cards were Question 1 (rings) and Question 4 (solar eclipse), numbered as in the sitting. No outdated-score notice and no pool size. Submit dialog showed 7 answered of 7. ![](screenshots/page-2026-11-24T07-33-56-182Z.png) |
+| 5 | desktop | pass | Learner B drew a different set from learner A on both pages. Both sittings had 3 questions on page 1 and 2 groups (4 questions) on page 2; the start screen, header and results showed 7 each time. The `served_paper` page children lists differ on both pages and have equal length (3 and 6). The retake part did not run: after a pass the course offers no new attempt, so the plan's "if the course allows a retake" condition was not met. ![](screenshots/page-2026-11-24T07-36-27-662Z.png) |
+| 6 | desktop | pass | A forged hidden input for an undrawn question (1f413e93, "Which planet is farthest from the Sun?") was ignored. The page submitted normally and the header read "3 of 7 answered". The DB holds no answer for it, and the results do not list it. |
+| 7 | desktop | pass | Educator preview of the quiz start showed 7 questions and 2 pages. Page 1 shows "Draws 3 of 6 questions per attempt" with all 6 questions and the answer key. Page 2 shows "Draws 2 of 4 groups (4 questions) per attempt" with all 4 groups. The modal opens and closes, with no console errors. |
+| 8a | desktop | pass | Educator preview of the shuffled quiz: start chip 9 questions / 3 pages (3+4+2), no "Draws" line on any page, every question listed. |
+| 8b | desktop | pass | Learner B, shuffled quiz: start screen 9 questions / 3 pages. Pages served 3, 4 and 2 questions (numbers 1-9), and the header read "of 9 answered". ![](screenshots/page-2026-11-24T07-36-53-450Z.png) |
+| 9 (educator preview) | tablet | pass | Dialog inside the viewport, "Draws" line on one line with a 16px gap to the first passage, no horizontal scroll. ![](screenshots/page-2026-11-24T07-26-30-368Z.png) |
+| 9 (educator preview) | mobile | pass | Bottom-sheet dialog full width, "Draws" line fits under the heading, no overlap, no horizontal scroll. ![](screenshots/page-2026-11-24T07-26-41-488Z.png) |
+| 9 (page of groups) | tablet | pass | Fits the column, Previous/Next footer intact. The dev-only branch badge covered Previous in the first shot (`page-2026-11-24T07-32-43-720Z.png`); it was hidden as dev tooling and re-shot. ![](screenshots/page-2026-11-24T07-32-58-663Z.png) |
+| 9 (page of groups) | mobile | pass | Passages wrap, options full width, Next/Previous stacked at 343px wide, no horizontal scroll. ![](screenshots/page-2026-11-24T07-33-02-803Z.png) |
+| 9 (results) | tablet | pass | Outline collapses to a menu button beside the breadcrumb, cards fit. ![](screenshots/page-2026-11-24T07-34-02-937Z.png) |
+| 9 (results) | mobile | pass | Breadcrumb truncates with an ellipsis, score ring and cards fit. ![](screenshots/page-2026-11-24T07-34-08-175Z.png) |
+| rebase-frontend-check | desktop | pass | Folded into this run, as described under Diff scoping. |
 
-Screenshots:
+## B1: Demo quiz intro mentions the pool and the draw on the learner start screen
 
-- Test 1: ![](screenshots/page-2026-11-22T09-44-21-367Z.png)
-- Test 2: ![](screenshots/page-2026-11-22T09-45-06-462Z.png)
-- Test 4: ![](screenshots/page-2026-11-22T09-45-49-510Z.png)
-- Test 5: ![](screenshots/page-2026-11-22T09-46-32-621Z.png)
-- Test 7: ![](screenshots/page-2026-11-22T09-48-08-936Z.png)
+Manifestations:
 
-## Design check
+- test `1-copy`, desktop
 
-No design states tested.
+![](screenshots/page-2026-11-24T07-30-33-472Z.png)
 
-## Per-bug sections
+Expected (Test 1): nothing on the start screen mentions a pool, a draw, or a larger number of questions.
 
-No bugs were recorded.
+Actual: the authored intro in `demo_content/functionality_demo_question_pools/01. quiz/form.md` reads "Each sitting draws some questions from the pool on every page. Sit the quiz again to get a different set." This is authored demo copy, not system text, and it reveals no count.
 
 ## Layout probe
 
-| Test | Viewport | URL | Screenshot | Result |
+| Test id | Viewport | URL | Screenshot | Result |
 |---|---|---|---|---|
-| 1 | desktop | /courses/functionality-demo-question-pools/1/ | ![](screenshots/page-2026-11-22T09-44-21-367Z.png) | clean |
-| 2 | desktop | /courses/functionality-demo-question-pools/1/fill_form/2 | ![](screenshots/page-2026-11-22T09-45-06-462Z.png) | clean |
-| 4 | desktop | /courses/functionality-demo-question-pools/1/complete | ![](screenshots/page-2026-11-22T09-45-49-510Z.png) | clean |
-| 7 | desktop | /educator/organisations/demodev/courses/befa506c-dc1a-4333-9e55-fabb5cebd1fc | ![](screenshots/page-2026-11-22T09-48-15-200Z.png) | clean |
-| 9 | tablet | /courses/functionality-demo-question-pools/1/fill_form/2 | ![](screenshots/page-2026-11-22T09-51-01-338Z.png) | clean |
-| 9 | tablet | /courses/functionality-demo-question-pools/1/complete | ![](screenshots/page-2026-11-22T09-51-17-639Z.png) | clean |
-| 9 | tablet | /educator/organisations/demodev/courses/befa506c-dc1a-4333-9e55-fabb5cebd1fc | ![](screenshots/page-2026-11-22T09-51-28-503Z.png) | clean |
-| 9 | mobile | /courses/functionality-demo-question-pools/1/fill_form/2 | ![](screenshots/page-2026-11-22T09-51-03-481Z.png) | clean |
-| 9 | mobile | /courses/functionality-demo-question-pools/1/complete | ![](screenshots/page-2026-11-22T09-51-16-762Z.png) | clean |
-| 9 | mobile | /educator/organisations/demodev/courses/befa506c-dc1a-4333-9e55-fabb5cebd1fc | ![](screenshots/page-2026-11-22T09-51-29-427Z.png) | clean |
+| 7 | desktop | /educator/organisations/demodev/courses/befa506c-dc1a-4333-9e55-fabb5cebd1fc | ![](screenshots/page-2026-11-24T07-25-13-562Z.png) | clean |
+| 7 | desktop | /educator/organisations/demodev/courses/befa506c-dc1a-4333-9e55-fabb5cebd1fc | ![](screenshots/page-2026-11-24T07-25-28-422Z.png) | clean |
+| 9 | desktop | /educator/organisations/demodev/courses/befa506c-dc1a-4333-9e55-fabb5cebd1fc (preview of page of groups) | ![](screenshots/page-2026-11-24T07-25-45-123Z.png) | clean |
+| 9 | tablet | /educator/organisations/demodev/courses/befa506c-dc1a-4333-9e55-fabb5cebd1fc (preview) | ![](screenshots/page-2026-11-24T07-26-30-368Z.png) | clean |
+| 9 | mobile | /educator/organisations/demodev/courses/befa506c-dc1a-4333-9e55-fabb5cebd1fc (preview) | ![](screenshots/page-2026-11-24T07-26-41-488Z.png) | clean |
+| 1 | desktop | /courses/functionality-demo-question-pools/1/ | ![](screenshots/page-2026-11-24T07-30-33-472Z.png) | clean |
+| 2 | desktop | /courses/functionality-demo-question-pools/1/fill_form/1 | ![](screenshots/page-2026-11-24T07-30-55-172Z.png) | clean |
+| 9 | desktop | /courses/functionality-demo-question-pools/1/fill_form/2 | ![](screenshots/page-2026-11-24T07-31-45-477Z.png) | clean |
+| 4 | desktop | /courses/functionality-demo-question-pools/1/complete | ![](screenshots/page-2026-11-24T07-33-56-182Z.png) | clean |
+| 9 | tablet | /courses/functionality-demo-question-pools/1/fill_form/2 | ![](screenshots/page-2026-11-24T07-32-58-663Z.png) | clean |
+| 9 | mobile | /courses/functionality-demo-question-pools/1/fill_form/2 | ![](screenshots/page-2026-11-24T07-33-02-803Z.png) | clean |
+| 9 | tablet | /courses/functionality-demo-question-pools/1/complete | ![](screenshots/page-2026-11-24T07-34-02-937Z.png) | clean |
+| 9 | mobile | /courses/functionality-demo-question-pools/1/complete | ![](screenshots/page-2026-11-24T07-34-08-175Z.png) | clean |
+| 5 | desktop | /courses/functionality-demo-question-pools/1/complete | ![](screenshots/page-2026-11-24T07-36-27-662Z.png) | clean |
+| 8 | desktop | /courses/functionality-demo-shuffled-quiz/2/ | ![](screenshots/page-2026-11-24T07-36-53-450Z.png) | clean |
 
 ## Data changes
 
-| What changed | Via | Files written |
+| What changed | Made by | Files written |
 |---|---|---|
-| `create_demo_data --yes`. `content_save` of a scratch copy (fresh uuids) of the course_categories, question-pools and shuffled-quiz courses to DemoDev. Learners qa-learner-a@example.com and qa-learner-b@example.com registered on both courses. | sdd:qa-data-helper | none |
-| `qa_reset_learner_progress` for qa-learner-b@example.com on the question-pools course: removed their completed FormProgress and reset CourseProgress to 0%, so Test 9 had a live sitting. | sdd:qa-data-helper | none |
+| Loaded demo content onto DemoDev from a scratch copy whose UUIDs were remapped to the existing DemoDev rows (draw 3 and 2 stored), because stray example.com copies of the question-pools course and categories block a plain `content_save`. Created learners qa-pools-a@example.com and qa-pools-b@example.com (testpass123), registered on the question-pools and shuffled-quiz courses via `qa_create_fresh_course_learners`. | `sdd:qa-data-helper` | none |
 
 ## Bug status
 
-No bug records, so there are no rows. Every bug would be `UNRESOLVED` at render time.
+| Bug | Status |
+|---|---|
+| B1 | **UNRESOLVED** — Demo quiz intro mentions the pool and the draw on the learner start screen (reason: product decision; the plan forbids any pool/draw mention but the demo intro explains the feature to a demo viewer and the spec only forbids revealing the pool size, so either reword the intro or relax the plan wording) |
 
 ## General notes
 
-- The quiz's own authored description says each sitting draws from "the pool". This is author-written demo text with no number, so it does not reveal the pool size. It is worth a look if authors should avoid mentioning pools.
-- Test 5: a passed quiz offers no retake (only Finish Course), so the retake half was not exercised. Learner B's sitting stood in as the second draw, and the comparison passed.
-- Test 7: the page-of-groups preview numbers its questions 7-14, continuing the whole form's numbering, as planned.
-- Tests 3, 6 and 8 have no screenshots because they were state, forged-form and admin checks.
+- **Dev DB clash.** A plain `content_save demo_content DemoDev` fails on this dev DB. Stray example.com copies of the question-pools course, its form and 4 categories have UUIDs that clash with the demo content. The data helper loaded a remapped scratch copy instead. Deleting those rows needs the user's approval, and the helper's delete was refused. The stray rows are still there.
+- **Retake not exercised.** The retake half of Test 5 did not run, as noted in the results table. Learner B's separate sitting covered the "different draw" expectation.
+- **Branch badge.** The dev-only branch badge overlapped the Previous button at tablet width. It is dev tooling, not a product defect, so no bug was raised.
+- **Test 3.** An unsubmitted answer is not kept after leaving the page. This matches the page's own "won't save unsaved changes" note, so no bug was raised.
 
-status: ok · reason: report rendered, 0 bugs documented
+status: ok · reason: 1 bugs — 0 fixed, 1 unresolved; report rendered, screenshots verified

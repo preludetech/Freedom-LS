@@ -1,0 +1,103 @@
+- generic [active] [ref=f9e1]:
+  - banner [ref=f9e2]:
+    - link [ref=f9e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f9e4]
+      - heading "FirstClass" [level=1] [ref=f9e5]
+    - navigation [ref=f9e6]:
+      - generic [ref=f9e7]:
+        - generic [ref=f9e8]:
+          - button "Notifications, none new" [ref=f9e9]
+          - status:
+            - generic [ref=f9e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f9e15] [cursor=pointer]:
+          - generic [ref=f9e16]:
+            - generic [ref=f9e17]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f9e18]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f9e19]:
+    - generic [ref=f9e21]:
+      - dialog "Navigation" [ref=f9e22]:
+        - generic [ref=f9e24]:
+          - generic [ref=f9e25]:
+            - paragraph [ref=f9e26]: Organisation
+            - button "Switch organisation" [ref=f9e28] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f9e29]: D
+              - generic "DemoDev" [ref=f9e30]
+          - navigation "Sections" [ref=f9e33]:
+            - heading "Teaching" [level=2] [ref=f9e34]
+            - list [ref=f9e35]:
+              - listitem [ref=f9e36]:
+                - link "Dashboard" [ref=f9e37] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/dashboard
+              - listitem [ref=f9e42]:
+                - link "Cohorts" [ref=f9e43] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+              - listitem [ref=f9e48]:
+                - link "Learners" [ref=f9e49] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+              - listitem [ref=f9e54]:
+                - link "Courses" [ref=f9e55] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+            - heading "Administration" [level=2] [ref=f9e60]
+            - list [ref=f9e61]:
+              - listitem [ref=f9e62]:
+                - link "Staff" [ref=f9e63] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/staff
+              - listitem [ref=f9e68]:
+                - link "Audit log" [ref=f9e69] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/audit-log
+          - generic [ref=f9e74]:
+            - generic [ref=f9e76]:
+              - generic [aria-hidden] [ref=f9e77]: DE
+              - generic [ref=f9e78]: demodev@email.com
+            - link "Account settings" [ref=f9e80] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f9e86]:
+        - heading "Courses" [level=1] [ref=f9e92]
+        - generic [ref=f9e97]:
+          - region "Courses" [ref=f9e99]:
+            - table [ref=f9e100]:
+              - caption [ref=f9e101]: Courses
+              - rowgroup [ref=f9e102]:
+                - row [ref=f9e103]:
+                  - columnheader "Title" [ref=f9e104]
+                  - columnheader "Visibility" [ref=f9e105]
+                  - columnheader "Interest" [ref=f9e106]
+                  - columnheader "Active Learners" [ref=f9e107]
+                  - columnheader "Active Cohorts" [ref=f9e108]
+                  - columnheader "Cohorts" [ref=f9e109]
+              - rowgroup [ref=f9e110]:
+                - row [ref=f9e111]:
+                  - cell [ref=f9e112]:
+                    - link "Functionality Demo - question pools" [ref=f9e113] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/courses/befa506c-dc1a-4333-9e55-fabb5cebd1fc
+                  - cell "Published" [ref=f9e114]
+                  - cell "0" [ref=f9e115]
+                  - cell "2" [ref=f9e116]
+                  - cell "0" [ref=f9e117]
+                  - cell [ref=f9e118]:
+                    - img "None" [ref=f9e119]: —
+                - row [ref=f9e120]:
+                  - cell [ref=f9e121]:
+                    - link "Functionality Demo - shuffled quiz" [ref=f9e122] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/courses/7021dd5c-7e0b-4c90-a107-87f3632b9118
+                  - cell "Published" [ref=f9e123]
+                  - cell "0" [ref=f9e124]
+                  - cell "2" [ref=f9e125]
+                  - cell "0" [ref=f9e126]
+                  - cell [ref=f9e127]:
+                    - img "None" [ref=f9e128]: —
+          - paragraph [ref=f9e130]: 2 courses
+  - contentinfo [ref=f9e133]:
+    - generic [ref=f9e134]:
+      - paragraph [ref=f9e135]: © 2026 FirstClass
+      - navigation "Legal" [ref=f9e136]:
+        - link "Terms and Conditions" [ref=f9e137] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f9e138] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f9e139] [cursor=pointer]: sacaa-compliance-3-question-pools
+  - generic "Show toolbar" [ref=f9e141]: DJDT

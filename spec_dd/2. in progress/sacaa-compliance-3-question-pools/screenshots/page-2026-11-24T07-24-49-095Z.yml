@@ -1,0 +1,167 @@
+- generic [active] [ref=f4e1]:
+  - banner [ref=f4e2]:
+    - link [ref=f4e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f4e4]
+      - heading "FirstClass" [level=1] [ref=f4e5]
+    - navigation [ref=f4e6]:
+      - generic [ref=f4e7]:
+        - generic [ref=f4e8]:
+          - button "Notifications, none new" [ref=f4e9]
+          - status:
+            - generic [ref=f4e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f4e15] [cursor=pointer]:
+          - generic [ref=f4e16]:
+            - generic [ref=f4e17]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f4e18]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f4e19]:
+    - generic [ref=f4e21]:
+      - dialog "Navigation" [ref=f4e22]:
+        - generic [ref=f4e24]:
+          - generic [ref=f4e25]:
+            - paragraph [ref=f4e26]: Organisation
+            - button "Switch organisation" [ref=f4e28] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f4e29]: D
+              - generic "DemoDev" [ref=f4e30]
+          - navigation "Sections" [ref=f4e33]:
+            - heading "Teaching" [level=2] [ref=f4e34]
+            - list [ref=f4e35]:
+              - listitem [ref=f4e36]:
+                - link "Dashboard" [ref=f4e37] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/dashboard
+              - listitem [ref=f4e42]:
+                - link "Cohorts" [ref=f4e43] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+              - listitem [ref=f4e48]:
+                - link "Learners" [ref=f4e49] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+              - listitem [ref=f4e54]:
+                - link "Courses" [ref=f4e55] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+            - heading "Administration" [level=2] [ref=f4e60]
+            - list [ref=f4e61]:
+              - listitem [ref=f4e62]:
+                - link "Staff" [ref=f4e63] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/staff
+              - listitem [ref=f4e68]:
+                - link "Audit log" [ref=f4e69] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/audit-log
+          - generic [ref=f4e74]:
+            - generic [ref=f4e76]:
+              - generic [aria-hidden] [ref=f4e77]: DE
+              - generic [ref=f4e78]: demodev@email.com
+            - link "Account settings" [ref=f4e80] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f4e86]:
+        - heading "Courses" [level=1] [ref=f4e92]
+        - generic [ref=f4e97]:
+          - region "Courses" [ref=f4e99]:
+            - table [ref=f4e100]:
+              - caption [ref=f4e101]: Courses
+              - rowgroup [ref=f4e102]:
+                - row [ref=f4e103]:
+                  - columnheader "Title" [ref=f4e104]
+                  - columnheader "Visibility" [ref=f4e105]
+                  - columnheader "Interest" [ref=f4e106]
+                  - columnheader "Active Learners" [ref=f4e107]
+                  - columnheader "Active Cohorts" [ref=f4e108]
+                  - columnheader "Cohorts" [ref=f4e109]
+              - rowgroup [ref=f4e110]:
+                - row [ref=f4e111]:
+                  - cell [ref=f4e112]:
+                    - link "Functionality Demo - question pools" [ref=f4e113] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/courses/befa506c-dc1a-4333-9e55-fabb5cebd1fc
+                  - cell "Published" [ref=f4e114]
+                  - cell "0" [ref=f4e115]
+                  - cell "2" [ref=f4e116]
+                  - cell "0" [ref=f4e117]
+                  - cell [ref=f4e118]:
+                    - img "None" [ref=f4e119]: —
+                - row [ref=f4e120]:
+                  - cell [ref=f4e121]:
+                    - link "Functionality Demo - shuffled quiz" [ref=f4e122] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/courses/7021dd5c-7e0b-4c90-a107-87f3632b9118
+                  - cell "Published" [ref=f4e123]
+                  - cell "0" [ref=f4e124]
+                  - cell "2" [ref=f4e125]
+                  - cell "0" [ref=f4e126]
+                  - cell [ref=f4e127]:
+                    - img "None" [ref=f4e128]: —
+          - paragraph [ref=f4e130]: 2 courses
+  - contentinfo [ref=f4e133]:
+    - generic [ref=f4e134]:
+      - paragraph [ref=f4e135]: © 2026 FirstClass
+      - navigation "Legal" [ref=f4e136]:
+        - link "Terms and Conditions" [ref=f4e137] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f4e138] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f4e139] [cursor=pointer]: sacaa-compliance-3-question-pools
+  - list [ref=f4e141]:
+    - listitem [ref=f4e142]:
+      - link "Hide »" [ref=f4e143] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e144]:
+      - link "Toggle Theme" [ref=f4e145] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e148]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e149] [cursor=pointer]
+      - link "History /educator/organisations/demodev/courses" [ref=f4e150] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e151]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e152] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f4e153] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e154]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e155] [cursor=pointer]
+      - 'link "Time CPU: 181.56ms (272.92ms)" [ref=f4e156] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f4e157]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e158] [cursor=pointer]
+      - link "Settings" [ref=f4e159] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e160]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e161] [cursor=pointer]
+      - link "Headers" [ref=f4e162] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e163]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e164] [cursor=pointer]
+      - link "Request interface" [ref=f4e165] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e166]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e167] [cursor=pointer]
+      - link "SQL 19 queries in 90.50ms" [ref=f4e168] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e169]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e170] [cursor=pointer]
+      - link "Static files 14 files used" [ref=f4e171] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e172]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e173] [cursor=pointer]
+      - link "Templates educator_interface/interface.html" [ref=f4e174] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e175]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e176] [cursor=pointer]
+      - link "Alerts" [ref=f4e177] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e178]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e179] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f4e180] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e181]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e182] [cursor=pointer]
+      - link "Signals 130 receivers of 15 signals" [ref=f4e183] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e184]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f4e185] [cursor=pointer]
+      - link "Community" [ref=f4e186] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f4e187]:
+      - checkbox "Enable for next and successive requests" [ref=f4e188] [cursor=pointer]
+      - generic [ref=f4e189]: Intercept redirects
+    - listitem [ref=f4e190]:
+      - checkbox "Enable for next and successive requests" [ref=f4e191] [cursor=pointer]
+      - generic [ref=f4e192]: Profiling

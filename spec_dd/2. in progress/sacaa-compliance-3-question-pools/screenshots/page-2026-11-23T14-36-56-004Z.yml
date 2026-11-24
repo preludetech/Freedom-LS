@@ -1,0 +1,203 @@
+- generic [active] [ref=f3e1]:
+  - banner [ref=f3e2]:
+    - heading "Page not found (404)" [level=1] [ref=f3e3]
+    - table [ref=f3e4]:
+      - rowgroup [ref=f3e5]:
+        - row [ref=f3e6]:
+          - rowheader "Request Method:" [ref=f3e7]
+          - cell "GET" [ref=f3e8]
+        - row [ref=f3e9]:
+          - rowheader "Request URL:" [ref=f3e10]
+          - cell "http://127.0.0.1:8727/educator/courses" [ref=f3e11]
+  - main [ref=f3e12]:
+    - paragraph [ref=f3e13]:
+      - text: Using the URLconf defined in
+      - code [ref=f3e14]: config.urls
+      - text: ", Django tried these URL patterns, in this order:"
+    - list [ref=f3e15]:
+      - listitem [ref=f3e16]:
+        - code [ref=f3e17]: health/
+      - listitem [ref=f3e18]:
+        - code [ref=f3e19]: admin/
+      - listitem [ref=f3e20]:
+        - code [ref=f3e21]: robots.txt [name='robots_txt']
+      - listitem [ref=f3e22]:
+        - code [ref=f3e23]: sitemap.xml [name='sitemap']
+      - listitem [ref=f3e24]:
+        - code
+        - code [ref=f3e25]: "^[gG][oO]/(?P<code>[A-Za-z0-9-]{1,64})/?$ [name='follow_go']"
+      - listitem [ref=f3e26]:
+        - code
+        - code [ref=f3e27]: "^[dD]/(?P<code>[A-Za-z0-9-]{1,64})/?$ [name='follow_d']"
+      - listitem [ref=f3e28]:
+        - code [ref=f3e29]: educator/
+        - code [ref=f3e30]: ^$ [name='root']
+      - listitem [ref=f3e31]:
+        - code [ref=f3e32]: educator/
+        - code [ref=f3e33]: "^organisations/(?P<organisation_slug>[-\\w]+)/cohorts/(?P<cohort_pk>[0-9a-f-]{36})/reports/(?P<report_pk>[0-9a-f-]{36})/download/$ [name='cohort_report_download']"
+      - listitem [ref=f3e34]:
+        - code [ref=f3e35]: educator/
+        - code [ref=f3e36]: "^organisations/(?P<organisation_slug>[-\\w]+)/learners/(?P<learner_pk>[0-9a-f-]{36})/conversations/(?P<conversation_pk>[0-9a-f-]{36})/older/$ [name='oversight_thread_older']"
+      - listitem [ref=f3e37]:
+        - code [ref=f3e38]: educator/
+        - code [ref=f3e39]: ^organisations/(?P<organisation_slug>[-\w]+)/learners/import/$ [name='learner_import']
+      - listitem [ref=f3e40]:
+        - code [ref=f3e41]: educator/
+        - code [ref=f3e42]: "^organisations/(?P<organisation_slug>[-\\w]+)/learners/import/(?P<import_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/$ [name='learner_import_preview']"
+      - listitem [ref=f3e43]:
+        - code [ref=f3e44]: educator/
+        - code [ref=f3e45]: ^organisations/(?P<organisation_slug>[-\w]+)/learners/import/template\.csv$ [name='learner_import_template']
+      - listitem [ref=f3e46]:
+        - code [ref=f3e47]: educator/
+        - code [ref=f3e48]: "^organisations/(?P<organisation_slug>[-\\w]+)/learners/import/(?P<import_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/errors\\.csv$ [name='learner_import_errors']"
+      - listitem [ref=f3e49]:
+        - code [ref=f3e50]: educator/
+        - code [ref=f3e51]: "^organisations/(?P<organisation_slug>[-\\w]+)/learners/import/(?P<import_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/result/$ [name='learner_import_result']"
+      - listitem [ref=f3e52]:
+        - code [ref=f3e53]: educator/
+        - code [ref=f3e54]: "^organisations/(?P<organisation_slug>[-\\w]+)/learners/import/(?P<import_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/status/$ [name='learner_import_status']"
+      - listitem [ref=f3e55]:
+        - code [ref=f3e56]: educator/
+        - code [ref=f3e57]: ^organisations/(?P<organisation_slug>[-\w]+)/(?P<path_string>.*)$ [name='interface']
+      - listitem [ref=f3e58]:
+        - code
+        - code [ref=f3e59]: sentry-debug/ [name='trigger_error']
+      - listitem [ref=f3e60]:
+        - code [ref=f3e61]: accounts/
+      - listitem [ref=f3e62]:
+        - code [ref=f3e63]: accounts/
+      - listitem [ref=f3e64]:
+        - code [ref=f3e65]: articles/
+      - listitem [ref=f3e66]:
+        - code [ref=f3e67]: api/v1/
+      - listitem [ref=f3e68]:
+        - code [ref=f3e69]: content/
+      - listitem [ref=f3e70]:
+        - code
+        - code [ref=f3e71]: "[name='dashboard']"
+      - listitem [ref=f3e72]:
+        - code
+        - code [ref=f3e73]: courses/ [name='courses']
+      - listitem [ref=f3e74]:
+        - code
+        - code [ref=f3e75]: courses/<slug:course_slug>/detail/ [name='course_detail']
+      - listitem [ref=f3e76]:
+        - code
+        - code [ref=f3e77]: courses/<slug:course_slug>/ [name='course_home']
+      - listitem [ref=f3e78]:
+        - code
+        - code [ref=f3e79]: courses/<slug:course_slug>/access/ [name='initiate_course_access']
+      - listitem [ref=f3e80]:
+        - code
+        - code [ref=f3e81]: courses/<slug:course_slug>/<int:index>/ [name='view_course_item']
+      - listitem [ref=f3e82]:
+        - code
+        - code [ref=f3e83]: courses/<slug:course_slug>/<int:index>/start_form [name='form_start']
+      - listitem [ref=f3e84]:
+        - code
+        - code [ref=f3e85]: courses/<slug:course_slug>/<int:index>/fill_form/<int:page_number> [name='form_fill_page']
+      - listitem [ref=f3e86]:
+        - code
+        - code [ref=f3e87]: courses/<slug:course_slug>/<int:index>/complete [name='course_form_complete']
+      - listitem [ref=f3e88]:
+        - code
+        - code [ref=f3e89]: courses/<slug:course_slug>/<int:index>/submit-and-exit [name='form_submit_and_exit']
+      - listitem [ref=f3e90]:
+        - code
+        - code [ref=f3e91]: courses/<slug:course_slug>/finish/ [name='course_finish']
+      - listitem [ref=f3e92]:
+        - code [ref=f3e93]: notifications/
+      - listitem [ref=f3e94]:
+        - code [ref=f3e95]: messages/
+      - listitem [ref=f3e96]:
+        - code [ref=f3e97]: applications/
+      - listitem [ref=f3e98]:
+        - code [ref=f3e99]: forms/
+      - listitem [ref=f3e100]:
+        - code [ref=f3e101]: interest/
+      - listitem [ref=f3e102]:
+        - code [ref=f3e103]: __reload__/
+      - listitem [ref=f3e104]:
+        - code [ref=f3e105]: qa/
+      - listitem [ref=f3e106]:
+        - code [ref=f3e107]: panel-framework/
+      - listitem [ref=f3e108]:
+        - code [ref=f3e109]: ^media/(?P<path>.*)$
+      - listitem [ref=f3e110]:
+        - code [ref=f3e111]: ^__debug__/
+    - paragraph [ref=f3e112]:
+      - text: The current path,
+      - code [ref=f3e113]: educator/courses
+      - text: ", didn’t match any of these."
+  - contentinfo [ref=f3e114]:
+    - paragraph [ref=f3e115]:
+      - text: You’re seeing this error because you have
+      - code [ref=f3e116]: DEBUG = True
+      - text: in your Django settings file. Change that to
+      - code [ref=f3e117]: "False"
+      - text: ", and Django will display a standard 404 page."
+  - list [ref=f3e119]:
+    - listitem [ref=f3e120]:
+      - link "Hide »" [ref=f3e121] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e122]:
+      - link "Toggle Theme" [ref=f3e123] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e126]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e127]
+      - link "History /educator/courses" [ref=f3e128] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e129]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e130]
+      - link "Versions Django 6.0.4" [ref=f3e131] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e132]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e133]
+      - 'link "Time CPU: 44.77ms (53.01ms)" [ref=f3e134] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f3e135]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e136]
+      - link "Settings" [ref=f3e137] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e138]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e139]
+      - link "Headers" [ref=f3e140] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e141]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e142]
+      - link "Request <no view>" [ref=f3e143] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e144]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e145]
+      - link "SQL 3 queries in 2.76ms" [ref=f3e146] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e147]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e148]
+      - link "Static files 2 files used" [ref=f3e149] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e150]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e151]
+      - link "Templates" [ref=f3e152] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e153]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e154]
+      - link "Alerts" [ref=f3e155] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e156]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e157]
+      - link "Cache 0 calls in 0.00ms" [ref=f3e158] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e159]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e160]
+      - link "Signals 130 receivers of 15 signals" [ref=f3e161] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e162]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e163]
+      - link "Community" [ref=f3e164] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e165]:
+      - checkbox "Enable for next and successive requests" [ref=f3e166]
+      - generic [ref=f3e167]: Intercept redirects
+    - listitem [ref=f3e168]:
+      - checkbox "Enable for next and successive requests" [ref=f3e169]
+      - generic [ref=f3e170]: Profiling

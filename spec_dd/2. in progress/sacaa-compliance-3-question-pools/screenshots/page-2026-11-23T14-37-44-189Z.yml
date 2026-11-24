@@ -1,0 +1,66 @@
+- generic [active] [ref=f12e1]:
+  - banner [ref=f12e2]:
+    - link [ref=f12e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f12e4]
+    - navigation [ref=f12e5]:
+      - generic [ref=f12e6]:
+        - generic [ref=f12e7]:
+          - button "Notifications, none new" [ref=f12e8]
+          - status:
+            - generic [ref=f12e12]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f12e14] [cursor=pointer]:
+          - generic [ref=f12e15]:
+            - generic [ref=f12e16]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f12e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f12e18]:
+    - generic [ref=f12e22]:
+      - generic [ref=f12e26]:
+        - button "Open navigation panel" [ref=f12e27] [cursor=pointer]
+        - heading "Courses" [level=1] [ref=f12e31]
+      - generic [ref=f12e36]:
+        - list [ref=f12e38]:
+          - listitem [ref=f12e39]:
+            - generic [ref=f12e40]:
+              - link "Functionality Demo - question pools" [ref=f12e43] [cursor=pointer]:
+                - /url: /educator/organisations/demodev/courses/befa506c-dc1a-4333-9e55-fabb5cebd1fc
+              - generic [ref=f12e47]:
+                - generic [ref=f12e48]:
+                  - term [ref=f12e49]: Visibility
+                  - definition [ref=f12e50]: Published
+                - generic [ref=f12e51]:
+                  - term [ref=f12e52]: Active Learners
+                  - definition [ref=f12e53]: "2"
+                - generic [ref=f12e54]:
+                  - term [ref=f12e55]: Cohorts
+                  - definition [ref=f12e56]:
+                    - img "None" [ref=f12e57]: —
+          - listitem [ref=f12e58]:
+            - generic [ref=f12e59]:
+              - link "Functionality Demo - shuffled quiz" [ref=f12e62] [cursor=pointer]:
+                - /url: /educator/organisations/demodev/courses/7021dd5c-7e0b-4c90-a107-87f3632b9118
+              - generic [ref=f12e66]:
+                - generic [ref=f12e67]:
+                  - term [ref=f12e68]: Visibility
+                  - definition [ref=f12e69]: Published
+                - generic [ref=f12e70]:
+                  - term [ref=f12e71]: Active Learners
+                  - definition [ref=f12e72]: "2"
+                - generic [ref=f12e73]:
+                  - term [ref=f12e74]: Cohorts
+                  - definition [ref=f12e75]:
+                    - img "None" [ref=f12e76]: —
+        - paragraph [ref=f12e78]: 2 courses
+  - contentinfo [ref=f12e81]:
+    - generic [ref=f12e82]:
+      - paragraph [ref=f12e83]: © 2026 FirstClass
+      - navigation "Legal" [ref=f12e84]:
+        - link "Terms and Conditions" [ref=f12e85] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f12e86] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f12e87] [cursor=pointer]: sacaa-compliance-3-question-pools
+  - generic "Show toolbar" [ref=f12e89]: DJDT

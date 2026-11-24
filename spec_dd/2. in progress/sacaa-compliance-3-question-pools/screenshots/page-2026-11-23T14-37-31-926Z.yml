@@ -1,0 +1,70 @@
+- generic [active] [ref=f8e1]:
+  - banner [ref=f8e2]:
+    - link [ref=f8e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f8e4]
+      - heading "FirstClass" [level=1] [ref=f8e5]
+    - navigation [ref=f8e6]:
+      - generic [ref=f8e7]:
+        - generic [ref=f8e8]:
+          - button "Notifications, none new" [ref=f8e9]
+          - status:
+            - generic [ref=f8e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f8e15] [cursor=pointer]:
+          - generic [ref=f8e16]:
+            - generic [ref=f8e17]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f8e18]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f8e19]:
+    - generic [ref=f8e21]:
+      - link "Back" [ref=f8e22] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f8e27]:
+        - generic [ref=f8e28]: Assessment
+        - heading "Functionality Demo - question pools" [level=1] [ref=f8e29]
+        - paragraph [ref=f8e30]: Questions drawn from a larger pool
+        - generic [ref=f8e32]:
+          - generic [ref=f8e36]:
+            - paragraph [ref=f8e37]: Lessons
+            - paragraph [ref=f8e38]: 0 lessons
+          - generic [ref=f8e42]:
+            - paragraph [ref=f8e43]: Enrolment
+            - paragraph [ref=f8e44]: Free · open
+      - generic [ref=f8e45]:
+        - complementary [ref=f8e46]:
+          - generic [ref=f8e48]:
+            - generic [ref=f8e49]:
+              - paragraph [ref=f8e50]: Free · open to everyone
+              - paragraph [ref=f8e51]: One click. No credit card.
+            - link "Enrol for free" [ref=f8e52] [cursor=pointer]:
+              - /url: /courses/functionality-demo-question-pools/access/
+            - generic [ref=f8e53]:
+              - heading "This course includes" [level=3] [ref=f8e54]
+              - list [ref=f8e55]:
+                - listitem [ref=f8e56]: 0 lessons
+                - listitem [ref=f8e57]: Includes assessments
+        - generic [ref=f8e58]:
+          - generic [ref=f8e59]:
+            - heading "About this course" [level=2] [ref=f8e60]
+            - paragraph [ref=f8e62]: Sit the quiz twice. Each sitting draws its own questions from a larger pool, so the second sitting asks different ones.
+          - generic [ref=f8e63]:
+            - heading "Course content" [level=2] [ref=f8e64]
+            - navigation "Course outline" [ref=f8e66]:
+              - list [ref=f8e67]:
+                - listitem [ref=f8e68]:
+                  - generic [ref=f8e69]:
+                    - generic [ref=f8e70]: "1."
+                    - generic [ref=f8e71]: Locked
+                    - generic [ref=f8e75]: Question pool quiz
+  - contentinfo [ref=f8e76]:
+    - generic [ref=f8e77]:
+      - paragraph [ref=f8e78]: © 2026 FirstClass
+      - navigation "Legal" [ref=f8e79]:
+        - link "Terms and Conditions" [ref=f8e80] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f8e81] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f8e82] [cursor=pointer]: sacaa-compliance-3-question-pools
+  - generic "Show toolbar" [ref=f8e84]: DJDT

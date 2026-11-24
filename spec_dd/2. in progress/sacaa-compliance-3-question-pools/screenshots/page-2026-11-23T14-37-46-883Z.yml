@@ -1,0 +1,142 @@
+- generic [active] [ref=f13e1]:
+  - banner [ref=f13e2]:
+    - link [ref=f13e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f13e4]
+    - navigation [ref=f13e5]:
+      - generic [ref=f13e6]:
+        - generic [ref=f13e7]:
+          - button "Notifications, none new" [ref=f13e8]
+          - status:
+            - generic [ref=f13e12]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f13e14] [cursor=pointer]:
+          - generic [ref=f13e15]:
+            - generic [ref=f13e16]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f13e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f13e18]:
+    - generic [ref=f13e21]:
+      - navigation "Back" [ref=f13e23]:
+        - link "Courses" [ref=f13e24] [cursor=pointer]:
+          - /url: /educator/organisations/demodev/courses
+      - generic [ref=f13e28]:
+        - generic [ref=f13e33]:
+          - button "Open navigation panel" [ref=f13e34] [cursor=pointer]
+          - heading "Functionality Demo - question pools" [level=1] [ref=f13e38]
+        - generic [ref=f13e40]:
+          - generic [ref=f13e42]:
+            - heading "Details" [level=2] [ref=f13e45]
+            - generic [ref=f13e47]:
+              - generic [ref=f13e48]:
+                - term [ref=f13e49]: Title
+                - definition [ref=f13e50]: Functionality Demo - question pools
+              - generic [ref=f13e51]:
+                - term [ref=f13e52]: Subtitle
+                - definition [ref=f13e53]: Questions drawn from a larger pool
+              - generic [ref=f13e54]:
+                - term [ref=f13e55]: Category
+                - definition [ref=f13e56]: Assessment
+              - generic [ref=f13e57]:
+                - term [ref=f13e58]: Visibility
+                - definition [ref=f13e59]: Published
+              - generic [ref=f13e60]:
+                - term [ref=f13e61]: Lessons
+                - definition [ref=f13e62]: "0"
+          - generic [ref=f13e64]:
+            - heading "Course content" [level=2] [ref=f13e67]
+            - generic [ref=f13e69]:
+              - list [ref=f13e71]:
+                - listitem [ref=f13e72]:
+                  - generic [ref=f13e74]:
+                    - generic [ref=f13e75]: Course details
+                    - generic [ref=f13e78]: Course
+                    - button "Preview course details page" [ref=f13e80] [cursor=pointer]: Preview
+                - listitem [ref=f13e81]:
+                  - button "Question pool quiz" [expanded] [ref=f13e83]
+                  - generic [ref=f13e87]:
+                    - generic [ref=f13e88]:
+                      - generic [ref=f13e89]: "1."
+                      - generic [ref=f13e90]:
+                        - generic [ref=f13e91]: Form
+                        - generic [ref=f13e95]: Question pool quiz
+                    - generic [ref=f13e96]: Form
+                    - button "Preview Question pool quiz" [ref=f13e98] [cursor=pointer]: Preview
+                - listitem [ref=f13e99]:
+                  - generic [ref=f13e101]:
+                    - generic [ref=f13e102]:
+                      - generic [ref=f13e103]: "1.1"
+                      - generic [ref=f13e104]:
+                        - generic [ref=f13e105]: Page
+                        - generic [ref=f13e109]: The planets
+                    - generic [ref=f13e110]: Page
+                    - 'button "Preview Question pool quiz: The planets" [ref=f13e112] [cursor=pointer]': Preview
+                - listitem [ref=f13e113]:
+                  - generic [ref=f13e115]:
+                    - generic [ref=f13e116]:
+                      - generic [ref=f13e117]: "1.2"
+                      - generic [ref=f13e118]:
+                        - generic [ref=f13e119]: Page
+                        - generic [ref=f13e123]: Short passages
+                    - generic [ref=f13e124]: Page
+                    - 'button "Preview Question pool quiz: Short passages" [ref=f13e126] [cursor=pointer]': Preview
+              - paragraph [ref=f13e128]: 3 course outline items
+          - generic [ref=f13e130]:
+            - heading "Reference" [level=2] [ref=f13e133]
+            - list [ref=f13e137]:
+              - listitem [ref=f13e138]:
+                - paragraph [ref=f13e142]: No reference material in this course yet.
+          - generic [ref=f13e144]:
+            - heading "Cohort registrations" [level=2] [ref=f13e147]
+            - list [ref=f13e151]:
+              - listitem [ref=f13e152]:
+                - paragraph [ref=f13e154]: No cohorts are registered for this course yet. Cohort registrations will appear here.
+          - generic [ref=f13e156]:
+            - heading "Direct registrations" [level=2] [ref=f13e159]
+            - generic [ref=f13e161]:
+              - button "Sort" [ref=f13e166] [cursor=pointer]
+              - list [ref=f13e171]:
+                - listitem [ref=f13e172]:
+                  - generic [ref=f13e173]:
+                    - generic [ref=f13e176]:
+                      - link "QA qa-learner-a qa-learner-a@example.com" [ref=f13e178] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners/45b5eded-fda3-4b59-9078-fa06f8904f2f
+                        - generic [ref=f13e179]:
+                          - generic [aria-hidden] [ref=f13e180]: QQ
+                          - generic [ref=f13e181]:
+                            - generic [ref=f13e182]: QA qa-learner-a
+                            - generic [ref=f13e183]: qa-learner-a@example.com
+                      - 'link "Quick view: QA qa-learner-a" [ref=f13e184] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/learners/45b5eded-fda3-4b59-9078-fa06f8904f2f
+                    - generic [ref=f13e190]:
+                      - term [ref=f13e191]: Status
+                      - definition [ref=f13e192]:
+                        - generic [ref=f13e193]: Active
+                - listitem [ref=f13e194]:
+                  - generic [ref=f13e195]:
+                    - generic [ref=f13e198]:
+                      - link "QA qa-learner-b qa-learner-b@example.com" [ref=f13e200] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners/ed8371f4-b3c8-46dd-aaf3-6ba76724cdea
+                        - generic [ref=f13e201]:
+                          - generic [aria-hidden] [ref=f13e202]: QQ
+                          - generic [ref=f13e203]:
+                            - generic [ref=f13e204]: QA qa-learner-b
+                            - generic [ref=f13e205]: qa-learner-b@example.com
+                      - 'link "Quick view: QA qa-learner-b" [ref=f13e206] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/learners/ed8371f4-b3c8-46dd-aaf3-6ba76724cdea
+                    - generic [ref=f13e212]:
+                      - term [ref=f13e213]: Status
+                      - definition [ref=f13e214]:
+                        - generic [ref=f13e215]: Active
+              - paragraph [ref=f13e217]: 2 learner course registrations
+  - contentinfo [ref=f13e220]:
+    - generic [ref=f13e221]:
+      - paragraph [ref=f13e222]: © 2026 FirstClass
+      - navigation "Legal" [ref=f13e223]:
+        - link "Terms and Conditions" [ref=f13e224] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f13e225] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f13e226] [cursor=pointer]: sacaa-compliance-3-question-pools
+  - generic "Show toolbar" [ref=f13e228]: DJDT

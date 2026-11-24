@@ -1,0 +1,68 @@
+- generic [active] [ref=f16e1]:
+  - banner [ref=f16e2]:
+    - link [ref=f16e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f16e4]
+      - heading "FirstClass" [level=1] [ref=f16e5]
+    - navigation [ref=f16e6]:
+      - generic [ref=f16e7]:
+        - generic [ref=f16e8]:
+          - button "Notifications, none new" [ref=f16e9]
+          - status:
+            - generic [ref=f16e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f16e15] [cursor=pointer]:
+          - generic [ref=f16e16]:
+            - generic [ref=f16e17]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f16e18]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f16e19]:
+    - generic [ref=f16e23]:
+      - generic [ref=f16e27]:
+        - button "Open navigation panel" [ref=f16e28] [cursor=pointer]
+        - heading "Courses" [level=1] [ref=f16e32]
+      - generic [ref=f16e37]:
+        - region "Courses" [ref=f16e39]:
+          - table [ref=f16e40]:
+            - caption [ref=f16e41]: Courses
+            - rowgroup [ref=f16e42]:
+              - row [ref=f16e43]:
+                - columnheader "Title" [ref=f16e44]
+                - columnheader "Visibility" [ref=f16e45]
+                - columnheader "Interest" [ref=f16e46]
+                - columnheader "Active Learners" [ref=f16e47]
+                - columnheader "Active Cohorts" [ref=f16e48]
+                - columnheader "Cohorts" [ref=f16e49]
+            - rowgroup [ref=f16e50]:
+              - row [ref=f16e51]:
+                - cell [ref=f16e52]:
+                  - link "Functionality Demo - question pools" [ref=f16e53] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/courses/befa506c-dc1a-4333-9e55-fabb5cebd1fc
+                - cell "Published" [ref=f16e54]
+                - cell "0" [ref=f16e55]
+                - cell "2" [ref=f16e56]
+                - cell "0" [ref=f16e57]
+                - cell [ref=f16e58]:
+                  - img "None" [ref=f16e59]: —
+              - row [ref=f16e60]:
+                - cell [ref=f16e61]:
+                  - link "Functionality Demo - shuffled quiz" [ref=f16e62] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/courses/7021dd5c-7e0b-4c90-a107-87f3632b9118
+                - cell "Published" [ref=f16e63]
+                - cell "0" [ref=f16e64]
+                - cell "2" [ref=f16e65]
+                - cell "0" [ref=f16e66]
+                - cell [ref=f16e67]:
+                  - img "None" [ref=f16e68]: —
+        - paragraph [ref=f16e70]: 2 courses
+  - contentinfo [ref=f16e73]:
+    - generic [ref=f16e74]:
+      - paragraph [ref=f16e75]: © 2026 FirstClass
+      - navigation "Legal" [ref=f16e76]:
+        - link "Terms and Conditions" [ref=f16e77] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f16e78] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f16e79] [cursor=pointer]: sacaa-compliance-3-question-pools
+  - generic "Show toolbar" [ref=f16e81]: DJDT
