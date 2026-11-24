@@ -630,7 +630,9 @@ def test_course_direct_registrations_cell_links_the_row_and_carries_a_quick_view
     learner_path = _learners_url(organisation.slug, f"learners/{learner.pk}")
 
     response = role_holder_client(organisation).get(
-        _learners_url(organisation.slug, f"courses/{course.pk}/__panels/learners")
+        _learners_url(
+            organisation.slug, f"courses/{course.pk}/__tabs/overview/__panels/learners"
+        )
     )
 
     document, links = _learner_cells(response, learner_path)

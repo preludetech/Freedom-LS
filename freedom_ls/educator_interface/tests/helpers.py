@@ -314,7 +314,8 @@ def _content_action_url(
     organisation: Organisation, course: Course, action: str, *, panel: str = "content"
 ) -> str:
     return _interface_url(
-        organisation.slug, f"courses/{course.pk}/__panels/{panel}/__actions/{action}"
+        organisation.slug,
+        f"courses/{course.pk}/__tabs/content/__panels/{panel}/__actions/{action}",
     )
 
 

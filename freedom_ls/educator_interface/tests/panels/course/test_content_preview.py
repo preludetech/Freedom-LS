@@ -69,7 +69,8 @@ def test_course_page_buttons_are_only_preview_triggers(staff_client: Client) -> 
     )
 
     document = _get_document(
-        staff_client, _interface_url(organisation.slug, f"courses/{course.pk}")
+        staff_client,
+        _interface_url(organisation.slug, f"courses/{course.pk}/__tabs/content"),
     )
 
     (heading,) = document.cssselect("#instance-title")
@@ -88,7 +89,8 @@ def _course_content_panel(
 ) -> lxml.html.HtmlElement:
     organisation = OrganisationFactory()
     document = _get_document(
-        client, _interface_url(organisation.slug, f"courses/{course.pk}")
+        client,
+        _interface_url(organisation.slug, f"courses/{course.pk}/__tabs/content"),
     )
     (found,) = document.cssselect(f"section[data-panel='{panel}']")
     return found
@@ -509,7 +511,7 @@ def test_course_content_query_count_stays_bounded_as_children_grow(
             collection_object=part, child_object=TopicFactory(), order=order
         )
     organisation = OrganisationFactory()
-    url = _interface_url(organisation.slug, f"courses/{course.pk}")
+    url = _interface_url(organisation.slug, f"courses/{course.pk}/__tabs/content")
 
     with django_assert_max_num_queries(60):
         assert staff_client.get(url).status_code == 200
@@ -525,7 +527,7 @@ def test_reference_panel_query_count_does_not_grow_with_topics(
         course = cast(CourseModel, CourseFactory())
         # The order also keeps the part titles, and so their slugs, apart.
         _reference_part(course, order=topic_count, topic_count=topic_count)
-        url = _interface_url(organisation.slug, f"courses/{course.pk}")
+        url = _interface_url(organisation.slug, f"courses/{course.pk}/__tabs/content")
         assert staff_client.get(url).status_code == 200
         with CaptureQueriesContext(connection) as queries:
             assert staff_client.get(url).status_code == 200
@@ -544,7 +546,7 @@ def _preview_url(
     """The Preview action's URL as the course page publishes it, without
     the item parameter."""
     document = _get_document(
-        client, _interface_url(organisation.slug, f"courses/{course.pk}")
+        client, _interface_url(organisation.slug, f"courses/{course.pk}/__tabs/content")
     )
     trigger = document.cssselect(
         f"section[data-panel='{panel}'] table button[hx-get*='preview_content']"
@@ -568,7 +570,7 @@ def test_a_topic_row_carries_a_preview_trigger_for_its_collection_item(
     course, item = _course_with_topic(TopicFactory(title="Intro"))
 
     html = staff_client.get(
-        _interface_url(organisation.slug, f"courses/{course.pk}")
+        _interface_url(organisation.slug, f"courses/{course.pk}/__tabs/content")
     ).content.decode()
     panel = lxml.html.fromstring(html).cssselect("section[data-panel='content']")[0]
 
@@ -615,7 +617,7 @@ def test_the_course_page_loads_katex_before_the_content_components(
     course, _item = _course_with_topic()
 
     html = staff_client.get(
-        _interface_url(organisation.slug, f"courses/{course.pk}")
+        _interface_url(organisation.slug, f"courses/{course.pk}/__tabs/content")
     ).content.decode()
 
     assert "content_engine/vendor/katex/katex.min.css" in html
@@ -683,7 +685,9 @@ def test_a_topic_preview_renders_a_speak_button_and_the_course_page_loads_its_sc
     )
     topic = TopicFactory(content='<c-audio src="bravo.mp3" label="Bravo"></c-audio>\n')
     course, item = _course_with_topic(topic)
-    course_url = _interface_url(organisation.slug, f"courses/{course.pk}")
+    course_url = _interface_url(
+        organisation.slug, f"courses/{course.pk}/__tabs/content"
+    )
     preview_url = _preview_url(staff_client, organisation, course)
 
     preview = staff_client.get(
@@ -831,7 +835,9 @@ def test_a_course_belonging_only_to_another_organisation_cannot_be_previewed(
     course.organisations.add(OrganisationFactory())
     action_url = _content_action_url(organisation, course, "preview_content")
 
-    page = staff_client.get(_interface_url(organisation.slug, f"courses/{course.pk}"))
+    page = staff_client.get(
+        _interface_url(organisation.slug, f"courses/{course.pk}/__tabs/content")
+    )
     action = staff_client.get(f"{action_url}?item={item.pk}", HTTP_HX_REQUEST="true")
 
     assert (page.status_code, action.status_code) == (404, 404)
@@ -1298,7 +1304,8 @@ def test_the_course_content_table_opens_with_the_course_details_row(
     course, _item = _course_with_topic()
 
     document = _get_document(
-        staff_client, _interface_url(organisation.slug, f"courses/{course.pk}")
+        staff_client,
+        _interface_url(organisation.slug, f"courses/{course.pk}/__tabs/content"),
     )
 
     (panel,) = document.cssselect("section[data-panel='content']")
@@ -1461,7 +1468,7 @@ def test_a_course_panel_shows_its_outline_only_for_an_available_course(
     client = logged_in_client(organisation_admin_viewer(organisation))
 
     document = _get_document(
-        client, _interface_url(organisation.slug, f"courses/{course.pk}")
+        client, _interface_url(organisation.slug, f"courses/{course.pk}/__tabs/content")
     )
 
     panel = document.cssselect(f"section[data-panel='{panel_key}']")[0]
@@ -1568,7 +1575,7 @@ def test_a_reference_topic_row_carries_a_preview_trigger_on_the_reference_url(
 
     (trigger,) = panel.cssselect("table button[aria-label='Preview Cheat sheet']")
     assert trigger.get("hx-get").endswith(
-        f"/__panels/reference/__actions/preview_content?item={item.pk}"
+        f"/__tabs/content/__panels/reference/__actions/preview_content?item={item.pk}"
     )
 
 

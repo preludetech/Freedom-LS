@@ -147,6 +147,7 @@ def test_educator_previews_course_content(
     page = educator_logged_in_page
     organisation, course = _seed_course(educator_user)
     course_url = interface_url(live_server, organisation.slug, f"courses/{course.pk}")
+    content_url = f"{course_url}/__tabs/content"
     courses_url = interface_url(live_server, organisation.slug, "courses")
     modal = page.locator("#app-modal[open]")
     topic_preview = page.get_by_role("button", name="Preview Cards")
@@ -155,6 +156,10 @@ def test_educator_previews_course_content(
         with no_console_errors(page):
             page.set_viewport_size(viewport)
             page.goto(course_url)
+            page.get_by_role("navigation", name="Course sections").get_by_role(
+                "link", name="Content"
+            ).click()
+            expect(page).to_have_url(content_url)
             outline = page.locator("[data-table-layout]")
             reference_panel = page.locator("section[data-panel='reference']")
             if viewport["width"] >= 1920:
@@ -282,7 +287,7 @@ def test_educator_previews_course_content(
             _open_courses_from_sidebar(page)
             expect(page).to_have_url(courses_url)
             page.go_back()
-            expect(page).to_have_url(course_url)
+            expect(page).to_have_url(content_url)
             topic_preview.click()
             expect(modal.get_by_role("heading", name="Cards (Preview)")).to_be_visible()
             expect(modal.get_by_role("button", name="Flip card")).to_be_visible()

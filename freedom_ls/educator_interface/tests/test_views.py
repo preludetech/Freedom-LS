@@ -666,7 +666,7 @@ def _registrations_table(organisation: Organisation, person: User) -> str:
     LearnerCourseRegistrationFactory(learner=learner, course=course, is_active=True)
     return get_interface_page(
         organisation,
-        f"courses/{course.pk}/__panels/learners",
+        f"courses/{course.pk}/__tabs/overview/__panels/learners",
         organisation_admin_viewer(organisation),
     )
 
