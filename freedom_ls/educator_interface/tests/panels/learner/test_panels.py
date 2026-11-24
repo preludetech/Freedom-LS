@@ -12,6 +12,7 @@ from datetime import timedelta
 import lxml.html
 import pytest
 
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 from django.db import connection
 from django.test import Client
@@ -347,6 +348,9 @@ class TestLearnerCoursesPanel:
                 )
             learner = record.learner
             client = logged_in_client(_org_admin(learner.organisation))
+            # Both measurements start from a cold content-type cache, so the
+            # first call does not pay a lookup the second one gets for free.
+            ContentType.objects.clear_cache()
             with CaptureQueriesContext(connection) as queries:
                 _courses_panel_html(client, learner.organisation.slug, learner)
             return len(queries)
