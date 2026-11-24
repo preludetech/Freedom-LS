@@ -10,7 +10,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 2. Plan
 
-- [ ] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
+- [x] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
 - [ ] (user) Review both plans and edit where needed
 
 ## 3. Implementation and QA
@@ -23,6 +23,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 4. Documentation and pull request
 
 - [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [ ] (cmd) Run `/sdd:document`: in `spec_dd/1. next/roadmap.md`, replace the "Decided: each quiz sets whether its declaration is signed on every attempt or once per learner" line with "every attempt signs" (spec, Documentation and downstream)
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 
 ## 5. Cleanup
