@@ -90,6 +90,10 @@ def _seed_course(user: AbstractBaseUser) -> tuple[Organisation, Course]:
     ContentCollectionItemFactory(
         collection_object=part, child_object=part_topic, order=0
     )
+    nested = FormFactory(title="Nested survey")
+    FormPageFactory(form=nested, title="Nested one", order=0)
+    FormPageFactory(form=nested, title="Nested two", order=1)
+    ContentCollectionItemFactory(collection_object=part, child_object=nested, order=1)
     ContentCollectionItemFactory(collection_object=course, child_object=quiz, order=2)
     ContentCollectionItemFactory(collection_object=course, child_object=survey, order=3)
 
@@ -176,6 +180,31 @@ def test_educator_previews_course_content(
                 expect(
                     page.get_by_role("region", name="Reference outline items")
                 ).to_be_hidden()
+            # Every group starts collapsed, nested ones included. Opening a
+            # part shows its rows and leaves a form inside it collapsed.
+            group_toggles = page.locator("button[aria-controls]").locator(
+                "visible=true"
+            )
+            for toggle in group_toggles.all():
+                expect(toggle).to_have_attribute("aria-expanded", "false")
+            expect(_visible_text(page, "Inside the part")).to_be_hidden()
+            expect(_visible_text(page, "Your thoughts")).to_be_hidden()
+            expect(_visible_text(page, "Glossary")).to_be_hidden()
+            chapter_toggle = page.get_by_role(
+                "button", name="Chapter One", exact=True
+            ).locator("visible=true")
+            chapter_toggle.click()
+            expect(chapter_toggle).to_have_attribute("aria-expanded", "true")
+            expect(_visible_text(page, "Inside the part")).to_be_visible()
+            nested_toggle = page.get_by_role(
+                "button", name="Nested survey", exact=True
+            ).locator("visible=true")
+            expect(nested_toggle).to_have_attribute("aria-expanded", "false")
+            expect(_visible_text(page, "Nested two")).to_be_hidden()
+            for name in ("Survey", "Field guide"):
+                page.get_by_role("button", name=name, exact=True).locator(
+                    "visible=true"
+                ).click()
             for title in ("Field guide", "Glossary"):
                 expect(
                     reference_panel.get_by_text(title, exact=True).locator(
@@ -294,6 +323,10 @@ def test_educator_previews_course_content(
             _press_escape_and_expect_closed(page)
 
             # A reference topic's preview opens and closes like the outline's.
+            # Going back reloaded the page, so its groups start collapsed.
+            page.get_by_role("button", name="Field guide", exact=True).locator(
+                "visible=true"
+            ).click()
             glossary_preview = page.get_by_role("button", name="Preview Glossary")
             glossary_preview.click()
             expect(

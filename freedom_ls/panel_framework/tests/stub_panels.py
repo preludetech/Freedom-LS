@@ -550,6 +550,21 @@ class StubChildRowsDataTable(StubSequenceDataTable):
         return None
 
 
+class StubCollapsedChildRowsDataTable(StubChildRowsDataTable):
+    """A child-rows table whose groups start collapsed."""
+
+    child_rows_collapsed = True
+
+
+class StubCollapsedChildRowsTablePanel(DataTablePanel):
+    title = "Collapsed child rows"
+    data_table = StubCollapsedChildRowsDataTable
+    table_key = "collapsedchildrows"
+
+    def get_row_sequence(self, request: HttpRequest) -> Sequence[object]:
+        return STUB_CHILD_ROWS
+
+
 class StubChildRowsTablePanel(DataTablePanel):
     title = "Child rows"
     data_table = StubChildRowsDataTable

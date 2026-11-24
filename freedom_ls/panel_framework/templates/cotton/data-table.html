@@ -34,6 +34,7 @@
         entry_count=""
         cards_when_narrow=""
         has_child_rows=""
+        child_rows_collapsed=""
         compact=""
         leading_columns=""
         row_template_colspan="" />
@@ -92,7 +93,7 @@
         leading cell empty, which indents the detail in line with the first
         column and reads it as part of the row above.
         {% endcomment %}
-        <table{% if row_detail_template_name %} x-data="rowDetail"{% elif has_child_rows %} x-data="childRows"{% endif %} aria-labelledby="{{ region_id }}-caption">
+        <table{% if row_detail_template_name %} x-data="rowDetail"{% elif has_child_rows %} x-data="childRows"{% if child_rows_collapsed %} data-child-rows-collapsed{% endif %}{% endif %} aria-labelledby="{{ region_id }}-caption">
                 <caption id="{{ region_id }}-caption" class="sr-only">{{ noun|default:"Data"|capfirst }}</caption>
                 <thead class="border-b border-border bg-transparent">
                     <tr>
@@ -218,7 +219,7 @@
             </table>
     </div>
 
-    <ul class="list-none ml-0 space-y-0 divide-y divide-border {% if cards_when_narrow %}@min-[58rem]:hidden{% else %}md:hidden{% endif %}"{% if row_detail_template_name %} x-data="rowDetail"{% elif has_child_rows %} x-data="childRows"{% endif %}>
+    <ul class="list-none ml-0 space-y-0 divide-y divide-border {% if cards_when_narrow %}@min-[58rem]:hidden{% else %}md:hidden{% endif %}"{% if row_detail_template_name %} x-data="rowDetail"{% elif has_child_rows %} x-data="childRows"{% if child_rows_collapsed %} data-child-rows-collapsed{% endif %}{% endif %}>
         {% if rows %}
             {% for row in rows %}
                 <c-data-table-card :row="row"

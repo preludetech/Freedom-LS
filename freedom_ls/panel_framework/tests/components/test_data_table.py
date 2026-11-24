@@ -24,6 +24,7 @@ from ..stub_panels import (
     StubCardDataTable,
     StubChildRowsTablePanel,
     StubClassifyingBulkAction,
+    StubCollapsedChildRowsTablePanel,
     StubCompactTablePanel,
     StubDataTablePanel,
     StubDetailDataTable,
@@ -507,6 +508,26 @@ def test_the_table_and_the_card_list_each_run_their_own_child_rows_state(
 
     assert len(document.cssselect('[x-data="childRows"]')) == 2
     assert len(document.cssselect('table[x-data="childRows"]')) == 1
+
+
+def test_a_collapsed_child_rows_table_flags_the_table_and_the_card_list(
+    mock_site_context: Site,
+) -> None:
+    document = _render(StubCollapsedChildRowsTablePanel)
+
+    assert len(document.cssselect("table[data-child-rows-collapsed]")) == 1
+    assert len(document.cssselect("ul[data-child-rows-collapsed]")) == 1
+    # Without JavaScript every row shows, so the toggle still reads expanded.
+    assert document.cssselect("tbody tr button")[0].get("aria-expanded") == "true"
+
+
+def test_a_child_rows_table_starts_open_unless_it_opts_in(
+    mock_site_context: Site,
+) -> None:
+    document = _render(StubChildRowsTablePanel)
+
+    assert document.cssselect("[data-child-rows-collapsed]") == []
+    assert document.cssselect("tbody tr button")[0].get("aria-expanded") == "true"
 
 
 def test_every_id_in_a_child_rows_region_is_unique(mock_site_context: Site) -> None:

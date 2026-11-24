@@ -265,6 +265,7 @@ def _outline_content_count(rows: Sequence[OutlineRow]) -> int:
 
 class CourseOutlineTable(DataTable):
     has_child_rows = True
+    child_rows_collapsed = True
     compact = True
     noun = "course outline items"
     noun_singular = "course outline item"

@@ -297,6 +297,10 @@ class DataTable:
     #: with a row detail or bulk actions.
     has_child_rows: bool = False
 
+    #: Groups start collapsed once Alpine starts; without JavaScript every
+    #: row shows. Only meaningful with `has_child_rows`.
+    child_rows_collapsed: bool = False
+
     @staticmethod
     def get_child_rows(row: object) -> Sequence[object]:
         """This row's child rows, in display order. Only consulted when
@@ -593,6 +597,7 @@ class DataTable:
             "cards_when_narrow": cls.cards_when_narrow,
             "row_detail_template_name": cls.row_detail_template_name,
             "has_child_rows": cls.has_child_rows,
+            "child_rows_collapsed": cls.child_rows_collapsed,
             "compact": cls.compact,
             "leading_columns": leading_columns,
             "row_template_colspan": len(columns) - len(leading_columns),

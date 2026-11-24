@@ -1176,13 +1176,25 @@ document.addEventListener("alpine:init", () => {
     // card list, and the two share nothing. A group row's chevron names its own
     // row in data-row; a child row names every group above it in data-parents,
     // so closing a group hides all of its descendants and reopening it shows
-    // each one as its own group left it. Every group starts open, and an htmx
-    // swap of the region starts a fresh instance, open again. The CSP build
+    // each one as its own group left it. Groups start open unless the table opts
+    // in with data-child-rows-collapsed, and an htmx swap of the region starts
+    // a fresh instance in the same starting state. The CSP build
     // passes no arguments, which is why the ids travel in data attributes.
     // No x-transition: a table row's display cannot animate, and the cards
     // behave as the rows do.
     Alpine.data("childRows", () => ({
         collapsed: {},
+        init() {
+            // A table that opts in starts with every group closed, nested
+            // groups included. The ids come from the rendered toggles because
+            // the CSP build passes no arguments.
+            if (!("childRowsCollapsed" in this.$el.dataset)) {
+                return;
+            }
+            for (const toggle of this.$el.querySelectorAll("[data-row]")) {
+                this.collapsed[toggle.dataset.row] = true;
+            }
+        },
         toggle(event) {
             const rowId = event.currentTarget.dataset.row;
             this.collapsed[rowId] = !this.collapsed[rowId];

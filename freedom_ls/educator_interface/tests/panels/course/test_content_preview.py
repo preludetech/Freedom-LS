@@ -322,6 +322,23 @@ def test_course_content_part_rows_are_expandable_buttons(staff_client: Client) -
 
 
 @pytest.mark.django_db
+def test_the_course_content_and_reference_tables_start_collapsed(
+    staff_client: Client,
+) -> None:
+    course = CourseFactory()
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=TopicFactory(), order=0
+    )
+    _reference_part(course, order=0, topic_count=1)
+
+    for name in ("content", "reference"):
+        panel = _course_content_panel(staff_client, course, panel=name)
+
+        assert len(panel.cssselect("table[data-child-rows-collapsed]")) == 1
+        assert len(panel.cssselect("ul[data-child-rows-collapsed]")) == 1
+
+
+@pytest.mark.django_db
 def test_a_multi_page_form_expands_into_one_row_per_page(staff_client: Client) -> None:
     course = CourseFactory()
     survey = FormFactory(title="Survey")
