@@ -1,0 +1,6 @@
+<c-vars option_text="" class="" />
+{% comment %}
+Marks the option a learner chose, for a reviewer. The words carry the
+meaning, so the mark reads without colour.
+{% endcomment %}
+<span class="flex shrink-0 items-center gap-1 text-sm text-primary {{ class }}"><c-icon name="user" class="size-4" />Learner's answer{% if option_text %}: {{ option_text }}{% endif %}</span>

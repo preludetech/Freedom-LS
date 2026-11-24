@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 
-def test_show_answer_key_is_set_only_by_the_educator_preview() -> None:
+def test_show_answer_key_is_set_only_by_the_educator_pages() -> None:
     root = Path(__file__).resolve().parents[3]
     allowed_templates = {
         "form_engine/templates/form_engine/inputs/multiple_choice.html",
@@ -20,5 +20,6 @@ def test_show_answer_key_is_set_only_by_the_educator_preview() -> None:
     }
 
     assert mentions == allowed_templates | {
-        "educator_interface/panels/course/content_preview.py"
+        "educator_interface/panels/course/content_preview.py",
+        "educator_interface/panels/learner/quiz_attempt.py",
     }

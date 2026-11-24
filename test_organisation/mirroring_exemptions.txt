@@ -30,3 +30,4 @@ freedom_ls/content_engine/tests/components/  # tests of Cotton component templat
 freedom_ls/accounts/tests/test_allauth_pages.py  # tests of allauth's management page layout, a template with no Python module
 freedom_ls/deadlines/tests/invariants/  # loads content through content_save and checks what a moved part leaves behind in deadlines; mirrors no module
 freedom_ls/learner_progress/tests/invariants/  # loads content through content_save and checks progress after a part moves to reference; mirrors no module
+freedom_ls/form_engine/tests/test_page_children_template.py  # tests of the page_children.html partial, a template with no Python module

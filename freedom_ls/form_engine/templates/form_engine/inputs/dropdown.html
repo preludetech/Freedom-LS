@@ -14,3 +14,4 @@
     {% endfor %}
 </select>
 {% if show_answer_key %}<ul class="mt-2 list-none flex flex-col gap-1">{% for option in options %}{% if option.correct %}<li><c-correct-answer-mark option_text="{{ option.text }}" /></li>{% endif %}{% endfor %}</ul>{% endif %}
+{% if show_learner_answer %}{% with answer=existing_answers|get_dict_item:question.id %}{% if answer %}<ul class="mt-2 list-none flex flex-col gap-1">{% for option in answer.selected_options.all %}<li><c-learner-answer-mark option_text="{{ option.text }}" /></li>{% endfor %}</ul>{% endif %}{% endwith %}{% endif %}

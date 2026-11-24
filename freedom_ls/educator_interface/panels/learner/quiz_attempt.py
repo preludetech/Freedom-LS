@@ -9,10 +9,10 @@ from __future__ import annotations
 from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from functools import cached_property
-from typing import cast
+from typing import Literal, cast
 from uuid import UUID
 
-from django.db.models import F, Model
+from django.db.models import F, Model, prefetch_related_objects
 from django.http import HttpRequest
 
 from freedom_ls.content_engine.models import Course
@@ -25,24 +25,41 @@ from freedom_ls.educator_interface.panels.learner.quick_view import (
     visible_registrations_with_progress,
 )
 from freedom_ls.educator_interface.paths import interface_path
-from freedom_ls.form_engine.models import FormProgress, FormStrategy
+from freedom_ls.form_engine.conditions import (
+    SERVED_TREE_LOOKUPS,
+    SittingPath,
+    answers_by_question,
+    sitting_path,
+)
+from freedom_ls.form_engine.models import (
+    FormProgress,
+    FormQuestion,
+    FormStrategy,
+    QuestionAnswer,
+)
+from freedom_ls.form_engine.queries import stored_score_outdated
+from freedom_ls.form_engine.scoring import is_quiz_answer_correct
 from freedom_ls.learner_management.models import Learner
 from freedom_ls.learner_management.queries import learners_visible_to
 from freedom_ls.learner_progress.models import CourseFormAttempt
 from freedom_ls.learner_progress.queries import LearnerRegistrationProgress
-from freedom_ls.panel_framework.panels import InstanceDetailsPanel, PanelStack
+from freedom_ls.panel_framework.panels import InstanceDetailsPanel, Panel, PanelStack
 from freedom_ls.panel_framework.views import HeaderStat, InstanceView, ListViewConfig
 from freedom_ls.reports.gather import attempt_number_of, score_attempt
 
 __all__ = [
+    "QuestionMark",
+    "QuestionVerdict",
     "QuizAttemptConfig",
     "QuizAttemptFacts",
     "QuizAttemptInstanceView",
+    "QuizAttemptPaperPanel",
     "QuizAttemptResult",
     "QuizAttemptStack",
     "QuizAttemptSummaryPanel",
     "openable_sitting_ids",
     "quiz_attempt_facts",
+    "quiz_attempt_paper_context",
     "quiz_attempt_result",
 ]
 
@@ -167,9 +184,97 @@ class QuizAttemptSummaryPanel(InstanceDetailsPanel):
         ]
 
 
+QuestionVerdict = Literal["correct", "incorrect", "not_marked"]
+
+
+@dataclass(frozen=True)
+class QuestionMark:
+    verdict: QuestionVerdict
+    answered: bool
+
+
+def _mark(
+    question: FormQuestion,
+    path: SittingPath,
+    answers: Mapping[UUID, QuestionAnswer],
+) -> QuestionMark:
+    """How the sitting's answer to `question` is marked today, and whether
+    there is an answer at all. Reads only the prefetched answers and the
+    path's options."""
+    options = path.options_of(question)
+    answer = answers.get(question.id)
+    selected_ids = (
+        {option.id for option in answer.selected_options.all()} if answer else set()
+    )
+    answered = answer is not None and bool(
+        selected_ids or answer.text_answer or hasattr(answer, "answer_file")
+    )
+    if not any(option.correct is True for option in options):
+        verdict: QuestionVerdict = "not_marked"
+    elif is_quiz_answer_correct(selected_ids, options):
+        verdict = "correct"
+    else:
+        verdict = "incorrect"
+    return QuestionMark(verdict=verdict, answered=answered)
+
+
+def quiz_attempt_paper_context(sitting: FormProgress) -> dict[str, object]:
+    """Every page of the sitting's path with its children, the learner's
+    answers and a mark per question.
+
+    The path is the only source of pages, children, option order and
+    numbering, so the review stays right when what a path holds changes.
+    """
+    # Options for every question in one query, so marking a sitting with no
+    # served paper costs no more queries than one with.
+    prefetch_related_objects([sitting.form], *SERVED_TREE_LOOKUPS)
+    answers = answers_by_question(sitting)
+    prefetch_related_objects(list(answers.values()), "answer_file")
+    path = sitting_path(sitting, answers)
+    return {
+        "paper_pages": [
+            {
+                "position": position,
+                "page": page,
+                "page_children": path.children_of(page),
+            }
+            for position, page in enumerate(path.pages, start=1)
+        ],
+        "total_pages": path.page_count,
+        "sitting_path": path,
+        "form_progress": sitting,
+        "question_positions": path.question_positions(),
+        "existing_answers": answers,
+        "rejected_answers": {},
+        "read_only": True,
+        "show_answer_key": True,
+        "show_learner_answer": True,
+        "show_question_id": True,
+        "per_question_template": "educator_interface/partials/quiz_attempt_verdict.html",
+        "question_marks": {q.id: _mark(q, path, answers) for q in path.questions()},
+        "score_outdated": stored_score_outdated(sitting, path, answers),
+        "has_missing_served_items": path.has_missing_served_items,
+        "predates_served_order": sitting.served_paper is None,
+    }
+
+
+class QuizAttemptPaperPanel(Panel):
+    """The paper as this sitting was served, with the learner's answers and
+    how each question is marked now."""
+
+    model = FormProgress
+    title = "Paper"
+    template_name = "educator_interface/panels/quiz_attempt_paper.html"
+
+    def get_context_data(self) -> dict[str, object]:
+        context = super().get_context_data()
+        context.update(quiz_attempt_paper_context(cast(FormProgress, self.instance)))
+        return context
+
+
 class QuizAttemptStack(PanelStack):
     title = "Quiz attempt"
-    children = {"summary": QuizAttemptSummaryPanel}
+    children = {"summary": QuizAttemptSummaryPanel, "paper": QuizAttemptPaperPanel}
 
 
 class QuizAttemptInstanceView(InstanceView):

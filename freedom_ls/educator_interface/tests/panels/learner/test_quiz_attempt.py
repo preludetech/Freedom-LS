@@ -9,8 +9,10 @@ import lxml.html
 import pytest
 from pytest_django.fixtures import DjangoAssertNumQueries
 
+from django.db import connection
 from django.http import HttpRequest
 from django.test import Client
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
@@ -28,8 +30,24 @@ from freedom_ls.educator_interface.tests.helpers import (
     _interface_url,
     organisation_admin_viewer,
 )
-from freedom_ls.form_engine.factories import FormFactory
-from freedom_ls.form_engine.models import FormProgress, FormStrategy
+from freedom_ls.form_engine.factories import (
+    FormFactory,
+    FormPageFactory,
+    FormQuestionFactory,
+    QuestionAnswerFactory,
+    QuestionOptionFactory,
+    served_paper_of,
+)
+from freedom_ls.form_engine.models import (
+    Form,
+    FormContent,
+    FormPage,
+    FormProgress,
+    FormQuestion,
+    FormStrategy,
+    QuestionAnswer,
+    QuestionOption,
+)
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -353,5 +371,292 @@ def test_the_page_stays_under_its_query_bound(
 
     with django_assert_max_num_queries(60):
         response = client.get(url)
+
+    assert response.status_code == 200
+
+
+def _form_page(**kwargs: object) -> FormPage:
+    return cast(FormPage, FormPageFactory(**kwargs))
+
+
+def _paper_sitting(
+    organisation: Organisation, form: Form, **progress_kwargs: object
+) -> FormProgress:
+    attempt = CourseFormAttemptFactory(
+        form=form,
+        course_progress=CourseProgressFactory(
+            learner=LearnerFactory(organisation=organisation)
+        ),
+        form_progress__completed_time=timezone.now(),
+        **{
+            f"form_progress__{key}": value
+            for key, value in {
+                "scores": {"score": 0, "max_score": 0},
+                **progress_kwargs,
+            }.items()
+        },
+    )
+    return cast(FormProgress, attempt.form_progress)
+
+
+def _question(
+    page: FormPage, text: str, order: int, options: list[tuple[str, bool]]
+) -> tuple[FormQuestion, list[QuestionOption]]:
+    question = cast(
+        FormQuestion,
+        FormQuestionFactory(
+            form_page=page, question=text, order=order, type="multiple_choice"
+        ),
+    )
+    return question, [
+        cast(
+            QuestionOption,
+            QuestionOptionFactory(
+                question=question, text=name, correct=correct, order=i
+            ),
+        )
+        for i, (name, correct) in enumerate(options)
+    ]
+
+
+def _answer(
+    sitting: FormProgress, question: FormQuestion, *chosen: QuestionOption
+) -> QuestionAnswer:
+    answer = cast(
+        QuestionAnswer,
+        QuestionAnswerFactory(form_progress=sitting, question=question),
+    )
+    answer.selected_options.add(*chosen)
+    return answer
+
+
+def _quiz() -> Form:
+    return cast(Form, FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50))
+
+
+def _paper_text(
+    client: Client, organisation: Organisation, sitting: FormProgress
+) -> str:
+    return _text(
+        _page(client, organisation, sitting).cssselect("section[data-panel='paper']")[0]
+    )
+
+
+def test_the_paper_follows_the_served_order_and_leaves_out_what_was_not_served(
+    logged_in_client,
+):
+    organisation = OrganisationFactory()
+    form = _quiz()
+    first = _form_page(form=form, title="Alpha page", order=1)
+    second = _form_page(form=form, title="Beta page", order=2)
+    q_a, (a_1, a_2) = _question(
+        first, "Question A", 1, [("A one", True), ("A two", False)]
+    )
+    q_b, _ = _question(first, "Question B", 2, [("B one", True), ("B two", False)])
+    q_c, (c_1,) = _question(second, "Question C", 1, [("C one", True)])
+    sitting = _paper_sitting(
+        organisation,
+        form,
+        served_paper=served_paper_of(
+            [(second, [q_c]), (first, [q_a])],
+            {q_c: [c_1], q_a: [a_2, a_1]},
+        ),
+    )
+    _answer(sitting, q_a, a_1)
+
+    text = _paper_text(
+        _admin_client(organisation, logged_in_client), organisation, sitting
+    )
+
+    assert text.index("Page 1 of 2: Beta page") < text.index("Question C")
+    assert text.index("Question C") < text.index("Page 2 of 2: Alpha page")
+    assert text.index("Page 2 of 2: Alpha page") < text.index("Question A")
+    assert text.index("A two") < text.index("A one")
+    assert "Question B" not in text
+    assert str(q_b.id) not in text
+    assert str(q_a.id) in text
+    assert "predates" not in text
+
+
+@pytest.mark.parametrize(
+    ("asked_only", "left_out_shown"),
+    [(True, False), (False, True)],
+    ids=["asked-only", "neither"],
+)
+def test_a_sitting_without_a_served_paper_says_it_predates_the_record(
+    logged_in_client, asked_only, left_out_shown
+):
+    organisation = OrganisationFactory()
+    form = _quiz()
+    page = _form_page(form=form, title="Only page", order=1)
+    q_a, _ = _question(page, "Question A", 1, [("A one", True)])
+    _question(page, "Question B", 2, [("B one", True)])
+    sitting = _paper_sitting(
+        organisation,
+        form,
+        asked={"pages": [str(page.id)], "questions": [str(q_a.id)], "content": []}
+        if asked_only
+        else None,
+    )
+
+    text = _paper_text(
+        _admin_client(organisation, logged_in_client), organisation, sitting
+    )
+
+    assert "This attempt predates the record of the served order." in text
+    assert "Question A" in text
+    assert ("Question B" in text) is left_out_shown
+
+
+def test_a_served_item_deleted_since_shows_the_missing_note_and_no_stale_score_note(
+    logged_in_client,
+):
+    organisation = OrganisationFactory()
+    form = _quiz()
+    page = _form_page(form=form, title="Only page", order=1)
+    q_a, (a_1,) = _question(page, "Question A", 1, [("A one", True)])
+    q_b, (b_1,) = _question(page, "Question B", 2, [("B one", True)])
+    sitting = _paper_sitting(
+        organisation,
+        form,
+        served_paper=served_paper_of([(page, [q_a, q_b])], {q_a: [a_1], q_b: [b_1]}),
+    )
+    q_b.delete()
+
+    text = _paper_text(
+        _admin_client(organisation, logged_in_client), organisation, sitting
+    )
+
+    assert "have since been deleted from the quiz" in text
+    assert "This quiz has changed" not in text
+
+
+@pytest.mark.parametrize(
+    ("chosen", "shown", "hidden", "learner_marks"),
+    [
+        ([0], "Marked correct", "Did not answer", 1),
+        ([1], "Marked incorrect", "Did not answer", 1),
+        ([], "Did not answer Marked incorrect", "Marked correct", 0),
+    ],
+    ids=["correct", "incorrect", "unanswered"],
+)
+def test_each_question_shows_its_verdict(
+    logged_in_client, chosen, shown, hidden, learner_marks
+):
+    organisation = OrganisationFactory()
+    form = _quiz()
+    page = _form_page(form=form, order=1)
+    question, options = _question(
+        page, "Question A", 1, [("A one", True), ("A two", False)]
+    )
+    sitting = _paper_sitting(
+        organisation,
+        form,
+        served_paper=served_paper_of([(page, [question])], {question: options}),
+    )
+    _answer(sitting, question, *[options[index] for index in chosen])
+
+    text = _paper_text(
+        _admin_client(organisation, logged_in_client), organisation, sitting
+    )
+
+    assert shown in text
+    assert hidden not in text
+    assert text.count("Learner's answer") == learner_marks
+
+
+def test_a_free_text_question_shows_the_answer_and_not_marked(logged_in_client):
+    organisation = OrganisationFactory()
+    form = _quiz()
+    page = _form_page(form=form, order=1)
+    question = cast(
+        FormQuestion,
+        FormQuestionFactory(form_page=page, question="Explain", type="long_text"),
+    )
+    sitting = _paper_sitting(
+        organisation, form, served_paper=served_paper_of([(page, [question])])
+    )
+    QuestionAnswerFactory(
+        form_progress=sitting, question=question, text_answer="Because lift"
+    )
+
+    text = _paper_text(
+        _admin_client(organisation, logged_in_client), organisation, sitting
+    )
+
+    assert "Because lift" in text
+    assert "Not marked" in text
+    assert "Did not answer" not in text
+
+
+def test_a_correct_option_changed_after_submission_shows_the_stale_score_note(
+    logged_in_client,
+):
+    organisation = OrganisationFactory()
+    form = _quiz()
+    page = _form_page(form=form, order=1)
+    question, (one, two) = _question(
+        page, "Question A", 1, [("A one", True), ("A two", False)]
+    )
+    sitting = _paper_sitting(
+        organisation,
+        form,
+        served_paper=served_paper_of([(page, [question])], {question: [one, two]}),
+        scores={"score": 1, "max_score": 1},
+    )
+    _answer(sitting, question, one)
+    one.correct = False
+    one.save()
+    two.correct = True
+    two.save()
+
+    text = _paper_text(
+        _admin_client(organisation, logged_in_client), organisation, sitting
+    )
+
+    assert "This quiz has changed since the attempt was marked." in text
+
+
+def _sized_sitting(
+    organisation: Organisation, page_count: int, questions_per_page: int
+) -> FormProgress:
+    form = _quiz()
+    served: list[tuple[FormPage, list[FormQuestion | FormContent]]] = []
+    options: dict[FormQuestion, list[QuestionOption]] = {}
+    for number in range(page_count):
+        page = _form_page(form=form, order=number)
+        children: list[FormQuestion | FormContent] = []
+        for index in range(questions_per_page):
+            question, question_options = _question(
+                page,
+                f"Question {number}-{index}",
+                index,
+                [("Yes", True), ("No", False)],
+            )
+            children.append(question)
+            options[question] = question_options
+        served.append((page, children))
+    sitting = _paper_sitting(
+        organisation, form, served_paper=served_paper_of(served, options)
+    )
+    for question, question_options in options.items():
+        _answer(sitting, question, question_options[0])
+    return sitting
+
+
+def test_a_thirty_question_paper_costs_no_more_queries_than_a_three_question_one(
+    logged_in_client, django_assert_max_num_queries: DjangoAssertNumQueries
+):
+    organisation = OrganisationFactory()
+    client = _admin_client(organisation, logged_in_client)
+    small = _sized_sitting(organisation, 1, 3)
+    large = _sized_sitting(organisation, 3, 10)
+    with CaptureQueriesContext(connection) as baseline:
+        client.get(_interface_url(organisation.slug, f"quiz-attempts/{small.pk}"))
+
+    with django_assert_max_num_queries(len(baseline)):
+        response = client.get(
+            _interface_url(organisation.slug, f"quiz-attempts/{large.pk}")
+        )
 
     assert response.status_code == 200

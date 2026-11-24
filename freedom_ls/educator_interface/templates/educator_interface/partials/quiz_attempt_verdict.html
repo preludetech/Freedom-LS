@@ -1,0 +1,19 @@
+{% load fls_base_filters %}
+{% comment %}
+One question's verdict line, drawn after the question. Reads: question,
+question_marks (a QuestionMark per question id).
+{% endcomment %}
+{% with mark=question_marks|get_dict_item:question.id %}
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm" data-testid="question-verdict">
+        {% if not mark.answered %}
+            <span class="text-on-surface">Did not answer</span>
+        {% endif %}
+        {% if mark.verdict == "correct" %}
+            <span class="flex items-center gap-1 text-on-surface"><c-icon name="success" class="size-4 flex-none text-success" />Marked correct</span>
+        {% elif mark.verdict == "incorrect" %}
+            <span class="flex items-center gap-1 text-on-surface"><c-icon name="error" class="size-4 flex-none text-error" />Marked incorrect</span>
+        {% else %}
+            <span class="flex items-center gap-1 text-muted"><c-icon name="unknown" class="size-4 flex-none text-muted" />Not marked</span>
+        {% endif %}
+    </div>
+{% endwith %}
