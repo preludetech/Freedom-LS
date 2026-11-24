@@ -6333,3 +6333,38 @@ declaration_text: I did this myself.
         True,
         "I did this myself.",
     )
+
+
+@pytest.mark.django_db
+def test_removing_the_declaration_keys_resets_them_on_the_next_save(
+    site: Site, mock_site_context: object, tmp_path: Path
+) -> None:
+    quiz_dir = tmp_path / "declared quiz"
+    quiz_dir.mkdir()
+    form_md = quiz_dir / "form.md"
+    form_md.write_text(f"""---
+content_type: FORM
+strategy: QUIZ
+title: Declared quiz
+uuid: {_SHUFFLE_FORM_UUID}
+quiz_show_incorrect: true
+quiz_pass_percentage: 70
+requires_declaration: true
+declaration_text: I did this myself.
+---
+""")
+    save_content_to_db(tmp_path, site.name)
+
+    form_md.write_text(f"""---
+content_type: FORM
+strategy: QUIZ
+title: Declared quiz
+uuid: {_SHUFFLE_FORM_UUID}
+quiz_show_incorrect: true
+quiz_pass_percentage: 70
+---
+""")
+    save_content_to_db(tmp_path, site.name)
+
+    form = Form.objects.get(id=_SHUFFLE_FORM_UUID)
+    assert (form.requires_declaration, form.declaration_text) == (False, "")

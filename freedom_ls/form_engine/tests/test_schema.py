@@ -749,3 +749,64 @@ def test_a_form_without_the_declaration_keys_defaults_them_off_and_empty() -> No
     )
 
     assert (form.requires_declaration, form.declaration_text) == (False, "")
+
+
+def _declaration_form(**fields: object) -> dict[str, object]:
+    return {
+        "content_type": "FORM",
+        "file_path": "forms/declaration/form.md",
+        "title": "Declaration",
+        **fields,
+    }
+
+
+@pytest.mark.parametrize("strategy", ["UNSCORED", "CATEGORY_VALUE_SUM"])
+def test_requires_declaration_on_a_non_quiz_form_is_rejected(strategy: str) -> None:
+    with pytest.raises(
+        ValidationError,
+        match="requires_declaration should only be set when strategy is QUIZ",
+    ):
+        Form.model_validate(
+            _declaration_form(strategy=strategy, requires_declaration=True)
+        )
+
+
+@pytest.mark.parametrize("strategy", ["UNSCORED", "CATEGORY_VALUE_SUM"])
+def test_declaration_text_on_a_non_quiz_form_is_rejected(strategy: str) -> None:
+    with pytest.raises(
+        ValidationError,
+        match="declaration_text should only be set when strategy is QUIZ",
+    ):
+        Form.model_validate(
+            _declaration_form(strategy=strategy, declaration_text="I confirm.")
+        )
+
+
+def test_declaration_text_without_requires_declaration_on_a_quiz_is_rejected() -> None:
+    with pytest.raises(
+        ValidationError,
+        match="declaration_text should only be set when requires_declaration is true",
+    ):
+        Form.model_validate(
+            _declaration_form(
+                strategy="QUIZ",
+                quiz_show_incorrect=True,
+                quiz_pass_percentage=70,
+                declaration_text="I confirm.",
+            )
+        )
+
+
+def test_a_quiz_with_requires_declaration_and_text_parses() -> None:
+    form = Form.model_validate(
+        _declaration_form(
+            strategy="QUIZ",
+            quiz_show_incorrect=True,
+            quiz_pass_percentage=70,
+            requires_declaration=True,
+            declaration_text="I confirm.",
+        )
+    )
+
+    assert form.requires_declaration is True
+    assert form.declaration_text == "I confirm."

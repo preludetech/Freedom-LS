@@ -1511,7 +1511,8 @@ def _write_source(
     # None when the key is absent is what makes deleting the line unbind the
     # form: save_with_uuid's update_or_create would otherwise leave the old value.
     #
-    # This is the one place in core that reads an access_config key by name.
+    # This binding and validate_application_form_declarations are the only places in
+    # core that read an access_config key by name.
     # content_engine already owns the Course.application_form foreign key, and the
     # form has to be resolved against the file that declared it, which only the
     # loader can do — so the key is read here rather than by the access backend.

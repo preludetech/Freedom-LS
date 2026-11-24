@@ -157,12 +157,18 @@ class Form(
                 "shuffle_pages": self.shuffle_pages,
                 "shuffle_questions": self.shuffle_questions,
                 "shuffle_options": self.shuffle_options,
+                "requires_declaration": self.requires_declaration,
+                "declaration_text": self.declaration_text,
             }
             for name, is_on in knobs.items():
                 if is_on:
                     raise ValueError(
                         f"{name} should only be set when strategy is QUIZ (in {self.file_path})"
                     )
+        if self.declaration_text and not self.requires_declaration:
+            raise ValueError(
+                f"declaration_text should only be set when requires_declaration is true (in {self.file_path})"
+            )
         return self
 
 

@@ -15,6 +15,7 @@ from freedom_ls.content_engine.validate import (
     parse_single_file,
     read_ignore_list,
     validate,
+    validate_application_form_declarations,
     validate_children_lists,
     validate_due_date_placements,
     validate_form_conditions,
@@ -626,6 +627,68 @@ def _course(path: Path, body: str = "") -> Path:
     return _write_widget_file(
         path, f"---\ncontent_type: COURSE\ntitle: A Course\n---\n{body}\n"
     )
+
+
+def _declaration_quiz(directory: Path, declared: bool) -> None:
+    declaration = "requires_declaration: true\n" if declared else ""
+    _write_widget_file(
+        directory / "form.md",
+        "---\ncontent_type: FORM\ntitle: Signed quiz\nstrategy: QUIZ\n"
+        f"quiz_show_incorrect: true\nquiz_pass_percentage: 70\n{declaration}---\n",
+    )
+
+
+def _course_naming_application_form(path: Path, form_path: str) -> None:
+    _write_widget_file(
+        path,
+        "---\ncontent_type: COURSE\ntitle: Gated\naccess_config:\n"
+        f"  access_type: application_gated\n  application_form: {form_path}\n---\n",
+    )
+
+
+def _application_form_declaration_errors(directory: Path) -> list[str]:
+    parsed = [
+        item
+        for file_path in get_all_files(directory)
+        if file_path.suffix in {".md", ".yaml", ".yml"}
+        for item in parse_single_file(file_path)
+    ]
+    return validate_application_form_declarations(parsed)
+
+
+@pytest.mark.dev_tooling
+def test_an_application_form_that_requires_a_declaration_fails(
+    tmp_path: Path,
+) -> None:
+    _declaration_quiz(tmp_path / "application", declared=True)
+    _course_naming_application_form(
+        tmp_path / "course" / "course.md", "../application/form.md"
+    )
+
+    (error,) = _application_form_declaration_errors(tmp_path)
+
+    assert "course.md" in error
+    assert "../application/form.md" in error
+    assert "requires_declaration" in error
+
+
+@pytest.mark.dev_tooling
+def test_an_application_form_without_a_declaration_passes(tmp_path: Path) -> None:
+    _declaration_quiz(tmp_path / "application", declared=False)
+    _course_naming_application_form(
+        tmp_path / "course" / "course.md", "../application/form.md"
+    )
+
+    assert _application_form_declaration_errors(tmp_path) == []
+
+
+@pytest.mark.dev_tooling
+def test_a_declaration_quiz_no_course_names_as_its_application_form_passes(
+    tmp_path: Path,
+) -> None:
+    _declaration_quiz(tmp_path / "quiz", declared=True)
+
+    assert _application_form_declaration_errors(tmp_path) == []
 
 
 @pytest.mark.parametrize(
