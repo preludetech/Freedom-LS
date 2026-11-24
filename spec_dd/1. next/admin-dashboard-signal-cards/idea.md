@@ -5,9 +5,12 @@
 The Django admin index shows a row of "signal cards", one per thing a site operator watches:
 signups, course registrations, course applications and course interest. Each card shows the count
 for the last 7 days next to the previous 7 days, and lists the five newest entries with a short flag
-where one applies (for example "Unverified email" or "Not submitted"). It links to the matching
-admin changelist. A card shows only when the user has view permission on its source model. A
-project adds its own cards through an extension point that pairs a permission with a builder.
+where one applies (for example "Unverified email" or "Not submitted"). The signups, course
+applications and course interest cards link to the matching admin changelist. The course
+registrations card links to the educator interface's course list instead, because the
+`LearnerCourseRegistration` admin is gone; each course there holds its learner registrations table.
+A card shows only when the user has view permission on its source model. A project adds its own
+cards through an extension point that pairs a permission with a builder.
 
 ## Why
 
@@ -34,6 +37,8 @@ They stay there and register through the extension point.
 
 - The signups, course registrations, course applications and course interest cards come into FLS.
   The lead forms card stays in the project.
+- The course registrations card links to the educator interface's course list, not an admin
+  changelist. The other three cards link to their admin changelists.
 - Each card is gated on its source model's view permission.
 - A project adds cards through a registry of (permission, builder) pairs and does not override the
   template to add them.
