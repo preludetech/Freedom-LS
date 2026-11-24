@@ -1890,6 +1890,36 @@ def _shuffle_units(
     return units
 
 
+def validate_application_form_declarations(
+    all_parsed: Sequence[BaseBaseContentModel],
+) -> list[str]:
+    """A form a course names as its application_form cannot ask for a declaration:
+    the application flow mints its own sittings, anonymous applicants included,
+    so no signature step would run."""
+    forms_by_path = {
+        content_key(item.file_path): item
+        for item in all_parsed
+        if isinstance(item, Form)
+    }
+    errors: list[str] = []
+    for course in all_parsed:
+        if not isinstance(course, Course):
+            continue
+        author_path = (course.access_config or {}).get("application_form")
+        if author_path is None:
+            continue
+        form_path = resolve_author_path(course.file_path, author_path)
+        form = forms_by_path.get(form_path)
+        if form is not None and form.requires_declaration:
+            errors.append(
+                f"{course.file_path}: application_form {author_path} names a form "
+                f"({form.file_path}) with requires_declaration: true. The application "
+                "flow never shows a declaration page. Name a form without "
+                "requires_declaration, or remove requires_declaration from that form."
+            )
+    return errors
+
+
 def _draw_error(
     item: _FormSection, label: str, problem: str, fix: str, field: str
 ) -> str:
@@ -2092,6 +2122,8 @@ def validate(path):
     for message in validate_form_conditions(all_parsed):
         failed_files.append((path, message))
     for message in validate_form_shuffle(all_parsed):
+        failed_files.append((path, message))
+    for message in validate_application_form_declarations(all_parsed):
         failed_files.append((path, message))
     for message in validate_form_section_placement(
         all_parsed, check_form_folder=path.is_dir()

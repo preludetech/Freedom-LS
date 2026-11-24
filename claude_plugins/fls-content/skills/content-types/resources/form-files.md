@@ -21,6 +21,8 @@ A form lives in a **numbered subdirectory** (e.g. `03. quiz/`) containing:
 | `shuffle_pages` | `bool` | No (default `false`) | QUIZ only. Each sitting serves the pages in a random order. See "Shuffling a quiz" below |
 | `shuffle_questions` | `bool` | No (default `false`) | QUIZ only. Each sitting serves each page's questions in a random order. `group` keeps questions together |
 | `shuffle_options` | `bool` | No (default `false`) | QUIZ only. Each sitting serves each question's options in a random order. `locked` pins an option |
+| `requires_declaration` | `bool` | No (default `false`) | QUIZ only. The learner signs a declaration before every attempt. A form a course names as its `application_form` must not set it |
+| `declaration_text` | `str` | No | QUIZ only, and only with `requires_declaration: true`. The declaration the learner signs. Leave it out to use the site's default text |
 | `sections` | `list[path]` | No | Paths to the topic markdown files or `part.yaml` files the questions test, relative to `form.md`'s directory. Questions inherit this list unless they set their own `sections:` |
 | `subtitle` | `str` | No | Optional subtitle |
 | `description` | `str` | No | Optional description |
@@ -31,6 +33,8 @@ A form lives in a **numbered subdirectory** (e.g. `03. quiz/`) containing:
 | `uuid` | `str` | No | Written by `content_save --generate-uuids`, then you commit the result — **omit on new files** |
 
 A shuffle knob set to `true` on a `CATEGORY_VALUE_SUM` or `UNSCORED` form fails validation with `<knob> should only be set when strategy is QUIZ`. The knobs go in `form.md` only, never in a page header.
+
+`requires_declaration` and `declaration_text` follow the same QUIZ-only rule, with the same error. `declaration_text` without `requires_declaration: true` fails with `declaration_text should only be set when requires_declaration is true`. A form that a course's `access_config` names as its `application_form` cannot set `requires_declaration: true`: the validator reports `application_form <path> names a form (<file>) with requires_declaration: true` on the course. Name a form without it, or remove it from that form.
 
 Due-date fields follow the same rules as on a topic (see `topic-files.md`, "Due dates"). Write them in
 `form.md`; a `children:` entry can replace them for one placement (see `course-files.md`, "Due dates per
