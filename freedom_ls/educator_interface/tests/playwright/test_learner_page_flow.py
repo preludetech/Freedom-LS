@@ -220,7 +220,7 @@ def test_an_attempt_opens_from_the_courses_tab_to_its_paper_and_back(
         ),
     )
     answer = QuestionAnswerFactory(form_progress=sitting, question=question)
-    answer.selected_options.add(wrong)
+    answer.selected_options.add(right)
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, educator_user, "organisation_admin", organisation)
 
@@ -258,6 +258,28 @@ def test_an_attempt_opens_from_the_courses_tab_to_its_paper_and_back(
     expect(page.get_by_text("What is two plus two?")).to_be_visible()
     expect(page.get_by_text("Learner's answer").first).to_be_visible()
     expect(page.get_by_text("Correct answer").first).to_be_visible()
+
+    # The marks used to keep a fixed right-hand column on a phone, squeezing
+    # the option text of a row carrying both marks into a few words per line.
+    option_row = page.get_by_test_id("answer-option").filter(has_text="Four")
+    option_text = option_row.get_by_text("Four", exact=True)
+    marks = option_row.get_by_text("Learner's answer")
+    page.set_viewport_size(QA_VIEWPORTS[0])
+    text_box = option_text.bounding_box()
+    marks_box = marks.bounding_box()
+    assert text_box is not None
+    assert marks_box is not None
+    assert marks_box["y"] >= text_box["y"] + text_box["height"], (
+        "marks sit beside the option text on a phone instead of under it"
+    )
+    page.set_viewport_size({"width": 1280, "height": 800})
+    text_box = option_text.bounding_box()
+    marks_box = marks.bounding_box()
+    assert text_box is not None
+    assert marks_box is not None
+    assert marks_box["y"] < text_box["y"] + text_box["height"], (
+        "marks no longer sit beside the option text on a wide screen"
+    )
 
     back_link.click()
     expect(page.get_by_text("Algebra")).to_be_visible()

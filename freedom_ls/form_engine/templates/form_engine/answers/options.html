@@ -27,12 +27,14 @@ and labelled, since a review marks against them too.
                 {% if chosen %}<span class="size-2 rounded-pill bg-on-primary"></span>{% endif %}
             </span>
         {% endif %}
+        <div class="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
         <span class="text-on-surface">{{ option.text }}</span>
-        <span class="ms-auto flex flex-wrap justify-end gap-x-3 gap-y-1">
+        <span class="flex flex-wrap gap-x-3 gap-y-1 sm:ms-auto sm:justify-end">
             {% if added %}<c-added-option-mark />{% endif %}
             {% if chosen %}<c-learner-answer-mark />{% endif %}
             {% if show_answer_key and option.correct %}<c-correct-answer-mark />{% endif %}
         </span>
+        </div>
     </li>
 {% endpartialdef %}
 {% comment %}ml-0 undoes the theme's list indent; text-sm font-medium matches the quiz's option labels.{% endcomment %}
