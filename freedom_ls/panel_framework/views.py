@@ -320,6 +320,15 @@ class ListViewConfig(SectionConfigBase):
         return []
 
     @classmethod
+    def get_back_link(
+        cls, request: HttpRequest, instance: Model
+    ) -> tuple[str, str] | None:
+        """The (label, URL) of an instance page's back link, or None for the
+        section's list. A record reached from another page's row returns
+        that page, so going back returns to where the reader came from."""
+        return None
+
+    @classmethod
     def get_intro_context(cls, request: HttpRequest) -> dict[str, object]:
         """Context the intro template renders with. Empty by default."""
         return {}
@@ -1542,6 +1551,7 @@ def build_breadcrumbs(
     parts: list[str],
     sections: dict[str, SectionConfig],
     url_name: str,
+    request: HttpRequest,
     current_instance: Model | None = None,
     extra_url_kwargs: dict[str, str] | None = None,
 ) -> list[dict[str, str]]:
@@ -1569,6 +1579,10 @@ def build_breadcrumbs(
         section_crumb["url"] = reverse(
             url_name, kwargs={"path_string": parts[0], **extra_url_kwargs}
         )
+        back_link = section.get_back_link(request, current_instance)
+        if back_link is not None:
+            label, url = back_link
+            section_crumb = {"label": label, "url": url}
         return [section_crumb, {"label": section.get_instance_label(current_instance)}]
     return [section_crumb]
 
@@ -1673,6 +1687,7 @@ def panel_framework_view(
             parts,
             sections,
             url_name,
+            request,
             resolved.instance if resolved else None,
             extra_url_kwargs=extra_url_kwargs,
         ),

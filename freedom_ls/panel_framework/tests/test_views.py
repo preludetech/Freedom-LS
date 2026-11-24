@@ -679,12 +679,32 @@ CRUMB_SECTIONS = {
 }
 
 
+CRUMB_REQUEST = RequestFactory().get("/")
+
+
+class _CrumbBackLinkConfig(ListViewConfig):
+    url_name = "back-linked"
+    menu_label = "Back linked"
+    model = StubModel
+
+    @classmethod
+    def get_back_link(
+        cls, request: HttpRequest, instance: Model
+    ) -> tuple[str, str] | None:
+        return ("Parent page", "/test-panel/parent")
+
+
 class TestBuildBreadcrumbs:
     def test_root_no_parts(self) -> None:
-        assert build_breadcrumbs([], CRUMB_SECTIONS, INTERFACE_URL_NAME) == []
+        assert (
+            build_breadcrumbs([], CRUMB_SECTIONS, INTERFACE_URL_NAME, CRUMB_REQUEST)
+            == []
+        )
 
     def test_section_list_page(self) -> None:
-        crumbs = build_breadcrumbs(["cohorts"], CRUMB_SECTIONS, INTERFACE_URL_NAME)
+        crumbs = build_breadcrumbs(
+            ["cohorts"], CRUMB_SECTIONS, INTERFACE_URL_NAME, CRUMB_REQUEST
+        )
 
         assert crumbs == [{"label": "Cohorts"}]
 
@@ -696,6 +716,7 @@ class TestBuildBreadcrumbs:
             ["cohorts", str(instance.pk)],
             CRUMB_SECTIONS,
             INTERFACE_URL_NAME,
+            CRUMB_REQUEST,
             current_instance=instance,
         )
 
@@ -704,9 +725,29 @@ class TestBuildBreadcrumbs:
             {"label": "Test Cohort"},
         ]
 
+    @pytest.mark.django_db
+    def test_back_link_replaces_section_crumb(self, mock_site_context: None) -> None:
+        instance = make_stub(name="Test Cohort")
+
+        crumbs = build_breadcrumbs(
+            ["back-linked", str(instance.pk)],
+            {"back-linked": _CrumbBackLinkConfig},
+            INTERFACE_URL_NAME,
+            CRUMB_REQUEST,
+            current_instance=instance,
+        )
+
+        assert crumbs == [
+            {"label": "Parent page", "url": "/test-panel/parent"},
+            {"label": "Test Cohort"},
+        ]
+
     def test_unknown_section_returns_empty(self) -> None:
         assert (
-            build_breadcrumbs(["nonexistent"], CRUMB_SECTIONS, INTERFACE_URL_NAME) == []
+            build_breadcrumbs(
+                ["nonexistent"], CRUMB_SECTIONS, INTERFACE_URL_NAME, CRUMB_REQUEST
+            )
+            == []
         )
 
     @pytest.mark.django_db
@@ -719,6 +760,7 @@ class TestBuildBreadcrumbs:
             ["cohorts", str(instance.pk)],
             CRUMB_SECTIONS,
             "panel_framework_test:scoped_interface",
+            CRUMB_REQUEST,
             current_instance=instance,
             extra_url_kwargs={"extra": "acme"},
         )
@@ -736,6 +778,7 @@ class TestBuildBreadcrumbs:
             ["cohorts", str(instance.pk), "__tabs", "details"],
             CRUMB_SECTIONS,
             INTERFACE_URL_NAME,
+            CRUMB_REQUEST,
             current_instance=instance,
         )
 
@@ -752,13 +795,16 @@ class TestBuildBreadcrumbs:
             ["organisation"],
             CRUMB_SECTIONS,
             INTERFACE_URL_NAME,
+            CRUMB_REQUEST,
             current_instance=instance,
         )
 
         assert crumbs == [{"label": "Organisation"}]
 
     def test_base_view_is_its_section_alone(self) -> None:
-        crumbs = build_breadcrumbs(["dashboard"], CRUMB_SECTIONS, INTERFACE_URL_NAME)
+        crumbs = build_breadcrumbs(
+            ["dashboard"], CRUMB_SECTIONS, INTERFACE_URL_NAME, CRUMB_REQUEST
+        )
 
         assert crumbs == [{"label": "Dashboard"}]
 
