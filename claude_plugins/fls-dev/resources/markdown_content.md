@@ -106,6 +106,14 @@ MARKDOWN_ALLOWED_TAGS = {
 }
 ```
 
+## Retiring Removed Content
+
+`content_save` treats its source paths as the site's whole source. A row of a retirable model that the run does not find gets `retired_at` set; it is never deleted. A later run that finds the row's uuid (a `File` by its path) clears `retired_at`, so returning content un-retires it.
+
+- A run that would retire a course is refused unless it is passed `--allow-course-retire`.
+- Default managers do not filter. A learner-facing read opts in with `.not_retired()` (`RetirableQuerySet` in `freedom_ls/content_base/models.py`); `is_retired` is the per-row check.
+- `save_content_to_db` stays additive unless the caller passes `retire_missing=True` (and `allow_course_retire=True` to let it retire a course).
+
 ## Notes
 
 - **H1 becomes H2** (mdx_headdown prevents title conflicts)
