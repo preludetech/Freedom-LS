@@ -1,6 +1,6 @@
 # Cohort Reports
 
-_Last updated: 2026-10-23_
+_Last updated: 2026-11-24_
 
 ## Summary
 
@@ -72,6 +72,8 @@ See [admin interface](./admin-interface.md#cohort-progress-reports) for the admi
 **The platform attribution cannot be switched off.** A report carries a small "Powered by" mark naming the site on its cover and in every footer, alongside the organisation's own brand, with no setting to remove it. See [roadmap](./roadmap.md).
 
 **Activities and free-text answers are excluded** from completion figures and from the quiz analyses, because FLS records no completion data for activities and no correctness concept for free-text answers.
+
+**Retired content stays in the report but not in completion.** A topic, quiz, question or option removed from the course source (see [retiring removed content](./content-editing-workflow.md#retiring-removed-content)) keeps the progress and answers learners recorded on it and is marked as retired, but no longer counts toward a learner's completion percentage.
 
 **Individually registered courses are not covered.** Only the cohort's own course registrations appear; a course a learner joined on their own is absent from the report. Within a covered course, the completion figures, quiz attempts and at-risk flags reflect only the work done under the cohort's own registration — the same learner's activity through a registration of their own, or through another organisation, is not folded in.
 

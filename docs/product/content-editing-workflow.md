@@ -6,6 +6,7 @@ _Last updated: 2026-11-24_
 
 - All course content, and the articles of a site's public blog, is authored as plain Markdown and YAML under version control; git provides the full history — timestamps, diffs, and rollback.
 - Content is loaded into the database by the `content_save` command, which loads only committed content (except with `DEBUG` on), validates first, and then idempotently upserts each item by UUID. Re-running it is safe, and each run is recorded against the git commit it loaded.
+- Content removed from the source is **retired** on the next load rather than deleted: learners no longer see it, every learner record that points at it is kept, and it comes back if its file returns.
 - Markdown renders through a four-stage pipeline: Markdown → sanitiser → content-widget compilation → template render.
 - Course images are re-encoded to WebP at ingest, so authors can commit camera and screenshot output as-is; filenames and `c-picture` references keep working unchanged.
 - A site's course categories are declared once per content repo, and each course names the categories it belongs to in its own frontmatter. See [learner experience](./learner-experience.md) for what the dashboard does with them.
@@ -50,7 +51,7 @@ Categories are declared in a single `course_categories.yaml` at the content repo
 
 An article can sit anywhere in the content repository, inside or outside a course folder. It is either published or `hidden`, and its public URL comes from a `slug` that defaults to its file name. It can name an `author`, and `show_date` and `show_author` override the site-wide defaults for its byline. An article can carry one optional `image`, a path relative to the article file, with `image_alt` text required alongside it; the image appears on the article page, its cards and its social-sharing preview. Articles have no category, and there is no scheduled publishing. See [learner experience](./learner-experience.md#blog) for the public blog pages.
 
-Loading never deletes an article, and no screen deletes one; marking it `hidden` takes it off the public blog.
+Loading never deletes an article, and no screen deletes one; marking it `hidden` takes it off the public blog. Removing an article for good means deleting its file, which retires it on the next load (see [retiring removed content](#retiring-removed-content)).
 
 ## Course Frontmatter Options
 
@@ -127,6 +128,10 @@ Validation parses every YAML and Markdown file against strict schemas before any
 `content_save` loads only committed content: if any file under a source path is not committed to git, it refuses, lists the files, and changes nothing, so what is loaded always matches a commit. With `DEBUG` on, as in local development, it skips this check and loads uncommitted files as they are on disk. It runs validation internally on every run and writes only if it passes. It accepts several source paths and saves them as one, so content kept in more than one directory or repository loads together. It upserts every item in a single atomic transaction, keyed on the frontmatter UUID — so re-running against unchanged files has no visible effect. A `children:` entry, an `application_form` path or a `sections` path that does not resolve to loaded content fails the whole load rather than being silently dropped. So does a due key on an entry for an activity, article or part, or a part's entry naming something the part does not contain; every such error is reported at once, and the offline validator catches the same ones.
 
 Moving a part from `children:` to `reference:` removes that course's placement of the part on the next `content_save`. Any deadlines set for that course on the part or on the topics inside it go with it. `content_save` reports each removal, so the loss is visible in the run's output. Learners' stored progress for that course is recalculated in the same run, so nobody stays stuck below 100% because of a part that no longer counts. Other courses that place the same part keep their placements and deadlines.
+
+### Retiring removed content
+
+A `content_save` run covers a site's whole source, so every source path the site loads from must be passed in the same run. Any course, part, topic, activity, article, form, form question or option, category or file the run does not find is **retired**. Nothing is deleted. Learners are not served retired content: a link to it behaves like a missing page, it drops out of course outlines and completion, and a retired course is closed to every learner, registered or not. A quiz attempt already under way finishes on the questions it started with. All stored progress, answers and attempts stay intact for audit, and educators still see retired content, marked as retired. If the file comes back with the same UUID, the next run makes it live again. Because retiring a course closes it to all its learners, a run that would retire one is refused unless `--allow-course-retire` is passed.
 
 Validation also checks the `path` of every `c-article-link`, `c-article-card` and `c-course-card`: it must point at a validated file of the right type, so a broken link or card fails before anything is written. Two articles with the same slug are rejected too, as is an article `image` that does not point at an image file in the repository.
 
