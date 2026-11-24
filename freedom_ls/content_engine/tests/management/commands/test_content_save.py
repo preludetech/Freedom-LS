@@ -6531,7 +6531,9 @@ def test_save_run_retires_a_row_missing_from_the_source_at_the_run_time(
     remove(tmp_path)
 
     with time_machine.travel(RETIRED_AT_RUN, tick=False):
-        save_content_to_db(tmp_path, site.name, retire_missing=True)
+        save_content_to_db(
+            tmp_path, site.name, retire_missing=True, allow_course_retire=True
+        )
 
     row = model._base_manager.get(site=site, **lookup)
     assert (row.retired_at, row.updated_at) == (RETIRED_AT_RUN, RETIRED_AT_RUN)
@@ -6545,7 +6547,9 @@ def test_save_run_makes_a_retired_row_live_when_it_returns_to_the_source(
     _write_source_with_one_of_each(tmp_path)
     save_content_to_db(tmp_path, site.name, retire_missing=True)
     remove(tmp_path)
-    save_content_to_db(tmp_path, site.name, retire_missing=True)
+    save_content_to_db(
+        tmp_path, site.name, retire_missing=True, allow_course_retire=True
+    )
     assert model._base_manager.get(site=site, **lookup).is_retired
 
     _write_source_with_one_of_each(tmp_path)
@@ -6637,3 +6641,102 @@ def test_save_run_applies_a_returning_rows_content_change_in_the_run_that_un_ret
 
     topic = Topic._base_manager.get(pk=LOOSE_TOPIC_UUID)
     assert (topic.retired_at, topic.title) == (None, "Renamed topic")
+
+
+def _save_one_of_each_then_drop_the_solo_course(site: Site, root: Path) -> None:
+    _write_source_with_one_of_each(root)
+    save_content_to_db(root, site.name, retire_missing=True)
+    _remove_path("solo")(root)
+
+
+@pytest.mark.django_db
+def test_run_missing_a_live_course_is_refused_naming_its_title_and_uuid(
+    site, mock_site_context, tmp_path
+):
+    _save_one_of_each_then_drop_the_solo_course(site, tmp_path)
+
+    with pytest.raises(CommandError, match="--allow-course-retire") as exc_info:
+        save_content_to_db(tmp_path, site.name, retire_missing=True)
+
+    assert f"Solo course ({SOLO_COURSE_UUID})" in str(exc_info.value)
+    assert "Main course" not in str(exc_info.value)
+
+
+@pytest.mark.django_db
+def test_run_missing_a_live_course_is_refused_before_any_write(
+    site, mock_site_context, tmp_path, monkeypatch
+):
+    _save_one_of_each_then_drop_the_solo_course(site, tmp_path)
+    (tmp_path / "new_topic.md").write_text(
+        "---\ncontent_type: TOPIC\ntitle: New topic\n---\n\nText\n"
+    )
+    before = (tmp_path / "new_topic.md").read_text()
+    sent: list[Path] = []
+    monkeypatch.setattr(
+        "freedom_ls.content_engine.management.commands.content_save.save_file_to_db",
+        lambda file_path, *args: sent.append(file_path),
+    )
+
+    with pytest.raises(CommandError):
+        save_content_to_db(tmp_path, site.name, retire_missing=True)
+
+    assert (
+        Topic._base_manager.filter(title="New topic").count(),
+        sent,
+        (tmp_path / "new_topic.md").read_text(),
+        Course._base_manager.get(pk=SOLO_COURSE_UUID).retired_at,
+    ) == (0, [], before, None)
+
+
+@pytest.mark.django_db
+def test_run_missing_a_live_course_retires_it_when_course_retire_is_allowed(
+    site, mock_site_context, tmp_path
+):
+    _save_one_of_each_then_drop_the_solo_course(site, tmp_path)
+
+    save_content_to_db(
+        tmp_path, site.name, retire_missing=True, allow_course_retire=True
+    )
+
+    assert Course._base_manager.get(pk=SOLO_COURSE_UUID).is_retired
+
+
+@pytest.mark.django_db
+def test_run_missing_only_an_already_retired_course_is_not_refused(
+    site, mock_site_context, tmp_path
+):
+    _save_one_of_each_then_drop_the_solo_course(site, tmp_path)
+    save_content_to_db(
+        tmp_path, site.name, retire_missing=True, allow_course_retire=True
+    )
+
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+
+    assert Course._base_manager.get(pk=SOLO_COURSE_UUID).is_retired
+
+
+@pytest.mark.django_db
+def test_run_without_retire_missing_does_not_refuse_a_missing_course(
+    site, mock_site_context, tmp_path
+):
+    _save_one_of_each_then_drop_the_solo_course(site, tmp_path)
+
+    save_content_to_db(tmp_path, site.name)
+
+    assert Course._base_manager.get(pk=SOLO_COURSE_UUID).retired_at is None
+
+
+@pytest.mark.django_db
+def test_run_that_sweeps_a_course_the_guard_missed_is_refused_and_rolled_back(
+    site, mock_site_context, tmp_path, monkeypatch
+):
+    _save_one_of_each_then_drop_the_solo_course(site, tmp_path)
+    monkeypatch.setattr(
+        "freedom_ls.content_engine.management.commands.content_save._refuse_course_retire",
+        lambda site, sources: None,
+    )
+
+    with pytest.raises(CommandError, match="Solo course"):
+        save_content_to_db(tmp_path, site.name, retire_missing=True)
+
+    assert Course._base_manager.get(pk=SOLO_COURSE_UUID).retired_at is None

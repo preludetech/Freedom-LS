@@ -12,7 +12,7 @@ import mimetypes
 import re
 import uuid
 from collections import Counter, defaultdict
-from collections.abc import Callable, Hashable, Mapping, Sequence
+from collections.abc import Callable, Collection, Hashable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import partial
@@ -1347,6 +1347,35 @@ def _refuse_relative_path_collisions(sources: Sequence[_ParsedSource]) -> None:
     )
 
 
+def _course_retire_refusal(course_pks: Collection[uuid.UUID]) -> str:
+    """The refusal for a run that would retire the given courses."""
+    rows = Course._base_manager.filter(pk__in=course_pks).order_by("title")
+    return _refusal(
+        f"content_save would retire {rows.count()} "
+        f"course{'s' if rows.count() != 1 else ''}, which closes "
+        f"{'them' if rows.count() != 1 else 'it'} to every learner.",
+        [("Courses no source path names:", [f"{c.title} ({c.pk})" for c in rows])],
+        "Restore the course files, or run again with --allow-course-retire.",
+    )
+
+
+def _refuse_course_retire(site: Site, sources: Sequence[_ParsedSource]) -> None:
+    """Refuse a run whose source paths lack a live course of the site."""
+    source_uuids = {
+        item.uuid
+        for source in sources
+        for item in _items_of(source.all_parsed, CourseSchema)
+        if item.uuid
+    }
+    missing = (
+        Course._base_manager.filter(site=site, retired_at__isnull=True)
+        .exclude(pk__in=source_uuids)
+        .values_list("pk", flat=True)
+    )
+    if missing:
+        raise CommandError(_course_retire_refusal(list(missing)))
+
+
 def _items_of[T: BaseBaseContentModel](
     items: Sequence[BaseBaseContentModel], schema: type[T]
 ) -> list[T]:
@@ -1728,6 +1757,7 @@ def save_content_to_db(
     generate_uuids: bool = True,
     source_commits: Sequence[SourceCommit] | None = None,
     retire_missing: bool = False,
+    allow_course_retire: bool = False,
 ) -> None:
     """Scan through all validated files of every source path and save them as one.
 
@@ -1738,6 +1768,8 @@ def save_content_to_db(
     path was loaded from, in the same transaction as the content rows. With
     `retire_missing=True`, every row of the site that no source path names is
     retired in the same transaction; a row that returns to the source is live again.
+    A run that would retire a course is refused unless `allow_course_retire=True`,
+    because retiring a course closes it to every learner.
     """
     # Printed only once the load's transaction is over, so a load that rolls back,
     # at its commit included, has reported no removal and no success.
@@ -1747,6 +1779,7 @@ def save_content_to_db(
         generate_uuids=generate_uuids,
         source_commits=source_commits,
         retire_missing=retire_missing,
+        allow_course_retire=allow_course_retire,
     )
     for line in removal_lines:
         click.echo(line)
@@ -1783,6 +1816,7 @@ def _write_sources(
     generate_uuids: bool,
     source_commits: Sequence[SourceCommit] | None,
     retire_missing: bool,
+    allow_course_retire: bool = False,
 ) -> tuple[list[ImageEncodeStatus], list[str]]:
     """Write every source path in one transaction. Returns the image statuses and the
     lines that report what was removed."""
@@ -1820,6 +1854,9 @@ def _write_sources(
     if not generate_uuids:
         _refuse_missing_uuids(sources)
     _refuse_relative_path_collisions(sources)
+    refuse_course_retire = retire_missing and not allow_course_retire
+    if refuse_course_retire:
+        _refuse_course_retire(site, sources)
 
     run_time = timezone.now()
     ledger = _RunLedger()
@@ -1832,6 +1869,10 @@ def _write_sources(
 
     if retire_missing:
         _retire_missing(site, ledger, run_time)
+        # The guard compares parsed uuids; this reads what the sweep did, so it also
+        # catches a course whose file parsed but was never written.
+        if refuse_course_retire and ledger.retired[Course]:
+            raise CommandError(_course_retire_refusal(ledger.retired[Course]))
 
     if source_commits is not None:
         content_save = ContentSave.objects.create(
