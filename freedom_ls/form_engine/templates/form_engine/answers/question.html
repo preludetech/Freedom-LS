@@ -6,14 +6,18 @@ then the answer. Never a form field: a disabled field looks editable.
 Reads: question, question_positions, existing_answers, sitting_path (for
 {% question_options %}), plus the answer-key flag options.html reads.
 
-The number and id float so the question's first paragraph runs on beside
-them; flow-root keeps the floats inside the heading.
+The heading reads "n. question text", with the question id on its own line
+under the text, small, muted and monospace.
 {% endcomment %}
 <div class="flex flex-col gap-3" data-testid="answered-question">
-    <div class="flow-root font-semibold text-on-surface [&>p:last-of-type]:inline">
-        {% with position=question_positions|get_dict_item:question.id %}<span class="float-left mr-1">{{ position }}.</span>{% endwith %}
-        <span class="float-left mr-1 text-sm font-normal leading-6 text-muted">{{ question.id }}</span>
-        {{ question.rendered_question }}
+    <div class="flex gap-1 font-semibold text-on-surface">
+        {% with position=question_positions|get_dict_item:question.id %}<span class="flex-none">{{ position }}.</span>{% endwith %}
+        <div class="flex min-w-0 flex-col gap-0.5">
+            <div class="[&>p:first-child]:mt-0 [&>p:last-child]:mb-0"
+                 data-testid="question-text">{{ question.rendered_question }}</div>
+            <code class="break-all font-mono text-xs font-normal text-muted"
+                  data-testid="question-id">{{ question.id }}</code>
+        </div>
     </div>
     {% with answer=existing_answers|get_dict_item:question.id %}
         {% if question.type == "multiple_choice" or question.type == "dropdown" %}

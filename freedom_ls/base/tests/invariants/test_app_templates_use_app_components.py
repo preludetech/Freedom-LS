@@ -78,6 +78,38 @@ def test_app_templates_use_no_content_widget_or_callout_level(path: Path) -> Non
     )
 
 
+# A thick coloured bar down a box's start edge is the admonition's look.
+# Thin (1-2px) start borders stay allowed: they indent threads and nested lists.
+THICK_START_BORDER = re.compile(r"(?<![\w-])border-[sl]-(?:[4-8]|\[)")
+ADMONITION_LOOK_EXEMPT = {
+    # The toast's severity stripe is the toast's own design.
+    Path("base/templates/partials/_toast.html"),
+    # Predates the rule; whether it keeps the bar is an open decision.
+    Path("learner_interface/templates/learner_interface/course_form_complete.html"),
+}
+ADMONITION_LOOK_FIX = (
+    "an app template never hand-builds the admonition look; put content in a box with "
+    "a 1px border (as a chosen option row does), or use <c-callout> for a notice"
+)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        path
+        for path in app_templates()
+        if path.relative_to(FREEDOM_LS_DIR) not in ADMONITION_LOOK_EXEMPT
+    ],
+    ids=lambda path: str(path.relative_to(FREEDOM_LS_DIR)),
+)
+def test_app_templates_hand_build_no_admonition_look(path: Path) -> None:
+    found = THICK_START_BORDER.findall(without_comments(path.read_text()))
+
+    assert not found, (
+        f"{path.relative_to(FREEDOM_LS_DIR)} uses {found}: {ADMONITION_LOOK_FIX}"
+    )
+
+
 @pytest.mark.parametrize(
     ("markup", "expected"),
     [

@@ -1,12 +1,13 @@
 {% comment %}
-A typed answer (text, number, date, time, email, URL or phone) as text, in a
-block labelled as the learner's answer and tinted like a chosen option. An
+A typed answer (text, number, date, time, email, URL or phone) as text, under
+the learner's-answer label, in the chosen option row's box (1px border, light
+fill). Never a thick start bar: that is the admonition look. An
 unanswered question draws nothing: the reader's verdict line says so.
 
 Reads: answer (or None).
 {% endcomment %}
 {% if answer.text_answer %}
-    <div class="flex flex-col gap-2 rounded-md border-s-4 border-primary bg-primary/5 px-4 py-3"
+    <div class="flex flex-col gap-2 rounded-md border border-primary bg-primary/5 p-3"
          data-testid="text-answer">
         <c-learner-answer-mark />
         <p class="whitespace-pre-line break-words text-on-surface">{{ answer.text_answer }}</p>

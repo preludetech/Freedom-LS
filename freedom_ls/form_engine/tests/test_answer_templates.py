@@ -75,6 +75,18 @@ def test_the_question_shows_its_number_id_and_text():
     assert "Which one?" in text
 
 
+def test_the_question_id_sits_under_the_question_text_as_code():
+    question = _question("long_text")
+
+    document = _render(question, None)
+
+    (question_text,) = document.cssselect("[data-testid='question-text']")
+    (question_id,) = document.cssselect("[data-testid='question-id']")
+    assert question_id.tag == "code"
+    assert question_id.text_content() == str(question.id)
+    assert question_text.getnext() is question_id
+
+
 @pytest.mark.parametrize("question_type", ["long_text", "short_text", "number", "date"])
 def test_a_text_answer_reads_as_text_under_the_learner_answer_label(question_type):
     question = _question(question_type)
@@ -89,6 +101,25 @@ def test_a_text_answer_reads_as_text_under_the_learner_answer_label(question_typ
     (block,) = document.cssselect("[data-testid='text-answer']")
     assert "Learner's answer" in block.text_content()
     assert "Point out the exits" in block.text_content()
+
+
+@pytest.mark.parametrize("question_type", ["long_text", "file_upload"])
+def test_an_answer_box_is_outlined_like_a_chosen_option_not_an_admonition(
+    question_type,
+):
+    question = _question(question_type)
+    answer = cast(
+        QuestionAnswer, QuestionAnswerFactory(question=question, text_answer="Yes")
+    )
+    if question_type == "file_upload":
+        QuestionAnswerFileFactory(answer=answer, original_filename="licence.pdf")
+
+    document = _render(question, answer)
+
+    (block,) = document.cssselect("[data-testid='text-answer']")
+    classes = block.get("class").split()
+    assert {"border", "border-primary", "bg-primary/5", "rounded-md"} <= set(classes)
+    assert "border-s-4" not in classes
 
 
 def test_a_long_text_answer_keeps_its_line_breaks():

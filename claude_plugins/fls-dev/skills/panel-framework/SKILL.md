@@ -561,7 +561,9 @@ Run that file after any change to a panel template.
 `freedom_ls/base/tests/invariants/test_app_templates_use_app_components.py`
 (`test_app_templates_use_no_content_widget_or_callout_level`) fails on a content-engine widget such
 as `<c-admonition>`, or a `level=` on `<c-callout>` or `<c-panel-callout>`, in any app template
-outside the content engine.
+outside the content engine. `test_app_templates_hand_build_no_admonition_look` in the same file
+fails on a thick start border (`border-s-4`/`border-l-4` and up, or an arbitrary width) in any of
+those templates: that is the admonition look, built by hand.
 
 Four guards cover the standalone backend:
 
