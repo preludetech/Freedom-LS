@@ -6822,51 +6822,75 @@ def test_run_without_retire_missing_prints_no_retire_count_line(
     assert "Retired:" not in capsys.readouterr().out
 
 
-@pytest.mark.django_db
-@pytest.mark.parametrize(
-    ("owner_is_retired", "expected_in_message"),
-    [(True, "another retired Article"), (False, "another Article")],
-)
-def test_article_slug_refusal_says_retired_only_for_a_retired_owner(
-    site, mock_site_context, tmp_path, owner_is_retired, expected_in_message
-):
-    _write_article(
-        tmp_path,
-        "writing/launch.md",
-        "content_type: ARTICLE\ntitle: Launch\npublished_on: 2026-03-04\n",
-    )
-    save_content_to_db(tmp_path, site.name)
-    if owner_is_retired:
-        retire(Article._base_manager.get(site=site))
+def _write_imposter_article(tmp_path: Path) -> None:
     _write_article(
         tmp_path,
         "other/launch.md",
         "content_type: ARTICLE\ntitle: Imposter\npublished_on: 2026-03-05\n",
     )
 
-    with pytest.raises(ValueError, match="slug") as exc_info:
-        save_content_to_db(tmp_path, site.name)
 
-    assert expected_in_message in str(exc_info.value)
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize(
-    ("owner_is_retired", "expected_in_message"),
-    [(True, "another retired CourseCategory"), (False, "another CourseCategory")],
-)
-def test_category_slug_refusal_says_retired_only_for_a_retired_owner(
-    site, mock_site_context, tmp_path, owner_is_retired, expected_in_message
-):
-    owner = CourseCategoryFactory(site=site, slug="start-here", title="Start here")
-    if owner_is_retired:
-        retire(CourseCategory._base_manager.get(pk=owner.pk))
+def _write_category_reusing_start_here_slug(tmp_path: Path) -> None:
     (tmp_path / "course_categories.yaml").write_text(
         "---\ncontent_type: COURSE_CATEGORIES\ncategories:\n"
         "  - slug: start-here\n    title: Start here, again\n"
     )
 
+
+def _save_launch_article(site: Site, tmp_path: Path) -> None:
+    _write_article(
+        tmp_path,
+        "writing/launch.md",
+        "content_type: ARTICLE\ntitle: Launch\npublished_on: 2026-03-04\n",
+    )
+    save_content_to_db(tmp_path, site.name)
+
+
+@pytest.mark.django_db
+def test_article_slug_refusal_names_a_retired_owner(site, mock_site_context, tmp_path):
+    _save_launch_article(site, tmp_path)
+    retire(Article._base_manager.get(site=site))
+    _write_imposter_article(tmp_path)
+
     with pytest.raises(ValueError, match="slug") as exc_info:
         save_content_to_db(tmp_path, site.name)
 
-    assert expected_in_message in str(exc_info.value)
+    assert "another retired Article" in str(exc_info.value)
+
+
+@pytest.mark.django_db
+def test_article_slug_refusal_for_a_live_owner_omits_retired(
+    site, mock_site_context, tmp_path
+):
+    _save_launch_article(site, tmp_path)
+    _write_imposter_article(tmp_path)
+
+    with pytest.raises(ValueError, match="slug") as exc_info:
+        save_content_to_db(tmp_path, site.name)
+
+    assert "another Article" in str(exc_info.value)
+
+
+@pytest.mark.django_db
+def test_category_slug_refusal_names_a_retired_owner(site, mock_site_context, tmp_path):
+    owner = CourseCategoryFactory(slug="start-here", title="Start here")
+    retire(CourseCategory._base_manager.get(pk=owner.pk))
+    _write_category_reusing_start_here_slug(tmp_path)
+
+    with pytest.raises(ValueError, match="slug") as exc_info:
+        save_content_to_db(tmp_path, site.name)
+
+    assert "another retired CourseCategory" in str(exc_info.value)
+
+
+@pytest.mark.django_db
+def test_category_slug_refusal_for_a_live_owner_omits_retired(
+    site, mock_site_context, tmp_path
+):
+    CourseCategoryFactory(slug="start-here", title="Start here")
+    _write_category_reusing_start_here_slug(tmp_path)
+
+    with pytest.raises(ValueError, match="slug") as exc_info:
+        save_content_to_db(tmp_path, site.name)
+
+    assert "another CourseCategory" in str(exc_info.value)
