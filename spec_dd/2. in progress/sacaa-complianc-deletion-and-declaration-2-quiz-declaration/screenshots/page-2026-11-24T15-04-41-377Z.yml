@@ -1,0 +1,65 @@
+- generic [active] [ref=f46e1]:
+  - banner [ref=f46e2]:
+    - link [ref=f46e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f46e4]
+    - navigation [ref=f46e5]:
+      - generic [ref=f46e6]:
+        - generic [ref=f46e7]:
+          - button "Notifications, 1 new" [ref=f46e8]
+          - status:
+            - generic [ref=f46e12]: Notifications, 1 new
+            - generic [aria-hidden] [ref=f46e13]: "1"
+        - button "Open user menu for QA qa-decl-b" [ref=f46e15] [cursor=pointer]:
+          - generic [ref=f46e16]:
+            - generic [ref=f46e17]: Open user menu for QA qa-decl-b
+            - generic [aria-hidden] [ref=f46e18]: QQ
+  - generic:
+    - status
+    - alert
+  - main [ref=f46e19]:
+    - generic [ref=f46e22]:
+      - generic [ref=f46e24]:
+        - generic [ref=f46e25]:
+          - button "Open course outline" [ref=f46e26] [cursor=pointer]
+          - navigation "Breadcrumb" [ref=f46e30]:
+            - list [ref=f46e31]:
+              - listitem [ref=f46e32]:
+                - link "Functionality Demo - quiz declaration" [ref=f46e33] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-quiz-declaration/detail/
+              - listitem [ref=f46e34]:
+                - generic [aria-hidden] [ref=f46e35]: ">"
+                - generic "Quiz with its own declaration" [ref=f46e36]
+        - generic [ref=f46e38]:
+          - progressbar "Progress for Functionality Demo - quiz declaration" [ref=f46e39]: 33%
+          - generic [ref=f46e40]: 33%
+      - generic [ref=f46e42]:
+        - link "Quiz with its own declaration" [ref=f46e43] [cursor=pointer]:
+          - /url: /courses/functionality-demo-quiz-declaration/2/
+        - heading "Quiz with its own declaration" [level=1] [ref=f46e47]
+        - paragraph [ref=f46e48]: Before you start, read this declaration and sign it.
+        - generic [ref=f46e49]:
+          - generic [ref=f46e50]:
+            - paragraph [ref=f46e51]: I declare that I am the person named below and that the answers I give are my own work.
+            - paragraph [ref=f46e52]: I understand that sharing the questions or answers with others is a breach of the assessment rules.
+          - generic [ref=f46e53]:
+            - checkbox "I make this declaration." [ref=f46e54] [cursor=pointer]
+            - generic [ref=f46e55]: I make this declaration.
+          - generic [ref=f46e56]:
+            - generic [ref=f46e57]: Full name
+            - textbox "Full name" [ref=f46e58]
+            - paragraph [ref=f46e59]: Your name is stored with this declaration, the time and your IP address.
+          - generic [ref=f46e60]:
+            - link "Previous" [ref=f46e62] [cursor=pointer]:
+              - /url: /courses/functionality-demo-quiz-declaration/2/
+            - button "Sign and start" [ref=f46e66] [cursor=pointer]
+  - contentinfo [ref=f46e70]:
+    - generic [ref=f46e71]:
+      - paragraph [ref=f46e72]: © 2026 FirstClass
+      - navigation "Legal" [ref=f46e73]:
+        - link "Terms and Conditions" [ref=f46e74] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f46e75] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f46e76] [cursor=pointer]: sacaa-complianc-deletion-and-declaration-2-quiz-declaration
+  - generic "Show toolbar" [ref=f46e78]: DJDT

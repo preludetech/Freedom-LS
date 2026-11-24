@@ -16,7 +16,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
 - [ ] (user) Decide whether to add an explicit test that an anonymous applicant's sitting at an application form writes no FormDeclaration; the implementation relies on form_requires_declaration returning false for an anonymous user, which test_declarations.py covers, plus the unchanged course_applications tests
